@@ -7,7 +7,10 @@
 
 #include <cmath>
 #include <array>
+#include <memory>    // for unique_ptr
 #include "math.hpp"  // for deg
+#include "symmetry.hpp"  // for Op
+#include "unitcell.hpp"  // for UnitCell
 
 namespace gemmi {
 
@@ -21,6 +24,7 @@ struct SellingVector;
 struct GruberVector {
   //    a.a  b.b c.c 2b.c 2a.c 2a.b
   double A, B, C, xi, eta, zeta;  // the 1973 paper uses names A B C ξ η ζ
+  std::unique_ptr<Op> change_of_basis;  // we use only Op::Rot
 
   // m - orthogonalization matrix of a primitive cell
   explicit GruberVector(const Mat33& m)
@@ -33,6 +37,17 @@ struct GruberVector {
 
   explicit GruberVector(const std::array<double,6>& g6)
     : A(g6[0]), B(g6[1]), C(g6[2]), xi(g6[3]), eta(g6[4]), zeta(g6[5]) {}
+
+  GruberVector(const UnitCell& u, char centring, bool track_change_of_basis=false)
+    : GruberVector(u.primitive_orth_matrix(centring)) {
+    if (track_change_of_basis)
+      set_change_of_basis(Op{centred_to_primitive(centring), {0,0,0}});
+  }
+
+  GruberVector(const UnitCell& u, const SpaceGroup* sg, bool track_change_of_basis=false)
+  : GruberVector(u, sg ? sg->centring_type() : 'P', track_change_of_basis) {}
+
+  void set_change_of_basis(const Op& op) { change_of_basis.reset(new Op(op)); }
 
   std::array<double,6> parameters() const { return {A, B, C, xi, eta, zeta}; }
   std::array<double,6> cell_parameters() const {
@@ -67,25 +82,37 @@ struct GruberVector {
   // Algorithm N from Gruber (1973).
   // Returns branch taken in N3.
   void normalize(double eps=1e-9) {
-    if (A - B > eps || (A - B >= -eps && std::abs(xi) > std::abs(eta) + eps)) { // N1
-      std::swap(A, B);
-      std::swap(xi, eta);
-    }
-    if (B - C > eps || (B - C >= -eps && std::abs(eta) > std::abs(zeta) + eps)) { // N2
-      std::swap(B, C);
-      std::swap(eta, zeta);
-      // To make it faster, instead of "go to the point N1" we repeat N1 once
-      // (which is equivalent - three swaps are sufficient to reorder ABC).
+    auto step_N1 = [&]() {
       if (A - B > eps || (A - B >= -eps && std::abs(xi) > std::abs(eta) + eps)) { // N1
         std::swap(A, B);
         std::swap(xi, eta);
+        if (change_of_basis)
+          swap_columns_and_negate(0, 1);
       }
+    };
+    step_N1();
+    if (B - C > eps || (B - C >= -eps && std::abs(eta) > std::abs(zeta) + eps)) { // N2
+      std::swap(B, C);
+      std::swap(eta, zeta);
+      if (change_of_basis)
+        swap_columns_and_negate(1, 2);
+      // To make it faster, instead of "go to the point N1" we repeat N1 once
+      // (which is equivalent - three swaps are sufficient to reorder ABC).
+      step_N1();
     }
     // N3
     // xi * eta * zeta > 0 <=> positive count is 1 or 3 and no zeros
     int pos_count = (xi > eps) + (eta > eps) + (zeta > eps);
     int nonneg_count = (xi >= -eps) + (eta >= -eps) + (zeta >= -eps);
     double sgn = (pos_count == nonneg_count && pos_count % 2 == 1) ? 1 : -1;
+    if (change_of_basis) {
+      if (sgn * xi < -eps)   negate_column(0);
+      if (sgn * eta < -eps)  negate_column(1);
+      if (sgn * zeta < -eps) negate_column(2);
+      if (pos_count != nonneg_count && pos_count % 2 == 1)
+        negate_column(std::fabs(zeta) <= eps ? 2 :
+                      std::fabs(eta) <= eps ? 1 : 0);
+    }
     xi = std::copysign(xi, sgn);
     eta = std::copysign(eta, sgn);
     zeta = std::copysign(zeta, sgn);
@@ -157,6 +184,8 @@ struct GruberVector {
       C += B - xi * sign_xi;
       eta -= zeta * sign_xi;
       xi -= 2 * B * sign_xi;
+      if (change_of_basis)
+        add_column(1, 2, -int(sign_xi));
     } else if (std::abs(eta) > A + epsilon ||  // step 6.
                (eta >= A - epsilon && 2 * xi < zeta - epsilon) ||
                (eta <= -(A - epsilon) && zeta < -epsilon)) {
@@ -164,6 +193,8 @@ struct GruberVector {
       C += A - eta * sign_eta;
       xi -= zeta * sign_eta;
       eta -= 2 * A * sign_eta;
+      if (change_of_basis)
+        add_column(0, 2, -int(sign_eta));
     } else if (std::abs(zeta) > A + epsilon ||  // step 7.
                (zeta >= A - epsilon && 2 * xi < eta - epsilon) ||
                (zeta <= -(A - epsilon) && eta < -epsilon)) {
@@ -171,11 +202,17 @@ struct GruberVector {
       B += A - zeta * sign_zeta;
       xi -= eta * sign_zeta;
       zeta -= 2 * A * sign_zeta;
+      if (change_of_basis)
+        add_column(0, 1, -int(sign_zeta));
     } else if (xi + eta + zeta + A + B < -epsilon || // step 8.
                (xi + eta + zeta + A + B <= epsilon && 2 * (A + eta) + zeta > epsilon)) {
       C += A + B + xi + eta + zeta;
       xi += 2 * B + zeta;
       eta += 2 * A + zeta;
+      if (change_of_basis) {
+        add_column(0, 2, 1);
+        add_column(1, 2, 1);
+      }
     } else {
       return true;
     }
@@ -194,7 +231,24 @@ struct GruberVector {
   }
 
   bool is_niggli(double epsilon=1e-9) const {
-    return is_normalized() && GruberVector(*this).niggli_step(epsilon);
+    return is_normalized() && GruberVector(parameters()).niggli_step(epsilon);
+  }
+
+private:
+  void swap_columns_and_negate(int i, int j) {
+    for (auto& r : change_of_basis->rot)
+      std::swap(r[i], r[j]);
+    for (auto& r : change_of_basis->rot)
+      for (auto& v : r)
+        v = -v;
+  }
+  void negate_column(int i) {
+    for (auto& r : change_of_basis->rot)
+      r[i] = -r[i];
+  }
+  void add_column(int pos, int dest, int sign) {
+    for (auto& r : change_of_basis->rot)
+      r[dest] += sign * r[pos];
   }
 };
 

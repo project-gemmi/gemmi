@@ -330,10 +330,8 @@ void add_unitcell(py::module& m) {
 
   py::class_<GruberVector>(m, "GruberVector")
     .def(py::init<const std::array<double,6>&>())
-    .def(py::init([](const UnitCell& u, const SpaceGroup* sg) {
-        Mat33 m = u.primitive_orth_matrix(sg ? sg->centring_type() : 'P');
-        return new GruberVector(m);
-    }))
+    .def(py::init<const UnitCell&, const SpaceGroup*, bool>(),
+         py::arg("cell"), py::arg("sg"), py::arg("track_change_of_basis")=false)
     .def_property_readonly("parameters", [](const GruberVector& g) {
       return make_six_tuple(g.parameters());
     })
@@ -342,6 +340,9 @@ void add_unitcell(py::module& m) {
     })
     .def("get_cell",
          [](const GruberVector& self) { return new UnitCell(self.cell_parameters()); })
+    .def_property_readonly("change_of_basis", [](const GruberVector& self) {
+        return self.change_of_basis.get();
+    }, py::return_value_policy::reference_internal)
     .def("selling", &GruberVector::selling)
     .def("is_normalized", &GruberVector::is_normalized)
     .def("is_buerger", &GruberVector::is_buerger, py::arg("epsilon")=1e-9)

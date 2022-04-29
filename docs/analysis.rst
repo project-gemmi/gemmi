@@ -177,6 +177,27 @@ A few extra iterations sorted it out (without any real changes),
 but it's not always the case -- that's why we have ``iteration_limit``
 to prevent infinite loop.
 
+The original Křivý-Gruber algorithm doesn't output the change-of-basis
+transformation that leads to the reduced cell. Keeping track of the
+transformation requires more computations, so currently it's not done
+by default, but this may change, because it seems to be fast enough
+for all practical uses. The transformation is obtained as proposed
+in the 2004 paper from Grosse-Kunstleve *et al*: the change-of-basis
+matrix is updated in each step that changes the Gruber vector.
+(Currently, this is implemented only for Niggli reduction,
+not for Buerger and Selling reductions).
+
+.. doctest::
+
+  >>> gv = gemmi.GruberVector(cell, sg, track_change_of_basis=True)
+  >>> gv.niggli_reduce()
+  3
+  >>> gv.change_of_basis
+  <gemmi.Op("x-z/2,y-z/2,z/2")>
+  >>> # the operator transforms Niggli cell to the original cell
+  >>> gv.get_cell().changed_basis_forward(_, set_images=False)
+  <gemmi.UnitCell(63.78, 63.86, 124.4, 90, 90, 90)>
+
 Selling-Delaunay reduction
 --------------------------
 
