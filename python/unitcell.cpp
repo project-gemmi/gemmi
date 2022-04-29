@@ -362,10 +362,7 @@ void add_unitcell(py::module& m) {
 
   selling_vector
     .def(py::init<const std::array<double,6>&>())
-    .def(py::init([](const UnitCell& u, const SpaceGroup* sg) {
-        Mat33 m = u.primitive_orth_matrix(sg ? sg->centring_type() : 'P');
-        return new SellingVector(m);
-    }))
+    .def(py::init<const UnitCell&, const SpaceGroup*>())
     .def_property_readonly("parameters", [](const SellingVector& self) {
       return make_six_tuple(self.s);
     })

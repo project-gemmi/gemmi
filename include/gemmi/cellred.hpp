@@ -280,6 +280,11 @@ struct SellingVector {
     s[5] = b[2].dot(b[3]);
   }
 
+  SellingVector(const UnitCell& u, char centring)
+    : SellingVector(u.primitive_orth_matrix(centring)) {}
+  SellingVector(const UnitCell& u, const SpaceGroup* sg)
+    : SellingVector(u, sg ? sg->centring_type() : 'P') {}
+
   // The reduction minimizes the sum b_i^2 which is equal to -2 sum s_i.
   double sum_b_squared() const {
     return -2 * (s[0] + s[1] + s[2] + s[3] + s[4] + s[5]);
