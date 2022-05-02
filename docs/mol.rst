@@ -98,7 +98,7 @@ together with the unit cell and symmetry.
     'F -4 3 m'
     >>> SiC.find_spacegroup()  # based on spacegroup_hm
     <gemmi.SpaceGroup("F -4 3 m")>
-    >>> SiC.sites
+    >>> list(SiC.sites)
     [<gemmi.SmallStructure.Site Si1>, <gemmi.SmallStructure.Site C1>]
     >>> len(SiC.get_all_unit_cell_sites())
     8

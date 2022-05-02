@@ -201,7 +201,8 @@ in the ``change_of_basis`` property:
   >>> cob
   <gemmi.Op("x-z/2,y-z/2,z/2")>
 
-This operator transforms Niggli cell to the original cell:
+This operator transforms Niggli cell to the original cell
+(so it's actually *the inverse* of the reduction change-of-basis):
 
 .. doctest::
 
