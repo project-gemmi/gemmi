@@ -17,9 +17,12 @@
 
 #include "common.h"
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 namespace py = pybind11;
 using namespace gemmi;
+
+PYBIND11_MAKE_OPAQUE(std::vector<SmallStructure::Site>)
 
 void add_cif_read(py::module& cif) {
   cif.def("read_file", &cif::read_file, py::arg("filename"),
@@ -118,6 +121,7 @@ void add_small(py::module& m) {
     .def("__repr__", [](const SmallStructure::Site& self) {
         return "<gemmi.SmallStructure.Site " + self.label + ">";
     });
+  py::bind_vector<std::vector<SmallStructure::Site>>(small_structure, "SiteList");
 
   using AtomType = SmallStructure::AtomType;
   py::class_<AtomType>(small_structure, "AtomType")
