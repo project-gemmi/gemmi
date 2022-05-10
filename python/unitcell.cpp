@@ -276,6 +276,8 @@ void add_unitcell(py::module& m) {
          py::arg("sg"), py::arg("eps")=1e-3)
     .def("is_crystal", &UnitCell::is_crystal)
     .def("approx", &UnitCell::approx, py::arg("other"), py::arg("epsilon"))
+    .def("is_similar", &UnitCell::is_similar,
+         py::arg("other"), py::arg("rel"), py::arg("deg"))
     .def("calculate_u_eq", &UnitCell::calculate_u_eq)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)

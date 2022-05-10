@@ -175,6 +175,14 @@ struct UnitCell {
            eq(alpha, o.alpha) && eq(beta, o.beta) && eq(gamma, o.gamma);
   }
 
+  // compare lengths using relative tolerance rel, angles using tolerance deg
+  bool is_similar(const UnitCell& o, double rel, double deg) const {
+    auto siml = [&](double x, double y) { return std::fabs(x - y) < rel * std::max(x, y); };
+    auto sima = [&](double x, double y) { return std::fabs(x - y) < deg; };
+    return siml(a, o.a) && siml(b, o.b) && siml(c, o.c) &&
+           sima(alpha, o.alpha) && sima(beta, o.beta) && sima(gamma, o.gamma);
+  }
+
   void calculate_properties() {
     // ensure exact values for right angles
     double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));

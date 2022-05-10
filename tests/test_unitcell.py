@@ -98,6 +98,16 @@ class TestUnitCell(unittest.TestCase):
         assert_almost_equal_seq(self, rmt.elements_pdb(), cctbx_rmm,
                                 delta=1e-15)
 
+    def test_is_similar(self):
+        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        cell2 = UnitCell(36, 42, 46, 67, 67, 75)
+        self.assertTrue(cell.approx(cell, 1e-6))
+        self.assertFalse(cell.approx(cell2, 1e-6))
+        self.assertTrue(cell.approx(cell2, epsilon=0.5))
+        self.assertTrue(cell.is_similar(cell2, rel=0.01, deg=0.5))
+        self.assertFalse(cell.is_similar(cell2, rel=0.01, deg=0.3))
+        self.assertFalse(cell.is_similar(cell2, rel=0.009, deg=0.5))
+
     def test_change_of_basis(self):
         uc = gemmi.UnitCell(20, 30, 39, 73, 93, 99)
         op = gemmi.Op('y-x/2,-2/3*z+2/3*y,3*x')

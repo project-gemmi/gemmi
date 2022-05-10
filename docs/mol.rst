@@ -564,6 +564,21 @@ Here are the most important properties and methods of the ``UnitCell`` class:
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
     <gemmi.Position(12.56, 19.75, 22.535)>
 
+Cells can be compared with one of two functions.
+approx() is meant for almost identical cells that differ only
+due to numeric errors. It checks if the cell parameters differ
+by less than a given absolute tolerance ε.
+is_similar() uses relative tolerance to compare the edge lengths
+and absolute tolerance in degrees to compare the angles:
+
+.. doctest::
+
+    >>> cell2 = gemmi.UnitCell(25, 39, 45, 89, 90, 88)
+    >>> cell.approx(cell2, epsilon=1e-6)
+    False
+    >>> cell.is_similar(cell2, rel=0.03, deg=2.5)
+    True
+
 Next, we can obtain the reciprocal cell:
 
 .. doctest::
@@ -576,10 +591,10 @@ in the direct and reciprocal space:
 
 .. doctest::
 
-    >>> cell.metric_tensor().u22
-    1560.25
-    >>> cell.reciprocal_metric_tensor().u23
-    0.0
+    >>> cell.metric_tensor()
+    <gemmi.SMat33d(631.014, 1560.25, 2031.3, 0, 0, 0)>
+    >>> cell.reciprocal_metric_tensor()
+    <gemmi.SMat33d(0.00158475, 0.000640923, 0.000492294, 0, 0, 0)>
 
 If the lattice is centered, we can obtain a primitive cell.
 We have a function that takes centring type (return value of
