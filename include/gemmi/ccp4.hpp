@@ -182,6 +182,8 @@ struct Ccp4 : public Ccp4Base {
       fail("Only modes 0, 1, 2 and 6 are supported.");
     if (grid.point_count() == 0)
       fail("update_ccp4_header(): set the grid first (it has size 0)");
+    if (grid.axis_order == AxisOrder::Unknown)
+      fail("update_ccp4_header(): run setup() first");
     if (update_stats)
       hstats = calculate_data_statistics(grid.data);
     if (ccp4_header.empty())
@@ -458,14 +460,17 @@ void Ccp4<T>::set_extent(const Box<Fractional>& box) {
   int nv = (int)std::floor(box.maximum.y * grid.nv) - v0 + 1;
   int nw = (int)std::floor(box.maximum.z * grid.nw) - w0 + 1;
   // set the data
-  grid.data.resize((size_t)nu * nv * nw);
-  grid.get_subarray(grid.data.data(), {u0, v0, w0}, {nu, nv, nw});
+  std::vector<T> new_data((size_t)nu * nv * nw);
+  grid.get_subarray(new_data.data(), {u0, v0, w0}, {nu, nv, nw});
+  grid.data.swap(new_data);
   // and metadata
   grid.nu = nu;
   grid.nv = nv;
   grid.nw = nw;
   set_header_3i32(1, grid.nu, grid.nv, grid.nw); // NX, NY, NZ
   set_header_3i32(5, u0, v0, w0);
+  // AxisOrder::XYZ is used only for grid covering full cell
+  grid.axis_order = AxisOrder::Unknown;
 }
 
 template<typename T>
