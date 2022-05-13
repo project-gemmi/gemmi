@@ -110,6 +110,14 @@ class TestSymmetry(unittest.TestCase):
         op2 = gemmi.Op('x/2+y/2,-a/2+k/2,z')
         self.assertEqual(op, op2)
 
+    def test_rot_type(self):
+        # examples taken from tst_sgtbx.py in cctbx
+        self.assertEqual(gemmi.Op('z,y,-x').rot_type(), 4)
+        self.assertEqual(gemmi.Op('x,y,z').rot_type(), 1)
+        self.assertEqual(gemmi.Op('2*x,y,z').rot_type(), 0)
+        self.assertEqual(gemmi.Op('-x,z-y,-y').rot_type(), -6)
+        self.assertEqual(gemmi.Op('-x,z-y,-y').inverse().rot_type(), -6)
+
     def test_generators_from_hall(self):
         # first test on example matrices from
         # http://cci.lbl.gov/sginfo/hall_symbols.html

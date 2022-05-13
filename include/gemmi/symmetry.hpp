@@ -105,6 +105,17 @@ struct Op {
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
 
+  // Rotation-part type based on Table 1 in RWGK, Acta Cryst. A55, 383 (1999)
+  int rot_type() const {
+    int det = det_rot();
+    int tr_den = rot[0][0] + rot[1][1] + rot[2][2];
+    int tr = tr_den / DEN;
+    const int table[] = {0, 0, 2, 3, 4, 6, 1};
+    if (std::abs(det) == DEN * DEN * DEN && tr * DEN == tr_den && std::abs(tr) <= 3)
+      return det > 0 ? table[3 + tr] : -table[3 - tr];
+    return 0;
+  }
+
   Op combine(const Op& b) const {
     Op r;
     for (int i = 0; i != 3; ++i) {

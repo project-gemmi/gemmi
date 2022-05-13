@@ -301,6 +301,17 @@ matrix (which in crystallography is called *Seitz matrix*).
      [0.0, 0.0, 1.0, 0.3333333333333333],
      [0.0, 0.0, 0.0, 1.0]]
 
+The type of the rotation part of operation can be determined with function
+rot_type, which returns integer N, meaning N-fold rotation for positive N
+and rotoinversion for negative N:
+
+.. doctest::
+
+    >>> gemmi.Op('-y,x-y,z').rot_type()
+    3
+    >>> gemmi.Op('x,y,-z').rot_type()
+    -2
+
 Operations can be combined, inverted and wrapped:
 
 .. doctest::

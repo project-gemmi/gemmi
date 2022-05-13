@@ -30,12 +30,13 @@ void add_symmetry(py::module& m) {
     .def_readwrite("tran", &Op::tran,
        "Numerators (integers) of the translation vector. Denominator DEN=24.")
     .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
-    .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
     .def("inverse", &Op::inverse, "Returns inverted operator.")
+    .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
+    .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
     .def("negated", &Op::negated, "Returns Op with all elements nagated")
     .def("transposed_rot", &Op::transposed_rot)
-    .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
-    .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
+    .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
+    .def("rot_type", &Op::rot_type)
     .def("combine", &Op::combine, py::arg("b"),
          "Combine two symmetry operations.")
     .def("seitz", [](const Op& self) {
