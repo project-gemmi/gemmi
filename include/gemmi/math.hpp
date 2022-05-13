@@ -124,6 +124,17 @@ struct Mat33 {
     return Vec3(a[0][i], a[1][i], a[2][i]);
   }
 
+  Mat33 operator+(const Mat33& b) const {
+    return Mat33(a[0][0] + b[0][0], a[0][1] + b[0][1], a[0][2] + b[0][2],
+                 a[1][0] + b[1][0], a[1][1] + b[1][1], a[1][2] + b[1][2],
+                 a[2][0] + b[2][0], a[2][1] + b[2][1], a[2][2] + b[2][2]);
+  }
+  Mat33 operator-(const Mat33& b) const {
+    return Mat33(a[0][0] - b[0][0], a[0][1] - b[0][1], a[0][2] - b[0][2],
+                 a[1][0] - b[1][0], a[1][1] - b[1][1], a[1][2] - b[1][2],
+                 a[2][0] - b[2][0], a[2][1] - b[2][1], a[2][2] - b[2][2]);
+  }
+
   Vec3 multiply(const Vec3& p) const {
     return {a[0][0] * p.x + a[0][1] * p.y + a[0][2] * p.z,
             a[1][0] * p.x + a[1][1] * p.y + a[1][2] * p.z,

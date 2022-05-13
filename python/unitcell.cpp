@@ -145,6 +145,8 @@ void add_unitcell(py::module& m) {
     })
     .def("row_copy", &Mat33::row_copy)
     .def("column_copy", &Mat33::column_copy)
+    .def(py::self + py::self)
+    .def(py::self - py::self)
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("left_multiply", &Mat33::left_multiply)
