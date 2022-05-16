@@ -25,9 +25,7 @@ GEMMI is an open-source project of [CCP4](https://www.ccp4.ac.uk/)
 and [Global Phasing Ltd](https://www.globalphasing.com/),
 two major providers of software for macromolecular crystallography.
 
-To report problems or ask questions either use GitHub Issues,
-or email wojdyr+gemmi@gmail.com. If you consider a major code contribution,
-please get in touch beforehand.
+Citing: [JOSS paper](https://doi.org/10.21105/joss.04200).
 
 License: MPLv2, or (at your option) LGPLv3.
 © 2017-2022 Global Phasing Ltd.

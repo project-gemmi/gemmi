@@ -301,8 +301,10 @@ matrix (which in crystallography is called *Seitz matrix*).
      [0.0, 0.0, 1.0, 0.3333333333333333],
      [0.0, 0.0, 0.0, 1.0]]
 
-The type of the rotation part of operation can be determined with function
-rot_type, which returns integer N, meaning N-fold rotation for positive N
+The type of the rotation part of operation can be determined with rot_type(),
+which it based on Table 1 from the
+`RWGK's space-group algorithms paper <https://doi.org/10.1107/S0108767398010186>`_.
+It returns integer N, meaning N-fold rotation for positive N
 and rotoinversion for negative N:
 
 .. doctest::
