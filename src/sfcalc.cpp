@@ -613,7 +613,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         dencalc.set_refmac_compatible_blur(st.models[0]);
         if (p.options[Verbose])
           fprintf(stderr, "B_min=%g, B_add=%g\n",
-                  gemmi::get_minimum_b_iso(st.models[0]), dencalc.blur);
+                  gemmi::get_minimum_b(st.models[0]), dencalc.blur);
       }
       gemmi::AtomicRadiiSet radii_choice = gemmi::AtomicRadiiSet::VanDerWaals;
       if (p.options[RadiiSet]) {

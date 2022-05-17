@@ -2095,7 +2095,7 @@ and *B*\ :sub:`min`):
 
   >>> dencalc.set_refmac_compatible_blur(st[0])
   >>> dencalc.blur
-  31.01648695048263
+  49.846486874188685
 
 The :ref:`sfcalc <sfcalc>` program can be used to test different choices
 of *B*\ :sub:`extra`.
@@ -2135,7 +2135,7 @@ We either multiply individual values by ``mott_bethe_factor()``
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.06369910627539+52.97058061981686j)
+  (54.064399348274954+52.96943978655508j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
@@ -2144,7 +2144,7 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
   >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True, unblur=dencalc.blur)
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
-  array([54.063698+52.97058j], dtype=complex64)
+  array([54.064396+52.969437j], dtype=complex64)
 
 That is all.
 If you would like to separate positions of hydrogen nuclei
