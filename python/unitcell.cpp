@@ -343,7 +343,7 @@ void add_unitcell(py::module& m) {
       return make_six_tuple(self.cell_parameters());
     })
     .def("get_cell",
-         [](const GruberVector& self) { return new UnitCell(self.cell_parameters()); })
+         [](const GruberVector& self) { return new UnitCell(self.get_cell()); })
     .def_property_readonly("change_of_basis", [](const GruberVector& self) {
         return self.change_of_basis.get();
     }, py::return_value_policy::reference_internal)
@@ -374,7 +374,7 @@ void add_unitcell(py::module& m) {
       return make_six_tuple(self.cell_parameters());
     })
     .def("get_cell",
-         [](const SellingVector& self) { return new UnitCell(self.cell_parameters()); })
+         [](const SellingVector& self) { return new UnitCell(self.get_cell()); })
     .def("sum_b_squared", &SellingVector::sum_b_squared)
     .def("gruber", &SellingVector::gruber)
     .def("is_reduced", &SellingVector::is_reduced, py::arg("epsilon")=1e-9)

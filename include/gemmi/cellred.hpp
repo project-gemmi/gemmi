@@ -60,6 +60,7 @@ struct GruberVector {
             deg(std::acos(eta/(2*a*c))),
             deg(std::acos(zeta/(2*a*b)))};
   }
+  UnitCell get_cell() const { return UnitCell(cell_parameters()); }
 
   SellingVector selling() const;
 
@@ -391,6 +392,7 @@ struct SellingVector {
   std::array<double,6> cell_parameters() const {
     return gruber().cell_parameters();
   }
+  UnitCell get_cell() const { return UnitCell(cell_parameters()); }
 };
 
 SellingVector GruberVector::selling() const {
