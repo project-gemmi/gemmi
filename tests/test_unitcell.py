@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from math import pi  # , isnan
+from math import pi, radians  # , isnan
 from random import random
 import gemmi
 from gemmi import Position, UnitCell
@@ -226,6 +226,16 @@ class TestGruber(unittest.TestCase):
         expected = (2.814597242, 3.077205425, 7.408935896,
                     100.42421409, 94.02885284, 95.07179187)
         assert_almost_equal_seq(self, gv.cell_parameters(), expected)
+
+class TestTwinning(unittest.TestCase):
+    def test_lattice_symmetry(self):
+        # from Andrey's example
+        cell = gemmi.UnitCell(102.053, 46.612, 74.904, 95.00, 71.29, 95.00)
+        op_scores = gemmi.find_lattice_2fold_ops(cell, radians(5))
+        self.assertEqual(len(op_scores), 1)
+        op, score = op_scores[0]
+        self.assertEqual(op.triplet(), 'x,-y,-x-z')
+        self.assertAlmostEqual(score, 0.07946439, delta=1e-8)
 
 if __name__ == '__main__':
     unittest.main()

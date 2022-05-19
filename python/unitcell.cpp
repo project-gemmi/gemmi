@@ -3,6 +3,7 @@
 #include "gemmi/unitcell.hpp"
 #include "tostr.hpp"  // tostr
 #include "gemmi/cellred.hpp"  // GruberVector
+#include "gemmi/twin.hpp"  // find_lattice_2fold_ops
 
 #include <cstdio>  // for snprintf
 #include <array>
@@ -389,4 +390,6 @@ void add_unitcell(py::module& m) {
                  self.s[0], self.s[1], self.s[2], self.s[3], self.s[4], self.s[5]);
         return std::string(buf);
     });
+
+  m.def("find_lattice_2fold_ops", &find_lattice_2fold_ops);
 }

@@ -202,7 +202,8 @@ Not distributed with Gemmi:
 * `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
   Python bindings. License: 3-clause BSD.
 * `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests and
-  in scripts that generated space group data. License: 3-clause BSD.
+  in scripts that generated space group data and 2-fold twinning operations.
+  License: 3-clause BSD.
 
 Email me if I forgot about something.
 

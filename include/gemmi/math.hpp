@@ -80,9 +80,10 @@ struct Vec3 {
   Vec3 normalized() const { return changed_magnitude(1.0); }
   double dist_sq(const Vec3& o) const { return (*this - o).length_sq(); }
   double dist(const Vec3& o) const { return std::sqrt(dist_sq(o)); }
-  double angle(const Vec3& o) const {
-    return std::acos(dot(o) / std::sqrt(length_sq() * o.length_sq()));
+  double cos_angle(const Vec3& o) const {
+    return dot(o) / std::sqrt(length_sq() * o.length_sq());
   }
+  double angle(const Vec3& o) const { return std::acos(cos_angle(o)); }
   bool approx(const Vec3& o, double epsilon) const {
     return std::fabs(x - o.x) <= epsilon &&
            std::fabs(y - o.y) <= epsilon &&

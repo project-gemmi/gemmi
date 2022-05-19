@@ -293,6 +293,9 @@ gemmi/to_pdb.hpp
 gemmi/topo.hpp
     Topo(logy) - restraints (from a monomer library) applied to a model.
 
+gemmi/twin.hpp
+    Twinning laws.
+
 gemmi/unitcell.hpp
     Unit cell.
 
