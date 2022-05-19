@@ -1,0 +1,8 @@
+This directory contains files from PEGTL 2.4.0:
+ LICENSE and include/tao/* except include/tao/pegtl/contrib
+with minor local modifications:
+- changed formatting of error messages,
+- using std::system_error instead of pegtl::input_error.
+
+PEGTL can be updated to v3 only when gemmi drops support for C++11/14.
+https://github.com/project-gemmi/gemmi/issues/212
