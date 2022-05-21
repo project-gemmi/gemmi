@@ -66,7 +66,7 @@ py::class_<GridBase<T>, GridMeta> add_grid_base(py::module& m, const char* name)
 }
 
 template<typename T>
-py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name) {
+py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::string& name) {
   using Gr = Grid<T>;
   using GrPoint = typename GridBase<T>::Point;
   using Masked = MaskedGrid<T>;
@@ -105,31 +105,6 @@ py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
     .def("change_values", &Gr::change_values, py::arg("old_value"), py::arg("new_value"))
-    .def("interpolate_value",
-         (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
-    .def("interpolate_value",
-         (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
-    .def("interpolate_values",
-         [](const Gr& self, py::array_t<T> arr, const Transform& tr, bool cubic) {
-        auto r = arr.template mutable_unchecked<3>();
-        for (int i = 0; i < r.shape(0); ++i)
-          for (int j = 0; j < r.shape(1); ++j)
-            for (int k = 0; k < r.shape(2); ++k) {
-              Position pos(tr.apply(Vec3(i, j, k)));
-              Fractional fpos = self.unit_cell.fractionalize(pos);
-              if (cubic)
-                r(i, j, k) = (T) self.tricubic_interpolation(fpos);
-              else
-                r(i, j, k) = self.interpolate_value(fpos);
-            }
-    }, py::arg().noconvert(), py::arg(), py::arg("cubic")=false)
-    .def("tricubic_interpolation",
-         (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
-    .def("tricubic_interpolation",
-         (double (Gr::*)(const Position&) const) &Gr::tricubic_interpolation)
-    .def("tricubic_interpolation_der",
-         (std::array<double,4> (Gr::*)(const Fractional&) const)
-         &Gr::tricubic_interpolation_der)
     .def("copy_metadata_from", &Gr::copy_metadata_from)
     .def("setup_from", &Gr::template setup_from<Structure>,
          py::arg("st"), py::arg("spacing"))
@@ -175,6 +150,38 @@ py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name
     return grid;
 }
 
+template<typename T>
+void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
+  using Gr = Grid<T>;
+  grid
+    .def("interpolate_value",
+         (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
+    .def("interpolate_value",
+         (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
+    .def("interpolate_values",
+         [](const Gr& self, py::array_t<T> arr, const Transform& tr, bool cubic) {
+        auto r = arr.template mutable_unchecked<3>();
+        for (int i = 0; i < r.shape(0); ++i)
+          for (int j = 0; j < r.shape(1); ++j)
+            for (int k = 0; k < r.shape(2); ++k) {
+              Position pos(tr.apply(Vec3(i, j, k)));
+              Fractional fpos = self.unit_cell.fractionalize(pos);
+              if (cubic)
+                r(i, j, k) = (T) self.tricubic_interpolation(fpos);
+              else
+                r(i, j, k) = self.interpolate_value(fpos);
+            }
+    }, py::arg().noconvert(), py::arg(), py::arg("cubic")=false)
+    .def("tricubic_interpolation",
+         (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
+    .def("tricubic_interpolation",
+         (double (Gr::*)(const Position&) const) &Gr::tricubic_interpolation)
+    .def("tricubic_interpolation_der",
+         (std::array<double,4> (Gr::*)(const Fractional&) const)
+         &Gr::tricubic_interpolation_der)
+    ;
+}
+
 void add_grid(py::module& m) {
   py::enum_<AxisOrder>(m, "AxisOrder")
     .value("Unknown", AxisOrder::Unknown)
@@ -196,13 +203,15 @@ void add_grid(py::module& m) {
     });
 
   add_grid_base<int8_t>(m, "Int8GridBase");
-  add_grid<int8_t>(m, "Int8Grid");
+  add_grid_common<int8_t>(m, "Int8Grid");
+
   add_grid_base<float>(m, "FloatGridBase")
     .def("calculate_correlation", &calculate_correlation<float>)
     ;
-  add_grid<float>(m, "FloatGrid")
-    .def("normalize", &normalize_grid<float>)
-    ;
+  auto grid_float = add_grid_common<float>(m, "FloatGrid");
+  add_grid_interpolation<float>(grid_float);
+  grid_float.def("normalize", &normalize_grid<float>);
+
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");
 
   // from solmask.hpp
