@@ -175,22 +175,6 @@ py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name
     return grid;
 }
 
-// for pandda-2
-Grid<float> interpolate_positions(const Grid<float>& moving_map,
-                                  Grid<float> interpolated_map,
-                                  const std::vector<std::array<int,3>>& points,
-                                  const std::vector<Fractional>& positions) {
-  py::gil_scoped_release release;  // Release gil for threading support
-  if (points.size() != positions.size())
-    fail("interpolate_positions(): list sizes differ");
-  for (std::size_t i = 0; i < positions.size(); i++)
-    interpolated_map.set_value(points[i][0],
-                               points[i][1],
-                               points[i][2],
-                               moving_map.interpolate_value(positions[i]));
-  return interpolated_map;
-}
-
 void add_grid(py::module& m) {
   py::enum_<AxisOrder>(m, "AxisOrder")
     .value("Unknown", AxisOrder::Unknown)
@@ -220,7 +204,6 @@ void add_grid(py::module& m) {
     .def("normalize", &normalize_grid<float>)
     ;
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");
-  m.def("interpolate_positions", &interpolate_positions);
 
   // from solmask.hpp
   py::enum_<AtomicRadiiSet>(m, "AtomicRadiiSet")
