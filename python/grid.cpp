@@ -110,15 +110,19 @@ py::class_<Grid<T>, GridBase<T>> add_grid(py::module& m, const std::string& name
     .def("interpolate_value",
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
     .def("interpolate_values",
-         [](const Gr& self, py::array_t<T> arr, const Transform& tr) {
+         [](const Gr& self, py::array_t<T> arr, const Transform& tr, bool cubic) {
         auto r = arr.template mutable_unchecked<3>();
         for (int i = 0; i < r.shape(0); ++i)
           for (int j = 0; j < r.shape(1); ++j)
             for (int k = 0; k < r.shape(2); ++k) {
               Position pos(tr.apply(Vec3(i, j, k)));
-              r(i, j, k) = self.interpolate_value(pos);
+              Fractional fpos = self.unit_cell.fractionalize(pos);
+              if (cubic)
+                r(i, j, k) = (T) self.tricubic_interpolation(fpos);
+              else
+                r(i, j, k) = self.interpolate_value(fpos);
             }
-    }, py::arg().noconvert(), py::arg())
+    }, py::arg().noconvert(), py::arg(), py::arg("cubic")=false)
     .def("tricubic_interpolation",
          (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
     .def("tricubic_interpolation",
