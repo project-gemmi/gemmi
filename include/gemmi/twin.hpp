@@ -137,13 +137,13 @@ double calculate_cos_obliquity(const UnitCell& reduced_cell,
   Vec3 t = reduced_cell.orth.mat.multiply(d_axis);
   Vec3 tau = reduced_cell.frac.mat.left_multiply(r_axis);
   // it's faster to calculate cos(delta) than tan(delta)
-  return std::fabs(t.cos_angle(tau));
+  return std::min(1.0, std::fabs(t.cos_angle(tau)));
 }
 
 // Reduced cell can be from GruberVector::get_cell() after Niggli reduction.
 // max_obl is max obliquity (delta) in radians as defined in Le Page (1982).
 std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_cell,
-                                                double max_obliq) {
+                                                double max_obliq, int D=Op::DEN) {
   std::vector<OpObliquity> ret;
   const double cos_max_obliq = std::cos(max_obliq);
   for (const impl::TwoFoldData& row : impl::TwoFold::table) {
@@ -151,7 +151,6 @@ std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_cell,
     Vec3 r_axis(row.rs_axis[0], row.rs_axis[1], row.rs_axis[2]);
     double cos_delta = calculate_cos_obliquity(reduced_cell, d_axis, r_axis);
     if (cos_delta > cos_max_obliq) {
-      constexpr int D = Op::DEN;
       Op op{{row.matrix[0] * D, row.matrix[1] * D, row.matrix[2] * D,
              row.matrix[3] * D, row.matrix[4] * D, row.matrix[5] * D,
              row.matrix[6] * D, row.matrix[7] * D, row.matrix[8] * D},
@@ -162,6 +161,57 @@ std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_cell,
   std::sort(ret.begin(), ret.end(),
             [](const OpObliquity& a, const OpObliquity& b) { return a.second < b.second; });
   return ret;
+}
+
+// Reduced cell can be from GruberVector::get_cell() after Niggli reduction.
+// max_obl is max obliquity (delta) in radians as defined in Le Page (1982).
+GroupOps find_lattice_symmetry_r(const UnitCell& reduced_cell, double max_obliq) {
+  std::vector<OpObliquity> gen = find_lattice_2fold_ops(reduced_cell, max_obliq, 1);
+  GroupOps go;
+  // we use Op::DEN=1 for now and switch to actual DEN at the end
+  go.sym_ops.push_back({{1,0,0, 0,1,0, 0,0,1}, {0,0,0}});
+  go.cen_ops.push_back({0,0,0});
+  auto multiply_rot = [](const Op::Rot& a, const Op::Rot& b) {
+    Op::Rot r;
+    for (int i = 0; i != 3; ++i)
+      for (int j = 0; j != 3; ++j)
+        r[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j];
+    return r;
+  };
+  // cf. GroupOps::add_missing_elements()
+  if (!gen.empty())
+    go.sym_ops.push_back(gen[0].first);
+    // no need to try operator^2, we know it must be identity
+  for (size_t i = 1; i < gen.size(); ++i) {
+    std::vector<Op::Rot> coset_repr(1, go.sym_ops[0].rot);
+    size_t init_size = go.sym_ops.size();
+    for (;;) {
+      size_t len = coset_repr.size();
+      for (size_t j = 0; j != len; ++j) {
+        for (size_t n = 0; n <= i; ++n) {
+          Op::Rot sg = multiply_rot(gen[n].first.rot, coset_repr[j]);
+          if (go.find_by_rotation(sg) == nullptr) {
+            go.sym_ops.push_back(Op{sg, {0,0,0}});
+            for (size_t k = 1; k != init_size; ++k)
+              go.sym_ops.push_back(Op{multiply_rot(sg, go.sym_ops[k].rot), {0,0,0}});
+            coset_repr.push_back(sg);
+          }
+        }
+      }
+      if (len == coset_repr.size())
+        break;
+      if (go.sym_ops.size() > 24) {  // only 24 rotations are possible
+        go.sym_ops.resize(init_size);
+        break;
+      }
+    }
+  }
+  // so far we carefully used Op's with DEN=1, now switch to normal Op::DEN
+  for (Op& op : go.sym_ops)
+    for (int i = 0; i != 3; ++i)
+      for (int j = 0; j != 3; ++j)
+        op.rot[i][j] *= Op::DEN;
+  return go;
 }
 
 } // namespace gemmi

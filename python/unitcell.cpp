@@ -391,5 +391,7 @@ void add_unitcell(py::module& m) {
         return std::string(buf);
     });
 
-  m.def("find_lattice_2fold_ops", &find_lattice_2fold_ops);
+  m.def("find_lattice_2fold_ops", &find_lattice_2fold_ops,
+        py::arg("reduced_cell"), py::arg("max_obliq"), py::arg("DEN")=Op::DEN);
+  m.def("find_lattice_symmetry_r", &find_lattice_symmetry_r);
 }

@@ -237,5 +237,11 @@ class TestTwinning(unittest.TestCase):
         self.assertEqual(op.triplet(), 'x,-y,-x-z')
         self.assertAlmostEqual(score, 0.07946439, delta=1e-8)
 
+    def test_lattice_symmetry2(self):
+        cell = gemmi.UnitCell(30.0, 30.0, 219.0, 90.0, 90.0, 90.0)
+        gops = gemmi.find_lattice_symmetry_r(cell, radians(5))
+        sg = gemmi.find_spacegroup_by_ops(gops)
+        self.assertTrue(sg and sg.hm == 'P 4 2 2')
+
 if __name__ == '__main__':
     unittest.main()
