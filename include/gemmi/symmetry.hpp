@@ -432,6 +432,8 @@ struct GroupOps {
   int order() const { return static_cast<int>(sym_ops.size()*cen_ops.size()); }
 
   void add_missing_elements();
+  void add_missing_elements_part2(const std::vector<Op>& gen,
+                                  size_t max_size, bool ignore_bad_gen);
 
   char find_centering() const {
     if (cen_ops.size() == 1 && cen_ops[0] == Op::Tran{0, 0, 0})
@@ -644,10 +646,7 @@ inline void GroupOps::add_missing_elements() {
     fail("oops");
   if (sym_ops.size() == 1)
     return;
-  auto check_size = [&]() {
-    if (sym_ops.size() > 1023)
-      fail("1000+ elements in the group should not happen");
-  };
+  constexpr size_t max_size = 1024;
   // Below we assume that all centring vectors are already known (in cen_ops)
   // so when checking for a new element we compare only the 3x3 matrix.
   // Dimino's algorithm. https://physics.stackexchange.com/a/351400/95713
@@ -656,8 +655,15 @@ inline void GroupOps::add_missing_elements() {
   const Op::Rot idrot = Op::identity().rot;
   for (Op g = sym_ops[1] * sym_ops[1]; g.rot != idrot; g *= sym_ops[1]) {
     sym_ops.push_back(g);
-    check_size();
+    if (sym_ops.size() > max_size)
+      fail("Too many elements in the group - bad generators");
   }
+  // the rest is in separate function b/c it's reused in twin.hpp
+  add_missing_elements_part2(gen, max_size, false);
+}
+
+inline void GroupOps::add_missing_elements_part2(const std::vector<Op>& gen,
+                                                 size_t max_size, bool ignore_bad_gen) {
   for (size_t i = 1; i < gen.size(); ++i) {
     std::vector<Op> coset_repr(1, Op::identity());
     size_t init_size = sym_ops.size();
@@ -676,7 +682,13 @@ inline void GroupOps::add_missing_elements() {
       }
       if (len == coset_repr.size())
         break;
-      check_size();
+      if (sym_ops.size() > max_size) {
+        if (!ignore_bad_gen)
+          fail("Too many elements in the group - bad generators");
+        // ignore this generator and continue with the next one
+        sym_ops.resize(init_size);
+        break;
+      }
     }
   }
 }
