@@ -243,5 +243,12 @@ class TestTwinning(unittest.TestCase):
         sg = gemmi.find_spacegroup_by_ops(gops)
         self.assertTrue(sg and sg.hm == 'P 4 2 2')
 
+    def test_lattice_symmetry3(self):
+        cell = gemmi.UnitCell(119.353, 119.47, 184.789, 89.76, 89.9, 90.22)
+        #sg = gemmi.SpaceGroup('I 41 2 2')
+        gops = gemmi.find_lattice_symmetry(cell, 'I', 0.01)
+        lattice_sg = gemmi.find_spacegroup_by_ops(gops)
+        self.assertTrue(lattice_sg and lattice_sg.hm == 'I 4 2 2')
+
 if __name__ == '__main__':
     unittest.main()

@@ -337,6 +337,8 @@ void add_unitcell(py::module& m) {
     .def(py::init<const std::array<double,6>&>())
     .def(py::init<const UnitCell&, const SpaceGroup*, bool>(),
          py::arg("cell"), py::arg("sg"), py::arg("track_change_of_basis")=false)
+    .def(py::init<const UnitCell&, char, bool>(),
+         py::arg("cell"), py::arg("centring"), py::arg("track_change_of_basis")=false)
     .def_property_readonly("parameters", [](const GruberVector& g) {
       return make_six_tuple(g.parameters());
     })
@@ -394,4 +396,5 @@ void add_unitcell(py::module& m) {
   m.def("find_lattice_2fold_ops", &find_lattice_2fold_ops,
         py::arg("reduced_cell"), py::arg("max_obliq"));
   m.def("find_lattice_symmetry_r", &find_lattice_symmetry_r);
+  m.def("find_lattice_symmetry", &find_lattice_symmetry);
 }

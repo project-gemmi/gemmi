@@ -14,7 +14,7 @@ namespace gemmi {
 
 namespace impl {
 
-// The determination of the lattice symmetry is based on P.H. Zwart et al (2006)
+// Determination of the lattice symmetry is based on P.H. Zwart et al (2006)
 // http://legacy.ccp4.ac.uk/newsletters/newsletter44/articles/explore_metric_symmetry.html
 // which in turn is based on ideas from
 // Le Page (1982) https://doi.org/10.1107/S0021889882011959
@@ -125,15 +125,15 @@ using TwoFold = TwoFold_<void>;
 
 using OpObliquity = std::pair<Op, double>;
 
-// From the Le Page paper:
-//  tan(delta) = |t x tau| / |t . tau|  (i.e. delta is angle 0...90deg)
-//  t = L U   where U is direct-space axis
-//  tau = (L^T)^-1 h   where h is reciprocal-space axis
-//  L is orthogonalization matrix, although in a different order
-// Obliquity calculated here is the same as Le Page delta in cctbx,
-// as compared with output of lebedev_2005_perturbation.py from cctbx.
-double calculate_cos_obliquity(const UnitCell& reduced_cell,
-                               const Vec3& d_axis, const Vec3& r_axis) {
+// Obliquity calculated here is the same as Le Page delta in cctbx.
+// (tested against output of lebedev_2005_perturbation.py from cctbx)
+inline double calculate_cos_obliquity(const UnitCell& reduced_cell,
+                                      const Vec3& d_axis, const Vec3& r_axis) {
+  // From the Le Page paper:
+  //  tan(delta) = |t x tau| / |t . tau|  (i.e. delta is angle 0...90deg)
+  //  t = L U   where U is direct-space axis
+  //  tau = (L^T)^-1 h   where h is reciprocal-space axis
+  //  L is orthogonalization matrix, although in a different order
   Vec3 t = reduced_cell.orth.mat.multiply(d_axis);
   Vec3 tau = reduced_cell.frac.mat.left_multiply(r_axis);
   // it's faster to calculate cos(delta) than tan(delta)
@@ -141,9 +141,9 @@ double calculate_cos_obliquity(const UnitCell& reduced_cell,
 }
 
 // Reduced cell can be from GruberVector::get_cell() after Niggli reduction.
-// max_obl is max obliquity (delta) in radians as defined in Le Page (1982).
-std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_cell,
-                                                double max_obliq) {
+// max_obliq is max obliquity (delta) in radians as defined in Le Page (1982).
+inline std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_cell,
+                                                       double max_obliq) {
   std::vector<OpObliquity> ret;
   const double cos_max_obliq = std::cos(max_obliq);
   for (const impl::TwoFoldData& row : impl::TwoFold::table) {
@@ -165,8 +165,9 @@ std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_cell,
 }
 
 // Reduced cell can be from GruberVector::get_cell() after Niggli reduction.
-// max_obl is max obliquity (delta) in radians as defined in Le Page (1982).
-GroupOps find_lattice_symmetry_r(const UnitCell& reduced_cell, double max_obliq) {
+// max_obliq is max obliquity (delta) in radians as defined in Le Page (1982).
+// Returns lattice symmetry except inversion.
+inline GroupOps find_lattice_symmetry_r(const UnitCell& reduced_cell, double max_obliq) {
   std::vector<OpObliquity> gen = find_lattice_2fold_ops(reduced_cell, max_obliq);
   std::vector<Op> genops;
   genops.reserve(gen.size());
@@ -181,6 +182,17 @@ GroupOps find_lattice_symmetry_r(const UnitCell& reduced_cell, double max_obliq)
     // no need to try operator^2, we know it must be identity
   go.add_missing_elements_part2(genops, 24, true);
   return go;
+}
+
+// Returns lattice symmetry except inversion.
+inline GroupOps find_lattice_symmetry(const UnitCell& cell, char centring,
+                                      double max_obliq) {
+  GruberVector gv(cell, centring, true);
+  gv.niggli_reduce();
+  UnitCell reduced = gv.get_cell();
+  GroupOps gops = find_lattice_symmetry_r(reduced, max_obliq);
+  gops.change_basis_forward(*gv.change_of_basis);
+  return gops;
 }
 
 } // namespace gemmi
