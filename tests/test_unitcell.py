@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 import unittest
-from math import pi, radians  # , isnan
+from math import pi  # , isnan
 from random import random
 import gemmi
-from gemmi import Position, UnitCell
 
 def assert_almost_equal_seq(self, a, b, delta=None):
     for x,y in zip(a, b):
@@ -41,18 +40,18 @@ class TestMath(unittest.TestCase):
 
 class TestUnitCell(unittest.TestCase):
     def test_dummy_cell(self):
-        cell = UnitCell()
+        cell = gemmi.UnitCell()
         self.assertEqual([cell.a, cell.b, cell.c], [1, 1, 1])
         self.assertEqual([cell.alpha, cell.beta, cell.gamma], [90, 90, 90])
         self.assertEqual(cell.volume, 1.0)
 
     def test_ortho_cell(self):
-        cell = UnitCell(25.14, 39.50, 45.07, 90, 90, 90)
+        cell = gemmi.UnitCell(25.14, 39.50, 45.07, 90, 90, 90)
         self.assertTrue(cell.orthogonalization_matrix.row_copy(1)
                         .approx(gemmi.Vec3(0, 39.5, 0), 0))
         self.assertTrue(cell.orthogonalization_matrix.column_copy(0)
                         .approx(gemmi.Vec3(25.14, 0, 0), 0))
-        pos = Position(5, -6, 7)
+        pos = gemmi.Position(5, -6, 7)
         frac = cell.fractionalize(pos)
         self.assertAlmostEqual(frac.x, 0.198886, delta=1e-6)
         self.assertAlmostEqual(frac.y, -0.151899, delta=1e-6)
@@ -70,13 +69,13 @@ class TestUnitCell(unittest.TestCase):
         self.assertAlmostEqual(rec.a, 1 / cell.a, delta=1e-17)
 
     def test_triclinic_cell(self):
-        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         # this would give syntax error with Python < 3.5
         #o_f = cell.orthogonalization_matrix @ cell.fractionalization_matrix
         o_f = cell.orthogonalization_matrix.multiply(
             cell.fractionalization_matrix)
         self.assertTrue(o_f.approx(gemmi.Mat33(), 1e-15))
-        pos = Position(-15, -17, 190)
+        pos = gemmi.Position(-15, -17, 190)
         frac = cell.fractionalize(pos)
         pos2 = cell.orthogonalize(frac)
         self.assertAlmostEqual(pos.x, pos2.x, delta=1e-12)
@@ -104,8 +103,8 @@ class TestUnitCell(unittest.TestCase):
                                 delta=1e-15)
 
     def test_is_similar(self):
-        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
-        cell2 = UnitCell(36, 42, 46, 67, 67, 75)
+        cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        cell2 = gemmi.UnitCell(36, 42, 46, 67, 67, 75)
         self.assertTrue(cell.approx(cell, 1e-6))
         self.assertFalse(cell.approx(cell2, 1e-6))
         self.assertTrue(cell.approx(cell2, epsilon=0.5))
@@ -129,7 +128,7 @@ class TestUnitCell(unittest.TestCase):
         assert_almost_equal_seq(self, uc3.parameters, uc.parameters)
 
     def test_atom_to_site(self):
-        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         atom = gemmi.Atom()
         atom.aniso = gemmi.SMat33f(13.1, 20.1, 11.1, -3.5, 5.5, -0.4)
         site = gemmi.SmallStructure.Site(atom, cell)
@@ -149,42 +148,42 @@ class TestUnitCell(unittest.TestCase):
         except ImportError:
             import pickle
 
-        cell = UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
+        cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         pkl_string = pickle.dumps(cell, protocol=pickle.HIGHEST_PROTOCOL)
         result = pickle.loads(pkl_string)
-        self.assertTrue(isinstance(result, UnitCell))
+        self.assertTrue(isinstance(result, gemmi.UnitCell))
         self.assertEqual(cell.parameters, result.parameters)
 
 class TestAngles(unittest.TestCase):
     def test_dihedral_special_cases(self):
-        a = Position(random(), random(), random())
+        a = gemmi.Position(random(), random(), random())
         # not sure what it should be in such undefined cases
         #self.assertTrue(isnan(gemmi.calculate_dihedral(a, a, a, a)))
         self.assertEqual(gemmi.calculate_dihedral(a, a, a, a), 0.0)
         # Special cases from scitbx tst_math.py
         # atan2 is guaranteed to give exact values (I think)
-        p000 = Position(0, 0, 0)
-        p100 = Position(1, 0, 0)
-        p010 = Position(0, 1, 0)
+        p000 = gemmi.Position(0, 0, 0)
+        p100 = gemmi.Position(1, 0, 0)
+        p010 = gemmi.Position(0, 1, 0)
         def xy_dihedral(last_point):
             return gemmi.calculate_dihedral(p100, p000, p010, last_point)
-        self.assertEqual(xy_dihedral(Position(1, 1, 0)), 0.0)
-        self.assertEqual(xy_dihedral(Position(-1, 1, 0)), pi)
-        p01_ = Position(0, 1, -1)
+        self.assertEqual(xy_dihedral(gemmi.Position(1, 1, 0)), 0.0)
+        self.assertEqual(xy_dihedral(gemmi.Position(-1, 1, 0)), pi)
+        p01_ = gemmi.Position(0, 1, -1)
         self.assertEqual(xy_dihedral(p01_), pi/2)
         p01_.z = 1
         self.assertEqual(xy_dihedral(p01_), -pi/2)
 
     def test_dihedral(self):
         # based on from https://stackoverflow.com/questions/20305272/
-        p0 = Position(24.969, 13.428, 30.692)  # N
-        p1 = Position(24.044, 12.661, 29.808)  # CA
-        p2 = Position(22.785, 13.482, 29.543)  # C
-        p3 = Position(21.951, 13.670, 30.431)  # O
-        p4 = Position(23.672, 11.328, 30.466)  # CB
-        p5 = Position(22.881, 10.326, 29.620)  # CG
-        p6 = Position(23.691,  9.935, 28.389)  # CD1
-        p7 = Position(22.557,  9.096, 30.459)  # CD2
+        p0 = gemmi.Position(24.969, 13.428, 30.692)  # N
+        p1 = gemmi.Position(24.044, 12.661, 29.808)  # CA
+        p2 = gemmi.Position(22.785, 13.482, 29.543)  # C
+        p3 = gemmi.Position(21.951, 13.670, 30.431)  # O
+        p4 = gemmi.Position(23.672, 11.328, 30.466)  # CB
+        p5 = gemmi.Position(22.881, 10.326, 29.620)  # CG
+        p6 = gemmi.Position(23.691,  9.935, 28.389)  # CD1
+        p7 = gemmi.Position(22.557,  9.096, 30.459)  # CD2
         def check_dihedral(a, b, c, d, angle):
             deg = gemmi.calculate_dihedral(a, b, c, d) * 180 / pi
             self.assertAlmostEqual(deg, angle, places=4)
@@ -226,29 +225,6 @@ class TestGruber(unittest.TestCase):
         expected = (2.814597242, 3.077205425, 7.408935896,
                     100.42421409, 94.02885284, 95.07179187)
         assert_almost_equal_seq(self, gv.cell_parameters(), expected)
-
-class TestTwinning(unittest.TestCase):
-    def test_lattice_symmetry(self):
-        # from Andrey's example
-        cell = gemmi.UnitCell(102.053, 46.612, 74.904, 95.00, 71.29, 95.00)
-        op_scores = gemmi.find_lattice_2fold_ops(cell, radians(5))
-        self.assertEqual(len(op_scores), 1)
-        op, score = op_scores[0]
-        self.assertEqual(op.triplet(), 'x,-y,-x-z')
-        self.assertAlmostEqual(score, 0.07946439, delta=1e-8)
-
-    def test_lattice_symmetry2(self):
-        cell = gemmi.UnitCell(30.0, 30.0, 219.0, 90.0, 90.0, 90.0)
-        gops = gemmi.find_lattice_symmetry_r(cell, radians(5))
-        sg = gemmi.find_spacegroup_by_ops(gops)
-        self.assertTrue(sg and sg.hm == 'P 4 2 2')
-
-    def test_lattice_symmetry3(self):
-        cell = gemmi.UnitCell(119.353, 119.47, 184.789, 89.76, 89.9, 90.22)
-        #sg = gemmi.SpaceGroup('I 41 2 2')
-        gops = gemmi.find_lattice_symmetry(cell, 'I', 0.01)
-        lattice_sg = gemmi.find_spacegroup_by_ops(gops)
-        self.assertTrue(lattice_sg and lattice_sg.hm == 'I 4 2 2')
 
 if __name__ == '__main__':
     unittest.main()
