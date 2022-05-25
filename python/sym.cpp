@@ -109,7 +109,7 @@ void add_symmetry(py::module& m) {
     }, py::is_operator())
 #endif
     .def("__len__", [](const GroupOps& g) { return g.order(); })
-    .def_readwrite("sym_ops", &GroupOps::sym_ops,
+    .def_readwrite("sym_ops", &GroupOps::sym_ops, py::return_value_policy::copy,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
     .def("add_missing_elements", &GroupOps::add_missing_elements)
