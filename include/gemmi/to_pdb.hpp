@@ -14,6 +14,7 @@ namespace gemmi {
 struct PdbWriteOptions {
   bool seqres_records = true;
   bool ssbond_records = true;
+  bool cryst1_record = true;
   bool link_records = true;
   bool cispep_records = true;
   bool ter_records = true;
@@ -656,7 +657,8 @@ inline void write_header(const Structure& st, std::ostream& os,
     }
   }
 
-  write_cryst1(st, os);
+  if(opt.cryst1_record)
+    write_cryst1(st, os);
   if (st.has_origx && !st.origx.is_identity()) {
     for (int i = 0; i < 3; ++i)
       WRITE("ORIGX%d %13.6f%10.6f%10.6f %14.5f %24s", i+1,
