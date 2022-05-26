@@ -206,7 +206,7 @@ class TestGruber(unittest.TestCase):
         t = 108.5325886
         par = (p*p, p*p, q*q, -p*p, -p*p, 0)
         assert_almost_equal_seq(self, gv.parameters, par)
-        self.assertTrue(gv.cell_parameters(), (p, p, q, t, t, 0))
+        assert_almost_equal_seq(self, gv.cell_parameters(), (p, p, q, t, t, 90))
 
     def test_near_degenerate(self):
         cell = gemmi.UnitCell(15.53, 91.94, 4.35, 110.326, 7.337, 103.014)

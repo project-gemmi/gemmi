@@ -105,16 +105,15 @@ class TestTwinning(unittest.TestCase):
             self.assertEqual(len(twin_ops), len(cctbx_ops))
             # We should get the same cosets wrt. the point group,
             # but the coset representatives can differ.
-            # To compare them, we combine them with the space group ops.
-            gops = sg.operations()
-            sg_symops = [copy.copy(op) for op in gops.sym_ops]
-            gops.sym_ops = sg_symops + [gemmi.Op(o) for o in cctbx_ops]
-            gops.add_missing_elements()
-            all_cctbx_symops = set(gops.sym_ops)
-            gops.sym_ops = sg_symops + twin_ops
-            gops.add_missing_elements()
-            all_gemmi_symops = set(gops.sym_ops)
-            self.assertTrue(all_gemmi_symops, all_cctbx_symops)
+            # To compare them, we combine them with the point group ops.
+            gops1 = sg.operations()
+            gops2 = copy.deepcopy(gops1)
+            pg_symops = gops1.derive_symmorphic().sym_ops
+            gops1.sym_ops = pg_symops + [gemmi.Op(o) for o in cctbx_ops]
+            gops1.add_missing_elements()
+            gops2.sym_ops = pg_symops + twin_ops
+            gops2.add_missing_elements()
+            self.assertEqual(set(gops1.sym_ops), set(gops2.sym_ops))
 
 
 if __name__ == '__main__':
