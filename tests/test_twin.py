@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import copy
 import math
 import gemmi
 
@@ -106,7 +107,7 @@ class TestTwinning(unittest.TestCase):
             # but the coset representatives can differ.
             # To compare them, we combine them with the space group ops.
             gops = sg.operations()
-            sg_symops = gops.sym_ops
+            sg_symops = [copy.copy(op) for op in gops.sym_ops]
             gops.sym_ops = sg_symops + [gemmi.Op(o) for o in cctbx_ops]
             gops.add_missing_elements()
             all_cctbx_symops = set(gops.sym_ops)

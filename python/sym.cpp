@@ -62,28 +62,30 @@ void add_symmetry(py::module& m) {
     .def("apply_to_xyz", &Op::apply_to_xyz, py::arg("xyz"))
     .def("apply_to_hkl", &Op::apply_to_hkl, py::arg("hkl"))
     .def("phase_shift", &Op::phase_shift, py::arg("hkl"))
-    .def("__mul__", [](const Op &a, const Op &b) { return a * b; },
+    .def("__mul__", [](const Op& a, const Op& b) { return a * b; },
          py::is_operator())
-    .def("__mul__", [](const Op &a, const std::string &b) {
+    .def("__mul__", [](const Op &a, const std::string& b) {
             return a * parse_triplet(b);
          }, py::is_operator())
-    .def("__rmul__", [](const Op &a, const std::string &b) {
+    .def("__rmul__", [](const Op& a, const std::string& b) {
             return parse_triplet(b) * a;
          }, py::is_operator())
-    .def("__eq__", [](const Op &a, const Op &b) { return a == b; },
+    .def("__eq__", [](const Op& a, const Op& b) { return a == b; },
          py::is_operator())
-    .def("__eq__", [](const Op &a, const std::string& b) {
+    .def("__eq__", [](const Op& a, const std::string& b) {
             return a == parse_triplet(b);
          }, py::is_operator())
 #if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
-    .def("__ne__", [](const Op &a, const Op &b) { return a != b; },
+    .def("__ne__", [](const Op& a, const Op& b) { return a != b; },
          py::is_operator())
-    .def("__ne__", [](const Op &a, const std::string& b) {
+    .def("__ne__", [](const Op& a, const std::string& b) {
             return a != parse_triplet(b);
          }, py::is_operator())
 #endif
-    .def("__hash__", [](const Op &self) { return std::hash<Op>()(self); })
-    .def("__repr__", [](const Op &self) {
+    .def("__copy__", [](const Op& self) { return Op(self); })
+    .def("__deepcopy__", [](const Op& self, py::dict) { return Op(self); }, py::arg("memo"))
+    .def("__hash__", [](const Op& self) { return std::hash<Op>()(self); })
+    .def("__repr__", [](const Op& self) {
         return "<gemmi.Op(\"" + self.triplet() + "\")>";
     });
 
@@ -109,7 +111,9 @@ void add_symmetry(py::module& m) {
     }, py::is_operator())
 #endif
     .def("__len__", [](const GroupOps& g) { return g.order(); })
-    .def_readwrite("sym_ops", &GroupOps::sym_ops, py::return_value_policy::copy,
+    .def("__deepcopy__", [](const GroupOps& g, py::dict) { return GroupOps(g); },
+         py::arg("memo"))
+    .def_readwrite("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
     .def_readwrite("cen_ops", &GroupOps::cen_ops, "Centering vectors.")
     .def("add_missing_elements", &GroupOps::add_missing_elements)
