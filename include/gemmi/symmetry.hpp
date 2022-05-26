@@ -618,6 +618,14 @@ struct GroupOps {
     return false;
   }
 
+  // remove translation part of sym_ops
+  GroupOps derive_symmorphic() const {
+    GroupOps r(*this);
+    for (Op& op : r.sym_ops)
+      op.tran[0] = op.tran[1] = op.tran[2] = 0;
+    return r;
+  }
+
   struct Iter {
     const GroupOps& gops;
     int n_sym, n_cen;

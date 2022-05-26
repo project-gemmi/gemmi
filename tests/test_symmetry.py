@@ -200,6 +200,17 @@ class TestSymmetry(unittest.TestCase):
             with self.assertRaises(StopIteration):
                 next(itb)
 
+    def test_symmorphic(self):
+        for sg in gemmi.spacegroup_table():
+            ops = sg.operations()
+            symmor_ops = ops.derive_symmorphic()
+            self.assertEqual(len(ops), len(symmor_ops))
+            symmor = gemmi.find_spacegroup_by_ops(symmor_ops)
+            self.assertTrue(symmor is not None)
+            self.assertTrue(symmor.is_symmorphic())
+            if sg.is_symmorphic():
+                self.assertEqual(sg.number, symmor.number)
+
     def test_find_spacegroup(self):
         self.assertEqual(gemmi.SpaceGroup('P21212').hm, 'P 21 21 2')
         self.assertEqual(gemmi.find_spacegroup_by_name('P21').hm, 'P 1 21 1')

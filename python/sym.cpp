@@ -144,6 +144,7 @@ void add_symmetry(py::module& m) {
          "Applies the change-of-basis operator (in place).")
     .def("change_basis_backward", &GroupOps::change_basis_backward, py::arg("cob"),
          "Applies inverse of the change-of-basis operator (in place).")
+    .def("derive_symmorphic", &GroupOps::derive_symmorphic)
     ;
 
   py::class_<SpaceGroup, std::unique_ptr<SpaceGroup, py::nodelete>>(m, "SpaceGroup")
