@@ -495,11 +495,11 @@ To check only the lattice centering we can use:
   >>> new_ops.find_centering()
   'C'
 
-We can check if the space group is centric:
+We can check if the operations contain inversion:
 
 .. doctest::
 
-  >>> new_ops.is_centric()
+  >>> new_ops.is_centrosymmetric()
   False
 
 and we can tell which reflections are centric (as opposed to acentric; a reflection

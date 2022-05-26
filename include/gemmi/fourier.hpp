@@ -187,7 +187,7 @@ FPhiGrid<T> get_f_phi_on_grid(const FPhi& fphi,
       }
     }
   }
-  if (!ops.is_centric())
+  if (!ops.is_centrosymmetric())
     add_friedel_mates(grid);
   return grid;
 }
@@ -220,7 +220,7 @@ ReciprocalGrid<T> get_value_on_grid(const DataProxy& data, size_t column,
       }
     }
   }
-  if (!ops.is_centric())
+  if (!ops.is_centrosymmetric())
     add_friedel_mates(grid);
   return grid;
 }

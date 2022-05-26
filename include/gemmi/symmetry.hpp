@@ -461,7 +461,7 @@ struct GroupOps {
     return const_cast<GroupOps*>(this)->find_by_rotation(r);
   }
 
-  bool is_centric() const {
+  bool is_centrosymmetric() const {
     return find_by_rotation({-Op::DEN,0,0, 0,-Op::DEN,0, 0,0,-Op::DEN}) != nullptr;
   }
 

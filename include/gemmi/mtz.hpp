@@ -817,7 +817,7 @@ struct Mtz {
     std::vector<std::pair<int,int>> plus_minus_columns = positions_of_plus_minus_columns();
     bool no_special_columns = phase_columns.empty() && abcd_columns.empty() &&
                               plus_minus_columns.empty() && dano_columns.empty();
-    bool centric = no_special_columns || gops.is_centric();
+    bool centric = no_special_columns || gops.is_centrosymmetric();
     for (size_t n = 0; n < data.size(); n += columns.size()) {
       Miller hkl = get_hkl(n);
       if (asu.is_in(hkl))

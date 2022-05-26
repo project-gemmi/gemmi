@@ -211,7 +211,7 @@ inline std::vector<Op> find_potential_twinning(const UnitCell& cell,
     sg = &get_spacegroup_p1();
   GroupOps go = sg->operations();
   GroupOps lat_go = find_lattice_symmetry(cell, sg->centring_type(),
-                                          max_obliq, go.is_centric());
+                                          max_obliq, go.is_centrosymmetric());
   if (!go.has_same_centring(lat_go))
     fail("find_potential_twinning(): internal error");
   std::vector<Op> ops;

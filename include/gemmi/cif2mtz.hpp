@@ -27,7 +27,7 @@ DataType check_data_type_under_symmetry(const DataProxy& proxy) {
   std::unordered_map<Op::Miller, int, MillerHash> seen;
   ReciprocalAsu asu(sg);
   GroupOps gops = sg->operations();
-  bool centric = gops.is_centric();
+  bool centric = gops.is_centrosymmetric();
   DataType data_type = DataType::Mean;
   for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
     auto hkl_isym = asu.to_asu(proxy.get_hkl(i), gops);

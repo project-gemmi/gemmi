@@ -101,7 +101,7 @@ void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("Laue class: %s\n", sg->laue_str());
   printf("Crystal system: %s\n", sg->crystal_system_str());
   gemmi::GroupOps ops = sg->operations();
-  printf("Is centric: %s\n", ops.is_centric() ? "yes" : "no");
+  printf("Is centrosymmetric: %s\n", ops.is_centrosymmetric() ? "yes" : "no");
   printf("Is enantiomorphic: %s\n", sg->is_enantiomorphic() ? "yes" : "no");
   std::array<int, 3> gf = ops.find_grid_factors();
   printf("Grid restrictions: NX=%dn NY=%dn NZ=%dn\n", gf[0], gf[1], gf[2]);

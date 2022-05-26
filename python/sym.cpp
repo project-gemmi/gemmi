@@ -120,7 +120,7 @@ void add_symmetry(py::module& m) {
     .def("find_centering", &GroupOps::find_centering)
     .def("has_same_centring", &GroupOps::has_same_centring)
     .def("has_same_rotations", &GroupOps::has_same_rotations)
-    .def("is_centric", &GroupOps::is_centric)
+    .def("is_centrosymmetric", &GroupOps::is_centrosymmetric)
     .def("is_reflection_centric", &GroupOps::is_reflection_centric)
     .def("centric_flag_array", [](const GroupOps& g, py::array_t<int> hkl) {
         return miller_function<bool>(g, &GroupOps::is_reflection_centric, hkl);
