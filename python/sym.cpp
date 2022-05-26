@@ -184,6 +184,7 @@ void add_symmetry(py::module& m) {
     .def("crystal_system", &SpaceGroup::crystal_system)
     .def("crystal_system_str", &SpaceGroup::crystal_system_str,
          "Returns lower-case name of the crystal system.")
+    .def("is_centrosymmetric", &SpaceGroup::is_centrosymmetric)
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
     .def("centred_to_primitive", &SpaceGroup::centred_to_primitive)
     .def("operations", &SpaceGroup::operations, "Group of operations")

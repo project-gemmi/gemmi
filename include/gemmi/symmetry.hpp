@@ -1150,6 +1150,9 @@ struct SpaceGroup { // typically 44 bytes
   const char* crystal_system_str() const {
     return gemmi::crystal_system_str(crystal_system());
   }
+  bool is_centrosymmetric() const {
+    return laue_to_pointgroup(laue_class()) == point_group();
+  }
 
   const char* basisop_str() const { return get_basisop(basisop_idx); }
   Op basisop() const { return parse_triplet(basisop_str()); }

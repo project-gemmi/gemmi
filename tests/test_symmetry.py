@@ -177,10 +177,9 @@ class TestSymmetry(unittest.TestCase):
         for sg in gemmi.spacegroup_table():
             if sg.ccp4 != 0:
                 self.assertEqual(sg.ccp4 % 1000, sg.number)
-            if sg.operations().is_centrosymmetric():
-                self.assertEqual(sg.laue_str(), sg.point_group_hm())
-            else:
-                self.assertNotEqual(sg.laue_str(), sg.point_group_hm())
+            is_laue = (sg.laue_str() == sg.point_group_hm())
+            self.assertEqual(sg.operations().is_centrosymmetric(), is_laue)
+            self.assertEqual(sg.is_centrosymmetric(), is_laue)
             if sgtbx:
                 hall = sg.hall.encode()
                 cctbx_sg = sgtbx.space_group(hall)

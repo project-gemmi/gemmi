@@ -217,6 +217,8 @@ and a few methods:
   True
   >>> sg.is_symmorphic()          # is it one of 73 symmorphic space groups?
   True
+  >>> sg.is_centrosymmetric()     # does it have inversion?
+  False
   >>> sg.point_group_hm()         # H-M name of the point group
   '3'
   >>> sg.laue_str()               # name of the Laue class
