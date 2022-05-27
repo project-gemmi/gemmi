@@ -198,16 +198,16 @@ inline GroupOps find_lattice_symmetry(const UnitCell& cell, char centring,
 
 // Determine potential twinning operators.
 // Returns all operators or only unique ones (coset representatives).
-inline std::vector<Op> find_potential_twinning(const UnitCell& cell,
-                                               const SpaceGroup* sg,
-                                               double max_obliq,
-                                               bool all_ops) {
+inline std::vector<Op> find_twin_laws(const UnitCell& cell,
+                                      const SpaceGroup* sg,
+                                      double max_obliq,
+                                      bool all_ops) {
   if (sg == nullptr)
     sg = &get_spacegroup_p1();
   GroupOps go = sg->operations();
   GroupOps lat_go = find_lattice_symmetry(cell, sg->centring_type(), max_obliq);
   if (!go.has_same_centring(lat_go))
-    fail("find_potential_twinning(): internal error");
+    fail("find_twin_laws(): internal error");
   std::vector<Op> ops;
   size_t sg_symop_count = go.sym_ops.size();
   for (const Op& op : lat_go.sym_ops)

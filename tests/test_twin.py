@@ -100,11 +100,9 @@ class TestTwinning(unittest.TestCase):
 
     def test_potential_twinning(self):
         for (cell_params, sg_symbol, cctbx_ops) in TWINNING_DATA:
-            print(cell_params, sg_symbol)
             sg = gemmi.SpaceGroup(sg_symbol)
             cell = gemmi.UnitCell(*cell_params)
-            twin_ops = gemmi.find_potential_twinning(cell, sg, max_obliq=3.0,
-                                                     all_ops=False)
+            twin_ops = gemmi.find_twin_laws(cell, sg, 3.0, all_ops=False)
             self.assertEqual(len(twin_ops), len(cctbx_ops))
             # We should get the same cosets wrt. the point group,
             # but the coset representatives can differ.
