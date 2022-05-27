@@ -435,6 +435,20 @@ struct GroupOps {
   void add_missing_elements_part2(const std::vector<Op>& gen,
                                   size_t max_size, bool ignore_bad_gen);
 
+  bool add_inversion() {
+    size_t init_size = sym_ops.size();
+    sym_ops.reserve(2 * init_size);
+    for (const Op& op : sym_ops) {
+      Op::Rot neg = op.negated_rot();
+      if (find_by_rotation(neg)) {
+        sym_ops.resize(init_size);
+        return false;
+      }
+      sym_ops.push_back({neg, op.tran});
+    }
+    return true;
+  }
+
   char find_centering() const {
     if (cen_ops.size() == 1 && cen_ops[0] == Op::Tran{0, 0, 0})
       return 'P';
