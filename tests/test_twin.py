@@ -69,7 +69,10 @@ TWINNING_DATA = [
     ([86.89, 86.89, 99.01, 90.0, 90.0, 120.0], 'H 3 2', []),
     ([72.2, 146.8, 88.9, 90.0, 90.0, 90.0], 'C 2 2 21', []),
     ([76.7, 72.6, 57.0, 111.5, 82.8, 62.6], 'P 1', []),
-    ([106.06, 106.06, 294.13, 90.0, 90.0, 120.0], 'P 61 2 2', [])
+    ([106.06, 106.06, 294.13, 90.0, 90.0, 120.0], 'P 61 2 2', []),
+    # small molecule examples
+    ([4.1537, 4.1537, 6.862, 90.0, 90.0, 120.0], 'P -3 m 1', ['-x,-y,z']),
+    ([4.358, 4.358, 4.358, 90.0, 90.0, 90.0], 'F -4 3 m', []),
 ]
 
 class TestTwinning(unittest.TestCase):
@@ -99,9 +102,9 @@ class TestTwinning(unittest.TestCase):
         for (cell_params, sg_symbol, cctbx_ops) in TWINNING_DATA:
             print(cell_params, sg_symbol)
             sg = gemmi.SpaceGroup(sg_symbol)
-            twin_ops = gemmi.find_potential_twinning(
-                gemmi.UnitCell(*cell_params), sg,
-                max_obliq=3.0, all_ops=False)
+            cell = gemmi.UnitCell(*cell_params)
+            twin_ops = gemmi.find_potential_twinning(cell, sg, max_obliq=3.0,
+                                                     all_ops=False)
             self.assertEqual(len(twin_ops), len(cctbx_ops))
             # We should get the same cosets wrt. the point group,
             # but the coset representatives can differ.
