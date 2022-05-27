@@ -196,7 +196,7 @@ inline GroupOps find_lattice_symmetry(const UnitCell& cell, char centring,
   if (with_inv) {
     gops.sym_ops.reserve(2 * gops.sym_ops.size());
     for (const Op& op : gops.sym_ops)
-      gops.sym_ops.push_back(op.negated());
+      gops.sym_ops.push_back({op.negated_rot(), op.tran});
   }
   return gops;
 }

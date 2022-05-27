@@ -33,7 +33,6 @@ void add_symmetry(py::module& m) {
     .def("inverse", &Op::inverse, "Returns inverted operator.")
     .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
     .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")
-    .def("negated", &Op::negated, "Returns Op with all elements nagated")
     .def("transposed_rot", &Op::transposed_rot)
     .def("det_rot", &Op::det_rot, "Determinant of the 3x3 matrix.")
     .def("rot_type", &Op::rot_type)

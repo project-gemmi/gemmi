@@ -90,8 +90,6 @@ struct Op {
              -rot[2][0], -rot[2][1], -rot[2][2] };
   }
 
-  Op negated() const { return { negated_rot(), { -tran[0], -tran[1], -tran[2] } }; }
-
   Rot transposed_rot() const {
     return { rot[0][0], rot[1][0], rot[2][0],
              rot[0][1], rot[1][1], rot[2][1],
@@ -873,7 +871,7 @@ inline GroupOps generators_from_hall(const char* hall) {
     part = impl::skip_blank(space);
   }
   if (centrosym)
-    ops.sym_ops.emplace_back(Op::identity().negated());
+    ops.sym_ops.push_back({Op::identity().negated_rot(), {0,0,0}});
   if (*part == '(') {
     const char* rb = std::strchr(part, ')');
     if (!rb)
