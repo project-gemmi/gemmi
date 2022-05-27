@@ -397,8 +397,7 @@ void add_unitcell(py::module& m) {
         py::arg("reduced_cell"), py::arg("max_obliq"));
   m.def("find_lattice_symmetry_r", &find_lattice_symmetry_r);
   m.def("find_lattice_symmetry", &find_lattice_symmetry,
-        py::arg("cell"), py::arg("centring"),
-        py::arg("max_obliq"), py::arg("with_inv")=false);
+        py::arg("cell"), py::arg("centring"), py::arg("max_obliq"));
   m.def("find_potential_twinning", &find_potential_twinning,
         py::arg("cell"), py::arg("sg"), py::arg("max_obliq"), py::arg("all_ops"));
 }

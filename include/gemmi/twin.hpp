@@ -185,19 +185,14 @@ inline GroupOps find_lattice_symmetry_r(const UnitCell& reduced_cell, double max
   return go;
 }
 
-// Returns lattice symmetry. By default (with_inv=false) without inversion.
+// Returns lattice symmetry, but without inversion.
 inline GroupOps find_lattice_symmetry(const UnitCell& cell, char centring,
-                                      double max_obliq, bool with_inv=false) {
+                                      double max_obliq) {
   GruberVector gv(cell, centring, true);
   gv.niggli_reduce();
   UnitCell reduced = gv.get_cell();
   GroupOps gops = find_lattice_symmetry_r(reduced, max_obliq);
   gops.change_basis_forward(*gv.change_of_basis);
-  if (with_inv) {
-    gops.sym_ops.reserve(2 * gops.sym_ops.size());
-    for (const Op& op : gops.sym_ops)
-      gops.sym_ops.push_back({op.negated_rot(), op.tran});
-  }
   return gops;
 }
 
@@ -210,16 +205,14 @@ inline std::vector<Op> find_potential_twinning(const UnitCell& cell,
   if (sg == nullptr)
     sg = &get_spacegroup_p1();
   GroupOps go = sg->operations();
-  GroupOps lat_go = find_lattice_symmetry(cell, sg->centring_type(),
-                                          max_obliq, go.is_centrosymmetric());
+  GroupOps lat_go = find_lattice_symmetry(cell, sg->centring_type(), max_obliq);
   if (!go.has_same_centring(lat_go))
     fail("find_potential_twinning(): internal error");
   std::vector<Op> ops;
   size_t sg_symop_count = go.sym_ops.size();
-  ops.reserve(all_ops ? lat_go.sym_ops.size() - sg_symop_count
-                      : lat_go.sym_ops.size() / sg_symop_count - 1);
   for (const Op& op : lat_go.sym_ops)
-    if (!go.find_by_rotation(op.rot)) {
+    if (!go.find_by_rotation(op.rot) &&
+        !go.find_by_rotation(op.negated_rot())) {
       ops.push_back(op);
       if (!all_ops)
         for (size_t i = 1; i < sg_symop_count; ++i)
