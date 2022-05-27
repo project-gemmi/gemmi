@@ -250,6 +250,13 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(len(gops), 4)
         self.assertEqual(gemmi.find_spacegroup_by_ops(gops).hm, 'C 1 c 1')
 
+    def test_add_inversion(self):
+        gops = gemmi.SpaceGroup(1).operations()
+        self.assertTrue(gops.add_inversion())
+        self.assertEqual(len(gops), 2)
+        self.assertEqual(gops.sym_ops, [gemmi.Op(), gemmi.Op('-x,-y,-z')])
+        self.assertFalse(gops.add_inversion())
+
     def change_basis(self, name_a, name_b, basisop_triplet):
         basisop = gemmi.Op(basisop_triplet)
         a = gemmi.find_spacegroup_by_name(name_a)
