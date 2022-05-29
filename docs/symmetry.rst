@@ -638,8 +638,7 @@ in `P.H. Zwart et al (2006) <http://legacy.ccp4.ac.uk/newsletters/newsletter44/a
 which in turn is based on methods from
 `A. Lebedev et al. (2006) <https://doi.org/10.1107/S0907444905036759>`_
 and `Y. Le Page (1982) <https://doi.org/10.1107/S0021889882011959>`_.
-These methods are used in CCP4 (implemented by Andrey Lebedev),
-CCTBX (implemented by Peter Zwart) and other programs. They:
+They:
 
 * determine a :ref:`reduced cell <niggli>`
   (usually a Niggli cell is used, but it can be any Buerger cell),
@@ -715,6 +714,10 @@ potential (pseudo-)merohedral twinning operators:
 
 With all_ops=False, this function returns only non-redundant twinning
 operators (coset representatives), which is usually what is needed.
+Note that since any of the equivalent operators can be returned,
+other implementations (class twin_laws in CCTBX, libT.f in CCP4)
+may return different ones.
+
 Above, we have one possible twinning. It is by pseudo-merohedry.
 If we wanted to see only twinning by merohedry, the threshold should be
 near zero, allowing only for numerical imprecision:
