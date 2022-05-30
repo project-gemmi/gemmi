@@ -7,7 +7,8 @@
 #ifndef GEMMI_ASSEMBLY_HPP_
 #define GEMMI_ASSEMBLY_HPP_
 
-#include <ostream>      // std::ostream
+#include <ostream>      // ostream
+#include <memory>       // unique_ptr
 #include "model.hpp"
 #include "modify.hpp"   // transform_pos_and_adp
 #include "util.hpp"
@@ -117,8 +118,9 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
       if (!gen.chains.empty()) {
         // chains are not merged here, multiple chains may have the same name
         std::map<std::string, std::string> new_names;
+        bool all_chains = (gen.chains[0] == "(all)");
         for (size_t i = 0; i != model.chains.size(); ++i) {
-          if (in_vector(model.chains[i].name, gen.chains)) {
+          if (all_chains || in_vector(model.chains[i].name, gen.chains)) {
             new_model.chains.push_back(model.chains[i]);
             Chain& new_chain = new_model.chains.back();
             auto name_iter = new_names.find(model.chains[i].name);
@@ -163,14 +165,32 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
   return new_model;
 }
 
+inline Assembly expand_to_p1(const UnitCell& cell) {
+  Assembly assembly("unit_cell");
+  std::vector<Assembly::Operator> operators(cell.images.size() + 1);
+  // operators[0] stays as identity
+  for (size_t i = 1; i != operators.size(); ++i) {
+    const FTransform& op = cell.images[i-1];
+    operators[i].transform = cell.orth.combine(op.combine(cell.frac));
+  }
+  assembly.generators.push_back({{"(all)"}, {}, operators});
+  return assembly;
+}
+
 inline void change_to_assembly(Structure& st, const std::string& assembly_name,
                                HowToNameCopiedChain how, std::ostream* out) {
-  Assembly* assembly = st.find_assembly(assembly_name);
+  const Assembly* assembly = st.find_assembly(assembly_name);
+  std::unique_ptr<Assembly> p1_assembly;
   if (!assembly) {
-    if (st.assemblies.empty())
+    if (assembly_name == "unit_cell") {
+      p1_assembly.reset(new Assembly(expand_to_p1(st.cell)));
+      assembly = p1_assembly.get();
+    } else if (st.assemblies.empty()) {
       fail("no bioassemblies are listed for this structure");
-    fail("wrong assembly name, use one of: " +
-        join_str(st.assemblies, ' ', [](const Assembly& a) { return a.name; }));
+    } else {
+      fail("wrong assembly name, use one of: " +
+           join_str(st.assemblies, ' ', [](const Assembly& a) { return a.name; }));
+    }
   }
   for (Model& model : st.models)
     model = make_assembly(*assembly, model, how, out);
