@@ -71,6 +71,40 @@ jobs:
         sphinx-build -M doctest . _build -n -E
 
 
+  ubuntu2204:
+    name: "Ubuntu 22.04"
+    runs-on: ubuntu-22.04
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+    - uses: actions/checkout@v2
+    - name: apt-get
+      run: |
+        sudo apt-get update
+        sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy
+    - name: install pybind11
+      run: |
+        git clone --depth=1 https://github.com/pybind/pybind11.git
+        cd pybind11
+        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
+        make
+        sudo make install
+    - name: build and test
+      run: |
+        g++ --version
+        cmake --version
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_FORTRAN=1 -DEXTRA_WARNINGS=1 -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE=/usr/bin/python3
+        make -j2
+        make -j2 check
+        python3 -m unittest discover -v -s ../tests/
+        strip --strip-unneeded ./gemmi ./gemmi.cpython*.so
+    - name: run doctest
+      run: |
+        sudo python3 -m pip install -U sphinx
+        cd docs
+        PYTHONPATH=$PWD/build sphinx-build -M doctest . _build -n -E
+
   ubuntu2004:
     name: "Ubuntu 20.04"
     runs-on: ubuntu-20.04
@@ -166,7 +200,7 @@ jobs:
         type python3
     - name: install pybind11
       run: |
-        git clone --depth=1 https://github.com/pybind/pybind11.git
+        git clone --branch stable --depth=1 https://github.com/pybind/pybind11.git
         cd pybind11
         cmake3 . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
         make
