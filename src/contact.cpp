@@ -7,7 +7,7 @@
 #include <algorithm>  // for min, max
 #include <gemmi/contact.hpp>
 #include <gemmi/neighbor.hpp>
-#include "gemmi/assembly.hpp"  // for change_to_assembly
+#include "gemmi/assembly.hpp"  // for transform_to_assembly
 #include <gemmi/read_coor.hpp> // for read_structure_gz
 #define GEMMI_PROG contact
 #include "options.h"
@@ -187,8 +187,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (p.options[NoLigand])
         remove_ligands_and_waters(st);
       if (p.options[AsAssembly])
-        change_to_assembly(st, p.options[AsAssembly].arg,
-                           HowToNameCopiedChain::Short, nullptr);
+        transform_to_assembly(st, p.options[AsAssembly].arg,
+                              HowToNameCopiedChain::Short, nullptr);
       if (params.no_symmetry || p.options[AsAssembly])
         st.cell = UnitCell();
       print_contacts(st, params);

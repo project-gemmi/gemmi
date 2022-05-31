@@ -146,6 +146,10 @@ void add_mol(py::module& m) {
     .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, py::arg("how"))
+    .def("transform_to_assembly",
+         [](Structure& st, const std::string& assembly_name, HowToNameCopiedChain how) {
+        return transform_to_assembly(st, assembly_name, how, nullptr);
+    }, py::arg("assembly_name"), py::arg("how"))
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
     .def("clone", [](const Structure& self) { return new Structure(self); })

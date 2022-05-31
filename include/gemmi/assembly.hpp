@@ -11,6 +11,7 @@
 #include <memory>       // unique_ptr
 #include "model.hpp"
 #include "modify.hpp"   // transform_pos_and_adp
+#include "neighbor.hpp" // merge_atoms_in_expanded_model
 #include "util.hpp"
 
 namespace gemmi {
@@ -177,8 +178,8 @@ inline Assembly expand_to_p1(const UnitCell& cell) {
   return assembly;
 }
 
-inline void change_to_assembly(Structure& st, const std::string& assembly_name,
-                               HowToNameCopiedChain how, std::ostream* out) {
+inline void transform_to_assembly(Structure& st, const std::string& assembly_name,
+                                  HowToNameCopiedChain how, std::ostream* out) {
   const Assembly* assembly = st.find_assembly(assembly_name);
   std::unique_ptr<Assembly> p1_assembly;
   if (!assembly) {
@@ -192,9 +193,16 @@ inline void change_to_assembly(Structure& st, const std::string& assembly_name,
            join_str(st.assemblies, ' ', [](const Assembly& a) { return a.name; }));
     }
   }
-  for (Model& model : st.models)
+  for (Model& model : st.models) {
     model = make_assembly(*assembly, model, how, out);
+    merge_atoms_in_expanded_model(model, gemmi::UnitCell());
+  }
+  // Some connections may be invalid now. We just remove all of them.
   st.connections.clear();
+  // Should Assembly instructions be kept or removed? Currently - removing.
+  st.assemblies.clear();
+  // Should st.spacegroup_hm and st.cell be kept? Here we remove only:
+  st.cell.images.clear();
 }
 
 // chain is assumed to be from st.models[0]

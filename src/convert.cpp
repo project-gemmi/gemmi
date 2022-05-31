@@ -9,7 +9,7 @@
 #include "gemmi/fstream.hpp"   // for Ofstream, Ifstream
 #include "gemmi/to_mmcif.hpp"  // for update_mmcif_block
 #include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
-#include "gemmi/assembly.hpp"  // for ChainNameGenerator, change_to_assembly
+#include "gemmi/assembly.hpp"  // for ChainNameGenerator, transform_to_assembly
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/read_coor.hpp" // for read_structure_gz
@@ -229,13 +229,8 @@ void convert(gemmi::Structure& st,
   if (output_type == CoorFormat::Pdb)
     how = HowToNameCopiedChain::Short;
   if (options[AsAssembly]) {
-    gemmi::change_to_assembly(st, options[AsAssembly].arg, how,
-                              options[Verbose] ? &std::cerr : nullptr);
-    // After this change Assembly instructions can be outdated.
-    // Should they be preserved anyway or removed? Currently - removing.
-    st.assemblies.clear();
-    for (gemmi::Model& model : st.models)
-      gemmi::merge_atoms_in_expanded_model(model, gemmi::UnitCell());
+    std::ostream* out = options[Verbose] ? &std::cerr : nullptr;
+    gemmi::transform_to_assembly(st, options[AsAssembly].arg, how, out);
   }
 
   if (options[ExpandNcs]) {

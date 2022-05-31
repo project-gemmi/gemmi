@@ -2047,8 +2047,35 @@ The ``max_dist`` parameter specifies cut-off for merging -- atom copies
 are merged only if their distance is smaller. The merged atom has summed
 occupancy and averaged position. B-factors are not changed.
 
-See also the ``--assembly`` option in command-line program
-:ref:`gemmi-convert <convert>`.
+Function ``transform_to_assembly()`` changes all models in the given structure
+to assemblies. Then it merges duplicated atoms, removes connections
+(some connections may get invalidated by the transformation; to make it simpler,
+we remove them all) and removes the list of assemblies. The space group and
+unit cell are preserved. The choice of what is kept and what is removed
+is arbitrary, so this function may not be appropriate in all scenarios.
+
+.. doctest::
+
+  >>> structure = gemmi.read_structure('../tests/5wkd.pdb')
+  >>> structure[0].count_atom_sites()
+  50
+  >>> how = gemmi.HowToNameCopiedChain.AddNumber
+  >>> structure.transform_to_assembly(assembly_name='1', how=how)
+  >>> structure[0].count_atom_sites()
+  500
+
+To expand the structure (asu) to the whole unit cell (P1)
+use the same function with the special assembly name ``unit_cell``:
+
+.. doctest::
+
+  >>> structure = gemmi.read_structure('../tests/5wkd.pdb')
+  >>> structure.transform_to_assembly('unit_cell', how)
+  >>> structure[0].count_atom_sites()
+  200
+
+The command-line equivalent to transform_to_assembly() is
+the ``--assembly`` option in :ref:`gemmi-convert <convert>`.
 
 Common operations
 -----------------
