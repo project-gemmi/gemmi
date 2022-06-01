@@ -364,7 +364,7 @@ private:
     for (cif::Block& block : ddl_.blocks) { // a single block is expected
       for (cif::Item& item : block.items) {
         if (item.type == cif::ItemType::Frame) {
-          for (const std::string& tag : {"_item.name", "_category.id"}) {
+          for (const char* tag : {"_item.name", "_category.id"}) {
             if (cif::Column col = item.frame.find_values(tag)) {
               for (const std::string& name : col)
                 name_index_.emplace(cif::as_string(name), &item.frame);
