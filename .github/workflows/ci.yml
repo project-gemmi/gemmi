@@ -102,8 +102,9 @@ jobs:
     - name: run doctest
       run: |
         sudo python3 -m pip install -U sphinx
+        export PYTHONPATH=$PWD/build
         cd docs
-        PYTHONPATH=$PWD/build sphinx-build -M doctest . _build -n -E
+        sphinx-build -M doctest . _build -n -E
 
   ubuntu2004:
     name: "Ubuntu 20.04"

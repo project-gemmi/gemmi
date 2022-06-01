@@ -145,8 +145,7 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(len(gemmi_gops.sym_ops), cctbx_sg.order_p())
         self.assertEqual(len(gemmi_gops.cen_ops), cctbx_sg.n_ltr())
         self.assertEqual(len(gemmi_gops), cctbx_sg.order_z())
-        self.assertEqual(gemmi_gops.is_centrosymmetric(),
-                         cctbx_sg.is_centrosymmetric())
+        self.assertEqual(gemmi_gops.is_centrosymmetric(), cctbx_sg.is_centric())
         ctr = gemmi_gops.find_centering()
         self.assertEqual(ctr, cctbx_sg.conventional_centring_type_symbol())
         gemmi_triplets = set(m.triplet() for m in gemmi_gops)

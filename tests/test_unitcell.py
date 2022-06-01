@@ -74,7 +74,8 @@ class TestUnitCell(unittest.TestCase):
         o_f = cell.orth.mat.multiply(cell.frac.mat)
         self.assertTrue(o_f.approx(gemmi.Mat33(), 1e-15))
         if sys.version_info >= (3, 5):
-            self.assertTrue(o_f.approx(cell.orth.mat @ cell.frac.mat, 1e-15))
+            mat = eval('cell.orth.mat @ cell.frac.mat')  # avoid SyntaxError
+            self.assertTrue(mat.approx(gemmi.Mat33(), 1e-15))
         pos = gemmi.Position(-15, -17, 190)
         frac = cell.fractionalize(pos)
         pos2 = cell.orthogonalize(frac)
