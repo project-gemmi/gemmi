@@ -266,6 +266,9 @@ void add_unitcell(py::module& m) {
     .def_readonly("volume", &UnitCell::volume)
     .def_readonly("images", &UnitCell::images)
     .def_property_readonly("parameters", &make_parameters_tuple)
+    .def_readonly("frac", &UnitCell::frac)
+    .def_readonly("orth", &UnitCell::orth)
+    // These two functions are deprecated, use frac.mat and orth.mat.
     .def_property_readonly("fractionalization_matrix",
                            [](const UnitCell& self) { return self.frac.mat; })
     .def_property_readonly("orthogonalization_matrix",
