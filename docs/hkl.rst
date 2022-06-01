@@ -1919,6 +1919,9 @@ Similarly, for small molecules:
   >>> calc_x.calculate_sf_from_small_structure(small, (0,2,4))
   (17.814263474967163-6.544854223135837e-15j)
 
+For each atom, the Debye-Waller factor (used in the structure factor
+calculation) is obtained using either isotropic or anisotropic ADPs
+(B-factors). If anisotropic ADPs are non-zero, isotropic ADP is ignored.
 
 .. _addends:
 

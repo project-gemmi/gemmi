@@ -365,13 +365,20 @@ operations don't change the metric tensor elements by more than *ε*
     False
 
 
-The UnitCell object can also store a list of symmetry transformations.
-This list is populated automatically when reading a coordinate file.
-It contains crystallographic symmetry operations. In rare cases
-when the file defines strict NCS operarations that are not "given"
-(MTRIX record in the PDB format or _struct_ncs_oper in mmCIF)
-the list contains also the NCS operations.
-With this list we can use:
+The UnitCell object stores internally (in `UnitCell.images``) a list of
+symmetry transformations -- crystallographic symmetry and, in case of
+macromolecules, also NCS -- that transform asymmetric unit (ASU) into
+the complete unit cell. This list is populated by the class that contains
+the UnitCell. It is done automatically when reading a coordinate file.
+If you set the unit cell, space group or NCS manually,
+call Structure.setup_cell_images() or SmallStructure.setup_cell_images()
+to update ``images``.
+(The NCS operarations in this list are only those marked as not "given"
+in the MTRIX record in the PDB format or in _struct_ncs_oper in mmCIF).
+
+UnitCell.images are used for searching neighbors,
+calculating structure factors, and a few other things.
+The following functions also rely on it:
 
 * ``UnitCell::volume_per_image() -> double`` -- returns ``UnitCell::volume``
   divided by the number of the molecule images in the unit cell,
