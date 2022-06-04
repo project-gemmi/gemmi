@@ -19,6 +19,12 @@ using std::printf;
 
 namespace {
 
+struct MtzArg: public Arg {
+  static option::ArgStatus AsuChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"ccp4", "tnt"});
+  }
+};
+
 enum OptionIndex {
   Headers=4, Dump, PrintBatch, PrintBatches, PrintAppendix,
   PrintTsv, PrintStats, PrintHistogram, PrintCells, CheckAsu,
@@ -50,8 +56,8 @@ const option::Descriptor Usage[] = {
     "  --histogram=LABEL  \tPrint histogram of values in column LABEL." },
   { PrintCells, 0, "", "cells", Arg::None,
     "  --cells  \tPrint cell parameters only." },
-  { CheckAsu, 0, "", "check-asu", Arg::None,
-    "  --check-asu  \tCheck if reflections are in conventional ASU." },
+  { CheckAsu, 0, "", "check-asu", MtzArg::AsuChoice,
+    "  --check-asu=ccp4|tnt  \tCheck if reflections are in ASU." },
   { Compare, 0, "", "compare", Arg::Required,
     "  --compare=FILE  \tCompare two MTZ files." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
@@ -265,13 +271,13 @@ void print_column_statistics(const Mtz& mtz, const char* label) {
   print_histogram(data, st.dmin - margin, st.dmax + margin);
 }
 
-void check_asu(const Mtz& mtz) {
+void check_asu(const Mtz& mtz, bool tnt) {
   size_t ncol = mtz.columns.size();
   const gemmi::SpaceGroup* sg = mtz.spacegroup;
   if (!sg)
     gemmi::fail("no spacegroup in the MTZ file.");
   int counter = 0;
-  gemmi::ReciprocalAsu asu(sg);
+  gemmi::ReciprocalAsu asu(sg, tnt);
   for (int i = 0; i < mtz.nreflections; ++i) {
     int h = (int) mtz.data[i * ncol + 0];
     int k = (int) mtz.data[i * ncol + 1];
@@ -423,7 +429,7 @@ void print_mtz_info(Stream&& stream, const char* path,
   if (options[PrintStats])
     print_stats(mtz);
   if (options[CheckAsu])
-    check_asu(mtz);
+    check_asu(mtz, options[CheckAsu].arg[0] == 't');
   if (options[Compare])
     // here mtz gets sorted, so this option must be at the end
     compare_mtz(mtz, options[Compare].arg, options[Verbose]);

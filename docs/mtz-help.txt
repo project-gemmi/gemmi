@@ -2,20 +2,20 @@ $ gemmi mtz -h
 Usage:
  gemmi mtz [options] MTZ_FILE[...]
 Print informations from an mtz file.
-  -h, --help         Print usage and exit.
-  -V, --version      Print version and exit.
-  -v, --verbose      Verbose output.
-  -H, --headers      Print raw headers, until the END record.
-  -d, --dump         Print a subset of CCP4 mtzdmp informations.
-  -B N, --batch=N    Print data from batch header N.
-  -b, --batches      Print data from all batch headers.
-  -A, --appendix     Print appended text.
-  --tsv              Print all the data as tab-separated values.
-  -s, --stats        Print column statistics (completeness, mean, etc).
-  --histogram=LABEL  Print histogram of values in column LABEL.
-  --cells            Print cell parameters only.
-  --check-asu        Check if reflections are in conventional ASU.
-  --compare=FILE     Compare two MTZ files.
-  --toggle-endian    Toggle assumed endiannes (little <-> big).
-  --no-isym          Do not apply symmetry from M/ISYM column.
-  --update-reso      Recalculate resolution limits before printing.
+  -h, --help            Print usage and exit.
+  -V, --version         Print version and exit.
+  -v, --verbose         Verbose output.
+  -H, --headers         Print raw headers, until the END record.
+  -d, --dump            Print a subset of CCP4 mtzdmp informations.
+  -B N, --batch=N       Print data from batch header N.
+  -b, --batches         Print data from all batch headers.
+  -A, --appendix        Print appended text.
+  --tsv                 Print all the data as tab-separated values.
+  -s, --stats           Print column statistics (completeness, mean, etc).
+  --histogram=LABEL     Print histogram of values in column LABEL.
+  --cells               Print cell parameters only.
+  --check-asu=ccp4|tnt  Check if reflections are in ASU.
+  --compare=FILE        Compare two MTZ files.
+  --toggle-endian       Toggle assumed endiannes (little <-> big).
+  --no-isym             Do not apply symmetry from M/ISYM column.
+  --update-reso         Recalculate resolution limits before printing.

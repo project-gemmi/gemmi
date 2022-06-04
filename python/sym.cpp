@@ -213,7 +213,7 @@ void add_symmetry(py::module& m) {
     ));
 
   py::class_<ReciprocalAsu>(m, "ReciprocalAsu")
-    .def(py::init<const SpaceGroup*>())
+    .def(py::init<const SpaceGroup*, bool>(), py::arg(), py::arg("tnt")=false)
     .def("is_in", &ReciprocalAsu::is_in, py::arg("hkl"))
     .def("condition_str", &ReciprocalAsu::condition_str)
     .def("to_asu", &ReciprocalAsu::to_asu, py::arg("hkl"), py::arg("group_ops"))

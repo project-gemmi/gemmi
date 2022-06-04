@@ -977,7 +977,7 @@ inline CrystalSystem crystal_system(PointGroup pg) {
 inline unsigned char point_group_index_and_category(int space_group_number) {
   // 0x20=Sohncke, 0x40=enantiomorphic, 0x80=symmorphic
   enum : unsigned char { S=0x20, E=(0x20|0x40), Y=0x80, Z=(0x20|0x80) };
-  static unsigned char indices[230] = {
+  static const unsigned char indices[230] = {
      0|Z,  1|Y,  2|Z,  2|S,  2|Z,  3|Y,  3,    3|Y,  3,    4|Y,  // 1-10
      4,    4|Y,  4,    4,    4,    5|Z,  5|S,  5|S,  5|S,  5|S,  // 11-20
      5|Z,  5|Z,  5|Z,  5|S,  6|Y,  6,    6,    6,    6,    6,    // 21-30
@@ -1961,10 +1961,12 @@ struct ReciprocalAsu {
   Op::Rot rot;
   bool is_ref;
 
-  ReciprocalAsu(const SpaceGroup* sg) {
+  ReciprocalAsu(const SpaceGroup* sg, bool tnt=false) {
     if (sg == nullptr)
       fail("Missing space group");
     idx = spacegroup_tables::ccp4_hkl_asu[sg->number - 1];
+    if (tnt)
+      idx += 10;
     is_ref = sg->is_reference_setting();
     if (!is_ref)
       rot = sg->basisop().rot;
@@ -1981,16 +1983,27 @@ struct ReciprocalAsu {
 
   bool is_in_reference_setting(int h, int k, int l) const {
     switch (idx) {
+      // 0-9: CCP4 hkl asu,  10-19: TNT hkl asu
       case 0: return l>0 || (l==0 && (h>0 || (h==0 && k>=0)));
       case 1: return k>=0 && (l>0 || (l==0 && h>=0));
+      case 12: // orthorhombic-D
       case 2: return h>=0 && k>=0 && l>=0;
       case 3: return l>=0 && ((h>=0 && k>0) || (h==0 && k==0));
+      case 14: // tetragonal-D, hexagonal-D
       case 4: return h>=k && k>=0 && l>=0;
       case 5: return (h>=0 && k>0) || (h==0 && k==0 && l>=0);
+      case 16: // trigonal-D P312
       case 6: return h>=k && k>=0 && (k>0 || l>=0);
+      case 17: // trigonal-D P321
       case 7: return h>=k && k>=0 && (h>k || l>=0);
       case 8: return h>=0 && ((l>=h && k>h) || (l==h && k==h));
       case 9: return k>=l && l>=h && h>=0;
+      case 10: return k>0 || (k==0 && (h>0 || (h==0 && l>=0))); // triclinic
+      case 11: return k>=0 && (h>0 || (h==0 && l>=0)); // monoclinic-B
+      case 13: return l>=0 && ((k>=0 && h>0) || (h==0 && k==0)); // tetragonal-C, hexagonal-C
+      case 15: return (k>=0 && h>0) || (h==0 && k==0 && l>=0); // trigonal-C
+      case 18: return k>=0 && l>=0 && ((h>k && h>l) || (h==k && h>=l)); // cubic-T
+      case 19: return h>=k && k>=l && l>=0; // cubic-O
     }
     unreachable();
   }
@@ -1999,14 +2012,24 @@ struct ReciprocalAsu {
     switch (idx) {
       case 0: return "l>0 or (l=0 and (h>0 or (h=0 and k>=0)))";
       case 1: return "k>=0 and (l>0 or (l=0 and h>=0))";
+      case 12:
       case 2: return "h>=0 and k>=0 and l>=0";
       case 3: return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
+      case 14:
       case 4: return "h>=k and k>=0 and l>=0";
       case 5: return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
+      case 16:
       case 6: return "h>=k and k>=0 and (k>0 or l>=0)";
+      case 17:
       case 7: return "h>=k and k>=0 and (h>k or l>=0)";
       case 8: return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
       case 9: return "k>=l and l>=h and h>=0";
+      case 10: return "k>0 or (k==0 and (h>0 or (h==0 and l>=0)))";
+      case 11: return "k>=0 and (h>0 or (h==0 and l>=0))";
+      case 13: return "l>=0 and ((k>=0 and h>0) or (h==0 and k==0))";
+      case 15: return "(k>=0 and h>0) or (h==0 and k==0 and l>=0)";
+      case 18: return "k>=0 and l>=0 and ((h>k and h>l) or (h==k and h>=l))";
+      case 19: return "h>=k and k>=l and l>=0";
     }
     unreachable();
   }
