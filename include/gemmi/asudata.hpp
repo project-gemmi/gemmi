@@ -151,11 +151,11 @@ struct AsuData {
       std::sort(v.begin(), v.end());
   }
 
-  void ensure_asu() {
+  void ensure_asu(bool tnt_asu=false) {
     if (!spacegroup_)
       fail("AsuData::ensure_asu(): space group not set");
     GroupOps gops = spacegroup_->operations();
-    ReciprocalAsu asu(spacegroup_);
+    ReciprocalAsu asu(spacegroup_, tnt_asu);
     for (HklValue<T>& hkl_value : v) {
       const Miller& hkl = hkl_value.hkl;
       if (asu.is_in(hkl))

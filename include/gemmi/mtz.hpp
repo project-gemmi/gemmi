@@ -804,13 +804,13 @@ struct Mtz {
   }
 
   // (for merged MTZ only) change HKL to ASU equivalent, adjust phases
-  void ensure_asu() {
+  void ensure_asu(bool tnt_asu=false) {
     if (!is_merged())
       fail("Mtz::ensure_asu() is for merged MTZ only");
     if (!spacegroup)
       return;
     GroupOps gops = spacegroup->operations();
-    ReciprocalAsu asu(spacegroup);
+    ReciprocalAsu asu(spacegroup, tnt_asu);
     std::vector<int> phase_columns = positions_of_columns_with_type('P');
     std::vector<int> abcd_columns = positions_of_columns_with_type('A');
     std::vector<int> dano_columns = positions_of_columns_with_type('D');

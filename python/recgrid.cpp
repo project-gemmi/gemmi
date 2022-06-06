@@ -121,7 +121,7 @@ void add_asudata(py::module& m, const std::string& prefix) {
       return count_equal_values(self.v, other.v);
     })
     .def("ensure_sorted", &AsuData::ensure_sorted)
-    .def("ensure_asu", &AsuData::ensure_asu)
+    .def("ensure_asu", &AsuData::ensure_asu, py::arg("tnt_asu")=false)
     .def("copy", [](const AsuData& self) {
       return new AsuData(self);
     })
