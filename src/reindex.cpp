@@ -20,7 +20,13 @@ using std::fprintf;
 
 namespace {
 
-enum OptionIndex { Hkl=4, NoHistory, NoSort, TntAsu };
+struct ReindexArg: public Arg {
+  static option::ArgStatus AsuChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"ccp4", "tnt"});
+  }
+};
+
+enum OptionIndex { Hkl=4, NoHistory, NoSort, Asu };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -35,8 +41,8 @@ const option::Descriptor Usage[] = {
     "  --no-history  \tDo not add 'Reindexed with...' line to mtz HISTORY." },
   { NoSort, 0, "", "no-sort", Arg::None,
     "  --no-sort  \tDo not reorder reflections." },
-  { TntAsu, 0, "", "tnt-asu", Arg::None,
-    "  --tnt-asu  \tWrite reflections in TNT ASU." },
+  { Asu, 0, "", "asu", ReindexArg::AsuChoice,
+    "  --asu=ccp4|tnt  \tWrite reflections in CCP4 (default) or TNT ASU." },
   { NoOp, 0, "", "", Arg::None,
     "\nInput file can be gzipped." },
   { 0, 0, 0, 0, 0, 0 }
@@ -51,7 +57,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   bool verbose = p.options[Verbose];
   const char* input_path = p.nonOption(0);
   const char* output_path = p.nonOption(1);
-  if (!p.options[Hkl] && !p.options[TntAsu]) {
+  if (!p.options[Hkl] && !p.options[Asu]) {
     fprintf(stderr, "Specify transform with option --hkl\n");
     return 1;
   }
@@ -81,8 +87,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Hkl])
       reindex_mtz(mtz, op, &std::cerr);
 
-    if (p.options[TntAsu] && mtz.is_merged())
-      mtz.ensure_asu(/*tnt_asu=*/true);
+    if (p.options[Asu] && mtz.is_merged())
+      mtz.ensure_asu(/*tnt_asu=*/p.options[Asu].arg[0] == 't');
 
     if (!p.options[NoSort])
       mtz.sort();
