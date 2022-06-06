@@ -8,5 +8,6 @@ Options:
   --hkl=OP       Reindexing transform as triplet (e.g. k,h,-l).
   --no-history   Do not add 'Reindexed with...' line to mtz HISTORY.
   --no-sort      Do not reorder reflections.
+  --tnt-asu      Write reflections in TNT ASU.
 
 Input file can be gzipped.
