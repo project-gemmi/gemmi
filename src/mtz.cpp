@@ -286,8 +286,8 @@ void check_asu(const Mtz& mtz, bool tnt) {
       ++counter;
   }
   printf("spacegroup: %s\n", sg->xhm().c_str());
-  printf("ccp4 ASU convention wrt. standard setting: %s\n",
-         asu.condition_str());
+  printf("%s ASU convention wrt. standard setting: %s\n",
+         tnt ? "TNT" : "CCP4", asu.condition_str());
   printf("inside / outside of ASU: %d / %d\n",
          counter, mtz.nreflections - counter);
   double dmin = mtz.resolution_high() - 1e-6;
