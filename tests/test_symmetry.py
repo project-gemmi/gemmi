@@ -77,6 +77,15 @@ class TestSymmetry(unittest.TestCase):
             self.assertEqual(op3.triplet(), triplet)
         self.assertEqual(gemmi.Op(' x , - y, + z ').triplet(), 'x,-y,z')
 
+    def test_triplet_style(self):
+        op = gemmi.parse_triplet('A,-B , C')
+        self.assertEqual(op.triplet('x'), 'x,-y,z')
+        self.assertEqual(op.triplet('a'), 'a,-b,c')
+        self.assertEqual(op.triplet('h'), 'h,-k,l')
+        self.assertEqual(op.triplet('X'), 'X,-Y,Z')
+        self.assertEqual(op.triplet('A'), 'A,-B,C')
+        self.assertEqual(op.triplet('H'), 'H,-K,L')
+
     def test_combine(self):
         a = gemmi.Op('x+1/3,z,-y')
         self.assertEqual(a.combine(a).triplet(), 'x+2/3,-y,-z')

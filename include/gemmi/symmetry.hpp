@@ -59,7 +59,7 @@ struct Op {
   Rot rot;
   Tran tran;
 
-  std::string triplet() const;
+  std::string triplet(char style='x') const;
 
   Op inverse() const;
 
@@ -356,6 +356,15 @@ inline std::pair<int,int> get_op_fraction(int w) {
 inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
                                      char style='x') {
   std::string s;
+  const char* letters = "xyz hkl abc XYZ HKL ABC";
+  switch(style | 0x20) {  // |0x20 converts to lower case
+    case 'x': break;
+    case 'h': letters += 4; break;
+    case 'a': letters += 8; break;
+    default: fail("unexpected triplet style: ", style);
+  }
+  if (!(style & 0x20))  // not lower
+    letters += 12;
   for (int i = 0; i != 3; ++i)
     if (xyz[i] != 0) {
       impl::append_sign_of(s, xyz[i]);
@@ -363,7 +372,7 @@ inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
       if (a != Op::DEN) {
         std::pair<int,int> frac = impl::get_op_fraction(a);
         if (frac.first == 1) {  // e.g. "x/3"
-          s += char(style + i);
+          s += letters[i];
           s += '/';
           impl::append_small_number(s, frac.second);
         } else {  // e.g. "2/3*x"
@@ -373,10 +382,10 @@ inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
             impl::append_small_number(s, frac.second);
           }
           s += '*';
-          s += char(style + i);
+          s += letters[i];
         }
       } else {
-        s += char(style + i);
+        s += letters[i];
       }
     }
   if (w != 0) {
@@ -391,10 +400,10 @@ inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
   return s;
 }
 
-inline std::string Op::triplet() const {
-  return make_triplet_part(rot[0], tran[0]) +
-   "," + make_triplet_part(rot[1], tran[1]) +
-   "," + make_triplet_part(rot[2], tran[2]);
+inline std::string Op::triplet(char style) const {
+  return make_triplet_part(rot[0], tran[0], style) +
+   "," + make_triplet_part(rot[1], tran[1], style) +
+   "," + make_triplet_part(rot[2], tran[2], style);
 }
 
 

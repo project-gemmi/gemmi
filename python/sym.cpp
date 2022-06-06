@@ -29,7 +29,7 @@ void add_symmetry(py::module& m) {
     .def_readwrite("rot", &Op::rot, "3x3 integer matrix.")
     .def_readwrite("tran", &Op::tran,
        "Numerators (integers) of the translation vector. Denominator DEN=24.")
-    .def("triplet", &Op::triplet, "Returns coordinate triplet x,y,z.")
+    .def("triplet", &Op::triplet, py::arg("style")='x')
     .def("inverse", &Op::inverse, "Returns inverted operator.")
     .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
     .def("translated", &Op::translated, py::arg("a"), "Adds a to tran")

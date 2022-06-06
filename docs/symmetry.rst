@@ -278,6 +278,17 @@ We can also do the opposite:
     >>> op.triplet()
     '-y,x-y,z+1/3'
 
+Alternatively, the letters can be hkl or abc, or uppercase:
+
+.. doctest::
+
+    >>> op.triplet(style='h')
+    '-k,h-k,l+1/3'
+    >>> op.triplet(style='a')
+    '-b,a-b,c+1/3'
+    >>> op.triplet(style='X')
+    '-Y,X-Y,Z+1/3'
+
 The operation consists of a 3x3 rotation matrix and
 a translation vector, both stored internally as integers that need to be
 divided by ``DEN`` == 24 to get the actual values.
