@@ -183,11 +183,8 @@ struct Mtz {
   FILE* warnings = nullptr;
 
   explicit Mtz(bool with_base=false) {
-    if (with_base) {
-      datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", cell, 0.});
-      for (int i = 0; i != 3; ++i)
-        add_column(std::string(1, "HKL"[i]), 'H', 0, i);
-    }
+    if (with_base)
+      add_base();
   }
   Mtz(Mtz&& o) noexcept { *this = std::move(o); }
   Mtz& operator=(Mtz&& o) noexcept {
@@ -219,6 +216,12 @@ struct Mtz {
   }
   Mtz(Mtz const&) = delete;
   Mtz& operator=(Mtz const&) = delete;
+
+  void add_base() {
+    datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", cell, 0.});
+    for (int i = 0; i != 3; ++i)
+      add_column(std::string(1, "HKL"[i]), 'H', 0, i, false);
+  }
 
   // Functions to use after MTZ headers (and data) is read.
 
@@ -921,7 +924,7 @@ struct Mtz {
   }
 
   Column& add_column(const std::string& label, char type,
-                     int dataset_id=-1, int pos=-1, bool expand_data=false) {
+                     int dataset_id, int pos, bool expand_data) {
     if (datasets.empty())
       fail("No datasets.");
     if (dataset_id < 0)
@@ -1039,7 +1042,7 @@ struct Mtz {
         col_idx += 1 + (int)trailing_cols.size();
     }
     for (int i = 0; i <= (int) trailing_cols.size(); ++i)
-      add_column("", ' ', -1, dest_idx + i);
+      add_column("", ' ', -1, dest_idx + i, false);
     expand_data_rows(1 + trailing_cols.size(), dest_idx);
     // copy the data
     const Column& src_col_now = col_idx < 0 ? src_col : columns[col_idx];

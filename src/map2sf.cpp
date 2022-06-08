@@ -86,9 +86,9 @@ void transform_map_to_sf(OptParser& p) {
                 gemmi::join_str(mtz.columns, ", ",
                                 [](const Mtz::Column& c) { return c.label; }
                                ).c_str());
-      mtz.add_column(f_col, f_type, dataset_id);
+      mtz.add_column(f_col, f_type, dataset_id, -1, false);
       size_t f_idx = mtz.columns.back().idx;
-      mtz.add_column(phi_col, phi_type, dataset_id);
+      mtz.add_column(phi_col, phi_type, dataset_id, -1, false);
       mtz.expand_data_rows(2);
       for (int i = 0; i != mtz.nreflections; ++i) {
         size_t offset = i * mtz.columns.size();
@@ -106,13 +106,10 @@ void transform_map_to_sf(OptParser& p) {
       mtz.cell = map.grid.unit_cell;
       mtz.spacegroup = map.grid.spacegroup;
       mtz.sort_order = {{1, 2, 3, 0, 0}};
-      mtz.add_dataset("HKL_base");
-      mtz.add_column("H", 'H');
-      mtz.add_column("K", 'H');
-      mtz.add_column("L", 'H');
+      mtz.add_base();
       mtz.add_dataset(p.options[Section] ? p.options[Section].arg : "unknown");
-      mtz.add_column(f_col, f_type);
-      mtz.add_column(phi_col, phi_type);
+      mtz.add_column(f_col, f_type, -1, -1, false);
+      mtz.add_column(phi_col, phi_type, -1, -1, false);
       gemmi::AsuData<std::complex<float>> data = hkl.prepare_asu_data<>(dmin);
       mtz.nreflections = (int) data.v.size();
       add_asu_f_phi_to_float_vector(mtz.data, data);

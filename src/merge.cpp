@@ -138,18 +138,18 @@ void write_merged_intensities(const Intensities& intensities, bool write_nobs,
   mtz.set_cell_for_all(intensities.unit_cell);
   mtz.add_dataset("unknown").wavelength = intensities.wavelength;
   if (intensities.type == DataType::Mean) {
-    mtz.add_column("IMEAN", 'J');
-    mtz.add_column("SIGIMEAN", 'Q');
+    mtz.add_column("IMEAN", 'J', -1, -1, false);
+    mtz.add_column("SIGIMEAN", 'Q', -1, -1, false);
     if (write_nobs)
-      mtz.add_column("NOBS", 'I');
+      mtz.add_column("NOBS", 'I', -1, -1, false);
   } else if (intensities.type == DataType::Anomalous) {
-    mtz.add_column("I(+)", 'K');
-    mtz.add_column("SIGI(+)", 'M');
-    mtz.add_column("I(-)", 'K');
-    mtz.add_column("SIGI(-)", 'M');
+    mtz.add_column("I(+)", 'K', -1, -1, false);
+    mtz.add_column("SIGI(+)", 'M', -1, -1, false);
+    mtz.add_column("I(-)", 'K', -1, -1, false);
+    mtz.add_column("SIGI(-)", 'M', -1, -1, false);
     if (write_nobs) {
-      mtz.add_column("NOBS(+)", 'I');
-      mtz.add_column("NOBS(-)", 'I');
+      mtz.add_column("NOBS(+)", 'I', -1, -1, false);
+      mtz.add_column("NOBS(-)", 'I', -1, -1, false);
     }
   } else {
     return;
