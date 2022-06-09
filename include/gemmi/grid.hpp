@@ -323,7 +323,10 @@ struct Grid : GridBase<T> {
   }
 
   Point get_point(int u, int v, int w) {
-    return {u, v, w, &data[index_s(u, v, w)]};
+    u = modulo(u, nu);
+    v = modulo(v, nv);
+    w = modulo(w, nw);
+    return {u, v, w, &data[this->index_q(u, v, w)]};
   }
 
   Point get_nearest_point(const Fractional& f) {
