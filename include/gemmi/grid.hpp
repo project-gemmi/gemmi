@@ -123,8 +123,6 @@ inline double cubic_interpolation_der(double u, double a, double b, double c, do
          + u * (4.5*b*u - 5*b + 1.5*d*u - d);
 }
 
-template<typename T, typename V=std::int8_t> struct MaskedGrid;
-
 // Order of grid axis. Some Grid functionality works only with the XYZ order.
 // The values XYZ and XYZ are used only when the grid covers whole unit cell.
 enum class AxisOrder : unsigned char {
@@ -673,66 +671,7 @@ struct Grid : GridBase<T> {
   void symmetrize_sum() {
     symmetrize([](T a, T b) { return a + b; });
   }
-
-
-  template<typename V> std::vector<V> get_asu_mask() const {
-    std::vector<V> mask(data.size(), 0);
-    std::vector<GridOp> ops = get_scaled_ops_except_id();
-    size_t idx = 0;
-    for (int w = 0; w != nw; ++w)
-      for (int v = 0; v != nv; ++v)
-        for (int u = 0; u != nu; ++u, ++idx)
-          if (mask[idx] == 0)
-            for (const GridOp& op : ops) {
-              std::array<int, 3> t = op.apply(u, v, w);
-              size_t mate_idx = index_n(t[0], t[1], t[2]);
-              // grid point can be on special position
-              if (mate_idx != idx)
-                mask[mate_idx] = 1;
-            }
-    return mask;
-  }
-
-  MaskedGrid<T> masked_asu();
 };
-
-
-template<typename T, typename V> struct MaskedGrid {
-  std::vector<V> mask;
-  Grid<T>* grid;
-
-  struct iterator {
-    MaskedGrid& parent;
-    size_t index;
-    int u = 0, v = 0, w = 0;
-    iterator(MaskedGrid& parent_, size_t index_)
-      : parent(parent_), index(index_) {}
-    iterator& operator++() {
-      do {
-        ++index;
-        if (++u == parent.grid->nu) {
-          u = 0;
-          if (++v == parent.grid->nv) {
-            v = 0;
-            ++w;
-          }
-        }
-      } while (index != parent.mask.size() && parent.mask[index] != 0);
-      return *this;
-    }
-    typename GridBase<T>::Point operator*() {
-      return {u, v, w, &parent.grid->data[index]};
-    }
-    bool operator==(const iterator &o) const { return index == o.index; }
-    bool operator!=(const iterator &o) const { return index != o.index; }
-  };
-  iterator begin() { return {*this, 0}; }
-  iterator end() { return {*this, mask.size()}; }
-};
-
-template<typename T> MaskedGrid<T> Grid<T>::masked_asu() {
-  return {get_asu_mask<std::int8_t>(), this};
-}
 
 
 template<typename T>

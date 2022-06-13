@@ -10,7 +10,8 @@
 #ifndef GEMMI_BLOB_HPP_
 #define GEMMI_BLOB_HPP_
 
-#include "grid.hpp"   // for Grid
+#include "grid.hpp"     // for Grid
+#include "asumask.hpp"  // for get_asu_mask
 
 namespace gemmi {
 
@@ -87,7 +88,7 @@ inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid
                                               {{0, 0, -1}}, {{0, 0, 1}}}};
   // the mask will be used as follows:
   // -1=in blob,  0=in asu, not in blob (so far),  1=in neither
-  std::vector<std::int8_t> mask = grid.get_asu_mask<std::int8_t>();
+  std::vector<std::int8_t> mask = gemmi::get_asu_mask(grid);
   std::vector<gemmi::GridOp> ops = grid.get_scaled_ops_except_id();
   size_t idx = 0;
   for (int w = 0; w != grid.nw; ++w)

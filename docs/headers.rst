@@ -14,6 +14,9 @@ gemmi/assembly.hpp
 gemmi/asudata.hpp
     AsuData for storing reflection data.
 
+gemmi/asumask.hpp
+    MaskedGrid used primarily as direct-space asu mask.
+
 gemmi/atof.hpp
     Functions that convert string to floating-point number ignoring locale.
     Simple wrappers around fastfloat::from_chars().

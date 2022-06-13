@@ -115,7 +115,7 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
     .def("symmetrize_sum", &Gr::symmetrize_sum)
-    .def("masked_asu", &Gr::masked_asu, py::keep_alive<0, 1>())
+    .def("masked_asu", &masked_asu<T>, py::keep_alive<0, 1>())
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))
     .def("get_subarray",
@@ -146,6 +146,7 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
     }, py::return_value_policy::reference_internal)
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
+    .def("asu_max", &Masked::asu_max)
     ;
     return grid;
 }

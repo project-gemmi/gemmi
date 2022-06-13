@@ -2,6 +2,7 @@
 
 #include "gemmi/symmetry.hpp"
 #include "gemmi/grid.hpp"
+#include "gemmi/asumask.hpp"  // for get_asu_mask
 #include <cstdio>
 #include <cstdlib>  // for atoi
 
@@ -54,7 +55,7 @@ void draw_asu(const gemmi::SpaceGroup* sg, int n) {
   gemmi::Grid<float> grid;
   grid.spacegroup = sg;
   grid.set_size(n, n, n);
-  std::vector<std::int8_t> mask = grid.get_asu_mask<std::int8_t>();
+  std::vector<std::int8_t> mask = gemmi::get_asu_mask(grid);
   int idx = 0;
   for (int w = 0; w != n; ++w) {
     for (int v = 0; v != n; ++v) {
