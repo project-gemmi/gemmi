@@ -109,6 +109,9 @@ void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("Reciprocal space ASU%s: %s\n",
          is_reference ? "" : " wrt. standard setting",
          gemmi::ReciprocalAsu(sg).condition_str());
+  gemmi::AsuBrick brick = gemmi::find_asu_brick(sg);
+  printf("Direct space ASU brick: %d/24 %d/24 %d/24\n",
+         brick.size[0], brick.size[1], brick.size[2]);
   print_symmetry_operations(ops);
   if (verbose)
     print_verbose_info(sg->hall);

@@ -291,12 +291,16 @@ struct Grid : GridBase<T> {
   }
 
   // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
-  size_t index_n(int u, int v, int w) const {
+  // Modifies arguments.
+  size_t index_n_ref(int& u, int& v, int& w) const {
     if (u >= nu) u -= nu; else if (u < 0) u += nu;
     if (v >= nv) v -= nv; else if (v < 0) v += nv;
     if (w >= nw) w -= nw; else if (w < 0) w += nw;
     return this->index_q(u, v, w);
   }
+
+  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
+  size_t index_n(int u, int v, int w) const { return index_n_ref(u, v, w); }
 
   // Assumes (for efficiency) that -nu <= u < nu, etc.
   size_t index_near_zero(int u, int v, int w) const {
