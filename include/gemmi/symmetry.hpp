@@ -351,6 +351,14 @@ inline std::pair<int,int> get_op_fraction(int w) {
   return {w, denom};
 }
 
+inline void append_fraction(std::string& s, std::pair<int,int> frac) {
+  append_small_number(s, frac.first);
+  if (frac.second != 1) {
+    s += '/';
+    append_small_number(s, frac.second);
+  }
+}
+
 } // namespace impl
 
 inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
@@ -376,11 +384,7 @@ inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
           s += '/';
           impl::append_small_number(s, frac.second);
         } else {  // e.g. "2/3*x"
-          impl::append_small_number(s, frac.first);
-          if (frac.second != 1) {
-            s += '/';
-            impl::append_small_number(s, frac.second);
-          }
+          impl::append_fraction(s, frac);
           s += '*';
           s += letters[i];
         }
@@ -391,11 +395,7 @@ inline std::string make_triplet_part(const std::array<int, 3>& xyz, int w,
   if (w != 0) {
     impl::append_sign_of(s, w);
     std::pair<int,int> frac = impl::get_op_fraction(std::abs(w));
-    impl::append_small_number(s, frac.first);
-    if (frac.second != 1) {
-      s += '/';
-      impl::append_small_number(s, frac.second);
-    }
+    impl::append_fraction(s, frac);
   }
   return s;
 }
