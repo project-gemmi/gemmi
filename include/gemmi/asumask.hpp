@@ -89,8 +89,22 @@ struct AsuBrick {
     // For now we don't check which boundaries are included in the asymmetric unit,
     // we assume inequalities are not strict (e.g. 0<=x<=1/2) except '<1'.
     : size({a,b,c}), incl({a < denom, b < denom, c < denom}), volume(a*b*c) {}
+
   bool is_in(const std::array<int,3>& p) const {
     return p[0] <= size[0] && p[1] <= size[1] && p[2] <= size[2];
+  }
+
+  std::string str() const {
+    std::string s;
+    for (int i = 0; i < 3; ++i) {
+      if (i != 0)
+        s += "; ";
+      s += "0<=";
+      s += "xyz"[i];
+      s += incl[i] ? "<=" : "<";
+      impl::append_fraction(s, impl::get_op_fraction(size[i]));
+    }
+    return s;
   }
 };
 
