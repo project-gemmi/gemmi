@@ -350,7 +350,7 @@ struct Topo {
     return nullptr;
   }
 
-  GEMMI_NOINLINE void err(const std::string& msg) const {
+  GEMMI_COLD void err(const std::string& msg) const {
     if (warnings == nullptr)
       fail(msg);
     *warnings << "Warning: " << msg << std::endl;

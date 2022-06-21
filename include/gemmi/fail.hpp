@@ -20,10 +20,12 @@
 # pragma GCC diagnostic ignored "-Wattributes"
 #endif
 
-#if defined(_MSC_VER)
-# define GEMMI_NOINLINE __declspec(noinline)
+#if defined(__GNUC__) || defined(__clang__)
+# define GEMMI_COLD __attribute__((cold))
+#elif defined(_MSC_VER)
+# define GEMMI_COLD __declspec(noinline)
 #else
-# define GEMMI_NOINLINE __attribute__ ((noinline))
+# define GEMMI_COLD __attribute__((noinline))
 #endif
 
 namespace gemmi {
@@ -38,14 +40,14 @@ void fail(std::string&& str, T&& arg1, Args&&... args) {
 }
 
 [[noreturn]]
-inline GEMMI_NOINLINE void fail(const char* msg) { throw std::runtime_error(msg); }
+inline GEMMI_COLD void fail(const char* msg) { throw std::runtime_error(msg); }
 
 [[noreturn]]
-inline GEMMI_NOINLINE void sys_fail(const std::string& msg) {
+inline GEMMI_COLD void sys_fail(const std::string& msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
 [[noreturn]]
-inline GEMMI_NOINLINE void sys_fail(const char* msg) {
+inline GEMMI_COLD void sys_fail(const char* msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
 
