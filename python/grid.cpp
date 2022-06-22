@@ -268,6 +268,7 @@ void add_grid(py::module& m) {
   // from asumask.hpp
   py::class_<AsuBrick>(m, "AsuBrick")
     .def_readonly("size", &AsuBrick::size)
+    .def_readonly("incl", &AsuBrick::incl)
     .def("get_extent", &AsuBrick::get_extent)
     .def("str", &AsuBrick::str)
     ;

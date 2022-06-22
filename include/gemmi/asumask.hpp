@@ -90,10 +90,6 @@ struct AsuBrick {
     // we assume inequalities are not strict (e.g. 0<=x<=1/2) except '<1'.
     : size({a,b,c}), incl({a < denom, b < denom, c < denom}), volume(a*b*c) {}
 
-  bool is_in(const std::array<int,3>& p) const {
-    return p[0] <= size[0] && p[1] <= size[1] && p[2] <= size[2];
-  }
-
   std::string str() const {
     std::string s;
     for (int i = 0; i < 3; ++i) {
@@ -129,18 +125,22 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
   const int allowed_sizes[] = {3, 4, 6, 8, 12, 16, 18, 24};
   const GroupOps gops = sg->operations();
   const int n_ops = gops.order();
-  constexpr int N = 24;
 
   Grid<std::int8_t> grid;
   grid.spacegroup = sg;
-  grid.set_size(N, N, N);
+  // Testing with grid size 24 can't distiguish x<=1/8 and x<1/6,
+  // but it happens to give the same results as grid size 48 for all
+  // space groups tabulated in gemmi, so it's fine.
+  // M=1 -> grid size 24; M=2 -> grid size 48
+  constexpr int M = 1;
+  grid.set_size(M*AsuBrick::denom, M*AsuBrick::denom, M*AsuBrick::denom);
   const std::vector<GridOp> ops = grid.get_scaled_ops_except_id();
 
-  auto is_asu_brick = [&](const AsuBrick& brick) -> bool {
-    // The most effective screening points for N=24.
-    static const Point checkpoints[] = {
-      // The points were determined by doing calculations for all space groups
-      // from gemmi::spacegroup_tables.
+  auto is_asu_brick = [&](const AsuBrick& brick, bool check_size) -> bool {
+    // The most effective screening points for grid size 24.
+    // These points were determined by doing calculations for all space groups
+    // from gemmi::spacegroup_tables.
+    static const Point size_checkpoints[] = {
       {7, 17, 7},    // eliminates 9866 out of 14726 wrong candidates
       {11, 1, 23},   // eliminates 2208 out of the rest
       {11, 10, 11},  // eliminates 1108
@@ -157,29 +157,59 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
       {7, 5, 15},
       {20, 4, 5},
       {9, 23, 23},
-      {9, 13, 13},
+      {9, 13, 13},  // eliminates the last wrong candidates
     };
-    for (const Point& point : checkpoints)
-      if (!brick.is_in(point)) {
-        bool ok = false;
+    static const Point boundary_checkpoints[] = {
+      {6, 18, 18},
+      {12, 12, 12},
+      {8, 16, 0},
+      {0, 12, 3},
+      {12, 3, 2},
+      {0, 0, 12},
+      {3, 12, 6},
+      {16, 8, 9},
+      {9, 21, 21},
+      {8, 16, 6},
+      {12, 12, 7},
+      {20, 15, 0},
+      {12, 0, 1},
+      {16, 0, 0},
+      {0, 6, 18},
+      // ...
+    };
+    if (M == 1) {
+      auto is_in = [&](const Point& p) {
+        return p[0] < brick.size[0] + int(brick.incl[0])
+            && p[1] < brick.size[1] + int(brick.incl[1])
+            && p[2] < brick.size[2] + int(brick.incl[2]);
+      };
+      auto check_point = [&](const Point& point) {
+        if (is_in(point))
+          return true;
         for (const GridOp& op : ops) {
           Point t = op.apply(point[0], point[1], point[2]);
           grid.index_n_ref(t[0], t[1], t[2]);
-          if (brick.is_in(t)) {
-            ok = true;
-            break;
-          }
+          if (is_in(t))
+            return true;
         }
-        if (!ok)
-          return false;
-      }
+        return false;
+      };
 
-#ifndef GEMMI_FAST_ASU_BRICK
-    // full check (not needed anymore, left just in case)
+      auto it = check_size ? std::begin(size_checkpoints) : std::begin(boundary_checkpoints);
+      auto end = check_size ? std::end(size_checkpoints) : std::end(boundary_checkpoints);
+      for (; it != end; ++it)
+        if (!check_point(*it))
+          return false;
+    }
+
+    // full check (it could be skipped for M==1 and check_size)
     grid.fill(0);
-    for (int w = 0; w <= std::min(brick.size[2], 23); ++w)
-      for (int v = 0; v <= std::min(brick.size[1], 23); ++v)
-        for (int u = 0; u <= std::min(brick.size[0], 23); ++u) {
+    int w_lim = M * brick.size[2] + int(brick.incl[2]);
+    int v_lim = M * brick.size[1] + int(brick.incl[1]);
+    int u_lim = M * brick.size[0] + int(brick.incl[0]);
+    for (int w = 0; w < w_lim; ++w)
+      for (int v = 0; v < v_lim; ++v)
+        for (int u = 0; u < u_lim; ++u) {
           int idx = grid.index_q(u, v, w);
           if (grid.data[idx] == 0) {
             grid.data[idx] = 1;
@@ -190,9 +220,20 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
             }
           }
         }
+#if 0
+    // this code was used for determining checkpoints
+    bool found = false;
+    for (size_t n = 0; n != grid.data.size(); ++n)
+      if (grid.data[n] == 0) {
+        auto p = grid.index_to_point(n);
+        printf("[debug1] %d %d %d is missing\n", p.u, p.v, p.w);
+        found = true;
+      }
+    if (found)
+      printf("[debug2] checkpoints failed\n");
+#endif
     if (std::find(grid.data.begin(), grid.data.end(), 0) != grid.data.end())
       return false;
-#endif
 
     return true;
   };
@@ -202,7 +243,7 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
     for (int b : allowed_sizes)
       for (int c : allowed_sizes) {
         AsuBrick brick(a, b, c);
-        if (brick.volume * n_ops >= N*N*N)
+        if (brick.volume * n_ops >= brick.denom * brick.denom * brick.denom)
           possible_bricks.push_back(brick);
       }
   // the last item is the full unit cell, no need to check it
@@ -214,10 +255,18 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
                                              a.size[0] + a.size[1] + a.size[2] <
                                              b.size[0] + b.size[1] + b.size[2]);
   });
-  for (const AsuBrick& brick : possible_bricks)
-    if (is_asu_brick(brick))
+  for (AsuBrick& brick : possible_bricks)
+    if (is_asu_brick(brick, true)) {
+      for (int i = 0; i < 3; ++i) {
+        if (brick.incl[i] && brick.size[i] != 4) {
+          brick.incl[i] = false;
+          if (!is_asu_brick(brick, false))
+            brick.incl[i] = true;
+        }
+      }
       return brick;
-  return AsuBrick(24, 24, 24);
+    }
+  return AsuBrick(AsuBrick::denom, AsuBrick::denom, AsuBrick::denom);
 }
 
 } // namespace gemmi
