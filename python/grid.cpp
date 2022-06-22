@@ -14,6 +14,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/floodfill.hpp"  // for flood_fill_above
 #include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
 #include "gemmi/blob.hpp"     // for Blob, find_blobs_by_flood_fill
+#include "gemmi/asumask.hpp"  // for MaskedGrid
 #include "tostr.hpp"
 
 #include "common.h"
@@ -263,4 +264,12 @@ void add_grid(py::module& m) {
   // from floodfill.hpp
   m.def("flood_fill_above", &flood_fill_above,
         py::arg("grid"), py::arg("seeds"), py::arg("threshold"), py::arg("negate")=false);
+
+  // from asumask.hpp
+  py::class_<AsuBrick>(m, "AsuBrick")
+    .def_readonly("size", &AsuBrick::size)
+    .def("get_extent", &AsuBrick::get_extent)
+    .def("str", &AsuBrick::str)
+    ;
+  m.def("find_asu_brick", &find_asu_brick);
 }
