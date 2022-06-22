@@ -106,6 +106,15 @@ struct AsuBrick {
     }
     return s;
   }
+
+  // cf. Ccp4Base::get_extent()
+  Box<Fractional> get_extent() const {
+    Box<Fractional> box;
+    box.minimum = Fractional(-1e-9, -1e-9, -1e-9);
+    for (int i = 0; i < 3; ++i)
+      box.maximum.at(i) = (1.0 / denom) * size[i] + (incl[i] ? 1e-9 : -1e-9);
+    return box;
+  }
 };
 
 // Returns asu brick upper bound. Lower bound is always (0,0,0).
@@ -116,6 +125,7 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
     fail("Missing space group");
 
   using Point = std::array<int, 3>;
+  static_assert(AsuBrick::denom == 24, "");
   const int allowed_sizes[] = {3, 4, 6, 8, 12, 16, 18, 24};
   const GroupOps gops = sg->operations();
   const int n_ops = gops.order();
