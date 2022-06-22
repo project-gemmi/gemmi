@@ -145,6 +145,56 @@ struct GridMeta {
   Position get_position(int u, int v, int w) const {
     return unit_cell.orthogonalize(get_fractional(u, v, w));
   }
+
+  // operations re-scaled for faster later calculations; identity not included
+  std::vector<GridOp> get_scaled_ops_except_id() const {
+    std::vector<GridOp> grid_ops;
+    if (!spacegroup || spacegroup->number == 1)
+      return grid_ops;
+    if (axis_order != AxisOrder::XYZ)
+      fail("grid can use symmetries only if it is setup in the XYZ order");
+    GroupOps gops = spacegroup->operations();
+    grid_ops.reserve(gops.order());
+    for (const Op& so : gops.sym_ops)
+      for (const Op::Tran& co : gops.cen_ops) {
+        Op op = so.add_centering(co);
+        if (op != Op::identity()) {
+          // Rescale. Rotations are expected to be integral.
+          op.tran[0] = op.tran[0] * nu / Op::DEN;
+          op.tran[1] = op.tran[1] * nv / Op::DEN;
+          op.tran[2] = op.tran[2] * nw / Op::DEN;
+          for (int i = 0; i != 3; ++i)
+            for (int j = 0; j != 3; ++j)
+              op.rot[i][j] /= Op::DEN;
+          grid_ops.push_back({op});
+        }
+      }
+    return grid_ops;
+  }
+
+  // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
+  size_t index_q(int u, int v, int w) const {
+    return size_t(w * nv + v) * nu + u;
+  }
+
+  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
+  // Modifies arguments.
+  size_t index_n_ref(int& u, int& v, int& w) const {
+    if (u >= nu) u -= nu; else if (u < 0) u += nu;
+    if (v >= nv) v -= nv; else if (v < 0) v += nv;
+    if (w >= nw) w -= nw; else if (w < 0) w += nw;
+    return this->index_q(u, v, w);
+  }
+
+  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
+  size_t index_n(int u, int v, int w) const { return index_n_ref(u, v, w); }
+
+  // Assumes (for efficiency) that -nu <= u < nu, etc.
+  size_t index_near_zero(int u, int v, int w) const {
+    return this->index_q(u >= 0 ? u : u + nu,
+                         v >= 0 ? v : v + nv,
+                         w >= 0 ? w : w + nw);
+  }
 };
 
 template<typename T>
@@ -161,10 +211,6 @@ struct GridBase : GridMeta {
     data.resize((size_t)u * v * w);
   }
 
-  // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
-  size_t index_q(int u, int v, int w) const {
-    return size_t(w * nv + v) * nu + u;
-  }
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
 
   size_t point_to_index(const Point& p) const { return p.value - data.data(); }
@@ -288,25 +334,6 @@ struct Grid : GridBase<T> {
     spacegroup = st.find_spacegroup();
     set_unit_cell(st.cell);
     set_size_from_spacing(approx_spacing, denser);
-  }
-
-  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
-  // Modifies arguments.
-  size_t index_n_ref(int& u, int& v, int& w) const {
-    if (u >= nu) u -= nu; else if (u < 0) u += nu;
-    if (v >= nv) v -= nv; else if (v < 0) v += nv;
-    if (w >= nw) w -= nw; else if (w < 0) w += nw;
-    return this->index_q(u, v, w);
-  }
-
-  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
-  size_t index_n(int u, int v, int w) const { return index_n_ref(u, v, w); }
-
-  // Assumes (for efficiency) that -nu <= u < nu, etc.
-  size_t index_near_zero(int u, int v, int w) const {
-    return this->index_q(u >= 0 ? u : u + nu,
-                         v >= 0 ? v : v + nv,
-                         w >= 0 ? w : w + nw);
   }
 
   void check_not_empty() const {
@@ -554,7 +581,7 @@ struct Grid : GridBase<T> {
         for (int u = u_lo; u <= u_hi; ++u) {
           Fractional fdelta = fctr - this->get_fractional(u, v, w);
           Position delta = unit_cell.orthogonalize_difference(fdelta);
-          size_t idx = UsePbc ? index_n(u, v, w) : this->index_q(u, v, w);
+          size_t idx = UsePbc ? this->index_n(u, v, w) : this->index_q(u, v, w);
           func(data[idx], delta);
         }
   }
@@ -595,32 +622,6 @@ struct Grid : GridBase<T> {
         d = new_value;
   }
 
-  // operations re-scaled for faster later calculations; identity not included
-  std::vector<GridOp> get_scaled_ops_except_id() const {
-    std::vector<GridOp> grid_ops;
-    if (!spacegroup || spacegroup->number == 1)
-      return grid_ops;
-    if (this->axis_order != AxisOrder::XYZ)
-      fail("grid can use symmetries only if it is setup in the XYZ order");
-    GroupOps gops = spacegroup->operations();
-    grid_ops.reserve(gops.order());
-    for (const Op& so : gops.sym_ops)
-      for (const Op::Tran& co : gops.cen_ops) {
-        Op op = so.add_centering(co);
-        if (op != Op::identity()) {
-          // Rescale. Rotations are expected to be integral.
-          op.tran[0] = op.tran[0] * nu / Op::DEN;
-          op.tran[1] = op.tran[1] * nv / Op::DEN;
-          op.tran[2] = op.tran[2] * nw / Op::DEN;
-          for (int i = 0; i != 3; ++i)
-            for (int j = 0; j != 3; ++j)
-              op.rot[i][j] /= Op::DEN;
-          grid_ops.push_back({op});
-        }
-      }
-    return grid_ops;
-  }
-
   template<typename Func>
   void symmetrize_using_ops(const std::vector<GridOp>& ops, Func func) {
     if (ops.empty())
@@ -636,7 +637,7 @@ struct Grid : GridBase<T> {
             continue;
           for (size_t k = 0; k < ops.size(); ++k) {
             std::array<int,3> t = ops[k].apply(u, v, w);
-            mates[k] = index_n(t[0], t[1], t[2]);
+            mates[k] = this->index_n(t[0], t[1], t[2]);
           }
           T value = data[idx];
           for (size_t k : mates) {
@@ -658,7 +659,7 @@ struct Grid : GridBase<T> {
   // grid point, then assign the result to all the points.
   template<typename Func>
   void symmetrize(Func func) {
-    symmetrize_using_ops(get_scaled_ops_except_id(), func);
+    symmetrize_using_ops(this->get_scaled_ops_except_id(), func);
   }
 
   // two most common symmetrize functions
