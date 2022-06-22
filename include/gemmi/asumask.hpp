@@ -127,41 +127,45 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
   const std::vector<GridOp> ops = grid.get_scaled_ops_except_id();
 
   auto is_asu_brick = [&](const AsuBrick& brick) -> bool {
-    // fast screening - corners and the middle
-    // TODO: check which points are actually used
+    // The most effective screening points for N=24.
     static const Point checkpoints[] = {
-      {N/2, N/2, N/2},
-      {1, 1, N-2},
-      {1, N-2, 1},
-      {1, N-2, N-2},
-      {N-2, 1, 1},
-      {N-2, 1, N-2},
-      {N-2, N-2, 1},
-      {N-2, N-2, N-2},
+      // The points were determined by doing calculations for all space groups
+      // from gemmi::spacegroup_tables.
+      {7, 17, 7},    // eliminates 9866 out of 14726 wrong candidates
+      {11, 1, 23},   // eliminates 2208 out of the rest
+      {11, 10, 11},  // eliminates 1108
+      {19, 1, 1},    // eliminates 665
+      {3, 7, 19},    // eliminates 305
+      {13, 9, 3},
+      {23, 23, 23},
+      {21, 10, 7},
+      {11, 22, 1},
+      {9, 15, 3},
+      {5, 17, 23},
+      {1, 5, 23},
+      {5, 7, 17},
+      {7, 5, 15},
+      {20, 4, 5},
+      {9, 23, 23},
+      {9, 13, 13},
     };
-    //printf("[info] check brick %d x %d x %d\n",
-    //       brick.size[0], brick.size[1], brick.size[2]);
     for (const Point& point : checkpoints)
       if (!brick.is_in(point)) {
         bool ok = false;
         for (const GridOp& op : ops) {
           Point t = op.apply(point[0], point[1], point[2]);
           grid.index_n_ref(t[0], t[1], t[2]);
-          for (int i = 0; i < 3; ++i)
-            assert(0 <= t[i] && t[i] < N);
           if (brick.is_in(t)) {
             ok = true;
             break;
           }
         }
-        if (!ok) {
-          //printf("[info] point %d %d %d\n", point[0], point[1], point[2]);
+        if (!ok)
           return false;
-        }
       }
 
-    // full check
-    //printf("[info] full check\n");
+#ifndef GEMMI_FAST_ASU_BRICK
+    // full check (not needed anymore, left just in case)
     grid.fill(0);
     for (int w = 0; w <= std::min(brick.size[2], 23); ++w)
       for (int v = 0; v <= std::min(brick.size[1], 23); ++v)
@@ -176,7 +180,11 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
             }
           }
         }
-    return std::find(grid.data.begin(), grid.data.end(), 0) == grid.data.end();
+    if (std::find(grid.data.begin(), grid.data.end(), 0) != grid.data.end())
+      return false;
+#endif
+
+    return true;
   };
 
   std::vector<AsuBrick> possible_bricks;
