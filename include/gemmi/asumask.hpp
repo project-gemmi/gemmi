@@ -43,7 +43,10 @@ struct AsuBrick {
 
   // cf. Ccp4Base::get_extent()
   Box<Fractional> get_extent() const {
-    return {Fractional(-1e-9, -1e-9, -1e-9), get_upper_limit()};
+    Box<Fractional> box;
+    box.minimum = Fractional(-1e-9, -1e-9, -1e-9);
+    box.maximum = get_upper_limit();
+    return box;
   }
 
   std::array<int,3> uvw_end(const GridMeta& meta) const {
