@@ -15,7 +15,7 @@ gemmi/asudata.hpp
     AsuData for storing reflection data.
 
 gemmi/asumask.hpp
-    MaskedGrid used primarily as direct-space asu mask.
+    AsuBrick and MaskedGrid that is used primarily as direct-space asu mask.
 
 gemmi/atof.hpp
     Functions that convert string to floating-point number ignoring locale.

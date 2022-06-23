@@ -147,7 +147,6 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
     }, py::return_value_policy::reference_internal)
     .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
          py::keep_alive<0, 1>())
-    .def("asu_max", &Masked::asu_max)
     ;
     return grid;
 }

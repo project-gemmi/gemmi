@@ -414,6 +414,7 @@ to positions in the grid:
 (If your points are not on a regular grid -- get in touch -- there might be
 another way.)
 
+.. _masked_grid:
 
 ASU and MaskedGrid
 ------------------
@@ -438,7 +439,7 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   >>> asu.mask_array  # doctest: +ELLIPSIS
   array([[[0, 0, 0, ..., 1, 1, 1],
          ...
-          [1, 1, 1, ..., 1, 1, 1]]], dtype=int8)
+          [1, 0, 0, ..., 1, 1, 1]]], dtype=int8)
   >>> sum(point.value for point in asu)
   7.125
   >>> for point in asu:
@@ -821,6 +822,8 @@ call ``write_ccp4_map()``.
 
     >>> m.update_ccp4_header()
     >>> m.write_ccp4_map('out.ccp4')
+
+.. _set_extent:
 
 By default, the map written to a file covers the whole unit cell.
 To cover only a given box, call ``set_extent()`` before writing the map.

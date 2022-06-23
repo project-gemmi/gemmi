@@ -1,6 +1,6 @@
 // Copyright 2022 Global Phasing Ltd.
 //
-// MaskedGrid used primarily as direct-space asu mask.
+// AsuBrick and MaskedGrid that is used primarily as direct-space asu mask.
 
 #ifndef GEMMI_ASUMASK_HPP_
 #define GEMMI_ASUMASK_HPP_
@@ -8,75 +8,6 @@
 #include "grid.hpp"
 
 namespace gemmi {
-
-template<typename T, typename V=std::int8_t> struct MaskedGrid {
-  std::vector<V> mask;
-  Grid<T>* grid;
-
-  struct iterator {
-    MaskedGrid& parent;
-    size_t index;
-    int u = 0, v = 0, w = 0;
-    iterator(MaskedGrid& parent_, size_t index_)
-      : parent(parent_), index(index_) {}
-    iterator& operator++() {
-      do {
-        ++index;
-        if (++u == parent.grid->nu) {
-          u = 0;
-          if (++v == parent.grid->nv) {
-            v = 0;
-            ++w;
-          }
-        }
-      } while (index != parent.mask.size() && parent.mask[index] != 0);
-      return *this;
-    }
-    typename GridBase<T>::Point operator*() {
-      return {u, v, w, &parent.grid->data[index]};
-    }
-    bool operator==(const iterator &o) const { return index == o.index; }
-    bool operator!=(const iterator &o) const { return index != o.index; }
-  };
-  iterator begin() { return {*this, 0}; }
-  iterator end() { return {*this, mask.size()}; }
-
-  std::array<int, 3> asu_max() const {
-    std::array<int, 3> m = {{0, 0, 0}};
-    for (auto pt : *const_cast<MaskedGrid*>(this))
-      if (*pt.value == 0) {
-        m[0] = std::max(pt.u, m[0]);
-        m[1] = std::max(pt.v, m[1]);
-        m[2] = std::max(pt.w, m[2]);
-      }
-    return m;
-  }
-};
-
-template<typename T, typename V=std::int8_t>
-std::vector<V> get_asu_mask(const Grid<T>& grid) {
-  std::vector<V> mask(grid.data.size(), 0);
-  std::vector<GridOp> ops = grid.get_scaled_ops_except_id();
-  size_t idx = 0;
-  for (int w = 0; w != grid.nw; ++w)
-    for (int v = 0; v != grid.nv; ++v)
-      for (int u = 0; u != grid.nu; ++u, ++idx)
-        if (mask[idx] == 0)
-          for (const GridOp& op : ops) {
-            std::array<int, 3> t = op.apply(u, v, w);
-            size_t mate_idx = grid.index_n(t[0], t[1], t[2]);
-            // grid point can be on special position
-            if (mate_idx != idx)
-              mask[mate_idx] = 1;
-          }
-  return mask;
-}
-
-template<typename T>
-MaskedGrid<T> masked_asu(Grid<T>& grid) {
-  return {get_asu_mask(grid), &grid};
-}
-
 
 struct AsuBrick {
   // The brick is 0<=x<=size[0]/24, 0<=y<= size[1]/24, 0<=z<=size[2]/24
@@ -103,13 +34,25 @@ struct AsuBrick {
     return s;
   }
 
+  Fractional get_upper_limit() const {
+    double inv_denom = 1.0 / denom;
+    return Fractional(inv_denom * size[0] + (incl[0] ? 1e-9 : -1e-9),
+                      inv_denom * size[1] + (incl[1] ? 1e-9 : -1e-9),
+                      inv_denom * size[2] + (incl[2] ? 1e-9 : -1e-9));
+  }
+
   // cf. Ccp4Base::get_extent()
   Box<Fractional> get_extent() const {
-    Box<Fractional> box;
-    box.minimum = Fractional(-1e-9, -1e-9, -1e-9);
-    for (int i = 0; i < 3; ++i)
-      box.maximum.at(i) = (1.0 / denom) * size[i] + (incl[i] ? 1e-9 : -1e-9);
-    return box;
+    return {Fractional(-1e-9, -1e-9, -1e-9), get_upper_limit()};
+  }
+
+  std::array<int,3> uvw_end(const GridMeta& meta) const {
+    if (meta.axis_order != AxisOrder::XYZ)
+      fail("grid is not fully setup");
+    Fractional f = get_upper_limit();
+    // upper limit is positive and never exact integer
+    auto iceil = [](double x) { return int(x) + 1; };
+    return {iceil(f.x * meta.nu), iceil(f.y * meta.nv), iceil(f.z * meta.nw)};
   }
 };
 
@@ -249,11 +192,11 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
   // the last item is the full unit cell, no need to check it
   possible_bricks.pop_back();
   // if two bricks have the same size, prefer the more cube-shaped one
-  std::sort(possible_bricks.begin(), possible_bricks.end(),
-            [](const AsuBrick& a, const AsuBrick& b) {
-              return a.volume < b.volume || (a.volume == b.volume &&
-                                             a.size[0] + a.size[1] + a.size[2] <
-                                             b.size[0] + b.size[1] + b.size[2]);
+  std::stable_sort(possible_bricks.begin(), possible_bricks.end(),
+      [](const AsuBrick& a, const AsuBrick& b) {
+        return a.volume < b.volume ||
+               (a.volume == b.volume && a.size[0] + a.size[1] + a.size[2] <
+                                        b.size[0] + b.size[1] + b.size[2]);
   });
   for (AsuBrick& brick : possible_bricks)
     if (is_asu_brick(brick, true)) {
@@ -267,6 +210,70 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
       return brick;
     }
   return AsuBrick(AsuBrick::denom, AsuBrick::denom, AsuBrick::denom);
+}
+
+
+template<typename T, typename V=std::int8_t> struct MaskedGrid {
+  std::vector<V> mask;
+  Grid<T>* grid;
+
+  struct iterator {
+    MaskedGrid& parent;
+    size_t index;
+    int u = 0, v = 0, w = 0;
+    iterator(MaskedGrid& parent_, size_t index_)
+      : parent(parent_), index(index_) {}
+    iterator& operator++() {
+      do {
+        ++index;
+        if (++u == parent.grid->nu) {
+          u = 0;
+          if (++v == parent.grid->nv) {
+            v = 0;
+            ++w;
+          }
+        }
+      } while (index != parent.mask.size() && parent.mask[index] != 0);
+      return *this;
+    }
+    typename GridBase<T>::Point operator*() {
+      return {u, v, w, &parent.grid->data[index]};
+    }
+    bool operator==(const iterator &o) const { return index == o.index; }
+    bool operator!=(const iterator &o) const { return index != o.index; }
+  };
+  iterator begin() { return {*this, 0}; }
+  iterator end() { return {*this, mask.size()}; }
+};
+
+template<typename V=std::int8_t>
+std::vector<V> get_asu_mask(const GridMeta& grid) {
+  std::vector<V> mask(grid.point_count(), 2);
+  std::vector<GridOp> ops = grid.get_scaled_ops_except_id();
+  auto end = find_asu_brick(grid.spacegroup).uvw_end(grid);
+  for (int w = 0; w < end[2]; ++w)
+    for (int v = 0; v < end[1]; ++v)
+      for (int u = 0; u < end[0]; ++u) {
+        size_t idx = grid.index_q(u, v, w);
+        if (mask[idx] == 2) {
+          mask[idx] = 0;
+          for (const GridOp& op : ops) {
+            std::array<int, 3> t = op.apply(u, v, w);
+            size_t mate_idx = grid.index_n(t[0], t[1], t[2]);
+            // grid point can be on special position
+            if (mate_idx != idx)
+              mask[mate_idx] = 1;
+          }
+        }
+      }
+  if (std::find(mask.begin(), mask.end(), 2) != mask.end())
+    fail("get_asu_mask(): internal error");
+  return mask;
+}
+
+template<typename T>
+MaskedGrid<T> masked_asu(Grid<T>& grid) {
+  return {get_asu_mask(grid), &grid};
 }
 
 } // namespace gemmi
