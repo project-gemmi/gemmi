@@ -20,7 +20,7 @@
 #include "mtz.hpp"       // for Mtz
 #include "xds_ascii.hpp" // for XdsAscii
 #include "atox.hpp"      // for read_word
-#include "merge.hpp"     // for Intensities, read_unmerged_intensities_from_mtz
+#include "merge.hpp"     // for Intensities
 #include "sprintf.hpp"   // for gf_snprintf, to_str
 #include "version.hpp"   // for GEMMI_VERSION
 

@@ -247,16 +247,24 @@ struct Mtz {
   }
 
   UnitCell get_average_cell_from_batch_headers(double* rmsd) const {
+    if (rmsd)
+      for (int i = 0; i < 6; ++i)
+        rmsd[i] = 0.;
     double avg[6] = {0., 0., 0., 0., 0., 0.};
     for (const Batch& batch : batches)
-      for (int i = 0; i < 6; ++i)
+      for (int i = 0; i < 6; ++i) {
+        // if batch headers are not set correctly, return global cell
+        if (batch.floats[i] <= 0)
+          return cell;
         avg[i] += batch.floats[i];
+      }
+    if (avg[0] <= 0 || avg[1] <= 0 || avg[2] <= 0 ||
+        avg[3] <= 0 || avg[4] <= 0 || avg[5] <= 0)
+      return UnitCell();
     size_t n = batches.size();
     for (int i = 0; i < 6; ++i)
       avg[i] /= n;
     if (rmsd) {
-      for (int i = 0; i < 6; ++i)
-        rmsd[i] = 0.;
       for (const Batch& batch : batches)
         for (int i = 0; i < 6; ++i)
           rmsd[i] += sq(avg[i] - batch.floats[i]);
