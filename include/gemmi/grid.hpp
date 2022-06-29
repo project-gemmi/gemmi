@@ -676,6 +676,20 @@ struct Grid : GridBase<T> {
   void symmetrize_sum() {
     symmetrize([](T a, T b) { return a + b; });
   }
+
+  Grid<T> upsample_nearest(int u, int v, int w) {
+    Grid<T> ng;
+    ng.copy_metadata_from(*this);
+    ng.set_size_without_checking(u, v, w);
+    for (int i = 0; i < u; ++i)
+      for (int j = 0; j < v; ++j)
+        for (int k = 0; k < w; ++k) {
+          const Fractional nf = ng.get_fractional(i, j, k);
+          const Point p = get_nearest_point(nf);
+          ng.data[ng.index_q(i, j, k)] = *p.value;
+        }
+    return ng;
+  }
 };
 
 

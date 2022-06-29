@@ -116,6 +116,7 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
     .def("symmetrize_sum", &Gr::symmetrize_sum)
+    .def("upsample_nearest", &Gr::upsample_nearest, py::return_value_policy::move)
     .def("masked_asu", &masked_asu<T>, py::keep_alive<0, 1>())
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))
