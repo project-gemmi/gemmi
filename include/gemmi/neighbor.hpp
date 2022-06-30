@@ -67,7 +67,10 @@ struct NeighborSearch {
   NeighborSearch() = default;
   // Model is not const so it can be modified in for_each_contact()
   NeighborSearch(Model& model_, const UnitCell& cell, double max_radius) {
-    initialize(model_, cell, max_radius);
+    model = &model_;
+    radius_specified = max_radius;
+    set_bounding_cell(cell);
+    set_grid_size();
   }
   NeighborSearch(SmallStructure& small, double max_radius) {
     small_structure = &small;
@@ -75,7 +78,7 @@ struct NeighborSearch {
     grid.unit_cell = small.cell;
     set_grid_size();
   }
-  void initialize(Model& model, const UnitCell& cell, double max_radius);
+
   NeighborSearch& populate(bool include_h_=true);
   void add_chain(const Chain& chain, bool include_h_=true);
   void add_chain_n(const Chain& chain, int n_ch);
@@ -165,42 +168,37 @@ private:
                                      std::max(grid.nv, 3),
                                      std::max(grid.nw, 3));
   }
-};
 
-inline void NeighborSearch::initialize(Model& model_, const UnitCell& cell,
-                                       double max_radius) {
-  model = &model_;
-  radius_specified = max_radius;
-  if (cell.is_crystal()) {
-    grid.unit_cell = cell;
-  } else {
-    Box<Position> box;
-    for (const Chain& chain : model->chains)
-      for (const Residue& res : chain.residues)
-        for (const Atom& atom : res.atoms)
-          box.extend(atom.pos);
-    // The box needs include all NCS images as well (strict NCS from MTRIXn).
-    // To avoid additional function parameter that would pass Structure::ncs,
-    // here we obtain it from UnitCell::images.
-    std::vector<FTransform> ncs = cell.get_ncs_transforms();
-    if (!ncs.empty()) {
+  void set_bounding_cell(const UnitCell& cell) {
+    if (cell.is_crystal()) {
+      grid.unit_cell = cell;
+    } else {
+      // cf. calculate_box()
+      Box<Position> box;
       for (CRA cra : model->all())
-        // images store fractional transforms, but for non-crystal it should be
-        // the same as Cartesian transform.
-        for (const Transform& tr : ncs)
-          box.extend(Position(tr.apply(cra.atom->pos)));
-    }
-    box.add_margin(1.5 * max_radius);  // much more than needed
-    Position size = box.get_size();
-    grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
-    for (const Transform& tr : ncs) {
-      UnitCell& c = grid.unit_cell;
-      // cf. add_ncs_images_to_cs_images()
-      c.images.push_back(c.frac.combine(tr.combine(c.orth)));
+        box.extend(cra.atom->pos);
+      // The box needs to include all NCS images (strict NCS from MTRIXn).
+      // To avoid additional function parameter that would pass Structure::ncs,
+      // here we obtain NCS transformations from UnitCell::images.
+      std::vector<FTransform> ncs = cell.get_ncs_transforms();
+      if (!ncs.empty()) {
+        for (CRA cra : model->all())
+          // images store fractional transforms, but for non-crystal
+          // it should be the same as Cartesian transform.
+          for (const Transform& tr : ncs)
+            box.extend(Position(tr.apply(cra.atom->pos)));
+      }
+      box.add_margin(1.5 * radius_specified);  // much more than needed
+      Position size = box.get_size();
+      grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
+      for (const Transform& tr : ncs) {
+        UnitCell& c = grid.unit_cell;
+        // cf. add_ncs_images_to_cs_images()
+        c.images.push_back(c.frac.combine(tr.combine(c.orth)));
+      }
     }
   }
-  set_grid_size();
-}
+};
 
 inline NeighborSearch& NeighborSearch::populate(bool include_h_) {
   include_h = include_h_;

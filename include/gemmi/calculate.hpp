@@ -69,6 +69,7 @@ template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
   return CenterOfMass{Position(atom.pos * w_mass), w_mass};
 }
 
+// we don't take NCS into account here (cf. NeighborSearch::set_bounding_cell())
 inline Box<Position> calculate_box(const Structure& st, double margin=0.) {
   Box<Position> box;
   for (const Model& model : st.models)
