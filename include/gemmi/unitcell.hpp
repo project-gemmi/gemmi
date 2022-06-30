@@ -361,6 +361,13 @@ struct UnitCell {
       }
   }
 
+  std::vector<FTransform> get_ncs_transforms() const {
+    std::vector<FTransform> ncs;
+    for (size_t n = cs_count; n < images.size(); n += cs_count + 1)
+      ncs.push_back(images[n]);
+    return ncs;
+  }
+
   Position orthogonalize(const Fractional& f) const {
     return Position(orth.apply(f));
   }
