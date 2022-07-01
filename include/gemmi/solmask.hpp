@@ -377,5 +377,34 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
         }
 }
 
+
+// add soft edge to 1/0 mask using raised cosine function
+template<typename T>
+void add_soft_edge_to_mask(Grid<T>& grid, double width) {
+  const double width2 = width * width;
+  const int du = (int) std::ceil(width / grid.spacing[0]);
+  const int dv = (int) std::ceil(width / grid.spacing[1]);
+  const int dw = (int) std::ceil(width / grid.spacing[2]);
+
+  for (int w = 0; w < grid.nw; ++w)
+    for (int v = 0; v < grid.nv; ++v)
+      for (int u = 0; u < grid.nu; ++u) {
+        size_t idx = grid.index_q(u, v, w);
+        if (grid.data[idx] >= 1e-3) continue;
+        double min_d2 = width2 + 1;
+        Fractional fctr = grid.get_fractional(u, v, w);
+        grid.template use_points_in_box<true>(fctr, du, dv, dw,
+                          [&](T& point, const Position& delta) {
+                            if (point > 0.999) {
+                              double d2 = delta.length_sq();
+                              if (d2 < min_d2)
+                                min_d2 = d2;
+                            }
+                          });
+        if (min_d2 < width2)
+          grid.data[idx] = T(0.5 + 0.5 * std::cos(pi() * std::sqrt(min_d2) / width));
+      }
+}
+
 } // namespace gemmi
 #endif
