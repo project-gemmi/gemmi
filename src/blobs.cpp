@@ -10,6 +10,7 @@
 #include "gemmi/math.hpp"      // for Variance
 #include "gemmi/neighbor.hpp"  // for NeighborSearch
 #include "gemmi/read_coor.hpp" // for read_structure_gz
+#include "gemmi/calculate.hpp" // for calculate_center_of_mass
 #include "mapcoef.h"
 
 #define GEMMI_PROG blobs
@@ -21,7 +22,8 @@ using std::printf;
 
 enum OptionIndex { SigmaCutoff=AfterMapOptions, AbsCutoff,
                    MaskRadius, MaskWater,
-                   MinVolume, MinScore, MinSigma, MinDensity };
+                   MinVolume, MinScore, MinSigma, MinDensity,
+                   Dimple };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -66,6 +68,8 @@ const option::Descriptor Usage[] = {
   MapUsage[Sample],
   MapUsage[GridQuery],
   MapUsage[TimingFft],
+
+  { Dimple, 0, "", "dimple", Arg::None, nullptr }, // output for Dimple
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -154,6 +158,10 @@ int run(OptParser& p) {
   if (p.options[Verbose]) {
     size_t n = std::count(grid.data.begin(), grid.data.end(), -INFINITY);
     printf("Masked points: %zu of %zu.\n", n, grid.point_count());
+  }
+  if (p.options[Dimple]) {
+    gemmi::Position com = gemmi::calculate_center_of_mass(model).get();
+    printf("Center of mass: %.2f %.2f %.2f\n", com.x, com.y, com.z);
   }
 
   // find and sort blobs
