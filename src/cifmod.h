@@ -62,7 +62,7 @@ inline void sort_items(gemmi::cif::Block& block) {
 inline void apply_cif_doc_modifications(gemmi::cif::Document& doc,
                                    const std::vector<option::Option>& options) {
   for (const option::Option* opt = options[SkipCat]; opt; opt = opt->next()) {
-    std::string category = opt->arg;
+    std::string category = gemmi::to_lower(opt->arg);
     if (category[0] != '_')
       category.insert(0, 1, '_');
     for (gemmi::cif::Block& block : doc.blocks)

@@ -511,10 +511,11 @@ struct Item {
     type = ItemType::Erased;
   }
 
+  // case-insensitive, the prefix should be lower-case
   bool has_prefix(const std::string& prefix) const {
-    return (type == ItemType::Pair && gemmi::starts_with(pair[0], prefix)) ||
+    return (type == ItemType::Pair && gemmi::istarts_with(pair[0], prefix)) ||
            (type == ItemType::Loop && !loop.tags.empty() &&
-            gemmi::starts_with(loop.tags[0], prefix));
+            gemmi::istarts_with(loop.tags[0], prefix));
   }
 
   void set_value(Item&& o) {
@@ -935,6 +936,7 @@ inline Table Block::find_any(const std::string& prefix,
 
 inline Table Block::find_mmcif_category(std::string cat) {
   ensure_mmcif_category(cat);
+  cat = gemmi::to_lower(cat);
   std::vector<int> indices;
   for (Item& i : items)
     if (i.has_prefix(cat)) {
@@ -943,7 +945,7 @@ inline Table Block::find_mmcif_category(std::string cat) {
         for (size_t j = 0; j != indices.size(); ++j) {
           indices[j] = j;
           const std::string& tag = i.loop.tags[j];
-          if (!starts_with(tag, cat))
+          if (!istarts_with(tag, cat))
             fail("Tag ", tag, " in loop with ", cat);
         }
         return Table{&i, *this, indices, cat.length()};
@@ -1082,13 +1084,14 @@ inline std::string quote(std::string v) {
 
 // ItemSpan is used to add tag-value pairs next to the same category tags.
 struct ItemSpan {
-  ItemSpan(std::vector<Item>& items, const std::string& cat)
+  ItemSpan(std::vector<Item>& items, std::string cat)
       : items_(items), begin_(0), end_(items.size()) {
     assert_tag(cat);
-    while (begin_ != items.size() && !has_prefix(items[begin_], cat))
+    cat = gemmi::to_lower(cat);
+    while (begin_ != items.size() && !items[begin_].has_prefix(cat))
       ++begin_;
     if (begin_ != end_)
-      while (end_ - 1 != begin_ && !has_prefix(items[end_-1], cat))
+      while (end_ - 1 != begin_ && !items[end_-1].has_prefix(cat))
         --end_;
   }
 
@@ -1113,14 +1116,6 @@ struct ItemSpan {
 private:
   std::vector<Item>& items_;
   size_t begin_, end_;
-
-  static bool has_prefix(const Item& item, const std::string& cat) {
-    if (item.type == ItemType::Pair)
-      return starts_with(item.pair[0], cat);
-    if (item.type == ItemType::Loop)
-      return !item.loop.tags.empty() && starts_with(item.loop.tags[0], cat);
-    return false;
-  }
 };
 
 inline ItemSpan Block::span(const std::string& category) {
