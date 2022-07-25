@@ -86,48 +86,6 @@ namespace gemmi {
 
 namespace impl {
 
-struct ItemSpan {
-  ItemSpan(std::vector<cif::Item>& items, const std::string& cat)
-      : items_(items), begin_(0), end_(items.size()) {
-    cif::assert_tag(cat);
-    while (begin_ != items.size() && !has_prefix(items[begin_], cat))
-      ++begin_;
-    if (begin_ != end_)
-      while (end_ - 1 != begin_ && !has_prefix(items[end_-1], cat))
-        --end_;
-  }
-
-  // cf. Block::set_pair()
-  void set_pair(const std::string& tag, const std::string& value) {
-    using namespace gemmi::cif;
-    assert_tag(tag);
-    for (size_t i = begin_; i != end_; ++i) {
-      Item& item = items_[i];
-      if (item.type == ItemType::Pair && item.pair[0] == tag) {
-        item.pair[1] = value;
-        return;
-      }
-      if (item.type == ItemType::Loop && item.loop.find_tag(tag) != -1) {
-        item.set_value(Item(tag, value));
-        return;
-      }
-    }
-    items_.emplace(items_.begin() + end_, tag, value);
-    ++end_;
-  }
-private:
-  std::vector<cif::Item>& items_;
-  size_t begin_, end_;
-
-  static bool has_prefix(const cif::Item& item, const std::string& cat) {
-    if (item.type == cif::ItemType::Pair)
-      return starts_with(item.pair[0], cat);
-    if (item.type == cif::ItemType::Loop)
-      return !item.loop.tags.empty() && starts_with(item.loop.tags[0], cat);
-    return false;
-  }
-};
-
 inline std::string pdbx_icode(const SeqId& seqid) {
   return std::string(1, seqid.has_icode() ? seqid.icode : '?');
 }
@@ -446,7 +404,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
       type_loop.add_row({connection_type_to_string((Connection::Type)i)});
 }
 
-void write_cell_parameters(const UnitCell& cell, ItemSpan& span) {
+void write_cell_parameters(const UnitCell& cell, cif::ItemSpan& span) {
   span.set_pair("_cell.length_a",    to_str(cell.a));
   span.set_pair("_cell.length_b",    to_str(cell.b));
   span.set_pair("_cell.length_c",    to_str(cell.c));
@@ -505,7 +463,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   if (groups.database_status) {
     auto initial_date = st.info.find("_pdbx_database_status.recvd_initial_deposition_date");
     if (initial_date != st.info.end() && !initial_date->second.empty()) {
-      impl::ItemSpan span(block.items, "_pdbx_database_status.");
+      cif::ItemSpan span(block.items, "_pdbx_database_status.");
       span.set_pair("_pdbx_database_status.entry_id", id);
       span.set_pair(initial_date->first, initial_date->second);
     }
@@ -519,7 +477,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.cell) {
-    impl::ItemSpan cell_span(block.items, "_cell.");
+    cif::ItemSpan cell_span(block.items, "_cell.");
     cell_span.set_pair("_cell.entry_id", id);
     impl::write_cell_parameters(st.cell, cell_span);
     auto z_pdb = st.info.find("_cell.Z_PDB");
@@ -528,7 +486,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.symmetry) {
-    impl::ItemSpan span(block.items, "_symmetry.");
+    cif::ItemSpan span(block.items, "_symmetry.");
     span.set_pair("_symmetry.entry_id", id);
     span.set_pair("_symmetry.space_group_name_H-M",
                    cif::quote(st.spacegroup_hm));
@@ -883,13 +841,13 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   if (groups.title_keywords) {
     auto title = st.info.find("_struct.title");
     if (title != st.info.end()) {
-      impl::ItemSpan span(block.items, "_struct.");
+      cif::ItemSpan span(block.items, "_struct.");
       span.set_pair("_struct.entry_id", id);
       span.set_pair(title->first, cif::quote(title->second));
     }
     auto pdbx_keywords = st.info.find("_struct_keywords.pdbx_keywords");
     auto keywords = st.info.find("_struct_keywords.text");
-    impl::ItemSpan span(block.items, "_struct_keywords.");
+    cif::ItemSpan span(block.items, "_struct_keywords.");
     if (pdbx_keywords != st.info.end() || keywords != st.info.end())
       span.set_pair("_struct_keywords.entry_id", id);
     if (pdbx_keywords != st.info.end())
@@ -915,7 +873,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
   if (groups.origx) { // _database_PDB_matrix (ORIGX)
     if (st.has_origx && !st.origx.is_identity()) {
-      impl::ItemSpan span(block.items, "_database_PDB_matrix.");
+      cif::ItemSpan span(block.items, "_database_PDB_matrix.");
       span.set_pair("_database_PDB_matrix.entry_id", id);
       std::string tag_mat = "_database_PDB_matrix.origx[0][0]";
       std::string tag_vec = "_database_PDB_matrix.origx_vector[0]";
@@ -1060,7 +1018,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
   // _pdbx_struct_assembly* and _struct_biol are REMARK 300/350 in PDB
   if (groups.struct_biol && !st.meta.remark_300_detail.empty()) {
-    impl::ItemSpan span(block.items, "_struct_biol.");
+    cif::ItemSpan span(block.items, "_struct_biol.");
     span.set_pair("_struct_biol.id", "1");
     span.set_pair("_struct_biol.details", cif::quote(st.meta.remark_300_detail));
   }
@@ -1088,7 +1046,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
   // _atom_sites (SCALE)
   if (groups.scale && (st.has_origx || st.cell.explicit_matrices)) {
-    impl::ItemSpan span(block.items, "_atom_sites.");
+    cif::ItemSpan span(block.items, "_atom_sites.");
     span.set_pair("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";
     for (int i = 0; i < 3; ++i) {
@@ -1214,7 +1172,7 @@ cif::Block make_mmcif_headers(const Structure& st) {
 }
 
 void add_minimal_mmcif_data(const Structure& st, cif::Block& block) {
-  impl::ItemSpan cell_span(block.items, "_cell.");
+  cif::ItemSpan cell_span(block.items, "_cell.");
   impl::write_cell_parameters(st.cell, cell_span);
   block.set_pair("_symmetry.space_group_name_H-M",
                  cif::quote(st.spacegroup_hm));

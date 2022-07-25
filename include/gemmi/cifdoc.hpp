@@ -189,6 +189,7 @@ struct Loop {
 
 struct Item;
 struct Block;
+struct ItemSpan;
 
 // Accessor to a specific loop column, or to a single value from a Pair.
 class Column {
@@ -445,6 +446,8 @@ struct Block {
   size_t get_index(const std::string& tag) const;
 
   // modifying functions
+  ItemSpan span(const std::string& category);
+
   void set_pair(const std::string& tag, const std::string& value);
 
   Loop& init_loop(const std::string& prefix, std::vector<std::string> tags) {
@@ -1075,6 +1078,55 @@ inline std::string quote(std::string v) {
   v += q;
   return v;
 }
+
+
+// ItemSpan is used to add tag-value pairs next to the same category tags.
+struct ItemSpan {
+  ItemSpan(std::vector<Item>& items, const std::string& cat)
+      : items_(items), begin_(0), end_(items.size()) {
+    assert_tag(cat);
+    while (begin_ != items.size() && !has_prefix(items[begin_], cat))
+      ++begin_;
+    if (begin_ != end_)
+      while (end_ - 1 != begin_ && !has_prefix(items[end_-1], cat))
+        --end_;
+  }
+
+  // cf. Block::set_pair()
+  ItemSpan& set_pair(const std::string& tag, const std::string& value) {
+    assert_tag(tag);
+    for (size_t i = begin_; i != end_; ++i) {
+      Item& item = items_[i];
+      if (item.type == ItemType::Pair && item.pair[0] == tag) {
+        item.pair[1] = value;
+        return *this;
+      }
+      if (item.type == ItemType::Loop && item.loop.find_tag(tag) != -1) {
+        item.set_value(Item(tag, value));
+        return *this;
+      }
+    }
+    items_.emplace(items_.begin() + end_, tag, value);
+    ++end_;
+    return *this;
+  }
+private:
+  std::vector<Item>& items_;
+  size_t begin_, end_;
+
+  static bool has_prefix(const Item& item, const std::string& cat) {
+    if (item.type == ItemType::Pair)
+      return starts_with(item.pair[0], cat);
+    if (item.type == ItemType::Loop)
+      return !item.loop.tags.empty() && starts_with(item.loop.tags[0], cat);
+    return false;
+  }
+};
+
+inline ItemSpan Block::span(const std::string& category) {
+  return ItemSpan(items, category);
+}
+
 
 #if defined(_MSC_VER)
 #pragma warning(pop)

@@ -685,7 +685,7 @@ To add a pair to the block, or modify an existing one, use::
 
   void Block::set_pair(const std::string& tag, std::string value)
 
-The value needs quoting, the passed argument needs to be already quoted
+If the value needs quoting, the passed argument needs to be already quoted
 (you may pass ``cif::quote(value)``).
 
 ----
@@ -743,6 +743,24 @@ use function ``set_pair``:
 .. doctest::
 
   >>> block.set_pair('_year', '2030')
+
+If a new item is added, it is placed at the end of the block.
+Then you can then move it to a more appropriate position with ``move_item()``.
+Alternatively, we can first determine a span of items with the given prefix
+and then set a pair in this span (either replacing an existing item
+or adding a new one at the end of the span):
+
+.. doctest::
+
+  >>> block.span('_cell.') \
+  ...   .set_pair('_cell.length_a_esd', '?') \
+  ...   .set_pair('_cell.length_b_esd', '?') \
+  ...   .set_pair('_cell.length_c_esd', '?')
+  ...  # doctest: +ELLIPSIS
+  <gemmi.cif.ItemSpan object at 0x...>
+
+This is recommended when editing mmCIF files, because all name-value pairs
+in the same category must be consecutive (an unwritten rule of the PDB).
 
 If the value needs quoting, it must be passed quoted:
 
