@@ -217,10 +217,8 @@ void add_cif(py::module& cif) {
              if (values.back().size() != values[0].size())
                throw py::value_error("all columns must have equal length");
            }
-           if (w == 0 || values[0].size() == 0)
-             throw py::value_error("data cannot be empty");
            Loop& loop = self.init_mmcif_loop(std::move(name), std::move(tags));
-           loop.values.resize(w * values[0].size());
+           loop.values.resize(w != 0 ? w * values[0].size() : 0);
            for (size_t col = 0; col != w; ++col) {
              size_t idx = col;
              for (auto handle : values[col]) {

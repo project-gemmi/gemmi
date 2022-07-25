@@ -462,7 +462,7 @@ struct Block {
   Table find_mmcif_category(std::string cat);
 
   Loop& init_mmcif_loop(std::string cat, std::vector<std::string> tags) {
-    ensure_mmcif_category(cat);
+    ensure_mmcif_category(cat);  // modifies cat
     return setup_loop(find_mmcif_category(cat), cat, std::move(tags));
   }
 

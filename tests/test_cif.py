@@ -174,21 +174,25 @@ class TestBlock(unittest.TestCase):
             self.assertEqual(block.find_values('_d.two').str(1), '?')
             self.assertEqual(block.find_values('_d.two')[2], '.')
         check_d()
-        block.set_mmcif_category('_d', {
+        block.set_mmcif_category('_D', {
             'one': ('?', "'a b'", ';text\nfield\n;'),
             'two': ['-1', "'?'", '.']},
             raw=True)
+        self.assertEqual(list(block.find_mmcif_category('_d').tags),
+                         ['_D.one', '_D.two'])
         check_d()
         block.set_mmcif_category('_d', {
             'one': (None, "'a b'", ';text\nfield\n;'),
             'two': [-1, "'?'", False]},
             raw=True)
         check_d()
-        block.set_mmcif_category('_d', block.get_mmcif_category('_d'))
+        block.set_mmcif_category('_d', block.get_mmcif_category('_D'))
         check_d()
         block.set_mmcif_category('_d', block.get_mmcif_category('_d', raw=True),
                                  raw=True)
         check_d()
+        block.set_mmcif_category('_d', {})
+        self.assertEqual(block.find_mmcif_category('_d').width(), 0)
 
     def test_mmcif_file(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
