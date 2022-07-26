@@ -178,8 +178,8 @@ class TestBlock(unittest.TestCase):
             'one': ('?', "'a b'", ';text\nfield\n;'),
             'two': ['-1', "'?'", '.']},
             raw=True)
-        self.assertEqual(list(block.find_mmcif_category('_d').tags),
-                         ['_D.one', '_D.two'])
+        self.assertEqual(set(block.find_mmcif_category('_d').tags),
+                         {'_D.one', '_D.two'})
         check_d()
         block.set_mmcif_category('_d', {
             'one': (None, "'a b'", ';text\nfield\n;'),
