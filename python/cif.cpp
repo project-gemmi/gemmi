@@ -151,10 +151,6 @@ void add_cif(py::module& cif) {
         return s;
     });
 
-  py::class_<ItemSpan>(cif, "ItemSpan")
-    .def("set_pair", &ItemSpan::set_pair, py::arg("tag"), py::arg("value"))
-    ;
-
   cif_block
     .def(py::init<const std::string &>())
     .def_readwrite("name", &Block::name)
@@ -191,8 +187,16 @@ void add_cif(py::module& cif) {
          py::return_value_policy::reference_internal)
     .def("item_as_table", &Block::item_as_table)
     .def("get_index", &Block::get_index, py::arg("tag"))
-    .def("span", &Block::span, py::arg("category"))
     .def("set_pair", &Block::set_pair, py::arg("tag"), py::arg("value"))
+    .def("set_pairs",
+         [](Block &self, std::string prefix, py::dict data, bool raw) {
+           ItemSpan span(self.items, prefix);
+           for (auto item : data) {
+             std::string key = py::str(item.first);
+             std::string value = pyobject_to_string(item.second, raw);
+             span.set_pair(prefix + key, value);
+           }
+         }, py::arg("prefix"), py::arg("data"), py::arg("raw")=false)
     .def("init_loop", &Block::init_loop, py::arg("prefix"), py::arg("tags"),
          py::return_value_policy::reference_internal)
     .def("move_item", &Block::move_item, py::arg("old_pos"), py::arg("new_pos"))

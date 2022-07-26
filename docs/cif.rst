@@ -746,18 +746,14 @@ use function ``set_pair``:
 
 If a new item is added, it is placed at the end of the block.
 Then you can then move it to a more appropriate position with ``move_item()``.
-Alternatively, we can first determine a span of items with the given prefix
-and then set a pair in this span (either replacing an existing item
-or adding a new one at the end of the span):
+Alternatively, you can use function set_pairs() that takes a prefix and,
+when adding a new item, places it after the last item with the given prefix:
 
 .. doctest::
 
-  >>> block.span('_cell.') \
-  ...   .set_pair('_cell.length_a_esd', '?') \
-  ...   .set_pair('_cell.length_b_esd', '?') \
-  ...   .set_pair('_cell.length_c_esd', '?')
-  ...  # doctest: +ELLIPSIS
-  <gemmi.cif.ItemSpan object at 0x...>
+  >>> block.set_pairs('_cell.', {'length_a_esd': '?',
+  ...                            'length_b_esd': '?',
+  ...                            'length_c_esd': '?'})
 
 This is recommended when editing mmCIF files, because all name-value pairs
 in the same category must be consecutive (an unwritten rule of the PDB).

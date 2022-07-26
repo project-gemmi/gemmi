@@ -446,8 +446,6 @@ struct Block {
   size_t get_index(const std::string& tag) const;
 
   // modifying functions
-  ItemSpan span(const std::string& category);
-
   void set_pair(const std::string& tag, const std::string& value);
 
   Loop& init_loop(const std::string& prefix, std::vector<std::string> tags) {
@@ -1117,11 +1115,6 @@ private:
   std::vector<Item>& items_;
   size_t begin_, end_;
 };
-
-inline ItemSpan Block::span(const std::string& category) {
-  return ItemSpan(items, category);
-}
-
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
