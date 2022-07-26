@@ -189,7 +189,6 @@ struct Loop {
 
 struct Item;
 struct Block;
-struct ItemSpan;
 
 // Accessor to a specific loop column, or to a single value from a Pair.
 class Column {
@@ -400,6 +399,7 @@ struct Table {
   iterator end() { return iterator{*this, (int)length()}; }
 };
 
+
 struct Block {
   std::string name;
   std::vector<Item> items;
@@ -470,6 +470,7 @@ private:
   Loop& setup_loop(Table&& tab, const std::string& prefix,
                    std::vector<std::string>&& tags);
 };
+
 
 struct Item {
   ItemType type;
@@ -561,6 +562,45 @@ private:
       new (&frame) Block(std::move(o.frame));
   }
 };
+
+
+// ItemSpan is used to add tag-value pairs next to the same category tags.
+struct ItemSpan {
+  ItemSpan(std::vector<Item>& items)
+      : items_(items), begin_(0), end_(items.size()) {}
+  ItemSpan(std::vector<Item>& items, std::string prefix)
+      : ItemSpan(items) {
+    assert_tag(prefix);
+    prefix = gemmi::to_lower(prefix);
+    while (begin_ != end_ && !items_[begin_].has_prefix(prefix))
+      ++begin_;
+    if (begin_ != end_)
+      while (end_-1 != begin_ && !items_[end_-1].has_prefix(prefix))
+        --end_;
+  }
+  void set_pair(const std::string& tag, const std::string& value) {
+    assert_tag(tag);
+    std::string lctag = gemmi::to_lower(tag);
+    auto end = items_.begin() + end_;
+    for (auto i = items_.begin() + begin_; i != end; ++i) {
+      if (i->type == ItemType::Pair && gemmi::iequal(i->pair[0], lctag)) {
+        i->pair[0] = tag;  // if letter case differs, the tag changes
+        i->pair[1] = value;
+        return;
+      }
+      if (i->type == ItemType::Loop && i->loop.find_tag_lc(lctag) != -1) {
+        i->set_value(Item(tag, value));
+        return;
+      }
+    }
+    items_.emplace(end, tag, value);
+    ++end_;
+  }
+private:
+  std::vector<Item>& items_;
+  size_t begin_, end_;  // iterators would be invalidated by emplace()
+};
+
 
 inline void Loop::set_all_values(std::vector<std::vector<std::string>> columns){
   size_t w = columns.size();
@@ -730,22 +770,6 @@ inline const Pair* Block::find_pair(const std::string& tag) const {
   return item ? &item->pair : nullptr;
 }
 
-inline void Block::set_pair(const std::string& tag, const std::string& value) {
-  assert_tag(tag);
-  std::string lctag = gemmi::to_lower(tag);
-  for (Item& i : items) {
-    if (i.type == ItemType::Pair && gemmi::iequal(i.pair[0], lctag)) {
-      i.pair[1] = value;
-      return;
-    }
-    if (i.type == ItemType::Loop && i.loop.find_tag_lc(lctag) != -1) {
-      i.set_value(Item(tag, value));
-      return;
-    }
-  }
-  items.emplace_back(tag, value);
-}
-
 inline Column Block::find_loop(const std::string& tag) {
   Column c = find_values(tag);
   return c.item() && c.item()->type == ItemType::Loop ? c : Column();
@@ -799,6 +823,10 @@ inline size_t Block::get_index(const std::string& tag) const {
       return i;
   }
   fail(tag + " not found in block");
+}
+
+inline void Block::set_pair(const std::string& tag, const std::string& value) {
+  ItemSpan(items).set_pair(tag, value);
 }
 
 inline void Block::move_item(int old_pos, int new_pos) {
@@ -1078,43 +1106,6 @@ inline std::string quote(std::string v) {
   v += q;
   return v;
 }
-
-
-// ItemSpan is used to add tag-value pairs next to the same category tags.
-struct ItemSpan {
-  ItemSpan(std::vector<Item>& items, std::string cat)
-      : items_(items), begin_(0), end_(items.size()) {
-    assert_tag(cat);
-    cat = gemmi::to_lower(cat);
-    while (begin_ != items.size() && !items[begin_].has_prefix(cat))
-      ++begin_;
-    if (begin_ != end_)
-      while (end_ - 1 != begin_ && !items[end_-1].has_prefix(cat))
-        --end_;
-  }
-
-  // cf. Block::set_pair()
-  ItemSpan& set_pair(const std::string& tag, const std::string& value) {
-    assert_tag(tag);
-    for (size_t i = begin_; i != end_; ++i) {
-      Item& item = items_[i];
-      if (item.type == ItemType::Pair && item.pair[0] == tag) {
-        item.pair[1] = value;
-        return *this;
-      }
-      if (item.type == ItemType::Loop && item.loop.find_tag(tag) != -1) {
-        item.set_value(Item(tag, value));
-        return *this;
-      }
-    }
-    items_.emplace(items_.begin() + end_, tag, value);
-    ++end_;
-    return *this;
-  }
-private:
-  std::vector<Item>& items_;
-  size_t begin_, end_;
-};
 
 #if defined(_MSC_VER)
 #pragma warning(pop)

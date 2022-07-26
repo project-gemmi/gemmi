@@ -91,6 +91,19 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block.find_value('_c'), '3')
         self.assertEqual(block.find_value('_d'), '9')
 
+    def test_set_pairs(self):
+        doc = cif.read_string('data_a _zza 0 _z_a 1 _Z_b 2 _z_C 3 _zzb 4')
+        block = doc[0]
+        expected = [['_zza', '0'], ['_z_a', '1'], ['_Z_b', '2'],
+                    ['_z_C', '3'], ['_zzb', '4']]
+        self.assertEqual([v.pair for v in block], expected)
+        block.set_pairs('_z_', {'1': 5})
+        expected.insert(4, ['_z_1', '5'])
+        self.assertEqual([v.pair for v in block], expected)
+        block.set_pairs('_z_', {'B': 10, 'c' : 11, 'a': 9})
+        expected[1:4] = [['_z_a', '9'], ['_z_B', '10'], ['_z_c', '11']]
+        self.assertEqual([v.pair for v in block], expected)
+
     def test_set_loop(self):
         block = cif.read_string('data_a _c.a 1 _c.b 2 _c.c 3 loop_ _cx.b 3')[0]
         block.init_loop('_cx.', ['b']).add_row(['x'])
