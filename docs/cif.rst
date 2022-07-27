@@ -746,17 +746,19 @@ use function ``set_pair``:
 
 If a new item is added, it is placed at the end of the block.
 Then you can then move it to a more appropriate position with ``move_item()``.
-Alternatively, you can use function set_pairs() that takes a prefix and,
+Alternatively, you can use function ``set_pairs`` that takes a prefix and,
 when adding a new item, places it after the last item with the given prefix:
 
 .. doctest::
 
   >>> block.set_pairs('_cell.', {'length_a_esd': '?',
   ...                            'length_b_esd': '?',
-  ...                            'length_c_esd': '?'})
+  ...                            'length_c_esd': '?'}, raw=True)
 
 This is recommended when editing mmCIF files, because all name-value pairs
 in the same category must be consecutive (an unwritten rule of the PDB).
+The argument ``raw`` has the same meaning as in the function
+:ref:`set_mmcif_category <set_mmcif_category>`.
 
 If the value needs quoting, it must be passed quoted:
 
@@ -1358,6 +1360,8 @@ To disable this translation and get "raw" strings, add argument ``raw=True``.
   EPMR EPMR
   False .
   None ?
+
+.. _set_mmcif_category:
 
 ``set_mmcif_category()`` takes a category name and a dictionary (that
 maps tags to lists) and creates or replaces the corresponding category:
