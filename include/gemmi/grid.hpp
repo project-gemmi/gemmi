@@ -206,6 +206,11 @@ struct GridBase : GridMeta {
 
   std::vector<T> data;
 
+  void check_not_empty() const {
+    if (data.empty())
+      fail("grid is empty");
+  }
+
   void set_size_without_checking(int u, int v, int w) {
     nu = u, nv = v, nw = w;
     data.resize((size_t)u * v * w);
@@ -336,14 +341,9 @@ struct Grid : GridBase<T> {
     set_size_from_spacing(approx_spacing, denser);
   }
 
-  void check_not_empty() const {
-    if (data.empty())
-      fail("grid is empty");
-  }
-
   // Safe but slower.
   size_t index_s(int u, int v, int w) const {
-    check_not_empty();
+    this->check_not_empty();
     return this->index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));
   }
 
@@ -383,7 +383,7 @@ struct Grid : GridBase<T> {
 
   // https://en.wikipedia.org/wiki/Trilinear_interpolation
   T interpolate_value(double x, double y, double z) const {
-    check_not_empty();
+    this->check_not_empty();
     int u, v, w;
     double xd = grid_modulo(x, nu, &u);
     double yd = grid_modulo(y, nv, &v);
@@ -461,7 +461,7 @@ struct Grid : GridBase<T> {
   }
   void copy_4x4x4(double& x, double& y, double& z,
                   std::array<std::array<std::array<T,4>,4>,4>& copy) const {
-    check_not_empty();
+    this->check_not_empty();
     auto prepare_indices = [this](double& r, int nt, int (&indices)[4]) {
       int t;
       r = this->grid_modulo(r, nt, &t);
@@ -486,7 +486,7 @@ struct Grid : GridBase<T> {
   }
 
   void get_subarray(T* dest, std::array<int,3> start, std::array<int,3> shape) const {
-    check_not_empty();
+    this->check_not_empty();
     if (this->axis_order != AxisOrder::XYZ)
       fail("get_subarray() is for Grids in XYZ order");
     const int u_start0 = modulo(start[0], nu);
@@ -512,7 +512,7 @@ struct Grid : GridBase<T> {
   }
 
   void set_subarray(const T* src, std::array<int,3> start, std::array<int,3> shape) {
-    check_not_empty();
+    this->check_not_empty();
     if (this->axis_order != AxisOrder::XYZ)
       fail("set_subarray() is for Grids in XYZ order");
     const int u_start0 = modulo(start[0], nu);
