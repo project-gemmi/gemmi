@@ -861,6 +861,17 @@ To write a map that covers the same area as the original map, do:
     >>> m.set_extent(box)
     >>> m.write_ccp4_map('out.ccp4')
 
+If the map would be padded with zeros or NaNs we could determine the
+box that contains real data with ``get_nonzero_extent()``:
+
+.. doctest::
+
+    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
+    >>> m.setup(0., gemmi.MapSetup.NoSymmetry)
+    0.0
+    >>> m.grid.get_nonzero_extent()  #doctest: +ELLIPSIS
+    <gemmi.FractionalBox object at 0x...>
+
 
 Map from Grid
 -------------

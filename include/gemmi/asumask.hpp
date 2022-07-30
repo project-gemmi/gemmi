@@ -279,5 +279,78 @@ MaskedGrid<T> masked_asu(Grid<T>& grid) {
   return {get_asu_mask(grid), &grid};
 }
 
+
+// Calculating bounding box (brick) with the data (non-zero and non-NaN).
+
+namespace impl {
+// find the shortest span (possibly wrapped) that contains all true values
+inline std::pair<int, int> trim_false_values(const std::vector<std::uint8_t>& vec) {
+  const int n = (int) vec.size();
+  assert(n != 0);
+  std::pair<int, int> span{n, n};  // return value for all-true vector
+  int max_trim = 0;
+  // first calculate the wrapped span (initial + final non-zero values)
+  if (!vec[0] || !vec[n-1]) {
+    // determine trailing-false length and store it in span.first
+    while (span.first != 0 && !vec[span.first-1])
+      --span.first;
+    if (span.first == 0)  // all-false vector
+      return span;  // i.e. {0,n}
+    // determine leading-false length and store it in span.second
+    span.second = 0;
+    while (span.second != n && !vec[span.second])
+      ++span.second;
+    max_trim = span.second + (n - span.first);
+  }
+  for (int start = 0; ;) {
+    for (;;) {
+      if (start == n)
+        return span;
+      if (!vec[start])
+        break;
+      ++start;
+    }
+    int end = start + 1;
+    while (end != n && !vec[end])
+      ++end;
+    if (end - start > max_trim) {
+      max_trim = end - start;
+      span.first = start;
+      span.second = end;
+    }
+    start = end;
+  }
+  unreachable();
+}
+}  // namespace impl
+
+// Get the smallest box with non-zero (and non-NaN) values.
+template<typename T>
+Box<Fractional> get_nonzero_extent(const GridBase<T>& grid) {
+  grid.check_not_empty();
+  std::vector<std::uint8_t> nonzero[3];
+  nonzero[0].resize(grid.nu, 0);
+  nonzero[1].resize(grid.nv, 0);
+  nonzero[2].resize(grid.nw, 0);
+  size_t idx = 0;
+  for (int w = 0; w != grid.nw; ++w)
+    for (int v = 0; v != grid.nv; ++v)
+      for (int u = 0; u != grid.nu; ++u, ++idx) {
+        T val = grid.data[idx];
+        std::uint8_t is_nonzero = !(std::isnan(val) || val == 0);
+        nonzero[0][u] |= is_nonzero;
+        nonzero[1][v] |= is_nonzero;
+        nonzero[2][w] |= is_nonzero;
+      }
+  Box<Fractional> box;
+  for (int i = 0; i < 3; ++i) {
+    auto span = impl::trim_false_values(nonzero[i]);
+    double inv_n = 1.0 / nonzero[i].size();
+    box.minimum.at(i) = (span.second - 0.5) * inv_n - int(span.second >= span.first);
+    box.maximum.at(i) = (span.first - 0.5) * inv_n;
+  }
+  return box;
+}
+
 } // namespace gemmi
 #endif

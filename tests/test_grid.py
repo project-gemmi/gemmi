@@ -123,8 +123,7 @@ class TestCcp4Map(unittest.TestCase):
         self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.Unknown)
         mcut.setup(float('nan'), gemmi.MapSetup.NoSymmetry)
         self.assertTrue(mcut.full_cell())
-        #self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.XYZ)
-        mcut.setup(float('nan'), gemmi.MapSetup.NoSymmetry)
+        self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.Unknown)
         assert_numpy_equal(self, mcut.grid.array, expanded_data)
 
         mcut = gemmi.read_ccp4_map(full_path(yzx_path), setup=True)
@@ -154,6 +153,21 @@ class TestCcp4Map(unittest.TestCase):
         sub2 = grid.get_subarray([4,-3,20], [5,10,4])
         assert_numpy_equal(self, -sub, sub2)
 
+    @unittest.skipIf(numpy is None, "NumPy not installed.")
+    def test_setup_nosymmetry(self):
+        m = gemmi.read_ccp4_map(full_path('5i55_tiny.ccp4'))
+        orig_point_count = m.grid.point_count
+        m.setup(0, gemmi.MapSetup.Full)
+        full_nonzero = numpy.count_nonzero(m.grid.array)
+        self.assertTrue(full_nonzero > orig_point_count)
+        m = gemmi.read_ccp4_map(full_path('5i55_tiny.ccp4'))
+        m.setup(0, gemmi.MapSetup.NoSymmetry)
+        nosym_nonzero = numpy.count_nonzero(m.grid.array)
+        self.assertEqual(full_nonzero, nosym_nonzero * 2)
+        nonzero_ext = m.grid.get_nonzero_extent()
+        span = nonzero_ext.maximum - nonzero_ext.minimum
+        volume = span[0] * span[1] * span[2]
+        self.assertAlmostEqual(orig_point_count / m.grid.point_count, volume)
 
 if __name__ == '__main__':
     unittest.main()

@@ -209,6 +209,7 @@ void add_grid(py::module& m) {
 
   add_grid_base<float>(m, "FloatGridBase")
     .def("calculate_correlation", &calculate_correlation<float>)
+    .def("get_nonzero_extent", &get_nonzero_extent<float>)
     ;
   auto grid_float = add_grid_common<float>(m, "FloatGrid");
   add_grid_interpolation<float>(grid_float);
