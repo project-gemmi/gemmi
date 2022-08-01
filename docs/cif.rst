@@ -206,13 +206,12 @@ and run a compiler:
 .. code-block:: none
 
     git clone https://github.com/project-gemmi/gemmi.git
-    c++ -std=c++11 -Igemmi/include -O2 my_program.cpp
+    c++ -Igemmi/include -O2 my_program.cpp
 
 Python
 ------
 
-Python module for Python 2.7 and 3.x
-can be installed with pip, as described in the
+Python module can be installed with pip, as described in the
 :ref:`Installation <install_py>` section.
 After installation ``pydoc gemmi.cif`` should list all classes and methods.
 
@@ -1551,7 +1550,7 @@ All these directory walking functions are powered by the
 Examples
 ========
 
-The examples here use C++11 or Python 2.7/3.x.
+The examples here use C++11 or Python.
 Full working code code can be found in the examples__ directory.
 
 If you have the Python ``gemmi`` module installed you should also have

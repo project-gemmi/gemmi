@@ -12,7 +12,7 @@ the ``include`` directory is in your include path
 when compiling your program. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
-    c++ -std=c++11 -Igemmi/include -O2 my_program.cpp
+    c++ -Igemmi/include -O2 my_program.cpp
 
 If you want Gemmi to uncompress gzipped files on the fly
 (i.e. if you ``#include <gemmi/gz.hpp>``)
@@ -23,7 +23,7 @@ it is assumed to be in ASCII or UTF-8.
 
 .. _install_py:
 
-Python 2.7/3.x module
+Python module
 ---------------------
 
 From PyPI
@@ -33,10 +33,11 @@ To install the gemmi module do::
 
     pip install gemmi
 
-We have binary wheels for several Python versions, so the command
-usually downloads binaries. If a matching wheel is not available,
+We have binary wheels for several Python versions (for all supported CPython
+versions and one PyPy version), so the command usually downloads binaries.
+If a matching wheel is not available,
 the module is compiled from source -- it takes several minutes
-and requires C++ compiler (GCC 4.8+, Clang 3.4+, MSVC 2015+, ICC 17+).
+and requires a C++ compiler.
 
 Other binaries
 ~~~~~~~~~~~~~~
@@ -65,6 +66,9 @@ or clone the `project <https://github.com/project-gemmi/gemmi/>`_
 
     pip install .
 
+On Windows Python should automatically find an appropriate compiler (MSVC).
+If the compiler is not installed, pip shows a message with a download link.
+
 If gemmi is already installed, uninstall the old version first
 (``pip uninstall``) or add option ``--upgrade``.
 
@@ -74,21 +78,6 @@ Clone the project and do::
 
     cmake -D USE_PYTHON=1 .
     make -j4 py
-
-----
-
-On Windows Python 3.5+ should automatically find an appropriate compiler
-(MSVC 2015+) . If the compiler is not installed, pip shows a message
-with a download link.
-For Python 2.7 pip prefers MSVC 2008, which is too old to compile gemmi.
-You may still use MSVC 2015, 2017 or 2019, but before invoking pip you need to
-set the compiler environment with one of these commands::
-
-    "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x64
-    "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat"
-
-If you'd like to use PyPy instead of CPython -- PyPy2.7 >= 5.7 is supported
-(although only occasionally tested -- open an issue if it doesn't work).
 
 Fortran and C bindings
 ----------------------
