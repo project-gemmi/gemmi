@@ -18,14 +18,9 @@
         USE_PIP: 1
       - arch: x86
         CMAKE_GENERATOR: Visual Studio 15 2017
-        CMAKE_CONFIG: Release
+        CMAKE_CONFIG: MinSizeRel
         CMAKE_ARGS: -DCMAKE_CXX_STANDARD=14 -DUSE_PYTHON=1
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-        PY_PYTHON: 2.7-32
-      - arch: x64
-        CMAKE_GENERATOR: Visual Studio 14 2015 Win64
-        CMAKE_CONFIG: MinSizeRel
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
         PY_PYTHON: 3.6
         USE_SETUP_PY: 1
       - arch: x64
