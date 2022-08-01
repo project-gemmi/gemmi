@@ -284,7 +284,7 @@ MaskedGrid<T> masked_asu(Grid<T>& grid) {
 
 namespace impl {
 // find the shortest span (possibly wrapped) that contains all true values
-inline std::pair<int, int> trim_false_values(const std::vector<std::uint8_t>& vec) {
+inline std::pair<int, int> trim_false_values(const std::vector<bool>& vec) {
   const int n = (int) vec.size();
   assert(n != 0);
   std::pair<int, int> span{n, n};  // return value for all-true vector
@@ -328,19 +328,20 @@ inline std::pair<int, int> trim_false_values(const std::vector<std::uint8_t>& ve
 template<typename T>
 Box<Fractional> get_nonzero_extent(const GridBase<T>& grid) {
   grid.check_not_empty();
-  std::vector<std::uint8_t> nonzero[3];
-  nonzero[0].resize(grid.nu, 0);
-  nonzero[1].resize(grid.nv, 0);
-  nonzero[2].resize(grid.nw, 0);
+  std::vector<bool> nonzero[3];
+  nonzero[0].resize(grid.nu, false);
+  nonzero[1].resize(grid.nv, false);
+  nonzero[2].resize(grid.nw, false);
   size_t idx = 0;
   for (int w = 0; w != grid.nw; ++w)
     for (int v = 0; v != grid.nv; ++v)
       for (int u = 0; u != grid.nu; ++u, ++idx) {
         T val = grid.data[idx];
-        std::uint8_t is_nonzero = !(std::isnan(val) || val == 0);
-        nonzero[0][u] |= is_nonzero;
-        nonzero[1][v] |= is_nonzero;
-        nonzero[2][w] |= is_nonzero;
+        if (!(std::isnan(val) || val == 0)) {
+          nonzero[0][u] = true;
+          nonzero[1][v] = true;
+          nonzero[2][w] = true;
+        }
       }
   Box<Fractional> box;
   for (int i = 0; i < 3; ++i) {
