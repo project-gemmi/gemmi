@@ -7,7 +7,7 @@
 #define GEMMI_ATOF_HPP_
 
 #include "atox.hpp"   // for is_space
-#include "third_party/fast_float/fast_float.h"
+#include "third_party/fast_float.h"
 
 namespace gemmi {
 

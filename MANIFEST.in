@@ -1,10 +1,10 @@
 include python/*.h*
 recursive-include include/gemmi *.hpp
+include include/gemmi/third_party/fast_float.h
 include include/gemmi/third_party/pocketfft_hdronly.h
 include include/gemmi/third_party/sajson.h
 include include/gemmi/third_party/stb_sprintf.h
 graft   include/gemmi/third_party/tao
-graft   include/gemmi/third_party/fast_float
 include include/gemmi/third_party/tinydir.h
 include third_party/zlib/*
 include LICENSE.txt README.md

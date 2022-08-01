@@ -11,7 +11,7 @@
 
 #include <cmath>   // for NAN
 #include <string>
-#include "third_party/fast_float/fast_float.h"
+#include "third_party/fast_float.h"
 
 namespace gemmi {
 namespace cif {
