@@ -19,9 +19,9 @@
       - arch: x86
         CMAKE_GENERATOR: Visual Studio 15 2017
         CMAKE_CONFIG: MinSizeRel
+        CMAKE_ARGS: -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE="C:\\Python36\\python.exe"
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-        PY_PYTHON: 3.6
-        USE_SETUP_PY: 1
+        PY_PYTHON: 3.6-32
       - arch: x64
         CMAKE_GENERATOR: MSYS Makefiles
         CMAKE_ARGS: -DCMAKE_CXX_STANDARD=14
@@ -55,7 +55,7 @@
   - if defined USE_PIP (py -m pip install pandas)
   - set PYTHONPATH=.
   - py -m unittest discover -v -s tests/
-  - if "%PY_PYTHON%"=="2.7-32" (appveyor exit)
+  - if "%PY_PYTHON%"=="3.6-32" (appveyor exit)
   - cd docs
   - set PYTHONPATH=..
   - py -m pip install --no-warn-script-location sphinx
