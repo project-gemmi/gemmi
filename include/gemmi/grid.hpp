@@ -677,18 +677,25 @@ struct Grid : GridBase<T> {
     symmetrize([](T a, T b) { return a + b; });
   }
 
-  Grid<T> upsample_nearest(int u, int v, int w) {
-    Grid<T> ng;
-    ng.copy_metadata_from(*this);
-    ng.set_size_without_checking(u, v, w);
-    for (int i = 0; i < u; ++i)
-      for (int j = 0; j < v; ++j)
-        for (int k = 0; k < w; ++k) {
-          const Fractional nf = ng.get_fractional(i, j, k);
-          const Point p = get_nearest_point(nf);
-          ng.data[ng.index_q(i, j, k)] = *p.value;
+  T interpolate(const Fractional& f, int order) const {
+    switch (order) {
+      case 1: return *const_cast<Grid<T>*>(this)->get_nearest_point(f).value;
+      case 2: return interpolate_value(f);
+      case 3: return (T) tricubic_interpolation(f);
+    }
+    throw std::invalid_argument("interpolation \"order\" must 1, 2 or 3");
+  }
+
+  // order 1=nearest, 2=linear, 3=cubic interpolation
+  void resample_to(Grid<T>& dest, int order) const {
+    dest.check_not_empty();
+    int idx = 0;
+    for (int w = 0; w < dest.nw; ++w)
+      for (int v = 0; v < dest.nv; ++v)
+        for (int u = 0; u < dest.nu; ++u, ++idx) {
+          const Fractional f = dest.get_fractional(u, v, w);
+          dest.data[idx] = interpolate(f, order);
         }
-    return ng;
   }
 };
 

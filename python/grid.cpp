@@ -116,7 +116,7 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
     .def("symmetrize_sum", &Gr::symmetrize_sum)
-    .def("upsample_nearest", &Gr::upsample_nearest, py::return_value_policy::move)
+    .def("resample_to", &Gr::resample_to, py::arg("dest"), py::arg("order"))
     .def("masked_asu", &masked_asu<T>, py::keep_alive<0, 1>())
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          py::arg("model"), py::arg("radius"), py::arg("value"))
@@ -161,19 +161,16 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
     .def("interpolate_value",
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
     .def("interpolate_values",
-         [](const Gr& self, py::array_t<T> arr, const Transform& tr, bool cubic) {
+         [](const Gr& self, py::array_t<T> arr, const Transform& tr, int order) {
         auto r = arr.template mutable_unchecked<3>();
         for (int i = 0; i < r.shape(0); ++i)
           for (int j = 0; j < r.shape(1); ++j)
             for (int k = 0; k < r.shape(2); ++k) {
               Position pos(tr.apply(Vec3(i, j, k)));
               Fractional fpos = self.unit_cell.fractionalize(pos);
-              if (cubic)
-                r(i, j, k) = (T) self.tricubic_interpolation(fpos);
-              else
-                r(i, j, k) = self.interpolate_value(fpos);
+              r(i, j, k) = self.interpolate(fpos, order);
             }
-    }, py::arg().noconvert(), py::arg(), py::arg("cubic")=false)
+    }, py::arg().noconvert(), py::arg(), py::arg("order")=2)
     .def("tricubic_interpolation",
          (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
     .def("tricubic_interpolation",
