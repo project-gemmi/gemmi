@@ -156,7 +156,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Invert])
       masker.invert(mask.grid);
 
-    mask.update_ccp4_header(0, true);
+    mask.update_ccp4_header(0);
     mask.write_ccp4_map(output);
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

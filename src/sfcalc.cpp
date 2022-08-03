@@ -235,7 +235,7 @@ void process_with_fft(const gemmi::Structure& st,
   if (map_file) {
     gemmi::Ccp4<Real> ccp4;
     ccp4.grid = dencalc.grid;
-    ccp4.update_ccp4_header(2, true);
+    ccp4.update_ccp4_header(2);
     ccp4.write_ccp4_map(map_file);
   }
 

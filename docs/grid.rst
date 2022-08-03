@@ -809,11 +809,7 @@ call ``write_ccp4_map()``.
 
 ::
 
-    // the file header needs to be prepared/updated with an explicit call
-    int mode = 2; // ccp4 file mode: 2 for floating-point data, 0 for masks
-    bool update_stats = true; // update min/max/mean/rms values in the header
-    map.update_ccp4_header(mode, update_stats);
-
+    map.update_ccp4_header();
     map.write_ccp4_map(filename);
 
 **Python**

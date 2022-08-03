@@ -62,7 +62,7 @@ void transform_sf_to_map(OptParser& p) {
                                      p.options[Verbose] ? stderr : nullptr);
   if (p.options[Verbose])
     fprintf(stderr, "Writing %s ...\n", map_path);
-  ccp4.update_ccp4_header(2, true);
+  ccp4.update_ccp4_header(2);
   if (p.options[Normalize]) {
     double mult = 1.0 / ccp4.hstats.rms;
     for (float& x : ccp4.grid.data)

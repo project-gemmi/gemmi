@@ -1630,7 +1630,7 @@ and it can be stored in a CCP4 map format:
 
   >>> ccp4 = gemmi.Ccp4Map()
   >>> ccp4.grid = rblock.transform_f_phi_to_map('pdbx_FWT', 'pdbx_PHWT', sample_rate=2.6)
-  >>> ccp4.update_ccp4_header(2, True)
+  >>> ccp4.update_ccp4_header()
   >>> ccp4.write_ccp4_map('5wkd.ccp4')
 
 To transform the electron density back to reciprocal space coefficients
