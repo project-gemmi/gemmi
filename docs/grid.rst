@@ -805,14 +805,10 @@ Writing
 To write a map to a file, update the header if necessary and
 call ``write_ccp4_map()``.
 
-**C++**
-
 ::
 
     map.update_ccp4_header();
     map.write_ccp4_map(filename);
-
-**Python**
 
 .. doctest::
 
@@ -826,13 +822,9 @@ To cover only a given box, call ``set_extent()`` before writing the map.
 As an example, let us cover a molecule with 5Å margin
 (equivalent of running CCP4 program MAPMASK with XYZIN and BORDER 5).
 
-**C++**
-
 ::
 
     map.set_extent(calculate_fractional_box(structure, 5));
-
-**Python**
 
 .. doctest::
 
@@ -844,8 +836,10 @@ As an example, let us cover a molecule with 5Å margin
 After calling ``set_extent()`` we have the same situation as before calling
 ``setup()`` -- some grid functions may not work correctly.
 
-The current extent of the map can be read using function ``get_extent()``.
-To write a map that covers the same area as the original map, do:
+Here we show three other scenarios of setting the map extent.
+
+You may want to preserve the original map extent, which can be
+read by calling ``get_extent()`` before the setup:
 
 .. doctest::
 
@@ -857,8 +851,20 @@ To write a map that covers the same area as the original map, do:
     >>> m.set_extent(box)
     >>> m.write_ccp4_map('out.ccp4')
 
-If the map would be padded with zeros or NaNs we could determine the
-box that contains real data with ``get_nonzero_extent()``:
+Alternatively, you may want to write only an asymmetric unit
+(actually, :ref:`asu brick <asu_brick>`) of the map,
+which is enough to calculate the density everywhere.
+For this, use the brick extent:
+
+.. doctest::
+
+  >>> brick = gemmi.find_asu_brick(m.grid.spacegroup)
+  >>> brick.str()
+  '0<=x<=1/2; 0<=y<1; 0<=z<1'
+  >>> box = brick.get_extent()
+
+At last, if the map would be padded with zeros or NaNs you could determine
+the box that contains real data with ``get_nonzero_extent()``:
 
 .. doctest::
 

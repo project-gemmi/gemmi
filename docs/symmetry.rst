@@ -595,6 +595,8 @@ that cut out a convex volume. Usually, crystallographic computations
 do not require ASU to be convex or even contiguous, so gemmi implements
 a more simplistic approach.
 
+.. _asu_brick:
+
 Similarly to other software packages, Gemmi uses ASU bricks --
 parallelepipeds (cuboids in fractional coordinates) that contains an ASU.
 A brick may contain more than one ASU if a brick-shaped ASU is not possible.

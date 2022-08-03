@@ -10,7 +10,7 @@
 namespace gemmi {
 
 struct AsuBrick {
-  // The brick is 0<=x<=size[0]/24, 0<=y<= size[1]/24, 0<=z<=size[2]/24
+  // The brick is 0<=x<=size[0]/24, 0<=y<=size[1]/24, 0<=z<=size[2]/24
   static constexpr int denom = 24;
   std::array<int, 3> size;
   std::array<bool, 3> incl;
