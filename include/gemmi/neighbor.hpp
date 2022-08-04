@@ -397,7 +397,7 @@ inline void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
             cra.atom->name.clear(); // this is just in case
           }
           size_t n = 1 + equiv.size();
-          atom.pos = pos_sum / n;
+          atom.pos = pos_sum / double(n);
           atom.occ = std::min(1.f, n * atom.occ);
         }
       }

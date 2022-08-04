@@ -374,7 +374,7 @@ inline void apply_hd_mixture(Residue* resi, double hd_mixture) {
   }
   int alt_offset = resi->atoms.back().altloc;
   if (alt_offset) {
-    alt_offset =- 'A';
+    alt_offset -= 'A';
     if (alt_offset < 0 || alt_offset >= 3)  // we don't expect 4+ altlocs
       return;
   }

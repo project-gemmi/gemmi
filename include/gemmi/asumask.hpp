@@ -156,7 +156,7 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
     for (int w = 0; w < w_lim; ++w)
       for (int v = 0; v < v_lim; ++v)
         for (int u = 0; u < u_lim; ++u) {
-          int idx = grid.index_q(u, v, w);
+          size_t idx = grid.index_q(u, v, w);
           if (grid.data[idx] == 0) {
             grid.data[idx] = 1;
             for (const GridOp& op : ops) {
