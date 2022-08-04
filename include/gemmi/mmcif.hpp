@@ -367,6 +367,28 @@ DiffractionInfo* find_diffrn(Metadata& meta, const std::string& diffrn_id) {
   return nullptr;
 }
 
+inline void apply_hd_mixture(Residue* resi, double hd_mixture) {
+  if (hd_mixture <= 0 || hd_mixture >= 1) {
+    resi->atoms.back().element = hd_mixture <= 0 ? El::D : El::H;
+    return;
+  }
+  int alt_offset = resi->atoms.back().altloc;
+  if (alt_offset) {
+    alt_offset =- 'A';
+    if (alt_offset < 0 || alt_offset >= 3)  // we don't expect 4+ altlocs
+      return;
+  }
+  resi->atoms.push_back(resi->atoms.back());
+  Atom& atom_h = *(resi->atoms.end() - 2);
+  Atom& atom_d = *(resi->atoms.end() - 1);
+  atom_h.element = El::H;
+  atom_d.element = El::D;
+  atom_h.occ = float(atom_h.occ * hd_mixture);
+  atom_d.occ = float(atom_d.occ * (1 - hd_mixture));
+  atom_h.altloc = 'A' + alt_offset;
+  atom_d.altloc = 'D' + alt_offset;
+}
+
 inline Structure make_structure_from_block(const cif::Block& block_) {
   // find() and Table don't have const variants, but we don't change anything.
   cif::Block& block = const_cast<cif::Block&>(block_);
@@ -565,7 +587,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
          kLabelAsymId, kLabelEntityId, kLabelSeqId, kInsCode,
          kX, kY, kZ, kOcc, kBiso, kCharge,
          kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum,
-         kCalcFlag, kTlsGroupId };
+         kCalcFlag, kTlsGroupId, kHdMixture };
   cif::Table atom_table = block.find("_atom_site.",
                                      {"id",
                                       "?group_PDB",
@@ -590,6 +612,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "?pdbx_PDB_model_num",
                                       "?calc_flag",
                                       "?pdbx_tls_group_id",
+                                      "?ccp4_hd_mixture",
                                      });
   if (atom_table.length() != 0) {
     const int kAsymId = atom_table.first_of(kAuthAsymId, kLabelAsymId);
@@ -677,6 +700,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
           atom.aniso = ani->second;
       }
       resi->atoms.emplace_back(atom);
+      if (row.has(kHdMixture) && atom.element.elem == El::H)
+        apply_hd_mixture(resi, cif::as_number(row[kHdMixture]));
     }
   }
 
