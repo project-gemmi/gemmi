@@ -416,13 +416,14 @@ void interpolate_grid_of_aligned_model(Grid<T>& dest, const Grid<T>& src,
     radius = ns.radius_specified;
   else if (radius > ns.radius_specified)
     fail("set_grid_values_interpolated_from(): radius exceeds NeighborSearch radius");
+  const UnitCell& gcell = dest.unit_cell;
   // mask model or its part that was used for NeighborSearch
   std::vector<bool> mask(dest.data.size(), false);
   for (const std::vector<NeighborSearch::Mark>& marks : ns.grid.data)
     for (const NeighborSearch::Mark& mark : marks)
       if (mark.image_idx == 0)  // leave out symmetry mates
         dest.template use_points_around<true>(
-            ns.grid.unit_cell.fractionalize(mark.pos()),
+            gcell.fractionalize(mark.pos()),
             radius,
             [&](T& point, double) { mask[&point - dest.data.data()] = true; });
   size_t idx = 0;
@@ -431,13 +432,15 @@ void interpolate_grid_of_aligned_model(Grid<T>& dest, const Grid<T>& src,
       for (int u = 0; u != dest.nu; ++u, ++idx) {
         if (!mask[idx])
           continue;
-        Position pos2 = dest.get_position(u, v, w);
+        Position dest_pos = dest.get_position(u, v, w);
         // in contacts use only nodes that are nearer to the original molecule
-        NeighborSearch::Mark* mark = ns.find_nearest_atom(pos2);
+        NeighborSearch::Mark* mark = ns.find_nearest_atom(dest_pos);
         if (mark && mark->image_idx == 0) {
-          Position delta = mark->to_cra(*ns.model).atom->pos - mark->pos();
-          Position pos1 = Position(tr.apply(pos2 + delta));
-          dest.data[idx] = src.interpolate_value(pos1);
+          const Atom* atom = mark->to_cra(*ns.model).atom;
+          Fractional fdelta = gcell.fractionalize_difference(atom->pos - dest_pos);
+          Position delta = gcell.orthogonalize_difference(fdelta.round());
+          Position src_pos = Position(tr.apply(dest_pos + delta));
+          dest.data[idx] = src.interpolate_value(src_pos);
         }
       }
 }
