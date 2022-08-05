@@ -187,6 +187,7 @@ void add_unitcell(py::module& m) {
     .def_readonly("vec", &Transform::vec)
     .def("inverse", &Transform::inverse)
     .def("apply", &Transform::apply)
+    .def("combine", &Transform::combine)
     .def("is_identity", &Transform::is_identity)
     .def("approx", &Transform::approx, py::arg("other"), py::arg("epsilon"));
 
