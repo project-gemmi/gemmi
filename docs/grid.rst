@@ -632,12 +632,12 @@ The file can contain only a part of the asymmetric unit,
 or more than an asymmetric unit (i.e. redundant data).
 There are two typical approaches to generate a crystallographic map:
 
-* old-school way: covering a molecule with some margin around it;
-  CCP4 utilities ``fft`` and ``mapmask`` make such a map,
-* or covering the asymmetric unit (asu); the program that reads
+* Covering a molecule with some margin around it.
+  This is necessary for programs such as PyMOL that don't know about symmetry.
+  CCP4 utilities ``fft`` + ``mapmask`` can make such a map.
+* Covering the asymmetric unit (asu). The program that reads
   the map is supposed to expand the symmetry. This approach is used by
-  the CCP4 clipper library and by programs that use this library,
-  such as ``cfft`` and Coot.
+  the CCP4 clipper library and by programs such as Coot.
 
 The latter approach generates map for exactly one asu, if possible.
 It is not possible if the shape of the asu in fractional coordinates

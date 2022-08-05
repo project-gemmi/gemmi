@@ -744,7 +744,7 @@ use function ``set_pair``:
   >>> block.set_pair('_year', '2030')
 
 If a new item is added, it is placed at the end of the block.
-Then you can then move it to a more appropriate position with ``move_item()``.
+Then you can move it to a more appropriate position with ``move_item()``.
 Alternatively, you can use function ``set_pairs`` that takes a prefix and,
 when adding a new item, places it after the last item with the given prefix:
 
@@ -754,6 +754,7 @@ when adding a new item, places it after the last item with the given prefix:
   ...                            'length_b_esd': '?',
   ...                            'length_c_esd': '?'}, raw=True)
 
+(In C++ the equivalent is ``cif::ItemSpan(block, "_cell.").set_pair(…)``).
 This is recommended when editing mmCIF files, because all name-value pairs
 in the same category must be consecutive (an unwritten rule of the PDB).
 The argument ``raw`` has the same meaning as in the function
