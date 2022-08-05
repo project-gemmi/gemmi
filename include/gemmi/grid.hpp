@@ -211,9 +211,9 @@ struct GridBase : GridMeta {
       fail("grid is empty");
   }
 
-  void set_size_without_checking(int u, int v, int w) {
-    nu = u, nv = v, nw = w;
-    data.resize((size_t)u * v * w);
+  void set_size_without_checking(int nu_, int nv_, int nw_) {
+    nu = nu_, nv = nv_, nw = nw_;
+    data.resize((size_t)nu_ * nv_ * nw_);
   }
 
   T get_value_q(int u, int v, int w) const { return data[index_q(u, v, w)]; }
@@ -302,15 +302,15 @@ struct Grid : GridBase<T> {
     return std::min(std::min(spacing[0], spacing[1]), spacing[2]);
   }
 
-  void set_size_without_checking(int u, int v, int w) {
-    GridBase<T>::set_size_without_checking(u, v, w);
+  void set_size_without_checking(int nu_, int nv_, int nw_) {
+    GridBase<T>::set_size_without_checking(nu_, nv_, nw_);
     calculate_spacing();
     this->axis_order = AxisOrder::XYZ;
   }
 
-  void set_size(int u, int v, int w) {
-    check_grid_factors(spacegroup, {{u, v, w}});
-    set_size_without_checking(u, v, w);
+  void set_size(int nu_, int nv_, int nw_) {
+    check_grid_factors(spacegroup, {{nu_, nv_, nw_}});
+    set_size_without_checking(nu_, nv_, nw_);
   }
 
   // The resulting spacing can be smaller (if denser=true) or greater than arg.
