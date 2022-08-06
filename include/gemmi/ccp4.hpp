@@ -12,7 +12,7 @@
 #include <cstring>   // for memcpy
 #include <array>
 #include <string>
-#include <typeinfo>  // for typeid
+#include <type_traits>  // for is_same
 #include <vector>
 #include "symmetry.hpp"
 #include "fail.hpp"      // for fail
@@ -203,13 +203,13 @@ struct Ccp4 : public Ccp4Base {
   }
 
   static int mode_for_data() {
-    if (typeid(T) == typeid(std::int8_t))
+    if (std::is_same<T, std::int8_t>::value)
       return 0;
-    if (typeid(T) == typeid(std::int16_t))
+    if (std::is_same<T, std::int16_t>::value)
       return 1;
-    if (typeid(T) == typeid(float))
+    if (std::is_same<T, float>::value)
       return 2;
-    if (typeid(T) == typeid(std::uint16_t))
+    if (std::is_same<T, std::uint16_t>::value)
       return 6;
     return -1;
   }
@@ -310,7 +310,7 @@ std::int8_t translate_map_point<float,std::int8_t>(float f) { return f != 0; }
 
 template<typename Stream, typename TFile, typename TMem>
 void read_data(Stream& f, std::vector<TMem>& content) {
-  if (typeid(TFile) == typeid(TMem)) {
+  if (std::is_same<TFile, TMem>::value) {
     size_t len = content.size();
     if (!f.read(content.data(), sizeof(TMem) * len))
       fail("Failed to read all the data from the map file.");
@@ -329,7 +329,7 @@ void read_data(Stream& f, std::vector<TMem>& content) {
 
 template<typename TFile, typename TMem>
 void write_data(const std::vector<TMem>& content, FILE* f) {
-  if (typeid(TMem) == typeid(TFile)) {
+  if (std::is_same<TMem, TFile>::value) {
     size_t len = content.size();
     if (std::fwrite(content.data(), sizeof(TFile), len, f) != len)
       sys_fail("Failed to write data to the map file");
