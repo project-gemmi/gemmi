@@ -119,7 +119,7 @@ struct FTransform : Transform {
   }
 };
 
-// Non-crystallographic symmetry operation (such as in the MTRIXn record)
+/// Non-crystallographic symmetry operation (such as in the MTRIXn record)
 struct NcsOp {
   std::string id;
   bool given;
@@ -149,8 +149,8 @@ struct UnitCell {
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
   Transform orth;
   Transform frac;
-  // volume and reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
   double volume = 1.0;
+  /// reciprocal parameters a*, b*, c*, alpha*, beta*, gamma*
   double ar = 1.0, br = 1.0, cr = 1.0;
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
   bool explicit_matrices = false;
@@ -235,8 +235,8 @@ struct UnitCell {
 
   double cos_alpha() const { return alpha == 90. ? 0. : std::cos(rad(alpha)); }
 
-  // B matrix following convention from Busing & Levy (1967), not from cctbx.
-  // Cf. https://dials.github.io/documentation/conventions.html
+  /// B matrix following convention from Busing & Levy (1967), not from cctbx.
+  /// Cf. https://dials.github.io/documentation/conventions.html
   Mat33 calculate_matrix_B() const {
     double sin_gammar = std::sqrt(1 - cos_gammar * cos_gammar);
     double sin_betar = std::sqrt(1 - cos_betar * cos_betar);
@@ -245,10 +245,10 @@ struct UnitCell {
                  0., 0., 1.0 / c);
   }
 
-  // based on Fischer & Tillmanns (1988). Acta Cryst. C44, 775-776.
-  // "The equivalent isotropic displacement factor."
-  // The argument is a non-orthogonalized tensor U,
-  // i.e. the one from SmallStructure::Site, but not from Atom.
+  /// The equivalent isotropic displacement factor.
+  /// Based on Fischer & Tillmanns (1988). Acta Cryst. C44, 775-776.
+  /// The argument is a non-orthogonalized tensor U,
+  /// i.e. the one from SmallStructure::Site, but not from Atom.
   double calculate_u_eq(const SMat33<double>& ani) const {
     double aar = a * ar;
     double bbr = b * br;
@@ -375,13 +375,13 @@ struct UnitCell {
     return Fractional(frac.apply(o));
   }
 
-  // orthogonalize_difference(a-b) == orthogonalize(a) - orthogonalize(b)
+  /// orthogonalize_difference(a-b) == orthogonalize(a) - orthogonalize(b)
   // The shift (fract.vec) can be non-zero in non-standard settings,
   // just do not apply it here.
   Position orthogonalize_difference(const Fractional& delta) const {
     return Position(orth.mat.multiply(delta));
   }
-  // similarly, fractionalize_difference
+  /// the inverse of orthogonalize_difference
   Fractional fractionalize_difference(const Position& delta) const {
     return Fractional(frac.mat.multiply(delta));
   }
@@ -475,8 +475,8 @@ struct UnitCell {
     return orthogonalize_in_pbc(ref, fpos);
   }
 
-  // return number of nearby symmetry mates (0 = none, 3 = 4-fold axis, etc)
-  // precondition: is_crystal()
+  /// Counts nearby symmetry mates (0 = none, 3 = 4-fold axis, etc).
+  /// \pre is_crystal()
   int is_special_position(const Fractional& fpos, double max_dist) const {
     const double max_dist_sq = max_dist * max_dist;
     int n = 0;
@@ -491,8 +491,8 @@ struct UnitCell {
     return is_special_position(fractionalize(pos), max_dist);
   }
 
-  // Calculate 1/d^2 for specified hkl reflection.
-  // 1/d^2 = (2*sin(theta)/lambda)^2
+  /// Calculate 1/d^2 for specified hkl reflection.
+  /// 1/d^2 = (2*sin(theta)/lambda)^2
   // The indices are integers, but they may be stored as floating-point
   // numbers (MTZ format) so we use double to avoid conversions.
   double calculate_1_d2_double(double h, double k, double l) const {
@@ -507,18 +507,18 @@ struct UnitCell {
     return calculate_1_d2_double(hkl[0], hkl[1], hkl[2]);
   }
 
-  // Calculate d-spacing.
-  // d = lambda/(2*sin(theta))
+  /// Calculate d-spacing.
+  /// d = lambda/(2*sin(theta))
   double calculate_d(const Miller& hkl) const {
     return 1.0 / std::sqrt(calculate_1_d2(hkl));
   }
 
-  // Calculate (sin(theta)/lambda)^2 = d*^2/4
+  /// Calculate (sin(theta)/lambda)^2 = d*^2/4
   double calculate_stol_sq(const Miller& hkl) const {
     return 0.25 * calculate_1_d2(hkl);
   }
 
-  // https://dictionary.iucr.org/Metric_tensor
+  /// https://dictionary.iucr.org/Metric_tensor
   SMat33<double> metric_tensor() const {
     // the order in SMat33 is ... m12 m13 m23 -> a.a b.b c.c a.b a.c b.c
     return {a*a, b*b, c*c, a*orth.mat[0][1], a*orth.mat[0][2], b*c*cos_alpha()};
@@ -528,6 +528,7 @@ struct UnitCell {
     return {ar*ar, br*br, cr*cr, ar*br*cos_gammar, ar*cr*cos_betar, br*cr*cos_alphar};
   }
 
+  /// Returns reciprocal unit cell.
   UnitCell reciprocal() const {
     auto acosd = [](double x) { return deg(std::acos(x)); };
     return UnitCell(ar, br, cr,
