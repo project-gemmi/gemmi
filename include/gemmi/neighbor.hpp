@@ -425,7 +425,7 @@ void interpolate_grid_of_aligned_model(Grid<T>& dest, const Grid<T>& src,
         dest.template use_points_around<true>(
             gcell.fractionalize(mark.pos()),
             radius,
-            [&](T& point, double) { mask[&point - dest.data.data()] = true; });
+            [&](T& ref, double) { mask[&ref - dest.data.data()] = true; });
   size_t idx = 0;
   for (int w = 0; w != dest.nw; ++w)
     for (int v = 0; v != dest.nv; ++v)

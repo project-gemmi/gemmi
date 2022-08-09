@@ -39,7 +39,7 @@ struct ComplexCorrelation {
 };
 
 
-// pre: both are sorted
+/// \pre a and b are sorted
 template<typename Func, typename T>
 void for_matching_reflections(const std::vector<T>& a,
                               const std::vector<T>& b,
@@ -59,7 +59,7 @@ void for_matching_reflections(const std::vector<T>& a,
   }
 }
 
-// pre: both are sorted
+/// \pre a and b are sorted
 template<typename T>
 Correlation calculate_hkl_value_correlation(const std::vector<T>& a,
                                             const std::vector<T>& b) {
@@ -70,7 +70,7 @@ Correlation calculate_hkl_value_correlation(const std::vector<T>& a,
   return cor;
 }
 
-// pre: both are sorted
+/// \pre a and b are sorted
 template<typename T>
 ComplexCorrelation calculate_hkl_complex_correlation(const std::vector<T>& a,
                                                      const std::vector<T>& b) {
@@ -81,7 +81,7 @@ ComplexCorrelation calculate_hkl_complex_correlation(const std::vector<T>& a,
   return cor;
 }
 
-// pre: both are sorted
+/// \pre a and b are sorted
 template<typename T>
 int count_equal_values(const std::vector<T>& a, const std::vector<T>& b) {
   int count = 0;

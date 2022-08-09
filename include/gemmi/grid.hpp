@@ -139,6 +139,7 @@ struct GridMeta {
   AxisOrder axis_order = AxisOrder::Unknown;
 
   size_t point_count() const { return (size_t)nu * nv * nw; }
+  /// u,v,w are not normalized here
   Fractional get_fractional(int u, int v, int w) const {
     return {u * (1.0 / nu), v * (1.0 / nv), w * (1.0 / nw)};
   }
@@ -351,6 +352,7 @@ struct Grid : GridBase<T> {
     return data[index_s(u, v, w)];
   }
 
+  /// Point stores normalizes indices (not the original u,v,w).
   Point get_point(int u, int v, int w) {
     u = modulo(u, nu);
     v = modulo(v, nv);
@@ -368,6 +370,7 @@ struct Grid : GridBase<T> {
     return get_nearest_point(unit_cell.fractionalize(pos));
   }
 
+  /// Point stores normalized indices, so fractional coordinates are in [0,1).
   Fractional point_to_fractional(const Point& p) const {
     return this->get_fractional(p.u, p.v, p.w);
   }
@@ -600,10 +603,10 @@ struct Grid : GridBase<T> {
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
     use_points_in_box<UsePbc>(fctr_, du, dv, dw,
-                      [&](T& point, const Position& delta) {
+                      [&](T& ref, const Position& delta) {
                         double d2 = delta.length_sq();
                         if (d2 < radius * radius)
-                          func(point, d2);
+                          func(ref, d2);
                       },
                       fail_on_too_large_radius);
   }
@@ -611,9 +614,9 @@ struct Grid : GridBase<T> {
   void set_points_around(const Position& ctr, double radius, T value, bool use_pbc=true) {
     Fractional fctr = unit_cell.fractionalize(ctr);
     if (use_pbc)
-      use_points_around<true>(fctr, radius, [&](T& point, double) { point = value; });
+      use_points_around<true>(fctr, radius, [&](T& ref, double) { ref = value; });
     else
-      use_points_around<false>(fctr, radius, [&](T& point, double) { point = value; });
+      use_points_around<false>(fctr, radius, [&](T& ref, double) { ref = value; });
   }
 
   void change_values(T old_value, T new_value) {
