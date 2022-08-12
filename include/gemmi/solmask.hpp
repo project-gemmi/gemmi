@@ -346,35 +346,40 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                           ni.a = &atom;
                         }
                       });
-        // If a node is closer to symmetry mate than to an atom of the original
-        // molecule - mark it with a=nullptr so it's ignored.
-        // Most of the time is spent here, and it hardly makes any difference.
-        for (int n_im = 0; n_im != (int) gcell.images.size(); ++n_im) {
-          Fractional frac = gcell.images[n_im].apply(frac0);
-          dest.template do_use_points_in_box<true>(frac, du, dv, dw,
-                        [&](T& ref, const Position& delta) {
-                          double d2 = delta.length_sq();
-                          NodeInfo& ni = node_list[&ref - dest.data.data()];
-                          if (d2 < ni.r_sq) {
-                            ni.r_sq = d2;
-                            ni.a = nullptr;
-                          }
-                        });
-        }
       }
 
   // interpolate values for those nodes that have Atom assigned
   size_t idx = 0;
   for (int w = 0; w != dest.nw; ++w)
     for (int v = 0; v != dest.nv; ++v)
-      for (int u = 0; u != dest.nu; ++u, ++idx)
+      for (int u = 0; u != dest.nu; ++u, ++idx) {
         if (const Atom* a = node_list[idx].a) {
           Position dest_pos = dest.get_position(u, v, w);
+
+          // Exclude nodes (by setting a=nullptr) that are closer to a symmetry
+          // mate of the model than to the original model.
+          // A node is closer to a symmetry mate when node's symmetry image is
+          // closer the original model than the node. (In case of NCS it's not
+          // exact because the node's image is not exactly on another node).
+          bool skip = false;
+          Fractional frac0 = gcell.fractionalize(dest_pos);
+          for (size_t n_im = 0; n_im != gcell.images.size(); ++n_im) {
+            Fractional im_frac = gcell.images[n_im].apply(frac0);
+            size_t im_idx = dest.get_nearest_index(im_frac);
+            if (node_list[im_idx].r_sq < node_list[idx].r_sq) {
+              skip = true;
+              break;
+            }
+          }
+          if (skip)
+            continue;
+
           Fractional fdelta = gcell.fractionalize_difference(a->pos - dest_pos);
           Position delta = gcell.orthogonalize_difference(fdelta.round());
           Position src_pos(tr.apply(dest_pos + delta));
           dest.data[idx] = src.interpolate_value(src_pos);
         }
+      }
 }
 
 

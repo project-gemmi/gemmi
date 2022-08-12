@@ -370,6 +370,10 @@ struct Grid : GridBase<T> {
     return get_nearest_point(unit_cell.fractionalize(pos));
   }
 
+  size_t get_nearest_index(const Fractional& f) {
+    return index_s(iround(f.x * nu), iround(f.y * nv), iround(f.z * nw));
+  }
+
   /// Point stores normalized indices, so fractional coordinates are in [0,1).
   Fractional point_to_fractional(const Point& p) const {
     return this->get_fractional(p.u, p.v, p.w);
