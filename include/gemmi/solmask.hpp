@@ -348,6 +348,12 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                       });
       }
 
+  std::vector<GridOp> symmetry_ops;
+  if (!gcell.images.empty()) {
+  } else if (dest.spacegroup) {
+    symmetry_ops = dest.get_scaled_ops_except_id();
+  }
+
   // interpolate values for those nodes that have Atom assigned
   size_t idx = 0;
   for (int w = 0; w != dest.nw; ++w)
@@ -362,13 +368,23 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
           // closer the original model than the node. (In case of NCS it's not
           // exact because the node's image is not exactly on another node).
           bool skip = false;
-          Fractional frac0 = gcell.fractionalize(dest_pos);
-          for (size_t n_im = 0; n_im != gcell.images.size(); ++n_im) {
-            Fractional im_frac = gcell.images[n_im].apply(frac0);
-            size_t im_idx = dest.get_nearest_index(im_frac);
-            if (node_list[im_idx].r_sq < node_list[idx].r_sq) {
-              skip = true;
-              break;
+          if (!gcell.images.empty()) {  // grid's cell.images may not be set
+            Fractional frac0 = gcell.fractionalize(dest_pos);
+            for (const FTransform& ftr : gcell.images) {
+              size_t im_idx = dest.get_nearest_index(ftr.apply(frac0));
+              if (node_list[im_idx].r_sq < node_list[idx].r_sq) {
+                skip = true;
+                break;
+              }
+            }
+          } else {
+            for (const GridOp& grid_op : symmetry_ops) {
+              std::array<int,3> t = grid_op.apply(u, v, w);
+              size_t im_idx = dest.index_n(t[0], t[1], t[2]);
+              if (node_list[im_idx].r_sq < node_list[idx].r_sq) {
+                skip = true;
+                break;
+              }
             }
           }
           if (skip)
