@@ -177,6 +177,8 @@ struct Ccp4 : public Ccp4Base {
     }
   }
 
+  /// If the header is empty, prepare it; otherwise, update only MODE
+  /// and, if update_stats==true, also DMIN, DMAX, DMEAN and RMS.
   void update_ccp4_header(int mode=-1, bool update_stats=true) {
     if (mode > 2 && mode != 6)
       fail("Only modes 0, 1, 2 and 6 are supported.");
