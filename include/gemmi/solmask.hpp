@@ -348,11 +348,20 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                       });
       }
 
-  std::vector<GridOp> symmetry_ops;
-  if (!gcell.images.empty()) {
-  } else if (dest.spacegroup) {
-    symmetry_ops = dest.get_scaled_ops_except_id();
-  }
+  // We'll skip nodes that are closer to a symmetry mate of the model than
+  // to the original model. A node is closer to a symmetry mate when it has
+  // a symmetry image that is closer to the original model than the node.
+  // Let's ignore NCS.
+  std::vector<GridOp> symmetry_ops = dest.get_scaled_ops_except_id();
+  auto is_near_symmetry_mate = [&](int u, int v, int w, double d2_cutoff) {
+    for (const GridOp& grid_op : symmetry_ops) {
+      std::array<int,3> t = grid_op.apply(u, v, w);
+      size_t im_idx = dest.index_n(t[0], t[1], t[2]);
+      if (node_list[im_idx].r_sq < d2_cutoff)
+        return true;
+    }
+    return false;
+  };
 
   // interpolate values for those nodes that have Atom assigned
   size_t idx = 0;
@@ -360,36 +369,9 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
     for (int v = 0; v != dest.nv; ++v)
       for (int u = 0; u != dest.nu; ++u, ++idx) {
         if (const Atom* a = node_list[idx].a) {
-          Position dest_pos = dest.get_position(u, v, w);
-
-          // Exclude nodes (by setting a=nullptr) that are closer to a symmetry
-          // mate of the model than to the original model.
-          // A node is closer to a symmetry mate when node's symmetry image is
-          // closer the original model than the node. (In case of NCS it's not
-          // exact because the node's image is not exactly on another node).
-          bool skip = false;
-          if (!gcell.images.empty()) {  // grid's cell.images may not be set
-            Fractional frac0 = gcell.fractionalize(dest_pos);
-            for (const FTransform& ftr : gcell.images) {
-              size_t im_idx = dest.get_nearest_index(ftr.apply(frac0));
-              if (node_list[im_idx].r_sq < node_list[idx].r_sq) {
-                skip = true;
-                break;
-              }
-            }
-          } else {
-            for (const GridOp& grid_op : symmetry_ops) {
-              std::array<int,3> t = grid_op.apply(u, v, w);
-              size_t im_idx = dest.index_n(t[0], t[1], t[2]);
-              if (node_list[im_idx].r_sq < node_list[idx].r_sq) {
-                skip = true;
-                break;
-              }
-            }
-          }
-          if (skip)
+          if (is_near_symmetry_mate(u, v, w, node_list[idx].r_sq))
             continue;
-
+          Position dest_pos = dest.get_position(u, v, w);
           Fractional fdelta = gcell.fractionalize_difference(a->pos - dest_pos);
           Position delta = gcell.orthogonalize_difference(fdelta.round());
           Position src_pos(tr.apply(dest_pos + delta));
