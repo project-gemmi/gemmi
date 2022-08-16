@@ -317,16 +317,15 @@ template<typename T>
 void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                                         const Transform& tr, const Model& dest_model,
                                         double radius) {
-  // We need to keep track if the nearest atom is from model and image_idx=0.
-  // Then, before interpolating the map, we'll need delta between atom position
-  // and it's PBC image near the grid node.
   struct NodeInfo {
-    double r_sq;
-    const Atom* a;
+    double dist_sq;
+    bool found;
+    int u, v, w;
   };
 
-  // populate node_list that assigns Atom or null to each node
-  std::vector<NodeInfo> node_list(dest.data.size(), NodeInfo{radius*radius, nullptr});
+  // Populate node_list using the original model.
+  std::vector<NodeInfo> node_list(dest.data.size(),
+                                  NodeInfo{radius*radius, false, 0, 0, 0});
   // cf. use_points_around()
   int du = (int) std::ceil(radius / dest.spacing[0]);
   int dv = (int) std::ceil(radius / dest.spacing[1]);
@@ -338,17 +337,20 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
       for (const Atom& atom : res.atoms) {
         Fractional frac0 = gcell.fractionalize(atom.pos);
         dest.template do_use_points_in_box<true>(frac0, du, dv, dw,
-                      [&](T& ref, const Position& delta) {
+                      [&](T& ref, const Position& delta, int u, int v, int w) {
                         double d2 = delta.length_sq();
                         NodeInfo& ni = node_list[&ref - dest.data.data()];
-                        if (d2 < ni.r_sq) {
-                          ni.r_sq = d2;
-                          ni.a = &atom;
+                        if (d2 < ni.dist_sq) {
+                          ni.dist_sq = d2;
+                          ni.found = true;
+                          ni.u = u;
+                          ni.v = v;
+                          ni.w = w;
                         }
                       });
       }
 
-  // We'll skip nodes that are closer to a symmetry mate of the model than
+  // Skip nodes that are closer to a symmetry mate of the model than
   // to the original model. A node is closer to a symmetry mate when it has
   // a symmetry image that is closer to the original model than the node.
   // Let's ignore NCS.
@@ -357,24 +359,23 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
     for (const GridOp& grid_op : symmetry_ops) {
       std::array<int,3> t = grid_op.apply(u, v, w);
       size_t im_idx = dest.index_n(t[0], t[1], t[2]);
-      if (node_list[im_idx].r_sq < d2_cutoff)
+      if (node_list[im_idx].dist_sq < d2_cutoff)
         return true;
     }
     return false;
   };
 
-  // interpolate values for those nodes that have Atom assigned
+  // Interpolate values for selected nodes.
   size_t idx = 0;
   for (int w = 0; w != dest.nw; ++w)
     for (int v = 0; v != dest.nv; ++v)
       for (int u = 0; u != dest.nu; ++u, ++idx) {
-        if (const Atom* a = node_list[idx].a) {
-          if (is_near_symmetry_mate(u, v, w, node_list[idx].r_sq))
+        const NodeInfo& ni = node_list[idx];
+        if (ni.found) {
+          if (is_near_symmetry_mate(u, v, w, node_list[idx].dist_sq))
             continue;
-          Position dest_pos = dest.get_position(u, v, w);
-          Fractional fdelta = gcell.fractionalize_difference(a->pos - dest_pos);
-          Position delta = gcell.orthogonalize_difference(fdelta.round());
-          Position src_pos(tr.apply(dest_pos + delta));
+          Position dest_pos = dest.get_position(ni.u, ni.v, ni.w);
+          Position src_pos(tr.apply(dest_pos));
           dest.data[idx] = src.interpolate_value(src_pos);
         }
       }
@@ -397,7 +398,7 @@ void add_soft_edge_to_mask(Grid<T>& grid, double width) {
         double min_d2 = width2 + 1;
         Fractional fctr = grid.get_fractional(u, v, w);
         grid.template use_points_in_box<true>(fctr, du, dv, dw,
-                          [&](T& point, const Position& delta) {
+                          [&](T& point, const Position& delta, int, int, int) {
                             if (point > 0.999) {
                               double d2 = delta.length_sq();
                               if (d2 < min_d2)

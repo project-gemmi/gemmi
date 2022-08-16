@@ -564,8 +564,6 @@ struct Grid : GridBase<T> {
 
   template <bool UsePbc, typename Func>
   void do_use_points_in_box(Fractional fctr, int du, int dv, int dw, Func&& func) {
-    if (UsePbc)
-      fctr = fctr.wrap_to_unit();
     int u0 = iround(fctr.x * nu);
     int v0 = iround(fctr.y * nv);
     int w0 = iround(fctr.z * nw);
@@ -583,14 +581,19 @@ struct Grid : GridBase<T> {
       w_lo = std::max(w_lo, 0);
       w_hi = std::min(w_hi, nw - 1);
     }
-    for (int w = w_lo; w <= w_hi; ++w)
-      for (int v = v_lo; v <= v_hi; ++v)
+    for (int w = w_lo; w <= w_hi; ++w) {
+      int w_ = UsePbc ? modulo(w, nw) : w;
+      for (int v = v_lo; v <= v_hi; ++v) {
+        int v_ = UsePbc ? modulo(v, nv) : v;
         for (int u = u_lo; u <= u_hi; ++u) {
-          Fractional fdelta = fctr - this->get_fractional(u, v, w);
-          Position delta = unit_cell.orthogonalize_difference(fdelta);
-          size_t idx = UsePbc ? this->index_n(u, v, w) : this->index_q(u, v, w);
-          func(data[idx], delta);
+          int u_ = UsePbc ? modulo(u, nu) : u;
+          Fractional fuvw = this->get_fractional(u, v, w);
+          Position delta = unit_cell.orthogonalize_difference(fctr - fuvw);
+          size_t idx = this->index_q(u_, v_, w_);
+          func(data[idx], delta, u, v, w);
         }
+      }
+    }
   }
 
   template <bool UsePbc, typename Func>
@@ -607,7 +610,7 @@ struct Grid : GridBase<T> {
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
     use_points_in_box<UsePbc>(fctr_, du, dv, dw,
-                      [&](T& ref, const Position& delta) {
+                      [&](T& ref, const Position& delta, int, int, int) {
                         double d2 = delta.length_sq();
                         if (d2 < radius * radius)
                           func(ref, d2);

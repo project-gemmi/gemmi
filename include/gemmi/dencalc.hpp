@@ -153,7 +153,7 @@ struct DensityCalculator {
       int dv = (int) std::ceil(radius / grid.spacing[1]);
       int dw = (int) std::ceil(radius / grid.spacing[2]);
       grid.template use_points_in_box<true>(fpos, du, dv, dw,
-                             [&](Real& point, const Position& delta) {
+                             [&](Real& point, const Position& delta, int, int, int) {
         if (delta.length_sq() < radius * radius)
           point += Real(atom.occ * precal.calculate(delta));
       }, false);
