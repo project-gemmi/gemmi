@@ -28,11 +28,9 @@ inline Vec3 tran_as_vec3(const Op& op) {
   return Vec3(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
 }
 
-// coordinates in Angstroms (a.k.a. orthogonal coordinates)
+/// Coordinates in Angstroms - orthogonal (Cartesian) coordinates.
 struct Position : Vec3 {
-  Position() = default;
-  Position(double x_, double y_, double z_) : Vec3{x_, y_, z_} {}
-  explicit Position(Vec3&& v) : Vec3(v) {}
+  using Vec3::Vec3;
   explicit Position(const Vec3& v) : Vec3(v) {}
   Position operator-() const { return Position(Vec3::operator-()); }
   Position operator-(const Position& o) const { return Position(Vec3::operator-(o)); }
@@ -47,11 +45,10 @@ struct Position : Vec3 {
 
 inline Position operator*(double d, const Position& v) { return v * d; }
 
-// fractional coordinates
+/// Fractional coordinates.
 struct Fractional : Vec3 {
-  Fractional() = default;
-  Fractional(double x_, double y_, double z_) : Vec3{x_, y_, z_} {}
-  explicit Fractional(Vec3&& v) : Vec3(v) {}
+  using Vec3::Vec3;
+  explicit Fractional(const Vec3& v) : Vec3(v) {}
   Fractional operator-(const Fractional& o) const {
     return Fractional(Vec3::operator-(o));
   }
@@ -76,7 +73,7 @@ struct Fractional : Vec3 {
 
 enum class Asu : unsigned char { Same, Different, Any };
 
-// Result of find_nearest_image
+/// Result of find_nearest_image
 struct NearestImage {
   double dist_sq;
   int pbc_shift[3] = { 0, 0, 0 };
@@ -87,7 +84,7 @@ struct NearestImage {
     return pbc_shift[0] == 0 && pbc_shift[1] == 0 && pbc_shift[2] == 0 && sym_idx == 0;
   }
 
-  // return string such as 1555 or 1_555
+  /// Returns a string such as 1555 or 1_555.
   std::string symmetry_code(bool underscore) const {
     std::string s = std::to_string(sym_idx + 1);
     if (underscore)
@@ -109,11 +106,9 @@ struct NearestImage {
 };
 
 
-// for the sake of type safety, a variant that has apply() expecting Fractional
+/// Like Transform, but apply() arg is Fractional (not Vec3 - for type safety).
 struct FTransform : Transform {
   FTransform(const Transform& t) : Transform(t) {}
-  FTransform(Transform&& t) : Transform(t) {}
-  FTransform(const Mat33& m, const Vec3& v) : Transform{m, v} {}
   Fractional apply(const Fractional& p) const {
     return Fractional(Transform::apply(p));
   }
@@ -127,7 +122,7 @@ struct NcsOp {
   Position apply(const Position& p) const { return Position(tr.apply(p)); }
 };
 
-// a synonym for convenient passing of hkl
+/// A synonym for convenient passing of hkl.
 using Miller = std::array<int, 3>;
 
 struct MillerHash {
@@ -136,6 +131,9 @@ struct MillerHash {
   }
 };
 
+/// Unit cell. Contains cell parameters as well as pre-calculated
+/// orthogonalization and fractionalization matrices, volume, and more.
+/// Contains symmetry operations (incl. NCS) if they were set from outside.
 struct UnitCell {
   UnitCell() = default;
   UnitCell(double a_, double b_, double c_,
@@ -155,7 +153,7 @@ struct UnitCell {
   double cos_alphar = 0.0, cos_betar = 0.0, cos_gammar = 0.0;
   bool explicit_matrices = false;
   short cs_count = 0;  // crystallographic symmetries except identity
-  std::vector<FTransform> images;
+  std::vector<FTransform> images;  // symmetry operations
 
   // Non-crystalline (for example NMR) structures are supposed to use fake
   // unit cell 1x1x1, but sometimes they don't. A number of non-crystalline
@@ -345,7 +343,7 @@ struct UnitCell {
     for (Op op : group_ops) {
       if (op == Op::identity())
         continue;
-      images.emplace_back(rot_as_mat33(op), tran_as_vec3(op));
+      images.push_back(Transform{rot_as_mat33(op), tran_as_vec3(op)});
     }
   }
 
