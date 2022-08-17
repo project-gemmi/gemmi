@@ -581,16 +581,20 @@ struct Grid : GridBase<T> {
       w_lo = std::max(w_lo, 0);
       w_hi = std::min(w_hi, nw - 1);
     }
+    const Position orth0(unit_cell.orth.mat.column_copy(0));
     for (int w = w_lo; w <= w_hi; ++w) {
       int w_ = UsePbc ? modulo(w, nw) : w;
+      double fw = w * (1.0 / nw);
       for (int v = v_lo; v <= v_hi; ++v) {
         int v_ = UsePbc ? modulo(v, nv) : v;
+        double fv = v * (1.0 / nv);
+        size_t idx0 = this->index_q(0, v_, w_);
+        Position delta0 = unit_cell.orthogonalize_difference(fctr - Fractional(0., fv, fw));
         for (int u = u_lo; u <= u_hi; ++u) {
           int u_ = UsePbc ? modulo(u, nu) : u;
-          Fractional fuvw = this->get_fractional(u, v, w);
-          Position delta = unit_cell.orthogonalize_difference(fctr - fuvw);
-          size_t idx = this->index_q(u_, v_, w_);
-          func(data[idx], delta, u, v, w);
+          double fu = u * (1.0 / nu);
+          Position delta = delta0 - orth0 * fu;
+          func(data[idx0 + u_], delta, u, v, w);
         }
       }
     }
