@@ -31,6 +31,7 @@ inline Vec3 tran_as_vec3(const Op& op) {
 /// Coordinates in Angstroms - orthogonal (Cartesian) coordinates.
 struct Position : Vec3 {
   using Vec3::Vec3;
+  Position() = default;
   explicit Position(const Vec3& v) : Vec3(v) {}
   Position operator-() const { return Position(Vec3::operator-()); }
   Position operator-(const Position& o) const { return Position(Vec3::operator-(o)); }
@@ -48,6 +49,7 @@ inline Position operator*(double d, const Position& v) { return v * d; }
 /// Fractional coordinates.
 struct Fractional : Vec3 {
   using Vec3::Vec3;
+  Fractional() = default;
   explicit Fractional(const Vec3& v) : Vec3(v) {}
   Fractional operator-(const Fractional& o) const {
     return Fractional(Vec3::operator-(o));
