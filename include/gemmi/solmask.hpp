@@ -314,6 +314,19 @@ struct SolventMasker {
 };
 
 template<typename T>
+void interpolate_grid(Grid<T>& dest, const Grid<T>& src, const Transform& tr, int order=2) {
+  FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
+  size_t idx = 0;
+  for (int w = 0; w != dest.nw; ++w)
+    for (int v = 0; v != dest.nv; ++v)
+      for (int u = 0; u != dest.nu; ++u, ++idx) {
+        Fractional dest_fr = dest.get_fractional(u, v, w);
+        Fractional src_fr = frac_tr.apply(dest_fr);
+        dest.data[idx] = src.interpolate(src_fr, order);
+      }
+}
+
+template<typename T>
 void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                                         const Transform& tr,
                                         const Model& dest_model, double radius,
@@ -355,26 +368,28 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
   // a symmetry image that is closer to the original model than the node.
   // Let's ignore NCS.
   std::vector<GridOp> symmetry_ops = dest.get_scaled_ops_except_id();
-  auto is_near_symmetry_mate = [&](int u, int v, int w, double d2_cutoff) {
-    for (const GridOp& grid_op : symmetry_ops) {
-      std::array<int,3> t = grid_op.apply(u, v, w);
-      size_t im_idx = dest.index_n(t[0], t[1], t[2]);
-      if (node_list[im_idx].dist_sq < d2_cutoff)
-        return true;
-    }
-    return false;
-  };
+  size_t idx = 0;
+  for (int w = 0; w != dest.nw; ++w)
+    for (int v = 0; v != dest.nv; ++v)
+      for (int u = 0; u != dest.nu; ++u, ++idx) {
+        NodeInfo& ni = node_list[idx];
+        if (ni.found)
+          for (const GridOp& grid_op : symmetry_ops) {
+            std::array<int,3> t = grid_op.apply(u, v, w);
+            size_t im_idx = dest.index_n(t[0], t[1], t[2]);
+            if (node_list[im_idx].dist_sq < ni.dist_sq)
+              ni.found = false;
+          }
+      }
 
   // Interpolate values for selected nodes.
   FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
-  size_t idx = 0;
+  idx = 0;
   for (int w = 0; w != dest.nw; ++w)
     for (int v = 0; v != dest.nv; ++v)
       for (int u = 0; u != dest.nu; ++u, ++idx) {
         const NodeInfo& ni = node_list[idx];
         if (ni.found) {
-          if (is_near_symmetry_mate(u, v, w, node_list[idx].dist_sq))
-            continue;
           Fractional dest_fr = dest.get_fractional(ni.u, ni.v, ni.w);
           Fractional src_fr = frac_tr.apply(dest_fr);
           dest.data[idx] = src.interpolate(src_fr, order);
