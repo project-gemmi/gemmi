@@ -237,7 +237,7 @@ void add_grid(py::module& m) {
     ;
   m.def("interpolate_grid_of_aligned_model2", &interpolate_grid_of_aligned_model2<float>,
         py::arg("dest"), py::arg("src"), py::arg("tr"),
-        py::arg("dest_model"), py::arg("radius"));
+        py::arg("dest_model"), py::arg("radius"), py::arg("order")=2);
 
 
   // from blob.hpp

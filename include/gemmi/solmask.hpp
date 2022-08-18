@@ -315,8 +315,9 @@ struct SolventMasker {
 
 template<typename T>
 void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
-                                        const Transform& tr, const Model& dest_model,
-                                        double radius) {
+                                        const Transform& tr,
+                                        const Model& dest_model, double radius,
+                                        int order=2) {
   struct NodeInfo {
     double dist_sq;
     bool found;
@@ -331,11 +332,10 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
   int dv = (int) std::ceil(radius / dest.spacing[1]);
   int dw = (int) std::ceil(radius / dest.spacing[2]);
   dest.template check_size_for_points_in_box<true>(du, dv, dw, true);
-  const UnitCell& gcell = dest.unit_cell;
   for (const Chain& chain : dest_model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
-        Fractional frac0 = gcell.fractionalize(atom.pos);
+        Fractional frac0 = dest.unit_cell.fractionalize(atom.pos);
         dest.template do_use_points_in_box<true>(frac0, du, dv, dw,
                       [&](T& ref, const Position& delta, int u, int v, int w) {
                         double d2 = delta.length_sq();
@@ -366,6 +366,7 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
   };
 
   // Interpolate values for selected nodes.
+  FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
   size_t idx = 0;
   for (int w = 0; w != dest.nw; ++w)
     for (int v = 0; v != dest.nv; ++v)
@@ -374,9 +375,9 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
         if (ni.found) {
           if (is_near_symmetry_mate(u, v, w, node_list[idx].dist_sq))
             continue;
-          Position dest_pos = dest.get_position(ni.u, ni.v, ni.w);
-          Position src_pos(tr.apply(dest_pos));
-          dest.data[idx] = src.interpolate_value(src_pos);
+          Fractional dest_fr = dest.get_fractional(ni.u, ni.v, ni.w);
+          Fractional src_fr = frac_tr.apply(dest_fr);
+          dest.data[idx] = src.interpolate(src_fr, order);
         }
       }
 }
