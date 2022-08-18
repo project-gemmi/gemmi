@@ -326,75 +326,82 @@ void interpolate_grid(Grid<T>& dest, const Grid<T>& src, const Transform& tr, in
       }
 }
 
-template<typename T>
-void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
-                                        const Transform& tr,
-                                        const Model& dest_model, double radius,
-                                        int order=2) {
-  struct NodeInfo {
-    double dist_sq;
-    bool found;
-    int u, v, w;
-  };
+struct NodeInfo {
+  double dist_sq;  // distance from the nearest atom
+  bool found = false;  // the mask flag
+  //Element elem = El::X;
+  int u = 0, v = 0, w = 0;  // not normalized near-model grid coordinates
+};
 
-  // Populate node_list using the original model.
-  std::vector<NodeInfo> node_list(dest.data.size(),
-                                  NodeInfo{radius*radius, false, 0, 0, 0});
+/// Populate NodeInfo grid for nodes near the model.
+inline void mask_with_node_info(Grid<NodeInfo>& mask, const Model& model, double radius) {
+  NodeInfo default_ni;
+  default_ni.dist_sq = radius * radius;
+  mask.fill(default_ni);
   // cf. use_points_around()
-  int du = (int) std::ceil(radius / dest.spacing[0]);
-  int dv = (int) std::ceil(radius / dest.spacing[1]);
-  int dw = (int) std::ceil(radius / dest.spacing[2]);
-  dest.template check_size_for_points_in_box<true>(du, dv, dw, true);
-  for (const Chain& chain : dest_model.chains)
+  int du = (int) std::ceil(radius / mask.spacing[0]);
+  int dv = (int) std::ceil(radius / mask.spacing[1]);
+  int dw = (int) std::ceil(radius / mask.spacing[2]);
+  mask.template check_size_for_points_in_box<true>(du, dv, dw, true);
+  for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
-        Fractional frac0 = dest.unit_cell.fractionalize(atom.pos);
-        dest.template do_use_points_in_box<true>(frac0, du, dv, dw,
-                      [&](T& ref, const Position& delta, int u, int v, int w) {
+        Fractional frac0 = mask.unit_cell.fractionalize(atom.pos);
+        mask.template do_use_points_in_box<true>(frac0, du, dv, dw,
+                      [&](NodeInfo& ni, const Position& delta, int u, int v, int w) {
                         double d2 = delta.length_sq();
-                        NodeInfo& ni = node_list[&ref - dest.data.data()];
                         if (d2 < ni.dist_sq) {
                           ni.dist_sq = d2;
                           ni.found = true;
+                          //ni.elem = atom.element;
                           ni.u = u;
                           ni.v = v;
                           ni.w = w;
                         }
                       });
       }
+}
 
-  // Skip nodes that are closer to a symmetry mate of the model than
-  // to the original model. A node is closer to a symmetry mate when it has
-  // a symmetry image that is closer to the original model than the node.
-  // Let's ignore NCS.
-  std::vector<GridOp> symmetry_ops = dest.get_scaled_ops_except_id();
+/// Skip nodes that are closer to a symmetry mate of the model than
+/// to the original model. A node is closer to a symmetry mate when it has
+/// a symmetry image that is closer to the original model than the node.
+/// We ignore NCS here.
+inline void unmask_symmetry_mates(Grid<NodeInfo>& mask) {
+  std::vector<GridOp> symmetry_ops = mask.get_scaled_ops_except_id();
   size_t idx = 0;
-  for (int w = 0; w != dest.nw; ++w)
-    for (int v = 0; v != dest.nv; ++v)
-      for (int u = 0; u != dest.nu; ++u, ++idx) {
-        NodeInfo& ni = node_list[idx];
+  for (int w = 0; w != mask.nw; ++w)
+    for (int v = 0; v != mask.nv; ++v)
+      for (int u = 0; u != mask.nu; ++u, ++idx) {
+        NodeInfo& ni = mask.data[idx];
         if (ni.found)
           for (const GridOp& grid_op : symmetry_ops) {
             std::array<int,3> t = grid_op.apply(u, v, w);
-            size_t im_idx = dest.index_n(t[0], t[1], t[2]);
-            if (node_list[im_idx].dist_sq < ni.dist_sq)
-              ni.found = false;
+            NodeInfo& im_ni = mask.data[mask.index_n(t[0], t[1], t[2])];
+            if (im_ni.found && im_ni.dist_sq > ni.dist_sq)
+              im_ni.found = false;
           }
       }
+}
 
+template<typename T>
+void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
+                                        const Transform& tr,
+                                        const Model& dest_model, double radius,
+                                        int order=2) {
+  Grid<NodeInfo> mask;
+  mask.copy_metadata_from(dest);
+  mask_with_node_info(mask, dest_model, radius);
+  unmask_symmetry_mates(mask);
   // Interpolate values for selected nodes.
-  FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
-  idx = 0;
-  for (int w = 0; w != dest.nw; ++w)
-    for (int v = 0; v != dest.nv; ++v)
-      for (int u = 0; u != dest.nu; ++u, ++idx) {
-        const NodeInfo& ni = node_list[idx];
-        if (ni.found) {
-          Fractional dest_fr = dest.get_fractional(ni.u, ni.v, ni.w);
-          Fractional src_fr = frac_tr.apply(dest_fr);
-          dest.data[idx] = src.interpolate(src_fr, order);
-        }
-      }
+  FTransform frac_tr = src.unit_cell.frac.combine(tr.combine(dest.unit_cell.orth));
+  for (size_t idx = 0; idx != mask.data.size(); ++idx) {
+    const NodeInfo& ni = mask.data[idx];
+    if (ni.found) {
+      Fractional dest_fr = dest.get_fractional(ni.u, ni.v, ni.w);
+      Fractional src_fr = frac_tr.apply(dest_fr);
+      dest.data[idx] = src.interpolate(src_fr, order);
+    }
+  }
 }
 
 
