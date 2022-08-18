@@ -210,7 +210,7 @@ void add_grid(py::module& m) {
     ;
   auto grid_float = add_grid_common<float>(m, "FloatGrid");
   add_grid_interpolation<float>(grid_float);
-  grid_float.def("normalize", &normalize_grid<float>);
+  grid_float.def("normalize", &Grid<float>::normalize);
   grid_float.def("add_soft_edge_to_mask", &add_soft_edge_to_mask<float>);
 
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");

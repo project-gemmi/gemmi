@@ -710,6 +710,13 @@ struct Grid : GridBase<T> {
     symmetrize([](T a, T b) { return a + b; });
   }
 
+  /// scale the data to get mean == 0 and rmsd == 1 (doesn't work for T=complex)
+  void normalize() {
+    DataStats stats = calculate_data_statistics(data);
+    for (T& x : data)
+      x = static_cast<T>((x - stats.dmean) / stats.rms);
+  }
+
   void resample_to(Grid<T>& dest, int order) const {
     dest.check_not_empty();
     int idx = 0;
@@ -732,14 +739,6 @@ Correlation calculate_correlation(const GridBase<T>& a, const GridBase<T>& b) {
     if (!std::isnan(a.data[i]) && !std::isnan(b.data[i]))
       corr.add_point(a.data[i], b.data[i]);
   return corr;
-}
-
-/// scale the data to get mean == 0 and rmsd == 1
-template<typename T>
-void normalize_grid(Grid<T>& grid) {
-  DataStats stats = calculate_data_statistics(grid.data);
-  for (auto i = grid.data.begin(); i != grid.data.end(); ++i)
-    *i = static_cast<T>((*i - stats.dmean) / stats.rms);
 }
 
 } // namespace gemmi
