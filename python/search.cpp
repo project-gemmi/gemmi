@@ -75,9 +75,6 @@ void add_search(py::module& m) {
   m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
         py::arg("model"), py::arg("cell"), py::arg("max_dist")=0.2);
 
-  m.def("interpolate_grid_of_aligned_model", &interpolate_grid_of_aligned_model<float>,
-        py::arg("dest"), py::arg("src"), py::arg("tr"), py::arg("ns"), py::arg("radius")=0.);
-
   py::class_<ContactSearch> contactsearch(m, "ContactSearch");
   py::enum_<ContactSearch::Ignore> csignore(contactsearch, "Ignore");
   py::class_<ContactSearch::Result> csresult(contactsearch, "Result");
