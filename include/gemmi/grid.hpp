@@ -107,24 +107,24 @@ std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
   return a + (b - a) * (T) t;
 }
 
-// Catmull–Rom spline interpolation CINT_u from:
-// https://en.wikipedia.org/wiki/Cubic_Hermite_spline
-// The same as (24) in https://journals.iucr.org/d/issues/2018/06/00/ic5103/
+/// Catmull–Rom spline interpolation. CINT_u from:
+/// https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+/// The same as (24) in https://journals.iucr.org/d/issues/2018/06/00/ic5103/
 inline double cubic_interpolation(double u, double a, double b, double c, double d) {
   //return 0.5 * u * (u * (u * (3*b - 3*c + d - a) + (2*a - 5*b + 4*c - d)) + (c - a)) + b;
-  // equivalent form that is faster (on my computer with GCC):
+  // equivalent form that is faster on my computer:
   return -0.5 * (a * u * ((u-2)*u + 1) - b * ((3*u - 5) * u*u + 2) +
                  u * (c * ((3*u - 4) * u - 1) - d * (u-1) * u));
 }
 
-// df/du (from Wolfram Alpha)
+/// df/du (from Wolfram Alpha)
 inline double cubic_interpolation_der(double u, double a, double b, double c, double d) {
   return a * (-1.5*u*u + 2*u - 0.5) + c * (-4.5*u*u + 4*u + 0.5)
          + u * (4.5*b*u - 5*b + 1.5*d*u - d);
 }
 
-// Order of grid axis. Some Grid functionality works only with the XYZ order.
-// The values XYZ and XYZ are used only when the grid covers whole unit cell.
+/// Order of grid axis. Some Grid functionality works only with the XYZ order.
+/// The values XYZ and ZYX are used only when the grid covers whole unit cell.
 enum class AxisOrder : unsigned char {
   Unknown,
   XYZ,  // default, corresponds to CCP4 map with axis order XYZ,
@@ -132,6 +132,7 @@ enum class AxisOrder : unsigned char {
   ZYX   // fast Z (or L), may not be fully supported everywhere
 };
 
+/// The base of Grid classes that does not depend on stored data type.
 struct GridMeta {
   UnitCell unit_cell;
   const SpaceGroup* spacegroup = nullptr;
@@ -173,13 +174,15 @@ struct GridMeta {
     return grid_ops;
   }
 
-  // Quick but unsafe. assumes (for efficiency) that 0 <= u < nu, etc.
+  /// Quick(est) index function, but works only if `0 <= u < nu`, etc.
   size_t index_q(int u, int v, int w) const {
     return size_t(w * nv + v) * nu + u;
   }
 
-  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
-  // Modifies arguments.
+  /// Faster than index_s(), but works only if `-nu <= u < 2*nu`, etc.
+  size_t index_n(int u, int v, int w) const { return index_n_ref(u, v, w); }
+
+  /// The same as index_n(), but modifies arguments.
   size_t index_n_ref(int& u, int& v, int& w) const {
     if (u >= nu) u -= nu; else if (u < 0) u += nu;
     if (v >= nv) v -= nv; else if (v < 0) v += nv;
@@ -187,10 +190,7 @@ struct GridMeta {
     return this->index_q(u, v, w);
   }
 
-  // Assumes (for efficiency) that -nu <= u < 2*nu, etc.
-  size_t index_n(int u, int v, int w) const { return index_n_ref(u, v, w); }
-
-  // Assumes (for efficiency) that -nu <= u < nu, etc.
+  /// Faster than index_n(), but works only if -nu <= u < nu, etc.
   size_t index_near_zero(int u, int v, int w) const {
     return this->index_q(u >= 0 ? u : u + nu,
                          v >= 0 ? v : v + nv,
@@ -198,6 +198,7 @@ struct GridMeta {
   }
 };
 
+/// A common subset of Grid and ReciprocalGrid.
 template<typename T>
 struct GridBase : GridMeta {
   struct Point {
@@ -268,8 +269,9 @@ struct GridBase : GridMeta {
   iterator end() { return {*this, data.size()}; }
 };
 
-// For simplicity, some operations work only if the grid covers whole unit cell
-// and axes u,v,w correspond to a,b,c in the unit cell.
+/// Real-space grid.
+/// For simplicity, some operations work only if the grid covers whole unit cell
+/// and axes u,v,w correspond to a,b,c in the unit cell.
 template<typename T=float>
 struct Grid : GridBase<T> {
   using Point = typename GridBase<T>::Point;
@@ -280,9 +282,10 @@ struct Grid : GridBase<T> {
   using GridBase<T>::spacegroup;
   using GridBase<T>::data;
 
-  // spacing between virtual planes, not between points
+  /// spacing between virtual planes, not between points
   double spacing[3] = {0., 0., 0.};
 
+  /// copy unit_cell, spacegroup, nu, nv, nw, axis_order and set spacing
   void copy_metadata_from(const GridMeta& g) {
     unit_cell = g.unit_cell;
     spacegroup = g.spacegroup;
@@ -293,6 +296,7 @@ struct Grid : GridBase<T> {
     calculate_spacing();
   }
 
+  /// set #spacing
   void calculate_spacing() {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
@@ -342,14 +346,19 @@ struct Grid : GridBase<T> {
     set_size_from_spacing(approx_spacing, denser);
   }
 
-  // Safe but slower.
+  /// Returns index in data array for (u,v,w). Safe but slower than index_q().
   size_t index_s(int u, int v, int w) const {
     this->check_not_empty();
     return this->index_q(modulo(u, nu), modulo(v, nv), modulo(w, nw));
   }
 
+  /// returns `data[index_s(u, v, w)]`
   T get_value(int u, int v, int w) const {
     return data[index_s(u, v, w)];
+  }
+
+  void set_value(int u, int v, int w, T x) {
+    data[index_s(u, v, w)] = x;
   }
 
   /// Point stores normalizes indices (not the original u,v,w).
@@ -365,7 +374,6 @@ struct Grid : GridBase<T> {
       fail("grid is not fully setup");
     return get_point(iround(f.x * nu), iround(f.y * nv), iround(f.z * nw));
   }
-
   Point get_nearest_point(const Position& pos) {
     return get_nearest_point(unit_cell.fractionalize(pos));
   }
@@ -388,7 +396,8 @@ struct Grid : GridBase<T> {
     return x - f;
   }
 
-  // https://en.wikipedia.org/wiki/Trilinear_interpolation
+  /// https://en.wikipedia.org/wiki/Trilinear_interpolation
+  /// x,y,z are grid coordinates (x=1.5 is between 2nd and 3rd grid point).
   T interpolate_value(double x, double y, double z) const {
     this->check_not_empty();
     int u, v, w;
@@ -417,7 +426,8 @@ struct Grid : GridBase<T> {
     return interpolate_value(unit_cell.fractionalize(ctr));
   }
 
-  // https://en.wikipedia.org/wiki/Tricubic_interpolation
+  /// https://en.wikipedia.org/wiki/Tricubic_interpolation
+  /// x,y,z are grid coordinates (x=1.5 is between 2nd and 3rd grid point).
   double tricubic_interpolation(double x, double y, double z) const {
     std::array<std::array<std::array<T,4>,4>,4> copy;
     copy_4x4x4(x, y, z, copy);
@@ -436,7 +446,7 @@ struct Grid : GridBase<T> {
   double tricubic_interpolation(const Position& ctr) const {
     return tricubic_interpolation(unit_cell.fractionalize(ctr));
   }
-  // the same + derivatives df/dx, df/dy, df/dz
+  /// returns the same as above + derivatives df/dx, df/dy, df/dz
   std::array<double,4> tricubic_interpolation_der(double x, double y, double z) const {
     std::array<std::array<std::array<T,4>,4>,4> copy;
     copy_4x4x4(x, y, z, copy);
@@ -466,6 +476,7 @@ struct Grid : GridBase<T> {
     auto r = tricubic_interpolation_der(fctr.x * nu, fctr.y * nv, fctr.z * nw);
     return {r[0], r[1] * nu, r[2] * nv, r[3] * nw};
   }
+  /// @private
   void copy_4x4x4(double& x, double& y, double& z,
                   std::array<std::array<std::array<T,4>,4>,4>& copy) const {
     this->check_not_empty();
@@ -490,6 +501,16 @@ struct Grid : GridBase<T> {
       for (int j = 0; j < 4; ++j)
         for (int k = 0; k < 4; ++k)
           copy[i][j][k] = this->get_value_q(u_indices[i], v_indices[j], w_indices[k]);
+  }
+
+  /// @param order 1=nearest, 2=linear, 3=cubic interpolation
+  T interpolate(const Fractional& f, int order) const {
+    switch (order) {
+      case 1: return *const_cast<Grid<T>*>(this)->get_nearest_point(f).value;
+      case 2: return interpolate_value(f);
+      case 3: return (T) tricubic_interpolation(f);
+    }
+    throw std::invalid_argument("interpolation \"order\" must 1, 2 or 3");
   }
 
   void get_subarray(T* dest, std::array<int,3> start, std::array<int,3> shape) const {
@@ -543,8 +564,6 @@ struct Grid : GridBase<T> {
       }
     }
   }
-
-  void set_value(int u, int v, int w, T x) { data[index_s(u, v, w)] = x; }
 
   template <bool UsePbc>
   void check_size_for_points_in_box(int& du, int& dv, int& dw,
@@ -636,6 +655,13 @@ struct Grid : GridBase<T> {
         d = new_value;
   }
 
+  /// Use provided function to reduce values of all symmetry mates of each
+  /// grid point, then assign the result to all the points.
+  template<typename Func>
+  void symmetrize(Func func) {
+    symmetrize_using_ops(this->get_scaled_ops_except_id(), func);
+  }
+
   template<typename Func>
   void symmetrize_using_ops(const std::vector<GridOp>& ops, Func func) {
     if (ops.empty())
@@ -669,14 +695,7 @@ struct Grid : GridBase<T> {
     assert(idx == data.size());
   }
 
-  // Use provided function to reduce values of all symmetry mates of each
-  // grid point, then assign the result to all the points.
-  template<typename Func>
-  void symmetrize(Func func) {
-    symmetrize_using_ops(this->get_scaled_ops_except_id(), func);
-  }
-
-  // two most common symmetrize functions
+  // most common symmetrize functions
   void symmetrize_min() {
     symmetrize([](T a, T b) { return (a < b || !(b == b)) ? a : b; });
   }
@@ -691,16 +710,6 @@ struct Grid : GridBase<T> {
     symmetrize([](T a, T b) { return a + b; });
   }
 
-  T interpolate(const Fractional& f, int order) const {
-    switch (order) {
-      case 1: return *const_cast<Grid<T>*>(this)->get_nearest_point(f).value;
-      case 2: return interpolate_value(f);
-      case 3: return (T) tricubic_interpolation(f);
-    }
-    throw std::invalid_argument("interpolation \"order\" must 1, 2 or 3");
-  }
-
-  // order 1=nearest, 2=linear, 3=cubic interpolation
   void resample_to(Grid<T>& dest, int order) const {
     dest.check_not_empty();
     int idx = 0;
@@ -725,7 +734,7 @@ Correlation calculate_correlation(const GridBase<T>& a, const GridBase<T>& b) {
   return corr;
 }
 
-// scale the data to get mean == 0 and rmsd == 1
+/// scale the data to get mean == 0 and rmsd == 1
 template<typename T>
 void normalize_grid(Grid<T>& grid) {
   DataStats stats = calculate_data_statistics(grid.data);
