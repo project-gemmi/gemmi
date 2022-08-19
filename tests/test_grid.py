@@ -28,6 +28,11 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.grid.unit_cell.alpha, 90.0)
         self.assertEqual(m.grid.spacegroup.ccp4, 4)  # P21
 
+        extent = m.get_extent()
+        self.assertEqual(extent.minimum.tolist(), [-1e-9]*3)
+        nu = m.grid.nu
+        self.assertTrue((nu - 1.) / nu < extent.maximum.x < 1)
+
         pos = gemmi.Position(19.4, 3., 21.)
         frac = m.grid.unit_cell.fractionalize(pos)
         pos_value = 2.1543798446655273
