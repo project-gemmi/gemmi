@@ -202,7 +202,8 @@ void add_grid(py::module& m) {
       return py::make_tuple(self.nu, self.nv, self.nw);
     });
 
-  add_grid_base<int8_t>(m, "Int8GridBase");
+  add_grid_base<int8_t>(m, "Int8GridBase")
+    .def("get_nonzero_extent", &get_nonzero_extent<int8_t>);
   add_grid_common<int8_t>(m, "Int8Grid");
 
   add_grid_base<float>(m, "FloatGridBase")

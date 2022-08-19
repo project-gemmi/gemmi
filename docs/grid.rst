@@ -592,18 +592,32 @@ using peak_pos as the seed:
 .. doctest::
 
   >>> seed = blobs[0].peak_pos
-  >>> gemmi.flood_fill_above(grid, [seed], threshold=0.6)
+  >>> mask = gemmi.flood_fill_above(grid, [seed], threshold=0.6)
+  >>> mask
   <gemmi.Int8Grid(90, 8, 30)>
-  >>> _.sum()  # == number of masked points
-  62
-  >>> _ * grid.unit_cell.volume / grid.point_count  # cf. blobs[0].volume
-  9.967250538023837
+
 
 The second argument of flood_fill_above() is a list of positions used as seeds.
 We could use multiple seeds to obtain a single mask for all blobs together.
 
 To find area with values below a certain value,
 run flood_fill_above() with optional argument ``negate=True``.
+
+Here are a few characteristics of the mask that we can easily show:
+
+.. doctest::
+
+  >>> mask.sum()  # == number of masked points
+  62
+  >>> _ * grid.unit_cell.volume / grid.point_count  # cf. blobs[0].volume
+  9.967250538023837
+  >>> extent = mask.get_nonzero_extent()  # bounding box containing the blob
+  >>> extent.minimum  # in fractional coordinates
+  <gemmi.Fractional(0.227778, -0.0625, -0.0833333)>
+  >>> grid.unit_cell.orthogonalize(extent.minimum)
+  <gemmi.Position(11.7177, -0.298563, -1.20317)>
+  >>> grid.unit_cell.orthogonalize(extent.maximum)
+  <gemmi.Position(13.4558, 4.47844, 1.20317)>
 
 MRC/CCP4 maps
 =============
