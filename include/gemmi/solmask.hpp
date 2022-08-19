@@ -313,6 +313,7 @@ struct SolventMasker {
 #endif
 };
 
+// TODO: add argument Box<Fractional> src_extent
 template<typename T>
 void interpolate_grid(Grid<T>& dest, const Grid<T>& src, const Transform& tr, int order=2) {
   FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
@@ -383,6 +384,8 @@ inline void unmask_symmetry_mates(Grid<NodeInfo>& mask) {
       }
 }
 
+// TODO: rename this function to interpolate_grid_around_model()
+//       would it be better to use src_model rather than dest_model?
 template<typename T>
 void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                                         const Transform& tr,

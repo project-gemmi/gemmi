@@ -160,6 +160,7 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
+    // TODO: find a better name for this func, perhaps interpolate_array?
     .def("interpolate_values",
          [](const Gr& self, py::array_t<T> arr, const Transform& tr, int order) {
         auto r = arr.template mutable_unchecked<3>();

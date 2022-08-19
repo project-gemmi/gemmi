@@ -717,6 +717,7 @@ struct Grid : GridBase<T> {
       x = static_cast<T>((x - stats.dmean) / stats.rms);
   }
 
+  // TODO: can it be replaced with interpolate_grid(dest, src, Transform(), order)?
   void resample_to(Grid<T>& dest, int order) const {
     dest.check_not_empty();
     int idx = 0;
