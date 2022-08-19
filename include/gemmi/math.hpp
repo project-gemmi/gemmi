@@ -476,13 +476,20 @@ DataStats calculate_data_statistics(const std::vector<T>& data) {
 
 // internally used functions
 namespace impl {
-template<typename T> bool is_same(T a, T b) { return a == b; }
-template<> inline bool is_same(float a, float b) {
-  return std::isnan(b) ? std::isnan(a) : a == b;
-}
-template<> inline bool is_same(double a, double b) {
-  return std::isnan(b) ? std::isnan(a) : a == b;
-}
+// MSVC is missing isnan(IntegralType), so we define is_nan as a replacement
+template<typename T>
+typename std::enable_if<std::is_integral<T>::value, bool>::type
+is_nan(T) { return false; }
+template<typename T>
+typename std::enable_if<std::is_floating_point<T>::value, bool>::type
+is_nan(T a) { return std::isnan(a); }
+
+template<typename T>
+typename std::enable_if<std::is_integral<T>::value, bool>::type
+is_same(T a, T b) { return a == b; }
+template<typename T>
+typename std::enable_if<std::is_floating_point<T>::value, bool>::type
+is_same(T a, T b) { return std::isnan(b) ? std::isnan(a) : a == b; }
 } // namespace impl
 
 } // namespace gemmi

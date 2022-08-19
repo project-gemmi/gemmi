@@ -337,7 +337,7 @@ Box<Fractional> get_nonzero_extent(const GridBase<T>& grid) {
     for (int v = 0; v != grid.nv; ++v)
       for (int u = 0; u != grid.nu; ++u, ++idx) {
         T val = grid.data[idx];
-        if (!(std::isnan(val) || val == 0)) {
+        if (!(impl::is_nan(val) || val == 0)) {
           nonzero[0][u] = true;
           nonzero[1][v] = true;
           nonzero[2][w] = true;
