@@ -238,8 +238,6 @@ void add_mol(py::module& m) {
         return calculate_center_of_mass(self).get();
     })
     .def("transform_pos_and_adp", transform_pos_and_adp<Model>, py::arg("tr"))
-    // the same function under differnt name - for compability
-    .def("transform", transform_pos_and_adp<Model>, py::arg("tr"))
     .def("split_chains_by_segments", &split_chains_by_segments)
     .def("clone", [](const Model& self) { return new Model(self); })
     .def("__repr__", [](const Model& self) {
