@@ -2097,9 +2097,10 @@ but often needed operations:
   >>> st.remove_waters()
   >>> st.remove_ligands_and_waters()
   >>> st.remove_empty_chains()
+  >>> st.assign_serial_numbers()
 
-In C++ the functions above are provided in ``gemmi/polyheur.hpp``.
-They are implemented as templated free functions that can be applied
+In C++ these functions are implemented as templated free functions
+(headers ``modify.hpp`` and ``polyheur.hpp``) that can be applied
 not only to ``Structure``, but also to ``Model`` and ``Chain``.
 
 ----

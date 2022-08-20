@@ -13,7 +13,7 @@
 
 namespace gemmi {
 
-// Remove alternative conformations.
+/// Remove alternative conformations.
 template<class T> void remove_alternative_conformations(T& obj) {
   for (auto& child : obj.children())
     remove_alternative_conformations(child);
@@ -39,7 +39,7 @@ template<> inline void remove_alternative_conformations(Chain& chain) {
   }
 }
 
-// Remove hydrogens.
+/// Remove hydrogens.
 template<class T> void remove_hydrogens(T& obj) {
   for (auto& child : obj.children())
     remove_hydrogens(child);
@@ -50,7 +50,7 @@ template<> inline void remove_hydrogens(Residue& res) {
   });
 }
 
-// Remove anisotropic ADP
+/// Remove anisotropic ADP
 template<class T> void remove_anisou(T& obj) {
   for (auto& child : obj.children())
     remove_anisou(child);
@@ -59,7 +59,7 @@ template<> inline void remove_anisou(Atom& atom) {
   atom.aniso = {0, 0, 0, 0, 0, 0};
 }
 
-// Set absent ANISOU to value from B_iso
+/// Set absent ANISOU to value from B_iso
 template<class T> void ensure_anisou(T& obj) {
   for (auto& child : obj.children())
     ensure_anisou(child);
@@ -71,7 +71,7 @@ template<> inline void ensure_anisou(Atom& atom) {
   }
 }
 
-// apply Transform to both atom's position and ADP
+/// apply Transform to both atom's position and ADP
 template<class T> void transform_pos_and_adp(T& obj, const Transform& tr) {
   for (auto& child : obj.children())
     transform_pos_and_adp(child, tr);
@@ -80,6 +80,17 @@ template<> inline void transform_pos_and_adp(Atom& atom, const Transform& tr) {
   atom.pos = Position(tr.apply(atom.pos));
   if (atom.aniso.nonzero())
     atom.aniso = atom.aniso.transformed_by<float>(tr.mat);
+}
+
+/// set atom site serial numbers to 1, 2, ...
+inline void assign_serial_numbers(Model& model) {
+  int serial = 0;
+  for (CRA cra : model.all())
+    cra.atom->serial = ++serial;
+}
+inline void assign_serial_numbers(Structure& st) {
+  for (Model& model : st.models)
+    assign_serial_numbers(model);
 }
 
 } // namespace gemmi
