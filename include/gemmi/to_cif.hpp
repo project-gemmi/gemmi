@@ -82,9 +82,11 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
   }
 
   size_t col = 0;
+  bool need_new_line = true;
   for (const std::string& val : loop.values) {
     bool text_field = is_text_field(val);
-    os.put(col == 0 || text_field ? '\n' : ' ');
+    os.put(need_new_line || text_field ? '\n' : ' ');
+    need_new_line = text_field;
     if (text_field)
       write_text_field(os, val);
     else
@@ -95,6 +97,7 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
       ++col;
     } else {
       col = 0;
+      need_new_line = true;
     }
   }
   os.put('\n');

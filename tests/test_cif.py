@@ -278,6 +278,16 @@ class TestBlock(unittest.TestCase):
             output_str = doc.as_string()
             self.assertEqual(input_str.replace(eol, '\n'), output_str)
 
+    def test_text_field_eol(self):
+        # use fragment of ma-bak-cepc-0017.cif
+        path = os.path.join(os.path.dirname(__file__), 'eol-test.cif')
+        with open(path) as f:
+            cif_string = f.read()
+        doc = cif.read_string(cif_string)
+        output = doc.as_string()
+        self.assertEqual([s.rstrip() for s in cif_string.splitlines()],
+                         output.splitlines())
+
     def test_write_style(self):
         doc = cif.read_string('data_one _x y')
         self.assertEqual(doc.as_string(), doc[0].as_string())
