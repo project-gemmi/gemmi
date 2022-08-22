@@ -12,7 +12,7 @@
 
 namespace {
 
-enum OptionIndex { PdbxStyle=AfterCifModOptions, Cif2Cif };
+enum OptionIndex { CifStyle=AfterCifModOptions, Cif2Cif };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -24,8 +24,9 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
   CommonUsage[Verbose],
 
-  { PdbxStyle, 0, "", "pdbx-style", Arg::None,
-    "  --pdbx-style  \tSimilar styling (formatting) as in wwPDB." },
+  { CifStyle, 0, "", "style", Arg::CifStyle,
+    "  --style=STYLE  \tOne of: default, pdbx (categories separated with #),"
+                     " aligned (left-aligned columns)." },
   { Cif2Cif, 0, "", "cif2cif", Arg::None,
     "  --cif2cif  \tRead CIF not JSON." },
   CifModUsage[SkipCat],
@@ -47,8 +48,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* input = p.nonOption(0);
   const char* output = p.nonOption(1);
   namespace cif = gemmi::cif;
-  auto style = p.options[PdbxStyle] ? cif::Style::Pdbx
-                                    : cif::Style::PreferPairs;
+  auto style = cif_style_as_enum(p.options[CifStyle]);
 
   if (p.options[Verbose])
     std::cerr << "Transcribing " << input << " to cif ..." << std::endl;

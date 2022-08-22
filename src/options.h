@@ -47,6 +47,9 @@ struct Arg: public option::Arg {
   static option::ArgStatus CoorFormat(const option::Option& option, bool msg) {
     return Choice(option, msg, {"cif", "pdb", "json", "chemcomp"});
   }
+  static option::ArgStatus CifStyle(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"plain", "pdbx", "aligned"});
+  }
 };
 
 struct OptParser : option::Parser {
@@ -75,9 +78,13 @@ struct OptParser : option::Parser {
 };
 
 namespace gemmi { enum class CoorFormat; }
+namespace gemmi { namespace cif { enum class Style; } }
 
 // to be used with Arg::CoorFormat
 gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in);
+
+// to be used with Arg::CifStyle
+gemmi::cif::Style cif_style_as_enum(const option::Option& cif_style);
 
 // can be used with paths_from_args_or_file()
 bool starts_with_pdb_code(const std::string& s);

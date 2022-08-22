@@ -8,7 +8,8 @@ Options:
   -h, --help           Print usage and exit.
   -V, --version        Print version and exit.
   -v, --verbose        Verbose output.
-  --pdbx-style         Similar styling (formatting) as in wwPDB.
+  --style=STYLE        One of: default, pdbx (categories separated with #),
+                       aligned (left-aligned columns).
   --cif2cif            Read CIF not JSON.
   --skip-category=CAT  Do not output tags starting with _CAT
   --sort               Sort tags in alphabetical order.
