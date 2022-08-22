@@ -196,6 +196,7 @@ inline void transform_to_assembly(Structure& st, const std::string& assembly_nam
   for (Model& model : st.models) {
     model = make_assembly(*assembly, model, how, out);
     merge_atoms_in_expanded_model(model, gemmi::UnitCell());
+    assign_serial_numbers(model);
   }
   // Some connections may be invalid now. We just remove all of them.
   st.connections.clear();
