@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import math
+import sys
 import unittest
 import zlib
 import gemmi
@@ -95,7 +96,11 @@ class TestCcp4Map(unittest.TestCase):
         tmp_path = get_path_for_tempfile(suffix='.ccp4')
         m.write_ccp4_map(tmp_path)
         with open(tmp_path, 'rb') as f:
-            self.assertEqual(zlib.crc32(f.read()) % 4294967296, 4078044323)
+            crc_mod_2_32 = zlib.crc32(f.read()) % 4294967296
+            if sys.byteorder == 'little':
+                self.assertEqual(crc_mod_2_32, 4078044323)
+            elif sys.byteorder == 'big':
+                self.assertEqual(crc_mod_2_32, 372922578)
 
         box = gemmi.FractionalBox()
         box.minimum = gemmi.Fractional(0.5/5, 1.5/6, 3.5/7)
