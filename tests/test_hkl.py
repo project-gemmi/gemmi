@@ -23,7 +23,7 @@ def compare_asu_data(self, asu_data, data, f, phi):
     asu_val = numpy.array([asu_dict[tuple(hkl)] for hkl in data_hkl])
     self.assertTrue(numpy.allclose(data_f, abs(asu_val), atol=5e-5, rtol=0))
     x180 = abs(180 - abs(data_phi - numpy.angle(asu_val, deg=True)))
-    self.assertTrue(numpy.allclose(x180, 180, atol=2e-2, rtol=0.))
+    self.assertTrue(numpy.allclose(x180, 180, atol=4e-2, rtol=0.))
 
 def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     if numpy is None:
@@ -52,7 +52,7 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     grid3 = gemmi.transform_map_to_f_phi(map1, half_l=True)
     self.assertTrue(grid3.half_l)
     self.assertEqual(grid3.axis_order, order)
-    compare_maps(self, grid3, grid_half, atol=1e-4)
+    compare_maps(self, grid3, grid_half, atol=2e-4)
     compare_asu_data(self, grid3.prepare_asu_data(), data, f, phi)
 
     asu_data = grid_full.prepare_asu_data()
