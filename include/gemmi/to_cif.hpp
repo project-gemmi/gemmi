@@ -72,7 +72,8 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
     col_width.resize(ncol, 1);
     size_t col = 0;
     for (const std::string& val : loop.values) {
-      col_width[col] = std::max(col_width[col], val.size());
+      if (!is_text_field(val))
+        col_width[col] = std::max(col_width[col], val.size());
       if (++col == ncol)
         col = 0;
     }
