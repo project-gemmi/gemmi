@@ -1691,11 +1691,10 @@ used: one from the International Tables of Crystallography Vol. C
 Other parametrizations exist (for example, with only two Gaussians),
 but are not widely used.
 
-Currently, Gemmi includes only the ITC parametrization.
-The other ones will be added if needed. Furthermore, we ignore charges
-of atoms. For example, the ITC provides separate form factors for Cu, Cu1+
-and Cu2+, but we use only the first one. Again, if it turns out to be useful,
-we will add also the charged parametrizations.
+Currently, Gemmi includes only the ITC parametrization,
+ignoring charges of atoms. For example, the ITC provides separate form factors
+for Cu, Cu1+ and Cu2+, but we use only the first one.
+(If this is not sufficient for your needs, contact the developers).
 
 In C++, the form factor coefficients are listed in the :file:`it92.hpp` header.
 In Python, they can be accessed as a property of an element (this may change).
@@ -1749,6 +1748,15 @@ to the original values:
   >>> for i in range(1, 99):
   ...     gemmi.Element(i).it92.set_coefs(orig_coefs[i])
 
+Macromolecular models may have unknown atoms (UNK)
+with element specified as X. By default, we use oxygen's coefficients for X,
+but you may change it (as well as coefficients of any other atom):
+
+.. doctest::
+
+  >>> c_coefs = gemmi.Element('C').it92.get_coefs()
+  >>> gemmi.Element('X').it92.set_coefs(c_coefs)
+
 The coefficients can be used to directly calculate the sum of Gaussians --
 the structure factor contribution:
 
@@ -1776,12 +1784,6 @@ performed once per atom, the second one -- for each nearby grid point.
 
 In the usual scenario, we add *f'* (the real component of anomalous
 scattering -- see the next section) to the constant coefficient *c*.
-
-We may also want to add a Gaussian :ref:`dampening <blur>`
-*B*\ :sub:`extra` to ADPs.
-It is a trick that improves the accuracy. *B*\ :sub:`extra` added
-in the real space is then cancelled out in the reciprocal space by re-scaling
-the structure factors.
 
 .. _anomalous:
 
@@ -2106,10 +2108,10 @@ of the calculated structure factors:
 Choosing these parameters is a trade-off between efficiency and accuracy.
 *B*\ :sub:`extra` is the most interesting one.
 It is discussed in the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
-chapter 1.3 by G. Bricogne, section 1.3.4.4.5, and further in papers by
+section 1.3.4.4.5 by G. Bricogne, and further in papers by
 `J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and by
 `P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_,
-but without a formula for optimal value.
+but no formula for the optimal value exists.
 The value of *B*\ :sub:`extra` that
 gives the most accurate results depends on the resolution, oversampling,
 atomic radius cut-off, and on the distribution of B-factors
