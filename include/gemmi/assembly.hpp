@@ -93,6 +93,17 @@ inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
   chain.name = namegen.make_short_name(chain.name);
 }
 
+inline bool any_subchain_matches(const Chain& chain, const Assembly::Gen& gen) {
+  const std::string* prev_subchain = nullptr;
+  for (const Residue& res : chain.residues)
+    if (prev_subchain == nullptr || res.subchain != *prev_subchain) {
+      if (in_vector(res.subchain, gen.subchains))
+        return true;
+      prev_subchain = &res.subchain;
+    }
+  return false;
+}
+
 inline Model make_assembly(const Assembly& assembly, const Model& model,
                            HowToNameCopiedChain how, std::ostream* out) {
   Model new_model(model.name);
@@ -114,51 +125,34 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
           if (subs.find(subchain_name) == subs.end())
             *out << "Warning: no subchain " << subchain_name << std::endl;
       }
-      // PDB files specify bioassemblies in terms of chains,
-      // mmCIF files in terms of subchains. We handle the two cases separately.
-      if (!gen.chains.empty()) {
-        // chains are not merged here, multiple chains may have the same name
-        std::map<std::string, std::string> new_names;
-        bool all_chains = (gen.chains[0] == "(all)");
-        for (size_t i = 0; i != model.chains.size(); ++i) {
-          if (all_chains || in_vector(model.chains[i].name, gen.chains)) {
-            new_model.chains.push_back(model.chains[i]);
-            Chain& new_chain = new_model.chains.back();
-            auto name_iter = new_names.find(model.chains[i].name);
-            if (name_iter == new_names.end()) {
-              new_chain.name = namegen.make_new_name(new_chain.name, 1);
-              new_names.emplace(model.chains[i].name, new_chain.name);
-            } else {
-              new_chain.name = name_iter->second;
+      // chains are not merged here, multiple chains may have the same name
+      std::map<std::string, std::string> new_names;
+      bool all_chains = (!gen.chains.empty() && gen.chains[0] == "(all)");
+      for (const Chain& chain : model.chains) {
+        // PDB files specify bioassemblies in terms of chains,
+        // mmCIF files in terms of subchains.
+        bool whole_chain = (all_chains || in_vector(chain.name, gen.chains));
+        if (whole_chain ||
+            (!gen.subchains.empty() && any_subchain_matches(chain, gen))) {
+          // add a new empty chain, but first figure out the name for it
+          auto result = new_names.emplace(chain.name, "");
+          if (result.second)  // insertion happened - generate a new chain name
+            result.first->second = namegen.make_new_name(chain.name, 1);
+          new_model.chains.emplace_back(result.first->second);
+          Chain& new_chain = new_model.chains.back();
+          // add residues to the chain
+          for (const Residue& res : chain.residues) {
+            if (whole_chain || in_vector(res.subchain, gen.subchains)) {
+              new_chain.residues.push_back(res);
+              Residue& new_res = new_chain.residues.back();
+              transform_pos_and_adp(new_res, oper.transform);
+              if (!new_res.subchain.empty()) {
+                if (how == HowToNameCopiedChain::Short)
+                  new_res.subchain = new_chain.name + ":" + new_res.subchain;
+                else if (how == HowToNameCopiedChain::AddNumber)
+                  new_res.subchain += new_chain.name.substr(chain.name.size());
+              }
             }
-            for (Residue& res : new_chain.residues) {
-              transform_pos_and_adp(res, oper.transform);
-              if (!res.subchain.empty())
-                res.subchain = new_chain.name + ":" + res.subchain;
-            }
-          }
-        }
-      } else if (!gen.subchains.empty()) {
-        std::map<std::string, std::string> new_names;
-        for (const std::string& subchain_name : gen.subchains) {
-          auto sub_iter = subs.find(subchain_name);
-          if (sub_iter == subs.end())
-            continue;
-          auto name_iter = new_names.find(sub_iter->second);
-          Chain* new_chain;
-          if (name_iter == new_names.end()) {
-            std::string new_name = namegen.make_new_name(sub_iter->second, 1);
-            new_names.emplace(sub_iter->second, new_name);
-            new_model.chains.emplace_back(new_name);
-            new_chain = &new_model.chains.back();
-          } else {
-            new_chain = new_model.find_chain(name_iter->second);
-          }
-          for (const Residue& res : model.get_subchain(subchain_name)) {
-            new_chain->residues.push_back(res);
-            Residue& new_res = new_chain->residues.back();
-            new_res.subchain = new_chain->name + ":" + res.subchain;
-            transform_pos_and_adp(new_res, oper.transform);
           }
         }
       }

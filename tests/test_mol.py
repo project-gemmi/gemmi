@@ -765,27 +765,23 @@ class TestMol(unittest.TestCase):
         st = gemmi.read_structure(full_path('1pfe.cif.gz'),
                                   merge_chain_parts=False)
         model = st[0]
-        self.assertEqual([ch.name for ch in model],
-                         ['A', 'B', 'A', 'B', 'A', 'B'])
-        a_mass = sum(ch.calculate_mass() for ch in model if ch.name == 'A')
-        b_mass = sum(ch.calculate_mass() for ch in model if ch.name == 'B')
+        ch_names = [ch.name for ch in model]
+        self.assertEqual(['A', 'B', 'A', 'B', 'A', 'B'], ch_names)
         model_mass = model.calculate_mass()
-        self.assertAlmostEqual(model_mass, a_mass + b_mass)
 
         self.assertEqual(len(st.assemblies), 1)
         asem = st.assemblies[0]
         bio = gemmi.make_assembly(asem, model,
                                   gemmi.HowToNameCopiedChain.Short)
-        self.assertEqual([ch.name for ch in bio], ['A', 'B', 'C', 'D'])
+        new_naming = {'A': 'C', 'B': 'D'}
+        self.assertEqual([ch.name for ch in bio],
+                         ch_names + [new_naming[x] for x in ch_names])
         self.assertAlmostEqual(bio.calculate_mass(), 2 * model_mass)
-        self.assertAlmostEqual(bio[0].calculate_mass(), a_mass)
-        self.assertAlmostEqual(bio[1].calculate_mass(), b_mass)
-        self.assertAlmostEqual(bio[2].calculate_mass(), a_mass)
-        self.assertAlmostEqual(bio[3].calculate_mass(), b_mass)
 
         bio = gemmi.make_assembly(asem, model,
                                   gemmi.HowToNameCopiedChain.AddNumber)
-        self.assertEqual([ch.name for ch in bio], ['A1', 'B1', 'A2', 'B2'])
+        self.assertEqual([ch.name for ch in bio],
+                         [x+'1' for x in ch_names] + [x+'2' for x in ch_names])
 
     def test_assembly_naming(self):
         st = gemmi.read_structure(full_path('4oz7.pdb'))
