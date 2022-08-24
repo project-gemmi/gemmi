@@ -93,6 +93,8 @@ inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
   chain.name = namegen.make_short_name(chain.name);
 }
 
+namespace impl {
+
 inline bool any_subchain_matches(const Chain& chain, const Assembly::Gen& gen) {
   const std::string* prev_subchain = nullptr;
   for (const Residue& res : chain.residues)
@@ -104,8 +106,16 @@ inline bool any_subchain_matches(const Chain& chain, const Assembly::Gen& gen) {
   return false;
 }
 
+struct AssemblyMapping {
+  std::vector<std::string> sub;
+};
+
+} // namespace impl
+
+/// @par mapping is for internal use
 inline Model make_assembly(const Assembly& assembly, const Model& model,
-                           HowToNameCopiedChain how, std::ostream* out) {
+                           HowToNameCopiedChain how, std::ostream* out,
+                           impl::AssemblyMapping* mapping=nullptr) {
   Model new_model(model.name);
   ChainNameGenerator namegen(how);
   std::map<std::string, std::string> subs = model.subchain_to_chain();
@@ -133,7 +143,7 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
         // mmCIF files in terms of subchains.
         bool whole_chain = (all_chains || in_vector(chain.name, gen.chains));
         if (whole_chain ||
-            (!gen.subchains.empty() && any_subchain_matches(chain, gen))) {
+            (!gen.subchains.empty() && impl::any_subchain_matches(chain, gen))) {
           // add a new empty chain, but first figure out the name for it
           auto result = new_names.emplace(chain.name, "");
           if (result.second)  // insertion happened - generate a new chain name
@@ -141,19 +151,28 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
           new_model.chains.emplace_back(result.first->second);
           Chain& new_chain = new_model.chains.back();
           // add residues to the chain
-          for (const Residue& res : chain.residues) {
+          for (const Residue& res : chain.residues)
             if (whole_chain || in_vector(res.subchain, gen.subchains)) {
               new_chain.residues.push_back(res);
               Residue& new_res = new_chain.residues.back();
               transform_pos_and_adp(new_res, oper.transform);
               if (!new_res.subchain.empty()) {
+                // change subchain name for the residue
+                if (mapping && !mapping->sub.empty() &&
+                    *(mapping->sub.end() - 2) == new_res.subchain) {
+                  new_res.subchain = mapping->sub.back();
+                  continue;
+                }
                 if (how == HowToNameCopiedChain::Short)
                   new_res.subchain = new_chain.name + ":" + new_res.subchain;
                 else if (how == HowToNameCopiedChain::AddNumber)
                   new_res.subchain += new_chain.name.substr(chain.name.size());
+                if (mapping) {
+                  mapping->sub.push_back(res.subchain);
+                  mapping->sub.push_back(new_res.subchain);
+                }
               }
             }
-          }
         }
       }
     }
@@ -187,11 +206,25 @@ inline void transform_to_assembly(Structure& st, const std::string& assembly_nam
            join_str(st.assemblies, ' ', [](const Assembly& a) { return a.name; }));
     }
   }
+  impl::AssemblyMapping mapping;
   for (Model& model : st.models) {
-    model = make_assembly(*assembly, model, how, out);
+    bool set_mapping = (&model == &st.models[0] && how != HowToNameCopiedChain::Dup);
+    model = make_assembly(*assembly, model, how, out,
+                          set_mapping ? &mapping : nullptr);
     merge_atoms_in_expanded_model(model, gemmi::UnitCell());
     assign_serial_numbers(model);
   }
+  // update Entity::subchains
+  if (!mapping.sub.empty())
+    for (Entity& ent : st.entities) {
+      std::vector<std::string> new_subchains;
+      for (const std::string& s : ent.subchains)
+        for (size_t i = 0; i < mapping.sub.size(); i += 2) {
+          if (mapping.sub[i] == s)
+            new_subchains.push_back(mapping.sub[i+1]);
+        }
+      ent.subchains = std::move(new_subchains);
+    }
   // Some connections may be invalid now. We just remove all of them.
   st.connections.clear();
   // Should Assembly instructions be kept or removed? Currently - removing.
