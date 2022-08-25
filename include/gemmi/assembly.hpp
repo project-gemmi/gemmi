@@ -107,7 +107,8 @@ inline bool any_subchain_matches(const Chain& chain, const Assembly::Gen& gen) {
 }
 
 struct AssemblyMapping {
-  std::vector<std::string> sub;
+  std::vector<std::string> sub;  // records subchain name correspondence
+  std::vector<std::map<std::string, std::string>> chain_maps;
 };
 
 } // namespace impl
@@ -175,6 +176,8 @@ inline Model make_assembly(const Assembly& assembly, const Model& model,
             }
         }
       }
+      if (mapping)
+        mapping->chain_maps.push_back(std::move(new_names));
     }
   return new_model;
 }
@@ -225,8 +228,30 @@ inline void transform_to_assembly(Structure& st, const std::string& assembly_nam
         }
       ent.subchains = std::move(new_subchains);
     }
-  // Some connections may be invalid now. We just remove all of them.
-  st.connections.clear();
+
+  // connections
+  std::vector<Connection> new_connections;
+  for (const Connection& conn : st.connections)
+    if (conn.asu == Asu::Same) {
+      for (const std::map<std::string, std::string>& ch_map : mapping.chain_maps) {
+        auto ch1 = ch_map.find(conn.partner1.chain_name);
+        auto ch2 = ch_map.find(conn.partner2.chain_name);
+        if (ch1 != ch_map.end() && ch2 != ch_map.end()) {
+          Connection new_conn = conn;
+          new_conn.partner1.chain_name = ch1->second;
+          new_conn.partner2.chain_name = ch2->second;
+          if (st.models[0].find_atom(new_conn.partner1) &&
+              st.models[0].find_atom(new_conn.partner2)) {
+            new_connections.push_back(new_conn);
+          }
+        }
+      }
+    } else {
+      // connections other than 1_555 are lost for now
+      // if it's needed - get in touch
+    }
+  st.connections = std::move(new_connections);
+
   // Should Assembly instructions be kept or removed? Currently - removing.
   st.assemblies.clear();
   // Should st.spacegroup_hm and st.cell be kept? Here we remove only:
