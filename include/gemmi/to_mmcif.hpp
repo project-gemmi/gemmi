@@ -863,12 +863,13 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     cif::Loop& asym_loop = block.init_mmcif_loop("_struct_asym.",
                                                  {"id", "entity_id"});
     for (const Chain& chain : st.models[0].chains)
-      for (ConstResidueSpan& sub : chain.subchains())
-        if (!sub.subchain_id().empty()) {
-          const Entity* ent = st.get_entity_of(sub);
-          asym_loop.add_row({sub.subchain_id(),
-                             (ent ? impl::qchain(ent->name) : "?")});
+      for (ConstResidueSpan& sub : chain.subchains()) {
+        const std::string& sub_id = sub.subchain_id();
+        if (!sub_id.empty()) {
+          const Entity* ent = find_entity_of_subchain(sub_id, st.entities);
+          asym_loop.add_row({sub_id, (ent ? impl::qchain(ent->name) : "?")});
         }
+      }
   }
 
   if (groups.origx) { // _database_PDB_matrix (ORIGX)
