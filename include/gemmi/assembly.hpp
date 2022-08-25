@@ -233,6 +233,7 @@ inline void transform_to_assembly(Structure& st, const std::string& assembly_nam
   std::vector<Connection> new_connections;
   for (const Connection& conn : st.connections)
     if (conn.asu == Asu::Same) {
+      int counter = 0;
       for (const std::map<std::string, std::string>& ch_map : mapping.chain_maps) {
         auto ch1 = ch_map.find(conn.partner1.chain_name);
         auto ch2 = ch_map.find(conn.partner2.chain_name);
@@ -242,6 +243,9 @@ inline void transform_to_assembly(Structure& st, const std::string& assembly_nam
           new_conn.partner2.chain_name = ch2->second;
           if (st.models[0].find_atom(new_conn.partner1) &&
               st.models[0].find_atom(new_conn.partner2)) {
+            if (counter != 0)
+              cat_to(new_conn.name, '.', counter);
+            ++counter;
             new_connections.push_back(new_conn);
           }
         }
