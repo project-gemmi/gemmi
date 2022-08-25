@@ -12,6 +12,14 @@ BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 PYTHON=`grep PYTHON_EXECUTABLE:FILEPATH= $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 
+if [ $# = 1 ] && [ $1 = G ]; then
+    (cd $BUILD_DIR && make -j4 program)
+    exit
+fi
+if [ $# = 1 ] && [ $1 = P ]; then
+    (cd $BUILD_DIR && make -j4 py)
+    exit
+fi
 if [ $# = 0 ] || [ $1 != n ]; then
     (cd $BUILD_DIR && make -j4 all check)
     ./tools/cmp-size.py build/gemmi build/gemmi.*.so
