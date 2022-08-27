@@ -759,9 +759,6 @@ When the file is read, the header is used to set properties of the grid:
     >>> m.grid.unit_cell
     <gemmi.UnitCell(29.45, 10.5, 29.7, 90, 111.975, 90)>
 
-If the grid changes, you may update the map header by calling
-``update_ccp4_header()``.
-
 
 setup()
 -------
@@ -816,23 +813,37 @@ equivalent points. In all other cases, it returns 0.
 Writing
 -------
 
-To write a map to a file, update the header if necessary and
-call ``write_ccp4_map()``.
+To write a map to a file, update the header if necessary,
+(optionally) set the extent of the map that is to be written,
+and call ``write_ccp4_map()``.
 
 ::
 
     map.update_ccp4_header();
+    // map.set_extent(...);
     map.write_ccp4_map(filename);
 
 .. doctest::
 
     >>> m.update_ccp4_header()
+    >>> # m.set_extent(...)
     >>> m.write_ccp4_map('out.ccp4')
+
+update_ccp4_header() does the following:
+
+- if the map header is empty (a new map was created):
+  it prepares the header,
+- if the optional argument ``mode`` is given and if it is different than
+  the current mode: the mode is changed and the data type will be
+  converted while writing the file; the mode can be 0, 1, 2, 6, or
+  -1 (default -- no action),
+- if the optional argument ``update_stats`` is true (the default is true):
+  DMIN, DMAX, DMEAN and RMS in the map header are re-calculated.
 
 .. _set_extent:
 
-By default, the map written to a file covers the whole unit cell.
-To cover only a given box, call ``set_extent()`` before writing the map.
+By default, the written map covers the whole unit cell.
+To change this, call ``set_extent()`` before writing the map.
 As an example, let us cover a molecule with 5Å margin
 (equivalent of running CCP4 program MAPMASK with XYZIN and BORDER 5).
 
