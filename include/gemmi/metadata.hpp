@@ -232,7 +232,9 @@ struct Entity {
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
   std::vector<DbRef> dbrefs;
-  // SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
+  /// List of SIFTS Uniprot ACs referenced by SiftsUnpResidue::acc_index
+  std::vector<std::string> sifts_unp_acc;
+  /// SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
   std::vector<std::string> full_sequence;
 
   explicit Entity(std::string name_) noexcept : name(name_) {}
@@ -241,6 +243,13 @@ struct Entity {
   }
 };
 
+/// Reference to UniProt residue, based on _pdbx_sifts_xref_db.
+/// Used in Residue::sifts_unp. res==0 <=> unset.
+struct SiftsUnpResidue {
+  char res = '\0';             // _pdbx_sifts_xref_db.unp_res
+  std::uint8_t acc_index = 0;  // index of Entity::sifts_unp_acc
+  std::uint16_t num = 0;       // _pdbx_sifts_xref_db.unp_num
+};
 
 // A connection. Corresponds to _struct_conn.
 // Symmetry operators are not trusted and not stored.

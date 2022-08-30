@@ -169,6 +169,7 @@ struct Residue : public ResidueId {
   char het_flag = '\0';   // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   bool is_cis = false;    // bond to the next residue marked as cis
   char flag = '\0';       // custom flag
+  SiftsUnpResidue sifts_unp;  // UniProt reference from SIFTS
   std::vector<Atom> atoms;
 
   Residue() = default;
