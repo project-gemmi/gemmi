@@ -86,7 +86,7 @@ template<typename Item> struct Span {
   const Span& children() const { return *this; }
 
 private:
-  iterator begin_;
+  iterator begin_ = nullptr;
   std::size_t size_ = 0;
 };
 
