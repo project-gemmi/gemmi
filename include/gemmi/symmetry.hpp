@@ -8,7 +8,6 @@
 #ifndef GEMMI_SYMMETRY_HPP_
 #define GEMMI_SYMMETRY_HPP_
 
-#include <cstdint>
 #include <cstdlib>    // for strtol, abs
 #include <cstring>    // for memchr, strchr
 #include <cmath>      // for fabs
