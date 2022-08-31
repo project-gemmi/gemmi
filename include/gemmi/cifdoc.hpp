@@ -265,8 +265,8 @@ struct Table {
     }
     const std::string& at(int n) const { return const_cast<Row*>(this)->at(n); }
 
-    std::string& operator[](int n);
-    const std::string& operator[](int n) const {
+    std::string& operator[](size_t n);
+    const std::string& operator[](size_t n) const {
       return const_cast<Row*>(this)->operator[](n);
     }
 
@@ -278,10 +278,10 @@ struct Table {
       return const_cast<Row*>(this)->ptr_at(n);
     }
 
-    bool has(int n) const { return tab.positions.at(n) >= 0; }
-    bool has2(int n) const { return has(n) && !cif::is_null(operator[](n)); }
+    bool has(size_t n) const { return tab.positions.at(n) >= 0; }
+    bool has2(size_t n) const { return has(n) && !cif::is_null(operator[](n)); }
 
-    const std::string& one_of(int n1, int n2) const {
+    const std::string& one_of(size_t n1, size_t n2) const {
       static const std::string nul(1, '.');
       if (has2(n1))
        return operator[](n1);
@@ -652,7 +652,7 @@ inline std::string& Column::operator[](int n) {
   return item_->pair[1];
 }
 
-inline std::string& Table::Row::operator[](int n) {
+inline std::string& Table::Row::operator[](size_t n) {
   int pos = tab.positions[n];
   if (Loop* loop = tab.get_loop()) {
     if (row_index == -1) // tags
