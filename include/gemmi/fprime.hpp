@@ -150,7 +150,10 @@ inline void cromer(int z, double energy_ev, int norb, const OrbitalCoef coefs[],
     g.bena = orbc.binden / kev2ry;
     int nparm = orbc.nparm;
 
-    Point lndata[11];
+    // GCC-12 prints bogus -Warray-bounds warning (about std::__insertion_sort
+    // code) when sorting lndata[11]. To avoid it we use here lndata[16] items.
+    //Point lndata[11];
+    Point lndata[16];
     for (int j = 0; j < 5; ++j)
       lndata[j].x = ln_xnrdat[j];
     // it could be optimized by storing log values in coefs[]
