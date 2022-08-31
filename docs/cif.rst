@@ -1240,7 +1240,7 @@ As an example, let us swap two tag names
 
 .. literalinclude:: code/cif_cc.cpp
    :language: cpp
-   :lines: 32-33
+   :lines: 32-34
 
 .. doctest::
 

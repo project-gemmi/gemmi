@@ -27,8 +27,9 @@ void convert_to_xyz(cif::Document doc) {
 }
 
 
-// this example is in docs from line 32 to 33
+// this example is in docs from line 32 to 34
 void swap_atom_id_tags(cif::Block& block) {
-  cif::Table::Row tags = block.find("_atom_site.", {"label_atom_id", "auth_atom_id"}).tags();
+  cif::Table table = block.find("_atom_site.", {"label_atom_id", "auth_atom_id"});
+  cif::Table::Row tags = table.tags();
   std::swap(tags[0], tags[1]);
 }
