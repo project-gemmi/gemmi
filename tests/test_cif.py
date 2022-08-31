@@ -44,6 +44,7 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block[4].pair[0], '_nonloop_b')
         self.assertEqual(block.get_index('_lb'), 5)
         self.assertEqual(block[5].loop.tags[1], '_lb')
+        self.assertIsNone(block[5].pair)
 
         rows = list(block.find('_nonloop_', ['a', 'b']))
         gc.collect()
@@ -86,7 +87,7 @@ class TestBlock(unittest.TestCase):
         block = doc[0]
         block.set_pair('_d', '9')
         block.set_pair('_b', '8')
-        self.assertEqual(block.find_pair('_a'), ['_a', '1'])
+        self.assertEqual(block.find_pair('_a'), ('_a', '1'))
         self.assertEqual(block.find_value('_b'), '8')
         self.assertEqual(block.find_value('_c'), '3')
         self.assertEqual(block.find_value('_d'), '9')
@@ -94,14 +95,14 @@ class TestBlock(unittest.TestCase):
     def test_set_pairs(self):
         doc = cif.read_string('data_a _zza 0 _z_a 1 _Z_b 2 _z_C 3 _zzb 4')
         block = doc[0]
-        expected = [['_zza', '0'], ['_z_a', '1'], ['_Z_b', '2'],
-                    ['_z_C', '3'], ['_zzb', '4']]
+        expected = [('_zza', '0'), ('_z_a', '1'), ('_Z_b', '2'),
+                    ('_z_C', '3'), ('_zzb', '4')]
         self.assertEqual([v.pair for v in block], expected)
         block.set_pairs('_z_', {'1': 5})
-        expected.insert(4, ['_z_1', '5'])
+        expected.insert(4, ('_z_1', '5'))
         self.assertEqual([v.pair for v in block], expected)
         block.set_pairs('_z_', {'B': 10, 'c' : 11, 'a': 9})
-        expected[1:4] = [['_z_a', '9'], ['_z_B', '10'], ['_z_c', '11']]
+        expected[1:4] = [('_z_a', '9'), ('_z_B', '10'), ('_z_c', '11')]
         self.assertEqual([v.pair for v in block], expected)
 
     def test_set_loop(self):
@@ -328,7 +329,7 @@ class TestBlock(unittest.TestCase):
 
         self.assertEqual(block.get_index('_nonlOOp_b'), 4)
         self.assertEqual(block.get_index('_lBBB'), 5)
-        self.assertEqual(block.find_pair('_Three'), ['_thrEE', '3'])
+        self.assertEqual(block.find_pair('_Three'), ('_thrEE', '3'))
 
 class TestQuote(unittest.TestCase):
     def test_quote(self):

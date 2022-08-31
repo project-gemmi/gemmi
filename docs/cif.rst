@@ -606,8 +606,8 @@ and a list of items (class Item):
   ...        elif item.frame is not None:
   ...            print('frame', item.frame)
   ...
-  pair ['_ndb_struct_conf_na.entry_id', '1PFE']
-  pair ['_ndb_struct_conf_na.feature', "'double helix'"]
+  pair ('_ndb_struct_conf_na.entry_id', '1PFE')
+  pair ('_ndb_struct_conf_na.feature', "'double helix'")
   loop <gemmi.cif.Loop 8 x 25>
   loop <gemmi.cif.Loop 5 x 43>
   loop <gemmi.cif.Loop 3 x 3>
@@ -720,7 +720,7 @@ Accessing name-value pairs:
 
   >>> # (1) tag and value
   >>> block.find_pair('_cell.length_a')
-  ['_cell.length_a', '39.374']
+  ('_cell.length_a', '39.374')
   >>> block.find_pair('_no_such_tag')  # return None
 
   >>> # (2) only value
@@ -731,7 +731,7 @@ Accessing name-value pairs:
   >>> # (3) Item
   >>> item = block.find_pair_item('_cell.length_c')
   >>> item.pair
-  ['_cell.length_c', '79.734']
+  ('_cell.length_c', '79.734')
   >>> item.line_number
   72
   >>> block.find_pair_item('_nothing')  # return None

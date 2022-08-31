@@ -159,8 +159,11 @@ void add_cif(py::module& cif) {
     .def("__getitem__", [](Block& self, int index) -> Item& {
         return self.items[normalize_index(index, self.items)];
     }, py::arg("index"), py::return_value_policy::reference_internal)
-    .def("find_pair", &Block::find_pair, py::arg("tag"),
-         py::return_value_policy::reference_internal)
+    .def("find_pair", [](const Block& self, const std::string& tag) -> py::object {
+        if (const Pair* p = self.find_pair(tag))
+          return py::make_tuple((*p)[0], (*p)[1]);
+        return py::none();
+     }, py::arg("tag"))
     .def("find_pair_item", &Block::find_pair_item, py::arg("tag"),
          py::return_value_policy::reference_internal)
     .def("find_value", &Block::find_value, py::arg("tag"),
@@ -275,9 +278,11 @@ void add_cif(py::module& cif) {
   cif_item
     .def("erase", &Item::erase)
     .def_readonly("line_number", &Item::line_number)
-    .def_property_readonly("pair", [](Item& self) {
-        return self.type == ItemType::Pair ? &self.pair : nullptr;
-    }, py::return_value_policy::reference_internal)
+    .def_property_readonly("pair", [](Item& self) -> py::object {
+        if (self.type == ItemType::Pair)
+          return py::make_tuple(self.pair[0], self.pair[1]);
+        return py::none();
+    })
     .def_property_readonly("loop", [](Item& self) {
         return self.type == ItemType::Loop ? &self.loop : nullptr;
     }, py::return_value_policy::reference_internal)
