@@ -134,7 +134,7 @@ void print_info(const gemmi::Ccp4<T>& map, const gemmi::DataStats& st) {
       const gemmi::SpaceGroup* sg2 = gemmi::find_spacegroup_by_ops(gops);
       std::printf("Space group from the operators: ");
       if (sg2)
-        std::printf("%d  (%s)\n", sg->ccp4, sg->xhm().c_str());
+        std::printf("%d  (%s)\n", sg2->ccp4, sg2->xhm().c_str());
       else
         std::printf("unknown\n");
       if (sg2 && sg && sg != sg2)
