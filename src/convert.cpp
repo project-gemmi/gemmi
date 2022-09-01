@@ -53,8 +53,8 @@ enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, CifStyle, BlockName,
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove,
-  ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq, Anisou,
-  SegmentAsChain, OldPdb, ForceLabel
+  ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq,
+  SiftsNum, Anisou, SegmentAsChain, OldPdb, ForceLabel
 };
 
 const option::Descriptor Usage[] = {
@@ -110,6 +110,8 @@ const option::Descriptor Usage[] = {
     "  -s FILE  \tUse sequence from FILE (PIR or FASTA format), "
     "which must contain either one sequence (for all chains) "
     "or as many sequences as there are chains." },
+  { SiftsNum, 0, "", "sifts-num", Arg::None,
+    "  --sifts-num  \tUse SIFTS-mapped position in UniProt sequence as sequence ID." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
 
@@ -219,6 +221,22 @@ void convert(gemmi::Structure& st,
       }
     gemmi::deduplicate_entities(st);
     gemmi::assign_label_seq_id(st, options[ForceLabel]);
+  }
+
+  if (options[SiftsNum]) {
+    bool changed = false;
+    for (gemmi::Model& model: st.models)
+      for (gemmi::Chain& chain : model.chains) {
+        for (gemmi::Residue& res : chain.residues) {
+          if (res.sifts_unp.res) {
+            res.seqid = gemmi::SeqId(res.sifts_unp.num, ' ');
+            changed = true;
+          }
+        }
+      }
+    if (options[Verbose] && !changed)
+      std::cerr << "Option --sifts-num had no effect, "
+                   "it works only with _pdbx_sifts_xref_db.unp_num." << std::endl;
   }
 
   HowToNameCopiedChain how = HowToNameCopiedChain::AddNumber;

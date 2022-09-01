@@ -38,6 +38,8 @@ Any output options:
   -s FILE                 Use sequence from FILE (PIR or FASTA format), which
                           must contain either one sequence (for all chains) or
                           as many sequences as there are chains.
+  --sifts-num             Use SIFTS-mapped position in UniProt sequence as
+                          sequence ID.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
 
 Macromolecular operations:
