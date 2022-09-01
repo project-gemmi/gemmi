@@ -151,6 +151,7 @@ void add_meta(py::module& m) {
     .def_readwrite("subchains", &Entity::subchains)
     .def_readwrite("entity_type", &Entity::entity_type)
     .def_readwrite("polymer_type", &Entity::polymer_type)
+    .def_readwrite("sifts_unp_acc", &Entity::sifts_unp_acc)
     .def_readwrite("full_sequence", &Entity::full_sequence)
     .def_static("first_mon", &Entity::first_mon)
     .def("__repr__", [](const Entity& self) { return tostr(self); });

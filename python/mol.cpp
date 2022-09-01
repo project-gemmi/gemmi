@@ -405,10 +405,15 @@ void add_mol(py::module& m) {
     .def(py::init<>())
     .def_readwrite("subchain", &Residue::subchain)
     .def_readonly("entity_id", &Residue::entity_id)
+    .def_readwrite("label_seq", &Residue::label_seq)
     .def_readwrite("entity_type", &Residue::entity_type)
     .def_readwrite("het_flag", &Residue::het_flag)
     .def_readwrite("flag", &Residue::flag)
-    .def_readwrite("label_seq", &Residue::label_seq)
+    .def_property_readonly("sifts_unp", [](const Residue& self) {
+        return py::make_tuple(self.sifts_unp.res,
+                              self.sifts_unp.acc_index,
+                              self.sifts_unp.num);
+    })
     .def("__len__", [](const Residue& res) { return res.atoms.size(); })
     .def("__contains__", [](const Residue& res, const std::string& name) {
         return res.find_atom(name, '*') != nullptr;

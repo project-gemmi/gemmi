@@ -2462,6 +2462,39 @@ because we have 5 missing residues at the ends.
 
 See also the :ref:`gemmi-align <gemmi-align>` program.
 
+.. _dbref:
+
+DBREF and SIFTS
+---------------
+
+PDB files have DBREF records that provide "cross-reference links between
+PDB sequences (what appears in SEQRES record) and a corresponding database
+sequence". The database is usually UniProt or GenBank.
+In the mmCIF format the same information is provided in categories
+_struct_ref and _struct_ref_seq.
+
+Alternative cross-referencing is available from the SIFTS project,
+which has been run in the EBI (PDBe) since 2000. According to the
+`SIFTS description <https://www.ebi.ac.uk/pdbe/docs/sifts/methodology.html>`_,
+DBREF can be incorrect and the SIFTS data provides "cleaned-up
+taxonomic information for every macromolecular structure".
+This information is stored in CSV and XML files on the EBI FTP server.
+
+Additionally, SIFTS annotations are included in "updated" mmCIF files
+from PDBe -- in categories and items starting with _pdbx_sifts,
+which were introduced to the PDBx/mmCIF spec in 2021.
+Despite containing information similar to _struct_ref…,
+the SIFTS extension (_pdbx_sifts…) is organized quite differently,
+so it is read in a separate function.
+*(The SIFTS extension is also grossly redundant.
+The residue-level cross-referencing to UniProt is written for every residue
+and also for every atom in the structure. Gemmi ignores the redundant
+per-atom annotations, in hope that they will be abandoned).*
+
+Gemmi has limited support for both DBREF and SIFTS annotations.
+The API is undocumented yet and may change in the future.
+If you'd like to use it -- get in touch.
+
 
 Model
 =====

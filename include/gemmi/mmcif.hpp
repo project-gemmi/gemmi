@@ -375,6 +375,8 @@ inline void read_sifts_unp(cif::Block& block, Structure& st) {
     for (const auto row : table) {
       if (row[kSeqIdOrdinal] != "1" || row[kObserved][0] != 'y')
         continue;
+      if (cif::is_null(row[kUnpAcc]) || cif::is_null(row[kUnpNum]))
+        continue;
       bool update_acc_index = false;
       if (!ent || row[kEntityId] != ent->name) {
         ent = st.get_entity(row[kEntityId]);
@@ -389,11 +391,9 @@ inline void read_sifts_unp(cif::Block& block, Structure& st) {
       if (update_acc_index) {
         auto& vec = ent->sifts_unp_acc;
         auto it = std::find(vec.begin(), vec.end(), unp_acc);
-        if (it == vec.end()) {
-          vec.push_back(unp_acc);
-          it = vec.end();
-        }
         unp.acc_index = std::uint8_t(it - vec.begin());
+        if (it == vec.end())
+          vec.push_back(unp_acc);
       }
       if (!polymer || row[kAsymId] != polymer.front().subchain) {
         polymer = model.get_subchain(row[kAsymId]);
