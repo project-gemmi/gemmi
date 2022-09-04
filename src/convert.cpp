@@ -224,14 +224,33 @@ void convert(gemmi::Structure& st,
   }
 
   if (options[SiftsNum]) {
+    // Currently, we change seqid only for residues _pdbx_sifts_xref_db.unp_num
+    // set, and leave seqid for other residues.
+    // A more robust method would be to re-assign the whole polymer always when
+    // nup_num is set for any residue. This would mean:
+    // using insertion codes for insertions (up to 26 residues),
+    // renumbering ligands and waters if needed, and
+    // failing if we get duplicated seqid (multiple mappings for one chain).
     bool changed = false;
     for (gemmi::Model& model: st.models)
       for (gemmi::Chain& chain : model.chains) {
+        const gemmi::Residue* prev_res = nullptr;
+        bool wrong_order = false;
         for (gemmi::Residue& res : chain.residues) {
           if (res.sifts_unp.res) {
             res.seqid = gemmi::SeqId(res.sifts_unp.num, ' ');
+            if (prev_res && !(prev_res->seqid < res.seqid))
+              wrong_order = true;
             changed = true;
           }
+          prev_res = &res;
+        }
+        if (wrong_order) {
+          std::cerr << "WARNING: new sequence IDs are in wrong order in chain "
+                    << chain.name;
+          if (st.models.size() > 1)
+            std::cerr << " (model " << model.name << ')';
+          std::cerr << std::endl;
         }
       }
     if (options[Verbose] && !changed)
