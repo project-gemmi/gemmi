@@ -438,9 +438,7 @@ double Ccp4<T>::setup(T default_value, MapSetup mode) {
         return a;
     });
   } else {
-    grid.axis_order = AxisOrder::Unknown;
-    if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell())
-      grid.axis_order = AxisOrder::XYZ;
+    grid.axis_order = full_cell() ? AxisOrder::XYZ : AxisOrder::Unknown;
   }
   if (grid.axis_order == AxisOrder::XYZ)
     grid.calculate_spacing();

@@ -133,7 +133,7 @@ class TestCcp4Map(unittest.TestCase):
         self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.Unknown)
         mcut.setup(float('nan'), gemmi.MapSetup.NoSymmetry)
         self.assertTrue(mcut.full_cell())
-        self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.Unknown)
+        self.assertEqual(mcut.grid.axis_order, gemmi.AxisOrder.XYZ)
         assert_numpy_equal(self, mcut.grid.array, expanded_data)
 
         mcut = gemmi.read_ccp4_map(full_path(yzx_path), setup=True)
