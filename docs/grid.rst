@@ -781,18 +781,14 @@ It is used only when the input file does not cover a complete asymmetric unit.
 When you call a read function with setup=True,
 this argument is NaN for maps and -1 for masks.
 
-The second argument is optional and can be used to perform
-a partial setup only.
+The second argument (mode) is optional and can be used to perform
+a partial setup.
 
 * MapSetup.Full -- (default value) reorders and resizes the grid to cover
   the whole unit cell, applying symmetry.
 * MapSetup.NoSymmetry -- does not use symmetry operations, only
   cell repeat (periodic boundary conditions, PBC) when extending the map.
 * MapSetup.ReorderOnly -- only reorders axes to X, Y, Z.
-
-The setup function in the default mode checks the consistency of the data.
-If the data is redundant, the returned value is the biggest difference between
-equivalent points. In all other cases, it returns 0.
 
 **C++**
 
@@ -805,10 +801,26 @@ equivalent points. In all other cases, it returns 0.
 .. doctest::
 
     >>> m.setup(float('nan'))
-    0.0
     >>> # the grid dimensions were 8x6x10, now they are:
     >>> m.grid
     <gemmi.FloatGrid(60, 24, 60)>
+
+Non-default modes are only for special occasions.
+For example, if we had a suspicious file and wanted to check if the map
+values obey the symmetry specified in the file, we could do this:
+
+.. doctest::
+  :skipif: numpy is None
+
+    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
+    >>> m.setup(float('nan'), mode=gemmi.MapSetup.NoSymmetry)
+    >>> grid_copy = m.grid.clone()
+    >>> # use two grids to store min and max values of symmetry mates
+    >>> m.grid.symmetrize_min()
+    >>> grid_copy.symmetrize_max()
+    >>> # find the biggest difference between symmetry-related points
+    >>> numpy.nanmax(grid_copy.array - m.grid.array)
+    0.0
 
 Writing
 -------
@@ -871,7 +883,6 @@ read by calling ``get_extent()`` before the setup:
     >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
     >>> box = m.get_extent()
     >>> m.setup(float('nan'))
-    0.0
     >>> # ... here the map gets modified ...
     >>> m.set_extent(box)
     >>> m.write_ccp4_map('out.ccp4')
@@ -895,7 +906,6 @@ the box that contains real data with ``get_nonzero_extent()``:
 
     >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
     >>> m.setup(0., gemmi.MapSetup.NoSymmetry)
-    0.0
     >>> m.grid.get_nonzero_extent()  #doctest: +ELLIPSIS
     <gemmi.FractionalBox object at 0x...>
 
@@ -907,6 +917,7 @@ To write grid data as a ccp4 file: create a new Ccp4 class,
 set the grid, call ``update_ccp4_header()`` and write the file.
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> ccp4 = gemmi.Ccp4Map()
   >>> ccp4.grid = gemmi.FloatGrid(numpy.zeros((10, 10, 10), dtype=numpy.float32))

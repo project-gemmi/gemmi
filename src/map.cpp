@@ -206,7 +206,6 @@ int GEMMI_MAIN(int argc, char **argv) {
         // this is equivalent to calling map.setup(Full), but additionally
         // it prints inconsistent points.
         map.setup(NAN, gemmi::MapSetup::NoSymmetry);
-        map.grid.axis_order = gemmi::AxisOrder::XYZ;
         map.grid.symmetrize([&](float a, float b) {
             if (a < b || a > b) {
               double diff = std::fabs(a - b);
@@ -219,11 +218,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         });
         map.grid.calculate_spacing();
       } else if (p.options[Full] || p.options[Mask]) {
-        max_err = map.setup(NAN, gemmi::MapSetup::Full);
+        map.setup(NAN, gemmi::MapSetup::Full);
       }
-      if (max_err != 0.0)
-        std::fprintf(stderr, "WARNING: different values for equivalent "
-                             "points, max diff: %g\n", max_err);
       if (p.options[Full]) {
         size_t nn = std::count_if(map.grid.data.begin(), map.grid.data.end(),
                                   [](float x) { return std::isnan(x); });

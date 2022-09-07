@@ -655,8 +655,9 @@ struct Grid : GridBase<T> {
         d = new_value;
   }
 
-  /// Use provided function to reduce values of all symmetry mates of each
+  /// Use \par func to reduce values of all symmetry mates of each
   /// grid point, then assign the result to all the points.
+  /// \par func takes two values and returns a value.
   template<typename Func>
   void symmetrize(Func func) {
     symmetrize_using_ops(this->get_scaled_ops_except_id(), func);
@@ -705,9 +706,12 @@ struct Grid : GridBase<T> {
   void symmetrize_abs_max() {
     symmetrize([](T a, T b) { return (std::abs(a) > std::abs(b) || !(b == b)) ? a : b; });
   }
-  // multiplies grid points on special position
+  /// multiplies grid points on special position
   void symmetrize_sum() {
     symmetrize([](T a, T b) { return a + b; });
+  }
+  void symmetrize_nondefault(T default_) {
+    symmetrize([default_](T a, T b) { return impl::is_same(a, default_) ? b : a; });
   }
 
   /// scale the data to get mean == 0 and rmsd == 1 (doesn't work for T=complex)
