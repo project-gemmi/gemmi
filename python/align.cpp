@@ -2,7 +2,7 @@
 
 #include "gemmi/align.hpp"     // for align_sequence_to_polymer
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
-#include "gemmi/select.hpp"
+#include "gemmi/select.hpp"    // for Selection
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -61,9 +61,6 @@ void add_select(py::module& m) {
     .def("__iter__", [](FilterProxy<Selection, Atom>& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
-
-  // for backward compatibility only
-  m.def("parse_cid", [](const std::string& cid) { return Selection(cid); });
 }
 
 void add_alignment(py::module& m) {

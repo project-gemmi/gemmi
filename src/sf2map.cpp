@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/calculate.hpp> // for calculate_fractional_box
-#include <gemmi/select.hpp>    // for parse_cid
+#include <gemmi/select.hpp>    // for Selection
 #include <gemmi/read_coor.hpp> // for read_structure_gz
 #include "mapcoef.h"
 
