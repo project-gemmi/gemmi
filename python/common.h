@@ -21,7 +21,6 @@ void add_monlib(pybind11::module& m); // monlib.cpp
 void add_topo(pybind11::module& m); // topo.cpp
 void add_alignment(pybind11::module& m); // align.cpp
 void add_scaling(pybind11::module& m); // scaling.cpp
-void add_select(pybind11::module& m); // align.cpp
 void add_search(pybind11::module& m); // search.cpp
 void add_sf(pybind11::module& m); // sf.cpp
 void add_custom(pybind11::module& m); // custom.cpp

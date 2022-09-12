@@ -6,6 +6,7 @@
 #include "gemmi/pdb.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/neighbor.hpp"
+#include "gemmi/select.hpp"  // count_atom_sites
 #include <benchmark/benchmark.h>
 
 static const char* path;

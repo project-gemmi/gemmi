@@ -10,16 +10,17 @@
 
 namespace gemmi {
 
-template<class T> size_t count_atom_sites(const T& obj) {
-  size_t sum = 0;
+template<class T> bool has_hydrogen(const T& obj) {
   for (const auto& child : obj.children())
-    sum += count_atom_sites(child);
-  return sum;
+    if (has_hydrogen(child))
+      return true;
+  return false;
 }
-template<> inline size_t count_atom_sites(const Residue& res) {
-  return res.atoms.size();
+template<> inline bool has_hydrogen(const Atom& atom) {
+  return atom.is_hydrogen();
 }
 
+/// deprecated, use has_hydrogen() or count_atom_sites(..., Selection("[H,D]")
 template<class T> size_t count_hydrogen_sites(const T& obj) {
   size_t sum = 0;
   for (const auto& child : obj.children())
@@ -28,16 +29,6 @@ template<class T> size_t count_hydrogen_sites(const T& obj) {
 }
 template<> inline size_t count_hydrogen_sites(const Atom& atom) {
   return (size_t) atom.is_hydrogen();
-}
-
-template<class T> double count_occupancies(const T& obj) {
-  double sum = 0;
-  for (const auto& child : obj.children())
-    sum += count_occupancies(child);
-  return sum;
-}
-template<> inline double count_occupancies(const Atom& atom) {
-  return atom.occ;
 }
 
 template<class T> double calculate_mass(const T& obj) {

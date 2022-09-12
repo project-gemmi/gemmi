@@ -2631,9 +2631,22 @@ In Python, ``Model`` has also methods for often needed calculations:
   4395.826034891504
   >>> model.calculate_center_of_mass()
   <gemmi.Position(-5.7572, 16.4099, 2.88299)>
+  >>> model.has_hydrogen()
+  False
+
+The first two function can take a :ref:`Selection <selections>`
+as an argument. For example, we can count sulfur atoms with:
+
+.. doctest::
+
+  >>> model.count_atom_sites(gemmi.Selection('[S]'))
+  4
+  >>> model.count_occupancies(gemmi.Selection('[S]'))
+  2.0
 
 In C++, the same functionality is provided by templated functions
-from ``gemmi/calculate.hpp``. These functions (in C++) can be applied not only
+from ``gemmi/calculate.hpp`` and ``gemmi/select.hpp``.
+These functions (in C++) can be applied not only
 to ``Model``, but also to ``Structure``, ``Chain`` and ``Residue``.
 
 

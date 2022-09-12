@@ -7,7 +7,6 @@
 
 #include "model.hpp"
 #include "small.hpp"
-#include "calculate.hpp"  // for count_atom_sites
 
 namespace gemmi {
 
@@ -49,7 +48,6 @@ inline SmallStructure mx_to_sx_structure(const Structure& st, int n=0) {
   small.name = st.name;
   small.cell = st.cell;
   small.spacegroup_hm = st.spacegroup_hm;
-  small.sites.reserve(count_atom_sites(model));
   for (const Chain& chain : model.chains)
     for (const Residue& residue : chain.residues)
       for (const Atom& atom : residue.atoms)

@@ -154,7 +154,6 @@ PYBIND11_MODULE(gemmi, mg) {
   add_monlib(mg);
   add_topo(mg);
   add_alignment(mg);
-  add_select(mg);
   add_search(mg);
   add_read_structure(mg);
   add_scaling(mg);

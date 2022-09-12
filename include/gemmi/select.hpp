@@ -163,6 +163,7 @@ struct Selection {
     return cid;
   }
 
+  bool matches(const Structure&) const { return true; }
   bool matches(const Model& model) const {
     return mdl == 0 || std::to_string(mdl) == model.name;
   }
@@ -448,6 +449,29 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
 
 inline Selection::Selection(const std::string& cid) {
   impl::parse_cid(cid, *this);
+}
+
+
+template<class T> size_t count_atom_sites(const T& obj, const Selection* sel=nullptr) {
+  size_t sum = 0;
+  if (!sel || sel->matches(obj))
+    for (const auto& child : obj.children())
+      sum += count_atom_sites(child, sel);
+  return sum;
+}
+template<> inline size_t count_atom_sites(const Atom& atom, const Selection* sel) {
+  return (!sel || sel->matches(atom)) ? 1 : 0;
+}
+
+template<class T> double count_occupancies(const T& obj, const Selection* sel=nullptr) {
+  double sum = 0;
+  if (!sel || sel->matches(obj))
+    for (const auto& child : obj.children())
+        sum += count_occupancies(child, sel);
+  return sum;
+}
+template<> inline double count_occupancies(const Atom& atom, const Selection* sel) {
+  return (!sel || sel->matches(atom)) ? atom.occ : 0;
 }
 
 } // namespace gemmi

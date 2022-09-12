@@ -50,6 +50,15 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+size_t count_hydrogens(const gemmi::Structure& st) {
+  size_t count = 0;
+  for (const gemmi::Model& model : st.models)
+    for (gemmi::const_CRA cra : model.all())
+      if (cra.atom->is_hydrogen())
+        ++count;
+  return count;
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -92,7 +101,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::setup_entities(st);
     size_t initial_h = 0;
     if (p.options[Verbose])
-      initial_h = gemmi::count_hydrogen_sites(st);
+      initial_h = count_hydrogens(st);
     if (h_change == gemmi::HydrogenChange::Remove) {
       gemmi::remove_hydrogens(st);
     } else {
@@ -113,7 +122,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     if (p.options[Verbose])
       std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
-                  initial_h, gemmi::count_hydrogen_sites(st));
+                  initial_h, count_hydrogens(st));
     if (p.options[Verbose])
       std::printf("Writing coordinates to %s\n", output.c_str());
     gemmi::Ofstream os(output, &std::cout);

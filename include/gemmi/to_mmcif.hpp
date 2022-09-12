@@ -152,10 +152,12 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
     atom_loop.tags.emplace(atom_loop.tags.begin(), "_atom_site.group_PDB");
   bool has_calc_flag = false;
   bool has_tls_group_id = false;
+  size_t atom_site_count = 0;
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms) {
+          ++atom_site_count;
           if (atom.calc_flag != CalcFlag::NotSet)
             has_calc_flag = true;
           if (atom.tls_group_id >= 0)
@@ -167,7 +169,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
     atom_loop.tags.emplace_back("_atom_site.pdbx_tls_group_id");
 
   std::vector<std::string>& vv = atom_loop.values;
-  vv.reserve(count_atom_sites(st) * atom_loop.tags.size());
+  vv.reserve(atom_site_count * atom_loop.tags.size());
   std::vector<std::pair<int, const Atom*>> aniso;
   int serial = 0;
   for (const Model& model : st.models) {

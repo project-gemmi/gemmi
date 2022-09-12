@@ -12,6 +12,7 @@
 #include "to_mmcif.hpp"  // for write_struct_conn
 #include "sprintf.hpp"   // for to_str, to_str_prec
 #include "calculate.hpp" // for find_best_plane
+#include "select.hpp"    // for count_atom_sites
 
 namespace gemmi {
 
