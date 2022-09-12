@@ -2055,9 +2055,8 @@ are merged only if their distance is smaller. The merged atom has summed
 occupancy and averaged position. B-factors are not changed.
 
 Function ``transform_to_assembly()`` changes all models in the given structure
-to assemblies. Then it merges duplicated atoms, removes connections
-(some connections may get invalidated by the transformation; to make it simpler,
-we remove them all) and removes the list of assemblies. The space group and
+to assemblies. Then it merges duplicated atoms,
+and removes the list of assemblies. The space group and
 unit cell are preserved. The choice of what is kept and what is removed
 is arbitrary, so this function may not be appropriate in all scenarios.
 
