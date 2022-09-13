@@ -27,7 +27,10 @@ class TestMisc(unittest.TestCase):
         self.assertEqual(selstr('CA:*'), '//*//CA')
         self.assertEqual(selstr('A//CA'), '//A//CA')
         self.assertEqual(selstr('///'), '////')
-        self.assertEqual(selstr('[Cu]'), '//*//[CU]')
+        self.assertEqual(selstr('[Cu]'), '//*//[Cu]')
+        self.assertEqual(selstr('[Mg,O,X]'), '//*//[X,O,Mg]')
+        self.assertEqual(selstr('[!Xe]'), '//*//[!Xe]')
+        self.assertEqual(selstr('[!H,D]'), '//*//[!H,D]')
         self.assertEqual(selstr(';q=0'), '//*//;q=0')
         self.assertEqual(selstr('A/33.-120.A/[C]'), '//A/33.-120.A/[C]')
 

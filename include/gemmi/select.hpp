@@ -120,7 +120,7 @@ struct Selection {
   SequenceId to_seqid = {INT_MAX, '*'};
   List residue_names;
   List atom_names;
-  List elements;
+  std::vector<char> elements;
   List altlocs;
   FlagList residue_flags;
   FlagList atom_flags;
@@ -149,10 +149,17 @@ struct Selection {
     cid += '/';
     if (!atom_names.all)
       cid += atom_names.str();
-    if (!elements.all) {
+    if (!elements.empty()) {
       cid += '[';
-      cid += elements.str();
-      cid += ']';
+      bool inv = (std::count(elements.begin(), elements.end(), 1) > 64);
+      if (inv)
+        cid += '!';
+      for (size_t i = 0; i < elements.size(); ++i)
+        if (elements[i] != char(inv)) {
+          cid += element_name(static_cast<El>(i));
+          cid += ',';
+        }
+      cid.back() = ']';
     }
     if (!altlocs.all) {
       cid += ':';
@@ -178,7 +185,7 @@ struct Selection {
   }
   bool matches(const Atom& a) const {
     return atom_names.has(a.name) &&
-           (elements.all || elements.has(a.element.uname())) &&
+           (elements.empty() || elements[a.element.ordinal()]) &&
            (altlocs.all || altlocs.has(std::string(a.altloc ? 1 : 0, a.altloc))) &&
            atom_flags.has(a.flag) &&
            std::all_of(atom_inequalities.begin(), atom_inequalities.end(),
@@ -262,7 +269,7 @@ struct Selection {
                      [&](typename T::child_type& c) { return c.children().empty(); });
   }
   void remove_selected(Residue& res) const {
-    if (atom_names.all && elements.all && altlocs.all &&
+    if (atom_names.all && elements.empty() && altlocs.all &&
         atom_flags.pattern.empty() && atom_inequalities.empty())
       res.atoms.clear();
     else
@@ -302,6 +309,32 @@ inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t 
   }
   list.list = cid.substr(pos, end - pos);
   return list;
+}
+
+inline void parse_cid_elements(const std::string& cid, size_t pos,
+                               std::vector<char>& elements) {
+  elements.clear();  // just in case
+  if (cid[pos] == '*')
+    return;
+  bool inverted = false;
+  if (cid[pos] == '!') {
+    inverted = true;
+    ++pos;
+  }
+  elements.resize((size_t)El::END, char(inverted));
+  for (;;) {
+    size_t sep = cid.find_first_of(",]", pos);
+    if (sep == pos || sep > pos + 2)
+      fail("Invalid selection syntax in [...]: ", cid);
+    char elem_str[2] = {cid[pos], sep > pos+1 ? cid[pos+1] : '\0'};
+    Element el = find_element(elem_str);
+    if (el == El::X && (alpha_up(elem_str[0]) != 'X' || elem_str[1] != '\0'))
+      fail("Invalid element in [...]: ", cid);
+    elements[el.ordinal()] = char(!inverted);
+    pos = sep + 1;
+    if (cid[sep] == ']')
+      break;
+  }
 }
 
 inline Selection::SequenceId parse_cid_seqid(const std::string& cid, size_t& pos,
@@ -424,8 +457,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
         end = cid.find(']', pos);
         if (end == std::string::npos)
           fail("Invalid selection syntax (no matching ']'): " + cid);
-        sel.elements = make_cid_list(cid, pos, end);
-        sel.elements.list = to_upper(sel.elements.list);
+        parse_cid_elements(cid, pos, sel.elements);
         ++end;
       }
       if (cid[end] == ':') {
