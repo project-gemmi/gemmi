@@ -560,10 +560,10 @@ struct MonLib {
 
   // Returns the most specific link and a flag that is true
   // if the order is comp2-comp1 in the link definition.
-  // We don't check chirality here (cf. calculate_score).
   std::pair<const ChemLink*, bool>
-  match_link(const std::string& comp1, const std::string& atom1,
-             const std::string& comp2, const std::string& atom2) const {
+  match_link(const Residue& res1, const std::string& atom1,
+             const Residue& res2, const std::string& atom2,
+             char alt) const {
     const ChemLink* best_link = nullptr;
     int best_score = -1;
     bool inverted = false;
@@ -574,9 +574,9 @@ struct MonLib {
       // for now we don't have link definitions with >1 bonds
       const Restraints::Bond& bond = link.rt.bonds[0];
       if (bond.id1.atom == atom1 && bond.id2.atom == atom2 &&
-          link_side_matches_residue(link.side1, comp1) &&
-          link_side_matches_residue(link.side2, comp2)) {
-        int score = link.side1.specificity() + link.side2.specificity();
+          link_side_matches_residue(link.side1, res1.name) &&
+          link_side_matches_residue(link.side2, res2.name)) {
+        int score = link.calculate_score(res1, &res2, alt);
         if (score > best_score) {
           best_link = &link;
           best_score = score;
@@ -584,9 +584,9 @@ struct MonLib {
         }
       }
       if (bond.id1.atom == atom2 && bond.id2.atom == atom1 &&
-          link_side_matches_residue(link.side1, comp2) &&
-          link_side_matches_residue(link.side2, comp1)) {
-        int score = link.side1.specificity() + link.side2.specificity();
+          link_side_matches_residue(link.side1, res2.name) &&
+          link_side_matches_residue(link.side2, res1.name)) {
+        int score = link.calculate_score(res2, &res1, alt);
         if (score > best_score) {
           best_link = &link;
           best_score = score;

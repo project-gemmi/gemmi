@@ -473,8 +473,9 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
 
     // if ChemLink was not found, use the best matching link (if any)
     if (!match) {
-      auto r = monlib.match_link(extra.res1->name, conn.partner1.atom_name,
-                                 extra.res2->name, conn.partner2.atom_name);
+      auto r = monlib.match_link(*extra.res1, conn.partner1.atom_name,
+                                 *extra.res2, conn.partner2.atom_name,
+                                 extra.alt1 ? extra.alt1 : extra.alt2);
       match = r.first;
       if (match && r.second) {
         std::swap(extra.res1, extra.res2);

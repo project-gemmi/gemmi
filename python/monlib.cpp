@@ -80,8 +80,8 @@ void add_monlib(py::module& m) {
     .def("find_residue_info", &MonLib::find_residue_info, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("match_link", &MonLib::match_link,
-         py::arg("comp1"), py::arg("atom1"),
-         py::arg("comp2"), py::arg("atom2"),
+         py::arg("res1"), py::arg("atom1"),
+         py::arg("res2"), py::arg("atom2"), py::arg("altloc"),
          py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("add_monomers_if_present", &MonLib::add_monomers_if_present)
