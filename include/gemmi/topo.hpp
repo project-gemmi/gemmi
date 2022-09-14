@@ -308,10 +308,11 @@ struct Topo {
     vector_move_extend(link.link_rules, std::move(rules));
   }
 
+  // Structure is non-const b/c connections may have link_id assigned.
   // Model is non-const b/c we store non-const pointers to residues in Topo.
   // Because of the pointers, don't add or remove residues after this step.
   // Monlib may get modified by addition of extra links from the model.
-  void initialize_refmac_topology(const Structure& st, Model& model0,
+  void initialize_refmac_topology(Structure& st, Model& model0,
                                   MonLib& monlib, bool ignore_unknown_links=false);
 
   // This step stores pointers to gemmi::Atom's from model0,
@@ -355,6 +356,10 @@ struct Topo {
       fail(msg);
     *warnings << "Warning: " << msg << std::endl;
   }
+
+private:
+  void setup_connection(Connection& conn, Model& model0, MonLib& monlib,
+                        bool ignore_unknown_links);
 };
 
 inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
@@ -424,8 +429,8 @@ inline Restraints::Bond bond_restraint_from_connection(const Connection& conn) {
   return bond;
 }
 
-// Model is non-const b/c we store non-const pointers to residues in Topo.
-inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
+// see comments above the declaration
+inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
                                              MonLib& monlib, bool ignore_unknown_links) {
   // initialize chains and residues
   for (Chain& chain : model0.chains)
@@ -443,82 +448,16 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
         err("unknown chemical component " + ri.res->name
             + " in chain " +  ci.chain_ref.name);
     }
-
     ci.setup_polymer_links();
   }
 
   // add extra links
-  for (const Connection& conn : st.connections) {
-    // ignoring hydrogen bonds
-    if (conn.type == Connection::Hydrog)
-      continue;
-    Link extra;
-    extra.res1 = model0.find_cra(conn.partner1, true).residue;
-    extra.res2 = model0.find_cra(conn.partner2, true).residue;
-    if (!extra.res1 || !extra.res2)
-      continue;
-    extra.alt1 = conn.partner1.altloc;
-    extra.alt2 = conn.partner2.altloc;
-    extra.asu = conn.asu;
+  for (Connection& conn : st.connections)
+    if (conn.type != Connection::Hydrog) // ignoring hydrogen bonds
+      setup_connection(conn, model0, monlib, ignore_unknown_links);
 
-    // first try to find ChemLink by name (and check if it matches)
-    const ChemLink* match = monlib.get_link(conn.link_id);
-    if (match && (
-          match->rt.bonds.empty() ||
-          match->rt.bonds[0].id1.atom != conn.partner1.atom_name ||
-          match->rt.bonds[0].id2.atom != conn.partner2.atom_name ||
-          !monlib.link_side_matches_residue(match->side1, extra.res1->name) ||
-          !monlib.link_side_matches_residue(match->side2, extra.res2->name)))
-      match = nullptr;
-
-    // if ChemLink was not found, use the best matching link (if any)
-    if (!match) {
-      auto r = monlib.match_link(*extra.res1, conn.partner1.atom_name,
-                                 *extra.res2, conn.partner2.atom_name,
-                                 extra.alt1 ? extra.alt1 : extra.alt2);
-      match = r.first;
-      if (match && r.second) {
-        std::swap(extra.res1, extra.res2);
-        std::swap(extra.alt1, extra.alt2);
-      }
-    }
-
-    // If a polymer link is also given in LINK/struct_conn,
-    // use only one of them. If LINK has explicit name (ccp4_link_id),
-    // or if it matches residue-specific link from monomer library, use it;
-    // otherwise, LINK is repetition of TRANS/CIS, so ignore LINK.
-    if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2)) {
-      if (conn.link_id.empty() && !cif::is_null(polymer_link->link_id) &&
-          (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
-        continue;
-      polymer_link->link_id = "?";  // disable polymer link
-    }
-
-    if (!match && ignore_unknown_links)
-      continue;
-
-    if (match) {
-      extra.link_id = match->id;
-      // add modifications from the link
-      find_resinfo(extra.res1)->add_mod(match->side1.mod);
-      find_resinfo(extra.res2)->add_mod(match->side2.mod);
-    } else {
-      // create a new ChemLink and add it to the monomer library
-      ChemLink cl;
-      cl.side1.comp = extra.res1->name;
-      cl.side2.comp = extra.res2->name;
-      cl.id = cl.side1.comp + cl.side2.comp;
-      cl.rt.bonds.push_back(bond_restraint_from_connection(conn));
-
-      monlib.ensure_unique_link_name(cl.id);
-      monlib.links.emplace(cl.id, cl);
-      extra.link_id = cl.id;
-    }
-    extras.push_back(extra);
-  }
-
-  // Add modifications from standard links.
-  // We do it here b/c polymer links could be disabled (link_id = "?") above.
+  // Add modifications from standard links. We do it here b/c polymer links
+  // could be disabled (link_id = "?") in setup_connection().
   for (ChainInfo& ci : chain_infos)
     for (ResInfo& ri : ci.res_infos)
       for (Link& prev : ri.prev)
@@ -543,6 +482,82 @@ inline void Topo::initialize_refmac_topology(const Structure& st, Model& model0,
           err("modification not found: " + modif);
       }
     }
+}
+
+// it has side-effects: may modifies conn.link_id and add to monlib.links
+inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
+                                   bool ignore_unknown_links) {
+  Link extra;
+  extra.res1 = model0.find_cra(conn.partner1, true).residue;
+  extra.res2 = model0.find_cra(conn.partner2, true).residue;
+  if (!extra.res1 || !extra.res2)
+    return;
+  extra.alt1 = conn.partner1.altloc;
+  extra.alt2 = conn.partner2.altloc;
+  extra.asu = conn.asu;
+
+  const ChemLink* match = nullptr;
+
+  // If we have link_id find ChemLink by name (and check if it matches).
+  if (!conn.link_id.empty()) {
+    match = monlib.get_link(conn.link_id);
+    if (!match) {
+      err("link not found in monomer library: " + conn.link_id);
+      return;
+    }
+    if (match->rt.bonds.empty() ||
+        match->rt.bonds[0].id1.atom != conn.partner1.atom_name ||
+        match->rt.bonds[0].id2.atom != conn.partner2.atom_name ||
+        !monlib.link_side_matches_residue(match->side1, extra.res1->name) ||
+        !monlib.link_side_matches_residue(match->side2, extra.res2->name)) {
+      err("link from the monomer library does not match: " + conn.link_id);
+      return;
+    }
+  } else {
+    // we don't have link_id - use the best matching link (if any)
+    auto r = monlib.match_link(*extra.res1, conn.partner1.atom_name,
+                               *extra.res2, conn.partner2.atom_name,
+                               extra.alt1 ? extra.alt1 : extra.alt2);
+    match = r.first;
+    if (match && r.second) {
+      std::swap(extra.res1, extra.res2);
+      std::swap(extra.alt1, extra.alt2);
+    }
+  }
+
+  // If a polymer link is also given in LINK/struct_conn,
+  // use only one of them. If LINK has explicit name (ccp4_link_id),
+  // or if it matches residue-specific link from monomer library, use it;
+  // otherwise, LINK is repetition of TRANS/CIS, so ignore LINK.
+  if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2)) {
+    if (conn.link_id.empty() && !cif::is_null(polymer_link->link_id) &&
+        (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
+      return;
+    polymer_link->link_id = "?";  // disable polymer link
+  }
+
+  if (match) {
+    extra.link_id = match->id;
+    // add modifications from the link
+    find_resinfo(extra.res1)->add_mod(match->side1.mod);
+    find_resinfo(extra.res2)->add_mod(match->side2.mod);
+  } else {
+    if (ignore_unknown_links)
+      return;
+    // create a new ChemLink and add it to the monomer library
+    ChemLink cl;
+    cl.side1.comp = extra.res1->name;
+    cl.side2.comp = extra.res2->name;
+    cl.id = cl.side1.comp + cl.side2.comp;
+    cl.rt.bonds.push_back(bond_restraint_from_connection(conn));
+
+    monlib.ensure_unique_link_name(cl.id);
+    monlib.links.emplace(cl.id, cl);
+    extra.link_id = cl.id;
+  }
+  if (conn.link_id.empty())
+    conn.link_id = extra.link_id;
+  extras.push_back(extra);
 }
 
 } // namespace gemmi
