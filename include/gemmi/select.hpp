@@ -295,6 +295,22 @@ struct Selection {
 
 namespace impl {
 
+[[noreturn]]
+inline GEMMI_COLD void wrong_syntax(const std::string& cid, size_t pos,
+                                    const char* info=nullptr) {
+  std::string msg = "Invalid selection syntax";
+  if (info)
+    msg += info;
+  if (pos != 0) {
+    msg += " near \"";
+    msg += cid.substr(pos, 8);
+    msg += '"';
+  }
+  msg += ": ";
+  msg += cid;
+  fail(msg);
+}
+
 inline int determine_omitted_cid_fields(const std::string& cid) {
   if (cid[0] == '/')
     return 0; // model
@@ -311,11 +327,14 @@ inline int determine_omitted_cid_fields(const std::string& cid) {
 inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end) {
   Selection::List list;
   list.all = (cid[pos] == '*');
-  if (cid[pos] == '!') {
-    list.inverted = true;
+  list.inverted = (cid[pos] == '!');
+  if (list.all || list.inverted)
     ++pos;
-  }
   list.list = cid.substr(pos, end - pos);
+  // if a list have punctation other than ',' something must be wrong
+  size_t idx = list.list.find_first_of("[]()!/*-.:;");
+  if (idx != std::string::npos)
+    wrong_syntax(cid, pos + idx, " in a list");
   return list;
 }
 
@@ -333,11 +352,11 @@ inline void parse_cid_elements(const std::string& cid, size_t pos,
   for (;;) {
     size_t sep = cid.find_first_of(",]", pos);
     if (sep == pos || sep > pos + 2)
-      fail("Invalid selection syntax in [...]: ", cid);
+      wrong_syntax(cid, 0, "in [...]");
     char elem_str[2] = {cid[pos], sep > pos+1 ? cid[pos+1] : '\0'};
     Element el = find_element(elem_str);
     if (el == El::X && (alpha_up(elem_str[0]) != 'X' || elem_str[1] != '\0'))
-      fail("Invalid element in [...]: ", cid);
+      wrong_syntax(cid, 0, " (invalid element in [...])");
     elements[el.ordinal()] = char(!inverted);
     pos = sep + 1;
     if (cid[sep] == ']')
@@ -369,7 +388,7 @@ inline Selection::AtomInequality parse_atom_inequality(const std::string& cid,
                                                        size_t pos, size_t end) {
   Selection::AtomInequality r;
   if (cid[pos] != 'q' && cid[pos] != 'b')
-    fail("Invalid selection syntax (at ", cid[pos], "): ", cid);
+    wrong_syntax(cid, pos);
   r.property = cid[pos];
   ++pos;
   while (cid[pos] == ' ')
@@ -381,16 +400,16 @@ inline Selection::AtomInequality parse_atom_inequality(const std::string& cid,
   else if (cid[pos] == '=')
     r.relation = 0;
   else
-    fail("Invalid selection syntax (at ", cid[pos], "): ", cid);
+    wrong_syntax(cid, pos);
   ++pos;
   auto result = fast_from_chars(cid.c_str() + pos, r.value);
   if (result.ec != std::errc())
-    fail("Invalid selection syntax (number expected at '", cid.substr(pos), "'): ", cid);
+    wrong_syntax(cid, pos, " (expected number)");
   pos = size_t(result.ptr - cid.c_str());
   while (cid[pos] == ' ')
     ++pos;
   if (pos != end)
-    fail("Invalid selection syntax (at ", cid[pos], "): ", cid);
+    wrong_syntax(cid, pos);
   return r;
 }
 
@@ -415,7 +434,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
       sel.mdl = std::strtol(&cid[1], &endptr, 10);
       size_t end_pos = endptr - &cid[0];
       if (end_pos != sep && end_pos != cid.size())
-        fail("Expected model number first: " + cid);
+        wrong_syntax(cid, 0, " (at model number)");
     }
   }
 
@@ -451,7 +470,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
     }
     sep = pos;
     if (cid[sep] != '/' && cid[sep] != ';' && cid[sep] != '\0')
-      fail("Invalid selection syntax: " + cid);
+      wrong_syntax(cid, 0);
   }
 
   // atom;  at[el]:aloc
@@ -471,7 +490,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
       pos = end + 1;
       end = cid.find(']', pos);
       if (end == std::string::npos)
-        fail("Invalid selection syntax (no matching ']'): " + cid);
+        wrong_syntax(cid, 0, " (no matching ']')");
       parse_cid_elements(cid, pos, sel.elements);
       ++end;
     }
@@ -503,7 +522,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
         else if (item == "solvent")
           et = EntityType::Water;
         else
-          fail("Invalid selection syntax (" + item + "): " + cid);
+          wrong_syntax(cid, 0, (" at " + item).c_str());
         sel.et_flags[(int)et] = char(!inv);
       }
     }
