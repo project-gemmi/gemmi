@@ -2619,6 +2619,8 @@ The ``ResidueSpan`` is described in the next section.
 
 ----
 
+.. _model_count_atom:
+
 In Python, ``Model`` has also methods for often needed calculations:
 
 .. doctest::

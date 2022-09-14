@@ -119,6 +119,9 @@ struct Selection {
   SequenceId from_seqid = {INT_MIN, '*'};
   SequenceId to_seqid = {INT_MAX, '*'};
   List residue_names;
+  List entity_types;
+  // array corresponding to enum EntityType
+  std::array<char, 6> et_flags;
   List atom_names;
   std::vector<char> elements;
   List altlocs;
@@ -165,6 +168,10 @@ struct Selection {
       cid += ':';
       cid += altlocs.str();
     }
+    if (!entity_types.all) {
+      cid += ';';
+      cid += entity_types.str();
+    }
     for (const AtomInequality& ai : atom_inequalities)
       cid += ai.str();
     return cid;
@@ -178,7 +185,8 @@ struct Selection {
     return chain_ids.has(chain.name);
   }
   bool matches(const Residue& res) const {
-    return residue_names.has(res.name) &&
+    return (entity_types.all || et_flags[(int)res.entity_type]) &&
+           residue_names.has(res.name) &&
            from_seqid.compare(res.seqid) <= 0 &&
            to_seqid.compare(res.seqid) >= 0 &&
            residue_flags.has(res.flag);
@@ -293,7 +301,7 @@ inline int determine_omitted_cid_fields(const std::string& cid) {
   if (std::isdigit(cid[0]) || cid[0] == '.' || cid[0] == '(' || cid[0] == '-')
     return 2; // residue
   size_t sep = cid.find_first_of("/([:;");
-  if (sep == std::string::npos || cid[sep] == '/')
+  if (sep == std::string::npos || cid[sep] == '/' || cid[sep] == ';')
     return 1; // chain
   if (cid[sep] == '(')
     return 2; // residue
@@ -360,8 +368,6 @@ inline Selection::SequenceId parse_cid_seqid(const std::string& cid, size_t& pos
 inline Selection::AtomInequality parse_atom_inequality(const std::string& cid,
                                                        size_t pos, size_t end) {
   Selection::AtomInequality r;
-  while (cid[pos] == ' ')
-    ++pos;
   if (cid[pos] != 'q' && cid[pos] != 'b')
     fail("Invalid selection syntax (at ", cid[pos], "): ", cid);
   r.property = cid[pos];
@@ -383,9 +389,16 @@ inline Selection::AtomInequality parse_atom_inequality(const std::string& cid,
   pos = size_t(result.ptr - cid.c_str());
   while (cid[pos] == ' ')
     ++pos;
-  if (pos != std::min(end, cid.size()))
+  if (pos != end)
     fail("Invalid selection syntax (at ", cid[pos], "): ", cid);
   return r;
+}
+
+inline bool has_inequality(const std::string& cid, size_t start, size_t end) {
+  for (size_t i = start; i < end; ++i)
+    if (cid[i] == '<' || cid[i] == '=' || cid[i] == '>')
+      return true;
+  return false;
 }
 
 inline void parse_cid(const std::string& cid, Selection& sel) {
@@ -393,22 +406,23 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
     return;
   int omit = determine_omitted_cid_fields(cid);
   size_t sep = 0;
+  size_t semi = cid.find(';');
   // model
   if (omit == 0) {
-    sep = cid.find('/', 1);
+    sep = std::min(cid.find('/', 1), semi);
     if (sep != 1 && cid[1] != '*') {
       char* endptr;
       sel.mdl = std::strtol(&cid[1], &endptr, 10);
       size_t end_pos = endptr - &cid[0];
-      if (end_pos != sep && end_pos != cid.length())
+      if (end_pos != sep && end_pos != cid.size())
         fail("Expected model number first: " + cid);
     }
   }
 
   // chain
-  if (omit <= 1 && sep != std::string::npos) {
+  if (omit <= 1 && sep < semi) {
     size_t pos = (sep == 0 ? 0 : sep + 1);
-    sep = cid.find('/', pos);
+    sep = std::min(cid.find('/', pos), semi);
     sel.chain_ids = make_cid_list(cid, pos, sep);
   }
 
@@ -416,7 +430,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
   // In gemmi both 14.a and 14a are accepted.
   // *(ALA). and *(ALA) and (ALA). can be used instead of (ALA) for
   // compatibility with MMDB.
-  if (omit <= 2 && sep != std::string::npos) {
+  if (omit <= 2 && sep < semi) {
     size_t pos = (sep == 0 ? 0 : sep + 1);
     if (cid[pos] != '(')
       sel.from_seqid = parse_cid_seqid(cid, pos, INT_MIN);
@@ -436,12 +450,12 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
       sel.to_seqid = parse_cid_seqid(cid, pos, INT_MAX);
     }
     sep = pos;
+    if (cid[sep] != '/' && cid[sep] != ';' && cid[sep] != '\0')
+      fail("Invalid selection syntax: " + cid);
   }
 
   // atom;  at[el]:aloc
-  if (sep < cid.size()) {
-    if (sep != 0 && cid[sep] != '/')
-      fail("Invalid selection syntax: " + cid);
+  if (sep < std::min(cid.size(), semi)) {
     size_t pos = (sep == 0 ? 0 : sep + 1);
     size_t end = cid.find_first_of("[:;", pos);
     if (end != pos) {
@@ -450,28 +464,48 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
       // so we interpret empty atom name as *.
       if (!sel.atom_names.inverted && sel.atom_names.list.empty())
         sel.atom_names.all = true;
+      if (end == std::string::npos)
+        return;
     }
-    if (end != std::string::npos) {
-      if (cid[end] == '[') {
-        pos = end + 1;
-        end = cid.find(']', pos);
-        if (end == std::string::npos)
-          fail("Invalid selection syntax (no matching ']'): " + cid);
-        parse_cid_elements(cid, pos, sel.elements);
-        ++end;
+    if (cid[end] == '[') {
+      pos = end + 1;
+      end = cid.find(']', pos);
+      if (end == std::string::npos)
+        fail("Invalid selection syntax (no matching ']'): " + cid);
+      parse_cid_elements(cid, pos, sel.elements);
+      ++end;
+    }
+    if (cid[end] == ':') {
+      pos = end + 1;
+      sel.altlocs = make_cid_list(cid, pos, semi);
+    }
+  }
+
+  // extensions after semicolon(s)
+  while (semi < cid.size()) {
+    size_t pos = semi + 1;
+    while (cid[pos] == ' ')
+      ++pos;
+    semi = std::min(cid.find(';', pos), cid.size());
+    size_t end = semi;
+    while (end > pos && cid[end-1] == ' ')
+      --end;
+    if (has_inequality(cid, pos, end)) {
+      sel.atom_inequalities.push_back(parse_atom_inequality(cid, pos, end));
+    } else {
+      sel.entity_types = make_cid_list(cid, pos, end);
+      bool inv = sel.entity_types.inverted;
+      std::fill(sel.et_flags.begin(), sel.et_flags.end(), char(inv));
+      for (const std::string& item : split_str(sel.entity_types.list, ',')) {
+        EntityType et = EntityType::Unknown;
+        if (item == "polymer")
+          et = EntityType::Polymer;
+        else if (item == "solvent")
+          et = EntityType::Water;
+        else
+          fail("Invalid selection syntax (" + item + "): " + cid);
+        sel.et_flags[(int)et] = char(!inv);
       }
-      if (cid[end] == ':') {
-        pos = end + 1;
-        end = cid.find(';', pos);
-        sel.altlocs = make_cid_list(cid, pos, end);
-      }
-      while (end != std::string::npos && cid[end] == ';') {
-        pos = end + 1;
-        end = cid.find(';', pos);
-        sel.atom_inequalities.push_back(parse_atom_inequality(cid, pos, end));
-      }
-      if (end < cid.length())
-        fail("Invalid selection syntax (atom properties): " + cid);
     }
   }
 }

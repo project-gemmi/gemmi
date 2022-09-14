@@ -869,8 +869,10 @@ Let us go through the individual filters first:
 * ``////:B`` (or ``:B``) -- selects atoms with altloc B.
 * ``////;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5
   (inspired by PyMOL, where it'd be ``q<0.5``).
-* ``////;b>40`` (or ``;b>40``) -- selects atoms with the isotropic B-factor
+* ``////;b>40`` (or ``;b>40``) -- selects atoms with isotropic B-factor
   above a given value.
+* ``;polymer`` or ``;solvent`` -- selects polymer or solvent residues
+  (if the PDB file doesn't have TER records, call setup_entities() first).
 * ``*`` -- selects all atoms.
 
 Note that the chain name and altloc can be an empty.
@@ -882,6 +884,7 @@ The syntax supports also comma-separated lists and negations with ``!``:
 * ``:,A`` -- altloc either empty or A (which makes one conformation),
 * ``/1/A,B/20-40/CA[C]:,A`` -- multiple selection criteria, all of them
   must be fulfilled.
+* ``(CYS);!polymer`` -- select cysteine ligands
 
 **Incompatibility** with MMDB.
 In MMDB, if the chemical element is specified (e.g. ``[C]`` or ``[*]``),
@@ -990,9 +993,18 @@ We can also do the opposite and remove atoms that are not selected:
   >>> ca_model.count_atom_sites()
   0
 
+:ref:`Previously <model_count_atom>`, we introduced a couple functions
+that take selection as an argument. As an example, we can use one
+of them to count heavy atoms in polymers:
+
+.. doctest::
+
+  >>> st[0].count_occupancies(gemmi.Selection('[!H,D];polymer'))
+  496.0
+
 Each residue and atom has a flag that can be set manually
-and used to create a selection.
-In this example we select residues in the radius of 8Å from a selected point:
+and used to create a selection. In the following example
+we select residues in the radius of 8Å from a selected point:
 
 .. doctest::
 

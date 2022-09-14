@@ -25,13 +25,30 @@ class TestMisc(unittest.TestCase):
             return s2
         self.assertEqual(selstr('/1'), '/1/*//')
         self.assertEqual(selstr('CA:*'), '//*//CA')
+        self.assertEqual(selstr('CA[C]:'), '//*//CA[C]:')
+        self.assertEqual(selstr('CA[C]:A'), '//*//CA[C]:A')
+        self.assertEqual(selstr('A;b>20'), '//A//;b>20')
+        self.assertEqual(selstr('/1;q>0.5'), '/1/*//;q>0.5')
+        self.assertEqual(selstr('[C];b<20'), '//*//[C];b<20')
+        self.assertEqual(selstr(':;b=20'), '//*//:;b=20')
+        self.assertEqual(selstr(':B'), '//*//:B')
+        self.assertEqual(selstr(':B;q=0'), '//*//:B;q=0')
         self.assertEqual(selstr('A//CA'), '//A//CA')
+        self.assertEqual(selstr('(ALA)'), '//*/(ALA)/')
+        self.assertEqual(selstr('(ALA,GLY)'), '//*/(ALA,GLY)/')
+        self.assertEqual(selstr('15-55'), '//*/15.-55./')
+        self.assertEqual(selstr('15C-55B'), '//*/15.C-55.B/')
+        self.assertEqual(selstr('15.C-55.B'), '//*/15.C-55.B/')
         self.assertEqual(selstr('///'), '////')
         self.assertEqual(selstr('[Cu]'), '//*//[Cu]')
         self.assertEqual(selstr('[Mg,O,X]'), '//*//[X,O,Mg]')
         self.assertEqual(selstr('[!Xe]'), '//*//[!Xe]')
         self.assertEqual(selstr('[!H,D]'), '//*//[!H,D]')
         self.assertEqual(selstr(';q=0'), '//*//;q=0')
+        self.assertEqual(selstr('(ALA);polymer;b<30;q>0'),
+                         '//*/(ALA)/;polymer;b<30;q>0')
+        self.assertEqual(selstr('[!H,D];!polymer,solvent'),
+                         '//*//[!H,D];!polymer,solvent')
         self.assertEqual(selstr('A/33.-120.A/[C]'), '//A/33.-120.A/[C]')
 
 if __name__ == '__main__':
