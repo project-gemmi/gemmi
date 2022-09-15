@@ -68,12 +68,13 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
     items.emplace_back("_audit.creation_date", initial_date->second);
   items.emplace_back("_software.name", "gemmi");
 
-  const char* hbond = "A";  // appropriate for ReAdd*
+  // this corresponds to Refmac keyword "make hydr"
+  const char* hydr = "A";  // appropriate for ReAdd*
   if (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift)
-    hbond = "Y";
+    hydr = "Y";
   else if (h_change == HydrogenChange::Remove)
-    hbond = "N";
-  items.emplace_back("_ccp4_refmac.hbond", hbond);
+    hydr = "N";
+  items.emplace_back("_ccp4_refmac.hatom", hydr);
 
   items.emplace_back(cif::CommentArg{"############\n"
                                      "## ENTITY ##\n"
