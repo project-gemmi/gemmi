@@ -544,6 +544,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
 struct MonLib {
   cif::Document mon_lib_list;
+  cif::Document ener_lib;
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
   std::map<std::string, ChemMod> modifications;
@@ -660,13 +661,32 @@ struct MonLib {
     return path;
   }
 
-  void read_monomer_cif(const std::string& path, read_cif_func read_cif) {
-    mon_lib_list = (*read_cif)(path);
+  void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
+    mon_lib_list = (*read_cif)(path_);
     for (const cif::Block& block : mon_lib_list.blocks)
       add_monomer_if_present(block);
     insert_chemlinks(mon_lib_list, links);
     insert_chemmods(mon_lib_list, modifications);
     insert_comp_list(mon_lib_list, residue_infos);
+  }
+
+  double estimate_distance(const std::string& atom1, Element el1,
+                           const std::string& atom2, Element el2) const {
+    if (ener_lib.blocks.empty())
+      return 0;
+    double r1 = 0.;
+    double r2 = 0.;
+    cif::Block& block = const_cast<cif::Block&>(ener_lib.blocks[0]);
+    bool use_ion = el1.is_metal() || el2.is_metal();
+    for (auto row : block.find("_lib_atom.",
+                    {"type", "element", "vdw_radius", "ion_radius"})) {
+      size_t n = use_ion && !cif::is_null(row[3]) ? 3 : 2;
+      if (row[1] == el1.uname() && (row[0] == atom1 || r1 == 0.))
+        r1 = cif::as_number(row[n], 0);
+      if (row[1] == el2.uname() && (row[0] == atom2 || r2 == 0.))
+        r2 = cif::as_number(row[n], 0);
+    }
+    return r1 + r2;
   }
 };
 
@@ -684,12 +704,17 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
     monlib.read_monomer_cif(libin, read_cif);
   monlib.read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
   std::string error;
+  try {
+    monlib.ener_lib = (*read_cif)(monomer_dir + "/ener_lib.cif");
+  } catch (std::runtime_error& err) {
+    error.append("ener_lib.cif could not be read: ").append(err.what()).append(".\n");
+  }
   for (const std::string& name : resnames) {
     try {
       cif::Document doc = (*read_cif)(monomer_dir + MonLib::relative_monomer_path(name));
       auto cc = make_chemcomp_from_cif(name, doc);
       monlib.monomers.emplace(name, std::move(cc));
-    } catch(std::runtime_error& err) {
+    } catch (std::runtime_error& err) {
       if (!ignore_missing)
         error += "The monomer " + name + " could not be read: " + err.what() + ".\n";
     }

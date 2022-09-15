@@ -416,19 +416,6 @@ inline void Topo::ChainInfo::setup_polymer_links() {
   }
 }
 
-inline Restraints::Bond bond_restraint_from_connection(const Connection& conn) {
-  Restraints::Bond bond;
-  bond.id1 = Restraints::AtomId{1, conn.partner1.atom_name};
-  bond.id2 = Restraints::AtomId{2, conn.partner2.atom_name};
-  bond.type = BondType::Unspec;
-  bond.aromatic = false;
-  bond.value = conn.reported_distance;
-  bond.esd = 0.02;
-  bond.value_nucleus = conn.reported_distance;
-  bond.esd_nucleus = 0.02;
-  return bond;
-}
-
 // see comments above the declaration
 inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
                                              MonLib& monlib, bool ignore_unknown_links) {
@@ -488,10 +475,12 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
 inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                                    bool ignore_unknown_links) {
   Link extra;
-  extra.res1 = model0.find_cra(conn.partner1, true).residue;
-  extra.res2 = model0.find_cra(conn.partner2, true).residue;
-  if (!extra.res1 || !extra.res2)
+  CRA cra1 = model0.find_cra(conn.partner1, true);
+  CRA cra2 = model0.find_cra(conn.partner2, true);
+  if (!cra1.atom || !cra2.atom)
     return;
+  extra.res1 = cra1.residue;
+  extra.res2 = cra2.residue;
   extra.alt1 = conn.partner1.altloc;
   extra.alt2 = conn.partner2.altloc;
   extra.asu = conn.asu;
@@ -549,8 +538,13 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
     cl.side1.comp = extra.res1->name;
     cl.side2.comp = extra.res2->name;
     cl.id = cl.side1.comp + cl.side2.comp;
-    cl.rt.bonds.push_back(bond_restraint_from_connection(conn));
-
+    double ideal_dist = monlib.estimate_distance(cra1.atom->name, cra1.atom->element,
+                                                 cra2.atom->name, cra2.atom->element);
+    cl.rt.bonds.push_back({Restraints::AtomId{1, conn.partner1.atom_name},
+                           Restraints::AtomId{2, conn.partner2.atom_name},
+                           BondType::Unspec, false,
+                           ideal_dist, 0.02,
+                           ideal_dist, 0.02});
     monlib.ensure_unique_link_name(cl.id);
     monlib.links.emplace(cl.id, cl);
     extra.link_id = cl.id;
