@@ -47,7 +47,8 @@ inline std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
   return ".";
 }
 
-inline cif::Block prepare_crd(const Structure& st, const Topo& topo) {
+inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
+                              HydrogenChange h_change) {
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
   cif::Block block("structure_" + id);
@@ -66,6 +67,13 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo) {
   if (initial_date != st.info.end())
     items.emplace_back("_audit.creation_date", initial_date->second);
   items.emplace_back("_software.name", "gemmi");
+
+  const char* hbond = "A";  // appropriate for ReAdd*
+  if (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift)
+    hbond = "Y";
+  else if (h_change == HydrogenChange::Remove)
+    hbond = "N";
+  items.emplace_back("_ccp4_refmac.hbond", hbond);
 
   items.emplace_back(cif::CommentArg{"############\n"
                                      "## ENTITY ##\n"

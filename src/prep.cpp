@@ -40,12 +40,14 @@ const option::Descriptor Usage[] = {
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { Libin, 0, "", "libin", Arg::Required,
     "  --libin=CIF  \tCustom additions to the monomer library." },
-  { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
-    "  -H, --no-hydrogens  \tRemove or do not add hydrogens." },
-  { KeepHydrogens, 0, "", "keep-hydrogens", Arg::None,
-    "  --keep-hydrogens  \tPreserve hydrogens from the input file." },
   //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
   //  "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
+  { NoOp, 0, "", "", Arg::None,
+    "\nHydrogen options (default: remove and add on riding positions):" },
+  { NoHydrogens, 0, "H", "no-hydrogens", Arg::None,
+    "  -H, --no-hydrogens  \tRemove (and do not add) hydrogens." },
+  { KeepHydrogens, 0, "", "keep-hydrogens", Arg::None,
+    "  --keep-hydrogens  \tPreserve hydrogens from the input file." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -105,7 +107,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       printf("Preparing structure data...\n");
-    cif::Block crd = prepare_crd(st, *topo);
+    cif::Block crd = prepare_crd(st, *topo, h_change);
     if (p.options[Split])
       output += ".crd";
     if (verbose)
@@ -125,6 +127,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     else
       os->write("\n\n", 2);
     write_cif_block_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
+    if (!p.options[Split])
+      os.ref() << "\n\ndata_ccp4_refmac_mmcif\n\n"
+                  "# (monomer and link blocks will be here)\n";
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
