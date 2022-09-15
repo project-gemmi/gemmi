@@ -32,9 +32,9 @@ inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
 struct ChemLink {
   enum class Group {
     // _chem_link.group_comp_N is one of:
-    // "peptide", "P-peptide", "M-peptide", "pyranose", "DNA/RNA" or null
+    // "peptide", "P-peptide", "M-peptide", "pyranose", "ketopyranose", "DNA/RNA" or null
     // (we ignore "polymer")
-    Peptide, PPeptide, MPeptide, Pyranose, DnaRna, Null
+    Peptide, PPeptide, MPeptide, Pyranose, Ketopyranose, DnaRna, Null
   };
   struct Side {
     std::string comp;
@@ -68,6 +68,7 @@ struct ChemLink {
         case ialpha4_id("p-pe"): return Group::PPeptide;
         case ialpha4_id("m-pe"): return Group::MPeptide;
         case ialpha4_id("pyra"): return Group::Pyranose;
+        case ialpha4_id("keto"): return Group::Ketopyranose;
         case ialpha4_id("dna/"): return Group::DnaRna;
       }
     }
@@ -80,6 +81,7 @@ struct ChemLink {
       case Group::PPeptide: return "P-peptide";
       case Group::MPeptide: return "M-peptide";
       case Group::Pyranose: return "pyranose";
+      case Group::Ketopyranose: return "ketopyranose";
       case Group::DnaRna: return "DNA/RNA";
       case Group::Null: return ".";
     }
@@ -98,6 +100,7 @@ struct ChemLink {
       case ResidueInfo::BUF:     return Group::Null;
       case ResidueInfo::HOH:     return Group::Null;
       case ResidueInfo::PYR:     return Group::Pyranose;
+      case ResidueInfo::KET:     return Group::Ketopyranose;
       case ResidueInfo::ELS:     return Group::Null;
     }
     unreachable();
@@ -229,6 +232,7 @@ inline ResidueInfo::Kind chemcomp_group_to_kind(const std::string& group) {
       case ialpha4_id("dna"): return ResidueInfo::DNA;
       case ialpha4_id("rna"): return ResidueInfo::RNA;
       case ialpha4_id("pyra"): return ResidueInfo::PYR;
+      case ialpha4_id("keto"): return ResidueInfo::KET;
     }
   }
   return ResidueInfo::UNKNOWN;

@@ -44,6 +44,7 @@ void add_monlib(py::module& m) {
       .value("PPeptide", ChemLink::Group::PPeptide)
       .value("MPeptide", ChemLink::Group::MPeptide)
       .value("Pyranose", ChemLink::Group::Pyranose)
+      .value("Ketopyranose", ChemLink::Group::Ketopyranose)
       .value("DnaRna",   ChemLink::Group::DnaRna)
       .value("Null",     ChemLink::Group::Null);
 

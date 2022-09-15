@@ -19,11 +19,12 @@ struct ResidueInfo {
   // RNA, DNA - nucleic acids
   // HOH - water or heavy water
   // PYR - pyranose according to the refmac dictionary
+  // KET - ketopyranose according to the refmac dictionary
   // BUF - agent from crystallization buffer according to PISA agents.dat
   // ELS - something else (ligand).
   enum Kind : unsigned char {
     // when changing this list update check_polymer_type()
-    UNKNOWN=0, AA, AAD, PAA, MAA, RNA, DNA, BUF, HOH, PYR, ELS
+    UNKNOWN=0, AA, AAD, PAA, MAA, RNA, DNA, BUF, HOH, PYR, KET, ELS
   };
   Kind kind;
   // one-letter code or space (uppercase iff it is a standard residues)
