@@ -114,6 +114,7 @@ void add_elem(py::module& m) {
     .value("BUF", ResidueInfo::Kind::BUF)
     .value("HOH", ResidueInfo::Kind::HOH)
     .value("PYR", ResidueInfo::Kind::PYR)
+    .value("KET", ResidueInfo::Kind::KET)
     .value("ELS", ResidueInfo::Kind::ELS);
 
   py::class_<ResidueInfo>(m, "ResidueInfo")
