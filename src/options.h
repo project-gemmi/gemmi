@@ -38,6 +38,7 @@ std::vector<int> parse_comma_separated_ints(const char* arg);
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg);
   static option::ArgStatus Char(const option::Option& option, bool msg);
+  static option::ArgStatus YesNo(const option::Option& option, bool msg);
   static option::ArgStatus Choice(const option::Option& option, bool msg,
                                   const std::vector<const char*>& choices);
   static option::ArgStatus ColonPair(const option::Option& option, bool msg);
@@ -74,6 +75,12 @@ struct OptParser : option::Parser {
   const char* given_name(int opt) const {  // sans one dash
     return options[opt].namelen > 1 ? options[opt].name + 1
                                     : options[opt].desc->shortopt;
+  }
+  // for Arg::YesNo
+  bool is_yes(int opt, bool default_) const {
+    if (options[opt])
+      return (options[opt].arg[0] & ~0x20) == 'Y';
+    return default_;
   }
 };
 

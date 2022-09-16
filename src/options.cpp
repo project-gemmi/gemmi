@@ -52,6 +52,17 @@ option::ArgStatus Arg::Char(const option::Option& option, bool msg) {
   return option::ARG_ILLEGAL;
 }
 
+option::ArgStatus Arg::YesNo(const option::Option& option, bool msg) {
+  if (Required(option, msg) == option::ARG_ILLEGAL)
+    return option::ARG_ILLEGAL;
+  char first_letter = gemmi::alpha_up(option.arg[0]);
+  if (first_letter == 'Y' || first_letter == 'N')
+    return option::ARG_OK;
+  if (msg)
+    fprintf(stderr, "Argument of '%s' must be Y (yes) or N (no)\n", option.name);
+  return option::ARG_ILLEGAL;
+}
+
 option::ArgStatus Arg::Choice(const option::Option& option, bool msg,
                               const std::vector<const char*>& choices) {
   if (Required(option, msg) == option::ARG_ILLEGAL)
