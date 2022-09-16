@@ -172,6 +172,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       "Cartn_y",
       "Cartn_z",
       "occupancy",
+      "ccp4_hd_mixture",  // tags[11]
       "B_iso_or_equiv",
       "type_symbol",
       "calc_flag",
@@ -194,6 +195,13 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       std::string auth_seq_id = res.seqid.num.str();
       //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
       for (const Atom& a : res.atoms) {
+        // infer hd_mixture (which is rarely used)
+        if (a.element == El::D && &a != &res.atoms[0] &&
+            (&a - 1)->element == El::H && a.name == (&a - 1)->name) {
+          double hd_mixture = (&a - 1)->occ / a.occ;
+          *(vv.end() - atom_loop.tags.size() + 11) = to_str(hd_mixture);
+          continue;
+        }
         vv.emplace_back("ATOM");
         vv.emplace_back(std::to_string(a.serial));
         vv.emplace_back(a.name);
@@ -206,6 +214,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(to_str(a.pos.y));
         vv.emplace_back(to_str(a.pos.z));
         vv.emplace_back(to_str(a.occ));
+        vv.emplace_back("0");  // hd_mixture
         vv.emplace_back(to_str(a.b_iso));
         vv.emplace_back(a.element.uname());
         vv.emplace_back(refmac_calc_flag(a));
