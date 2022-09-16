@@ -13,6 +13,8 @@ Options:
   --split             Split output into two files: crd and rst.
   --monomers=DIR      Monomer library dir (default: $CLIBD_MON).
   --libin=CIF         Custom additions to the monomer library.
+  --auto-cis=Y|N      Assign cis/trans ignoring CISPEP record (default: Y).
+  --auto-link=Y|N     Find links not included in LINK/SSBOND (default: N).
 
 Hydrogen options (default: remove and add on riding positions):
   -H, --no-hydrogens  Remove (and do not add) hydrogens.

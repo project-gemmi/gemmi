@@ -20,7 +20,8 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  Split=4, Monomers, Libin, NoHydrogens, KeepHydrogens, NoZeroOccRestr
+  Split=4, Monomers, Libin, AutoCis, AutoLink,
+  NoZeroOccRestr, NoHydrogens, KeepHydrogens
 };
 
 const option::Descriptor Usage[] = {
@@ -40,6 +41,10 @@ const option::Descriptor Usage[] = {
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { Libin, 0, "", "libin", Arg::Required,
     "  --libin=CIF  \tCustom additions to the monomer library." },
+  { AutoCis, 0, "", "auto-cis", Arg::YesNo,
+    "  --auto-cis=Y|N  \tAssign cis/trans ignoring CISPEP record (default: Y)." },
+  { AutoLink, 0, "", "auto-link", Arg::YesNo,
+    "  --auto-link=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
   //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
   //  "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { NoOp, 0, "", "", Arg::None,
@@ -67,6 +72,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
   bool verbose = p.options[Verbose];
+
   try {
     if (verbose)
       printf("Reading %s ...\n", input.c_str());
@@ -90,6 +96,8 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                    model0.get_all_residue_names(),
                                                    gemmi::read_cif_gz,
                                                    libin);
+    if (p.is_yes(AutoCis, true))
+      assign_cis_flags(model0);
 
     if (verbose)
       printf("Preparing topology, hydrogens, restraints...\n");
