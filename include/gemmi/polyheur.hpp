@@ -104,12 +104,15 @@ inline std::vector<AtomNameElement> get_mainchain_atoms(PolymerType ptype) {
   return {{"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}};
 }
 
+inline bool have_peptide_bond(const Residue& r1, const Residue& r2) {
+  const Atom* a1 = r1.get_c();
+  const Atom* a2 = r2.get_n();
+  return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
+}
+
 inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptype) {
-  if (is_polypeptide(ptype)) {
-    const Atom* a1 = r1.get_c();
-    const Atom* a2 = r2.get_n();
-    return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
-  }
+  if (is_polypeptide(ptype))
+    return have_peptide_bond(r1, r2);
   if (is_polynucleotide(ptype)) {
     const Atom* a1 = r1.get_o3prim();
     const Atom* a2 = r2.get_p();
