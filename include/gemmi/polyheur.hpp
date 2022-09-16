@@ -9,6 +9,7 @@
 #include <vector>
 #include "model.hpp"
 #include "resinfo.hpp"   // for find_tabulated_residue
+#include "calculate.hpp" // for calculate_omega
 #include "util.hpp"      // for vector_remove_if
 
 namespace gemmi {
@@ -286,6 +287,23 @@ inline void setup_entities(Structure& st) {
   deduplicate_entities(st);
 }
 
+
+/// Assign Residue::is_cis based on omega angle
+template<class T> void assign_cis_flags(T& obj) {
+  for (auto& child : obj.children())
+    assign_cis_flags(child);
+}
+inline void assign_cis_flags(Chain& chain) {
+  for (Residue& res : chain.residues) {
+    bool cis = false;
+    if (res.entity_type == EntityType::Polymer)
+      if (const Residue* next = chain.next_residue(res))
+        if (have_peptide_bond(res, *next))
+          if (std::fabs(calculate_omega(res, *next)) < rad(30.))
+            cis = true;
+    res.is_cis = cis;
+  }
+}
 
 // Remove waters. It may leave empty chains.
 template<class T> void remove_waters(T& obj) {

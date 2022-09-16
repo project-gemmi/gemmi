@@ -113,6 +113,7 @@ inline double calculate_dihedral(const Position& p0, const Position& p1,
   return std::atan2(y, x);
 }
 
+/// the return value is in the same range as that of atan2(), i.e. [-pi, pi]
 inline double calculate_dihedral_from_atoms(const Atom* a, const Atom* b,
                                             const Atom* c, const Atom* d) {
   if (a && b && c && d)
