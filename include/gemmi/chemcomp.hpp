@@ -39,8 +39,7 @@ struct Restraints {
       return comp == o.comp ? atom < o.atom : comp < o.comp;
     }
 
-    const Atom* get_from(const Residue& res1, const Residue* res2,
-                         char altloc) const {
+    const Atom* get_from(const Residue& res1, const Residue* res2, char altloc) const {
       const Residue* residue;
       if (comp == 1 || res2 == nullptr)
         residue = &res1;
@@ -48,11 +47,7 @@ struct Restraints {
         residue = res2;
       else
         throw std::out_of_range("Unexpected component ID");
-      if (const Atom* ret = residue->find_atom(atom, altloc))
-        // skip riding hydrogens, they won't be restrained (to be revised)
-        if (ret->calc_flag != CalcFlag::Calculated || !ret->is_hydrogen())
-          return ret;
-      return nullptr;
+      return residue->find_atom(atom, altloc);
     }
     Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
       const Residue& cres1 = res1;
