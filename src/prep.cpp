@@ -11,6 +11,7 @@
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 #include "gemmi/read_coor.hpp" // for read_structure_gz
+#include "gemmi/contact.hpp"   // for ContactSearch
 
 #define GEMMI_PROG prep
 #include "options.h"
@@ -56,6 +57,33 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+void assign_connections(gemmi::Model& model, gemmi::Structure& st) {
+  using namespace gemmi;
+  NeighborSearch ns(model, st.cell, 5.0);
+  ns.populate();
+  ContactSearch contacts(3.5f);
+  contacts.ignore = ContactSearch::Ignore::AdjacentResidues;
+  int counter = 0;
+  contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
+                                    int image_idx, float dist_sq) {
+    float r1 = cra1.atom->element.covalent_r();
+    float r2 = cra2.atom->element.covalent_r();
+    if (dist_sq > sq((r1 + r2) + 0.5))
+      return;
+    if (st.find_connection_by_cra(cra1, cra2))
+      return;
+    Connection conn;
+    conn.name = "added" + std::to_string(++counter);
+    conn.type = Connection::Covale;
+    conn.asu = (image_idx == 0 ? Asu::Same : Asu::Different);
+    conn.partner1 = make_address(*cra1.chain, *cra1.residue, *cra1.atom);
+    conn.partner2 = make_address(*cra2.chain, *cra2.residue, *cra2.atom);
+    conn.reported_distance = std::sqrt(dist_sq);
+    printf("Added link %s - %s\n", atom_str(cra1).c_str(), atom_str(cra2).c_str());
+    st.connections.push_back(conn);
+  });
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -98,6 +126,10 @@ int GEMMI_MAIN(int argc, char **argv) {
                                                    libin);
     if (p.is_yes(AutoCis, true))
       assign_cis_flags(model0);
+
+    if (p.is_yes(AutoLink, false)) {
+      assign_connections(model0, st);
+    }
 
     if (verbose)
       printf("Preparing topology, hydrogens, restraints...\n");
