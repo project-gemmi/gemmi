@@ -544,11 +544,11 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
 struct EnerLib {
   struct Atom {
+    Element element;
     char hb_type;
     double vdw_radius;
     double vdwh_radius;
     double ion_radius;
-    Element element;
     int valency;
     int sp;
   };
@@ -559,9 +559,9 @@ struct EnerLib {
     for (const auto& row : block.find("_lib_atom.",
                     {"type", "hb_type", "vdw_radius", "vdwh_radius",
                      "ion_radius", "element", "valency", "sp"}))
-      atoms.emplace(row[0], Atom{row[1][0], cif::as_number(row[2]), cif::as_number(row[3]),
-                    cif::as_number(row[4]), Element(row[5]), cif::as_int(row[6], -1),
-                    cif::as_int(row[7], -1)});
+      atoms.emplace(row[0], Atom{Element(row[5]), row[1][0], cif::as_number(row[2]),
+                                 cif::as_number(row[3]), cif::as_number(row[4]),
+                                 cif::as_int(row[6], -1), cif::as_int(row[7], -1)});
   }
   std::map<std::string, Atom> atoms; // type->Atom
 };
