@@ -53,7 +53,7 @@ Macromolecular operations:
   --remove-waters         Remove waters.
   --remove-lig-wat        Remove ligands and waters.
   --trim-to-ala           Trim aminoacids to alanine.
-  --select=CID            Output only the selection.
-  --remove=CID            Remove the selection.
+  --select=SEL            Output only the selection.
+  --remove=SEL            Remove the selection.
 
 When output file is -, write to standard output.

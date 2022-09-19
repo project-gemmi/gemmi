@@ -134,9 +134,9 @@ const option::Descriptor Usage[] = {
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
   { Select, 0, "", "select", Arg::Required,
-    "  --select=CID  \tOutput only the selection." },
+    "  --select=SEL  \tOutput only the selection." },
   { Remove, 0, "", "remove", Arg::Required,
-    "  --remove=CID  \tRemove the selection." },
+    "  --remove=SEL  \tRemove the selection." },
 
   { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
@@ -170,6 +170,13 @@ void convert(gemmi::Structure& st,
       st.raw_remarks.clear();
   }
 
+  if (options[Select])
+    gemmi::Selection(options[Select].arg).remove_not_selected(st);
+  if (options[Remove])
+    gemmi::Selection(options[Remove].arg).remove_selected(st);
+  if (st.models.empty())
+    gemmi::fail("all models got removed");
+
   if (options[Biso]) {
     const char* start = options[Biso].arg;
     char* endptr = nullptr;
@@ -200,14 +207,6 @@ void convert(gemmi::Structure& st,
                 gemmi::ensure_anisou(atom);
     }
   }
-
-  if (options[Select])
-    gemmi::Selection(options[Select].arg).remove_not_selected(st);
-  if (options[Remove])
-    gemmi::Selection(options[Remove].arg).remove_selected(st);
-  if (st.models.empty())
-    gemmi::fail("all models got removed");
-
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
     const char* sep = std::strchr(opt->arg, ':');
