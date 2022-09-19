@@ -201,6 +201,7 @@ struct GridMeta {
 /// A common subset of Grid and ReciprocalGrid.
 template<typename T>
 struct GridBase : GridMeta {
+  /// grid coordinates (modulo size) and a pointer to value
   struct Point {
     int u, v, w;
     T* value;
