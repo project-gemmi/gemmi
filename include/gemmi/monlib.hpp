@@ -694,19 +694,26 @@ struct MonLib {
     insert_comp_list(mon_lib_list, residue_infos);
   }
 
-  double estimate_distance(const std::string& atom1, Element el1,
-                           const std::string& atom2, Element el2) const {
-    double r1 = 0.;
-    double r2 = 0.;
-    bool use_ion = el1.is_metal() || el2.is_metal();
-    for (auto lib : ener_lib.atoms) {
-      double v = use_ion && !std::isnan(lib.second.ion_radius) ? lib.second.ion_radius : lib.second.vdw_radius;
-      if (lib.second.element == el1 && (lib.first == atom1 || r1 == 0.))
-        r1 = v;
-      if (lib.second.element == el2 && (lib.first == atom2 || r2 == 0.))
-        r2 = v;
+  /// Searches data from _lib_atom in ener_lib.cif.
+  /// If chem_type is not in the library uses element name as chem_type.
+  double find_radius(const const_CRA& cra, bool use_ion) const {
+    double r = 1.7;
+    auto it = ener_lib.atoms.end();
+    auto cc = monomers.find(cra.residue->name);
+    if (cc != monomers.end()) {
+      auto cc_atom = cc->second.find_atom(cra.atom->name);
+      if (cc_atom != cc->second.atoms.end())
+        it = ener_lib.atoms.find(cc_atom->chem_type);
     }
-    return r1 + r2;
+    if (it == ener_lib.atoms.end())
+      it = ener_lib.atoms.find(cra.atom->element.uname());
+    if (it != ener_lib.atoms.end()) {
+      if (use_ion && !std::isnan(it->second.ion_radius))
+        r = it->second.ion_radius;
+      else
+        r = it->second.vdw_radius;
+    }
+    return r;
   }
 };
 

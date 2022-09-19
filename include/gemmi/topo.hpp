@@ -538,8 +538,9 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
     cl.side1.comp = extra.res1->name;
     cl.side2.comp = extra.res2->name;
     cl.id = cl.side1.comp + cl.side2.comp;
-    double ideal_dist = monlib.estimate_distance(cra1.atom->name, cra1.atom->element,
-                                                 cra2.atom->name, cra2.atom->element);
+    bool use_ion = cra1.atom->element.is_metal() || cra2.atom->element.is_metal();
+    double ideal_dist = monlib.find_radius(cra1, use_ion) +
+                        monlib.find_radius(cra2, use_ion);
     cl.rt.bonds.push_back({Restraints::AtomId{1, conn.partner1.atom_name},
                            Restraints::AtomId{2, conn.partner2.atom_name},
                            BondType::Unspec, false,
