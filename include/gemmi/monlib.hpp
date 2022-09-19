@@ -542,9 +542,33 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
     }
 }
 
+struct EnerLib {
+  struct Atom {
+    char hb_type;
+    double vdw_radius;
+    double vdwh_radius;
+    double ion_radius;
+    Element element;
+    int valency;
+    int sp;
+  };
+
+  EnerLib() {}
+  EnerLib(const cif::Document& doc) {
+    cif::Block& block = const_cast<cif::Block&>(doc.blocks[0]);
+    for (const auto& row : block.find("_lib_atom.",
+                    {"type", "hb_type", "vdw_radius", "vdwh_radius",
+                     "ion_radius", "element", "valency", "sp"}))
+      atoms.emplace(row[0], Atom{row[1][0], cif::as_number(row[2]), cif::as_number(row[3]),
+                    cif::as_number(row[4]), Element(row[5]), cif::as_int(row[6], -1),
+                    cif::as_int(row[7], -1)});
+  }
+  std::map<std::string, Atom> atoms; // type->Atom
+};
+
 struct MonLib {
   cif::Document mon_lib_list;
-  cif::Document ener_lib;
+  EnerLib ener_lib;
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
   std::map<std::string, ChemMod> modifications;
@@ -672,19 +696,15 @@ struct MonLib {
 
   double estimate_distance(const std::string& atom1, Element el1,
                            const std::string& atom2, Element el2) const {
-    if (ener_lib.blocks.empty())
-      return 0;
     double r1 = 0.;
     double r2 = 0.;
-    cif::Block& block = const_cast<cif::Block&>(ener_lib.blocks[0]);
     bool use_ion = el1.is_metal() || el2.is_metal();
-    for (auto row : block.find("_lib_atom.",
-                    {"type", "element", "vdw_radius", "ion_radius"})) {
-      size_t n = use_ion && !cif::is_null(row[3]) ? 3 : 2;
-      if (row[1] == el1.uname() && (row[0] == atom1 || r1 == 0.))
-        r1 = cif::as_number(row[n], 0);
-      if (row[1] == el2.uname() && (row[0] == atom2 || r2 == 0.))
-        r2 = cif::as_number(row[n], 0);
+    for (auto lib : ener_lib.atoms) {
+      double v = use_ion && !std::isnan(lib.second.ion_radius) ? lib.second.ion_radius : lib.second.vdw_radius;
+      if (lib.second.element == el1 && (lib.first == atom1 || r1 == 0.))
+        r1 = v;
+      if (lib.second.element == el2 && (lib.first == atom2 || r2 == 0.))
+        r2 = v;
     }
     return r1 + r2;
   }
@@ -705,7 +725,7 @@ inline MonLib read_monomer_lib(std::string monomer_dir,
   monlib.read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
   std::string error;
   try {
-    monlib.ener_lib = (*read_cif)(monomer_dir + "/ener_lib.cif");
+    monlib.ener_lib = EnerLib((*read_cif)(monomer_dir + "/ener_lib.cif"));
   } catch (std::runtime_error& err) {
     error.append("ener_lib.cif could not be read: ").append(err.what()).append(".\n");
   }
