@@ -50,6 +50,17 @@ template<> inline void remove_hydrogens(Residue& res) {
   });
 }
 
+/// Set isotropic ADP to the range (b_min, b_max). Values smaller than
+/// b_min are changed to b_min, values larger than b_max to b_max.
+/// Anisotropic ADP is left unchanged.
+template<class T> void assign_b_iso(T& obj, float b_min, float b_max) {
+  for (auto& child : obj.children())
+    assign_b_iso(child, b_min, b_max);
+}
+template<> inline void assign_b_iso(Atom& atom, float b_min, float b_max) {
+  atom.b_iso = std::min(std::max(atom.b_iso, b_min), b_max);
+}
+
 /// Remove anisotropic ADP
 template<class T> void remove_anisou(T& obj) {
   for (auto& child : obj.children())
