@@ -54,7 +54,7 @@ enum OptionIndex {
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove,
   ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq,
-  SiftsNum, Anisou, SegmentAsChain, OldPdb, ForceLabel
+  SiftsNum, Biso, Anisou, SegmentAsChain, OldPdb, ForceLabel
 };
 
 const option::Descriptor Usage[] = {
@@ -112,6 +112,9 @@ const option::Descriptor Usage[] = {
     "or as many sequences as there are chains." },
   { SiftsNum, 0, "", "sifts-num", Arg::None,
     "  --sifts-num  \tUse SIFTS-mapped position in UniProt sequence as sequence ID." },
+  { Biso, 0, "B", "", Arg::Required,
+    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or change values "
+      "out of given range to MIN/MAX." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
 
@@ -165,6 +168,21 @@ void convert(gemmi::Structure& st,
       gemmi::assign_label_seq_id(st, options[ForceLabel]);
     if (!options[CopyRemarks])
       st.raw_remarks.clear();
+  }
+
+  if (options[Biso]) {
+    const char* start = options[Biso].arg;
+    char* endptr = nullptr;
+    float value1 = std::strtof(start, &endptr);
+    float value2 = value1;
+    if (endptr != start && *endptr == ':') {
+      start = endptr + 1;
+      value2 = std::strtof(start, &endptr);
+    }
+    if (endptr != start && *endptr == '\0')
+      assign_b_iso(st, value1, value2);
+    else
+      gemmi::fail("argument for -B should be a number or number:number");
   }
 
   for (const option::Option* opt = options[Anisou]; opt; opt = opt->next()) {

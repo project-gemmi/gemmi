@@ -40,6 +40,8 @@ Any output options:
                           as many sequences as there are chains.
   --sifts-num             Use SIFTS-mapped position in UniProt sequence as
                           sequence ID.
+  -B MIN[:MAX]            Set isotropic B-factors to a single value or change
+                          values out of given range to MIN/MAX.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
 
 Macromolecular operations:
