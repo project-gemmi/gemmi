@@ -167,8 +167,8 @@ void convert(gemmi::Structure& st,
       st.raw_remarks.clear();
   }
 
-  if (options[Anisou]) {
-    char anisou_opt = options[Anisou].arg[0];
+  for (const option::Option* opt = options[Anisou]; opt; opt = opt->next()) {
+    char anisou_opt = opt->arg[0];
     if (anisou_opt == 'n') {
       gemmi::remove_anisou(st);
     } else if (anisou_opt == 'y') {
