@@ -12,7 +12,7 @@
 
 namespace {
 
-enum OptionIndex { FormatIn=3, Match, Label, CheckSeqId };
+enum OptionIndex { FormatIn=3, Match, Label, CheckSeqId, NoAlt };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -28,6 +28,8 @@ const option::Descriptor Usage[] = {
     "  -l, --label  \tPrint 'label' chain ID and seq ID in brackets." },
   { CheckSeqId, 0, "", "check-seqid", Arg::None,
     "  --check-seqid  \tCheck if sequence IDs are unique and exit." },
+  { NoAlt, 0, "", "no-alt", Arg::None,
+    "  --no-alt  \tDo not print altlocs." },
   { NoOp, 0, "", "", Arg::None,
     "INPUT is a coordinate file (mmCIF, PDB, etc)."
     "\nThe selection SEL has MMDB syntax:"
@@ -120,6 +122,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_input_files_as_args();
   const char* cid = p.options[Match] ? p.options[Match].arg : "*";
   gemmi::CoorFormat format = coor_format_as_enum(p.options[FormatIn]);
+  bool print_alt = !p.options[NoAlt];
   int status = 0;
   try {
     gemmi::Selection sel(cid);
@@ -152,24 +155,36 @@ int GEMMI_MAIN(int argc, char **argv) {
             auto end = sel_atoms.end();
             if (begin != end) {
               if (p.options[Label])
-                printf("%s (%-3s %4s%c (%-4s %s:",
+                printf("%s (%-3s %4s%c (%-4s %s ",
                        chain.name.c_str(), (res.subchain + ")").c_str(),
                        res.seqid.num.str().c_str(), res.seqid.icode,
                        (res.label_seq.str('.') + ")").c_str(),
                        res.name.c_str());
               else
-                printf("%s %4s%c %s:",
+                printf("%s %4s%c %s ",
                        chain.name.c_str(),
                        res.seqid.num.str().c_str(), res.seqid.icode,
                        res.name.c_str());
+              const std::string* prev = nullptr;
               for (auto at = begin; at != end; ++at)
-                printf(" %s", at->name.c_str());
-              printf("\n");
+                if (!prev || *prev != at->name) {
+                  printf(" %s", at->name.c_str());
+                  if (print_alt && at->altloc)
+                    printf(":%c", at->altloc);
+                  prev = &at->name;
+                } else {
+                  if (print_alt) {
+                    putchar(',');
+                    if (at->altloc)
+                      putchar(at->altloc);
+                  }
+                }
+              putchar('\n');
               line_count++;
             }
           }
           if (line_count != 0)
-            printf("\n");
+            putchar('\n');
         }
       }
     }
