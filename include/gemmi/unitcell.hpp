@@ -386,6 +386,11 @@ struct UnitCell {
     return Fractional(frac.mat.multiply(delta));
   }
 
+  Transform op_as_transform(const Op& op) const {
+    Transform frac_tr{rot_as_mat33(op), tran_as_vec3(op)};
+    return orth.combine(frac_tr.combine(frac));
+  }
+
   double distance_sq(const Fractional& pos1, const Fractional& pos2) const {
     Fractional diff = (pos1 - pos2).wrap_to_zero();
     return orthogonalize_difference(diff).length_sq();

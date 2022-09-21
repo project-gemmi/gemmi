@@ -45,6 +45,9 @@ Any output options:
   --anisou=yes|no|heavy   Add or remove ANISOU records.
 
 Macromolecular operations:
+  --select=SEL            Output only the selection.
+  --remove=SEL            Remove the selection.
+  --apply-symop=OP        Apply symmetry operation (e.g. '-x,y+1/2,-z'.
   --expand-ncs=dup|num|x  Expand strict NCS from in MTRIXn or _struct_ncs_oper.
                           New chain names are the same, have added numbers, or
                           the shortest unused names are picked.
@@ -53,7 +56,5 @@ Macromolecular operations:
   --remove-waters         Remove waters.
   --remove-lig-wat        Remove ligands and waters.
   --trim-to-ala           Trim aminoacids to alanine.
-  --select=SEL            Output only the selection.
-  --remove=SEL            Remove the selection.
 
 When output file is -, write to standard output.

@@ -304,6 +304,17 @@ Here are the most important properties and methods of the ``UnitCell`` class:
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
     <gemmi.Position(12.56, 19.75, 22.535)>
 
+A symmetry operation that works on fractional coordinates can also be
+"orthogonalized" -- converted to :ref:`transformation <transform>`
+that operates on Cartesian coordinates:
+
+.. doctest::
+
+    >>> cell.op_as_transform(gemmi.Op('-z,y+1/2,-x'))  #doctest: +ELLIPSIS
+    <gemmi.Transform object at 0x...>
+    >>> _.apply(gemmi.Position(0, 6, 2.1))
+    <gemmi.Vec3(-1.17045, 25.75, 0)>
+
 Cells can be compared with one of two functions.
 approx() is meant for almost identical cells that differ only
 due to numeric errors. It checks if the cell parameters differ

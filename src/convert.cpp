@@ -52,7 +52,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, CifStyle, BlockName,
   ExpandNcs, AsAssembly,
-  RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove,
+  RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq,
   SiftsNum, Biso, Anisou, SegmentAsChain, OldPdb, ForceLabel
 };
@@ -119,6 +119,12 @@ const option::Descriptor Usage[] = {
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
+  { Select, 0, "", "select", Arg::Required,
+    "  --select=SEL  \tOutput only the selection." },
+  { Remove, 0, "", "remove", Arg::Required,
+    "  --remove=SEL  \tRemove the selection." },
+  { ApplySymop, 0, "", "apply-symop", Arg::Required,
+    "  --apply-symop=OP  \tApply symmetry operation (e.g. '-x,y+1/2,-z'." },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|num|x  \tExpand strict NCS from in MTRIXn or"
     " _struct_ncs_oper. New chain names are the same, have added numbers,"
@@ -133,11 +139,6 @@ const option::Descriptor Usage[] = {
     "  --remove-lig-wat  \tRemove ligands and waters." },
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
-  { Select, 0, "", "select", Arg::Required,
-    "  --select=SEL  \tOutput only the selection." },
-  { Remove, 0, "", "remove", Arg::Required,
-    "  --remove=SEL  \tRemove the selection." },
-
   { NoOp, 0, "", "", Arg::None,
     "\nWhen output file is -, write to standard output." },
   { 0, 0, 0, 0, 0, 0 }
@@ -176,6 +177,10 @@ void convert(gemmi::Structure& st,
     gemmi::Selection(options[Remove].arg).remove_selected(st);
   if (st.models.empty())
     gemmi::fail("all models got removed");
+  if (options[ApplySymop]) {
+    gemmi::Op op = gemmi::parse_triplet(options[ApplySymop].arg);
+    transform_pos_and_adp(st, st.cell.op_as_transform(op));
+  }
 
   if (options[Biso]) {
     const char* start = options[Biso].arg;
