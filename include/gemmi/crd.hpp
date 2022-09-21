@@ -166,8 +166,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       "label_alt_id",
       "label_comp_id",
       "label_asym_id",
-      "auth_seq_id",
-      //"pdbx_PDB_ins_code",
+      "auth_seq_id", // including insertion code (no pdbx_PDB_ins_code)
       "Cartn_x",
       "Cartn_y",
       "Cartn_z",
@@ -192,7 +191,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
       const ChemComp& cc = ri.chemcomp;
       const Residue& res = *ri.res;
-      std::string auth_seq_id = res.seqid.num.str();
+      std::string auth_seq_id = res.seqid.str();
       //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
       for (const Atom& a : res.atoms) {
         // infer hd_mixture (which is rarely used)
@@ -209,7 +208,6 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(res.name);
         vv.emplace_back(cif::quote(chain_info.chain_ref.name));
         vv.emplace_back(auth_seq_id);
-        //vv.emplace_back(ins_code);
         vv.emplace_back(to_str(a.pos.x));
         vv.emplace_back(to_str(a.pos.y));
         vv.emplace_back(to_str(a.pos.z));
