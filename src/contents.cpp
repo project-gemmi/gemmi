@@ -10,6 +10,7 @@
 #include <gemmi/calculate.hpp>
 #include <gemmi/polyheur.hpp>  // for setup_entities, calculate_sequence_weight
 #include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/select.hpp>    // for Selection
 #include "histogram.h"         // for print_histogram
 #define GEMMI_PROG contents
 #include "options.h"
@@ -19,7 +20,7 @@ using std::printf;
 
 namespace {
 
-enum OptionIndex { Dihedrals=4, Bfactors, NoContentInfo };
+enum OptionIndex { Select=4, Bfactors, Dihedrals, NoContentInfo };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -28,6 +29,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Select, 0, "", "select", Arg::Required,
+    "  --select=SEL  \tUse only the selection." },
   { Bfactors, 0, "b", "", Arg::None,
     "  -b  \tPrint statistics of isotropic ADPs (B-factors)." },
   { Dihedrals, 0, "", "dihedrals", Arg::None,
@@ -214,6 +217,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::printf("File: %s\n", input.c_str());
       Structure st = read_structure_gz(input);
       setup_entities(st);
+      if (p.options[Select])
+        gemmi::Selection(p.options[Select].arg).remove_not_selected(st);
       if (st.models.size() > 1)
         std::fprintf(stderr,
                      "Warning: using only the first model out of %zu.\n",
