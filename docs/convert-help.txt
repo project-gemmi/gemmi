@@ -43,6 +43,7 @@ Any output options:
   -B MIN[:MAX]            Set isotropic B-factors to a single value or change
                           values out of given range to MIN/MAX.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
+  --set-cispep            Reset CISPEP records from omega angles.
 
 Macromolecular operations:
   --select=SEL            Output only the selection.

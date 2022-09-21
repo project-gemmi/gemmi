@@ -54,7 +54,7 @@ enum OptionIndex {
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq,
-  SiftsNum, Biso, Anisou, SegmentAsChain, OldPdb, ForceLabel
+  SiftsNum, Biso, Anisou, SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
 
 const option::Descriptor Usage[] = {
@@ -117,6 +117,8 @@ const option::Descriptor Usage[] = {
       "out of given range to MIN/MAX." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
+  { SetCis, 0, "", "set-cispep", Arg::None,
+    "  --set-cispep  \tReset CISPEP records from omega angles." },
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { Select, 0, "", "select", Arg::Required,
@@ -212,6 +214,9 @@ void convert(gemmi::Structure& st,
                 gemmi::ensure_anisou(atom);
     }
   }
+
+  if (options[SetCis])
+    assign_cis_flags(st);
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
     const char* sep = std::strchr(opt->arg, ':');
