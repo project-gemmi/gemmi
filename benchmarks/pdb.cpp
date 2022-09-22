@@ -7,6 +7,7 @@
 #include "gemmi/calculate.hpp"
 #include "gemmi/neighbor.hpp"
 #include "gemmi/select.hpp"  // count_atom_sites
+#include "gemmi/remarks.hpp"  // read_metadata_from_remarks
 #include <benchmark/benchmark.h>
 
 static const char* path;
@@ -15,6 +16,16 @@ static void read_pdb_file(benchmark::State& state) {
   while (state.KeepRunning()) {
     gemmi::Structure st = gemmi::read_pdb_file(path);
     benchmark::DoNotOptimize(st);
+  }
+}
+
+static void read_pdb_remarks(benchmark::State& state) {
+  using namespace gemmi;
+  Structure st = read_pdb_file(path);
+  while (state.KeepRunning()) {
+    st.meta = gemmi::Metadata();
+    read_metadata_from_remarks(st);
+    benchmark::DoNotOptimize(st.meta);
   }
 }
 
@@ -150,6 +161,7 @@ int main(int argc, char** argv) {
            st.name.c_str(), count_atom_sites(st.models.at(0)));
   }
   benchmark::RegisterBenchmark("read_pdb_file", read_pdb_file);
+  benchmark::RegisterBenchmark("read_pdb_remarks", read_pdb_remarks);
   benchmark::RegisterBenchmark("find_atom_image", find_atom_image);
   benchmark::RegisterBenchmark("neighbor_search_ctor", neighbor_search_ctor);
   benchmark::RegisterBenchmark("neighbor_search_find", neighbor_search_find);
