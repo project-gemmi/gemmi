@@ -6,12 +6,81 @@
 #ifndef GEMMI_REMARKS_HPP_
 #define GEMMI_REMARKS_HPP_
 
-#include "metadata.hpp"
-#include "pdb.hpp"  // for pdb_date_format_to_iso, read_int, ...
+#include <cctype>       // for isspace
+#include <cstdlib>      // for atoi
+#include <cstring>      // for memcpy, strstr, strchr, strcmp
+#include <stdexcept>    // for invalid_argument
+#include "atof.hpp"     // for fast_from_chars
+#include "atox.hpp"     // for string_to_int
+#include "fail.hpp"     // for fail
+#include "metadata.hpp" // for Metadata
+#include "model.hpp"    // for Structure, impl::find_or_add
+#include "util.hpp"     // for trim_str, alpha_up, istarts_with
 
 namespace gemmi {
 
 namespace pdb_impl {
+
+inline int read_int(const char* p, int field_length) {
+  return string_to_int(p, false, field_length);
+}
+
+inline double read_double(const char* p, int field_length) {
+  double d = 0.;
+  // we don't check for errors here
+  fast_from_chars(p, p + field_length, d);
+  return d;
+}
+
+inline std::string read_string(const char* p, int field_length) {
+  // left trim
+  while (field_length != 0 && is_space(*p)) {
+    ++p;
+    --field_length;
+  }
+  // EOL/EOF ends the string
+  for (int i = 0; i < field_length; ++i)
+    if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
+      field_length = i;
+      break;
+    }
+  // right trim
+  while (field_length != 0 && is_space(p[field_length-1]))
+    --field_length;
+  return std::string(p, field_length);
+}
+
+template<size_t N>
+inline bool same_str(const std::string& s, const char (&literal)[N]) {
+  return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
+}
+
+// "28-MAR-07" -> "2007-03-28"
+// (we also accept less standard format "28-Mar-2007" as used by BUSTER)
+// We do not check if the date is correct.
+// The returned value is one of:
+//   DDDD-DD-DD - possibly correct date,
+//   DDDD-xx-DD - unrecognized month,
+//   empty string - the digits were not there.
+inline std::string pdb_date_format_to_iso(const std::string& date) {
+  const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
+                        "JUL07AUG08SEP09OCT10NOV11DEC122222";
+  if (date.size() < 9 || !is_digit(date[0]) || !is_digit(date[1]) ||
+                         !is_digit(date[7]) || !is_digit(date[8]))
+    return std::string();
+  std::string iso = "xxxx-xx-xx";
+  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
+    std::memcpy(&iso[0], &date[7], 4);
+  } else {
+    std::memcpy(&iso[0], (date[7] > '6' ? "19" : "20"), 2);
+    std::memcpy(&iso[2], &date[7], 2);
+  }
+  char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
+  if (const char* m = std::strstr(months, month))
+    std::memcpy(&iso[5], m + 3, 2);
+  std::memcpy(&iso[8], &date[0], 2);
+  return iso;
+}
 
 inline bool is_double(const char* p) {
   while (std::isspace(*p)) ++p;

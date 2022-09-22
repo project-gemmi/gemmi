@@ -8,7 +8,6 @@
 #include "gemmi/to_pdb.hpp"    // for write_pdb, ...
 #include "gemmi/fstream.hpp"   // for Ofstream, Ifstream
 #include "gemmi/to_mmcif.hpp"  // for update_mmcif_block
-#include "gemmi/remarks.hpp"   // for read_metadata_from_remarks
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, transform_to_assembly
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
@@ -165,7 +164,6 @@ void convert(gemmi::Structure& st,
     gemmi::fail("No atoms in the input file. Wrong file format?");
 
   if (st.input_format == CoorFormat::Pdb) {
-    gemmi::read_metadata_from_remarks(st);
     gemmi::setup_entities(st);
     if (!options[SetSeq])
       gemmi::assign_label_seq_id(st, options[ForceLabel]);

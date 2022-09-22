@@ -15,60 +15,25 @@
 
 #include <algorithm>  // for swap
 #include <cctype>     // for isalpha
-#include <cstdio>     // for FILE, size_t
+#include <cstdio>     // for stdin, size_t
 #include <cstdlib>    // for strtol
-#include <cstring>    // for memcpy, strstr, strchr, strcmp
-#include <map>        // for map
-#include <string>     // for string
-#include <vector>     // for vector
+#include <cstring>    // for memcpy, strstr, strchr
 #include <unordered_map>
 
-#include "atox.hpp"     // for string_to_int
-#include "atof.hpp"     // for fast_from_chars
-#include "fail.hpp"     // for fail
 #include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
-#include "model.hpp"
-#include "polyheur.hpp" // for assign_subchains
-#include "util.hpp"
+#include "model.hpp"    // for Atom, Structure, ...
+#include "polyheur.hpp" // for assign_subchain_names
+#include "remarks.hpp"  // for read_metadata_from_remarks, read_int, ...
 
 namespace gemmi {
 
 namespace pdb_impl {
 
-inline int read_int(const char* p, int field_length) {
-  return string_to_int(p, false, field_length);
-}
-
 template<int N> int read_base36(const char* p) {
   char zstr[N+1] = {0};
   std::memcpy(zstr, p, N);
   return std::strtol(zstr, nullptr, 36);
-}
-
-inline double read_double(const char* p, int field_length) {
-  double d = 0.;
-  // we don't check for errors here
-  fast_from_chars(p, p + field_length, d);
-  return d;
-}
-
-inline std::string read_string(const char* p, int field_length) {
-  // left trim
-  while (field_length != 0 && is_space(*p)) {
-    ++p;
-    --field_length;
-  }
-  // EOL/EOF ends the string
-  for (int i = 0; i < field_length; ++i)
-    if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
-      field_length = i;
-      break;
-    }
-  // right trim
-  while (field_length != 0 && is_space(p[field_length-1]))
-    --field_length;
-  return std::string(p, field_length);
 }
 
 // Compare the first 4 letters of s, ignoring case, with uppercase record.
@@ -137,33 +102,6 @@ inline char read_altloc(char c) { return c == ' ' ? '\0' : c; }
 inline int read_serial(const char* ptr) {
   return ptr[0] < 'A' ? read_int(ptr, 5)
                       : read_base36<5>(ptr) - 16796160 + 100000;
-}
-
-// "28-MAR-07" -> "2007-03-28"
-// (we also accept less standard format "28-Mar-2007" as used by BUSTER)
-// We do not check if the date is correct.
-// The returned value is one of:
-//   DDDD-DD-DD - possibly correct date,
-//   DDDD-xx-DD - unrecognized month,
-//   empty string - the digits were not there.
-inline std::string pdb_date_format_to_iso(const std::string& date) {
-  const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
-                        "JUL07AUG08SEP09OCT10NOV11DEC122222";
-  if (date.size() < 9 || !is_digit(date[0]) || !is_digit(date[1]) ||
-                         !is_digit(date[7]) || !is_digit(date[8]))
-    return std::string();
-  std::string iso = "xxxx-xx-xx";
-  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
-    std::memcpy(&iso[0], &date[7], 4);
-  } else {
-    std::memcpy(&iso[0], (date[7] > '6' ? "19" : "20"), 2);
-    std::memcpy(&iso[2], &date[7], 2);
-  }
-  char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
-  if (const char* m = std::strstr(months, month))
-    std::memcpy(&iso[5], m + 3, 2);
-  std::memcpy(&iso[8], &date[0], 2);
-  return iso;
 }
 
 // move initials after comma, as in mmCIF (A.-B.DOE -> DOE, A.-B.), see
@@ -268,11 +206,6 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
           res->is_cis = true;
     }
   }
-}
-
-template<size_t N>
-inline bool same_str(const std::string& s, const char (&literal)[N]) {
-  return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
 }
 
 template<typename Stream>
@@ -402,7 +335,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
         continue;
       int num = read_int(line + 7, 3);
       // By default, we only look for resolution and REMARK 350.
-      // Other parsing of remarks is in interpret_remarks().
+      // Other remarks are parsed in read_metadata_from_remarks()
       if (num == 2) {
         if (st.resolution == 0.0 && std::strstr(line, "ANGSTROM"))
           st.resolution = read_double(line + 23, 7);
@@ -674,6 +607,9 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
 
   for (std::string& name : st.meta.authors)
     change_author_name_format_to_mmcif(name);
+
+  if (!options.skip_remarks)
+    read_metadata_from_remarks(st);
 
   return st;
 }

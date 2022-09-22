@@ -8,7 +8,6 @@
 #include "gemmi/small.hpp"         // for SmallStructure
 #include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
 #include "gemmi/chemcomp_xyz.hpp"
-#include "gemmi/remarks.hpp"
 
 #define GEMMI_READ_CIF_IMPLEMENTATION
 #include "gemmi/read_cif.hpp" // for read_cif_gz, read_mmjson_gz
@@ -51,8 +50,6 @@ void add_read_structure(py::module& m) {
   m.def("read_structure", [](const std::string& path, bool merge,
                              CoorFormat format) {
           Structure* st = new Structure(read_structure_gz(path, format));
-          if (!st->raw_remarks.empty())
-            read_metadata_from_remarks(*st);
           if (merge)
             st->merge_chain_parts();
           return st;
@@ -66,9 +63,7 @@ void add_read_structure(py::module& m) {
           PdbReadOptions options;
           options.max_line_length = max_line_length;
           options.split_chain_on_ter = split_chain_on_ter;
-          Structure* st = new Structure(read_pdb_string(s, "string", options));
-          read_metadata_from_remarks(*st);
-          return st;
+          return new Structure(read_pdb_string(s, "string", options));
         }, py::arg("s"), py::arg("max_line_length")=0,
            py::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
   m.def("read_pdb", [](const std::string& path, int max_line_length,
@@ -76,9 +71,7 @@ void add_read_structure(py::module& m) {
           PdbReadOptions options;
           options.max_line_length = max_line_length;
           options.split_chain_on_ter = split_chain_on_ter;
-          Structure* st = new Structure(read_pdb_gz(path, options));
-          read_metadata_from_remarks(*st);
-          return st;
+          return new Structure(read_pdb_gz(path, options));
         }, py::arg("filename"), py::arg("max_line_length")=0,
            py::arg("split_chain_on_ter")=false);
 

@@ -85,6 +85,7 @@ enum class CalcFlag : signed char { NotSet=0, Determined, Calculated, Dummy };
 struct PdbReadOptions {
   int max_line_length = 0;
   bool split_chain_on_ter = false;
+  bool skip_remarks = false;
 };
 
 // remove empty residues from chain, empty chains from model, etc
