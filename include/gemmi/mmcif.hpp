@@ -445,7 +445,7 @@ inline void apply_hd_mixture(Residue* resi, double hd_mixture) {
     if (alt_offset < 0 || alt_offset >= 3)  // we don't expect 4+ altlocs
       return;
   }
-  resi->atoms.push_back(resi->atoms.back());
+  resi->atoms.push_back(Atom(resi->atoms.back()));
   Atom& atom_h = *(resi->atoms.end() - 2);
   Atom& atom_d = *(resi->atoms.end() - 1);
   atom_h.element = El::H;
