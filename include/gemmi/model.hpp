@@ -105,8 +105,8 @@ struct Atom {
   Element element = El::X;
   CalcFlag calc_flag = CalcFlag::NotSet;  // mmCIF _atom_site.calc_flag
   char flag = '\0';  // a custom flag
-  int serial = 0;
   short tls_group_id = -1;
+  int serial = 0;
   Position pos;
   float occ = 1.0f;
   // ADP - in MX it's usual to give isotropic ADP as B and anisotropic as U
