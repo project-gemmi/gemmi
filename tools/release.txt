@@ -19,7 +19,7 @@
 
 - Run https://github.com/project-gemmi/gemmi/actions/workflows/wheels2.yml
   download wheels2.zip and unpack to wheelhouse/
-- python3 setup.py sdist upload
+- twine upload dist/gemmi-$VERSION.tar.gz
 - twine upload wheelhouse/*.whl
 
 - tag:
