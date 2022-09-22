@@ -197,7 +197,9 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         // infer hd_mixture (which is rarely used)
         if (a.element == El::D && &a != &res.atoms[0] &&
             (&a - 1)->element == El::H && a.name == (&a - 1)->name) {
-          double hd_mixture = (&a - 1)->occ / a.occ;
+          double occ_total = (&a - 1)->occ + a.occ;
+          double hd_mixture = occ_total > 0 ? (&a - 1)->occ / occ_total : 1;
+          *(vv.end() - atom_loop.tags.size() + 10) = to_str(occ_total);
           *(vv.end() - atom_loop.tags.size() + 11) = to_str(hd_mixture);
           continue;
         }
@@ -212,7 +214,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(to_str(a.pos.y));
         vv.emplace_back(to_str(a.pos.z));
         vv.emplace_back(to_str(a.occ));
-        vv.emplace_back("0");  // hd_mixture
+        vv.emplace_back("1");  // hd_mixture
         vv.emplace_back(to_str(a.b_iso));
         vv.emplace_back(a.element.uname());
         vv.emplace_back(refmac_calc_flag(a));
