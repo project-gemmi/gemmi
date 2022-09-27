@@ -162,6 +162,9 @@ gemmi/mmcif_impl.hpp
     Function used in both mmcif.hpp and refln.hpp (for coordinate and
     reflection mmCIF files).
 
+gemmi/mmdb.hpp
+    Converts between gemmi::Structure and mmdb::Manager.
+
 gemmi/mmread.hpp
     Read any supported coordinate file.
 
@@ -286,9 +289,6 @@ gemmi/to_json.hpp
 
 gemmi/to_mmcif.hpp
     Create cif::Document (for PDBx/mmCIF file) from Structure.
-
-gemmi/to_mmdb.hpp
-    copy_to_mmdb(): converts gemmi::Structure to mmdb::Manager.
 
 gemmi/to_pdb.hpp
     Writing PDB file format (Structure -> pdb file).

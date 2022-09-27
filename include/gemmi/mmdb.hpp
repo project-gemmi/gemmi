@@ -1,9 +1,9 @@
-// Copyright 2020 Global Phasing Ltd.
+// Copyright 2020-2022 Global Phasing Ltd.
 //
-// copy_to_mmdb(): converts gemmi::Structure to mmdb::Manager.
+// Converts between gemmi::Structure and mmdb::Manager.
 
-#ifndef GEMMI_TO_MMDB_HPP_
-#define GEMMI_TO_MMDB_HPP_
+#ifndef GEMMI_MMDB_HPP_
+#define GEMMI_MMDB_HPP_
 
 #include <cstdlib>           // for atoi
 #include <cstring>           // for memcpy
@@ -78,12 +78,12 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
           atom2->SetCoordinates(atom.pos.x, atom.pos.y, atom.pos.z,
                                 atom.occ, atom.b_iso);
           if (atom.aniso.nonzero()) {
-            atom2->su11 = atom.aniso.u11;
-            atom2->su22 = atom.aniso.u22;
-            atom2->su33 = atom.aniso.u33;
-            atom2->su12 = atom.aniso.u12;
-            atom2->su13 = atom.aniso.u13;
-            atom2->su23 = atom.aniso.u23;
+            atom2->u11 = atom.aniso.u11;
+            atom2->u22 = atom.aniso.u22;
+            atom2->u33 = atom.aniso.u33;
+            atom2->u12 = atom.aniso.u12;
+            atom2->u13 = atom.aniso.u13;
+            atom2->u23 = atom.aniso.u23;
             atom2->WhatIsSet |= mmdb::ASET_Anis_tFSigma;
           }
           res2->AddAtom(atom2);
@@ -134,16 +134,107 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
   return manager;
 }
 
+
+// don't use const for mmdb objects - MMDB doesn't have const method
+inline Atom copy_atom_from_mmdb(mmdb::Atom& m_atom) {
+  Atom atom;
+  atom.name = m_atom.label_atom_id;
+  atom.altloc = m_atom.altLoc[0];
+  atom.charge = (signed char) m_atom.charge;
+  atom.element = Element(m_atom.element);
+  atom.serial = m_atom.serNum;
+  atom.pos = Position(m_atom.x, m_atom.y, m_atom.z);
+  atom.occ = (float) m_atom.occupancy;
+  atom.b_iso = (float) m_atom.tempFactor;
+  if (m_atom.WhatIsSet & mmdb::ASET_Anis_tFSigma) {
+    atom.aniso.u11 = (float) m_atom.u11;
+    atom.aniso.u22 = (float) m_atom.u22;
+    atom.aniso.u33 = (float) m_atom.u33;
+    atom.aniso.u12 = (float) m_atom.u12;
+    atom.aniso.u13 = (float) m_atom.u13;
+    atom.aniso.u23 = (float) m_atom.u23;
+  }
+  return atom;
+}
+
+inline Residue copy_residue_from_mmdb(mmdb::Residue& m_res) {
+  Residue res;
+  res.name = m_res.name;
+  res.seqid.num = m_res.seqNum;
+  if (m_res.insCode[0])
+    res.seqid.icode = m_res.insCode[0];
+  int n = m_res.GetNumberOfAtoms();
+  res.atoms.reserve(n);
+  bool first = true;
+  for (int i = 0; i < n; ++i)
+    if (mmdb::Atom* m_atom = m_res.GetAtom(i)) {
+      if (m_atom->isTer()) {
+        res.entity_type = EntityType::Polymer;
+      } else {
+        res.atoms.push_back(copy_atom_from_mmdb(*m_atom));
+        if (first) {
+          res.het_flag = m_atom->Het ? 'H' : 'A';
+          res.segment = m_atom->segID;
+          first = false;
+        }
+      }
+    }
+  return res;
+}
+
+inline Chain copy_chain_from_mmdb(mmdb::Chain& m_chain) {
+  Chain chain(m_chain.GetChainID());
+  int n = m_chain.GetNumberOfResidues();
+  chain.residues.reserve(n);
+  for (int i = 0; i < n; ++i)
+    if (mmdb::Residue* m_res = m_chain.GetResidue(i))
+      chain.residues.push_back(copy_residue_from_mmdb(*m_res));
+  // in MMDB we may have pseudo-atom TER that marks polymer end
+  for (auto i = chain.residues.begin(); i != chain.residues.end(); ++i)
+    if (i->entity_type == EntityType::Polymer) {  // residue before TER
+      for (auto j = chain.residues.begin(); j != i; ++j)
+        j->entity_type = EntityType::Polymer;
+      for (auto j = i + 1; j != chain.residues.end(); ++j)
+        j->entity_type = j->is_water() ? EntityType::Water
+                                       : EntityType::NonPolymer;
+      break;
+    }
+  return chain;
+}
+
+inline Model copy_model_from_mmdb(mmdb::Model& m_model) {
+  Model model(std::to_string(m_model.GetSerNum()));
+  int n = m_model.GetNumberOfChains();
+  model.chains.reserve(n);
+  for (int i = 0; i < n; ++i)
+    if (mmdb::Chain* m_chain = m_model.GetChain(i))
+      model.chains.push_back(copy_chain_from_mmdb(*m_chain));
+  return model;
+}
+
+inline Structure copy_from_mmdb(mmdb::Manager* manager) {
+  Structure st;
+  const mmdb::Cryst& cryst = *manager->GetCrystData();
+  st.cell.set(cryst.a, cryst.b, cryst.c, cryst.alpha, cryst.beta, cryst.gamma);
+  st.spacegroup_hm = cryst.spaceGroup;
+  int n = manager->GetNumberOfModels();
+  st.models.reserve(n);
+  for (int i = 0; i < n; ++i)
+    if (mmdb::Model* m_model = manager->GetModel(i+1))
+      st.models.push_back(copy_model_from_mmdb(*m_model));
+  return st;
+}
+
 } // namespace gemmi
 #endif
 
 
 /*
-// Example that uses copy_to_mmdb().
-// Reads a coordinate file using gemmi and write it to pdb using mmdb.
+// Example 1.
+// Read a coordinate file using gemmi and write it to pdb using mmdb.
 
 #include <gemmi/mmread.hpp>
-#include <gemmi/to_mmdb.hpp>
+#include <gemmi/mmdb.hpp>
 
 // two arguments expected: input and output paths.
 int main (int argc, char** argv) {
@@ -165,6 +256,35 @@ int main (int argc, char** argv) {
   if (rc)
     printf(" ***** ERROR #%i WRITE:\n\n %s\n\n",
            rc, mmdb::GetErrorDescription(rc));
+  return 0;
+}
+
+// Example 2.
+// Read a coordinate file using mmdb and write it to PDB using gemmi.
+#include <fstream>
+#include <gemmi/mmdb.hpp>
+#define GEMMI_WRITE_IMPLEMENTATION
+#include <gemmi/to_pdb.hpp>
+
+// two arguments expected: input and output paths.
+int main (int argc, char** argv) {
+  if (argc != 3)
+    return 1;
+  mmdb::InitMatType();
+  mmdb::Manager manager;
+  manager.SetFlag(mmdb::MMDBF_PrintCIFWarnings      |
+                  mmdb::MMDBF_FixSpaceGroup         |
+                  mmdb::MMDBF_IgnoreHash            |
+                  mmdb::MMDBF_IgnoreNonCoorPDBErrors|
+                  mmdb::MMDBF_DoNotProcessSpaceGroup);
+  mmdb::ERROR_CODE rc = manager.ReadCoorFile(argv[1]);
+  if (rc != mmdb::Error_NoError) {
+    printf(" ***** ERROR reading the file\n");
+    return 1;
+  }
+  gemmi::Structure st = gemmi::copy_from_mmdb(&manager);
+  std::ofstream os(argv[2]);
+  gemmi::write_pdb(st, os);
   return 0;
 }
 */

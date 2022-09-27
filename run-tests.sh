@@ -40,16 +40,20 @@ $PYTHON -m pydoc gemmi | grep :: ||:
 
 if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb.cpp'
-    awk '/Example that/,/^}/' include/gemmi/to_mmdb.hpp > test_mmdb.cpp
+    echo 'Example 1'
+    awk '/Example 1/,/^}/' include/gemmi/mmdb.hpp > test_mmdb.cpp
+    c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb.cpp -lmmdb2 -o test_mmdb
+    echo 'Example 2'
+    awk '/Example 2/,/^}/' include/gemmi/mmdb.hpp > test_mmdb.cpp
     c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb.cpp -lmmdb2 -o test_mmdb
     rm -f test_mmdb.cpp
 fi
 
 if [ $1 = h -o $1 = a ]; then
     echo "check if each header can be compiled on its own"
-    # skip to_mmdb.hpp which requires also mmdb2 headers
+    # skip mmdb.hpp which requires also mmdb2 headers
     for f in include/gemmi/*.hpp; do
-        if [ $f != include/gemmi/to_mmdb.hpp ]; then
+        if [ $f != include/gemmi/mmdb.hpp ]; then
             echo -n .
             gcc-9 -c -fsyntax-only $f
         fi
