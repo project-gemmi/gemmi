@@ -105,9 +105,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       printf("Reading %s ...\n", input.c_str());
     gemmi::Structure st = gemmi::read_structure_gz(input, gemmi::CoorFormat::Detect);
-    if (st.input_format == gemmi::CoorFormat::Pdb ||
-        st.input_format == gemmi::CoorFormat::ChemComp)
-      gemmi::setup_entities(st);
+    gemmi::setup_entities(st);
 
     if (st.models.empty()) {
       fprintf(stderr, "No models found in the input file.\n");

@@ -282,7 +282,7 @@ inline void deduplicate_entities(Structure& st) {
 }
 
 inline void setup_entities(Structure& st) {
-  assign_subchains(st, false);
+  assign_subchains(st, /*force=*/false);
   ensure_entities(st);
   deduplicate_entities(st);
 }
