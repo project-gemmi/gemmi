@@ -235,6 +235,18 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
   return block;
 }
 
+template<int Prec>
+std::string to_str_dot(double d) {
+  static_assert(Prec >= 0 && Prec < 7, "unsupported precision");
+  if (!std::isnan(d)) {
+    char buf[16];
+    int len = gstb_sprintf(buf, "%.*f", Prec, d);
+    if (len > 0)
+      return std::string(buf, len);
+  }
+  return ".";
+}
+
 inline void add_restraint_row(cif::Loop& restr_loop,
                               const char* record, int counter,
                               const std::string& label, const std::string& period,
@@ -249,7 +261,6 @@ inline void add_restraint_row(cif::Loop& restr_loop,
       return;
 
   auto& values = restr_loop.values;
-  auto to_str_dot = [&](double x) { return std::isnan(x) ? "." : to_str_prec<3>(x); };
   values.emplace_back(record);  // record
   values.emplace_back(std::to_string(counter));  // number
   values.emplace_back(label);  // label
@@ -258,10 +269,10 @@ inline void add_restraint_row(cif::Loop& restr_loop,
     values.emplace_back(std::to_string(a->serial));  // atom_id_i
   for (size_t i = atoms.size(); i < 4; ++i)
     values.emplace_back(".");
-  values.emplace_back(to_str_dot(value));  // value
-  values.emplace_back(to_str_dot(dev));  // dev
-  values.emplace_back(to_str_dot(value_nucleus));  // value_nucleus
-  values.emplace_back(to_str_dot(dev_nucleus));  // dev_nucleus
+  values.emplace_back(to_str_dot<4>(value));  // value
+  values.emplace_back(to_str_dot<3>(dev));  // dev
+  values.emplace_back(to_str_dot<4>(value_nucleus));  // value_nucleus
+  values.emplace_back(to_str_dot<3>(dev_nucleus));  // dev_nucleus
   values.emplace_back(to_str_prec<3>(obs));  // val_obs
   std::string& last = values.back();
   last += " #";
