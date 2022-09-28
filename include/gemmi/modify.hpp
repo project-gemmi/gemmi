@@ -104,5 +104,58 @@ inline void assign_serial_numbers(Structure& st) {
     assign_serial_numbers(model);
 }
 
+
+inline void expand_hd_mixture(Structure& st) {
+  if (!st.has_hd_mixture)
+    return;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        for (size_t i = res.atoms.size(); i-- != 0; ) {
+          Atom& atom = res.atoms[i];
+          float hd_mixture = atom.mixture;
+          if (atom.element == El::H && hd_mixture < 1) {
+            if (hd_mixture <= 0) {
+              atom.element = El::D;
+            } else {
+              int alt_offset = atom.altloc;
+              if (alt_offset) {
+                alt_offset -= 'A';
+                // we don't expect 4+ altlocs - ignore such cases
+                if (alt_offset < 0 || alt_offset >= 3)
+                  continue;
+              }
+              atom.altloc = 'A' + alt_offset;
+              float d_occ = atom.occ * (1 - hd_mixture);
+              atom.occ *= hd_mixture;
+              auto deut = res.atoms.insert(res.atoms.begin() + i + 1, atom);
+              deut->altloc = 'D' + alt_offset;
+              deut->element = El::D;
+              deut->occ = d_occ;
+            }
+          }
+        }
+  st.has_hd_mixture = false;
+}
+
+inline void collapse_hd_mixture(Structure& st) {
+  if (st.has_hd_mixture)
+    return;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        for (auto a = res.atoms.end(); a-- != res.atoms.begin(); )
+          if (a->element == El::D && a != res.atoms.begin() &&
+              (a-1)->element == El::H && a->name == (a-1)->name) {
+            float occ_total = (a-1)->occ + a->occ;
+            (a-1)->mixture = occ_total > 0.f ? (a-1)->occ / occ_total : 1.f;
+            (a-1)->occ = occ_total;
+            res.atoms.erase(a--);
+            if (a->altloc == 'A' && (a+1 == res.atoms.end() || (a+1)->name != a->name))
+              a->altloc = '\0';
+          }
+  st.has_hd_mixture = true;
+}
+
 } // namespace gemmi
 #endif

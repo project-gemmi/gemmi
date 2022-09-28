@@ -192,17 +192,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       const ChemComp& cc = ri.chemcomp;
       const Residue& res = *ri.res;
       std::string auth_seq_id = res.seqid.str();
-      //std::string ins_code(1, res.icode != ' ' ? res.icode : '?');
       for (const Atom& a : res.atoms) {
-        // infer hd_mixture (which is rarely used)
-        if (a.element == El::D && &a != &res.atoms[0] &&
-            (&a - 1)->element == El::H && a.name == (&a - 1)->name) {
-          double occ_total = (&a - 1)->occ + a.occ;
-          double hd_mixture = occ_total > 0 ? (&a - 1)->occ / occ_total : 1;
-          *(vv.end() - atom_loop.tags.size() + 10) = to_str(occ_total);
-          *(vv.end() - atom_loop.tags.size() + 11) = to_str(hd_mixture);
-          continue;
-        }
         vv.emplace_back("ATOM");
         vv.emplace_back(std::to_string(a.serial));
         vv.emplace_back(a.name);
@@ -214,7 +204,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(to_str(a.pos.y));
         vv.emplace_back(to_str(a.pos.z));
         vv.emplace_back(to_str(a.occ));
-        vv.emplace_back("1");  // hd_mixture
+        vv.emplace_back(st.has_hd_mixture ? to_str(a.mixture) : "1");
         vv.emplace_back(to_str(a.b_iso));
         vv.emplace_back(a.element.uname());
         vv.emplace_back(refmac_calc_flag(a));

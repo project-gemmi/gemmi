@@ -169,6 +169,9 @@ void convert(gemmi::Structure& st,
       gemmi::assign_label_seq_id(st, options[ForceLabel]);
     if (!options[CopyRemarks])
       st.raw_remarks.clear();
+  } else {
+    // handles special tag from Refmac's mmCIF
+    expand_hd_mixture(st);
   }
 
   if (options[Select])

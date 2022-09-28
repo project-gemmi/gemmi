@@ -73,15 +73,15 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 } // namespace impl
 
 
-// File format of a macromolecular model. When passed to read_structure():
-// Unknown = guess format from the extension,
-// Detect = guess format from the content.
+/// File format of a macromolecular model. When passed to read_structure():
+/// Unknown = guess format from the extension,
+/// Detect = guess format from the content.
 enum class CoorFormat { Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp };
 
-// corresponds to _atom_site.calc_flag in mmCIF
+/// corresponds to _atom_site.calc_flag in mmCIF
 enum class CalcFlag : signed char { NotSet=0, Determined, Calculated, Dummy };
 
-// options affecting how pdb file is read
+/// options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
   bool split_chain_on_ter = false;
@@ -98,6 +98,7 @@ inline bool is_same_conformer(char altloc1, char altloc2) {
   return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
 }
 
+/// Represents atom site in macromolecular structure (~100 bytes).
 struct Atom {
   static const char* what() { return "Atom"; }
   std::string name;
@@ -108,6 +109,7 @@ struct Atom {
   char flag = '\0';  // a custom flag
   short tls_group_id = -1;
   int serial = 0;
+  float mixture = 0.f;  // custom value, one use is Refmac's ccp4_hd_mixture
   Position pos;
   float occ = 1.0f;
   // ADP - in MX it's usual to give isotropic ADP as B and anisotropic as U
@@ -871,6 +873,9 @@ struct Structure {
   std::vector<Assembly> assemblies;
   Metadata meta;
 
+  CoorFormat input_format = CoorFormat::Unknown;
+  bool has_hd_mixture = false;  // uses Refmac's ccp4_hd_mixture
+
   // Store ORIGXn / _database_PDB_matrix.origx*
   bool has_origx = false;
   Transform origx;
@@ -881,8 +886,6 @@ struct Structure {
   std::vector<std::string> raw_remarks;
   // simplistic resolution value from/for REMARK 2
   double resolution = 0;
-
-  CoorFormat input_format = CoorFormat::Unknown;
 
   const SpaceGroup* find_spacegroup() const {
     return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
