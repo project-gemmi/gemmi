@@ -260,9 +260,9 @@ inline void add_restraint_row(cif::Loop& restr_loop,
   for (size_t i = atoms.size(); i < 4; ++i)
     values.emplace_back(".");
   values.emplace_back(to_str_dot<4>(value));  // value
-  values.emplace_back(to_str_dot<3>(dev));  // dev
+  values.emplace_back(to_str_dot<4>(dev));  // dev
   values.emplace_back(to_str_dot<4>(value_nucleus));  // value_nucleus
-  values.emplace_back(to_str_dot<3>(dev_nucleus));  // dev_nucleus
+  values.emplace_back(to_str_dot<4>(dev_nucleus));  // dev_nucleus
   values.emplace_back(to_str_prec<3>(obs));  // val_obs
   std::string& last = values.back();
   last += " #";
