@@ -114,7 +114,8 @@ class TestMonLib(unittest.TestCase):
         err = monlib.read_monomer_lib(os.environ['CLIBD_MON'], resnames)
         self.assertEqual(err, "")
         topo = gemmi.prepare_topology(st, monlib, model_index=0)
-                                      #h_change=gemmi.HydrogenChange.ReAdd)
+        # currently it doesn't work w/ h_change=gemmi.HydrogenChange.ReAdd
+        self.assertIsNotNone(topo)
 
 
 if __name__ == '__main__':

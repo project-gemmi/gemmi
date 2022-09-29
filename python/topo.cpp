@@ -115,4 +115,5 @@ void add_topo(py::module& m) {
   // crd.hpp
   m.def("prepare_crd", &prepare_crd);
   m.def("prepare_rst", &prepare_rst);
+  m.def("prepare_refmac_crd", &prepare_refmac_crd);
 }

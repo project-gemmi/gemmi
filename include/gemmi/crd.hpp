@@ -13,6 +13,7 @@
 #include "sprintf.hpp"   // for to_str, to_str_prec
 #include "calculate.hpp" // for find_best_plane
 #include "select.hpp"    // for count_atom_sites
+#include "to_chemcomp.hpp" // for add_chemcomp_to_block
 
 namespace gemmi {
 
@@ -398,6 +399,20 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
   }
 
   return block;
+}
+
+inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
+                                        const MonLib& monlib, HydrogenChange h_change) {
+  cif::Document doc;
+  doc.blocks.push_back(prepare_crd(st, topo, h_change));
+  doc.blocks.push_back(prepare_rst(topo, monlib, st.cell));
+  doc.blocks.emplace_back("ccp4_refmac_mmcif");
+  for (const auto& p : monlib.monomers) {
+    const ChemComp& cc = p.second;
+    doc.blocks.emplace_back(cc.name);
+    add_chemcomp_to_block(cc, doc.blocks.back());
+  }
+  return doc;
 }
 
 } // namespace gemmi

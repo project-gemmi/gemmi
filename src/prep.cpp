@@ -144,30 +144,30 @@ int GEMMI_MAIN(int argc, char **argv) {
                                         &std::cerr, ignore_unknown_links);
 
     if (verbose)
-      printf("Preparing structure data...\n");
-    cif::Block crd = prepare_crd(st, *topo, h_change);
-    if (p.options[Split])
+      printf("Preparing data for Refmac...\n");
+    cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
+    if (p.options[Split]) {
       output += ".crd";
-    if (verbose)
-      printf("Writing coordinates to: %s\n", output.c_str());
-    gemmi::Ofstream os(output);
-    write_cif_block_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
-
-    if (verbose)
-      printf("Preparing restraint data...\n");
-    cif::Block rst = prepare_rst(*topo, monlib, st.cell);
-    if (p.options[Split])
-      output.replace(output.size()-3, 3, "rst");
-    if (verbose)
-      printf("Writing restraints to: %s\n", output.c_str());
-    if (p.options[Split])
-      os = gemmi::Ofstream(output);
-    else
-      os->write("\n\n", 2);
-    write_cif_block_to_stream(os.ref(), rst, cif::Style::NoBlankLines);
-    if (!p.options[Split])
-      os.ref() << "\n\ndata_ccp4_refmac_mmcif\n\n"
-                  "# (monomer and link blocks will be here)\n";
+      if (verbose)
+        printf("Writing %s\n", output.c_str());
+      gemmi::Ofstream os(output);
+      write_cif_block_to_stream(os.ref(), crd.blocks.at(0), cif::Style::NoBlankLines);
+      cif::Block rst = prepare_rst(*topo, monlib, st.cell);
+      if (p.options[Split])
+        output.replace(output.size()-3, 3, "rst");
+      if (verbose)
+        printf("Writing %s\n", output.c_str());
+      if (p.options[Split])
+        os = gemmi::Ofstream(output);
+      else
+        os->write("\n\n", 2);
+      write_cif_block_to_stream(os.ref(), crd.blocks.at(1), cif::Style::NoBlankLines);
+    } else {
+      if (verbose)
+        printf("Writing %s\n", output.c_str());
+      gemmi::Ofstream os(output);
+      write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
+    }
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
