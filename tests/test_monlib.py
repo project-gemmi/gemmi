@@ -106,5 +106,16 @@ class TestMonLib(unittest.TestCase):
         self.assertEqual(monlib.path('ALA'), path + "a/ALA.cif")
         self.assertEqual(monlib.path('CON'), path + "c/CON_CON.cif")
 
+    @unittest.skipIf(os.getenv('CLIBD_MON') is None, "$CLIBD_MON not defined.")
+    def test_read_monomer_lib(self):
+        st = gemmi.read_structure(full_path('4oz7.pdb'))
+        resnames = st[0].get_all_residue_names()
+        monlib = gemmi.MonLib()
+        err = monlib.read_monomer_lib(os.environ['CLIBD_MON'], resnames)
+        self.assertEqual(err, "")
+        topo = gemmi.prepare_topology(st, monlib, model_index=0)
+                                      #h_change=gemmi.HydrogenChange.ReAdd)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -98,6 +98,10 @@ void add_monlib(py::module& m) {
     .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
       return self.read_monomer_cif(path, gemmi::read_cif_gz);
     })
+    .def("read_monomer_lib", [](MonLib& self, const std::string& monomer_dir,
+                                const std::vector<std::string>& resnames) {
+      return self.read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz);
+    })
     .def("path", &MonLib::path, py::arg("code")=nullptr)
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +

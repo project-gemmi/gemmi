@@ -554,7 +554,7 @@ struct EnerLib {
   };
 
   EnerLib() {}
-  EnerLib(const cif::Document& doc) {
+  void read(const cif::Document& doc) {
     cif::Block& block = const_cast<cif::Block&>(doc.blocks[0]);
     for (const auto& row : block.find("_lib_atom.",
                     {"type", "hb_type", "vdw_radius", "vdwh_radius",
@@ -694,6 +694,32 @@ struct MonLib {
     insert_comp_list(mon_lib_list, residue_infos);
   }
 
+  /// read mon_lib_list.cif, ener_lib.cif and required monomers
+  std::string read_monomer_lib(std::string monomer_dir,
+                               const std::vector<std::string>& resnames,
+                               read_cif_func read_cif) {
+    if (monomer_dir.empty())
+      fail("read_monomer_lib: monomer_dir not specified.");
+    if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
+      monomer_dir += '/';
+    read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
+    ener_lib.read((*read_cif)(monomer_dir + "/ener_lib.cif"));
+
+    std::string error;
+    for (const std::string& name : resnames) {
+      if (monomers.find(name) != monomers.end())
+        continue;
+      try {
+        cif::Document doc = (*read_cif)(monomer_dir + relative_monomer_path(name));
+        auto cc = make_chemcomp_from_cif(name, doc);
+        monomers.emplace(name, std::move(cc));
+      } catch (std::runtime_error& err) {
+        error += "The monomer " + name + " could not be read: " + err.what() + ".\n";
+      }
+    }
+    return error;
+  }
+
   /// Searches data from _lib_atom in ener_lib.cif.
   /// If chem_type is not in the library uses element name as chem_type.
   double find_radius(const const_CRA& cra, bool use_ion) const {
@@ -717,36 +743,17 @@ struct MonLib {
   }
 };
 
-inline MonLib read_monomer_lib(std::string monomer_dir,
+// deprecated
+inline MonLib read_monomer_lib(const std::string& monomer_dir,
                                const std::vector<std::string>& resnames,
                                read_cif_func read_cif,
                                const std::string& libin="",
                                bool ignore_missing=false) {
-  if (monomer_dir.empty())
-    fail("read_monomer_lib: monomer_dir not specified.");
-  if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
-    monomer_dir += '/';
   MonLib monlib;
   if (!libin.empty())
     monlib.read_monomer_cif(libin, read_cif);
-  monlib.read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
-  std::string error;
-  try {
-    monlib.ener_lib = EnerLib((*read_cif)(monomer_dir + "/ener_lib.cif"));
-  } catch (std::runtime_error& err) {
-    error.append("ener_lib.cif could not be read: ").append(err.what()).append(".\n");
-  }
-  for (const std::string& name : resnames) {
-    try {
-      cif::Document doc = (*read_cif)(monomer_dir + MonLib::relative_monomer_path(name));
-      auto cc = make_chemcomp_from_cif(name, doc);
-      monlib.monomers.emplace(name, std::move(cc));
-    } catch (std::runtime_error& err) {
-      if (!ignore_missing)
-        error += "The monomer " + name + " could not be read: " + err.what() + ".\n";
-    }
-  }
-  if (!error.empty())
+  std::string error = monlib.read_monomer_lib(monomer_dir, resnames, read_cif);
+  if (!ignore_missing && !error.empty())
     fail(error + "Please create definitions for missing monomers.");
   return monlib;
 }
