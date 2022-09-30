@@ -68,6 +68,13 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
 inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
   ChemComp cc;
   cc.name = res.name;
+  // cf. is_peptide_group(), is_nucleotide_group(), is_ad_hoc()
+  if (res.get_ca())
+    cc.group = "?-peptide";
+  else if (res.get_p())
+    cc.group = "?NA";
+  else
+    cc.group = "?";
   // add atoms
   cc.atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
@@ -109,6 +116,8 @@ inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
     for (size_t j = i+1; j != pairs.size(); ++j) {
       if (pairs[i].n1 == pairs[j].n1)
         triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n2});
+      // i.n1 != j.n2 becuause i.n1 <= j.n1 < j.n2
+      // but just in case, let it stay for now
       else if (pairs[i].n1 == pairs[j].n2)
         triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n1});
       else if (pairs[i].n2 == pairs[j].n1)

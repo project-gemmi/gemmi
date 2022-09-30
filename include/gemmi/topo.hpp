@@ -538,6 +538,7 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
     cl.side1.comp = extra.res1->name;
     cl.side2.comp = extra.res2->name;
     cl.id = cl.side1.comp + cl.side2.comp;
+    cl.name = "auto-" + cl.id;
     bool use_ion = cra1.atom->element.is_metal() || cra2.atom->element.is_metal();
     double ideal_dist = monlib.find_radius(cra1, use_ion) +
                         monlib.find_radius(cra2, use_ion);

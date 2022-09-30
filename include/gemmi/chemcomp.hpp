@@ -342,6 +342,9 @@ struct ChemComp {
     return group.size() == 3 && alpha_up(group[1]) == 'N';
   }
 
+  // is it simplistic auto-generated monomer description?
+  bool is_ad_hoc() const { return group[0] == '?'; }
+
   void remove_nonmatching_restraints() {
     vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
       return !has_atom(x.id1.atom) ||
