@@ -407,7 +407,7 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
   doc.blocks.push_back(prepare_crd(st, topo, h_change));
   doc.blocks.push_back(prepare_rst(topo, monlib, st.cell));
 
-  doc.blocks.emplace_back("ccp4_refmac_mmcif");
+  doc.blocks.emplace_back("for_refmac_mmcif");
   std::vector<std::string> resnames = st.models.at(0).get_all_residue_names();
   for (const std::string& resname : resnames) {
     const ChemComp& cc = monlib.monomers.at(resname);
