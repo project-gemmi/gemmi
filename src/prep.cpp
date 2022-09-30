@@ -12,6 +12,7 @@
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 #include "gemmi/read_coor.hpp" // for read_structure_gz
 #include "gemmi/contact.hpp"   // for ContactSearch
+#include "gemmi/to_chemcomp.hpp" // for make_chemcomp_with_restraints
 
 #define GEMMI_PROG prep
 #include "options.h"
@@ -21,7 +22,7 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  Split=4, Monomers, Libin, AutoCis, AutoLink,
+  Split=4, Monomers, Libin, AutoCis, AutoLink, AutoLigand,
   NoZeroOccRestr, NoHydrogens, KeepHydrogens
 };
 
@@ -46,6 +47,8 @@ const option::Descriptor Usage[] = {
     "  --auto-cis=Y|N  \tAssign cis/trans ignoring CISPEP record (default: Y)." },
   { AutoLink, 0, "", "auto-link", Arg::YesNo,
     "  --auto-link=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
+  { AutoLigand, 0, "", "auto-ligand", Arg::YesNo,
+    "  --auto-ligand=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
   //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
   //  "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { NoOp, 0, "", "", Arg::None,
@@ -57,8 +60,9 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-void assign_connections(gemmi::Model& model, gemmi::Structure& st) {
-  using namespace gemmi;
+using namespace gemmi;
+
+void assign_connections(Model& model, Structure& st) {
   NeighborSearch ns(model, st.cell, 5.0);
   ns.populate();
   ContactSearch contacts(3.5f);
@@ -82,6 +86,16 @@ void assign_connections(gemmi::Model& model, gemmi::Structure& st) {
     printf("Added link %s - %s\n", atom_str(cra1).c_str(), atom_str(cra2).c_str());
     st.connections.push_back(conn);
   });
+}
+
+inline const Residue* find_most_complete_residue(const std::string& name,
+                                                 const Model& model) {
+  const Residue* r = nullptr;
+  for (const Chain& chain : model.chains)
+    for (const Residue& residue : chain.residues)
+      if (residue.name == name && (!r || residue.atoms.size() > r->atoms.size()))
+        r = &residue;
+  return r;
 }
 
 } // anonymous namespace
@@ -113,15 +127,30 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     gemmi::Model& model0 = st.models[0];
 
-    std::string libin;
-    if (p.options[Libin])
-      libin = p.options[Libin].arg;
+    gemmi::MonLib monlib;
+    if (p.options[Libin]) {
+      const char* libin = p.options[Libin].arg;
+      if (verbose)
+        printf("Reading user's library %s...\n", libin);
+      monlib.read_monomer_cif(libin, gemmi::read_cif_gz);
+    }
     if (verbose)
       printf("Reading monomer library...\n");
-    gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir,
-                                                   model0.get_all_residue_names(),
-                                                   gemmi::read_cif_gz,
-                                                   libin);
+    std::vector<std::string> resnames = model0.get_all_residue_names();
+    std::string error;
+    bool ok = monlib.read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, &error);
+    if (!ok) {
+      bool make_new_ligands = p.is_yes(AutoLigand, false);
+      printf("%s", error.c_str());
+      if (!make_new_ligands)
+        fail("Please provide definitions for missing monomers.");
+      printf("WARNING: using ad-hoc restraints for missing ligands.\n"
+             "*** Consider providing definitions of missing monomers. ***\n");
+      for (const std::string& name : resnames)
+        if (monlib.monomers.find(name) == monlib.monomers.end())
+          if (const gemmi::Residue* res = find_most_complete_residue(name, model0))
+            monlib.monomers.emplace(name, make_chemcomp_with_restraints(*res));
+    }
     if (p.is_yes(AutoCis, true))
       assign_cis_flags(model0);
 

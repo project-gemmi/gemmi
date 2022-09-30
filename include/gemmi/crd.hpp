@@ -406,11 +406,25 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
   cif::Document doc;
   doc.blocks.push_back(prepare_crd(st, topo, h_change));
   doc.blocks.push_back(prepare_rst(topo, monlib, st.cell));
+
   doc.blocks.emplace_back("ccp4_refmac_mmcif");
-  for (const auto& p : monlib.monomers) {
-    const ChemComp& cc = p.second;
-    doc.blocks.emplace_back(cc.name);
-    add_chemcomp_to_block(cc, doc.blocks.back());
+  std::vector<std::string> resnames = st.models.at(0).get_all_residue_names();
+  for (const std::string& resname : resnames) {
+    const ChemComp& cc = monlib.monomers.at(resname);
+    if (!cc.is_ad_hoc()) {
+      doc.blocks.emplace_back(cc.name);
+      add_chemcomp_to_block(cc, doc.blocks.back());
+    }
+  }
+
+  std::vector<std::string> used_links;
+  for (const Topo::Link& extra : topo.extras)
+    if (!in_vector(extra.link_id, used_links))
+      used_links.push_back(extra.link_id);
+  for (const std::string& link_name : used_links) {
+    const ChemLink *cl = monlib.get_link(link_name);
+    if (cl && !starts_with(cl->name, "auto-"))
+      doc.blocks.push_back(cl->block);
   }
   return doc;
 }

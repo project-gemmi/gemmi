@@ -69,7 +69,6 @@ void add_monlib(py::module& m) {
 
   py::class_<MonLib>(m, "MonLib")
     .def(py::init<>())
-    .def_readonly("mon_lib_list", &MonLib::mon_lib_list)
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
@@ -102,7 +101,7 @@ void add_monlib(py::module& m) {
                                 const std::vector<std::string>& resnames) {
       return self.read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz);
     })
-    .def("path", &MonLib::path, py::arg("code")=nullptr)
+    .def("path", &MonLib::path, py::arg("code")=std::string())
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +
                std::to_string(self.monomers.size()) + " monomers, " +

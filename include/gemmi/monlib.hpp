@@ -39,7 +39,7 @@ struct ChemLink {
   struct Side {
     std::string comp;
     std::string mod;
-    Group group;
+    Group group = Group::Null;
     bool matches_group(Group res) const {
       return group != Group::Null &&
              (res == group ||
@@ -56,6 +56,7 @@ struct ChemLink {
   Side side1;
   Side side2;
   Restraints rt;
+  cif::Block block;  // temporary, until we have ChemLink->Block function
 
   static Group read_group(const std::string& str) {
     if (str.size() >= 4) {
@@ -272,6 +273,7 @@ inline void insert_chemlinks(const cif::Document& doc,
       if (!block)
         fail("inconsistent data_link_list");
       link.rt = read_link_restraints(*block);
+      link.block = *block;
       links.emplace(link.id, link);
     }
   }
@@ -567,7 +569,7 @@ struct EnerLib {
 };
 
 struct MonLib {
-  cif::Document mon_lib_list;
+  std::string monomer_dir;
   EnerLib ener_lib;
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
@@ -653,71 +655,77 @@ struct MonLib {
     return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
   }
 
-  std::string path(const char* code=nullptr) const {
-    size_t len = mon_lib_list.source.length();
-    // "list/mon_lib_list.cif" has 21 characters
-    if (len < 21)
-      return {};
-    std::string dir = mon_lib_list.source.substr(0, len-21);
-    if (code)
-      dir += relative_monomer_path(code);
-    return dir;
+  std::string path(const std::string& code) {
+      return monomer_dir + relative_monomer_path(code);
   }
 
   static std::string relative_monomer_path(const std::string& code) {
-    std::string path(1, std::tolower(code[0]));
-    path += '/';  // works also on Windows
-    path += code;
-    // On Windows several names are reserved (CON, PRN, AUX, ...), see
-    // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-    // The workaround in CCP4 monomer library is to use CON_CON.cif, etc.
-    if (code.size() == 3)
-      switch (ialpha3_id(code.c_str())) {
-        case ialpha3_id("AUX"):
-        case ialpha3_id("COM"):
-        case ialpha3_id("CON"):
-        case ialpha3_id("LPT"):
-        case ialpha3_id("PRN"):
-          path += '_';
-          path += code;
-      }
-    path += ".cif";
+    std::string path;
+    if (!code.empty()) {
+      path += std::tolower(code[0]);
+      path += '/';  // works also on Windows
+      path += code;
+      // On Windows several names are reserved (CON, PRN, AUX, ...), see
+      // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+      // The workaround in CCP4 monomer library is to use CON_CON.cif, etc.
+      if (code.size() == 3)
+        switch (ialpha3_id(code.c_str())) {
+          case ialpha3_id("AUX"):
+          case ialpha3_id("COM"):
+          case ialpha3_id("CON"):
+          case ialpha3_id("LPT"):
+          case ialpha3_id("PRN"):
+            path += '_';
+            path += code;
+        }
+      path += ".cif";
+    }
     return path;
   }
 
   void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
-    mon_lib_list = (*read_cif)(path_);
-    for (const cif::Block& block : mon_lib_list.blocks)
+    cif::Document doc = (*read_cif)(path_);
+    for (const cif::Block& block : doc.blocks)
       add_monomer_if_present(block);
-    insert_chemlinks(mon_lib_list, links);
-    insert_chemmods(mon_lib_list, modifications);
-    insert_comp_list(mon_lib_list, residue_infos);
+    insert_chemlinks(doc, links);
+    insert_chemmods(doc, modifications);
+    insert_comp_list(doc, residue_infos);
   }
 
-  /// read mon_lib_list.cif, ener_lib.cif and required monomers
-  std::string read_monomer_lib(std::string monomer_dir,
-                               const std::vector<std::string>& resnames,
-                               read_cif_func read_cif) {
-    if (monomer_dir.empty())
-      fail("read_monomer_lib: monomer_dir not specified.");
+  void set_monomer_dir(const std::string& monomer_dir_) {
+    monomer_dir = monomer_dir_;
     if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
       monomer_dir += '/';
-    read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
-    ener_lib.read((*read_cif)(monomer_dir + "/ener_lib.cif"));
+  }
 
-    std::string error;
+  /// Read mon_lib_list.cif, ener_lib.cif and required monomers.
+  /// Returns true if all requested monomers were added.
+  bool read_monomer_lib(const std::string& monomer_dir_,
+                        const std::vector<std::string>& resnames,
+                        read_cif_func read_cif,
+                        std::string* error=nullptr) {
+    if (monomer_dir_.empty())
+      fail("read_monomer_lib: monomer_dir not specified.");
+    set_monomer_dir(monomer_dir_);
+
+    read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
+    ener_lib.read((*read_cif)(monomer_dir + "ener_lib.cif"));
+
+    bool ok = true;
     for (const std::string& name : resnames) {
       if (monomers.find(name) != monomers.end())
         continue;
       try {
-        cif::Document doc = (*read_cif)(monomer_dir + relative_monomer_path(name));
+        cif::Document doc = (*read_cif)(path(name));
         auto cc = make_chemcomp_from_cif(name, doc);
         monomers.emplace(name, std::move(cc));
       } catch (std::runtime_error& err) {
-        error += "The monomer " + name + " could not be read: " + err.what() + ".\n";
+        if (error)
+          cat_to(*error, "The monomer ", name, " could not be read: ", err.what(), ".\n");
+        ok = false;
       }
     }
-    return error;
+    return ok;
   }
 
   /// Searches data from _lib_atom in ener_lib.cif.
@@ -752,8 +760,9 @@ inline MonLib read_monomer_lib(const std::string& monomer_dir,
   MonLib monlib;
   if (!libin.empty())
     monlib.read_monomer_cif(libin, read_cif);
-  std::string error = monlib.read_monomer_lib(monomer_dir, resnames, read_cif);
-  if (!ignore_missing && !error.empty())
+  std::string error;
+  bool ok = monlib.read_monomer_lib(monomer_dir, resnames, read_cif, &error);
+  if (!ignore_missing && !ok)
     fail(error + "Please create definitions for missing monomers.");
   return monlib;
 }
