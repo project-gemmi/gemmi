@@ -10,7 +10,6 @@ Options:
   -h, --help          Print usage and exit.
   -V, --version       Print version and exit.
   -v, --verbose       Verbose output.
-  --split             Split output into two files: crd and rst.
   --monomers=DIR      Monomer library dir (default: $CLIBD_MON).
   --libin=CIF         Custom additions to the monomer library.
   --auto-cis=Y|N      Assign cis/trans ignoring CISPEP record (default: Y).

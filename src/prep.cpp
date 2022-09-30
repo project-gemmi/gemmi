@@ -22,7 +22,7 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  Split=4, Monomers, Libin, AutoCis, AutoLink, AutoLigand,
+  Monomers=4, Libin, AutoCis, AutoLink, AutoLigand,
   NoZeroOccRestr, NoHydrogens, KeepHydrogens
 };
 
@@ -37,8 +37,6 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { Split, 0, "", "split", Arg::None,
-    "  --split  \tSplit output into two files: crd and rst." },
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
   { Libin, 0, "", "libin", Arg::Required,
@@ -171,32 +169,13 @@ int GEMMI_MAIN(int argc, char **argv) {
       h_change = gemmi::HydrogenChange::ReAddButWater;
     auto topo = gemmi::prepare_topology(st, monlib, 0, h_change, reorder,
                                         &std::cerr, ignore_unknown_links);
-
     if (verbose)
       printf("Preparing data for Refmac...\n");
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
-    if (p.options[Split]) {
-      output += ".crd";
-      if (verbose)
-        printf("Writing %s\n", output.c_str());
-      gemmi::Ofstream os(output);
-      write_cif_block_to_stream(os.ref(), crd.blocks.at(0), cif::Style::NoBlankLines);
-      cif::Block rst = prepare_rst(*topo, monlib, st.cell);
-      if (p.options[Split])
-        output.replace(output.size()-3, 3, "rst");
-      if (verbose)
-        printf("Writing %s\n", output.c_str());
-      if (p.options[Split])
-        os = gemmi::Ofstream(output);
-      else
-        os->write("\n\n", 2);
-      write_cif_block_to_stream(os.ref(), crd.blocks.at(1), cif::Style::NoBlankLines);
-    } else {
-      if (verbose)
-        printf("Writing %s\n", output.c_str());
-      gemmi::Ofstream os(output);
-      write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
-    }
+    if (verbose)
+      printf("Writing %s\n", output.c_str());
+    gemmi::Ofstream os(output);
+    write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
