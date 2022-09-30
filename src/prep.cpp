@@ -17,7 +17,7 @@
 #define GEMMI_PROG prep
 #include "options.h"
 
-namespace cif = gemmi::cif;
+using namespace gemmi;
 
 namespace {
 
@@ -57,8 +57,6 @@ const option::Descriptor Usage[] = {
     "  --keep-hydrogens  \tPreserve hydrogens from the input file." },
   { 0, 0, 0, 0, 0, 0 }
 };
-
-using namespace gemmi;
 
 void assign_connections(Model& model, Structure& st) {
   NeighborSearch ns(model, st.cell, 5.0);
@@ -116,27 +114,27 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     if (verbose)
       printf("Reading %s ...\n", input.c_str());
-    gemmi::Structure st = gemmi::read_structure_gz(input, gemmi::CoorFormat::Detect);
-    gemmi::setup_entities(st);
+    Structure st = read_structure_gz(input, CoorFormat::Detect);
+    setup_entities(st);
 
     if (st.models.empty()) {
       fprintf(stderr, "No models found in the input file.\n");
       return 1;
     }
-    gemmi::Model& model0 = st.models[0];
+    Model& model0 = st.models[0];
 
-    gemmi::MonLib monlib;
+    MonLib monlib;
     if (p.options[Libin]) {
       const char* libin = p.options[Libin].arg;
       if (verbose)
         printf("Reading user's library %s...\n", libin);
-      monlib.read_monomer_cif(libin, gemmi::read_cif_gz);
+      monlib.read_monomer_cif(libin, read_cif_gz);
     }
     if (verbose)
       printf("Reading monomer library...\n");
     std::vector<std::string> resnames = model0.get_all_residue_names();
     std::string error;
-    bool ok = monlib.read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, &error);
+    bool ok = monlib.read_monomer_lib(monomer_dir, resnames, read_cif_gz, &error);
     if (!ok) {
       bool make_new_ligands = p.is_yes(AutoLigand, false);
       printf("%s", error.c_str());
@@ -146,7 +144,7 @@ int GEMMI_MAIN(int argc, char **argv) {
              "*** Consider providing definitions of missing monomers. ***\n");
       for (const std::string& name : resnames)
         if (monlib.monomers.find(name) == monlib.monomers.end())
-          if (const gemmi::Residue* res = find_most_complete_residue(name, model0))
+          if (const Residue* res = find_most_complete_residue(name, model0))
             monlib.monomers.emplace(name, make_chemcomp_with_restraints(*res));
     }
     if (p.is_yes(AutoCis, true))
@@ -160,21 +158,21 @@ int GEMMI_MAIN(int argc, char **argv) {
       printf("Preparing topology, hydrogens, restraints...\n");
     bool reorder = true;
     bool ignore_unknown_links = false;
-    gemmi::HydrogenChange h_change;
+    HydrogenChange h_change;
     if (p.options[NoHydrogens])
-      h_change = gemmi::HydrogenChange::Remove;
+      h_change = HydrogenChange::Remove;
     else if (p.options[KeepHydrogens])
-      h_change = gemmi::HydrogenChange::NoChange;
+      h_change = HydrogenChange::NoChange;
     else
-      h_change = gemmi::HydrogenChange::ReAddButWater;
-    auto topo = gemmi::prepare_topology(st, monlib, 0, h_change, reorder,
-                                        &std::cerr, ignore_unknown_links);
+      h_change = HydrogenChange::ReAddButWater;
+    auto topo = prepare_topology(st, monlib, 0, h_change, reorder,
+                                 &std::cerr, ignore_unknown_links);
     if (verbose)
       printf("Preparing data for Refmac...\n");
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
     if (verbose)
       printf("Writing %s\n", output.c_str());
-    gemmi::Ofstream os(output);
+    Ofstream os(output);
     write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
