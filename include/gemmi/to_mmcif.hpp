@@ -53,7 +53,7 @@ struct MmcifOutputGroups {
       struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),
       struct_biol(all), assembly(all), conn(all), cis(all),
       scale(all), atom_type(all), entity_poly_seq(all), tls(all),
-      software(all), group_pdb(false) {}
+      software(all), group_pdb(all) {}
 };
 
 void update_mmcif_block(const Structure& st, cif::Block& block,

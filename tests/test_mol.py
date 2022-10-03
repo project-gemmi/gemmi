@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
 import gzip
+from io import StringIO
 import os
 import sys
 import unittest
 import gemmi
 from common import full_path, get_path_for_tempfile
+try:
+    from Bio import PDB
+except ImportError:
+    PDB = None
 
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
@@ -507,6 +512,17 @@ class TestMol(unittest.TestCase):
 
     def test_read_write_4oz7_via_cif(self):
         self.test_read_write_4oz7(via_cif=True)
+
+    @unittest.skipIf(PDB is None, "BioPython not installed.")
+    def test_reading_output_mmcif_with_biopython(self):
+        path = full_path('4oz7.pdb')
+        st = gemmi.read_structure(path)
+        groups = gemmi.MmcifOutputGroups(True)
+        # BioPython parser chokes without _atom_site.group_PDB
+        # groups.group_pdb = False
+        doc = st.make_mmcif_document(groups)
+        parser = PDB.MMCIFParser(QUIET=True)
+        structure = parser.get_structure("none", StringIO(doc.as_string()))
 
     def test_pdb_element_names(self):
         pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \
