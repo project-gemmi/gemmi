@@ -413,7 +413,10 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
     const ChemComp& cc = monlib.monomers.at(resname);
     if (!cc.is_ad_hoc()) {
       doc.blocks.emplace_back(cc.name);
-      add_chemcomp_to_block(cc, doc.blocks.back());
+      cif::Block& block = doc.blocks.back();
+      block.items.emplace_back("_chem_comp.id", cc.name);
+      block.items.emplace_back("_chem_comp.group", cif::quote(cc.group));
+      add_chemcomp_to_block(cc, block);
     }
   }
 

@@ -463,8 +463,8 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   ChemComp cc;
   cc.name = block_.name.substr(starts_with(block_.name, "comp_") ? 5 : 0);
   cif::Block& block = const_cast<cif::Block&>(block_);
-  // CCD uses _chem_comp.type, monomer libraries use .group in separate block,
-  // but just in case check for the presence of _chem_comp.group here.
+  // CCD uses _chem_comp.type, monomer libraries use .group in a separate block
+  // named comp_list, but why not to try read _chem_comp.group from this block.
   cif::Column group_col = block.find_values("_chem_comp.group");
   if (!group_col)
     group_col = block.find_values("_chem_comp.type");
