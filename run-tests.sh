@@ -1,17 +1,24 @@
 #!/bin/sh
 
 # I use this script for building, testing and updating docs.
-# Running Python scripts with locally built gemmi module requires setting
-# PYTHONPATH. I'm using the following alias (bash function actually) to set it:
-# echo "import gemmi" > $HOME/.import-gemmi.py
-# gpy() { PYTHONPATH=$HOME/gemmi/gemmi/build PYTHONSTARTUP=$HOME/.import-gemmi.py python3 -q "$@"; }
 
+# Note: running Python scripts with locally built gemmi module requires setting
+# PYTHONPATH. Locally, I'm using bash function "gpy" that starts python with
+# gemmi imported ("gpy" for interactive mode, "gpy file.py" for script):
+#   echo "import gemmi" > $HOME/.import-gemmi.py
+#   gpy() { PYTHONPATH=$HOME/gemmi/gemmi/build PYTHONSTARTUP=$HOME/.import-gemmi.py python3 -q "$@"; }
+
+# set up variables
 set -eu
 cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 PYTHON=`grep PYTHON_EXECUTABLE:FILEPATH= $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 
+# Build all, except when we called with an option to avoid full compilation:
+#  G - only build the program,
+#  P - only build Python bindings,
+#  n - do not build, only run tests.
 if [ $# = 1 ] && [ $1 = G ]; then
     (cd $BUILD_DIR && make -j4 program)
     exit
@@ -26,6 +33,8 @@ if [ $# = 0 ] || [ $1 != n ]; then
     ./tools/docs-help.sh
 fi
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
+
+# Run tests and checks.
 export PYTHONPATH=$BUILD_DIR
 export PATH="$BUILD_DIR:$PATH"
 $PYTHON -m unittest discover -s tests
@@ -34,8 +43,12 @@ $PYTHON -m unittest discover -s tests
 # So 'make doctest' works only if sphinx-build was installed for python3.
 (cd docs && make doctest SPHINXOPTS="-q -n -E")
 flake8 docs/ examples/ tests/ tools/ setup.py
+# We want to avoid having '::' in pydoc from pybind11.
 $PYTHON -m pydoc gemmi | grep :: ||:
 
+# Usually, we stop here. Below are more extensive checks below that are run
+# before making a release. They are run when this script is called with 'a'
+# or with an option corresponding to the check.
 [ $# = 0 ] && exit;
 
 if [ $1 = m -o $1 = a ]; then
@@ -83,6 +96,7 @@ if [ $1 = p -o $1 = a ]; then
 fi
 
 if [ $1 = w -o $1 = a ]; then
+    echo "check if wasm/mtz and project-gemmi/wasm can be built"
     [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh
     (cd wasm/mtz && ./compile.sh)
     (cd ../wasm/convert && make clean && make)
