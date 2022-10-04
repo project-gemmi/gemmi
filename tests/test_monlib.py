@@ -111,8 +111,8 @@ class TestMonLib(unittest.TestCase):
         st = gemmi.read_structure(full_path('4oz7.pdb'))
         resnames = st[0].get_all_residue_names()
         monlib = gemmi.MonLib()
-        err = monlib.read_monomer_lib(os.environ['CLIBD_MON'], resnames)
-        self.assertEqual(err, "")
+        ok = monlib.read_monomer_lib(os.environ['CLIBD_MON'], resnames)
+        self.assertTrue(ok)
         topo = gemmi.prepare_topology(st, monlib, model_index=0)
         # currently it doesn't work w/ h_change=gemmi.HydrogenChange.ReAdd
         self.assertIsNotNone(topo)

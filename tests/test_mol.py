@@ -522,7 +522,7 @@ class TestMol(unittest.TestCase):
         # groups.group_pdb = False
         doc = st.make_mmcif_document(groups)
         parser = PDB.MMCIFParser(QUIET=True)
-        structure = parser.get_structure("none", StringIO(doc.as_string()))
+        parser.get_structure("none", StringIO(doc.as_string()))
 
     def test_pdb_element_names(self):
         pdb_line = "HETATM 4154 MG    MG A 341       1.384  19.340  11.968" \
