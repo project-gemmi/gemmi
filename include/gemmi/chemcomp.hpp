@@ -39,8 +39,8 @@ struct Restraints {
       return comp == o.comp ? atom < o.atom : comp < o.comp;
     }
 
-    const Atom* get_from(const Residue& res1, const Residue* res2, char altloc) const {
-      const Residue* residue;
+    Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
+      Residue* residue;
       if (comp == 1 || res2 == nullptr)
         residue = &res1;
       else if (comp == 2)
@@ -49,9 +49,8 @@ struct Restraints {
         throw std::out_of_range("Unexpected component ID");
       return residue->find_atom(atom, altloc);
     }
-    Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
-      const Residue& cres1 = res1;
-      return const_cast<Atom*>(get_from(cres1, res2, altloc));
+    const Atom* get_from(const Residue& res1, const Residue* res2, char altloc) const {
+      return get_from(const_cast<Residue&>(res1), const_cast<Residue*>(res2), altloc);
     }
   };
 
