@@ -1,13 +1,13 @@
 # includes part of shroud/regression/run/defaults.mk
 
-SUFFIX = -10
+SUFFIX = -12
 CC = gcc$(SUFFIX)
 CXX = g++$(SUFFIX)
 FC = gfortran$(SUFFIX)
 
 CFLAGS = -O -Wall -Wstrict-prototypes -fno-strict-aliasing -std=c99
 FFLAGS = -O -cpp -std=f2003 -ffree-form -Wall -fbounds-check
-CXXFLAGS = -O -Wall -std=c++11 -fno-strict-aliasing
+CXXFLAGS = -O -Wall -fno-strict-aliasing
 INCLUDE = -I../include
 FLIBS = -lstdc++ -lz
 
