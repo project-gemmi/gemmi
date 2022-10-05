@@ -422,6 +422,12 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
   // initialize chains and residues
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
+      // set Residue::group_idx which is used in Restraints::AtomId::get_from()
+      for (size_t i = 0; i != sub.size(); ++i) {
+        sub[i].group_idx = 0;
+        if (i != 0 && sub[i-1].seqid == sub[i].seqid)
+          sub[i].group_idx = sub[i-1].group_idx + 1;
+      }
       const Entity* ent = st.get_entity_of(sub);
       chain_infos.emplace_back(sub, chain, ent);
     }

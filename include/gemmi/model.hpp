@@ -173,6 +173,7 @@ struct Residue : public ResidueId {
   bool is_cis = false;    // bond to the next residue marked as cis
   char flag = '\0';       // custom flag
   SiftsUnpResidue sifts_unp;  // UniProt reference from SIFTS
+  short group_idx;        // ignore - internal variable
   std::vector<Atom> atoms;
 
   Residue() = default;

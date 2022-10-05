@@ -50,7 +50,7 @@ template<int N> struct OptionalInt {
 struct SeqId {
   using OptionalNum = OptionalInt<-999>;
 
-  OptionalNum num; // sequence number
+  OptionalNum num;   // sequence number
   char icode = ' ';  // insertion code
 
   SeqId() = default;

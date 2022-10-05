@@ -108,8 +108,7 @@ struct ChemLink {
   }
 
   // If multiple ChemLinks match a bond, the scores can pick the best match.
-  int calculate_score(const Residue& res1, const Residue* res2,
-                      char alt) const {
+  int calculate_score(const Residue& res1, const Residue* res2, char alt) const {
     int link_score = side1.specificity() + side2.specificity();
     // check chirality
     for (const Restraints::Chirality& chirality : rt.chirs)

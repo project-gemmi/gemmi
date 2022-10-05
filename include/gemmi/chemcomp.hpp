@@ -40,14 +40,13 @@ struct Restraints {
     }
 
     Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
-      Residue* residue;
-      if (comp == 1 || res2 == nullptr)
-        residue = &res1;
-      else if (comp == 2)
-        residue = res2;
-      else
-        throw std::out_of_range("Unexpected component ID");
-      return residue->find_atom(atom, altloc);
+      Residue* residue = (comp == 1 || res2 == nullptr ? &res1 : res2);
+      Atom* a = residue->find_atom(atom, altloc);
+      // Special case: microheterogeneity may have shared atoms only in
+      // the first residue. Example: in 1ejg N is shared between PRO and SER.
+      if (a == nullptr && altloc != '\0' && residue->group_idx > 0)
+        a = (residue - residue->group_idx)->find_atom(atom, altloc);
+      return a;
     }
     const Atom* get_from(const Residue& res1, const Residue* res2, char altloc) const {
       return get_from(const_cast<Residue&>(res1), const_cast<Residue*>(res2), altloc);
@@ -202,8 +201,7 @@ struct Restraints {
   find_angle(const T& a, const T& b, const T& c) const {
     return const_cast<Restraints*>(this)->find_angle(a, b, c);
   }
-  const Angle& get_angle(const AtomId& a, const AtomId& b, const AtomId& c)
-                                                                        const {
+  const Angle& get_angle(const AtomId& a, const AtomId& b, const AtomId& c) const {
     auto it = const_cast<Restraints*>(this)->find_angle(a, b, c);
     if (it == angles.end())
       fail("Angle restraint not found: ", a.atom, '-', b.atom, '-', c.atom);
