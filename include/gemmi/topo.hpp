@@ -477,7 +477,7 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
     }
 }
 
-// it has side-effects: may modifies conn.link_id and add to monlib.links
+// it has side-effects: may modify conn.link_id and add to monlib.links
 inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                                    bool ignore_unknown_links) {
   Link extra;
@@ -548,6 +548,8 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
     bool use_ion = cra1.atom->element.is_metal() || cra2.atom->element.is_metal();
     double ideal_dist = monlib.find_radius(cra1, use_ion) +
                         monlib.find_radius(cra2, use_ion);
+    if (!use_ion)
+      ideal_dist /= 2;
     cl.rt.bonds.push_back({Restraints::AtomId{1, conn.partner1.atom_name},
                            Restraints::AtomId{2, conn.partner2.atom_name},
                            BondType::Unspec, false,

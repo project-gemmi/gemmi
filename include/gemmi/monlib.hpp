@@ -593,7 +593,7 @@ struct MonLib {
   std::pair<const ChemLink*, bool>
   match_link(const Residue& res1, const std::string& atom1,
              const Residue& res2, const std::string& atom2,
-             char alt) const {
+             char alt, double min_bond_sq=0) const {
     const ChemLink* best_link = nullptr;
     int best_score = -1;
     bool inverted = false;
@@ -603,6 +603,8 @@ struct MonLib {
         continue;
       // for now we don't have link definitions with >1 bonds
       const Restraints::Bond& bond = link.rt.bonds[0];
+      if (sq(bond.value) < min_bond_sq)
+        continue;
       if (bond.id1.atom == atom1 && bond.id2.atom == atom2 &&
           link_side_matches_residue(link.side1, res1.name) &&
           link_side_matches_residue(link.side2, res2.name)) {

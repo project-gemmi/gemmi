@@ -84,6 +84,7 @@ struct LinkHunt {
         if (bond_margin > 0) {
           auto range = links.equal_range(Restraints::lexicographic_str(
                                             cra1.atom->name, cra2.atom->name));
+          // similar to MonLib::match_link()
           for (auto iter = range.first; iter != range.second; ++iter) {
             const ChemLink& link = *iter->second;
             const Restraints::Bond& bond = link.rt.bonds[0];

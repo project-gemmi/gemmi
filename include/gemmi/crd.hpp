@@ -14,6 +14,7 @@
 #include "calculate.hpp" // for find_best_plane
 #include "select.hpp"    // for count_atom_sites
 #include "to_chemcomp.hpp" // for add_chemcomp_to_block
+#include "contact.hpp"   // for ContactSearch
 
 namespace gemmi {
 
@@ -47,6 +48,60 @@ inline std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
       return m;
   return ".";
 }
+
+
+inline void add_automatic_links(Model& model, Structure& st, const MonLib& monlib) {
+  auto is_onsb = [](Element e) {
+    return e == El::O || e == El::N || e == El::S || e == El::B;
+  };
+  NeighborSearch ns(model, st.cell, 5.0);
+  ns.populate();
+  ContactSearch contacts(3.1f);  // 3.1 > 130% of ZN-CYS bond (2.34)
+  contacts.ignore = ContactSearch::Ignore::AdjacentResidues;
+  int counter = 0;
+  contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
+                                    int image_idx, float dist_sq) {
+    if (st.find_connection_by_cra(cra1, cra2))
+      return;
+    const ChemLink* link;
+    bool invert;
+    char altloc = cra1.atom->altloc_or(cra2.atom->altloc);
+    double min_dist_sq = sq(1 / 1.4) * dist_sq;
+    std::tie(link, invert) = monlib.match_link(*cra1.residue, cra1.atom->name,
+                                               *cra2.residue, cra2.atom->name,
+                                               altloc, min_dist_sq);
+    if (!link) {
+      // Similarly to "make link" in Refmac,
+      // only search for links between metals and O,N,S,B.
+      if (is_onsb(cra1.atom->element) && cra2.atom->element.is_metal())
+        invert = false;
+      else if (is_onsb(cra2.atom->element) && cra1.atom->element.is_metal())
+        invert = true;
+      else
+        return;
+      float rmax = std::max(cra1.atom->element.covalent_r(),
+                            cra2.atom->element.covalent_r());
+      if (dist_sq > sq(std::max(2.f, 1.3f * rmax)))
+        return;
+    }
+
+    Connection conn;
+    conn.name = "added" + std::to_string(++counter);
+    if (link)
+      conn.link_id = link->id;
+    conn.type = Connection::Covale;
+    conn.asu = (image_idx == 0 ? Asu::Same : Asu::Different);
+    const CRA* c1 = &cra1;
+    const CRA* c2 = &cra2;
+    if (invert)
+      std::swap(c1, c2);
+    conn.partner1 = make_address(*c1->chain, *c1->residue, *c1->atom);
+    conn.partner2 = make_address(*c2->chain, *c2->residue, *c2->atom);
+    conn.reported_distance = std::sqrt(dist_sq);
+    st.connections.push_back(conn);
+  });
+}
+
 
 inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
                               HydrogenChange h_change) {

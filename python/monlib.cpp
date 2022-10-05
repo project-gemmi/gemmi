@@ -82,6 +82,7 @@ void add_monlib(py::module& m) {
     .def("match_link", &MonLib::match_link,
          py::arg("res1"), py::arg("atom1"),
          py::arg("res2"), py::arg("atom2"), py::arg("altloc"),
+         py::arg("min_bond_sq")=0.,
          py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("add_monomers_if_present", &MonLib::add_monomers_if_present)
