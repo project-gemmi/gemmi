@@ -1,7 +1,6 @@
 $ gemmi prep -h
 Usage:
  gemmi prep [options] INPUT_FILE OUTPUT_FILE
- gemmi prep --split [options] INPUT_FILE OUTPUT_BASENAME
 
 Prepare intermediate Refmac files.
 INPUT_FILE can be in PDB, mmCIF or mmJSON format.

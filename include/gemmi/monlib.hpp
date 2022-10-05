@@ -718,9 +718,13 @@ struct MonLib {
         cif::Document doc = (*read_cif)(path(name));
         auto cc = make_chemcomp_from_cif(name, doc);
         monomers.emplace(name, std::move(cc));
+      } catch (std::system_error& err) {
+        if (error)
+          cat_to(*error, "Monomer ", name, " not found.\n");
+        ok = false;
       } catch (std::runtime_error& err) {
         if (error)
-          cat_to(*error, "The monomer ", name, " could not be read: ", err.what(), ".\n");
+          cat_to(*error, "Failed to read monomer ", name, ": ", err.what(), ".\n");
         ok = false;
       }
     }
