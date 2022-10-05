@@ -65,7 +65,7 @@ struct SeqId {
   }
 
   bool operator==(const SeqId& o) const {
-    return num == o.num && (icode | 0x20) == (o.icode | 0x20);
+    return num == o.num && ((icode ^ o.icode) & ~0x20) == 0;
   }
   bool operator!=(const SeqId& o) const { return !operator==(o); }
   bool operator<(const SeqId& o) const {
