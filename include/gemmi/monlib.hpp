@@ -686,13 +686,16 @@ struct MonLib {
     return path;
   }
 
-  void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
-    cif::Document doc = (*read_cif)(path_);
+  void read_monomer_doc(const cif::Document& doc) {
     for (const cif::Block& block : doc.blocks)
       add_monomer_if_present(block);
     insert_chemlinks(doc, links);
     insert_chemmods(doc, modifications);
     insert_comp_list(doc, residue_infos);
+  }
+
+  void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
+    read_monomer_doc((*read_cif)(path_));
   }
 
   void set_monomer_dir(const std::string& monomer_dir_) {

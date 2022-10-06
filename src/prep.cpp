@@ -22,7 +22,7 @@ using namespace gemmi;
 namespace {
 
 enum OptionIndex {
-  Monomers=4, Libin, AutoCis, AutoLink, AutoLigand,
+  Monomers=4, Libin, AutoCis, AutoLink, AutoLigand, InFileLib,
   NoZeroOccRestr, NoHydrogens, KeepHydrogens
 };
 
@@ -46,6 +46,8 @@ const option::Descriptor Usage[] = {
     "  --auto-link=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
   { AutoLigand, 0, "", "auto-ligand", Arg::YesNo,
     "  --auto-ligand=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
+  { InFileLib, 0, "", "infile-lib", Arg::YesNo,
+    "  --infile-lib=Y|N  \tUse restraints (if any) from mmCIF input (default: Y)." },
   //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
   //  "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { NoOp, 0, "", "", Arg::None,
@@ -87,7 +89,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     if (verbose)
       printf("Reading %s ...\n", input.c_str());
-    Structure st = read_structure_gz(input, CoorFormat::Detect);
+    cif::Document st_doc;
+    Structure st = read_structure_gz(input, CoorFormat::Detect, &st_doc);
     setup_entities(st);
 
     if (st.models.empty()) {
@@ -103,8 +106,16 @@ int GEMMI_MAIN(int argc, char **argv) {
         printf("Reading user's library %s...\n", libin);
       monlib.read_monomer_cif(libin, read_cif_gz);
     }
-    if (verbose)
+    if (p.is_yes(InFileLib, true))
+      monlib.read_monomer_doc(st_doc);
+    if (verbose) {
+      if (!monlib.monomers.empty()) {
+        std::string s = join_str(monlib.monomers, ", ",
+              [](const std::pair<std::string, ChemComp>& x) { return x.first; });
+        printf("Monomers from local files: %s\n", s.c_str());
+      }
       printf("Reading monomer library...\n");
+    }
     std::vector<std::string> resnames = model0.get_all_residue_names();
     std::string error;
     bool ok = monlib.read_monomer_lib(monomer_dir, resnames, read_cif_gz, &error);
