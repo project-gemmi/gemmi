@@ -579,11 +579,11 @@ struct MonLib {
     auto link = links.find(link_id);
     return link != links.end() ? &link->second : nullptr;
   }
-  const ChemMod* find_mod(const std::string& name) const {
+  const ChemMod* get_mod(const std::string& name) const {
     auto modif = modifications.find(name);
     return modif != modifications.end() ? &modif->second : nullptr;
   }
-  const ResidueInfo* find_residue_info(const std::string& name) const {
+  const ResidueInfo* get_residue_info(const std::string& name) const {
     auto resinfo = residue_infos.find(name);
     return resinfo != residue_infos.end() ? &resinfo->second : nullptr;
   }
@@ -652,7 +652,7 @@ struct MonLib {
                                  const std::string& res_name) const {
     if (side.comp != "")
       return side.comp == res_name;
-    const ResidueInfo* resinfo = find_residue_info(res_name);
+    const ResidueInfo* resinfo = get_residue_info(res_name);
     return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
   }
 

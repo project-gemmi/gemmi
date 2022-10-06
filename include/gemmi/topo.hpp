@@ -464,7 +464,7 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
     for (ResInfo& ri : chain_info.res_infos) {
       // apply modifications
       for (const std::string& modif : ri.mods) {
-        if (const ChemMod* chem_mod = monlib.find_mod(modif))
+        if (const ChemMod* chem_mod = monlib.get_mod(modif))
           try {
             chem_mod->apply_to(ri.chemcomp);
           } catch(std::runtime_error& e) {
