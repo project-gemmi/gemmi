@@ -157,6 +157,7 @@ struct ChemMod {
   std::string group_id;
   std::vector<AtomMod> atom_mods;
   Restraints rt;
+  cif::Block block;  // temporary, until we have ChemMod->Block function
 
   void apply_to(ChemComp& chemcomp) const;
 };
@@ -355,6 +356,7 @@ inline void insert_chemmods(const cif::Document& doc,
                                  (float) cif::as_number(ra.one_of(5, 6)),
                                  ra.str(4)});
       mod.rt = read_restraint_modifications(*block);
+      mod.block = *block;
       mods.emplace(mod.id, mod);
     }
   }

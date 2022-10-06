@@ -475,15 +475,34 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
     }
   }
 
+  // gather used links and mods
   std::vector<std::string> used_links;
+  std::vector<std::string> used_mods;
+  for (const Topo::ChainInfo& chain_info : topo.chain_infos)
+    for (const Topo::ResInfo& res_info : chain_info.res_infos) {
+      for (const Topo::Link& link : res_info.prev)
+        if (!in_vector(link.link_id, used_links))
+          used_links.push_back(link.link_id);
+      for (const std::string& mod : res_info.mods)
+        if (!in_vector(mod, used_mods))
+          used_mods.push_back(mod);
+    }
   for (const Topo::Link& extra : topo.extras)
     if (!in_vector(extra.link_id, used_links))
       used_links.push_back(extra.link_id);
+
+  // add links and mods blocks to the document
   for (const std::string& link_name : used_links) {
-    const ChemLink *cl = monlib.get_link(link_name);
-    if (cl && !starts_with(cl->name, "auto-"))
+    const ChemLink* cl = monlib.get_link(link_name);
+    // ignore ad-hoc links and dummy (empty) links such as "gap"
+    if (cl && !starts_with(cl->name, "auto-") && !cl->block.items.empty())
       doc.blocks.push_back(cl->block);
   }
+  for (const std::string& mod_name : used_mods) {
+    if (const ChemMod* mod = monlib.get_mod(mod_name))
+      doc.blocks.push_back(mod->block);
+  }
+
   return doc;
 }
 
