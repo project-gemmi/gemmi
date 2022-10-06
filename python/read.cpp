@@ -48,13 +48,14 @@ void add_cif_read(py::module& cif) {
 
 void add_read_structure(py::module& m) {
   m.def("read_structure", [](const std::string& path, bool merge,
-                             CoorFormat format) {
-          Structure* st = new Structure(read_structure_gz(path, format));
+                             CoorFormat format, cif::Document* save_doc) {
+          Structure* st = new Structure(read_structure_gz(path, format, save_doc));
           if (merge)
             st->merge_chain_parts();
           return st;
         }, py::arg("path"), py::arg("merge_chain_parts")=true,
            py::arg("format")=CoorFormat::Unknown,
+           py::arg("save_doc")=nullptr,
         "Reads a coordinate file into Structure.");
   m.def("make_structure_from_block", &make_structure_from_block,
         py::arg("block"), "Takes mmCIF block and returns Structure.");

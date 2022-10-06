@@ -868,14 +868,17 @@ inline Structure make_structure_from_block(const cif::Block& block) {
   return impl::make_structure_from_block(block);
 }
 
-inline Structure make_structure(const cif::Document& doc) {
+inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nullptr) {
   // mmCIF files for deposition may have more than one block:
   // coordinates in the first block and restraints in the others.
   for (size_t i = 1; i < doc.blocks.size(); ++i)
     if (doc.blocks[i].has_tag("_atom_site.id"))
       fail("2+ blocks are ok if only the first one has coordinates;\n"
            "_atom_site in block #" + std::to_string(i+1) + ": " + doc.source);
-  return make_structure_from_block(doc.blocks.at(0));
+  Structure st = make_structure_from_block(doc.blocks.at(0));
+  if (save_doc)
+    *save_doc = std::move(doc);
+  return st;
 }
 
 } // namespace gemmi

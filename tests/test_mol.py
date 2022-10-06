@@ -667,7 +667,12 @@ class TestMol(unittest.TestCase):
         self.assertEqual(len(st), 0)
 
     def test_remove2(self):
-        st = gemmi.read_structure(full_path('1pfe.cif.gz'))
+        # test also save_doc
+        saved_doc = gemmi.cif.Document()
+        st = gemmi.read_structure(full_path('1pfe.cif.gz'), save_doc=saved_doc)
+        self.assertEqual(saved_doc[0].name, '1PFE')
+        self.assertEqual(saved_doc[0].find_value('_entity_name_com.name'),
+                         "'QUINOMYCIN A'")
         model = st[0]
         self.assertEqual(len(model), 2)
         b = model['B']

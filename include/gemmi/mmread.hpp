@@ -46,43 +46,51 @@ inline CoorFormat coor_format_from_content(const char* buf, const char* end) {
   return CoorFormat::Unknown;
 }
 
-inline Structure make_structure_from_doc(const cif::Document& doc, bool possible_chemcomp) {
+inline Structure make_structure_from_doc(cif::Document&& doc, bool possible_chemcomp,
+                                         cif::Document* save_doc=nullptr) {
   if (possible_chemcomp) {
     // check for special case - refmac dictionary or CCD file
     int n = check_chemcomp_block_number(doc);
     if (n != -1)
       return make_structure_from_chemcomp_block(doc.blocks[n]);
   }
-  return make_structure(doc);
+  return make_structure(std::move(doc), save_doc);
 }
 
 inline Structure read_structure_from_char_array(char* data, size_t size,
-                                                const std::string& path) {
+                                                const std::string& path,
+                                                cif::Document* save_doc=nullptr) {
+  if (save_doc)
+    save_doc->clear();
   CoorFormat format = coor_format_from_content(data, data + size);
   if (format == CoorFormat::Pdb)
     return read_pdb_from_memory(data, size, path);
   if (format == CoorFormat::Mmcif)
-    return make_structure_from_doc(cif::read_memory(data, size, path.c_str()), true);
+    return make_structure_from_doc(cif::read_memory(data, size, path.c_str()),
+                                   true, save_doc);
   if (format == CoorFormat::Mmjson)
-    return make_structure(cif::read_mmjson_insitu(data, size, path));
+    return make_structure(cif::read_mmjson_insitu(data, size, path), save_doc);
   fail("wrong format of coordinate file " + path);
 }
 
 template<typename T>
-Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown) {
+Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown,
+                         cif::Document* save_doc=nullptr) {
   if (format == CoorFormat::Detect) {
     CharArray mem = read_into_buffer(input);
-    return read_structure_from_char_array(mem.data(), mem.size(), input.path());
+    return read_structure_from_char_array(mem.data(), mem.size(), input.path(), save_doc);
   }
+  if (save_doc)
+    save_doc->clear();
   if (format == CoorFormat::Unknown)
     format = coor_format_from_ext(input.basepath());
   switch (format) {
     case CoorFormat::Pdb:
       return read_pdb(input);
     case CoorFormat::Mmcif:
-      return make_structure(cif::read(input));
+      return make_structure(cif::read(input), save_doc);
     case CoorFormat::Mmjson:
-      return make_structure(cif::read_mmjson(input));
+      return make_structure(cif::read_mmjson(input), save_doc);
     case CoorFormat::ChemComp:
       return make_structure_from_chemcomp_doc(cif::read(input));
     case CoorFormat::Unknown:

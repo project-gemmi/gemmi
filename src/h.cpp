@@ -4,7 +4,6 @@
 #include <cstdlib>   // for getenv
 #include <stdexcept>
 #include <iostream>  // for cout
-#include <gemmi/mmcif.hpp>     // for make_structure
 #include <gemmi/polyheur.hpp>  // for setup_entities
 #include <gemmi/modify.hpp>    // for remove_hydrogens
 #include <gemmi/to_cif.hpp>    // for write_cif_to_file
@@ -87,13 +86,10 @@ int GEMMI_MAIN(int argc, char **argv) {
                        output_format == gemmi::CoorFormat::Mmcif);
   try {
     gemmi::Structure st;
-    cif::Document doc;
-    if (preserve_doc) {
-      doc = gemmi::read_cif_gz(input);
-      st = gemmi::make_structure(doc);
-    } else {
-      st = gemmi::read_structure_gz(input, input_format);
-    }
+    std::unique_ptr<cif::Document> doc;
+    if (preserve_doc)
+      doc.reset(new cif::Document);
+    st = gemmi::read_structure_gz(input, input_format, doc.get());
     if (st.models.empty() || st.models[0].chains.empty()) {
       std::fprintf(stderr, "No atoms in the input file. Wrong format?\n");
       return 1;
@@ -132,11 +128,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (preserve_doc) {
         gemmi::MmcifOutputGroups groups(false);
         groups.atoms = true;
-        gemmi::update_mmcif_block(st, doc.blocks[0], groups);
+        gemmi::update_mmcif_block(st, doc->blocks[0], groups);
       } else {
-        doc = gemmi::make_mmcif_document(st);
+        doc.reset(new cif::Document(gemmi::make_mmcif_document(st)));
       }
-      cif::write_cif_to_stream(os.ref(), doc, cif::Style::PreferPairs);
+      cif::write_cif_to_stream(os.ref(), *doc, cif::Style::PreferPairs);
     }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
