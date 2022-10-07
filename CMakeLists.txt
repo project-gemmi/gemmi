@@ -54,7 +54,7 @@ endif()
 
 # Set default build mode (based on CMake FAQ)
 if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
 endif()
