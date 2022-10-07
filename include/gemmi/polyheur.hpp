@@ -37,10 +37,12 @@ inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
   aa += counts[ResidueInfo::AA] + counts[ResidueInfo::AAD] +
         counts[ResidueInfo::PAA] + counts[ResidueInfo::MAA];
   na += counts[ResidueInfo::RNA] + counts[ResidueInfo::DNA];
-  if (2 * aa > polymer.size())
+  // Exclude water in case this function is called for the whole chain.
+  size_t total = polymer.size() - counts[ResidueInfo::HOH];
+  if (2 * aa > total)
     return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]
            ? PolymerType::PeptideL : PolymerType::PeptideD;
-  if (2 * na > polymer.size()) {
+  if (2 * na > total) {
     if (counts[ResidueInfo::DNA] == 0)
       return PolymerType::Rna;
     if (counts[ResidueInfo::RNA] == 0)
