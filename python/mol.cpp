@@ -136,8 +136,8 @@ void add_mol(py::module& m) {
     .def("setup_cell_images", &Structure::setup_cell_images)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
-    .def("assign_subchains", (void (*)(Structure&, bool)) &assign_subchains,
-         py::arg("overwrite")=false)
+    .def("assign_subchains", &assign_subchains,
+         py::arg("force")=false)
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
