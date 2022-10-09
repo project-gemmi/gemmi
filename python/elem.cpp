@@ -12,15 +12,6 @@
 namespace py = pybind11;
 using namespace gemmi;
 
-static std::vector<std::string>
-expand_protein_one_letter_string(const std::string& s) {
-  std::vector<std::string> r;
-  r.reserve(s.size());
-  for (char c : s)
-    r.push_back(expand_protein_one_letter(c));
-  return r;
-}
-
 void add_elem(py::module& m) {
   // it92.hpp
   using IT92 = gemmi::IT92<double>;

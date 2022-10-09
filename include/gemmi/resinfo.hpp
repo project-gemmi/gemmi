@@ -7,6 +7,8 @@
 
 #include <cstdint>  // for uint8_t
 #include <string>
+#include <vector>
+#include "fail.hpp"
 
 namespace gemmi {
 
@@ -449,6 +451,18 @@ inline const char* expand_protein_one_letter(char c) {
   if (c < 'A' || c > 'Z' || c == 'J')
     return nullptr;
   return &data[4 * (c - 'A')];
+}
+
+inline std::vector<std::string> expand_protein_one_letter_string(const std::string& s) {
+  std::vector<std::string> r;
+  r.reserve(s.size());
+  for (char c : s) {
+    const char* three_letters = expand_protein_one_letter(c);
+    if (!three_letters)
+      fail("unexpected letter in protein sequence: ", c);
+    r.emplace_back(three_letters, 3);
+  }
+  return r;
 }
 
 } // namespace gemmi

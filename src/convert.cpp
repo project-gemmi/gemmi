@@ -239,13 +239,7 @@ void convert(gemmi::Structure& st,
     std::string seq = gemmi::read_pir_or_fasta(stream.ref());
     for (gemmi::Entity& ent : st.entities)
       if (ent.entity_type == gemmi::EntityType::Polymer) {
-        ent.full_sequence.clear();
-        for (char letter : seq) {
-          const char* str = gemmi::expand_protein_one_letter(letter);
-          if (!str)
-            gemmi::fail("unexpected letter in protein sequence: ", letter);
-          ent.full_sequence.emplace_back(str);
-        }
+        ent.full_sequence = gemmi::expand_protein_one_letter_string(seq);
       }
     gemmi::deduplicate_entities(st);
     gemmi::assign_label_seq_id(st, options[ForceLabel]);
