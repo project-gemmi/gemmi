@@ -1785,18 +1785,54 @@ for names such as "R 3"):
 Entity
 ------
 
-*Entity* is a new concept introduced in the mmCIF format.
-If the structure is read from a PDB file, we can assign entities
-by calling method ``setup_entities``.
-This method uses a simple heuristic to group residues into
-:ref:`subchains <subchain>` which are mapped to entities
-(this is primarily about finding where the polymer ends;
-works best if the TER record is used).
-All polymers with identical sequence in the SEQRES record are mapped to
-the same entity.
+*Entity* is a new concept introduced in the mmCIF format --
+a chemically distinct part, such as polymer, ligand, ion or water.
+Ligands with the same residue name correspond to the same entity.
+Polymers that have the same sequence --- the same entity.
 
-Calling ``setup_entities`` is useful when converting from PDB to mmCIF
-(but to just convert files use :ref:`gemmi-convert <convert>`):
+In the mmCIF format entities are explicitly linked with structural units
+that we call here :ref:`subchains <subchain>`. PDB files do not have
+this concept. If we read the structure from a PDB file,
+we can assign entities by calling ``setup_entities``.
+This method uses a simple heuristic to group residues into
+*subchains*, which are then mapped to entities.
+
+Internally, ``setup_entities()`` runs four functions (in this order):
+
+* ``add_entity_types()`` -- sets Residue.entity_type if it's not already set.
+
+  When reading a PDB file, entity_type is assigned automatically if the chains
+  contains the TER record. TER marks the end of polymer, so residues before
+  TER are in polymer, residues after are non-polymers and waters.
+  PDB files from the PDB always have TERs, but files from other sources
+  may not have it. In such cases this function uses a simple heuristic
+  to determine where the polymer ends.
+
+  Note: if you'd have a PDB file with TER records in incorrect places
+  (the only correct place is the end of polymer),
+  you'd need to discard possibly incorrect entity_type values with:
+
+  .. doctest::
+
+    >>> structure.add_entity_types(overwrite=True)
+
+* ``assign_subchains()`` -- assigns subchains in each chain that doesn't have
+  the subchains assigned yet. This function determines structural units
+  in the chain (based on previously assigned entity_type), generates
+  a name for each unit and sets the Residue.subchain variable in all
+  residues in the chain.
+
+* ``ensure_entities()`` -- makes sure that each subchain is linked to
+  one of Entity objects in Structure.entities. Creates Entity objects if needed.
+
+* ``deduplicate_entities()`` -- polymers with identical sequence
+  in the SEQRES record are mapped to the same entity and redundant Entity
+  objects are deleted.
+
+If your programs reads PDB files, it is a good idea to call setup_entities()
+after read_structure() because many of the gemmi functions depend on it.
+
+Here is a snippet that converts PDB to mmCIF:
 
 .. doctest::
 
@@ -1811,8 +1847,7 @@ sequence from the model to the full sequence (SEQRES) and sets
 accordingly. It doesn't do anything if ``label_seq`` is already set or
 if the full sequence is not known.
 
-The Entity object may change in the future.
-Here we only show its properties in an example:
+Properties of the Entity class are shown in this example:
 
 .. doctest::
 
@@ -1831,7 +1866,8 @@ Here we only show its properties in an example:
   >>> ent.full_sequence[:5]
   ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
 
-The last property is sequence from the PDB SEQRES record (or mmCIF equivalent).
+The last property is the sequence from the PDB SEQRES record
+(or its mmCIF equivalent).
 More details in the :ref:`section about sequence <sequence>`.
 
 Connection

@@ -262,6 +262,7 @@ class TestMol(unittest.TestCase):
         st = gemmi.read_structure(full_path('rnase_frag.pdb'))
         if add_entities:
             self.assertEqual(len(st.entities), 0)
+            st.add_entity_types()
             st.assign_subchains()
             st.ensure_entities()
             self.assertEqual(len(st.entities), 4)

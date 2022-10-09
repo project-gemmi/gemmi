@@ -214,6 +214,7 @@ inline void add_entity_types(Structure& st, bool overwrite) {
 // somewhat different rules (it was written in 1990's before PDBx/mmCIF).
 //
 // Here we use naming and rules different from both wwPDB and makecif.
+// Note: call add_entity_types() first.
 inline void assign_subchain_names(Chain& chain) {
   for (Residue& res : chain.residues) {
     res.subchain = chain.name;
@@ -221,8 +222,9 @@ inline void assign_subchain_names(Chain& chain) {
       case EntityType::Polymer:    res.subchain += "poly";          break;
       case EntityType::NonPolymer: res.subchain += res.seqid.str(); break;
       case EntityType::Water:      res.subchain += "wat";           break;
-      case EntityType::Branched:  // FIXME
-      case EntityType::Unknown: break; // should not happen
+      case EntityType::Branched:  break; // FIXME
+      case EntityType::Unknown:
+        fail("assign_subchain_names(): missing entity_type in chain " + chain.name);
     }
   }
 }
@@ -230,10 +232,8 @@ inline void assign_subchain_names(Chain& chain) {
 inline void assign_subchains(Structure& st, bool force) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
-      if (force || !has_subchains_assigned(chain)) {
-        add_entity_types(chain, false);
+      if (force || !has_subchains_assigned(chain))
         assign_subchain_names(chain);
-      }
 }
 
 inline void ensure_entities(Structure& st) {
@@ -284,6 +284,7 @@ inline void deduplicate_entities(Structure& st) {
 }
 
 inline void setup_entities(Structure& st) {
+  add_entity_types(st, /*overwrite=*/false);
   assign_subchains(st, /*force=*/false);
   ensure_entities(st);
   deduplicate_entities(st);
