@@ -603,6 +603,10 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     if (tr.is_identity())
       // ignore identity, but store its id so we can write it back to mmCIF
       st.info["_struct_ncs_oper.id"] = op.str(12);
+    else if (tr.has_nan())
+      // As of 2022 some entries (7qb5, 6tsd) have incomplete _struct_ncs_oper.
+      // It is safer to skip them.
+      continue;
     else
       st.ncs.push_back({op.str(12), given, tr});
   }
