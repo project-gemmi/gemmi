@@ -79,7 +79,7 @@ void write_struct_conn(const Structure& st, cif::Block& block);
 #include <string>
 #include <utility>  // std::pair
 #include "sprintf.hpp"
-#include "enumstr.hpp"  // for entity_type_to_string, polymer_type_to_qstring
+#include "enumstr.hpp"  // for entity_type_to_string, polymer_type_to_string
 #include "calculate.hpp"  // for count_atom_sites
 
 namespace gemmi {
@@ -514,7 +514,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     for (const Entity& ent : st.entities)
       if (ent.entity_type == EntityType::Polymer)
         ent_poly_loop.add_row({impl::qchain(ent.name),
-                               polymer_type_to_qstring(ent.polymer_type)});
+                               polymer_type_to_string(ent.polymer_type)});
   }
 
   if (groups.struct_ref) { // _struct_ref, _struct_ref_seq

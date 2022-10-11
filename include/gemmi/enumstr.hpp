@@ -30,7 +30,7 @@ inline EntityType entity_type_from_string(const std::string& t) {
 }
 
 
-inline std::string polymer_type_to_qstring(PolymerType polymer_type) {
+inline std::string polymer_type_to_string(PolymerType polymer_type) {
   switch (polymer_type) {
     case PolymerType::PeptideL: return "polypeptide(L)";
     case PolymerType::PeptideD: return "polypeptide(D)";
