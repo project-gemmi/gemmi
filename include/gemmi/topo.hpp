@@ -158,7 +158,7 @@ struct Topo {
     return nullptr;
   }
 
-  Bond* first_bond_in_link(Link& link) {
+  Bond* first_bond_in_link(const Link& link) {
     for (const Rule& rule : link.link_rules)
       if (rule.rkind == RKind::Bond)
         return &bonds[rule.index];

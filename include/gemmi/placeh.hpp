@@ -378,6 +378,21 @@ inline void place_hydrogens_on_all_atoms(Topo& topo) {
         }
 }
 
+inline void remove_hydrogens_from_atom(Topo::ResInfo* ri,
+                                       const std::string& atom_name, char alt) {
+  if (!ri)
+    return;
+  std::vector<Atom>& atoms = ri->res->atoms;
+  Restraints& rt = ri->chemcomp.rt;
+  for (auto it = atoms.end(); it-- != atoms.begin(); ) {
+    if (it->is_hydrogen()) {
+      const Restraints::AtomId* heavy = rt.first_bonded_atom(it->name);
+      if (heavy && heavy->atom == atom_name && (it->altloc == alt || it->altloc == '\0'))
+        atoms.erase(it);
+    }
+  }
+}
+
 enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
 
 inline std::unique_ptr<Topo>
@@ -392,9 +407,8 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
   bool keep = (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift);
   if (!keep || reorder) {
-    // remove/add hydrogens, sort atoms in residues, assign serial numbers
-    int serial = 0;
-    for (Topo::ChainInfo& chain_info : topo->chain_infos)
+    // remove/add hydrogens, sort atoms in residues
+    for (Topo::ChainInfo& chain_info : topo->chain_infos) {
       for (Topo::ResInfo& ri : chain_info.res_infos) {
         const ChemComp& cc = ri.chemcomp;
         Residue& res = *ri.res;
@@ -426,11 +440,22 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                                                   : a.altloc < b.altloc;
           });
         }
-        for (Atom& atom : res.atoms)
-          atom.serial = ++serial;
       }
+    }
   }
 
+  // for atoms with ad-hoc links, for now we don't want hydrogens
+  if (!ignore_unknown_links && h_change != HydrogenChange::NoChange)
+    for (const Topo::Link& link : topo->extras) {
+      const ChemLink* cl = monlib.get_link(link.link_id);
+      if (cl && starts_with(cl->name, "auto-")) {
+        const Restraints::Bond& bond = cl->rt.bonds.at(0);
+        remove_hydrogens_from_atom(topo->find_resinfo(link.res1), bond.id1.atom, link.alt1);
+        remove_hydrogens_from_atom(topo->find_resinfo(link.res2), bond.id2.atom, link.alt2);
+      }
+    }
+
+  assign_serial_numbers(st.models[model_index]);
   topo->finalize_refmac_topology(monlib);
 
   // the hydrogens added previously have positions not set

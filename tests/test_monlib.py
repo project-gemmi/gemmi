@@ -114,7 +114,10 @@ class TestMonLib(unittest.TestCase):
         ok = monlib.read_monomer_lib(os.environ['CLIBD_MON'], resnames)
         self.assertTrue(ok)
         topo = gemmi.prepare_topology(st, monlib, model_index=0)
-        # currently it doesn't work w/ h_change=gemmi.HydrogenChange.ReAdd
+        topo = gemmi.prepare_topology(st, monlib, model_index=0,
+                                      h_change=gemmi.HydrogenChange.ReAdd)
+        topo = gemmi.prepare_topology(st, monlib, model_index=0,
+                                      h_change=gemmi.HydrogenChange.Shift)
         self.assertIsNotNone(topo)
 
 
