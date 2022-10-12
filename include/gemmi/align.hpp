@@ -83,9 +83,7 @@ inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
   if (!ent || ent->full_sequence.empty()) {
     if (!force)
       return;
-    PolymerType ptype = (ent && ent->polymer_type != PolymerType::Unknown
-                         ? ent->polymer_type
-                         : check_polymer_type(polymer));
+    PolymerType ptype = get_or_check_polymer_type(ent, polymer);
     const Residue* prev = nullptr;
     for (const Residue& res : polymer.first_conformer()) {
       if (prev && !are_connected3(*prev, res, ptype))
@@ -100,9 +98,9 @@ inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
 
   // sequence alignment
   } else {
+    PolymerType ptype = get_or_check_polymer_type(ent, polymer);
     AlignmentScoring scoring;
-    result = align_sequence_to_polymer(ent->full_sequence, polymer,
-                                       ent->polymer_type, scoring);
+    result = align_sequence_to_polymer(ent->full_sequence, polymer, ptype, scoring);
   }
 
   auto res_group = polymer.first_conformer().begin();

@@ -92,7 +92,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       printf("Reading %s ...\n", input.c_str());
     cif::Document st_doc;
     Structure st = read_structure_gz(input, CoorFormat::Detect, &st_doc);
-    setup_entities(st);
+    if (st.input_format == CoorFormat::Pdb || st.input_format == CoorFormat::ChemComp)
+      setup_entities(st);
 
     if (st.models.empty()) {
       fprintf(stderr, "No models found in the input file.\n");

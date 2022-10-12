@@ -52,6 +52,13 @@ inline PolymerType check_polymer_type(const ConstResidueSpan& polymer) {
   return PolymerType::Unknown;
 }
 
+inline PolymerType get_or_check_polymer_type(const Entity* ent,
+                                             const ConstResidueSpan& polymer) {
+  if (ent && ent->polymer_type != PolymerType::Unknown)
+    return ent->polymer_type;
+  return check_polymer_type(polymer);
+}
+
 inline double calculate_sequence_weight(const std::vector<std::string>& seq,
                                         double unknown=0.) {
   double weight = 0.;

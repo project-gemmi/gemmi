@@ -370,7 +370,7 @@ inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
   if (ent) {
     entity_id = ent->name;
     polymer = ent->entity_type == EntityType::Polymer;
-    polymer_type = ent->polymer_type;
+    polymer_type = get_or_check_polymer_type(ent, subchain);
   } else {
     polymer = false;
     polymer_type = PolymerType::Unknown;

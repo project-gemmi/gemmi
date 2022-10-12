@@ -212,10 +212,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       int n_files = p.nonOptionsCount();
       if (n_files != 2 && n_files != 1)
         gemmi::fail("one or two input files are expected with --query/--target");
-      using gemmi::read_structure_gz;
       std::vector<std::string> query;
       gemmi::PolymerType ptype = gemmi::PolymerType::Unknown;
-      gemmi::Structure st1 = read_structure_gz(p.coordinate_input_file(0));
+      gemmi::Structure st1 = gemmi::read_structure_gz(p.coordinate_input_file(0));
       if (p.options[Query].arg[0] == '+') {
         const gemmi::Entity* ent = get_entity(st1, p.options[Query].arg + 1);
         query = ent->full_sequence;
@@ -227,7 +226,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::AlignmentResult result;
       gemmi::Structure st2_;
       if (n_files == 2)
-        st2_ = read_structure_gz(p.coordinate_input_file(1));
+        st2_ = gemmi::read_structure_gz(p.coordinate_input_file(1));
       gemmi::Structure& st2 = n_files == 2 ? st2_ : st1;
       if (p.options[Target].arg[0] == '+') {
         const gemmi::Entity* ent = get_entity(st2, p.options[Target].arg + 1);
