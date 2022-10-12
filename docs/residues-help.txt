@@ -9,6 +9,7 @@ Prints one residue per line, with atom names.
   -l, --label         Print 'label' chain ID and seq ID in brackets.
   --check-seqid       Check if sequence IDs are unique and exit.
   --no-alt            Do not print altlocs.
+  -s, --short         Shorter output (no atom info). Can be given twice.
 INPUT is a coordinate file (mmCIF, PDB, etc).
 The selection SEL has MMDB syntax:
 /mdl/chn/s1.i1(res)-s2.i2/at[el]:aloc (all fields are optional)

@@ -12,7 +12,7 @@
 
 namespace {
 
-enum OptionIndex { FormatIn=3, Match, Label, CheckSeqId, NoAlt };
+enum OptionIndex { FormatIn=3, Match, Label, CheckSeqId, NoAlt, Short, };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -30,6 +30,8 @@ const option::Descriptor Usage[] = {
     "  --check-seqid  \tCheck if sequence IDs are unique and exit." },
   { NoAlt, 0, "", "no-alt", Arg::None,
     "  --no-alt  \tDo not print altlocs." },
+  { Short, 0, "s", "--short", Arg::None,
+    "  -s, --short  \tShorter output (no atom info). Can be given twice." },
   { NoOp, 0, "", "", Arg::None,
     "INPUT is a coordinate file (mmCIF, PDB, etc)."
     "\nThe selection SEL has MMDB syntax:"
@@ -114,26 +116,127 @@ static bool check_sequence_id(const gemmi::Structure& st) {
   return !error;
 }
 
+void print_long_info(const gemmi::Model& model, OptParser& p) {
+  bool print_alt = !p.options[NoAlt];
+  for (const gemmi::Chain& chain : model.chains) {
+    int line_count = 0;
+    for (const gemmi::Residue& res : chain.residues) {
+      if (res.atoms.empty())
+        continue;
+      if (p.options[Label])
+        printf("%s (%-3s %4s%c (%-4s %s ",
+               chain.name.c_str(), (res.subchain + ")").c_str(),
+               res.seqid.num.str().c_str(), res.seqid.icode,
+               (res.label_seq.str('.') + ")").c_str(),
+               res.name.c_str());
+      else
+        printf("%s %4s%c %s ",
+               chain.name.c_str(),
+               res.seqid.num.str().c_str(), res.seqid.icode,
+               res.name.c_str());
+      const std::string* prev = nullptr;
+      for (const gemmi::Atom& at : res.atoms)
+        if (!prev || *prev != at.name) {
+          printf(" %s", at.name.c_str());
+          if (print_alt && at.altloc)
+            printf(":%c", at.altloc);
+          prev = &at.name;
+        } else {
+          if (print_alt) {
+            putchar(',');
+            if (at.altloc)
+              putchar(at.altloc);
+          }
+        }
+      putchar('\n');
+      line_count++;
+
+    }
+    if (line_count != 0)
+      putchar('\n');
+  }
+}
+
+const char* etype_str(const gemmi::Residue& res) {
+  switch (res.entity_type) {
+    case gemmi::EntityType::Polymer:    return "polymer";
+    case gemmi::EntityType::NonPolymer: return "non-polymers";
+    case gemmi::EntityType::Branched:   return "branched";
+    case gemmi::EntityType::Water:      return "waters";
+    case gemmi::EntityType::Unknown:    return "?";
+  }
+  gemmi::unreachable();
+}
+
+void print_short_info(const gemmi::Model& model, int short_level) {
+  const int kWrap = 5;
+  const int kLimit = 8;
+  for (const gemmi::Chain& chain : model.chains) {
+    int counter = 0;
+    auto prev = gemmi::EntityType::Unknown;
+    for (const gemmi::Residue& res : chain.residues) {
+      if (!chain.is_first_in_group(res)) {
+        if (counter < 8)
+          printf("/%s", res.name.c_str());
+        continue;
+      }
+      if (res.entity_type != prev) {
+        if (counter != 0) {
+          if (short_level > 1 && counter > kLimit)
+            printf("...  (%d residues)", counter);
+          putchar('\n');
+        }
+        printf("%-3s %-12s  ", chain.name.c_str(), etype_str(res));
+        counter = 0;
+        prev = res.entity_type;
+      }
+      if (short_level == 1) {
+        if (counter == kWrap) {
+          printf("\n                  ");
+          counter = 0;
+        }
+        printf(" %5s%c %-3s",
+               res.seqid.num.str().c_str(), res.seqid.icode, res.name.c_str());
+      } else {
+        if (counter < kLimit)
+          printf(" %-3s", res.name.c_str());
+      }
+      ++counter;
+    }
+    if (short_level > 1 && counter > kLimit)
+      printf("...  (%d residues)", counter);
+    putchar('\n');
+  }
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
-  const char* cid = p.options[Match] ? p.options[Match].arg : "*";
   gemmi::CoorFormat format = coor_format_as_enum(p.options[FormatIn]);
-  bool print_alt = !p.options[NoAlt];
+  int short_level = p.options[Short].count();
   int status = 0;
   try {
-    gemmi::Selection sel(cid);
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
+      if (i != 0)
+        putchar('\n');
       std::string input = p.coordinate_input_file(i);
       gemmi::Structure st = gemmi::read_structure_gz(input, format);
-      if (p.options[Label] && st.input_format == gemmi::CoorFormat::Pdb) {
-        gemmi::setup_entities(st);
-        // hidden feature: -ll generates label_seq even if SEQRES is missing
-        bool force = p.options[Label].count() > 1;
-        gemmi::assign_label_seq_id(st, force);
+      if (p.options[Match]) {
+        gemmi::Selection sel(p.options[Match].arg);
+        sel.remove_not_selected(st);
+      }
+      if (st.input_format == gemmi::CoorFormat::Pdb) {
+        if (p.options[Short])
+          gemmi::add_entity_types(st, false);
+        if (p.options[Label]) {
+          gemmi::setup_entities(st);
+          // hidden feature: -ll generates label_seq even if SEQRES is missing
+          bool force = p.options[Label].count() > 1;
+          gemmi::assign_label_seq_id(st, force);
+        }
       }
       if (p.options[CheckSeqId]) {
         bool ok = check_sequence_id(st);
@@ -141,51 +244,14 @@ int GEMMI_MAIN(int argc, char **argv) {
           ++status;
         continue;
       }
-      if (i != 0)
-        putchar('\n');
       printf("%s\n", input.c_str());
-      for (gemmi::Model& model : sel.models(st)) {
+      for (gemmi::Model& model : st.models) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());
-        for (gemmi::Chain& chain : sel.chains(model)) {
-          int line_count = 0;
-          for (gemmi::Residue& res : sel.residues(chain)) {
-            auto sel_atoms = sel.atoms(res);
-            auto begin = sel_atoms.begin();
-            auto end = sel_atoms.end();
-            if (begin != end) {
-              if (p.options[Label])
-                printf("%s (%-3s %4s%c (%-4s %s ",
-                       chain.name.c_str(), (res.subchain + ")").c_str(),
-                       res.seqid.num.str().c_str(), res.seqid.icode,
-                       (res.label_seq.str('.') + ")").c_str(),
-                       res.name.c_str());
-              else
-                printf("%s %4s%c %s ",
-                       chain.name.c_str(),
-                       res.seqid.num.str().c_str(), res.seqid.icode,
-                       res.name.c_str());
-              const std::string* prev = nullptr;
-              for (auto at = begin; at != end; ++at)
-                if (!prev || *prev != at->name) {
-                  printf(" %s", at->name.c_str());
-                  if (print_alt && at->altloc)
-                    printf(":%c", at->altloc);
-                  prev = &at->name;
-                } else {
-                  if (print_alt) {
-                    putchar(',');
-                    if (at->altloc)
-                      putchar(at->altloc);
-                  }
-                }
-              putchar('\n');
-              line_count++;
-            }
-          }
-          if (line_count != 0)
-            putchar('\n');
-        }
+        if (short_level == 0)
+          print_long_info(model, p);
+        else
+          print_short_info(model, short_level);
       }
     }
   } catch (std::runtime_error& e) {
