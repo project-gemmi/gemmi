@@ -153,10 +153,10 @@ inline std::vector<OpObliquity> find_lattice_2fold_ops(const UnitCell& reduced_c
     double cos_delta = calculate_cos_obliquity(reduced_cell, d_axis, r_axis);
     if (cos_delta > cos_max_obliq) {
       constexpr int D = Op::DEN;
-      Op op{{row.matrix[0] * D, row.matrix[1] * D, row.matrix[2] * D,
-             row.matrix[3] * D, row.matrix[4] * D, row.matrix[5] * D,
-             row.matrix[6] * D, row.matrix[7] * D, row.matrix[8] * D},
-            {0, 0, 0}};
+      Op op{Op::Rot{{{{row.matrix[0] * D, row.matrix[1] * D, row.matrix[2] * D}},
+                     {{row.matrix[3] * D, row.matrix[4] * D, row.matrix[5] * D}},
+                     {{row.matrix[6] * D, row.matrix[7] * D, row.matrix[8] * D}}}},
+            Op::Tran{{0, 0, 0}}};
       ret.emplace_back(op, deg(std::acos(cos_delta)));
     }
   }
