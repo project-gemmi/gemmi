@@ -404,8 +404,8 @@ struct Block {
   std::string name;
   std::vector<Item> items;
 
-  explicit Block(const std::string& name_) : name(name_) {}
-  Block() {}
+  explicit Block(const std::string& name_);
+  Block();
 
   void swap(Block& o) { name.swap(o.name); items.swap(o.items); }
   // access functions
@@ -756,6 +756,9 @@ inline void Table::convert_pair_to_loop() {
   loop_item = &bloc.items.at(positions[0]);
   loop_item->set_value(std::move(new_item));
 }
+
+inline Block::Block(const std::string& name_) : name(name_) {}
+inline Block::Block() {}
 
 inline const Item* Block::find_pair_item(const std::string& tag) const {
   std::string lctag = gemmi::to_lower(tag);
