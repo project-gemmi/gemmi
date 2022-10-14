@@ -297,6 +297,8 @@ struct Element {
   /*implicit*/ operator El() const { return elem; }
   bool operator==(El e) const { return elem == e; }
   bool operator!=(El e) const { return elem != e; }
+  // avoid Clang -Wambiguous-reversed-operator in C++20
+  bool operator!=(Element o) const { return elem != o.elem; }
 
   int ordinal() const { return static_cast<int>(elem); }
   int atomic_number() const { return elem == El::D ? 1 : ordinal(); }
