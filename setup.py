@@ -91,11 +91,11 @@ def cpp_flag(compiler):
 
     The newer version is prefered over c++11 (when it is available).
     """
-    flags = ['-std=c++17', '-std=c++14', '-std=c++11']
+    flags = ['-std=c++20', '-std=c++17', '-std=c++14', '-std=c++11']
 
     # C++17 on Mac requires higher -mmacosx-version-min, skip it for now
     if sys.platform == 'darwin':
-        flags.pop(0)
+        flags = flags[2:]
 
     for flag in flags:
         if has_flag(compiler, flag):
