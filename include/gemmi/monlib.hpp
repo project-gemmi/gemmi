@@ -336,30 +336,39 @@ inline Restraints read_restraint_modifications(const cif::Block& block_) {
 
 inline void insert_chemmods(const cif::Document& doc,
                             std::map<std::string, ChemMod>& mods) {
-  if (const cif::Block* list_block = doc.find_block("mod_list")) {
-    for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_mod.",
-                                   {"id", "name", "comp_id", "group_id"})) {
+  const cif::Block* list_block = doc.find_block("mod_list");
+  auto use_chem_mod = [](const cif::Block& block, ChemMod& mod) {
+    for (auto row : const_cast<cif::Block&>(block).find("_chem_mod.",
+                                    {"id", "?name", "?comp_id", "?group_id"}))
+      if (row.str(0) == mod.id) {
+        if (row.has2(1))
+          mod.name = row.str(1);
+        if (row.has2(2))
+          mod.comp_id = row.str(2);
+        if (row.has2(3))
+          mod.group_id = row.str(3);
+        break;
+      }
+  };
+  for (const cif::Block& block : doc.blocks)
+    if (starts_with(block.name, "mod_")) {
       ChemMod mod;
-      mod.id = row.str(0);
-      mod.name = row.str(1);
-      mod.comp_id = row.str(2);
-      mod.group_id = row.str(3);
-      const cif::Block* block = doc.find_block("mod_" + mod.id);
-      if (!block)
-        fail("inconsistent data_mod_list");
-      for (auto ra : const_cast<cif::Block*>(block)->find("_chem_mod_atom.",
-                                  {"function", "atom_id", "new_atom_id",
-                                   "new_type_symbol", "new_type_energy",
-                                   "?new_charge", "?new_partial_charge"}))
+      mod.id = block.name.substr(4);
+      if (list_block)
+        use_chem_mod(*list_block, mod);
+      use_chem_mod(block, mod);
+      for (auto ra : const_cast<cif::Block&>(block).find("_chem_mod_atom.",
+                                {"function", "atom_id", "new_atom_id",
+                                 "new_type_symbol", "new_type_energy",
+                                 "?new_charge", "?new_partial_charge"}))
         mod.atom_mods.push_back({chem_mod_type(ra[0]), ra.str(1), ra.str(2),
                                  Element(ra.str(3)),
                                  (float) cif::as_number(ra.one_of(5, 6)),
                                  ra.str(4)});
-      mod.rt = read_restraint_modifications(*block);
-      mod.block = *block;
+      mod.rt = read_restraint_modifications(block);
+      mod.block = block;
       mods.emplace(mod.id, mod);
     }
-  }
 }
 
 inline void ChemMod::apply_to(ChemComp& chemcomp) const {
