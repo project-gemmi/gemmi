@@ -498,10 +498,14 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
     if (cl && !starts_with(cl->name, "auto-") && !cl->block.items.empty())
       doc.blocks.push_back(cl->block);
   }
-  for (const std::string& mod_name : used_mods) {
-    if (const ChemMod* mod = monlib.get_mod(mod_name))
+  auto q = [](const std::string& s) { return s.empty() ? "?" : cif::quote(s); };
+  for (const std::string& mod_name : used_mods)
+    if (const ChemMod* mod = monlib.get_mod(mod_name)) {
       doc.blocks.push_back(mod->block);
-  }
+      cif::Block& block = doc.blocks.back();
+      block.init_mmcif_loop("_chem_mod.", {"id", "name", "comp_id", "group_id"})
+        .add_row({q(mod->id), q(mod->name), q(mod->comp_id), q(mod->group_id)});
+    }
 
   return doc;
 }
