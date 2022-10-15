@@ -458,6 +458,7 @@ struct Block {
   // mmCIF specific functions
   std::vector<std::string> get_mmcif_category_names() const;
   Table find_mmcif_category(std::string cat);
+  bool has_mmcif_category(std::string cat) const;
 
   Loop& init_mmcif_loop(std::string cat, std::vector<std::string> tags) {
     ensure_mmcif_category(cat);  // modifies cat
@@ -985,6 +986,14 @@ inline Table Block::find_mmcif_category(std::string cat) {
   return Table{nullptr, *this, indices, cat.length()};
 }
 
+inline bool Block::has_mmcif_category(std::string cat) const {
+  ensure_mmcif_category(cat);
+  cat = gemmi::to_lower(cat);
+  for (const Item& i : items)
+    if (i.has_prefix(cat))
+      return true;
+  return false;
+}
 
 struct Document {
   std::string source;
