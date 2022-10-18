@@ -147,11 +147,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.check_exclusive_pair(Add, Dir);
   p.check_exclusive_pair(Add, List);
   if (p.options[PrintSpec]) {
-    std::printf("# Each line in the spec contains four words:\n"
+    std::printf("# Each line in the spec contains 4-5 words:\n"
                 "# - tag (without category) from _refln or _diffrn_refln\n"
                 "# - MTZ column label\n"
                 "# - MTZ column type\n"
                 "# - MTZ dataset for the column (must be 0 or 1)\n"
+                "# - (optional) how to map mmCIF symbols to MTZ numbers\n"
                 "# The first 3 (5 in unmerged) columns are not in the spec,\n"
                 "# they are always H K L (M/ISYM BATCH).\n\n");
     bool merged = !p.options[Unmerged];

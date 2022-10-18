@@ -49,7 +49,7 @@ struct CifToMtz {
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
       "pdbx_r_free_flag FreeR_flag I 0",
-      "status FreeR_flag s 0", // s is a special flag
+      "status FreeR_flag I 0 o=1,f=0",
       "intensity_meas IMEAN J 1",
       "intensity_sigma SIGIMEAN Q 1",
       "pdbx_I_plus I(+) K 1",
@@ -98,13 +98,14 @@ struct CifToMtz {
     std::string col_label;
     char col_type;
     int dataset_id;
+    std::vector<std::pair<std::string, float>> code_to_number;
 
     Entry(const std::string& line) {
       std::vector<std::string> tokens;
       tokens.reserve(4);
       split_str_into_multi(line, " \t\r\n", tokens);
-      if (tokens.size() != 4)
-        fail("line should have 4 words: " + line);
+      if (tokens.size() != 4 && tokens.size() != 5)
+        fail("line should have 4  or 5 words: " + line);
       if (tokens[2].size() != 1 || tokens[3].size() != 1 ||
           (tokens[3][0] != '0' && tokens[3][0] != '1'))
         fail("incorrect line: " + line);
@@ -112,6 +113,40 @@ struct CifToMtz {
       col_label = tokens[1];
       col_type = tokens[2][0];
       dataset_id = tokens[3][0] - '0';
+      // for compatibility with older spec
+      if (col_type == 's' && tokens.size() == 4) {
+        col_type = 'I';
+        tokens.push_back("o=1,f=0");
+      }
+      if (tokens.size() == 5) {
+        std::vector<std::string> items = split_str(tokens[4], ',');
+        code_to_number.reserve(items.size());
+        for (const std::string& item : items) {
+          size_t pos = item.find('=');
+          if (pos == std::string::npos)
+            fail("wrong mapping (", item, ") in: ", line);
+          float f;
+          auto result = fast_float::from_chars(item.c_str() + pos + 1,
+                                               item.c_str() + item.size(), f);
+          if (result.ec != std::errc())
+            fail("failed to parse value in ", item, " in: ", line);
+          code_to_number.emplace_back(item.substr(0, pos), f);
+        }
+      }
+    }
+
+    float translate_code_to_number(const std::string& v) const {
+      if (v.size() == 1) {
+        for (const auto& c2n : code_to_number)
+          if (c2n.first.size() == 1 && c2n.first[0] == v[0])
+            return c2n.second;
+      } else {
+        std::string s = cif::as_string(v);
+        for (const auto& c2n : code_to_number)
+          if (c2n.first == s)
+            return c2n.second;
+      }
+      return NAN;
     }
   };
 
@@ -136,8 +171,8 @@ struct CifToMtz {
       fail("_refln category not found in mmCIF block: " + rb.block.name);
     if (verbose)
       out << "Searching tags with known MTZ equivalents ...\n";
-    bool uses_status = false;
     std::vector<int> indices;
+    std::vector<const Entry*> entries;  // used for code_to_number only
     std::string tag = loop->tags[0];
     const size_t tag_offset = rb.tag_offset();
 
@@ -162,6 +197,7 @@ struct CifToMtz {
       if (index == -1)
         fail("Miller index tag not found: " + tag);
       indices.push_back(index);
+      entries.push_back(nullptr);
       auto col = mtz.columns.emplace(mtz.columns.end());
       col->dataset_id = 0;
       col->type = 'H';
@@ -195,14 +231,11 @@ struct CifToMtz {
         continue;
       column_added = true;
       indices.push_back(index);
+      entries.push_back(entry.code_to_number.empty() ? nullptr : &entry);
       auto col = mtz.columns.emplace(mtz.columns.end());
       // dataset_id is meaningless in unmerged MTZ files
       col->dataset_id = unmerged ? 0 : entry.dataset_id;
       col->type = entry.col_type;
-      if (col->type == 's') {
-        col->type = 'I';
-        uses_status = true;
-      }
       col->label = entry.col_label;
       if (verbose)
         out << "  " << tag << " -> " << col->label << '\n';
@@ -336,24 +369,23 @@ struct CifToMtz {
     for (size_t i = 0; i < loop->values.size(); i += loop->tags.size()) {
       if (unmerged) {
         std::array<int, 3> hkl;
-        for (int ii = 0; ii != 3; ++ii)
+        for (size_t ii = 0; ii != 3; ++ii)
           hkl[ii] = cif::as_int(loop->values[i + indices[ii]]);
         int isym = hkl_mover->move_to_asu(hkl);
-        for (int j = 0; j != 3; ++j)
+        for (size_t j = 0; j != 3; ++j)
           mtz.data[k++] = (float) hkl[j];
         mtz.data[k++] = (float) isym;
         mtz.data[k++] = batch_nums.empty() ? 1.f : (float) batch_nums[row++].frame_id;
       } else {
-        for (int j = 0; j != 3; ++j)
+        for (size_t j = 0; j != 3; ++j)
           mtz.data[k++] = (float) cif::as_int(loop->values[i + indices[j]]);
       }
-      size_t j = 3;
-      if (uses_status)
-        mtz.data[k++] = status_to_freeflag(loop->values[i + indices[j++]]);
-      for (; j != indices.size(); ++j) {
+      for (size_t j = 3; j != indices.size(); ++j) {
         const std::string& v = loop->values[i + indices[j]];
         if (cif::is_null(v)) {
           mtz.data[k] = (float) NAN;
+        } else if (entries[j] != nullptr) {
+          mtz.data[k] = entries[j]->translate_code_to_number(v);
         } else {
           mtz.data[k] = (float) cif::as_number(v);
           if (std::isnan(mtz.data[k]))
