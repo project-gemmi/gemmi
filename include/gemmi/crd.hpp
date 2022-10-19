@@ -492,13 +492,21 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
       used_links.push_back(extra.link_id);
 
   // add links and mods blocks to the document
+  auto q = [](const std::string& s) { return s.empty() ? "?" : cif::quote(s); };
   for (const std::string& link_name : used_links) {
     const ChemLink* cl = monlib.get_link(link_name);
     // ignore ad-hoc links and dummy (empty) links such as "gap"
-    if (cl && !starts_with(cl->name, "auto-") && !cl->block.items.empty())
+    if (cl && !starts_with(cl->name, "auto-") && !cl->block.items.empty()) {
       doc.blocks.push_back(cl->block);
+      cif::Block& block = doc.blocks.back();
+      block.init_mmcif_loop("_chem_link.", {"id", "name",
+                                            "comp_id_1", "mod_id_1", "group_comp_1",
+                                            "comp_id_2", "mod_id_2", "group_comp_2"})
+        .add_row({q(cl->id), q(cl->name),
+                  q(cl->side1.comp), q(cl->side1.mod), ChemLink::group_str(cl->side1.group),
+                  q(cl->side2.comp), q(cl->side2.mod), ChemLink::group_str(cl->side2.group)});
+    }
   }
-  auto q = [](const std::string& s) { return s.empty() ? "?" : cif::quote(s); };
   for (const std::string& mod_name : used_mods)
     if (const ChemMod* mod = monlib.get_mod(mod_name)) {
       doc.blocks.push_back(mod->block);
