@@ -255,28 +255,41 @@ void insert_comp_list(const cif::Document& doc, T& ri_map) {
 
 inline void insert_chemlinks(const cif::Document& doc,
                              std::map<std::string,ChemLink>& links) {
-  if (const cif::Block* list_block = doc.find_block("link_list")) {
-    for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_link.",
-                                   {"id", "name",
-                                    "comp_id_1", "mod_id_1", "group_comp_1",
-                                    "comp_id_2", "mod_id_2", "group_comp_2"})) {
+  const cif::Block* list_block = doc.find_block("link_list");
+  auto use_chem_link = [](const cif::Block& block, ChemLink& link) {
+    for (auto row : const_cast<cif::Block&>(block).find("_chem_link.",
+                                   {"id", "?name",
+                                    "?comp_id_1", "?mod_id_1", "?group_comp_1",
+                                    "?comp_id_2", "?mod_id_2", "?group_comp_2"})) {
+      if (row.str(0) == link.id) {
+        if (row.has2(1))
+          link.name = row.str(1);
+        if (row.has2(2))
+          link.side1.comp = row.str(2);
+        if (row.has2(3))
+          link.side1.mod = row.str(3);
+        if (row.has2(4))
+          link.side1.group = ChemLink::read_group(row[4]);
+        if (row.has2(5))
+          link.side2.comp = row.str(5);
+        if (row.has2(6))
+          link.side2.mod = row.str(6);
+        link.side2.group = ChemLink::read_group(row[7]);
+        break;
+      }
+    }
+  };
+  for (const cif::Block& block : doc.blocks)
+    if (starts_with(block.name, "link_") && block.name != "link_list") {
       ChemLink link;
-      link.id = row.str(0);
-      link.name = row.str(1);
-      link.side1.comp = row.str(2);
-      link.side1.mod = row.str(3);
-      link.side1.group = ChemLink::read_group(row[4]);
-      link.side2.comp = row.str(5);
-      link.side2.mod = row.str(6);
-      link.side2.group = ChemLink::read_group(row[7]);
-      const cif::Block* block = doc.find_block("link_" + link.id);
-      if (!block)
-        fail("inconsistent data_link_list");
-      link.rt = read_link_restraints(*block);
-      link.block = *block;
+      link.id = block.name.substr(5);
+      if (list_block)
+        use_chem_link(*list_block, link);
+      use_chem_link(block, link);
+      link.rt = read_link_restraints(block);
+      link.block = block;
       links.emplace(link.id, link);
     }
-  }
 }
 
 // Helper function. str is one of "add", "delete", "change".
@@ -351,7 +364,7 @@ inline void insert_chemmods(const cif::Document& doc,
       }
   };
   for (const cif::Block& block : doc.blocks)
-    if (starts_with(block.name, "mod_")) {
+    if (starts_with(block.name, "mod_") && block.name != "mod_list") {
       ChemMod mod;
       mod.id = block.name.substr(4);
       if (list_block)
