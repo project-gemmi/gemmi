@@ -393,14 +393,17 @@ inline void Topo::ChainInfo::setup_polymer_links() {
         p.res2 = ri->res;
         assert(prev_ri - ri == p.res1 - p.res2);
         if (are_connected(*prev_ri->res, *ri->res, polymer_type)) {
-          if (is_polypeptide(polymer_type)) {
+          if (is_polypeptide(polymer_type) && ri->chemcomp.is_peptide_group()
+                                           && prev_ri->chemcomp.is_peptide_group()) {
             int id = ialpha4_id(ri->chemcomp.group.c_str());
             if (id == ialpha4_id("p-pe"))
               p.link_id = "P";  // PCIS, PTRANS
             else if (id == ialpha4_id("m-pe"))
               p.link_id = "NM"; // NMCIS, NMTRANS
             p.link_id += prev_ri->res->is_cis ? "CIS" : "TRANS";
-          } else if (is_polynucleotide(polymer_type)) {
+          } else if (is_polynucleotide(polymer_type) &&
+                     ri->chemcomp.is_nucleotide_group() &&
+                     prev_ri->chemcomp.is_nucleotide_group()) {
             p.link_id = "p";
           } else {
             p.link_id = "?";
