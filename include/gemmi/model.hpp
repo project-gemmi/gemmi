@@ -263,7 +263,9 @@ struct Residue : public ResidueId {
            other.find_atom(other.atoms[0].name, atoms[0].altloc) != nullptr;
   }
 
-  // convenience function that duplicates functionality from resinfo.hpp
+  /// Convenience function that duplicates functionality from resinfo.hpp.
+  /// Returns true for HOH and DOD (and old alternative names of HOH),
+  /// but not for OH and H3O/D3O.
   bool is_water() const {
     if (name.length() != 3)
       return false;

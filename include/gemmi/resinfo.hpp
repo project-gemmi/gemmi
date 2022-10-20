@@ -19,7 +19,7 @@ struct ResidueInfo {
   // PAA - proline-like aminoacid
   // MAA - methylated aminoacid
   // RNA, DNA - nucleic acids
-  // HOH - water or heavy water
+  // HOH - water or heavy water (OH, H3O, D3O are not included here)
   // PYR - pyranose according to the refmac dictionary
   // KET - ketopyranose according to the refmac dictionary
   // BUF - agent from crystallization buffer according to PISA agents.dat

@@ -3058,8 +3058,10 @@ Residue contains also a number of properties:
   >>> residue.flag
   '\x00'
 
-To check if a residue is water (normal or heavy) you may use a helper
-function:
+You may check if a residue is water with ``is_water()``.
+More specifically, normal water (residue names HOH, WAT, H2O) and heavy water
+(DOD) return true, while hydroxide ion (OH), hydronium (H3O) and all other
+residues return false.
 
 .. doctest::
 
