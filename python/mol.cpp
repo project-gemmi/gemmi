@@ -147,6 +147,8 @@ void add_mol(py::module& m) {
     .def("remove_hydrogens", remove_hydrogens<Structure>)
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
+    .def("expand_hd_mixture", &expand_hd_mixture)
+    .def("collapse_hd_mixture", &collapse_hd_mixture)
     .def("assign_serial_numbers", (void (*)(Structure&)) &assign_serial_numbers)
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, py::arg("how"))
