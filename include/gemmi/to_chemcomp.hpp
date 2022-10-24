@@ -78,7 +78,7 @@ inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
   // add atoms
   cc.atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
-    const std::string& chem_type = a.name;
+    const std::string& chem_type = a.element.uname();
     cc.atoms.push_back(ChemComp::Atom{a.name, a.element, float(a.charge), chem_type});
   }
   // prepare pairs of atoms
