@@ -146,13 +146,18 @@ inline void collapse_hd_mixture(Structure& st) {
       for (Residue& res : chain.residues)
         for (auto a = res.atoms.end(); a-- != res.atoms.begin(); )
           if (a->element == El::D && a != res.atoms.begin() &&
-              (a-1)->element == El::H && a->name == (a-1)->name) {
+              (a-1)->element == El::H && a->name.substr(1) == (a-1)->name.substr(1)) {
             float occ_total = (a-1)->occ + a->occ;
             (a-1)->mixture = occ_total > 0.f ? (a-1)->occ / occ_total : 1.f;
             (a-1)->occ = occ_total;
             res.atoms.erase(a--);
-            if (a->altloc == 'A' && (a+1 == res.atoms.end() || (a+1)->name != a->name))
+            if (a->altloc == 'A' && (a+1 == res.atoms.end() || (a+1)->name.substr(1) != a->name.substr(1)))
               a->altloc = '\0';
+          }
+          else if (a->element == El::D) {
+            a->element = El::H;
+            a->mixture = 0.;
+            a->name = "H" + a->name.substr(1);
           }
   st.has_hd_mixture = true;
 }
