@@ -147,8 +147,9 @@ struct Topo {
   std::vector<Chirality> chirs;
   std::vector<Plane> planes;
 
-  std::multimap<const Atom*, Bond*> bond_index;
-  std::multimap<const Atom*, Angle*> angle_index;
+  std::multimap<const Atom*, Bond*> bond_index;       // indexes both atoms
+  std::multimap<const Atom*, Angle*> angle_index;     // only middle atom
+  std::multimap<const Atom*, Torsion*> torsion_index; // two middle atoms
 
   ResInfo* find_resinfo(const Residue* res) {
     for (ChainInfo& ci : chain_infos)
@@ -333,6 +334,11 @@ struct Topo {
     }
     for (Angle& ang : angles)
       angle_index.emplace(ang.atoms[1], &ang);
+    for (Torsion& tor : torsions) {
+      torsion_index.emplace(tor.atoms[1], &tor);
+      if (tor.atoms[1] != tor.atoms[2])
+        torsion_index.emplace(tor.atoms[2], &tor);
+    }
   }
 
   Link* find_polymer_link(const AtomAddress& a1, const AtomAddress& a2) {

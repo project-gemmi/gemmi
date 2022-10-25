@@ -232,7 +232,9 @@ inline void place_hydrogens(const Topo& topo, const Atom& atom) {
       // We don't check here for which hydrogen the torsion angle is defined.
       // If an atom has 2 or 3 hydrogens, the torsion angle may not be given
       // for the first one, but only for the 2nd or 3rd (e.g. HD22 in ASN).
-      for (const Topo::Torsion& tor : topo.torsions) {
+      auto tor_range = topo.torsion_index.equal_range(&atom);
+      for (auto i = tor_range.first; i != tor_range.second; ++i) {
+        const Topo::Torsion& tor = *i->second;
         if (tor.atoms[1] == &atom && tor.atoms[2] == heavy.ptr &&
             tor.atoms[0]->is_hydrogen() && !tor.atoms[3]->is_hydrogen()) {
           tau = rad(tor.restr->value);
