@@ -150,6 +150,7 @@ struct Topo {
   std::multimap<const Atom*, Bond*> bond_index;       // indexes both atoms
   std::multimap<const Atom*, Angle*> angle_index;     // only middle atom
   std::multimap<const Atom*, Torsion*> torsion_index; // two middle atoms
+  std::multimap<const Atom*, Plane*> plane_index;     // all atoms
 
   ResInfo* find_resinfo(const Residue* res) {
     for (ChainInfo& ci : chain_infos)
@@ -339,6 +340,9 @@ struct Topo {
       if (tor.atoms[1] != tor.atoms[2])
         torsion_index.emplace(tor.atoms[2], &tor);
     }
+    for (Plane& plane : planes)
+      for (Atom* atom : plane.atoms)
+        plane_index.emplace(atom, &plane);
   }
 
   Link* find_polymer_link(const AtomAddress& a1, const AtomAddress& a2) {

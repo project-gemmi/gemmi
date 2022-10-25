@@ -214,9 +214,11 @@ inline void place_hydrogens(const Topo& topo, const Atom& atom) {
     double tau = 0.0;
     int period = 0;
     const Atom* tau_end = nullptr;
-    for (const Topo::Plane& plane : topo.planes) {
+    auto plane_range = topo.plane_index.equal_range(&atom);
+    for (auto i = plane_range.first; i != plane_range.second; ++i) {
+      const Topo::Plane& plane = *i->second;
       // only Topo::Plane with atoms.size() >= 4 is put into planes
-      if (plane.has(h.ptr) && plane.has(&atom) && plane.has(heavy.ptr)) {
+      if (plane.has(h.ptr) && plane.has(heavy.ptr)) {
         for (const Atom* a : plane.atoms) {
           if (!a->is_hydrogen() && a != &atom && a != heavy.ptr) {
             tau_end = a;
