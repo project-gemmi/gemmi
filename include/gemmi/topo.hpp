@@ -537,6 +537,7 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
   // otherwise, LINK is repetition of TRANS/CIS, so ignore LINK.
   if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2)) {
     if (conn.link_id.empty() && !cif::is_null(polymer_link->link_id) &&
+        polymer_link->link_id != "gap" &&
         (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
       return;
     polymer_link->link_id = "?";  // disable polymer link
