@@ -134,7 +134,9 @@ struct Atom {
   std::string padded_name() const {
     std::string s;
     const char* el = element.uname();
-    if (el[1] == '\0' && (el[0] == alpha_up(name[0]) || (is_hydrogen() && alpha_up(name[0]) == 'H')) && name.size() < 4)
+    if (el[1] == '\0' &&
+        (el[0] == alpha_up(name[0]) || (is_hydrogen() && alpha_up(name[0]) == 'H')) &&
+        name.size() < 4)
       s += ' ';
     s += name;
     return s;
