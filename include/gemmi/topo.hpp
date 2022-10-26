@@ -491,6 +491,12 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
 // it has side-effects: may modify conn.link_id and add to monlib.links
 inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                                    bool ignore_unknown_links) {
+  if (conn.link_id == "gap") {
+    Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2);
+    if (polymer_link) polymer_link->link_id = "?";  // disable polymer link
+    return;
+  }
+
   Link extra;
   CRA cra1 = model0.find_cra(conn.partner1, true);
   CRA cra2 = model0.find_cra(conn.partner2, true);
