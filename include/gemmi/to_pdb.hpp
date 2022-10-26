@@ -7,6 +7,7 @@
 
 #include "model.hpp"
 #include "polyheur.hpp"  // for are_connected
+#include <array>
 #include <ostream>
 
 namespace gemmi {
@@ -83,7 +84,7 @@ bool use_hetatm(const Residue& res) {
 }
 
 // works for non-negative values only
-inline char *base36_encode(char* buffer, int width, int value) {
+inline void base36_encode(char* buffer, int width, int value) {
   const char base36[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   buffer[width] = '\0';
   do {
@@ -92,30 +93,30 @@ inline char *base36_encode(char* buffer, int width, int value) {
   } while (value != 0 && width != 0);
   while (width != 0)
     buffer[--width] = ' ';
-  return buffer;
 }
 
 // based on http://cci.lbl.gov/hybrid_36/
-inline char* encode_serial_in_hybrid36(char* str, int serial) {
+inline std::array<char,8> encode_serial_in_hybrid36(int serial) {
+  std::array<char,8> str;
   assert(serial >= 0);
-  if (serial < 100000) {
-    gstb_sprintf(str, "%5d", serial);
-    return str;
-  }
-  return base36_encode(str, 5, serial - 100000 + 10 * 36 * 36 * 36 * 36);
+  if (serial < 100000)
+    gstb_sprintf(str.data(), "%5d", serial);
+  else
+    base36_encode(str.data(), 5, serial - 100000 + 10 * 36 * 36 * 36 * 36);
+  return str;
 }
 
 // based on http://cci.lbl.gov/hybrid_36/
-inline char* encode_seq_num_in_hybrid36(char* str, int seq_id) {
-  if (seq_id > -1000 && seq_id < 10000) {
+inline void encode_seq_num_in_hybrid36(char* str, int seq_id) {
+  if (seq_id > -1000 && seq_id < 10000)
     gstb_sprintf(str, "%4d", seq_id);
-    return str;
-  }
-  return base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
+  else
+    base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
 }
 
-inline char* write_seq_id(char* str, const SeqId& seqid) {
-  encode_seq_num_in_hybrid36(str, *seqid.num);
+inline std::array<char,8> write_seq_id(const SeqId& seqid) {
+  std::array<char,8> str;
+  encode_seq_num_in_hybrid36(str.data(), *seqid.num);
   str[4] = seqid.icode;
   str[5] = '\0';
   return str;
@@ -263,8 +264,6 @@ inline void write_remarks(const Structure& st, std::ostream& os) {
 inline void write_chain_atoms(const Chain& chain, std::ostream& os,
                               int& serial, PdbWriteOptions opt) {
   char buf[88];
-  char buf8[8];
-  char buf8a[8];
   buf[0] = '\0';
   if (chain.name.length() > 2)
     fail("long chain name: " + chain.name);
@@ -295,12 +294,12 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             "%2s%5s   %8.3f%8.3f%8.3f"
             "%6.2f%6.2f      %-4.4s%2s%c%c",
             as_het ? "HETATM" : "ATOM",
-            impl::encode_serial_in_hybrid36(buf8, ++serial),
+            impl::encode_serial_in_hybrid36(++serial).data(),
             a.padded_name().c_str(),
             a.altloc ? std::toupper(a.altloc) : ' ',
             res.name.c_str(),
             chain.name.c_str(),
-            impl::write_seq_id(buf8a, res.seqid),
+            impl::write_seq_id(res.seqid).data(),
             // We want to avoid negative zero and round the numbers up
             // if they originally had one digit more and that digit was 5.
             a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
@@ -341,7 +340,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
         gf_snprintf(buf, 82, "TER   %5s",
-                    impl::encode_serial_in_hybrid36(buf8, ++serial));
+                    impl::encode_serial_in_hybrid36(++serial).data());
         std::memset(buf+11, ' ', 6);
         std::memset(buf+28, ' ', 52);
         buf[80] = '\n';
@@ -450,12 +449,10 @@ inline void write_header(const Structure& st, std::ostream& os,
               begin = polymer.label_seq_id_to_auth(dbref.label_seq_begin);
               end = polymer.label_seq_id_to_auth(dbref.label_seq_end);
             }
-          char buf8[8];
-          char buf8a[8];
           gf_snprintf(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
                       dbref_entry_id, ch.name.c_str(),
-                      impl::write_seq_id(buf8, begin),
-                      impl::write_seq_id(buf8a, end),
+                      impl::write_seq_id(begin).data(),
+                      impl::write_seq_id(end).data(),
                       dbref.db_name.c_str());
           if (dbref.db_name == "PDB" && dbref.id_code == entry_id) {
             // PDB uses self-reference for fragments that don't have real
@@ -509,8 +506,6 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   if (!st.helices.empty()) {
-    char buf8[8];
-    char buf8a[8];
     int counter = 0;
     for (const Helix& helix : st.helices) {
       if (++counter == 10000)
@@ -520,9 +515,9 @@ inline void write_header(const Structure& st, std::ostream& os,
       gf_snprintf(buf, 82, "HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
             counter, counter,
             helix.start.res_id.name.c_str(), helix.start.chain_name.c_str(),
-            write_seq_id(buf8, helix.start.res_id.seqid),
+            write_seq_id(helix.start.res_id.seqid).data(),
             helix.end.res_id.name.c_str(), helix.end.chain_name.c_str(),
-            write_seq_id(buf8a, helix.end.res_id.seqid),
+            write_seq_id(helix.end.res_id.seqid).data(),
             (int) helix.pdb_helix_class, helix.length);
       if (helix.length < 0) // make 72-76 blank if the length is not given
         std::memset(buf+71, ' ', 5);
@@ -532,7 +527,6 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   if (!st.sheets.empty()) {
-    char buf8a[8], buf8b[8], buf8c[8], buf8d[8];
     for (const Sheet& sheet : st.sheets) {
       int strand_counter = 0;
       for (const Sheet::Strand& strand : sheet.strands) {
@@ -543,22 +537,20 @@ inline void write_header(const Structure& st, std::ostream& os,
               " %-3s%3s%2s%5s          ",
               ++strand_counter, sheet.name.c_str(), sheet.strands.size(),
               strand.start.res_id.name.c_str(), strand.start.chain_name.c_str(),
-              write_seq_id(buf8a, strand.start.res_id.seqid),
+              write_seq_id(strand.start.res_id.seqid).data(),
               strand.end.res_id.name.c_str(), strand.end.chain_name.c_str(),
-              write_seq_id(buf8b, strand.end.res_id.seqid), strand.sense,
+              write_seq_id(strand.end.res_id.seqid).data(), strand.sense,
               a2.atom_name.c_str(), a2.res_id.name.c_str(),
               a2.chain_name.c_str(),
-              a2.res_id.seqid.num ? write_seq_id(buf8c, a2.res_id.seqid) : "",
+              a2.res_id.seqid.num ? write_seq_id(a2.res_id.seqid).data() : "",
               a1.atom_name.c_str(), a1.res_id.name.c_str(),
               a1.chain_name.c_str(),
-              a1.res_id.seqid.num ? write_seq_id(buf8d, a1.res_id.seqid) : "");
+              a1.res_id.seqid.num ? write_seq_id(a1.res_id.seqid).data() : "");
       }
     }
   }
 
   if (!st.models.empty()) {
-    char buf8[8];
-    char buf8a[8];
     // SSBOND  (note: uses only the first model and primary conformation)
     if (opt.ssbond_records) {
       int counter = 0;
@@ -575,9 +567,9 @@ inline void write_header(const Structure& st, std::ostream& os,
           WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  ",
              counter,
              cra1.residue->name.c_str(), cra1.chain->name.c_str(),
-             write_seq_id(buf8, cra1.residue->seqid),
+             write_seq_id(cra1.residue->seqid).data(),
              cra2.residue->name.c_str(), cra2.chain->name.c_str(),
-             write_seq_id(buf8a, cra2.residue->seqid),
+             write_seq_id(cra2.residue->seqid).data(),
              "1555", im.symmetry_code(false).c_str(), im.dist());
         }
     }
@@ -612,12 +604,12 @@ inline void write_header(const Structure& st, std::ostream& os,
                 cra1.atom && cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
                 cra1.residue->name.c_str(),
                 con.partner1.chain_name.c_str(),
-                write_seq_id(buf8, cra1.residue->seqid),
+                write_seq_id(cra1.residue->seqid).data(),
                 cra2.atom ? cra2.atom->padded_name().c_str() : "",
                 cra2.atom && cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
                 cra2.residue->name.c_str(),
                 con.partner2.chain_name.c_str(),
-                write_seq_id(buf8a, cra2.residue->seqid),
+                write_seq_id(cra2.residue->seqid).data(),
                 "1555", im_pdb_symbol.c_str(), im_dist_str.c_str());
           if (opt.use_linkr && !con.link_id.empty()) {
             buf[4] = 'R';  // LINK -> LINKR
@@ -646,9 +638,9 @@ inline void write_header(const Structure& st, std::ostream& os,
                 WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s",
                       counter,
                       res.name.c_str(), chain.name.c_str(),
-                      write_seq_id(buf8, res.seqid),
+                      write_seq_id(res.seqid).data(),
                       next->name.c_str(), chain.name.c_str(),
-                      write_seq_id(buf8a, next->seqid),
+                      write_seq_id(next->seqid).data(),
                       st.models.size() > 1 ? model.name.c_str() : "0",
                       deg(calculate_omega(res, *next)),
                       "");
