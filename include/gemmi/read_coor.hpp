@@ -8,7 +8,7 @@
 // #define GEMMI_READ_COOR_IMPLEMENTATION
 // #include <gemmi/read_coor.cpp>
 //
-// See src/input.cpp for an example.
+// See prog/input.cpp for an example.
 
 #ifndef GEMMI_READ_COOR_HPP_
 #define GEMMI_READ_COOR_HPP_

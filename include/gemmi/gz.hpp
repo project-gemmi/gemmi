@@ -108,7 +108,7 @@ public:
     size_t size = (limit == 0 ? estimate_uncompressed_size(path()) : limit);
     open();
     if (size > 3221225471)
-      // if this exception is changed adjust src/cif2mtz.cpp
+      // if this exception is changed adjust prog/cif2mtz.cpp
       fail("For now gz files above 3 GiB uncompressed are not supported.\n"
            "To read " + path() + " first uncompress it.");
     CharArray mem(size);

@@ -152,140 +152,140 @@ endif()
 #endif()
 
 
-### programs from src/ ###
+### programs from prog/ ###
 
-add_library(input OBJECT src/input.cpp)
-add_library(options OBJECT src/options.cpp)
+add_library(input OBJECT prog/input.cpp)
+add_library(options OBJECT prog/options.cpp)
 if (GEMMI_VERSION_INFO)
   target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
 endif()
-add_library(output OBJECT src/output.cpp)
-add_library(mapcoef OBJECT src/mapcoef.cpp)
+add_library(output OBJECT prog/output.cpp)
+add_library(mapcoef OBJECT prog/mapcoef.cpp)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/align.cpp $<TARGET_OBJECTS:input>)
+               prog/align.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-align)
 
 add_executable(gemmi-blobs EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
+               prog/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-blobs)
 
 add_executable(gemmi-cif2json EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/cif2json.cpp $<TARGET_OBJECTS:input>)
+               prog/cif2json.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-cif2json)
 
 add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/cif2mtz.cpp $<TARGET_OBJECTS:input>)
+               prog/cif2mtz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-cif2mtz)
 
 add_executable(gemmi-contact EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/contact.cpp $<TARGET_OBJECTS:input>)
+               prog/contact.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contact)
 
 add_executable(gemmi-contents EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/contents.cpp $<TARGET_OBJECTS:input>)
+               prog/contents.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-contents)
 
 add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/convert.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
+               prog/convert.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
 add_executable(gemmi-fprime EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/fprime.cpp)
+               prog/fprime.cpp)
 
 add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/grep.cpp)
+               prog/grep.cpp)
 support_gz(gemmi-grep)
 
 add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
+               prog/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-h)
 
 add_executable(gemmi-json2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/json2cif.cpp $<TARGET_OBJECTS:input>)
+               prog/json2cif.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-json2cif)
 
 add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/map.cpp $<TARGET_OBJECTS:input>)
+               prog/map.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-map)
 
 add_executable(gemmi-map2sf EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/map2sf.cpp $<TARGET_OBJECTS:input>)
+               prog/map2sf.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-map2sf)
 
 add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mask.cpp $<TARGET_OBJECTS:input>)
+               prog/mask.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mask)
 
 add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mixmtz.cpp $<TARGET_OBJECTS:output>)
+               prog/mixmtz.cpp $<TARGET_OBJECTS:output>)
 
 add_executable(gemmi-merge EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/merge.cpp $<TARGET_OBJECTS:input>)
+               prog/merge.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-merge)
 
 add_executable(gemmi-mondiff EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mondiff.cpp $<TARGET_OBJECTS:input>)
+               prog/mondiff.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-mondiff)
 
 add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mtz.cpp)
+               prog/mtz.cpp)
 support_gz(gemmi-mtz)
 
 add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
+               prog/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
 support_gz(gemmi-mtz2cif)
 
 add_executable(gemmi-prep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/prep.cpp $<TARGET_OBJECTS:output>
+               prog/prep.cpp $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:input>)
 support_gz(gemmi-prep)
 
 add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/reindex.cpp)
+               prog/reindex.cpp)
 support_gz(gemmi-reindex)
 
 add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/residues.cpp $<TARGET_OBJECTS:input>)
+               prog/residues.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-residues)
 
 add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/rmsz.cpp $<TARGET_OBJECTS:input>)
+               prog/rmsz.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-rmsz)
 
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
+               prog/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-sf2map)
 
 add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/sfcalc.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
+               prog/sfcalc.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
 support_gz(gemmi-sfcalc)
 
 add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/sg.cpp)
+               prog/sg.cpp)
 
 add_executable(gemmi-tags EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/tags.cpp)
+               prog/tags.cpp)
 support_gz(gemmi-tags)
 
 add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/validate.cpp src/validate_mon.cpp)
+               prog/validate.cpp prog/validate_mon.cpp)
 support_gz(gemmi-validate)
 
 add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               src/wcn.cpp $<TARGET_OBJECTS:input>)
+               prog/wcn.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-wcn)
 
 add_executable(program
-               src/align.cpp src/blobs.cpp
-               src/cif2mtz.cpp src/cif2json.cpp src/contact.cpp
-               src/contents.cpp src/convert.cpp src/fprime.cpp
-               src/grep.cpp src/h.cpp src/json2cif.cpp
-               src/main.cpp src/map.cpp src/map2sf.cpp src/mask.cpp
-               src/merge.cpp src/mondiff.cpp src/mtz.cpp src/mtz2cif.cpp
-               src/prep.cpp src/reindex.cpp src/residues.cpp src/rmsz.cpp
-               src/sf2map.cpp src/sfcalc.cpp src/sg.cpp
-               src/tags.cpp src/validate.cpp src/validate_mon.cpp src/wcn.cpp
+               prog/align.cpp prog/blobs.cpp
+               prog/cif2mtz.cpp prog/cif2json.cpp prog/contact.cpp
+               prog/contents.cpp prog/convert.cpp prog/fprime.cpp
+               prog/grep.cpp prog/h.cpp prog/json2cif.cpp
+               prog/main.cpp prog/map.cpp prog/map2sf.cpp prog/mask.cpp
+               prog/merge.cpp prog/mondiff.cpp prog/mtz.cpp prog/mtz2cif.cpp
+               prog/prep.cpp prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
+               prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
+               prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:output>
@@ -407,7 +407,7 @@ if (USE_PYTHON)
   # avoid GCC warning: the ABI of passing structure with 'complex float' member
   # has changed in GCC 4.4
   set_source_files_properties(python/recgrid.cpp python/hkl.cpp python/mtz.cpp
-                              src/mtz.cpp
+                              prog/mtz.cpp
                               PROPERTIES COMPILE_FLAGS
                               $<$<CXX_COMPILER_ID:GNU>:-Wno-psabi>)
   support_gz(py)

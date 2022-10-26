@@ -1126,7 +1126,7 @@ is guarded by a macro. In exactly one file you need to add::
 Moreover, the same holds for functions writing MTZ and mmCIF files defined in
 ``gemmi/mtz.hpp`` and ``gemmi/to_mmcif.hpp``.
 In the source of the gemmi program all these functions are compiled in
-one compilation unit -- see :file:`src/output.cpp`.
+one compilation unit -- see :file:`prog/output.cpp`.
 
 **Python**
 
