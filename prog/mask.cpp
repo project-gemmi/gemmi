@@ -85,7 +85,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       double spac = 1;
       if (p.options[GridSpac])
         spac = std::atof(p.options[GridSpac].arg);
-      mask.grid.set_size_from_spacing(spac, true);
+      mask.grid.set_size_from_spacing(spac, gemmi::GridSizeRounding::Up);
     }
     if (p.options[Verbose]) {
       const auto& g = mask.grid;

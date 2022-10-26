@@ -19,6 +19,21 @@
 
 namespace gemmi {
 
+/// Order of grid axis. Some Grid functionality works only with the XYZ order.
+/// The values XYZ and ZYX are used only when the grid covers whole unit cell.
+enum class AxisOrder : unsigned char {
+  Unknown,
+  XYZ,  // default, corresponds to CCP4 map with axis order XYZ,
+        // i.e. index X (H in reciprocal space) is fast and Z (or L) is slow
+  ZYX   // fast Z (or L), may not be fully supported everywhere
+};
+
+enum class GridSizeRounding {
+  Nearest,
+  Up,
+  Down
+};
+
 inline int modulo(int a, int n) {
   if (a >= n)
     a %= n;
@@ -36,10 +51,37 @@ inline bool has_small_factorization(int n) {
   return n == 1 || n == -1;
 }
 
+inline int round_with_small_factorization(double exact, GridSizeRounding rounding) {
+  int n;
+  if (rounding == GridSizeRounding::Up) {
+    n = int(std::ceil(exact));
+    while (!has_small_factorization(n))
+      ++n;
+  } else if (rounding == GridSizeRounding::Down) {
+    n = std::max(int(std::floor(exact)), 1);
+    while (!has_small_factorization(n))
+      --n;
+  } else {  // GridSizeRounding::Nearest
+    n = int(std::round(exact));
+    int sign = n > exact ? -1 : 1;
+    int k = 1;
+    while (n <= 0 || !has_small_factorization(n)) {
+      // for sign=1 we want sequence n+1, n-1, n+2, n-2, n+3, ...
+      n += sign * k;
+      sign = -sign;
+      ++k;
+    }
+  }
+  return n;
+}
+
 inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
-                                         bool denser, const SpaceGroup* sg) {
+                                         GridSizeRounding rounding,
+                                         const SpaceGroup* sg) {
   std::array<int, 3> m = {{0, 0, 0}};
-  GroupOps gops = (sg ? *sg : get_spacegroup_p1()).operations();
+  GroupOps gops;
+  if (sg)
+    gops = sg->operations();
   std::array<int, 3> sg_fac = gops.find_grid_factors();
   for (int i = 0; i != 3; ++i) {
     for (int j = 0; j < i; ++j)
@@ -50,26 +92,16 @@ inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
     if (m[i] == 0) {
       // having sizes always even simplifies things
       int f = sg_fac[i] % 2 == 0 ? sg_fac[i] : 2 * sg_fac[i];
-      int n;
-      if (denser) {
-        n = int(std::ceil(limit[i] / f));
-        while (!has_small_factorization(n))
-          ++n;
-      } else {
-        n = int(std::floor(limit[i] / f));
-        if (n > 1)
-          while (!has_small_factorization(n))
-            --n;
-        else
-          n = 1;
-      }
+      int n = round_with_small_factorization(limit[i] / f, rounding);
       m[i] = n * f;
     }
   }
   for (int i = 1; i != 3; ++i)
     for (int j = 0; j != i; ++j)
-      if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j])
+      if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j]) {
+        bool denser = rounding != GridSizeRounding::Down;
         m[i] = m[j] = (denser ? std::max(m[i], m[j]) : std::min(m[i], m[j]));
+      }
   return m;
 }
 
@@ -123,14 +155,6 @@ inline double cubic_interpolation_der(double u, double a, double b, double c, do
          + u * (4.5*b*u - 5*b + 1.5*d*u - d);
 }
 
-/// Order of grid axis. Some Grid functionality works only with the XYZ order.
-/// The values XYZ and ZYX are used only when the grid covers whole unit cell.
-enum class AxisOrder : unsigned char {
-  Unknown,
-  XYZ,  // default, corresponds to CCP4 map with axis order XYZ,
-        // i.e. index X (H in reciprocal space) is fast and Z (or L) is slow
-  ZYX   // fast Z (or L), may not be fully supported everywhere
-};
 
 /// The base of Grid classes that does not depend on stored data type.
 struct GridMeta {
@@ -320,11 +344,11 @@ struct Grid : GridBase<T> {
   }
 
   // The resulting spacing can be smaller (if denser=true) or greater than arg.
-  void set_size_from_spacing(double approx_spacing, bool denser) {
+  void set_size_from_spacing(double approx_spacing, GridSizeRounding rounding) {
     std::array<double, 3> limit = {{1. / (unit_cell.ar * approx_spacing),
                                     1. / (unit_cell.br * approx_spacing),
                                     1. / (unit_cell.cr * approx_spacing)}};
-    auto m = good_grid_size(limit, denser, spacegroup);
+    auto m = good_grid_size(limit, rounding, spacegroup);
     set_size_without_checking(m[0], m[1], m[2]);
   }
 
@@ -341,10 +365,9 @@ struct Grid : GridBase<T> {
 
   template<typename S>
   void setup_from(const S& st, double approx_spacing) {
-    bool denser = true;
     spacegroup = st.find_spacegroup();
     set_unit_cell(st.cell);
-    set_size_from_spacing(approx_spacing, denser);
+    set_size_from_spacing(approx_spacing, GridSizeRounding::Up);
   }
 
   /// Returns index in data array for (u,v,w). Safe but slower than index_q().

@@ -64,7 +64,7 @@ std::array<int, 3> get_size_for_hkl(const DataProxy& data,
     for (int i = 0; i < 3; ++i)
       dsize[i] = std::max(dsize[i], sample_rate * inv_d_min / cellr[i]);
   }
-  return good_grid_size(dsize, /*denser=*/true, data.spacegroup());
+  return good_grid_size(dsize, GridSizeRounding::Up, data.spacegroup());
 }
 
 template<typename DataProxy>

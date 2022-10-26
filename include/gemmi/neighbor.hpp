@@ -162,7 +162,7 @@ struct NeighborSearch {
 
 private:
   void set_grid_size() {
-    grid.set_size_from_spacing(radius_specified, false);
+    grid.set_size_from_spacing(radius_specified, GridSizeRounding::Down);
     if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
       grid.set_size_without_checking(std::max(grid.nu, 3),
                                      std::max(grid.nv, 3),

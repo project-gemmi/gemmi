@@ -164,7 +164,7 @@ struct DensityCalculator {
     grid.data.clear();
     double spacing = requested_grid_spacing();
     if (spacing > 0)
-      grid.set_size_from_spacing(spacing, true);
+      grid.set_size_from_spacing(spacing, GridSizeRounding::Up);
     else if (grid.point_count() > 0)
       grid.fill(0.);
     else

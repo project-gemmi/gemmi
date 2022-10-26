@@ -93,6 +93,16 @@ The advantage of calling ``set_size()`` after a space group was set
 is that this function checks if the size is compatible with the space group
 (a symmetry operation cannot map a node to a point between nodes).
 
+If a unit cell is assigned to the grid (it will be discussed
+:ref:`later <grid_cell>`), you can request the size that gives approximately
+the specified spacing, with one of the possible rounding modes: ``Nearest``,
+``Up`` (denser grid) and ``Down``:
+
+.. doctest::
+
+  >>> grid3.set_unit_cell(gemmi.UnitCell(40, 50, 40, 90, 82.5, 90))
+  >>> grid3.set_size_from_spacing(1.2, gemmi.GridSizeRounding.Nearest)
+
 You can create a copy of a grid with:
 
 .. doctest::
@@ -187,6 +197,8 @@ Python bindings provide the following specializations:
   >>> grid.symmetrize_abs_max()  # value corresponding to max(|x|)
   >>> grid2.symmetrize_sum()     # sum symmetry-equivalent nodes
 
+.. _grid_cell:
+
 Unit cell
 ---------
 
@@ -195,7 +207,7 @@ enable conversion between coordinates and grid points.
 
 The unit cell should be set using ``Grid<T>::set_unit_cell()``,
 which in addition to setting ``unit_cell`` sets also ``spacing``,
-the spacing between grid points that is precalculated for efficiency.
+the spacing between grid planes that is precalculated for efficiency.
 
 .. doctest::
 

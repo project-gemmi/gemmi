@@ -99,6 +99,8 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
         return py::make_tuple(self.spacing[0], self.spacing[1], self.spacing[2]);
     })
     .def("set_size", &Gr::set_size)
+    .def("set_size_from_spacing", &Gr::set_size_from_spacing,
+         py::arg("spacing"), py::arg("rounding"))
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
@@ -187,6 +189,11 @@ void add_grid(py::module& m) {
     .value("Unknown", AxisOrder::Unknown)
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
+
+  py::enum_<GridSizeRounding>(m, "GridSizeRounding")
+    .value("Nearest", GridSizeRounding::Nearest)
+    .value("Up", GridSizeRounding::Up)
+    .value("Down", GridSizeRounding::Down);
 
   py::class_<GridMeta>(m, "GridMeta")
     .def_readwrite("spacegroup", &GridMeta::spacegroup)
