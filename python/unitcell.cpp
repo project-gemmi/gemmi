@@ -288,6 +288,7 @@ void add_unitcell(py::module& m) {
     .def("calculate_u_eq", &UnitCell::calculate_u_eq)
     .def("fractionalize", &UnitCell::fractionalize)
     .def("orthogonalize", &UnitCell::orthogonalize)
+    .def("orthogonalize_box", &UnitCell::orthogonalize_box)
     .def("op_as_transform", &UnitCell::op_as_transform)
     .def("volume_per_image", &UnitCell::volume_per_image)
     .def("find_nearest_image", &UnitCell::find_nearest_image,

@@ -103,6 +103,20 @@ class TestUnitCell(unittest.TestCase):
         assert_almost_equal_seq(self, rmt.elements_pdb(), cctbx_rmm,
                                 delta=1e-15)
 
+    def test_ortogonalize_box(self):
+        cell = gemmi.UnitCell(100, 105, 113, 90, 120, 90)
+        box = gemmi.FractionalBox()
+        box.minimum = gemmi.Fractional(0, 0, 0)
+        box.maximum = gemmi.Fractional(1, 1, 1)
+        obox = cell.orthogonalize_box(box)
+        self.assertTrue(obox.minimum.x < 0)
+        self.assertEqual(obox.minimum.y, 0)
+        self.assertEqual(obox.minimum.z, 0)
+        self.assertEqual(obox.maximum.x, cell.a)
+        self.assertEqual(obox.maximum.y, cell.b)
+        c_spacing = 1. / cell.reciprocal().c
+        self.assertAlmostEqual(obox.maximum.z, c_spacing, delta=1e-12)
+
     def test_is_similar(self):
         cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         cell2 = gemmi.UnitCell(36, 42, 46, 67, 67, 75)

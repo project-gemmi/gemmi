@@ -386,6 +386,21 @@ struct UnitCell {
     return Fractional(frac.mat.multiply(delta));
   }
 
+  /// Returns box containing fractional box (a cuboid in fractional
+  /// coordinates can be a parallelepiped in Cartesian coordinates).
+  Box<Position> orthogonalize_box(const Box<Fractional>& f) const {
+    Box<Position> r{orthogonalize(f.minimum), orthogonalize(f.maximum)};
+    if (alpha != 90. || beta == 90. || gamma == 90.) {
+      r.extend(orthogonalize({f.minimum.x, f.minimum.y, f.maximum.z}));
+      r.extend(orthogonalize({f.minimum.x, f.maximum.y, f.maximum.z}));
+      r.extend(orthogonalize({f.minimum.x, f.maximum.y, f.minimum.z}));
+      r.extend(orthogonalize({f.maximum.x, f.maximum.y, f.minimum.z}));
+      r.extend(orthogonalize({f.maximum.x, f.minimum.y, f.minimum.z}));
+      r.extend(orthogonalize({f.maximum.x, f.minimum.y, f.maximum.z}));
+    }
+    return r;
+  }
+
   Transform op_as_transform(const Op& op) const {
     Transform frac_tr{rot_as_mat33(op), tran_as_vec3(op)};
     return orth.combine(frac_tr.combine(frac));
