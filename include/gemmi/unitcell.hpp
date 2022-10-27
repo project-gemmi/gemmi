@@ -389,7 +389,9 @@ struct UnitCell {
   /// Returns box containing fractional box (a cuboid in fractional
   /// coordinates can be a parallelepiped in Cartesian coordinates).
   Box<Position> orthogonalize_box(const Box<Fractional>& f) const {
-    Box<Position> r{orthogonalize(f.minimum), orthogonalize(f.maximum)};
+    Box<Position> r;
+    r.minimum = orthogonalize(f.minimum);
+    r.maximum = orthogonalize(f.maximum);
     if (alpha != 90. || beta == 90. || gamma == 90.) {
       r.extend(orthogonalize({f.minimum.x, f.minimum.y, f.maximum.z}));
       r.extend(orthogonalize({f.minimum.x, f.maximum.y, f.maximum.z}));
