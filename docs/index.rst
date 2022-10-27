@@ -65,6 +65,7 @@ Contents
    install
    cif
    symmetry
+   cell
    mol
    analysis
    grid
