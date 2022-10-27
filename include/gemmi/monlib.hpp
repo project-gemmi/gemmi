@@ -308,7 +308,8 @@ inline Restraints read_restraint_modifications(const cif::Block& block_) {
                               "new_type",
                               "new_value_dist", "new_value_dist_esd",
                               "?new_value_dist_nucleus", "?new_value_dist_nucleus_esd"}))
-    rt.bonds.push_back({{chem_mod_type(row[0]), row.str(1)}, {1, row.str(2)},
+    rt.bonds.push_back({Restraints::AtomId{chem_mod_type(row[0]), row.str(1)},
+                        Restraints::AtomId{1, row.str(2)},
                         bond_type_from_string(row[3]), false,
                         cif::as_number(row[4]), cif::as_number(row[5]),
                         row.has(6) ? cif::as_number(row[6]) : NAN,

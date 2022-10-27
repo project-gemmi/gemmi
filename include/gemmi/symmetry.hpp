@@ -1966,7 +1966,7 @@ inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
 // The same 12 choices of ASU as in CCP4 symlib and cctbx.
 struct ReciprocalAsu {
   int idx;
-  Op::Rot rot;
+  Op::Rot rot{};  // value-initialized only to avoid -Wmaybe-uninitialized
   bool is_ref;
 
   ReciprocalAsu(const SpaceGroup* sg, bool tnt=false) {
