@@ -141,11 +141,13 @@ inline void expand_hd_mixture(Structure& st) {
 inline void collapse_hd_mixture(Structure& st) {
   if (st.has_hd_mixture)
     return;
+  bool is_set = false;
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (Residue& res : chain.residues)
         for (auto a = res.atoms.end(); a-- != res.atoms.begin(); )
           if (a->element == El::D) {
+            is_set = true;
             if (a != res.atoms.begin() && (a-1)->element == El::H &&
                 a->name.compare(1, std::string::npos,
                                 (a-1)->name, 1, std::string::npos) == 0) {
@@ -161,7 +163,7 @@ inline void collapse_hd_mixture(Structure& st) {
               a->name[0] = 'H';
             }
           }
-  st.has_hd_mixture = true;
+  if (is_set) st.has_hd_mixture = true;
 }
 
 } // namespace gemmi
