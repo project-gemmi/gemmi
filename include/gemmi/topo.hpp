@@ -117,6 +117,7 @@ struct Topo {
 
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
     void setup_polymer_links();
+    std::string find_polymer_link_id(const ResInfo& ri1, const ResInfo& ri2) const;
     struct RGroup {
       std::vector<ResInfo>::iterator begin, end;
     };
@@ -389,10 +390,38 @@ inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
     res_infos.emplace_back(&res);
 }
 
+inline std::string Topo::ChainInfo::find_polymer_link_id(const Topo::ResInfo& ri1,
+                                                         const Topo::ResInfo& ri2) const {
+  if (is_polypeptide(polymer_type)) {
+    if (have_peptide_bond(*ri1.res, *ri2.res) &&
+        ri1.chemcomp.is_peptide_group() &&
+        ri2.chemcomp.is_peptide_group()) {
+      bool is_cis = ri1.res->is_cis;
+      int id = ialpha4_id(ri2.chemcomp.group.c_str());
+      if (id == ialpha4_id("p-pe"))
+        return is_cis ? "PCIS" : "PTRANS";
+      if (id == ialpha4_id("m-pe"))
+        return is_cis ? "NMCIS" : "NMTRANS";
+      return is_cis ? "CIS" : "TRANS";
+    }
+    return "gap";
+  }
+
+  if (is_polynucleotide(polymer_type)) {
+    if (have_nucleotide_bond(*ri1.res, *ri2.res) &&
+        ri1.chemcomp.is_nucleotide_group() &&
+        ri2.chemcomp.is_nucleotide_group()) {
+      return "p";
+    }
+    return "gap";
+  }
+
+  return "?";
+}
+
 inline void Topo::ChainInfo::setup_polymer_links() {
   if (!polymer || res_infos.empty())
     return;
-  //ResidueGroup residue_groups()
   RGroup prev_group = group_from(res_infos.begin());
   while (prev_group.end != res_infos.end()) {
     RGroup group = group_from(prev_group.end);
@@ -402,25 +431,7 @@ inline void Topo::ChainInfo::setup_polymer_links() {
         p.res1 = prev_ri->res;
         p.res2 = ri->res;
         assert(prev_ri - ri == p.res1 - p.res2);
-        if (are_connected(*prev_ri->res, *ri->res, polymer_type)) {
-          if (is_polypeptide(polymer_type) && ri->chemcomp.is_peptide_group()
-                                           && prev_ri->chemcomp.is_peptide_group()) {
-            int id = ialpha4_id(ri->chemcomp.group.c_str());
-            if (id == ialpha4_id("p-pe"))
-              p.link_id = "P";  // PCIS, PTRANS
-            else if (id == ialpha4_id("m-pe"))
-              p.link_id = "NM"; // NMCIS, NMTRANS
-            p.link_id += prev_ri->res->is_cis ? "CIS" : "TRANS";
-          } else if (is_polynucleotide(polymer_type) &&
-                     ri->chemcomp.is_nucleotide_group() &&
-                     prev_ri->chemcomp.is_nucleotide_group()) {
-            p.link_id = "p";
-          } else {
-            p.link_id = "?";
-          }
-        } else {
-          p.link_id = "gap";
-        }
+        p.link_id = find_polymer_link_id(*prev_ri, *ri);
         ri->prev.push_back(p);
       }
     prev_group = group;
