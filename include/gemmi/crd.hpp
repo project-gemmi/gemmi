@@ -249,6 +249,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       const Residue& res = *ri.res;
       std::string auth_seq_id = res.seqid.str();
       for (const Atom& a : res.atoms) {
+        const auto& cc_atom = cc.get_atom(a.name);
         vv.emplace_back("ATOM");
         vv.emplace_back(std::to_string(a.serial));
         vv.emplace_back(a.name);
@@ -262,11 +263,11 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(to_str(a.occ));
         vv.emplace_back(st.has_hd_mixture ? to_str(a.mixture) : "1");
         vv.emplace_back(to_str(a.b_iso));
-        vv.emplace_back(a.element.uname());
+        vv.emplace_back(cc_atom.el.uname());
         vv.emplace_back(refmac_calc_flag(a));
         vv.emplace_back(1, '.'); // label_seg_id
         vv.emplace_back(a.name); // again
-        vv.emplace_back(cc.get_atom(a.name).chem_type); // label_chem_id
+        vv.emplace_back(cc_atom.chem_type); // label_chem_id
         if (write_anisou) {
           if (a.aniso.nonzero()) {
             for (float u : {a.aniso.u11, a.aniso.u22, a.aniso.u33,
