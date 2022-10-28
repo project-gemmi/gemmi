@@ -263,7 +263,12 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(to_str(a.occ));
         vv.emplace_back(st.has_hd_mixture ? to_str(a.mixture) : "1");
         vv.emplace_back(to_str(a.b_iso));
-        vv.emplace_back(cc_atom.el.uname());
+        std::string type_symbol = cc_atom.el.uname();
+        if (a.charge != 0) {
+          if (a.charge > 0) type_symbol += '+';
+          type_symbol += std::to_string(a.charge);
+        }
+        vv.emplace_back(type_symbol);
         vv.emplace_back(refmac_calc_flag(a));
         vv.emplace_back(1, '.'); // label_seg_id
         vv.emplace_back(a.name); // again
