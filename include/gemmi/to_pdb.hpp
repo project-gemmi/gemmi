@@ -107,11 +107,13 @@ inline std::array<char,8> encode_serial_in_hybrid36(int serial) {
 }
 
 // based on http://cci.lbl.gov/hybrid_36/
-inline void encode_seq_num_in_hybrid36(char* str, int seq_id) {
-  if (seq_id > -1000 && seq_id < 10000)
-    gstb_sprintf(str, "%4d", seq_id);
+inline void encode_seq_num_in_hybrid36(char* str, SeqId::OptionalNum seq_num) {
+  if (*seq_num > -1000 && *seq_num < 10000)
+    gstb_sprintf(str, "%4d", *seq_num);
+  else if (seq_num.has_value())
+    base36_encode(str, 4, *seq_num - 10000 + 10 * 36 * 36 * 36);
   else
-    base36_encode(str, 4, seq_id - 10000 + 10 * 36 * 36 * 36);
+    std::memcpy(str, "    ", 4);
 }
 
 inline std::array<char,8> write_seq_id(const SeqId& seqid) {

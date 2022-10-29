@@ -5,6 +5,7 @@
 #ifndef GEMMI_SEQID_HPP_
 #define GEMMI_SEQID_HPP_
 
+#include <climits>    // for INT_MIN
 #include <cstdlib>    // for strtol
 #include <stdexcept>  // for invalid_argument
 #include <string>
@@ -48,7 +49,7 @@ template<int N> struct OptionalInt {
 };
 
 struct SeqId {
-  using OptionalNum = OptionalInt<-999>;
+  using OptionalNum = OptionalInt<INT_MIN>;
 
   OptionalNum num;   // sequence number
   char icode = ' ';  // insertion code
