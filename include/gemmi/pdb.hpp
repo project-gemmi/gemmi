@@ -211,7 +211,6 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
 template<typename Stream>
 Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
                                const PdbReadOptions& options) {
-  using namespace pdb_impl;
   int line_num = 0;
   auto wrong = [&line_num](const std::string& msg) {
     fail("Problem in line " + std::to_string(line_num) + ": " + msg);

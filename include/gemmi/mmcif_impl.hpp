@@ -21,10 +21,9 @@ inline void set_cell_from_mmcif(cif::Block& block, UnitCell& cell,
                                "angle_alpha", "angle_beta", "angle_gamma"});
   if (tab.ok()) {
     auto c = tab.one();
-    using namespace gemmi::cif;
-    if (!is_null(c[0]) && !is_null(c[1]) && !is_null(c[2]))
-      cell.set(as_number(c[0]), as_number(c[1]), as_number(c[2]),
-               as_number(c[3]), as_number(c[4]), as_number(c[5]));
+    if (!cif::is_null(c[0]) && !cif::is_null(c[1]) && !cif::is_null(c[2]))
+      cell.set(cif::as_number(c[0]), cif::as_number(c[1]), cif::as_number(c[2]),
+               cif::as_number(c[3]), cif::as_number(c[4]), cif::as_number(c[5]));
   }
 }
 
