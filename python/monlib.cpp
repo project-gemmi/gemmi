@@ -85,7 +85,6 @@ void add_monlib(py::module& m) {
          py::arg("min_bond_sq")=0.,
          py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
-    .def("add_monomers_if_present", &MonLib::add_monomers_if_present)
     .def("insert_chemlinks", [](MonLib &self, const cif::Document &doc) {
         insert_chemlinks(doc, self.links);
     })

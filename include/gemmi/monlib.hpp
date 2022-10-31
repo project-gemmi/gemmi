@@ -668,11 +668,6 @@ struct MonLib {
     }
   }
 
-  void add_monomers_if_present(const cif::Document& doc) {
-    for (const cif::Block& block : doc.blocks)
-      add_monomer_if_present(block);
-  }
-
   bool link_side_matches_residue(const ChemLink::Side& side,
                                  const std::string& res_name) const {
     if (side.comp != "")
