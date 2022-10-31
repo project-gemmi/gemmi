@@ -70,11 +70,11 @@ inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
   cc.name = res.name;
   // cf. is_peptide_group(), is_nucleotide_group(), is_ad_hoc()
   if (res.get_ca())
-    cc.group = "?-peptide";
+    cc.type_or_group = "?-peptide";
   else if (res.get_p())
-    cc.group = "?NA";
+    cc.type_or_group = "?NA";
   else
-    cc.group = "?";
+    cc.type_or_group = "?";
   // add atoms
   cc.atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {

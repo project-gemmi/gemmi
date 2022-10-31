@@ -150,6 +150,18 @@ void add_chemcomp(py::module& m) {
     .def_readonly("chem_type", &ChemComp::Atom::chem_type)
     .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
     ;
+  py::enum_<ChemComp::Group>(chemcomp, "Group")
+      .value("Peptide",    ChemComp::Group::Peptide)
+      .value("PPeptide",   ChemComp::Group::PPeptide)
+      .value("MPeptide",   ChemComp::Group::MPeptide)
+      .value("Dna",        ChemComp::Group::Dna)
+      .value("Rna",        ChemComp::Group::Rna)
+      .value("DnaRna",     ChemComp::Group::DnaRna)
+      .value("Pyranose",   ChemComp::Group::Pyranose)
+      .value("Ketopyranose", ChemComp::Group::Ketopyranose)
+      .value("Furanose",   ChemComp::Group::Furanose)
+      .value("NonPolymer", ChemComp::Group::NonPolymer)
+      .value("Null",       ChemComp::Group::Null);
   chemcomp
     .def_readwrite("name", &ChemComp::name)
     .def_readwrite("group", &ChemComp::group)

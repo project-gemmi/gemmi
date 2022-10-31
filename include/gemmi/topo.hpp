@@ -394,13 +394,13 @@ inline std::string Topo::ChainInfo::find_polymer_link_id(const Topo::ResInfo& ri
                                                          const Topo::ResInfo& ri2) const {
   if (is_polypeptide(polymer_type)) {
     if (have_peptide_bond(*ri1.res, *ri2.res) &&
-        ri1.chemcomp.is_peptide_group() &&
-        ri2.chemcomp.is_peptide_group()) {
+        ChemComp::is_peptide_group(ri1.chemcomp.group) &&
+        ChemComp::is_peptide_group(ri2.chemcomp.group)) {
       bool is_cis = ri1.res->is_cis;
-      int id = ialpha4_id(ri2.chemcomp.group.c_str());
-      if (id == ialpha4_id("p-pe"))
+      ChemComp::Group n_terminus_group = ri2.chemcomp.group;
+      if (n_terminus_group == ChemComp::Group::PPeptide)
         return is_cis ? "PCIS" : "PTRANS";
-      if (id == ialpha4_id("m-pe"))
+      if (n_terminus_group == ChemComp::Group::MPeptide)
         return is_cis ? "NMCIS" : "NMTRANS";
       return is_cis ? "CIS" : "TRANS";
     }
@@ -409,8 +409,8 @@ inline std::string Topo::ChainInfo::find_polymer_link_id(const Topo::ResInfo& ri
 
   if (is_polynucleotide(polymer_type)) {
     if (have_nucleotide_bond(*ri1.res, *ri2.res) &&
-        ri1.chemcomp.is_nucleotide_group() &&
-        ri2.chemcomp.is_nucleotide_group()) {
+        ChemComp::is_nucleotide_group(ri1.chemcomp.group) &&
+        ChemComp::is_nucleotide_group(ri2.chemcomp.group)) {
       return "p";
     }
     return "gap";

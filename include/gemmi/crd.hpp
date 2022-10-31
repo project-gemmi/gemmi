@@ -418,14 +418,16 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
         if (!ri.mods.empty())
           res_info += " modified by " + join_str(ri.mods, ", ");
 
-        // need to revisit it later on
-        std::string group = cif::quote(ri.chemcomp.group.substr(0, 8));
-        if (group == "peptide" || group == "P-peptid" || group == "M-peptid")
-          group = "L-peptid";
-        else if (group == "NON-POLY")
-          group = ".";
+        std::string group_str;
+        ChemComp::Group group = ri.chemcomp.group;
+        if (ChemComp::is_peptide_group(group))
+          group_str = "L-peptid";  // we try to be compatible with Refmac
+        else if (group == ChemComp::Group::NonPolymer)
+          group_str = ".";
+        else
+          group_str = ChemComp::group_str(group);
 
-        restr_loop.add_comment_and_row({res_info, "MONO", ".", group, ".",
+        restr_loop.add_comment_and_row({res_info, "MONO", ".", group_str, ".",
                                         ".", ".", ".", ".", ".", ".", ".", ".", "."});
         for (const Topo::Rule& rule : ri.monomer_rules)
           add_restraints(rule, topo, restr_loop, counters);
@@ -476,7 +478,7 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
       doc.blocks.emplace_back(cc.name);
       cif::Block& block = doc.blocks.back();
       block.items.emplace_back("_chem_comp.id", cc.name);
-      block.items.emplace_back("_chem_comp.group", cif::quote(cc.group));
+      block.items.emplace_back("_chem_comp.group", ChemComp::group_str(cc.group));
       add_chemcomp_to_block(cc, block);
     }
   }
@@ -509,8 +511,8 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
                                             "comp_id_1", "mod_id_1", "group_comp_1",
                                             "comp_id_2", "mod_id_2", "group_comp_2"})
         .add_row({q(cl->id), q(cl->name),
-                  q(cl->side1.comp), q(cl->side1.mod), ChemLink::group_str(cl->side1.group),
-                  q(cl->side2.comp), q(cl->side2.mod), ChemLink::group_str(cl->side2.group)});
+                  q(cl->side1.comp), q(cl->side1.mod), ChemComp::group_str(cl->side1.group),
+                  q(cl->side2.comp), q(cl->side2.mod), ChemComp::group_str(cl->side2.group)});
     }
   }
   for (const std::string& mod_name : used_mods)

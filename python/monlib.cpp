@@ -13,21 +13,26 @@ using namespace gemmi;
 using monomers_type = std::map<std::string, ChemComp>;
 using links_type = std::map<std::string, ChemLink>;
 using modifications_type = std::map<std::string, ChemMod>;
-using residue_infos_type = std::map<std::string, ResidueInfo>;
 PYBIND11_MAKE_OPAQUE(monomers_type)
 PYBIND11_MAKE_OPAQUE(links_type)
 PYBIND11_MAKE_OPAQUE(modifications_type)
-PYBIND11_MAKE_OPAQUE(residue_infos_type)
 
 void add_monlib(py::module& m) {
   py::class_<ChemMod> chemmod(m, "ChemMod");
   py::class_<ChemLink> chemlink(m, "ChemLink");
-  py::class_<ChemLink::Side> chemlinkside(chemlink, "Side");
 
   py::bind_map<monomers_type>(m, "ChemCompMap");
   py::bind_map<links_type>(m, "ChemLinkMap");
   py::bind_map<modifications_type>(m, "ChemModMap");
-  py::bind_map<residue_infos_type>(m, "ResidueInfoMap");
+
+  py::class_<ChemLink::Side>(chemlink, "Side")
+    .def_readwrite("comp", &ChemLink::Side::comp)
+    .def_readwrite("mod", &ChemLink::Side::mod)
+    .def_readwrite("group", &ChemLink::Side::group)
+    .def("__repr__", [](const ChemLink::Side& self) {
+        return "<gemmi.ChemLink.Side " + self.comp + "/" +
+               ChemComp::group_str(self.group) + ">";
+    });
 
   chemlink
     .def_readwrite("id", &ChemLink::id)
@@ -37,24 +42,6 @@ void add_monlib(py::module& m) {
     .def_readwrite("rt", &ChemLink::rt)
     .def("__repr__", [](const ChemLink& self) {
         return "<gemmi.ChemLink " + self.id + ">";
-    });
-
-  py::enum_<ChemLink::Group>(chemlinkside, "Group")
-      .value("Peptide",  ChemLink::Group::Peptide)
-      .value("PPeptide", ChemLink::Group::PPeptide)
-      .value("MPeptide", ChemLink::Group::MPeptide)
-      .value("Pyranose", ChemLink::Group::Pyranose)
-      .value("Ketopyranose", ChemLink::Group::Ketopyranose)
-      .value("DnaRna",   ChemLink::Group::DnaRna)
-      .value("Null",     ChemLink::Group::Null);
-
-  chemlinkside
-    .def_readwrite("comp", &ChemLink::Side::comp)
-    .def_readwrite("mod", &ChemLink::Side::mod)
-    .def_readwrite("group", &ChemLink::Side::group)
-    .def("__repr__", [](const ChemLink::Side& self) {
-        return "<gemmi.ChemLink.Side " + self.comp + "/" +
-               ChemLink::group_str(self.group) + ">";
     });
 
   chemmod
@@ -72,12 +59,9 @@ void add_monlib(py::module& m) {
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)
-    .def_readonly("residue_infos", &MonLib::residue_infos)
     .def("get_link", &MonLib::get_link, py::arg("link_id"),
          py::return_value_policy::reference_internal)
     .def("get_mod", &MonLib::get_mod, py::arg("name"),
-         py::return_value_policy::reference_internal)
-    .def("get_residue_info", &MonLib::get_residue_info, py::arg("name"),
          py::return_value_policy::reference_internal)
     .def("match_link", &MonLib::match_link,
          py::arg("res1"), py::arg("atom1"),
@@ -92,7 +76,7 @@ void add_monlib(py::module& m) {
         insert_chemmods(doc, self.modifications);
     })
     .def("insert_comp_list", [](MonLib &self, const cif::Document &doc) {
-        insert_comp_list(doc, self.residue_infos);
+        insert_comp_list(doc, self.cc_groups);
     })
     .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
       return self.read_monomer_cif(path, gemmi::read_cif_gz);

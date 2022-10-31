@@ -17,7 +17,6 @@
 #include "fail.hpp"       // for fail, unreachable
 #include "model.hpp"      // for Residue, Atom
 #include "chemcomp.hpp"   // for ChemComp
-#include "resinfo.hpp"    // for ResidueInfo
 
 namespace gemmi {
 
@@ -30,26 +29,21 @@ inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
 }
 
 struct ChemLink {
-  enum class Group {
-    // _chem_link.group_comp_N is one of:
-    // "peptide", "P-peptide", "M-peptide", "pyranose", "ketopyranose", "DNA/RNA" or null
-    // (we ignore "polymer")
-    Peptide, PPeptide, MPeptide, Pyranose, Ketopyranose, DnaRna, Null
-  };
   struct Side {
+    using Group = ChemComp::Group;
     std::string comp;
     std::string mod;
     Group group = Group::Null;
     bool matches_group(Group res) const {
-      return group != Group::Null &&
-             (res == group ||
-              (group == Group::Peptide && (int) res <= (int) Group::MPeptide));
+      if (group == Group::Null)
+        return false;
+      return res == group || (group == Group::Peptide && ChemComp::is_peptide_group(res));
     }
     int specificity() const {
       if (!comp.empty())
         return 3;
       return group == Group::PPeptide || group == Group::MPeptide ? 1 : 0;
-    };
+    }
   };
   std::string id;
   std::string name;
@@ -57,55 +51,6 @@ struct ChemLink {
   Side side2;
   Restraints rt;
   cif::Block block;  // temporary, until we have ChemLink->Block function
-
-  static Group read_group(const std::string& str) {
-    if (str.size() >= 4) {
-      const char* cstr = str.c_str();
-      if ((str[0] == '\'' || str[0] == '"') && str.size() >= 6)
-        ++cstr;
-      switch (ialpha4_id(cstr)) {
-        case ialpha4_id("pept"): return Group::Peptide;
-        case ialpha4_id("l-pe"): return Group::Peptide;
-        case ialpha4_id("p-pe"): return Group::PPeptide;
-        case ialpha4_id("m-pe"): return Group::MPeptide;
-        case ialpha4_id("pyra"): return Group::Pyranose;
-        case ialpha4_id("keto"): return Group::Ketopyranose;
-        case ialpha4_id("dna/"): return Group::DnaRna;
-      }
-    }
-    return Group::Null;
-  }
-
-  static const char* group_str(Group g) {
-    switch (g) {
-      case Group::Peptide: return "peptide";
-      case Group::PPeptide: return "P-peptide";
-      case Group::MPeptide: return "M-peptide";
-      case Group::Pyranose: return "pyranose";
-      case Group::Ketopyranose: return "ketopyranose";
-      case Group::DnaRna: return "DNA/RNA";
-      case Group::Null: return ".";
-    }
-    unreachable();
-  }
-
-  static Group group_from_residue_info(const ResidueInfo& ri) {
-    switch (ri.kind) {
-      case ResidueInfo::UNKNOWN: return Group::Null;
-      case ResidueInfo::AA:      return Group::Peptide;
-      case ResidueInfo::AAD:     return Group::Peptide;
-      case ResidueInfo::PAA:     return Group::PPeptide;
-      case ResidueInfo::MAA:     return Group::MPeptide;
-      case ResidueInfo::RNA:     return Group::DnaRna;
-      case ResidueInfo::DNA:     return Group::DnaRna;
-      case ResidueInfo::BUF:     return Group::Null;
-      case ResidueInfo::HOH:     return Group::Null;
-      case ResidueInfo::PYR:     return Group::Pyranose;
-      case ResidueInfo::KET:     return Group::Ketopyranose;
-      case ResidueInfo::ELS:     return Group::Null;
-    }
-    unreachable();
-  }
 
   // If multiple ChemLinks match a bond, the scores can pick the best match.
   int calculate_score(const Residue& res1, const Residue* res2, char alt) const {
@@ -219,38 +164,11 @@ inline Restraints read_link_restraints(const cif::Block& block_) {
   return rt;
 }
 
-inline ResidueInfo::Kind chemcomp_group_to_kind(const std::string& group) {
-  if (group.size() >= 3) {
-    const char* str = group.c_str();
-    if (group.size() > 4 && (*str == '"' || *str == '\''))
-      ++str;
-    switch (ialpha4_id(str)) {
-      case ialpha4_id("non-"): return ResidueInfo::ELS;
-      case ialpha4_id("pept"): return ResidueInfo::AA;
-      case ialpha4_id("l-pe"): return ResidueInfo::AA;
-      case ialpha4_id("p-pe"): return ResidueInfo::PAA;
-      case ialpha4_id("m-pe"): return ResidueInfo::MAA;
-      case ialpha4_id("dna"): return ResidueInfo::DNA;
-      case ialpha4_id("rna"): return ResidueInfo::RNA;
-      case ialpha4_id("pyra"): return ResidueInfo::PYR;
-      case ialpha4_id("keto"): return ResidueInfo::KET;
-    }
-  }
-  return ResidueInfo::UNKNOWN;
-}
-
 template<typename T>
-void insert_comp_list(const cif::Document& doc, T& ri_map) {
-  if (const cif::Block* list_block = doc.find_block("comp_list")) {
-    for (auto row : const_cast<cif::Block*>(list_block)->find("_chem_comp.",
-                                {"id", "group", "?number_atoms_nh"})) {
-      ResidueInfo ri;
-      ri.kind = chemcomp_group_to_kind(row[1]);
-      ri.one_letter_code = ' ';
-      ri.hydrogen_count = row.has2(2) ? cif::as_int(row[2]) : 0;
-      ri_map.emplace(row.str(0), ri);
-    }
-  }
+void insert_comp_list(const cif::Document& doc, T& cc_groups) {
+  if (const cif::Block* block = doc.find_block("comp_list"))
+    for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
+      cc_groups.emplace(row.str(0), row.str(1));
 }
 
 inline void insert_chemlinks(const cif::Document& doc,
@@ -269,12 +187,12 @@ inline void insert_chemlinks(const cif::Document& doc,
         if (row.has2(3))
           link.side1.mod = row.str(3);
         if (row.has2(4))
-          link.side1.group = ChemLink::read_group(row[4]);
+          link.side1.group = ChemComp::read_group(row[4]);
         if (row.has2(5))
           link.side2.comp = row.str(5);
         if (row.has2(6))
           link.side2.mod = row.str(6);
-        link.side2.group = ChemLink::read_group(row[7]);
+        link.side2.group = ChemComp::read_group(row[7]);
         break;
       }
     }
@@ -598,7 +516,7 @@ struct MonLib {
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
   std::map<std::string, ChemMod> modifications;
-  std::map<std::string, ResidueInfo> residue_infos;
+  std::map<std::string, std::string> cc_groups;
 
   const ChemLink* get_link(const std::string& link_id) const {
     auto link = links.find(link_id);
@@ -607,10 +525,6 @@ struct MonLib {
   const ChemMod* get_mod(const std::string& name) const {
     auto modif = modifications.find(name);
     return modif != modifications.end() ? &modif->second : nullptr;
-  }
-  const ResidueInfo* get_residue_info(const std::string& name) const {
-    auto resinfo = residue_infos.find(name);
-    return resinfo != residue_infos.end() ? &resinfo->second : nullptr;
   }
 
   // Returns the most specific link and a flag that is true
@@ -663,6 +577,11 @@ struct MonLib {
   void add_monomer_if_present(const cif::Block& block) {
     if (block.has_tag("_chem_comp_atom.atom_id")) {
       ChemComp cc = make_chemcomp_from_block(block);
+      if (cc.group == ChemComp::Group::Null) {
+        auto it = cc_groups.find(cc.name);
+        if (it != cc_groups.end())
+          cc.group = ChemComp::read_group(it->second);
+      }
       std::string name = cc.name;
       monomers.emplace(name, std::move(cc));
     }
@@ -670,10 +589,10 @@ struct MonLib {
 
   bool link_side_matches_residue(const ChemLink::Side& side,
                                  const std::string& res_name) const {
-    if (side.comp != "")
+    if (!side.comp.empty())
       return side.comp == res_name;
-    const ResidueInfo* resinfo = get_residue_info(res_name);
-    return resinfo && side.matches_group(ChemLink::group_from_residue_info(*resinfo));
+    auto it = monomers.find(res_name);
+    return it != monomers.end() && side.matches_group(it->second.group);
   }
 
   std::string path(const std::string& code) {
@@ -705,11 +624,11 @@ struct MonLib {
   }
 
   void read_monomer_doc(const cif::Document& doc) {
+    insert_comp_list(doc, cc_groups);
     for (const cif::Block& block : doc.blocks)
       add_monomer_if_present(block);
     insert_chemlinks(doc, links);
     insert_chemmods(doc, modifications);
-    insert_comp_list(doc, residue_infos);
   }
 
   void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
@@ -740,9 +659,8 @@ struct MonLib {
       if (monomers.find(name) != monomers.end())
         continue;
       try {
-        cif::Document doc = (*read_cif)(path(name));
-        auto cc = make_chemcomp_from_cif(name, doc);
-        monomers.emplace(name, std::move(cc));
+        const cif::Document& doc = (*read_cif)(path(name));
+        read_monomer_doc(doc);
       } catch (std::system_error& err) {
         if (error) {
           if (err.code().value() == ENOENT)

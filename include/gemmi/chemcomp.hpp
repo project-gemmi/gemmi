@@ -280,6 +280,21 @@ inline double Restraints::chiral_abs_volume(const Restraints::Chirality& ch) con
 }
 
 struct ChemComp {
+  // Items used in _chem_comp.group and _chem_link.group_comp_N in CCP4.
+  enum class Group {
+    Peptide,      // "peptide"
+    PPeptide,     // "P-peptide"
+    MPeptide,     // "M-peptide"
+    Dna,          // "DNA" - used in _chem_comp.group
+    Rna,          // "RNA" - used in _chem_comp.group
+    DnaRna,       // "DNA/RNA" - used in _chem_link.group_comp_N
+    Pyranose,     // "pyranose"
+    Ketopyranose, // "ketopyranose"
+    Furanose,     // "furanose"
+    NonPolymer,   // "non-polymer"
+    Null
+  };
+
   struct Atom {
     std::string id;
     Element el;
@@ -303,9 +318,54 @@ struct ChemComp {
   };
 
   std::string name;
-  std::string group;
+  std::string type_or_group;  // _chem_comp.type or _chem_comp.group
+  Group group = Group::Null;
   std::vector<Atom> atoms;
   Restraints rt;
+
+  static Group read_group(const std::string& str) {
+    if (str.size() >= 3) {
+      const char* cstr = str.c_str();
+      if ((str[0] == '\'' || str[0] == '"') && str.size() >= 5)
+        ++cstr;
+      switch (ialpha4_id(cstr)) {
+        case ialpha4_id("non-"): return Group::NonPolymer;
+        case ialpha4_id("pept"): return Group::Peptide;
+        case ialpha4_id("l-pe"): return Group::Peptide;
+        case ialpha4_id("p-pe"): return Group::PPeptide;
+        case ialpha4_id("m-pe"): return Group::MPeptide;
+        case ialpha4_id("dna"):  return Group::Dna;
+        case ialpha4_id("rna"):  return Group::Rna;
+        case ialpha4_id("dna/"): return Group::DnaRna;
+        case ialpha4_id("pyra"): return Group::Pyranose;
+        case ialpha4_id("keto"): return Group::Ketopyranose;
+        case ialpha4_id("fura"): return Group::Furanose;
+      }
+    }
+    return Group::Null;
+  }
+
+  static const char* group_str(Group g) {
+    switch (g) {
+      case Group::Peptide: return "peptide";
+      case Group::PPeptide: return "P-peptide";
+      case Group::MPeptide: return "M-peptide";
+      case Group::Dna: return "DNA";
+      case Group::Rna: return "RNA";
+      case Group::DnaRna: return "DNA/RNA";
+      case Group::Pyranose: return "pyranose";
+      case Group::Ketopyranose: return "ketopyranose";
+      case Group::Furanose: return "furanose";
+      case Group::NonPolymer: return "non-polymer";
+      case Group::Null: return ".";
+    }
+    unreachable();
+  }
+
+  void set_group(const std::string& s) {
+    type_or_group = s;
+    group = read_group(s);
+  }
 
   std::vector<Atom>::iterator find_atom(const std::string& atom_id) {
     return std::find_if(atoms.begin(), atoms.end(),
@@ -329,18 +389,18 @@ struct ChemComp {
     return atoms[get_atom_index(atom_id)];
   }
 
-  // Check if the group is peptide* or X-peptide*
-  bool is_peptide_group() const {
-    return group.size() > 6 && alpha_up(group[2]) == 'P';
+  /// Check if the group (M-|P-)peptide
+  static bool is_peptide_group(Group g) {
+    return g == Group::Peptide || g == Group::PPeptide || g == Group::MPeptide;
   }
 
-  // Check if the group is DNA or RNA
-  bool is_nucleotide_group() const {
-    return group.size() == 3 && alpha_up(group[1]) == 'N';
+  /// Check if the group is DNA/RNA
+  static bool is_nucleotide_group(Group g) {
+    return g == Group::Dna || g == Group::Rna || g == Group::DnaRna;
   }
 
   // is it simplistic auto-generated monomer description?
-  bool is_ad_hoc() const { return group[0] == '?'; }
+  bool is_ad_hoc() const { return type_or_group[0] == '?'; }
 
   void remove_nonmatching_restraints() {
     vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
@@ -461,12 +521,12 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   cc.name = block_.name.substr(starts_with(block_.name, "comp_") ? 5 : 0);
   cif::Block& block = const_cast<cif::Block&>(block_);
   // CCD uses _chem_comp.type, monomer libraries use .group in a separate block
-  // named comp_list, but why not to try read _chem_comp.group from this block.
-  cif::Column group_col = block.find_values("_chem_comp.group");
-  if (!group_col)
-    group_col = block.find_values("_chem_comp.type");
-  if (group_col)
-    cc.group = group_col.str(0);
+  // named comp_list, but it'd be a better idea to have _chem_comp.group in the
+  // same block, so we try read it.
+  if (cif::Column group_col = block.find_values("_chem_comp.group"))
+    cc.set_group(group_col.str(0));
+  else if (cif::Column type_col = block.find_values("_chem_comp.type"))
+    cc.type_or_group = type_col.str(0);
   for (auto row : block.find("_chem_comp_atom.",
                              {"atom_id", "type_symbol", "?type_energy",
                              "?charge", "?partial_charge"}))
@@ -537,24 +597,6 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
       plane.esd = cif::as_number(row[2]);
     plane.ids.push_back({1, row.str(1)});
   }
-  return cc;
-}
-
-inline ChemComp make_chemcomp_from_cif(const std::string& name,
-                                       const cif::Document& doc) {
-  const cif::Block* block = doc.find_block("comp_" + name);
-  if (!block)
-    block = doc.find_block(name);
-  if (!block)
-    throw std::runtime_error("data_comp_" + name + " not in the cif file");
-  ChemComp cc = make_chemcomp_from_block(*block);
-  if (cc.group.empty())
-    if (const cif::Block* list = doc.find_block("comp_list")) {
-      cif::Table tab =
-        const_cast<cif::Block*>(list)->find("_chem_comp.", {"id", "group"});
-      if (tab.ok())
-        cc.group = tab.find_row(name).str(1);
-    }
   return cc;
 }
 

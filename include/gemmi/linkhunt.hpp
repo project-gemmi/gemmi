@@ -28,8 +28,8 @@ struct LinkHunt {
   };
 
   double global_max_dist = 2.34; // ZN-CYS
+  const MonLib* monlib_ptr = nullptr;
   std::multimap<std::string, const ChemLink*> links;
-  std::unordered_map<std::string, ChemLink::Group> res_group;
 
   void index_chem_links(const MonLib& monlib) {
     for (const auto& iter : monlib.links) {
@@ -40,8 +40,8 @@ struct LinkHunt {
         fprintf(stderr, "Note: considering only the first bond in %s\n",
                 link.id.c_str());
       if (link.side1.comp.empty() && link.side2.comp.empty())
-        if (link.side1.group == ChemLink::Group::Null ||
-            link.side2.group == ChemLink::Group::Null ||
+        if (link.side1.group == ChemComp::Group::Null ||
+            link.side2.group == ChemComp::Group::Null ||
             link.id == "SS")
           continue;
       const Restraints::Bond& bond = link.rt.bonds[0];
@@ -49,18 +49,7 @@ struct LinkHunt {
         global_max_dist = bond.value;
       links.emplace(bond.lexicographic_str(), &link);
     }
-    for (const auto& ri : monlib.residue_infos)
-      res_group.emplace(ri.first, ChemLink::group_from_residue_info(ri.second));
-  }
-
-  bool match_link_side(const ChemLink::Side& side,
-                       const std::string& resname) const {
-    if (!side.comp.empty())
-      return side.comp == resname;
-    if (side.group == ChemLink::Group::Null)
-      return false;
-    auto iter = res_group.find(resname);
-    return iter != res_group.end() && side.matches_group(iter->second);
+    monlib_ptr = &monlib;
   }
 
   std::vector<Match> find_possible_links(Structure& st,
@@ -92,12 +81,12 @@ struct LinkHunt {
               continue;
             bool order1;
             if (bond.id1.atom == cra1.atom->name &&
-                match_link_side(link.side1, cra1.residue->name) &&
-                match_link_side(link.side2, cra2.residue->name))
+                monlib_ptr->link_side_matches_residue(link.side1, cra1.residue->name) &&
+                monlib_ptr->link_side_matches_residue(link.side2, cra2.residue->name))
               order1 = true;
             else if (bond.id2.atom == cra1.atom->name &&
-                match_link_side(link.side2, cra1.residue->name) &&
-                match_link_side(link.side1, cra2.residue->name))
+                monlib_ptr->link_side_matches_residue(link.side2, cra1.residue->name) &&
+                monlib_ptr->link_side_matches_residue(link.side1, cra2.residue->name))
               order1 = false;
             else
               continue;
