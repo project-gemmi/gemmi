@@ -164,6 +164,7 @@ inline Restraints read_link_restraints(const cif::Block& block_) {
   return rt;
 }
 
+// deprecated
 template<typename T>
 void insert_comp_list(const cif::Document& doc, T& cc_groups) {
   if (const cif::Block* block = doc.find_block("comp_list"))
@@ -171,8 +172,8 @@ void insert_comp_list(const cif::Document& doc, T& cc_groups) {
       cc_groups.emplace(row.str(0), row.str(1));
 }
 
-inline void insert_chemlinks(const cif::Document& doc,
-                             std::map<std::string,ChemLink>& links) {
+inline void insert_chemlinks_into(const cif::Document& doc,
+                                  std::map<std::string,ChemLink>& links) {
   const cif::Block* list_block = doc.find_block("link_list");
   auto use_chem_link = [](const cif::Block& block, ChemLink& link) {
     for (auto row : const_cast<cif::Block&>(block).find("_chem_link.",
@@ -266,8 +267,8 @@ inline Restraints read_restraint_modifications(const cif::Block& block_) {
   return rt;
 }
 
-inline void insert_chemmods(const cif::Document& doc,
-                            std::map<std::string, ChemMod>& mods) {
+inline void insert_chemmods_into(const cif::Document& doc,
+                                 std::map<std::string, ChemMod>& mods) {
   const cif::Block* list_block = doc.find_block("mod_list");
   auto use_chem_mod = [](const cif::Block& block, ChemMod& mod) {
     for (auto row : const_cast<cif::Block&>(block).find("_chem_mod.",
@@ -624,11 +625,25 @@ struct MonLib {
   }
 
   void read_monomer_doc(const cif::Document& doc) {
-    insert_comp_list(doc, cc_groups);
+    insert_chemcomps(doc);
+    insert_chemlinks(doc);
+    insert_chemmods(doc);
+  }
+
+  void insert_chemcomps(const cif::Document& doc) {
+    if (const cif::Block* block = doc.find_block("comp_list"))
+      for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
+        cc_groups.emplace(row.str(0), row.str(1));
     for (const cif::Block& block : doc.blocks)
       add_monomer_if_present(block);
-    insert_chemlinks(doc, links);
-    insert_chemmods(doc, modifications);
+  }
+
+  void insert_chemlinks(const cif::Document& doc) {
+    insert_chemlinks_into(doc, links);
+  }
+
+  void insert_chemmods(const cif::Document& doc) {
+    insert_chemmods_into(doc, modifications);
   }
 
   void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {

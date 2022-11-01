@@ -69,12 +69,10 @@ void add_monlib(py::module& m) {
          py::arg("min_bond_sq")=0.,
          py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
-    .def("insert_chemlinks", [](MonLib &self, const cif::Document &doc) {
-        insert_chemlinks(doc, self.links);
-    })
-    .def("insert_chemmods", [](MonLib &self, const cif::Document &doc) {
-        insert_chemmods(doc, self.modifications);
-    })
+    .def("insert_chemcomps", &MonLib::insert_chemcomps)
+    .def("insert_chemlinks", &MonLib::insert_chemlinks)
+    .def("insert_chemmods", &MonLib::insert_chemmods)
+    // deprecated
     .def("insert_comp_list", [](MonLib &self, const cif::Document &doc) {
         insert_comp_list(doc, self.cc_groups);
     })
