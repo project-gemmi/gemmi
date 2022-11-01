@@ -167,6 +167,7 @@ void add_chemcomp(py::module& m) {
     .def_readwrite("group", &ChemComp::group)
     .def_readonly("atoms", &ChemComp::atoms)
     .def_readonly("rt", &ChemComp::rt)
+    .def("set_group", &ChemComp::set_group)
     .def("get_atom", &ChemComp::get_atom)
     .def("find_atom", [](ChemComp& self, const std::string& atom_id) {
         auto it = self.find_atom(atom_id);
