@@ -167,6 +167,8 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
     atom_loop.tags.emplace_back("_atom_site.calc_flag");
   if (has_tls_group_id)
     atom_loop.tags.emplace_back("_atom_site.pdbx_tls_group_id");
+  if (st.has_hd_mixture)
+    atom_loop.tags.emplace_back("_atom_site.ccp4_hd_mixture");
 
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(atom_site_count * atom_loop.tags.size());
@@ -207,6 +209,8 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
             vv.emplace_back(&".\0d\0c\0dum"[2 * (int) atom.calc_flag]);
           if (has_tls_group_id)
             vv.emplace_back(int_or_qmark(atom.tls_group_id));
+          if (st.has_hd_mixture)
+            vv.emplace_back(to_str(atom.mixture));
           if (atom.aniso.nonzero())
             aniso.emplace_back(serial, &atom);
         }
