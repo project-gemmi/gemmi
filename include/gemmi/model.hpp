@@ -109,7 +109,7 @@ struct Atom {
   char flag = '\0';  // a custom flag
   short tls_group_id = -1;
   int serial = 0;
-  float mixture = 0.f;  // custom value, one use is Refmac's ccp4_hd_mixture
+  float mixture = 1.f;  // custom value, one use is Refmac's ccp4_hd_mixture
   Position pos;
   float occ = 1.0f;
   // ADP - in MX it's usual to give isotropic ADP as B and anisotropic as U
