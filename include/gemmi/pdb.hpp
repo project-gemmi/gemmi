@@ -297,6 +297,10 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       // never have 4-character names, so H is assumed.
       else if (alpha_up(line[12]) == 'H' && line[15] != ' ')
         atom.element = El::H;
+      // Similarly Deuterium (DXXX), but here alternatives are Dy, Db and Ds.
+      // Only Dysprosium is present in the PDB - in a single entry as of 2022.
+      else if (alpha_up(line[12]) == 'D' && line[15] != ' ')
+        atom.element = El::D;
       // Old versions of the PDB format had hydrogen names such as "1HB ".
       // Some MD files use similar names for other elements ("1C4A" -> C).
       else if (is_digit(line[12]))
