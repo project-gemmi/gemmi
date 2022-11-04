@@ -26,6 +26,7 @@ void add_monlib(py::module& m) {
   py::bind_map<modifications_type>(m, "ChemModMap");
 
   py::class_<ChemLink::Side>(chemlink, "Side")
+    .def(py::init<>())
     .def_readwrite("comp", &ChemLink::Side::comp)
     .def_readwrite("mod", &ChemLink::Side::mod)
     .def_readwrite("group", &ChemLink::Side::group)
@@ -35,6 +36,7 @@ void add_monlib(py::module& m) {
     });
 
   chemlink
+    .def(py::init<>())
     .def_readwrite("id", &ChemLink::id)
     .def_readwrite("name", &ChemLink::name)
     .def_readwrite("side1", &ChemLink::side1)
@@ -45,6 +47,7 @@ void add_monlib(py::module& m) {
     });
 
   chemmod
+    .def(py::init<>())
     .def_readwrite("id", &ChemMod::id)
     .def_readwrite("name", &ChemMod::name)
     .def_readwrite("comp_id", &ChemMod::comp_id)
@@ -56,6 +59,7 @@ void add_monlib(py::module& m) {
 
   py::class_<MonLib>(m, "MonLib")
     .def(py::init<>())
+    .def_readonly("monomer_dir", &MonLib::monomer_dir)
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)
     .def_readonly("modifications", &MonLib::modifications)

@@ -72,6 +72,7 @@ void add_chemcomp(py::module& m) {
         return cat("<gemmi.Restraints.AtomId ", self.comp, ' ', self.atom, '>');
     });
   restraintsbond
+    .def(py::init<>())
     .def_readwrite("id1", &Restraints::Bond::id1)
     .def_readwrite("id2", &Restraints::Bond::id2)
     .def_readwrite("type", &Restraints::Bond::type)
@@ -85,6 +86,7 @@ void add_chemcomp(py::module& m) {
         return "<gemmi.Restraints.Bond " + self.str() + ">";
     });
   restraintsangle
+    .def(py::init<>())
     .def_readwrite("id1", &Restraints::Angle::id1)
     .def_readwrite("id2", &Restraints::Angle::id2)
     .def_readwrite("id3", &Restraints::Angle::id3)
@@ -94,6 +96,7 @@ void add_chemcomp(py::module& m) {
         return "<gemmi.Restraints.Angle " + self.str() + ">";
     });
   restraintstorsion
+    .def(py::init<>())
     .def_readwrite("label", &Restraints::Torsion::label)
     .def_readwrite("id1", &Restraints::Torsion::id1)
     .def_readwrite("id2", &Restraints::Torsion::id2)
@@ -106,6 +109,7 @@ void add_chemcomp(py::module& m) {
         return "<gemmi.Restraints.Torsion " + self.str() + ">";
     });
   restraintschirality
+    .def(py::init<>())
     .def_readwrite("id_ctr", &Restraints::Chirality::id_ctr)
     .def_readwrite("id1", &Restraints::Chirality::id1)
     .def_readwrite("id2", &Restraints::Chirality::id2)
@@ -116,6 +120,7 @@ void add_chemcomp(py::module& m) {
         return "<gemmi.Restraints.Chirality " + self.str() + ">";
     });
   restraintsplane
+    .def(py::init<>())
     .def_readwrite("label", &Restraints::Plane::label)
     .def_readwrite("ids", &Restraints::Plane::ids)
     .def_readwrite("esd", &Restraints::Plane::esd)
@@ -123,6 +128,7 @@ void add_chemcomp(py::module& m) {
         return "<gemmi.Restraints.Plane " + self.str() + ">";
     });
   restraints
+    .def(py::init<>())
     .def_readwrite("bonds", &Restraints::bonds)
     .def_readwrite("angles", &Restraints::angles)
     .def_readwrite("torsions", &Restraints::torsions)
