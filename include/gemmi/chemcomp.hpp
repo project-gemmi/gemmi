@@ -317,11 +317,32 @@ struct ChemComp {
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
 
+  struct Aliasing {
+    Group group;
+    // pairs of (name in chem_comp, usual name in this group)
+    std::vector<std::pair<std::string, std::string>> related;
+
+    const std::string* name_from_alias(const std::string& atom_id) const {
+      for (const auto& item : related)
+        if (item.second == atom_id)
+          return &item.first;
+      return nullptr;
+    }
+  };
+
   std::string name;
   std::string type_or_group;  // _chem_comp.type or _chem_comp.group
   Group group = Group::Null;
   std::vector<Atom> atoms;
+  std::vector<Aliasing> aliases;
   Restraints rt;
+
+  const Aliasing& get_aliasing(Group g) const {
+    for (const Aliasing& aliasing : aliases)
+      if (aliasing.group == g)
+        return aliasing;
+    fail("aliasing not found");
+  }
 
   static Group read_group(const std::string& str) {
     if (str.size() >= 3) {
@@ -597,6 +618,16 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
       plane.esd = cif::as_number(row[2]);
     plane.ids.push_back({1, row.str(1)});
   }
+  for (auto row : block.find("_chem_comp_alias.",
+                             {"group", "atom_id", "atom_id_standard"})) {
+    ChemComp::Group group = ChemComp::read_group(row.str(0));
+    if (cc.aliases.empty() || cc.aliases.back().group != group) {
+      cc.aliases.emplace_back();
+      cc.aliases.back().group = group;
+    }
+    cc.aliases.back().related.emplace_back(row.str(1), row.str(2));
+  }
+
   return cc;
 }
 
