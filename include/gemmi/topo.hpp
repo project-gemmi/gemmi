@@ -423,15 +423,15 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
   link.res2 = ri2.res;
   assert(&ri1 - &ri2 == link.res_distance());
   if (is_polypeptide(polymer_type)) {
-    const Atom* a1 = ri1.res->get_c();
-    const Atom* a2 = ri2.res->get_n();
     bool groups_ok = true;
+    std::string c = "C";
+    std::string n = "N";
     if (!ChemComp::is_peptide_group(ri1.chemcomp.group)) {
       for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
-          if (const std::string* c = aliasing.name_from_alias("C"))
-            a1 = ri1.res->find_atom(*c, '*', El::C);
+          if (const std::string* c_ptr = aliasing.name_from_alias(c))
+            c = *c_ptr;
         }
       if (link.aliasing1 == ChemComp::Group::Null)
         groups_ok = false;
@@ -441,13 +441,15 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing2 = n_terminus_group = aliasing.group;
-          if (const std::string* n = aliasing.name_from_alias("N"))
-            a2 = ri2.res->find_atom(*n, '*', El::N);
+          if (const std::string* n_ptr = aliasing.name_from_alias(n))
+            n = *n_ptr;
         }
       if (link.aliasing2 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    if (groups_ok && in_peptide_bond_distance(*a1, *a2)) {
+    const Atom* a1 = ri1.res->find_atom(c, '*', El::C);
+    const Atom* a2 = ri2.res->find_atom(n, '*', El::N);
+    if (groups_ok && in_peptide_bond_distance(a1, a2)) {
       bool is_cis = ri1.res->is_cis;
       if (n_terminus_group == ChemComp::Group::PPeptide)
         link.link_id = is_cis ? "PCIS" : "PTRANS";
@@ -459,16 +461,16 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       link.link_id = "gap";
     }
   } else if (is_polynucleotide(polymer_type)) {
-    const Atom* a1 = ri1.res->get_o3prim();
-    const Atom* a2 = ri2.res->get_p();
+    std::string o3p = "O3'";
+    std::string p = "P";
     bool groups_ok = true;
     if (!ChemComp::is_nucleotide_group(ri1.chemcomp.group)) {
       /* disabled for now
       for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
-          if (const std::string* o3p = aliasing.name_from_alias("O3'"))
-            a1 = ri1.res->find_atom(*o3p, '*', El::O);
+          if (const std::string* o3p_ptr = aliasing.name_from_alias(o3p))
+            o3p = *o3p_ptr;
         }
       */
       if (link.aliasing1 == ChemComp::Group::Null)
@@ -479,14 +481,16 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing2 = aliasing.group;
-          if (const std::string* p = aliasing.name_from_alias("P"))
-            a1 = ri1.res->find_atom(*p, '*', El::P);
+          if (const std::string* p_ptr = aliasing.name_from_alias(p))
+            p = *p_ptr;
         }
       */
       if (link.aliasing2 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    if (groups_ok && in_nucleotide_bond_distance(*a1, *a2)) {
+    const Atom* a1 = ri1.res->find_atom(o3p, '*', El::O);
+    const Atom* a2 = ri2.res->find_atom(p, '*', El::P);
+    if (groups_ok && in_nucleotide_bond_distance(a1, a2)) {
       link.link_id = "p";
     } else {
       link.link_id = "gap";

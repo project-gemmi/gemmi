@@ -236,28 +236,12 @@ struct Residue : public ResidueId {
   }
 
   // short-cuts to access peptide backbone atoms
-  const Atom* get_ca() const {
-    static const std::string CA("CA");
-    return find_atom(CA, '*', El::C);
-  }
-  const Atom* get_c() const {
-    static const std::string C("C");
-    return find_atom(C, '*', El::C);
-  }
-  const Atom* get_n() const {
-    static const std::string N("N");
-    return find_atom(N, '*', El::N);
-  }
-
+  const Atom* get_ca() const { return find_atom("CA", '*', El::C); }
+  const Atom* get_c() const { return find_atom("C", '*', El::C); }
+  const Atom* get_n() const { return find_atom("N", '*', El::N); }
   // short-cuts to access nucleic acid atoms
-  const Atom* get_p() const {
-    static const std::string P("P");
-    return find_atom(P, '*', El::P);
-  }
-  const Atom* get_o3prim() const {
-    static const std::string P("O3'");
-    return find_atom(P, '*', El::O);
-  }
+  const Atom* get_p() const { return find_atom("P", '*', El::P); }
+  const Atom* get_o3prim() const { return find_atom("O3'", '*', El::O); }
 
   bool same_conformer(const Residue& other) const {
     return atoms.empty() || other.atoms.empty() ||

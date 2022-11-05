@@ -609,6 +609,7 @@ struct MonLib {
     return it != monomers.end() && side.matches_group(it->second.group);
   }
 
+  /// Returns path to the monomer cif file (the file may not exist).
   std::string path(const std::string& code) {
       return monomer_dir + relative_monomer_path(code);
   }
