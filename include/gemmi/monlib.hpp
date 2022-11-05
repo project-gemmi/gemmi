@@ -169,7 +169,7 @@ template<typename T>
 void insert_comp_list(const cif::Document& doc, T& cc_groups) {
   if (const cif::Block* block = doc.find_block("comp_list"))
     for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
-      cc_groups.emplace(row.str(0), row.str(1));
+      cc_groups.emplace(row.str(0), ChemComp::read_group(row.str(1)));
 }
 
 inline void insert_chemlinks_into(const cif::Document& doc,
@@ -530,7 +530,7 @@ struct MonLib {
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
   std::map<std::string, ChemMod> modifications;
-  std::map<std::string, std::string> cc_groups;
+  std::map<std::string, ChemComp::Group> cc_groups;
 
   const ChemLink* get_link(const std::string& link_id) const {
     auto link = links.find(link_id);
@@ -594,7 +594,7 @@ struct MonLib {
       if (cc.group == ChemComp::Group::Null) {
         auto it = cc_groups.find(cc.name);
         if (it != cc_groups.end())
-          cc.group = ChemComp::read_group(it->second);
+          cc.group = it->second;
       }
       std::string name = cc.name;
       monomers.emplace(name, std::move(cc));
@@ -647,7 +647,7 @@ struct MonLib {
   void insert_chemcomps(const cif::Document& doc) {
     if (const cif::Block* block = doc.find_block("comp_list"))
       for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
-        cc_groups.emplace(row.str(0), row.str(1));
+        cc_groups.emplace(row.str(0), ChemComp::read_group(row.str(1)));
     for (const cif::Block& block : doc.blocks)
       add_monomer_if_present(block);
   }
