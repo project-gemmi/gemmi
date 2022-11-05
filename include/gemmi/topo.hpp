@@ -7,6 +7,7 @@
 
 #include <map>           // for multimap
 #include <ostream>       // for ostream
+#include <memory>        // for unique_ptr
 #include "chemcomp.hpp"  // for ChemComp
 #include "monlib.hpp"    // for MonLib
 #include "model.hpp"     // for Residue, Atom
@@ -89,20 +90,25 @@ struct Topo {
     char alt1 = '\0';
     char alt2 = '\0';
     Asu asu = Asu::Any;
+    ChemComp::Group aliasing1 = ChemComp::Group::Null;
+    ChemComp::Group aliasing2 = ChemComp::Group::Null;
+
+    // only for polymer links, res1 and res2 must be in the same vector (Chain)
+    std::ptrdiff_t res_distance() const { return res1 - res2; }
   };
 
   struct ResInfo {
     Residue* res;
     // in case of microheterogeneity we may have 2+ previous residues
     std::vector<Link> prev;
-    std::vector<std::string> mods;
+    std::vector<std::pair<std::string, ChemComp::Group>> mods;
     ChemComp chemcomp;
     std::vector<Rule> monomer_rules;
 
     ResInfo(Residue* r) : res(r) {}
-    void add_mod(const std::string& m) {
+    void add_mod(const std::string& m, ChemComp::Group aliasing) {
       if (!m.empty())
-        mods.push_back(m);
+        mods.emplace_back(m, aliasing);
     }
   };
 
@@ -117,7 +123,6 @@ struct Topo {
 
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
     void setup_polymer_links();
-    std::string find_polymer_link_id(const ResInfo& ri1, const ResInfo& ri2) const;
     struct RGroup {
       std::vector<ResInfo>::iterator begin, end;
     };
@@ -127,6 +132,8 @@ struct Topo {
         ++e;
       return RGroup{b, e};
     }
+  private:
+    Link make_polymer_link(const ResInfo& ri1, const ResInfo& ri2) const;
   };
 
   template<typename T>
@@ -288,10 +295,28 @@ struct Topo {
 
   void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
     // link restraints
-    for (Link& prev : ri.prev)
-      if (const ChemLink* link = monlib.get_link(prev.link_id)) {
-        auto rules = apply_restraints(link->rt, *prev.res1, ri.res);
-        vector_move_extend(prev.link_rules, std::move(rules));
+    for (Link& link : ri.prev)
+      if (const ChemLink* chem_link = monlib.get_link(link.link_id)) {
+        const Restraints* rt = &chem_link->rt;
+        // aliases are a new and rarely used thing
+        if (link.aliasing1 != ChemComp::Group::Null ||
+            link.aliasing2 != ChemComp::Group::Null) {
+          std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
+          if (link.aliasing1 != ChemComp::Group::Null) {
+            const ChemComp& cc = (&ri + link.res_distance())->chemcomp;
+            for (const auto& p : cc.get_aliasing(link.aliasing1).related)
+              rt_copy->rename_atom(Restraints::AtomId{1, p.first}, p.second);
+          }
+          if (link.aliasing2 != ChemComp::Group::Null) {
+            const ChemComp& cc = ri.chemcomp;
+            for (const auto& p : cc.get_aliasing(link.aliasing2).related)
+              rt_copy->rename_atom(Restraints::AtomId{2, p.first}, p.second);
+          }
+          rt = rt_copy.get();
+          rt_storage.push_back(std::move(rt_copy));
+        }
+        auto rules = apply_restraints(*rt, *link.res1, ri.res);
+        vector_move_extend(link.link_rules, std::move(rules));
       }
     // monomer restraints
     auto rules = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
@@ -371,6 +396,7 @@ struct Topo {
 private:
   void setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                         bool ignore_unknown_links);
+  std::vector<std::unique_ptr<Restraints>> rt_storage;
 };
 
 inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
@@ -390,33 +416,85 @@ inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
     res_infos.emplace_back(&res);
 }
 
-inline std::string Topo::ChainInfo::find_polymer_link_id(const Topo::ResInfo& ri1,
-                                                         const Topo::ResInfo& ri2) const {
+inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
+                                                     const Topo::ResInfo& ri2) const {
+  Link link;
+  link.res1 = ri1.res;
+  link.res2 = ri2.res;
+  assert(&ri1 - &ri2 == link.res_distance());
   if (is_polypeptide(polymer_type)) {
-    if (have_peptide_bond(*ri1.res, *ri2.res) &&
-        ChemComp::is_peptide_group(ri1.chemcomp.group) &&
-        ChemComp::is_peptide_group(ri2.chemcomp.group)) {
+    const Atom* a1 = ri1.res->get_c();
+    const Atom* a2 = ri2.res->get_n();
+    bool groups_ok = true;
+    if (!ChemComp::is_peptide_group(ri1.chemcomp.group)) {
+      for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
+        if (ChemComp::is_peptide_group(aliasing.group)) {
+          link.aliasing1 = aliasing.group;
+          if (const std::string* c = aliasing.name_from_alias("C"))
+            a1 = ri1.res->find_atom(*c, '*', El::C);
+        }
+      if (link.aliasing1 == ChemComp::Group::Null)
+        groups_ok = false;
+    }
+    ChemComp::Group n_terminus_group = ri2.chemcomp.group;
+    if (!ChemComp::is_peptide_group(ri2.chemcomp.group)) {
+      for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
+        if (ChemComp::is_peptide_group(aliasing.group)) {
+          link.aliasing2 = n_terminus_group = aliasing.group;
+          if (const std::string* n = aliasing.name_from_alias("N"))
+            a2 = ri2.res->find_atom(*n, '*', El::N);
+        }
+      if (link.aliasing2 == ChemComp::Group::Null)
+        groups_ok = false;
+    }
+    if (groups_ok && in_peptide_bond_distance(*a1, *a2)) {
       bool is_cis = ri1.res->is_cis;
-      ChemComp::Group n_terminus_group = ri2.chemcomp.group;
       if (n_terminus_group == ChemComp::Group::PPeptide)
-        return is_cis ? "PCIS" : "PTRANS";
-      if (n_terminus_group == ChemComp::Group::MPeptide)
-        return is_cis ? "NMCIS" : "NMTRANS";
-      return is_cis ? "CIS" : "TRANS";
+        link.link_id = is_cis ? "PCIS" : "PTRANS";
+      else if (n_terminus_group == ChemComp::Group::MPeptide)
+        link.link_id = is_cis ? "NMCIS" : "NMTRANS";
+      else
+        link.link_id = is_cis ? "CIS" : "TRANS";
+    } else {
+      link.link_id = "gap";
     }
-    return "gap";
-  }
-
-  if (is_polynucleotide(polymer_type)) {
-    if (have_nucleotide_bond(*ri1.res, *ri2.res) &&
-        ChemComp::is_nucleotide_group(ri1.chemcomp.group) &&
-        ChemComp::is_nucleotide_group(ri2.chemcomp.group)) {
-      return "p";
+  } else if (is_polynucleotide(polymer_type)) {
+    const Atom* a1 = ri1.res->get_o3prim();
+    const Atom* a2 = ri2.res->get_p();
+    bool groups_ok = true;
+    if (!ChemComp::is_nucleotide_group(ri1.chemcomp.group)) {
+      /* disabled for now
+      for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
+        if (ChemComp::is_nucleotide_group(aliasing.group)) {
+          link.aliasing1 = aliasing.group;
+          if (const std::string* o3p = aliasing.name_from_alias("O3'"))
+            a1 = ri1.res->find_atom(*o3p, '*', El::O);
+        }
+      */
+      if (link.aliasing1 == ChemComp::Group::Null)
+        groups_ok = false;
     }
-    return "gap";
+    if (!ChemComp::is_nucleotide_group(ri2.chemcomp.group)) {
+      /* disabled for now
+      for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
+        if (ChemComp::is_nucleotide_group(aliasing.group)) {
+          link.aliasing2 = aliasing.group;
+          if (const std::string* p = aliasing.name_from_alias("P"))
+            a1 = ri1.res->find_atom(*p, '*', El::P);
+        }
+      */
+      if (link.aliasing2 == ChemComp::Group::Null)
+        groups_ok = false;
+    }
+    if (groups_ok && in_nucleotide_bond_distance(*a1, *a2)) {
+      link.link_id = "p";
+    } else {
+      link.link_id = "gap";
+    }
+  } else {
+    link.link_id = "?";
   }
-
-  return "?";
+  return link;
 }
 
 inline void Topo::ChainInfo::setup_polymer_links() {
@@ -426,14 +504,8 @@ inline void Topo::ChainInfo::setup_polymer_links() {
   while (prev_group.end != res_infos.end()) {
     RGroup group = group_from(prev_group.end);
     for (auto ri = group.begin; ri != group.end; ++ri)
-      for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri) {
-        Link p;
-        p.res1 = prev_ri->res;
-        p.res2 = ri->res;
-        assert(prev_ri - ri == p.res1 - p.res2);
-        p.link_id = find_polymer_link_id(*prev_ri, *ri);
-        ri->prev.push_back(p);
-      }
+      for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri)
+        ri->prev.push_back(make_polymer_link(*prev_ri, *ri));
     prev_group = group;
   }
 }
@@ -476,25 +548,25 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
   for (ChainInfo& ci : chain_infos)
     for (ResInfo& ri : ci.res_infos)
       for (Link& prev : ri.prev)
-        if (const ChemLink* link = monlib.get_link(prev.link_id)) {
-          ResInfo* ri_prev = &ri + (prev.res1 - prev.res2);
-          ri_prev->add_mod(link->side1.mod);
-          ri.add_mod(link->side2.mod);
+        if (const ChemLink* chem_link = monlib.get_link(prev.link_id)) {
+          ResInfo* ri_prev = &ri + prev.res_distance();
+          ri_prev->add_mod(chem_link->side1.mod, prev.aliasing1);
+          ri.add_mod(chem_link->side2.mod, prev.aliasing2);
         }
 
   for (ChainInfo& chain_info : chain_infos)
     for (ResInfo& ri : chain_info.res_infos) {
       // apply modifications
-      for (const std::string& modif : ri.mods) {
-        if (const ChemMod* chem_mod = monlib.get_mod(modif))
+      for (const auto& modif : ri.mods) {
+        if (const ChemMod* chem_mod = monlib.get_mod(modif.first))
           try {
-            chem_mod->apply_to(ri.chemcomp);
+            chem_mod->apply_to(ri.chemcomp, modif.second);
           } catch(std::runtime_error& e) {
             err("failed to apply modification " + chem_mod->id
                 + " to " + ri.res->name + ": " + e.what());
           }
         else
-          err("modification not found: " + modif);
+          err("modification not found: " + modif.first);
       }
     }
 }
@@ -563,8 +635,8 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
   if (match) {
     extra.link_id = match->id;
     // add modifications from the link
-    find_resinfo(extra.res1)->add_mod(match->side1.mod);
-    find_resinfo(extra.res2)->add_mod(match->side2.mod);
+    find_resinfo(extra.res1)->add_mod(match->side1.mod, extra.aliasing1);
+    find_resinfo(extra.res2)->add_mod(match->side2.mod, extra.aliasing2);
   } else {
     if (ignore_unknown_links)
       return;

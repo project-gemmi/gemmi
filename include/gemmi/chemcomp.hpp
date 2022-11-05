@@ -250,6 +250,37 @@ struct Restraints {
     planes.push_back(Plane{label, {}, 0.0});
     return planes.back();
   }
+
+  void rename_atom(const AtomId& atom_id, const std::string& new_name) {
+    auto rename_atom = [&](AtomId& id) {
+      if (id == atom_id)
+        id.atom == new_name;
+    };
+    for (Bond& bond : bonds) {
+      rename_atom(bond.id1);
+      rename_atom(bond.id2);
+    }
+    for (Angle& angle : angles) {
+      rename_atom(angle.id1);
+      rename_atom(angle.id2);
+      rename_atom(angle.id3);
+    }
+    for (Torsion& tor : torsions) {
+      rename_atom(tor.id1);
+      rename_atom(tor.id2);
+      rename_atom(tor.id3);
+      rename_atom(tor.id4);
+    }
+    for (Chirality& chir : chirs) {
+      rename_atom(chir.id_ctr);
+      rename_atom(chir.id1);
+      rename_atom(chir.id2);
+      rename_atom(chir.id3);
+    }
+    for (Plane& plane : planes)
+      for (AtomId& id : plane.ids)
+        rename_atom(id);
+  }
 };
 
 template<typename Restr>

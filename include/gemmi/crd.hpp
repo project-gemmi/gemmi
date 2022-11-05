@@ -40,12 +40,15 @@ inline std::string refmac_calc_flag(const Atom& a) {
 }
 
 // Get value of _entity_poly_seq.ccp4_mod_id compatible with makecif.
-inline std::string get_ccp4_mod_id(const std::vector<std::string>& mods) {
-  for (const std::string& m : mods)
+inline std::string get_ccp4_mod_id(
+                const std::vector<std::pair<std::string, ChemComp::Group>>& mods) {
+  for (const auto& p : mods) {
+    const std::string& m = p.first;
     if (!starts_with(m, "DEL-OXT") &&
         !starts_with(m, "DEL-HN") &&
         m != "DEL-NMH")
       return m;
+  }
   return ".";
 }
 
@@ -415,8 +418,12 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
       if (!ri.monomer_rules.empty()) {
         std::string res_info = " monomer " + chain_info.subchain_name + " " +
                                ri.res->seqid.str() + " " + ri.res->name;
-        if (!ri.mods.empty())
-          res_info += " modified by " + join_str(ri.mods, ", ");
+        if (!ri.mods.empty()) {
+          res_info += " modified by ";
+          res_info += ri.mods[0].first;
+          for (size_t i = 1; i != ri.mods.size(); ++i)
+            res_info += ", " + ri.mods[i].first;
+        }
 
         std::string group_str;
         ChemComp::Group group = ri.chemcomp.group;
@@ -491,9 +498,9 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
       for (const Topo::Link& link : res_info.prev)
         if (!in_vector(link.link_id, used_links))
           used_links.push_back(link.link_id);
-      for (const std::string& mod : res_info.mods)
-        if (!in_vector(mod, used_mods))
-          used_mods.push_back(mod);
+      for (const auto& mod_alias : res_info.mods)
+        if (!in_vector(mod_alias.first, used_mods))
+          used_mods.push_back(mod_alias.first);
     }
   for (const Topo::Link& extra : topo.extras)
     if (!in_vector(extra.link_id, used_links))

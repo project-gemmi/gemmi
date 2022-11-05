@@ -104,7 +104,7 @@ struct ChemMod {
   Restraints rt;
   cif::Block block;  // temporary, until we have ChemMod->Block function
 
-  void apply_to(ChemComp& chemcomp) const;
+  void apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const;
 };
 
 
@@ -304,22 +304,31 @@ inline void insert_chemmods_into(const cif::Document& doc,
     }
 }
 
-inline void ChemMod::apply_to(ChemComp& chemcomp) const {
+inline void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
+  auto real = [&chemcomp, alias_group, this](const std::string& atom_id) -> const std::string& {
+    if (alias_group != ChemComp::Group::Null) {
+      const ChemComp::Aliasing& aliasing = chemcomp.get_aliasing(alias_group);
+      if (const std::string* real_id = aliasing.name_from_alias(atom_id))
+        return *real_id;
+    }
+    return atom_id;
+  };
   // _chem_mod_atom
   for (const AtomMod& mod : atom_mods) {
-    auto it = chemcomp.find_atom(mod.old_id);
+    if (mod.func == 'a') {
+      if (!chemcomp.has_atom(real(mod.new_id)))
+        chemcomp.atoms.push_back({mod.new_id, mod.el,
+                                  std::isnan(mod.charge) ? mod.charge : 0,
+                                  mod.chem_type});
+      continue;
+    }
+    const std::string& old = real(mod.old_id);
+    auto it = chemcomp.find_atom(old);
     switch (mod.func) {
-      case 'a':
-        if (!chemcomp.has_atom(mod.new_id))
-          chemcomp.atoms.push_back({mod.new_id, mod.el,
-                                    std::isnan(mod.charge) ? mod.charge : 0,
-                                    mod.chem_type});
-        break;
       case 'd':
         if (it != chemcomp.atoms.end()) {
           chemcomp.atoms.erase(it);
           // delete restraints containing mod.old_id
-          const std::string& old = mod.old_id;
           vector_remove_if(chemcomp.rt.bonds, [&](const Restraints::Bond& b) {
               return b.id1 == old || b.id2 == old;
           });
@@ -344,8 +353,9 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
         break;
       case 'c':
         if (it != chemcomp.atoms.end()) {
-          if (!mod.new_id.empty())
-            it->id = mod.new_id;
+          // the modification shouln't change the atom name, so we don't do:
+          // if (!mod.new_id.empty())
+          //   it->id = mod.new_id;
           if (mod.el != El::X)
             it->el = mod.el;
           if (!std::isnan(mod.charge))
@@ -359,7 +369,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
   // _chem_mod_bond
   for (const Restraints::Bond& mod : rt.bonds) {
-    auto it = chemcomp.rt.find_bond(mod.id1.atom, mod.id2.atom);
+    auto it = chemcomp.rt.find_bond(real(mod.id1.atom), real(mod.id2.atom));
     switch (mod.id1.comp) {
       case 'a':
         if (it == chemcomp.rt.bonds.end()) {
@@ -391,7 +401,9 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
   // _chem_mod_angle
   for (const Restraints::Angle& mod : rt.angles) {
-    auto it = chemcomp.rt.find_angle(mod.id1.atom, mod.id2.atom, mod.id3.atom);
+    auto it = chemcomp.rt.find_angle(real(mod.id1.atom),
+                                     real(mod.id2.atom),
+                                     real(mod.id3.atom));
     switch (mod.id1.comp) {
       case 'a':
         if (it == chemcomp.rt.angles.end()) {
@@ -416,8 +428,8 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
   // _chem_mod_tor
   for (const Restraints::Torsion& mod : rt.torsions) {
-    auto it = chemcomp.rt.find_torsion(mod.id1.atom, mod.id2.atom,
-                                       mod.id3.atom, mod.id4.atom);
+    auto it = chemcomp.rt.find_torsion(real(mod.id1.atom), real(mod.id2.atom),
+                                       real(mod.id3.atom), real(mod.id4.atom));
     switch (mod.id1.comp) {
       case 'a':
         if (it == chemcomp.rt.torsions.end()) {
@@ -446,8 +458,8 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
 
   // _chem_mod_chir
   for (const Restraints::Chirality& mod : rt.chirs) {
-    auto it = chemcomp.rt.find_chir(mod.id_ctr.atom, mod.id1.atom,
-                                    mod.id2.atom, mod.id3.atom);
+    auto it = chemcomp.rt.find_chir(real(mod.id_ctr.atom), real(mod.id1.atom),
+                                    real(mod.id2.atom), real(mod.id3.atom));
     switch (mod.id1.comp) {
       case 'a':
         if (it == chemcomp.rt.chirs.end()) {
@@ -469,17 +481,18 @@ inline void ChemMod::apply_to(ChemComp& chemcomp) const {
   // _chem_mod_plane_atom
   for (const Restraints::Plane& mod : rt.planes)
     for (const Restraints::AtomId& atom_id : mod.ids) {
+      const std::string& real_id = real(atom_id.atom);
       if (atom_id.comp == 'a') {
         Restraints::Plane& plane = chemcomp.rt.get_or_add_plane(mod.label);
         if (plane.esd == 0.0 && !std::isnan(mod.esd))
           plane.esd = mod.esd;
-        auto it = std::find(plane.ids.begin(), plane.ids.end(), atom_id.atom);
+        auto it = std::find(plane.ids.begin(), plane.ids.end(), real_id);
         if (it == plane.ids.end())
-          plane.ids.push_back({1, atom_id.atom});
+          plane.ids.push_back({1, real_id});
       } else if (atom_id.comp == 'd') {
         auto it = chemcomp.rt.get_plane(mod.label);
         if (it != chemcomp.rt.planes.end()) {
-          auto item = std::find(it->ids.begin(), it->ids.end(), atom_id.atom);
+          auto item = std::find(it->ids.begin(), it->ids.end(), real_id);
           if (item != it->ids.end())
             it->ids.erase(item);
         }
