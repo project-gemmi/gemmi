@@ -84,6 +84,22 @@ void add_mol(py::module& m) {
 
   py::bind_map<info_map_type>(m, "InfoMap");
 
+  py::class_<CRA>(m, "CRA")
+    .def_readonly("chain", &CRA::chain)
+    .def_readonly("residue", &CRA::residue)
+    .def_readonly("atom", &CRA::atom)
+    .def("atom_matches", [](const CRA& self, const AtomAddress& addr) {
+        return atom_matches(self, addr);
+    })
+    .def("__str__", [](const CRA& self) { return atom_str(self); })
+    .def("__repr__", [](const CRA& self) {
+        return tostr("<gemmi.CRA ", atom_str(self), '>');
+    });
+
+  py::class_<CraProxy>(m, "CraGenerator")
+    .def("__iter__", [](CraProxy& self) { return py::make_iterator(self); },
+         py::keep_alive<0, 1>());
+
   py::class_<Structure> structure(m, "Structure");
   structure
     .def(py::init<>())
@@ -168,22 +184,6 @@ void add_mol(py::module& m) {
     });
     add_assign_label_seq_id(structure);
     add_write(m, structure);
-
-  py::class_<CRA>(m, "CRA")
-    .def_readonly("chain", &CRA::chain)
-    .def_readonly("residue", &CRA::residue)
-    .def_readonly("atom", &CRA::atom)
-    .def("atom_matches", [](const CRA& self, const AtomAddress& addr) {
-        return atom_matches(self, addr);
-    })
-    .def("__str__", [](const CRA& self) { return atom_str(self); })
-    .def("__repr__", [](const CRA& self) {
-        return tostr("<gemmi.CRA ", atom_str(self), '>');
-    });
-
-  py::class_<CraProxy>(m, "CraGenerator")
-    .def("__iter__", [](CraProxy& self) { return py::make_iterator(self); },
-         py::keep_alive<0, 1>());
 
   pyModel
     .def(py::init<std::string>())
