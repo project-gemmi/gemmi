@@ -430,6 +430,18 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
               }
             }
           }
+        } else {
+          // Special handling of Deuterium - mostly for Refmac.
+          // Note: if the model has deuterium, it gets modfied.
+          if (replace_deuterium_with_fraction(res)) {
+            // deuterium names usually differ from the names in dictionary
+            for (Atom& atom : res.atoms) {
+              if (atom.name[0] == 'D' && atom.fraction != 0 &&
+                  cc.find_atom(atom.name) == cc.atoms.end())
+                atom.name[0] = 'H';
+            }
+            st.has_d_fraction = true;
+          }
         }
         if (reorder) {
           for (Atom& atom : res.atoms) {

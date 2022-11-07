@@ -146,40 +146,44 @@ inline void expand_hd_mixture(Structure& st) {
   st.has_d_fraction = false;
 }
 
+inline bool replace_deuterium_with_fraction(Residue& res) {
+  bool found = false;
+  for (auto d = res.atoms.end(); d-- != res.atoms.begin(); )
+    if (d->element == El::D) {
+      found = true;
+      auto h = res.atoms.begin();
+      for (; h != res.atoms.end(); ++h)
+        if (h->element == El::H && h->pos.approx(d->pos, 1e-9))
+          break;
+      if (h != res.atoms.end()) {
+        h->occ += d->occ;
+        h->fraction = h->occ > 0.f ? d->occ / h->occ : 0.f;
+        if (h->altloc) {
+          bool keep_altloc = false;
+          for (auto i = res.atoms.begin(); i != res.atoms.end(); ++i)
+            if (i != d && i != h && (i->name == h->name || i->name == d->name))
+              keep_altloc = true;
+          if (!keep_altloc)
+            h->altloc = '\0';
+        }
+        res.atoms.erase(d);
+      } else {
+        d->element = El::H;
+        d->fraction = 1;
+      }
+    }
+  return found;
+}
+
 /// Switch H/D altlocs at the same position to H w/ ccp4_deuterium_fraction.
 inline void collapse_hd_mixture(Structure& st) {
   if (st.has_d_fraction)
     return;
-  bool is_set = false;
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (Residue& res : chain.residues)
-        for (auto d = res.atoms.end(); d-- != res.atoms.begin(); )
-          if (d->element == El::D) {
-            is_set = true;
-            auto h = res.atoms.begin();
-            for (; h != res.atoms.end(); ++h)
-              if (h->element == El::H && h->pos.approx(d->pos, 1e-9))
-                break;
-            if (h != res.atoms.end()) {
-              h->occ += d->occ;
-              h->fraction = h->occ > 0.f ? d->occ / h->occ : 0.f;
-              if (h->altloc) {
-                bool keep_altloc = false;
-                for (auto i = res.atoms.begin(); i != res.atoms.end(); ++i)
-                  if (i != d && i != h && (i->name == h->name || i->name == d->name))
-                    keep_altloc = true;
-                if (!keep_altloc)
-                  h->altloc = '\0';
-              }
-              res.atoms.erase(d);
-            } else {
-              d->element = El::H;
-              d->fraction = 1;
-            }
-          }
-  if (is_set)
-    st.has_d_fraction = true;
+        if (replace_deuterium_with_fraction(res))
+          st.has_d_fraction = true;
 }
 
 } // namespace gemmi
