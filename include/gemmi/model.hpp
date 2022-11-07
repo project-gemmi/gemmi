@@ -109,7 +109,7 @@ struct Atom {
   char flag = '\0';  // a custom flag
   short tls_group_id = -1;
   int serial = 0;
-  float mixture = 1.f;  // custom value, one use is Refmac's ccp4_hd_mixture
+  float fraction = 0.f;  // custom value, one use is Refmac's ccp4_deuterium_fraction
   Position pos;
   float occ = 1.0f;
   // ADP - in MX it's usual to give isotropic ADP as B and anisotropic as U
@@ -860,7 +860,7 @@ struct Structure {
   Metadata meta;
 
   CoorFormat input_format = CoorFormat::Unknown;
-  bool has_hd_mixture = false;  // uses Refmac's ccp4_hd_mixture
+  bool has_d_fraction = false;  // uses Refmac's ccp4_deuterium_fraction
 
   // Store ORIGXn / _database_PDB_matrix.origx*
   bool has_origx = false;

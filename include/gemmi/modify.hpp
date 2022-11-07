@@ -104,19 +104,25 @@ inline void assign_serial_numbers(Structure& st) {
     assign_serial_numbers(model);
 }
 
-
+/// Hydrogens modelled as H/D mixture (altlocs H and D with the same position
+/// and ADP, but with refined fraction of D), it can be stored in a file either
+/// as two atoms (H and D) or, using CCP4/Refmac extension, as H atoms with
+/// the ccp4_deuterium_fraction parameter.
+/// This function switches fraction -> altlocs
 inline void expand_hd_mixture(Structure& st) {
-  if (!st.has_hd_mixture)
+  if (!st.has_d_fraction)
     return;
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (Residue& res : chain.residues)
         for (size_t i = res.atoms.size(); i-- != 0; ) {
           Atom& atom = res.atoms[i];
-          float hd_mixture = atom.mixture;
-          if (atom.element == El::H && hd_mixture < 1) {
-            if (hd_mixture <= 0) {
+          float d_fraction = atom.fraction;
+          if (atom.element == El::H && d_fraction > 0) {
+            if (d_fraction >= 1) {
               atom.element = El::D;
+              if (atom.name[0] == 'H')
+                atom.name[0] = 'D';
             } else {
               int alt_offset = atom.altloc;
               if (alt_offset) {
@@ -126,44 +132,54 @@ inline void expand_hd_mixture(Structure& st) {
                   continue;
               }
               atom.altloc = 'A' + alt_offset;
-              float d_occ = atom.occ * (1 - hd_mixture);
-              atom.occ *= hd_mixture;
+              float d_occ = atom.occ * d_fraction;
+              atom.occ *= (1 - d_fraction);
               auto deut = res.atoms.insert(res.atoms.begin() + i + 1, atom);
               deut->altloc = 'D' + alt_offset;
               deut->element = El::D;
               deut->occ = d_occ;
+              if (deut->name[0] == 'H')
+                deut->name[0] = 'D';
             }
           }
         }
-  st.has_hd_mixture = false;
+  st.has_d_fraction = false;
 }
 
+/// Switch H/D altlocs at the same position to H w/ ccp4_deuterium_fraction.
 inline void collapse_hd_mixture(Structure& st) {
-  if (st.has_hd_mixture)
+  if (st.has_d_fraction)
     return;
   bool is_set = false;
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (Residue& res : chain.residues)
-        for (auto a = res.atoms.end(); a-- != res.atoms.begin(); )
-          if (a->element == El::D) {
+        for (auto d = res.atoms.end(); d-- != res.atoms.begin(); )
+          if (d->element == El::D) {
             is_set = true;
-            if (a != res.atoms.begin() && (a-1)->element == El::H &&
-                a->name.compare(1, std::string::npos,
-                                (a-1)->name, 1, std::string::npos) == 0) {
-              float occ_total = (a-1)->occ + a->occ;
-              (a-1)->mixture = occ_total > 0.f ? (a-1)->occ / occ_total : 1.f;
-              (a-1)->occ = occ_total;
-              res.atoms.erase(a--);
-              if (a->altloc == 'A' && (a+1 == res.atoms.end() || (a+1)->name != a->name))
-                a->altloc = '\0';
+            auto h = res.atoms.begin();
+            for (; h != res.atoms.end(); ++h)
+              if (h->element == El::H && h->pos.approx(d->pos, 1e-9))
+                break;
+            if (h != res.atoms.end()) {
+              h->occ += d->occ;
+              h->fraction = h->occ > 0.f ? d->occ / h->occ : 0.f;
+              if (h->altloc) {
+                bool keep_altloc = false;
+                for (auto i = res.atoms.begin(); i != res.atoms.end(); ++i)
+                  if (i != d && i != h && (i->name == h->name || i->name == d->name))
+                    keep_altloc = true;
+                if (!keep_altloc)
+                  h->altloc = '\0';
+              }
+              res.atoms.erase(d);
             } else {
-              a->element = El::H;
-              a->mixture = 0.;
-              a->name[0] = 'H';
+              d->element = El::H;
+              d->fraction = 1;
             }
           }
-  if (is_set) st.has_hd_mixture = true;
+  if (is_set)
+    st.has_d_fraction = true;
 }
 
 } // namespace gemmi

@@ -230,7 +230,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       "Cartn_y",
       "Cartn_z",
       "occupancy",
-      "ccp4_hd_mixture",  // tags[11]
+      "ccp4_deuterium_fraction",  // tags[11]
       "B_iso_or_equiv",
       "type_symbol",
       "calc_flag",
@@ -264,7 +264,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(to_str(a.pos.y));
         vv.emplace_back(to_str(a.pos.z));
         vv.emplace_back(to_str(a.occ));
-        vv.emplace_back(st.has_hd_mixture ? to_str(a.mixture) : "1");
+        vv.emplace_back(st.has_d_fraction ? to_str(a.fraction) : "0");
         vv.emplace_back(to_str(a.b_iso));
         std::string type_symbol = cc_atom.el.uname();
         if (a.charge != 0) {

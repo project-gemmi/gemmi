@@ -480,7 +480,7 @@ void add_mol(py::module& m) {
     .def_readwrite("b_iso", &Atom::b_iso)
     .def_readwrite("aniso", &Atom::aniso)
     .def_readwrite("serial", &Atom::serial)
-    .def_readwrite("mixture", &Atom::mixture)
+    .def_readwrite("fraction", &Atom::fraction)
     .def_readwrite("calc_flag", &Atom::calc_flag)
     .def_readwrite("flag", &Atom::flag)
     .def_readwrite("tls_group_id", &Atom::tls_group_id)

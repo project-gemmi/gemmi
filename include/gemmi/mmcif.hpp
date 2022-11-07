@@ -636,7 +636,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
          kLabelAsymId, kLabelEntityId, kLabelSeqId, kInsCode,
          kX, kY, kZ, kOcc, kBiso, kCharge,
          kAuthSeqId, kAuthCompId, kAuthAsymId, kAuthAtomId, kModelNum,
-         kCalcFlag, kTlsGroupId, kHdMixture };
+         kCalcFlag, kTlsGroupId, kDeuterium };
   cif::Table atom_table = block.find("_atom_site.",
                                      {"id",
                                       "?group_PDB",
@@ -661,7 +661,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
                                       "?pdbx_PDB_model_num",
                                       "?calc_flag",
                                       "?pdbx_tls_group_id",
-                                      "?ccp4_hd_mixture",
+                                      "?ccp4_deuterium_fraction",
                                      });
   if (atom_table.length() != 0) {
     const int kAsymId = atom_table.first_of(kAuthAsymId, kLabelAsymId);
@@ -673,7 +673,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
     if (!atom_table.has_column(kAtomId))
       fail("Neither _atom_site.label_atom_id nor auth_atom_id found");
 
-    st.has_hd_mixture = atom_table.has_column(kHdMixture);
+    st.has_d_fraction = atom_table.has_column(kDeuterium);
 
     Model *model = nullptr;
     Chain *chain = nullptr;
@@ -724,8 +724,8 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
       // but in all the files it is a serial number; its value is not essential,
       // so we just ignore non-integer ids.
       atom.serial = string_to_int(row[kId], false);
-      if (st.has_hd_mixture)
-        atom.mixture = (float) cif::as_number(row[kHdMixture], 1.0);
+      if (st.has_d_fraction)
+        atom.fraction = (float) cif::as_number(row[kDeuterium], 0.);
       if (row.has2(kCalcFlag)) {
         const std::string& cf = row[kCalcFlag];
         if (cf[0] == 'c')
