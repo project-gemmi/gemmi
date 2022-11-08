@@ -20,11 +20,50 @@ enum class Style {
   Aligned,      // columns in tables are left-aligned
 };
 
+/// std::ostream with buffering. C++ streams are so slow that even primitive
+/// buffering makes it significantly more efficient.
+class BufOstream {
+public:
+  explicit BufOstream(std::ostream& os_) : os(os_), ptr(buf) {}
+  ~BufOstream() { flush(); }
+  void flush() {
+    os.write(buf, ptr - buf);
+    ptr = buf;
+  }
+  void write(const char* s, size_t len) {
+    if (ptr - buf + len > sizeof(buf) - 512) {
+      flush();
+      if (len > sizeof(buf) - 512) {
+        os.write(s, len);
+        return;
+      }
+    }
+    std::memcpy(ptr, s, len);
+    ptr += len;
+  }
+  void operator<<(const std::string& s) {
+    write(s.c_str(), s.size());
+  }
+  // below we don't check the buffer boundary, these functions add <512 bytes
+  void put(char c) {
+    *ptr++ = c;
+  }
+  void pad(size_t n) {
+    std::memset(ptr, ' ', n);
+    ptr += n;
+  }
+private:
+  std::ostream& os;
+  // increasing buffer to 8kb or 64kb doesn't make significant difference
+  char buf[1024];
+  char* ptr;
+};
+
 // CIF files are read in binary mode. It makes difference only for text fields.
 // If the text field with \r\n would be written as is in text mode on Windows
 // \r would get duplicated. As a workaround, here we convert \r\n to \n.
 // Hopefully \r that gets removed here is never meaningful.
-inline void write_text_field(std::ostream& os, const std::string& value) {
+inline void write_text_field(BufOstream& os, const std::string& value) {
   for (size_t pos = 0, end = 0; end != std::string::npos; pos = end + 1) {
     end = value.find("\r\n", pos);
     size_t len = (end == std::string::npos ? value.size() : end) - pos;
@@ -32,7 +71,7 @@ inline void write_text_field(std::ostream& os, const std::string& value) {
   }
 }
 
-inline void write_out_pair(std::ostream& os, const std::string& name,
+inline void write_out_pair(BufOstream& os, const std::string& name,
                            const std::string& value, Style style) {
   os << name;
   if (is_text_field(value)) {
@@ -42,7 +81,7 @@ inline void write_out_pair(std::ostream& os, const std::string& name,
     if (name.size() + value.size() > 120)
       os.put('\n');
     else if ((style == Style::Indent35 || style == Style::Aligned) && name.size() < 34)
-      os.write("                                  ", 34 - name.size());
+      os.pad(34 - name.size());
     else
       os.put(' ');
     os << value;
@@ -50,8 +89,8 @@ inline void write_out_pair(std::ostream& os, const std::string& name,
   os.put('\n');
 }
 
-inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
-  constexpr size_t max_padding = 30;  // if increased, adjust os.write() below
+inline void write_out_loop(BufOstream& os, const Loop& loop, Style style) {
+  constexpr size_t max_padding = 30;
   if (loop.values.empty())
     return;
   if ((style == Style::PreferPairs || style == Style::Pdbx) &&
@@ -61,9 +100,11 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
     return;
   }
   // tags
-  os << "loop_";
-  for (const std::string& tag : loop.tags)
-    os << '\n' << tag;
+  os.write("loop_", 5);
+  for (const std::string& tag : loop.tags) {
+    os.put('\n');
+    os << tag;
+  }
   // values
   size_t ncol = loop.tags.size();
 
@@ -93,7 +134,7 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
       os << val;
     if (col != ncol - 1) {
       if (!col_width.empty() && val.size() < col_width[col])
-        os.write("                                  ", col_width[col] - val.size());
+        os.pad(col_width[col] - val.size());
       ++col;
     } else {
       col = 0;
@@ -103,7 +144,7 @@ inline void write_out_loop(std::ostream& os, const Loop& loop, Style style) {
   os.put('\n');
 }
 
-inline void write_out_item(std::ostream& os, const Item& item, Style style) {
+inline void write_out_item(BufOstream& os, const Item& item, Style style) {
   switch (item.type) {
     case ItemType::Pair:
       write_out_pair(os, item.pair[0], item.pair[1], style);
@@ -112,13 +153,16 @@ inline void write_out_item(std::ostream& os, const Item& item, Style style) {
       write_out_loop(os, item.loop, style);
       break;
     case ItemType::Frame:
-      os << "save_" << item.frame.name << '\n';
+      os.write("save_", 5);
+      os << item.frame.name;
+      os.put('\n');
       for (const Item& inner_item : item.frame.items)
         write_out_item(os, inner_item, style);
-      os << "save_\n";
+      os.write("save_\n", 6);
       break;
     case ItemType::Comment:
-      os << item.pair[1] << '\n';
+      os << item.pair[1];
+      os.put('\n');
       break;
     case ItemType::Erased:
       break;
@@ -138,22 +182,28 @@ inline bool should_be_separated_(const Item& a, const Item& b) {
   return adot != bdot || a.pair[0].compare(0, adot, b.pair[0], 0, adot) != 0;
 }
 
-inline void write_cif_block_to_stream(std::ostream& os, const Block& block,
+inline void write_cif_block_to_stream(std::ostream& os_, const Block& block,
                                       Style style=Style::Simple) {
-  os << "data_" << block.name << '\n';
+  BufOstream os(os_);
+  os.write("data_", 5);
+  os << block.name;
+  os.put('\n');
   if (style == Style::Pdbx)
-    os << "#\n";
+    os.write("#\n", 2);
   const Item* prev = nullptr;
-  for (const Item& item : block.items)
-    if (item.type != ItemType::Erased) {
-      if (prev && style != Style::NoBlankLines &&
-          should_be_separated_(*prev, item))
-        os << (style == Style::Pdbx ? "#\n" : "\n");
-      write_out_item(os, item, style);
-      prev = &item;
+  for (const Item& item : block.items) {
+    if (item.type == ItemType::Erased)
+      continue;
+    if (prev && style != Style::NoBlankLines && should_be_separated_(*prev, item)) {
+      if (style == Style::Pdbx)
+        os.put('#');
+      os.put('\n');
     }
+    write_out_item(os, item, style);
+    prev = &item;
+  }
   if (style == Style::Pdbx)
-    os << "#\n";
+    os.write("#\n", 2);
 }
 
 inline void write_cif_to_stream(std::ostream& os, const Document& doc,
