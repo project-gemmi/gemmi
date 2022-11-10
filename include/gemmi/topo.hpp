@@ -305,12 +305,12 @@ struct Topo {
           if (link.aliasing1 != ChemComp::Group::Null) {
             const ChemComp& cc = (&ri + link.res_distance())->chemcomp;
             for (const auto& p : cc.get_aliasing(link.aliasing1).related)
-              rt_copy->rename_atom(Restraints::AtomId{1, p.first}, p.second);
+              rt_copy->rename_atom(Restraints::AtomId{1, p.second}, p.first);
           }
           if (link.aliasing2 != ChemComp::Group::Null) {
             const ChemComp& cc = ri.chemcomp;
             for (const auto& p : cc.get_aliasing(link.aliasing2).related)
-              rt_copy->rename_atom(Restraints::AtomId{2, p.first}, p.second);
+              rt_copy->rename_atom(Restraints::AtomId{2, p.second}, p.first);
           }
           rt = rt_copy.get();
           rt_storage.push_back(std::move(rt_copy));

@@ -254,7 +254,7 @@ struct Restraints {
   void rename_atom(const AtomId& atom_id, const std::string& new_name) {
     auto rename_atom = [&](AtomId& id) {
       if (id == atom_id)
-        id.atom == new_name;
+        id.atom = new_name;
     };
     for (Bond& bond : bonds) {
       rename_atom(bond.id1);
