@@ -465,26 +465,22 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
     std::string p = "P";
     bool groups_ok = true;
     if (!ChemComp::is_nucleotide_group(ri1.chemcomp.group)) {
-      /* disabled for now
       for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
           if (const std::string* o3p_ptr = aliasing.name_from_alias(o3p))
             o3p = *o3p_ptr;
         }
-      */
       if (link.aliasing1 == ChemComp::Group::Null)
         groups_ok = false;
     }
     if (!ChemComp::is_nucleotide_group(ri2.chemcomp.group)) {
-      /* disabled for now
       for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing2 = aliasing.group;
           if (const std::string* p_ptr = aliasing.name_from_alias(p))
             p = *p_ptr;
         }
-      */
       if (link.aliasing2 == ChemComp::Group::Null)
         groups_ok = false;
     }
