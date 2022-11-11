@@ -68,13 +68,8 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
 inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
   ChemComp cc;
   cc.name = res.name;
-  // cf. is_peptide_group(), is_nucleotide_group(), is_ad_hoc()
-  if (res.get_ca())
-    cc.type_or_group = "?-peptide";
-  else if (res.get_p())
-    cc.type_or_group = "?NA";
-  else
-    cc.type_or_group = "?";
+  cc.type_or_group = "?";  // cf. is_ad_hoc()
+  cc.group = ChemComp::Group::Null;
   // add atoms
   cc.atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
@@ -88,16 +83,45 @@ inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
     double dist;
   };
   std::vector<Pair> pairs;
+  // first heavy atoms only
   for (size_t i = 0; i != res.atoms.size(); ++i) {
-    float r1 = res.atoms[i].element.covalent_r();
+    const Atom& at1 = res.atoms[i];
+    if (at1.is_hydrogen())
+      continue;
+    float r1 = at1.element.covalent_r();
     for (size_t j = i+1; j != res.atoms.size(); ++j) {
-      double d2 = res.atoms[i].pos.dist_sq(res.atoms[j].pos);
-      float r2 = res.atoms[j].element.covalent_r();
-      double dmax = std::max(2.1, 1.3 * std::max(r1, r2));
+      const Atom& at2 = res.atoms[j];
+      if (at2.is_hydrogen())
+        continue;
+      double d2 = at1.pos.dist_sq(at2.pos);
+      float r2 = at2.element.covalent_r();
+      double dmax = std::max(2.0, 1.3 * std::max(r1, r2));
       if (d2 < sq(dmax))
         pairs.push_back(Pair{i, j, std::sqrt(d2)});
     }
   }
+  // now each hydrogen with the nearest heavy atom
+  for (size_t i = 0; i != res.atoms.size(); ++i) {
+    const Atom& at1 = res.atoms[i];
+    if (at1.is_hydrogen()) {
+      size_t nearest = (size_t)-1;
+      double min_d2 = sq(2.5);
+      for (size_t j = 0; j != res.atoms.size(); ++j) {
+        const Atom& at2 = res.atoms[j];
+        if (!at2.is_hydrogen()) {
+          double d2 = at1.pos.dist_sq(at2.pos);
+          if (d2 < min_d2) {
+            min_d2 = d2;
+            nearest = j;
+          }
+        }
+      }
+      if (nearest != (size_t)-1) {
+        pairs.push_back(Pair{nearest, i, std::sqrt(min_d2)});
+      }
+    }
+  }
+
   // add bonds
   for (const Pair& p : pairs) {
     Restraints::Bond bond;
@@ -119,8 +143,6 @@ inline ChemComp make_chemcomp_with_restraints(const Residue& res) {
     for (size_t j = i+1; j != pairs.size(); ++j) {
       if (pairs[i].n1 == pairs[j].n1)
         triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n2});
-      // i.n1 != j.n2 becuause i.n1 <= j.n1 < j.n2
-      // but just in case, let it stay for now
       else if (pairs[i].n1 == pairs[j].n2)
         triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n1});
       else if (pairs[i].n2 == pairs[j].n1)
