@@ -248,7 +248,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
 
   for (const Topo::ChainInfo& chain_info : topo.chain_infos)
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
-      const ChemComp& cc = ri.chemcomp;
+      const ChemComp& cc = *ri.final_chemcomp;
       const Residue& res = *ri.res;
       std::string auth_seq_id = res.seqid.str();
       for (const Atom& a : res.atoms) {
@@ -426,7 +426,7 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
         }
 
         std::string group_str;
-        ChemComp::Group group = ri.chemcomp.group;
+        ChemComp::Group group = ri.final_chemcomp->group;
         if (ChemComp::is_peptide_group(group))
           group_str = "L-peptid";  // we try to be compatible with Refmac
         else if (group == ChemComp::Group::NonPolymer)
@@ -480,8 +480,9 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
   doc.blocks.emplace_back("for_refmac_mmcif");
   std::vector<std::string> resnames = st.models.at(0).get_all_residue_names();
   for (const std::string& resname : resnames) {
-    const ChemComp& cc = monlib.monomers.at(resname);
-    if (!cc.is_ad_hoc()) {
+    auto it = monlib.monomers.find(resname);
+    if (it != monlib.monomers.end()) {
+      const ChemComp& cc = it->second;
       doc.blocks.emplace_back(cc.name);
       cif::Block& block = doc.blocks.back();
       block.items.emplace_back("_chem_comp.id", cc.name);

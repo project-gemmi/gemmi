@@ -184,5 +184,4 @@ void add_chemcomp(py::module& m) {
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
   m.def("add_chemcomp_to_block", &add_chemcomp_to_block);
-  m.def("make_chemcomp_with_restraints", &make_chemcomp_with_restraints);
 }

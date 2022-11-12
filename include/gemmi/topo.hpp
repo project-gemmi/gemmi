@@ -8,6 +8,7 @@
 #include <map>           // for multimap
 #include <ostream>       // for ostream
 #include <memory>        // for unique_ptr
+#include <unordered_map> // for unordered_map
 #include "chemcomp.hpp"  // for ChemComp
 #include "monlib.hpp"    // for MonLib
 #include "model.hpp"     // for Residue, Atom
@@ -102,13 +103,27 @@ struct Topo {
     // in case of microheterogeneity we may have 2+ previous residues
     std::vector<Link> prev;
     std::vector<std::pair<std::string, ChemComp::Group>> mods;
-    ChemComp chemcomp;
+    // Pointer to ChemComp in MonLib::monomers.
+    const ChemComp* orig_chemcomp = nullptr;
+    // Pointer to restraints with modifications applied (if any)
+    const ChemComp* final_chemcomp = nullptr;
     std::vector<Rule> monomer_rules;
 
     ResInfo(Residue* r) : res(r) {}
     void add_mod(const std::string& m, ChemComp::Group aliasing) {
       if (!m.empty())
         mods.emplace_back(m, aliasing);
+    }
+
+    // key for Topo::cc_cache, based on ChemComp::name + modifications
+    std::string cc_cache_key() const {
+      assert(orig_chemcomp != nullptr);
+      std::string key = orig_chemcomp->name;
+      for (const auto& modif : mods) {
+        key += char(1 + static_cast<int>(modif.second));
+        key += modif.first;
+      }
+      return key;
     }
   };
 
@@ -293,22 +308,22 @@ struct Topo {
     return rules;
   }
 
-  void apply_restraints_to_residue(ResInfo& ri, const MonLib& monlib) {
+  void apply_restraints_from_resinfo(ResInfo& ri, const MonLib& monlib) {
     // link restraints
     for (Link& link : ri.prev)
       if (const ChemLink* chem_link = monlib.get_link(link.link_id)) {
         const Restraints* rt = &chem_link->rt;
-        // aliases are a new and rarely used thing
+        // aliases are a new feature - introduced in 2022
         if (link.aliasing1 != ChemComp::Group::Null ||
             link.aliasing2 != ChemComp::Group::Null) {
           std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
           if (link.aliasing1 != ChemComp::Group::Null) {
-            const ChemComp& cc = (&ri + link.res_distance())->chemcomp;
+            const ChemComp& cc = *(&ri + link.res_distance())->orig_chemcomp;
             for (const auto& p : cc.get_aliasing(link.aliasing1).related)
               rt_copy->rename_atom(Restraints::AtomId{1, p.second}, p.first);
           }
           if (link.aliasing2 != ChemComp::Group::Null) {
-            const ChemComp& cc = ri.chemcomp;
+            const ChemComp& cc = *ri.orig_chemcomp;
             for (const auto& p : cc.get_aliasing(link.aliasing2).related)
               rt_copy->rename_atom(Restraints::AtomId{2, p.second}, p.first);
           }
@@ -319,11 +334,11 @@ struct Topo {
         vector_move_extend(link.link_rules, std::move(rules));
       }
     // monomer restraints
-    auto rules = apply_restraints(ri.chemcomp.rt, *ri.res, nullptr);
+    auto rules = apply_restraints(ri.final_chemcomp->rt, *ri.res, nullptr);
     vector_move_extend(ri.monomer_rules, std::move(rules));
   }
 
-  void apply_restraints_to_extra_link(Link& link, const MonLib& monlib) {
+  void apply_restraints_from_extra_link(Link& link, const MonLib& monlib) {
     const ChemLink* cl = monlib.get_link(link.link_id);
     if (!cl) {
       err("ignoring link '" + link.link_id + "' as it is not in the monomer library");
@@ -349,9 +364,9 @@ struct Topo {
   void finalize_refmac_topology(const MonLib& monlib) {
     for (ChainInfo& chain_info : chain_infos)
       for (ResInfo& ri : chain_info.res_infos)
-        apply_restraints_to_residue(ri, monlib);
+        apply_restraints_from_resinfo(ri, monlib);
     for (Link& link : extras)
-      apply_restraints_to_extra_link(link, monlib);
+      apply_restraints_from_extra_link(link, monlib);
 
     // create indices
     for (Bond& bond : bonds) {
@@ -396,8 +411,115 @@ struct Topo {
 private:
   void setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                         bool ignore_unknown_links);
+  // storage for link restraints modified by aliases
   std::vector<std::unique_ptr<Restraints>> rt_storage;
+  // cache for ChemComps after applying modifications
+  std::unordered_map<std::string, std::unique_ptr<ChemComp>> cc_cache;
+  // storage for ad-hoc ChemComps (placeholders for those missing in MonLib)
+  std::vector<std::unique_ptr<ChemComp>> cc_storage;
 };
+
+
+inline std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
+  std::unique_ptr<ChemComp> cc(new ChemComp());
+  cc->name = res.name;
+  cc->type_or_group = "?";
+  cc->group = ChemComp::Group::Null;
+  // add atoms
+  cc->atoms.reserve(res.atoms.size());
+  for (const Atom& a : res.atoms) {
+    Element el = a.element == El::X ? Element(El::N) : a.element;
+    const std::string& chem_type = el.uname();
+    cc->atoms.push_back(ChemComp::Atom{a.name, el, float(a.charge), chem_type});
+  }
+  // prepare pairs of atoms
+  struct Pair {
+    size_t n1, n2;
+    double dist;
+  };
+  std::vector<Pair> pairs;
+  // first heavy atoms only
+  for (size_t i = 0; i != res.atoms.size(); ++i) {
+    const Atom& at1 = res.atoms[i];
+    if (at1.is_hydrogen())
+      continue;
+    float r1 = at1.element.covalent_r();
+    for (size_t j = i+1; j != res.atoms.size(); ++j) {
+      const Atom& at2 = res.atoms[j];
+      if (at2.is_hydrogen())
+        continue;
+      double d2 = at1.pos.dist_sq(at2.pos);
+      float r2 = at2.element.covalent_r();
+      double dmax = std::max(2.0, 1.3 * std::max(r1, r2));
+      if (d2 < sq(dmax))
+        pairs.push_back(Pair{i, j, std::sqrt(d2)});
+    }
+  }
+  // now each hydrogen with the nearest heavy atom
+  for (size_t i = 0; i != res.atoms.size(); ++i) {
+    const Atom& at1 = res.atoms[i];
+    if (at1.is_hydrogen()) {
+      size_t nearest = (size_t)-1;
+      double min_d2 = sq(2.5);
+      for (size_t j = 0; j != res.atoms.size(); ++j) {
+        const Atom& at2 = res.atoms[j];
+        if (!at2.is_hydrogen()) {
+          double d2 = at1.pos.dist_sq(at2.pos);
+          if (d2 < min_d2) {
+            min_d2 = d2;
+            nearest = j;
+          }
+        }
+      }
+      if (nearest != (size_t)-1) {
+        pairs.push_back(Pair{nearest, i, std::sqrt(min_d2)});
+      }
+    }
+  }
+
+  // add bonds
+  for (const Pair& p : pairs) {
+    Restraints::Bond bond;
+    bond.id1 = Restraints::AtomId{1, res.atoms[p.n1].name};
+    bond.id2 = Restraints::AtomId{1, res.atoms[p.n2].name};
+    bond.type = BondType::Unspec;
+    bond.aromatic = false;
+    double rounded_dist = 0.001 * std::round(1000 * p.dist);
+    bond.value = bond.value_nucleus = rounded_dist;
+    bond.esd = bond.esd_nucleus = 0.02;
+    cc->rt.bonds.push_back(bond);
+  }
+  // add angles
+  struct Triple {
+    size_t n1, n2, n3;
+  };
+  std::vector<Triple> triples;
+  for (size_t i = 0; i != pairs.size(); ++i)
+    for (size_t j = i+1; j != pairs.size(); ++j) {
+      if (pairs[i].n1 == pairs[j].n1)
+        triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n2});
+      else if (pairs[i].n1 == pairs[j].n2)
+        triples.push_back(Triple{pairs[i].n2, pairs[i].n1, pairs[j].n1});
+      else if (pairs[i].n2 == pairs[j].n1)
+        triples.push_back(Triple{pairs[i].n1, pairs[i].n2, pairs[j].n2});
+      else if (pairs[i].n2 == pairs[j].n2)
+        triples.push_back(Triple{pairs[i].n1, pairs[i].n2, pairs[j].n1});
+    }
+  for (const Triple& triple : triples) {
+    Restraints::Angle angle;
+    angle.id1 = Restraints::AtomId{1, res.atoms[triple.n1].name};
+    angle.id2 = Restraints::AtomId{1, res.atoms[triple.n2].name};
+    angle.id3 = Restraints::AtomId{1, res.atoms[triple.n3].name};
+    double angle_rad = calculate_angle(res.atoms[triple.n1].pos,
+                                       res.atoms[triple.n2].pos,
+                                       res.atoms[triple.n3].pos);
+    angle.value = 0.01 * std::round(100 * deg(angle_rad));
+    angle.esd = 3.0;
+    cc->rt.angles.push_back(angle);
+  }
+  return cc;
+}
+
 
 inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
                                   const Chain& chain, const Entity* ent)
@@ -426,8 +548,8 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
     bool groups_ok = true;
     std::string c = "C";
     std::string n = "N";
-    if (!ChemComp::is_peptide_group(ri1.chemcomp.group)) {
-      for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
+    if (!ChemComp::is_peptide_group(ri1.orig_chemcomp->group)) {
+      for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
           if (const std::string* c_ptr = aliasing.name_from_alias(c))
@@ -436,9 +558,9 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       if (link.aliasing1 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    ChemComp::Group n_terminus_group = ri2.chemcomp.group;
-    if (!ChemComp::is_peptide_group(ri2.chemcomp.group)) {
-      for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
+    ChemComp::Group n_terminus_group = ri2.orig_chemcomp->group;
+    if (!ChemComp::is_peptide_group(n_terminus_group)) {
+      for (const ChemComp::Aliasing& aliasing : ri2.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing2 = n_terminus_group = aliasing.group;
           if (const std::string* n_ptr = aliasing.name_from_alias(n))
@@ -464,8 +586,8 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
     std::string o3p = "O3'";
     std::string p = "P";
     bool groups_ok = true;
-    if (!ChemComp::is_nucleotide_group(ri1.chemcomp.group)) {
-      for (const ChemComp::Aliasing& aliasing : ri1.chemcomp.aliases)
+    if (!ChemComp::is_nucleotide_group(ri1.orig_chemcomp->group)) {
+      for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
           if (const std::string* o3p_ptr = aliasing.name_from_alias(o3p))
@@ -474,8 +596,8 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       if (link.aliasing1 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    if (!ChemComp::is_nucleotide_group(ri2.chemcomp.group)) {
-      for (const ChemComp::Aliasing& aliasing : ri2.chemcomp.aliases)
+    if (!ChemComp::is_nucleotide_group(ri2.orig_chemcomp->group)) {
+      for (const ChemComp::Aliasing& aliasing : ri2.orig_chemcomp->aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing2 = aliasing.group;
           if (const std::string* p_ptr = aliasing.name_from_alias(p))
@@ -525,15 +647,14 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
       const Entity* ent = st.get_entity_of(sub);
       chain_infos.emplace_back(sub, chain, ent);
     }
+
+  // setup pointers to monomers and links in the polymer
   for (ChainInfo& ci : chain_infos) {
-    // copy monomer description
     for (ResInfo& ri : ci.res_infos) {
       auto it = monlib.monomers.find(ri.res->name);
       if (it != monlib.monomers.end())
-        ri.chemcomp = it->second;
-      else
-        err("unknown chemical component " + ri.res->name
-            + " in chain " +  ci.chain_ref.name);
+        ri.orig_chemcomp = &it->second;
+      // orig_chemcomp is left null for missing monomers
     }
     ci.setup_polymer_links();
   }
@@ -554,19 +675,36 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
           ri.add_mod(chem_link->side2.mod, prev.aliasing2);
         }
 
+  // Apply modifications to monomer restraints
   for (ChainInfo& chain_info : chain_infos)
     for (ResInfo& ri : chain_info.res_infos) {
-      // apply modifications
-      for (const auto& modif : ri.mods) {
-        if (const ChemMod* chem_mod = monlib.get_mod(modif.first))
-          try {
-            chem_mod->apply_to(ri.chemcomp, modif.second);
-          } catch(std::runtime_error& e) {
-            err("failed to apply modification " + chem_mod->id
-                + " to " + ri.res->name + ": " + e.what());
+      if (ri.orig_chemcomp) {
+        std::string key = ri.cc_cache_key();
+        auto it = cc_cache.find(key);
+        if (it != cc_cache.end()) {
+          ri.final_chemcomp = it->second.get();
+        } else {
+          std::unique_ptr<ChemComp> cc_copy(new ChemComp(*ri.orig_chemcomp));
+          // apply modifications
+          for (const auto& modif : ri.mods) {
+            if (const ChemMod* chem_mod = monlib.get_mod(modif.first)) {
+              try {
+                ChemComp::Group alias_group = modif.second;
+                chem_mod->apply_to(*cc_copy, alias_group);
+              } catch(std::runtime_error& e) {
+                err("failed to apply modification " + chem_mod->id
+                    + " to " + ri.res->name + ": " + e.what());
+              }
+            } else {
+              err("modification not found: " + modif.first);
+            }
           }
-        else
-          err("modification not found: " + modif.first);
+          ri.final_chemcomp = cc_copy.get();
+          cc_cache.emplace(key, std::move(cc_copy));
+        }
+      } else {  // orig_chemcomp not set - make ChemComp with ad-hoc restraints
+        cc_storage.emplace_back(make_chemcomp_with_restraints(*ri.res));
+        ri.final_chemcomp = cc_storage.back().get();
       }
     }
 }

@@ -387,7 +387,7 @@ inline void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   if (!ri)
     return;
   std::vector<Atom>& atoms = ri->res->atoms;
-  Restraints& rt = ri->chemcomp.rt;
+  const Restraints& rt = ri->final_chemcomp->rt;
   for (auto it = atoms.end(); it-- != atoms.begin(); ) {
     if (it->is_hydrogen()) {
       const Restraints::AtomId* heavy = rt.first_bonded_atom(it->name);
@@ -414,7 +414,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
     // remove/add hydrogens, sort atoms in residues
     for (Topo::ChainInfo& chain_info : topo->chain_infos) {
       for (Topo::ResInfo& ri : chain_info.res_infos) {
-        const ChemComp& cc = ri.chemcomp;
+        const ChemComp& cc = *ri.final_chemcomp;
         Residue& res = *ri.res;
         if (!keep) {
           remove_hydrogens(res);

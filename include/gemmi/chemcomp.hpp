@@ -451,9 +451,6 @@ struct ChemComp {
     return g == Group::Dna || g == Group::Rna || g == Group::DnaRna;
   }
 
-  // is it simplistic auto-generated monomer description?
-  bool is_ad_hoc() const { return type_or_group[0] == '?'; }
-
   void remove_nonmatching_restraints() {
     vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
       return !has_atom(x.id1.atom) ||
