@@ -305,7 +305,7 @@ inline void insert_chemmods_into(const cif::Document& doc,
 }
 
 inline void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
-  auto real = [&chemcomp, alias_group, this](const std::string& atom_id) -> const std::string& {
+  auto real = [&chemcomp, alias_group](const std::string& atom_id) -> const std::string& {
     if (alias_group != ChemComp::Group::Null) {
       const ChemComp::Aliasing& aliasing = chemcomp.get_aliasing(alias_group);
       if (const std::string* real_id = aliasing.name_from_alias(atom_id))
