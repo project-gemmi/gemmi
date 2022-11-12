@@ -22,7 +22,7 @@ namespace {
 
 enum OptionIndex {
   Monomers=4, Libin, Libin2, AutoCis, AutoLink, AutoLigand,
-  NoZeroOccRestr, NoHydrogens, KeepHydrogens
+  NoAliases, NoZeroOccRestr, NoHydrogens, KeepHydrogens
 };
 
 const option::Descriptor Usage[] = {
@@ -48,6 +48,8 @@ const option::Descriptor Usage[] = {
     "  --auto-link=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
   { AutoLigand, 0, "", "auto-ligand", Arg::YesNo,
     "  --auto-ligand=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
+  { NoAliases, 0, "", "no-aliases", Arg::None,
+    "  --no-aliases  \tIgnore _chem_comp_alias." },
   //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
   //  "  --no-zero-occ  \tNo restraints for zero-occupancy atoms." },
   { NoOp, 0, "", "", Arg::None,
@@ -129,6 +131,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       printf("Note: Using ad-hoc restraints for missing monomers.\n"
              "      Consider generating monomer CIFs with AceDRG or GRADE.\n");
     }
+
+    if (p.options[NoAliases])
+      for (auto& name_monomer : monlib.monomers)
+        name_monomer.second.aliases.clear();
 
     if (p.is_yes(AutoCis, true))
       assign_cis_flags(model0);
