@@ -170,8 +170,8 @@ inline bool replace_deuterium_with_fraction(Residue& res) {
       } else {
         d->element = El::H;
         d->fraction = 1;
-        if (d->name[0] == 'D')
-          d->name[0] = 'H';
+        // Atom name is left unchanged. prepare_topology() first calls this
+        // function and then conditionally changes the name (Dxx -> Hxx).
       }
     }
   return found;
