@@ -428,7 +428,7 @@ inline std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& re
   // add atoms
   cc->atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
-    Element el = a.element == El::X ? Element(El::N) : a.element;
+    Element el = a.element == El::X ? Element(El::N) : a.element == El::D ? Element(El::H) : a.element;
     const std::string& chem_type = el.uname();
     cc->atoms.push_back(ChemComp::Atom{a.name, el, float(a.charge), chem_type});
   }
