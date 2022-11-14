@@ -170,6 +170,8 @@ inline bool replace_deuterium_with_fraction(Residue& res) {
       } else {
         d->element = El::H;
         d->fraction = 1;
+        if (d->name[0] == 'D')
+          d->name[0] = 'H';
       }
     }
   return found;
