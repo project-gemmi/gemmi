@@ -6,7 +6,6 @@
 #define GEMMI_MATH_HPP_
 
 #include <cmath>      // for fabs, cos, sqrt, round
-#include <cstdio>     // for snprintf
 #include <algorithm>  // for min
 #include <array>
 #include <stdexcept>  // for out_of_range
@@ -91,12 +90,6 @@ struct Vec3 {
   }
   bool has_nan() const {
     return std::isnan(x) || std::isnan(y) || std::isnan(z);
-  }
-  std::string str() const {
-    using namespace std;
-    char buf[64] = {0};
-    snprintf(buf, 63, "[%g %g %g]", x, y, z);
-    return buf;
   }
 };
 
