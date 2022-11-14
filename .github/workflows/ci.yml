@@ -35,6 +35,7 @@ jobs:
 
     - name: Python Setup
       run: |
+        python3 -m pip install wheel
         python3 -m pip wheel -v .
         python3 -m pip install gemmi-*.whl
 
