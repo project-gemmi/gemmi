@@ -137,7 +137,6 @@ struct Topo {
     std::vector<ResInfo> res_infos;
 
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
-    void setup_polymer_links();
     struct RGroup {
       std::vector<ResInfo>::iterator begin, end;
     };
@@ -147,8 +146,7 @@ struct Topo {
         ++e;
       return RGroup{b, e};
     }
-  private:
-    Link make_polymer_link(const ResInfo& ri1, const ResInfo& ri2) const;
+    Link make_polymer_link(const ResInfo& ri1, const ResInfo& ri2, MonLib* monlib) const;
   };
 
   template<typename T>
@@ -542,18 +540,19 @@ inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
 }
 
 inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
-                                                     const Topo::ResInfo& ri2) const {
+                                                     const Topo::ResInfo& ri2,
+                                                     MonLib* monlib) const {
   Link link;
   link.res1 = ri1.res;
   link.res2 = ri2.res;
   assert(&ri1 - &ri2 == link.res_distance());
-  if (ri1.orig_chemcomp == nullptr || ri2.orig_chemcomp == nullptr) {
-    link.link_id = "gap";
-  } else if (is_polypeptide(polymer_type)) {
-    bool groups_ok = true;
+  link.link_id = "gap";
+  bool groups_ok = (ri1.orig_chemcomp != nullptr && ri2.orig_chemcomp != nullptr);
+
+  if (is_polypeptide(polymer_type)) {
     std::string c = "C";
     std::string n = "N";
-    if (!ChemComp::is_peptide_group(ri1.orig_chemcomp->group)) {
+    if (ri1.orig_chemcomp && !ChemComp::is_peptide_group(ri1.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
@@ -563,8 +562,9 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       if (link.aliasing1 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    ChemComp::Group n_terminus_group = ri2.orig_chemcomp->group;
-    if (!ChemComp::is_peptide_group(n_terminus_group)) {
+    ChemComp::Group n_terminus_group = ri2.orig_chemcomp ? ri2.orig_chemcomp->group
+                                                         : ChemComp::Group::Null;
+    if (ri2.orig_chemcomp && !ChemComp::is_peptide_group(ri2.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri2.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing2 = n_terminus_group = aliasing.group;
@@ -574,24 +574,27 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       if (link.aliasing2 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    const Atom* a1 = ri1.res->find_atom(c, '*', El::C);
-    const Atom* a2 = ri2.res->find_atom(n, '*', El::N);
-    if (groups_ok && in_peptide_bond_distance(a1, a2)) {
-      bool is_cis = ri1.res->is_cis;
-      if (n_terminus_group == ChemComp::Group::PPeptide)
-        link.link_id = is_cis ? "PCIS" : "PTRANS";
-      else if (n_terminus_group == ChemComp::Group::MPeptide)
-        link.link_id = is_cis ? "NMCIS" : "NMTRANS";
-      else
-        link.link_id = is_cis ? "CIS" : "TRANS";
-    } else {
-      link.link_id = "gap";
+    if (in_peptide_bond_distance(ri1.res->find_atom(c, '*', El::C),
+                                 ri2.res->find_atom(n, '*', El::N))) {
+      if (groups_ok) {
+        bool is_cis = ri1.res->is_cis;
+        if (n_terminus_group == ChemComp::Group::PPeptide)
+          link.link_id = is_cis ? "PCIS" : "PTRANS";
+        else if (n_terminus_group == ChemComp::Group::MPeptide)
+          link.link_id = is_cis ? "NMCIS" : "NMTRANS";
+        else
+          link.link_id = is_cis ? "CIS" : "TRANS";
+      } else if (monlib) {
+        link.link_id = monlib->add_auto_chemlink(ri1.res->name, c,
+                                                 ri2.res->name, n,
+                                                 1.34, 0.04);
+      }
     }
+
   } else if (is_polynucleotide(polymer_type)) {
     std::string o3p = "O3'";
     std::string p = "P";
-    bool groups_ok = true;
-    if (!ChemComp::is_nucleotide_group(ri1.orig_chemcomp->group)) {
+    if (ri1.orig_chemcomp && !ChemComp::is_nucleotide_group(ri1.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing1 = aliasing.group;
@@ -601,7 +604,7 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       if (link.aliasing1 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    if (!ChemComp::is_nucleotide_group(ri2.orig_chemcomp->group)) {
+    if (ri2.orig_chemcomp && !ChemComp::is_nucleotide_group(ri2.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri2.orig_chemcomp->aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
           link.aliasing2 = aliasing.group;
@@ -611,31 +614,23 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
       if (link.aliasing2 == ChemComp::Group::Null)
         groups_ok = false;
     }
-    const Atom* a1 = ri1.res->find_atom(o3p, '*', El::O);
-    const Atom* a2 = ri2.res->find_atom(p, '*', El::P);
-    if (groups_ok && in_nucleotide_bond_distance(a1, a2)) {
-      link.link_id = "p";
-    } else {
-      link.link_id = "gap";
+    if (in_nucleotide_bond_distance(ri1.res->find_atom(o3p, '*', El::O),
+                                    ri2.res->find_atom(p, '*', El::P))) {
+      if (groups_ok)
+        link.link_id = "p";
+      else if (monlib)
+        link.link_id = monlib->add_auto_chemlink(ri1.res->name, o3p,
+                                                 ri2.res->name, p,
+                                                 1.606, 0.02);
     }
+
   } else {
+    // this shouldn't happen
     link.link_id = "?";
   }
   return link;
 }
 
-inline void Topo::ChainInfo::setup_polymer_links() {
-  if (!polymer || res_infos.empty())
-    return;
-  RGroup prev_group = group_from(res_infos.begin());
-  while (prev_group.end != res_infos.end()) {
-    RGroup group = group_from(prev_group.end);
-    for (auto ri = group.begin; ri != group.end; ++ri)
-      for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri)
-        ri->prev.push_back(make_polymer_link(*prev_ri, *ri));
-    prev_group = group;
-  }
-}
 
 // see comments above the declaration
 inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
@@ -661,7 +656,22 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
         ri.orig_chemcomp = &it->second;
       // orig_chemcomp is left null for missing monomers
     }
-    ci.setup_polymer_links();
+    // setup polymer links
+    if (ci.polymer && !ci.res_infos.empty()) {
+      // handling of microheterogeneities makes it more complicated
+      // and it should be even more complex to handle partial bonding
+      ChainInfo::RGroup prev_group = ci.group_from(ci.res_infos.begin());
+      while (prev_group.end != ci.res_infos.end()) {
+        ChainInfo::RGroup group = ci.group_from(prev_group.end);
+        for (auto ri = group.begin; ri != group.end; ++ri)
+          for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri) {
+            MonLib* monlib_ptr = ignore_unknown_links ? nullptr : &monlib;
+            Link link = ci.make_polymer_link(*prev_ri, *ri, monlib_ptr);
+            ri->prev.push_back(link);
+          }
+        prev_group = group;
+      }
+    }
   }
 
   // add extra links
@@ -714,7 +724,8 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
     }
 }
 
-// it has side-effects: may modify conn.link_id and add to monlib.links
+// Tries to construct Topo::Link and append it to extras.
+// Side-effects: it may modify conn.link_id and add ChemLink to monlib.links.
 inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                                    bool ignore_unknown_links) {
   if (conn.link_id == "gap") {
@@ -784,24 +795,14 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
     if (ignore_unknown_links)
       return;
     // create a new ChemLink and add it to the monomer library
-    ChemLink cl;
-    cl.side1.comp = extra.res1->name;
-    cl.side2.comp = extra.res2->name;
-    cl.id = cl.side1.comp + cl.side2.comp;
-    cl.name = "auto-" + cl.id;
     bool use_ion = cra1.atom->element.is_metal() || cra2.atom->element.is_metal();
     double ideal_dist = monlib.find_radius(cra1, use_ion) +
                         monlib.find_radius(cra2, use_ion);
     if (!use_ion)
       ideal_dist /= 2;
-    cl.rt.bonds.push_back({Restraints::AtomId{1, conn.partner1.atom_name},
-                           Restraints::AtomId{2, conn.partner2.atom_name},
-                           BondType::Unspec, false,
-                           ideal_dist, 0.02,
-                           ideal_dist, 0.02});
-    monlib.ensure_unique_link_name(cl.id);
-    monlib.links.emplace(cl.id, cl);
-    extra.link_id = cl.id;
+    extra.link_id = monlib.add_auto_chemlink(extra.res1->name, conn.partner1.atom_name,
+                                             extra.res2->name, conn.partner2.atom_name,
+                                             ideal_dist, 0.02);
   }
   if (conn.link_id.empty())
     conn.link_id = extra.link_id;

@@ -582,12 +582,6 @@ struct MonLib {
     return {best_link, inverted};
   }
 
-  void ensure_unique_link_name(std::string& name) const {
-    size_t orig_len = name.size();
-    for (int n = 0; get_link(name) != nullptr; ++n)
-      name.replace(orig_len, name.size(), std::to_string(n));
-  }
-
   void add_monomer_if_present(const cif::Block& block) {
     if (block.has_tag("_chem_comp_atom.atom_id")) {
       ChemComp cc = make_chemcomp_from_block(block);
@@ -727,6 +721,30 @@ struct MonLib {
         r = it->second.vdw_radius;
     }
     return r;
+  }
+
+  // Add a ChemLink that restraints only bond length.
+  const std::string& add_auto_chemlink(
+                        const std::string& resname1, const std::string& aname1,
+                        const std::string& resname2, const std::string& aname2,
+                        double ideal_dist, double esd) {
+    ChemLink cl;
+    cl.side1.comp = resname1;
+    cl.side2.comp = resname2;
+    cl.id = resname1 + resname2;
+    cl.name = "auto-" + cl.id;
+    cl.rt.bonds.push_back({Restraints::AtomId{1, aname1},
+                           Restraints::AtomId{2, aname2},
+                           BondType::Unspec, false,
+                           ideal_dist, esd,
+                           ideal_dist, esd});
+    // ensure unique link id
+    size_t orig_len = cl.id.size();
+    for (int n = 0; get_link(cl.id) != nullptr; ++n)
+      cl.id.replace(orig_len, cl.id.size(), std::to_string(n));
+
+    auto it = links.emplace(cl.id, cl);
+    return it.first->first;
   }
 };
 
