@@ -175,7 +175,8 @@ void add_unitcell(py::module& m) {
   add_smat33<double>(m, "SMat33d");
   add_smat33<float>(m, "SMat33f");
 
-  py::class_<Transform>(m, "Transform")
+  py::class_<Transform> transform(m, "Transform");
+  transform
     .def(py::init<>())
     .def(py::init([](const Mat33& m, const Vec3& v) {
       Transform* tr = new Transform();
@@ -190,6 +191,7 @@ void add_unitcell(py::module& m) {
     .def("combine", &Transform::combine)
     .def("is_identity", &Transform::is_identity)
     .def("approx", &Transform::approx, py::arg("other"), py::arg("epsilon"));
+  transform.attr("__matmul__") = transform.attr("combine");
 
   py::class_<Correlation>(m, "Correlation")
     .def_readonly("n", &Correlation::n)
