@@ -88,20 +88,11 @@ inline bool is_polymer_residue(const Residue& res, PolymerType ptype) {
   // If a standard residue is HETATM we assume that it is in the buffer.
   if (info.found() && info.is_standard() && res.het_flag == 'H')
     return false;
-  switch (ptype) {
-    case PolymerType::PeptideL:
-    case PolymerType::PeptideD:
-      // here we don't mind mixing D- and L- peptides
-      return info.found() ? info.is_amino_acid() : !!res.get_ca();
-    case PolymerType::Dna:
-      return info.found() ? info.is_dna() : !!res.get_p();
-    case PolymerType::Rna:
-      return info.found() ? info.is_rna() : !!res.get_p();
-    case PolymerType::DnaRnaHybrid:
-      return info.found() ? info.is_nucleic_acid() : !!res.get_p();
-    default:
-      return false;
-  }
+  if (is_polypeptide(ptype))
+    return info.found() ? info.is_amino_acid() : !!res.get_ca();
+  if (is_polynucleotide(ptype))
+    return info.found() ? info.is_nucleic_acid() : !!res.get_p();
+  return false;
 }
 
 struct AtomNameElement { std::string atom_name; El el; };
