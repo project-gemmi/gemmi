@@ -423,12 +423,15 @@ private:
 inline std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
   std::unique_ptr<ChemComp> cc(new ChemComp());
   cc->name = res.name;
-  cc->type_or_group = "?";
   cc->group = ChemComp::Group::Null;
   // add atoms
   cc->atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
-    Element el = a.element == El::X ? Element(El::N) : a.element == El::D ? Element(El::H) : a.element;
+    Element el = a.element;
+    if (el == El::X)
+      el = El::N;
+    if (el == El::D)
+      el = El::H;
     const std::string& chem_type = el.uname();
     cc->atoms.push_back(ChemComp::Atom{a.name, el, float(a.charge), chem_type});
   }
