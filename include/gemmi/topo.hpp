@@ -547,7 +547,9 @@ inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
   link.res1 = ri1.res;
   link.res2 = ri2.res;
   assert(&ri1 - &ri2 == link.res_distance());
-  if (is_polypeptide(polymer_type)) {
+  if (ri1.orig_chemcomp == nullptr || ri2.orig_chemcomp == nullptr) {
+    link.link_id = "gap";
+  } else if (is_polypeptide(polymer_type)) {
     bool groups_ok = true;
     std::string c = "C";
     std::string n = "N";
