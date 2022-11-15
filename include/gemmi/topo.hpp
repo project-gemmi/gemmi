@@ -137,14 +137,12 @@ struct Topo {
     std::vector<ResInfo> res_infos;
 
     ChainInfo(ResidueSpan& subchain, const Chain& chain, const Entity* ent);
-    struct RGroup {
-      std::vector<ResInfo>::iterator begin, end;
-    };
-    RGroup group_from(std::vector<ResInfo>::iterator b) const {
+    using iterator = std::vector<ResInfo>::iterator;
+    iterator group_end(iterator b) const {
       auto e = b + 1;
       while (e != res_infos.end() && e->res->group_key() == b->res->group_key())
         ++e;
-      return RGroup{b, e};
+      return e;
     }
     Link make_polymer_link(const ResInfo& ri1, const ResInfo& ri2, MonLib* monlib) const;
   };
@@ -660,16 +658,19 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
     if (ci.polymer && !ci.res_infos.empty()) {
       // handling of microheterogeneities makes it more complicated
       // and it should be even more complex to handle partial bonding
-      ChainInfo::RGroup prev_group = ci.group_from(ci.res_infos.begin());
-      while (prev_group.end != ci.res_infos.end()) {
-        ChainInfo::RGroup group = ci.group_from(prev_group.end);
-        for (auto ri = group.begin; ri != group.end; ++ri)
-          for (auto prev_ri = prev_group.begin; prev_ri != prev_group.end; ++prev_ri) {
+      auto prev_begin = ci.res_infos.begin();
+      auto prev_end = ci.group_end(prev_begin);
+      while (prev_end != ci.res_infos.end()) {
+        auto group_begin = prev_end;
+        auto group_end = ci.group_end(group_begin);
+        for (auto ri = group_begin; ri != group_end; ++ri)
+          for (auto prev_ri = prev_begin; prev_ri != prev_end; ++prev_ri) {
             MonLib* monlib_ptr = ignore_unknown_links ? nullptr : &monlib;
             Link link = ci.make_polymer_link(*prev_ri, *ri, monlib_ptr);
             ri->prev.push_back(link);
           }
-        prev_group = group;
+        prev_begin = group_begin;
+        prev_end = group_end;
       }
     }
   }
