@@ -127,6 +127,30 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
   cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
   for (const Entity& ent : st.entities)
     entity_loop.add_row({ent.name, entity_type_to_string(ent.entity_type)});
+
+  std::string mod_info = "\n#### Applied modifications ####\n";
+  for (const Topo::ChainInfo& ci : topo.chain_infos) {
+    cat_to(mod_info, "# chain ", ci.chain_ref.name,
+           " / ", ci.subchain_name, ", entity ", ci.entity_id);
+    if (is_polypeptide(ci.polymer_type))
+      mod_info += " (polypeptide)";
+    if (is_polynucleotide(ci.polymer_type))
+      mod_info += " (polynucleotide)";
+    mod_info += '\n';
+    for (const Topo::ResInfo& ri : ci.res_infos) {
+      cat_to(mod_info, "#    ", ri.res->seqid.str(), ' ', ri.res->name, ':');
+      if (ri.mods.empty())
+        mod_info += " n/a";
+      for (const auto& mod_group : ri.mods) {
+        cat_to(mod_info, ' ', mod_group.first);
+        if (mod_group.second != ChemComp::Group::Null)
+          cat_to(mod_info, "(alias ", ChemComp::group_str(mod_group.second), ')');
+      }
+      mod_info += '\n';
+    }
+  }
+  items.emplace_back(cif::CommentArg{mod_info});
+
   items.emplace_back(cif::CommentArg{"##########\n"
                                      "## CELL ##\n"
                                      "##########"});
