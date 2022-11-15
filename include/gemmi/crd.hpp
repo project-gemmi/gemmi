@@ -39,20 +39,6 @@ inline std::string refmac_calc_flag(const Atom& a) {
   unreachable();
 }
 
-// Get value of _entity_poly_seq.ccp4_mod_id compatible with makecif.
-inline std::string get_ccp4_mod_id(
-                const std::vector<std::pair<std::string, ChemComp::Group>>& mods) {
-  for (const auto& p : mods) {
-    const std::string& m = p.first;
-    if (!starts_with(m, "DEL-OXT") &&
-        !starts_with(m, "DEL-HN") &&
-        m != "DEL-NMH")
-      return m;
-  }
-  return ".";
-}
-
-
 inline void add_automatic_links(Model& model, Structure& st, const MonLib& monlib) {
   auto is_onsb = [](Element e) {
     return e == El::O || e == El::N || e == El::S || e == El::B;
@@ -141,25 +127,6 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
   cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
   for (const Entity& ent : st.entities)
     entity_loop.add_row({ent.name, entity_type_to_string(ent.entity_type)});
-  items.emplace_back(cif::CommentArg{"#####################\n"
-                                     "## ENTITY_POLY_SEQ ##\n"
-                                     "#####################"});
-  cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.", {
-              "mon_id", "ccp4_auth_seq_id", "entity_id",
-              "ccp4_back_connect_type", "ccp4_num_mon_back", "ccp4_mod_id"});
-  for (const Topo::ChainInfo& chain_info : topo.chain_infos) {
-    if (!chain_info.polymer)
-      continue;
-    for (const Topo::ResInfo& ri : chain_info.res_infos) {
-      const Topo::Link* prev = ri.prev.empty() ? nullptr : &ri.prev[0];
-      poly_loop.add_row({ri.res->name,
-                         ri.res->seqid.str(),
-                         chain_info.entity_id,
-                         prev ? prev->link_id : ".",
-                         prev ? prev->res1->seqid.str() : "n/a",
-                         get_ccp4_mod_id(ri.mods)});
-    }
-  }
   items.emplace_back(cif::CommentArg{"##########\n"
                                      "## CELL ##\n"
                                      "##########"});
