@@ -15,6 +15,7 @@
 #include "select.hpp"    // for count_atom_sites
 #include "to_chemcomp.hpp" // for add_chemcomp_to_block
 #include "contact.hpp"   // for ContactSearch
+#include "version.hpp"   // for GEMMI_VERSION
 
 namespace gemmi {
 
@@ -93,12 +94,14 @@ inline void add_automatic_links(Model& model, Structure& st, const MonLib& monli
 
 
 inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
-                              HydrogenChange h_change) {
+                              HydrogenChange h_change, const std::string& info_comment) {
   auto e_id = st.info.find("_entry.id");
   std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
   cif::Block block("structure_" + id);
   auto& items = block.items;
 
+  if (!info_comment.empty())
+    items.emplace_back(cif::CommentArg{info_comment});
   items.emplace_back("_entry.id", id);
   items.emplace_back("_database_2.code_PDB", id);
   auto keywords = st.info.find("_struct_keywords.pdbx_keywords");
@@ -465,7 +468,9 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
 inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
                                         const MonLib& monlib, HydrogenChange h_change) {
   cif::Document doc;
-  doc.blocks.push_back(prepare_crd(st, topo, h_change));
+  std::string info_comment = "# Refmac CRD file generated with gemmi " GEMMI_VERSION
+                             "\n# Monomer library version: " + monlib.lib_version;
+  doc.blocks.push_back(prepare_crd(st, topo, h_change, info_comment));
   doc.blocks.push_back(prepare_rst(topo, monlib, st.cell));
 
   doc.blocks.emplace_back("for_refmac_mmcif");

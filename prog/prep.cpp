@@ -4,7 +4,7 @@
 #include <cstdlib>             // for getenv
 #include <iostream>            // for cerr
 #include <stdexcept>           // for exception
-#include "gemmi/crd.hpp"       // for prepare_crd, prepare_rst
+#include "gemmi/crd.hpp"       // for prepare_refmac_crd
 #include "gemmi/to_cif.hpp"    // for write_cif_block_to_stream
 #include "gemmi/fstream.hpp"   // for Ofstream
 #include "gemmi/polyheur.hpp"  // for setup_entities
@@ -166,6 +166,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       printf("Preparing data for Refmac...\n");
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
+    // expand the starting comment
+    cif::Item& first_item = crd.blocks.at(0).items.at(0);
+    if (first_item.type == cif::ItemType::Comment) {
+      std::string& comment = first_item.pair[1];
+      comment += "\n# Command line: " EXE_NAME;
+      for (int i = 1; i < argc; ++i)
+        comment.append("  ").append(argv[i]);
+    }
     if (verbose)
       printf("Writing %s\n", output.c_str());
     Ofstream os(output);
