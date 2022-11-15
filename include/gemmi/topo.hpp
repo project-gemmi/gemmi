@@ -144,7 +144,6 @@ struct Topo {
         ++e;
       return e;
     }
-    Link make_polymer_link(const ResInfo& ri1, const ResInfo& ri2, MonLib* monlib) const;
   };
 
   template<typename T>
@@ -405,14 +404,17 @@ struct Topo {
   }
 
 private:
-  void setup_connection(Connection& conn, Model& model0, MonLib& monlib,
-                        bool ignore_unknown_links);
   // storage for link restraints modified by aliases
   std::vector<std::unique_ptr<Restraints>> rt_storage;
   // cache for ChemComps after applying modifications
   std::unordered_map<std::string, std::unique_ptr<ChemComp>> cc_cache;
   // storage for ad-hoc ChemComps (placeholders for those missing in MonLib)
   std::vector<std::unique_ptr<ChemComp>> cc_storage;
+
+  static Link make_polymer_link(PolymerType polymer_type,
+                                const ResInfo& ri1, const ResInfo& ri2, MonLib* monlib);
+  void setup_connection(Connection& conn, Model& model0, MonLib& monlib,
+                        bool ignore_unknown_links);
 };
 
 
@@ -537,9 +539,10 @@ inline Topo::ChainInfo::ChainInfo(ResidueSpan& subchain,
     res_infos.emplace_back(&res);
 }
 
-inline Topo::Link Topo::ChainInfo::make_polymer_link(const Topo::ResInfo& ri1,
-                                                     const Topo::ResInfo& ri2,
-                                                     MonLib* monlib) const {
+inline Topo::Link Topo::make_polymer_link(PolymerType polymer_type,
+                                          const Topo::ResInfo& ri1,
+                                          const Topo::ResInfo& ri2,
+                                          MonLib* monlib) {
   Link link;
   link.res1 = ri1.res;
   link.res2 = ri2.res;
@@ -666,7 +669,7 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
         for (auto ri = group_begin; ri != group_end; ++ri)
           for (auto prev_ri = prev_begin; prev_ri != prev_end; ++prev_ri) {
             MonLib* monlib_ptr = ignore_unknown_links ? nullptr : &monlib;
-            Link link = ci.make_polymer_link(*prev_ri, *ri, monlib_ptr);
+            Link link = Topo::make_polymer_link(ci.polymer_type, *prev_ri, *ri, monlib_ptr);
             ri->prev.push_back(link);
           }
         prev_begin = group_begin;
