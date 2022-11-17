@@ -631,8 +631,8 @@ inline Topo::Link Topo::make_polymer_link(PolymerType polymer_type,
     }
 
   } else {
-    // this shouldn't happen
-    link.link_id = "?";
+    // this should not happen
+    link.link_id.clear();
   }
   return link;
 }
@@ -675,6 +675,8 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
           for (auto prev_ri = prev_begin; prev_ri != prev_end; ++prev_ri) {
             MonLib* monlib_ptr = ignore_unknown_links ? nullptr : &monlib;
             Link link = Topo::make_polymer_link(ci.polymer_type, *prev_ri, *ri, monlib_ptr);
+            if (link.link_id.empty())
+              err("unexpected polymer type?");
             ri->prev.push_back(link);
           }
         prev_begin = group_begin;
@@ -689,7 +691,7 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
       setup_connection(conn, model0, monlib, ignore_unknown_links);
 
   // Add modifications from standard links. We do it here b/c polymer links
-  // could be disabled (link_id = "?") in setup_connection().
+  // could be disabled (link_id.clear()) in setup_connection().
   for (ChainInfo& ci : chain_infos)
     for (ResInfo& ri : ci.res_infos)
       for (Link& prev : ri.prev)
@@ -738,7 +740,8 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
                                    bool ignore_unknown_links) {
   if (conn.link_id == "gap") {
     Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2);
-    if (polymer_link) polymer_link->link_id = "?";  // disable polymer link
+    if (polymer_link)
+      polymer_link->link_id.clear();  // disable polymer link
     return;
   }
 
@@ -791,7 +794,7 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
         polymer_link->link_id != "gap" &&
         (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
       return;
-    polymer_link->link_id = "?";  // disable polymer link
+    polymer_link->link_id.clear();  // disable polymer link
   }
 
   if (match) {
