@@ -313,38 +313,37 @@ struct Topo {
   void apply_restraints_from_resinfo(ResInfo& ri, const MonLib& monlib) {
     // link restraints
     for (Link& link : ri.prev)
-      if (const ChemLink* chem_link = monlib.get_link(link.link_id)) {
-        const Restraints* rt = &chem_link->rt;
-        // aliases are a new feature - introduced in 2022
-        if (link.aliasing1 || link.aliasing2) {
-          std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
-          if (link.aliasing1)
-            for (const auto& p : link.aliasing1->related)
-              rt_copy->rename_atom(Restraints::AtomId{1, p.second}, p.first);
-          if (link.aliasing2)
-            for (const auto& p : link.aliasing2->related)
-              rt_copy->rename_atom(Restraints::AtomId{2, p.second}, p.first);
-          rt = rt_copy.get();
-          rt_storage.push_back(std::move(rt_copy));
-        }
-        auto rules = apply_restraints(*rt, *link.res1, ri.res);
-        vector_move_extend(link.link_rules, std::move(rules));
-      }
+      apply_restraints_from_link(link, monlib);
     // monomer restraints
     auto rules = apply_restraints(ri.final_chemcomp->rt, *ri.res, nullptr);
     vector_move_extend(ri.monomer_rules, std::move(rules));
   }
 
-  void apply_restraints_from_extra_link(Link& link, const MonLib& monlib) {
-    const ChemLink* cl = monlib.get_link(link.link_id);
-    if (!cl) {
+  void apply_restraints_from_link(Link& link, const MonLib& monlib) {
+    if (link.link_id.empty())
+      return;
+    const ChemLink* chem_link = monlib.get_link(link.link_id);
+    if (!chem_link) {
       err("ignoring link '" + link.link_id + "' as it is not in the monomer library");
       return;
     }
+    const Restraints* rt = &chem_link->rt;
     if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
       err(cat("LINK between different conformers ", link.alt1, " and ", link.alt2, '.'));
     char alt = link.alt1 ? link.alt1 : link.alt2;
-    auto rules = apply_restraints(cl->rt, *link.res1, link.res2, alt);
+    // aliases are a new feature - introduced in 2022
+    if (link.aliasing1 || link.aliasing2) {
+      std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
+      if (link.aliasing1)
+        for (const auto& p : link.aliasing1->related)
+          rt_copy->rename_atom(Restraints::AtomId{1, p.second}, p.first);
+      if (link.aliasing2)
+        for (const auto& p : link.aliasing2->related)
+          rt_copy->rename_atom(Restraints::AtomId{2, p.second}, p.first);
+      rt = rt_copy.get();
+      rt_storage.push_back(std::move(rt_copy));
+    }
+    auto rules = apply_restraints(*rt, *link.res1, link.res2, alt);
     vector_move_extend(link.link_rules, std::move(rules));
   }
 
@@ -363,7 +362,7 @@ struct Topo {
       for (ResInfo& ri : chain_info.res_infos)
         apply_restraints_from_resinfo(ri, monlib);
     for (Link& link : extras)
-      apply_restraints_from_extra_link(link, monlib);
+      apply_restraints_from_link(link, monlib);
 
     // create indices
     for (Bond& bond : bonds) {
@@ -549,6 +548,7 @@ inline Topo::Link Topo::make_polymer_link(PolymerType polymer_type,
   link.res1 = ri1.res;
   link.res2 = ri2.res;
   assert(&ri1 - &ri2 == link.res_distance());
+  link.alt1 = link.alt2 = '*';  // temporary
   link.link_id = "gap";
   bool groups_ok = (ri1.orig_chemcomp != nullptr && ri2.orig_chemcomp != nullptr);
 
