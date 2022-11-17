@@ -91,8 +91,10 @@ struct Topo {
     char alt1 = '\0';
     char alt2 = '\0';
     Asu asu = Asu::Any;
-    ChemComp::Group aliasing1 = ChemComp::Group::Null;
-    ChemComp::Group aliasing2 = ChemComp::Group::Null;
+    // aliasing1/2 points to vector element in ChemComp::aliases.
+    // The pointers should stay valid even if a ChemComp is moved.
+    const ChemComp::Aliasing* aliasing1 = nullptr;
+    const ChemComp::Aliasing* aliasing2 = nullptr;
 
     // only for polymer links, res1 and res2 must be in the same vector (Chain)
     std::ptrdiff_t res_distance() const { return res1 - res2; }
@@ -115,9 +117,9 @@ struct Topo {
     std::vector<Rule> monomer_rules;
 
     ResInfo(Residue* r) : res(r) {}
-    void add_mod(const std::string& m, ChemComp::Group aliasing) {
+    void add_mod(const std::string& m, const ChemComp::Aliasing* aliasing) {
       if (!m.empty())
-        mods.push_back({m, aliasing});
+        mods.push_back({m, aliasing ? aliasing->group : ChemComp::Group::Null});
     }
 
     // key for Topo::cc_cache, based on ChemComp::name + modifications
@@ -314,19 +316,14 @@ struct Topo {
       if (const ChemLink* chem_link = monlib.get_link(link.link_id)) {
         const Restraints* rt = &chem_link->rt;
         // aliases are a new feature - introduced in 2022
-        if (link.aliasing1 != ChemComp::Group::Null ||
-            link.aliasing2 != ChemComp::Group::Null) {
+        if (link.aliasing1 || link.aliasing2) {
           std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
-          if (link.aliasing1 != ChemComp::Group::Null) {
-            const ChemComp& cc = *(&ri + link.res_distance())->orig_chemcomp;
-            for (const auto& p : cc.get_aliasing(link.aliasing1).related)
+          if (link.aliasing1)
+            for (const auto& p : link.aliasing1->related)
               rt_copy->rename_atom(Restraints::AtomId{1, p.second}, p.first);
-          }
-          if (link.aliasing2 != ChemComp::Group::Null) {
-            const ChemComp& cc = *ri.orig_chemcomp;
-            for (const auto& p : cc.get_aliasing(link.aliasing2).related)
+          if (link.aliasing2)
+            for (const auto& p : link.aliasing2->related)
               rt_copy->rename_atom(Restraints::AtomId{2, p.second}, p.first);
-          }
           rt = rt_copy.get();
           rt_storage.push_back(std::move(rt_copy));
         }
@@ -561,11 +558,12 @@ inline Topo::Link Topo::make_polymer_link(PolymerType polymer_type,
     if (ri1.orig_chemcomp && !ChemComp::is_peptide_group(ri1.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
-          link.aliasing1 = aliasing.group;
+          link.aliasing1 = &aliasing;
           if (const std::string* c_ptr = aliasing.name_from_alias(c))
             c = *c_ptr;
+          break;
         }
-      if (link.aliasing1 == ChemComp::Group::Null)
+      if (!link.aliasing1)
         groups_ok = false;
     }
     ChemComp::Group n_terminus_group = ri2.orig_chemcomp ? ri2.orig_chemcomp->group
@@ -573,11 +571,13 @@ inline Topo::Link Topo::make_polymer_link(PolymerType polymer_type,
     if (ri2.orig_chemcomp && !ChemComp::is_peptide_group(ri2.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri2.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
-          link.aliasing2 = n_terminus_group = aliasing.group;
+          link.aliasing2 = &aliasing;
+          n_terminus_group = aliasing.group;
           if (const std::string* n_ptr = aliasing.name_from_alias(n))
             n = *n_ptr;
+          break;
         }
-      if (link.aliasing2 == ChemComp::Group::Null)
+      if (!link.aliasing2)
         groups_ok = false;
     }
     if (in_peptide_bond_distance(ri1.res->find_atom(c, '*', El::C),
@@ -603,21 +603,23 @@ inline Topo::Link Topo::make_polymer_link(PolymerType polymer_type,
     if (ri1.orig_chemcomp && !ChemComp::is_nucleotide_group(ri1.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
-          link.aliasing1 = aliasing.group;
+          link.aliasing1 = &aliasing;
           if (const std::string* o3p_ptr = aliasing.name_from_alias(o3p))
             o3p = *o3p_ptr;
+          break;
         }
-      if (link.aliasing1 == ChemComp::Group::Null)
+      if (!link.aliasing1)
         groups_ok = false;
     }
     if (ri2.orig_chemcomp && !ChemComp::is_nucleotide_group(ri2.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri2.orig_chemcomp->aliases)
         if (ChemComp::is_nucleotide_group(aliasing.group)) {
-          link.aliasing2 = aliasing.group;
+          link.aliasing2 = &aliasing;
           if (const std::string* p_ptr = aliasing.name_from_alias(p))
             p = *p_ptr;
+          break;
         }
-      if (link.aliasing2 == ChemComp::Group::Null)
+      if (!link.aliasing2)
         groups_ok = false;
     }
     if (in_nucleotide_bond_distance(ri1.res->find_atom(o3p, '*', El::O),
