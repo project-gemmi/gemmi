@@ -98,30 +98,35 @@ struct Topo {
     std::ptrdiff_t res_distance() const { return res1 - res2; }
   };
 
+  struct Mod {
+    std::string id;         // id of ChemMod from the dictionary (MonLib)
+    ChemComp::Group alias;  // alias to be used when applying the modification
+  };
+
   struct ResInfo {
     Residue* res;
     // in case of microheterogeneity we may have 2+ previous residues
     std::vector<Link> prev;
-    std::vector<std::pair<std::string, ChemComp::Group>> mods;
+    std::vector<Mod> mods;
     // Pointer to ChemComp in MonLib::monomers.
     const ChemComp* orig_chemcomp = nullptr;
-    // Pointer to restraints with modifications applied (if any)
-    const ChemComp* final_chemcomp = nullptr;
+    // Pointer to restraints with modifications applied (if any).
+    const ChemComp* final_chemcomp;
     std::vector<Rule> monomer_rules;
 
     ResInfo(Residue* r) : res(r) {}
     void add_mod(const std::string& m, ChemComp::Group aliasing) {
       if (!m.empty())
-        mods.emplace_back(m, aliasing);
+        mods.push_back({m, aliasing});
     }
 
     // key for Topo::cc_cache, based on ChemComp::name + modifications
     std::string cc_cache_key() const {
       assert(orig_chemcomp != nullptr);
       std::string key = orig_chemcomp->name;
-      for (const auto& modif : mods) {
-        key += char(1 + static_cast<int>(modif.second));
-        key += modif.first;
+      for (const Mod& mod : mods) {
+        key += char(1 + static_cast<int>(mod.alias));
+        key += mod.id;
       }
       return key;
     }
@@ -705,17 +710,16 @@ inline void Topo::initialize_refmac_topology(Structure& st, Model& model0,
         } else {
           std::unique_ptr<ChemComp> cc_copy(new ChemComp(*ri.orig_chemcomp));
           // apply modifications
-          for (const auto& modif : ri.mods) {
-            if (const ChemMod* chem_mod = monlib.get_mod(modif.first)) {
+          for (const Mod& mod : ri.mods) {
+            if (const ChemMod* chem_mod = monlib.get_mod(mod.id)) {
               try {
-                ChemComp::Group alias_group = modif.second;
-                chem_mod->apply_to(*cc_copy, alias_group);
+                chem_mod->apply_to(*cc_copy, mod.alias);
               } catch(std::runtime_error& e) {
                 err("failed to apply modification " + chem_mod->id
                     + " to " + ri.res->name + ": " + e.what());
               }
             } else {
-              err("modification not found: " + modif.first);
+              err("modification not found: " + mod.id);
             }
           }
           ri.final_chemcomp = cc_copy.get();

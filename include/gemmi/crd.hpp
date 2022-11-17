@@ -144,10 +144,10 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
       cat_to(mod_info, "#    ", ri.res->seqid.str(), ' ', ri.res->name, ':');
       if (ri.mods.empty())
         mod_info += " n/a";
-      for (const auto& mod_group : ri.mods) {
-        cat_to(mod_info, ' ', mod_group.first);
-        if (mod_group.second != ChemComp::Group::Null)
-          cat_to(mod_info, "(alias ", ChemComp::group_str(mod_group.second), ')');
+      for (const Topo::Mod& mod : ri.mods) {
+        cat_to(mod_info, ' ', mod.id);
+        if (mod.alias != ChemComp::Group::Null)
+          cat_to(mod_info, "(alias ", ChemComp::group_str(mod.alias), ')');
       }
       mod_info += '\n';
     }
@@ -414,9 +414,9 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
                                ri.res->seqid.str() + " " + ri.res->name;
         if (!ri.mods.empty()) {
           res_info += " modified by ";
-          res_info += ri.mods[0].first;
+          res_info += ri.mods[0].id;
           for (size_t i = 1; i != ri.mods.size(); ++i)
-            res_info += ", " + ri.mods[i].first;
+            cat_to(res_info, ", ", ri.mods[i].id);
         }
 
         std::string group_str;
@@ -495,9 +495,9 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
       for (const Topo::Link& link : res_info.prev)
         if (!in_vector(link.link_id, used_links))
           used_links.push_back(link.link_id);
-      for (const auto& mod_alias : res_info.mods)
-        if (!in_vector(mod_alias.first, used_mods))
-          used_mods.push_back(mod_alias.first);
+      for (const Topo::Mod& mod : res_info.mods)
+        if (!in_vector(mod.id, used_mods))
+          used_mods.push_back(mod.id);
     }
   for (const Topo::Link& extra : topo.extras)
     if (!in_vector(extra.link_id, used_links))
