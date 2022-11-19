@@ -1,6 +1,6 @@
 // Copyright 2017-2022 Global Phasing Ltd.
 
-#include <stdio.h>             // for printf, fprintf
+#include <stdio.h>             // for fprintf, stderr, putc
 #include <cstdlib>             // for getenv
 #include <iostream>            // for cerr
 #include <stdexcept>           // for exception
@@ -80,7 +80,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   try {
     if (verbose)
-      printf("Reading %s ...\n", input.c_str());
+      fprintf(stderr, "Reading %s ...\n", input.c_str());
     cif::Document st_doc;
     Structure st = read_structure_gz(input, CoorFormat::Detect, &st_doc);
     setup_entities(st);
@@ -95,7 +95,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     auto read_user_file = [&](const char* path) {
       if (verbose)
-        printf("Reading user's library %s...\n", path);
+        fprintf(stderr, "Reading user's library %s...\n", path);
       if (path[0] == '+' && path[1] == '\0')
         monlib.read_monomer_doc(st_doc);
       else
@@ -105,31 +105,31 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (const option::Option* opt = p.options[Libin]; opt; opt = opt->next())
       read_user_file(opt->arg);
     if (verbose && !monlib.monomers.empty()) {
-      printf("Monomers read so far:");
+      fprintf(stderr, "Monomers read so far:");
       for (auto& mpair : monlib.monomers)
-        printf(" %s", mpair.first.c_str());
-      putchar('\n');
+        fprintf(stderr, " %s", mpair.first.c_str());
+      putc('\n', stderr);
     }
 
     std::vector<std::string> needed = model0.get_all_residue_names();
     vector_remove_if(needed, [&](const std::string& s) { return monlib.monomers.count(s); });
     if (verbose)
-      printf("Reading monomer library...\n");
+      fprintf(stderr, "Reading monomer library...\n");
     std::string error;
     monlib.read_monomer_lib(monomer_dir, needed, read_cif_gz, &error);
     if (!error.empty())
-      printf("%s", error.c_str());
+      fprintf(stderr, "%s", error.c_str());
     for (const option::Option* opt = p.options[Libin2]; opt; opt = opt->next())
       read_user_file(opt->arg);
     vector_remove_if(needed, [&](const std::string& s) { return monlib.monomers.count(s); });
 
     if (!needed.empty()) {
       for (const std::string& name : needed)
-        printf("WARNING: definition not found for %s.\n", name.c_str());
+        fprintf(stderr, "WARNING: definition not found for %s.\n", name.c_str());
       if (!p.is_yes(AutoLigand, false))
         fail("Supply missing monomer definitions or use option --auto-ligand=Y");
-      printf("Note: Using ad-hoc restraints for missing monomers.\n"
-             "      Consider generating monomer CIFs with AceDRG or GRADE.\n");
+      fprintf(stderr, "Note: Using ad-hoc restraints for missing monomers.\n"
+                      "      Consider generating monomer CIFs with AceDRG or GRADE.\n");
     }
 
     if (p.options[NoAliases])
@@ -145,13 +145,13 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         for (size_t i = before; i < st.connections.size(); ++i) {
           const Connection& conn = st.connections[i];
-          printf("Automatic link: %s - %s\n",
-                 conn.partner1.str().c_str(), conn.partner2.str().c_str());
+          fprintf(stderr, "Automatic link: %s - %s\n",
+                  conn.partner1.str().c_str(), conn.partner2.str().c_str());
         }
     }
 
     if (verbose)
-      printf("Preparing topology, hydrogens, restraints...\n");
+      fprintf(stderr, "Preparing topology, hydrogens, restraints...\n");
     bool reorder = true;
     bool ignore_unknown_links = false;
     HydrogenChange h_change;
@@ -164,7 +164,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     auto topo = prepare_topology(st, monlib, 0, h_change, reorder,
                                  &std::cerr, ignore_unknown_links);
     if (verbose)
-      printf("Preparing data for Refmac...\n");
+      fprintf(stderr, "Preparing data for Refmac...\n");
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
     // expand the starting comment
     cif::Item& first_item = crd.blocks.at(0).items.at(0);
@@ -175,8 +175,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         comment.append("  ").append(argv[i]);
     }
     if (verbose)
-      printf("Writing %s\n", output.c_str());
-    Ofstream os(output);
+      fprintf(stderr, "Writing %s\n", output.c_str());
+    Ofstream os(output, &std::cout);
     write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
