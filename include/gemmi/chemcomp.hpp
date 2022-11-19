@@ -335,16 +335,6 @@ struct ChemComp {
     float charge;
     std::string chem_type;
 
-    gemmi::Atom to_full_atom() const {
-      gemmi::Atom atom;
-      atom.name = id;
-      atom.calc_flag = CalcFlag::Calculated;
-      atom.occ = 0.0f;
-      atom.b_iso = 0.0f;
-      atom.element = el;
-      atom.charge = static_cast<signed char>(std::round(charge));
-      return atom;
-    }
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
 

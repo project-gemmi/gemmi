@@ -18,23 +18,34 @@ namespace gemmi {
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
 inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
-  for (auto it = cc.atoms.begin(); it != cc.atoms.end(); ++it) {
-    if (!it->is_hydrogen())
-      continue;
-    Atom atom = it->to_full_atom();
-    if (const Restraints::AtomId* bonded = cc.rt.first_bonded_atom(atom.name))
-      // Add H atom for each conformation (altloc) of the parent atom.
-      // Avoid range-based-for here because res.atoms may get re-allocated.
-      for (size_t i = 0, size = res.atoms.size(); i != size; ++i)
-        if (res.atoms[i].name == bonded->atom) {
-          const Atom& parent = res.atoms[i];
-          atom.altloc = parent.altloc;
-          atom.occ = parent.occ;
-          atom.b_iso = parent.b_iso;
-          // calc_flag will be changed to Calculated when the position is set
-          atom.calc_flag = CalcFlag::Dummy;
-          res.atoms.push_back(atom);
-        }
+  // Add H atom for each conformation (altloc) of the parent atom.
+  for (size_t i = 0, size = res.atoms.size(); i != size; ++i) {
+    for (const Restraints::Bond& bond : cc.rt.bonds) {
+      // res.atoms may get re-allocated, so we set parent earlier
+      const Atom& parent = res.atoms[i];
+      assert(!parent.is_hydrogen());
+      const Restraints::AtomId* atom_id;
+      if (bond.id1 == parent.name)
+        atom_id = &bond.id2;
+      else if (bond.id2 == parent.name)
+        atom_id = &bond.id1;
+      else
+        continue;
+      auto it = cc.find_atom(atom_id->atom);
+      if (it == cc.atoms.end())
+        fail("inconsistent _chem_comp " + cc.name);
+      if (it->is_hydrogen()) {
+        gemmi::Atom atom;
+        atom.name = it->id;
+        atom.altloc = parent.altloc;
+        atom.element = it->el;
+        // calc_flag will be changed to Calculated when the position is set
+        atom.calc_flag = CalcFlag::Dummy;
+        atom.occ = parent.occ;
+        atom.b_iso = parent.b_iso;
+        res.atoms.push_back(atom);
+      }
+    }
   }
 }
 
@@ -43,13 +54,12 @@ inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
 // Returns position of x4 in x1-x2-x3-x4, where dist=|x3-x4| and
 // theta is angle(x2, x3, x4).
 // Based on section 3.3 of Paciorek et al, Acta Cryst. A52, 349 (1996).
-inline
-Position position_from_angle_and_torsion(const Position& x1,
-                                         const Position& x2,
-                                         const Position& x3,
-                                         double dist,  // |x3-x4|
-                                         double theta, // angle x2-x3-x4
-                                         double tau) { // dihedral angle
+inline Position position_from_angle_and_torsion(const Position& x1,
+                                                const Position& x2,
+                                                const Position& x3,
+                                                double dist,  // |x3-x4|
+                                                double theta, // angle x2-x3-x4
+                                                double tau) { // dihedral angle
   using std::sin;
   using std::cos;
   Vec3 u = x2 - x1;
@@ -423,7 +433,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
             add_hydrogens_without_positions(cc, res);
             if (h_change == HydrogenChange::ReAddButWater) {
               // a special handling of HIS for compatibility with Refmac
-              if (cc.name == "HIS") {
+              if (res.name == "HIS") {
                 for (gemmi::Atom& atom : ri.res->atoms)
                   if (atom.name == "HD1" || atom.name == "HE2")
                     atom.occ = 0;
@@ -432,7 +442,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
           }
         } else {
           // Special handling of Deuterium - mostly for Refmac.
-          // Note: if the model has deuterium, it gets modfied.
+          // Note: if the model has deuterium, it gets modified.
           if (replace_deuterium_with_fraction(res)) {
             // deuterium names usually differ from the names in dictionary
             for (Atom& atom : res.atoms) {
