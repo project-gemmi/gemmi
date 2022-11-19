@@ -146,6 +146,8 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         mod_info += " n/a";
       for (const Topo::Mod& mod : ri.mods) {
         cat_to(mod_info, ' ', mod.id);
+        if (mod.altloc)
+          cat_to(mod_info, ':', mod.altloc);
         if (mod.alias != ChemComp::Group::Null)
           cat_to(mod_info, "(alias ", ChemComp::group_str(mod.alias), ')');
       }
@@ -242,10 +244,10 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
 
   for (const Topo::ChainInfo& chain_info : topo.chain_infos)
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
-      const ChemComp& cc = *ri.final_chemcomp;
       const Residue& res = *ri.res;
       std::string auth_seq_id = res.seqid.str();
       for (const Atom& a : res.atoms) {
+        const ChemComp& cc = ri.get_final_chemcomp(a.altloc);
         const auto& cc_atom = cc.get_atom(a.name);
         vv.emplace_back("ATOM");
         vv.emplace_back(std::to_string(a.serial));
@@ -418,19 +420,23 @@ inline cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const Unit
                                ri.res->seqid.str() + " " + ri.res->name;
         if (!ri.mods.empty()) {
           res_info += " modified by ";
-          res_info += ri.mods[0].id;
-          for (size_t i = 1; i != ri.mods.size(); ++i)
-            cat_to(res_info, ", ", ri.mods[i].id);
+          for (size_t i = 0; i != ri.mods.size(); ++i) {
+            if (i != 0)
+              res_info += ", ";
+            res_info += ri.mods[i].id;
+            if (ri.mods[i].altloc != '\0')
+              cat_to(res_info, ':', ri.mods[i].altloc);
+          }
         }
 
-        std::string group_str;
-        ChemComp::Group group = ri.final_chemcomp->group;
-        if (ChemComp::is_peptide_group(group))
-          group_str = "L-peptid";  // we try to be compatible with Refmac
-        else if (group == ChemComp::Group::NonPolymer)
-          group_str = ".";
-        else
-          group_str = ChemComp::group_str(group);
+        std::string group_str = ".";
+        if (ri.orig_chemcomp) {
+          ChemComp::Group group = ri.orig_chemcomp->group;
+          if (ChemComp::is_peptide_group(group))
+            group_str = "L-peptid";  // we try to be compatible with Refmac
+          else if (group != ChemComp::Group::NonPolymer)
+            group_str = ChemComp::group_str(group);
+        }
 
         restr_loop.add_comment_and_row({res_info, "MONO", ".", group_str, ".",
                                         ".", ".", ".", ".", ".", ".", ".", ".", "."});

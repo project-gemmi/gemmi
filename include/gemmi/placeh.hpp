@@ -17,11 +17,13 @@ namespace gemmi {
 
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
-inline void add_hydrogens_without_positions(const ChemComp& cc, Residue& res) {
+inline void add_hydrogens_without_positions(Topo::ResInfo& ri) {
+  Residue& res = *ri.res;
   // Add H atom for each conformation (altloc) of the parent atom.
   for (size_t i = 0, size = res.atoms.size(); i != size; ++i) {
+    const ChemComp& cc = ri.get_final_chemcomp(res.atoms[i].altloc);
     for (const Restraints::Bond& bond : cc.rt.bonds) {
-      // res.atoms may get re-allocated, so we set parent earlier
+      // res.atoms may get re-allocated, so we can't set parent earlier
       const Atom& parent = res.atoms[i];
       assert(!parent.is_hydrogen());
       const Restraints::AtomId* atom_id;
@@ -397,7 +399,7 @@ inline void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   if (!ri)
     return;
   std::vector<Atom>& atoms = ri->res->atoms;
-  const Restraints& rt = ri->final_chemcomp->rt;
+  const Restraints& rt = ri->get_final_chemcomp(alt).rt;
   for (auto it = atoms.end(); it-- != atoms.begin(); ) {
     if (it->is_hydrogen()) {
       const Restraints::AtomId* heavy = rt.first_bonded_atom(it->name);
@@ -424,13 +426,12 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
     // remove/add hydrogens, sort atoms in residues
     for (Topo::ChainInfo& chain_info : topo->chain_infos) {
       for (Topo::ResInfo& ri : chain_info.res_infos) {
-        const ChemComp& cc = *ri.final_chemcomp;
         Residue& res = *ri.res;
         if (!keep) {
           remove_hydrogens(res);
           if (h_change == HydrogenChange::ReAdd ||
               (h_change == HydrogenChange::ReAddButWater && !res.is_water())) {
-            add_hydrogens_without_positions(cc, res);
+            add_hydrogens_without_positions(ri);
             if (h_change == HydrogenChange::ReAddButWater) {
               // a special handling of HIS for compatibility with Refmac
               if (res.name == "HIS") {
@@ -445,15 +446,17 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
           // Note: if the model has deuterium, it gets modified.
           if (replace_deuterium_with_fraction(res)) {
             // deuterium names usually differ from the names in dictionary
-            for (Atom& atom : res.atoms) {
-              if (atom.name[0] == 'D' && atom.fraction != 0 &&
-                  cc.find_atom(atom.name) == cc.atoms.end())
-                atom.name[0] = 'H';
-            }
+            for (Atom& atom : res.atoms)
+              if (atom.name[0] == 'D' && atom.fraction != 0) {
+                const ChemComp& cc = ri.get_final_chemcomp(atom.altloc);
+                if (cc.find_atom(atom.name) == cc.atoms.end())
+                  atom.name[0] = 'H';
+              }
             st.has_d_fraction = true;
           }
         }
-        if (reorder) {
+        if (reorder && ri.orig_chemcomp) {
+          const ChemComp& cc = *ri.orig_chemcomp;
           for (Atom& atom : res.atoms) {
             auto it = cc.find_atom(atom.name);
             if (it == cc.atoms.end())
