@@ -115,6 +115,7 @@ void add_mol(py::module& m) {
     .def_readwrite("sheets", &Structure::sheets)
     .def_readwrite("assemblies", &Structure::assemblies)
     .def_readwrite("meta", &Structure::meta)
+    .def_readwrite("has_d_fraction", &Structure::has_d_fraction)
     .def_readwrite("info", &Structure::info)
     .def_readwrite("raw_remarks", &Structure::raw_remarks)
     .def("find_spacegroup", &Structure::find_spacegroup)
