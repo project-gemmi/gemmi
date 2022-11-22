@@ -328,6 +328,10 @@ inline void add_restraint_row(cif::Loop& restr_loop,
   for (const Atom* a : atoms) {
     last += ' ';
     last += a->name;
+    if (a->has_altloc()) {
+      last += '.';
+      last += a->altloc;
+    }
   }
 }
 
