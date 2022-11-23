@@ -20,7 +20,7 @@ struct Scaling {
 
     Miller get_x() const { return hkl; }
     double get_y() const { return fobs; }
-    double get_weight() const { return 1.0 / sigma; }
+    double get_weight() const { return 1.0 /* / sigma*/; }
   };
 
   UnitCell cell;
