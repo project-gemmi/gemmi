@@ -93,13 +93,13 @@ inline Vec3 get_vector_to_line(const Position& point,
   return ap - ap.dot(unit_vector) * unit_vector;
 }
 
-// Based on https://en.wikipedia.org/wiki/Trilateration
-// If no points satisfy the returns NaNs
+// If no points satisfy the distances returns a pair of NaNs
 inline
 std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
                                           const Position& p2, double r2sq,
                                           const Position& p3, double r3sq) {
-  // variables have the same names as on the Wikipedia Trilateration page
+  // It was based on https://en.wikipedia.org/wiki/Trilateration
+  // but apparently that page has changed in the meantime.
   Vec3 ex = (p2 - p1).normalized();
   double i = ex.dot(p3-p1);
   Vec3 ey = (Vec3(p3) - p1 - i*ex).normalized();
@@ -196,7 +196,7 @@ inline void place_hydrogens(const Topo& topo, const Atom& atom) {
         double y = 2 * atom.pos.y - hs[1].pos.y;
         hs[2].pos = Position(hs[1].pos.x, y, hs[1].pos.z);
       } else if (hs.size() == 4) {
-        // similarly, only CH4 (CH2.cif) and and NH4 (NH4.cif) are handled here
+        // similarly, only CH4 (CH2.cif) and NH4 (NH4.cif) are handled here
         const Angle* ang1 = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr);
         const Angle* ang2 = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr);
         double theta1 = rad(ang1 ? ang1->value : 109.47122);
