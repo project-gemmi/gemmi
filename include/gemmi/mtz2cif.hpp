@@ -631,12 +631,17 @@ inline void MtzToCif::write_staraniso_b_in_mmcif(const SMat33<double>& b,
      << "\n_reflns.pdbx_ordinal 1"
         "\n_reflns.pdbx_diffrn_id 1";
   const char* prefix = "\n_reflns.pdbx_aniso_B_tensor_eigen";
+  // STARANISO team decided that "the best course is to subtract the smallest
+  // eigenvalue of the best-fit tensor from all eigenvalues. The smallest
+  // eigenvalue is then exactly zero, and the tensor represents the anisotropy
+  // correction that is actually applied to the data, there being no correction
+  // in the strongest diffracting direction (this is the same as is done on the
+  // UCLA server).". Actually here we have the minimum value already subtracted,
+  // but due to the limited precision of the values stored as text in MTZ it's
+  // not exactly 0, so we subtract the minimum value again.
+  double min_eigv = std::min(eigenvalues[0], std::min(eigenvalues[1], eigenvalues[2]));
   for (int i = 0; i < 3; ++i) {
-    // According to the mmCIF spec eigenvalues must be positive.
-    // But we don't have the original eigenvalues, we have values after
-    // subtracting the smallest eigenvalue. So at least one of them is 0.
-    // As a workaround, add an arbitrary number to all eigenvalues.
-    WRITE("%svalue_%d %.5g", prefix, i+1, eigenvalues[i] + 1.0);
+    WRITE("%svalue_%d %.5g", prefix, i+1, eigenvalues[i] - min_eigv);
     for (int j = 0; j < 3; ++j)
       WRITE("%svector_%d_ortho[%d] %.5g", prefix, i+1, j+1, eigenvectors[j][i]);
   }
