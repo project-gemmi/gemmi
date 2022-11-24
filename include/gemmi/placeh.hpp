@@ -313,16 +313,24 @@ inline void place_hydrogens(const Topo& topo, const Atom& atom) {
       // If all atoms are in the same plane (sum of angles is 360 degree)
       // the calculations can be simplified.
       double theta3 = ang3->radians();
-      Vec3 v12 = known[0].pos - atom.pos;
-      Vec3 v13 = known[1].pos - atom.pos;
-      // theta3 is the ideal restraint value, cur_theta3 is the current value
-      double cur_theta3 = v12.angle(v13);
       constexpr double two_pi = 2 * pi();
-      if (theta1 + theta2 + std::max(theta3, cur_theta3) + 0.01 > two_pi) {
+      // The sum of ideal angles in a plane is not always exactly 360 deg.
+      // Here we use an arbitrary limit 0.05 radians ~= 3 degrees.
+      if (theta1 + theta2 + theta3 + 0.05 > two_pi) {
+        Vec3 v12 = known[0].pos - atom.pos;
+        Vec3 v13 = known[1].pos - atom.pos;
+        // theta3 is the ideal restraint value, cur_theta3 is the current value
+        double cur_theta3 = v12.angle(v13);
         double ratio = (two_pi - cur_theta3) / (theta1 + theta2);
         Vec3 axis = v13.cross(v12).normalized();
         Vec3 v14 = rotate_about_axis(v12, axis, theta1 * ratio);
         hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
+        if (hs.size() > 1) {
+          topo.err("Unhandled topology of " + std::to_string(hs.size()) +
+                   " hydrogens bonded to " + atom.name);
+          for (size_t i = 1; i < hs.size(); ++i)
+            hs[i].ptr->occ = 0;
+        }
         return;
       }
     }
