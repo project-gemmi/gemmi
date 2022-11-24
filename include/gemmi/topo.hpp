@@ -887,11 +887,7 @@ inline void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monl
     if (ignore_unknown_links)
       return;
     // create a new ChemLink and add it to the monomer library
-    bool use_ion = cra1.atom->element.is_metal() || cra2.atom->element.is_metal();
-    double ideal_dist = monlib.find_radius(cra1, use_ion) +
-                        monlib.find_radius(cra2, use_ion);
-    if (!use_ion)
-      ideal_dist /= 2;
+    double ideal_dist = monlib.find_ideal_distance(cra1, cra2);
     extra.link_id = monlib.add_auto_chemlink(extra.res1->name, conn.partner1.atom_name,
                                              extra.res2->name, conn.partner2.atom_name,
                                              ideal_dist, 0.02);

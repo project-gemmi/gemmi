@@ -524,6 +524,7 @@ inline void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) c
 }
 
 struct EnerLib {
+  enum class RadiusType {Vdw, Vdwh, Ion};
   struct Atom {
     Element element;
     char hb_type;
@@ -532,6 +533,12 @@ struct EnerLib {
     double ion_radius;
     int valency;
     int sp;
+  };
+  struct Bond {
+    std::string atom_type_2;
+    BondType type;
+    double length;
+    double value_esd;
   };
 
   EnerLib() {}
@@ -543,8 +550,13 @@ struct EnerLib {
       atoms.emplace(row[0], Atom{Element(row[5]), row[1][0], cif::as_number(row[2]),
                                  cif::as_number(row[3]), cif::as_number(row[4]),
                                  cif::as_int(row[6], -1), cif::as_int(row[7], -1)});
+    for (const auto& row : block.find("_lib_bond.",
+                    {"atom_type_1", "atom_type_2", "type", "length", "value_esd"}))
+      bonds.emplace(row.str(0), Bond{row.str(1), bond_type_from_string(row[2]),
+                                 cif::as_number(row[3]), cif::as_number(row[4])});
   }
   std::map<std::string, Atom> atoms; // type->Atom
+  std::multimap<std::string, Bond> bonds; // atom_type_1->Bond
 };
 
 struct MonLib {
@@ -748,26 +760,58 @@ struct MonLib {
     return ok;
   }
 
-  /// Searches data from _lib_atom in ener_lib.cif.
-  /// If chem_type is not in the library uses element name as chem_type.
-  double find_radius(const const_CRA& cra, bool use_ion) const {
-    double r = 1.7;
-    auto it = ener_lib.atoms.end();
+  const std::string* find_chemtype(const const_CRA& cra) const {
     auto cc = monomers.find(cra.residue->name);
     if (cc != monomers.end()) {
       auto cc_atom = cc->second.find_atom(cra.atom->name);
       if (cc_atom != cc->second.atoms.end())
-        it = ener_lib.atoms.find(cc_atom->chem_type);
+        return &cc_atom->chem_type;
     }
-    if (it == ener_lib.atoms.end())
-      it = ener_lib.atoms.find(cra.atom->element.uname());
+    return nullptr;
+  }
+
+  /// Searches data from _lib_atom in ener_lib.cif.
+  double find_radius(const std::string& chemtype, EnerLib::RadiusType type) const {
+    double r = 0;
+    auto it = ener_lib.atoms.find(chemtype);
     if (it != ener_lib.atoms.end()) {
-      if (use_ion && !std::isnan(it->second.ion_radius))
+      if (type == EnerLib::RadiusType::Ion)
         r = it->second.ion_radius;
-      else
+      else if (type == EnerLib::RadiusType::Vdw)
         r = it->second.vdw_radius;
+      else if (type == EnerLib::RadiusType::Vdwh)
+        r = it->second.vdwh_radius;
     }
-    return r;
+    return std::isnan(r) ? 0 : r;
+  }
+
+  double find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2) const {
+    std::string types[2] = {cra1.atom->element.uname(),
+                            cra2.atom->element.uname()};
+    if (const std::string* tmp = find_chemtype(cra1)) types[0] = *tmp;
+    if (const std::string* tmp = find_chemtype(cra2)) types[1] = *tmp;
+    // if either one is metal, use ion radius + ion radius
+    if (cra1.atom->element.is_metal() != cra2.atom->element.is_metal()) {
+      // return if ion radius is found for both of them
+      double r1 = find_radius(types[0], EnerLib::RadiusType::Ion);
+      double r2 = find_radius(types[1], EnerLib::RadiusType::Ion);
+      if (r1 > 0 && r2 > 0) return r1 + r2;
+    }
+    // otherwise, look for defined distance or use average of distances
+    double r[2] = {0, 0};
+    for (int j = 0; j < 2; ++j) {
+      auto range = ener_lib.bonds.equal_range(types[j]);
+      for (auto i = range.first; i != range.second; ++i)
+        if (i->second.atom_type_2 == types[1-j] && !std::isnan(i->second.length))
+          return i->second.length;
+        else if (i->second.atom_type_2 == "" && i->second.type == BondType::Single)
+          r[j] = i->second.length / 2;
+      if ((r[j] == 0 || std::isnan(r[j])) && range.first != range.second)
+        r[j] = range.first->second.length / 2;
+      if (r[j] == 0 || std::isnan(r[j]))
+        r[j] = (j==0 ? cra1 : cra2).atom->element.covalent_r();
+    }
+    return r[0] + r[1];
   }
 
   // Add a ChemLink that restraints only bond length.
