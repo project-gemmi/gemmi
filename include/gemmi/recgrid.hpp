@@ -75,7 +75,7 @@ struct ReciprocalGrid : GridBase<T> {
   }
 
   T get_value_by_hkl(Miller hkl, double unblur=0,
-                     bool mott_bethe=false) const {
+                     bool mott_bethe=false, double sum_ab=0) const {
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_value_by_hkl(): ZYX order is not supported yet");
     T value;
@@ -86,6 +86,8 @@ struct ReciprocalGrid : GridBase<T> {
 
     if (unblur != 0. || mott_bethe) {
       double inv_d2 = this->unit_cell.calculate_1_d2(hkl);
+      if (mott_bethe && inv_d2 == 0)
+        return sum_ab / (8 * pi() * pi() * bohrradius());
       double mult = 1;
       if (unblur != 0)
         // cf. reciprocal_space_multiplier()
@@ -102,7 +104,7 @@ struct ReciprocalGrid : GridBase<T> {
   template <typename R=T>
   AsuData<R> prepare_asu_data(double dmin=0, double unblur=0,
                               bool with_000=false, bool with_sys_abs=false,
-                              bool mott_bethe=false) {
+                              bool mott_bethe=false, double sum_ab=0) {
     AsuData<R> asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
@@ -138,14 +140,18 @@ struct ReciprocalGrid : GridBase<T> {
     if (unblur != 0. || mott_bethe)
       for (HklValue<R>& hv : asu_data.v) {
         double inv_d2 = this->unit_cell.calculate_1_d2(hv.hkl);
-        double mult = 1;
-        if (unblur != 0)
-          // cf. reciprocal_space_multiplier()
-          mult = std::exp(unblur * 0.25 * inv_d2);
-        if (mott_bethe)
-          // cf. mott_bethe_factor
-          mult *= -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
-        hv.value *= static_cast<decltype(std::abs(hv.value))>(mult);
+        if (mott_bethe && inv_d2 == 0)
+          hv.value = sum_ab / (8 * pi() * pi() * bohrradius());
+        else {
+          double mult = 1;
+          if (unblur != 0)
+            // cf. reciprocal_space_multiplier()
+            mult = std::exp(unblur * 0.25 * inv_d2);
+          if (mott_bethe)
+            // cf. mott_bethe_factor
+            mult *= -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
+          hv.value *= static_cast<decltype(std::abs(hv.value))>(mult);
+        }
       }
     asu_data.unit_cell_ = this->unit_cell;
     asu_data.spacegroup_ = this->spacegroup;

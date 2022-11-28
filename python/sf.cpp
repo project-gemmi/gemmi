@@ -40,6 +40,7 @@ void add_dencalc(py::module& m, const char* name) {
     .def_readwrite("blur", &DenCalc::blur)
     .def_readwrite("cutoff", &DenCalc::cutoff)
     .def_readwrite("addends", &DenCalc::addends)
+    .def_readwrite("sum_ab", &DenCalc::sum_ab)
     .def("set_refmac_compatible_blur", &DenCalc::set_refmac_compatible_blur)
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("initialize_grid", &DenCalc::initialize_grid)

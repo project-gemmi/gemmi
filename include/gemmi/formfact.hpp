@@ -134,6 +134,13 @@ struct GaussianCoef {
     constexpr Real UtoB = 8 * sq(pi());
     return precalculate_density_aniso_b(U.scaled(UtoB), addend);
   }
+
+  Real sum_ab() const {
+    Real s = 0;
+    for (int i = 0; i < N; ++i)
+      s += a(i) * b(i);
+    return s;
+  }
 };
 
 inline unsigned char it92_pos(El el) {
