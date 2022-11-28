@@ -67,11 +67,19 @@ void add_monlib(py::module& m) {
          py::return_value_policy::reference_internal)
     .def("get_mod", &MonLib::get_mod, py::arg("name"),
          py::return_value_policy::reference_internal)
-    .def("match_link", &MonLib::match_link,
-         py::arg("res1"), py::arg("atom1"),
-         py::arg("res2"), py::arg("atom2"), py::arg("altloc"),
-         py::arg("min_bond_sq")=0.,
-         py::return_value_policy::reference_internal)
+    .def("match_link", [](const MonLib &self,
+                          const Residue& res1, const std::string& atom1,
+                          const Residue& res2, const std::string& atom2,
+                          char alt, double min_bond_sq) {
+      ChemComp::Aliasing aliasing1, aliasing2;
+      const ChemComp::Aliasing* ptr1 = &aliasing1;
+      const ChemComp::Aliasing* ptr2 = &aliasing2;
+      return self.match_link(res1, atom1, res2, atom2, alt, min_bond_sq,
+                             &ptr1, &ptr2);
+    }, py::arg("res1"), py::arg("atom1"),
+       py::arg("res2"), py::arg("atom2"), py::arg("altloc"),
+       py::arg("min_bond_sq")=0.,
+       py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("insert_chemcomps", &MonLib::insert_chemcomps)
     .def("insert_chemlinks", &MonLib::insert_chemlinks)
