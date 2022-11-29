@@ -71,11 +71,10 @@ void add_monlib(py::module& m) {
                           const Residue& res1, const std::string& atom1,
                           const Residue& res2, const std::string& atom2,
                           char alt, double min_bond_sq) {
-      ChemComp::Aliasing aliasing1, aliasing2;
-      const ChemComp::Aliasing* ptr1 = &aliasing1;
-      const ChemComp::Aliasing* ptr2 = &aliasing2;
+      const ChemComp::Aliasing* aliasing1 = nullptr;
+      const ChemComp::Aliasing* aliasing2 = nullptr;
       return self.match_link(res1, atom1, res2, atom2, alt, min_bond_sq,
-                             &ptr1, &ptr2);
+                             &aliasing1, &aliasing2);
     }, py::arg("res1"), py::arg("atom1"),
        py::arg("res2"), py::arg("atom2"), py::arg("altloc"),
        py::arg("min_bond_sq")=0.,
