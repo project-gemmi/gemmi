@@ -31,7 +31,14 @@ struct LinkHunt {
   const MonLib* monlib_ptr = nullptr;
   std::multimap<std::string, const ChemLink*> links;
 
-  void index_chem_links(const MonLib& monlib) {
+  void index_chem_links(const MonLib& monlib, bool use_alias=true) {
+    std::map<ChemComp::Group, std::map<std::string, std::vector<std::string>>> aliases;
+    if (use_alias)
+      for (const auto& iter : monlib.monomers)
+        for (const ChemComp::Aliasing& a : iter.second.aliases)
+          for (const std::pair<std::string, std::string>& r : a.related)
+            aliases[a.group][r.second].push_back(r.first);
+
     for (const auto& iter : monlib.links) {
       const ChemLink& link = iter.second;
       if (link.rt.bonds.empty())
@@ -48,6 +55,35 @@ struct LinkHunt {
       if (bond.value > global_max_dist)
         global_max_dist = bond.value;
       links.emplace(bond.lexicographic_str(), &link);
+
+      if (!use_alias || (!link.side1.comp.empty() && !link.side2.comp.empty()))
+        continue;
+      std::vector<std::string> *names1 = nullptr, *names2 = nullptr;
+      if (link.side1.comp.empty()) {
+        auto i = aliases.find(link.side1.group);
+        if (i != aliases.end()) {
+          auto j = i->second.find(bond.id1.atom);
+          if (j != i->second.end())
+            names1 = &j->second;
+        }
+      }
+      if (link.side2.comp.empty()) {
+        auto i = aliases.find(link.side2.group);
+        if (i != aliases.end()) {
+          auto j = i->second.find(bond.id2.atom);
+          if (j != i->second.end())
+            names2 = &j->second;
+        }
+      }
+     if (names1 && names2)
+       for (const std::string& n1 : *names1)
+         for (const std::string& n2 : *names2)
+           links.emplace(Restraints::lexicographic_str(n1, n2), &link);
+     else if (names1 || names2) {
+       const std::string& n1 = names1 ? bond.id2.atom : bond.id1.atom;
+       for (const std::string& n2 : (names1 ? *names1 : *names2))
+         links.emplace(Restraints::lexicographic_str(n1, n2), &link);
+     }
     }
     monlib_ptr = &monlib;
   }
@@ -79,21 +115,25 @@ struct LinkHunt {
             const Restraints::Bond& bond = link.rt.bonds[0];
             if (dist_sq > sq(bond.value * bond_margin))
               continue;
+            const ChemComp::Aliasing* aliasing1 = nullptr;
+            const ChemComp::Aliasing* aliasing2 = nullptr;
             bool order1;
-            if (bond.id1.atom == cra1.atom->name &&
-                monlib_ptr->link_side_matches_residue(link.side1, cra1.residue->name) &&
-                monlib_ptr->link_side_matches_residue(link.side2, cra2.residue->name))
+            if (monlib_ptr->link_side_matches_residue(link.side1, cra1.residue->name, &aliasing1) &&
+                monlib_ptr->link_side_matches_residue(link.side2, cra2.residue->name, &aliasing2) &&
+                atom_match_with_alias(bond.id1.atom, cra1.atom->name, aliasing1))
               order1 = true;
-            else if (bond.id2.atom == cra1.atom->name &&
-                monlib_ptr->link_side_matches_residue(link.side2, cra1.residue->name) &&
-                monlib_ptr->link_side_matches_residue(link.side1, cra2.residue->name))
+            else if (monlib_ptr->link_side_matches_residue(link.side2, cra1.residue->name, &aliasing1) &&
+                     monlib_ptr->link_side_matches_residue(link.side1, cra2.residue->name, &aliasing2) &&
+                     atom_match_with_alias(bond.id2.atom, cra1.atom->name, aliasing1))
               order1 = false;
             else
               continue;
             int link_score = link.calculate_score(
                     order1 ? *cra1.residue : *cra2.residue,
                     order1 ? cra2.residue : cra1.residue,
-                    cra1.atom->altloc_or(cra2.atom->altloc));
+                    cra1.atom->altloc_or(cra2.atom->altloc),
+                    order1 ? aliasing1 : aliasing2,
+                    order1 ? aliasing2 : aliasing1);
             match.chem_link_count++;
             if (link_score > match.score) {
               match.chem_link = &link;

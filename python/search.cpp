@@ -117,7 +117,7 @@ void add_search(py::module& m) {
   linkhunt
     .def(py::init<>())
     .def("index_chem_links", &LinkHunt::index_chem_links,
-         py::arg("monlib"), py::keep_alive<1, 2>())
+         py::arg("monlib"), py::arg("use_alias")=true, py::keep_alive<1, 2>())
     .def("find_possible_links", &LinkHunt::find_possible_links,
          py::arg("st"), py::arg("bond_margin"), py::arg("radius_margin"),
          py::arg("ignore")=ContactSearch::Ignore::SameResidue)
