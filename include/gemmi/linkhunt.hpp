@@ -36,8 +36,10 @@ struct LinkHunt {
     if (use_alias)
       for (const auto& iter : monlib.monomers)
         for (const ChemComp::Aliasing& a : iter.second.aliases)
-          for (const std::pair<std::string, std::string>& r : a.related)
-            aliases[a.group][r.second].push_back(r.first);
+          for (const std::pair<std::string, std::string>& r : a.related) {
+            const ChemComp::Group& gr = ChemComp::is_nucleotide_group(a.group) ? ChemComp::Group::DnaRna : a.group;
+            aliases[gr][r.second].push_back(r.first);
+          }
 
     for (const auto& iter : monlib.links) {
       const ChemLink& link = iter.second;

@@ -58,7 +58,8 @@ struct ChemLink {
     bool matches_group(Group res) const {
       if (group == Group::Null)
         return false;
-      return res == group || (group == Group::Peptide && ChemComp::is_peptide_group(res));
+      return res == group || (group == Group::Peptide && ChemComp::is_peptide_group(res))
+                          || (group == Group::DnaRna && ChemComp::is_nucleotide_group(res));
     }
     int specificity() const {
       if (!comp.empty())
