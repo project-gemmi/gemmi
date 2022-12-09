@@ -1473,7 +1473,7 @@ Properties of the Entity class are shown in this example:
   >>> ent.name
   'A'
   >>> ent.subchains
-  ['Apoly']
+  ['A-p']
   >>> ent.entity_type
   <EntityType.Polymer: 1>
   >>> ent.polymer_type
@@ -1930,7 +1930,7 @@ and calculate the Matthews coefficient:
   >>> # because of the missing TER record in this file. We need to call:
   >>> st.setup_entities()  # it should sort out chain parts
   >>> chain.get_polymer()
-  <gemmi.ResidueSpan of 141: Apoly [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
+  <gemmi.ResidueSpan of 141: A-p [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
   >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
   <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
   >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)

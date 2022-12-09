@@ -227,30 +227,43 @@ inline void add_entity_types(Structure& st, bool overwrite) {
 //
 // Here we use naming and rules different from both wwPDB and makecif.
 // Note: call add_entity_types() first.
-inline void assign_subchain_names(Chain& chain) {
+inline void assign_subchain_names(Chain& chain, int& nonpolymer_counter) {
   for (Residue& res : chain.residues) {
-    res.subchain = chain.name;
+    res.subchain = chain.name + "-";
     switch (res.entity_type) {
-      case EntityType::Polymer:    res.subchain += "poly";          break;
-      case EntityType::NonPolymer: res.subchain += res.seqid.str(); break;
-      case EntityType::Water:      res.subchain += "wat";           break;
-      case EntityType::Branched:  break; // FIXME
-      case EntityType::Unknown: break;
+      case EntityType::Polymer:
+        res.subchain += 'p';
+        break;
+      case EntityType::NonPolymer:
+        res.subchain += std::to_string(++nonpolymer_counter);
+        break;
+      case EntityType::Water:
+        res.subchain += 'w';
+        break;
+      // In the wwPDB branched are kept each in separate auth/label chain.
+      // So we have one subchain in chain.
+      case EntityType::Branched:
+        res.subchain += 'b';
+        break;
+      case EntityType::Unknown:
+        break;
     }
   }
 }
 
 inline void assign_subchains(Structure& st, bool force, bool fail_if_unknown=true) {
-  for (Model& model : st.models)
+  for (Model& model : st.models) {
+    std::map<std::string, int> counters;
     for (Chain& chain : model.chains) {
       auto has = has_entity_types_and_subchains(chain);
       if (force || !has.second) {
         if (has.first)  // all chain's residues have known entity_type
-          assign_subchain_names(chain);
+          assign_subchain_names(chain, counters[chain.name]);
         else if (fail_if_unknown)
           fail("assign_subchains(): missing entity_type in chain " + chain.name);
       }
     }
+  }
 }
 
 inline void ensure_entities(Structure& st) {
