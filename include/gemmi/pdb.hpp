@@ -594,10 +594,9 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
   if (st.models.empty())
     st.models.emplace_back("1");
 
-  for (Model& mod : st.models)
-    for (Chain& ch : mod.chains)
-      if (ch.residues[0].entity_type != EntityType::Unknown)
-        assign_subchain_names(ch);
+  // Here we assign Residue::subchain, but for chains with all
+  // Residue::entity_type assigned, i.e. for chains with TER.
+  assign_subchains(st, /*force=*/false, /*fail_if_unknown=*/false);
 
   for (Chain& ch : st.models[0].chains)
     if (Entity* entity = st.get_entity(ch.name))

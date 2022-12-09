@@ -181,9 +181,16 @@ inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
   return seq;
 }
 
-inline bool has_subchains_assigned(const Chain& chain) {
-  return std::all_of(chain.residues.begin(), chain.residues.end(),
-                     [](const Residue& r) { return !r.subchain.empty(); });
+inline std::pair<bool,bool> has_entity_types_and_subchains(const Chain& chain) {
+  bool has_entity_types = true;
+  bool has_subchains = true;
+  for (const Residue& res : chain.residues) {
+    if (res.subchain.empty())
+      has_subchains = false;
+    if (res.entity_type == EntityType::Unknown)
+      has_entity_types = false;
+  }
+  return {has_entity_types, has_subchains};
 }
 
 inline void add_entity_types(Chain& chain, bool overwrite) {
@@ -228,17 +235,22 @@ inline void assign_subchain_names(Chain& chain) {
       case EntityType::NonPolymer: res.subchain += res.seqid.str(); break;
       case EntityType::Water:      res.subchain += "wat";           break;
       case EntityType::Branched:  break; // FIXME
-      case EntityType::Unknown:
-        fail("assign_subchain_names(): missing entity_type in chain " + chain.name);
+      case EntityType::Unknown: break;
     }
   }
 }
 
-inline void assign_subchains(Structure& st, bool force) {
+inline void assign_subchains(Structure& st, bool force, bool fail_if_unknown=true) {
   for (Model& model : st.models)
-    for (Chain& chain : model.chains)
-      if (force || !has_subchains_assigned(chain))
-        assign_subchain_names(chain);
+    for (Chain& chain : model.chains) {
+      auto has = has_entity_types_and_subchains(chain);
+      if (force || !has.second) {
+        if (has.first)  // all chain's residues have known entity_type
+          assign_subchain_names(chain);
+        else if (fail_if_unknown)
+          fail("assign_subchains(): missing entity_type in chain " + chain.name);
+      }
+    }
 }
 
 inline void ensure_entities(Structure& st) {

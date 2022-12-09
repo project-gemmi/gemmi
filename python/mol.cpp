@@ -157,7 +157,7 @@ void add_mol(py::module& m) {
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
     .def("assign_subchains", &assign_subchains,
-         py::arg("force")=false)
+         py::arg("force")=false, py::arg("fail_if_unknown")=true)
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
@@ -307,7 +307,7 @@ void add_mol(py::module& m) {
          py::keep_alive<0, 1>())
     .def("get_subchain", (ResidueSpan (Chain::*)(const std::string&)) &Chain::get_subchain,
          py::keep_alive<0, 1>())
-    .def("has_subchains_assigned", &has_subchains_assigned)
+    .def("has_entity_types_and_subchains", &has_entity_types_and_subchains)
     .def("previous_residue", &Chain::previous_residue,
          py::return_value_policy::reference_internal)
     .def("next_residue", &Chain::next_residue,
