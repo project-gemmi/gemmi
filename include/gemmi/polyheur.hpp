@@ -235,7 +235,22 @@ inline void assign_subchain_names(Chain& chain, int& nonpolymer_counter) {
         res.subchain += 'p';
         break;
       case EntityType::NonPolymer:
-        res.subchain += std::to_string(++nonpolymer_counter);
+        ++nonpolymer_counter;
+        // to keep the name short use base36 for 2+ digit numbers:
+        // 1, 2, ..., 9, 00, 01, ..., 09, 0A, 0B, ..., 0Z, 10, ...
+        if (nonpolymer_counter < 10) {
+          res.subchain += ('0' + nonpolymer_counter);
+        } else {
+          const char base36[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          int n = nonpolymer_counter - 10;
+          if (n < 36)
+            res.subchain += '0';
+          size_t pos = res.subchain.size();
+          while (n != 0) {
+            res.subchain.insert(res.subchain.begin() + pos, base36[n % 36]);
+            n /= 36;
+          }
+        }
         break;
       case EntityType::Water:
         res.subchain += 'w';
