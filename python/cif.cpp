@@ -88,6 +88,10 @@ void add_cif(py::module& cif) {
     .def("__getitem__", [](Document &d, py::slice slice) -> py::list {
         return getitem_slice(d.blocks, slice);
     }, py::return_value_policy::reference_internal)
+    .def("__contains__", [](Document& d, const std::string& name) -> bool {
+        Block* b = d.find_block(name);
+        return b != nullptr;
+    }, py::arg("name"))
     .def("__delitem__", [](Document &d, int index) {
         if (index < 0)
           index += (int) d.blocks.size();

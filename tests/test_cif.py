@@ -21,6 +21,18 @@ class TestDoc(unittest.TestCase):
         self.assertEqual([b.name for b in doc[1:-1]], ['b'])
         self.assertEqual([b.name for b in doc[1:1]], [])
 
+    def test_contains(self):
+        doc = cif.read_string("""
+            data_a
+            _one 1 _two 2 _three 3
+            data_b
+            _four 4
+            data_c
+            _two 2 _four 4 _six 6
+        """)
+        self.assertEqual('a' in doc, True)
+        self.assertEqual('d' in doc, False)
+
 class TestBlock(unittest.TestCase):
     def test_find(self):
         block = cif.read_string("""
