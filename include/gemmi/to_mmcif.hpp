@@ -354,11 +354,11 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
       use_ccp4_link_id = true;
   cif::Loop& conn_loop = block.init_mmcif_loop("_struct_conn.",
       {"id", "conn_type_id",
-       "ptnr1_auth_asym_id", "ptnr1_label_asym_id", "ptnr1_label_comp_id",
-       "ptnr1_label_seq_id", "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id",
+       "ptnr1_label_asym_id", "ptnr1_label_comp_id", "ptnr1_label_seq_id",
+       "ptnr1_label_atom_id", "pdbx_ptnr1_label_alt_id", "ptnr1_auth_asym_id",
        "ptnr1_auth_seq_id", "pdbx_ptnr1_PDB_ins_code", "ptnr1_symmetry",
-       "ptnr2_auth_asym_id", "ptnr2_label_asym_id", "ptnr2_label_comp_id",
-       "ptnr2_label_seq_id", "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id",
+       "ptnr2_label_asym_id", "ptnr2_label_comp_id", "ptnr2_label_seq_id",
+       "ptnr2_label_atom_id", "pdbx_ptnr2_label_alt_id", "ptnr2_auth_asym_id",
        "ptnr2_auth_seq_id", "pdbx_ptnr2_PDB_ins_code", "ptnr2_symmetry",
        "details", "pdbx_dist_value"});
   if (use_ccp4_link_id)
@@ -379,21 +379,21 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     auto& v = conn_loop.values;
     v.emplace_back(impl::string_or_qmark(con.name));        // id
     v.emplace_back(connection_type_to_string(con.type));    // conn_type_id
-    v.emplace_back(impl::qchain(con.partner1.chain_name));  // ptnr1_auth_asym_id
     v.emplace_back(subchain_or_dot(*cra1.residue));         // ptnr1_label_asym_id
     v.emplace_back(cra1.residue->name);                     // ptnr1_label_comp_id
     v.emplace_back(cra1.residue->label_seq.str('.'));       // ptnr1_label_seq_id
     v.emplace_back(at1 ? cif::quote(at1->name) : "?");      // ptnr1_label_atom_id
     v.emplace_back(1, at1 ? at1->altloc_or('?') : '?');     // pdbx_ptnr1_label_alt_id
+    v.emplace_back(impl::qchain(con.partner1.chain_name));  // ptnr1_auth_asym_id
     v.emplace_back(cra1.residue->seqid.num.str());          // ptnr1_auth_seq_id
     v.emplace_back(pdbx_icode(con.partner1.res_id));        // ptnr1_PDB_ins_code
     v.emplace_back("1_555");                                // ptnr1_symmetry
-    v.emplace_back(impl::qchain(con.partner2.chain_name));  // ptnr2_auth_asym_id
     v.emplace_back(subchain_or_dot(*cra2.residue));         // ptnr2_label_asym_id
     v.emplace_back(cra2.residue->name);                     // ptnr2_label_comp_id
     v.emplace_back(cra2.residue->label_seq.str('.'));       // ptnr2_label_seq_id
     v.emplace_back(at2 ? cif::quote(at2->name) : "?");      // ptnr2_label_atom_id
     v.emplace_back(1, at2 ? at2->altloc_or('?') : '?');     // pdbx_ptnr2_label_alt_id
+    v.emplace_back(impl::qchain(con.partner2.chain_name));  // ptnr2_auth_asym_id
     v.emplace_back(cra2.residue->seqid.num.str());          // ptnr2_auth_seq_id
     v.emplace_back(pdbx_icode(con.partner2.res_id));        // ptnr2_PDB_ins_code
     v.emplace_back(im_pdb_symbol);                          // ptnr2_symmetry
