@@ -168,9 +168,10 @@ const char* etype_str(const gemmi::Residue& res) {
   gemmi::unreachable();
 }
 
-void print_short_info(const gemmi::Model& model, int short_level) {
+void print_short_info(const gemmi::Model& model, OptParser& p) {
   const int kWrap = 5;
   const int kLimit = 8;
+  int short_level = p.options[Short].count();
   for (const gemmi::Chain& chain : model.chains) {
     int counter = 0;
     auto prev = gemmi::EntityType::Unknown;
@@ -186,7 +187,10 @@ void print_short_info(const gemmi::Model& model, int short_level) {
             printf("...  (%d residues)", counter);
           putchar('\n');
         }
-        printf("%-3s %-12s  ", chain.name.c_str(), etype_str(res));
+        if (p.options[Label])
+          printf("%s (%s) %-12s", chain.name.c_str(), res.subchain.c_str(), etype_str(res));
+        else
+          printf("%-3s %-12s  ", chain.name.c_str(), etype_str(res));
         counter = 0;
         prev = res.entity_type;
       }
@@ -216,7 +220,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   p.require_input_files_as_args();
   gemmi::CoorFormat format = coor_format_as_enum(p.options[FormatIn]);
-  int short_level = p.options[Short].count();
   int status = 0;
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
@@ -248,10 +251,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (gemmi::Model& model : st.models) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());
-        if (short_level == 0)
-          print_long_info(model, p);
+        if (p.options[Short])
+          print_short_info(model, p);
         else
-          print_short_info(model, short_level);
+          print_long_info(model, p);
       }
     }
   } catch (std::runtime_error& e) {
