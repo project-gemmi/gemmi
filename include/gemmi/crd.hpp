@@ -209,6 +209,13 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
                                        "## STRUCT_CONN ##\n"
                                        "#################"});
     impl::write_struct_conn(st, block);
+    // disable ptnrN_auth_asym_id - otherwise Refmac uses it
+    // instead of ptnrN_label_asym_id
+    auto it = block.items.end() - 2;
+    assert(it->type == cif::ItemType::Loop && it->has_prefix("_struct_conn."));
+    for (std::string& tag : it->loop.tags)
+      if (ends_with(tag, "_auth_asym_id"))
+        tag += "-disabled";
   }
 
   items.emplace_back(cif::CommentArg{"###############\n"
@@ -254,7 +261,7 @@ inline cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(a.name);
         vv.emplace_back(1, a.altloc ? a.altloc : '.');
         vv.emplace_back(res.name);
-        vv.emplace_back(cif::quote(chain_info.chain_ref.name));
+        vv.emplace_back(cif::quote(res.subchain));
         vv.emplace_back(auth_seq_id);
         vv.emplace_back(to_str(a.pos.x));
         vv.emplace_back(to_str(a.pos.y));
