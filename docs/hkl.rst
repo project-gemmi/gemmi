@@ -671,7 +671,7 @@ stores all numbers as 32-bit floats).
   :skipif: numpy is None
 
   >>> data = numpy.array([[4, 13, 8, 1, 453.9, 19.12],
-  ...                     [4, 13, 9, 0, 102.0, 27.31]], numpy.float)
+  ...                     [4, 13, 9, 0, 102.0, 27.31]], numpy.float32)
   >>> mtz.set_data(data)
   >>> mtz
   <gemmi.Mtz with 6 columns, 2 reflections>
