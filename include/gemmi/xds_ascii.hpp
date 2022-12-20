@@ -22,6 +22,8 @@ struct XdsAscii {
     double xd;
     double yd;
     double zd;
+    double rlp;
+    double peak;
     int iset = 0;
   };
   struct Iset {
@@ -91,6 +93,11 @@ struct XdsAscii {
         iset.frame_count += f;
     }
   }
+
+  double rot_angle(const Refl& refl) const {
+    double z = refl.zd - starting_frame + 1;
+    return starting_angle + oscillation_range * z;
+  }
 };
 
 template<size_t N>
@@ -113,8 +120,8 @@ inline void xds_parse_cell_constants(const char* start, const char* end,
 
 template<typename Stream>
 void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
-  static const char* expected_columns[8] = {
-    "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8",
+  static const char* expected_columns[10] = {
+      "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8", "RLP=9", "PEAK=10",
   };
   source_path = source;
   char line[256];
@@ -198,11 +205,13 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       result = fast_from_chars(result.ptr, line+len, r.xd); // 6
       result = fast_from_chars(result.ptr, line+len, r.yd); // 7
       result = fast_from_chars(result.ptr, line+len, r.zd); // 8
+      result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
+      result = fast_from_chars(result.ptr, line+len, r.peak); // 10
       if (result.ec != std::errc())
         fail("failed to parse data line:\n", line);
-      if (iset_col > 8) {
+      if (iset_col > 10) {
         const char* iset_ptr = result.ptr;
-        for (int j = 9; j < iset_col; ++j)
+        for (int j = 11; j < iset_col; ++j)
           iset_ptr = skip_word(skip_blank(iset_ptr));
         r.iset = simple_atoi(iset_ptr);
       }

@@ -68,13 +68,18 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.cell = xds_ascii.unit_cell;
     mtz.spacegroup = gemmi::find_spacegroup_by_number(xds_ascii.spacegroup_number);
     mtz.add_base();
+    mtz.datasets.push_back({1, "XDSproject", "XDScrystal", "XDSdataset",
+                            mtz.cell, xds_ascii.wavelength});
     mtz.add_column("M/ISYM", 'Y', 0, -1, false);
     mtz.add_column("BATCH", 'B', 0, -1, false);
-    mtz.add_column("I", 'B', 0, -1, false);
+    mtz.add_column("I", 'J', 0, -1, false);
     mtz.add_column("SIGI", 'Q', 0, -1, false);
+    mtz.add_column("FRACTIONCALC", 'R', 0, -1, false);
     mtz.add_column("XDET", 'R', 0, -1, false);
     mtz.add_column("YDET", 'R', 0, -1, false);
     mtz.add_column("ROT", 'R', 0, -1, false);
+    mtz.add_column("LP", 'R', 0, -1, false);
+    mtz.add_column("FLAG", 'I', 0, -1, false);
     mtz.nreflections = (int) xds_ascii.data.size();
     mtz.data.resize(mtz.columns.size() * xds_ascii.data.size());
     gemmi::UnmergedHklMover hkl_mover(mtz.spacegroup);
@@ -89,20 +94,24 @@ int GEMMI_MAIN(int argc, char **argv) {
       float frame = std::ceil((float) refl.zd);
       mtz.data[k++] = frame;
       frames.insert((int) frame);
-      mtz.data[k++] = (float) refl.iobs;
-      mtz.data[k++] = (float) refl.sigma;
+      mtz.data[k++] = (float) refl.iobs;  // I
+      mtz.data[k++] = (float) std::fabs(refl.sigma);  // SIGI
+      mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
       mtz.data[k++] = (float) refl.xd;
       mtz.data[k++] = (float) refl.yd;
-      mtz.data[k++] = (float) refl.zd;
+      mtz.data[k++] = (float) xds_ascii.rot_angle(refl);  // ROT
+      mtz.data[k++] = (float) refl.rlp;
+      mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG
     }
     for (int frame : frames) {
       gemmi::Mtz::Batch batch;
       batch.number = frame;
-      batch.set_dataset_id(0);
+      batch.set_dataset_id(1);
       batch.set_cell(mtz.cell);
       //batch.set_wavelength(iset.wavelength);
       mtz.batches.push_back(batch);
     }
+    mtz.sort(5);
     if (verbose)
       std::fprintf(stderr, "Writing %d reflections to %s ...\n",
                    mtz.nreflections, output_path);

@@ -1028,8 +1028,7 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
                        refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
                        refl.iobs, refl.sigma);
     if (xds.oscillation_range != 0.) {
-      double z = refl.zd - xds.starting_frame + 1;
-      double angle = xds.starting_angle + xds.oscillation_range * z;
+      double angle = xds.rot_angle(refl);
       ptr += gf_snprintf(ptr, 16, "%.5g ", angle);
     }
     ptr += gf_snprintf(ptr, 16, "%d\n", int(std::ceil(refl.zd)));
