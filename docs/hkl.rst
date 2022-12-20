@@ -546,6 +546,17 @@ To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
   >>> mtz.sort_order  # sort() always sorts by h,k,l and sets sort_order to:
   [1, 2, 3, 0, 0]
 
+If you'd like to use the first 5 columns for sorting (for multirecord data),
+call ``mtz.sort(use_first=5)``.
+
+.. doctest::
+  :hide:
+
+  >>> mtz.sort(use_first=5)
+  False
+  >>> mtz.sort_order
+  [1, 2, 3, 4, 5]
+
 Columns can be removed with ``Mtz::remove_column(index)``,
 where index is 0-based column index:
 

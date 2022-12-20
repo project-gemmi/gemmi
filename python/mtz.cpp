@@ -251,7 +251,7 @@ void add_mtz(py::module& m) {
              self.data[row*ncol+col] = r(row, col);
     }, py::arg("array"))
     .def("update_reso", &Mtz::update_reso)
-    .def("sort", &Mtz::sort)
+    .def("sort", &Mtz::sort, py::arg("use_first")=3)
     .def("ensure_asu", &Mtz::ensure_asu, py::arg("tnt_asu")=false)
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)

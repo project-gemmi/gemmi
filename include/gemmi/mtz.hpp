@@ -777,25 +777,30 @@ struct Mtz {
     }
   }
 
-  std::vector<int> sorted_row_indices() const {
+  std::vector<int> sorted_row_indices(int use_first=3) const {
     if (!has_data())
       fail("No data.");
+    if (use_first <= 0 || use_first >= (int) columns.size())
+      fail("Wrong use_first arg in Mtz::sort.");
     std::vector<int> indices(nreflections);
     for (int i = 0; i != nreflections; ++i)
       indices[i] = i;
     std::stable_sort(indices.begin(), indices.end(), [&](int i, int j) {
       int a = i * (int) columns.size();
       int b = j * (int) columns.size();
-      return data[a] < data[b] || (data[a] == data[b] && (
-               data[a+1] < data[b+1] || (data[a+1] == data[b+1] && (
-                 data[a+2] < data[b+2]))));
+      for (int n = 0; n < use_first; ++n)
+        if (data[a+n] != data[b+n])
+          return data[a+n] < data[b+n];
+      return false;
     });
     return indices;
   }
 
-  bool sort() {
-    std::vector<int> indices = sorted_row_indices();
-    sort_order = {{1, 2, 3, 0, 0}};
+  bool sort(int use_first=3) {
+    std::vector<int> indices = sorted_row_indices(use_first);
+    sort_order = {{0, 0, 0, 0, 0}};
+    for (int i = 0; i < use_first; ++i)
+      sort_order[i] = i + 1;
     if (std::is_sorted(indices.begin(), indices.end()))
       return false;
     std::vector<float> new_data(data.size());
