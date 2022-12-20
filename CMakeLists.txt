@@ -276,6 +276,10 @@ add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/wcn.cpp $<TARGET_OBJECTS:input>)
 support_gz(gemmi-wcn)
 
+add_executable(gemmi-xds2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
+               prog/xds2mtz.cpp)
+support_gz(gemmi-xds2mtz)
+
 add_executable(program
                prog/align.cpp prog/blobs.cpp
                prog/cif2mtz.cpp prog/cif2json.cpp prog/contact.cpp
@@ -286,6 +290,7 @@ add_executable(program
                prog/prep.cpp prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
                prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
+               prog/xds2mtz.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:output>

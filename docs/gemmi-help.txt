@@ -37,3 +37,4 @@ Commands:
  tags          list tags from CIF file(s)
  validate      validate CIF 1.1 syntax
  wcn           calculate local density / contact numbers (WCN, CN, ACN, LDM)
+ xds2mtz       convert XDS_ASCII to MTZ

@@ -34,6 +34,7 @@ int sg_main(int argc, char** argv);
 int tags_main(int argc, char** argv);
 int validate_main(int argc, char** argv);
 int wcn_main(int argc, char** argv);
+int xds2mtz_main(int argc, char** argv);
 
 namespace {
 
@@ -75,6 +76,7 @@ static SubCmd subcommands[] = {
   CMD(tags, "list tags from CIF file(s)"),
   CMD(validate, "validate CIF 1.1 syntax"),
   CMD(wcn, "calculate local density / contact numbers (WCN, CN, ACN, LDM)"),
+  CMD(xds2mtz, "convert XDS_ASCII to MTZ"),
 };
 
 void print_usage() {
