@@ -83,7 +83,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       fprintf(stderr, "Reading %s ...\n", input.c_str());
     cif::Document st_doc;
     Structure st = read_structure_gz(input, CoorFormat::Detect, &st_doc);
-    setup_entities(st);
+
+    // setup_entities(st) but with forced subchain reassignment
+    add_entity_types(st, /*overwrite=*/false);
+    assign_subchains(st, /*force=*/true);
+    ensure_entities(st);
+    deduplicate_entities(st);
 
     if (st.models.empty()) {
       fprintf(stderr, "No models found in the input file.\n");
@@ -165,7 +170,6 @@ int GEMMI_MAIN(int argc, char **argv) {
                                  &std::cerr, ignore_unknown_links);
     if (verbose)
       fprintf(stderr, "Preparing data for Refmac...\n");
-    rename_subchains_for_crd(model0);
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
     // expand the starting comment
     cif::Item& first_item = crd.blocks.at(0).items.at(0);
