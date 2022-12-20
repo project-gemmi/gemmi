@@ -165,6 +165,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                  &std::cerr, ignore_unknown_links);
     if (verbose)
       fprintf(stderr, "Preparing data for Refmac...\n");
+    rename_subchains_for_crd(model0);
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);
     // expand the starting comment
     cif::Item& first_item = crd.blocks.at(0).items.at(0);

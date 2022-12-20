@@ -547,5 +547,12 @@ inline cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
   return doc;
 }
 
+void rename_subchains_for_crd(Model& model) {
+  for (Chain& chain : model.chains)
+    for (Residue& res : chain.residues)
+      if (res.subchain.find('-') == std::string::npos)
+        res.subchain = chain.name + "-" + res.subchain;
+}
+
 } // namespace gemmi
 #endif
