@@ -40,7 +40,7 @@ void add_ccp4(py::module& m) {
   py::class_<Ccp4Base>(m, "Ccp4Base")
     .def("header_i32", &Ccp4Base::header_i32)
     .def("header_float", &Ccp4Base::header_float)
-    .def("header_str", &Ccp4Base::header_str)
+    .def("header_str", &Ccp4Base::header_str, py::arg("w"), py::arg("len")=80)
     .def("set_header_i32", &Ccp4Base::set_header_i32)
     .def("set_header_float", &Ccp4Base::set_header_float)
     .def("set_header_str", &Ccp4Base::set_header_str)
