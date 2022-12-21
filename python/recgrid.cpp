@@ -170,17 +170,23 @@ void add_asudata_and_recgrid(py::module& m,
     .def("to_hkl", &RecGr::to_hkl)
     .def("calculate_1_d2", &RecGr::calculate_1_d2)
     .def("calculate_d", &RecGr::calculate_d)
-    .def("get_value_by_hkl", [](RecGr &self, py::array_t<int> hkl, double unblur, bool mott_bethe) {
+    .def("get_value_by_hkl", [](RecGr &self, py::array_t<int> hkl, double unblur,
+                                bool mott_bethe, TA mott_bethe_000) {
       auto h = hkl.unchecked<2>();
       if (h.shape(1) != 3)
         throw std::domain_error("error: the size of the second dimension != 3");
       py::array_t<TA> vals(h.shape(0));
       TA* ptr = (TA*) vals.request().ptr;
       for (py::ssize_t i = 0; i < h.shape(0); ++i) {
-        ptr[i] = self.get_value_by_hkl({{h(i, 0), h(i, 1), h(i, 2)}}, unblur, mott_bethe);
+        Miller mi{{h(i, 0), h(i, 1), h(i, 2)}};
+        if (mott_bethe && mi[0] == 0 && mi[1] == 0 && mi[2] == 0)
+          ptr[i] = mott_bethe_000;
+        else
+          ptr[i] = self.get_value_by_hkl(mi, unblur, mott_bethe);
       }
       return vals;
-    }, py::arg("hkl"), py::arg("unblur")=0, py::arg("mott_bethe")=false)
+    }, py::arg("hkl"), py::arg("unblur")=0, py::arg("mott_bethe")=false,
+       py::arg("mott_bethe_000")=0)
 
     .def("prepare_asu_data", &RecGr::template prepare_asu_data<TA>,
          py::arg("dmin")=0., py::arg("unblur")=0.,
