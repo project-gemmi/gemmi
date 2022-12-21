@@ -97,7 +97,6 @@ struct DensityCalculator {
   double blur = 0.;
   float cutoff = 1e-5f;
   Addends addends;
-  double sum_ab = 0.; // for F(000) in Mott-Bethe case
 
   using coef_type = typename Table::Coef::coef_type;
 
@@ -134,7 +133,6 @@ struct DensityCalculator {
   template<typename Coef>
   void do_add_atom_density_to_grid(const Atom& atom, const Coef& coef, float addend) {
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
-    sum_ab += atom.occ * coef.sum_ab();
     if (!atom.aniso.nonzero()) {
       // isotropic
       double b = atom.b_iso + blur;
@@ -163,7 +161,6 @@ struct DensityCalculator {
   }
 
   void initialize_grid() {
-    sum_ab = 0.;
     grid.data.clear();
     double spacing = requested_grid_spacing();
     if (spacing > 0)
@@ -186,7 +183,6 @@ struct DensityCalculator {
     initialize_grid();
     add_model_density_to_grid(model);
     grid.symmetrize_sum();
-    if (grid.spacegroup) sum_ab *= grid.spacegroup->operations().order();
   }
 
   void set_grid_cell_and_spacegroup(const Structure& st) {
@@ -201,8 +197,6 @@ struct DensityCalculator {
 
   double mott_bethe_factor(const Miller& hkl) const {
     double inv_d2 = grid.unit_cell.calculate_1_d2(hkl);
-    if (inv_d2 == 0)
-      return sum_ab / (8 * pi() * pi() * bohrradius());
     double factor = -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
     return blur == 0 ? factor : factor * reciprocal_space_multiplier(inv_d2);
   }
