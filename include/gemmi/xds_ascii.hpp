@@ -25,6 +25,9 @@ struct XdsAscii {
     double rlp;
     double peak;
     int iset = 0;
+
+    // I think ZD can't be negative
+    int frame() const { return int(zd + 1); }
   };
   struct Iset {
     int id;
@@ -74,20 +77,19 @@ struct XdsAscii {
 
   void gather_iset_statistics() {
     for (Iset& iset : isets) {
-      double min_zd = 1e6;
-      double max_zd = 0.;
+      iset.frame_number_min = INT_MAX;
+      iset.frame_number_max = 0;
       for (const XdsAscii::Refl& refl : data)
         if (refl.iset == iset.id) {
           ++iset.reflection_count;
-          min_zd = std::min(min_zd, refl.zd);
-          max_zd = std::max(max_zd, refl.zd);
+          int frame = refl.frame();
+          iset.frame_number_min = std::min(iset.frame_number_min, frame);
+          iset.frame_number_max = std::max(iset.frame_number_max, frame);
         }
-      iset.frame_number_min = (int)std::ceil(min_zd);
-      iset.frame_number_max = (int)std::ceil(max_zd);
       std::vector<uint8_t> frames(iset.frame_number_max - iset.frame_number_min + 1);
       for (const XdsAscii::Refl& refl : data)
         if (refl.iset == iset.id)
-          frames[(int)std::ceil(refl.zd) - iset.frame_number_min] = 1;
+          frames[refl.frame() - iset.frame_number_min] = 1;
       iset.frame_count = 0;
       for (uint8_t f : frames)
         iset.frame_count += f;

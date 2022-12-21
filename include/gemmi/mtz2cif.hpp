@@ -1031,7 +1031,7 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
       double angle = xds.rot_angle(refl);
       ptr += gf_snprintf(ptr, 16, "%.5g ", angle);
     }
-    ptr += gf_snprintf(ptr, 16, "%d\n", int(std::ceil(refl.zd)));
+    ptr += gf_snprintf(ptr, 16, "%d\n", refl.frame());
     os.write(buf, ptr - buf);
   }
 }

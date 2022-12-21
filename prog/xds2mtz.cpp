@@ -2,7 +2,6 @@
 //
 // Convert reflection data from XDS_ASCII to MTZ.
 
-#include <cmath>              // for ceil
 #include <cstdio>             // for fprintf
 #include <set>
 #ifndef GEMMI_ALL_IN_ONE
@@ -91,9 +90,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (size_t j = 0; j != 3; ++j)
         mtz.data[k++] = (float) hkl[j];
       mtz.data[k++] = (float) isym;
-      float frame = std::ceil((float) refl.zd);
-      mtz.data[k++] = frame;
-      frames.insert((int) frame);
+      int frame = refl.frame();
+      frames.insert(frame);
+      mtz.data[k++] = (float) frame;
       mtz.data[k++] = (float) refl.iobs;  // I
       mtz.data[k++] = (float) std::fabs(refl.sigma);  // SIGI
       mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
