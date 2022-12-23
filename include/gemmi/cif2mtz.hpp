@@ -166,17 +166,27 @@ struct CifToMtz {
     mtz.cell = rb.cell;
     mtz.spacegroup = rb.spacegroup;
     mtz.add_dataset("HKL_base");
+
     const cif::Loop* loop = rb.refln_loop ? rb.refln_loop : rb.diffrn_refln_loop;
     if (!loop)
       fail("_refln category not found in mmCIF block: " + rb.block.name);
+    bool unmerged = force_unmerged || !rb.refln_loop;
+
+    if (!unmerged) {
+      Mtz::Dataset& ds = mtz.add_dataset("unknown");
+      if (rb.wavelength_count > 1)
+        out << "Warning: ignoring wavelengths, " << rb.wavelength_count
+            << " are present in block " << rb.block.name << ".\n";
+      else
+        ds.wavelength = rb.wavelength;
+    }
+
     if (verbose)
       out << "Searching tags with known MTZ equivalents ...\n";
     std::vector<int> indices;
     std::vector<const Entry*> entries;  // used for code_to_number only
     std::string tag = loop->tags[0];
     const size_t tag_offset = rb.tag_offset();
-
-    bool unmerged = force_unmerged || !rb.refln_loop;
 
     std::vector<Entry> spec_entries;
     if (!spec_lines.empty()) {
@@ -216,9 +226,6 @@ struct CifToMtz {
       col->type = 'B';
       col->label = "BATCH";
     }
-
-    if (!unmerged)
-      mtz.add_dataset("unknown").wavelength = rb.wavelength;
 
     // other columns according to the spec
     bool column_added = false;
