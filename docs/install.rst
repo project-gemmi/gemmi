@@ -7,12 +7,15 @@ Installation
 C++ library
 -----------
 
-It is a header-only library. You need to ensure that
+It is (mostly) a header-only library. You need to ensure that
 the ``include`` directory is in your include path
 when compiling your program. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
     c++ -Igemmi/include -O2 my_program.cpp
+
+(Recently, after v0.5.8, parts of the projects were moved from headers
+to src/. This instruction is to be updated before the next release).
 
 If you want Gemmi to uncompress gzipped files on the fly
 (i.e. if you ``#include <gemmi/gz.hpp>``)

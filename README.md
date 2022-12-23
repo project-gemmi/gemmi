@@ -10,7 +10,7 @@ GEMMI can help if you work with:
 * crystallographic symmetries,
 * or if you just read and write CIF/STAR files (where C=Crystallographic).
 
-GEMMI is a header-only C++11 library accompanied by:
+GEMMI is a C++11 library accompanied by:
 
 * command-line [tools](https://gemmi.readthedocs.io/en/latest/utils.html),
 * Python bindings (supporting CPython and PyPy),

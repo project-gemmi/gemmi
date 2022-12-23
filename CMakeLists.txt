@@ -161,6 +161,7 @@ if (GEMMI_VERSION_INFO)
 endif()
 add_library(output OBJECT prog/output.cpp)
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
+add_library(libgem OBJECT src/crd.cpp)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/align.cpp $<TARGET_OBJECTS:input>)
@@ -238,7 +239,7 @@ support_gz(gemmi-mtz2cif)
 
 add_executable(gemmi-prep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/prep.cpp $<TARGET_OBJECTS:output>
-               $<TARGET_OBJECTS:input>)
+               $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-prep)
 
 add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -294,6 +295,7 @@ add_executable(program
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:output>
+               $<TARGET_OBJECTS:libgem>
                $<TARGET_OBJECTS:options>)
 support_gz(program)
 target_compile_definitions(program PRIVATE GEMMI_ALL_IN_ONE=1)
@@ -404,7 +406,8 @@ if (USE_PYTHON)
           python/mtz.cpp python/read.cpp python/recgrid.cpp
           python/scaling.cpp python/search.cpp
           python/sf.cpp python/sym.cpp python/topo.cpp
-          python/unitcell.cpp python/write.cpp)
+          python/unitcell.cpp python/write.cpp
+          $<TARGET_OBJECTS:libgem>)
   set_target_properties(py PROPERTIES OUTPUT_NAME gemmi)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(py PRIVATE "-Wno-shadow")

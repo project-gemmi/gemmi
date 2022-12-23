@@ -51,7 +51,9 @@ ext_modules = [
                   ['gemmi', 'align', 'ccp4', 'chemcomp', 'cif', 'custom',
                    'elem', 'hkl', 'grid', 'meta', 'mol', 'monlib', 'mtz',
                    'read', 'recgrid', 'scaling', 'search', 'sf', 'sym',
-                   'topo', 'unitcell', 'write']],
+                   'topo', 'unitcell', 'write']]
+              + ['src/%s.cpp' % name for name in
+                  ['crd']],
               include_dirs=zlib_include_dirs + [
                   'include',
                   'third_party',
