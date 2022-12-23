@@ -154,6 +154,7 @@ struct CifToMtz {
   bool force_unmerged = false;
   std::string title;
   std::vector<std::string> history = { "From gemmi-cif2mtz " GEMMI_VERSION };
+  double wavelength = NAN;
   std::vector<std::string> spec_lines;
 
   Mtz convert_block_to_mtz(const ReflnBlock& rb, std::ostream& out) const {
@@ -174,7 +175,9 @@ struct CifToMtz {
 
     if (!unmerged) {
       Mtz::Dataset& ds = mtz.add_dataset("unknown");
-      if (rb.wavelength_count > 1)
+      if (!std::isnan(wavelength))
+        ds.wavelength = wavelength;
+      else if (rb.wavelength_count > 1)
         out << "Warning: ignoring wavelengths, " << rb.wavelength_count
             << " are present in block " << rb.block.name << ".\n";
       else

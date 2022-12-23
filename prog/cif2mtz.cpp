@@ -20,8 +20,8 @@ namespace {
 using std::fprintf;
 
 enum OptionIndex {
-  BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec,
-  Title, History, Unmerged, Sort, SkipNegativeSigma, ZeroToMnf, Local
+  BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec, Title,
+  History, Wavelength, Unmerged, Sort, SkipNegativeSigma, ZeroToMnf, Local
 };
 
 const option::Descriptor Usage[] = {
@@ -51,6 +51,8 @@ const option::Descriptor Usage[] = {
     "  --title  \tMTZ title." },
   { History, 0, "-H", "history", Arg::Required,
     "  -H LINE, --history=LINE  \tAdd a history line." },
+  { Wavelength, 0, "", "wavelength", Arg::Float,
+    "  --wavelength=LAMBDA  \tSet wavelength (default: from input file)." },
   { Unmerged, 0, "u", "unmerged", Arg::None,
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
   { Sort, 0, "", "sort", Arg::None,
@@ -173,6 +175,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     cif2mtz.title = p.options[Title].arg;
   for (const option::Option* opt = p.options[History]; opt; opt = opt->next())
     cif2mtz.history.push_back(opt->arg);
+  if (p.options[Wavelength])
+    cif2mtz.wavelength = std::strtod(p.options[Wavelength].arg, nullptr);
   try {
     if (p.options[Spec])
       read_spec_file(p.options[Spec].arg, cif2mtz.spec_lines);

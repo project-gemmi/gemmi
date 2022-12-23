@@ -52,7 +52,7 @@ const option::Descriptor Usage[] = {
   { RunFrom, 0, "", "run-from", Arg::Required,
     "  --run-from=WRAPPER  \tAdd note in _software.description." },
   { Wavelength, 0, "", "wavelength", Arg::Float,
-    "  --wavelength=LAMBDA  \tSet wavelengths (default: from input file)." },
+    "  --wavelength=LAMBDA  \tSet wavelength (default: from input file)." },
   { Validate, 0, "", "validate", Arg::None,
     "  --validate  \tFor two MTZ files: validate the intensities match." },
   { LessAnomalous, 0, "", "less-ano", Arg::None,

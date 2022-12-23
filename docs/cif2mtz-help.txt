@@ -15,6 +15,7 @@ Options:
   --print-spec             Print default spec and exit.
   --title                  MTZ title.
   -H LINE, --history=LINE  Add a history line.
+  --wavelength=LAMBDA      Set wavelength (default: from input file).
   -u, --unmerged           Write unmerged MTZ file(s).
   --sort                   Order reflections according to Miller indices.
   --skip-negative-sigma    Skip reflections with sigma<0 (in any MTZ Q column).

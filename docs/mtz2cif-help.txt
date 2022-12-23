@@ -16,7 +16,7 @@ Options:
   --no-history           Do not write MTZ history in the mmCIF file.
   --no-staraniso-tensor  Do not write _reflns.pdbx_aniso_B_tensor_*.
   --run-from=WRAPPER     Add note in _software.description.
-  --wavelength=LAMBDA    Set wavelengths (default: from input file).
+  --wavelength=LAMBDA    Set wavelength (default: from input file).
   --validate             For two MTZ files: validate the intensities match.
   --less-ano             Skip anomalous columns (even if they are in the spec).
                          Used once, skips I(+)/I(-) if <I> and F(+)/F(-) are
