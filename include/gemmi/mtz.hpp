@@ -1232,6 +1232,8 @@ void Mtz::write_to_stream(Write write) const {
         lat_type,                  // space group name (first letter)
         spacegroup->hm + 1,        // space group name (the rest)
         spacegroup->point_group_hm()); // point group name
+  // If we have symops that are the same as spacegroup->operations(),
+  // write symops to preserve the order of SYMM records.
   if (!symops.empty() && ops.is_same_as(split_centering_vectors(symops)))
     for (Op op : symops)
       WRITE("SYMM %s", to_upper(op.triplet()).c_str());
