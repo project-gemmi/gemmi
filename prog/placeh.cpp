@@ -1,8 +1,8 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// for testing placeh.hpp
+// for testing riding_h.hpp
 
-#include <gemmi/placeh.hpp>
+#include <gemmi/riding_h.hpp>
 #include <stdio.h>
 #include <gemmi/cif.hpp>   // for read_file
 #include <gemmi/fail.hpp>  // for fail

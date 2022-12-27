@@ -1,7 +1,7 @@
 // Copyright 2021 Global Phasing Ltd.
 
 #include "gemmi/topo.hpp"
-#include "gemmi/placeh.hpp"  // for adjust_hydrogen_distances
+#include "gemmi/riding_h.hpp"  // for adjust_hydrogen_distances
 #include "gemmi/crd.hpp"     // for prepare_crd, prepare_rst
 
 #include "common.h"

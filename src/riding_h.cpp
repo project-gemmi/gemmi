@@ -1,23 +1,14 @@
-// Copyright 2018 Global Phasing Ltd.
-//
-// Place hydrogens according to bond lengths and angles from monomer library.
+// Copyright 2018-2022 Global Phasing Ltd.
 
-#ifndef GEMMI_PLACEH_HPP_
-#define GEMMI_PLACEH_HPP_
-
-#include <cmath>         // for sqrt, sin, cos
-#include <memory>        // for unique_ptr
-#include "model.hpp"     // for Atom
-#include "topo.hpp"      // for Topo
-#include "chemcomp.hpp"  // for ChemComp
-#include "calculate.hpp" // for calculate_angle
-#include "modify.hpp"    // for remove_hydrogens
+#include <gemmi/riding_h.hpp>
+#include <gemmi/calculate.hpp> // for calculate_angle
+#include <gemmi/modify.hpp>    // for remove_hydrogens
 
 namespace gemmi {
 
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
-inline void add_hydrogens_without_positions(Topo::ResInfo& ri) {
+static void add_hydrogens_without_positions(Topo::ResInfo& ri) {
   Residue& res = *ri.res;
   // Add H atom for each conformation (altloc) of the parent atom.
   for (size_t i = 0, size = res.atoms.size(); i != size; ++i) {
@@ -56,7 +47,7 @@ inline void add_hydrogens_without_positions(Topo::ResInfo& ri) {
 // Returns position of x4 in x1-x2-x3-x4, where dist=|x3-x4| and
 // theta is angle(x2, x3, x4).
 // Based on section 3.3 of Paciorek et al, Acta Cryst. A52, 349 (1996).
-inline Position position_from_angle_and_torsion(const Position& x1,
+static Position position_from_angle_and_torsion(const Position& x1,
                                                 const Position& x2,
                                                 const Position& x3,
                                                 double dist,  // |x3-x4|
@@ -76,15 +67,14 @@ inline Position position_from_angle_and_torsion(const Position& x1,
 
 // Rodrigues' rotation formula, rotate vector v given axis of rotation
 // (which must be a unit vector) and angle (in radians).
-inline
-Vec3 rotate_about_axis(const Vec3& v, const Vec3& axis, double theta) {
+static Vec3 rotate_about_axis(const Vec3& v, const Vec3& axis, double theta) {
   double sin_theta = std::sin(theta);
   double cos_theta = std::cos(theta);
   return v * cos_theta + axis.cross(v) * sin_theta +
          axis * (axis.dot(v) * (1 - cos_theta));
 }
 
-inline Vec3 get_vector_to_line(const Position& point,
+static Vec3 get_vector_to_line(const Position& point,
                                const Position& point_on_the_line,
                                const Vec3& unit_vector) {
   // en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Vector_formulation
@@ -94,7 +84,7 @@ inline Vec3 get_vector_to_line(const Position& point,
 }
 
 // If no points satisfy the distances returns a pair of NaNs
-inline
+static
 std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
                                           const Position& p2, double r2sq,
                                           const Position& p3, double r3sq) {
@@ -116,7 +106,7 @@ std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
 
 // Calculate position using two angles.
 // Returns p4. Topology: p1 is bonded to p2, p3 and p4.
-inline std::pair<Position, Position>
+static std::pair<Position, Position>
 position_from_two_angles(const Position& p1,
                          const Position& p2,
                          const Position& p3,
@@ -134,7 +124,7 @@ position_from_two_angles(const Position& p1,
 }
 
 
-inline void place_hydrogens(const Topo& topo, const Atom& atom) {
+static void place_hydrogens(const Topo& topo, const Atom& atom) {
   using Angle = Restraints::Angle;
   struct BondedAtom {
     Atom* ptr;
@@ -368,24 +358,7 @@ inline void place_hydrogens(const Topo& topo, const Atom& atom) {
   }
 }
 
-inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
-                                      double default_scale=1.) {
-  for (const Topo::Bond& t : topo.bonds) {
-    assert(t.atoms[0] != nullptr && t.atoms[1] != nullptr);
-    if (t.atoms[0]->is_hydrogen() || t.atoms[1]->is_hydrogen()) {
-      Position u = t.atoms[1]->pos - t.atoms[0]->pos;
-      double scale = t.restr->distance(of) / u.length();
-      if (std::isnan(scale))
-        scale = default_scale;
-      if (t.atoms[1]->is_hydrogen())
-        t.atoms[1]->pos = t.atoms[0]->pos + u * scale;
-      else
-        t.atoms[0]->pos = t.atoms[1]->pos - u * scale;
-    }
-  }
-}
-
-inline void place_hydrogens_on_all_atoms(Topo& topo) {
+static void place_hydrogens_on_all_atoms(Topo& topo) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos)
       for (Atom& atom : ri.res->atoms)
@@ -400,7 +373,7 @@ inline void place_hydrogens_on_all_atoms(Topo& topo) {
         }
 }
 
-inline void remove_hydrogens_from_atom(Topo::ResInfo* ri,
+static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
                                        const std::string& atom_name, char alt) {
   if (!ri)
     return;
@@ -415,12 +388,10 @@ inline void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   }
 }
 
-enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
-
-inline std::unique_ptr<Topo>
+std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings=nullptr, bool ignore_unknown_links=false) {
+                 std::ostream* warnings, bool ignore_unknown_links) {
   std::unique_ptr<Topo> topo(new Topo);
   topo->warnings = warnings;
   if (model_index >= st.models.size())
@@ -500,5 +471,4 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   return topo;
 }
 
-} // namespace gemmi
-#endif
+}

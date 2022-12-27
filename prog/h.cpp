@@ -12,7 +12,7 @@
 #include <gemmi/monlib.hpp>    // for MonLib, read_monomer_lib
 #include <gemmi/topo.hpp>      // for Topo
 #include <gemmi/fstream.hpp>   // for Ofstream
-#include <gemmi/placeh.hpp>    // for prepare_topology
+#include <gemmi/riding_h.hpp>  // for prepare_topology
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
 #include <gemmi/read_coor.hpp> // for read_structure_gz
 

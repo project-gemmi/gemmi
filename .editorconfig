@@ -7,7 +7,7 @@ indent_style = space
 indent_size = 2
 
 # don't trim third_party code
-[{include/gemmi/*.hpp,src/*.cpp,src/*.h,examples/*.cpp}]
+[{include/gemmi/*.hpp,src/*.cpp,src/*.h,prog/*.cpp,prog/*.h,examples/*.cpp}]
 trim_trailing_whitespace = true
 # 80 characters is preferred, but if slightly longer line improves
 # readability, up to 94 is ok.

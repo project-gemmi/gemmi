@@ -161,7 +161,8 @@ if (GEMMI_VERSION_INFO)
 endif()
 add_library(output OBJECT prog/output.cpp)
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
-add_library(libgem OBJECT src/crd.cpp)
+add_library(libgem OBJECT src/topo.cpp src/riding_h.cpp src/crd.cpp)
+set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/align.cpp $<TARGET_OBJECTS:input>)
@@ -199,7 +200,8 @@ add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-grep)
 
 add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
+               prog/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>
+               $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-h)
 
 add_executable(gemmi-json2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -251,7 +253,7 @@ add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-residues)
 
 add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/rmsz.cpp $<TARGET_OBJECTS:input>)
+               prog/rmsz.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-rmsz)
 
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -270,7 +272,8 @@ add_executable(gemmi-tags EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-tags)
 
 add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/validate.cpp prog/validate_mon.cpp)
+               prog/validate.cpp prog/validate_mon.cpp
+               $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-validate)
 
 add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>

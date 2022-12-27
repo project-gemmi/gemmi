@@ -201,9 +201,6 @@ gemmi/pdb.hpp
 gemmi/pirfasta.hpp
     Read sequence from PIR or FASTA format.
 
-gemmi/placeh.hpp
-    Place hydrogens according to bond lengths and angles from monomer library.
-
 gemmi/polyheur.hpp
     Heuristic methods for working with chains and polymers.
     Includes also a few well-defined functions, such as removal of waters.
@@ -241,6 +238,9 @@ gemmi/remarks.hpp
 
 gemmi/resinfo.hpp
     List of common residues with basic data.
+
+gemmi/riding_h.hpp
+    Place hydrogens according to bond lengths and angles from monomer library.
 
 gemmi/scaling.hpp
     Anisotropic scaling of data (includes scaling of bulk solvent parameters)

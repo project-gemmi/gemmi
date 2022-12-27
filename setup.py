@@ -53,7 +53,7 @@ ext_modules = [
                    'read', 'recgrid', 'scaling', 'search', 'sf', 'sym',
                    'topo', 'unitcell', 'write']]
               + ['src/%s.cpp' % name for name in
-                  ['crd']],
+                  ['topo', 'riding_h', 'crd']],
               include_dirs=zlib_include_dirs + [
                   'include',
                   'third_party',
