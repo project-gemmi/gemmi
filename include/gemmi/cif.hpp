@@ -179,6 +179,18 @@ template<typename Rule> struct Errors : public pegtl::normal<Rule> {
 
 template<typename Rule> struct Action : pegtl::nothing<Rule> {};
 
+// We don't store comments here. We don't have a proper storage for comments.
+// They can be stored as Items, but this leaves out comments before
+// the first block, comments inside loops, or between tag and value.
+// Additionally, a comment after a loop cannot be processed immediately
+// b/c at that point we don't know if the loop is finished yet.
+// If we were to store (a subset of) comments, we'd need to check first
+// how it affects performance.
+//template<> struct Action<rules::comment> {
+//  template<typename Input> static void apply(const Input& in, Document& out) {
+//  }
+//};
+
 template<> struct Action<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     out.blocks.emplace_back(in.string());
