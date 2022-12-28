@@ -130,6 +130,7 @@ void add_meta(py::module& m) {
     .value("Unknown", EntityType::Unknown)
     .value("Polymer", EntityType::Polymer)
     .value("NonPolymer", EntityType::NonPolymer)
+    .value("Branched", EntityType::Branched)
     .value("Water", EntityType::Water);
 
   py::enum_<PolymerType>(m, "PolymerType")
