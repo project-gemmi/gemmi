@@ -196,7 +196,7 @@ ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("TRS"): return { RI::BUF, 0, ' ',  12, 122.143f };
       case ID("ATP"): return { RI::ELS, 0, ' ',  16, 507.181f };
       case ID("PG4"): return { RI::ELS, 0, ' ',  18, 194.226f };
-      case ID("GDP"): return { RI::ELS, 0, 'g',  15, 443.201f };  // RNA in CCD
+      case ID("GDP"): return { RI::ELS, 2, 'g',  15, 443.201f };  // RNA in CCD
       case ID("FUC"): return { RI::PYR, 0, ' ',  12, 164.156f };
       case ID("FMT"): return { RI::BUF, 0, ' ',   2, 46.0254f };
       case ID("GAL"): return { RI::PYR, 0, ' ',  12, 180.156f };

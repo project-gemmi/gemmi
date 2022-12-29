@@ -23,7 +23,7 @@
 #include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
 #include "model.hpp"    // for Atom, Structure, ...
-#include "polyheur.hpp" // for assign_subchain_names
+#include "polyheur.hpp" // for assign_subchains
 #include "remarks.hpp"  // for read_metadata_from_remarks, read_int, ...
 
 namespace gemmi {

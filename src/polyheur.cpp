@@ -37,9 +37,12 @@ PolymerType check_polymer_type(const ConstResidueSpan& span) {
       }
       ++total;
     }
-  // One residue is not a polymer, but it may happen that only a single residue
-  // of a chain is modelled, so we don't check for total==1.
   if (total == 0)
+    return PolymerType::Unknown;
+  // One residue is not a polymer, but it may happen that only a single residue
+  // of a chain is modelled. OTOH, a single non-standard residue is usually
+  // a ligand.
+  if (total == 1 && !has_atom_record)
     return PolymerType::Unknown;
   // ATOM records suggest a polymer, so weaken the condition for AA/NA polymers.
   size_t bonus = has_atom_record ? 1 : 0;
@@ -64,12 +67,17 @@ static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerTyp
     if (info.found()) {
       bool maybe_linking = (is_polypeptide(ptype) && info.is_peptide_linking())
                         || (is_polynucleotide(ptype) && info.is_na_linking());
-      // If a standard residue is HETATM we assume that it is in the buffer.
-      if (!maybe_linking || (info.is_standard() && it->het_flag == 'H')) {
+      // The first residue could be non-polymer.
+      if (!maybe_linking && b != chain.residues.begin()) {
         e = it;
         break;
       }
-      if (info.is_standard())
+      // If a standard residue is HETATM we assume that it is in the buffer.
+      if (info.is_standard() && it->het_flag == 'H') {
+        e = it;
+        break;
+      }
+      if (maybe_linking && info.is_standard())
         b = it;
     }
   }
@@ -81,7 +89,7 @@ static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerTyp
   for (auto it = b; it < last; ++it) {
     int gap = *(it+1)->seqid.num - *it->seqid.num;
     // The gap should be non-negative, but you can find exceptions in the PDB.
-    if (gap < 0 || gap > 10 || !are_connected2(*it, *(it+1), ptype))
+    if (gap < -1 || gap > 10 || !are_connected2(*it, *(it+1), ptype))
       return it+1;
   }
   return e;
