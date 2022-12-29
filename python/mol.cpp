@@ -307,7 +307,6 @@ void add_mol(py::module& m) {
          py::keep_alive<0, 1>())
     .def("get_subchain", (ResidueSpan (Chain::*)(const std::string&)) &Chain::get_subchain,
          py::keep_alive<0, 1>())
-    .def("has_entity_types_and_subchains", &has_entity_types_and_subchains)
     .def("previous_residue", &Chain::previous_residue,
          py::return_value_policy::reference_internal)
     .def("next_residue", &Chain::next_residue,

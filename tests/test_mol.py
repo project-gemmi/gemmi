@@ -269,6 +269,7 @@ class TestMol(unittest.TestCase):
         model = st[0]
         nres_a = len(model['A'])
         nres_b = len(model['B'])
+        st.add_entity_types()
         st.remove_ligands_and_waters()  # removes SO4 from each chain
         self.assertEqual(len(model['A']), nres_a - 1)
         self.assertEqual(len(model['B']), nres_b - 1)

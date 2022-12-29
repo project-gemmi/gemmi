@@ -161,7 +161,9 @@ if (GEMMI_VERSION_INFO)
 endif()
 add_library(output OBJECT prog/output.cpp)
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
-add_library(libgem OBJECT src/topo.cpp src/riding_h.cpp src/crd.cpp)
+add_library(libgem OBJECT
+            src/resinfo.cpp src/polyheur.cpp src/topo.cpp
+            src/riding_h.cpp src/crd.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -322,11 +324,12 @@ add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
 add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
-               docs/code/cell.cpp)
+               docs/code/cell.cpp src/resinfo.cpp)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL
                docs/code/maybegz.cpp
-               docs/code/mutate.cpp)
+               docs/code/mutate.cpp
+               $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:output>)
 support_gz(doc_maybegz)
 add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
 
@@ -335,7 +338,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
   target_compile_options(doc_example PRIVATE -UNDEBUG)
 endif()
 
-add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
+add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp
+               $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:output>)
 support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
@@ -381,7 +385,12 @@ endif()
 
 if (benchmark_FOUND)
   foreach(b stoi elem mod niggli pdb resinfo round sym)
-    add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
+    if (b MATCHES "resinfo|pdb")
+      add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp
+                     $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:output>)
+    else()
+      add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
+    endif()
     target_link_libraries(${b}-bm PRIVATE benchmark::benchmark)
     set_target_properties(${b}-bm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                              "${CMAKE_BINARY_DIR}/benchmarks")
