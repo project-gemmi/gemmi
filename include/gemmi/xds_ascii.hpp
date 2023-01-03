@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Read XDS_ASCII.HKL. For now, only unmerged files are read.
+// Read unmerged XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.
 
 #ifndef GEMMI_XDS_ASCII_HPP_
 #define GEMMI_XDS_ASCII_HPP_
@@ -123,14 +123,16 @@ inline void xds_parse_cell_constants(const char* start, const char* end,
 template<typename Stream>
 void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
   static const char* expected_columns[10] = {
-      "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8", "RLP=9", "PEAK=10",
+    "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8",
+    "RLP=9", "PEAK=10"
   };
   source_path = source;
   char line[256];
   size_t len0 = copy_line_from_stream(line, 255, stream);
   int iset_col = 0;
-  if (len0 == 0 || !starts_with(line, "!FORMAT=XDS_ASCII    MERGE=FALSE"))
-    fail("not an unmerged XDS_ASCII file: " + source_path);
+  if (len0 == 0 || !(starts_with(line, "!FORMAT=XDS_ASCII    MERGE=FALSE") ||
+                    (starts_with(line, "!OUTPUT_FILE=INTEGRATE.HKL"))))
+    fail("not an unmerged XDS_ASCII nor INTEGRATE.HKL file: " + source_path);
   const char* rhs;
   while (size_t len = copy_line_from_stream(line, 255, stream)) {
     if (line[0] == '!') {
@@ -174,13 +176,19 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         }
       } else if (starts_with_ptr(line+1, "NUMBER_OF_ITEMS_IN_EACH_DATA_RECORD=", &rhs)) {
         int num = simple_atoi(rhs);
-        if (num < 8)
-          fail("expected 8+ columns, got:\n", line);
-        for (const char* col : expected_columns) {
-          copy_line_from_stream(line, 40, stream);
-          if (std::strncmp(line, "!ITEM_", 6) != 0 ||
-              std::strncmp(line+6, col, std::strlen(col)) != 0)
-            fail("column !ITEM_" + std::string(col), " not found.");
+        if (num < 10)
+          fail("expected 10+ columns, got:\n", line);
+        if (generated_by == "INTEGRATE") {
+          copy_line_from_stream(line, 42, stream);
+          if (std::strncmp(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK", 41) != 0)
+            fail("unexpected column order in INTEGRATE.HKL");
+        } else {
+          for (const char* col : expected_columns) {
+            copy_line_from_stream(line, 42, stream);
+            if (std::strncmp(line, "!ITEM_", 6) != 0 ||
+                std::strncmp(line+6, col, std::strlen(col)) != 0)
+              fail("column !ITEM_" + std::string(col), " not found.");
+          }
         }
       } else if (starts_with_ptr(line+1, "ITEM_ISET=", &rhs)) {
         iset_col = simple_atoi(rhs);

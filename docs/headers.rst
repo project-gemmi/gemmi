@@ -312,4 +312,4 @@ gemmi/version.hpp
     Version number.
 
 gemmi/xds_ascii.hpp
-    Read XDS_ASCII.HKL. For now, only unmerged files are read.
+    Read unmerged XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.
