@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <gemmi/cif.hpp>
 
+// for TEST_CASE("aniso_b_tensor_eigen")
+#include <gemmi/merge.hpp>
+#include <gemmi/mtz2cif.hpp>
+
 namespace cif = gemmi::cif;
 
 template<typename T> void check_with_two_elements(T duo) {
@@ -88,10 +92,6 @@ TEST_CASE("cif::Block::init_loop") {
   CHECK_EQ(block.find_values("_p.v").at(0), "30");
 }
 
-
-#define GEMMI_WRITE_IMPLEMENTATION
-#include <gemmi/merge.hpp>
-#include <gemmi/mtz2cif.hpp>
 
 TEST_CASE("aniso_b_tensor_eigen") {
   std::string line = "(0.486, 17.6, 0.981, 3.004, -0.689, -1.99)";

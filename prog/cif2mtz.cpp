@@ -6,9 +6,6 @@
 #include <cstdlib>            // for exit
 #include <iostream>           // for cerr
 #include <memory>             // for unique_ptr
-#ifndef GEMMI_ALL_IN_ONE
-# define GEMMI_WRITE_IMPLEMENTATION 1
-#endif
 #include <gemmi/read_cif.hpp> // for read_cif_gz, read_first_block_gz
 #include <gemmi/cif2mtz.hpp>  // for CifToMtz
 

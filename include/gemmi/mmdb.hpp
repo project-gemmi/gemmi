@@ -263,7 +263,6 @@ int main (int argc, char** argv) {
 // Read a coordinate file using mmdb and write it to PDB using gemmi.
 #include <fstream>
 #include <gemmi/mmdb.hpp>
-#define GEMMI_WRITE_IMPLEMENTATION
 #include <gemmi/to_pdb.hpp>
 
 // two arguments expected: input and output paths.

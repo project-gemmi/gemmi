@@ -202,7 +202,7 @@ cif::Block prepare_crd(const Structure& st, const Topo& topo,
     items.emplace_back(cif::CommentArg{"#################\n"
                                        "## STRUCT_CONN ##\n"
                                        "#################"});
-    impl::write_struct_conn(st, block);
+    write_struct_conn(st, block);
     // disable ptnrN_auth_asym_id - otherwise Refmac uses it
     // instead of ptnrN_label_asym_id
     auto it = block.items.end() - 2;

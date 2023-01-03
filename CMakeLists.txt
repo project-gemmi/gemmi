@@ -159,9 +159,9 @@ add_library(options OBJECT prog/options.cpp)
 if (GEMMI_VERSION_INFO)
   target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
 endif()
-add_library(output OBJECT prog/output.cpp)
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
 add_library(libgem OBJECT
+            src/sprintf.cpp src/mtz.cpp src/to_pdb.cpp src/to_mmcif.cpp
             src/resinfo.cpp src/polyheur.cpp src/topo.cpp
             src/riding_h.cpp src/crd.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
@@ -191,7 +191,7 @@ add_executable(gemmi-contents EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-contents)
 
 add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/convert.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>)
+               prog/convert.cpp $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:input>)
 support_gz(gemmi-convert)
 
 add_executable(gemmi-fprime EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -202,7 +202,7 @@ add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-grep)
 
 add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/h.cpp $<TARGET_OBJECTS:output> $<TARGET_OBJECTS:input>
+               prog/h.cpp $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-h)
 
@@ -223,7 +223,7 @@ add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-mask)
 
 add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mixmtz.cpp $<TARGET_OBJECTS:output>)
+               prog/mixmtz.cpp $<TARGET_OBJECTS:libgem>)
 
 add_executable(gemmi-merge EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/merge.cpp $<TARGET_OBJECTS:input>)
@@ -238,11 +238,11 @@ add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-mtz)
 
 add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
+               prog/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-mtz2cif)
 
 add_executable(gemmi-prep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/prep.cpp $<TARGET_OBJECTS:output>
+               prog/prep.cpp
                $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-prep)
 
@@ -263,7 +263,7 @@ add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-sf2map)
 
 add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/sfcalc.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:output>)
+               prog/sfcalc.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-sfcalc)
 
 add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -299,7 +299,6 @@ add_executable(program
                prog/xds2mtz.cpp
                $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:input>
-               $<TARGET_OBJECTS:output>
                $<TARGET_OBJECTS:libgem>
                $<TARGET_OBJECTS:options>)
 support_gz(program)
@@ -319,7 +318,8 @@ endif()
 #add_executable(c_test EXCLUDE_FROM_ALL fortran/c_test.c)
 #target_link_libraries(c_test PRIVATE cgemmi)
 
-add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
+add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp
+               $<TARGET_OBJECTS:libgem>)
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
 add_executable(doc_example EXCLUDE_FROM_ALL
@@ -329,9 +329,10 @@ add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL
                docs/code/maybegz.cpp
                docs/code/mutate.cpp
-               $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:output>)
+               $<TARGET_OBJECTS:libgem>)
 support_gz(doc_maybegz)
-add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
+add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp
+               $<TARGET_OBJECTS:libgem>)
 
 # always compile these tests with assertions enabled
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
@@ -339,7 +340,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
 endif()
 
 add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp
-               $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:output>)
+               $<TARGET_OBJECTS:libgem>)
 support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
@@ -387,7 +388,7 @@ if (benchmark_FOUND)
   foreach(b stoi elem mod niggli pdb resinfo round sym)
     if (b MATCHES "resinfo|pdb")
       add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp
-                     $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:output>)
+                     $<TARGET_OBJECTS:libgem>)
     else()
       add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
     endif()

@@ -6,9 +6,6 @@
 #include <cstring>  // for strpbrk
 #include <algorithm>
 #include <iostream>  // for cerr
-#ifndef GEMMI_ALL_IN_ONE
-# define GEMMI_WRITE_IMPLEMENTATION 1
-#endif
 #include <gemmi/reindex.hpp>
 #include <gemmi/mtz.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped

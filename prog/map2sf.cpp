@@ -5,9 +5,6 @@
 #include <stdio.h>
 #include <cctype>             // for toupper
 #include <cstdlib>            // for strtod
-#ifndef GEMMI_ALL_IN_ONE
-# define GEMMI_WRITE_IMPLEMENTATION 1
-#endif
 #include <gemmi/fail.hpp>     // for fail
 #include <gemmi/grid.hpp>     // for Grid, ReciprocalGrid, ReciprocalGrid<>...
 #include <gemmi/mtz.hpp>      // for Mtz

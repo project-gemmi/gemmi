@@ -7,9 +7,6 @@
 #include <cstdio>             // for fprintf
 #include <algorithm>          // for sort
 #include <iostream>           // for cout
-#ifndef GEMMI_ALL_IN_ONE
-# define GEMMI_WRITE_IMPLEMENTATION 1
-#endif
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
 #include <gemmi/fstream.hpp>  // for Ofstream

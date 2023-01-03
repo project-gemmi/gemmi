@@ -10,10 +10,6 @@
 # define gstb_snprintf std::snprintf
 # define gstb_sprintf std::sprintf
 #else
-# ifdef GEMMI_WRITE_IMPLEMENTATION
-#  define STB_SPRINTF_IMPLEMENTATION
-#  define STB_SPRINTF_NOUNALIGNED 1
-# endif
 # define STB_SPRINTF_DECORATE(name) gstb_##name
 // To use system stb_sprintf.h (not recommended, but some Linux distros
 // don't like bundled libraries) just remove third_party/stb_sprintf.h.

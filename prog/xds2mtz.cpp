@@ -4,9 +4,6 @@
 
 #include <cstdio>             // for fprintf
 #include <set>
-#ifndef GEMMI_ALL_IN_ONE
-# define GEMMI_WRITE_IMPLEMENTATION 1
-#endif
 #include <gemmi/gz.hpp>        // for MaybeGzipped
 #include <gemmi/xds_ascii.hpp> // for XdsAscii
 #include <gemmi/mtz.hpp>       // for Mtz
