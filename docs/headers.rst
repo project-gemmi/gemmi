@@ -272,7 +272,7 @@ gemmi/span.hpp
     MutableVectorSpan - span of std::vector with insert() and erase()
 
 gemmi/sprintf.hpp
-    to_str(float|double), gf_snprintf - wrappers around stb_sprintf.
+    interface to stb_sprintf: gstb_snprintf, to_str(float|double)
 
 gemmi/symmetry.hpp
     Crystallographic Symmetry. Space Groups. Coordinate Triplets.

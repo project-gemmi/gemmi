@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// to_str(float|double), gf_snprintf - wrappers around stb_sprintf.
+// interface to stb_sprintf: gstb_snprintf, to_str(float|double)
 
 #ifndef GEMMI_SPRINTF_HPP_
 #define GEMMI_SPRINTF_HPP_
@@ -49,29 +49,6 @@ std::string to_str_prec(double d) {
                                 : gstb_sprintf(buf, "%g", d);
   return std::string(buf, len > 0 ? len : 0);
 }
-
-#ifdef USE_STD_SNPRINTF
-# ifdef _MSC_VER // VS2015/17 doesn't like std::snprintf
-#  define gf_snprintf snprintf
-# else
-#  define gf_snprintf std::snprintf
-# endif
-#else
-
-// this is equivalent of stbsp_snprintf, but with __attribute__(format)
-#if (defined(__GNUC__) && !defined(__MINGW32__)) || defined(__clang)
-__attribute__((format(printf, 3, 4)))
-#endif
-inline int gf_snprintf(char *buf, int count, char const *fmt, ...) {
-   int result;
-   va_list va;
-   va_start(va, fmt);
-   result = gstb_vsnprintf(buf, count, fmt, va);
-   va_end(va);
-   return result;
-}
-
-#endif
 
 } // namespace gemmi
 #endif

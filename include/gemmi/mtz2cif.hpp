@@ -21,7 +21,7 @@
 #include "xds_ascii.hpp" // for XdsAscii
 #include "atox.hpp"      // for read_word
 #include "merge.hpp"     // for Intensities
-#include "sprintf.hpp"   // for gf_snprintf, to_str
+#include "sprintf.hpp"   // for gstb_snprintf, to_str
 #include "version.hpp"   // for GEMMI_VERSION
 
 namespace gemmi {
@@ -583,7 +583,7 @@ inline bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   return ok;
 }
 
-#define WRITE(...) os.write(buf, gf_snprintf(buf, 255, __VA_ARGS__))
+#define WRITE(...) os.write(buf, gstb_snprintf(buf, 255, __VA_ARGS__))
 
 // Reorder eigenvalues and change signs of eigenvectors in the STARANISO way.
 // It minimises the rotation angle from the basis vectors to the eigenvectors,
@@ -850,7 +850,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, const std::vector<Trans>& 
   }
 
   auto write_int = [](char* p, int num) {
-    //return gf_snprintf(p, 32, "%d", num);
+    //return gstb_snprintf(p, 32, "%d", num);
     std::string s = std::to_string(num);
     std::memcpy(p, s.data(), s.size());
     return s.size();
@@ -923,7 +923,7 @@ inline void MtzToCif::write_main_loop(const Mtz& mtz, const std::vector<Trans>& 
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
-          ptr += gf_snprintf(ptr, 32, tr.format.c_str(), v);
+          ptr += gstb_snprintf(ptr, 32, tr.format.c_str(), v);
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
 #endif
@@ -1024,14 +1024,14 @@ inline void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) 
     if (refl.sigma < 0 && skip_negative_sigi)  // misfit
       continue;
     char* ptr = buf;
-    ptr += gf_snprintf(ptr, 128, "%d %d %d %d %d %g %.5g ",
-                       refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
-                       refl.iobs, refl.sigma);
+    ptr += gstb_snprintf(ptr, 128, "%d %d %d %d %d %g %.5g ",
+                         refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
+                         refl.iobs, refl.sigma);
     if (xds.oscillation_range != 0.) {
       double angle = xds.rot_angle(refl);
-      ptr += gf_snprintf(ptr, 16, "%.5g ", angle);
+      ptr += gstb_snprintf(ptr, 16, "%.5g ", angle);
     }
-    ptr += gf_snprintf(ptr, 16, "%d\n", refl.frame());
+    ptr += gstb_snprintf(ptr, 16, "%d\n", refl.frame());
     os.write(buf, ptr - buf);
   }
 }
