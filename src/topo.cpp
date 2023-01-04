@@ -3,6 +3,8 @@
 #include <gemmi/topo.hpp>
 #include <cmath>               // for sqrt, round
 #include <gemmi/polyheur.hpp>  // for get_or_check_polymer_type, ...
+#include <gemmi/riding_h.hpp>  // for place_hydrogens_on_all_atoms, ...
+#include <gemmi/modify.hpp>    // for remove_hydrogens
 
 namespace gemmi {
 
@@ -611,6 +613,104 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
   if (conn.link_id.empty())
     conn.link_id = extra.link_id;
   extras.push_back(extra);
+}
+
+static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
+                                       const std::string& atom_name, char alt) {
+  if (!ri)
+    return;
+  std::vector<Atom>& atoms = ri->res->atoms;
+  const Restraints& rt = ri->get_final_chemcomp(alt).rt;
+  for (auto it = atoms.end(); it-- != atoms.begin(); ) {
+    if (it->is_hydrogen()) {
+      const Restraints::AtomId* heavy = rt.first_bonded_atom(it->name);
+      if (heavy && heavy->atom == atom_name && (it->altloc == alt || it->altloc == '\0'))
+        atoms.erase(it);
+    }
+  }
+}
+
+std::unique_ptr<Topo>
+prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
+                 HydrogenChange h_change, bool reorder,
+                 std::ostream* warnings, bool ignore_unknown_links) {
+  std::unique_ptr<Topo> topo(new Topo);
+  topo->warnings = warnings;
+  if (model_index >= st.models.size())
+    fail("no such model index: " + std::to_string(model_index));
+  topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
+
+  bool keep = (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift);
+  if (!keep || reorder) {
+    // remove/add hydrogens, sort atoms in residues
+    for (Topo::ChainInfo& chain_info : topo->chain_infos) {
+      for (Topo::ResInfo& ri : chain_info.res_infos) {
+        Residue& res = *ri.res;
+        if (!keep) {
+          remove_hydrogens(res);
+          if (h_change == HydrogenChange::ReAdd ||
+              (h_change == HydrogenChange::ReAddButWater && !res.is_water())) {
+            add_hydrogens_without_positions(ri);
+            if (h_change == HydrogenChange::ReAddButWater) {
+              // a special handling of HIS for compatibility with Refmac
+              if (res.name == "HIS") {
+                for (gemmi::Atom& atom : ri.res->atoms)
+                  if (atom.name == "HD1" || atom.name == "HE2")
+                    atom.occ = 0;
+              }
+            }
+          }
+        } else {
+          // Special handling of Deuterium - mostly for Refmac.
+          // Note: if the model has deuterium, it gets modified.
+          if (replace_deuterium_with_fraction(res)) {
+            // deuterium names usually differ from the names in dictionary
+            for (Atom& atom : res.atoms)
+              if (atom.name[0] == 'D' && atom.fraction != 0) {
+                const ChemComp& cc = ri.get_final_chemcomp(atom.altloc);
+                if (cc.find_atom(atom.name) == cc.atoms.end())
+                  atom.name[0] = 'H';
+              }
+            st.has_d_fraction = true;
+          }
+        }
+        if (reorder && ri.orig_chemcomp) {
+          const ChemComp& cc = *ri.orig_chemcomp;
+          for (Atom& atom : res.atoms) {
+            auto it = cc.find_atom(atom.name);
+            if (it == cc.atoms.end())
+              topo->err("definition not found for " +
+                        atom_str(chain_info.chain_ref, *ri.res, atom));
+            atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
+          }
+          std::sort(res.atoms.begin(), res.atoms.end(), [](const Atom& a, const Atom& b) {
+                      return a.serial != b.serial ? a.serial < b.serial
+                                                  : a.altloc < b.altloc;
+          });
+        }
+      }
+    }
+  }
+
+  // for atoms with ad-hoc links, for now we don't want hydrogens
+  if (!ignore_unknown_links && h_change != HydrogenChange::NoChange)
+    for (const Topo::Link& link : topo->extras) {
+      const ChemLink* cl = monlib.get_link(link.link_id);
+      if (cl && starts_with(cl->name, "auto-")) {
+        const Restraints::Bond& bond = cl->rt.bonds.at(0);
+        remove_hydrogens_from_atom(topo->find_resinfo(link.res1), bond.id1.atom, link.alt1);
+        remove_hydrogens_from_atom(topo->find_resinfo(link.res2), bond.id2.atom, link.alt2);
+      }
+    }
+
+  assign_serial_numbers(st.models[model_index]);
+  topo->finalize_refmac_topology(monlib);
+
+  // the hydrogens added previously have positions not set
+  if (h_change != HydrogenChange::NoChange)
+    place_hydrogens_on_all_atoms(*topo);
+
+  return topo;
 }
 
 }

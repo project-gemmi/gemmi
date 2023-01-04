@@ -6,13 +6,12 @@
 #define GEMMI_RIDING_H_HPP_
 
 #include <cmath>         // for isnan
-#include <memory>        // for unique_ptr
-#include "model.hpp"     // for Structure
 #include "topo.hpp"      // for Topo
 
 namespace gemmi {
 
-enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
+void add_hydrogens_without_positions(Topo::ResInfo& ri);
+void place_hydrogens_on_all_atoms(Topo& topo);
 
 inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
                                       double default_scale=1.) {
@@ -30,11 +29,6 @@ inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
     }
   }
 }
-
-std::unique_ptr<Topo>
-prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
-                 HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings=nullptr, bool ignore_unknown_links=false);
 
 } // namespace gemmi
 #endif
