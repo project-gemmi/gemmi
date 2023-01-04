@@ -10,6 +10,8 @@ option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 # uncomment to show compilation times for each compilation unit
 #set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
 
+#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
@@ -162,6 +164,7 @@ endif()
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
 add_library(libgem OBJECT
             src/sprintf.cpp src/mtz.cpp src/to_pdb.cpp src/to_mmcif.cpp
+            src/mtz2cif.cpp
             src/resinfo.cpp src/polyheur.cpp src/topo.cpp
             src/riding_h.cpp src/crd.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)

@@ -7,6 +7,7 @@
 #include <cstdio>             // for fprintf
 #include <algorithm>          // for sort
 #include <iostream>           // for cout
+#include <gemmi/asudata.hpp>  // for calculate_hkl_value_correlation
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
 #include <gemmi/fstream.hpp>  // for Ofstream
