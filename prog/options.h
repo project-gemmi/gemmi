@@ -34,6 +34,7 @@ enum { NoOp=0, Help=1, Version=2, Verbose=3 };
 extern const option::Descriptor CommonUsage[];
 
 std::vector<int> parse_comma_separated_ints(const char* arg);
+std::vector<double> parse_blank_separated_numbers(const char* arg);
 
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg);
@@ -45,6 +46,7 @@ struct Arg: public option::Arg {
   static option::ArgStatus Int(const option::Option& option, bool msg);
   static option::ArgStatus Int3(const option::Option& option, bool msg);
   static option::ArgStatus Float(const option::Option& option, bool msg);
+  static option::ArgStatus Float3(const option::Option& option, bool msg);
   static option::ArgStatus CoorFormat(const option::Option& option, bool msg) {
     return Choice(option, msg, {"cif", "pdb", "json", "chemcomp"});
   }

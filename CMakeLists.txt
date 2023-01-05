@@ -166,7 +166,7 @@ add_library(libgem OBJECT
             src/sprintf.cpp src/mtz.cpp src/to_pdb.cpp src/to_mmcif.cpp
             src/mtz2cif.cpp
             src/resinfo.cpp src/polyheur.cpp src/topo.cpp
-            src/riding_h.cpp src/crd.cpp)
+            src/riding_h.cpp src/crd.cpp src/xds_ascii.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>

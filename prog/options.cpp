@@ -34,6 +34,18 @@ std::vector<int> parse_comma_separated_ints(const char* arg) {
   return result;
 }
 
+std::vector<double> parse_blank_separated_numbers(const char* arg) {
+  std::vector<double> results;
+  for (char* endptr; *arg != '\0'; arg = endptr) {
+    results.push_back(std::strtod(arg, &endptr));
+    if (endptr == arg || (*endptr != ' ' && *endptr != '\0')) {
+      results.clear();
+      break;
+    }
+  }
+  return results;
+}
+
 option::ArgStatus Arg::Required(const option::Option& option, bool msg) {
   if (option.arg != nullptr)
     return option::ARG_OK;
@@ -116,7 +128,6 @@ option::ArgStatus Arg::Int3(const option::Option& option, bool msg) {
   return option::ARG_ILLEGAL;
 }
 
-
 option::ArgStatus Arg::Float(const option::Option& option, bool msg) {
   if (option.arg) {
     char* endptr = nullptr;
@@ -126,6 +137,16 @@ option::ArgStatus Arg::Float(const option::Option& option, bool msg) {
   }
   if (msg)
     fprintf(stderr, "Option '%s' requires a numeric argument\n", option.name);
+  return option::ARG_ILLEGAL;
+}
+
+option::ArgStatus Arg::Float3(const option::Option& option, bool msg) {
+  if (option.arg && parse_blank_separated_numbers(option.arg).size() == 3)
+    return option::ARG_OK;
+  if (msg)
+    fprintf(stderr, "Option '%.*s' requires three numbers as an argument,\n"
+                    " for example: %.*s='1.1 2.2 3'\n",
+                    option.namelen, option.name, option.namelen, option.name);
   return option::ARG_ILLEGAL;
 }
 

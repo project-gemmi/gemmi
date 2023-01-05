@@ -14,6 +14,15 @@
 
 namespace gemmi {
 
+// from Pointless docs: likely in-house source, in which case
+// the unpolarised value is left unchanged (recognised wavelengths
+// are CuKalpha 1.5418 +- 0.0019, Mo 0.7107 +- 0.0002, Cr 2.29 +- 0.01)
+inline bool likely_in_house_source(double wavelength) {
+  return std::fabs(wavelength - 1.5418) < 0.0019 ||
+         std::fabs(wavelength - 0.7107) < 0.0002 ||
+         std::fabs(wavelength - 2.29) < 0.01;
+}
+
 struct XdsAscii {
   struct Refl {
     Miller hkl;
@@ -46,7 +55,9 @@ struct XdsAscii {
   int spacegroup_number;
   UnitCell unit_cell;
   double wavelength;
+  double incident_beam_dir[3] = {0., 0., 0.};
   double oscillation_range = 0.;
+  double rotation_axis[3] = {0., 0., 0.};
   double starting_angle = 0.;
   int starting_frame = 1;
   std::string generated_by;
@@ -100,6 +111,8 @@ struct XdsAscii {
     double z = refl.zd - starting_frame + 1;
     return starting_angle + oscillation_range * z;
   }
+
+  void apply_polarization_correction(double fraction, Vec3 normal);
 };
 
 template<size_t N>
@@ -110,12 +123,13 @@ bool starts_with_ptr(const char* a, const char (&b)[N], const char** endptr) {
   return true;
 }
 
-inline void xds_parse_cell_constants(const char* start, const char* end,
-                                     double* par, const char* line) {
-  for (int i = 0; i < 6; ++i) {
-    auto result = fast_from_chars(start, end, par[i]);
+template<int N>
+void parse_numbers_into_array(const char* start, const char* end,
+                              double (&arr)[N], const char* line) {
+  for (int i = 0; i < N; ++i) {
+    auto result = fast_from_chars(start, end, arr[i]);
     if (result.ec != std::errc())
-      fail("failed to parse cell constants:\n", line);
+      fail("failed to parse number #%d in:\n", i+1, line);
     start = result.ptr;
   }
 }
@@ -142,16 +156,20 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         spacegroup_number = simple_atoi(rhs);
       } else if (starts_with_ptr(line+1, "UNIT_CELL_CONSTANTS=", &rhs)) {
         double par[6];
-        xds_parse_cell_constants(rhs, line+len, par, line);
+        parse_numbers_into_array(rhs, line+len, par, line);
         unit_cell.set(par[0], par[1], par[2], par[3], par[4], par[5]);
       } else if (starts_with_ptr(line+1, "X-RAY_WAVELENGTH=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, wavelength);
         if (result.ec != std::errc())
           fail("failed to parse wavelength:\n", line);
+      } else if (starts_with_ptr(line+1, "INCIDENT_BEAM_DIRECTION=", &rhs)) {
+        parse_numbers_into_array(rhs, line+len, incident_beam_dir, line);
       } else if (starts_with_ptr(line+1, "OSCILLATION_RANGE=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, oscillation_range);
         if (result.ec != std::errc())
           fail("failed to parse:\n", line);
+      } else if (starts_with_ptr(line+1, "ROTATION_AXIS=", &rhs)) {
+        parse_numbers_into_array(rhs, line+len, rotation_axis, line);
       } else if (starts_with_ptr(line+1, "STARTING_ANGLE=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, starting_angle);
         if (result.ec != std::errc())
@@ -172,7 +190,7 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
             fail("failed to parse iset wavelength:\n", line);
           iset.wavelength = w;
         } else if (starts_with_ptr(endptr, "UNIT_CELL_CONSTANTS=", &rhs)) {
-          xds_parse_cell_constants(rhs, line+len, iset.cell_constants, line);
+          parse_numbers_into_array(rhs, line+len, iset.cell_constants, line);
         }
       } else if (starts_with_ptr(line+1, "NUMBER_OF_ITEMS_IN_EACH_DATA_RECORD=", &rhs)) {
         int num = simple_atoi(rhs);

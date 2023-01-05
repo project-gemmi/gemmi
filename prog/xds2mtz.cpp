@@ -15,7 +15,7 @@
 namespace {
 
 enum OptionIndex {
-  Title=4, History
+  Title=4, History, Polarization, Normal
 };
 
 const option::Descriptor Usage[] = {
@@ -31,8 +31,13 @@ const option::Descriptor Usage[] = {
   { History, 0, "-H", "history", Arg::Required,
     "  -H LINE, --history=LINE  \tAdd a history line." },
   { NoOp, 0, "", "", Arg::None,
-    "\nIf XDS_FILE is -, the input is read from stdin."
-  },
+    "\nPolarization correction options for INTEGRATE.HKL files:" },
+  { Polarization, 0, "", "polarization", Arg::Float,
+    "  --polarization=VALUE  \tXDS parameter FRACTION_OF_POLARIZATION" },
+  { Normal, 0, "", "normal", Arg::Float3,
+    "  --normal='Pnx Pny Pnz'  \tXDS POLARIZATION_PLANE_NORMAL (default: '0 1 0')" },
+  { NoOp, 0, "", "", Arg::None,
+    "\nIf XDS_FILE is -, the input is read from stdin." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -42,6 +47,11 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
+  if (p.options[Normal] && !p.options[Polarization]) {
+    std::fprintf(stderr, "Error. Option -%s without -%s.\n",
+                 p.given_name(Normal), p.given_name(Polarization));
+    return 1;
+  }
   bool verbose = p.options[Verbose];
   const char* input_path = p.nonOption(0);
   const char* output_path = p.nonOption(1);
@@ -51,6 +61,30 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::fprintf(stderr, "Reading %s ...\n", input_path);
   try {
     xds_ascii.read_input(gemmi::MaybeGzipped(input_path));
+
+    // polarization correction
+    if (p.options[Polarization]) {
+      if (xds_ascii.generated_by != "INTEGRATE") {
+        std::fprintf(stderr,
+                     "Error: --polarization given for data from %s (not from INTEGRATE).\n",
+                     xds_ascii.generated_by.c_str());
+        return 1;
+      }
+      if (gemmi::likely_in_house_source(xds_ascii.wavelength))
+        std::fprintf(stderr, "WARNING: likely in-house source (wavelength %g)\n"
+                             "         polarization corection can be inappropriate.\n",
+                     xds_ascii.wavelength);
+      if (verbose)
+        std::fprintf(stderr, "Applying polarization correction...\n");
+      double fraction = std::atof(p.options[Polarization].arg);
+      gemmi::Vec3 pn(0., 1., 0.);
+      if (p.options[Normal]) {
+        auto v = parse_blank_separated_numbers(p.options[Normal].arg);
+        pn = gemmi::Vec3(v[0], v[1], v[2]);
+      }
+      xds_ascii.apply_polarization_correction(fraction, pn);
+    }
+
     gemmi::Mtz mtz;
     if (const option::Option* opt = p.options[Title])
       mtz.title = opt->arg;
