@@ -122,7 +122,10 @@ void add_entity_types(Structure& st, bool overwrite) {
 
 void assign_subchain_names(Chain& chain, int& nonpolymer_counter) {
   for (Residue& res : chain.residues) {
-    res.subchain = chain.name + "-";
+    res.subchain = chain.name;
+    // We'd use '-' as a separator (A-p or B-4 is more clear), but although
+    // such names are valid in mmCIF, OneDep refuses to accept them.
+    res.subchain += "x";
     switch (res.entity_type) {
       case EntityType::Polymer:
         res.subchain += 'p';
