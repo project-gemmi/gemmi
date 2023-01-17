@@ -1346,7 +1346,7 @@ for example,
    * ``add_model`` may cause memory re-allocation invalidating references
      to all other models,
    * ``remove_model`` and ``__delitem__`` invalidate references only to
-     models  that are after the removed one.
+     models that are after the removed one.
 
    This means that you need to update a reference before using it:
 

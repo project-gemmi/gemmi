@@ -556,6 +556,27 @@ Document has also one property
   'components.cif'
 
 
+.. warning::
+
+   Adding and removing blocks may invalidate references to other blocks
+   in the same Document. This is expected when working with a C++ vector,
+   but when using Gemmi from Python it is a flaw.
+   The same applies to functions that add/remove items in a block.
+   More precisely:
+
+   * functions that add items (e.g. ``add_new_block``) may cause memory
+     re-allocation invalidating references to all other items (blocks),
+   * functions that remove items (``__delitem__``) invalidate references to
+     all items after the removed one.
+
+   This means that you need to update a reference before using it:
+
+    .. code-block:: python
+
+       block = doc[0]
+       st.add_new_block(...)     # block gets invalidated
+       block = st[0]             # block is valid again
+
 Block
 =====
 
