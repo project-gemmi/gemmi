@@ -14,6 +14,21 @@
 
 namespace gemmi {
 
+void setup_for_crd(Structure& st) {
+  // setup_entities(st) but with forced subchain reassignment
+  add_entity_types(st, /*overwrite=*/false);
+  assign_subchains(st, /*force=*/true);
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues) {
+        size_t n = chain.name.size();
+        assert(res.subchain[n] == 'x');
+        res.subchain[n] = '_';
+      }
+  ensure_entities(st);
+  deduplicate_entities(st);
+}
+
 static bool has_anisou(const Model& model) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)

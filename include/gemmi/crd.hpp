@@ -10,6 +10,8 @@
 
 namespace gemmi {
 
+void setup_for_crd(Structure& st);
+
 void add_automatic_links(Model& model, Structure& st, const MonLib& monlib);
 
 cif::Block prepare_crd(const Structure& st, const Topo& topo,

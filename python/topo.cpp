@@ -113,6 +113,7 @@ void add_topo(py::module& m) {
        py::arg("warnings")=py::none(), py::arg("ignore_unknown_links")=false);
 
   // crd.hpp
+  m.def("setup_for_crd", &setup_for_crd);
   m.def("prepare_crd", &prepare_crd);
   m.def("prepare_rst", &prepare_rst);
   m.def("prepare_refmac_crd", &prepare_refmac_crd);
