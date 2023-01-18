@@ -8,6 +8,7 @@
 
 #include <cctype>  // for tolower
 #include <map>
+#include <iostream>
 #include <string>
 #include <vector>
 #include "calculate.hpp"  // for calculate_chiral_volume
@@ -340,6 +341,8 @@ inline void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) c
   // _chem_mod_atom
   for (const AtomMod& mod : atom_mods) {
     if (mod.func == 'a') {
+      if (mod.new_id == "")
+        fail("New atom id is not given");
       if (!chemcomp.has_atom(real(mod.new_id)))
         chemcomp.atoms.push_back({mod.new_id, mod.el,
                                   std::isnan(mod.charge) ? mod.charge : 0,
