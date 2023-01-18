@@ -417,7 +417,7 @@ struct ChemComp {
     return const_cast<ChemComp*>(this)->find_atom(atom_id);
   }
   bool has_atom(const std::string& atom_id) const {
-    return find_atom(atom_id) == atoms.end();
+    return find_atom(atom_id) != atoms.end();
   }
 
   int get_atom_index(const std::string& atom_id) const {
