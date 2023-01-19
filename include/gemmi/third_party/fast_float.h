@@ -117,7 +117,7 @@ template<typename T>
 from_chars_result from_chars_advanced(const char *first, const char *last,
                                       T &value, parse_options options)  noexcept;
 
-}
+} // namespace fast_float
 #endif // FASTFLOAT_FAST_FLOAT_H
 
 #ifndef FASTFLOAT_FLOAT_COMMON_H
@@ -136,7 +136,7 @@ from_chars_result from_chars_advanced(const char *first, const char *last,
        || (defined(__ppc64__) || defined(__PPC64__) || defined(__ppc64le__) || defined(__PPC64LE__)) )
 #define FASTFLOAT_64BIT 1
 #elif (defined(__i386) || defined(__i386__) || defined(_M_IX86)   \
-     || defined(__arm__) || defined(_M_ARM)                   \
+     || defined(__arm__) || defined(_M_ARM) || defined(__ppc__)   \
      || defined(__MINGW32__) || defined(__EMSCRIPTEN__))
 #define FASTFLOAT_32BIT 1
 #else
@@ -172,7 +172,11 @@ from_chars_result from_chars_advanced(const char *first, const char *last,
 #elif defined(sun) || defined(__sun)
 #include <sys/byteorder.h>
 #else
+#ifdef __has_include
+#if __has_include(<endian.h>)
 #include <endian.h>
+#endif //__has_include(<endian.h>)
+#endif //__has_include
 #endif
 #
 #ifndef __BYTE_ORDER__
@@ -340,8 +344,8 @@ constexpr static int32_t invalid_am_bias = -0x8000;
 constexpr static double powers_of_ten_double[] = {
     1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8,  1e9,  1e10, 1e11,
     1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22};
-constexpr static float powers_of_ten_float[] = {1e0, 1e1, 1e2, 1e3, 1e4, 1e5,
-                                                1e6, 1e7, 1e8, 1e9, 1e10};
+constexpr static float powers_of_ten_float[] = {1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f,
+                                                1e6f, 1e7f, 1e8f, 1e9f, 1e10f};
 // used for max_mantissa_double and max_mantissa_float
 constexpr uint64_t constant_55555 = 5 * 5 * 5 * 5 * 5;
 // Largest integer value v so that (5**index * v) <= 1<<53.
@@ -821,11 +825,11 @@ namespace fast_float {
  */
 
 /**
- * The smallest non-zero float (binary64) is 2^−1074.
+ * The smallest non-zero float (binary64) is 2^-1074.
  * We take as input numbers of the form w x 10^q where w < 2^64.
  * We have that w * 10^-343  <  2^(64-344) 5^-343 < 2^-1076.
  * However, we have that
- * (2^64-1) * 10^-342 =  (2^64-1) * 2^-342 * 5^-342 > 2^−1074.
+ * (2^64-1) * 10^-342 =  (2^64-1) * 2^-342 * 5^-342 > 2^-1074.
  * Thus it is possible for a number of the form w * 10^-342 where
  * w is a 64-bit value to be a non-zero floating-point number.
  *********
@@ -1498,7 +1502,7 @@ const uint64_t powers_template<unused>::power_of_five_128[number_of_entries] = {
         0x8e679c2f5e44ff8f,0x570f09eaa7ea7648,};
 using powers = powers_template<>;
 
-}
+} // namespace fast_float
 
 #endif
 
@@ -2636,8 +2640,8 @@ void round_nearest_tie_even(adjusted_mantissa& am, int32_t shift, callback cb) n
     halfway = uint64_t(1) << (shift - 1);
   }
   uint64_t truncated_bits = am.mantissa & mask;
-  uint64_t is_above = truncated_bits > halfway;
-  uint64_t is_halfway = truncated_bits == halfway;
+  bool is_above = truncated_bits > halfway;
+  bool is_halfway = truncated_bits == halfway;
 
   // shift digits into position
   if (shift == 64) {
@@ -3015,7 +3019,25 @@ fastfloat_really_inline bool rounds_to_nearest() noexcept {
   //
   // Note: This may fail to be accurate if fast-math has been
   // enabled, as rounding conventions may not apply.
+  #if FASTFLOAT_VISUAL_STUDIO
+  #   pragma warning(push)
+  //  todo: is there a VS warning?
+  //  see https://stackoverflow.com/questions/46079446/is-there-a-warning-for-floating-point-equality-checking-in-visual-studio-2013
+  #elif defined(__clang__)
+  #   pragma clang diagnostic push
+  #   pragma clang diagnostic ignored "-Wfloat-equal"
+  #elif defined(__GNUC__)
+  #   pragma GCC diagnostic push
+  #   pragma GCC diagnostic ignored "-Wfloat-equal"
+  #endif
   return (fmini + 1.0f == 1.0f - fmini);
+  #if FASTFLOAT_VISUAL_STUDIO
+  #   pragma warning(pop)
+  #elif defined(__clang__)
+  #   pragma clang diagnostic pop
+  #elif defined(__GNUC__)
+  #   pragma GCC diagnostic pop
+  #endif
 }
 
 } // namespace detail
