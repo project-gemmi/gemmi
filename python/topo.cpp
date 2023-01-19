@@ -2,7 +2,7 @@
 
 #include "gemmi/topo.hpp"
 #include "gemmi/riding_h.hpp"  // for adjust_hydrogen_distances
-#include "gemmi/crd.hpp"     // for prepare_crd, prepare_rst
+#include "gemmi/crd.hpp"       // for prepare_refmac_crd, ...
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -166,8 +166,6 @@ void add_topo(py::module& m) {
 
   // crd.hpp
   m.def("setup_for_crd", &setup_for_crd);
-  m.def("prepare_crd", &prepare_crd);
-  m.def("prepare_rst", &prepare_rst);
   m.def("prepare_refmac_crd", &prepare_refmac_crd);
   m.def("add_automatic_links", &add_automatic_links);
 }
