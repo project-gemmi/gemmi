@@ -412,11 +412,7 @@ only one compilation unit (that does not change often).
 
 Alternatively, if you want to support gzipped files,
 use function ``gemmi::read_structure_gz()`` declared in the header
-``gemmi/read_coor.hpp``. The definition of this file is guarded by a macro,
-so in exactly one compilation unit you need to have::
-
-  #define GEMMI_READ_COOR_IMPLEMENTATION
-  #include "gemmi/read_coor.hpp"
+``gemmi/read_coor.hpp`` (requires linking with libgemmi).
 
 If you know the format of files that you will read, you may also
 use a function specific to this format. For example, the next section

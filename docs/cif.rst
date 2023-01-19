@@ -352,11 +352,8 @@ And if the ``path`` above is ``-``, the standard input is read.
 If you use these functions in multiple compilation units, having
 the CIF parser implemented in headers makes the compilation time longer.
 To avoid it, include only ``<gemmi/read_cif.hpp>``
-and use functions declared there instead. In one compilation unit
-include this file after defining a macro that guards the implementation::
+and either link with libgemmi or add ``src/read_cif.cpp`` to your project.
 
-  #define GEMMI_READ_CIF_IMPLEMENTATION
-  #include <gemmi/read_cif.cpp>
 
 Python
 ------

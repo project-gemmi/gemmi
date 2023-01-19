@@ -1,6 +1,5 @@
 name: "CodeQL configuration"
-paths-ignore:
-  - include/gemmi/third_party
+
 queries:
   - uses: security-extended
   - uses: security-and-quality
@@ -9,3 +8,10 @@ query-filters:
       id:
         - cpp/poorly-documented-function
         - cpp/fixme-comment
+        - cpp/commented-out-code
+        - cpp/complex-block
+
+# it doesn't work for compiled languages, but perhaps it will in the future
+# https://github.com/github/codeql/issues/5618#issuecomment-815058569
+paths-ignore:
+  - include/gemmi/third_party

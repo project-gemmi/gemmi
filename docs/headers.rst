@@ -210,11 +210,13 @@ gemmi/qcp.hpp
 
 gemmi/read_cif.hpp
     Functions for reading possibly gzipped CIF files.
-    Trivial wrappers that can make compilation faster.
+    Trivial wrappers that can make compilation faster
+    by having a separate implementation file src/read_cif.cpp.
 
 gemmi/read_coor.hpp
     Functions for reading possibly gzipped coordinate files.
-    Trivial wrappers that can make compilation faster.
+    Trivial wrappers that can make compilation faster
+    by having a separate implementation file src/read_coor.cpp.
 
 gemmi/read_map.hpp
     Functions for reading possibly gzipped CCP4 map files.

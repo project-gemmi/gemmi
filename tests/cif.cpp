@@ -3,10 +3,8 @@
 
 #include <algorithm>
 #include <gemmi/cif.hpp>
-
-// for TEST_CASE("aniso_b_tensor_eigen")
-#include <gemmi/merge.hpp>
-#include <gemmi/mtz2cif.hpp>
+#include <gemmi/merge.hpp>    // for parse_voigt_notation, ...
+#include <gemmi/mtz2cif.hpp>  // write_staraniso_b_in_mmcif
 
 namespace cif = gemmi::cif;
 

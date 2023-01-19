@@ -156,45 +156,45 @@ endif()
 
 ### programs from prog/ ###
 
-add_library(input OBJECT prog/input.cpp)
 add_library(options OBJECT prog/options.cpp)
 if (GEMMI_VERSION_INFO)
   target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
 endif()
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
 add_library(libgem OBJECT
-            src/sprintf.cpp src/mtz.cpp src/to_pdb.cpp src/to_mmcif.cpp
-            src/mtz2cif.cpp
-            src/resinfo.cpp src/polyheur.cpp src/topo.cpp
-            src/riding_h.cpp src/crd.cpp src/xds_ascii.cpp)
+            src/crd.cpp src/mtz.cpp src/mtz2cif.cpp src/polyheur.cpp
+            src/read_cif.cpp src/read_coor.cpp src/resinfo.cpp
+            src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
+            src/to_pdb.cpp src/topo.cpp src/xds_ascii.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
+support_gz(libgem)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/align.cpp $<TARGET_OBJECTS:input>)
+               prog/align.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-align)
 
 add_executable(gemmi-blobs EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
+               prog/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-blobs)
 
 add_executable(gemmi-cif2json EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/cif2json.cpp $<TARGET_OBJECTS:input>)
+               prog/cif2json.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-cif2json)
 
 add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/cif2mtz.cpp $<TARGET_OBJECTS:input>)
+               prog/cif2mtz.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-cif2mtz)
 
 add_executable(gemmi-contact EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/contact.cpp $<TARGET_OBJECTS:input>)
+               prog/contact.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-contact)
 
 add_executable(gemmi-contents EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/contents.cpp $<TARGET_OBJECTS:input>)
+               prog/contents.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-contents)
 
 add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/convert.cpp $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:input>)
+               prog/convert.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-convert)
 
 add_executable(gemmi-fprime EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -205,35 +205,34 @@ add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-grep)
 
 add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/h.cpp $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:input>
-               $<TARGET_OBJECTS:libgem>)
+               prog/h.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-h)
 
 add_executable(gemmi-json2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/json2cif.cpp $<TARGET_OBJECTS:input>)
+               prog/json2cif.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-json2cif)
 
 add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/map.cpp $<TARGET_OBJECTS:input>)
+               prog/map.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-map)
 
 add_executable(gemmi-map2sf EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/map2sf.cpp $<TARGET_OBJECTS:input>)
+               prog/map2sf.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-map2sf)
 
 add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mask.cpp $<TARGET_OBJECTS:input>)
+               prog/mask.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-mask)
 
 add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/mixmtz.cpp $<TARGET_OBJECTS:libgem>)
 
 add_executable(gemmi-merge EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/merge.cpp $<TARGET_OBJECTS:input>)
+               prog/merge.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-merge)
 
 add_executable(gemmi-mondiff EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mondiff.cpp $<TARGET_OBJECTS:input>)
+               prog/mondiff.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-mondiff)
 
 add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -241,12 +240,11 @@ add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-mtz)
 
 add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mtz2cif.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
+               prog/mtz2cif.cpp $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-mtz2cif)
 
 add_executable(gemmi-prep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/prep.cpp
-               $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
+               prog/prep.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-prep)
 
 add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -254,19 +252,19 @@ add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-reindex)
 
 add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/residues.cpp $<TARGET_OBJECTS:input>)
+               prog/residues.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-residues)
 
 add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/rmsz.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
+               prog/rmsz.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-rmsz)
 
 add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:input>)
+               prog/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-sf2map)
 
 add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/sfcalc.cpp $<TARGET_OBJECTS:input> $<TARGET_OBJECTS:libgem>)
+               prog/sfcalc.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-sfcalc)
 
 add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -282,7 +280,7 @@ add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
 support_gz(gemmi-validate)
 
 add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/wcn.cpp $<TARGET_OBJECTS:input>)
+               prog/wcn.cpp $<TARGET_OBJECTS:libgem>)
 support_gz(gemmi-wcn)
 
 add_executable(gemmi-xds2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
@@ -301,7 +299,6 @@ add_executable(program
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp
                $<TARGET_OBJECTS:mapcoef>
-               $<TARGET_OBJECTS:input>
                $<TARGET_OBJECTS:libgem>
                $<TARGET_OBJECTS:options>)
 support_gz(program)
@@ -322,7 +319,8 @@ endif()
 #target_link_libraries(c_test PRIVATE cgemmi)
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp
-               $<TARGET_OBJECTS:libgem>)
+                                        src/mtz2cif.cpp)
+target_compile_definitions(cpptest PRIVATE USE_STD_SNPRINTF=1)
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
 add_executable(doc_example EXCLUDE_FROM_ALL
@@ -336,6 +334,7 @@ add_executable(doc_maybegz EXCLUDE_FROM_ALL
 support_gz(doc_maybegz)
 add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp
                $<TARGET_OBJECTS:libgem>)
+support_gz(doc_newmtz)
 
 # always compile these tests with assertions enabled
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
@@ -392,6 +391,7 @@ if (benchmark_FOUND)
     if (b MATCHES "resinfo|pdb")
       add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp
                      $<TARGET_OBJECTS:libgem>)
+      support_gz(${b}-bm)
     else()
       add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
     endif()
