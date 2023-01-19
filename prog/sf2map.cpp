@@ -6,7 +6,7 @@
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/calculate.hpp> // for calculate_fractional_box
 #include <gemmi/select.hpp>    // for Selection
-#include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include "mapcoef.h"
 
 #define GEMMI_PROG sf2map

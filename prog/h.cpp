@@ -14,7 +14,7 @@
 #include <gemmi/fstream.hpp>   // for Ofstream
 #include <gemmi/riding_h.hpp>  // for prepare_topology
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
-#include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/mmread_gz.hpp> // for read_structure_gz
 
 #define GEMMI_PROG h
 #include "options.h"

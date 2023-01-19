@@ -6,7 +6,7 @@
 #include <gemmi/polyheur.hpp>  // for setup_entities, align_sequence_to_polymer
 #include <gemmi/align.hpp>     // for align_sequence_to_polymer
 #include <gemmi/seqalign.hpp>  // for align_string_sequences
-#include <gemmi/read_coor.hpp>
+#include <gemmi/mmread_gz.hpp>
 
 #include <cstdio>   // for printf, fprintf, putchar
 #include <cstdlib>  // for atoi

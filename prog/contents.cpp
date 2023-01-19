@@ -9,7 +9,7 @@
 #include <gemmi/resinfo.hpp>
 #include <gemmi/calculate.hpp>
 #include <gemmi/polyheur.hpp>  // for setup_entities, calculate_sequence_weight
-#include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include <gemmi/select.hpp>    // for Selection
 #include "histogram.h"         // for print_histogram
 #define GEMMI_PROG contents

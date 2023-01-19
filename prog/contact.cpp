@@ -8,7 +8,7 @@
 #include <gemmi/contact.hpp>
 #include <gemmi/neighbor.hpp>
 #include "gemmi/assembly.hpp"  // for transform_to_assembly
-#include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #define GEMMI_PROG contact
 #include "options.h"
 

@@ -168,6 +168,11 @@ gemmi/mmdb.hpp
 gemmi/mmread.hpp
     Read any supported coordinate file.
 
+gemmi/mmread_gz.hpp
+    Functions for reading possibly gzipped coordinate files.
+    Trivial wrappers that can make compilation faster
+    by having a separate implementation file src/mmread_gz.cpp.
+
 gemmi/model.hpp
     Data structures to keep macromolecular structure model.
 
@@ -212,11 +217,6 @@ gemmi/read_cif.hpp
     Functions for reading possibly gzipped CIF files.
     Trivial wrappers that can make compilation faster
     by having a separate implementation file src/read_cif.cpp.
-
-gemmi/read_coor.hpp
-    Functions for reading possibly gzipped coordinate files.
-    Trivial wrappers that can make compilation faster
-    by having a separate implementation file src/read_coor.cpp.
 
 gemmi/read_map.hpp
     Functions for reading possibly gzipped CCP4 map files.

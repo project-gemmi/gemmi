@@ -10,7 +10,7 @@
 #include "gemmi/polyheur.hpp"  // for setup_entities
 #include "gemmi/monlib.hpp"    // for MonLib, read_monomer_lib
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
-#include "gemmi/read_coor.hpp" // for read_structure_gz
+#include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/contact.hpp"   // for ContactSearch
 
 #define GEMMI_PROG prep

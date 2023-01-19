@@ -2,10 +2,10 @@
 //
 // Functions for reading possibly gzipped coordinate files.
 // Trivial wrappers that can make compilation faster
-// by having a separate implementation file src/read_coor.cpp.
+// by having a separate implementation file src/mmread_gz.cpp.
 
-#ifndef GEMMI_READ_COOR_HPP_
-#define GEMMI_READ_COOR_HPP_
+#ifndef GEMMI_MMREAD_GZ_HPP_
+#define GEMMI_MMREAD_GZ_HPP_
 
 #include "model.hpp"  // for Structure
 

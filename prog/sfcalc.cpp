@@ -20,7 +20,7 @@
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
 #include <gemmi/solmask.hpp>   // for SolventMasker
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
-#include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include "timer.h"             // for Timer
 
 #define GEMMI_PROG sfcalc

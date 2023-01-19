@@ -11,7 +11,7 @@
 #include "gemmi/calculate.hpp" // for find_best_plane, get_distance_from_plane
 #include "gemmi/polyheur.hpp"  // for setup_entities
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
-#include <gemmi/read_coor.hpp> // for read_structure_gz
+#include <gemmi/mmread_gz.hpp> // for read_structure_gz
 
 #define GEMMI_PROG rmsz
 #include "options.h"

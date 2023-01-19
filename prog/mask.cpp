@@ -5,7 +5,7 @@
 #include "gemmi/ccp4.hpp"
 #include "gemmi/solmask.hpp"   // for SolventMasker
 #include "gemmi/symmetry.hpp"
-#include "gemmi/read_coor.hpp" // for read_structure_gz
+#include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "timer.h"
 
 #define GEMMI_PROG mask

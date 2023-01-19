@@ -11,7 +11,7 @@
 #include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
 #include "gemmi/chemcomp_xyz.hpp"  // for make_structure_from_chemcomp_block
 #include "gemmi/read_cif.hpp"      // for read_cif_gz, read_mmjson_gz
-#include "gemmi/read_coor.hpp"     // for read_structure_gz
+#include "gemmi/mmread_gz.hpp"     // for read_structure_gz
 
 #include "common.h"
 #include <pybind11/stl.h>

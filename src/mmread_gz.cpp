@@ -1,5 +1,6 @@
 // Copyright 2021 Global Phasing Ltd.
 
+#include <gemmi/mmread_gz.hpp>
 #include <gemmi/mmread.hpp> // for read_structure
 #include <gemmi/pdb.hpp>    // for read_pdb
 #include <gemmi/gz.hpp>     // for MaybeGzipped
