@@ -10,6 +10,8 @@ query-filters:
         - cpp/fixme-comment
         - cpp/commented-out-code
         - cpp/complex-block
+        - cpp/equality-on-floats
+        - cpp/loop-variable-changed
 
 # it doesn't work for compiled languages, but perhaps it will in the future
 # https://github.com/github/codeql/issues/5618#issuecomment-815058569

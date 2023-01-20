@@ -162,7 +162,8 @@ if (GEMMI_VERSION_INFO)
 endif()
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
 add_library(libgem OBJECT
-            src/crd.cpp src/mtz.cpp src/mtz2cif.cpp src/polyheur.cpp
+            src/crd.cpp src/mmcif.cpp src/mtz.cpp src/mtz2cif.cpp
+            src/polyheur.cpp
             src/read_cif.cpp src/mmread_gz.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/topo.cpp src/xds_ascii.cpp)
@@ -352,7 +353,8 @@ if (NOT MSVC)
 endif()
 support_gz(auth_label)
 
-add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)
+add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp
+               $<TARGET_OBJECTS:libgem>)
 support_gz(check_conn)
 
 enable_testing()

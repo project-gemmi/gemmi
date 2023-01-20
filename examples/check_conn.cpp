@@ -2,22 +2,21 @@
 // and prints message if it differs by more than 0.002A from the value in file.
 
 #include <cstdio>
-#include <gemmi/gz.hpp>   // for MaybeGzipped
-#include <gemmi/cif.hpp>
-#include <gemmi/numb.hpp> // for as_number
-#include <gemmi/mmcif.hpp>
-#include <gemmi/dirwalk.hpp> // for CifWalk
+#include <gemmi/mmread_gz.hpp>  // for read_structure_gz
+#include <gemmi/cifdoc.hpp>     // for Document
+#include <gemmi/numb.hpp>       // for as_number
+#include <gemmi/dirwalk.hpp>    // for CifWalk
+#include <gemmi/fileutil.hpp>   // for expand_if_pdb_code
 
 using namespace gemmi;
 
 int verbose = false;
 
-static void check_struct_conn(cif::Block& block) {
+static void check_struct_conn(const Structure& st, cif::Block& block) {
   cif::Table struct_conn = block.find("_struct_conn.", {"id", "conn_type_id",
                                                         "ptnr2_symmetry",
                                                         "pdbx_dist_value" });
-  Structure st = make_structure_from_block(block);
-  for (Connection& con : st.connections) {
+  for (const Connection& con : st.connections) {
     const Atom* atom[2] = {nullptr, nullptr};
     for (int n : {0, 1}) {
       const AtomAddress& ad = (n == 0 ? con.partner1 : con.partner2);
@@ -67,8 +66,9 @@ int main(int argc, char* argv[]) {
   try {
     for (; pos != argc; ++pos) {
       for (const std::string& path : CifWalk(expand_if_pdb_code(argv[pos]))) {
-        cif::Document doc = cif::read(MaybeGzipped(path));
-        check_struct_conn(doc.sole_block());
+        cif::Document doc;
+        Structure st = read_structure_gz(path, CoorFormat::Mmcif, &doc);
+        check_struct_conn(st, doc.blocks[0]);
         if (++counter % 1000 == 0) {
           std::printf("[progress: %d files]\n", counter);
           std::fflush(stdout);

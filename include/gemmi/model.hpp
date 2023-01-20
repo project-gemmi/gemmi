@@ -809,6 +809,7 @@ struct Model {
   ConstCraProxy all() const { return {chains}; }
 
   Atom* find_atom(const AtomAddress& address) { return find_cra(address).atom; }
+  const Atom* find_atom(const AtomAddress& address) const { return find_cra(address).atom; }
 
   std::array<int, 3> get_indices(const Chain* c, const Residue* r,
                                  const Atom* a) const {
@@ -928,6 +929,9 @@ struct Structure {
 
   Connection* find_connection_by_name(const std::string& conn_name) {
     return impl::find_or_null(connections, conn_name);
+  }
+  const Connection* find_connection_by_name(const std::string& conn_name) const {
+    return const_cast<Structure*>(this)->find_connection_by_name(conn_name);
   }
 
   Connection* find_connection_by_cra(const const_CRA& cra1,
