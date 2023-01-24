@@ -9,6 +9,7 @@ Print informations from an mtz file.
   -d, --dump            Print a subset of CCP4 mtzdmp informations.
   -B N, --batch=N       Print data from batch header N.
   -b, --batches         Print data from all batch headers.
+  -e                    (with -B or -b) expanded info from batch headers.
   -A, --appendix        Print appended text.
   --tsv                 Print all the data as tab-separated values.
   -s, --stats           Print column statistics (completeness, mean, etc).

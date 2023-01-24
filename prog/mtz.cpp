@@ -26,7 +26,7 @@ struct MtzArg: public Arg {
 };
 
 enum OptionIndex {
-  Headers=4, Dump, PrintBatch, PrintBatches, PrintAppendix,
+  Headers=4, Dump, PrintBatch, PrintBatches, ExpandedBatches, PrintAppendix,
   PrintTsv, PrintStats, PrintHistogram, PrintCells, CheckAsu,
   Compare, ToggleEndian, NoIsym, UpdateReso
 };
@@ -46,6 +46,8 @@ const option::Descriptor Usage[] = {
     "  -B N, --batch=N  \tPrint data from batch header N." },
   { PrintBatches, 0, "b", "batches", Arg::None,
     "  -b, --batches  \tPrint data from all batch headers." },
+  { ExpandedBatches, 0, "e", "", Arg::None,
+    "  -e  \t(with -B or -b) expanded info from batch headers." },
   { PrintAppendix, 0, "A", "appendix", Arg::None,
     "  -A, --appendix  \tPrint appended text." },
   { PrintTsv, 0, "", "tsv", Arg::None,
@@ -133,32 +135,166 @@ void dump(const Mtz& mtz) {
     printf("\nAppendix: %zu bytes.\n", mtz.appended_text.size());
 }
 
-void print_batch(const Mtz::Batch& b) {
+const char* batch_int_desc[] = {
+  "no. of words",
+  "no. of integers",
+  "no. of reals",
+  "type of orientation block",  // 3
+  "refinement flag for cell a",
+  "refinement flag for cell b",
+  "refinement flag for cell c",
+  "refinement flag for cell alpha",
+  "refinement flag for cell beta",
+  "refinement flag for cell gamma",
+  "no. of missetting angle sets (PhiXYZ)", // 10
+  "reciprocal axis closest to rot. axis E1",
+  "crystal number",
+  "crystal mosaicity (0=iso, 1=anisotropic)",
+  "type of data (1=2D, 2=3D, 3=Laue)",
+  "goniostat scan axis number",
+  "no. of batch scales & Bfactors + SD's",
+  "no. of goniostat axes",
+  "beam info (0=lab, 1=synchrotron)",
+  "no. of detectors",
+  "dataset id",  // 20
+};
+
+const char* batch_float_desc[] = {
+  "unit cell a",  // 0
+  "unit cell b",
+  "unit cell c",
+  "unit cell alpha",
+  "unit cell beta",
+  "unit cell gamma",
+  "U(1,1)", "U(2,1)", "U(3,1)",  // 6-8
+  "U(1,2)", "U(2,2)", "U(3,2)",
+  "U(1,3)", "U(2,3)", "U(3,3)",
+  "misseting angle PhiXYZ(1,1)",  // 15
+  "misseting angle PhiXYZ(2,1)",
+  "misseting angle PhiXYZ(3,1)",
+  "misseting angle PhiXYZ(1,2)",
+  "misseting angle PhiXYZ(2,2)",
+  "misseting angle PhiXYZ(3,2)",
+  "mosaicity(1) reflection width (deg)",  // 21
+  "mosaicity(2) vertical width (deg)",
+  nullptr, nullptr, nullptr, nullptr, nullptr, // mosaicity padding
+  nullptr, nullptr, nullptr, nullptr, nullptr,
+  "datum(1) value of goniostat axis",  // 33
+  "datum(2) value of goniostat axis",
+  "datum(3) value of goniostat axis",
+  "initial phi relative to datum",  // 36
+  "final phi relative to datum",
+  "scanax(1) rotation axis in lab frame",  // 38
+  "scanax(2) rotation axis in lab frame",
+  "scanax(3) rotation axis in lab frame",
+  "start time [minutes]",  // 41
+  "stop time [minutes]",
+  "batch scale",  // 43
+  "batch temperature factor",
+  "sd of batch scale",
+  "sd of temperature factor",
+  "range of phi values",  // 47
+  nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr,
+  "E1(1) \"Cambridge\" lab axes...",  // 59
+  "E1(2) ...defining goniostat axes",
+  "E1(3)",
+  "E2(1)",
+  "E2(2)",
+  "E2(3)",
+  "E3(1)",
+  "E3(2)",
+  "E3(3)",
+  nullptr, nullptr, nullptr, nullptr, nullptr,  // 68-79
+  nullptr, nullptr, nullptr, nullptr, nullptr,
+  nullptr,
+  "source(1) idealised (ie. excluding ...", // 80
+  "source(2) ...tilts) source vector, ...",
+  "source(3) ...in Cambridge lab frame",
+  "S0(1) source vector (incl. tilts), ...", // 83
+  "S0(2) ...antiparallel to beam, ...",
+  "S0(3) ...in Cambridge lab frame",
+  "wavelength [A]",  // 86
+  "dispersion delta(lambda)/lambda",  // 87
+  "correlated component of dispersion",
+  "horizontal beam divergence (deg)",  // 89
+  "vertical beam divergence (0=isotropic)",
+};
+
+const char* batch_det_desc[] = {
+  "DX crystal to detector distance [mm]",  // 111+40n
+  "THETA detector tilt angle [deg]",
+  "minimum Y coordinate [pixel]",
+  "maximum Y coordinate [pixel]",
+  "minimum Z coordinate [pixel]",
+  "maximum Z coordinate [pixel]",
+};
+
+void print_batch(const Mtz::Batch& b, bool expanded) {
   printf("Batch %d - %s\n", b.number, b.title.c_str());
   printf("    %zu %s: %s\n", b.axes.size(),
          b.axes.size() == 1 ? "axis" : "axes",
          gemmi::join_str(b.axes, ", ").c_str());
   printf("  %4zu integers:", b.ints.size());
   for (size_t i = 0; i != b.ints.size(); ++i) {
-    if (i != 0 && i % 10 == 0)
-      printf("\n                ");
-    printf(" %5d", b.ints[i]);
+    if (expanded) {
+      constexpr size_t n = sizeof(batch_int_desc) / sizeof(batch_int_desc[0]);
+      const char* desc = i < n ? batch_int_desc[i] : nullptr;
+      if (desc || b.ints[i] != 0)
+        printf("\n     %4zu %-40s %5d", i, desc ? desc : "", b.ints[i]);
+    } else {
+      if (i != 0 && i % 10 == 0)
+        printf("\n                ");
+      printf(" %5d", b.ints[i]);
+    }
   }
   printf("\n  %4zu floats:", b.floats.size());
   size_t last_non_zero = b.floats.size();
   while (last_non_zero != 0 && b.floats[last_non_zero - 1] == 0.f)
     --last_non_zero;
-  for (size_t i = 0; i != b.floats.size(); ++i) {
-    if (i != 0 && i % 5 == 0) {
-      printf("\n       %4zu|  ", i);
-      if (i >= last_non_zero) {
-        printf("          ...");
-        break;
+  if (expanded) {
+    size_t expected_end = 111;
+    for (size_t i = 0; i < std::min(b.floats.size(), expected_end); ++i) {
+      constexpr size_t n = sizeof(batch_float_desc) / sizeof(batch_float_desc[0]);
+      const char* desc = i < n ? batch_float_desc[i] : nullptr;
+      if (desc || b.floats[i] != 0)
+        printf("\n     %4zu %-40s %-.5g", i, desc ? desc : "", b.floats[i]);
+    }
+    int ndet = b.ints[19];
+    if (ndet < 0)
+      gemmi::fail("NDET < 0");
+    for (int det = 0; det < ndet; ++det) {
+      printf("\n    detector #%d", det+1);
+      size_t offset = expected_end;
+      expected_end += 40;
+      if (b.floats.size() < expected_end)
+        gemmi::fail("header too short for no. detectors:", std::to_string(ndet));
+      constexpr size_t n = sizeof(batch_det_desc) / sizeof(batch_det_desc[0]);
+      for (size_t i = 0; i < 40; ++i) {
+        const char* desc = i < n ? batch_det_desc[i] : nullptr;
+        size_t oi = offset + i;
+        if (desc || b.floats[oi] != 0)
+          printf("\n     %4zu %-40s %-.5g", oi, desc ? desc : "", b.floats[oi]);
       }
     }
-    printf(" %12.5g", b.floats[i]);
+    for (size_t i = expected_end; i < b.floats.size(); ++i)
+      if (b.floats[i] != 0)
+        printf("\n     %4zu %-40s %-.5g", i, "??", b.floats[i]);
+    printf("\n");
+  } else {
+    for (size_t i = 0; i != b.floats.size(); ++i) {
+      if (i != 0 && i % 5 == 0) {
+        printf("\n       %4zu|  ", i);
+        if (i >= last_non_zero) {
+          printf("          ...");
+          break;
+        }
+      }
+      printf(" %12.5g", b.floats[i]);
+    }
+    printf("\n    dataset: %d\n", b.dataset_id());
   }
-  printf("\n    dataset: %d\n", b.dataset_id());
 }
 
 void print_batch_extra_info(const Mtz::Batch& b) {
@@ -408,14 +544,16 @@ void print_mtz_info(Stream&& stream, const char* path,
       int number = std::atoi(o->arg);
       for (const Mtz::Batch& b : mtz.batches)
         if (b.number == number) {
-          print_batch(b);
-          print_batch_extra_info(b);
+          bool expanded = options[ExpandedBatches];
+          print_batch(b, expanded);
+          if (!expanded)
+            print_batch_extra_info(b);
         }
     }
   }
   if (options[PrintBatches])
     for (const Mtz::Batch& b : mtz.batches)
-      print_batch(b);
+      print_batch(b, options[ExpandedBatches]);
   if (options[PrintAppendix])
     printf("%s", mtz.appended_text.c_str());
   if (mtz.has_data() && !options[NoIsym])
