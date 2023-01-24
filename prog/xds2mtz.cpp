@@ -56,24 +56,24 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* input_path = p.nonOption(0);
   const char* output_path = p.nonOption(1);
 
-  gemmi::XdsAscii xds_ascii;
+  gemmi::XdsAscii xds;
   if (verbose)
     std::fprintf(stderr, "Reading %s ...\n", input_path);
   try {
-    xds_ascii.read_input(gemmi::MaybeGzipped(input_path));
+    xds.read_input(gemmi::MaybeGzipped(input_path));
 
     // polarization correction
     if (p.options[Polarization]) {
-      if (xds_ascii.generated_by != "INTEGRATE") {
+      if (xds.generated_by != "INTEGRATE") {
         std::fprintf(stderr,
                      "Error: --polarization given for data from %s (not from INTEGRATE).\n",
-                     xds_ascii.generated_by.c_str());
+                     xds.generated_by.c_str());
         return 1;
       }
-      if (gemmi::likely_in_house_source(xds_ascii.wavelength))
+      if (gemmi::likely_in_house_source(xds.wavelength))
         std::fprintf(stderr, "WARNING: likely in-house source (wavelength %g)\n"
                              "         polarization corection can be inappropriate.\n",
-                     xds_ascii.wavelength);
+                     xds.wavelength);
       if (verbose)
         std::fprintf(stderr, "Applying polarization correction...\n");
       double fraction = std::atof(p.options[Polarization].arg);
@@ -82,7 +82,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         auto v = parse_blank_separated_numbers(p.options[Normal].arg);
         pn = gemmi::Vec3(v[0], v[1], v[2]);
       }
-      xds_ascii.apply_polarization_correction(fraction, pn);
+      xds.apply_polarization_correction(fraction, pn);
     }
 
     gemmi::Mtz mtz;
@@ -95,11 +95,11 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.history.emplace_back(opt->arg);
     else
       mtz.history.emplace_back("From gemmi-xds2mtz " GEMMI_VERSION);
-    mtz.cell = xds_ascii.unit_cell;
-    mtz.spacegroup = gemmi::find_spacegroup_by_number(xds_ascii.spacegroup_number);
+    mtz.cell = xds.unit_cell;
+    mtz.spacegroup = gemmi::find_spacegroup_by_number(xds.spacegroup_number);
     mtz.add_base();
     mtz.datasets.push_back({1, "XDSproject", "XDScrystal", "XDSdataset",
-                            mtz.cell, xds_ascii.wavelength});
+                            mtz.cell, xds.wavelength});
     mtz.add_column("M/ISYM", 'Y', 0, -1, false);
     mtz.add_column("BATCH", 'B', 0, -1, false);
     mtz.add_column("I", 'J', 0, -1, false);
@@ -110,12 +110,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.add_column("ROT", 'R', 0, -1, false);
     mtz.add_column("LP", 'R', 0, -1, false);
     mtz.add_column("FLAG", 'I', 0, -1, false);
-    mtz.nreflections = (int) xds_ascii.data.size();
-    mtz.data.resize(mtz.columns.size() * xds_ascii.data.size());
+    mtz.nreflections = (int) xds.data.size();
+    mtz.data.resize(mtz.columns.size() * xds.data.size());
     gemmi::UnmergedHklMover hkl_mover(mtz.spacegroup);
     std::set<int> frames;
     size_t k = 0;
-    for (const gemmi::XdsAscii::Refl& refl : xds_ascii.data) {
+    for (const gemmi::XdsAscii::Refl& refl : xds.data) {
       auto hkl = refl.hkl;
       int isym = hkl_mover.move_to_asu(hkl);
       for (size_t j = 0; j != 3; ++j)
@@ -129,7 +129,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
       mtz.data[k++] = (float) refl.xd;
       mtz.data[k++] = (float) refl.yd;
-      mtz.data[k++] = (float) xds_ascii.rot_angle(refl);  // ROT
+      mtz.data[k++] = (float) xds.rot_angle(refl);  // ROT
       mtz.data[k++] = (float) refl.rlp;
       mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG
     }
@@ -137,8 +137,22 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Mtz::Batch batch;
       batch.number = frame;
       batch.set_dataset_id(1);
+      batch.ints[12] = 1;  // ncryst
+      batch.ints[14] = 2;  // ldtype 3D
+      batch.ints[19] = 1;  // ndet
+      batch.floats[111] = xds.detector_distance;  // dx[0]
+      batch.floats[113] = 1;  // detlm[0][0][0]
+      batch.floats[114] = xds.nx;
+      batch.floats[115] = 1;
+      batch.floats[116] = xds.ny;
       batch.set_cell(mtz.cell);
       //batch.set_wavelength(iset.wavelength);
+      batch.floats[21] = float(xds.reflecting_range_esd);  // crydat(0)
+      double phistt = xds.starting_angle +
+                      xds.oscillation_range * (frame - xds.starting_frame);
+      batch.floats[36] = float(phistt);
+      batch.floats[37] = float(phistt + xds.oscillation_range);  // phiend
+      batch.floats[47] = float(xds.oscillation_range);  // phi range
       mtz.batches.push_back(batch);
     }
     mtz.sort(5);

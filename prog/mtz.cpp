@@ -225,7 +225,7 @@ const char* batch_float_desc[] = {
 const char* batch_det_desc[] = {
   "DX crystal to detector distance [mm]",  // 111+40n
   "THETA detector tilt angle [deg]",
-  "minimum Y coordinate [pixel]",
+  "minimum Y coordinate [pixel]",  // 113+40n
   "maximum Y coordinate [pixel]",
   "minimum Z coordinate [pixel]",
   "maximum Z coordinate [pixel]",

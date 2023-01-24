@@ -59,7 +59,15 @@ struct XdsAscii {
   double oscillation_range = 0.;
   double rotation_axis[3] = {0., 0., 0.};
   double starting_angle = 0.;
+  double reflecting_range_esd = 0.;
   int starting_frame = 1;
+  int nx = 0;
+  int ny = 0;
+  double qx = 0.;
+  double qy = 0.;
+  double orgx = 0.;
+  double orgy = 0.;
+  double detector_distance = 0.;
   std::string generated_by;
   std::vector<Iset> isets;
   std::vector<Refl> data;
@@ -123,13 +131,26 @@ bool starts_with_ptr(const char* a, const char (&b)[N], const char** endptr) {
   return true;
 }
 
+template<size_t N>
+bool starts_with_ptr_b(const char* a, const char (&b)[N], const char** endptr) {
+  return starts_with_ptr<N>(skip_blank(a), b, endptr);
+}
+
+inline const char* parse_number_into(const char* start, const char* end,
+                                     double& val, const char* line) {
+  auto result = fast_from_chars(start, end, val);
+  if (result.ec != std::errc())
+    fail("failed to parse number in:\n", line);
+  return result.ptr;
+}
+
 template<int N>
 void parse_numbers_into_array(const char* start, const char* end,
                               double (&arr)[N], const char* line) {
   for (int i = 0; i < N; ++i) {
     auto result = fast_from_chars(start, end, arr[i]);
     if (result.ec != std::errc())
-      fail("failed to parse number #%d in:\n", i+1, line);
+      fail("failed to parse number #", i+1, " in:\n", line);
     start = result.ptr;
   }
 }
@@ -158,6 +179,10 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         double par[6];
         parse_numbers_into_array(rhs, line+len, par, line);
         unit_cell.set(par[0], par[1], par[2], par[3], par[4], par[5]);
+      } else if (starts_with_ptr(line+1, "REFLECTING_RANGE_E.S.D.=", &rhs)) {
+        auto result = fast_from_chars(rhs, line+len, reflecting_range_esd);
+        if (result.ec != std::errc())
+          fail("failed to parse mosaicity:\n", line);
       } else if (starts_with_ptr(line+1, "X-RAY_WAVELENGTH=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, wavelength);
         if (result.ec != std::errc())
@@ -192,6 +217,21 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         } else if (starts_with_ptr(endptr, "UNIT_CELL_CONSTANTS=", &rhs)) {
           parse_numbers_into_array(rhs, line+len, iset.cell_constants, line);
         }
+      } else if (starts_with_ptr(line+1, "NX=", &rhs)) {
+        const char* endptr;
+        nx = simple_atoi(rhs, &endptr);
+        if (starts_with_ptr_b(endptr, "NY=", &rhs))
+          ny = simple_atoi(rhs, &endptr);
+        if (starts_with_ptr_b(endptr, "QX=", &rhs))
+          endptr = parse_number_into(rhs, line+len, qx, line);
+        if (starts_with_ptr_b(endptr, "QY=", &rhs))
+          parse_number_into(rhs, line+len, qy, line);
+      } else if (starts_with_ptr(line+1, "ORGX=", &rhs)) {
+        const char* endptr = parse_number_into(rhs, line+len, orgx, line);
+        if (starts_with_ptr_b(endptr, "ORGY=", &rhs))
+          endptr = parse_number_into(rhs, line+len, orgy, line);
+        if (starts_with_ptr_b(endptr, "DETECTOR_DISTANCE=", &rhs))
+          parse_number_into(rhs, line+len, detector_distance, line);
       } else if (starts_with_ptr(line+1, "NUMBER_OF_ITEMS_IN_EACH_DATA_RECORD=", &rhs)) {
         int num = simple_atoi(rhs);
         if (num < 10)
