@@ -19,7 +19,7 @@
 #  endif
 # endif
 # ifdef GEMMI_USE_SYSTEM_STB
-#  warning "Using system stb_sprintf.h, not the bundled one. It may not work."
+#  pragma message("Using system stb_sprintf.h, not the bundled one. It may not work.")
 #  include <stb/stb_sprintf.h>
 # else
 #  include "third_party/stb_sprintf.h"
