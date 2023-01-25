@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(gemmi C CXX)
 
 option(USE_FORTRAN "Build Fortran bindings" OFF)
