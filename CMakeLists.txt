@@ -168,7 +168,7 @@ add_library(libgem OBJECT
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/topo.cpp src/xds_ascii.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
-support_gz(libgem)
+#support_gz(libgem)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
                prog/align.cpp $<TARGET_OBJECTS:libgem>)
