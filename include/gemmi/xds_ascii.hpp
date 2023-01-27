@@ -54,6 +54,7 @@ struct XdsAscii {
   std::string source_path;
   int spacegroup_number;
   UnitCell unit_cell;
+  double cell_axes[3][3] = {{0., 0., 0.}, {0., 0., 0.}, {0., 0., 0.}};
   double wavelength;
   double incident_beam_dir[3] = {0., 0., 0.};
   double oscillation_range = 0.;
@@ -61,9 +62,9 @@ struct XdsAscii {
   double starting_angle = 0.;
   double reflecting_range_esd = 0.;
   int starting_frame = 1;
-  int nx = 0;
+  int nx = 0;  // detector size - number of pixels
   int ny = 0;
-  double qx = 0.;
+  double qx = 0.;  // pixel size in mm
   double qy = 0.;
   double orgx = 0.;
   double orgy = 0.;
@@ -120,6 +121,44 @@ struct XdsAscii {
     return starting_angle + oscillation_range * z;
   }
 
+  static Vec3 get_normalized(const double (&arr)[3], const char* name) {
+    Vec3 vec(arr[0], arr[1], arr[2]);
+    double length = vec.length();
+    if (length == 0)
+      fail("unknown ", name);
+    return vec / length;
+  }
+
+  Vec3 get_rotation_axis() const {
+    return get_normalized(rotation_axis, "rotation axis");
+  }
+
+  Vec3 get_s0() const {
+    return get_normalized(incident_beam_dir, "incident beam direction");
+  }
+
+  Vec3 get_unit_cell_axis(int k) const {
+    return Vec3(cell_axes[k][0], cell_axes[k][1], cell_axes[k][2]);
+  }
+  //Vec3 get_unit_cell_direction(int k) const {
+  //  return get_normalized(cell_axes[k], "unit cell axes");
+  //}
+
+  /// Return transition matrix from "Cambridge" frame to XDS frame.
+  /// x_xds = M x_cam
+  Mat33 calculate_conversion_from_cambridge() const {
+    // Cambridge z direction is along the principal rotation axis
+    Vec3 z = get_rotation_axis();
+    // Cambridge z direction is along beam
+    Vec3 x = get_s0();
+    Vec3 y = z.cross(x).normalized();
+    // beam and rotation axis may not be orthogonal
+    x = y.cross(z).normalized();
+    return Mat33::from_columns(x, y, z);
+  }
+
+  Mat33 get_orientation() const;
+
   void apply_polarization_correction(double fraction, Vec3 normal);
 };
 
@@ -175,10 +214,18 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         generated_by = read_word(rhs);
       } else if (starts_with_ptr(line+1, "SPACE_GROUP_NUMBER=", &rhs)) {
         spacegroup_number = simple_atoi(rhs);
-      } else if (starts_with_ptr(line+1, "UNIT_CELL_CONSTANTS=", &rhs)) {
-        double par[6];
-        parse_numbers_into_array(rhs, line+len, par, line);
-        unit_cell.set(par[0], par[1], par[2], par[3], par[4], par[5]);
+      } else if (starts_with_ptr(line+1, "UNIT_CELL_", &rhs)) {
+        if (starts_with_ptr(rhs, "CONSTANTS=", &rhs)) {
+          double par[6];
+          parse_numbers_into_array(rhs, line+len, par, line);
+          unit_cell.set(par[0], par[1], par[2], par[3], par[4], par[5]);
+        } else if (starts_with_ptr(rhs, "A-AXIS=", &rhs)) {
+          parse_numbers_into_array(rhs, line+len, cell_axes[0], line);
+        } else if (starts_with_ptr(rhs, "B-AXIS=", &rhs)) {
+          parse_numbers_into_array(rhs, line+len, cell_axes[1], line);
+        } else if (starts_with_ptr(rhs, "C-AXIS=", &rhs)) {
+          parse_numbers_into_array(rhs, line+len, cell_axes[2], line);
+        }
       } else if (starts_with_ptr(line+1, "REFLECTING_RANGE_E.S.D.=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, reflecting_range_esd);
         if (result.ec != std::errc())

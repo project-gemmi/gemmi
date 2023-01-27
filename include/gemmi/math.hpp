@@ -109,6 +109,10 @@ struct Mat33 {
         double c1, double c2, double c3)
   : a{{a1, a2, a3}, {b1, b2, b3}, {c1, c2, c3}} {}
 
+  static Mat33 from_columns(const Vec3& c1, const Vec3& c2, const Vec3& c3) {
+    return Mat33(c1.x, c2.x, c3.x, c1.y, c2.y, c3.y, c1.z, c2.z, c3.z);
+  }
+
   Vec3 row_copy(int i) const {
     if (i < 0 || i > 2)
       throw std::out_of_range("Mat33 row index must be 0, 1 or 2.");

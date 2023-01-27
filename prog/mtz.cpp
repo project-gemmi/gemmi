@@ -151,7 +151,7 @@ const char* batch_int_desc[] = {
   "crystal number",
   "crystal mosaicity (0=iso, 1=anisotropic)",
   "type of data (1=2D, 2=3D, 3=Laue)",
-  "goniostat scan axis number",
+  "goniostat scan axis number",  // 15
   "no. of batch scales & Bfactors + SD's",
   "no. of goniostat axes",
   "beam info (0=lab, 1=synchrotron)",
@@ -208,7 +208,7 @@ const char* batch_float_desc[] = {
   "E3(3)",
   nullptr, nullptr, nullptr, nullptr, nullptr,  // 68-79
   nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr,
+  nullptr, nullptr,
   "source(1) idealised (ie. excluding ...", // 80
   "source(2) ...tilts) source vector, ...",
   "source(3) ...in Cambridge lab frame",

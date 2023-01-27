@@ -122,7 +122,8 @@ struct Mtz {
       ints[0] = 29 + 156;
       ints[1] = 29;
       ints[2] = 156;
-      floats[43] = 1.f; // batch scale
+      // COMBAT sets BSCALE=1, but Pointless sets it to 0.
+      //floats[43] = 1.f; // batch scale
     }
     int number;
     std::string title;

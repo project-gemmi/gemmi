@@ -101,6 +101,7 @@ void add_unitcell(py::module& m) {
     .def_readwrite("x", &Vec3::x)
     .def_readwrite("y", &Vec3::y)
     .def_readwrite("z", &Vec3::z)
+    .def("normalized", &Vec3::normalized)
     .def("dot", &Vec3::dot)
     .def("cross", &Vec3::cross)
     .def("length", &Vec3::length)
