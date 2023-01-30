@@ -109,6 +109,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.add_column("YDET", 'R', 0, -1, false);
     mtz.add_column("ROT", 'R', 0, -1, false);
     mtz.add_column("LP", 'R', 0, -1, false);
+    mtz.add_column("CORR", 'R', 0, -1, false);
     mtz.add_column("FLAG", 'I', 0, -1, false);
     mtz.nreflections = (int) xds.data.size();
     mtz.data.resize(mtz.columns.size() * xds.data.size());
@@ -131,6 +132,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.data[k++] = (float) refl.yd;
       mtz.data[k++] = (float) xds.rot_angle(refl);  // ROT
       mtz.data[k++] = (float) refl.rlp;
+      mtz.data[k++] = float(0.01 * refl.corr);
       mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG
     }
     // Prepare a similar batch header as Pointless.
@@ -157,7 +159,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     try {
       gemmi::Mat33 Q = xds.calculate_conversion_from_cambridge().inverse();
       s0 = -Q.multiply(xds.get_s0());
-      // orientation matrix U
+      // Orientation matrix U. It is calculated differently in Pointless,
+      // so the results are slightly different (due to limited precision
+      // of numbers in XDS file).
       gemmi::Mat33 U = Q.multiply(xds.get_orientation());
       for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)

@@ -33,6 +33,7 @@ struct XdsAscii {
     double zd;
     double rlp;
     double peak;
+    double corr;  // is it always integer?
     int iset = 0;
 
     // I think ZD can't be negative
@@ -196,9 +197,9 @@ void parse_numbers_into_array(const char* start, const char* end,
 
 template<typename Stream>
 void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
-  static const char* expected_columns[10] = {
+  static const char* expected_columns[11] = {
     "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8",
-    "RLP=9", "PEAK=10"
+    "RLP=9", "PEAK=10", "CORR=11"
   };
   source_path = source;
   char line[256];
@@ -284,8 +285,8 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         if (num < 10)
           fail("expected 10+ columns, got:\n", line);
         if (generated_by == "INTEGRATE") {
-          copy_line_from_stream(line, 42, stream);
-          if (std::strncmp(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK", 41) != 0)
+          copy_line_from_stream(line, 47, stream);
+          if (!starts_with(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK,CORR"))
             fail("unexpected column order in INTEGRATE.HKL");
         } else {
           for (const char* col : expected_columns) {
@@ -322,6 +323,7 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       result = fast_from_chars(result.ptr, line+len, r.zd); // 8
       result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
       result = fast_from_chars(result.ptr, line+len, r.peak); // 10
+      result = fast_from_chars(result.ptr, line+len, r.corr); // 11
       if (result.ec != std::errc())
         fail("failed to parse data line:\n", line);
       if (iset_col > 10) {
