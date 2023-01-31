@@ -98,6 +98,15 @@ struct Vec3 {
 
 inline Vec3 operator*(double d, const Vec3& v) { return v * d; }
 
+/// Rodrigues' rotation formula: rotate vector v about given axis of rotation
+/// (which must be a unit vector) by given angle (in radians).
+inline Vec3 rotate_about_axis(const Vec3& v, const Vec3& axis, double theta) {
+  double sin_theta = std::sin(theta);
+  double cos_theta = std::cos(theta);
+  return v * cos_theta + axis.cross(v) * sin_theta +
+         axis * (axis.dot(v) * (1 - cos_theta));
+}
+
 struct Mat33 {
   double a[3][3] = { {1.,0.,0.}, {0.,1.,0.}, {0.,0.,1.} };
 

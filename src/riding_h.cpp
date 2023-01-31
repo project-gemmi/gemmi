@@ -64,15 +64,6 @@ static Position position_from_angle_and_torsion(const Position& x1,
                                sin(theta) * (cos(tau) * e2 + sin(tau) * e3)));
 }
 
-// Rodrigues' rotation formula, rotate vector v given axis of rotation
-// (which must be a unit vector) and angle (in radians).
-static Vec3 rotate_about_axis(const Vec3& v, const Vec3& axis, double theta) {
-  double sin_theta = std::sin(theta);
-  double cos_theta = std::cos(theta);
-  return v * cos_theta + axis.cross(v) * sin_theta +
-         axis * (axis.dot(v) * (1 - cos_theta));
-}
-
 static Vec3 get_vector_to_line(const Position& point,
                                const Position& point_on_the_line,
                                const Vec3& unit_vector) {
