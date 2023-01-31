@@ -92,7 +92,7 @@ struct ReciprocalGrid : GridBase<T> {
         mult = std::exp(unblur * 0.25 * inv_d2);
       if (mott_bethe)
         // cf. mott_bethe_factor
-        mult *= -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
+        mult *= -mott_bethe_const() / inv_d2;
       value *= static_cast<decltype(std::abs(value))>(mult);
     }
     return value;
@@ -144,7 +144,7 @@ struct ReciprocalGrid : GridBase<T> {
           mult = std::exp(unblur * 0.25 * inv_d2);
         if (mott_bethe)
           // cf. mott_bethe_factor
-          mult *= -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
+          mult *= -mott_bethe_const() / inv_d2;
         hv.value *= static_cast<decltype(std::abs(hv.value))>(mult);
       }
     asu_data.unit_cell_ = this->unit_cell;

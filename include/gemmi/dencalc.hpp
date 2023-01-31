@@ -197,7 +197,7 @@ struct DensityCalculator {
 
   double mott_bethe_factor(const Miller& hkl) const {
     double inv_d2 = grid.unit_cell.calculate_1_d2(hkl);
-    double factor = -1. / (2 * pi() * pi() * bohrradius()) / inv_d2;
+    double factor = -mott_bethe_const() / inv_d2;
     return blur == 0 ? factor : factor * reciprocal_space_multiplier(inv_d2);
   }
 };

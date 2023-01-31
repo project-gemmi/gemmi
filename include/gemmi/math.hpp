@@ -23,6 +23,9 @@ constexpr double hc() { return 12398.4197386209; }
 // The Bohr radius (a0) in Angstroms.
 constexpr double bohrradius() { return 0.529177210903; }
 
+// for Mott-Bethe factor
+constexpr double mott_bethe_const() { return 1. / (2 * pi() * pi() * bohrradius()); }
+
 // Used in conversion of ADPs (atomic displacement parameters).
 constexpr double u_to_b() { return 8 * pi() * pi(); }
 

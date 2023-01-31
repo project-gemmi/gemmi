@@ -116,7 +116,7 @@ public:
   }
 
   double mott_bethe_factor() const {
-    return -1. / (8 * pi() * pi() * bohrradius()) / stol2_;
+    return -mott_bethe_const() / 4 / stol2_;
   }
 
   // The occupancy is assumed to take into account symmetry,

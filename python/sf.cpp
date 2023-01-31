@@ -87,4 +87,5 @@ void add_sf(py::module& m) {
   add_dencalc<C4322>(m, "DensityCalculatorE");
   add_dencalc<Neutron92>(m, "DensityCalculatorN");
   m.def("IT92_normalize", &IT92::normalize);
+  m.def("mott_bethe_const", &gemmi::mott_bethe_const);
 }
