@@ -55,6 +55,7 @@ struct ExpAnisoSum {
 template<int N, int WithC, typename Real>
 struct GaussianCoef {
   using coef_type = Real;
+  static const int ncoeffs = N;
   std::array<Real, 2*N+WithC> coefs;
   Real a(int n) const { return coefs[n]; }
   Real b(int n) const { return coefs[N+n]; }

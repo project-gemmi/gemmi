@@ -423,7 +423,7 @@ if (USE_PYTHON)
           python/meta.cpp python/monlib.cpp
           python/mtz.cpp python/read.cpp python/recgrid.cpp
           python/scaling.cpp python/search.cpp
-          python/sf.cpp python/sym.cpp python/topo.cpp
+          python/sf.cpp python/sym.cpp python/topo.cpp python/refine.cpp
           python/unitcell.cpp python/write.cpp
           $<TARGET_OBJECTS:libgem>)
   set_target_properties(py PROPERTIES OUTPUT_NAME gemmi)
