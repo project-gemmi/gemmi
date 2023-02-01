@@ -158,7 +158,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Vec3 s0(-1, 0, 0); // will be re-set if we have geometry info
     try {
       gemmi::Mat33 Q = xds.calculate_conversion_from_cambridge().inverse();
-      s0 = -Q.multiply(xds.get_s0());
+      s0 = -Q.multiply(xds.get_s0_direction());
       // Orientation matrix U. It is calculated differently in Pointless,
       // so the results are slightly different (due to limited precision
       // of numbers in XDS file).

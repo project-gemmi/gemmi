@@ -5,42 +5,51 @@
 
 namespace gemmi {
 
-Mat33 XdsAscii::get_orientation() const {
-  Vec3 a = get_unit_cell_axis(0);
-  Vec3 b = get_unit_cell_axis(1);
-  Vec3 c = get_unit_cell_axis(2);
-  if (a.length_sq() == 0 || b.length_sq() == 0 || c.length_sq() == 0)
-    fail("unknown unit cell axes");
-  Vec3 ar = b.cross(c).normalized();
-  Vec3 br = c.cross(a);
-  Vec3 cr = ar.cross(br).normalized();
-  br = cr.cross(ar);
-  return Mat33::from_columns(ar, br, cr);
-}
-
-// Based on Phil Evans' expertise and also on
-// R. Kahn et al, J. Appl. Cryst. (1982) 15, 330  doi:10.1107/S0021889882012060
-void XdsAscii::apply_polarization_correction(double fraction, Vec3 normal) {
+/// Based on Phil Evans' expertise and the literature, see:
+/// https://github.com/project-gemmi/gemmi/discussions/248
+/// \par p is defined as in XDS (p=0.5 for unpolarized beam).
+void XdsAscii::apply_polarization_correction(double p, Vec3 normal) {
+  check_cell_axes();
+  Mat33 UB = cell_axes.inverse();
+  Vec3 rot_axis = get_rotation_axis();
+  Vec3 s0_dir = get_s0_direction();
   normal = normal.normalized();
-  Vec3 s0 = get_s0();
   // The polarization normal is expected to be approx. orthogonal to the beam.
   // dot() is the same as cos_angle() for normalized vectors.
-  if (normal.dot(s0) > std::cos(rad(5.0)))
+  if (normal.dot(s0_dir) > std::cos(rad(5.0)))
     fail("polarization normal is far from orthogonal to the incident beam");
   // make normal exactly orthogonal to the beam
-  normal = s0.cross(normal).cross(s0).normalized();
+  normal = s0_dir.cross(normal).cross(s0_dir).normalized();
+  // wavevector
+  Vec3 s0 = s0_dir / wavelength;
+  double s0_m2 = 1. / s0.length_sq();  // s0^-2
 
-  Vec3 rot_axis = get_rotation_axis();
-
-  (void) fraction;
-  // TODO
-  /*
   for (Refl& refl : data) {
-    refl.hkl;
-    Vec3 s1 = ?;
-    refl.iobs;
+    double phi = rad(rot_angle(refl));
+    Vec3 h(refl.hkl[0], refl.hkl[1], refl.hkl[2]);
+    Vec3 r0 = UB.multiply(h);
+    Vec3 r = rotate_about_axis(r0, rot_axis, phi);
+    Vec3 s = s0 + r;
+#if 0
+    double two_theta = s0.angle(s);
+    // 2d sin(theta) = lambda
+    double bragg_angle = std::asin(wavelength / (2 * unit_cell.calculate_d(refl.hkl)));
+    printf("(%d %d %d) two-theta %g %g\n",
+           refl.hkl[0], refl.hkl[1], refl.hkl[2], deg(two_theta), deg(2 * bragg_angle));
+#endif
+    // we should have |s| == |s0|, but just in case calculate it separately
+    double s_m2 = 1. / s.length_sq();
+    // 1 + cos^2(2theta) = 2 * correction for unpolarized beam
+    double t = 1 + sq(s.dot(s0)) * s_m2 * s0_m2;
+    double polariz_factor = (1 - 2*p) * (1 - sq(normal.dot(s)) * s_m2) + p * t;
+    // We assume that the XDS files has polarization correction applied,
+    // but for non-polarized beam. So we multiply intensities by P0=t/2
+    // and divide by a hopefully more accurate polarization factor.
+    double mult = 0.5 * t / polariz_factor;
+    refl.iobs *= mult;
+    refl.sigma *= mult;
+    refl.rlp *= mult;
   }
-  */
 }
 
 }  // namespace gemmi

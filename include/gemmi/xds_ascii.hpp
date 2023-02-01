@@ -55,7 +55,7 @@ struct XdsAscii {
   std::string source_path;
   int spacegroup_number;
   UnitCell unit_cell;
-  double cell_axes[3][3] = {{0., 0., 0.}, {0., 0., 0.}, {0., 0., 0.}};
+  Mat33 cell_axes{0.};
   double wavelength;
   double incident_beam_dir[3] = {0., 0., 0.};
   double oscillation_range = 0.;
@@ -130,20 +130,21 @@ struct XdsAscii {
     return vec / length;
   }
 
+  // it's already normalized, but just in case normalize it again
   Vec3 get_rotation_axis() const {
     return get_normalized(rotation_axis, "rotation axis");
   }
 
-  Vec3 get_s0() const {
+  // I'm not sure if always |incident_beam_dir| == 1/wavelength
+  Vec3 get_s0_direction() const {
     return get_normalized(incident_beam_dir, "incident beam direction");
   }
 
-  Vec3 get_unit_cell_axis(int k) const {
-    return Vec3(cell_axes[k][0], cell_axes[k][1], cell_axes[k][2]);
+  void check_cell_axes() const {
+    for (int i = 0; i < 3; ++i)
+      if (cell_axes[i][0] == 0 && cell_axes[i][1] == 0 && cell_axes[i][2] == 0)
+        fail("unknown unit cell axes");
   }
-  //Vec3 get_unit_cell_direction(int k) const {
-  //  return get_normalized(cell_axes[k], "unit cell axes");
-  //}
 
   /// Return transition matrix from "Cambridge" frame to XDS frame.
   /// x_xds = M x_cam
@@ -151,16 +152,27 @@ struct XdsAscii {
     // Cambridge z direction is along the principal rotation axis
     Vec3 z = get_rotation_axis();
     // Cambridge z direction is along beam
-    Vec3 x = get_s0();
+    Vec3 x = get_s0_direction();
     Vec3 y = z.cross(x).normalized();
     // beam and rotation axis may not be orthogonal
     x = y.cross(z).normalized();
     return Mat33::from_columns(x, y, z);
   }
 
-  Mat33 get_orientation() const;
+  Mat33 get_orientation() const {
+    check_cell_axes();
+    Vec3 a = cell_axes.row_copy(0);
+    Vec3 b = cell_axes.row_copy(1);
+    Vec3 c = cell_axes.row_copy(2);
+    Vec3 ar = b.cross(c).normalized();
+    Vec3 br = c.cross(a);
+    Vec3 cr = ar.cross(br).normalized();
+    br = cr.cross(ar);
+    return Mat33::from_columns(ar, br, cr);
+  }
 
-  void apply_polarization_correction(double fraction, Vec3 normal);
+  /// \par p is degree of polarization from range (0,1), as used in XDS.
+  void apply_polarization_correction(double p, Vec3 normal);
 };
 
 template<size_t N>
@@ -216,16 +228,16 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       } else if (starts_with_ptr(line+1, "SPACE_GROUP_NUMBER=", &rhs)) {
         spacegroup_number = simple_atoi(rhs);
       } else if (starts_with_ptr(line+1, "UNIT_CELL_", &rhs)) {
-        if (starts_with_ptr(rhs, "CONSTANTS=", &rhs)) {
+        if (starts_with_ptr(rhs, "CONSTANTS=", &rhs)) {  // UNIT_CELL_CONSTANTS=
           double par[6];
           parse_numbers_into_array(rhs, line+len, par, line);
           unit_cell.set(par[0], par[1], par[2], par[3], par[4], par[5]);
-        } else if (starts_with_ptr(rhs, "A-AXIS=", &rhs)) {
-          parse_numbers_into_array(rhs, line+len, cell_axes[0], line);
-        } else if (starts_with_ptr(rhs, "B-AXIS=", &rhs)) {
-          parse_numbers_into_array(rhs, line+len, cell_axes[1], line);
-        } else if (starts_with_ptr(rhs, "C-AXIS=", &rhs)) {
-          parse_numbers_into_array(rhs, line+len, cell_axes[2], line);
+        } else if (starts_with_ptr(rhs, "A-AXIS=", &rhs)) { // UNIT_CELL_A-AXIS=
+          parse_numbers_into_array(rhs, line+len, cell_axes.a[0], line);
+        } else if (starts_with_ptr(rhs, "B-AXIS=", &rhs)) { // UNIT_CELL_B-AXIS=
+          parse_numbers_into_array(rhs, line+len, cell_axes.a[1], line);
+        } else if (starts_with_ptr(rhs, "C-AXIS=", &rhs)) { // UNIT_CELL_C-AXIS=
+          parse_numbers_into_array(rhs, line+len, cell_axes.a[2], line);
         }
       } else if (starts_with_ptr(line+1, "REFLECTING_RANGE_E.S.D.=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, reflecting_range_esd);
