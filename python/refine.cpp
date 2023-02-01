@@ -26,13 +26,13 @@ PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Stacking>)
 PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Harmonic>)
 PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Special>)
 PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Vdw>)
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::bond_reporting_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::angle_reporting_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::torsion_reporting_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::chiral_reporting_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::plane_reporting_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::stacking_reporting_t>);
-PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::vdw_reporting_t>);
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::bond_reporting_t>)
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::angle_reporting_t>)
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::torsion_reporting_t>)
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::chiral_reporting_t>)
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::plane_reporting_t>)
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::stacking_reporting_t>)
+PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Reporting::vdw_reporting_t>)
 
 py::tuple for_coo_matrix(GeomTarget &self) {
   const size_t n = self.am.size();
@@ -42,6 +42,18 @@ py::tuple for_coo_matrix(GeomTarget &self) {
   int* col = (int*) colarr.request().ptr;
   self.get_am_col_row(row, col);
   return py::make_tuple(&self.am, py::make_tuple(rowarr, colarr));
+}
+
+template<typename Table>
+py::tuple for_coo_matrix(LL<Table> &self) {
+  const auto am = self.fisher_diag_from_table();
+  const size_t n = am.size();
+  py::array_t<int> rowarr(n);
+  py::array_t<int> colarr(n);
+  int* row = (int*) rowarr.request().ptr;
+  int* col = (int*) colarr.request().ptr;
+  self.get_am_col_row(row, col);
+  return py::make_tuple(am, py::make_tuple(rowarr, colarr));
 }
 
 py::tuple precondition_eigen_coo(py::array_t<double> am, py::array_t<int> rows,
@@ -85,15 +97,17 @@ template<typename Table>
 void add_ll(py::module& m, const char* name) {
   using T = gemmi::LL<Table>;
   py::class_<T>(m, name)
-    .def(py::init<gemmi::UnitCell, gemmi::SpaceGroup*, std::vector<gemmi::Atom*>, bool>(),
-         py::arg("cell"), py::arg("sg"), py::arg("atoms"), py::arg("mott_bethe"))
+    .def(py::init<gemmi::UnitCell, gemmi::SpaceGroup*, std::vector<gemmi::Atom*>, bool, bool, int>(),
+         py::arg("cell"), py::arg("sg"), py::arg("atoms"), py::arg("mott_bethe"), py::arg("refine_xyz"), py::arg("adp_mode"))
     .def("set_ncs", &T::set_ncs)
     .def("calc_grad", &T::calc_grad)
     .def("make_fisher_table_diag_fast", &T::make_fisher_table_diag_fast)
     .def("fisher_diag_from_table", &T::fisher_diag_from_table)
+    .def("fisher_for_coo", [](T &self) {return for_coo_matrix(self);}, py::return_value_policy::reference_internal)
     .def_readonly("table_bs", &T::table_bs)
     .def_readonly("pp1", &T::pp1)
     .def_readonly("bb", &T::bb)
+    .def_readonly("aa", &T::aa)
   ;
 }
 

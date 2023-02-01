@@ -100,9 +100,10 @@ struct GeomTarget {
     int imode;
   };
 
-  void setup(Model &model, bool refine_xyz, bool refine_adp) { // call it after setting pairs
+  void setup(Model &model, bool refine_xyz, int adp_mode) { // call it after setting pairs
+    assert(0 <= adp_mode && adp_mode <= 2);
     this->refine_xyz = refine_xyz;
-    this->refine_adp = refine_adp;
+    this->adp_mode = adp_mode;
     const size_t n_atoms = count_atom_sites(model);
     atoms.resize(n_atoms);
     for (CRA cra : model.all())
@@ -119,18 +120,14 @@ struct GeomTarget {
       qqv += 3 * n_atoms;
       qqm += 6 * n_atoms + 9 * n_pairs;
     }
-    if (refine_adp) { //only iso
+    if (adp_mode == 1) {
       qqv += n_atoms;
       qqm += n_atoms + n_pairs;      
     }
-    /*
-    } else if (adp_mode == 1) {
-      qqm = 7 * n_atoms + 10 * n_pairs;
-      qqv = 4 * n_atoms;
-    } else {
-      qqm = 27 * n_atoms + 45 * n_pairs;
-      qqv = 9 * n_atoms;
-    }*/
+    else if (adp_mode == 2) {
+      qqv += 6 * n_atoms;
+      qqm += 21 * n_atoms + 36 * n_pairs;      
+    }
     vn.assign(qqv, 0.);
     am.assign(qqm, 0.);
     
@@ -164,7 +161,7 @@ struct GeomTarget {
   
   //int n_atoms;
   bool refine_xyz;
-  bool refine_adp;
+  int adp_mode; // 0: no refine, 1: iso, 2: aniso
   std::vector<Atom*> atoms;
   double target = 0.; // target function value
   std::vector<double> vn; // first derivatives
@@ -252,7 +249,7 @@ struct GeomTarget {
           }
       offset = 3 * n_atoms();
     }
-    if (refine_adp) { // iso only
+    if (adp_mode == 1) {
       for (size_t j = 0; j < n_atoms(); ++j, ++i) {
         row[i] = offset + j;
         col[i] = offset + j;
@@ -261,7 +258,24 @@ struct GeomTarget {
         row[i] = offset + pairs[j].second;
         col[i] = offset + pairs[j].first;
       }
-    }
+    } else if (adp_mode == 2) {
+      for (size_t j = 0; j < n_atoms(); ++j) {
+        for (size_t k = 0; k < 6; ++k, ++i)
+          row[i] = col[i] = offset + 6 * j + k;
+        for (size_t k = 0; k < 6; ++k)
+          for (int l = k + 1; l < 6; ++l, ++i) {
+            row[i] = offset + 6 * j + k;
+            col[i] = offset + 6 * j + l;
+          }
+      }
+      for (size_t j = 0; j < pairs.size(); ++j) {
+        for (size_t k = 0; k < 6; ++k)
+          for (size_t l = 0; l < 6; ++l, ++i) {
+            row[i] = 3 * pairs[j].second + l;
+            col[i] = 3 * pairs[j].first + k;
+          }
+      }
+    }    
     assert(i == am.size());
   }
 };
@@ -471,7 +485,7 @@ struct Geometry {
     return cell.orth.combine(ft).combine(cell.frac);
   }
 
-  void setup_target(bool refine_xyz, bool refine_adp);
+  void setup_target(bool refine_xyz, int adp_mode);
   void clear_target() {
     target.target = 0.;
     std::fill(target.vn.begin(), target.vn.end(), 0.);
@@ -801,7 +815,7 @@ inline void Geometry::setup_vdw(const EnerLib& ener_lib, float max_distsq_for_ad
   });
 }
 
-inline void Geometry::setup_target(bool refine_xyz, bool refine_adp) {
+inline void Geometry::setup_target(bool refine_xyz, int adp_mode) {
   std::vector<std::pair<int,int>> tmp;
   for (const auto &t : bonds)
     tmp.emplace_back(t.atoms[0]->serial-1, t.atoms[1]->serial-1);
@@ -854,7 +868,7 @@ inline void Geometry::setup_target(bool refine_xyz, bool refine_adp) {
         target.pairs.push_back(tmp[i]); // n_target, n_object
   }
   
-  target.setup(st.first_model(), refine_xyz, refine_adp);
+  target.setup(st.first_model(), refine_xyz, adp_mode);
 }
 
 inline double Geometry::calc(bool use_nucleus, bool check_only) {
@@ -887,7 +901,7 @@ inline double Geometry::calc(bool use_nucleus, bool check_only) {
 }
 
 inline double Geometry::calc_adp_restraint(bool check_only, double weight) {
-  // only isotropic for now
+  assert(target.adp_mode > 0);
   const int n_pairs = target.pairs.size();
   const int offset_v = target.refine_xyz ? target.n_atoms() * 3 : 0;
   const int offset_a = target.refine_xyz ? target.n_atoms() * 6 + n_pairs * 9 : 0;
@@ -899,18 +913,38 @@ inline double Geometry::calc_adp_restraint(bool check_only, double weight) {
     const NearestImage im = st.cell.find_nearest_image(atom1->pos, atom2->pos, Asu::Any);
     const double dsq = im.dist_sq;
     const double w = std::exp(-dsq * dsq / (4*4*4*4*std::log(2.))) * weight; // arbitrary weight, adjust so that d=4 gives 0.5
-    const double f = w * (atom1->b_iso - atom2->b_iso) * (atom1->b_iso - atom2->b_iso);
-    ret += f;
-    if (!check_only) {
-      target.target += f;
-      const double df1 = 2 * w * (atom1->b_iso - atom2->b_iso);
-      target.vn[offset_v + atom1->serial - 1] += df1;
-      target.vn[offset_v + atom2->serial - 1] += -df1;
-      // diagonal
-      target.am[offset_a + atom1->serial - 1] += 2 * w;
-      target.am[offset_a + atom2->serial - 1] += 2 * w;
-      // non-diagonal
-      target.am[offset_a + target.n_atoms() + i] += -2 * w;
+    if (target.adp_mode == 1) {
+      const double f = w * (atom1->b_iso - atom2->b_iso) * (atom1->b_iso - atom2->b_iso);
+      ret += f;
+      if (!check_only) {
+        target.target += f;
+        const double df1 = 2 * w * (atom1->b_iso - atom2->b_iso);
+        target.vn[offset_v + atom1->serial - 1] += df1;
+        target.vn[offset_v + atom2->serial - 1] += -df1;
+        // diagonal
+        target.am[offset_a + atom1->serial - 1] += 2 * w;
+        target.am[offset_a + atom2->serial - 1] += 2 * w;
+        // non-diagonal
+        target.am[offset_a + target.n_atoms() + i] += -2 * w;
+      }
+    } else if (target.adp_mode == 2) {
+      const auto& a1 = atom1->aniso.scaled(u_to_b()).elements_pdb();
+      const auto& a2 = atom2->aniso.scaled(u_to_b()).elements_pdb();
+      for (int j = 0; j < 6; ++j) {
+        const double f = w * (a1[j] - a2[j]) * (a1[j] - a2[j]);
+        ret += f;
+        if (!check_only) {
+          target.target += f;
+          const double df1 = 2 * w * (a1[j] - a2[j]);
+          target.vn[offset_v + 6 * (atom1->serial-1) + j] += df1;
+          target.vn[offset_v + 6 * (atom2->serial-1) + j] += -df1;
+          // diagonal block
+          target.am[offset_a + 21 * (atom1->serial-1) + j] += 2 * w;
+          target.am[offset_a + 21 * (atom2->serial-1) + j] += 2 * w;
+          // non-diagonal block
+          target.am[offset_a + 21 * target.n_atoms() + 36 * i + 6 * j] += -2 * w;
+        }
+      }
     }
   }
   return ret;
