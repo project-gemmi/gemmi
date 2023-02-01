@@ -9,6 +9,7 @@
 #include <limits>        // for numeric_limits
 #include <unordered_map> // for unordered_map
 #include "unitcell.hpp"  // for UnitCell
+#include "stats.hpp"     // for Correlation
 
 namespace gemmi {
 

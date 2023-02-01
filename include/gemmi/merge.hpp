@@ -14,6 +14,7 @@
 #include "util.hpp"     // for vector_remove_if
 #include "mtz.hpp"      // for Mtz
 #include "refln.hpp"    // for ReflnBlock
+#include "stats.hpp"    // for Correlation
 #include "xds_ascii.hpp" // for XdsAscii
 
 namespace gemmi {

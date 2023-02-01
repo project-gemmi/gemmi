@@ -9,6 +9,7 @@
 #include <algorithm>     // for sort, is_sorted
 #include "unitcell.hpp"
 #include "symmetry.hpp"
+#include "stats.hpp"     // for Correlation
 
 namespace gemmi {
 

@@ -276,6 +276,9 @@ gemmi/span.hpp
 gemmi/sprintf.hpp
     interface to stb_sprintf: gstb_snprintf, to_str(float|double)
 
+gemmi/stats.hpp
+    Statistics utilities: classes Covariance, Correlation, DataStats
+
 gemmi/symmetry.hpp
     Crystallographic Symmetry. Space Groups. Coordinate Triplets.
 

@@ -15,7 +15,8 @@
 #include <vector>
 #include "unitcell.hpp"
 #include "symmetry.hpp"
-#include "fail.hpp"  // for fail
+#include "stats.hpp"  // for DataStats
+#include "fail.hpp"   // for fail
 
 namespace gemmi {
 

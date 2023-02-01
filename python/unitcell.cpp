@@ -194,12 +194,6 @@ void add_unitcell(py::module& m) {
     .def("approx", &Transform::approx, py::arg("other"), py::arg("epsilon"));
   transform.attr("__matmul__") = transform.attr("combine");
 
-  py::class_<Correlation>(m, "Correlation")
-    .def_readonly("n", &Correlation::n)
-    .def("coefficient", &Correlation::coefficient)
-    .def("mean_ratio", &Correlation::mean_ratio)
-    ;
-
   py::class_<Position, Vec3>(m, "Position")
     .def(py::init<double,double,double>())
     .def(py::init<const Vec3&>())

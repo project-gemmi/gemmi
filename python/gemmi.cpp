@@ -5,6 +5,7 @@
 #include "gemmi/dirwalk.hpp"   // for CifWalk, CoorFileWalk
 #include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
 #include "gemmi/bessel.hpp"    // for bessel_i1_over_i0
+#include "gemmi/stats.hpp"     // for Correlation
 #include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error
 
 #include "common.h"
@@ -50,6 +51,13 @@ void add_misc(py::module& m) {
         x = std::abs(x);
         return x + std::log1p(std::exp(-2 * x)) - std::log(2);
   }));
+
+  // stats.hpp
+  py::class_<gemmi::Correlation>(m, "Correlation")
+    .def_readonly("n", &gemmi::Correlation::n)
+    .def("coefficient", &gemmi::Correlation::coefficient)
+    .def("mean_ratio", &gemmi::Correlation::mean_ratio)
+    ;
 
   // utilities inspired by numpy.bincount()
   m.def("binmean", [](py::array_t<int> bins, py::array_t<double> values) {
