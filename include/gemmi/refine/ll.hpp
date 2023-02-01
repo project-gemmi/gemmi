@@ -171,10 +171,9 @@ struct TableS3 {
 
     std::vector<double> sec_der_bin(nbin_rad+1);
     std::vector<int> nref_sec_bin(nbin_rad+1);
-    for (int i = 0; i < svals.size(); ++i) {
+    for (size_t i = 0; i < svals.size(); ++i) {
       const double s = svals[i];
       const int ibin = std::upper_bound(smeanb_rad.begin(), smeanb_rad.end(), s*s*s) - smeanb_rad.begin() - 1;
-      double s3 = s*s*s;
       // int ibin;
       // for (int j = 0; j < nbin_rad; ++j)
       //   if (s3 > smeanb_rad[j] && s3 <= smeanb_rad[j+1]) {
@@ -257,8 +256,8 @@ struct LL{
   // only assumes cryo-EM SPA
   // den is the Fourier transform of (dLL/dAc-i dLL/dBc)*mott_bethe_factor/s^2
   std::vector<double> calc_grad(Grid<float> &den, bool refine_xyz, bool refine_adp) { // needs <double>?
-    const int n_atoms = atoms.size();
-    const int n_v = n_atoms * ((refine_xyz ? 3 : 0) + (refine_adp ? 1 : 0)); // only isotropic ADP for now
+    const size_t n_atoms = atoms.size();
+    const size_t n_v = n_atoms * ((refine_xyz ? 3 : 0) + (refine_adp ? 1 : 0)); // only isotropic ADP for now
     std::vector<double> vn(n_v, 0.);
     for (size_t i = 0; i < n_atoms; ++i) {
       for (const Transform &tr : ncs) { //TODO to use cell images?
@@ -344,7 +343,7 @@ struct LL{
     const double b_step = 5;
     const double s_min = d2dfw_table.s_min, s_max = d2dfw_table.s_max;
     const double s_dim = 120; // actually +1 is allocated
-    int b_dim = (b_max - b_min) / b_step + 1;
+    int b_dim = static_cast<int>((b_max - b_min) / b_step) + 1;
     if (b_dim % 2 == 0) ++b_dim; // TODO: need to set maximum b_dim?
     pp1[0].resize(b_dim);
     bb[0].resize(b_dim);
@@ -416,8 +415,8 @@ struct LL{
   }
 
   std::vector<double> fisher_diag_from_table (bool refine_xyz, bool refine_adp) {
-    const int n_atoms = atoms.size();
-    const int n_a = n_atoms * ((refine_xyz ? 3 : 0) + (refine_adp ? 1 : 0)); // only isotropic ADP for now
+    const size_t n_atoms = atoms.size();
+    const size_t n_a = n_atoms * ((refine_xyz ? 3 : 0) + (refine_adp ? 1 : 0)); // only isotropic ADP for now
     const int N = Table::Coef::ncoeffs;
     std::vector<double> am(n_a, 0.);
     for (size_t i = 0; i < n_atoms; ++i) {

@@ -62,17 +62,17 @@ struct PlaneDeriv {
 
     // derivatives
     const Mat33 pinv = eigen_decomp_inv(SMat33<double>{eigmin,eigmin,eigmin,0,0,0}-A, 1e-9, false);
-    for (int i = 0; i < atoms.size(); ++i) {
+    for (size_t i = 0; i < atoms.size(); ++i) {
       const Vec3 p = Vec3(atoms[i]->pos) - xs;
       const SMat33<double> dAdx[3] = {{2 * p.x, 0.,      0.,      p.y, p.z, 0.},   // dA/dx
                                       {0.,      2 * p.y, 0.,      p.x, 0.,  p.z},  // dA/dy
                                       {0.,      0.,      2 * p.z, 0.,  p.x, p.y}}; // dA/dz
-      for (int j = 0; j < 3; ++j)
+      for (size_t j = 0; j < 3; ++j)
         dvmdx[i][j] = pinv.multiply(dAdx[j].multiply(vm));
     }
-    for (int i = 0; i < atoms.size(); ++i) {
+    for (size_t i = 0; i < atoms.size(); ++i) {
       dDdx[i] = vm / (double) atoms.size();
-      for (int j = 0; j < 3; ++j)
+      for (size_t j = 0; j < 3; ++j)
         dDdx[i].at(j) += xs.dot(dvmdx[i][j]);
     }
   }
@@ -103,7 +103,7 @@ struct GeomTarget {
   void setup(Model &model, bool refine_xyz, bool refine_adp) { // call it after setting pairs
     this->refine_xyz = refine_xyz;
     this->refine_adp = refine_adp;
-    const int n_atoms = count_atom_sites(model);
+    const size_t n_atoms = count_atom_sites(model);
     atoms.resize(n_atoms);
     for (CRA cra : model.all())
       atoms[cra.atom->serial-1] = cra.atom;
@@ -176,26 +176,23 @@ struct GeomTarget {
   size_t n_atoms() const { return atoms.size(); }
   MatPos find_restraint(int ia1, int ia2) const {
     MatPos matpos;
-    int idist;
-    bool found = false;
+    int idist = -1;
     for (size_t irest = rest_pos_per_atom[ia1]; irest < rest_pos_per_atom[ia1+1]; ++irest) {
       int ir1 = rest_per_atom[irest];
       if (pairs[ir1].first == ia2) {
         // atom ia1 is target atom and atom ia2 is object
         idist = ir1;
         matpos.imode = 0;
-        found = true;
         break;
       }
       else if (pairs[ir1].second == ia2) {
         // atom ia1 is object atom and atom ia2 is target
         idist = ir1;
         matpos.imode = 1;
-        found = true;
         break;
       }
     }
-    assert(found);
+    if (idist < 0) fail("cannot find atom pair");
     matpos.ipos = nmpos + 9 * idist;
     return matpos;
   }
@@ -237,9 +234,9 @@ struct GeomTarget {
     am[ipos+8] += w * deriv1.z * deriv2.z;
   }
   void get_am_col_row(int *row, int *col) const {
-    int i = 0, offset = 0;
+    size_t i = 0, offset = 0;
     if (refine_xyz) {
-      for (int j = 0; j < n_atoms(); ++j, i+=6) {
+      for (size_t j = 0; j < n_atoms(); ++j, i+=6) {
         row[i]   = 3*j;   col[i]   = 3*j;
         row[i+1] = 3*j+1; col[i+1] = 3*j+1;
         row[i+2] = 3*j+2; col[i+2] = 3*j+2;
@@ -247,20 +244,20 @@ struct GeomTarget {
         row[i+4] = 3*j;   col[i+4] = 3*j+2;
         row[i+5] = 3*j+1; col[i+5] = 3*j+2;
       }
-      for (int j = 0; j < pairs.size(); ++j)
-        for (int k = 0; k < 3; ++k)
-          for (int l = 0; l < 3; ++l, ++i) {
+      for (size_t j = 0; j < pairs.size(); ++j)
+        for (size_t k = 0; k < 3; ++k)
+          for (size_t l = 0; l < 3; ++l, ++i) {
             row[i] = 3 * pairs[j].second + l;
             col[i] = 3 * pairs[j].first + k;
           }
       offset = 3 * n_atoms();
     }
     if (refine_adp) { // iso only
-      for (int j = 0; j < n_atoms(); ++j, ++i) {
+      for (size_t j = 0; j < n_atoms(); ++j, ++i) {
         row[i] = offset + j;
         col[i] = offset + j;
       }
-      for (int j = 0; j < pairs.size(); ++j, ++i) {
+      for (size_t j = 0; j < pairs.size(); ++j, ++i) {
         row[i] = offset + pairs[j].second;
         col[i] = offset + pairs[j].first;
       }
@@ -435,7 +432,7 @@ struct Geometry {
     bool same_asu() const {
       return sym_idx == 0 && pbc_shift[0]==0 && pbc_shift[1]==0 && pbc_shift[2]==0;
     }
-    double calc(const UnitCell& cell, bool use_nucleus, GeomTarget* target, Reporting *reporting) const;
+    double calc(const UnitCell& cell, GeomTarget* target, Reporting *reporting) const;
     int type = 0; // 1: vdw, 2: torsion, 3: hbond, 4: metal, 5: dummy-nondummy, 6: dummy-dummy
     double value; // critical distance
     double sigma;
@@ -462,7 +459,7 @@ struct Geometry {
   Geometry(Structure& s) : st(s), bondindex(s.first_model()) {}
   void load_topo(const Topo& topo);
   void finalize_restraints(); // sort_restraints?
-  void setup_vdw(const EnerLib& ener_lib, double max_distsq_for_adp);
+  void setup_vdw(const EnerLib& ener_lib, float max_distsq_for_adp);
   static Position apply_transform(const UnitCell& cell, int sym_idx, const std::array<int, 3>& pbc_shift, const Position &v) {
     FTransform ft = sym_idx == 0 ? FTransform({}) : cell.images[sym_idx-1];
     ft.vec += Vec3(pbc_shift);
@@ -512,7 +509,7 @@ inline void Geometry::load_topo(const Topo& topo) {
         if (rule.rkind == Topo::RKind::Bond) // only symmetry related bond is supported.
           sym_bond_idxes.insert(rule.index);
 
-  for (int i = 0; i < topo.bonds.size(); ++i) {
+  for (size_t i = 0; i < topo.bonds.size(); ++i) {
     const Topo::Bond& t = topo.bonds[i];
     bonds.emplace_back(t.atoms[0], t.atoms[1]);
     bonds.back().values.emplace_back(t.restr->value, t.restr->esd,
@@ -671,15 +668,15 @@ inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLi
   double vdw_sdi_metal   = 0.2; // VDWR SIGM META val
   double hbond_dinc_ad   = -0.3; // VDWR INCR ADHB val
   double hbond_dinc_ah   = 0.1; // VDWR INCR AHHB val
-  double dinc_torsion    = -0.3; // not used? // // VDWR INCR TORS val
+  //double dinc_torsion    = -0.3; // not used? // // VDWR INCR TORS val
   double dinc_torsion_o  = -0.1;
   double dinc_torsion_n  = -0.1;
   double dinc_torsion_c  = -0.15; // VDWR INCR TORS val (copied)
   double dinc_torsion_all= -0.15; // VDWR INCR TORS val (copied)
   double dinc_dummy      = -0.7; // VDWR INCR DUMM val
   double vdw_sdi_dummy   = 0.3; // VDWR SIGM DUMM val
-  double dvdw_cut_min    = 1.75; // no need? // VDWR VDWC val
-  double dvdw_cut_min_x  = 1.75; // used as twice in fast_hessian_tabulation.f // VDWR VDWC val
+  //double dvdw_cut_min    = 1.75; // no need? // VDWR VDWC val
+  //double dvdw_cut_min_x  = 1.75; // used as twice in fast_hessian_tabulation.f // VDWR VDWC val
 
   double vdw_rad[2];
   double ion_rad[2];
@@ -762,7 +759,7 @@ inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLi
   vdw.sigma = vdw_sdi_vdw;
 }
 
-inline void Geometry::setup_vdw(const EnerLib& ener_lib, double max_distsq_for_adp) {
+inline void Geometry::setup_vdw(const EnerLib& ener_lib, float max_distsq_for_adp) {
   // set hbtypes for hydrogen
   if (hbtypes.empty()) {
     for (auto& b : bonds)
@@ -780,8 +777,8 @@ inline void Geometry::setup_vdw(const EnerLib& ener_lib, double max_distsq_for_a
   // Reference: Refmac vdw_and_contacts.f
   NeighborSearch ns(st.first_model(), st.cell, 4);
   ns.populate();
-  double max_vdwr = 4.;
-  ContactSearch contacts(std::max(std::sqrt(max_distsq_for_adp), max_vdwr * 2.));
+  float max_vdwr = 4.; // FIXME
+  ContactSearch contacts(std::max(std::sqrt(max_distsq_for_adp), max_vdwr * 2));
   contacts.ignore = ContactSearch::Ignore::Nothing;
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                     int sym_idx, float dist_sq) {
@@ -789,8 +786,6 @@ inline void Geometry::setup_vdw(const EnerLib& ener_lib, double max_distsq_for_a
     NearestImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos, cra2.atom->pos, sym_idx);
     int d_1_2 = bondindex.graph_distance(*cra1.atom, *cra2.atom, im.sym_idx == 0 && im.same_asu());
     if (d_1_2 > 2) {
-      const std::string& chem1 = chemtypes[cra1.atom->serial];
-      const std::string& chem2 = chemtypes[cra2.atom->serial];
       vdws.emplace_back(cra1.atom, cra2.atom);
       set_vdw_values(vdws.back(), d_1_2, ener_lib);
       assert(!std::isnan(vdws.back().value) && vdws.back().value > 0);
@@ -827,18 +822,18 @@ inline void Geometry::setup_target(bool refine_xyz, bool refine_adp) {
         tmp.emplace_back(t.atoms[i]->serial-1, t.atoms[j]->serial-1);
 
   for (const auto &t : planes)
-    for (int i = 1; i < t.atoms.size(); ++i)
-      for (int j = 0; j < i; ++j)
+    for (size_t i = 1; i < t.atoms.size(); ++i)
+      for (size_t j = 0; j < i; ++j)
         tmp.emplace_back(t.atoms[i]->serial-1, t.atoms[j]->serial-1);
   
   for (const auto &t : stackings) {
-    for (int i = 0; i < 2; ++i)
-      for (int j = 1; j < t.planes[i].size(); ++j)
-        for (int k = 0; k < j; ++k)
+    for (size_t i = 0; i < 2; ++i)
+      for (size_t j = 1; j < t.planes[i].size(); ++j)
+        for (size_t k = 0; k < j; ++k)
           tmp.emplace_back(t.planes[i][j]->serial-1, t.planes[i][k]->serial-1);
     
-    for (int j = 0; j < t.planes[0].size(); ++j)
-      for (int k = 0; k < t.planes[1].size(); ++k)
+    for (size_t j = 0; j < t.planes[0].size(); ++j)
+      for (size_t k = 0; k < t.planes[1].size(); ++k)
         tmp.emplace_back(t.planes[0][j]->serial-1, t.planes[1][k]->serial-1);
   }
   
@@ -854,7 +849,7 @@ inline void Geometry::setup_target(bool refine_xyz, bool refine_adp) {
   if (!tmp.empty()) {
     std::sort(tmp.begin(), tmp.end());
     target.pairs.push_back(tmp[0]);
-    for (int i = 1; i < tmp.size(); ++i)
+    for (size_t i = 1; i < tmp.size(); ++i)
       if (tmp[i] != target.pairs.back() && tmp[i].first != tmp[i].second)
         target.pairs.push_back(tmp[i]); // n_target, n_object
   }
@@ -885,7 +880,7 @@ inline double Geometry::calc(bool use_nucleus, bool check_only) {
   for (const auto &t : stackings)
     ret += t.calc(target_ptr, rep_ptr);
   for (const auto &t : vdws)
-    ret += t.calc(st.cell, use_nucleus, target_ptr, rep_ptr);
+    ret += t.calc(st.cell, target_ptr, rep_ptr);
 
   // TODO intervals, harmonics, specials
   return ret;
@@ -1230,15 +1225,15 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
   if (target != nullptr) {
     const double inv_sina = 1. / std::min(1., std::max(std::sqrt(1 - cosa * cosa), 0.1));
     std::vector<std::vector<Vec3>> dpdx;
-    for (int i = 0; i < 2; ++i) { // plane index
+    for (size_t i = 0; i < 2; ++i) { // plane index
       dpdx.emplace_back(planes[i].size());
-      for (int j = 0; j < planes[i].size(); ++j) { // atom index of plane i
-        for (int m = 0; m < 3; ++m)
+      for (size_t j = 0; j < planes[i].size(); ++j) { // atom index of plane i
+        for (size_t m = 0; m < 3; ++m)
           dpdx[i][j].at(m) = -deg(1) * pder[i].dvmdx[j][m].dot(pder[1-i].vm) * inv_sina;
         target->incr_vn((planes[i][j]->serial-1) * 3, wa * deltaa, dpdx[i][j]);
 
         // second derivatives in the same plane
-        for (int k = 0; k <= j; ++k) {
+        for (size_t k = 0; k <= j; ++k) {
           if (k == j)
             target->incr_am_diag((planes[i][j]->serial-1) * 6, wa, dpdx[i][j]);
           else {
@@ -1252,8 +1247,8 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
       }
     }
     // second derivatives between two planes
-    for (int j = 0; j < planes[0].size(); ++j)
-      for (int k = 0; k < planes[1].size(); ++k) {
+    for (size_t j = 0; j < planes[0].size(); ++j)
+      for (size_t k = 0; k < planes[1].size(); ++k) {
         auto mp = target->find_restraint(planes[0][j]->serial-1, planes[1][k]->serial-1);
         if (mp.imode == 0)
           target->incr_am_ndiag(mp.ipos, wa, dpdx[0][j], dpdx[1][k]);
@@ -1266,7 +1261,7 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
   double deltad[2] = {0, 0};
   if (dist > 0) { // skip if ideal dist < 0
     const double wd = 1. / (sd_dist * sd_dist);
-    for (int i = 0; i < 2; ++i) {
+    for (size_t i = 0; i < 2; ++i) {
       double d = pder[i].xs.dot(pder[1-i].vm) - pder[1-i].D; // distance from i to the other
       if (d < 0) {
         d *= -1;
@@ -1280,13 +1275,13 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
       std::vector<std::vector<Vec3>> dpdx;
       dpdx.emplace_back(planes[0].size());
       dpdx.emplace_back(planes[1].size());
-      for (int i = 0; i < 2; ++i) {
+      for (size_t i = 0; i < 2; ++i) {
         // for the atoms of this plane
-        for (int j = 0; j < planes[i].size(); ++j) {
+        for (size_t j = 0; j < planes[i].size(); ++j) {
           dpdx[i][j] = pder[1-i].vm / planes[i].size();
           target->incr_vn((planes[i][j]->serial-1) * 3, wd * deltad[i], dpdx[i][j]);
           // second derivatives
-          for (int k = 0; k <= j; ++k) {
+          for (size_t k = 0; k <= j; ++k) {
             if (k == j)
               target->incr_am_diag((planes[i][j]->serial-1) * 6, wd, dpdx[i][j]);
             else {
@@ -1299,12 +1294,12 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
           }
         }
         // for the atoms of the other plane
-        for (int j = 0; j < planes[1-i].size(); ++j) {
-          for (int m = 0; m < 3; ++m)
+        for (size_t j = 0; j < planes[1-i].size(); ++j) {
+          for (size_t m = 0; m < 3; ++m)
             dpdx[1-i][j].at(m) = pder[1-i].dvmdx[j][m].dot(pder[i].xs) - pder[1-i].dDdx[j].at(m);
           target->incr_vn((planes[1-i][j]->serial-1) * 3, wd * deltad[i], dpdx[1-i][j]);
           // second derivatives
-          for (int k = 0; k <= j; ++k) {
+          for (size_t k = 0; k <= j; ++k) {
             if (k == j)
               target->incr_am_diag((planes[1-i][j]->serial-1) * 6, wd, dpdx[1-i][j]);
             else {
@@ -1317,8 +1312,8 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
           }
         }
         // second derivatives between two planes
-        for (int j = 0; j < planes[0].size(); ++j)
-          for (int k = 0; k < planes[1].size(); ++k) {
+        for (size_t j = 0; j < planes[0].size(); ++j)
+          for (size_t k = 0; k < planes[1].size(); ++k) {
             auto mp = target->find_restraint(planes[0][j]->serial-1, planes[1][k]->serial-1);
             if (mp.imode == 0)
               target->incr_am_ndiag(mp.ipos, wd, dpdx[0][j], dpdx[1][k]);
@@ -1337,7 +1332,7 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
 
 
 inline double
-Geometry::Vdw::calc(const UnitCell& cell, bool use_nucleus, GeomTarget* target, Reporting *reporting) const {
+Geometry::Vdw::calc(const UnitCell& cell, GeomTarget* target, Reporting *reporting) const {
   const double weight = 1 / (sigma * sigma);
   const bool swapped = sym_idx < 0;
   const Atom& atom1 = *atoms[swapped ? 1 : 0];
