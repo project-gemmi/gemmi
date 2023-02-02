@@ -153,6 +153,7 @@ for info in syminfo_data:
         counter += 1
 print('  // And ...')
 additional = [
+    # triclinic
     ('A 1', 'A 1'),
     ('B 1', 'B 1'),
     ('C 1', 'C 1'),
@@ -163,9 +164,16 @@ additional = [
     ('C -1', '-C 1'),
     ('F -1', '-F 1'),
     ('I -1', '-I 1'),
+    # monoclinic
+    ('C 1 1 2', 'C 2'),
     ('C 1 1 21', 'C 2c'),
     ('F 1 2/m 1', '-F 2y'),
     ('A b a m', '-A 2 2ab'),
+    # tetragonal
+    ('C 4 2 2', 'C 4 2'),
+    ('C 4 2 21', 'C 4a 2'),
+    ('F 4 2 2', 'F 4 2'),
+    ('C -4 2 m', 'C -4 2'),
     ('C -4 2 b', 'C -4 2ya'),
     ('F 4/m m m', '-F 4 2'),
 ]
@@ -177,6 +185,8 @@ for hm, hall in additional:
     print(fmt % (number, 0, quot(hm), '  0', '""', quot(hall),
                  basisop_idx, counter))
     counter += 1
+
 print('\n')
 for b in basisops:
-    print('  "%s",' % b)
+    nice_b = gemmi.Op(b).triplet()
+    print('  "%s",' % nice_b)
