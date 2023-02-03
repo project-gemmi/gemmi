@@ -187,6 +187,7 @@ void add_symmetry(py::module& m) {
     .def("is_centrosymmetric", &SpaceGroup::is_centrosymmetric)
     .def("is_reference_setting", &SpaceGroup::is_reference_setting)
     .def("centred_to_primitive", &SpaceGroup::centred_to_primitive)
+    .def("change_of_hand_op", &SpaceGroup::change_of_hand_op)
     .def("operations", &SpaceGroup::operations, "Group of operations")
     .def("switch_to_asu", [](const SpaceGroup& sg, py::array_t<int> hkl) {
         auto h = hkl.mutable_unchecked<2>();
