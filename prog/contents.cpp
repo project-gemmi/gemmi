@@ -78,13 +78,21 @@ void print_solvent_content(const UnitCell& cell, double mol_weight) {
 void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
   int order = 1;
-  const SpaceGroup* sg = st.find_spacegroup();
-  if (sg) {
-    order = sg->operations().order();
-    printf("   Group no. %d with %d operations.\n", sg->number, order);
+  if (st.cell.is_crystal()) {
+    if (const SpaceGroup* sg = st.find_spacegroup()) {
+      order = sg->operations().order();
+      printf("   Group no. %d with %d operations.\n", sg->number, order);
+    } else {
+      std::fprintf(stderr, "%s space group name! Assuming P1.\n",
+                   st.spacegroup_hm.empty() ? "No" : "Unrecognized");
+    }
   } else {
-    std::fprintf(stderr, "%s space group name! Assuming P1.\n",
-                 st.spacegroup_hm.empty() ? "No" : "Unrecognized");
+    printf("   Not a crystal.\n");
+    Box<Position> box = calculate_noncrystal_box(st.models[0], st.cell.get_ncs_transforms());
+    printf("   Atoms in: x [%g, %g]  y [%g, %g]  z [%g, %g]\n",
+           box.minimum.x, box.maximum.x,
+           box.minimum.y, box.maximum.y,
+           box.minimum.z, box.maximum.z);
   }
   if (!st.origx.is_identity())
     printf("   The ORIGX matrix is not identity.\n");

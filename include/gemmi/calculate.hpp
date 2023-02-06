@@ -60,16 +60,37 @@ template<> inline CenterOfMass calculate_center_of_mass(const Atom& atom) {
   return CenterOfMass{Position(atom.pos * w_mass), w_mass};
 }
 
+template<class T> void expand_box(const T& obj, Box<Position>& box) {
+  for (const auto& child : obj.children())
+    expand_box(child, box);
+}
+template<> inline void expand_box(const Atom& atom, Box<Position>& box) {
+  box.extend(atom.pos);
+}
+
 // we don't take NCS into account here (cf. NeighborSearch::set_bounding_cell())
 inline Box<Position> calculate_box(const Structure& st, double margin=0.) {
   Box<Position> box;
-  for (const Model& model : st.models)
-    for (const Chain& chain : model.chains)
-      for (const Residue& res : chain.residues)
-        for (const Atom& atom : res.atoms)
-          box.extend(atom.pos);
+  expand_box(st, box);
   if (margin != 0.)
     box.add_margin(margin);
+  return box;
+}
+
+// We take ncs as FTransform's (instead of NcsOp's) b/c it's more convenient
+// to pass cell.get_ncs_transforms() from NeighborSearch::set_bounding_cell().
+inline Box<Position> calculate_noncrystal_box(const Model& model,
+                                              const std::vector<FTransform>& ncs) {
+  Box<Position> box;
+  expand_box(model, box);
+  // The box needs to include all NCS images (strict NCS from MTRIXn).
+  if (!ncs.empty()) {
+    for (const_CRA cra : model.all())
+      // images store fractional transforms, but for non-crystal
+      // it should be the same as Cartesian transform.
+      for (const Transform& tr : ncs)
+        box.extend(Position(tr.apply(cra.atom->pos)));
+  }
   return box;
 }
 
