@@ -29,14 +29,14 @@ inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
       altlocs += atom.altloc;
 }
 
-inline const Atom* 
+inline const Atom*
 get_from_with_alias(Restraints::AtomId atomid, const Residue& res1, const Residue* res2, char altloc,
                     const ChemComp::Aliasing* aliasing1, const ChemComp::Aliasing* aliasing2) {
   const ChemComp::Aliasing* aliasing = nullptr;
   if ((atomid.comp ==1 || res2 == nullptr)) {
     if (aliasing1) aliasing = aliasing1;
   } else if (aliasing2) aliasing = aliasing2;
-  if (aliasing) 
+  if (aliasing)
     if (const std::string* real_id = aliasing->name_from_alias(atomid.atom))
       atomid.atom = *real_id;
   return atomid.get_from(res1, res2, altloc);
@@ -187,14 +187,6 @@ inline Restraints read_link_restraints(const cif::Block& block_) {
     plane.ids.push_back(read_aid(row, 1));
   }
   return rt;
-}
-
-// deprecated
-template<typename T>
-void insert_comp_list(const cif::Document& doc, T& cc_groups) {
-  if (const cif::Block* block = doc.find_block("comp_list"))
-    for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
-      cc_groups.emplace(row.str(0), ChemComp::read_group(row.str(1)));
 }
 
 inline void insert_chemlinks_into(const cif::Document& doc,

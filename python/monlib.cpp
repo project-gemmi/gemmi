@@ -85,10 +85,6 @@ void add_monlib(py::module& m) {
     .def("insert_chemcomps", &MonLib::insert_chemcomps)
     .def("insert_chemlinks", &MonLib::insert_chemlinks)
     .def("insert_chemmods", &MonLib::insert_chemmods)
-    // deprecated
-    .def("insert_comp_list", [](MonLib &self, const cif::Document &doc) {
-        insert_comp_list(doc, self.cc_groups);
-    })
     .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
       return self.read_monomer_cif(path, gemmi::read_cif_gz);
     })
