@@ -100,8 +100,11 @@ void add_topo(py::module& m) {
     .def_readonly("mods", &Topo::ResInfo::mods)
     .def_readonly("chemcomps", &Topo::ResInfo::chemcomps)
     .def_readonly("monomer_rules", &Topo::ResInfo::monomer_rules)
+    .def("get_final_chemcomp", &Topo::ResInfo::get_final_chemcomp)
     ;
   py::class_<Topo::ChainInfo>(topo, "ChainInfo")
+    .def_property_readonly("chain_ref", [](const Topo::ChainInfo& self)
+        { return &self.chain_ref; }, py::return_value_policy::reference_internal)
     .def_readonly("subchain_name", &Topo::ChainInfo::subchain_name)
     .def_readonly("entity_id", &Topo::ChainInfo::entity_id)
     .def_readonly("polymer", &Topo::ChainInfo::polymer)
