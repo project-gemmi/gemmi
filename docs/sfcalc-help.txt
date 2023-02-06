@@ -22,8 +22,9 @@ Options:
                        or -w0 to ignore anomalous scattering).
   --unknown=SYMBOL     Use form factor of SYMBOL for unknown atoms.
   --noaniso            Ignore anisotropic ADPs.
+  --margin=NUM         For non-crystal use bounding box w/ margin (default: 10).
 
-Options for FFT-based calculations:
+Options for density and FFT calculations (with --dmin):
   --rate=NUM           Shannon rate used for grid spacing (default: 1.5).
   --blur=NUM           B added for Gaussian blurring (default: auto).
   --rcut=Y             Use atomic radius r such that rho(r) < Y (default: 1e-5).

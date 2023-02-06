@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 #include <complex>
+#include <gemmi/assembly.hpp>  // for expand_ncs
+#include <gemmi/calculate.hpp> // for expand_box
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/fileutil.hpp>  // for file_open
 #include <gemmi/fourier.hpp>
@@ -30,7 +32,7 @@ namespace {
 
 enum OptionIndex {
   Hkl=4, Dmin, For, NormalizeIt92, Rate, Blur, RCut, Test, ToMtz, Compare,
-  CifFp, Wavelength, Unknown, NoAniso, ScaleTo, FLabel,
+  CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, FLabel,
   PhiLabel, Ksolv, Bsolv, Baniso, RadiiSet, Rprobe, Rshrink, WriteMap
 };
 
@@ -91,8 +93,11 @@ const option::Descriptor Usage[] = {
     "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
   { NoAniso, 0, "", "noaniso", Arg::None,
     "  --noaniso  \tIgnore anisotropic ADPs." },
+  { Margin, 0, "", "margin", Arg::Float,
+    "  --margin=NUM  \tFor non-crystal use bounding box w/ margin (default: 10)." },
 
-  { NoOp, 0, "", "", Arg::None, "\nOptions for FFT-based calculations:" },
+  { NoOp, 0, "", "", Arg::None,
+    "\nOptions for density and FFT calculations (with --dmin):" },
   { Rate, 0, "", "rate", Arg::Float,
     "  --rate=NUM  \tShannon rate used for grid spacing (default: 1.5)." },
   { Blur, 0, "", "blur", Arg::Float,
@@ -108,6 +113,7 @@ const option::Descriptor Usage[] = {
   { ScaleTo, 0, "", "scale-to", Arg::Required,
     "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file."
     "\n\tArgument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF)." },
+
   { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
   { RadiiSet, 0, "", "radii-set", SfCalcArg::Radii,
     "  --radii-set=SET  \tSet of per-element radii, one of: vdw, cctbx, refmac." },
@@ -745,6 +751,23 @@ void process(const std::string& input, const OptParser& p) {
       for (gemmi::SmallStructure::Site& atom : small.sites)
         if (atom.element == gemmi::El::X)
           atom.element = new_el;
+    }
+  }
+
+  if (use_st && st.ncs_not_expanded())
+    gemmi::expand_ncs(st, gemmi::HowToNameCopiedChain::Dup);
+
+  if (use_st && !st.cell.is_crystal()) {
+    double margin = 10.;
+    if (p.options[Margin])
+      margin = std::atof(p.options[Margin].arg);
+    gemmi::Box<gemmi::Position> box;
+    expand_box(st.models[0], box);
+    gemmi::Position size = box.get_size();
+    st.cell.set(size.x + margin, size.y + margin, size.z + margin, 90, 90, 90);
+    if (p.options[Verbose]) {
+      fprintf(stderr, "Unit cell set to %g x %g x %g\n", st.cell.a, st.cell.b, st.cell.c);
+      fflush(stderr);
     }
   }
 
