@@ -20,22 +20,22 @@ std::pair<double, std::vector<double>> smooth_gauss_d(double kernel_width,
   const int n_points = x_points.size();
   if (n_points == 1)
     return std::make_pair(y_points[0], std::vector<double>(1, 1.));
-  
+
   const double kernel_width2 = kernel_width * kernel_width * 2.0;
 
   // return values
-  double y_current;
+  double y_current = 0;
   std::vector<double> y_derivs(n_points);
-  
+
   if (x_current <= x_points.back() && x_current >= x_points.front()) {
     double an = 0.0;
     double fn = 0.0;
-    double dx, dx0 = 1.0, dx1;
+    double dx = 0, dx0 = 1.0, dx1 = 0;
     for (int i = 0; i < n_points; ++i) {
       dx = (x_current - x_points[i])*(x_current - x_points[i]) / kernel_width2;
       dx0 = std::min(std::abs(dx), dx0);
     }
-    for (int i = 0; i < n_points; ++i) { 
+    for (int i = 0; i < n_points; ++i) {
       dx = (x_current - x_points[i]) * (x_current - x_points[i]) / kernel_width2;
       dx1 = dx - dx0;
       if (dx1 <= 120.0) {
@@ -49,7 +49,7 @@ std::pair<double, std::vector<double>> smooth_gauss_d(double kernel_width,
       fail("===> Error in smooth gauss. Width might be too small: 1",
                   std::to_string(n_points), " ", std::to_string(kernel_width), " ",
                   std::to_string(dx), " ", std::to_string(dx0), " ", std::to_string(dx1));
-      
+
     y_current = fn / an;
 
     // calculate derivatives
@@ -80,7 +80,7 @@ std::pair<double, std::vector<double>> smooth_gauss_d(double kernel_width,
       fail("===> Error in smooth gauss. Width might be too small: 2 ",
                   std::to_string(n_points), " ", std::to_string(kernel_width), " ",
                   std::to_string(dx));
-    
+
     y_current = fn / an;
 
     // calculate derivatives
@@ -112,7 +112,7 @@ std::pair<double, std::vector<double>> smooth_gauss_d(double kernel_width,
                   std::to_string(dx));
 
     y_current = fn/an;
-        
+
     // calculate derivatives
     for (int i = 0; i < n_points; ++i) {
       const double dx = (x_current - x_points[i])*(x_current - x_points[i]) / kernel_width2 - dx1;
@@ -182,7 +182,7 @@ struct TableS3 {
       //     std::cout << "ibin= " << j << " diff= " << ibin2-j << "\n";
       //     break;
       //   }
-      
+
       sec_der_bin[ibin] += yvals[i];
       nref_sec_bin[ibin] += 1;
     }
@@ -216,7 +216,7 @@ struct TableS3 {
       y_values.push_back(std::exp(yval));
     }
   }
-  
+
   double get_value(double s) const {
     const double s3 = s*s*s;
     const int i =  std::max(0, std::min(n_points,
@@ -238,12 +238,12 @@ struct LL{
   // table (distances x b values)
   std::vector<double> table_bs;
   std::vector<std::vector<double>> pp1; // for x-x diagonal
-  std::vector<std::vector<double>> bb;  // for B-B diagonal  
-  
+  std::vector<std::vector<double>> bb;  // for B-B diagonal
+
   LL(UnitCell cell, SpaceGroup *sg, const std::vector<Atom*> &atoms, bool mott_bethe)
     : atoms(atoms), cell(cell), sg(sg), mott_bethe(mott_bethe) {
     set_ncs({});
-  }  
+  }
   void set_ncs(const std::vector<Transform> &trs) {
     ncs.clear();
     ncs.push_back(Transform()); // make sure first is the identity op
@@ -352,12 +352,12 @@ struct LL{
 
     table_bs.clear();
     table_bs.reserve(b_dim);
-    
+
     // only for D = 0 (same atoms) for now
     for (int ib = 0; ib < b_dim; ++ib) {
       const double b = b_min + b_step * ib;
       table_bs.push_back(b);
-      
+
       std::vector<double> tpp(s_dim+1), tbb(s_dim+1);
       for (int i = 0; i <= s_dim; ++i) {
         const double s = s_min + s_step * i;
@@ -370,7 +370,7 @@ struct LL{
           tbb[i] *= s*s*s*s;
         }
       }
-      
+
       // Numerical integration by Simpson's rule
       double sum_tpp1 = 0, sum_tpp2 = 0, sum_tbb1 = 0, sum_tbb2 = 0;
       for (int i = 1; i < s_dim; i+=2) {
@@ -381,7 +381,7 @@ struct LL{
         sum_tpp2 += tpp[i];
         sum_tbb2 += tbb[i];
       }
-      
+
       pp1[0][ib] = (tpp[0] + tpp.back() + 4 * sum_tpp1 + 2 * sum_tpp2) * s_step / 3.;
       bb[0][ib] = (tbb[0] + tbb.back() + 4 * sum_tbb1 + 2 * sum_tbb2) * s_step / 3.;
     }
@@ -394,7 +394,7 @@ struct LL{
                    double x) const {
     assert(x_points.size() == y_points.size());
     assert(!x_points.empty());
-    
+
     if (x_points.size() == 1)
       return y_points.front();
 
@@ -406,7 +406,7 @@ struct LL{
     double a = (y_points[k1+1] - y_points[k1]) / (x_points[k1+1] - x_points[k1]);
     double dx = x - x_points[k1];
     double y = a * dx + b;
-    if (x < x_points.front()) 
+    if (x < x_points.front())
       return std::max(0.1 * y_points.front(), std::min(10.0 * y_points.front(), y));
     else if (x > x_points.back())
       return std::max(0.1 * y_points.back(), std::min(10.0 * y_points.back(), y));
@@ -425,7 +425,7 @@ struct LL{
       const double w = atom.occ * atom.occ;
       const double c = mott_bethe ? coef.c() - atom.element.atomic_number(): coef.c();
       double fac_x = 0., fac_b = 0.;
-      
+
       // TODO can be reduced for the same elements
       for (int j = 0; j < N + 1; ++j)
         for (int k = 0; k < N + 1; ++k) {
@@ -436,7 +436,7 @@ struct LL{
           fac_x += aj * ak * interp_1d(table_bs, pp1[0], b);
           fac_b += aj * ak * interp_1d(table_bs, bb[0], b);
         }
-        
+
       const int ipos = i*3;
       if (refine_xyz) am[ipos] = am[ipos+1] = am[ipos+2] = w * fac_x;
       if (refine_adp) am[(refine_xyz ? n_atoms * 3 : 0) + i] = w * fac_b;
@@ -446,6 +446,6 @@ struct LL{
 };
 
 
-  
+
 } // namespace gemmi
 #endif
