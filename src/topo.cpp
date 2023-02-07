@@ -640,54 +640,63 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
     fail("no such model index: " + std::to_string(model_index));
   topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
 
-  bool keep = (h_change == HydrogenChange::NoChange || h_change == HydrogenChange::Shift);
-  if (!keep || reorder) {
-    // remove/add hydrogens, sort atoms in residues
-    for (Topo::ChainInfo& chain_info : topo->chain_infos) {
-      for (Topo::ResInfo& ri : chain_info.res_infos) {
-        Residue& res = *ri.res;
-        if (!keep) {
-          remove_hydrogens(res);
-          if (h_change == HydrogenChange::ReAdd ||
-              (h_change == HydrogenChange::ReAddButWater && !res.is_water())) {
-            add_hydrogens_without_positions(ri);
-            if (h_change == HydrogenChange::ReAddButWater) {
-              // a special handling of HIS for compatibility with Refmac
-              if (res.name == "HIS") {
-                for (gemmi::Atom& atom : ri.res->atoms)
-                  if (atom.name == "HD1" || atom.name == "HE2")
-                    atom.occ = 0;
-              }
+
+  for (Topo::ChainInfo& chain_info : topo->chain_infos) {
+    for (Topo::ResInfo& ri : chain_info.res_infos) {
+      Residue& res = *ri.res;
+      if (h_change != HydrogenChange::NoChange && h_change != HydrogenChange::Shift) {
+        // remove/add hydrogens
+        remove_hydrogens(res);
+        if (h_change == HydrogenChange::ReAdd ||
+            (h_change == HydrogenChange::ReAddButWater && !res.is_water())) {
+          add_hydrogens_without_positions(ri);
+          if (h_change == HydrogenChange::ReAddButWater) {
+            // a special handling of HIS for compatibility with Refmac
+            if (res.name == "HIS") {
+              for (gemmi::Atom& atom : ri.res->atoms)
+                if (atom.name == "HD1" || atom.name == "HE2")
+                  atom.occ = 0;
             }
           }
-        } else {
-          // Special handling of Deuterium - mostly for Refmac.
-          // Note: if the model has deuterium, it gets modified.
-          if (replace_deuterium_with_fraction(res)) {
-            // deuterium names usually differ from the names in dictionary
-            for (Atom& atom : res.atoms)
-              if (atom.name[0] == 'D' && atom.fraction != 0) {
-                const ChemComp& cc = ri.get_final_chemcomp(atom.altloc);
-                if (cc.find_atom(atom.name) == cc.atoms.end())
-                  atom.name[0] = 'H';
-              }
-            st.has_d_fraction = true;
-          }
         }
-        if (reorder && ri.orig_chemcomp) {
-          const ChemComp& cc = *ri.orig_chemcomp;
-          for (Atom& atom : res.atoms) {
-            auto it = cc.find_atom(atom.name);
-            if (it == cc.atoms.end())
-              topo->err("definition not found for " +
-                        atom_str(chain_info.chain_ref, *ri.res, atom));
-            atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
-          }
-          std::sort(res.atoms.begin(), res.atoms.end(), [](const Atom& a, const Atom& b) {
-                      return a.serial != b.serial ? a.serial < b.serial
-                                                  : a.altloc < b.altloc;
-          });
+      } else {
+        // Special handling of Deuterium - mostly for Refmac.
+        // Note: if the model has deuterium, it gets modified.
+        if (replace_deuterium_with_fraction(res)) {
+          // deuterium names usually differ from the names in dictionary
+          for (Atom& atom : res.atoms)
+            if (atom.name[0] == 'D' && atom.fraction != 0) {
+              const ChemComp& cc = ri.get_final_chemcomp(atom.altloc);
+              if (cc.find_atom(atom.name) == cc.atoms.end())
+                atom.name[0] = 'H';
+            }
+          st.has_d_fraction = true;
         }
+      }
+      // check atom names
+      for (Atom& atom : res.atoms) {
+        const ChemComp& cc = ri.get_final_chemcomp(atom.altloc);
+        if (!cc.has_atom(atom.name)) {
+          std::string msg = "definition not found for "
+                          + atom_str(chain_info.chain_ref, *ri.res, atom);
+          if (ri.orig_chemcomp && ri.orig_chemcomp->has_atom(atom.name))
+            msg += " (linkage should remove this atom)";
+          topo->err(msg);
+        }
+      }
+      // sort atoms in residues
+      if (reorder && ri.orig_chemcomp) {
+        const ChemComp& cc = *ri.orig_chemcomp;
+        for (Atom& atom : res.atoms) {
+          auto it = cc.find_atom(atom.name);
+          // If atom.name is not found (b/c it was added in a modification),
+          // the atom will be put after original atoms.
+          atom.serial = int(it - cc.atoms.begin()); // temporary, for sorting only
+        }
+        std::sort(res.atoms.begin(), res.atoms.end(), [](const Atom& a, const Atom& b) {
+                    return a.serial != b.serial ? a.serial < b.serial
+                                                : a.altloc < b.altloc;
+        });
       }
     }
   }
