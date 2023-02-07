@@ -70,10 +70,11 @@ inline double get_minimum_b(const Model& model) {
   for (const Chain& chain : model.chains)
     for (const Residue& residue : chain.residues)
       for (const Atom& atom : residue.atoms) {
+        if (atom.occ == 0) continue;
         double b = atom.b_iso;
-        if (!atom.aniso.nonzero()) {
+        if (atom.aniso.nonzero()) {
           std::array<double,3> eig = atom.aniso.calculate_eigenvalues();
-          b = std::min(std::min(eig[0], eig[1]), eig[2]);
+          b = std::min(std::min(eig[0], eig[1]), eig[2]) * u_to_b();
         }
         if (b < b_min)
           b_min = b;
