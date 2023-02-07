@@ -97,8 +97,9 @@ template<typename Table>
 void add_ll(py::module& m, const char* name) {
   using T = gemmi::LL<Table>;
   py::class_<T>(m, name)
-    .def(py::init<gemmi::UnitCell, gemmi::SpaceGroup*, std::vector<gemmi::Atom*>, bool, bool, int>(),
-         py::arg("cell"), py::arg("sg"), py::arg("atoms"), py::arg("mott_bethe"), py::arg("refine_xyz"), py::arg("adp_mode"))
+    .def(py::init<gemmi::UnitCell, gemmi::SpaceGroup*, std::vector<gemmi::Atom*>, bool, bool, int, bool>(),
+         py::arg("cell"), py::arg("sg"), py::arg("atoms"), py::arg("mott_bethe"),
+         py::arg("refine_xyz"), py::arg("adp_mode"), py::arg("refine_h"))
     .def("set_ncs", &T::set_ncs)
     .def("calc_grad", &T::calc_grad)
     .def("make_fisher_table_diag_fast", &T::make_fisher_table_diag_fast)

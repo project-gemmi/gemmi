@@ -235,14 +235,17 @@ struct LL{
   bool mott_bethe;
   bool refine_xyz;
   int adp_mode;
+  bool refine_h;
   // table (distances x b values)
   std::vector<double> table_bs;
   std::vector<std::vector<double>> pp1; // for x-x diagonal
   std::vector<std::vector<double>> bb;  // for B-B diagonal
   std::vector<std::vector<double>> aa; // for B-B diagonal, aniso
 
-  LL(UnitCell cell, SpaceGroup *sg, const std::vector<Atom*> &atoms, bool mott_bethe, bool refine_xyz, int adp_mode)
-    : atoms(atoms), cell(cell), sg(sg), mott_bethe(mott_bethe), refine_xyz(refine_xyz), adp_mode(adp_mode) {
+  LL(UnitCell cell, SpaceGroup *sg, const std::vector<Atom*> &atoms, bool mott_bethe,
+     bool refine_xyz, int adp_mode, bool refine_h)
+    : atoms(atoms), cell(cell), sg(sg), mott_bethe(mott_bethe), refine_xyz(refine_xyz),
+      adp_mode(adp_mode), refine_h(refine_h) {
     if (adp_mode < 0 || adp_mode > 2) fail("bad adp_mode");
     set_ncs({});
   }
@@ -262,14 +265,15 @@ struct LL{
     const size_t n_v = n_atoms * ((refine_xyz ? 3 : 0) + (adp_mode == 0 ? 0 : adp_mode == 1 ? 1 : 6));
     std::vector<double> vn(n_v, 0.);
     for (size_t i = 0; i < n_atoms; ++i) {
+      const Atom &atom = *atoms[i];
+      if (!refine_h && atom.is_hydrogen()) continue;
+      const Element &el = atom.element;
+      const auto coef = Table::get(el);
+      using precal_aniso_t = decltype(coef.precalculate_density_aniso_b(SMat33<double>()));
+      const bool has_aniso = atom.aniso.nonzero();
+      if (adp_mode == 1 && has_aniso) fail("bad adp_mode");
       for (const Transform &tr : ncs) { //TODO to use cell images?
-        const Atom &atom = *atoms[i];
         const Fractional fpos = cell.fractionalize(Position(tr.apply(atom.pos)));
-        const Element &el = atom.element;
-        const auto coef = Table::get(el);
-        using precal_aniso_t = decltype(coef.precalculate_density_aniso_b(SMat33<double>()));//atom.aniso));
-        const bool has_aniso = atom.aniso.nonzero();
-        if (adp_mode == 1 && has_aniso) fail("bad adp_mode");
         const SMat33<double> b_aniso = atom.aniso.scaled(u_to_b()).transformed_by(tr.mat);
         double b_max = atom.b_iso;
         if (has_aniso) {
@@ -281,7 +285,7 @@ struct LL{
         const precal_aniso_t precal_aniso = has_aniso ? coef.precalculate_density_aniso_b(b_aniso,
                                                                                           mott_bethe ? -el.atomic_number() : 0.)
           : precal_aniso_t();
-        
+
         // is it ok to use a radius based on ADP? blur?
         const double radius = determine_cutoff_radius(it92_radius_approx(b_max),
                                                       precal, 1e-7); // TODO cutoff?
@@ -330,7 +334,7 @@ struct LL{
         else if (adp_mode == 2)
           for (int i = 0; i < 6; ++i)
             gb_aniso[i] *= atom.occ * 0.25 / sq(pi());
-        
+
         if (refine_xyz) {
           const auto gx2 = tr.mat.transpose().multiply(gx);
           vn[3*i  ] += gx2.x;
@@ -387,7 +391,7 @@ struct LL{
     aa.resize(1);
     const double b_step = 5;
     const double s_min = d2dfw_table.s_min, s_max = d2dfw_table.s_max;
-    const double s_dim = 120; // actually +1 is allocated
+    const int s_dim = 120; // actually +1 is allocated
     int b_dim = static_cast<int>((b_max - b_min) / b_step) + 2;
     if (b_dim % 2 == 0) ++b_dim; // TODO: need to set maximum b_dim?
     pp1[0].resize(b_dim);
@@ -473,6 +477,7 @@ struct LL{
     std::vector<double> am(n_a, 0.);
     for (size_t i = 0; i < n_atoms; ++i) {
       const Atom &atom = *atoms[i];
+      if (!refine_h && atom.is_hydrogen()) continue;
       const auto coef = Table::get(atom.element);
       const double w = atom.occ * atom.occ;
       const double c = mott_bethe ? coef.c() - atom.element.atomic_number(): coef.c();
