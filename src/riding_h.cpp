@@ -148,8 +148,10 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     return;
 
   auto giveup = [&](const std::string& message) {
-    for (BondedAtom& bonded_h : hs)
+    for (BondedAtom& bonded_h : hs) {
       bonded_h.ptr->occ = 0;
+      bonded_h.ptr->calc_flag = CalcFlag::Dummy;
+    }
     fail(message);
   };
 
@@ -306,8 +308,10 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
         if (hs.size() > 1) {
           topo.err("Unhandled topology of " + std::to_string(hs.size()) +
                    " hydrogens bonded to " + atom.name);
-          for (size_t i = 1; i < hs.size(); ++i)
+          for (size_t i = 1; i < hs.size(); ++i) {
             hs[i].ptr->occ = 0;
+            hs[i].ptr->calc_flag = CalcFlag::Dummy;
+          }
         }
         return;
       }
