@@ -8,7 +8,6 @@
 
 #include <cctype>  // for tolower
 #include <map>
-#include <iostream>
 #include <string>
 #include <vector>
 #include "calculate.hpp"  // for calculate_chiral_volume
