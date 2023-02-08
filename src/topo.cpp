@@ -646,7 +646,9 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   for (Topo::ChainInfo& chain_info : topo->chain_infos) {
     for (Topo::ResInfo& ri : chain_info.res_infos) {
       Residue& res = *ri.res;
-      if (h_change != HydrogenChange::NoChange && h_change != HydrogenChange::Shift) {
+      if (h_change != HydrogenChange::NoChange && h_change != HydrogenChange::Shift
+          // don't re-add H's if we don't have chemical component description
+          && (ri.orig_chemcomp != nullptr || h_change == HydrogenChange::Remove)) {
         // remove/add hydrogens
         remove_hydrogens(res);
         if (h_change == HydrogenChange::ReAdd ||

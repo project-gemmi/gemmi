@@ -354,7 +354,11 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
 
 void place_hydrogens_on_all_atoms(Topo& topo) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
-    for (Topo::ResInfo& ri : chain_info.res_infos)
+    for (Topo::ResInfo& ri : chain_info.res_infos) {
+      // If we don't have monomer description from a cif file,
+      // only ad-hoc restraints, don't try to place hydrogens.
+      if (ri.orig_chemcomp == nullptr)
+        continue;
       for (Atom& atom : ri.res->atoms)
         if (!atom.is_hydrogen()) {
           try {
@@ -365,6 +369,7 @@ void place_hydrogens_on_all_atoms(Topo& topo) {
                      + " failed:\n  " + e.what());
           }
         }
+    }
 }
 
 }
