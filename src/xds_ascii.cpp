@@ -9,7 +9,8 @@ namespace gemmi {
 /// https://github.com/project-gemmi/gemmi/discussions/248
 /// \par p is defined as in XDS (p=0.5 for unpolarized beam).
 void XdsAscii::apply_polarization_correction(double p, Vec3 normal) {
-  check_cell_axes();
+  if (!has_cell_axes())
+    fail("unknown unit cell axes");
   Mat33 UB = cell_axes.inverse();
   Vec3 rot_axis = get_rotation_axis();
   Vec3 s0_dir = get_s0_direction();

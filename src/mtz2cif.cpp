@@ -754,6 +754,31 @@ void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
   }
   os << '\n';
 
+  if (enable_UB && xds.has_cell_axes()) {
+    os << "loop_\n"
+          "_diffrn_orient_matrix.diffrn_id\n"
+          "_diffrn_orient_matrix.UB[1][1]\n"
+          "_diffrn_orient_matrix.UB[1][2]\n"
+          "_diffrn_orient_matrix.UB[1][3]\n"
+          "_diffrn_orient_matrix.UB[2][1]\n"
+          "_diffrn_orient_matrix.UB[2][2]\n"
+          "_diffrn_orient_matrix.UB[2][3]\n"
+          "_diffrn_orient_matrix.UB[3][1]\n"
+          "_diffrn_orient_matrix.UB[3][2]\n"
+          "_diffrn_orient_matrix.UB[3][3]\n";
+    Mat33 q = xds.calculate_conversion_from_cambridge().inverse();
+    Mat33 ub = q.multiply(xds.cell_axes.inverse());
+    // AFAICS if we have geometry information we don't have ISET records,
+    // so we'll have only one row here.
+    for (const XdsAscii::Iset& iset : xds.isets) {
+      WRITE("%d  %#g %#g %#g  %#g %#g %#g  %#g %#g %#g\n", iset.id,
+            ub.a[0][0], ub.a[0][1], ub.a[0][2],
+            ub.a[1][0], ub.a[1][1], ub.a[1][2],
+            ub.a[2][0], ub.a[2][1], ub.a[2][2]);
+    }
+    os << '\n';
+  }
+
   const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
   double rmsds[6] = {0., 0., 0., 0., 0., 0.};
   if (xds.isets.size() > 1) {

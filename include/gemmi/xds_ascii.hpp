@@ -140,10 +140,11 @@ struct XdsAscii {
     return get_normalized(incident_beam_dir, "incident beam direction");
   }
 
-  void check_cell_axes() const {
+  bool has_cell_axes() const {
     for (int i = 0; i < 3; ++i)
       if (cell_axes[i][0] == 0 && cell_axes[i][1] == 0 && cell_axes[i][2] == 0)
-        fail("unknown unit cell axes");
+        return false;
+    return true;
   }
 
   /// Return transition matrix from "Cambridge" frame to XDS frame.
@@ -160,7 +161,8 @@ struct XdsAscii {
   }
 
   Mat33 get_orientation() const {
-    check_cell_axes();
+    if (!has_cell_axes())
+      fail("unknown unit cell axes");
     Vec3 a = cell_axes.row_copy(0);
     Vec3 b = cell_axes.row_copy(1);
     Vec3 c = cell_axes.row_copy(2);
