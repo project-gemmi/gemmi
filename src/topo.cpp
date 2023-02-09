@@ -706,15 +706,22 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   }
 
   // for atoms with ad-hoc links, for now we don't want hydrogens
-  if (!ignore_unknown_links && h_change != HydrogenChange::NoChange)
-    for (const Topo::Link& link : topo->extras) {
+  if (!ignore_unknown_links && h_change != HydrogenChange::NoChange) {
+    auto remove_h_from_auto_links = [&](const Topo::Link& link) {
       const ChemLink* cl = monlib.get_link(link.link_id);
       if (cl && starts_with(cl->name, "auto-")) {
         const Restraints::Bond& bond = cl->rt.bonds.at(0);
         remove_hydrogens_from_atom(topo->find_resinfo(link.res1), bond.id1.atom, link.alt1);
         remove_hydrogens_from_atom(topo->find_resinfo(link.res2), bond.id2.atom, link.alt2);
       }
-    }
+    };
+    for (const Topo::ChainInfo& chain_info : topo->chain_infos)
+      for (const Topo::ResInfo& res_info : chain_info.res_infos)
+        for (const Topo::Link& link : res_info.prev)
+          remove_h_from_auto_links(link);
+    for (const Topo::Link& link : topo->extras)
+      remove_h_from_auto_links(link);
+  }
 
   assign_serial_numbers(st.models[model_index]);
   topo->finalize_refmac_topology(monlib);
