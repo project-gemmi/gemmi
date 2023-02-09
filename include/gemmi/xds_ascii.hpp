@@ -53,6 +53,7 @@ struct XdsAscii {
     Iset(int id_) : id(id_) {}
   };
   std::string source_path;
+  bool has11;
   int spacegroup_number;
   UnitCell unit_cell;
   Mat33 cell_axes{0.};
@@ -216,6 +217,7 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
     "RLP=9", "PEAK=10", "CORR=11"
   };
   source_path = source;
+  has11 = true;
   char line[256];
   size_t len0 = copy_line_from_stream(line, 255, stream);
   int iset_col = 0;
@@ -303,7 +305,10 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
           if (!starts_with(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK,CORR"))
             fail("unexpected column order in INTEGRATE.HKL");
         } else {
-          for (const char* col : expected_columns) {
+          if (generated_by == "XSCALE")
+            has11 = false;
+          for (int i = 0; i < (has11 ? 11 : 8); ++i) {
+            const char* col = expected_columns[i];
             copy_line_from_stream(line, 42, stream);
             if (std::strncmp(line, "!ITEM_", 6) != 0 ||
                 std::strncmp(line+6, col, std::strlen(col)) != 0)
@@ -335,9 +340,13 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       result = fast_from_chars(result.ptr, line+len, r.xd); // 6
       result = fast_from_chars(result.ptr, line+len, r.yd); // 7
       result = fast_from_chars(result.ptr, line+len, r.zd); // 8
-      result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
-      result = fast_from_chars(result.ptr, line+len, r.peak); // 10
-      result = fast_from_chars(result.ptr, line+len, r.corr); // 11
+      if (has11) {
+        result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
+        result = fast_from_chars(result.ptr, line+len, r.peak); // 10
+        result = fast_from_chars(result.ptr, line+len, r.corr); // 11
+      } else {
+        r.rlp = r.peak = r.corr = 0;
+      }
       if (result.ec != std::errc())
         fail("failed to parse data line:\n", line);
       if (iset_col > 10) {

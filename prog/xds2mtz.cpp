@@ -104,12 +104,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.add_column("BATCH", 'B', 0, -1, false);
     mtz.add_column("I", 'J', 0, -1, false);
     mtz.add_column("SIGI", 'Q', 0, -1, false);
-    mtz.add_column("FRACTIONCALC", 'R', 0, -1, false);
     mtz.add_column("XDET", 'R', 0, -1, false);
     mtz.add_column("YDET", 'R', 0, -1, false);
     mtz.add_column("ROT", 'R', 0, -1, false);
-    mtz.add_column("LP", 'R', 0, -1, false);
-    mtz.add_column("CORR", 'R', 0, -1, false);
+    if (xds.has11) {
+      mtz.add_column("FRACTIONCALC", 'R', 0, -1, false);
+      mtz.add_column("LP", 'R', 0, -1, false);
+      mtz.add_column("CORR", 'R', 0, -1, false);
+    }
     mtz.add_column("FLAG", 'I', 0, -1, false);
     mtz.nreflections = (int) xds.data.size();
     mtz.data.resize(mtz.columns.size() * xds.data.size());
@@ -127,12 +129,14 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.data[k++] = (float) frame;
       mtz.data[k++] = (float) refl.iobs;  // I
       mtz.data[k++] = (float) std::fabs(refl.sigma);  // SIGI
-      mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
       mtz.data[k++] = (float) refl.xd;
       mtz.data[k++] = (float) refl.yd;
       mtz.data[k++] = (float) xds.rot_angle(refl);  // ROT
-      mtz.data[k++] = (float) refl.rlp;
-      mtz.data[k++] = float(0.01 * refl.corr);
+      if (xds.has11) {
+        mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
+        mtz.data[k++] = (float) refl.rlp;
+        mtz.data[k++] = float(0.01 * refl.corr);
+      }
       mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG
     }
     // Prepare a similar batch header as Pointless.
@@ -169,7 +173,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     } catch (std::runtime_error& e) {
       // if some of the headers are absent, U is not set
       // and s0 is set to "idealised" s0
-      std::fprintf(stderr, "Orientation matrix U not set, because %s\n", e.what());
+      std::fprintf(stderr, "Note: %s, orientation matrix U not set.\n", e.what());
     }
     batch.floats[21] = float(xds.reflecting_range_esd);  // crydat(0)
     // In the so-called "Cambridge" frame (as used by Mosflm),
