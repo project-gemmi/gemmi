@@ -574,10 +574,13 @@ inline void Geometry::load_topo(const Topo& topo) {
           }
     }
   for (const Topo::Chirality& t : topo.chirs) {
-    chirs.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
-    chirs.back().value = topo.ideal_chiral_abs_volume(t);
-    chirs.back().sigma = 0.02;
-    chirs.back().sign = t.restr->sign;
+    const auto val_sigma = topo.ideal_chiral_abs_volume_sigma(t);
+    if (val_sigma.second > 0) {
+      chirs.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
+      chirs.back().value = val_sigma.first;
+      chirs.back().sigma = val_sigma.second;
+      chirs.back().sign = t.restr->sign;
+    }
   }
   for (const Topo::Plane& t : topo.planes) {
     if (t.restr->esd > 0) {
