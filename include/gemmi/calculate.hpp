@@ -77,23 +77,6 @@ inline Box<Position> calculate_box(const Structure& st, double margin=0.) {
   return box;
 }
 
-// We take ncs as FTransform's (instead of NcsOp's) b/c it's more convenient
-// to pass cell.get_ncs_transforms() from NeighborSearch::set_bounding_cell().
-inline Box<Position> calculate_noncrystal_box(const Model& model,
-                                              const std::vector<FTransform>& ncs) {
-  Box<Position> box;
-  expand_box(model, box);
-  // The box needs to include all NCS images (strict NCS from MTRIXn).
-  if (!ncs.empty()) {
-    for (const_CRA cra : model.all())
-      // images store fractional transforms, but for non-crystal
-      // it should be the same as Cartesian transform.
-      for (const Transform& tr : ncs)
-        box.extend(Position(tr.apply(cra.atom->pos)));
-  }
-  return box;
-}
-
 inline Box<Fractional> calculate_fractional_box(const Structure& st, double margin=0.) {
   Box<Fractional> box;
   for (const Model& model : st.models)

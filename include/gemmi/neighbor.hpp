@@ -13,7 +13,6 @@
 #include "grid.hpp"
 #include "model.hpp"
 #include "small.hpp"
-#include "calculate.hpp"  // for calculate_noncrystal_box
 
 namespace gemmi {
 
@@ -174,8 +173,21 @@ private:
     if (cell.is_crystal()) {
       grid.unit_cell = cell;
     } else {
+      // cf. calculate_box()
+      Box<Position> box;
+      for (CRA cra : model->all())
+        box.extend(cra.atom->pos);
+      // The box needs to include all NCS images (strict NCS from MTRIXn).
+      // To avoid additional function parameter that would pass Structure::ncs,
+      // here we obtain NCS transformations from UnitCell::images.
       std::vector<FTransform> ncs = cell.get_ncs_transforms();
-      Box<Position> box = calculate_noncrystal_box(*model, ncs);
+      if (!ncs.empty()) {
+        for (CRA cra : model->all())
+          // images store fractional transforms, but for non-crystal
+          // it should be the same as Cartesian transform.
+          for (const Transform& tr : ncs)
+            box.extend(Position(tr.apply(cra.atom->pos)));
+      }
       box.add_margin(1.5 * radius_specified);  // much more than needed
       Position size = box.get_size();
       grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
