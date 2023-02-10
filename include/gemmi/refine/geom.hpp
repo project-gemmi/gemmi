@@ -318,7 +318,8 @@ struct Geometry {
       }
       return ret;
     }
-    double calc(const UnitCell& cell, bool use_nucleus, GeomTarget* target, Reporting *reporting) const;
+    double calc(const UnitCell& cell, bool use_nucleus, double wdskal,
+                GeomTarget* target, Reporting *reporting) const;
 
     int type = 1; // 0-2
     double alpha; // only effective for type=2
@@ -352,7 +353,7 @@ struct Geometry {
       }
       return ret;
     }
-    double calc(GeomTarget* target, Reporting *reporting) const;
+    double calc(double waskal, GeomTarget* target, Reporting *reporting) const;
     int type = 1; // 0 or not
     std::array<Atom*, 3> atoms;
     std::vector<Value> values;
@@ -383,14 +384,14 @@ struct Geometry {
       }
       return ret;
     }
-    double calc(GeomTarget* target, Reporting *reporting) const;
+    double calc(double wtskal, GeomTarget* target, Reporting *reporting) const;
     int type = 1; // 0 or not
     std::array<Atom*, 4> atoms;
     std::vector<Value> values;
   };
   struct Chirality {
     Chirality(Atom* atomc, Atom* atom1, Atom* atom2, Atom* atom3) : atoms({atomc, atom1, atom2, atom3}) {}
-    double calc(GeomTarget* target, Reporting *reporting) const;
+    double calc(double wchiral, GeomTarget* target, Reporting *reporting) const;
     double value;
     double sigma;
     ChiralityType sign;
@@ -398,7 +399,7 @@ struct Geometry {
   };
   struct Plane {
     Plane(std::vector<Atom*> a) : atoms(a) {}
-    double calc(GeomTarget* target, Reporting *reporting) const;
+    double calc(double wplane, GeomTarget* target, Reporting *reporting) const;
     double sigma;
     std::vector<Atom*> atoms;
   };
@@ -426,7 +427,7 @@ struct Geometry {
   };
   struct Stacking {
     Stacking(std::vector<Atom*> plane1, std::vector<Atom*> plane2) : planes({plane1, plane2}) {}
-    double calc(GeomTarget* target, Reporting *reporting) const;
+    double calc(double wstack, GeomTarget* target, Reporting *reporting) const;
     double dist;
     double sd_dist;
     double angle;
@@ -446,7 +447,7 @@ struct Geometry {
     bool same_asu() const {
       return sym_idx == 0 && pbc_shift[0]==0 && pbc_shift[1]==0 && pbc_shift[2]==0;
     }
-    double calc(const UnitCell& cell, GeomTarget* target, Reporting *reporting) const;
+    double calc(const UnitCell& cell, double wvdw, GeomTarget* target, Reporting *reporting) const;
     int type = 0; // 1: vdw, 2: torsion, 3: hbond, 4: metal, 5: dummy-nondummy, 6: dummy-dummy
     double value; // critical distance
     double sigma;
@@ -491,7 +492,8 @@ struct Geometry {
     std::fill(target.vn.begin(), target.vn.end(), 0.);
     std::fill(target.am.begin(), target.am.end(), 0.);
   }
-  double calc(bool use_nucleus, bool check_only);
+  double calc(bool use_nucleus, bool check_only, double wbond, double wangle, double wtors,
+              double wchir, double wplane, double wstack, double wvdw);
   double calc_adp_restraint(bool check_only, double sigma);
 
   std::vector<Bond> bonds;
@@ -874,7 +876,10 @@ inline void Geometry::setup_target(bool refine_xyz, int adp_mode) {
   target.setup(st.first_model(), refine_xyz, adp_mode);
 }
 
-inline double Geometry::calc(bool use_nucleus, bool check_only) {
+inline double Geometry::calc(bool use_nucleus, bool check_only,
+                             double wbond, double wangle, double wtors,
+                             double wchir, double wplane, double wstack,
+                             double wvdw) {
   if (check_only)
     reporting = {};
   else
@@ -885,19 +890,19 @@ inline double Geometry::calc(bool use_nucleus, bool check_only) {
   double ret = 0.;
 
   for (const auto &t : bonds)
-    ret += t.calc(st.cell, use_nucleus, target_ptr, rep_ptr);
+    ret += t.calc(st.cell, use_nucleus, wbond, target_ptr, rep_ptr);
   for (const auto &t : angles)
-    ret += t.calc(target_ptr, rep_ptr);
+    ret += t.calc(wangle, target_ptr, rep_ptr);
   for (const auto &t : torsions)
-    ret += t.calc(target_ptr, rep_ptr);
+    ret += t.calc(wtors, target_ptr, rep_ptr);
   for (const auto &t : chirs)
-    ret += t.calc(target_ptr, rep_ptr);
+    ret += t.calc(wchir, target_ptr, rep_ptr);
   for (const auto &t : planes)
-    ret += t.calc(target_ptr, rep_ptr);
+    ret += t.calc(wplane, target_ptr, rep_ptr);
   for (const auto &t : stackings)
-    ret += t.calc(target_ptr, rep_ptr);
+    ret += t.calc(wstack, target_ptr, rep_ptr);
   for (const auto &t : vdws)
-    ret += t.calc(st.cell, target_ptr, rep_ptr);
+    ret += t.calc(st.cell, wvdw, target_ptr, rep_ptr);
 
   // TODO intervals, harmonics, specials
   return ret;
@@ -955,7 +960,7 @@ inline double Geometry::calc_adp_restraint(bool check_only, double sigma) {
   return ret;
 }
 
-inline double Geometry::Bond::calc(const UnitCell& cell, bool use_nucleus,
+inline double Geometry::Bond::calc(const UnitCell& cell, bool use_nucleus, double wdskal,
                                    GeomTarget* target, Reporting *reporting) const {
   assert(!values.empty());
   const bool swapped = sym_idx < 0;
@@ -969,7 +974,7 @@ inline double Geometry::Bond::calc(const UnitCell& cell, bool use_nucleus,
   const double ideal = use_nucleus ? closest->value_nucleus : closest->value;
   const double db = b - ideal;
   const double sigma = (use_nucleus ? closest->sigma_nucleus : closest->sigma);
-  const double weight = 1.0 / sigma;
+  const double weight = wdskal / sigma;
   const double y = db * weight;
   double ret, dfdy, d2fdy;
 
@@ -1020,7 +1025,7 @@ inline double Geometry::Bond::calc(const UnitCell& cell, bool use_nucleus,
   return ret;
 }
 
-inline double Geometry::Angle::calc(GeomTarget* target, Reporting *reporting) const {
+inline double Geometry::Angle::calc(double waskal, GeomTarget* target, Reporting *reporting) const {
   const Position& x1 = atoms[0]->pos;
   const Position& x2 = atoms[1]->pos;
   const Position& x3 = atoms[2]->pos;
@@ -1036,7 +1041,7 @@ inline double Geometry::Angle::calc(GeomTarget* target, Reporting *reporting) co
   const double a = deg(std::acos(std::max(-1., std::min(1., cosa))));
   auto closest = find_closest_value(a);
   const double da = a - closest->value;
-  const double weight = 1. / (closest->sigma * closest->sigma);
+  const double weight = waskal * waskal / (closest->sigma * closest->sigma);
   const double ret = da * da * weight * 0.5;
   if (target != nullptr) {
     Vec3 dadx[3];
@@ -1064,7 +1069,7 @@ inline double Geometry::Angle::calc(GeomTarget* target, Reporting *reporting) co
   return ret;
 }
 
-inline double Geometry::Torsion::calc(GeomTarget* target, Reporting *reporting) const {
+inline double Geometry::Torsion::calc(double wtskal, GeomTarget* target, Reporting *reporting) const {
   const Position& x1 = atoms[0]->pos;
   const Position& x2 = atoms[1]->pos;
   const Position& x3 = atoms[2]->pos;
@@ -1082,7 +1087,7 @@ inline double Geometry::Torsion::calc(GeomTarget* target, Reporting *reporting) 
   const double theta = deg(std::atan2(s, t));
   auto closest = find_closest_value(theta);
   const int period = std::max(1, closest->period);
-  const double weight = 1. / (closest->sigma * closest->sigma);
+  const double weight = wtskal * wtskal / (closest->sigma * closest->sigma);
   const double dtheta1 = rad(period * (theta - closest->value));
   const double dtheta2 = deg(std::atan2(std::sin(dtheta1), std::cos(dtheta1)));
   const double dtheta = dtheta2 / period;
@@ -1152,8 +1157,8 @@ inline double Geometry::Torsion::calc(GeomTarget* target, Reporting *reporting) 
   return ret;
 }
 
-inline double Geometry::Chirality::calc(GeomTarget* target, Reporting *reporting) const {
-  const double weight = 1 / (sigma * sigma);
+inline double Geometry::Chirality::calc(double wchiral, GeomTarget* target, Reporting *reporting) const {
+  const double weight = wchiral * wchiral / (sigma * sigma);
   const Position& xc = atoms[0]->pos;
   const Position& x1 = atoms[1]->pos;
   const Position& x2 = atoms[2]->pos;
@@ -1199,8 +1204,8 @@ inline double Geometry::Chirality::calc(GeomTarget* target, Reporting *reporting
   return ret;
 }
 
-inline double Geometry::Plane::calc(GeomTarget* target, Reporting *reporting) const {
-  const double weight = 1 / (sigma * sigma);
+inline double Geometry::Plane::calc(double wplane, GeomTarget* target, Reporting *reporting) const {
+  const double weight = wplane * wplane / (sigma * sigma);
   const int natoms = atoms.size();
   const PlaneDeriv pder(atoms);
 
@@ -1245,7 +1250,7 @@ inline double Geometry::Plane::calc(GeomTarget* target, Reporting *reporting) co
   return ret;
 }
 
-inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting) const {
+inline double Geometry::Stacking::calc(double wstack, GeomTarget* target, Reporting *reporting) const {
   double ret = 0;
   PlaneDeriv pder[2] = {planes[0], planes[1]};
   double vm1vm2 = pder[0].vm.dot(pder[1].vm);
@@ -1255,7 +1260,7 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
   }
 
   // angle
-  const double wa = 1. / (sd_angle * sd_angle);
+  const double wa = wstack * wstack / (sd_angle * sd_angle);
   const double cosa = std::min(1., vm1vm2);
   const double a = deg(std::acos(std::max(-1., std::min(1., cosa))));
   const double deltaa = a - angle;
@@ -1296,10 +1301,10 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
       }
   }
 
-  // distance
+  // distance; turned off by default in Refmac
   double deltad[2] = {0, 0};
   if (dist > 0) { // skip if ideal dist < 0
-    const double wd = 1. / (sd_dist * sd_dist);
+    const double wd = wstack * wstack / (sd_dist * sd_dist);
     for (size_t i = 0; i < 2; ++i) {
       double d = pder[i].xs.dot(pder[1-i].vm) - pder[1-i].D; // distance from i to the other
       if (d < 0) {
@@ -1371,8 +1376,8 @@ inline double Geometry::Stacking::calc(GeomTarget* target, Reporting *reporting)
 
 
 inline double
-Geometry::Vdw::calc(const UnitCell& cell, GeomTarget* target, Reporting *reporting) const {
-  const double weight = 1 / (sigma * sigma);
+Geometry::Vdw::calc(const UnitCell& cell, double wvdw, GeomTarget* target, Reporting *reporting) const {
+  const double weight = wvdw * wvdw / (sigma * sigma);
   const bool swapped = sym_idx < 0;
   const Atom& atom1 = *atoms[swapped ? 1 : 0];
   const Atom& atom2 = *atoms[swapped ? 0 : 1];

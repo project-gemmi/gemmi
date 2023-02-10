@@ -268,7 +268,9 @@ void add_refine(py::module& m) {
     .def("setup_target", &Geometry::setup_target)
     .def("clear_target", &Geometry::clear_target)
     .def("setup_vdw", &Geometry::setup_vdw)
-    .def("calc", &Geometry::calc)
+    .def("calc", &Geometry::calc, py::arg("use_nucleus"), py::arg("check_only"),
+         py::arg("wbond")=1, py::arg("wangle")=1, py::arg("wtors")=1,
+         py::arg("wchir")=1, py::arg("wplane")=1, py::arg("wstack")=1, py::arg("wvdw")=1)
     .def("calc_adp_restraint", &Geometry::calc_adp_restraint)
   ;
 
