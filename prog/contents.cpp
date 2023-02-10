@@ -7,7 +7,6 @@
 #include <cstdio>
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
-#include <gemmi/calculate.hpp>
 #include <gemmi/polyheur.hpp>  // for setup_entities, calculate_sequence_weight
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include <gemmi/select.hpp>    // for Selection
@@ -77,6 +76,7 @@ void print_solvent_content(const UnitCell& cell, double mol_weight) {
 
 void print_content_info(const Structure& st, bool /*verbose*/) {
   printf(" Spacegroup   %s\n", st.spacegroup_hm.c_str());
+  const Model& model = st.first_model();
   int order = 1;
   if (st.cell.is_crystal()) {
     if (const SpaceGroup* sg = st.find_spacegroup()) {
@@ -88,8 +88,18 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
     }
   } else {
     printf("   Not a crystal.\n");
-    Box<Position> box = calculate_noncrystal_box(st.models[0], st.cell.get_ncs_transforms());
+    Box<Position> box;
+    expand_box(model, box);
     printf("   Atoms in: x [%g, %g]  y [%g, %g]  z [%g, %g]\n",
+           box.minimum.x, box.maximum.x,
+           box.minimum.y, box.maximum.y,
+           box.minimum.z, box.maximum.z);
+    for (const NcsOp& ncs_op : st.ncs) {
+      if (!ncs_op.given)
+        for (const_CRA cra : model.all())
+          box.extend(ncs_op.apply(cra.atom->pos));
+    }
+    printf("   With NCS: x [%g, %g]  y [%g, %g]  z [%g, %g]\n",
            box.minimum.x, box.maximum.x,
            box.minimum.y, box.maximum.y,
            box.minimum.z, box.maximum.z);
@@ -114,7 +124,6 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
   double mol_atom_count = 0;
   double buffer_atom_count = 0;
   double file_h_count = 0;
-  const Model& model = st.first_model();
   for (const Chain& chain : model.chains) {
     for (const Residue& res : chain.residues) {
       ResidueInfo res_info = find_tabulated_residue(res.name);
