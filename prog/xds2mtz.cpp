@@ -90,11 +90,13 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.title = opt->arg;
     else
       mtz.title = "Converted from XDS_ASCII";
-    if (const option::Option* opt = p.options[History])
+    if (const option::Option* opt = p.options[History]) {
       for (; opt; opt = opt->next())
         mtz.history.emplace_back(opt->arg);
-    else
+    } else {
       mtz.history.emplace_back("From gemmi-xds2mtz " GEMMI_VERSION);
+      mtz.history.push_back(gemmi::cat("From ", xds.generated_by, ' ', xds.version_str));
+    }
     mtz.cell = xds.unit_cell;
     mtz.spacegroup = gemmi::find_spacegroup_by_number(xds.spacegroup_number);
     mtz.add_base();
