@@ -322,7 +322,7 @@ struct Geometry {
                 GeomTarget* target, Reporting *reporting) const;
 
     int type = 1; // 0-2
-    double alpha; // only effective for type=2
+    double alpha = 1; // only effective for type=2
     int sym_idx = 0; // if negative, atoms need to be swapped.
     std::array<int, 3> pbc_shift = {{0,0,0}};
     std::array<Atom*, 2> atoms;
@@ -364,6 +364,7 @@ struct Geometry {
       double value;
       double sigma;
       int period;
+      std::string label;
     };
     Torsion(Atom* atom1, Atom* atom2, Atom* atom3, Atom* atom4) : atoms({atom1, atom2, atom3, atom4}) {}
     void swap_atoms() {
@@ -401,6 +402,7 @@ struct Geometry {
     Plane(std::vector<Atom*> a) : atoms(a) {}
     double calc(double wplane, GeomTarget* target, Reporting *reporting) const;
     double sigma;
+    std::string label;
     std::vector<Atom*> atoms;
   };
   struct Interval {
@@ -459,7 +461,7 @@ struct Geometry {
     using bond_reporting_t = std::tuple<const Bond*, const Bond::Value*, double>;
     using angle_reporting_t = std::tuple<const Angle*, const Angle::Value*, double>;
     using torsion_reporting_t = std::tuple<const Torsion*, const Torsion::Value*, double>;
-    using chiral_reporting_t = std::tuple<const Chirality*, double>;
+    using chiral_reporting_t = std::tuple<const Chirality*, double, double>; // delta, ideal
     using plane_reporting_t = std::tuple<const Plane*, std::vector<double>>;
     using stacking_reporting_t = std::tuple<const Stacking*, double, double, double>; // delta_angle, delta_dist1, delta_dist2
     using vdw_reporting_t = std::tuple<const Vdw*, double>;
@@ -558,6 +560,7 @@ inline void Geometry::load_topo(const Topo& topo) {
                    t.restr->label.find("sp2_sp2") == 0)) {
                 torsions.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
                 torsions.back().values.emplace_back(t.restr->value, t.restr->esd, t.restr->period);
+                torsions.back().values.back().label = t.restr->label;
               }
             }
         }
@@ -572,6 +575,7 @@ inline void Geometry::load_topo(const Topo& topo) {
                  t.restr->label.find("sp2_sp2") == 0)) {
               torsions.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
               torsions.back().values.emplace_back(t.restr->value, t.restr->esd, t.restr->period);
+              torsions.back().values.back().label = t.restr->label;
             }
           }
     }
@@ -588,6 +592,7 @@ inline void Geometry::load_topo(const Topo& topo) {
     if (t.restr->esd > 0) {
       planes.emplace_back(t.atoms);
       planes.back().sigma = t.restr->esd;
+      planes.back().label = t.restr->label;
     }
   }
 
@@ -1171,7 +1176,8 @@ inline double Geometry::Chirality::calc(double wchiral, GeomTarget* target, Repo
   const Vec3 a1xa2 = a1.cross(a2);
   const double v = a1xa2.dot(a3);
   const bool isneg = (sign == ChiralityType::Negative || (sign == ChiralityType::Both && v < 0));
-  const double dv = v - (isneg ? -1 : 1) * value;
+  const double ideal = (isneg ? -1 : 1) * value;
+  const double dv = v - ideal;
   const double ret = dv * dv * weight * 0.5;
 
   if (target != nullptr) {
@@ -1200,7 +1206,7 @@ inline double Geometry::Chirality::calc(double wchiral, GeomTarget* target, Repo
     target->target += ret;
   }
   if (reporting != nullptr)
-    reporting->chirs.emplace_back(this, dv);
+    reporting->chirs.emplace_back(this, dv, ideal);
   return ret;
 }
 

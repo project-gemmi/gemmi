@@ -11,6 +11,7 @@
 #include <pybind11/iostream.h>  // for detail::pythonbuf
 
 namespace py = pybind11;
+using namespace pybind11::literals; // to bring in the `_a` literal
 using namespace gemmi;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Geometry::Bond>)
@@ -124,7 +125,283 @@ void add_refine(py::module& m) {
     .def_readonly("planes", &Geometry::Reporting::planes)
     .def_readonly("stackings", &Geometry::Reporting::stackings)
     .def_readonly("vdws", &Geometry::Reporting::vdws)
-  ;
+    .def("get_summary_table", [](const Geometry::Reporting& self, bool use_nucleus) {
+      std::vector<std::string> keys;
+      std::vector<int> nrest;
+      std::vector<double> rmsd, rmsz;
+      auto append = [&](const std::string& k, const std::vector<double>& delsq,
+                        const std::vector<double>& zsq) {
+        keys.emplace_back(k);
+        nrest.push_back(delsq.size());
+        rmsd.push_back(std::sqrt(std::accumulate(delsq.begin(), delsq.end(), 0.) / nrest.back()));
+        rmsz.push_back(std::sqrt(std::accumulate(zsq.begin(), zsq.end(), 0.) / nrest.back()));
+      };
+      // Bond
+      std::map<int, std::vector<double>> delsq, zsq;
+      for (const auto& b : self.bonds) {
+        const auto& restr = std::get<0>(b);
+        const auto& val = std::get<1>(b);
+        const double sigma = use_nucleus ? val->sigma_nucleus : val->sigma;
+        const double d2 = sq(std::get<2>(b)), z2 = sq(std::get<2>(b) / sigma);
+        const int k = (restr->type == 2 ? 2 :
+                       (restr->atoms[0]->is_hydrogen() || restr->atoms[1]->is_hydrogen()) ? 1 : 0);
+        delsq[k].push_back(d2);
+        zsq[k].push_back(z2);
+      }
+      for (const auto& p : delsq)
+        if (!p.second.empty())
+          append(p.first == 2 ? "External distances" :
+                 p.first == 1 ? "Bond distances, H" :
+                 "Bond distances, non H", p.second, zsq[p.first]);
+
+      // Angle
+      delsq.clear(); zsq.clear();
+      for (const auto& a : self.angles) {
+        const auto& restr = std::get<0>(a);
+        const auto& val = std::get<1>(a);
+        const double d2 = sq(std::get<2>(a)), z2 = sq(std::get<2>(a) / val->sigma);
+        const int k = (restr->atoms[0]->is_hydrogen() || restr->atoms[1]->is_hydrogen()) ? 1 : 0;
+        delsq[k].push_back(d2);
+        zsq[k].push_back(z2);
+      }
+      for (const auto& p : delsq)
+        if (!p.second.empty())
+          append(p.first == 1 ? "Bond angles, H" : "Bond angles, non H", p.second, zsq[p.first]);
+
+      // Torsion
+      delsq.clear(); zsq.clear();
+      for (const auto& t : self.torsions) {
+        const auto& val = std::get<1>(t);
+        const double d2 = sq(std::get<2>(t)), z2 = sq(std::get<2>(t) / val->sigma);
+        delsq[val->period].push_back(d2);
+        zsq[val->period].push_back(z2);
+      }
+      for (const auto& p : delsq)
+        if (!p.second.empty())
+          append("Torsion angles, period " + std::to_string(p.first), p.second, zsq[p.first]);
+
+      // Chiral
+      delsq.clear(); zsq.clear();
+      for (const auto& c : self.chirs) {
+        const auto& val = std::get<0>(c);
+        const double d2 = sq(std::get<1>(c)), z2 = sq(std::get<1>(c) / val->sigma);
+        delsq[0].push_back(d2);
+        zsq[0].push_back(z2);
+      }
+      if (!delsq[0].empty())
+        append("Chiral centres", delsq[0], zsq[0]);
+
+      // Plane
+      delsq.clear(); zsq.clear();
+      for (const auto& p : self.planes) {
+        const auto& val = std::get<0>(p);
+        for (double d : std::get<1>(p)) {
+          const double d2 = sq(d), z2 = sq(d / val->sigma);
+          delsq[0].push_back(d2);
+          zsq[0].push_back(z2);
+        }
+      }
+      if (!delsq[0].empty())
+        append("Planar groups", delsq[0], zsq[0]);
+
+      // Stack
+      delsq.clear(); zsq.clear();
+      for (const auto& s : self.stackings) {
+        const auto& restr = std::get<0>(s);
+        const double da2 = sq(std::get<1>(s)), za2 = sq(std::get<1>(s) / restr->sd_angle);
+        const double dd2 = 0.5 * (sq(std::get<2>(s)) + sq(std::get<3>(s)));
+        const double zd2 = dd2 / sq(restr->sd_dist);
+        delsq[0].push_back(da2);
+        zsq[0].push_back(za2);
+        delsq[1].push_back(dd2);
+        zsq[1].push_back(zd2);
+      }
+      if (!delsq[0].empty())
+        append("Stacking angles", delsq[0], zsq[0]);
+      if (!delsq[1].empty())
+        append("Stacking distances", delsq[1], zsq[1]);
+
+      // VDW
+      delsq.clear(); zsq.clear();
+      for (const auto& v : self.vdws) {
+        const auto& restr = std::get<0>(v);
+        const double d2 = sq(std::get<1>(v)), z2 = sq(std::get<1>(v) / restr->sigma);
+        delsq[restr->type].push_back(d2);
+        zsq[restr->type].push_back(z2);
+      }
+      for (const auto& p : delsq)
+        if (!p.second.empty()) {
+          const int i = p.first > 6 ? p.first - 6 : p.first;
+          append((i == 1 ? "VDW nonbonded" :
+                  i == 2 ? "VDW torsion" :
+                  i == 3 ? "VDW hbond" :
+                  i == 4 ? "VDW metal" :
+                  i == 5 ? "VDW dummy" :
+                  "VDW dummy-dummy") + std::string(p.first > 6 ? ", symmetry" : ""),
+                 p.second, zsq[p.first]);
+        }
+      return py::dict("Restraint type"_a=keys, "N restraints"_a=nrest,
+                      "r.m.s.d."_a=rmsd, "r.m.s.Z"_a=rmsz);
+    })
+    .def("get_bond_outliers", [](const Geometry::Reporting& self, bool use_nucleus, double min_z) {
+      std::vector<const Atom*> atom1, atom2;
+      std::vector<double> values, ideals, zs, alphas;
+      std::vector<int> types;
+      for (const auto& b : self.bonds) {
+        const auto& restr = std::get<0>(b);
+        const auto& val = std::get<1>(b);
+        const double ideal = use_nucleus ? val->value_nucleus : val->value;
+        const double sigma = use_nucleus ? val->sigma_nucleus : val->sigma;
+        const double z = std::get<2>(b) / sigma; // value - ideal
+        if (std::abs(z) >= min_z) {
+          atom1.push_back(restr->atoms[0]);
+          atom2.push_back(restr->atoms[1]);
+          values.push_back(std::get<2>(b) + ideal);
+          ideals.push_back(ideal);
+          zs.push_back(z);
+          types.push_back(restr->type);
+          alphas.push_back(restr->alpha);
+        }
+      }
+      return py::dict("atom1"_a=atom1, "atom2"_a=atom2, "value"_a=values,
+                      "ideal"_a=ideals, "z"_a=zs, "type"_a=types, "alpha"_a=alphas);
+    }, py::arg("use_nucleus"), py::arg("min_z"))
+    .def("get_angle_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atom1, atom2, atom3;
+      std::vector<double> values, ideals, zs;
+      for (const auto& t : self.angles) {
+        const auto& restr = std::get<0>(t);
+        const auto& val = std::get<1>(t);
+        const double z = std::get<2>(t) / val->sigma; // value - ideal
+        if (std::abs(z) >= min_z) {
+          atom1.push_back(restr->atoms[0]);
+          atom2.push_back(restr->atoms[1]);
+          atom3.push_back(restr->atoms[2]);
+          values.push_back(std::get<2>(t) + val->value);
+          ideals.push_back(val->value);
+          zs.push_back(z);
+        }
+      }
+      return py::dict("atom1"_a=atom1, "atom2"_a=atom2, "atom3"_a=atom3,
+                      "value"_a=values, "ideal"_a=ideals, "z"_a=zs);
+    }, py::arg("min_z"))
+    .def("get_torsion_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atom1, atom2, atom3, atom4;
+      std::vector<double> values, ideals, zs;
+      std::vector<int> pers;
+      std::vector<std::string> labels;
+      for (const auto& t : self.torsions) {
+        const auto& restr = std::get<0>(t);
+        const auto& val = std::get<1>(t);
+        const double z = std::get<2>(t) / val->sigma; // value - ideal
+        if (std::abs(z) >= min_z) {
+          atom1.push_back(restr->atoms[0]);
+          atom2.push_back(restr->atoms[1]);
+          atom3.push_back(restr->atoms[2]);
+          atom4.push_back(restr->atoms[3]);
+          labels.push_back(val->label);
+          values.push_back(std::get<2>(t) + val->value);
+          ideals.push_back(val->value);
+          pers.push_back(val->period);
+          zs.push_back(z);
+        }
+      }
+      return py::dict("label"_a=labels, "atom1"_a=atom1, "atom2"_a=atom2, "atom3"_a=atom3, "atom4"_a=atom4,
+                      "value"_a=values, "ideal"_a=ideals, "per"_a=pers, "z"_a=zs);
+    }, py::arg("min_z"))
+    .def("get_chiral_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atom1, atom2, atom3, atom4;
+      std::vector<double> values, ideals, zs;
+      std::vector<bool> signs;
+      for (const auto& t : self.chirs) {
+        const auto& restr = std::get<0>(t);
+        const double z = std::get<1>(t) / restr->sigma; // value - ideal
+        if (std::abs(z) >= min_z) {
+          atom1.push_back(restr->atoms[0]);
+          atom2.push_back(restr->atoms[1]);
+          atom3.push_back(restr->atoms[2]);
+          atom4.push_back(restr->atoms[3]);
+          values.push_back(std::get<1>(t) + std::get<2>(t));
+          ideals.push_back(std::get<2>(t));
+          signs.push_back(restr->sign == ChiralityType::Both);
+          zs.push_back(z);
+        }
+      }
+      return py::dict("atomc"_a=atom1, "atom1"_a=atom2, "atom2"_a=atom3, "atom3"_a=atom4,
+                      "value"_a=values, "ideal"_a=ideals, "both"_a=signs, "z"_a=zs);
+    }, py::arg("min_z"))
+    .def("get_plane_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atoms;
+      std::vector<double> values, zs;
+      std::vector<std::string> labels;
+      for (const auto& t : self.planes) {
+        const auto& restr = std::get<0>(t);
+        for (size_t i = 0; i < restr->atoms.size(); ++i) {
+          const double z = std::get<1>(t)[i] / restr->sigma;
+          if (std::abs(z) >= min_z) {
+            atoms.push_back(restr->atoms[i]);
+            labels.push_back(restr->label);
+            values.push_back(std::get<1>(t)[i]);
+            zs.push_back(z);
+          }
+        }
+      }
+      return py::dict("label"_a=labels, "atom"_a=atoms, "dev"_a=values, "z"_a=zs);
+    }, py::arg("min_z"))
+    .def("get_stacking_angle_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atom1, atom2;
+      std::vector<double> values, ideals, zs;
+      for (const auto& t : self.stackings) {
+        const auto& restr = std::get<0>(t);
+        const double za = std::get<1>(t) / restr->sd_angle;
+        if (std::abs(za) >= min_z) {
+          atom1.push_back(restr->planes[0][0]); // report only first atom
+          atom2.push_back(restr->planes[1][0]);
+          values.push_back(std::get<1>(t) + restr->angle);
+          ideals.push_back(restr->angle);
+          zs.push_back(za);
+        }
+      }
+      return py::dict("plane1"_a=atom1, "plane2"_a=atom2, "value"_a=values, "ideal"_a=ideals, "z"_a=zs);
+    }, py::arg("min_z"))
+    .def("get_stacking_dist_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atom1, atom2;
+      std::vector<double> values, ideals, zs;
+      for (const auto& t : self.stackings) {
+        const auto& restr = std::get<0>(t);
+        const double zd1 = std::get<2>(t) / restr->sd_dist;
+        const double zd2 = std::get<3>(t) / restr->sd_dist;
+        if (std::min(std::abs(zd1), std::abs(zd2)) >= min_z) {
+          const double zd = std::abs(zd1) > std::abs(zd2) ? zd1 : zd2;
+          atom1.push_back(restr->planes[0][0]); // report only first atom
+          atom2.push_back(restr->planes[1][0]);
+          values.push_back(zd * restr->sd_dist + restr->dist);
+          ideals.push_back(restr->dist);
+          zs.push_back(zd);
+        }
+      }
+      return py::dict("plane1"_a=atom1, "plane2"_a=atom2, "value"_a=values, "ideal"_a=ideals,  "z"_a=zs);
+    }, py::arg("min_z"))
+    .def("get_vdw_outliers", [](const Geometry::Reporting& self, double min_z) {
+      std::vector<const Atom*> atom1, atom2;
+      std::vector<double> values, ideals, zs;
+      std::vector<int> types;
+      for (const auto& t : self.vdws) {
+        const auto& restr = std::get<0>(t);
+        const double z = std::get<1>(t) / restr->sigma;
+        if (std::abs(z) >= min_z) {
+          atom1.push_back(restr->atoms[0]);
+          atom2.push_back(restr->atoms[1]);
+          values.push_back(std::get<1>(t) + restr->value);
+          ideals.push_back(restr->value);
+          zs.push_back(z);
+          types.push_back(restr->type);
+        }
+      }
+      return py::dict("atom1"_a=atom1, "atom2"_a=atom2, "value"_a=values,
+                      "ideal"_a=ideals, "z"_a=zs, "type"_a=types);
+    }, py::arg("min_z"))
+    ;
   py::class_<Geometry::Bond> bond(geom, "Bond");
   py::class_<Geometry::Angle> angle(geom, "Angle");
   py::class_<Geometry::Torsion> torsion(geom, "Torsion");
@@ -148,6 +425,7 @@ void add_refine(py::module& m) {
     .def_readwrite("value", &Geometry::Torsion::Value::value)
     .def_readwrite("sigma", &Geometry::Torsion::Value::sigma)
     .def_readwrite("period", &Geometry::Torsion::Value::period)
+    .def_readwrite("label", &Geometry::Torsion::Value::label)
     ;
   bond
     .def(py::init<Atom*,Atom*>())
@@ -179,6 +457,7 @@ void add_refine(py::module& m) {
   plane
     .def(py::init<std::vector<Atom*>>())
     .def_readwrite("sigma", &Geometry::Plane::sigma)
+    .def_readwrite("label", &Geometry::Plane::label)
     .def_readwrite("atoms", &Geometry::Plane::atoms)
     ;
   py::class_<Geometry::Interval>(geom, "Interval")
