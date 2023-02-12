@@ -225,7 +225,6 @@ struct TableS3 {
   }
 };
 
-// crystal is not supported yet
 template <typename Table>
 struct LL{
   std::vector<Atom*> atoms;
@@ -258,9 +257,9 @@ struct LL{
   }
 
   // FFT-based gradient calculation: Murshudov et al. (1997) 10.1107/S0907444996012255
-  // only assumes cryo-EM SPA
-  // den is the Fourier transform of (dLL/dAc-i dLL/dBc)*mott_bethe_factor/s^2
-  std::vector<double> calc_grad(Grid<float> &den) { // needs <double>?
+  // if cryo-EM SPA, den is the Fourier transform of (dLL/dAc-i dLL/dBc)*mott_bethe_factor/s^2
+  // When b_add is given, den must have been sharpened
+  std::vector<double> calc_grad(Grid<float> &den, double b_add) { // needs <double>?
     const size_t n_atoms = atoms.size();
     const size_t n_v = n_atoms * ((refine_xyz ? 3 : 0) + (adp_mode == 0 ? 0 : adp_mode == 1 ? 1 : 6));
     std::vector<double> vn(n_v, 0.);
@@ -274,8 +273,8 @@ struct LL{
       if (adp_mode == 1 && has_aniso) fail("bad adp_mode");
       for (const Transform &tr : ncs) { //TODO to use cell images?
         const Fractional fpos = cell.fractionalize(Position(tr.apply(atom.pos)));
-        const SMat33<double> b_aniso = atom.aniso.scaled(u_to_b()).transformed_by(tr.mat);
-        double b_max = atom.b_iso;
+        const SMat33<double> b_aniso = atom.aniso.scaled(u_to_b()).added_kI(b_add).transformed_by(tr.mat);
+        double b_max = atom.b_iso + b_add;
         if (has_aniso) {
           const auto eig = b_aniso.calculate_eigenvalues();
           b_max = std::max(std::max(eig[0], eig[1]), eig[2]);
@@ -286,7 +285,6 @@ struct LL{
                                                                                           mott_bethe ? -el.atomic_number() : 0.)
           : precal_aniso_t();
 
-        // is it ok to use a radius based on ADP? blur?
         const double radius = determine_cutoff_radius(it92_radius_approx(b_max),
                                                       precal, 1e-7); // TODO cutoff?
         const int N = sizeof(precal.a) / sizeof(precal.a[0]);
@@ -298,6 +296,7 @@ struct LL{
         double gb_aniso[6] = {0,0,0,0,0,0};
         den.template use_points_in_box<true>(fpos, du, dv, dw,
                                              [&](float& point, const Position& delta, int, int, int) {
+                                               if (point == 0) return;
                                                const double r2 = delta.length_sq();
                                                if (r2 > radius * radius) return;
                                                if (!has_aniso) { // isotropic
@@ -327,7 +326,7 @@ struct LL{
                                                    }
                                                  }
                                                }
-                                             });
+                                             }, false /* fail_on_too_large_radius */);
         gx *= atom.occ;
         if (adp_mode == 1)
           gb *= atom.occ * 0.25 / sq(pi());
