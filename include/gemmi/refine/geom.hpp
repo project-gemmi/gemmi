@@ -520,85 +520,79 @@ private:
 };
 
 inline void Geometry::load_topo(const Topo& topo) {
-  std::set<size_t> sym_bond_idxes;
-  for (const Topo::Link& extra : topo.extras)
-    if (extra.asu == Asu::Different)
-      for (const Topo::Rule& rule : extra.link_rules)
-        if (rule.rkind == Topo::RKind::Bond) // only symmetry related bond is supported.
-          sym_bond_idxes.insert(rule.index);
+  auto add = [&](const Topo::Rule& rule, bool same_asu) {
+               if (!same_asu && rule.rkind != Topo::RKind::Bond) return; // not supported
+               if (rule.rkind == Topo::RKind::Bond) {
+                 const Topo::Bond& t = topo.bonds[rule.index];
+                 if (t.restr->esd <= 0) return;
+                 bonds.emplace_back(t.atoms[0], t.atoms[1]);
+                 bonds.back().values.emplace_back(t.restr->value, t.restr->esd,
+                                                  t.restr->value_nucleus, t.restr->esd_nucleus);
+                 if (!same_asu) {
+                   NearestImage im = st.cell.find_nearest_image(t.atoms[0]->pos, t.atoms[1]->pos,
+                                                                Asu::Different);
+                     bonds.back().set_image(im);
+                 }
+               } else if (rule.rkind == Topo::RKind::Angle) {
+                 const Topo::Angle& t = topo.angles[rule.index];
+                 if (t.restr->esd <= 0) return;
+                 angles.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2]);
+                 angles.back().values.emplace_back(t.restr->value, t.restr->esd);
+               } else if (rule.rkind == Topo::RKind::Torsion) {
+                 const Topo::Torsion& t = topo.torsions[rule.index];
+                 if (t.restr->esd <= 0) return;
+                 torsions.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
+                 torsions.back().values.emplace_back(t.restr->value, t.restr->esd, t.restr->period);
+                 torsions.back().values.back().label = t.restr->label;
+               } else if (rule.rkind == Topo::RKind::Chirality) {
+                 const Topo::Chirality& t = topo.chirs[rule.index];
+                 const auto val_sigma = topo.ideal_chiral_abs_volume_sigma(t);
+                 if (val_sigma.second <= 0) return;
+                 chirs.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
+                 chirs.back().value = val_sigma.first;
+                 chirs.back().sigma = val_sigma.second;
+                 chirs.back().sign = t.restr->sign;
+               } else if (rule.rkind == Topo::RKind::Plane) {
+                 const Topo::Plane& t = topo.planes[rule.index];
+                 if (t.restr->esd <= 0) return;
+                 planes.emplace_back(t.atoms);
+                 planes.back().sigma = t.restr->esd;
+                 planes.back().label = t.restr->label;
+               }
+             };
 
-  for (size_t i = 0; i < topo.bonds.size(); ++i) {
-    const Topo::Bond& t = topo.bonds[i];
-    bonds.emplace_back(t.atoms[0], t.atoms[1]);
-    bonds.back().values.emplace_back(t.restr->value, t.restr->esd,
-                                     t.restr->value_nucleus, t.restr->esd_nucleus);
-    if (sym_bond_idxes.find(i) != sym_bond_idxes.end()) {
-      NearestImage im = st.cell.find_nearest_image(t.atoms[0]->pos, t.atoms[1]->pos,
-                                                Asu::Different);
-      bonds.back().set_image(im);
-    }
-  }
-  for (const Topo::Angle& t : topo.angles) {
-    if (t.restr->esd > 0) {
-      angles.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2]);
-      angles.back().values.emplace_back(t.restr->value, t.restr->esd);
-    }
-  }
-  // Filter torsion angles
+  auto test_link_r = [&topo](const Topo::Rule& rule, const std::string& link_id) {
+                       if (rule.rkind != Topo::RKind::Torsion)
+                         return true;
+                       const Topo::Torsion& t = topo.torsions[rule.index];
+                       if (t.restr->label.find("sp2_sp2") == 0)
+                         return true;
+                       return ((link_id == "TRANS"   || link_id != "CIS"  ||
+                                link_id == "PTRANS"  || link_id != "PCIS" ||
+                                link_id == "NMTRANS" || link_id != "NMCIS") &&
+                               t.restr->label == "omega");
+                     };
+
   for (const Topo::ChainInfo& chain_info : topo.chain_infos)
     for (const Topo::ResInfo& ri : chain_info.res_infos) {
       // 1. link related
-      for (const Topo::Link& prev : ri.prev) {
-        if (!prev.link_rules.empty()) {
+      for (const Topo::Link& prev : ri.prev)
+        if (!prev.link_rules.empty())
           for (const Topo::Rule& rule : prev.link_rules)
-            if (rule.rkind == Topo::RKind::Torsion) {
-              const Topo::Torsion& t = topo.torsions[rule.index];
-              if (t.restr->esd > 0 &&
-                  ((t.restr->label == "omega" &&
-                    (prev.link_id == "TRANS" || prev.link_id == "PTRANS" ||
-                     prev.link_id == "CIS" || prev.link_id == "PCIS")) ||
-                   t.restr->label.find("sp2_sp2") == 0)) {
-                torsions.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
-                torsions.back().values.emplace_back(t.restr->value, t.restr->esd, t.restr->period);
-                torsions.back().values.back().label = t.restr->label;
-              }
-            }
-        }
-      }
+            if (test_link_r(rule, prev.link_id))
+              add(rule, true);
+
       // 2. monomer related
       if (!ri.monomer_rules.empty())
-        for (const Topo::Rule& rule : ri.monomer_rules)
-          if (rule.rkind == Topo::RKind::Torsion) {
-            const Topo::Torsion& t = topo.torsions[rule.index];
-            if (t.restr->esd > 0 &&
-                ((ri.orig_chemcomp->group == ChemComp::Group::Peptide && t.restr->label.find("chi") == 0) ||
-                 t.restr->label.find("sp2_sp2") == 0)) {
-              torsions.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
-              torsions.back().values.emplace_back(t.restr->value, t.restr->esd, t.restr->period);
-              torsions.back().values.back().label = t.restr->label;
-            }
-          }
-    }
-  for (const Topo::Chirality& t : topo.chirs) {
-    const auto val_sigma = topo.ideal_chiral_abs_volume_sigma(t);
-    if (val_sigma.second > 0) {
-      chirs.emplace_back(t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]);
-      chirs.back().value = val_sigma.first;
-      chirs.back().sigma = val_sigma.second;
-      chirs.back().sign = t.restr->sign;
-    }
-  }
-  for (const Topo::Plane& t : topo.planes) {
-    if (t.restr->esd > 0) {
-      planes.emplace_back(t.atoms);
-      planes.back().sigma = t.restr->esd;
-      planes.back().label = t.restr->label;
-    }
-  }
+        for (const Topo::Rule& rule : ri.monomer_rules) {
+          if (rule.rkind != Topo::RKind::Torsion ||
+              topo.torsions[rule.index].restr->label.find("sp2_sp2") == 0 ||
+              (ri.orig_chemcomp && ri.orig_chemcomp->group == ChemComp::Group::Peptide &&
+               topo.torsions[rule.index].restr->label.find("chi") == 0))
+            add(rule, true);
+        }
 
-  // collect chem_types
-  for (const Topo::ChainInfo& chain_info : topo.chain_infos)
-    for (const Topo::ResInfo& ri : chain_info.res_infos) {
+      // collect chem_types
       for (const Atom& atom : ri.res->atoms) {
         const ChemComp& cc = ri.get_final_chemcomp(atom.altloc);
         auto it = cc.find_atom(atom.name);
@@ -606,6 +600,11 @@ inline void Geometry::load_topo(const Topo& topo) {
           chemtypes.emplace(atom.serial, it->chem_type);
       }
     }
+
+  for (const Topo::Link& extra : topo.extras)
+    for (const Topo::Rule& rule : extra.link_rules)
+      if (test_link_r(rule, extra.link_id))
+        add(rule, extra.asu == Asu::Same);
 }
 
 inline void Geometry::finalize_restraints() {
