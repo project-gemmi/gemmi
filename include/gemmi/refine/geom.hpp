@@ -515,6 +515,23 @@ struct Geometry {
   Reporting reporting;
   GeomTarget target;
 
+  // vdw parameters
+  double vdw_sdi_vdw     = 0.2; // VDWR SIGM VDW val
+  double vdw_sdi_torsion = 0.2; // VDWR SIGM TORS val
+  double vdw_sdi_hbond   = 0.2; // VDWR SIGM HBON val
+  double vdw_sdi_metal   = 0.2; // VDWR SIGM META val
+  double hbond_dinc_ad   = -0.3; // VDWR INCR ADHB val
+  double hbond_dinc_ah   = 0.1; // VDWR INCR AHHB val
+  //double dinc_torsion    = -0.3; // not used? // // VDWR INCR TORS val
+  double dinc_torsion_o  = -0.1;
+  double dinc_torsion_n  = -0.1;
+  double dinc_torsion_c  = -0.15; // VDWR INCR TORS val (copied)
+  double dinc_torsion_all= -0.15; // VDWR INCR TORS val (copied)
+  double dinc_dummy      = -0.7; // VDWR INCR DUMM val
+  double vdw_sdi_dummy   = 0.3; // VDWR SIGM DUMM val
+  //double dvdw_cut_min    = 1.75; // no need? // VDWR VDWC val
+  //double dvdw_cut_min_x  = 1.75; // used as twice in fast_hessian_tabulation.f // VDWR VDWC val
+
 private:
   void set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLib& ener_lib) const;
 };
@@ -684,23 +701,6 @@ inline void Geometry::finalize_restraints() {
 }
 
 inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLib& ener_lib) const {
-  //double wvskal          = 1.00;
-  double vdw_sdi_vdw     = 0.2; // VDWR SIGM VDW val
-  double vdw_sdi_torsion = 0.2; // VDWR SIGM TORS val
-  double vdw_sdi_hbond   = 0.2; // VDWR SIGM HBON val
-  double vdw_sdi_metal   = 0.2; // VDWR SIGM META val
-  double hbond_dinc_ad   = -0.3; // VDWR INCR ADHB val
-  double hbond_dinc_ah   = 0.1; // VDWR INCR AHHB val
-  //double dinc_torsion    = -0.3; // not used? // // VDWR INCR TORS val
-  double dinc_torsion_o  = -0.1;
-  double dinc_torsion_n  = -0.1;
-  double dinc_torsion_c  = -0.15; // VDWR INCR TORS val (copied)
-  double dinc_torsion_all= -0.15; // VDWR INCR TORS val (copied)
-  double dinc_dummy      = -0.7; // VDWR INCR DUMM val
-  double vdw_sdi_dummy   = 0.3; // VDWR SIGM DUMM val
-  //double dvdw_cut_min    = 1.75; // no need? // VDWR VDWC val
-  //double dvdw_cut_min_x  = 1.75; // used as twice in fast_hessian_tabulation.f // VDWR VDWC val
-
   double vdw_rad[2];
   double ion_rad[2];
   char hb_type[2];
@@ -737,7 +737,7 @@ inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLi
     vdw.value = vdw_rad[0] + vdw_rad[1] + hbond_dinc_ad;
     vdw.type = 3;
   }
-  else if ((hb_type[0] == 'A' && hb_type[1] == 'H') || // XXX 'H' type must be set beforehand.
+  else if ((hb_type[0] == 'A' && hb_type[1] == 'H') ||
            (hb_type[0] == 'B' && hb_type[1] == 'H')) {
     vdw.value = vdw_rad[0] + hbond_dinc_ah;
     vdw.type = 3;

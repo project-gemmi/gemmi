@@ -551,6 +551,19 @@ void add_refine(py::module& m) {
          py::arg("wbond")=1, py::arg("wangle")=1, py::arg("wtors")=1,
          py::arg("wchir")=1, py::arg("wplane")=1, py::arg("wstack")=1, py::arg("wvdw")=1)
     .def("calc_adp_restraint", &Geometry::calc_adp_restraint)
+    // vdw parameters
+    .def_readwrite("vdw_sdi_vdw", &Geometry::vdw_sdi_vdw)
+    .def_readwrite("vdw_sdi_torsion", &Geometry::vdw_sdi_torsion)
+    .def_readwrite("vdw_sdi_hbond", &Geometry::vdw_sdi_hbond)
+    .def_readwrite("vdw_sdi_metal", &Geometry::vdw_sdi_metal)
+    .def_readwrite("hbond_dinc_ad", &Geometry::hbond_dinc_ad)
+    .def_readwrite("hbond_dinc_ah", &Geometry::hbond_dinc_ah)
+    .def_readwrite("dinc_torsion_o", &Geometry::dinc_torsion_o)
+    .def_readwrite("dinc_torsion_n", &Geometry::dinc_torsion_n)
+    .def_readwrite("dinc_torsion_c", &Geometry::dinc_torsion_c)
+    .def_readwrite("dinc_torsion_all", &Geometry::dinc_torsion_all)
+    .def_readwrite("dinc_dummy", &Geometry::dinc_dummy)
+    .def_readwrite("vdw_sdi_dummy", &Geometry::vdw_sdi_dummy)
   ;
 
   py::class_<TableS3>(m, "TableS3")
