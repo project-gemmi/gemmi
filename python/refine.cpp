@@ -529,7 +529,7 @@ void add_refine(py::module& m) {
     .def("am_for_coo", [](GeomTarget &self) {return for_coo_matrix(self);}, py::return_value_policy::reference_internal)
   ;
   geom
-    .def(py::init<Structure&>(), py::arg("st"))
+    .def(py::init<Structure&, const EnerLib*>(), py::arg("st"), py::arg("ener_lib")=nullptr)
     .def_readonly("bonds", &Geometry::bonds)
     .def_readonly("angles", &Geometry::angles)
     .def_readonly("chirs", &Geometry::chirs)
@@ -546,7 +546,7 @@ void add_refine(py::module& m) {
     .def("finalize_restraints", &Geometry::finalize_restraints)
     .def("setup_target", &Geometry::setup_target)
     .def("clear_target", &Geometry::clear_target)
-    .def("setup_vdw", &Geometry::setup_vdw)
+    .def("setup_nonbonded", &Geometry::setup_nonbonded)
     .def("calc", &Geometry::calc, py::arg("use_nucleus"), py::arg("check_only"),
          py::arg("wbond")=1, py::arg("wangle")=1, py::arg("wtors")=1,
          py::arg("wchir")=1, py::arg("wplane")=1, py::arg("wstack")=1, py::arg("wvdw")=1)
@@ -564,6 +564,10 @@ void add_refine(py::module& m) {
     .def_readwrite("dinc_torsion_all", &Geometry::dinc_torsion_all)
     .def_readwrite("dinc_dummy", &Geometry::dinc_dummy)
     .def_readwrite("vdw_sdi_dummy", &Geometry::vdw_sdi_dummy)
+    // ADP restraint parameters
+    .def_readwrite("adpr_max_dist", &Geometry::adpr_max_dist)
+    .def_readwrite("adpr_d_power", &Geometry::adpr_d_power)
+    .def_readwrite("adpr_exp_fac", &Geometry::adpr_exp_fac)
   ;
 
   py::class_<TableS3>(m, "TableS3")

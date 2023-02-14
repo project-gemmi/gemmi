@@ -473,10 +473,10 @@ struct Geometry {
     std::vector<stacking_reporting_t> stackings;
     std::vector<vdw_reporting_t> vdws;
   };
-  Geometry(Structure& s) : st(s), bondindex(s.first_model()) {}
+  Geometry(Structure& s, const EnerLib* ener_lib) : st(s), bondindex(s.first_model()), ener_lib(ener_lib) {}
   void load_topo(const Topo& topo);
   void finalize_restraints(); // sort_restraints?
-  void setup_vdw(const EnerLib& ener_lib, float max_distsq_for_adp);
+  void setup_nonbonded();
   static Position apply_transform(const UnitCell& cell, int sym_idx, const std::array<int, 3>& pbc_shift, const Position &v) {
     FTransform ft = sym_idx == 0 ? FTransform({}) : cell.images[sym_idx-1];
     ft.vec += Vec3(pbc_shift);
@@ -510,6 +510,7 @@ struct Geometry {
   std::vector<Vdw> vdws;
   Structure& st;
   BondIndex bondindex;
+  const EnerLib* ener_lib = nullptr;
   std::map<int, std::string> chemtypes;
   std::map<int, char> hbtypes; // hydrogen bond types that override ener_lib
   Reporting reporting;
@@ -532,8 +533,13 @@ struct Geometry {
   //double dvdw_cut_min    = 1.75; // no need? // VDWR VDWC val
   //double dvdw_cut_min_x  = 1.75; // used as twice in fast_hessian_tabulation.f // VDWR VDWC val
 
+  // ADP restraints
+  float adpr_max_dist = 4.;
+  double adpr_d_power = 4;
+  double adpr_exp_fac = 0.011271; //1 ./ (2*4*4*4*std::log(2.));
+
 private:
-  void set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLib& ener_lib) const;
+  void set_vdw_values(Geometry::Vdw &vdw, int d_1_2) const;
 };
 
 inline void Geometry::load_topo(const Topo& topo) {
@@ -700,13 +706,14 @@ inline void Geometry::finalize_restraints() {
   // no care needed for others?
 }
 
-inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLib& ener_lib) const {
+inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2) const {
+  if (ener_lib == nullptr) fail("set ener_lib");
   double vdw_rad[2];
   double ion_rad[2];
   char hb_type[2];
   for (int i = 0; i < 2; ++i) {
     const std::string& chem_type = chemtypes.at(vdw.atoms[i]->serial);
-    const auto& libatom = ener_lib.atoms.at(chem_type);
+    const auto& libatom = ener_lib->atoms.at(chem_type);
     vdw_rad[i] = std::isnan(libatom.vdwh_radius) ? libatom.vdw_radius : libatom.vdwh_radius; // XXX needs switch. check hydrogen is there?
     ion_rad[i] = libatom.ion_radius;
     auto it = hbtypes.find(vdw.atoms[i]->serial);
@@ -782,7 +789,9 @@ inline void Geometry::set_vdw_values(Geometry::Vdw &vdw, int d_1_2, const EnerLi
   vdw.sigma = vdw_sdi_vdw;
 }
 
-inline void Geometry::setup_vdw(const EnerLib& ener_lib, float max_distsq_for_adp) {
+// sets up nonbonded interactions for vdwr, ADP restraints, and jellybody
+inline void Geometry::setup_nonbonded() {
+  if (ener_lib == nullptr) fail("set ener_lib");
   // set hbtypes for hydrogen
   if (hbtypes.empty()) {
     for (auto& b : bonds)
@@ -790,7 +799,7 @@ inline void Geometry::setup_vdw(const EnerLib& ener_lib, float max_distsq_for_ad
         int p = b.atoms[0]->is_hydrogen() ? 1 : 0; // parent
         int h = b.atoms[0]->is_hydrogen() ? 0 : 1; // hydrogen
         const std::string& p_chem_type = chemtypes.at(b.atoms[p]->serial);
-        const char p_hb_type = ener_lib.atoms.at(p_chem_type).hb_type;
+        const char p_hb_type = ener_lib->atoms.at(p_chem_type).hb_type;
         hbtypes.emplace(b.atoms[h]->serial, p_hb_type == 'D' || p_hb_type == 'B' ? 'H' : 'N');
       }
   }
@@ -800,23 +809,19 @@ inline void Geometry::setup_vdw(const EnerLib& ener_lib, float max_distsq_for_ad
   // Reference: Refmac vdw_and_contacts.f
   NeighborSearch ns(st.first_model(), st.cell, 4);
   ns.populate();
-  float max_vdwr = 4.; // FIXME
-  ContactSearch contacts(std::max(std::sqrt(max_distsq_for_adp), max_vdwr * 2));
+  const float max_vdwr = 2.98f; // max from ener_lib, Cs.
+  const float max_dist = std::max(adpr_max_dist, max_vdwr * 2);
+  ContactSearch contacts(max_dist);
   contacts.ignore = ContactSearch::Ignore::Nothing;
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
-                                    int sym_idx, float dist_sq) {
+                                    int sym_idx, float) {
     // XXX Refmac uses intervals for distances as well? vdw_and_contacts.f remove_bonds_and_angles()
     NearestImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos, cra2.atom->pos, sym_idx);
     int d_1_2 = bondindex.graph_distance(*cra1.atom, *cra2.atom, im.sym_idx == 0 && im.same_asu());
     if (d_1_2 > 2) {
       vdws.emplace_back(cra1.atom, cra2.atom);
-      set_vdw_values(vdws.back(), d_1_2, ener_lib);
+      set_vdw_values(vdws.back(), d_1_2);
       assert(!std::isnan(vdws.back().value) && vdws.back().value > 0);
-      if (dist_sq > max_distsq_for_adp // quick trick to use ADP restraints. Need better way.
-          && vdws.back().value * vdws.back().value < dist_sq * 0.9) {
-        vdws.pop_back();
-        return;
-      }
       vdws.back().set_image(im);
       if (im.sym_idx != 0 || !im.same_asu())
         vdws.back().type += 6;
@@ -925,7 +930,8 @@ inline double Geometry::calc_adp_restraint(bool check_only, double sigma) {
     // calculate minimum distance - expensive?
     const NearestImage im = st.cell.find_nearest_image(atom1->pos, atom2->pos, Asu::Any);
     const double dsq = im.dist_sq;
-    const double w_fac = std::exp(-dsq * dsq / (2*4*4*4*std::log(2.))); // arbitrary weighting factor, adjust so that d=4 gives 0.5
+    if (dsq > sq(adpr_max_dist)) continue;
+    const double w_fac = std::exp(-std::pow(dsq, 0.5 * adpr_d_power) * adpr_exp_fac);
     const double w = weight * w_fac;
     if (target.adp_mode == 1) {
       const double f = 0.5 * w * (atom1->b_iso - atom2->b_iso) * (atom1->b_iso - atom2->b_iso);
