@@ -63,13 +63,11 @@ void add_automatic_links(Model& model, Structure& st, const MonLib& monlib) {
                                     int image_idx, float dist_sq) {
     if (st.find_connection_by_cra(cra1, cra2))
       return;
-    const ChemLink* link;
-    bool invert;
-    char altloc = cra1.atom->altloc_or(cra2.atom->altloc);
-    double min_dist_sq = sq(1 / 1.4) * dist_sq;
-    std::tie(link, invert) = monlib.match_link(*cra1.residue, cra1.atom->name,
-                                               *cra2.residue, cra2.atom->name,
-                                               altloc, min_dist_sq);
+    auto m = monlib.match_link(*cra1.residue, cra1.atom->name, cra1.atom->altloc,
+                               *cra2.residue, cra2.atom->name, cra2.atom->altloc,
+                               sq(1 / 1.4) * dist_sq);
+    const ChemLink* link = std::get<0>(m);
+    bool invert = std::get<1>(m);
     if (!link) {
       // Similarly to "make link" in Refmac,
       // only search for links between metals and O,N,S,B.

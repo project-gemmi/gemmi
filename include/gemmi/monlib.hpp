@@ -151,16 +151,15 @@ struct MonLib {
 
   // Returns the most specific link and a flag that is true
   // if the order is comp2-comp1 in the link definition.
-  std::pair<const ChemLink*, bool>
-  match_link(const Residue& res1, const std::string& atom1,
-             const Residue& res2, const std::string& atom2,
-             char alt, double min_bond_sq=0,
-             ChemComp::Aliasing const** aliasing1=nullptr,
-             ChemComp::Aliasing const** aliasing2=nullptr) const {
-    char alt2 = alt; // FIXME
+  std::tuple<const ChemLink*, bool, const ChemComp::Aliasing*, const ChemComp::Aliasing*>
+  match_link(const Residue& res1, const std::string& atom1, char alt1,
+             const Residue& res2, const std::string& atom2, char alt2,
+             double min_bond_sq=0) const {
     const ChemLink* best_link = nullptr;
-    int best_score = -1;
     bool inverted = false;
+    const ChemComp::Aliasing* aliasing1 = nullptr;
+    const ChemComp::Aliasing* aliasing2 = nullptr;
+    int best_score = -1;
     for (auto& ml : links) {
       const ChemLink& link = ml.second;
       if (link.rt.bonds.empty())
@@ -169,26 +168,22 @@ struct MonLib {
       const Restraints::Bond& bond = link.rt.bonds[0];
       if (sq(bond.value) < min_bond_sq)
         continue;
-      if (link_side_matches_residue(link.side1, res1.name, aliasing1) &&
-          link_side_matches_residue(link.side2, res2.name, aliasing2) &&
-          atom_match_with_alias(bond.id1.atom, atom1, aliasing1 ? *aliasing1 : nullptr) &&
-          atom_match_with_alias(bond.id2.atom, atom2, aliasing2 ? *aliasing2 : nullptr)) {
-        int score = link.calculate_score(res1, &res2, alt, alt2,
-                                         aliasing1 ? *aliasing1 : nullptr,
-                                         aliasing2 ? *aliasing2 : nullptr);
+      if (link_side_matches_residue(link.side1, res1.name, &aliasing1) &&
+          link_side_matches_residue(link.side2, res2.name, &aliasing2) &&
+          atom_match_with_alias(bond.id1.atom, atom1, aliasing1) &&
+          atom_match_with_alias(bond.id2.atom, atom2, aliasing2)) {
+        int score = link.calculate_score(res1, &res2, alt1, alt2, aliasing1, aliasing2);
         if (score > best_score) {
           best_link = &link;
           best_score = score;
           inverted = false;
         }
       }
-      if (link_side_matches_residue(link.side1, res2.name, aliasing2) &&
-          link_side_matches_residue(link.side2, res1.name, aliasing1) &&
-          atom_match_with_alias(bond.id1.atom, atom2, aliasing2 ? *aliasing2 : nullptr) &&
-          atom_match_with_alias(bond.id2.atom, atom1, aliasing1 ? *aliasing1 : nullptr)) {
-        int score = link.calculate_score(res2, &res1, alt, alt2,
-                                         aliasing2 ? *aliasing2 : nullptr,
-                                         aliasing1 ? *aliasing1 : nullptr);
+      if (link_side_matches_residue(link.side1, res2.name, &aliasing2) &&
+          link_side_matches_residue(link.side2, res1.name, &aliasing1) &&
+          atom_match_with_alias(bond.id1.atom, atom2, aliasing2) &&
+          atom_match_with_alias(bond.id2.atom, atom1, aliasing1)) {
+        int score = link.calculate_score(res2, &res1, alt2, alt1, aliasing2, aliasing1);
         if (score > best_score) {
           best_link = &link;
           best_score = score;
@@ -196,7 +191,7 @@ struct MonLib {
         }
       }
     }
-    return {best_link, inverted};
+    return {best_link, inverted, aliasing1, aliasing2};
   }
 
   void add_monomer_if_present(const cif::Block& block) {
@@ -215,8 +210,8 @@ struct MonLib {
   bool link_side_matches_residue(const ChemLink::Side& side,
                                  const std::string& res_name,
                                  ChemComp::Aliasing const** aliasing) const {
-    if (aliasing)
-      *aliasing = nullptr;
+    assert(aliasing);
+    *aliasing = nullptr;
     if (!side.comp.empty())
       return side.comp == res_name;
     auto it = monomers.find(res_name);
@@ -225,8 +220,7 @@ struct MonLib {
         return true;
       for (const ChemComp::Aliasing& a : it->second.aliases)
         if (side.matches_group(a.group)) {
-          if (aliasing)
-            *aliasing = &a;
+          *aliasing = &a;
           return true;
         }
     }

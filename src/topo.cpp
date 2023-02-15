@@ -595,27 +595,28 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
       return;
     }
     if (match->rt.bonds.empty() ||
-        !monlib.link_side_matches_residue(match->side1, extra.res1->name,
-                                          &extra.aliasing1) ||
-        !monlib.link_side_matches_residue(match->side2, extra.res2->name,
-                                          &extra.aliasing2) ||
-        !atom_match_with_alias(match->rt.bonds[0].id1.atom, conn.partner1.atom_name, extra.aliasing1) ||
-        !atom_match_with_alias(match->rt.bonds[0].id2.atom, conn.partner2.atom_name, extra.aliasing2)) {
+        !monlib.link_side_matches_residue(match->side1, extra.res1->name, &extra.aliasing1) ||
+        !monlib.link_side_matches_residue(match->side2, extra.res2->name, &extra.aliasing2) ||
+        !atom_match_with_alias(match->rt.bonds[0].id1.atom,
+                               conn.partner1.atom_name, extra.aliasing1) ||
+        !atom_match_with_alias(match->rt.bonds[0].id2.atom,
+                               conn.partner2.atom_name, extra.aliasing2)) {
       err("link from the monomer library does not match: " + conn.link_id);
       return;
     }
   } else {
+    bool invert;
     // we don't have link_id - use the best matching link (if any)
-    auto r = monlib.match_link(*extra.res1, conn.partner1.atom_name,
-                               *extra.res2, conn.partner2.atom_name,
-                               extra.alt1 ? extra.alt1 : extra.alt2, 0,
-                               &extra.aliasing1, &extra.aliasing2);
-    match = r.first;
-    if (match) conn.link_id = match->id;
-    if (match && r.second) {
-      std::swap(extra.res1, extra.res2);
-      std::swap(extra.alt1, extra.alt2);
-      std::swap(extra.aliasing1, extra.aliasing2);
+    std::tie(match, invert, extra.aliasing1, extra.aliasing2) =
+      monlib.match_link(*extra.res1, conn.partner1.atom_name, extra.alt1,
+                        *extra.res2, conn.partner2.atom_name, extra.alt2);
+    if (match) {
+      conn.link_id = match->id;
+      if (invert) {
+        std::swap(extra.res1, extra.res2);
+        std::swap(extra.alt1, extra.alt2);
+        std::swap(extra.aliasing1, extra.aliasing2);
+      }
     }
   }
 
