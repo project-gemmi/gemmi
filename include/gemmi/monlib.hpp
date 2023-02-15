@@ -191,7 +191,7 @@ struct MonLib {
         }
       }
     }
-    return {best_link, inverted, aliasing1, aliasing2};
+    return std::make_tuple(best_link, inverted, aliasing1, aliasing2);
   }
 
   void add_monomer_if_present(const cif::Block& block) {
