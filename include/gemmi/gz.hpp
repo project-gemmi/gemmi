@@ -37,8 +37,9 @@ inline size_t estimate_uncompressed_size(const std::string& path) {
   if (orig_size + 100 < gzipped_size || orig_size > 100 * gzipped_size) {
     // The size is stored as 32-bit number. If the original size exceeds 4GiB,
     // the stored number is modulo 4 GiB. So we just guess...
-    if (gzipped_size > 1073741824)
-      return 4294967295U + (sizeof(size_t) > 4 ? orig_size : 0);
+    constexpr size_t max_uint = 4294967295U;
+    if (gzipped_size > max_uint / 6)
+      return max_uint + (sizeof(size_t) > 4 ? orig_size : 0);
     fail("Cannot determine uncompressed size of " + path +
          "\nWould it be " + std::to_string(gzipped_size) + " -> " +
          std::to_string(orig_size) + " bytes?");
