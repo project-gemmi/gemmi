@@ -166,7 +166,7 @@ add_library(libgem OBJECT
             src/polyheur.cpp
             src/read_cif.cpp src/mmread_gz.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
-            src/to_pdb.cpp src/topo.cpp src/xds_ascii.cpp)
+            src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
 #support_gz(libgem)
 

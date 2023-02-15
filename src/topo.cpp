@@ -129,6 +129,31 @@ Topo::ChainInfo::ChainInfo(ResidueSpan& subchain, const Chain& chain, const Enti
     res_infos.emplace_back(&res);
 }
 
+// Add a ChemLink that restraints only bond length.
+static
+const std::string& add_auto_chemlink(MonLib& monlib,
+                                     const std::string& resname1, const std::string& aname1,
+                                     const std::string& resname2, const std::string& aname2,
+                                     double ideal_dist, double esd) {
+  ChemLink cl;
+  cl.side1.comp = resname1;
+  cl.side2.comp = resname2;
+  cl.id = resname1 + resname2;
+  cl.name = "auto-" + cl.id;
+  cl.rt.bonds.push_back({Restraints::AtomId{1, aname1},
+                         Restraints::AtomId{2, aname2},
+                         BondType::Unspec, false,
+                         ideal_dist, esd,
+                         ideal_dist, esd});
+  // ensure unique link id
+  size_t orig_len = cl.id.size();
+  for (int n = 0; monlib.get_link(cl.id) != nullptr; ++n)
+    cl.id.replace(orig_len, cl.id.size(), std::to_string(n));
+
+  auto it = monlib.links.emplace(cl.id, cl);
+  return it.first->first;
+}
+
 void Topo::add_polymer_links(PolymerType polymer_type,
                              const Topo::ResInfo& ri1,
                              Topo::ResInfo& ri2,
@@ -184,9 +209,10 @@ void Topo::add_polymer_links(PolymerType polymer_type,
               else
                 link.link_id = is_cis ? "CIS" : "TRANS";
             } else if (monlib) {
-              link.link_id = monlib->add_auto_chemlink(ri1.res->name, c,
-                                                       ri2.res->name, n,
-                                                       1.34, 0.04);
+              link.link_id = add_auto_chemlink(*monlib,
+                                               ri1.res->name, c,
+                                               ri2.res->name, n,
+                                               1.34, 0.04);
             }
             ri2.prev.push_back(link);
           }
@@ -228,9 +254,10 @@ void Topo::add_polymer_links(PolymerType polymer_type,
             if (groups_ok)
               link.link_id = "p";
             else if (monlib)
-              link.link_id = monlib->add_auto_chemlink(ri1.res->name, o3p,
-                                                       ri2.res->name, p,
-                                                       1.606, 0.02);
+              link.link_id = add_auto_chemlink(*monlib,
+                                               ri1.res->name, o3p,
+                                               ri2.res->name, p,
+                                               1.606, 0.02);
             ri2.prev.push_back(link);
           }
     }
@@ -614,9 +641,10 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
       return;
     // create a new ChemLink and add it to the monomer library
     double ideal_dist = monlib.find_ideal_distance(cra1, cra2);
-    extra.link_id = monlib.add_auto_chemlink(extra.res1->name, conn.partner1.atom_name,
-                                             extra.res2->name, conn.partner2.atom_name,
-                                             ideal_dist, 0.02);
+    extra.link_id = add_auto_chemlink(monlib,
+                                      extra.res1->name, conn.partner1.atom_name,
+                                      extra.res2->name, conn.partner2.atom_name,
+                                      ideal_dist, 0.02);
   }
   if (conn.link_id.empty())
     conn.link_id = extra.link_id;
@@ -738,5 +766,6 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
   return topo;
 }
+
 
 }
