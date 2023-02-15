@@ -497,6 +497,7 @@ struct Geometry {
   double calc(bool use_nucleus, bool check_only, double wbond, double wangle, double wtors,
               double wchir, double wplane, double wstack, double wvdw);
   double calc_adp_restraint(bool check_only, double sigma);
+  void calc_jellybody();
 
   std::vector<Bond> bonds;
   std::vector<Angle> angles;
@@ -537,6 +538,11 @@ struct Geometry {
   float adpr_max_dist = 4.;
   double adpr_d_power = 4;
   double adpr_exp_fac = 0.011271; //1 ./ (2*4*4*4*std::log(2.));
+
+  // Jelly body
+  float ridge_dmax = 0;
+  double ridge_sigma = 0.02;
+  bool ridge_symm = false; // inter-symmetry
 
 private:
   void set_vdw_values(Geometry::Vdw &vdw, int d_1_2) const;
@@ -810,7 +816,7 @@ inline void Geometry::setup_nonbonded() {
   NeighborSearch ns(st.first_model(), st.cell, 4);
   ns.populate();
   const float max_vdwr = 2.98f; // max from ener_lib, Cs.
-  const float max_dist = std::max(adpr_max_dist, max_vdwr * 2);
+  const float max_dist = std::max(std::max(ridge_dmax, adpr_max_dist), max_vdwr * 2);
   ContactSearch contacts(max_dist);
   contacts.ignore = ContactSearch::Ignore::Nothing;
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
@@ -912,6 +918,8 @@ inline double Geometry::calc(bool use_nucleus, bool check_only,
     ret += t.calc(wstack, target_ptr, rep_ptr);
   for (const auto &t : vdws)
     ret += t.calc(st.cell, wvdw, target_ptr, rep_ptr);
+  if (!check_only && ridge_dmax > 0)
+    calc_jellybody(); // no contribution to target
 
   // TODO intervals, harmonics, specials
   return ret;
@@ -968,6 +976,42 @@ inline double Geometry::calc_adp_restraint(bool check_only, double sigma) {
     }
   }
   return ret;
+}
+
+inline void Geometry::calc_jellybody() {
+  if (ridge_sigma <= 0) return;
+  const double weight = 1 / (ridge_sigma * ridge_sigma);
+  // TODO main chain / side chain check?
+  // TODO B value filter?
+  // TODO intra-chain only, residue gap filter
+
+  for (const auto &t : vdws) {
+    if (!ridge_symm && !t.same_asu()) continue;
+    const bool swapped = t.sym_idx < 0;
+    const Atom& atom1 = *t.atoms[swapped ? 1 : 0];
+    const Atom& atom2 = *t.atoms[swapped ? 0 : 1];
+    if (atom1.is_hydrogen() || atom2.is_hydrogen()) continue;
+    const int ia1 = atom1.serial - 1;
+    const int ia2 = atom2.serial - 1;
+    const Transform tr = get_transform(st.cell, swapped ? -t.sym_idx - 1 : t.sym_idx, t.pbc_shift);
+    const Position& x1 = atom1.pos;
+    const Position& x2 = t.same_asu() ? atom2.pos : Position(tr.apply(atom2.pos));
+    const double b = x1.dist(x2);
+    if (b > ridge_dmax || b < 2 || b < t.value * 0.95) continue;
+    const Position dbdx1 = (x1 - x2) / std::max(b, 0.02);
+    const Position dbdx2 = t.same_asu() ? -dbdx1 : Position(tr.mat.transpose().multiply(-dbdx1));
+    target.incr_am_diag(ia1 * 6, weight, dbdx1);
+    target.incr_am_diag(ia2 * 6, weight, dbdx2);
+
+    if (ia1 != ia2) {
+      auto mp = target.find_restraint(ia1, ia2);
+      if (mp.imode == 0)
+        target.incr_am_ndiag(mp.ipos, weight, dbdx1, dbdx2);
+      else
+        target.incr_am_ndiag(mp.ipos, weight, dbdx2, dbdx1);
+    } else
+      target.incr_am_diag12(ia1*6, weight, dbdx1, dbdx2);
+  }
 }
 
 inline double Geometry::Bond::calc(const UnitCell& cell, bool use_nucleus, double wdskal,

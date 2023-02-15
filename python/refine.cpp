@@ -568,6 +568,10 @@ void add_refine(py::module& m) {
     .def_readwrite("adpr_max_dist", &Geometry::adpr_max_dist)
     .def_readwrite("adpr_d_power", &Geometry::adpr_d_power)
     .def_readwrite("adpr_exp_fac", &Geometry::adpr_exp_fac)
+    // jelly body parameters
+    .def_readwrite("ridge_dmax", &Geometry::ridge_dmax)
+    .def_readwrite("ridge_sigma", &Geometry::ridge_sigma)
+    .def_readwrite("ridge_symm", &Geometry::ridge_symm)
   ;
 
   py::class_<TableS3>(m, "TableS3")
