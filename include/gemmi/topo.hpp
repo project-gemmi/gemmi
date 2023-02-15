@@ -242,7 +242,7 @@ struct Topo {
 
   std::vector<Rule> apply_restraints(const Restraints& rt,
                                      Residue& res, Residue* res2,
-                                     char altloc, bool require_alt);
+                                     char altloc1, char altloc2, bool require_alt);
   void apply_restraints_from_link(Link& link, const MonLib& monlib);
 
   // Structure is non-const b/c connections may have link_id assigned.

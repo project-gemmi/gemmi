@@ -39,17 +39,25 @@ struct Restraints {
       return comp == o.comp ? atom < o.atom : comp < o.comp;
     }
 
-    Atom* get_from(Residue& res1, Residue* res2, char altloc) const {
-      Residue* residue = (comp == 1 || res2 == nullptr ? &res1 : res2);
-      Atom* a = residue->find_atom(atom, altloc);
+    // altloc2 is needed only in rare case when we have a link between
+    // atoms with different altloc (example: 2e7z).
+    Atom* get_from(Residue& res1, Residue* res2, char alt, char altloc2) const {
+      Residue* residue = &res1;
+      if (comp == 2 && res2 != nullptr) {
+        residue = res2;
+        if (altloc2 != '\0')
+          alt = altloc2;
+      }
+      Atom* a = residue->find_atom(atom, alt);
       // Special case: microheterogeneity may have shared atoms only in
       // the first residue. Example: in 1ejg N is shared between PRO and SER.
-      if (a == nullptr && altloc != '\0' && residue->group_idx > 0)
-        a = (residue - residue->group_idx)->find_atom(atom, altloc);
+      if (a == nullptr && alt != '\0' && residue->group_idx > 0)
+        a = (residue - residue->group_idx)->find_atom(atom, alt);
       return a;
     }
-    const Atom* get_from(const Residue& res1, const Residue* res2, char altloc) const {
-      return get_from(const_cast<Residue&>(res1), const_cast<Residue*>(res2), altloc);
+    const Atom* get_from(const Residue& res1, const Residue* res2,
+                         char alt, char alt2) const {
+      return get_from(const_cast<Residue&>(res1), const_cast<Residue*>(res2), alt, alt2);
     }
   };
 

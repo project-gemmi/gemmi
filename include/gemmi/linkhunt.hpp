@@ -133,7 +133,8 @@ struct LinkHunt {
             int link_score = link.calculate_score(
                     order1 ? *cra1.residue : *cra2.residue,
                     order1 ? cra2.residue : cra1.residue,
-                    cra1.atom->altloc_or(cra2.atom->altloc),
+                    order1 ? cra1.atom->altloc : cra2.atom->altloc,
+                    order1 ? cra2.atom->altloc : cra1.atom->altloc,
                     order1 ? aliasing1 : aliasing2,
                     order1 ? aliasing2 : aliasing1);
             match.chem_link_count++;

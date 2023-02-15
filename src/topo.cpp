@@ -262,22 +262,22 @@ Topo::ideal_chiral_abs_volume_sigma(const Chirality &ch) const {
 
 std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
                                                Residue& res, Residue* res2,
-                                               char altloc, bool require_alt) {
+                                               char altloc1, char altloc2,
+                                               bool require_alt) {
   std::string altlocs;
-  if (altloc == '\0') {
-    // find all distinct altlocs
+  if (altloc1 == '\0' && altloc2 == '\0') {
     add_distinct_altlocs(res, altlocs);
     if (res2)
       add_distinct_altlocs(*res2, altlocs);
   }
   if (altlocs.empty())
-    altlocs += altloc;
+    altlocs += altloc1 != 0 ? altloc1 : altloc2;
 
   std::vector<Rule> rules;
   for (const Restraints::Bond& bond : rt.bonds)
     for (char alt : altlocs)
-      if (Atom* at1 = bond.id1.get_from(res, res2, alt))
-        if (Atom* at2 = bond.id2.get_from(res, res2, alt)) {
+      if (Atom* at1 = bond.id1.get_from(res, res2, alt, altloc2))
+        if (Atom* at2 = bond.id2.get_from(res, res2, alt, altloc2)) {
           bool with_alt = at1->altloc || at2->altloc;
           if (with_alt || !require_alt) {
             rules.push_back({RKind::Bond, bonds.size()});
@@ -288,9 +288,9 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
         }
   for (const Restraints::Angle& angle : rt.angles)
     for (char alt : altlocs)
-      if (Atom* at1 = angle.id1.get_from(res, res2, alt))
-        if (Atom* at2 = angle.id2.get_from(res, res2, alt))
-          if (Atom* at3 = angle.id3.get_from(res, res2, alt)) {
+      if (Atom* at1 = angle.id1.get_from(res, res2, alt, altloc2))
+        if (Atom* at2 = angle.id2.get_from(res, res2, alt, altloc2))
+          if (Atom* at3 = angle.id3.get_from(res, res2, alt, altloc2)) {
             bool with_alt = at1->altloc || at2->altloc || at3->altloc;
             if (with_alt || !require_alt) {
               rules.push_back({RKind::Angle, angles.size()});
@@ -301,10 +301,10 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
           }
   for (const Restraints::Torsion& tor : rt.torsions)
     for (char alt : altlocs)
-      if (Atom* at1 = tor.id1.get_from(res, res2, alt))
-        if (Atom* at2 = tor.id2.get_from(res, res2, alt))
-          if (Atom* at3 = tor.id3.get_from(res, res2, alt))
-            if (Atom* at4 = tor.id4.get_from(res, res2, alt)) {
+      if (Atom* at1 = tor.id1.get_from(res, res2, alt, altloc2))
+        if (Atom* at2 = tor.id2.get_from(res, res2, alt, altloc2))
+          if (Atom* at3 = tor.id3.get_from(res, res2, alt, altloc2))
+            if (Atom* at4 = tor.id4.get_from(res, res2, alt, altloc2)) {
               bool with_alt = at1->altloc || at2->altloc || at3->altloc || at4->altloc;
               if (with_alt || !require_alt) {
                 rules.push_back({RKind::Torsion, torsions.size()});
@@ -315,10 +315,10 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
         }
   for (const Restraints::Chirality& chir : rt.chirs)
     for (char alt : altlocs)
-      if (Atom* at1 = chir.id_ctr.get_from(res, res2, alt))
-        if (Atom* at2 = chir.id1.get_from(res, res2, alt))
-          if (Atom* at3 = chir.id2.get_from(res, res2, alt))
-            if (Atom* at4 = chir.id3.get_from(res, res2, alt)) {
+      if (Atom* at1 = chir.id_ctr.get_from(res, res2, alt, altloc2))
+        if (Atom* at2 = chir.id1.get_from(res, res2, alt, altloc2))
+          if (Atom* at3 = chir.id2.get_from(res, res2, alt, altloc2))
+            if (Atom* at4 = chir.id3.get_from(res, res2, alt, altloc2)) {
               bool with_alt = at1->altloc || at2->altloc || at3->altloc || at4->altloc;
               if (with_alt || !require_alt) {
                 rules.push_back({RKind::Chirality, chirs.size()});
@@ -332,7 +332,7 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
       std::vector<Atom*> atoms;
       bool with_alt = false;
       for (const Restraints::AtomId& id : plane.ids)
-        if (Atom* atom = id.get_from(res, res2, alt)) {
+        if (Atom* atom = id.get_from(res, res2, alt, altloc2)) {
           with_alt = with_alt || atom->altloc;
           atoms.push_back(atom);
         }
@@ -356,8 +356,8 @@ void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
   }
   const Restraints* rt = &chem_link->rt;
   if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
-    err(cat("LINK between different conformers ", link.alt1, " and ", link.alt2, '.'));
-  char alt = link.alt1 ? link.alt1 : link.alt2;
+    err(cat("LINK between different conformers: ", link.alt1, " (in ",
+            link.res1->name, ") and ", link.alt2, " (in " + link.res2->name, ")."));
   // aliases are a new feature - introduced in 2022
   if (link.aliasing1 || link.aliasing2) {
     std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
@@ -370,7 +370,7 @@ void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
     rt = rt_copy.get();
     rt_storage.push_back(std::move(rt_copy));
   }
-  auto rules = apply_restraints(*rt, *link.res1, link.res2, alt, false);
+  auto rules = apply_restraints(*rt, *link.res1, link.res2, link.alt1, link.alt2, false);
   vector_move_extend(link.link_rules, std::move(rules));
 }
 
@@ -509,7 +509,8 @@ void Topo::finalize_refmac_topology(const MonLib& monlib) {
       // monomer restraints
       bool require_alt = false;
       for (const auto& it : ri.chemcomps) {
-        auto rules = apply_restraints(it.cc->rt, *ri.res, nullptr, it.altloc, require_alt);
+        auto rules = apply_restraints(it.cc->rt, *ri.res, nullptr,
+                                      it.altloc, '\0', require_alt);
         vector_move_extend(ri.monomer_rules, std::move(rules));
         require_alt = true;
       }
@@ -629,9 +630,9 @@ static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   std::vector<Atom>& atoms = ri->res->atoms;
   const Restraints& rt = ri->get_final_chemcomp(alt).rt;
   for (auto it = atoms.end(); it-- != atoms.begin(); ) {
-    if (it->is_hydrogen()) {
+    if (it->is_hydrogen() && is_same_conformer(it->altloc, alt)) {
       const Restraints::AtomId* heavy = rt.first_bonded_atom(it->name);
-      if (heavy && heavy->atom == atom_name && (it->altloc == alt || it->altloc == '\0'))
+      if (heavy && heavy->atom == atom_name)
         atoms.erase(it);
     }
   }

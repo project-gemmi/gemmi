@@ -64,9 +64,9 @@ void add_chemcomp(py::module& m) {
     .def_readwrite("comp", &Restraints::AtomId::comp)
     .def_readwrite("atom", &Restraints::AtomId::atom)
     .def("get_from",
-         (Atom* (Restraints::AtomId::*)(Residue&, Residue*, char) const)
+         (Atom* (Restraints::AtomId::*)(Residue&, Residue*, char, char) const)
          &Restraints::AtomId::get_from,
-         py::arg("res1"), py::arg("res2"), py::arg("altloc"),
+         py::arg("res1"), py::arg("res2"), py::arg("altloc1"), py::arg("altloc2"),
          py::return_value_policy::reference)
     .def("__repr__", [](const Restraints::AtomId& self) {
         return cat("<gemmi.Restraints.AtomId ", self.comp, ' ', self.atom, '>');

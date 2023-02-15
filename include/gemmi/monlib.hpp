@@ -28,19 +28,6 @@ inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
       altlocs += atom.altloc;
 }
 
-inline const Atom*
-get_from_with_alias(Restraints::AtomId atomid, const Residue& res1, const Residue* res2, char altloc,
-                    const ChemComp::Aliasing* aliasing1, const ChemComp::Aliasing* aliasing2) {
-  const ChemComp::Aliasing* aliasing = nullptr;
-  if ((atomid.comp ==1 || res2 == nullptr)) {
-    if (aliasing1) aliasing = aliasing1;
-  } else if (aliasing2) aliasing = aliasing2;
-  if (aliasing)
-    if (const std::string* real_id = aliasing->name_from_alias(atomid.atom))
-      atomid.atom = *real_id;
-  return atomid.get_from(res1, res2, altloc);
-}
-
 inline bool atom_match_with_alias(const std::string& atom_id, const std::string& atom,
                                   const ChemComp::Aliasing* aliasing=nullptr) {
   if (aliasing)
@@ -75,17 +62,27 @@ struct ChemLink {
   cif::Block block;  // temporary, until we have ChemLink->Block function
 
   // If multiple ChemLinks match a bond, the scores can pick the best match.
-  int calculate_score(const Residue& res1, const Residue* res2, char alt,
-                      const ChemComp::Aliasing* aliasing1=nullptr,
-                      const ChemComp::Aliasing* aliasing2=nullptr) const {
+  int calculate_score(const Residue& res1, const Residue* res2,
+                      char alt, char alt2,
+                      const ChemComp::Aliasing* aliasing1,
+                      const ChemComp::Aliasing* aliasing2) const {
     int link_score = side1.specificity() + side2.specificity();
+
+    auto get_from = [&](const Restraints::AtomId& atomid) {
+      auto aliasing = (atomid.comp != 2 || res2 == nullptr) ? aliasing1 : aliasing2;
+      if (aliasing)
+        if (const std::string* real_id = aliasing->name_from_alias(atomid.atom))
+          return Restraints::AtomId{atomid.comp, *real_id}.get_from(res1, res2, alt, alt2);
+      return atomid.get_from(res1, res2, alt, alt2);
+    };
+
     // check chirality
     for (const Restraints::Chirality& chirality : rt.chirs)
       if (chirality.sign != ChiralityType::Both) {
-        const Atom* a1 = get_from_with_alias(chirality.id_ctr, res1, res2, alt, aliasing1, aliasing2);
-        const Atom* a2 = get_from_with_alias(chirality.id1, res1, res2, alt, aliasing1, aliasing2);
-        const Atom* a3 = get_from_with_alias(chirality.id2, res1, res2, alt, aliasing1, aliasing2);
-        const Atom* a4 = get_from_with_alias(chirality.id3, res1, res2, alt, aliasing1, aliasing2);
+        const Atom* a1 = get_from(chirality.id_ctr);
+        const Atom* a2 = get_from(chirality.id1);
+        const Atom* a3 = get_from(chirality.id2);
+        const Atom* a4 = get_from(chirality.id3);
         if (a1 && a2 && a3 && a4) {
           double vol = calculate_chiral_volume(a1->pos, a2->pos,
                                                a3->pos, a4->pos);
@@ -96,10 +93,10 @@ struct ChemLink {
     // check fixed torsion angle (_chem_link_tor.period == 0)
     for (const Restraints::Torsion& tor : rt.torsions)
       if (tor.period == 0) {
-        const Atom* a1 = get_from_with_alias(tor.id1, res1, res2, alt, aliasing1, aliasing2);
-        const Atom* a2 = get_from_with_alias(tor.id2, res1, res2, alt, aliasing1, aliasing2);
-        const Atom* a3 = get_from_with_alias(tor.id3, res1, res2, alt, aliasing1, aliasing2);
-        const Atom* a4 = get_from_with_alias(tor.id4, res1, res2, alt, aliasing1, aliasing2);
+        const Atom* a1 = get_from(tor.id1);
+        const Atom* a2 = get_from(tor.id2);
+        const Atom* a3 = get_from(tor.id3);
+        const Atom* a4 = get_from(tor.id4);
         double z = 10.;
         if (a1 && a2 && a3 && a4)
           z = angle_z(calculate_dihedral(a1->pos, a2->pos, a3->pos, a4->pos),
@@ -580,6 +577,7 @@ struct MonLib {
              char alt, double min_bond_sq=0,
              ChemComp::Aliasing const** aliasing1=nullptr,
              ChemComp::Aliasing const** aliasing2=nullptr) const {
+    char alt2 = alt; // FIXME
     const ChemLink* best_link = nullptr;
     int best_score = -1;
     bool inverted = false;
@@ -595,7 +593,7 @@ struct MonLib {
           link_side_matches_residue(link.side2, res2.name, aliasing2) &&
           atom_match_with_alias(bond.id1.atom, atom1, aliasing1 ? *aliasing1 : nullptr) &&
           atom_match_with_alias(bond.id2.atom, atom2, aliasing2 ? *aliasing2 : nullptr)) {
-        int score = link.calculate_score(res1, &res2, alt,
+        int score = link.calculate_score(res1, &res2, alt, alt2,
                                          aliasing1 ? *aliasing1 : nullptr,
                                          aliasing2 ? *aliasing2 : nullptr);
         if (score > best_score) {
@@ -608,7 +606,7 @@ struct MonLib {
           link_side_matches_residue(link.side2, res1.name, aliasing1) &&
           atom_match_with_alias(bond.id1.atom, atom2, aliasing2 ? *aliasing2 : nullptr) &&
           atom_match_with_alias(bond.id2.atom, atom1, aliasing1 ? *aliasing1 : nullptr)) {
-        int score = link.calculate_score(res2, &res1, alt,
+        int score = link.calculate_score(res2, &res1, alt, alt2,
                                          aliasing2 ? *aliasing2 : nullptr,
                                          aliasing1 ? *aliasing1 : nullptr);
         if (score > best_score) {
@@ -636,8 +634,9 @@ struct MonLib {
 
   bool link_side_matches_residue(const ChemLink::Side& side,
                                  const std::string& res_name,
-                                 ChemComp::Aliasing const** aliasing=nullptr) const {
-    if (aliasing) *aliasing = nullptr;
+                                 ChemComp::Aliasing const** aliasing) const {
+    if (aliasing)
+      *aliasing = nullptr;
     if (!side.comp.empty())
       return side.comp == res_name;
     auto it = monomers.find(res_name);
@@ -646,7 +645,8 @@ struct MonLib {
         return true;
       for (const ChemComp::Aliasing& a : it->second.aliases)
         if (side.matches_group(a.group)) {
-          if (aliasing) *aliasing = &a;
+          if (aliasing)
+            *aliasing = &a;
           return true;
         }
     }
