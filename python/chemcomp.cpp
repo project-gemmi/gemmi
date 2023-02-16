@@ -149,13 +149,6 @@ void add_chemcomp(py::module& m) {
     .def("chiral_abs_volume", &Restraints::chiral_abs_volume)
     ;
 
-  chemcompatom
-    .def_readonly("id", &ChemComp::Atom::id)
-    .def_readonly("el", &ChemComp::Atom::el)
-    .def_readonly("charge", &ChemComp::Atom::charge)
-    .def_readonly("chem_type", &ChemComp::Atom::chem_type)
-    .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
-    ;
   py::enum_<ChemComp::Group>(chemcomp, "Group")
       .value("Peptide",    ChemComp::Group::Peptide)
       .value("PPeptide",   ChemComp::Group::PPeptide)
@@ -168,6 +161,17 @@ void add_chemcomp(py::module& m) {
       .value("Furanose",   ChemComp::Group::Furanose)
       .value("NonPolymer", ChemComp::Group::NonPolymer)
       .value("Null",       ChemComp::Group::Null);
+  chemcompatom
+    .def_readonly("id", &ChemComp::Atom::id)
+    .def_readonly("el", &ChemComp::Atom::el)
+    .def_readonly("charge", &ChemComp::Atom::charge)
+    .def_readonly("chem_type", &ChemComp::Atom::chem_type)
+    .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
+    ;
+  py::class_<ChemComp::Aliasing>(chemcomp, "Aliasing")
+    .def_readonly("group", &ChemComp::Aliasing::group)
+    .def("name_from_alias", &ChemComp::Aliasing::name_from_alias)
+    ;
   chemcomp
     .def_readwrite("name", &ChemComp::name)
     .def_readwrite("group", &ChemComp::group)
