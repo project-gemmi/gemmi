@@ -268,7 +268,7 @@ cif::Block prepare_crd(const Structure& st, const Topo& topo,
         vv.emplace_back(a.name);
         vv.emplace_back(1, a.altloc ? a.altloc : '.');
         vv.emplace_back(res.name);
-        vv.emplace_back(cif::quote(res.subchain));
+        vv.emplace_back(res.subchain);
         vv.emplace_back(auth_seq_id);
         vv.emplace_back(to_str(a.pos.x));
         vv.emplace_back(to_str(a.pos.y));
