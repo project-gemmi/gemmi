@@ -49,7 +49,9 @@ int ChemLink::calculate_score(const Residue& res1, const Residue* res2,
   return link_score;
 }
 
-static Restraints read_link_restraints(const cif::Block& block_) {
+namespace {
+
+Restraints read_link_restraints(const cif::Block& block_) {
   auto read_aid = [](cif::Table::Row& row, int n) {
     return Restraints::AtomId{cif::as_int(row[n]), row.str(n+1)};
   };
@@ -144,7 +146,7 @@ void insert_chemlinks_into(const cif::Document& doc, std::map<std::string,ChemLi
 }
 
 // Helper function. str is one of "add", "delete", "change".
-static int chem_mod_type(const std::string& str) {
+int chem_mod_type(const std::string& str) {
   char c = str[0] | 0x20;
   if (c != 'a' && c != 'd' && c != 'c')
     fail("Unexpected value of _chem_mod_*.function: " + str);
@@ -234,6 +236,8 @@ void insert_chemmods_into(const cif::Document& doc, std::map<std::string, ChemMo
       mods.emplace(mod.id, mod);
     }
 }
+
+} // anonymous namespace
 
 void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
   auto real = [&chemcomp, alias_group](const std::string& atom_id) -> const std::string& {
@@ -431,6 +435,19 @@ void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
         }
       }
     }
+}
+
+void MonLib::read_monomer_doc(const cif::Document& doc) {
+  // ChemComp
+  if (const cif::Block* block = doc.find_block("comp_list"))
+    for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
+      cc_groups.emplace(row.str(0), ChemComp::read_group(row.str(1)));
+  for (const cif::Block& block : doc.blocks)
+    add_monomer_if_present(block);
+  // ChemLink
+  insert_chemlinks_into(doc, links);
+  // ChemMod
+  insert_chemmods_into(doc, modifications);
 }
 
 namespace {

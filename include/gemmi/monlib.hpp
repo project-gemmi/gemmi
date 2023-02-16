@@ -6,7 +6,6 @@
 #ifndef GEMMI_MONLIB_HPP_
 #define GEMMI_MONLIB_HPP_
 
-#include <cctype>  // for tolower
 #include <map>
 #include <string>
 #include <vector>
@@ -87,13 +86,6 @@ struct ChemMod {
 
   void apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const;
 };
-
-
-void insert_chemlinks_into(const cif::Document& doc, std::map<std::string,ChemLink>& links);
-
-Restraints read_restraint_modifications(const cif::Block& block_);
-
-void insert_chemmods_into(const cif::Document& doc, std::map<std::string, ChemMod>& mods);
 
 struct EnerLib {
   enum class RadiusType {Vdw, Vdwh, Ion};
@@ -256,27 +248,7 @@ struct MonLib {
     return path;
   }
 
-  void read_monomer_doc(const cif::Document& doc) {
-    insert_chemcomps(doc);
-    insert_chemlinks(doc);
-    insert_chemmods(doc);
-  }
-
-  void insert_chemcomps(const cif::Document& doc) {
-    if (const cif::Block* block = doc.find_block("comp_list"))
-      for (auto row : const_cast<cif::Block*>(block)->find("_chem_comp.", {"id", "group"}))
-        cc_groups.emplace(row.str(0), ChemComp::read_group(row.str(1)));
-    for (const cif::Block& block : doc.blocks)
-      add_monomer_if_present(block);
-  }
-
-  void insert_chemlinks(const cif::Document& doc) {
-    insert_chemlinks_into(doc, links);
-  }
-
-  void insert_chemmods(const cif::Document& doc) {
-    insert_chemmods_into(doc, modifications);
-  }
+  void read_monomer_doc(const cif::Document& doc);
 
   void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
     const cif::Document& doc = (*read_cif)(path_);

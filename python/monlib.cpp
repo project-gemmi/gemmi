@@ -75,9 +75,7 @@ void add_monlib(py::module& m) {
          py::arg("min_bond_sq")=0.,
          py::return_value_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
-    .def("insert_chemcomps", &MonLib::insert_chemcomps)
-    .def("insert_chemlinks", &MonLib::insert_chemlinks)
-    .def("insert_chemmods", &MonLib::insert_chemmods)
+    .def("read_monomer_doc", &MonLib::read_monomer_doc)
     .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
       return self.read_monomer_cif(path, gemmi::read_cif_gz);
     })
