@@ -35,6 +35,14 @@ void add_monlib(py::module& m) {
                ChemComp::group_str(self.group) + ">";
     });
 
+  py::class_<ChemMod::AtomMod>(chemmod, "AtomMod")
+    .def_readwrite("func", &ChemMod::AtomMod::func) 
+    .def_readwrite("old_id", &ChemMod::AtomMod::old_id) 
+    .def_readwrite("new_id", &ChemMod::AtomMod::new_id) 
+    .def_readwrite("el", &ChemMod::AtomMod::el) 
+    .def_readwrite("charge", &ChemMod::AtomMod::charge) 
+    .def_readwrite("chem_type", &ChemMod::AtomMod::chem_type) 
+  ;
   chemlink
     .def(py::init<>())
     .def_readwrite("id", &ChemLink::id)
@@ -52,6 +60,7 @@ void add_monlib(py::module& m) {
     .def_readwrite("name", &ChemMod::name)
     .def_readwrite("comp_id", &ChemMod::comp_id)
     .def_readwrite("group_id", &ChemMod::group_id)
+    .def_readwrite("atom_mods", &ChemMod::atom_mods)
     .def_readwrite("rt", &ChemMod::rt)
     .def("__repr__", [](const ChemMod& self) {
         return "<gemmi.ChemMod " + self.id + ">";
