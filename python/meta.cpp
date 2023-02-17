@@ -251,7 +251,146 @@ void add_meta(py::module& m) {
     ;
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
 
+  py::class_<SoftwareItem> softitem(m, "SoftwareItem");
+  py::enum_<SoftwareItem::Classification>(softitem, "Classification")
+    .value("DataCollection", SoftwareItem::Classification::DataCollection)
+    .value("DataExtraction", SoftwareItem::Classification::DataExtraction)
+    .value("DataProcessing", SoftwareItem::Classification::DataProcessing)
+    .value("DataReduction", SoftwareItem::Classification::DataReduction)
+    .value("DataScaling", SoftwareItem::Classification::DataScaling)
+    .value("ModelBuilding", SoftwareItem::Classification::ModelBuilding)
+    .value("Phasing", SoftwareItem::Classification::Phasing)
+    .value("Refinement", SoftwareItem::Classification::Refinement)
+    .value("Unspecified", SoftwareItem::Classification::Unspecified)
+    ;
+  softitem
+    .def(py::init<>())
+    .def_readwrite("name", &SoftwareItem::name)
+    .def_readwrite("version", &SoftwareItem::version)
+    .def_readwrite("date", &SoftwareItem::date)
+    .def_readwrite("classification", &SoftwareItem::classification)
+    .def_readwrite("pdbx_ordinal", &SoftwareItem::pdbx_ordinal)
+    ;
+  py::bind_vector<std::vector<SoftwareItem>>(m, "SoftwareItemList");
+  py::class_<ReflectionsInfo>(m, "ReflectionsInfo")
+    .def(py::init<>())
+    .def_readwrite("resolution_high", &ReflectionsInfo::resolution_high)
+    .def_readwrite("resolution_low", &ReflectionsInfo::resolution_low)
+    .def_readwrite("completeness", &ReflectionsInfo::completeness)
+    .def_readwrite("redundancy", &ReflectionsInfo::redundancy)
+    .def_readwrite("r_merge", &ReflectionsInfo::r_merge)
+    .def_readwrite("r_sym", &ReflectionsInfo::r_sym)
+    .def_readwrite("mean_I_over_sigma", &ReflectionsInfo::mean_I_over_sigma)
+    ;
+  py::bind_vector<std::vector<ReflectionsInfo>>(m, "ReflectionsInfoList");
+  py::class_<ExperimentInfo>(m, "ExperimentInfo")
+    .def(py::init<>())
+    .def_readwrite("method", &ExperimentInfo::method)
+    .def_readwrite("number_of_crystals", &ExperimentInfo::number_of_crystals)
+    .def_readwrite("unique_reflections", &ExperimentInfo::unique_reflections)
+    .def_readwrite("reflections", &ExperimentInfo::reflections)
+    .def_readwrite("b_wilson", &ExperimentInfo::b_wilson)
+    .def_readwrite("shells", &ExperimentInfo::shells)
+    .def_readwrite("diffraction_ids", &ExperimentInfo::diffraction_ids)
+    ;
+  py::bind_vector<std::vector<ExperimentInfo>>(m, "ExperimentInfoList");
+  py::class_<DiffractionInfo>(m, "DiffractionInfo")
+    .def(py::init<>())
+    .def_readwrite("id", &DiffractionInfo::id)
+    .def_readwrite("temperature", &DiffractionInfo::temperature)
+    .def_readwrite("source", &DiffractionInfo::source)
+    .def_readwrite("source_type", &DiffractionInfo::source_type)
+    .def_readwrite("synchrotron", &DiffractionInfo::synchrotron)
+    .def_readwrite("beamline", &DiffractionInfo::beamline)
+    .def_readwrite("wavelengths", &DiffractionInfo::wavelengths)
+    .def_readwrite("scattering_type", &DiffractionInfo::scattering_type)
+    .def_readwrite("mono_or_laue", &DiffractionInfo::mono_or_laue)
+    .def_readwrite("monochromator", &DiffractionInfo::monochromator)
+    .def_readwrite("collection_date", &DiffractionInfo::collection_date)
+    .def_readwrite("optics", &DiffractionInfo::optics)
+    .def_readwrite("detector", &DiffractionInfo::detector)
+    .def_readwrite("detector_make", &DiffractionInfo::detector_make)
+    ;
+  py::bind_vector<std::vector<DiffractionInfo>>(m, "DiffractionInfoList");
+  py::class_<CrystalInfo>(m, "CrystalInfo")
+    .def(py::init<>())
+    .def_readwrite("id", &CrystalInfo::id)
+    .def_readwrite("description", &CrystalInfo::description)
+    .def_readwrite("ph", &CrystalInfo::ph)
+    .def_readwrite("ph_range", &CrystalInfo::ph_range)
+    .def_readwrite("diffractions", &CrystalInfo::diffractions)
+    ;
+  py::bind_vector<std::vector<CrystalInfo>>(m, "CrystalInfoList");
+  py::class_<TlsGroup> tlsgroup(m, "TlsGroup");
+  py::class_<TlsGroup::Selection>(tlsgroup, "Selection")
+    .def(py::init<>())
+    .def_readwrite("chain", &TlsGroup::Selection::chain)
+    .def_readwrite("res_begin", &TlsGroup::Selection::res_begin)
+    .def_readwrite("res_end", &TlsGroup::Selection::res_end)
+    .def_readwrite("details", &TlsGroup::Selection::details)
+    ;
+  py::bind_vector<std::vector<TlsGroup::Selection>>(tlsgroup, "SelectionList");
+  tlsgroup
+    .def(py::init<>())
+    .def_readwrite("id", &TlsGroup::id)
+    .def_readwrite("selections", &TlsGroup::selections)
+    .def_readwrite("origin", &TlsGroup::origin)
+    .def_readwrite("T", &TlsGroup::T)
+    .def_readwrite("L", &TlsGroup::L)
+    .def_readwrite("S", &TlsGroup::S)
+    ;
+  py::bind_vector<std::vector<TlsGroup>>(m, "TlsGroupList");
+  py::class_<BasicRefinementInfo>(m, "BasicRefinementInfo")
+    .def(py::init<>())
+    .def_readwrite("resolution_high", &BasicRefinementInfo::resolution_high)
+    .def_readwrite("resolution_low", &BasicRefinementInfo::resolution_low)
+    .def_readwrite("completeness", &BasicRefinementInfo::completeness)
+    .def_readwrite("reflection_count", &BasicRefinementInfo::reflection_count)
+    .def_readwrite("rfree_set_count", &BasicRefinementInfo::rfree_set_count)
+    .def_readwrite("r_all", &BasicRefinementInfo::r_all)
+    .def_readwrite("r_work", &BasicRefinementInfo::r_work)
+    .def_readwrite("r_free", &BasicRefinementInfo::r_free)
+    ;
+  py::bind_vector<std::vector<BasicRefinementInfo>>(m, "BasicRefinementInfoList");
+  py::class_<RefinementInfo, BasicRefinementInfo> refinfo(m, "RefinementInfo");
+  py::class_<RefinementInfo::Restr>(refinfo, "Restr")
+    .def(py::init<const std::string&>())
+    .def_readwrite("name", &RefinementInfo::Restr::name)
+    .def_readwrite("count", &RefinementInfo::Restr::count)
+    .def_readwrite("weight", &RefinementInfo::Restr::weight)
+    .def_readwrite("function", &RefinementInfo::Restr::function)
+    .def_readwrite("dev_ideal", &RefinementInfo::Restr::dev_ideal)
+    ;
+  py::bind_vector<std::vector<RefinementInfo::Restr>>(refinfo, "RestrList");
+  refinfo
+    .def(py::init<>())
+    .def_readwrite("id", &RefinementInfo::id)
+    .def_readwrite("cross_validation_method", &RefinementInfo::cross_validation_method)
+    .def_readwrite("rfree_selection_method", &RefinementInfo::rfree_selection_method)
+    .def_readwrite("bin_count", &RefinementInfo::bin_count)
+    .def_readwrite("bins", &RefinementInfo::bins)
+    .def_readwrite("mean_b", &RefinementInfo::mean_b)
+    .def_readwrite("aniso_b", &RefinementInfo::aniso_b)
+    .def_readwrite("luzzati_error", &RefinementInfo::luzzati_error)
+    .def_readwrite("dpi_blow_r", &RefinementInfo::dpi_blow_r)
+    .def_readwrite("dpi_blow_rfree", &RefinementInfo::dpi_blow_rfree)
+    .def_readwrite("dpi_cruickshank_r", &RefinementInfo::dpi_cruickshank_r)
+    .def_readwrite("dpi_cruickshank_rfree", &RefinementInfo::dpi_cruickshank_rfree)
+    .def_readwrite("cc_fo_fc", &RefinementInfo::cc_fo_fc)
+    .def_readwrite("cc_fo_fc_free", &RefinementInfo::cc_fo_fc_free)
+    .def_readwrite("restr_stats", &RefinementInfo::restr_stats)
+    .def_readwrite("tls_groups", &RefinementInfo::tls_groups)
+    .def_readwrite("remarks", &RefinementInfo::remarks)
+    ;
+  py::bind_vector<std::vector<RefinementInfo>>(m, "RefinementInfoList");
   py::class_<Metadata>(m, "Metadata")
     .def_readwrite("authors", &Metadata::authors)
+    .def_readwrite("experiments", &Metadata::experiments)
+    .def_readwrite("crystals", &Metadata::crystals)
+    .def_readwrite("refinement", &Metadata::refinement)
+    .def_readwrite("software", &Metadata::software)
+    .def_readwrite("solved_by", &Metadata::solved_by)
+    .def_readwrite("starting_model", &Metadata::starting_model)
+    .def_readwrite("remark_300_detail", &Metadata::remark_300_detail)
     ;
 }
