@@ -295,6 +295,7 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
       // If all atoms are in the same plane (sum of angles is 360 degree)
       // the calculations can be simplified.
       double theta3 = ang3->radians();
+
       // The sum of ideal angles in a plane is not always exactly 360 deg.
       if (theta1 + theta2 + theta3 > rad(360 - 3)) {
         Vec3 v12 = known[0].pos - atom.pos;
@@ -315,6 +316,31 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
         }
         return;
       }
+
+      // Two hydrogens in tetrahedral configuration
+      if (hs.size() == 2)
+        if (const Angle* hh = topo.take_angle(hs[0].ptr, &atom, hs[1].ptr)) {
+          // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
+          // sec. 2.3. 2H-tetrahedral configuration
+          double delta = hh->radians() / 2;
+          double c0 = std::cos(theta3);
+          double c1 = std::cos(theta1);
+          double c2 = std::cos(theta2);
+          double den = 1 / (1 - c0*c0);
+          double a = den * (c1 - c0 * c2);
+          double b = den * (c2 - c0 * c1);
+          // I think the paper defines u10 and u20 in the opposite direction,
+          // but I had to reverse it somewhere to make it work.
+          Vec3 u10 = (known[0].pos - atom.pos).normalized();
+          Vec3 u20 = (known[1].pos - atom.pos).normalized();
+          double dist_sin = hs[0].dist * std::sin(delta);
+          double dist_cos = hs[0].dist * std::cos(delta);
+          Vec3 v0s = u10.cross(u20).changed_magnitude(dist_sin);
+          Vec3 d0c = (a * u10 + b * u20).changed_magnitude(dist_cos);
+          hs[0].pos = atom.pos + Position(d0c + v0s);
+          hs[1].pos = atom.pos + Position(d0c - v0s);
+          return;
+        }
     }
     auto pos = position_from_two_angles(atom.pos, known[0].pos, known[1].pos,
                                         hs[0].dist, theta1, theta2);
@@ -330,7 +356,7 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
           }
         } else { // known.size() > 2
           const Atom* a3 = known[2].ptr;
-          if (const Angle* a = topo.take_angle(a3, &atom, hs[0].ptr)){
+          if (const Angle* a = topo.take_angle(a3, &atom, hs[0].ptr)) {
             double val1 = calculate_angle(a3->pos, atom.pos, pos.first);
             double val2 = calculate_angle(a3->pos, atom.pos, pos.second);
             double diff1 = angle_abs_diff(val1, a->value);
@@ -343,6 +369,8 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
         }
         break;
       case 2:
+        // Normally, 2+2 case is handled above as tetrahedral configuration.
+        // We can be here only if the angle between H's is missing.
         hs[0].pos = pos.first;
         hs[1].pos = pos.second;
         break;
