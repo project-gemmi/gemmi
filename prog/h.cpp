@@ -23,7 +23,7 @@ namespace cif = gemmi::cif;
 
 namespace {
 
-enum OptionIndex { Monomers=4, RemoveH, KeepH, Water, Sort };
+enum OptionIndex { Monomers=4, FormatIn, RemoveH, KeepH, Water, Sort };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,6 +38,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Verbose],
   { Monomers, 0, "", "monomers", Arg::Required,
     "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
+  { FormatIn, 0, "", "format", Arg::CoorFormat,
+    "  --format=FORMAT  \tInput format (default: from the file extension)." },
   { RemoveH, 0, "", "remove", Arg::None,
     "  --remove  \tOnly remove hydrogens." },
   { KeepH, 0, "", "keep", Arg::None,
@@ -80,7 +82,9 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   if (p.options[Verbose])
     std::printf("Reading coordinates from %s\n", input.c_str());
-  gemmi::CoorFormat input_format = gemmi::coor_format_from_ext_gz(input);
+  gemmi::CoorFormat input_format = coor_format_as_enum(p.options[FormatIn]);
+  if (input_format == gemmi::CoorFormat::Unknown)
+    input_format = gemmi::coor_format_from_ext_gz(input);
   gemmi::CoorFormat output_format = gemmi::coor_format_from_ext_gz(output);
   bool preserve_doc = (input_format == gemmi::CoorFormat::Mmcif &&
                        output_format == gemmi::CoorFormat::Mmcif);
