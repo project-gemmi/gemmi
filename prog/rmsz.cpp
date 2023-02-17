@@ -81,8 +81,8 @@ double check_restraint(const Topo::Rule rule,
         if (verbosity >= 0) {
           int n = printf("%s bond %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
           if (verbosity > 0)
-            printf(" %*.3f -> %.3f", std::max(50 - n, 7),
-                   t.restr->value, t.calculate());
+            printf(verbosity < 2 ? " %*.3f -> %.3f" : " %*g -> %g",
+                   std::max(50 - n, 7), t.restr->value, t.calculate());
           putchar('\n');
         }
       }
@@ -98,8 +98,8 @@ double check_restraint(const Topo::Rule rule,
         if (verbosity >= 0) {
           int n = printf("%s angle %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
           if (verbosity > 0)
-            printf(" %*.1f -> %.1f", std::max(50 - n, 7),
-                   t.restr->value, gemmi::deg(t.calculate()));
+            printf(verbosity < 2 ? " %*.1f -> %.1f" : " %*g -> %g",
+                   std::max(50 - n, 7), t.restr->value, gemmi::deg(t.calculate()));
           putchar('\n');
         }
       }
@@ -116,8 +116,8 @@ double check_restraint(const Topo::Rule rule,
           int n = printf("%s torsion %s: |Z|=%.1f",
                          tag, t.restr->str().c_str(), z);
           if (verbosity > 0)
-            printf(" %*.1f -> %.1f", std::max(50 - n, 7),
-                   t.restr->value, gemmi::deg(t.calculate()));
+            printf(verbosity < 2 ? " %*.1f -> %.1f" : " %*g -> %g",
+                   std::max(50 - n, 7), t.restr->value, gemmi::deg(t.calculate()));
           putchar('\n');
         }
       }
