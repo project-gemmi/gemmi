@@ -85,7 +85,9 @@ struct Vec3 {
   double cos_angle(const Vec3& o) const {
     return dot(o) / std::sqrt(length_sq() * o.length_sq());
   }
-  double angle(const Vec3& o) const { return std::acos(cos_angle(o)); }
+  double angle(const Vec3& o) const {
+    return std::acos(std::max(-1., std::min(1., cos_angle(o))));
+  }
   bool approx(const Vec3& o, double epsilon) const {
     return std::fabs(x - o.x) <= epsilon &&
            std::fabs(y - o.y) <= epsilon &&
