@@ -281,7 +281,7 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
       for (BondedAtom& bonded_h : hs)
         bonded_h.ptr->occ = 0;
   // ==== two heavy atoms and hydrogens ====
-  } else {  // known.size() >= 2
+  } else if (known.size() == 2) {
     const Angle* ang1 = topo.take_angle(hs[0].ptr, &atom, known[0].ptr);
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
@@ -345,29 +345,17 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     auto pos = position_from_two_angles(atom.pos, known[0].pos, known[1].pos,
                                         hs[0].dist, theta1, theta2);
     switch (hs.size()) {
-      case 1:
-        if (known.size() == 2) {
-          const Topo::Chirality* chir = topo.get_chirality(&atom);
-          if (chir && chir->restr->sign != ChiralityType::Both) {
-            hs[0].pos = chir->check() ? pos.first : pos.second;
-          } else {
-            hs[0].pos = pos.first;
-            hs[0].ptr->occ = 0;
-          }
-        } else { // known.size() > 2
-          const Atom* a3 = known[2].ptr;
-          if (const Angle* a = topo.take_angle(a3, &atom, hs[0].ptr)) {
-            double val1 = calculate_angle(a3->pos, atom.pos, pos.first);
-            double val2 = calculate_angle(a3->pos, atom.pos, pos.second);
-            double diff1 = angle_abs_diff(val1, a->value);
-            double diff2 = angle_abs_diff(val2, a->value);
-            hs[0].pos = diff1 < diff2 ? pos.first : pos.second;
-          } else {
-            hs[0].pos = pos.first;
-            hs[0].ptr->occ = 0;
-          }
+      case 1: {
+        hs[0].pos = pos.first;
+        const Topo::Chirality* chir = topo.get_chirality(&atom);
+        if (chir && chir->restr->sign != ChiralityType::Both) {
+          if (!chir->check())
+            hs[0].pos = pos.second;
+        } else {
+          hs[0].ptr->occ = 0;
         }
         break;
+      }
       case 2:
         // Normally, 2+2 case is handled above as tetrahedral configuration.
         // We can be here only if the angle between H's is missing.
@@ -377,6 +365,23 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
       default:
         giveup("Unusual: atom bonded to 2+ heavy atoms and 3+ hydrogens.");
     }
+  } else {  // known.size() >= 3
+    if (hs.size() > 1)
+      giveup("Unusual: atom bonded to 3+ heavy atoms and 2+ hydrogens.");
+    // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
+    // sec. 2.4. 1H-tetrahedral configuration
+    Vec3 u10 = (known[0].pos - atom.pos).normalized();
+    Vec3 u20 = (known[1].pos - atom.pos).normalized();
+    Vec3 u30 = (known[2].pos - atom.pos).normalized();
+    auto cos_tetrahedral = [&](size_t n) {
+      const Angle* angle = topo.take_angle(known[n].ptr, &atom, hs[0].ptr);
+      return angle ? std::cos(angle->radians()) : -1./3.;
+    };
+    SMat33<double> m(1., 1., 1., u10.dot(u20), u10.dot(u30), u20.dot(u30));
+    Vec3 rhs(cos_tetrahedral(0), cos_tetrahedral(1), cos_tetrahedral(2));
+    Vec3 abc = m.inverse().multiply(rhs);
+    Vec3 h_dir = abc.x * u10 + abc.y * u20 + abc.z * u30;
+    hs[0].pos = atom.pos + Position(h_dir.changed_magnitude(hs[0].dist));
   }
 }
 
