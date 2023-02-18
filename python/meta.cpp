@@ -271,7 +271,6 @@ void add_meta(py::module& m) {
     .def_readwrite("classification", &SoftwareItem::classification)
     .def_readwrite("pdbx_ordinal", &SoftwareItem::pdbx_ordinal)
     ;
-  py::bind_vector<std::vector<SoftwareItem>>(m, "SoftwareItemList");
   py::class_<ReflectionsInfo>(m, "ReflectionsInfo")
     .def(py::init<>())
     .def_readwrite("resolution_high", &ReflectionsInfo::resolution_high)
@@ -282,7 +281,6 @@ void add_meta(py::module& m) {
     .def_readwrite("r_sym", &ReflectionsInfo::r_sym)
     .def_readwrite("mean_I_over_sigma", &ReflectionsInfo::mean_I_over_sigma)
     ;
-  py::bind_vector<std::vector<ReflectionsInfo>>(m, "ReflectionsInfoList");
   py::class_<ExperimentInfo>(m, "ExperimentInfo")
     .def(py::init<>())
     .def_readwrite("method", &ExperimentInfo::method)
@@ -293,7 +291,6 @@ void add_meta(py::module& m) {
     .def_readwrite("shells", &ExperimentInfo::shells)
     .def_readwrite("diffraction_ids", &ExperimentInfo::diffraction_ids)
     ;
-  py::bind_vector<std::vector<ExperimentInfo>>(m, "ExperimentInfoList");
   py::class_<DiffractionInfo>(m, "DiffractionInfo")
     .def(py::init<>())
     .def_readwrite("id", &DiffractionInfo::id)
@@ -311,7 +308,6 @@ void add_meta(py::module& m) {
     .def_readwrite("detector", &DiffractionInfo::detector)
     .def_readwrite("detector_make", &DiffractionInfo::detector_make)
     ;
-  py::bind_vector<std::vector<DiffractionInfo>>(m, "DiffractionInfoList");
   py::class_<CrystalInfo>(m, "CrystalInfo")
     .def(py::init<>())
     .def_readwrite("id", &CrystalInfo::id)
@@ -320,7 +316,6 @@ void add_meta(py::module& m) {
     .def_readwrite("ph_range", &CrystalInfo::ph_range)
     .def_readwrite("diffractions", &CrystalInfo::diffractions)
     ;
-  py::bind_vector<std::vector<CrystalInfo>>(m, "CrystalInfoList");
   py::class_<TlsGroup> tlsgroup(m, "TlsGroup");
   py::class_<TlsGroup::Selection>(tlsgroup, "Selection")
     .def(py::init<>())
@@ -329,7 +324,6 @@ void add_meta(py::module& m) {
     .def_readwrite("res_end", &TlsGroup::Selection::res_end)
     .def_readwrite("details", &TlsGroup::Selection::details)
     ;
-  py::bind_vector<std::vector<TlsGroup::Selection>>(tlsgroup, "SelectionList");
   tlsgroup
     .def(py::init<>())
     .def_readwrite("id", &TlsGroup::id)
@@ -339,7 +333,6 @@ void add_meta(py::module& m) {
     .def_readwrite("L", &TlsGroup::L)
     .def_readwrite("S", &TlsGroup::S)
     ;
-  py::bind_vector<std::vector<TlsGroup>>(m, "TlsGroupList");
   py::class_<BasicRefinementInfo>(m, "BasicRefinementInfo")
     .def(py::init<>())
     .def_readwrite("resolution_high", &BasicRefinementInfo::resolution_high)
@@ -351,7 +344,6 @@ void add_meta(py::module& m) {
     .def_readwrite("r_work", &BasicRefinementInfo::r_work)
     .def_readwrite("r_free", &BasicRefinementInfo::r_free)
     ;
-  py::bind_vector<std::vector<BasicRefinementInfo>>(m, "BasicRefinementInfoList");
   py::class_<RefinementInfo, BasicRefinementInfo> refinfo(m, "RefinementInfo");
   py::class_<RefinementInfo::Restr>(refinfo, "Restr")
     .def(py::init<const std::string&>())
@@ -361,7 +353,6 @@ void add_meta(py::module& m) {
     .def_readwrite("function", &RefinementInfo::Restr::function)
     .def_readwrite("dev_ideal", &RefinementInfo::Restr::dev_ideal)
     ;
-  py::bind_vector<std::vector<RefinementInfo::Restr>>(refinfo, "RestrList");
   refinfo
     .def(py::init<>())
     .def_readwrite("id", &RefinementInfo::id)
@@ -382,7 +373,6 @@ void add_meta(py::module& m) {
     .def_readwrite("tls_groups", &RefinementInfo::tls_groups)
     .def_readwrite("remarks", &RefinementInfo::remarks)
     ;
-  py::bind_vector<std::vector<RefinementInfo>>(m, "RefinementInfoList");
   py::class_<Metadata>(m, "Metadata")
     .def_readwrite("authors", &Metadata::authors)
     .def_readwrite("experiments", &Metadata::experiments)
