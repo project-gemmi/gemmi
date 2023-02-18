@@ -377,7 +377,7 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
       const Angle* angle = topo.take_angle(known[n].ptr, &atom, hs[0].ptr);
       return angle ? std::cos(angle->radians()) : -1./3.;
     };
-    SMat33<double> m(1., 1., 1., u10.dot(u20), u10.dot(u30), u20.dot(u30));
+    SMat33<double> m{1., 1., 1., u10.dot(u20), u10.dot(u30), u20.dot(u30)};
     Vec3 rhs(cos_tetrahedral(0), cos_tetrahedral(1), cos_tetrahedral(2));
     Vec3 abc = m.inverse().multiply(rhs);
     Vec3 h_dir = abc.x * u10 + abc.y * u20 + abc.z * u30;
