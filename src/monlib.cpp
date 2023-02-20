@@ -175,14 +175,15 @@ Restraints read_restraint_modifications(const cif::Block& block_) {
                          {1, row.str(2)}, {1, row.str(3)},
                          cif::as_number(row[4]), cif::as_number(row[5])});
   for (auto row : block.find("_chem_mod_tor.",
-                              {"function", "id", "atom_id_1",
+                              {"function", "?id", "atom_id_1",
                                "atom_id_2", "atom_id_3", "atom_id_4",
                                "new_value_angle", "new_value_angle_esd",
-                               "new_period"}))
-    rt.torsions.push_back({row.str(1), {chem_mod_type(row[0]), row.str(2)},
+                               "?new_period"}))
+    rt.torsions.push_back({row.has(1) ? row.str(1) : "",
+                           {chem_mod_type(row[0]), row.str(2)},
                            {1, row.str(3)}, {1, row.str(4)}, {1, row.str(5)},
                            cif::as_number(row[6]), cif::as_number(row[7]),
-                           cif::as_int(row[8])});
+                           row.has(8) ? cif::as_int(row[8]) : -1});
   for (auto row : block.find("_chem_mod_chir.",
                              {"function", "atom_id_centre", "atom_id_1",
                               "atom_id_2", "atom_id_3",
