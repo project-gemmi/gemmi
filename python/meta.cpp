@@ -375,12 +375,12 @@ void add_meta(py::module& m) {
     ;
   py::class_<Metadata>(m, "Metadata")
     .def_readwrite("authors", &Metadata::authors)
-    .def_readwrite("experiments", &Metadata::experiments)
-    .def_readwrite("crystals", &Metadata::crystals)
+    //.def_readwrite("experiments", &Metadata::experiments)
+    //.def_readwrite("crystals", &Metadata::crystals)
     .def_readwrite("refinement", &Metadata::refinement)
     .def_readwrite("software", &Metadata::software)
-    .def_readwrite("solved_by", &Metadata::solved_by)
-    .def_readwrite("starting_model", &Metadata::starting_model)
-    .def_readwrite("remark_300_detail", &Metadata::remark_300_detail)
+    //.def_readwrite("solved_by", &Metadata::solved_by)
+    //.def_readwrite("starting_model", &Metadata::starting_model)
+    //.def_readwrite("remark_300_detail", &Metadata::remark_300_detail)
     ;
 }
