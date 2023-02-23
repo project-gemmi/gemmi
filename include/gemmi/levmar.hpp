@@ -145,6 +145,8 @@ struct LevMar {
               100. * (new_wssr / wssr - 1.), lambda);
       if (new_wssr < wssr)
         debug_print("", temp_beta);
+#else
+      (void) iter;
 #endif
       if (new_wssr < wssr) {
         double rel_change = (wssr - new_wssr) / wssr;
