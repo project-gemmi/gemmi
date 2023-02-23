@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 project(gemmi C CXX)
 
 option(USE_FORTRAN "Build Fortran bindings" OFF)
@@ -10,10 +10,20 @@ option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 # uncomment to show compilation times for each compilation unit
 #set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
 
-#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
+endif()
+
+# By default, use LTO for non-debug builds.
+if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+  include(CheckIPOSupported)
+  check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)
+  if(is_ipo_supported)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
+  else()
+    message(STATUS "Interprocedural optimization not supported: ${error}")
+  endif()
 endif()
 
 if (INFO)
@@ -66,9 +76,6 @@ endif()
 # avoid CMake warning about unset policy
 if (POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
-endif()
-if (POLICY CMP0069)
-  cmake_policy(SET CMP0069 NEW)
 endif()
 
 find_package(ZLIB)
