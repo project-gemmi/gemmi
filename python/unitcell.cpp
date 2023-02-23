@@ -215,7 +215,9 @@ void add_unitcell(py::module& m) {
     });
   py::class_<Fractional, Vec3>(m, "Fractional")
     .def(py::init<double,double,double>())
+    .def(py::init<const Vec3&>())
     .def("wrap_to_unit", &Fractional::wrap_to_unit)
+    .def("wrap_to_zero", &Fractional::wrap_to_zero)
     .def("__getitem__", (double (Fractional::*)(int) const) &Fractional::at)
     .def(py::self + py::self)
     .def(py::self - py::self)
