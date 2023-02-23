@@ -157,11 +157,10 @@ struct TableS3 {
     const double smax_ml3 = smax_ml * smax_ml * smax_ml;
 
     // from Refmac SUBROUTINE DEFINE_BINS_FOR_ML in oppro_allocate.f
-    double binsize_ml = 0.0005;
+    const double binsize_ml = 0.0005;
     int nbin_ml =  std::max(1, std::min(500,
                                         (int)((smax_ml*smax_ml - smin_ml*smin_ml)/binsize_ml)+1
                                         ));
-    binsize_ml = (smax_ml*smax_ml - smin_ml*smin_ml) / nbin_ml;
     int nbin_rad = nbin_ml;
     const double ds3 = (smax_ml3 - smin_ml3) / nbin_rad;
 
