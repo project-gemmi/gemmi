@@ -184,7 +184,7 @@ To get all columns of the specified type use:
 .. doctest::
 
   >>> mtz.columns_with_type('Q')
-  MtzColumnRefs[<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
+  [<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
 
 Different programs use different column names for the same thing.
 To access the column free set flags you may use function ``rfree_column``

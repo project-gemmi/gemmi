@@ -17,18 +17,12 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Batch>)
-PYBIND11_MAKE_OPAQUE(std::vector<const Mtz::Column*>)
 
 namespace gemmi {
   // operator<< is used by stl_bind for vector's __repr__
   inline std::ostream& operator<< (std::ostream& os, const Mtz::Dataset& ds) {
     os << "<gemmi.Mtz.Dataset " << ds.id << ' ' << ds.project_name
        << '/' << ds.crystal_name << '/' << ds.dataset_name << '>';
-    return os;
-  }
-
-  inline std::ostream& operator<< (std::ostream& os, const Mtz::Column* col) {
-    os << "<gemmi.Mtz.Column " << col->label << " type " << col->type << '>';
     return os;
   }
 }
@@ -73,7 +67,6 @@ void add_mtz(py::module& m) {
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
   py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
   py::bind_vector<std::vector<Mtz::Batch>>(m, "MtzBatches");
-  py::bind_vector<std::vector<const Mtz::Column*>>(m, "MtzColumnRefs");
 
   mtz
     .def(py::init<bool>(), py::arg("with_base")=false)
@@ -119,7 +112,7 @@ void add_mtz(py::module& m) {
     .def("rfree_column", (Mtz::Column* (Mtz::*)()) &Mtz::rfree_column,
           py::return_value_policy::reference_internal)
     .def("columns_with_type", &Mtz::columns_with_type,
-         py::arg("type"), py::keep_alive<0, 1>())
+         py::arg("type"), py::return_value_policy::reference_internal)
     .def("column_labels", [](const Mtz& self) {
         std::vector<std::string> labels;
         labels.reserve(self.columns.size());
@@ -303,9 +296,12 @@ void add_mtz(py::module& m) {
     .def("__iter__", [](Mtz::Column& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def("__repr__", [](const Mtz::Column& self) { return tostr(&self); })
+    .def("__repr__", [](const Mtz::Column& self) {
+        return cat("<gemmi.Mtz.Column ", self.label, " type ", self.type, '>');
+    })
     ;
   pyMtzBatch
+    .def(py::init<>())
     .def_readwrite("number", &Mtz::Batch::number)
     .def_property_readonly("dataset_id", &Mtz::Batch::dataset_id)
     .def_readwrite("title", &Mtz::Batch::title)
