@@ -271,8 +271,8 @@ struct GeomTarget {
       for (size_t j = 0; j < pairs.size(); ++j) {
         for (size_t k = 0; k < 6; ++k)
           for (size_t l = 0; l < 6; ++l, ++i) {
-            row[i] = 3 * pairs[j].second + l;
-            col[i] = 3 * pairs[j].first + k;
+            row[i] = offset + 6 * pairs[j].second + l;
+            col[i] = offset + 6 * pairs[j].first + k;
           }
       }
     }
