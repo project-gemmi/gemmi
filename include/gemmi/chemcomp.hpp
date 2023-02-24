@@ -506,22 +506,19 @@ struct ChemComp {
 };
 
 inline BondType bond_type_from_string(const std::string& s) {
-  if (istarts_with(s, "sing"))
-    return BondType::Single;
-  if (istarts_with(s, "doub"))
-    return BondType::Double;
-  if (istarts_with(s, "trip"))
-    return BondType::Triple;
-  if (istarts_with(s, "arom"))
-    return BondType::Aromatic;
-  if (istarts_with(s, "metal"))
-    return BondType::Metal;
-  if (istarts_with(s, "delo") || s == "1.5")
-    return BondType::Deloc;
+  if (s.size() >= 3)
+    switch (ialpha4_id(s.c_str())) {
+      case ialpha4_id("sing"): return BondType::Single;
+      case ialpha4_id("doub"): return BondType::Double;
+      case ialpha4_id("trip"): return BondType::Triple;
+      case ialpha4_id("arom"): return BondType::Aromatic;
+      case ialpha4_id("meta"): return BondType::Metal;
+      case ialpha4_id("delo"): return BondType::Deloc;
+      case ialpha4_id("1.5"):  return BondType::Deloc; // rarely used
+      // program PDB2TNT produces a restraint file with bond type 'coval'
+      case ialpha4_id("cova"):  return BondType::Unspec;
+    }
   if (cif::is_null(s))
-    return BondType::Unspec;
-  // program PDB2TNT produces a restraint file with bond type 'coval'
-  if (s == "coval")
     return BondType::Unspec;
   throw std::out_of_range("Unexpected bond type: " + s);
 }
