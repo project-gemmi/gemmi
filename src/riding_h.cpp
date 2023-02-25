@@ -286,62 +286,63 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
 
-    if (!ang1 || !ang2)
-      giveup(cat("Missing angle restraint ", hs[0].ptr->name, '-', atom.name,
-                   '-', known[ang1 ? 1 : 0].ptr->name, ".\n"));
+    if (!ang1 || !ang2 || !ang3) {
+      const Atom* ptr1 = (!ang1 || !ang2 ? hs[0].ptr : known[0].ptr);
+      const Atom* ptr2 = (!ang1 ? known[0].ptr : known[1].ptr);
+      giveup(cat("Missing angle restraint ", ptr1->name, '-', atom.name,
+                 '-', ptr2->name, ".\n"));
+    }
     double theta1 = ang1->radians();
     double theta2 = ang2->radians();
-    if (ang3) {
-      // If all atoms are in the same plane (sum of angles is 360 degree)
-      // the calculations can be simplified.
-      double theta3 = ang3->radians();
+    double theta3 = ang3->radians();
 
-      // The sum of ideal angles in a plane is not always exactly 360 deg.
-      if (theta1 + theta2 + theta3 > rad(360 - 3)) {
-        Vec3 v12 = known[0].pos - atom.pos;
-        Vec3 v13 = known[1].pos - atom.pos;
-        // theta3 is the ideal restraint value, cur_theta3 is the current value
-        double cur_theta3 = v12.angle(v13);
-        double ratio = (2 * pi() - cur_theta3) / (theta1 + theta2);
-        Vec3 axis = v13.cross(v12).normalized();
-        Vec3 v14 = rotate_about_axis(v12, axis, theta1 * ratio);
-        hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
-        if (hs.size() > 1) {
-          topo.err("Unhandled topology of " + std::to_string(hs.size()) +
-                   " hydrogens bonded to " + atom.name);
-          for (size_t i = 1; i < hs.size(); ++i) {
-            hs[i].ptr->occ = 0;
-            hs[i].ptr->calc_flag = CalcFlag::Dummy;
-          }
+    // Co-planar case. The sum of angles should be 360 degrees,
+    // but in some cif files it differs slightly.
+    if (theta1 + theta2 + theta3 > rad(360 - 3)) {
+      Vec3 v12 = known[0].pos - atom.pos;
+      Vec3 v13 = known[1].pos - atom.pos;
+      // theta3 is the ideal restraint value, cur_theta3 is the current value
+      double cur_theta3 = v12.angle(v13);
+      double ratio = (2 * pi() - cur_theta3) / (theta1 + theta2);
+      Vec3 axis = v13.cross(v12).normalized();
+      Vec3 v14 = rotate_about_axis(v12, axis, theta1 * ratio);
+      hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
+      if (hs.size() > 1) {
+        topo.err("Unhandled topology of " + std::to_string(hs.size()) +
+                 " hydrogens bonded to " + atom.name);
+        for (size_t i = 1; i < hs.size(); ++i) {
+          hs[i].ptr->occ = 0;
+          hs[i].ptr->calc_flag = CalcFlag::Dummy;
         }
+      }
+      return;
+    }
+
+    // Two hydrogens in tetrahedral configuration
+    if (hs.size() == 2)
+      if (const Angle* hh = topo.take_angle(hs[0].ptr, &atom, hs[1].ptr)) {
+        // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
+        // sec. 2.3. 2H-tetrahedral configuration
+        double delta = hh->radians() / 2;
+        double c0 = std::cos(theta3);
+        double c1 = std::cos(theta1);
+        double c2 = std::cos(theta2);
+        double den = 1 / (1 - c0*c0);
+        double a = den * (c1 - c0 * c2);
+        double b = den * (c2 - c0 * c1);
+        // I think the paper defines u10 and u20 in the opposite direction,
+        // but I had to reverse it somewhere to make it work.
+        Vec3 u10 = (known[0].pos - atom.pos).normalized();
+        Vec3 u20 = (known[1].pos - atom.pos).normalized();
+        double dist_sin = hs[0].dist * std::sin(delta);
+        double dist_cos = hs[0].dist * std::cos(delta);
+        Vec3 v0s = u10.cross(u20).changed_magnitude(dist_sin);
+        Vec3 d0c = (a * u10 + b * u20).changed_magnitude(dist_cos);
+        hs[0].pos = atom.pos + Position(d0c + v0s);
+        hs[1].pos = atom.pos + Position(d0c - v0s);
         return;
       }
 
-      // Two hydrogens in tetrahedral configuration
-      if (hs.size() == 2)
-        if (const Angle* hh = topo.take_angle(hs[0].ptr, &atom, hs[1].ptr)) {
-          // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
-          // sec. 2.3. 2H-tetrahedral configuration
-          double delta = hh->radians() / 2;
-          double c0 = std::cos(theta3);
-          double c1 = std::cos(theta1);
-          double c2 = std::cos(theta2);
-          double den = 1 / (1 - c0*c0);
-          double a = den * (c1 - c0 * c2);
-          double b = den * (c2 - c0 * c1);
-          // I think the paper defines u10 and u20 in the opposite direction,
-          // but I had to reverse it somewhere to make it work.
-          Vec3 u10 = (known[0].pos - atom.pos).normalized();
-          Vec3 u20 = (known[1].pos - atom.pos).normalized();
-          double dist_sin = hs[0].dist * std::sin(delta);
-          double dist_cos = hs[0].dist * std::cos(delta);
-          Vec3 v0s = u10.cross(u20).changed_magnitude(dist_sin);
-          Vec3 d0c = (a * u10 + b * u20).changed_magnitude(dist_cos);
-          hs[0].pos = atom.pos + Position(d0c + v0s);
-          hs[1].pos = atom.pos + Position(d0c - v0s);
-          return;
-        }
-    }
     auto pos = position_from_two_angles(atom.pos, known[0].pos, known[1].pos,
                                         hs[0].dist, theta1, theta2);
     switch (hs.size()) {
