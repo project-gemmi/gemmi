@@ -113,6 +113,13 @@ position_from_two_angles(const Position& p1,
   return t;
 }
 
+double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
+  auto r = trilaterate(Position(0, 0, 0), 1,
+                       Position(1, 0, 0), 2 - 2 * std::cos(theta1),
+                       Position(std::cos(theta0), std::sin(theta0), 0),
+                       2 - 2 * std::cos(theta2));
+  return std::asin(std::fabs(r.first.z));
+}
 
 static void place_hydrogens(const Topo& topo, const Atom& atom) {
   using Angle = Restraints::Angle;
@@ -282,6 +289,8 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
         bonded_h.ptr->occ = 0;
   // ==== two heavy atoms and hydrogens ====
   } else if (known.size() == 2) {
+    if (hs.size() >= 3)
+      giveup("Unusual: atom bonded to 2+ heavy atoms and 3+ hydrogens.");
     const Angle* ang1 = topo.take_angle(hs[0].ptr, &atom, known[0].ptr);
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
@@ -318,54 +327,47 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
       return;
     }
 
-    // Two hydrogens in tetrahedral configuration
+    // Tetrahedral or similar configuration.
+    double hh_half = 0;
     if (hs.size() == 2)
-      if (const Angle* hh = topo.take_angle(hs[0].ptr, &atom, hs[1].ptr)) {
-        // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
-        // sec. 2.3. 2H-tetrahedral configuration
-        double delta = hh->radians() / 2;
-        double c0 = std::cos(theta3);
-        double c1 = std::cos(theta1);
-        double c2 = std::cos(theta2);
-        double den = 1 / (1 - c0*c0);
-        double a = den * (c1 - c0 * c2);
-        double b = den * (c2 - c0 * c1);
-        // I think the paper defines u10 and u20 in the opposite direction,
-        // but I had to reverse it somewhere to make it work.
-        Vec3 u10 = (known[0].pos - atom.pos).normalized();
-        Vec3 u20 = (known[1].pos - atom.pos).normalized();
-        double dist_sin = hs[0].dist * std::sin(delta);
-        double dist_cos = hs[0].dist * std::cos(delta);
-        Vec3 v0s = u10.cross(u20).changed_magnitude(dist_sin);
-        Vec3 d0c = (a * u10 + b * u20).changed_magnitude(dist_cos);
-        hs[0].pos = atom.pos + Position(d0c + v0s);
-        hs[1].pos = atom.pos + Position(d0c - v0s);
-        return;
-      }
+      if (const Angle* hh = topo.take_angle(hs[0].ptr, &atom, hs[1].ptr))
+        hh_half = 0.5 * hh->radians();
+    if (hh_half == 0)
+      hh_half = calculate_tetrahedral_delta(theta3, theta1, theta2);
 
-    auto pos = position_from_two_angles(atom.pos, known[0].pos, known[1].pos,
-                                        hs[0].dist, theta1, theta2);
-    switch (hs.size()) {
-      case 1: {
-        hs[0].pos = pos.first;
-        const Topo::Chirality* chir = topo.get_chirality(&atom);
-        if (chir && chir->restr->sign != ChiralityType::Both) {
-          if (!chir->check())
-            hs[0].pos = pos.second;
-        } else {
-          hs[0].ptr->occ = 0;
-        }
-        break;
+    // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
+    // sec. 2.3. 2H-tetrahedral configuration
+    double c0 = std::cos(theta3);
+    double c1 = std::cos(theta1);
+    double c2 = std::cos(theta2);
+    double den = 1 / (1 - c0*c0);
+    double a = den * (c1 - c0 * c2);
+    double b = den * (c2 - c0 * c1);
+    // I think the paper defines u10 and u20 in the opposite direction,
+    // but I had to reverse it somewhere to make it work.
+    Vec3 u10 = (known[0].pos - atom.pos).normalized();
+    Vec3 u20 = (known[1].pos - atom.pos).normalized();
+    Vec3 v = u10.cross(u20);
+    Vec3 d = a * u10 + b * u20;
+    double dist_sin = hs[0].dist * std::sin(hh_half);
+    double dist_cos = hs[0].dist * std::cos(hh_half);
+    Vec3 v0s = v.changed_magnitude(dist_sin);
+    Vec3 d0c = d.changed_magnitude(dist_cos);
+    hs[0].pos = atom.pos + Position(d0c + v0s);
+    Position other_pos = atom.pos + Position(d0c - v0s);
+
+    if (hs.size() == 1) {
+      const Topo::Chirality* chir = topo.get_chirality(&atom);
+      if (chir && chir->restr->sign != ChiralityType::Both) {
+        if (!chir->check())
+          hs[0].pos = other_pos;
+      } else {
+        hs[0].ptr->occ = 0;
       }
-      case 2:
-        // Normally, 2+2 case is handled above as tetrahedral configuration.
-        // We can be here only if the angle between H's is missing.
-        hs[0].pos = pos.first;
-        hs[1].pos = pos.second;
-        break;
-      default:
-        giveup("Unusual: atom bonded to 2+ heavy atoms and 3+ hydrogens.");
+    } else {  // hs.size() == 2
+      hs[1].pos = other_pos;
     }
+
   } else {  // known.size() >= 3
     if (hs.size() > 1)
       giveup("Unusual: atom bonded to 3+ heavy atoms and 2+ hydrogens.");
