@@ -289,6 +289,10 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
                                               h.dist, theta, tau);
     else
       h.pos = arbitrary_position_from_angle(heavy.pos, atom.pos, h.dist, theta);
+    if (std::isnan(h.pos.x)) {
+      h.pos = Position(0, 0, 0);
+      giveup("bonded atoms are exactly overlapping.");
+    }
     if (hs.size() == 2) {
       // I think we can assume the two hydrogens are symmetric.
       Vec3 axis = (heavy.pos - atom.pos).normalized();
@@ -378,6 +382,8 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     Vec3 u10 = (known[0].pos - atom.pos).normalized();
     Vec3 u20 = (known[1].pos - atom.pos).normalized();
     Vec3 v = u10.cross(u20);
+    if (std::isnan(v.x))
+      giveup("bonded atoms are exactly overlapping.");
     Vec3 d = a * u10 + b * u20;
     double dist_sin = hs[0].dist * std::sin(hh_half);
     double dist_cos = hs[0].dist * std::cos(hh_half);
@@ -414,6 +420,8 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     Vec3 rhs(cos_tetrahedral(0), cos_tetrahedral(1), cos_tetrahedral(2));
     Vec3 abc = m.inverse().multiply(rhs);
     Vec3 h_dir = abc.x * u10 + abc.y * u20 + abc.z * u30;
+    if (std::isnan(h_dir.x))
+      giveup("bonded atoms are exactly overlapping.");
     hs[0].pos = atom.pos + Position(h_dir.changed_magnitude(hs[0].dist));
   }
 }
