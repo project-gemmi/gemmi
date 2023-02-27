@@ -136,16 +136,28 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
   hs.reserve(4);
 
   auto range = topo.bond_index.equal_range(&atom);
+  char limit_altoc = '\0';
   for (auto i = range.first; i != range.second; ++i) {
     const Topo::Bond* t = i->second;
     Atom* other = t->atoms[t->atoms[0] == &atom ? 1 : 0];
     if (other->altloc) {
-      if (atom.altloc && atom.altloc != other->altloc)
-        continue;
-      if (atom.altloc == '\0' &&
-          in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
-                      known))
-        continue;
+      if (atom.altloc) {
+        // We support links between different altlocs in Topo (e.g. link A-B),
+        // although these are rare, special cases.
+        // But if we had bonds between atom 1 (A/B) and atom 2 (A/B/C),
+        // and we had bonds B-B and B-C, we'd want to use only one of them (B-B).
+        // Checking atom's name is not robust, but should suffice here.
+        if (atom.altloc != other->altloc &&
+            in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
+                           known))
+          continue;
+      } else {  // atom.altoc == '\0', other->altloc != 0
+        // We can't rely on atom names: in microheterogeneities different
+        // conformations can have different atom names.
+        if (limit_altoc && other->altloc != limit_altoc)
+          continue;
+        limit_altoc = other->altloc;
+      }
     }
     auto& atom_list = other->is_hydrogen() ? hs : known;
     atom_list.push_back({other, other->pos, t->restr->value});
