@@ -52,17 +52,33 @@ static Position position_from_angle_and_torsion(const Position& x1,
                                                 double dist,  // |x3-x4|
                                                 double theta, // angle x2-x3-x4
                                                 double tau) { // dihedral angle
-  using std::sin;
-  using std::cos;
   Vec3 u = x2 - x1;
   Vec3 v = x3 - x2;
   Vec3 e1 = v.normalized();
-  double delta = u.dot(e1);
-  Vec3 e2 = -(u - delta * e1).normalized();
+  Vec3 e2 = -(u - u.dot(e1) * e1).normalized();
   Vec3 e3 = e1.cross(e2);
-  return x3 + Position(dist * (-cos(theta) * e1 +
-                               sin(theta) * (cos(tau) * e2 + sin(tau) * e3)));
+  Vec3 e23 = std::cos(tau) * e2 + std::sin(tau) * e3;
+  return x3 + Position(dist * (-std::cos(theta) * e1 + std::sin(theta) * e23));
 }
+
+// Similar to position_from_angle_and_torsion(), but x1 and tau are not given.
+static Position arbitrary_position_from_angle(const Position& x2,
+                                              const Position& x3,
+                                              double dist,     // |x3-x4|
+                                              double theta) {  // angle x2-x3-x4
+  Vec3 u(1, 0, 0);
+  Vec3 v = x3 - x2;
+  Vec3 e1 = v.normalized();
+  Vec3 e2_ = -(u - u.dot(e1) * e1);
+  if (e2_.length_sq() < 1e-6) {
+    // u || v, let's take any non-parallel u
+    u = Vec3(0, 1, 0);
+    e2_ = -(u - u.dot(e1) * e1);
+  }
+  Vec3 e2 = e2_.normalized();
+  return x3 + Position(dist * (-std::cos(theta) * e1 + std::sin(theta) * e2));
+}
+
 
 static Vec3 get_vector_to_line(const Position& point,
                                const Position& point_on_the_line,
@@ -267,9 +283,12 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
         }
       }
     }
-    h.pos = position_from_angle_and_torsion(
-        tau_end ? tau_end->pos : Position(0, 0, 0),
-        heavy.pos, atom.pos, h.dist, theta, tau);
+
+    if (tau_end)
+      h.pos = position_from_angle_and_torsion(tau_end->pos, heavy.pos, atom.pos,
+                                              h.dist, theta, tau);
+    else
+      h.pos = arbitrary_position_from_angle(heavy.pos, atom.pos, h.dist, theta);
     if (hs.size() == 2) {
       // I think we can assume the two hydrogens are symmetric.
       Vec3 axis = (heavy.pos - atom.pos).normalized();
