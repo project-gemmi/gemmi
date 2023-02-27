@@ -314,8 +314,7 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     } else if (hs.size() >= 4) {
       giveup("Unusual: atom bonded to one heavy atoms and 4+ hydrogens.");
     }
-    // somewhat arbitrary rule
-    if (!tau_end || (hs.size() == 1 && period > 1))
+    if (!tau_end || period > (int)hs.size())
       for (BondedAtom& bonded_h : hs)
         bonded_h.ptr->occ = 0;
   // ==== two heavy atoms and hydrogens ====
