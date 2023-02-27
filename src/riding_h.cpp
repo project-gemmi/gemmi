@@ -125,16 +125,21 @@ position_from_two_angles(const Position& p1,
   // the law of cosines
   double d24sq = d14sq + d12sq - 2 * std::sqrt(d14sq * d12sq) * cos(theta214);
   double d34sq = d14sq + d13sq - 2 * std::sqrt(d14sq * d13sq) * cos(theta314);
-  auto t = trilaterate(p1, d14sq, p2, d24sq, p3, d34sq);
-  return t;
+  return trilaterate(p1, d14sq, p2, d24sq, p3, d34sq);
 }
 
-double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
-  auto r = trilaterate(Position(0, 0, 0), 1,
-                       Position(1, 0, 0), 2 - 2 * std::cos(theta1),
-                       Position(std::cos(theta0), std::sin(theta0), 0),
-                       2 - 2 * std::cos(theta2));
-  return std::asin(std::fabs(r.first.z));
+static double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
+  // simplified trilateration:
+  //   auto r = trilaterate(Position(0, 0, 0), 1,
+  //                        Position(1, 0, 0), 2 - 2 * std::cos(theta1),
+  //                        Position(std::cos(theta0), std::sin(theta0), 0),
+  //                        2 - 2 * std::cos(theta2));
+  //   return std::asin(std::fabs(r.first.z));
+  double x = std::cos(theta1);
+  double y = (std::cos(theta2) - x * std::cos(theta0)) / std::sin(theta0);
+  double z2 = 1 - x*x - y*y;
+  double z = std::sqrt(z2);  // may result in NaN
+  return std::asin(z);
 }
 
 static void place_hydrogens(const Topo& topo, const Atom& atom) {
