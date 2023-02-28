@@ -15,7 +15,7 @@
 namespace {
 
 enum OptionIndex {
-  Title=4, History, Project, Crystal, Dataset, Polarization, Normal
+  Title=4, History, Project, Crystal, Dataset, Polarization, Normal, Overload
 };
 
 const option::Descriptor Usage[] = {
@@ -37,11 +37,13 @@ const option::Descriptor Usage[] = {
   { Dataset, 0, "", "dataset", Arg::Required,
     "  --dataset=DATASET  \tDataset in MTZ hierarchy (default: 'XDSdataset')" },
   { NoOp, 0, "", "", Arg::None,
-    "\nPolarization correction options for INTEGRATE.HKL files:" },
+    "\nPolarization correction and overload elimination options for INTEGRATE.HKL files:" },
   { Polarization, 0, "", "polarization", Arg::Float,
     "  --polarization=VALUE  \tXDS parameter FRACTION_OF_POLARIZATION" },
   { Normal, 0, "", "normal", Arg::Float3,
     "  --normal='Pnx Pny Pnz'  \tXDS POLARIZATION_PLANE_NORMAL (default: '0 1 0')" },
+  { Overload, 0, "", "overload", Arg::Float,
+    "  --overload=OVERLOAD  \tXDS parameter OVERLOAD to eliminate reflections with MAXC>OVERLOAD" },
   { NoOp, 0, "", "", Arg::None,
     "\nIf XDS_FILE is -, the input is read from stdin." },
   { 0, 0, 0, 0, 0, 0 }
@@ -89,6 +91,22 @@ int GEMMI_MAIN(int argc, char **argv) {
         pn = gemmi::Vec3(v[0], v[1], v[2]);
       }
       xds.apply_polarization_correction(fraction, pn);
+    }
+
+    // overload handling
+    if (p.options[Overload]) {
+      if (xds.generated_by != "INTEGRATE") {
+        std::fprintf(stderr,
+                     "Error: --overload given for data from %s (not from INTEGRATE).\n",
+                     xds.generated_by.c_str());
+        return 1;
+      }
+      if (verbose)
+        std::fprintf(stderr, "Eliminating overloads...\n");
+      double overload = std::atof(p.options[Overload].arg);
+      size_t nover;
+      xds.eliminate_overloads(overload, nover);
+      std::printf("Number of eliminated reflections with MAXC > %i = %zu\n", (int) overload, nover);
     }
 
     gemmi::Mtz mtz;

@@ -178,6 +178,9 @@ struct XdsAscii {
 
   /// \par p is degree of polarization from range (0,1), as used in XDS.
   void apply_polarization_correction(double p, Vec3 normal);
+
+  /// \par overload is maximally allowed pixel value in a peak (MAXC).
+  void eliminate_overloads(double over, size_t nover);
 };
 
 template<size_t N>
