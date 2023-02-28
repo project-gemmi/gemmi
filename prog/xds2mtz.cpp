@@ -15,7 +15,7 @@
 namespace {
 
 enum OptionIndex {
-  Title=4, History, Polarization, Normal
+  Title=4, History, Project, Crystal, Dataset, Polarization, Normal
 };
 
 const option::Descriptor Usage[] = {
@@ -30,6 +30,12 @@ const option::Descriptor Usage[] = {
     "  --title  \tMTZ title." },
   { History, 0, "-H", "history", Arg::Required,
     "  -H LINE, --history=LINE  \tAdd a history line." },
+  { Project, 0, "", "project", Arg::Required,
+    "  --project=PROJECT  \tProject in MTZ hierarchy (default: 'XDSproject')" },
+  { Crystal, 0, "", "crystal", Arg::Required,
+    "  --crystal=CRYSTAL  \tCrystal in MTZ hierarchy (default: 'XDScrystal')" },
+  { Dataset, 0, "", "dataset", Arg::Required,
+    "  --dataset=DATASET  \tDataset in MTZ hierarchy (default: 'XDSdataset')" },
   { NoOp, 0, "", "", Arg::None,
     "\nPolarization correction options for INTEGRATE.HKL files:" },
   { Polarization, 0, "", "polarization", Arg::Float,
@@ -100,7 +106,23 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.cell = xds.unit_cell;
     mtz.spacegroup = gemmi::find_spacegroup_by_number(xds.spacegroup_number);
     mtz.add_base();
-    mtz.datasets.push_back({1, "XDSproject", "XDScrystal", "XDSdataset",
+    const char* pxd[3];
+    if (const option::Option* opt = p.options[Project])
+      pxd[0] = opt->arg;
+    else
+      pxd[0] = "XDSproject";
+
+    if (const option::Option* opt = p.options[Crystal])
+      pxd[1] = opt->arg;
+    else
+      pxd[1] = "XDScrystal";
+
+    if (const option::Option* opt = p.options[Dataset])
+      pxd[2] = opt->arg;
+    else
+      pxd[2] = "XDSdataset";
+
+    mtz.datasets.push_back({1, pxd[0], pxd[1], pxd[2],
                             mtz.cell, xds.wavelength});
     mtz.add_column("M/ISYM", 'Y', 0, -1, false);
     mtz.add_column("BATCH", 'B', 0, -1, false);
