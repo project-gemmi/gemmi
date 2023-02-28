@@ -131,10 +131,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.add_column("XDET", 'R', 0, -1, false);
     mtz.add_column("YDET", 'R', 0, -1, false);
     mtz.add_column("ROT", 'R', 0, -1, false);
-    if (xds.has11) {
+    if (xds.has12) {
       mtz.add_column("FRACTIONCALC", 'R', 0, -1, false);
       mtz.add_column("LP", 'R', 0, -1, false);
       mtz.add_column("CORR", 'R', 0, -1, false);
+      mtz.add_column("MAXC", 'I', 0, -1, false);
     }
     mtz.add_column("FLAG", 'I', 0, -1, false);
     mtz.nreflections = (int) xds.data.size();
@@ -156,10 +157,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.data[k++] = (float) refl.xd;
       mtz.data[k++] = (float) refl.yd;
       mtz.data[k++] = (float) xds.rot_angle(refl);  // ROT
-      if (xds.has11) {
+      if (xds.has12) {
         mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
         mtz.data[k++] = (float) refl.rlp;
         mtz.data[k++] = float(0.01 * refl.corr);
+        mtz.data[k++] = (float) refl.maxc;
       }
       mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG
     }

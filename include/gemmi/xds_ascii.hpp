@@ -34,6 +34,7 @@ struct XdsAscii {
     double rlp;
     double peak;
     double corr;  // is it always integer?
+    double maxc;
     int iset = 1;
 
     // I think ZD can't be negative
@@ -53,7 +54,7 @@ struct XdsAscii {
     Iset(int id_) : id(id_) {}
   };
   std::string source_path;
-  bool has11;
+  bool has12;
   int spacegroup_number;
   UnitCell unit_cell;
   Mat33 cell_axes{0.};
@@ -213,12 +214,12 @@ void parse_numbers_into_array(const char* start, const char* end,
 
 template<typename Stream>
 void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
-  static const char* expected_columns[11] = {
+  static const char* expected_columns[12] = {
     "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8",
-    "RLP=9", "PEAK=10", "CORR=11"
+    "RLP=9", "PEAK=10", "CORR=11", "MAXC=12"
   };
   source_path = source;
-  has11 = true;
+  has12 = true;
   char line[256];
   size_t len0 = copy_line_from_stream(line, 255, stream);
   int iset_col = 0;
@@ -303,13 +304,13 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         if (num < 10)
           fail("expected 10+ columns, got:\n", line);
         if (generated_by == "INTEGRATE") {
-          copy_line_from_stream(line, 47, stream);
-          if (!starts_with(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK,CORR"))
+          copy_line_from_stream(line, 52, stream);
+          if (!starts_with(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK,CORR,MAXC"))
             fail("unexpected column order in INTEGRATE.HKL");
         } else {
           if (generated_by == "XSCALE")
-            has11 = false;
-          for (int i = 0; i < (has11 ? 11 : 8); ++i) {
+            has12 = false;
+          for (int i = 0; i < (has12 ? 12 : 8); ++i) {
             const char* col = expected_columns[i];
             copy_line_from_stream(line, 42, stream);
             if (std::strncmp(line, "!ITEM_", 6) != 0 ||
@@ -340,12 +341,13 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       result = fast_from_chars(result.ptr, line+len, r.xd); // 6
       result = fast_from_chars(result.ptr, line+len, r.yd); // 7
       result = fast_from_chars(result.ptr, line+len, r.zd); // 8
-      if (has11) {
+      if (has12) {
         result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
         result = fast_from_chars(result.ptr, line+len, r.peak); // 10
         result = fast_from_chars(result.ptr, line+len, r.corr); // 11
+        result = fast_from_chars(result.ptr, line+len, r.maxc); // 12
       } else {
-        r.rlp = r.peak = r.corr = 0;
+        r.rlp = r.peak = r.corr = r.maxc = 0;
       }
       if (result.ec != std::errc())
         fail("failed to parse data line:\n", line);
