@@ -55,6 +55,7 @@ struct XdsAscii {
   };
   std::string source_path;
   bool has12;
+  bool hasMAXC;
   int spacegroup_number;
   UnitCell unit_cell;
   Mat33 cell_axes{0.};
@@ -223,9 +224,11 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
   };
   source_path = source;
   has12 = true;
+  hasMAXC = true;
   char line[256];
   size_t len0 = copy_line_from_stream(line, 255, stream);
   int iset_col = 0;
+  int ncol = 12;
   if (len0 == 0 || !(starts_with(line, "!FORMAT=XDS_ASCII    MERGE=FALSE") ||
                     (starts_with(line, "!OUTPUT_FILE=INTEGRATE.HKL"))))
     fail("not an unmerged XDS_ASCII nor INTEGRATE.HKL file: " + source_path);
@@ -311,9 +314,15 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
           if (!starts_with(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK,CORR,MAXC"))
             fail("unexpected column order in INTEGRATE.HKL");
         } else {
-          if (generated_by == "XSCALE")
+          if (generated_by == "XSCALE") {
             has12 = false;
-          for (int i = 0; i < (has12 ? 12 : 8); ++i) {
+            ncol = 8;
+          } else if (generated_by == "CORRECT") {
+            has12 = true;
+            hasMAXC = false;
+            ncol = 11;
+          }
+          for (int i = 0; i < ncol; ++i) {
             const char* col = expected_columns[i];
             copy_line_from_stream(line, 42, stream);
             if (std::strncmp(line, "!ITEM_", 6) != 0 ||
@@ -348,7 +357,11 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
         result = fast_from_chars(result.ptr, line+len, r.peak); // 10
         result = fast_from_chars(result.ptr, line+len, r.corr); // 11
-        result = fast_from_chars(result.ptr, line+len, r.maxc); // 12
+        if (hasMAXC) {
+          result = fast_from_chars(result.ptr, line+len, r.maxc); // 12
+        } else {
+          r.maxc = 0;
+        }
       } else {
         r.rlp = r.peak = r.corr = r.maxc = 0;
       }

@@ -153,7 +153,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.add_column("FRACTIONCALC", 'R', 0, -1, false);
       mtz.add_column("LP", 'R', 0, -1, false);
       mtz.add_column("CORR", 'R', 0, -1, false);
-      mtz.add_column("MAXC", 'I', 0, -1, false);
+      if (xds.hasMAXC)
+        mtz.add_column("MAXC", 'I', 0, -1, false);
     }
     mtz.add_column("FLAG", 'I', 0, -1, false);
     mtz.nreflections = (int) xds.data.size();
@@ -179,7 +180,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
         mtz.data[k++] = (float) refl.rlp;
         mtz.data[k++] = float(0.01 * refl.corr);
-        mtz.data[k++] = (float) refl.maxc;
+        if (xds.hasMAXC)
+          mtz.data[k++] = (float) refl.maxc;
       }
       mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG
     }
