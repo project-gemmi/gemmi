@@ -104,9 +104,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         std::fprintf(stderr, "Eliminating overloads...\n");
       double overload = std::atof(p.options[Overload].arg);
-      size_t nover;
-      xds.eliminate_overloads(overload, nover);
-      std::printf("Number of eliminated reflections with MAXC > %i = %zu\n", (int) overload, nover);
+      size_t size_before = xds.data.size();
+      xds.eliminate_overloads(overload);
+      size_t nover = size_before - xds.data.size();
+      std::printf("Number of eliminated reflections with MAXC > %g = %zu\n", overload, nover);
     }
 
     gemmi::Mtz mtz;

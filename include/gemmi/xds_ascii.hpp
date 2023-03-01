@@ -181,7 +181,9 @@ struct XdsAscii {
   void apply_polarization_correction(double p, Vec3 normal);
 
   /// \par overload is maximally allowed pixel value in a peak (MAXC).
-  void eliminate_overloads(double over, size_t nover);
+  void eliminate_overloads(double overload) {
+    vector_remove_if(data, [&](Refl& r) { return r.maxc > overload; });
+  }
 };
 
 template<size_t N>

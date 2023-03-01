@@ -53,21 +53,4 @@ void XdsAscii::apply_polarization_correction(double p, Vec3 normal) {
   }
 }
 
-/// \par overload is maximally allowed pixel value in a peak (MAXC).
-void XdsAscii::eliminate_overloads(double overload, size_t nover) {
-
-  size_t n1 = data.size();
-  auto it = data.begin();
-  while (it != data.end()) {
-    if ((*it).maxc > overload) {
-      it = data.erase(it);
-      nover++;
-    } else {
-      it++;
-    }
-  }
-  size_t n2 = data.size();
-  nover = n1 - n2;
-}
-
 }  // namespace gemmi
