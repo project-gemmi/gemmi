@@ -128,6 +128,8 @@ position_from_two_angles(const Position& p1,
   return trilaterate(p1, d14sq, p2, d24sq, p3, d34sq);
 }
 
+// Returns angle between hydrogen and the plane of heavy atoms
+// in 2H tetrahedral configuration. theta0 is the angle between heavy atoms.
 static double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
   // simplified trilateration:
   //   auto r = trilaterate(Position(0, 0, 0), 1,
