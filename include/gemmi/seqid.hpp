@@ -9,6 +9,7 @@
 #include <cstdlib>    // for strtol
 #include <stdexcept>  // for invalid_argument
 #include <string>
+#include "util.hpp"   // for cat
 
 namespace gemmi {
 
@@ -99,7 +100,7 @@ struct ResidueId {
     return seqid == o.seqid && name == o.name;
   }
   bool operator==(const ResidueId& o) const { return matches(o); }
-  std::string str() const { return seqid.str() + "(" + name + ")"; }
+  std::string str() const { return cat(seqid.str(), '(', name, ')'); }
 };
 
 inline std::string atom_str(const std::string& chain_name,
