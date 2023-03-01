@@ -125,24 +125,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.cell = xds.unit_cell;
     mtz.spacegroup = gemmi::find_spacegroup_by_number(xds.spacegroup_number);
     mtz.add_base();
-    const char* pxd[3];
+    const char* pxd[3] = {"XDSproject", "XDScrystal", "XDSdataset"};
     if (const option::Option* opt = p.options[Project])
       pxd[0] = opt->arg;
-    else
-      pxd[0] = "XDSproject";
-
     if (const option::Option* opt = p.options[Crystal])
       pxd[1] = opt->arg;
-    else
-      pxd[1] = "XDScrystal";
-
     if (const option::Option* opt = p.options[Dataset])
       pxd[2] = opt->arg;
-    else
-      pxd[2] = "XDSdataset";
-
-    mtz.datasets.push_back({1, pxd[0], pxd[1], pxd[2],
-                            mtz.cell, xds.wavelength});
+    mtz.datasets.push_back({1, pxd[0], pxd[1], pxd[2], mtz.cell, xds.wavelength});
     mtz.add_column("M/ISYM", 'Y', 0, -1, false);
     mtz.add_column("BATCH", 'B', 0, -1, false);
     mtz.add_column("I", 'J', 0, -1, false);
@@ -150,11 +140,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.add_column("XDET", 'R', 0, -1, false);
     mtz.add_column("YDET", 'R', 0, -1, false);
     mtz.add_column("ROT", 'R', 0, -1, false);
-    if (xds.has12) {
+    if (xds.read_columns >= 11) {
       mtz.add_column("FRACTIONCALC", 'R', 0, -1, false);
       mtz.add_column("LP", 'R', 0, -1, false);
       mtz.add_column("CORR", 'R', 0, -1, false);
-      if (xds.hasMAXC)
+      if (xds.read_columns > 11)
         mtz.add_column("MAXC", 'I', 0, -1, false);
     }
     mtz.add_column("FLAG", 'I', 0, -1, false);
@@ -177,11 +167,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.data[k++] = (float) refl.xd;
       mtz.data[k++] = (float) refl.yd;
       mtz.data[k++] = (float) xds.rot_angle(refl);  // ROT
-      if (xds.has12) {
+      if (xds.read_columns >= 11) {
         mtz.data[k++] = float(0.01 * refl.peak);  // FRACTIONCALC
         mtz.data[k++] = (float) refl.rlp;
         mtz.data[k++] = float(0.01 * refl.corr);
-        if (xds.hasMAXC)
+        if (xds.read_columns > 11)
           mtz.data[k++] = (float) refl.maxc;
       }
       mtz.data[k++] = refl.sigma < 0 ? 64.f : 0.f;  // FLAG

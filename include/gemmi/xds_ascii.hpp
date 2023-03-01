@@ -54,12 +54,11 @@ struct XdsAscii {
     Iset(int id_) : id(id_) {}
   };
   std::string source_path;
-  bool has12;
-  bool hasMAXC;
-  int spacegroup_number;
+  int read_columns = 0;  // doesn't include ITEM_ISET from XSCALE
+  int spacegroup_number = 0;
   UnitCell unit_cell;
   Mat33 cell_axes{0.};
-  double wavelength;
+  double wavelength = 0.;
   double incident_beam_dir[3] = {0., 0., 0.};
   double oscillation_range = 0.;
   double rotation_axis[3] = {0., 0., 0.};
@@ -111,6 +110,8 @@ struct XdsAscii {
           iset.frame_number_min = std::min(iset.frame_number_min, frame);
           iset.frame_number_max = std::max(iset.frame_number_max, frame);
         }
+      if (iset.frame_number_min > iset.frame_number_max)
+        continue;
       std::vector<uint8_t> frames(iset.frame_number_max - iset.frame_number_min + 1);
       for (const XdsAscii::Refl& refl : data)
         if (refl.iset == iset.id)
@@ -220,17 +221,11 @@ void parse_numbers_into_array(const char* start, const char* end,
 
 template<typename Stream>
 void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
-  static const char* expected_columns[12] = {
-    "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5", "XD=6", "YD=7", "ZD=8",
-    "RLP=9", "PEAK=10", "CORR=11", "MAXC=12"
-  };
   source_path = source;
-  has12 = true;
-  hasMAXC = true;
+  read_columns = 12;
   char line[256];
   size_t len0 = copy_line_from_stream(line, 255, stream);
   int iset_col = 0;
-  int ncol = 12;
   if (len0 == 0 || !(starts_with(line, "!FORMAT=XDS_ASCII    MERGE=FALSE") ||
                     (starts_with(line, "!OUTPUT_FILE=INTEGRATE.HKL"))))
     fail("not an unmerged XDS_ASCII nor INTEGRATE.HKL file: " + source_path);
@@ -309,22 +304,24 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
           parse_number_into(rhs, line+len, detector_distance, line);
       } else if (starts_with_ptr(line+1, "NUMBER_OF_ITEMS_IN_EACH_DATA_RECORD=", &rhs)) {
         int num = simple_atoi(rhs);
-        if (num < 10)
-          fail("expected 10+ columns, got:\n", line);
+        // INTEGRATE.HKL has read_columns=12, as set above
+        if (generated_by == "XSCALE")
+          read_columns = 8;
+        else if (generated_by == "CORRECT")
+          read_columns = 11;
+        // check if the columns are what they always are
+        if (num < read_columns)
+          fail("expected ", std::to_string(read_columns), "+ columns, got:\n", line);
         if (generated_by == "INTEGRATE") {
           copy_line_from_stream(line, 52, stream);
           if (!starts_with(line, "!H,K,L,IOBS,SIGMA,XCAL,YCAL,ZCAL,RLP,PEAK,CORR,MAXC"))
             fail("unexpected column order in INTEGRATE.HKL");
         } else {
-          if (generated_by == "XSCALE") {
-            has12 = false;
-            ncol = 8;
-          } else if (generated_by == "CORRECT") {
-            has12 = true;
-            hasMAXC = false;
-            ncol = 11;
-          }
-          for (int i = 0; i < ncol; ++i) {
+          const char* expected_columns[12] = {
+            "H=1", "K=2", "L=3", "IOBS=4", "SIGMA(IOBS)=5",
+            "XD=6", "YD=7", "ZD=8", "RLP=9", "PEAK=10", "CORR=11", "MAXC=12"
+          };
+          for (int i = 0; i < read_columns; ++i) {
             const char* col = expected_columns[i];
             copy_line_from_stream(line, 42, stream);
             if (std::strncmp(line, "!ITEM_", 6) != 0 ||
@@ -355,11 +352,11 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       result = fast_from_chars(result.ptr, line+len, r.xd); // 6
       result = fast_from_chars(result.ptr, line+len, r.yd); // 7
       result = fast_from_chars(result.ptr, line+len, r.zd); // 8
-      if (has12) {
+      if (read_columns >= 11) {
         result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
         result = fast_from_chars(result.ptr, line+len, r.peak); // 10
         result = fast_from_chars(result.ptr, line+len, r.corr); // 11
-        if (hasMAXC) {
+        if (read_columns > 11) {
           result = fast_from_chars(result.ptr, line+len, r.maxc); // 12
         } else {
           r.maxc = 0;
@@ -369,9 +366,9 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
       }
       if (result.ec != std::errc())
         fail("failed to parse data line:\n", line);
-      if (iset_col > 10) {
+      if (iset_col >= read_columns) {
         const char* iset_ptr = result.ptr;
-        for (int j = 11; j < iset_col; ++j)
+        for (int j = read_columns+1; j < iset_col; ++j)
           iset_ptr = skip_word(skip_blank(iset_ptr));
         r.iset = simple_atoi(iset_ptr);
       }
