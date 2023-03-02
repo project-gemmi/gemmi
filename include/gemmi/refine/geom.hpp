@@ -142,7 +142,7 @@ struct GeomTarget {
     for (size_t ia = 0; ia < n_atoms; ++ia)
       rest_pos_per_atom[ia+1] = rest_pos_per_atom[ia] + nrest_per_atom[ia];
 
-    rest_per_atom.assign(std::accumulate(nrest_per_atom.begin(), nrest_per_atom.end(), 0), 0);
+    rest_per_atom.assign(std::accumulate(nrest_per_atom.begin(), nrest_per_atom.end(), (size_t)0), 0);
     for (size_t i = 0; i < n_atoms; ++i) nrest_per_atom[i] = 0;
     for (size_t i = 0; i < rest_per_atom.size(); ++i) rest_per_atom[i] = 0;
     for (size_t i = 0; i < pairs.size(); ++i) {
