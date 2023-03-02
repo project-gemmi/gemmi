@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12...3.22)
 project(gemmi C CXX)
 
+option(BUILD_SHARED_LIBS "Build using shared library" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
-option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 
@@ -71,11 +71,6 @@ if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
   set(CMAKE_BUILD_TYPE Release CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
-endif()
-
-# avoid CMake warning about unset policy
-if (POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW)
 endif()
 
 find_package(ZLIB)
@@ -168,131 +163,144 @@ if (GEMMI_VERSION_INFO)
   target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
 endif()
 add_library(mapcoef OBJECT prog/mapcoef.cpp)
-add_library(libgem OBJECT
+
+add_library(libgem
             src/crd.cpp src/mmcif.cpp src/mtz.cpp src/mtz2cif.cpp
             src/polyheur.cpp
             src/read_cif.cpp src/mmread_gz.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
+set_property(TARGET libgem PROPERTY OUTPUT_NAME gemmi)
 set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
-#support_gz(libgem)
+support_gz(libgem)
 
-add_executable(gemmi-align EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/align.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-align)
+add_executable(gemmi-align EXCLUDE_FROM_ALL prog/align.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-align PRIVATE libgem)
 
-add_executable(gemmi-blobs EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/blobs.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-blobs EXCLUDE_FROM_ALL prog/blobs.cpp
+               $<TARGET_OBJECTS:options> $<TARGET_OBJECTS:mapcoef>)
+target_link_libraries(gemmi-blobs PRIVATE libgem)
 support_gz(gemmi-blobs)
 
-add_executable(gemmi-cif2json EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/cif2json.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-cif2json)
+add_executable(gemmi-cif2json EXCLUDE_FROM_ALL prog/cif2json.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-cif2json PRIVATE libgem)
 
-add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/cif2mtz.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-cif2mtz)
+add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL prog/cif2mtz.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-cif2mtz PRIVATE libgem)
 
-add_executable(gemmi-contact EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/contact.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-contact)
+add_executable(gemmi-contact EXCLUDE_FROM_ALL prog/contact.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-contact PRIVATE libgem)
 
-add_executable(gemmi-contents EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/contents.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-contents)
+add_executable(gemmi-contents EXCLUDE_FROM_ALL prog/contents.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-contents PRIVATE libgem)
 
-add_executable(gemmi-convert EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/convert.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-convert)
+add_executable(gemmi-convert EXCLUDE_FROM_ALL prog/convert.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-convert PRIVATE libgem)
 
-add_executable(gemmi-fprime EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/fprime.cpp)
+add_executable(gemmi-fprime EXCLUDE_FROM_ALL prog/fprime.cpp
+               $<TARGET_OBJECTS:options>)
 
-add_executable(gemmi-grep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/grep.cpp)
+add_executable(gemmi-grep EXCLUDE_FROM_ALL prog/grep.cpp
+               $<TARGET_OBJECTS:options>)
 support_gz(gemmi-grep)
 
-add_executable(gemmi-h EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/h.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-h)
+add_executable(gemmi-h EXCLUDE_FROM_ALL prog/h.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-h PRIVATE libgem)
 
-add_executable(gemmi-json2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/json2cif.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-json2cif)
+add_executable(gemmi-json2cif EXCLUDE_FROM_ALL prog/json2cif.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-json2cif PRIVATE libgem)
 
-add_executable(gemmi-map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/map.cpp $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-map EXCLUDE_FROM_ALL prog/map.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-map PRIVATE libgem)
 support_gz(gemmi-map)
 
-add_executable(gemmi-map2sf EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/map2sf.cpp $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-map2sf EXCLUDE_FROM_ALL prog/map2sf.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-map2sf PRIVATE libgem)
 support_gz(gemmi-map2sf)
 
-add_executable(gemmi-mask EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mask.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-mask)
+add_executable(gemmi-mask EXCLUDE_FROM_ALL prog/mask.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-mask PRIVATE libgem)
 
-add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mixmtz.cpp $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL prog/mixmtz.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-mixmtz PRIVATE libgem)
 
-add_executable(gemmi-merge EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/merge.cpp $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-merge EXCLUDE_FROM_ALL prog/merge.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-merge PRIVATE libgem)
 support_gz(gemmi-merge)
 
-add_executable(gemmi-mondiff EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mondiff.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-mondiff)
+add_executable(gemmi-mondiff EXCLUDE_FROM_ALL prog/mondiff.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-mondiff PRIVATE libgem)
 
-add_executable(gemmi-mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mtz.cpp)
+add_executable(gemmi-mtz EXCLUDE_FROM_ALL prog/mtz.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-mtz PRIVATE libgem)
 support_gz(gemmi-mtz)
 
-add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/mtz2cif.cpp $<TARGET_OBJECTS:libgem> $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL prog/mtz2cif.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-mtz2cif PRIVATE libgem)
 support_gz(gemmi-mtz2cif)
 
-add_executable(gemmi-prep EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/prep.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-prep)
+add_executable(gemmi-prep EXCLUDE_FROM_ALL prog/prep.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-prep PRIVATE libgem)
 
-add_executable(gemmi-reindex EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/reindex.cpp)
+add_executable(gemmi-reindex EXCLUDE_FROM_ALL prog/reindex.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-reindex PRIVATE libgem)
 support_gz(gemmi-reindex)
 
-add_executable(gemmi-residues EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/residues.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-residues)
+add_executable(gemmi-residues EXCLUDE_FROM_ALL prog/residues.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-residues PRIVATE libgem)
 
-add_executable(gemmi-rmsz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/rmsz.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-rmsz)
+add_executable(gemmi-rmsz EXCLUDE_FROM_ALL prog/rmsz.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-rmsz PRIVATE libgem)
 
-add_executable(gemmi-sf2map EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/sf2map.cpp $<TARGET_OBJECTS:mapcoef> $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-sf2map EXCLUDE_FROM_ALL prog/sf2map.cpp
+               $<TARGET_OBJECTS:options> $<TARGET_OBJECTS:mapcoef>)
+target_link_libraries(gemmi-sf2map PRIVATE libgem)
 support_gz(gemmi-sf2map)
 
-add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/sfcalc.cpp $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL prog/sfcalc.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-sfcalc PRIVATE libgem)
 support_gz(gemmi-sfcalc)
 
-add_executable(gemmi-sg EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/sg.cpp)
+add_executable(gemmi-sg EXCLUDE_FROM_ALL prog/sg.cpp
+               $<TARGET_OBJECTS:options>)
 
-add_executable(gemmi-tags EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/tags.cpp)
+add_executable(gemmi-tags EXCLUDE_FROM_ALL prog/tags.cpp
+               $<TARGET_OBJECTS:options>)
 support_gz(gemmi-tags)
 
-add_executable(gemmi-validate EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/validate.cpp prog/validate_mon.cpp
-               $<TARGET_OBJECTS:libgem>)
+add_executable(gemmi-validate EXCLUDE_FROM_ALL prog/validate.cpp prog/validate_mon.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-validate PRIVATE libgem)
 support_gz(gemmi-validate)
 
-add_executable(gemmi-wcn EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/wcn.cpp $<TARGET_OBJECTS:libgem>)
-support_gz(gemmi-wcn)
+add_executable(gemmi-wcn EXCLUDE_FROM_ALL prog/wcn.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-wcn PRIVATE libgem)
 
-add_executable(gemmi-xds2mtz EXCLUDE_FROM_ALL $<TARGET_OBJECTS:options>
-               prog/xds2mtz.cpp)
+add_executable(gemmi-xds2mtz EXCLUDE_FROM_ALL prog/xds2mtz.cpp
+               $<TARGET_OBJECTS:options>)
+target_link_libraries(gemmi-xds2mtz PRIVATE libgem)
 support_gz(gemmi-xds2mtz)
 
 add_executable(program
@@ -307,17 +315,17 @@ add_executable(program
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp
                $<TARGET_OBJECTS:mapcoef>
-               $<TARGET_OBJECTS:libgem>
                $<TARGET_OBJECTS:options>)
+target_link_libraries(program PRIVATE libgem)
 support_gz(program)
 target_compile_definitions(program PRIVATE GEMMI_ALL_IN_ONE=1)
-set_target_properties(program PROPERTIES OUTPUT_NAME gemmi)
+set_property(TARGET program PROPERTY OUTPUT_NAME gemmi)
 if (WIN32 AND USE_WMAIN)
   # _UNICODE=1 is now set globally
   #target_compile_definitions(program PRIVATE _UNICODE=1)
   if(MINGW)
     # target_link_options were added in cmake 3.13
-    set_target_properties(program PROPERTIES LINK_FLAGS "-municode")
+    set_property(TARGET program PROPERTY LINK_FLAGS "-municode")
   endif()
 endif()
 
@@ -335,13 +343,11 @@ add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
                docs/code/cell.cpp src/resinfo.cpp)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
-add_executable(doc_maybegz EXCLUDE_FROM_ALL
-               docs/code/maybegz.cpp
-               docs/code/mutate.cpp
-               $<TARGET_OBJECTS:libgem>)
+add_executable(doc_maybegz EXCLUDE_FROM_ALL docs/code/maybegz.cpp docs/code/mutate.cpp)
+target_link_libraries(doc_maybegz PRIVATE libgem)
 support_gz(doc_maybegz)
-add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp
-               $<TARGET_OBJECTS:libgem>)
+add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
+target_link_libraries(doc_newmtz PRIVATE libgem)
 support_gz(doc_newmtz)
 
 # always compile these tests with assertions enabled
@@ -349,8 +355,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
   target_compile_options(doc_example PRIVATE -UNDEBUG)
 endif()
 
-add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp
-               $<TARGET_OBJECTS:libgem>)
+add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
+target_link_libraries(test_disulf PRIVATE libgem)
 support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
@@ -360,9 +366,8 @@ if (NOT MSVC)
 endif()
 support_gz(auth_label)
 
-add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp
-               $<TARGET_OBJECTS:libgem>)
-support_gz(check_conn)
+add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)
+target_link_libraries(check_conn PRIVATE libgem)
 
 enable_testing()
 
@@ -397,15 +402,12 @@ endif()
 
 if (benchmark_FOUND)
   foreach(b stoi elem mod niggli pdb resinfo round sym)
+    add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
     if (b MATCHES "resinfo|pdb")
-      add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp
-                     $<TARGET_OBJECTS:libgem>)
-      support_gz(${b}-bm)
-    else()
-      add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
+      target_link_libraries(${b}-bm PRIVATE libgem)
     endif()
     target_link_libraries(${b}-bm PRIVATE benchmark::benchmark)
-    set_target_properties(${b}-bm PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+    set_property(TARGET ${b}-bm PROPERTY RUNTIME_OUTPUT_DIRECTORY
                                              "${CMAKE_BINARY_DIR}/benchmarks")
     add_dependencies(check ${b}-bm)
   endforeach()
@@ -416,6 +418,7 @@ endif()
 
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
+  find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
   if (EXISTS ${CMAKE_HOME_DIRECTORY}/pybind11)
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
     add_subdirectory(pybind11)
@@ -433,38 +436,30 @@ if (USE_PYTHON)
           python/sf.cpp python/sym.cpp python/topo.cpp python/refine.cpp
           python/unitcell.cpp python/write.cpp
           $<TARGET_OBJECTS:libgem>)
-  set_target_properties(py PROPERTIES OUTPUT_NAME gemmi)
+  set_property(TARGET py PROPERTY OUTPUT_NAME gemmi)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(py PRIVATE "-Wno-shadow")
   endif()
-  # avoid GCC warning: the ABI of passing structure with 'complex float' member
-  # has changed in GCC 4.4
-  set_source_files_properties(python/recgrid.cpp python/hkl.cpp python/mtz.cpp
-                              prog/mtz.cpp
-                              PROPERTIES COMPILE_FLAGS
-                              $<$<CXX_COMPILER_ID:GNU>:-Wno-psabi>)
   support_gz(py)
-  if (NOT DEFINED PYTHON_INSTALL_DIR)
-    set(PYTHON_INSTALL_DIR ${PYTHON_SITE_PACKAGES})
-  endif()
 else()
   message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
 endif()
 
-install(TARGETS program DESTINATION bin)
+# avoid GCC warning: the ABI of passing structure with 'complex float' member
+# has changed in GCC 4.4
+set_property(SOURCE python/recgrid.cpp python/hkl.cpp python/mtz.cpp prog/mtz.cpp
+             PROPERTY COMPILE_FLAGS $<$<CXX_COMPILER_ID:GNU>:-Wno-psabi>)
+
+install(TARGETS program libgem)
+# In CMake 3.23 we'll be able to use FILE_SET to install the headers
 install(DIRECTORY include/gemmi DESTINATION include)
-if (USE_PYTHON AND DEFINED PYTHON_INSTALL_DIR)
-  install(TARGETS py DESTINATION ${PYTHON_INSTALL_DIR})
-  install(DIRECTORY examples/ DESTINATION ${PYTHON_INSTALL_DIR}/gemmi-examples
-          FILES_MATCHING PATTERN "*.py")
-  if (INSTALL_EGG_INFO)
-    install(CODE
-     "execute_process(COMMAND \"${PYTHON_EXECUTABLE}\" setup.py install_egg_info --install-dir \"\$ENV{DESTDIR}${PYTHON_INSTALL_DIR}\"
-                      WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-                      RESULT_VARIABLE EGG_STATUS)"
-    )
-    if (EGG_STATUS AND NOT EGG_STATUS EQUAL 0)
-      message(FATAL_ERROR "Failed to install egg-info. Use -D INSTALL_EGG_INFO=OFF to disable.")
-    endif()
+
+if (USE_PYTHON)
+  if (DEFINED PYTHON_INSTALL_DIR)
+    set(Python_SITEARCH ${PYTHON_INSTALL_DIR})
+    set(Python_SITELIB ${PYTHON_INSTALL_DIR})
   endif()
+  install(TARGETS py DESTINATION ${Python_SITEARCH})
+  install(DIRECTORY examples/ DESTINATION ${Python_SITELIB}/gemmi-examples
+          FILES_MATCHING PATTERN "*.py")
 endif()
