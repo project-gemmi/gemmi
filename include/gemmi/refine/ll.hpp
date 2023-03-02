@@ -95,7 +95,7 @@ std::pair<double, std::vector<double>> smooth_gauss_d(double kernel_width,
     const double dx1 = (x_current-x_points.front())*(x_current-x_points.front()) / kernel_width2;
     double an = 1.0;
     double fn = y_points.front();
-    double dx;
+    double dx = 0;
     y_derivs[0] = 1.0;
     for (int i = 1; i < n_points; ++i) {
       dx = (x_current - x_points[i])*(x_current - x_points[i]) / kernel_width2 - dx1;
