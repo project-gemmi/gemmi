@@ -86,7 +86,7 @@ public:
   size_t gzread_checked(void* buf, size_t len) {
     size_t read_bytes = big_gzread(file_, buf, len);
     if (read_bytes != len && !gzeof(file_)) {
-      int errnum;
+      int errnum = 0;
       std::string err_str = gzerror(file_, &errnum);
       if (errnum == Z_ERRNO)
         sys_fail("failed to read " + path());
