@@ -177,7 +177,7 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 #endif
 #endif
 
-#if defined(__has_attribute)
+#if defined(__has_attribute) && !defined(__MINGW32__)
  #if __has_attribute(format)
    #define STBSP__ATTRIBUTE_FORMAT(fmt,va) __attribute__((format(printf,fmt,va)))
  #endif
