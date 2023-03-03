@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+if (NOT TARGET gemmi::library)
+  include("${CMAKE_CURRENT_LIST_DIR}/gemmi-targets.cmake")
+endif()
+
+check_required_components(gemmi)
+if(NOT gemmi_FIND_QUIETLY)
+  message(STATUS "Found gemmi version ${${CMAKE_FIND_PACKAGE_NAME}_VERSION}")
+endif()
