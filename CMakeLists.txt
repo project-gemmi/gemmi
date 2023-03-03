@@ -73,6 +73,11 @@ if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
       FORCE)
 endif()
 
+# without it I get warning on CentOS 7, cmake 3.17.5
+if (POLICY CMP0069)
+  cmake_policy(SET CMP0069 NEW)
+endif()
+
 find_package(ZLIB)
 if (ZLIB_FOUND)
   include_directories("${ZLIB_INCLUDE_DIR}")
@@ -136,9 +141,7 @@ else()
     # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
     target_compile_options(ungz PRIVATE /wd4996 /wd4267)
   endif()
-  if (USE_PYTHON)
-    set_property(TARGET ungz PROPERTY POSITION_INDEPENDENT_CODE ON)
-  endif()
+  set_property(TARGET ungz PROPERTY POSITION_INDEPENDENT_CODE ON)
   macro(support_gz exe)
     target_sources(${exe} PUBLIC $<TARGET_OBJECTS:ungz>)
   endmacro()
@@ -171,7 +174,8 @@ add_library(libgem
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
 set_property(TARGET libgem PROPERTY OUTPUT_NAME gemmi)
-set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE 1)
+set_property(TARGET libgem PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET libgem PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
 support_gz(libgem)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL prog/align.cpp

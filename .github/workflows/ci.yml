@@ -87,17 +87,17 @@ jobs:
     - name: install pybind11
       run: |
         git clone --depth=1 https://github.com/pybind/pybind11.git
-        cd pybind11
-        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
-        make
-        sudo make install
+        #cd pybind11
+        #cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
+        #make
+        #sudo make install
     - name: build and test
       run: |
         g++ --version
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_FORTRAN=1 -DEXTRA_WARNINGS=1 -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE=/usr/bin/python3
+        cmake .. -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_FORTRAN=1 -DEXTRA_WARNINGS=1 -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3
         make -j2
         make -j2 check
         python3 -m unittest discover -v -s ../tests/
@@ -193,7 +193,7 @@ jobs:
     - name: build and test
       run: |
         pwd
-        cmake3 . -DUSE_PYTHON=1 -DPYTHON_EXECUTABLE=/usr/bin/python3
+        cmake3 . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3
         make -j2
         make -j2 check
         python3 -m unittest discover -v -s ./tests/
