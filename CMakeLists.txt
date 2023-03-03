@@ -10,11 +10,11 @@ message(STATUS "Gemmi version ${PROJECT_VERSION}")
 
 include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 
-option(BUILD_SHARED_LIBS "Build using shared library" ON)
+option(BUILD_SHARED_LIBS "Build using shared library" OFF)
 if (WIN32 AND BUILD_SHARED_LIBS)
   # gemmi.dll doesn't work yet, we need to sort out exports
   message(STATUS "Gemmi library will be built as a static library")
-  set(BUILD_SHARED_LIBS OFF)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
@@ -28,6 +28,11 @@ set(GEMMI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gemmi" CACHE STRING
 
 if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
+endif()
+
+# without it I get warning on CentOS 7, cmake 3.17.5
+if (POLICY CMP0069)
+  cmake_policy(SET CMP0069 NEW)
 endif()
 
 # By default, use LTO for non-debug builds.
@@ -87,11 +92,6 @@ if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
   set(CMAKE_BUILD_TYPE Release CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
-endif()
-
-# without it I get warning on CentOS 7, cmake 3.17.5
-if (POLICY CMP0069)
-  cmake_policy(SET CMP0069 NEW)
 endif()
 
 find_package(ZLIB)
