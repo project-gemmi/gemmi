@@ -92,6 +92,9 @@ void add_monlib(py::module& m) {
                                 const std::vector<std::string>& resnames) {
       return self.read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz);
     })
+    .def("find_ideal_distance", [](const MonLib& self, CRA &cra1, CRA cra2) {
+      return self.find_ideal_distance(cra1, cra2);
+    })
     .def("path", &MonLib::path, py::arg("code")=std::string())
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +
