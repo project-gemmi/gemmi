@@ -647,8 +647,6 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                                       extra.res2->name, conn.partner2.atom_name,
                                       ideal_dist, 0.02);
   }
-  if (conn.link_id.empty())
-    conn.link_id = extra.link_id;
   extras.push_back(extra);
 }
 

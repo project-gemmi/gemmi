@@ -154,7 +154,7 @@ struct MonLib {
     int best_score = -1;
     for (auto& ml : links) {
       const ChemLink& link = ml.second;
-      if (link.rt.bonds.empty())
+      if (link.rt.bonds.empty() || starts_with(link.name, "auto-"))
         continue;
       // for now we don't have link definitions with >1 bonds
       const Restraints::Bond& bond = link.rt.bonds[0];
