@@ -30,13 +30,11 @@ if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
-# without it I get warning on CentOS 7, cmake 3.17.5
-if (POLICY CMP0069)
-  cmake_policy(SET CMP0069 NEW)
-endif()
-
 # By default, use LTO for non-debug builds.
-if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
+    # problems were reported for GCC 4.8 and LTO
+    # https://github.com/pybind/pybind11/issues/1415
+    AND NOT (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9))
   include(CheckIPOSupported)
   check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)
   if(is_ipo_supported)
