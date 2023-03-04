@@ -16,7 +16,7 @@ Options:
   --low=CIF           Like --lib, but with the lowest priority.
   --auto-cis=Y|N      Assign cis/trans ignoring CISPEP record (default: Y).
   --auto-link=Y|N     Find links not included in LINK/SSBOND (default: N).
-  --auto-ligand=Y|N   Find links not included in LINK/SSBOND (default: N).
+  --auto-ligand=Y|N   If ligand has no definition make ad-hoc restraints (N).
   --no-aliases        Ignore _chem_comp_alias.
 
 Hydrogen options (default: remove and add on riding positions):

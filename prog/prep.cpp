@@ -47,7 +47,7 @@ const option::Descriptor Usage[] = {
   { AutoLink, 0, "", "auto-link", Arg::YesNo,
     "  --auto-link=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
   { AutoLigand, 0, "", "auto-ligand", Arg::YesNo,
-    "  --auto-ligand=Y|N  \tFind links not included in LINK/SSBOND (default: N)." },
+    "  --auto-ligand=Y|N  \tIf ligand has no definition make ad-hoc restraints (N)." },
   { NoAliases, 0, "", "no-aliases", Arg::None,
     "  --no-aliases  \tIgnore _chem_comp_alias." },
   //{ NoZeroOccRestr, 0, "", "no-zero-occ", Arg::None,
