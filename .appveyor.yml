@@ -40,6 +40,7 @@
   - cmake -G "%CMAKE_GENERATOR%" %CMAKE_ARGS% .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
+  - cmake --install . --config %CMAKE_CONFIG%
   - if exist gemmi.exe  strip gemmi.exe
   - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
   - dir gemmi.exe
