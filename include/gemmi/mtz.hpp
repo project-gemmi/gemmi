@@ -67,7 +67,7 @@ private:
 };
 
 
-struct Mtz {
+struct GEMMI_DLL Mtz {
   struct Dataset {
     int id;
     std::string project_name;

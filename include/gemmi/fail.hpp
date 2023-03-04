@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// fail() and unreachable()
+// fail(), unreachable() and __declspec/__attribute__ macros
 
 #ifndef GEMMI_FAIL_HPP_
 #define GEMMI_FAIL_HPP_
@@ -26,6 +26,21 @@
 # define GEMMI_COLD __declspec(noinline)
 #else
 # define GEMMI_COLD __attribute__((noinline))
+#endif
+
+#if defined(_WIN32)
+# if defined(GEMMI_SHARED)
+#  if defined(GEMMI_BUILD)
+#   define GEMMI_DLL __declspec(dllexport)
+#  else
+#   define GEMMI_DLL __declspec(dllimport)
+#  endif  // GEMMI_BUILD
+# else
+#  define GEMMI_DLL
+# endif  // GEMMI_SHARED
+#else
+# define GEMMI_DLL
+//# define GEMMI_DLL __attribute__((visibility("default")))
 #endif
 
 namespace gemmi {

@@ -10,12 +10,12 @@
 
 namespace gemmi {
 
-void setup_for_crd(Structure& st);
+GEMMI_DLL void setup_for_crd(Structure& st);
 
-void add_automatic_links(Model& model, Structure& st, const MonLib& monlib);
+GEMMI_DLL void add_automatic_links(Model& model, Structure& st, const MonLib& monlib);
 
-cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
-                                 const MonLib& monlib, HydrogenChange h_change);
+GEMMI_DLL cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
+                                           const MonLib& monlib, HydrogenChange h_change);
 
 } // namespace gemmi
 #endif

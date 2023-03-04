@@ -10,12 +10,7 @@ message(STATUS "Gemmi version ${PROJECT_VERSION}")
 
 include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 
-option(BUILD_SHARED_LIBS "Build using shared library" OFF)
-if (WIN32 AND BUILD_SHARED_LIBS)
-  # gemmi.dll doesn't work yet, we need to sort out exports
-  message(STATUS "Gemmi library will be built as a static library")
-  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-endif()
+option(BUILD_SHARED_LIBS "Build using shared library" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
@@ -30,6 +25,11 @@ if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
+# this makes almost no difference
+if (NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+endif()
+
 # By default, use LTO for non-debug builds.
 if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
     # problems were reported for GCC 4.8 and LTO
@@ -38,8 +38,8 @@ if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
   include(CheckIPOSupported)
   check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)
   if(is_ipo_supported)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MISIZEREL OFF)
   else()
     message(STATUS "Interprocedural optimization not supported: ${error}")
   endif()
@@ -189,7 +189,11 @@ add_library(library
             src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
 set_property(TARGET library PROPERTY OUTPUT_NAME gemmi)
 set_property(TARGET library PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET library PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+#set_property(TARGET library PROPERTY CXX_VISIBILITY_PRESET hidden)
+target_compile_definitions(library PRIVATE GEMMI_BUILD)
+if (BUILD_SHARED_LIBS)
+  target_compile_definitions(library PUBLIC GEMMI_SHARED)
+endif()
 support_gz(library)
 
 add_executable(gemmi-align EXCLUDE_FROM_ALL prog/align.cpp

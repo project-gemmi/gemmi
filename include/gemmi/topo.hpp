@@ -18,7 +18,7 @@ namespace gemmi {
 
 enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
 
-struct Topo {
+struct GEMMI_DLL Topo {
   // We have internal pointers in this class (pointers setup in
   // apply_restraints() that point to ResInfo::chemcomp.rt),
   // disable copying this class.
@@ -295,13 +295,13 @@ private:
                         bool ignore_unknown_links);
 };
 
-std::unique_ptr<Topo>
+GEMMI_DLL std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
                  std::ostream* warnings=nullptr, bool ignore_unknown_links=false);
 
 
-std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res);
+GEMMI_DLL std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res);
 
 } // namespace gemmi
 #endif

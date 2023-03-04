@@ -18,7 +18,7 @@
 
 namespace gemmi {
 
-class MtzToCif {
+class GEMMI_DLL MtzToCif {
 public:
   // options that can be set directly
   std::vector<std::string> spec_lines; // conversion specification (cf. default_spec)
@@ -85,18 +85,18 @@ public:
   void write_cif_from_xds(const XdsAscii& xds, std::ostream& os);
 };
 
-void write_staraniso_b_in_mmcif(const SMat33<double>& b,
-                                const std::string& entry_id,
-                                char* buf, std::ostream& os);
+GEMMI_DLL void write_staraniso_b_in_mmcif(const SMat33<double>& b,
+                                          const std::string& entry_id,
+                                          char* buf, std::ostream& os);
 
 /// remove '_dataset_name' that can be appended to column names in ccp4i
-void remove_appendix_from_column_names(Mtz& mtz, std::ostream& out);
+GEMMI_DLL void remove_appendix_from_column_names(Mtz& mtz, std::ostream& out);
 
-bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out);
+GEMMI_DLL bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out);
 
 // note: both mi and ui get modified
-bool validate_merged_intensities(Intensities& mi, Intensities& ui,
-                                 bool relaxed_check, std::ostream& out);
+GEMMI_DLL bool validate_merged_intensities(Intensities& mi, Intensities& ui,
+                                           bool relaxed_check, std::ostream& out);
 
 } // namespace gemmi
 #endif

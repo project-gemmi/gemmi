@@ -136,7 +136,7 @@ jobs:
         cmake --build . --config Debug --target check
         cmake --install . --config Debug
         cd ..
-        python3 setup.py install --user --prefix=
+        python3 -m pip install --user
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       run: |

@@ -13,7 +13,7 @@ set -eu
 cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
-PYTHON=`grep ^Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+PYTHON=`grep ^_Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 
 # Build all, except when we called with an option to avoid full compilation:
 #  G - only build the program,

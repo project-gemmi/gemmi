@@ -22,11 +22,11 @@ struct PdbWriteOptions {
   bool use_linkr = false;
 };
 
-void write_pdb(const Structure& st, std::ostream& os,
-               PdbWriteOptions opt=PdbWriteOptions());
-void write_minimal_pdb(const Structure& st, std::ostream& os,
-                       PdbWriteOptions opt=PdbWriteOptions());
-std::string make_pdb_headers(const Structure& st);
+GEMMI_DLL void write_pdb(const Structure& st, std::ostream& os,
+                         PdbWriteOptions opt=PdbWriteOptions());
+GEMMI_DLL void write_minimal_pdb(const Structure& st, std::ostream& os,
+                                 PdbWriteOptions opt=PdbWriteOptions());
+GEMMI_DLL std::string make_pdb_headers(const Structure& st);
 
 } // namespace gemmi
 

@@ -23,7 +23,7 @@ inline bool likely_in_house_source(double wavelength) {
          std::fabs(wavelength - 2.29) < 0.01;
 }
 
-struct XdsAscii {
+struct GEMMI_DLL XdsAscii {
   struct Refl {
     Miller hkl;
     double iobs;

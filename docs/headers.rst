@@ -90,7 +90,7 @@ gemmi/enumstr.hpp
     SoftwareItem::Classification) and mmCIF strings.
 
 gemmi/fail.hpp
-    fail() and unreachable()
+    fail(), unreachable() and __declspec/__attribute__ macros
 
 gemmi/fileutil.hpp
     File-related utilities.

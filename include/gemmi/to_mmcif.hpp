@@ -55,17 +55,17 @@ struct MmcifOutputGroups {
       software(all), group_pdb(all) {}
 };
 
-void update_mmcif_block(const Structure& st, cif::Block& block,
-                        MmcifOutputGroups groups=MmcifOutputGroups(true));
-cif::Document make_mmcif_document(const Structure& st,
+GEMMI_DLL void update_mmcif_block(const Structure& st, cif::Block& block,
                                   MmcifOutputGroups groups=MmcifOutputGroups(true));
-cif::Block make_mmcif_block(const Structure& st,
-                            MmcifOutputGroups groups=MmcifOutputGroups(true));
-cif::Block make_mmcif_headers(const Structure& st);
-void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
+GEMMI_DLL cif::Document make_mmcif_document(const Structure& st,
+                                            MmcifOutputGroups groups=MmcifOutputGroups(true));
+GEMMI_DLL cif::Block make_mmcif_block(const Structure& st,
+                                      MmcifOutputGroups groups=MmcifOutputGroups(true));
+GEMMI_DLL cif::Block make_mmcif_headers(const Structure& st);
+GEMMI_DLL void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
 
-// temporarily we use it in crdrst.cpp
-void write_struct_conn(const Structure& st, cif::Block& block);
+// temporarily we use it in crd.cpp
+GEMMI_DLL void write_struct_conn(const Structure& st, cif::Block& block);
 
 } // namespace gemmi
 

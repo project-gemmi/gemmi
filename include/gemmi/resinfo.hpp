@@ -54,7 +54,7 @@ struct ResidueInfo {
   bool is_na_linking() const { return (linking_type & 2); }
 };
 
-ResidueInfo find_tabulated_residue(const std::string& name);
+GEMMI_DLL ResidueInfo find_tabulated_residue(const std::string& name);
 
 inline const char* expand_protein_one_letter(char c) {
   static const char* data =

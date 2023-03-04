@@ -17,7 +17,7 @@ namespace gemmi {
 // A simplistic classification. It may change in the future.
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
-PolymerType check_polymer_type(const ConstResidueSpan& span);
+GEMMI_DLL PolymerType check_polymer_type(const ConstResidueSpan& span);
 
 inline PolymerType get_or_check_polymer_type(const Entity* ent,
                                              const ConstResidueSpan& polymer) {
@@ -142,8 +142,8 @@ inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
 /// Determining where the polymer ends and ligands start is sometimes
 /// arbitrary -- there can be a non-standard residue at the end that can
 /// be regarded as as either the last residue or a linked ligand.
-void add_entity_types(Chain& chain, bool overwrite);
-void add_entity_types(Structure& st, bool overwrite);
+GEMMI_DLL void add_entity_types(Chain& chain, bool overwrite);
+GEMMI_DLL void add_entity_types(Structure& st, bool overwrite);
 
 /// The subchain field in the residue is where we store_atom_site.label_asym_id
 /// from mmCIF files. As of 2018 wwPDB software splits author's chains
@@ -156,13 +156,13 @@ void add_entity_types(Structure& st, bool overwrite);
 ///
 /// Here we use naming and rules different from both wwPDB and makecif.
 /// Note: call add_entity_types() first.
-void assign_subchain_names(Chain& chain, int& nonpolymer_counter);
+GEMMI_DLL void assign_subchain_names(Chain& chain, int& nonpolymer_counter);
 
-void assign_subchains(Structure& st, bool force, bool fail_if_unknown=true);
+GEMMI_DLL void assign_subchains(Structure& st, bool force, bool fail_if_unknown=true);
 
-void ensure_entities(Structure& st);
+GEMMI_DLL void ensure_entities(Structure& st);
 
-void deduplicate_entities(Structure& st);
+GEMMI_DLL void deduplicate_entities(Structure& st);
 
 inline void setup_entities(Structure& st) {
   add_entity_types(st, /*overwrite=*/false);

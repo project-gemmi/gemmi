@@ -66,7 +66,7 @@ struct ChemLink {
                       const ChemComp::Aliasing* aliasing2) const;
 };
 
-struct ChemMod {
+struct GEMMI_DLL ChemMod {
   struct AtomMod {
     int func;
     std::string old_id;
@@ -123,7 +123,7 @@ struct EnerLib {
   std::multimap<std::string, Bond> bonds; // atom_type_1->Bond
 };
 
-struct MonLib {
+struct GEMMI_DLL MonLib {
   std::string monomer_dir;
   std::string lib_version;
   EnerLib ener_lib;

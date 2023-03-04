@@ -12,7 +12,7 @@
 
 namespace gemmi {
 
-Structure make_structure_from_block(const cif::Block& block);
+GEMMI_DLL Structure make_structure_from_block(const cif::Block& block);
 
 inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nullptr) {
   // mmCIF files for deposition may have more than one block:
