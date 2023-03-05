@@ -83,6 +83,18 @@ void add_monlib(py::module& m) {
          py::arg("res2"), py::arg("atom2"), py::arg("alt2"),
          py::arg("min_bond_sq")=0.,
          py::return_value_policy::reference_internal)
+    .def("test_link", [](const MonLib& self, const ChemLink& link,
+                         const std::string& res1, const std::string& atom1,
+                         const std::string& res2, const std::string& atom2) {
+      const ChemComp::Aliasing* aliasing1 = nullptr;
+      const ChemComp::Aliasing* aliasing2 = nullptr;
+      bool match = (!link.rt.bonds.empty() &&
+                    self.link_side_matches_residue(link.side1, res1, &aliasing1) &&
+                    self.link_side_matches_residue(link.side2, res2, &aliasing2) &&
+                    atom_match_with_alias(link.rt.bonds[0].id1.atom, atom1, aliasing1) &&
+                    atom_match_with_alias(link.rt.bonds[0].id2.atom, atom2, aliasing2));
+      return py::make_tuple(match, aliasing1, aliasing2);
+    }, py::arg("link"), py::arg("res1"), py::arg("atom1"), py::arg("res2"), py::arg("atom2"))
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("read_monomer_doc", &MonLib::read_monomer_doc)
     .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
