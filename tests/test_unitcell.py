@@ -2,6 +2,7 @@
 
 import unittest
 from math import pi  # , isnan
+import pickle
 from random import random
 import sys
 import gemmi
@@ -161,11 +162,6 @@ class TestUnitCell(unittest.TestCase):
                                 delta=1e-6)
 
     def test_pickling(self):
-        try:
-            import cPickle as pickle  # Use cPickle on Python 2.7
-        except ImportError:
-            import pickle
-
         cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         pkl_string = pickle.dumps(cell, protocol=pickle.HIGHEST_PROTOCOL)
         result = pickle.loads(pkl_string)

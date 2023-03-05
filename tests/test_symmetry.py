@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import math
-import unittest
+import pickle
 import random
+import unittest
 import gemmi
 try:
-    from cctbx import sgtbx
+    from cctbx import sgtbx  # pytype: disable=import-error
     print('(w/ sgtbx)')
 except ImportError:
     sgtbx = None
@@ -363,11 +364,6 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gops.epsilon_factor_without_centering([2,0,0]), 4)
 
     def test_pickling(self):
-        try:
-            import cPickle as pickle  # Use cPickle on Python 2.7
-        except ImportError:
-            import pickle
-
         sg = gemmi.SpaceGroup("P 31 2 1")
         pkl_string = pickle.dumps(sg, protocol=pickle.HIGHEST_PROTOCOL)
         result = pickle.loads(pkl_string)

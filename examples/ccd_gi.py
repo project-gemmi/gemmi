@@ -41,6 +41,7 @@ def compare(cc1, cc2):
             if n == 10000:  # don't spend too much here
                 print(' (it may not be the simplest isomorphism)')
                 break
+        assert short_diff is not None
         for id1, id2 in short_diff.items():
             print('\t', id1, '->', id2)
     else:
