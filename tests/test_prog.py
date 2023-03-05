@@ -13,7 +13,12 @@ TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 def has_gemmi():
     try:
         v = subprocess.check_output(['gemmi', '--version'], cwd=TOP_DIR)
-    except OSError:
+    except OSError:  # usually FileNotFoundError
+        return False
+    except subprocess.CalledProcessError as e:
+        print('Error when running gemmi --version:\n  cmd:', e.cmd,
+              '\n  output:', e.output.decode(),
+              '\n  returncode:', e.returncode)
         return False
     return v.split()[1].decode() == gemmi.__version__
 
