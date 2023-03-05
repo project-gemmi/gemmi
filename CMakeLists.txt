@@ -10,7 +10,7 @@ message(STATUS "Gemmi version ${PROJECT_VERSION}")
 
 include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 
-option(BUILD_SHARED_LIBS "Build using shared library" OFF)
+option(BUILD_SHARED_LIBS "Build using shared library" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)

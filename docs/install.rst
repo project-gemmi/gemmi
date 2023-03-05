@@ -7,27 +7,36 @@ Installation
 C++ library
 -----------
 
-It is (mostly) a header-only library. You need to ensure that
-the ``include`` directory is in your include path
-when compiling your program. For example::
+Before version 0.6 gemmi was a header-only library.
+Many functions are still in headers. If you use only such function,
+you only need to ensure that the ``include`` directory is in your
+include path when compiling your program. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
     c++ -Igemmi/include -O2 my_program.cpp
 
-(Recently, after v0.5.8, parts of the projects were moved from headers
-to src/. This instruction is to be updated before the next release).
+Otherwise, you either need to build gemmi_cpp library,
+or add (selected) files from src/ to your project.
 
-If you want Gemmi to uncompress gzipped files on the fly
-(i.e. if you ``#include <gemmi/gz.hpp>``)
-you will also need to link your program with the zlib library.
+If you use cmake, you can use find_package and externally installed gemmi::
 
-If a file name is passed to Gemmi (through ``std::string``)
+    find_package(gemmi 0.6 CONFIG REQUIRED)
+    add_executable(example example.cpp)
+    target_link_libraries(example PRIVATE gemmi::gemmi_cpp)
+
+or add gemmi as a git submodule and use add_subdirectory::
+
+    add_subdirectory(gemmi EXCLUDE_FROM_ALL)
+    add_executable(example example.cpp)
+    target_link_libraries(example PRIVATE gemmi_cpp)
+
+Note on Unicode: if a file name is passed to Gemmi (through ``std::string``)
 it is assumed to be in ASCII or UTF-8.
 
 .. _install_py:
 
 Python module
----------------------
+-------------
 
 From PyPI
 ~~~~~~~~~
