@@ -10,7 +10,7 @@ message(STATUS "Gemmi version ${PROJECT_VERSION}")
 
 include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 
-option(BUILD_SHARED_LIBS "Build using shared library" ON)
+option(BUILD_SHARED_LIBS "Build using shared library" OFF)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
@@ -312,7 +312,7 @@ enable_testing()
 
 add_custom_target(print-version
   COMMAND gemmi_prog --version
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "gemmi --version"
 )
 
@@ -356,7 +356,7 @@ endif()
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
   find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
-  if (EXISTS ${CMAKE_HOME_DIRECTORY}/pybind11)
+  if (EXISTS "${CMAKE_HOME_DIRECTORY}/pybind11")
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
     add_subdirectory(pybind11)
   else()
@@ -395,14 +395,14 @@ write_basic_package_version_file(gemmi-config-version.cmake
                                  COMPATIBILITY AnyNewerVersion)
 
 # In CMake 3.23 we'll be able to use FILE_SET to install the headers
-install(DIRECTORY include/gemmi DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY include/gemmi DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 install(TARGETS gemmi_prog gemmi_cpp
         EXPORT GemmiTargets
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 install(EXPORT GemmiTargets FILE gemmi-targets.cmake NAMESPACE gemmi::
-        DESTINATION ${GEMMI_INSTALL_CMAKEDIR})
+        DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
 install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config-version.cmake"
@@ -411,13 +411,15 @@ install(FILES
 if (USE_PYTHON)
   if (DEFINED PYTHON_INSTALL_DIR)
     message(STATUS "Install directory for Python module: ${PYTHON_INSTALL_DIR}")
-    set(Python_SITEARCH ${PYTHON_INSTALL_DIR})
-    set(Python_SITELIB ${PYTHON_INSTALL_DIR})
+    set(Python_SITEARCH "${PYTHON_INSTALL_DIR}")
+    set(Python_SITELIB "${PYTHON_INSTALL_DIR}")
   endif()
+  file(TO_CMAKE_PATH "${Python_SITEARCH}" Python_SITEARCH)
+  file(TO_CMAKE_PATH "${Python_SITELIB}" Python_SITELIB)
   # Using Python_SITEARCH and SITELIB is not good, because they are absolute
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
-  install(TARGETS gemmi_py DESTINATION ${Python_SITEARCH})
-  install(DIRECTORY examples/ DESTINATION ${Python_SITELIB}/gemmi-examples
+  install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}")
+  install(DIRECTORY examples/ DESTINATION "${Python_SITELIB}/gemmi-examples"
           FILES_MATCHING PATTERN "*.py")
 endif()
