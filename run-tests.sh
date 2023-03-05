@@ -20,11 +20,11 @@ PYTHON=`grep ^_Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 #  P - only build Python bindings,
 #  n - do not build, only run tests.
 if [ $# = 1 ] && [ $1 = G ]; then
-    (cd $BUILD_DIR && make -j4 program)
+    (cd $BUILD_DIR && make -j4 gemmi_prog)
     exit
 fi
 if [ $# = 1 ] && [ $1 = P ]; then
-    (cd $BUILD_DIR && make -j4 py)
+    (cd $BUILD_DIR && make -j4 gemmi_py)
     exit
 fi
 if [ $# = 0 ] || [ $1 != n ]; then

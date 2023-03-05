@@ -98,7 +98,7 @@ if (ZLIB_FOUND)
   include_directories("${ZLIB_INCLUDE_DIR}")
 else()
   message(STATUS "The build will use zlib code from third_party/zlib.")
-  include_directories("${CMAKE_SOURCE_DIR}/third_party/zlib")
+  include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib")
 endif()
 find_package(benchmark QUIET)
 if (benchmark_FOUND)
@@ -107,8 +107,8 @@ else (NOT benchmark_FOUND)
   message(STATUS "Benchmarks not configured.")
 endif()
 
-include_directories("${CMAKE_SOURCE_DIR}/include"
-                    "${CMAKE_SOURCE_DIR}/third_party")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND EXTRA_WARNINGS)
   set(CMAKE_CXX_FLAGS
@@ -181,20 +181,19 @@ if (GEMMI_VERSION_INFO)
   target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
 endif()
 
-add_library(library
+add_library(gemmi_cpp
             src/crd.cpp src/mmcif.cpp src/mtz.cpp src/mtz2cif.cpp
             src/polyheur.cpp
             src/read_cif.cpp src/mmread_gz.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
-set_property(TARGET library PROPERTY OUTPUT_NAME gemmi)
-set_property(TARGET library PROPERTY POSITION_INDEPENDENT_CODE ON)
-#set_property(TARGET library PROPERTY CXX_VISIBILITY_PRESET hidden)
-target_compile_definitions(library PRIVATE GEMMI_BUILD)
+set_property(TARGET gemmi_cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
+#set_property(TARGET gemmi_cpp PROPERTY CXX_VISIBILITY_PRESET hidden)
+target_compile_definitions(gemmi_cpp PRIVATE GEMMI_BUILD)
 if (BUILD_SHARED_LIBS)
-  target_compile_definitions(library PUBLIC GEMMI_SHARED)
+  target_compile_definitions(gemmi_cpp PUBLIC GEMMI_SHARED)
 endif()
-support_gz(library)
+support_gz(gemmi_cpp)
 
 
 # Gemmi subcommands compiled as individual binaries.
@@ -204,7 +203,7 @@ function(add_single_prog target)
   add_executable(gemmi-${target} EXCLUDE_FROM_ALL prog/${target}.cpp ${arg_ADD_SRC}
                  $<TARGET_OBJECTS:options>)
   if (NOT arg_NOLIB)
-    target_link_libraries(gemmi-${target} PRIVATE library)
+    target_link_libraries(gemmi-${target} PRIVATE gemmi_cpp)
   endif()
   if (arg_GZ)
     support_gz(gemmi-${target})
@@ -243,7 +242,7 @@ add_single_prog(wcn)
 add_single_prog(xds2mtz GZ)
 
 # gemmi program with a number of subcommands
-add_executable(program
+add_executable(gemmi_prog
                prog/align.cpp prog/blobs.cpp
                prog/cif2mtz.cpp prog/cif2json.cpp prog/contact.cpp
                prog/contents.cpp prog/convert.cpp prog/fprime.cpp
@@ -256,16 +255,16 @@ add_executable(program
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp
                $<TARGET_OBJECTS:options>)
-target_link_libraries(program PRIVATE library)
-support_gz(program)
-target_compile_definitions(program PRIVATE GEMMI_ALL_IN_ONE=1)
-set_property(TARGET program PROPERTY OUTPUT_NAME gemmi)
+target_link_libraries(gemmi_prog PRIVATE gemmi_cpp)
+support_gz(gemmi_prog)
+target_compile_definitions(gemmi_prog PRIVATE GEMMI_ALL_IN_ONE=1)
+set_property(TARGET gemmi_prog PROPERTY OUTPUT_NAME gemmi)
 if (WIN32 AND USE_WMAIN)
   # _UNICODE=1 is now set globally
-  #target_compile_definitions(program PRIVATE _UNICODE=1)
+  #target_compile_definitions(gemmi_prog PRIVATE _UNICODE=1)
   if(MINGW)
     # target_link_options were added in cmake 3.13
-    set_property(TARGET program PROPERTY LINK_FLAGS "-municode")
+    set_property(TARGET gemmi_prog PROPERTY LINK_FLAGS "-municode")
   endif()
 endif()
 
@@ -284,10 +283,10 @@ add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/cell.cpp src/resinfo.cpp)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL docs/code/maybegz.cpp docs/code/mutate.cpp)
-target_link_libraries(doc_maybegz PRIVATE library)
+target_link_libraries(doc_maybegz PRIVATE gemmi_cpp)
 support_gz(doc_maybegz)
 add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
-target_link_libraries(doc_newmtz PRIVATE library)
+target_link_libraries(doc_newmtz PRIVATE gemmi_cpp)
 support_gz(doc_newmtz)
 
 # always compile these tests with assertions enabled
@@ -296,7 +295,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
 endif()
 
 add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
-target_link_libraries(test_disulf PRIVATE library)
+target_link_libraries(test_disulf PRIVATE gemmi_cpp)
 support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
@@ -307,12 +306,12 @@ endif()
 support_gz(auth_label)
 
 add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)
-target_link_libraries(check_conn PRIVATE library)
+target_link_libraries(check_conn PRIVATE gemmi_cpp)
 
 enable_testing()
 
 add_custom_target(print-version
-  COMMAND program --version
+  COMMAND gemmi_prog --version
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "gemmi --version"
 )
@@ -344,7 +343,7 @@ if (benchmark_FOUND)
   foreach(b stoi elem mod niggli pdb resinfo round sym)
     add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
     if (b MATCHES "resinfo|pdb")
-      target_link_libraries(${b}-bm PRIVATE library)
+      target_link_libraries(${b}-bm PRIVATE gemmi_cpp)
     endif()
     target_link_libraries(${b}-bm PRIVATE benchmark::benchmark)
     set_property(TARGET ${b}-bm PROPERTY RUNTIME_OUTPUT_DIRECTORY
@@ -364,7 +363,7 @@ if (USE_PYTHON)
     find_package(pybind11 2.6 CONFIG REQUIRED)
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
-  pybind11_add_module(py
+  pybind11_add_module(gemmi_py
           python/mol.cpp python/gemmi.cpp python/align.cpp
           python/ccp4.cpp python/chemcomp.cpp python/cif.cpp python/custom.cpp
           python/elem.cpp python/grid.cpp python/hkl.cpp
@@ -373,12 +372,12 @@ if (USE_PYTHON)
           python/scaling.cpp python/search.cpp
           python/sf.cpp python/sym.cpp python/topo.cpp python/refine.cpp
           python/unitcell.cpp python/write.cpp
-          $<TARGET_OBJECTS:library>)
-  set_property(TARGET py PROPERTY OUTPUT_NAME gemmi)
+          $<TARGET_OBJECTS:gemmi_cpp>)
+  set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
-    target_compile_options(py PRIVATE "-Wno-shadow")
+    target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
   endif()
-  support_gz(py)
+  support_gz(gemmi_py)
 else()
   message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
 endif()
@@ -398,7 +397,7 @@ write_basic_package_version_file(gemmi-config-version.cmake
 # In CMake 3.23 we'll be able to use FILE_SET to install the headers
 install(DIRECTORY include/gemmi DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(TARGETS program library
+install(TARGETS gemmi_prog gemmi_cpp
         EXPORT GemmiTargets
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
@@ -418,7 +417,7 @@ if (USE_PYTHON)
   # Using Python_SITEARCH and SITELIB is not good, because they are absolute
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
-  install(TARGETS py DESTINATION ${Python_SITEARCH})
+  install(TARGETS gemmi_py DESTINATION ${Python_SITEARCH})
   install(DIRECTORY examples/ DESTINATION ${Python_SITELIB}/gemmi-examples
           FILES_MATCHING PATTERN "*.py")
 endif()
