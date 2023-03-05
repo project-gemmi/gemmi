@@ -134,9 +134,9 @@ jobs:
         cmake .. -DCMAKE_BUILD_TYPE=Debug
         cmake --build . --config Debug
         cmake --build . --config Debug --target check
-        cmake --install . --config Debug
+        sudo cmake --install . --config Debug
         cd ..
-        python3 -m pip install --user
+        python3 -m pip install . --user
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       run: |

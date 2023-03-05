@@ -3,6 +3,7 @@
 // Common options for programs that read MTZ or SF-mmCIF map coefficients
 // and transform them to a map.
 
+#include "mapcoef.h"
 #include <stdio.h>
 #include <cstring>            // for strcmp
 #include <cstdlib>            // for strtod, exit
@@ -14,7 +15,6 @@
 #include <gemmi/refln.hpp>    // for ReflnBlock
 #include <gemmi/util.hpp>     // for fail, giends_with
 #include <gemmi/read_cif.hpp> // for read_cif_gz
-#include "mapcoef.h"
 #include "timer.h"
 
 #define GEMMI_PROG n/a

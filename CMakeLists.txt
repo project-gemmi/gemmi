@@ -10,7 +10,7 @@ message(STATUS "Gemmi version ${PROJECT_VERSION}")
 
 include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 
-option(BUILD_SHARED_LIBS "Build using shared library" ON)
+option(BUILD_SHARED_LIBS "Build using shared library" OFF)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
@@ -29,6 +29,7 @@ endif()
 if (NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
   set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 endif()
+#set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 # By default, use LTO for non-debug builds.
 if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
@@ -179,7 +180,6 @@ add_library(options OBJECT prog/options.cpp)
 if (GEMMI_VERSION_INFO)
   target_compile_definitions(options PRIVATE GEMMI_VERSION_INFO=${GEMMI_VERSION_INFO})
 endif()
-add_library(mapcoef OBJECT prog/mapcoef.cpp)
 
 add_library(library
             src/crd.cpp src/mmcif.cpp src/mtz.cpp src/mtz2cif.cpp
@@ -196,147 +196,65 @@ if (BUILD_SHARED_LIBS)
 endif()
 support_gz(library)
 
-add_executable(gemmi-align EXCLUDE_FROM_ALL prog/align.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-align PRIVATE library)
 
-add_executable(gemmi-blobs EXCLUDE_FROM_ALL prog/blobs.cpp
-               $<TARGET_OBJECTS:options> $<TARGET_OBJECTS:mapcoef>)
-target_link_libraries(gemmi-blobs PRIVATE library)
-support_gz(gemmi-blobs)
+# Gemmi subcommands compiled as individual binaries.
+# Not built by default and used mostly for testing.
+function(add_single_prog target)
+  cmake_parse_arguments(arg "NOLIB;GZ" "ADD_SRC" "" ${ARGN})
+  add_executable(gemmi-${target} EXCLUDE_FROM_ALL prog/${target}.cpp ${arg_ADD_SRC}
+                 $<TARGET_OBJECTS:options>)
+  if (NOT arg_NOLIB)
+    target_link_libraries(gemmi-${target} PRIVATE library)
+  endif()
+  if (arg_GZ)
+    support_gz(gemmi-${target})
+  endif()
+endfunction()
 
-add_executable(gemmi-cif2json EXCLUDE_FROM_ALL prog/cif2json.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-cif2json PRIVATE library)
+add_single_prog(align)
+add_single_prog(blobs ADD_SRC prog/mapcoef.cpp GZ)
+add_single_prog(cif2json)
+add_single_prog(cif2mtz)
+add_single_prog(contact)
+add_single_prog(contents)
+add_single_prog(convert)
+add_single_prog(fprime NOLIB)
+add_single_prog(grep NOLIB GZ)
+add_single_prog(h)
+add_single_prog(json2cif)
+add_single_prog(map GZ)
+add_single_prog(map2sf GZ)
+add_single_prog(mask)
+add_single_prog(mixmtz)
+add_single_prog(merge GZ)
+add_single_prog(mondiff)
+add_single_prog(mtz GZ)
+add_single_prog(mtz2cif GZ)
+add_single_prog(prep)
+add_single_prog(reindex GZ)
+add_single_prog(residues)
+add_single_prog(rmsz)
+add_single_prog(sf2map ADD_SRC prog/mapcoef.cpp GZ)
+add_single_prog(sfcalc GZ)
+add_single_prog(sg NOLIB)
+add_single_prog(tags NOLIB GZ)
+add_single_prog(validate ADD_SRC prog/validate_mon.cpp GZ)
+add_single_prog(wcn)
+add_single_prog(xds2mtz GZ)
 
-add_executable(gemmi-cif2mtz EXCLUDE_FROM_ALL prog/cif2mtz.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-cif2mtz PRIVATE library)
-
-add_executable(gemmi-contact EXCLUDE_FROM_ALL prog/contact.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-contact PRIVATE library)
-
-add_executable(gemmi-contents EXCLUDE_FROM_ALL prog/contents.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-contents PRIVATE library)
-
-add_executable(gemmi-convert EXCLUDE_FROM_ALL prog/convert.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-convert PRIVATE library)
-
-add_executable(gemmi-fprime EXCLUDE_FROM_ALL prog/fprime.cpp
-               $<TARGET_OBJECTS:options>)
-
-add_executable(gemmi-grep EXCLUDE_FROM_ALL prog/grep.cpp
-               $<TARGET_OBJECTS:options>)
-support_gz(gemmi-grep)
-
-add_executable(gemmi-h EXCLUDE_FROM_ALL prog/h.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-h PRIVATE library)
-
-add_executable(gemmi-json2cif EXCLUDE_FROM_ALL prog/json2cif.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-json2cif PRIVATE library)
-
-add_executable(gemmi-map EXCLUDE_FROM_ALL prog/map.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-map PRIVATE library)
-support_gz(gemmi-map)
-
-add_executable(gemmi-map2sf EXCLUDE_FROM_ALL prog/map2sf.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-map2sf PRIVATE library)
-support_gz(gemmi-map2sf)
-
-add_executable(gemmi-mask EXCLUDE_FROM_ALL prog/mask.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-mask PRIVATE library)
-
-add_executable(gemmi-mixmtz EXCLUDE_FROM_ALL prog/mixmtz.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-mixmtz PRIVATE library)
-
-add_executable(gemmi-merge EXCLUDE_FROM_ALL prog/merge.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-merge PRIVATE library)
-support_gz(gemmi-merge)
-
-add_executable(gemmi-mondiff EXCLUDE_FROM_ALL prog/mondiff.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-mondiff PRIVATE library)
-
-add_executable(gemmi-mtz EXCLUDE_FROM_ALL prog/mtz.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-mtz PRIVATE library)
-support_gz(gemmi-mtz)
-
-add_executable(gemmi-mtz2cif EXCLUDE_FROM_ALL prog/mtz2cif.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-mtz2cif PRIVATE library)
-support_gz(gemmi-mtz2cif)
-
-add_executable(gemmi-prep EXCLUDE_FROM_ALL prog/prep.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-prep PRIVATE library)
-
-add_executable(gemmi-reindex EXCLUDE_FROM_ALL prog/reindex.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-reindex PRIVATE library)
-support_gz(gemmi-reindex)
-
-add_executable(gemmi-residues EXCLUDE_FROM_ALL prog/residues.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-residues PRIVATE library)
-
-add_executable(gemmi-rmsz EXCLUDE_FROM_ALL prog/rmsz.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-rmsz PRIVATE library)
-
-add_executable(gemmi-sf2map EXCLUDE_FROM_ALL prog/sf2map.cpp
-               $<TARGET_OBJECTS:options> $<TARGET_OBJECTS:mapcoef>)
-target_link_libraries(gemmi-sf2map PRIVATE library)
-support_gz(gemmi-sf2map)
-
-add_executable(gemmi-sfcalc EXCLUDE_FROM_ALL prog/sfcalc.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-sfcalc PRIVATE library)
-support_gz(gemmi-sfcalc)
-
-add_executable(gemmi-sg EXCLUDE_FROM_ALL prog/sg.cpp
-               $<TARGET_OBJECTS:options>)
-
-add_executable(gemmi-tags EXCLUDE_FROM_ALL prog/tags.cpp
-               $<TARGET_OBJECTS:options>)
-support_gz(gemmi-tags)
-
-add_executable(gemmi-validate EXCLUDE_FROM_ALL prog/validate.cpp prog/validate_mon.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-validate PRIVATE library)
-support_gz(gemmi-validate)
-
-add_executable(gemmi-wcn EXCLUDE_FROM_ALL prog/wcn.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-wcn PRIVATE library)
-
-add_executable(gemmi-xds2mtz EXCLUDE_FROM_ALL prog/xds2mtz.cpp
-               $<TARGET_OBJECTS:options>)
-target_link_libraries(gemmi-xds2mtz PRIVATE library)
-support_gz(gemmi-xds2mtz)
-
+# gemmi program with a number of subcommands
 add_executable(program
                prog/align.cpp prog/blobs.cpp
                prog/cif2mtz.cpp prog/cif2json.cpp prog/contact.cpp
                prog/contents.cpp prog/convert.cpp prog/fprime.cpp
                prog/grep.cpp prog/h.cpp prog/json2cif.cpp
-               prog/main.cpp prog/map.cpp prog/map2sf.cpp prog/mask.cpp
+               prog/main.cpp prog/map.cpp prog/map2sf.cpp
+               prog/mapcoef.cpp prog/mask.cpp
                prog/merge.cpp prog/mondiff.cpp prog/mtz.cpp prog/mtz2cif.cpp
                prog/prep.cpp prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
                prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp
-               $<TARGET_OBJECTS:mapcoef>
                $<TARGET_OBJECTS:options>)
 target_link_libraries(program PRIVATE library)
 support_gz(program)
