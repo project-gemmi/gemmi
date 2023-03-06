@@ -51,6 +51,12 @@ $PYTHON -m pydoc gemmi | grep :: ||:
 # or with an option corresponding to the check.
 [ $# = 0 ] && exit;
 
+if [ $1 = a ]; then
+    echo 'Check if gemmi package is found by setuptools pkg_resources...'
+    $PYTHON -c '__requires__ = ["gemmi"]; import pkg_resources'
+    echo 'OK'
+fi
+
 if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb.cpp'
     echo 'Example 1'

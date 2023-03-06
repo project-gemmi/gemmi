@@ -13,6 +13,7 @@ include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 option(BUILD_SHARED_LIBS "Build using shared library" OFF)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
+option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 set(GEMMI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gemmi" CACHE STRING
@@ -422,4 +423,14 @@ if (USE_PYTHON)
   install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}")
   install(DIRECTORY examples/ DESTINATION "${Python_SITELIB}/gemmi-examples"
           FILES_MATCHING PATTERN "*.py")
+  if (INSTALL_EGG_INFO)
+    install(CODE
+     "execute_process(COMMAND \"${Python_EXECUTABLE}\" setup.py install_egg_info --install-dir \"\$ENV{DESTDIR}${Python_SITELIB}\"
+                      WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+                      RESULT_VARIABLE EGG_STATUS)"
+    )
+    if (EGG_STATUS AND NOT EGG_STATUS EQUAL 0)
+      message(FATAL_ERROR "Failed to install egg-info. Use -D INSTALL_EGG_INFO=OFF to disable.")
+    endif()
+  endif()
 endif()
