@@ -11,6 +11,7 @@ message(STATUS "Gemmi version ${PROJECT_VERSION}")
 include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
 
 option(BUILD_SHARED_LIBS "Build using shared library" OFF)
+option(BUILD_GEMMI_PROGRAM "Build gemmi command-line program" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
@@ -41,7 +42,7 @@ if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
   check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)
   if(is_ipo_supported)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MISIZEREL OFF)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MISIZEREL ON)
   else()
     message(STATUS "Interprocedural optimization not supported: ${error}")
   endif()
@@ -268,6 +269,9 @@ if (WIN32 AND USE_WMAIN)
     set_property(TARGET gemmi_prog PROPERTY LINK_FLAGS "-municode")
   endif()
 endif()
+if (NOT BUILD_GEMMI_PROGRAM)
+  set_property(TARGET gemmi_prog PROPERTY EXCLUDE_FROM_ALL TRUE)
+endif()
 
 ### tests and examples ###
 
@@ -398,7 +402,10 @@ write_basic_package_version_file(gemmi-config-version.cmake
 # In CMake 3.23 we'll be able to use FILE_SET to install the headers
 install(DIRECTORY include/gemmi DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
-install(TARGETS gemmi_prog gemmi_cpp
+if (BUILD_GEMMI_PROGRAM)
+  install(TARGETS gemmi_prog EXPORT GemmiTargets)
+endif()
+install(TARGETS gemmi_cpp
         EXPORT GemmiTargets
         INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
