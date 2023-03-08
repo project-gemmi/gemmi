@@ -19,6 +19,7 @@ option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 set(GEMMI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gemmi" CACHE STRING
     "Install path for gemmi CMake files")
+option(STRIP_BINARY "Strip symbols from program" OFF)
 
 # uncomment to show compilation times for each compilation unit
 #set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
@@ -271,6 +272,15 @@ if (WIN32 AND USE_WMAIN)
 endif()
 if (NOT BUILD_GEMMI_PROGRAM)
   set_property(TARGET gemmi_prog PROPERTY EXCLUDE_FROM_ALL TRUE)
+endif()
+
+# I'm not sure if this option should be here.
+# The alternative is to use install/strip target, or cmake --install --strip.
+if (STRIP_BINARY AND CMAKE_STRIP)
+  add_custom_command(TARGET gemmi_prog POST_BUILD
+                     COMMENT "Strip symbols from program with ${CMAKE_STRIP}"
+                     COMMAND ${CMAKE_STRIP}
+                     ARGS $<TARGET_FILE:gemmi_prog>)
 endif()
 
 ### tests and examples ###
