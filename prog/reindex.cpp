@@ -78,9 +78,6 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     mtz.read_input(gemmi::MaybeGzipped(input_path), true);
 
-    // for now we use mtz.warnings in reindex_mtz()
-    mtz.warnings = stderr;
-
     if (p.options[Hkl])
       reindex_mtz(mtz, op, &std::cerr);
 

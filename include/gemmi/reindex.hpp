@@ -5,21 +5,21 @@
 #ifndef GEMMI_REINDEX_HPP_
 #define GEMMI_REINDEX_HPP_
 
-#include <ostream>  // for Mtz
+#include <ostream>
 #include "mtz.hpp"  // for Mtz
 
 namespace gemmi {
 
 // For now it's only partly-working
 inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
+  if (op.tran != Op::Tran{{0, 0, 0}})
+    gemmi::fail("reindexing operator must not have a translation");
   mtz.switch_to_original_hkl();
-  Op real_space_op{op.transposed_rot(), {0, 0, 0}};
-  if (out)
-    *out << "Real space transformation: " << real_space_op.triplet() << '\n';
+  Op inv_op = op.inverse();
   size_t replace_row = size_t(-1);
   // change Miller indices
   for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size()) {
-    Miller hkl_den = real_space_op.apply_to_hkl_without_division(mtz.get_hkl(n));
+    Miller hkl_den = inv_op.apply_to_hkl_without_division(mtz.get_hkl(n));
     Miller hkl = Op::divide_hkl_by_DEN(hkl_den);
     if (hkl[0] * Op::DEN == hkl_den[0] &&
         hkl[1] * Op::DEN == hkl_den[1] &&
@@ -51,7 +51,7 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   const SpaceGroup* sg_before = mtz.spacegroup;
   if (sg_before) {
     GroupOps gops = sg_before->operations();
-    gops.change_basis_backward(op);
+    gops.change_basis_impl(op, inv_op);
     mtz.spacegroup = find_spacegroup_by_ops(gops);
   }
 
@@ -70,11 +70,11 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
     fail("reindexing: failed to determine new space group name");
   }
   // change unit cell parameters
-  mtz.cell = mtz.cell.changed_basis_backward(real_space_op, false);
+  mtz.cell = mtz.cell.changed_basis_backward(inv_op, false);
   for (Mtz::Dataset& ds : mtz.datasets)
-    ds.cell = ds.cell.changed_basis_backward(real_space_op, false);
+    ds.cell = ds.cell.changed_basis_backward(inv_op, false);
   for (Mtz::Batch& batch : mtz.batches)
-    batch.set_cell(batch.get_cell().changed_basis_backward(real_space_op, false));
+    batch.set_cell(batch.get_cell().changed_basis_backward(inv_op, false));
 
   if (mtz.is_merged())
     mtz.ensure_asu();
