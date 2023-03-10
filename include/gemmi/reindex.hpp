@@ -12,26 +12,30 @@ namespace gemmi {
 
 // For now it's only partly-working
 inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
-  if (op.tran != Op::Tran{{0, 0, 0}})
+  if (op.tran != Op::Tran{0, 0, 0})
     gemmi::fail("reindexing operator must not have a translation");
   mtz.switch_to_original_hkl();
-  Op inv_op = op.inverse();
+  Op transposed_op{op.transposed_rot(), {0, 0, 0}};
+  Op real_space_op = transposed_op.inverse();
+  if (out)
+    *out << "Real space transformation: " << real_space_op.triplet() << '\n';
   size_t replace_row = size_t(-1);
   // change Miller indices
   for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size()) {
-    Miller hkl_den = inv_op.apply_to_hkl_without_division(mtz.get_hkl(n));
+    Miller hkl_den = transposed_op.apply_to_hkl_without_division(mtz.get_hkl(n));
     Miller hkl = Op::divide_hkl_by_DEN(hkl_den);
     if (hkl[0] * Op::DEN == hkl_den[0] &&
         hkl[1] * Op::DEN == hkl_den[1] &&
         hkl[2] * Op::DEN == hkl_den[2]) {
       mtz.set_hkl(n, hkl);
-    } else {
+    } else {  // fractional hkl - remove
       if (replace_row == size_t(-1))
         replace_row = n;
       mtz.data[n] = NAN;  // mark for removal
     }
   }
-  // remove reflections that came out fractional
+
+  // remove reflections marked for removal
   if (replace_row != size_t(-1)) {
     size_t ncol = mtz.columns.size();
     for (size_t n = replace_row + ncol; n < mtz.data.size(); n += ncol)
@@ -47,14 +51,14 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
     mtz.data.resize(replace_row);
     mtz.nreflections = int(replace_row / ncol);
   }
+
   // change space group
   const SpaceGroup* sg_before = mtz.spacegroup;
   if (sg_before) {
     GroupOps gops = sg_before->operations();
-    gops.change_basis_impl(op, inv_op);
+    gops.change_basis_impl(real_space_op, transposed_op);
     mtz.spacegroup = find_spacegroup_by_ops(gops);
   }
-
   if (mtz.spacegroup) {
     if (mtz.spacegroup != sg_before) {
       if (out)
@@ -69,12 +73,13 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   } else {
     fail("reindexing: failed to determine new space group name");
   }
+
   // change unit cell parameters
-  mtz.cell = mtz.cell.changed_basis_backward(inv_op, false);
+  mtz.cell = mtz.cell.changed_basis_backward(transposed_op, false);
   for (Mtz::Dataset& ds : mtz.datasets)
-    ds.cell = ds.cell.changed_basis_backward(inv_op, false);
+    ds.cell = ds.cell.changed_basis_backward(transposed_op, false);
   for (Mtz::Batch& batch : mtz.batches)
-    batch.set_cell(batch.get_cell().changed_basis_backward(inv_op, false));
+    batch.set_cell(batch.get_cell().changed_basis_backward(transposed_op, false));
 
   if (mtz.is_merged())
     mtz.ensure_asu();

@@ -763,7 +763,7 @@ In Python, it is a method that returns a textual message for the user:
 .. doctest::
 
   >>> mtz.reindex(gemmi.Op('k,l,h'))
-  'Space group changed from P 21 21 2 to P 21 2 21.\n'
+  'Real space transformation: y,z,x\nSpace group changed from P 21 21 2 to P 21 2 21.\n'
 
 **Current limitations:** H-L coefficients are not handled yet.
 In general, reindexing has not been tested enough. Bugs must be expected.
