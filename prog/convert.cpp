@@ -31,10 +31,6 @@ using gemmi::HowToNameCopiedChain;
 namespace {
 
 struct ConvArg: public Arg {
-  static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"mmjson", "pdb", "mmcif", "ccd"});
-  }
-
   static option::ArgStatus NumbChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"quote", "nosu", "mix"});
   }
@@ -61,15 +57,15 @@ const option::Descriptor Usage[] = {
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
     "\n\nwith possible conversions between PDB, mmCIF and mmJSON."
-    "\nFORMAT can be specified as one of: mmcif, mmjson, pdb, ccd (read-only)."
-    "\nccd = coordinates of a chemical component from CCD or monomer library."
+    "\nFORMAT can be specified as one of: mmcif, mmjson, pdb, chemcomp (read-only)."
+    "\nchemcomp = example coordinates of a component from CCD or monomer library."
     "\n\nGeneral options:" },
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { FormatIn, 0, "", "from", ConvArg::FileFormat,
+  { FormatIn, 0, "", "from", Arg::CoorFormat,
     "  --from=FORMAT  \tInput format (default: from the file extension)." },
-  { FormatOut, 0, "", "to", ConvArg::FileFormat,
+  { FormatOut, 0, "", "to", Arg::CoorFormat,
     "  --to=FORMAT  \tOutput format (default: from the file extension)." },
 
   { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
@@ -366,22 +362,18 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
 
-  std::map<std::string, CoorFormat> filetypes{{"pdb", CoorFormat::Pdb},
-                                              {"mmcif", CoorFormat::Mmcif},
-                                              {"mmjson", CoorFormat::Mmjson},
-                                              {"ccd", CoorFormat::ChemComp}};
-  CoorFormat in_type = p.options[FormatIn] ? filetypes[p.options[FormatIn].arg]
-                                           : CoorFormat::Detect;
-
+  CoorFormat in_type = coor_format_as_enum(p.options[FormatIn]);
+  if (in_type == CoorFormat::Unknown)
+    in_type = CoorFormat::Detect;
   char pdb_code_type = in_type == CoorFormat::Pdb ? 'P' : 'M';
   std::string input = p.coordinate_input_file(0, pdb_code_type);
   const char* output = p.nonOption(1);
 
-  CoorFormat out_type = p.options[FormatOut]
-    ? filetypes[p.options[FormatOut].arg]
-    : gemmi::coor_format_from_ext_gz(output);
+  CoorFormat out_type = coor_format_as_enum(p.options[FormatOut]);
+  if (out_type == CoorFormat::Unknown)
+    out_type = gemmi::coor_format_from_ext_gz(output);
   if (out_type == CoorFormat::ChemComp) {
-    std::cerr << "The output format cannot be ccd.\n";
+    std::cerr << "The output format cannot be chemcomp.\n";
     return 1;
   }
   if (out_type == CoorFormat::Unknown) {

@@ -3,8 +3,8 @@ Usage:
  gemmi convert [options] INPUT_FILE OUTPUT_FILE
 
 with possible conversions between PDB, mmCIF and mmJSON.
-FORMAT can be specified as one of: mmcif, mmjson, pdb, ccd (read-only).
-ccd = coordinates of a chemical component from CCD or monomer library.
+FORMAT can be specified as one of: mmcif, mmjson, pdb, chemcomp (read-only).
+chemcomp = example coordinates of a component from CCD or monomer library.
 
 General options:
   -h, --help              Print usage and exit.

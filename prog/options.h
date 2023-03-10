@@ -48,7 +48,7 @@ struct Arg: public option::Arg {
   static option::ArgStatus Float(const option::Option& option, bool msg);
   static option::ArgStatus Float3(const option::Option& option, bool msg);
   static option::ArgStatus CoorFormat(const option::Option& option, bool msg) {
-    return Choice(option, msg, {"cif", "pdb", "json", "chemcomp"});
+    return Choice(option, msg, {"cif", "mmcif", "pdb", "json", "mmjson", "chemcomp"});
   }
   static option::ArgStatus CifStyle(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"plain", "pdbx", "aligned"});

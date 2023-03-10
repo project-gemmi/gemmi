@@ -256,15 +256,16 @@ OptParser::paths_from_args_or_file(int opt, int other) {
 }
 
 gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in) {
+  auto eq = [&](const char* s) { return std::strcmp(format_in.arg, s) == 0; };
   gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
   if (format_in) {
-    if (strcmp(format_in.arg, "cif") == 0)
+    if (eq("cif") || eq("mmcif"))
       format = gemmi::CoorFormat::Mmcif;
-    else if (strcmp(format_in.arg, "pdb") == 0)
+    else if (eq("pdb"))
       format = gemmi::CoorFormat::Pdb;
-    else if (strcmp(format_in.arg, "json") == 0)
+    else if (eq("json") || eq("mmjson"))
       format = gemmi::CoorFormat::Mmjson;
-    else if (strcmp(format_in.arg, "chemcomp") == 0)
+    else if (eq("chemcomp"))
       format = gemmi::CoorFormat::ChemComp;
   }
   return format;
