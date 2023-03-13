@@ -13,9 +13,11 @@ General options:
   --from=FORMAT           Input format (default: from the file extension).
   --to=FORMAT             Output format (default: from the file extension).
 
-CIF output options:
+mmCIF output options:
   --style=STYLE           one of: default, pdbx (categories separated with #),
                           aligned (left-aligned columns).
+  --all-auth              Write _atom_site.auth_atom_id (same as label_atom_id)
+                          and auth_comp_id (same as label_comp_id).
   -b NAME, --block=NAME   Set block name and default _entry.id
   --sort                  Sort tags in alphabetical order.
   --skip-category=CAT     Do not output tags starting with _CAT

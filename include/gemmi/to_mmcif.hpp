@@ -42,6 +42,7 @@ struct MmcifOutputGroups {
   bool tls:1;
   bool software:1;
   bool group_pdb:1;  // include _atom_site.group_PDB
+  bool auth_all:1;   // include _atom_site.auth_atom_id and auth_comp_id
 
   explicit MmcifOutputGroups(bool all)
     : atoms(all), block_name(all), entry(all), database_status(all),
@@ -52,7 +53,7 @@ struct MmcifOutputGroups {
       struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),
       struct_biol(all), assembly(all), conn(all), cis(all),
       scale(all), atom_type(all), entity_poly_seq(all), tls(all),
-      software(all), group_pdb(all) {}
+      software(all), group_pdb(all), auth_all(false) {}
 };
 
 GEMMI_DLL void update_mmcif_block(const Structure& st, cif::Block& block,

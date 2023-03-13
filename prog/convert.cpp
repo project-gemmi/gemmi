@@ -45,7 +45,7 @@ struct ConvArg: public Arg {
 };
 
 enum OptionIndex {
-  FormatIn=AfterCifModOptions, FormatOut, CifStyle, BlockName,
+  FormatIn=AfterCifModOptions, FormatOut, CifStyle, AllAuth, BlockName,
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq,
@@ -68,10 +68,13 @@ const option::Descriptor Usage[] = {
   { FormatOut, 0, "", "to", Arg::CoorFormat,
     "  --to=FORMAT  \tOutput format (default: from the file extension)." },
 
-  { NoOp, 0, "", "", Arg::None, "\nCIF output options:" },
+  { NoOp, 0, "", "", Arg::None, "\nmmCIF output options:" },
   { CifStyle, 0, "", "style", Arg::CifStyle,
     "  --style=STYLE  \tone of: default, pdbx (categories separated with #),"
                      " aligned (left-aligned columns)." },
+  { AllAuth, 0, "", "all-auth", Arg::None,
+    "  --all-auth  \tWrite _atom_site.auth_atom_id (same as label_atom_id)"
+    " and auth_comp_id (same as label_comp_id)." },
   { BlockName, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tSet block name and default _entry.id" },
   CifModUsage[SortCif],
@@ -326,10 +329,13 @@ void convert(gemmi::Structure& st,
       st.name = options[BlockName].arg;
     cif::Document doc;
     doc.blocks.resize(1);
-    if (options[Minimal])
+    if (options[Minimal]) {
       gemmi::add_minimal_mmcif_data(st, doc.blocks[0]);
-    else
-      gemmi::update_mmcif_block(st, doc.blocks[0], gemmi::MmcifOutputGroups(true));
+    } else {
+      gemmi::MmcifOutputGroups groups(true);
+      groups.auth_all = options[AllAuth];
+      gemmi::update_mmcif_block(st, doc.blocks[0], groups);
+    }
     apply_cif_doc_modifications(doc, options);
 
     if (output_type == CoorFormat::Mmcif) {

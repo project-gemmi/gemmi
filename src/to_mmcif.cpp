@@ -57,7 +57,8 @@ inline std::string qchain(const std::string& s) {
 }
 
 
-void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
+void add_cif_atoms(const Structure& st, cif::Block& block,
+                   bool use_group_pdb, bool auth_all) {
   // atom list
   cif::Loop& atom_loop = block.init_mmcif_loop("_atom_site.", {
       "id",
@@ -75,9 +76,13 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
       "occupancy",
       "B_iso_or_equiv",
       "pdbx_formal_charge",
+      "auth_atom_id",  // optional (tags[15] is removed if !auth_all)
+      "auth_comp_id",  // optional (tags[16] is removed if !auth_all)
       "auth_seq_id",
       "auth_asym_id",
       "pdbx_PDB_model_num"});
+  if (!auth_all)
+    atom_loop.tags.erase(atom_loop.tags.begin() + 15, atom_loop.tags.begin() + 17);
   if (use_group_pdb)
     atom_loop.tags.emplace(atom_loop.tags.begin(), "_atom_site.group_PDB");
   bool has_calc_flag = false;
@@ -132,6 +137,11 @@ void add_cif_atoms(const Structure& st, cif::Block& block, bool use_group_pdb) {
           vv.emplace_back(to_str(atom.occ));
           vv.emplace_back(to_str(atom.b_iso));
           vv.emplace_back(atom.charge == 0 ? "?" : std::to_string(atom.charge));
+          if (auth_all) {
+            size_t atom_name_idx = vv.size() - 13;
+            vv.emplace_back(vv[atom_name_idx]);  // auth_atom_id = label_atom_id
+            vv.emplace_back(vv[atom_name_idx + 2]);  // auth_comp_id = label_comp_id
+          }
           vv.emplace_back(auth_seq_id);
           vv.emplace_back(qchain(chain.name));
           vv.emplace_back(string_or_qmark(model.name));
@@ -1033,7 +1043,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.atoms)
-    add_cif_atoms(st, block, groups.group_pdb);
+    add_cif_atoms(st, block, groups.group_pdb, groups.auth_all);
 
   if (groups.tls && st.meta.has_tls()) {
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
@@ -1114,7 +1124,7 @@ void add_minimal_mmcif_data(const Structure& st, cif::Block& block) {
   write_cell_parameters(st.cell, cell_span);
   block.set_pair("_symmetry.space_group_name_H-M", cif::quote(st.spacegroup_hm));
   write_ncs_oper(st, block);
-  add_cif_atoms(st, block, /*use_group_pdb=*/false);
+  add_cif_atoms(st, block, /*use_group_pdb=*/false, /*auth_all=*/false);
 }
 
 } // namespace gemmi
