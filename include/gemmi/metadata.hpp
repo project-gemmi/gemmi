@@ -25,7 +25,6 @@ struct SoftwareItem {
   std::string version;
   std::string date;
   Classification classification = Unspecified;
-  int pdbx_ordinal = -1;
 };
 
 // Information from REMARK 200/230 is significantly expanded in PDBx/mmCIF.

@@ -1079,9 +1079,10 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   if (groups.software && !st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",
                  {"pdbx_ordinal", "classification", "name", "version", "date"});
+    int ordinal = 0;
     for (const SoftwareItem& item : st.meta.software)
       loop.add_row({
-          std::to_string(item.pdbx_ordinal),
+          std::to_string(++ordinal),
           cif::quote(software_classification_to_string(item.classification)),
           cif::quote(item.name),
           string_or_dot(item.version),

@@ -569,8 +569,7 @@ Structure make_structure_from_block(const cif::Block& block_) {
   for (auto row : block.find("_software.", {"name",
                                             "?classification",
                                             "?version",
-                                            "?date",
-                                            "?pdbx_ordinal"})) {
+                                            "?date"})) {
     st.meta.software.emplace_back();
     SoftwareItem& item = st.meta.software.back();
     item.name = row.str(0);
@@ -578,7 +577,6 @@ Structure make_structure_from_block(const cif::Block& block_) {
       item.classification = software_classification_from_string(row.str(1));
     copy_string(row, 2, item.version);
     copy_string(row, 3, item.date);
-    copy_int(row, 4, item.pdbx_ordinal);
   }
 
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");

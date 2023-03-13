@@ -269,7 +269,6 @@ void add_meta(py::module& m) {
     .def_readwrite("version", &SoftwareItem::version)
     .def_readwrite("date", &SoftwareItem::date)
     .def_readwrite("classification", &SoftwareItem::classification)
-    .def_readwrite("pdbx_ordinal", &SoftwareItem::pdbx_ordinal)
     ;
   py::class_<ReflectionsInfo>(m, "ReflectionsInfo")
     .def(py::init<>())
