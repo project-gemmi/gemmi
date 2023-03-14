@@ -159,7 +159,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz[i].reset(new gemmi::Mtz);
       if (verbose) {
         std::fprintf(stderr, "Reading %s ...\n", mtz_paths[i]);
-        mtz[i]->warnings = stderr;
+        mtz[i]->warnings = &std::cerr;
       }
       try {
         mtz[i]->read_input(gemmi::MaybeGzipped(mtz_paths[i]), true);

@@ -7,12 +7,12 @@
 
 #include <cassert>
 #include <cstdint>       // for int32_t
-#include <cstdio>        // for FILE, fprintf
 #include <cstring>       // for memcpy
 #include <cmath>         // for isnan
 #include <algorithm>     // for sort, any_of
 #include <array>
 #include <initializer_list>
+#include <ostream>
 #include <string>
 #include <vector>
 #include "atox.hpp"      // for simple_atoi, read_word
@@ -181,7 +181,8 @@ struct GEMMI_DLL Mtz {
   std::string appended_text;
   std::vector<float> data;
 
-  FILE* warnings = nullptr;
+  // stream used for warnings when reading mtz file (and also in mtz2cif)
+  std::ostream* warnings = nullptr;
 
   explicit Mtz(bool with_base=false) {
     if (with_base)
@@ -519,9 +520,9 @@ struct GEMMI_DLL Mtz {
     return UnitCell(a, b, c, alpha, beta, gamma);
   }
 
-  void warn(const std::string& text) const {
+  template<typename T> void warn(const T& text) const {
     if (warnings)
-      std::fprintf(warnings, "%s\n", text.c_str());
+      *warnings << text << std::endl;
   }
 
   template<typename Stream>

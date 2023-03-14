@@ -73,7 +73,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Mtz mtz;
     if (verbose) {
       fprintf(stderr, "Reading %s ...\n", input_path);
-      mtz.warnings = stderr;
+      mtz.warnings = &std::cerr;
     }
     mtz.read_input(gemmi::MaybeGzipped(input_path), true);
 
