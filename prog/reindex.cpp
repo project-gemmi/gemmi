@@ -81,8 +81,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Hkl])
       reindex_mtz(mtz, op, &std::cerr);
 
-    if (p.options[Asu] && mtz.is_merged())
-      mtz.ensure_asu(/*tnt_asu=*/p.options[Asu].arg[0] == 't');
+    if (mtz.is_merged()) {
+      bool tnt_asu = false;
+      if (p.options[Asu] && p.options[Asu].arg[0] == 't')
+        tnt_asu = true;
+      mtz.ensure_asu(tnt_asu);
+    }
 
     if (!p.options[NoSort])
       mtz.sort();

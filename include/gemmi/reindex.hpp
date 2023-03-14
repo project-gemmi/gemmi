@@ -14,7 +14,7 @@ namespace gemmi {
 inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   if (op.tran != Op::Tran{0, 0, 0})
     gemmi::fail("reindexing operator must not have a translation");
-  mtz.switch_to_original_hkl();
+  mtz.switch_to_original_hkl();  // it changes hkl for unmerged data only
   Op transposed_op{op.transposed_rot(), {0, 0, 0}};
   Op real_space_op = transposed_op.inverse();
   if (out)
@@ -81,10 +81,8 @@ inline void reindex_mtz(Mtz& mtz, const Op& op, std::ostream* out) {
   for (Mtz::Batch& batch : mtz.batches)
     batch.set_cell(batch.get_cell().changed_basis_backward(transposed_op, false));
 
-  if (mtz.is_merged())
-    mtz.ensure_asu();
-  else
-    mtz.switch_to_asu_hkl();
+  // revert switch_to_original_hkl() for unmerged data
+  mtz.switch_to_asu_hkl();
 }
 
 } // namespace gemmi
