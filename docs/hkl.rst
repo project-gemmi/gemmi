@@ -523,40 +523,6 @@ To show that it really has an effect we print the appropriate
   >>> mtz.get_size_for_hkl()
   [10, 10, 20]
 
-A merged MTZ file uses one of the equivalent hkl indices
-for each reflection. The used hkl is usually the one from
-the reciprocal-space ASU. Both CCP4 and CCTBX use the same
-reciprocal-space ASU definitions. But if you'd have a different
-choice of hkls in the file, you may switch to the usual one with:
-
-.. doctest::
-
-  >>> mtz.ensure_asu()
-
-(You may also call ``mtz.ensure_asu(tnt=True)`` to use the ASU defined
-in the `TNT <https://www.uoxray.uoregon.edu/tnt/manual/node110.html>`_
-program, but it is unlikely that you will ever need it).
-
-To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
-
-.. doctest::
-
-  >>> mtz.sort()  # returns False iff the data was already sorted
-  False
-  >>> mtz.sort_order  # sort() always sorts by h,k,l and sets sort_order to:
-  [1, 2, 3, 0, 0]
-
-If you'd like to use the first 5 columns for sorting (for multirecord data),
-call ``mtz.sort(use_first=5)``.
-
-.. doctest::
-  :hide:
-
-  >>> mtz.sort(use_first=5)
-  False
-  >>> mtz.sort_order
-  [1, 2, 3, 4, 5]
-
 Columns can be removed with ``Mtz::remove_column(index)``,
 where index is 0-based column index:
 
@@ -715,6 +681,82 @@ You do not need to call ``update_reso()`` before writing an MTZ file --
 the values for the RESO record are re-calculated automatically when the file
 is written.
 
+
+.. _reindexing:
+
+Reindexing, ASU, sorting
+------------------------
+
+The reindexing function changes:
+
+* Miller indices of reflections
+  (if new indices would be fractional the reflection is removed),
+* space group,
+* unit cell parameters (in MTZ records CELL and DCELL, and in batch headers).
+
+Reindexing takes as an argument the operator that is to be applied
+to Miller indices. In Python, it returns a textual message for the user:
+
+.. doctest::
+
+  >>> mtz.reindex(gemmi.Op('k,l,h'))
+  'Real space transformation: y,z,x\nSpace group changed from P 21 21 2 to P 21 2 21.\n'
+
+If reindex() is called on merged data,
+it should be followed by a call to ensure_asu().
+
+See also: :ref:`gemmi-reindex <gemmi-reindex>`.
+
+----
+
+A merged MTZ file can, in principle, use any of the equivalent hkl indices
+for each reflection, but it is preferable to always use,
+for a given space group, indices from the same reciprocal-space ASU.
+The choice of ASU is arbitrary, but fortunately both CCP4 and CCTBX use
+the same reciprocal-space ASU definitions. If you have different hkls in Mtz,
+you may switch to the usual ones with:
+
+.. doctest::
+
+  >>> mtz.ensure_asu()
+
+(You may also call ``mtz.ensure_asu(tnt=True)`` to use the ASU defined
+in the `TNT <https://www.uoxray.uoregon.edu/tnt/manual/node110.html>`_
+program, but it is unlikely that you will ever need it).
+
+When appropriate, changing hkl indices is also:
+
+* shifting phases (column type P),
+* changing phase probabilities -- Hendrickson-Lattman coefficients
+  (column type A),
+* swapping anomalous pairs, such as I(+)/I(-), F(+)/F(-) and E(+)/E(-),
+* changing the sign of anomalous differences (column type D).
+
+**Current limitations:** H-L coefficients may not be handled properly.
+
+----
+
+To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
+
+.. doctest::
+
+  >>> mtz.sort()  # returns False iff the data was already sorted
+  False
+  >>> mtz.sort_order  # sort() always sorts by h,k,l and sets sort_order to:
+  [1, 2, 3, 0, 0]
+
+If you'd like to use the first 5 columns for sorting (for multirecord data),
+call ``mtz.sort(use_first=5)``.
+
+.. doctest::
+  :hide:
+
+  >>> mtz.sort(use_first=5)
+  False
+  >>> mtz.sort_order
+  [1, 2, 3, 4, 5]
+
+
 Writing
 -------
 
@@ -736,39 +778,6 @@ In Python we have a single function for writing to a file:
 Here is a complete C++ example how to create a new MTZ file:
 
 .. literalinclude:: code/newmtz.cpp
-
-
-.. _reindexing:
-
-Reindexing
-----------
-
-Reindexing changes multiple things:
-
-* Miller indices of reflections
-  (if new indices would be fractional the reflection is removed),
-* space group,
-* unit cell parameters (in MTZ records CELL and DCELL, and in batch headers),
-* phases (column type P) can be shifted,
-* the same with phase probabilities -- Hendrickson-Lattman coefficients
-  (column type A) can be modified,
-* data in anomalous pairs, such as I(+)/I(-), F(+)/F(-) and E(+)/E(-),
-  can be swapped,
-* anomalous difference (column type D) can change the sign.
-
-Currently, gemmi provides a reindexing function that works only with Mtz
-objects. In C++, this function is in ``reindexing.hpp``.
-In Python, it is a method that returns a textual message for the user:
-
-.. doctest::
-
-  >>> mtz.reindex(gemmi.Op('k,l,h'))
-  'Real space transformation: y,z,x\nSpace group changed from P 21 21 2 to P 21 2 21.\n'
-
-**Current limitations:** H-L coefficients are not handled yet.
-In general, reindexing has not been tested enough. Bugs must be expected.
-
-See also: :ref:`gemmi-reindex <gemmi-reindex>`.
 
 SF mmCIF
 ========
