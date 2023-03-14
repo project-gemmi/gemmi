@@ -73,7 +73,7 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
   Op real_space_op = transposed_op.inverse();
   if (out)
     *out << "Real space transformation: " << real_space_op.triplet() << '\n';
-  size_t replace_row = size_t(-1);
+  bool row_removal = false;
   // change Miller indices
   for (size_t n = 0; n < data.size(); n += columns.size()) {
     Miller hkl_den = transposed_op.apply_to_hkl_without_division(get_hkl(n));
@@ -83,27 +83,18 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
         hkl[2] * Op::DEN == hkl_den[2]) {
       set_hkl(n, hkl);
     } else {  // fractional hkl - remove
-      if (replace_row == size_t(-1))
-        replace_row = n;
+      row_removal = true;
       data[n] = NAN;  // mark for removal
     }
   }
 
   // remove reflections marked for removal
-  if (replace_row != size_t(-1)) {
-    size_t ncol = columns.size();
-    for (size_t n = replace_row + ncol; n < data.size(); n += ncol)
-      if (!std::isnan(data[n])) {
-        std::memcpy(data.data() + replace_row,
-                    data.data() + n,
-                    ncol * sizeof(float));
-        replace_row += ncol;
-      }
+  if (row_removal) {
+    int n_before = nreflections;
+    remove_rows_if([](float* h) { return std::isnan(*h); });
     if (out)
       *out << "Reflections removed (because of fractional indices): "
-           << (data.size() - replace_row) / ncol << '\n';
-    data.resize(replace_row);
-    nreflections = int(replace_row / ncol);
+           << (n_before - nreflections) << '\n';
   }
 
   // change space group
