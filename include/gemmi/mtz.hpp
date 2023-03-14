@@ -820,66 +820,8 @@ struct GEMMI_DLL Mtz {
       data[offset + i] = static_cast<float>(hkl[i]);
   }
 
-  // (for merged MTZ only) change HKL to ASU equivalent, adjust phases
-  void ensure_asu(bool tnt_asu=false) {
-    if (!is_merged())
-      fail("Mtz::ensure_asu() is for merged MTZ only");
-    if (!spacegroup)
-      return;
-    GroupOps gops = spacegroup->operations();
-    ReciprocalAsu asu(spacegroup, tnt_asu);
-    std::vector<int> phase_columns = positions_of_columns_with_type('P');
-    std::vector<int> abcd_columns = positions_of_columns_with_type('A');
-    std::vector<int> dano_columns = positions_of_columns_with_type('D');
-    std::vector<std::pair<int,int>> plus_minus_columns = positions_of_plus_minus_columns();
-    bool no_special_columns = phase_columns.empty() && abcd_columns.empty() &&
-                              plus_minus_columns.empty() && dano_columns.empty();
-    bool centric = no_special_columns || gops.is_centrosymmetric();
-    for (size_t n = 0; n < data.size(); n += columns.size()) {
-      Miller hkl = get_hkl(n);
-      if (asu.is_in(hkl))
-        continue;
-      auto result = asu.to_asu(hkl, gops);
-      // cf. impl::move_to_asu() in asudata.hpp
-      set_hkl(n, result.first);
-      if (no_special_columns)
-        continue;
-      int isym = result.second;
-      if (!phase_columns.empty() || !abcd_columns.empty()) {
-        const Op& op = gops.sym_ops[(isym - 1) / 2];
-        double shift = op.phase_shift(hkl);
-        if (shift != 0) {
-          if (isym % 2 == 0)
-            shift = -shift;
-          double shift_deg = deg(shift);
-          for (int col : phase_columns)
-            data[n + col] = float(data[n + col] + shift_deg);
-          for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4) {
-            double sinx = std::sin(shift);
-            double cosx = std::cos(shift);
-            double sin2x = 2 * sinx * cosx;
-            double cos2x = sq(cosx)- sq(sinx);
-            double a = data[n + *(i+0)];
-            double b = data[n + *(i+1)];
-            double c = data[n + *(i+2)];
-            double d = data[n + *(i+3)];
-            // a sin(x+y) + b cos(x+y) = a sin(x) cos(y) - b sin(x) sin(y)
-            //                         + a cos(x) sin(y) + b cos(x) cos(y)
-            data[n + *(i+0)] = float(a * cosx - b * sinx);
-            data[n + *(i+1)] = float(a * sinx + b * cosx);
-            data[n + *(i+2)] = float(c * cos2x - d * sin2x);
-            data[n + *(i+3)] = float(c * sin2x + d * cos2x);
-          }
-        }
-      }
-      if (isym % 2 == 0 && !centric) {
-        for (std::pair<int,int> cols : plus_minus_columns)
-          std::swap(data[n + cols.first], data[n + cols.second]);
-        for (int col : dano_columns)
-          data[n + col] = -data[n + col];
-      }
-    }
-  }
+  /// (for merged MTZ only) change HKL to ASU equivalent, adjust phases, etc
+  void ensure_asu(bool tnt_asu=false);
 
   // (for unmerged MTZ only) change HKL according to M/ISYM
   bool switch_to_original_hkl() {
