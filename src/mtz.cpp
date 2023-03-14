@@ -68,6 +68,8 @@ void Mtz::ensure_asu(bool tnt_asu) {
 void Mtz::reindex(const Op& op, std::ostream* out) {
   if (op.tran != Op::Tran{0, 0, 0})
     gemmi::fail("reindexing operator must not have a translation");
+  if (op.det_rot() < 0)
+    gemmi::fail("reindexing operator must preserve the hand of the axes");
   switch_to_original_hkl();  // changes hkl for unmerged data only
   Op transposed_op{op.transposed_rot(), {0, 0, 0}};
   Op real_space_op = transposed_op.inverse();
@@ -97,6 +99,8 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
            << (n_before - nreflections) << '\n';
   }
 
+  switch_to_asu_hkl();  // revert switch_to_original_hkl() for unmerged data
+
   // change space group
   if (spacegroup) {
     GroupOps gops = spacegroup->operations();
@@ -123,8 +127,6 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
     ds.cell = ds.cell.changed_basis_backward(transposed_op, false);
   for (Mtz::Batch& batch : batches)
     batch.set_cell(batch.get_cell().changed_basis_backward(transposed_op, false));
-
-  switch_to_asu_hkl();  // revert switch_to_original_hkl() for unmerged data
 }
 
 
