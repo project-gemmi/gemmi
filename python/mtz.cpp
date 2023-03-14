@@ -1,7 +1,6 @@
 // Copyright 2019 Global Phasing Ltd.
 
 #include "gemmi/mtz.hpp"
-#include "gemmi/reindex.hpp"  // for reindex_mtz
 #include "gemmi/fourier.hpp"
 #include "gemmi/gz.hpp"
 #include "tostr.hpp"
@@ -251,7 +250,7 @@ void add_mtz(py::module& m) {
     .def("write_to_file", &Mtz::write_to_file, py::arg("path"))
     .def("reindex", [](Mtz& self, const Op& op) {
         std::ostringstream out;
-        reindex_mtz(self, op, &out);
+        self.reindex(op, &out);
         return out.str();
     }, py::arg("op"))
     .def("__repr__", [](const Mtz& self) {

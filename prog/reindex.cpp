@@ -6,7 +6,6 @@
 #include <cstring>  // for strpbrk
 #include <algorithm>
 #include <iostream>  // for cerr
-#include <gemmi/reindex.hpp>
 #include <gemmi/mtz.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
@@ -39,7 +38,7 @@ const option::Descriptor Usage[] = {
   { NoSort, 0, "", "no-sort", Arg::None,
     "  --no-sort  \tDo not reorder reflections." },
   { Asu, 0, "", "asu", ReindexArg::AsuChoice,
-    "  --asu=ccp4|tnt  \tWrite reflections in CCP4 (default) or TNT ASU." },
+    "  --asu=ccp4|tnt  \tWrite merged data in CCP4 (default) or TNT ASU." },
   { NoOp, 0, "", "", Arg::None,
     "\nInput file can be gzipped." },
   { 0, 0, 0, 0, 0, 0 }
@@ -79,7 +78,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.read_input(gemmi::MaybeGzipped(input_path), true);
 
     if (p.options[Hkl])
-      reindex_mtz(mtz, op, &std::cerr);
+      mtz.reindex(op, &std::cerr);
 
     if (mtz.is_merged()) {
       bool tnt_asu = false;
@@ -101,4 +100,3 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   return 0;
 }
-

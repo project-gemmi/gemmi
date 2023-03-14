@@ -65,6 +65,78 @@ void Mtz::ensure_asu(bool tnt_asu) {
   }
 }
 
+void Mtz::reindex(const Op& op, std::ostream* out) {
+  if (op.tran != Op::Tran{0, 0, 0})
+    gemmi::fail("reindexing operator must not have a translation");
+  switch_to_original_hkl();  // changes hkl for unmerged data only
+  Op transposed_op{op.transposed_rot(), {0, 0, 0}};
+  Op real_space_op = transposed_op.inverse();
+  if (out)
+    *out << "Real space transformation: " << real_space_op.triplet() << '\n';
+  size_t replace_row = size_t(-1);
+  // change Miller indices
+  for (size_t n = 0; n < data.size(); n += columns.size()) {
+    Miller hkl_den = transposed_op.apply_to_hkl_without_division(get_hkl(n));
+    Miller hkl = Op::divide_hkl_by_DEN(hkl_den);
+    if (hkl[0] * Op::DEN == hkl_den[0] &&
+        hkl[1] * Op::DEN == hkl_den[1] &&
+        hkl[2] * Op::DEN == hkl_den[2]) {
+      set_hkl(n, hkl);
+    } else {  // fractional hkl - remove
+      if (replace_row == size_t(-1))
+        replace_row = n;
+      data[n] = NAN;  // mark for removal
+    }
+  }
+
+  // remove reflections marked for removal
+  if (replace_row != size_t(-1)) {
+    size_t ncol = columns.size();
+    for (size_t n = replace_row + ncol; n < data.size(); n += ncol)
+      if (!std::isnan(data[n])) {
+        std::memcpy(data.data() + replace_row,
+                    data.data() + n,
+                    ncol * sizeof(float));
+        replace_row += ncol;
+      }
+    if (out)
+      *out << "Reflections removed (because of fractional indices): "
+           << (data.size() - replace_row) / ncol << '\n';
+    data.resize(replace_row);
+    nreflections = int(replace_row / ncol);
+  }
+
+  // change space group
+  if (spacegroup) {
+    GroupOps gops = spacegroup->operations();
+    gops.change_basis_impl(real_space_op, transposed_op);
+    const SpaceGroup* new_sg = find_spacegroup_by_ops(gops);
+    if (!new_sg)
+      fail("reindexing: failed to determine new space group name");
+    if (new_sg != spacegroup) {
+      if (out)
+        *out << "Space group changed from " << spacegroup->xhm() << " to "
+             << new_sg->xhm() << ".\n";
+      spacegroup = new_sg;
+      spacegroup_number = spacegroup->ccp4;
+      spacegroup_name = spacegroup->hm;
+    } else {
+      if (out)
+        *out << "Space group stays the same:" << spacegroup->xhm() << ".\n";
+    }
+  }
+
+  // change unit cell parameters
+  cell = cell.changed_basis_backward(transposed_op, false);
+  for (Mtz::Dataset& ds : datasets)
+    ds.cell = ds.cell.changed_basis_backward(transposed_op, false);
+  for (Mtz::Batch& batch : batches)
+    batch.set_cell(batch.get_cell().changed_basis_backward(transposed_op, false));
+
+  switch_to_asu_hkl();  // revert switch_to_original_hkl() for unmerged data
+}
+
+
 #define WRITE(...) do { \
     int len = gstb_snprintf(buf, 81, __VA_ARGS__); \
     if (len < 80) \

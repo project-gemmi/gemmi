@@ -823,6 +823,9 @@ struct GEMMI_DLL Mtz {
   /// (for merged MTZ only) change HKL to ASU equivalent, adjust phases, etc
   void ensure_asu(bool tnt_asu=false);
 
+  /// reindex data, usually followed by ensure_asu()
+  void reindex(const Op& op, std::ostream* out);
+
   // (for unmerged MTZ only) change HKL according to M/ISYM
   bool switch_to_original_hkl() {
     if (indices_switched_to_original)

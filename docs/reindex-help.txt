@@ -8,6 +8,6 @@ Options:
   --hkl=OP        Reindexing transform as triplet (e.g. k,h,-l).
   --no-history    Do not add 'Reindexed with...' line to mtz HISTORY.
   --no-sort       Do not reorder reflections.
-  --asu=ccp4|tnt  Write reflections in CCP4 (default) or TNT ASU.
+  --asu=ccp4|tnt  Write merged data in CCP4 (default) or TNT ASU.
 
 Input file can be gzipped.
