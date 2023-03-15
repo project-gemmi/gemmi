@@ -144,9 +144,13 @@ double check_restraint(const Topo::Rule rule,
         double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
         double z = dist / t.restr->esd;
         if (verbosity >= 0)
-          if (z > cutoff)
-            printf("%s atom %s not in plane %s, |Z|=%.1f\n", tag,
+          if (z > cutoff) {
+            printf("%s atom %s not in plane %s  |Z|=%.1f", tag,
                    atom->name.c_str(), t.restr->str().c_str(), z);
+            if (verbosity > 0)
+              printf((verbosity < 2 ? "  d=%.1f" : "  d=%g"), dist);
+            putchar('\n');
+          }
         if (z > max_z)
             max_z = z;
       }
