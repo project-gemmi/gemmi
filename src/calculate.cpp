@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/calculate.hpp"
+#include "gemmi/eig3.hpp"
 
 namespace gemmi {
 
@@ -19,12 +20,12 @@ std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms) {
     m.u13 += p.x * p.z;
     m.u23 += p.y * p.z;
   }
-  auto eig = m.calculate_eigenvalues();
-  double smallest = eig[0];
-  for (double d : {eig[1], eig[2]})
-    if (std::fabs(d) < std::fabs(smallest))
-      smallest = d;
-  Vec3 eigvec = m.calculate_eigenvector(smallest);
+  double eig[3] = {};
+  Mat33 V = eigen_decomposition(m, eig);
+  int smallest_idx = std::fabs(eig[0]) < std::fabs(eig[1]) ? 0 : 1;
+  if (std::fabs(eig[2]) < std::fabs(eig[smallest_idx]))
+    smallest_idx = 2;
+  Vec3 eigvec = V.column_copy(smallest_idx);
   if (eigvec.x < 0)
     eigvec *= -1;
   return {{eigvec.x, eigvec.y, eigvec.z, -eigvec.dot(mean)}};
