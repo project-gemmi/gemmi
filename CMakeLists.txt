@@ -185,9 +185,9 @@ if (GEMMI_VERSION_INFO)
 endif()
 
 add_library(gemmi_cpp
-            src/crd.cpp src/mmcif.cpp src/mtz.cpp src/mtz2cif.cpp
-            src/polyheur.cpp
-            src/read_cif.cpp src/mmread_gz.cpp src/resinfo.cpp
+            src/calculate.cpp src/crd.cpp
+            src/mmcif.cpp src/mmread_gz.cpp src/mtz.cpp src/mtz2cif.cpp
+            src/polyheur.cpp src/read_cif.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
 set_property(TARGET gemmi_cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
