@@ -151,7 +151,7 @@ inline std::array<double, 2> calculate_phi_psi(const Residue* prev,
   return phi_psi;
 }
 
-std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms);
+GEMMI_DLL std::array<double, 4> find_best_plane(const std::vector<Atom*>& atoms);
 
 inline double get_distance_from_plane(const Position& pos,
                                       const std::array<double, 4>& coeff) {
