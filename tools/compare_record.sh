@@ -40,6 +40,8 @@ cut -f1,3 - | grep "$MONTH" | while read -r code date; do
   code=${code,,}
   echo $code
   pdb=${PDB_COPY}/pdb/${code:1:2}/pdb${code}.ent.gz
+  # silently skip entries that don't have a pdb file for comparison
+  [ -e "$pdb" ] || continue
   if [[ ${FROM_PDB:-} = 1 ]]; then
     inp="$pdb"
   else
@@ -54,6 +56,10 @@ cut -f1,3 - | grep "$MONTH" | while read -r code date; do
     ${DIFF:-diff} -U0 --label="$pdb" --label="from $inp" \
         <(zgrep "$RECORD" "$pdb") \
         <($CONVERT --to=pdb "$inp" - | grep "$RECORD") ||:
+    # clean up
+    if [[ ${VIA_CIF:-} = 1 ]]; then
+        /bin/rm "$cifout"
+    fi
   else
       echo "files not found for $code"
   fi
