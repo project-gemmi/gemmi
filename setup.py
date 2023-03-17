@@ -54,7 +54,7 @@ ext_modules = [
                    'topo', 'unitcell', 'write']]
               + ['src/%s.cpp' % name for name in
                   ['sprintf', 'mtz', 'to_pdb', 'to_mmcif', 'mtz2cif',
-                   'read_cif', 'mmcif', 'mmread_gz', 'calculate',
+                   'read_cif', 'mmcif', 'mmread_gz', 'calculate', 'eig3',
                    'resinfo', 'polyheur', 'monlib', 'topo', 'riding_h', 'crd',
                    'xds_ascii']],
               include_dirs=zlib_include_dirs + [

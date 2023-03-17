@@ -185,7 +185,7 @@ if (GEMMI_VERSION_INFO)
 endif()
 
 add_library(gemmi_cpp
-            src/calculate.cpp src/crd.cpp
+            src/calculate.cpp src/crd.cpp src/eig3.cpp
             src/mmcif.cpp src/mmread_gz.cpp src/mtz.cpp src/mtz2cif.cpp
             src/polyheur.cpp src/read_cif.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
@@ -289,7 +289,7 @@ endif()
 #target_link_libraries(c_test PRIVATE cgemmi)
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp
-                                        src/mtz2cif.cpp)
+                                        src/mtz2cif.cpp src/eig3.cpp)
 target_compile_definitions(cpptest PRIVATE USE_STD_SNPRINTF=1)
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
