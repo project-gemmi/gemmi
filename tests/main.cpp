@@ -78,14 +78,6 @@ TEST_CASE("SMat33::smallest_eigenvalue") {
   CHECK_EQ(ev2[0], doctest::Approx(6));
   CHECK_EQ(ev2[1], doctest::Approx(3));
   CHECK_EQ(ev2[2], doctest::Approx(2));
-  gemmi::Vec3 evec0 = m2.calculate_eigenvector(ev2[0]);
-  CHECK_EQ(evec0.x, doctest::Approx(-std::sqrt(1./6)));
-  CHECK_EQ(evec0.y, doctest::Approx(-std::sqrt(1./6)));
-  CHECK_EQ(evec0.z, doctest::Approx(std::sqrt(4./6)));
-  gemmi::Vec3 evec2 = m2.calculate_eigenvector(ev2[2]);
-  CHECK_EQ(evec2.length_sq(), doctest::Approx(1.0));
-  CHECK_EQ(evec2.y, doctest::Approx(-evec2.x));
-  CHECK_EQ(evec2.z, doctest::Approx(0));
 }
 
 TEST_CASE("Variance") {

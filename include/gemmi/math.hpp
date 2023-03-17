@@ -314,7 +314,8 @@ template<typename T> struct SMat33 {
     return inv;
   }
 
-  // Based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
+  /// Based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm
+  /// To calculate both eigenvalues and eigenvectors use eig3.hpp
   std::array<double, 3> calculate_eigenvalues() const {
     double p1 = u12*u12 + u13*u13 + u23*u23;
     if (p1 == 0)
@@ -332,27 +333,6 @@ template<typename T> struct SMat33 {
     double eig1 = q + 2 * p * std::cos(phi);
     double eig3 = q + 2 * p * std::cos(phi + 2./3.*pi());
     return {{eig1, 3 * q - eig1 - eig3, eig3}};
-  }
-
-  // Assumes one of the eigenvalue calculate above.
-  // May not work if eigenvalues are not distinct.
-  Vec3 calculate_eigenvector(double eigenvalue) const {
-    Vec3 r0(u11 - eigenvalue, u12, u13);
-    Vec3 r1(u12, u22 - eigenvalue, u23);
-    Vec3 r2(u13, u23, u33 - eigenvalue);
-    Vec3 cr[3] = {r0.cross(r1), r0.cross(r2), r1.cross(r2)};
-    int idx = 0;
-    double lensq = 0;
-    for (int i = 0; i < 3; ++i) {
-      double tmp = cr[i].length_sq();
-      if (tmp > lensq) {
-        idx = i;
-        lensq = tmp;
-      }
-    }
-    if (lensq == 0)
-      return Vec3(0, 0, 1); // an arbitrary choice for the special case
-    return cr[idx] / std::sqrt(lensq);
   }
 };
 
