@@ -51,7 +51,7 @@ ext_modules = [
                   ['gemmi', 'align', 'ccp4', 'chemcomp', 'cif', 'custom',
                    'elem', 'hkl', 'grid', 'meta', 'mol', 'monlib', 'mtz',
                    'read', 'recgrid', 'scaling', 'search', 'sf', 'sym',
-                   'refine', 'topo', 'unitcell', 'write']]
+                   'topo', 'unitcell', 'write']]
               + ['src/%s.cpp' % name for name in
                   ['sprintf', 'mtz', 'to_pdb', 'to_mmcif', 'mtz2cif',
                    'read_cif', 'mmcif', 'mmread_gz', 'calculate',
