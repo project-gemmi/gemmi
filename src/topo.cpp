@@ -166,13 +166,17 @@ void Topo::add_polymer_links(PolymerType polymer_type,
 
   if (is_polypeptide(polymer_type)) {
     std::string c = "C";
+    std::string ca1 = "CA";
     std::string n = "N";
+    std::string ca2 = "CA";
     if (ri1.orig_chemcomp && !ChemComp::is_peptide_group(ri1.orig_chemcomp->group)) {
       for (const ChemComp::Aliasing& aliasing : ri1.orig_chemcomp->aliases)
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing1 = &aliasing;
-          if (const std::string* c_ptr = aliasing.name_from_alias(c))
-            c = *c_ptr;
+          if (const std::string* ptr = aliasing.name_from_alias(c))
+            c = *ptr;
+          if (const std::string* ptr = aliasing.name_from_alias(ca1))
+            ca1 = *ptr;
           break;
         }
       if (!link.aliasing1)
@@ -185,8 +189,10 @@ void Topo::add_polymer_links(PolymerType polymer_type,
         if (ChemComp::is_peptide_group(aliasing.group)) {
           link.aliasing2 = &aliasing;
           n_terminus_group = aliasing.group;
-          if (const std::string* n_ptr = aliasing.name_from_alias(n))
-            n = *n_ptr;
+          if (const std::string* ptr = aliasing.name_from_alias(n))
+            n = *ptr;
+          if (const std::string* ptr = aliasing.name_from_alias(ca2))
+            ca2 = *ptr;
           break;
         }
       if (!link.aliasing2)
@@ -198,10 +204,17 @@ void Topo::add_polymer_links(PolymerType polymer_type,
           if (a2.name == n && a2.element == El::N &&
               (a2.altloc == a1.altloc || a2.altloc == '\0' || a1.altloc == '\0') &&
               in_peptide_bond_distance(&a1, &a2)) {
+            // One C-N pair of atoms can create here only one link.
+            // Ignoring artificial configuration of no-altloc C and N atoms,
+            // and CA atoms in 2+ conformations making both CIS and TRANS links.
             link.alt1 = a1.altloc;
             link.alt2 = a2.altloc;
             if (groups_ok) {
-              bool is_cis = ri1.res->is_cis;
+              // Deciding CIS/TRANS based on omega angle.
+              char alt = a1.altloc_or(a2.altloc_or('*'));
+              const Atom* ca1_atom = ri1.res->find_atom(ca1, alt, El::C);
+              const Atom* ca2_atom = ri2.res->find_atom(ca2, alt, El::C);
+              bool is_cis = is_peptide_bond_cis(ca1_atom, &a1, &a2, ca2_atom);
               if (n_terminus_group == ChemComp::Group::PPeptide)
                 link.link_id = is_cis ? "PCIS" : "PTRANS";
               else if (n_terminus_group == ChemComp::Group::MPeptide)

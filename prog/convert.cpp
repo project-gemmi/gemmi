@@ -216,7 +216,7 @@ void convert(gemmi::Structure& st,
   }
 
   if (options[SetCis])
-    assign_cis_flags(st);
+    update_cispep(st);
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {
     const char* sep = std::strchr(opt->arg, ':');

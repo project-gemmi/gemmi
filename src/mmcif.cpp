@@ -228,6 +228,50 @@ void read_connectivity(cif::Block& block, Structure& st) {
   }
 }
 
+// CISPEP equivalent
+void read_prot_cis(cif::Block& block, Structure& st) {
+  enum {
+    kModelNum=0,
+    kAuthAsymId=1, kAuthSeqId=2, kInsCode=3, kLabelCompId=4, kAuthCompId=5,
+    kAuthAsymId2=6, kAuthSeqId2=7, kInsCode2=8, kLabelCompId2=9, kAuthCompId2=10,
+    kAltId=11, kOmegaAngle=12
+  };
+  // We could use label_seq_id etc and call set_part_of_address_from_label(),
+  // but for now let's assume that auth_seq_id etc are there.
+  for (auto row : block.find("_struct_mon_prot_cis.",
+                             {"pdbx_PDB_model_num",                  // 0
+                              "auth_asym_id",                        // 1
+                              "auth_seq_id", "?pdbx_PDB_ins_code",   // 2-3
+                              "?label_comp_id", "?auth_comp_id",     // 4-5
+                              "?pdbx_auth_asym_id_2",                // 6
+                              "?pdbx_auth_seq_id_2", "?pdbx_PDB_ins_code_2",   // 7-8
+                              "?pdbx_label_comp_id_2", "?pdbx_auth_comp_id_2", // 9-10
+                              "?label_alt_id", "?pdbx_omega_angle"})) {        // 11-12
+    CisPep cispep;
+    cispep.model_str = row.str(kModelNum);
+    cispep.partner_c.chain_name = row.str(kAuthAsymId);
+    cispep.partner_c.res_id.seqid = make_seqid(row.str(kAuthSeqId), row.ptr_at(kInsCode));
+    cispep.partner_c.res_id.name = row.str(row.has2(kLabelCompId2) ? 4 : 5);
+    if (row.has(kLabelCompId))
+      cispep.partner_c.res_id.name = row.str(kLabelCompId);
+    else if (row.has(kAuthCompId))
+      cispep.partner_c.res_id.name = row.str(kAuthCompId);
+    if (row.has(kAuthAsymId2))
+      cispep.partner_n.chain_name = row.str(kAuthAsymId2);
+    if (row.has(kAuthSeqId2))
+      cispep.partner_n.res_id.seqid = make_seqid(row.str(kAuthSeqId2), row.ptr_at(kInsCode2));
+    if (row.has(kLabelCompId2))
+      cispep.partner_n.res_id.name = row.str(kLabelCompId2);
+    else if (row.has(kAuthCompId2))
+      cispep.partner_n.res_id.name = row.str(kAuthCompId2);
+    if (row.has(kAltId))
+      cispep.only_altloc = cif::as_char(row[kAltId], '\0');
+    if (row.has(kOmegaAngle))
+      cispep.reported_angle = cif::as_number(row[kOmegaAngle]);
+    st.cispeps.push_back(cispep);
+  }
+}
+
 // Operation expression is an item type used for *.oper_expression.
 // Here, to keep it simple, we ignore products such as "(2)(3)".
 // We parse "3", "1,3,5", "one,two", "(3)", "(a)", "(1-60)", "(2,3-8,XY)", etc
@@ -828,24 +872,11 @@ Structure make_structure_from_block(const cif::Block& block_) {
 
   st.setup_cell_images();
 
-  // CISPEP
-  for (auto row : block.find("_struct_mon_prot_cis.",
-                             {"pdbx_PDB_model_num", "auth_asym_id",  // 0-1
-                              "auth_seq_id", "?pdbx_PDB_ins_code",   // 2-3
-                              "?label_comp_id", "?auth_comp_id"})) { // 4-5
-    if (row.has2(0) && row.has2(1) && row.has2(2) &&
-        (row.has2(4) || row.has2(5)))
-      if (Model* mdl = st.find_model(row[0])) {
-        std::string comp = row.str(row.has2(4) ? 4 : 5);
-        ResidueId rid = make_resid(comp, row.str(2), row.ptr_at(3));
-        if (Residue* res = mdl->find_residue(row[1], rid))
-          res->is_cis = true;
-      }
-  }
 
   st.helices = read_helices(block);
   st.sheets = read_sheets(block);
   read_connectivity(block, st);
+  read_prot_cis(block, st);
   st.assemblies = read_assemblies(block);
   read_sifts_unp(block, st);
 

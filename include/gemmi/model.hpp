@@ -172,7 +172,6 @@ struct Residue : public ResidueId {
   OptionalNum label_seq;  // mmCIF _atom_site.label_seq_id
   EntityType entity_type = EntityType::Unknown;
   char het_flag = '\0';   // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
-  bool is_cis = false;    // bond to the next residue marked as cis
   char flag = '\0';       // custom flag
   SiftsUnpResidue sifts_unp;  // UniProt reference from SIFTS
   short group_idx = 0;        // ignore - internal variable
@@ -188,7 +187,6 @@ struct Residue : public ResidueId {
     res.label_seq = label_seq;
     res.entity_type = entity_type;
     res.het_flag = het_flag;
-    res.is_cis = is_cis;
     res.flag = flag;
     return res;
   }
@@ -855,6 +853,7 @@ struct Structure {
   std::vector<NcsOp> ncs;
   std::vector<Entity> entities;
   std::vector<Connection> connections;
+  std::vector<CisPep> cispeps;
   std::vector<Helix> helices;
   std::vector<Sheet> sheets;
   std::vector<Assembly> assemblies;
@@ -895,6 +894,9 @@ struct Structure {
 
   Model* find_model(const std::string& model_name) {
     return impl::find_or_null(models, model_name);
+  }
+  const Model* find_model(const std::string& model_name) const {
+    return const_cast<Structure*>(this)->find_model(model_name);
   }
   Model& find_or_add_model(const std::string& model_name) {
     return impl::find_or_add(models, model_name);

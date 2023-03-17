@@ -130,6 +130,12 @@ inline double calculate_omega(const Residue& res, const Residue& next) {
                                        next.get_n(), next.get_ca());
 }
 
+inline bool is_peptide_bond_cis(const Atom* ca1, const Atom* c,
+                                const Atom* n, const Atom* ca2) {
+  double omega = calculate_dihedral_from_atoms(ca1, c, n, ca2);
+  return std::fabs(omega) < rad(30.);
+}
+
 inline double calculate_chiral_volume(const Position& actr, const Position& a1,
                                       const Position& a2, const Position& a3) {
   return (a1 - actr).dot((a2 - actr).cross(a3 - actr));

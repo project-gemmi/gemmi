@@ -199,11 +199,14 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       if (record.length() < 22)
         continue;
       const char* r = record.c_str();
-      std::string cname = read_string(r + 14, 2);
-      ResidueId rid = read_res_id(r + 17, r + 11);
-      for (Model& model : st.models)
-        if (Residue* res = model.find_residue(cname, rid))
-          res->is_cis = true;
+      CisPep cispep;
+      cispep.partner_c.chain_name = read_string(r + 14, 2);
+      cispep.partner_c.res_id = read_res_id(r + 17, r + 11);
+      cispep.partner_n.chain_name = read_string(r + 28, 2);
+      cispep.partner_n.res_id = read_res_id(r + 31, r + 25);
+      cispep.model_str = read_string(r + 43, 3);
+      cispep.reported_angle = read_double(r + 53, 6);
+      st.cispeps.push_back(cispep);
     }
   }
 }

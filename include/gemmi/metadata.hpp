@@ -265,6 +265,15 @@ struct Connection {
   double reported_distance = 0.0;
 };
 
+// Corresponds to CISPEP or _struct_mon_prot_cis
+struct CisPep {
+  AtomAddress partner_c, partner_n;
+  std::string model_str;
+  // mmCIF has (unused by the PDB) tag _struct_mon_prot_cis.label_alt_id
+  // that enables defining CIS link per conformation.
+  char only_altloc = '\0';
+  double reported_angle = NAN;
+};
 
 // Secondary structure. PDBx/mmCIF stores helices and sheets separately.
 

@@ -61,7 +61,7 @@ if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb.cpp'
     echo 'Example 1'
     cmd="c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb.cpp \
-        -lmmdb2 -Lbuild -lgemmi -lz -o test_mmdb"
+        -lmmdb2 -Lbuild -lgemmi_cpp -lz -o test_mmdb"
     awk '/Example 1/,/^}/' include/gemmi/mmdb.hpp > test_mmdb.cpp
     $cmd
     echo 'Example 2'

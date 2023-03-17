@@ -548,7 +548,7 @@ inline void write_header(const Structure& st, std::ostream& os,
     }
 
     // LINK  (note: uses only the first model and primary conformation)
-    if (!st.models.empty() && opt.link_records) {
+    if (opt.link_records) {
       for (const Connection& con : st.connections)
         if (con.type == Connection::Covale || con.type == Connection::MetalC ||
             con.type == Connection::Unknown) {
@@ -594,35 +594,30 @@ inline void write_header(const Structure& st, std::ostream& os,
           buf[80] = '\n';
           os.write(buf, 81);
         }
-
     }
 
-    // CISPEP (note: uses only the first conformation)
-    if (!st.models.empty() && opt.cispep_records) {
+    // CISPEP
+    if (opt.cispep_records) {
       int counter = 0;
-      for (const Model& model : st.models)
-        for (const Chain& chain : model.chains)
-          for (const Residue& res : chain.residues)
-            if (res.is_cis) {
-              const Residue* next = chain.next_residue(res);
-              if (next && are_connected(res, *next, PolymerType::PeptideL)) {
-                if (++counter == 10000)
-                  counter = 0;
-                WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s",
-                      counter,
-                      res.name.c_str(), chain.name.c_str(),
-                      write_seq_id(res.seqid).data(),
-                      next->name.c_str(), chain.name.c_str(),
-                      write_seq_id(next->seqid).data(),
-                      st.models.size() > 1 ? model.name.c_str() : "0",
-                      deg(calculate_omega(res, *next)),
-                      "");
-              }
-            }
+      for (const CisPep& cispep : st.cispeps) {
+        WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s",
+              ++counter,
+              cispep.partner_c.res_id.name.c_str(),
+              cispep.partner_c.chain_name.c_str(),
+              write_seq_id(cispep.partner_c.res_id.seqid).data(),
+              cispep.partner_n.res_id.name.c_str(),
+              cispep.partner_n.chain_name.c_str(),
+              write_seq_id(cispep.partner_n.res_id.seqid).data(),
+              st.models.size() > 1 ? cispep.model_str.c_str() : "0",
+              std::isnan(cispep.reported_angle) ? 0. : cispep.reported_angle,
+              "");
+        if (counter == 9999)
+          counter = 0;
+      }
     }
   }
 
-  if(opt.cryst1_record)
+  if (opt.cryst1_record)
     write_cryst1(st, os);
   if (st.has_origx && !st.origx.is_identity()) {
     for (int i = 0; i < 3; ++i)

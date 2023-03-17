@@ -136,8 +136,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (auto& name_monomer : monlib.monomers)
         name_monomer.second.aliases.clear();
 
-    if (p.is_yes(AutoCis, true))
-      assign_cis_flags(model0);
+    bool use_cispep = !p.is_yes(AutoCis, true);
 
     if (p.is_yes(AutoLink, false)) {
       size_t before = st.connections.size();

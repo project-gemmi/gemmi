@@ -180,6 +180,15 @@ void add_meta(py::module& m) {
     });
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
 
+  py::class_<CisPep>(m, "CisPep")
+    .def(py::init<>())
+    .def_readwrite("partner_c", &CisPep::partner_c)
+    .def_readwrite("partner_n", &CisPep::partner_n)
+    .def_readwrite("model_str", &CisPep::model_str)
+    .def_readwrite("only_altloc", &CisPep::only_altloc)
+    .def_readwrite("reported_angle", &CisPep::reported_angle)
+    ;
+
   py::class_<Helix> helix(m, "Helix");
   py::enum_<Helix::HelixClass>(helix, "HelixClass")
     .value("UnknownHelix", Helix::HelixClass::UnknownHelix)

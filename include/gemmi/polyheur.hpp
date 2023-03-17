@@ -171,22 +171,8 @@ inline void setup_entities(Structure& st) {
   deduplicate_entities(st);
 }
 
-/// Assign Residue::is_cis based on the omega angle of the first conformer
-template<class T> void assign_cis_flags(T& obj) {
-  for (auto& child : obj.children())
-    assign_cis_flags(child);
-}
-inline void assign_cis_flags(Chain& chain) {
-  for (Residue& res : chain.residues) {
-    bool cis = false;
-    if (res.entity_type == EntityType::Polymer)
-      if (const Residue* next = chain.next_residue(res))
-        if (have_peptide_bond(res, *next))
-          if (std::fabs(calculate_omega(res, *next)) < rad(30.))
-            cis = true;
-    res.is_cis = cis;
-  }
-}
+/// Regenerate  Residue::is_cis based on the omega angle of the first conformer
+GEMMI_DLL void update_cispep(Structure& st);
 
 // Remove waters. It may leave empty chains.
 template<class T> void remove_waters(T& obj) {

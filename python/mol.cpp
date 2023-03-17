@@ -111,6 +111,7 @@ void add_mol(py::module& m) {
     .def_readwrite("input_format", &Structure::input_format)
     .def_readwrite("entities", &Structure::entities)
     .def_readwrite("connections", &Structure::connections)
+    .def_readwrite("cispeps", &Structure::cispeps)
     .def_readwrite("helices", &Structure::helices)
     .def_readwrite("sheets", &Structure::sheets)
     .def_readwrite("assemblies", &Structure::assemblies)
@@ -161,7 +162,7 @@ void add_mol(py::module& m) {
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
-    .def("assign_cis_flags", assign_cis_flags<Structure>)
+    .def("update_cispep", &update_cispep)
     .def("remove_alternative_conformations",
          remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
