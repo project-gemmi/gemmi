@@ -2,6 +2,7 @@
 
 #include <gemmi/topo.hpp>
 #include <cmath>               // for sqrt, round
+#include <map>                 // for multimap
 #include <gemmi/polyheur.hpp>  // for get_or_check_polymer_type, ...
 #include <gemmi/riding_h.hpp>  // for place_hydrogens_on_all_atoms, ...
 #include <gemmi/modify.hpp>    // for remove_hydrogens
@@ -214,13 +215,13 @@ static void add_polymer_links(PolymerType polymer_type,
               char alt = a1.altloc_or(a2.altloc_or('*'));
               const Atom* ca1_atom = ri1.res->find_atom(ca1, alt, El::C);
               const Atom* ca2_atom = ri2.res->find_atom(ca2, alt, El::C);
-              bool is_cis = is_peptide_bond_cis(ca1_atom, &a1, &a2, ca2_atom);
+              link.is_cis = is_peptide_bond_cis(ca1_atom, &a1, &a2, ca2_atom);
               if (n_terminus_group == ChemComp::Group::PPeptide)
-                link.link_id = is_cis ? "PCIS" : "PTRANS";
+                link.link_id = link.is_cis ? "PCIS" : "PTRANS";
               else if (n_terminus_group == ChemComp::Group::MPeptide)
-                link.link_id = is_cis ? "NMCIS" : "NMTRANS";
+                link.link_id = link.is_cis ? "NMCIS" : "NMTRANS";
               else
-                link.link_id = is_cis ? "CIS" : "TRANS";
+                link.link_id = link.is_cis ? "CIS" : "TRANS";
             } else if (monlib) {
               link.link_id = add_auto_chemlink(*monlib,
                                                ri1.res->name, c,
@@ -678,16 +679,54 @@ static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   }
 }
 
+static void force_cispeps(Topo& topo, bool single_model, const Model& model,
+                          const std::vector<CisPep>& cispeps,
+                          std::ostream* warnings) {
+  std::multimap<const Residue*, const CisPep*> cispep_index;
+  for (const CisPep& cp : cispeps) {
+    if (single_model || model.name == cp.model_str)
+      if (const Residue* res_n = model.find_cra(cp.partner_n).residue)
+        cispep_index.emplace(res_n, &cp);
+  }
+  for (Topo::ChainInfo& chain_info : topo.chain_infos)
+    for (Topo::ResInfo& res_info : chain_info.res_infos) {
+      auto range = cispep_index.equal_range(res_info.res);
+      for (Topo::Link& link : res_info.prev) {
+        bool is_cis = false;
+        for (auto i = range.first; i != range.second; ++i) {
+          const CisPep& cp = *i->second;
+          if (cp.partner_c.res_id.matches_noseg(*link.res1) &&
+              (cp.only_altloc == '\0' || cp.only_altloc == link.alt1
+                                      || cp.only_altloc == link.alt2))
+            is_cis = true;
+        }
+        if (is_cis != link.is_cis) {
+          if (ends_with(link.link_id, "TRANS"))
+            link.link_id.replace(link.link_id.size() - 5, 5, "CIS");
+          link.is_cis = is_cis;
+          if (warnings)
+            *warnings << "Link between "
+                      << atom_str(chain_info.chain_ref.name, *link.res1, "", link.alt1)
+                      << " and "
+                      << atom_str(chain_info.chain_ref.name, *link.res2, "", link.alt2)
+                      << " forced to " << link.link_id << std::endl;
+        }
+      }
+    }
+}
+
 std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings, bool ignore_unknown_links) {
+                 std::ostream* warnings, bool ignore_unknown_links, bool use_cispeps) {
   std::unique_ptr<Topo> topo(new Topo);
   topo->warnings = warnings;
   if (model_index >= st.models.size())
     fail("no such model index: " + std::to_string(model_index));
   topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
 
+  if (use_cispeps)
+    force_cispeps(*topo, st.models.size() == 1, st.models[model_index], st.cispeps, warnings);
 
   for (Topo::ChainInfo& chain_info : topo->chain_infos) {
     for (Topo::ResInfo& ri : chain_info.res_infos) {

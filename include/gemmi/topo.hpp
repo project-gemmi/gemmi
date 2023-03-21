@@ -88,10 +88,11 @@ struct GEMMI_DLL Topo {
     Residue* res1 = nullptr;
     Residue* res2 = nullptr;
     std::vector<Rule> link_rules;
-    // altloc and asu are used only for ChainInfo::extras, not for ResInfo::prev
     char alt1 = '\0';
     char alt2 = '\0';
-    Asu asu = Asu::Any;
+    Asu asu = Asu::Any;  // used only in Links in ChainInfo::extras
+    bool is_cis = false;  // helper field for CISPEP record generation
+
     // aliasing1/2 points to vector element in ChemComp::aliases.
     // The pointers should stay valid even if a ChemComp is moved.
     const ChemComp::Aliasing* aliasing1 = nullptr;
@@ -296,7 +297,8 @@ private:
 GEMMI_DLL std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings=nullptr, bool ignore_unknown_links=false);
+                 std::ostream* warnings=nullptr, bool ignore_unknown_links=false,
+                 bool use_cispeps=false);
 
 
 GEMMI_DLL std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res);
