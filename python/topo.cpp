@@ -147,6 +147,7 @@ void add_topo(py::module& m) {
     }, py::return_value_policy::reference_internal)
     .def("first_bond_in_link", &Topo::first_bond_in_link,
          py::return_value_policy::reference_internal)
+    .def("set_cispeps_in_structure", &Topo::set_cispeps_in_structure)
     ;
 
   m.def("prepare_topology",
