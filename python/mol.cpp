@@ -162,7 +162,6 @@ void add_mol(py::module& m) {
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
-    .def("update_cispep", &update_cispep)
     .def("remove_alternative_conformations",
          remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)

@@ -171,9 +171,6 @@ inline void setup_entities(Structure& st) {
   deduplicate_entities(st);
 }
 
-/// Regenerate  Residue::is_cis based on the omega angle of the first conformer
-GEMMI_DLL void update_cispep(Structure& st);
-
 // Remove waters. It may leave empty chains.
 template<class T> void remove_waters(T& obj) {
   for (auto& child : obj.children())

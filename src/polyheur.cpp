@@ -236,10 +236,4 @@ void deduplicate_entities(Structure& st) {
         }
 }
 
-void update_cispep(Structure& st) {
-  st.cispeps.clear();
-  // TODO
-  // cf. Topo::add_polymer_links()
-}
-
 } // namespace gemmi
