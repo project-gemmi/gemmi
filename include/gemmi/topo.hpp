@@ -276,6 +276,8 @@ struct GEMMI_DLL Topo {
     return nullptr;
   }
 
+  void set_cispeps_in_structure(Structure& st);
+
   GEMMI_COLD void err(const std::string& msg) const {
     if (warnings == nullptr)
       fail(msg);

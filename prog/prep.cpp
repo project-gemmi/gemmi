@@ -162,6 +162,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       h_change = HydrogenChange::ReAddButWater;
     auto topo = prepare_topology(st, monlib, 0, h_change, reorder,
                                  &std::cerr, ignore_unknown_links, use_cispeps);
+    if (!use_cispeps)
+      topo->set_cispeps_in_structure(st);
     if (verbose)
       fprintf(stderr, "Preparing data for Refmac...\n");
     cif::Document crd = prepare_refmac_crd(st, *topo, monlib, h_change);

@@ -664,6 +664,37 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
   extras.push_back(extra);
 }
 
+void Topo::set_cispeps_in_structure(Structure& st) {
+  st.cispeps.clear();
+  if (chain_infos.empty())
+    return;
+  // model is not stored in Topo, let's determine it from chain_infos[0]
+  std::string model_str;
+  for (const Model& model : st.models)
+    if (!model.chains.empty() &&
+        &model.chains[0] == &chain_infos[0].chain_ref)
+      model_str = model.name;
+  for (ChainInfo& chain_info : chain_infos)
+    for (ResInfo& res_info : chain_info.res_infos)
+      for (Link& link : res_info.prev)
+        if (link.is_cis) {
+          CisPep cp;
+          cp.model_str = model_str;
+          cp.partner_c = AtomAddress(chain_info.chain_ref.name, *link.res1, "", link.alt1);
+          cp.partner_n = AtomAddress(chain_info.chain_ref.name, *link.res2, "", link.alt2);
+          cp.only_altloc = link.alt1 ? link.alt1 : link.alt2;
+          for (const Rule& rule : link.link_rules)
+            if (rule.rkind == RKind::Torsion) {
+              const Torsion& tor = torsions[rule.index];
+              if (tor.restr->label == "omega") {
+                cp.reported_angle = tor.calculate();
+                break;
+              }
+            }
+          st.cispeps.push_back(cp);
+        }
+}
+
 static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
                                        const std::string& atom_name, char alt) {
   if (!ri)
@@ -817,6 +848,5 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
   return topo;
 }
-
 
 }
