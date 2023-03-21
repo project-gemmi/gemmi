@@ -289,8 +289,6 @@ private:
   // storage for ad-hoc ChemComps (placeholders for those missing in MonLib)
   std::vector<std::unique_ptr<ChemComp>> cc_storage;
 
-  static void add_polymer_links(PolymerType polymer_type,
-                                const ResInfo& ri1, ResInfo& ri2, MonLib* monlib);
   void setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                         bool ignore_unknown_links);
 };

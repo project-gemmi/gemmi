@@ -154,11 +154,11 @@ const std::string& add_auto_chemlink(MonLib& monlib,
   return it.first->first;
 }
 
-void Topo::add_polymer_links(PolymerType polymer_type,
-                             const Topo::ResInfo& ri1,
-                             Topo::ResInfo& ri2,
-                             MonLib* monlib) {
-  Link link;
+static void add_polymer_links(PolymerType polymer_type,
+                              const Topo::ResInfo& ri1,
+                              Topo::ResInfo& ri2,
+                              MonLib* monlib) {
+  Topo::Link link;
   link.res1 = ri1.res;
   link.res2 = ri2.res;
   assert(&ri1 - &ri2 == link.res_distance());
@@ -450,7 +450,7 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
         for (auto ri = group_begin; ri != group_end; ++ri)
           for (auto prev_ri = prev_begin; prev_ri != prev_end; ++prev_ri) {
             MonLib* monlib_ptr = ignore_unknown_links ? nullptr : &monlib;
-            Topo::add_polymer_links(ci.polymer_type, *prev_ri, *ri, monlib_ptr);
+            add_polymer_links(ci.polymer_type, *prev_ri, *ri, monlib_ptr);
           }
         prev_begin = group_begin;
         prev_end = group_end;
