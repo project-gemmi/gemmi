@@ -392,6 +392,46 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
       type_loop.add_row({connection_type_to_string((Connection::Type)i)});
 }
 
+void write_cispeps(const Structure& st, cif::Block& block) {
+  cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
+      {"pdbx_id", "pdbx_PDB_model_num",
+       "label_asym_id", "label_seq_id", "label_comp_id",
+       "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
+       "pdbx_label_asym_id_2", "pdbx_label_seq_id_2", "pdbx_label_comp_id_2",
+       "pdbx_auth_asym_id_2", "pdbx_auth_seq_id_2", "pdbx_PDB_ins_code_2",
+       "label_alt_id", "pdbx_omega_angle"});
+  auto& v = prot_cis_loop.values;
+  int pdbx_id = 0;
+  for (const CisPep& cispep : st.cispeps) {
+    const Model* model = &st.models[0];
+    if (st.models.size() > 1) {
+      model = st.find_model(cispep.model_str);
+      if (!model)
+        continue;
+    }
+    const_CRA cra1 = model->find_cra(cispep.partner_c, true);
+    const_CRA cra2 = model->find_cra(cispep.partner_n, true);
+    if (!cra1.residue || !cra2.residue)
+      continue;
+    v.emplace_back(std::to_string(++pdbx_id));            // pdbx_id
+    v.emplace_back(cispep.model_str);                     // pdbx_PDB_model_num
+    v.emplace_back(subchain_or_dot(*cra1.residue));       // label_asym_id
+    v.emplace_back(cra1.residue->label_seq.str('.'));     // label_seq_id
+    v.emplace_back(cra1.residue->name);                   // label_comp_id
+    v.emplace_back(qchain(cispep.partner_c.chain_name));  // auth_asym_id
+    v.emplace_back(cispep.partner_c.res_id.seqid.num.str()); // auth_seq_id
+    v.emplace_back(pdbx_icode(cispep.partner_c.res_id));  // pdbx_PDB_ins_code
+    v.emplace_back(subchain_or_dot(*cra2.residue));       // pdbx_label_asym_id_2
+    v.emplace_back(cra2.residue->label_seq.str('.'));     // pdbx_label_seq_id_2
+    v.emplace_back(cra2.residue->name);                   // pdbx_label_comp_id_2
+    v.emplace_back(qchain(cispep.partner_n.chain_name));  // pdbx_auth_asym_id_2
+    v.emplace_back(cispep.partner_n.res_id.seqid.num.str()); // pdbx_auth_seq_id_2
+    v.emplace_back(pdbx_icode(cispep.partner_n.res_id));  // pdbx_PDB_ins_code_2
+    v.emplace_back(1, cispep.only_altloc ? cispep.only_altloc : '.');
+    v.emplace_back(number_or_qmark(cispep.reported_angle));
+  }
+}
+
 void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups) {
   if (st.models.empty())
     return;
@@ -975,45 +1015,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   if (groups.conn)
     write_struct_conn(st, block);
 
-  if (groups.cis) {  // _struct_mon_prot_cis
-    cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
-        {"pdbx_id", "pdbx_PDB_model_num",
-         "label_asym_id", "label_seq_id", "label_comp_id",
-         "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
-         "pdbx_label_asym_id_2", "pdbx_label_seq_id_2", "pdbx_label_comp_id_2",
-         "pdbx_auth_asym_id_2", "pdbx_auth_seq_id_2", "pdbx_PDB_ins_code_2",
-         "label_alt_id", "pdbx_omega_angle"});
-    auto& v = prot_cis_loop.values;
-    int pdbx_id = 0;
-    for (const CisPep& cispep : st.cispeps) {
-      const Model* model = &st.models[0];
-      if (st.models.size() > 1) {
-        model = st.find_model(cispep.model_str);
-        if (!model)
-          continue;
-      }
-      const_CRA cra1 = model->find_cra(cispep.partner_c, true);
-      const_CRA cra2 = model->find_cra(cispep.partner_n, true);
-      if (!cra1.residue || !cra2.residue)
-        continue;
-      v.emplace_back(std::to_string(++pdbx_id));            // pdbx_id
-      v.emplace_back(cispep.model_str);                     // pdbx_PDB_model_num
-      v.emplace_back(subchain_or_dot(*cra1.residue));       // label_asym_id
-      v.emplace_back(cra1.residue->label_seq.str('.'));     // label_seq_id
-      v.emplace_back(cra1.residue->name);                   // label_comp_id
-      v.emplace_back(qchain(cispep.partner_c.chain_name));  // auth_asym_id
-      v.emplace_back(cispep.partner_c.res_id.seqid.num.str()); // auth_seq_id
-      v.emplace_back(pdbx_icode(cispep.partner_c.res_id));  // pdbx_PDB_ins_code
-      v.emplace_back(subchain_or_dot(*cra2.residue));       // pdbx_label_asym_id_2
-      v.emplace_back(cra2.residue->label_seq.str('.'));     // pdbx_label_seq_id_2
-      v.emplace_back(cra2.residue->name);                   // pdbx_label_comp_id_2
-      v.emplace_back(qchain(cispep.partner_n.chain_name));  // pdbx_auth_asym_id_2
-      v.emplace_back(cispep.partner_n.res_id.seqid.num.str()); // pdbx_auth_seq_id_2
-      v.emplace_back(pdbx_icode(cispep.partner_n.res_id));  // pdbx_PDB_ins_code_2
-      v.emplace_back(1, cispep.only_altloc ? cispep.only_altloc : '.');
-      v.emplace_back(number_or_qmark(cispep.reported_angle));
-    }
-  }
+  if (groups.cis)  // _struct_mon_prot_cis
+    write_cispeps(st, block);
 
   // _atom_sites (SCALE)
   if (groups.scale && (st.has_origx || st.cell.explicit_matrices)) {

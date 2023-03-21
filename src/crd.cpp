@@ -225,6 +225,13 @@ cif::Block prepare_crd(const Structure& st, const Topo& topo,
         tag += "-disabled";
   }
 
+  if (!st.cispeps.empty()) {
+    items.emplace_back(cif::CommentArg{"#########################\n"
+                                       "## STRUCT_MON_PROT_CIS ##\n"
+                                       "#########################"});
+    write_cispeps(st, block);
+  }
+
   items.emplace_back(cif::CommentArg{"###############\n"
                                      "## ATOM_SITE ##\n"
                                      "###############"});
