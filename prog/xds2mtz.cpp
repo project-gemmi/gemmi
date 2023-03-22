@@ -15,7 +15,7 @@
 namespace {
 
 enum OptionIndex {
-  Title=4, History, Project, Crystal, Dataset, Polarization, Normal, Overload
+  Title=4, History, Project, Crystal, Dataset, Batchmin, Polarization, Normal, Overload
 };
 
 const option::Descriptor Usage[] = {
@@ -36,6 +36,8 @@ const option::Descriptor Usage[] = {
     "  --crystal=CRYSTAL  \tCrystal in MTZ hierarchy (default: 'XDScrystal')" },
   { Dataset, 0, "", "dataset", Arg::Required,
     "  --dataset=DATASET  \tDataset in MTZ hierarchy (default: 'XDSdataset')" },
+  { Batchmin, 0, "", "batchmin", Arg::Float,
+    "  --batchmin=BATCHMIN  \tDelete reflections with BATCH<BATCHMIN (default: 1)" },
   { NoOp, 0, "", "", Arg::None,
     "\nPolarization correction and overload elimination options for INTEGRATE.HKL files:" },
   { Polarization, 0, "", "polarization", Arg::Float,
@@ -69,6 +71,17 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::fprintf(stderr, "Reading %s ...\n", input_path);
   try {
     xds.read_input(gemmi::MaybeGzipped(input_path));
+
+    // batchmin handling
+    double batchmin = 1.0f;
+    if (p.options[Batchmin])
+      batchmin = std::atof(p.options[Batchmin].arg);
+    if (verbose)
+      std::fprintf(stderr, "Delete batches and associated reflections less than batchmin...\n");
+    size_t size_before = xds.data.size();
+    xds.eliminate_batchmin(batchmin);
+    size_t nbatchmin = size_before - xds.data.size();
+    std::printf("Number of deleted reflections with BATCH < %g = %zu\n", batchmin, nbatchmin);
 
     // polarization correction
     if (p.options[Polarization]) {
