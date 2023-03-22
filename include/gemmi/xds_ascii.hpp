@@ -37,8 +37,8 @@ struct GEMMI_DLL XdsAscii {
     double maxc;
     int iset = 1;
 
-    // I think ZD can't be negative
-    int frame() const { return int(zd + 1); }
+    // ZD can be negative for a few reflections
+    int frame() const { return std::floor(zd + 1); }
   };
   struct Iset {
     int id;
@@ -184,6 +184,12 @@ struct GEMMI_DLL XdsAscii {
   /// \par overload is maximally allowed pixel value in a peak (MAXC).
   void eliminate_overloads(double overload) {
     vector_remove_if(data, [&](Refl& r) { return r.maxc > overload; });
+  }
+
+  /// \par batchmin lowest allowed batch number.
+  void eliminate_batchmin(double batchmin) {
+      int minz = std::floor(batchmin) - 1;
+      vector_remove_if(data, [&](Refl& r) { return std::floor(r.zd) < minz; });
   }
 };
 
