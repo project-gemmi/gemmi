@@ -1,0 +1,22 @@
+$ gemmi xds2mtz -h
+Usage:
+  gemmi xds2mtz [options] XDS_FILE MTZ_FILE
+Options:
+  -h, --help               Print usage and exit.
+  -V, --version            Print version and exit.
+  -v, --verbose            Verbose output.
+  --title                  MTZ title.
+  -H LINE, --history=LINE  Add a history line.
+  --project=PROJECT        Project in MTZ hierarchy (default: 'XDSproject')
+  --crystal=CRYSTAL        Crystal in MTZ hierarchy (default: 'XDScrystal')
+  --dataset=DATASET        Dataset in MTZ hierarchy (default: 'XDSdataset')
+  --batchmin=BATCHMIN      Delete reflections with BATCH<BATCHMIN (default: 1)
+
+Polarization correction and overload elimination options for INTEGRATE.HKL
+files:
+  --polarization=VALUE     XDS parameter FRACTION_OF_POLARIZATION
+  --normal='Pnx Pny Pnz'   XDS POLARIZATION_PLANE_NORMAL (default: '0 1 0')
+  --overload=OVERLOAD      XDS parameter OVERLOAD to eliminate reflections with
+                           MAXC>OVERLOAD
+
+If XDS_FILE is -, the input is read from stdin.

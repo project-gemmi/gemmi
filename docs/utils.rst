@@ -890,3 +890,12 @@ TBC
 
 .. literalinclude:: wcn-help.txt
    :language: console
+
+xds2mtz
+=======
+
+Converts XDS ASCII file to MTZ format.
+Optionally, filters the reflections and applies polarization correction.
+
+.. literalinclude:: xds2mtz-help.txt
+   :language: console
