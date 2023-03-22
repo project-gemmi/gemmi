@@ -38,7 +38,7 @@ struct GEMMI_DLL XdsAscii {
     int iset = 1;
 
     // ZD can be negative for a few reflections
-    int frame() const { return std::floor(zd + 1); }
+    int frame() const { return (int) std::floor(zd + 1); }
   };
   struct Iset {
     int id;
@@ -187,9 +187,9 @@ struct GEMMI_DLL XdsAscii {
   }
 
   /// \par batchmin lowest allowed batch number.
-  void eliminate_batchmin(double batchmin) {
-      int minz = std::floor(batchmin) - 1;
-      vector_remove_if(data, [&](Refl& r) { return std::floor(r.zd) < minz; });
+  void eliminate_batchmin(int batchmin) {
+    double minz = batchmin - 1;
+    vector_remove_if(data, [&](Refl& r) { return r.zd < minz; });
   }
 };
 

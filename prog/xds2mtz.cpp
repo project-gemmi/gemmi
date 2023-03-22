@@ -36,7 +36,7 @@ const option::Descriptor Usage[] = {
     "  --crystal=CRYSTAL  \tCrystal in MTZ hierarchy (default: 'XDScrystal')" },
   { Dataset, 0, "", "dataset", Arg::Required,
     "  --dataset=DATASET  \tDataset in MTZ hierarchy (default: 'XDSdataset')" },
-  { Batchmin, 0, "", "batchmin", Arg::Float,
+  { Batchmin, 0, "", "batchmin", Arg::Int,
     "  --batchmin=BATCHMIN  \tDelete reflections with BATCH<BATCHMIN (default: 1)" },
   { NoOp, 0, "", "", Arg::None,
     "\nPolarization correction and overload elimination options for INTEGRATE.HKL files:" },
@@ -73,15 +73,15 @@ int GEMMI_MAIN(int argc, char **argv) {
     xds.read_input(gemmi::MaybeGzipped(input_path));
 
     // batchmin handling
-    double batchmin = 1.0f;
+    int batchmin = 1;
     if (p.options[Batchmin])
-      batchmin = std::atof(p.options[Batchmin].arg);
-    if (verbose)
-      std::fprintf(stderr, "Delete batches and associated reflections less than batchmin...\n");
+      batchmin = std::atoi(p.options[Batchmin].arg);
     size_t size_before = xds.data.size();
     xds.eliminate_batchmin(batchmin);
     size_t nbatchmin = size_before - xds.data.size();
-    std::printf("Number of deleted reflections with BATCH < %g = %zu\n", batchmin, nbatchmin);
+    if (verbose || nbatchmin != 0)
+      std::printf("Number of deleted reflections with BATCH < %d (i.e. ZD < %d) = %zu\n",
+                  batchmin, batchmin-1, nbatchmin);
 
     // polarization correction
     if (p.options[Polarization]) {
@@ -117,7 +117,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         std::fprintf(stderr, "Eliminating overloads...\n");
       double overload = std::atof(p.options[Overload].arg);
-      size_t size_before = xds.data.size();
+      size_before = xds.data.size();
       xds.eliminate_overloads(overload);
       size_t nover = size_before - xds.data.size();
       std::printf("Number of eliminated reflections with MAXC > %g = %zu\n", overload, nover);
