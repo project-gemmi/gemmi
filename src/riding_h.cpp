@@ -16,12 +16,8 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri) {
       // res.atoms may get re-allocated, so we can't set parent earlier
       const Atom& parent = res.atoms[i];
       assert(!parent.is_hydrogen());
-      const Restraints::AtomId* atom_id;
-      if (bond.id1 == parent.name)
-        atom_id = &bond.id2;
-      else if (bond.id2 == parent.name)
-        atom_id = &bond.id1;
-      else
+      const Restraints::AtomId* atom_id = bond.other(parent.name);
+      if (!atom_id)
         continue;
       auto it = cc.find_atom(atom_id->atom);
       if (it == cc.atoms.end())
@@ -41,17 +37,18 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri) {
   }
 }
 
+namespace {
 
 // Calculate position using one angle (theta) and one dihedral angle (tau).
 // Returns position of x4 in x1-x2-x3-x4, where dist=|x3-x4| and
 // theta is angle(x2, x3, x4).
 // Based on section 3.3 of Paciorek et al, Acta Cryst. A52, 349 (1996).
-static Position position_from_angle_and_torsion(const Position& x1,
-                                                const Position& x2,
-                                                const Position& x3,
-                                                double dist,  // |x3-x4|
-                                                double theta, // angle x2-x3-x4
-                                                double tau) { // dihedral angle
+Position position_from_angle_and_torsion(const Position& x1,
+                                         const Position& x2,
+                                         const Position& x3,
+                                         double dist,  // |x3-x4|
+                                         double theta, // angle x2-x3-x4
+                                         double tau) { // dihedral angle
   Vec3 u = x2 - x1;
   Vec3 v = x3 - x2;
   Vec3 e1 = v.normalized();
@@ -62,10 +59,10 @@ static Position position_from_angle_and_torsion(const Position& x1,
 }
 
 // Similar to position_from_angle_and_torsion(), but x1 and tau are not given.
-static Position arbitrary_position_from_angle(const Position& x2,
-                                              const Position& x3,
-                                              double dist,     // |x3-x4|
-                                              double theta) {  // angle x2-x3-x4
+Position arbitrary_position_from_angle(const Position& x2,
+                                       const Position& x3,
+                                       double dist,     // |x3-x4|
+                                       double theta) {  // angle x2-x3-x4
   Vec3 u(1, 0, 0);
   Vec3 v = x3 - x2;
   Vec3 e1 = v.normalized();
@@ -80,9 +77,9 @@ static Position arbitrary_position_from_angle(const Position& x2,
 }
 
 
-static Vec3 get_vector_to_line(const Position& point,
-                               const Position& point_on_the_line,
-                               const Vec3& unit_vector) {
+Vec3 get_vector_to_line(const Position& point,
+                        const Position& point_on_the_line,
+                        const Vec3& unit_vector) {
   // en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Vector_formulation
   // the component of a - p perpendicular to the line is: (a-p) - ((a-p).n)n
   Vec3 ap = point_on_the_line - point;
@@ -90,7 +87,6 @@ static Vec3 get_vector_to_line(const Position& point,
 }
 
 // If no points satisfy the distances returns a pair of NaNs
-static
 std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
                                           const Position& p2, double r2sq,
                                           const Position& p3, double r3sq) {
@@ -112,7 +108,7 @@ std::pair<Position, Position> trilaterate(const Position& p1, double r1sq,
 
 // Calculate position using two angles.
 // Returns p4. Topology: p1 is bonded to p2, p3 and p4.
-static std::pair<Position, Position>
+std::pair<Position, Position>
 position_from_two_angles(const Position& p1,
                          const Position& p2,
                          const Position& p3,
@@ -130,7 +126,7 @@ position_from_two_angles(const Position& p1,
 
 // Returns angle between hydrogen and the plane of heavy atoms
 // in 2H tetrahedral configuration. theta0 is the angle between heavy atoms.
-static double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
+double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
   // simplified trilateration:
   //   auto r = trilaterate(Position(0, 0, 0), 1,
   //                        Position(1, 0, 0), 2 - 2 * std::cos(theta1),
@@ -144,7 +140,7 @@ static double calculate_tetrahedral_delta(double theta0, double theta1, double t
   return std::asin(z);
 }
 
-static void place_hydrogens(const Topo& topo, const Atom& atom) {
+void place_hydrogens(const Topo& topo, const Atom& atom) {
   using Angle = Restraints::Angle;
   struct BondedAtom {
     Atom* ptr;
@@ -432,6 +428,8 @@ static void place_hydrogens(const Topo& topo, const Atom& atom) {
     hs[0].pos = atom.pos + Position(h_dir.changed_magnitude(hs[0].dist));
   }
 }
+
+} // anonymous namespace
 
 void place_hydrogens_on_all_atoms(Topo& topo) {
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
