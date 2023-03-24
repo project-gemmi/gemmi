@@ -140,20 +140,18 @@ double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) 
   return std::asin(z);
 }
 
-void place_hydrogens(const Topo& topo, const Atom& atom) {
-  using Angle = Restraints::Angle;
-  struct BondedAtom {
-    Atom* ptr;
-    Position& pos; // == ptr->pos;
-    double dist;
-  };
+struct BondedAtom {
+  Atom* ptr;
+  Position& pos; // == ptr->pos;
+  double dist;
+};
 
-  // put atoms bonded to atom into two lists
-  std::vector<BondedAtom> known; // heavy atoms with known positions
-  std::vector<BondedAtom> hs;    // H atoms (unknown)
-  known.reserve(3);
-  hs.reserve(4);
-
+// put atoms bonded to atom into two lists: heavy atoms (known positions) and hydrogens
+void gather_bonded_atoms(const Topo& topo, const Atom& atom,
+                         std::vector<BondedAtom>& known,
+                         std::vector<BondedAtom>& hs) {
+  known.clear();
+  hs.clear();
   auto range = topo.bond_index.equal_range(&atom);
   char limit_altoc = '\0';
   for (auto i = range.first; i != range.second; ++i) {
@@ -181,9 +179,14 @@ void place_hydrogens(const Topo& topo, const Atom& atom) {
     auto& atom_list = other->is_hydrogen() ? hs : known;
     atom_list.push_back({other, other->pos, t->restr->value});
   }
+}
 
-  if (hs.size() == 0)
-    return;
+// known and hs are lists of heavy atoms and hydrogens bonded to atom
+void place_hydrogens(const Topo& topo, const Atom& atom,
+                     const std::vector<BondedAtom>& known,
+                     std::vector<BondedAtom>& hs) {
+  using Angle = Restraints::Angle;
+  assert(!hs.empty());
 
   auto giveup = [&](const std::string& message) {
     for (BondedAtom& bonded_h : hs) {
@@ -432,6 +435,8 @@ void place_hydrogens(const Topo& topo, const Atom& atom) {
 } // anonymous namespace
 
 void place_hydrogens_on_all_atoms(Topo& topo) {
+  std::vector<BondedAtom> known;
+  std::vector<BondedAtom> hs;
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos) {
       // If we don't have monomer description from a cif file,
@@ -441,7 +446,9 @@ void place_hydrogens_on_all_atoms(Topo& topo) {
       for (Atom& atom : ri.res->atoms)
         if (!atom.is_hydrogen()) {
           try {
-            place_hydrogens(topo, atom);
+            gather_bonded_atoms(topo, atom, known, hs);
+            if (hs.size() != 0)
+              place_hydrogens(topo, atom, known, hs);
           } catch (const std::runtime_error& e) {
             topo.err("Placing of hydrogen bonded to "
                      + atom_str(chain_info.chain_ref, *ri.res, atom)
