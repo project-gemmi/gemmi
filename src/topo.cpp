@@ -710,6 +710,17 @@ static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   }
 }
 
+static void set_cis_in_link(Topo::Link& link, bool is_cis) {
+  if (is_cis) {
+    if (ends_with(link.link_id, "TRANS"))
+      link.link_id.replace(link.link_id.size() - 5, 5, "CIS");
+  } else {
+    if (ends_with(link.link_id, "CIS"))
+      link.link_id.replace(link.link_id.size() - 3, 3, "TRANS");
+  }
+  link.is_cis = is_cis;
+}
+
 static void force_cispeps(Topo& topo, bool single_model, const Model& model,
                           const std::vector<CisPep>& cispeps,
                           std::ostream* warnings) {
@@ -732,9 +743,7 @@ static void force_cispeps(Topo& topo, bool single_model, const Model& model,
             is_cis = true;
         }
         if (is_cis != link.is_cis) {
-          if (ends_with(link.link_id, "TRANS"))
-            link.link_id.replace(link.link_id.size() - 5, 5, "CIS");
-          link.is_cis = is_cis;
+          set_cis_in_link(link, is_cis);
           if (warnings)
             *warnings << "Link between "
                       << atom_str(chain_info.chain_ref.name, *link.res1, "", link.alt1)
