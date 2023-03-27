@@ -5,38 +5,6 @@
 
 namespace gemmi {
 
-// Assumes no hydrogens in the residue.
-// Position and serial number are not assigned for new atoms.
-void add_hydrogens_without_positions(Topo::ResInfo& ri) {
-  Residue& res = *ri.res;
-  // Add H atom for each conformation (altloc) of the parent atom.
-  for (size_t i = 0, size = res.atoms.size(); i != size; ++i) {
-    const ChemComp& cc = ri.get_final_chemcomp(res.atoms[i].altloc);
-    for (const Restraints::Bond& bond : cc.rt.bonds) {
-      // res.atoms may get re-allocated, so we can't set parent earlier
-      const Atom& parent = res.atoms[i];
-      assert(!parent.is_hydrogen());
-      const Restraints::AtomId* atom_id = bond.other(parent.name);
-      if (!atom_id)
-        continue;
-      auto it = cc.find_atom(atom_id->atom);
-      if (it == cc.atoms.end())
-        fail("inconsistent _chem_comp " + cc.name);
-      if (it->is_hydrogen()) {
-        gemmi::Atom atom;
-        atom.name = it->id;
-        atom.altloc = parent.altloc;
-        atom.element = it->el;
-        // calc_flag will be changed to Calculated when the position is set
-        atom.calc_flag = CalcFlag::Dummy;
-        atom.occ = parent.occ;
-        atom.b_iso = parent.b_iso;
-        res.atoms.push_back(atom);
-      }
-    }
-  }
-}
-
 namespace {
 
 // Calculate position using one angle (theta) and one dihedral angle (tau).

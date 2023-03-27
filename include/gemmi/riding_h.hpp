@@ -10,7 +10,6 @@
 
 namespace gemmi {
 
-GEMMI_DLL void add_hydrogens_without_positions(Topo::ResInfo& ri);
 GEMMI_DLL void place_hydrogens_on_all_atoms(Topo& topo);
 
 inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
