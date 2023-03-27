@@ -2,6 +2,7 @@
 
 #include "gemmi/neighbor.hpp"
 #include "gemmi/linkhunt.hpp"
+#include "gemmi/bond_idx.hpp"
 #include "common.h"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -131,5 +132,15 @@ void add_search(py::module& m) {
     .def_readonly("same_image", &LinkHunt::Match::same_image)
     .def_readonly("bond_length", &LinkHunt::Match::bond_length)
     .def_readonly("conn", &LinkHunt::Match::conn)
+    ;
+
+  py::class_<BondIndex>(m, "BondIndex")
+    .def(py::init<const Model&>(), py::keep_alive<1, 2>())
+    .def("add_link", &BondIndex::add_link)
+    .def("add_monomer_bonds", &BondIndex::add_monomer_bonds)
+    .def("are_linked", &BondIndex::are_linked)
+    .def("graph_distance", &BondIndex::graph_distance,
+         py::arg("a"), py::arg("b"), py::arg("same_index"),
+         py::arg("max_distance")=4)
     ;
 }

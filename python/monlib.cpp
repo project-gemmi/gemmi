@@ -36,12 +36,12 @@ void add_monlib(py::module& m) {
     });
 
   py::class_<ChemMod::AtomMod>(chemmod, "AtomMod")
-    .def_readwrite("func", &ChemMod::AtomMod::func) 
-    .def_readwrite("old_id", &ChemMod::AtomMod::old_id) 
-    .def_readwrite("new_id", &ChemMod::AtomMod::new_id) 
-    .def_readwrite("el", &ChemMod::AtomMod::el) 
-    .def_readwrite("charge", &ChemMod::AtomMod::charge) 
-    .def_readwrite("chem_type", &ChemMod::AtomMod::chem_type) 
+    .def_readwrite("func", &ChemMod::AtomMod::func)
+    .def_readwrite("old_id", &ChemMod::AtomMod::old_id)
+    .def_readwrite("new_id", &ChemMod::AtomMod::new_id)
+    .def_readwrite("el", &ChemMod::AtomMod::el)
+    .def_readwrite("charge", &ChemMod::AtomMod::charge)
+    .def_readwrite("chem_type", &ChemMod::AtomMod::chem_type)
   ;
   chemlink
     .def(py::init<>())
@@ -122,14 +122,4 @@ void add_monlib(py::module& m) {
     return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, libin, ignore_missing);
   }, py::arg("monomer_dir"), py::arg("resnames"), py::arg("libin")=std::string(),
      py::arg("ignore_missing")=false);
-
-  py::class_<BondIndex>(m, "BondIndex")
-    .def(py::init<const Model&>(), py::keep_alive<1, 2>())
-    .def("add_link", &BondIndex::add_link)
-    .def("add_monomer_bonds", &BondIndex::add_monomer_bonds)
-    .def("are_linked", &BondIndex::are_linked)
-    .def("graph_distance", &BondIndex::graph_distance,
-         py::arg("a"), py::arg("b"), py::arg("same_index"),
-         py::arg("max_distance")=4)
-    ;
 }

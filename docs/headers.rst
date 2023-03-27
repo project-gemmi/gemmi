@@ -35,6 +35,9 @@ gemmi/blob.hpp
     Finding maxima or "blobs" in a Grid (map).
     Similar to CCP4 PEAKMAX and COOT's "Unmodelled blobs".
 
+gemmi/bond_idx.hpp
+    BondIndex: for checking which atoms are bonded, calculating graph distance.
+
 gemmi/c4322.hpp
     Electron scattering factor coefficients from the International Tables.
 
