@@ -16,6 +16,7 @@ struct BondIndex {
   struct AtomImage {
     int atom_serial;
     bool same_image;
+    char altloc;  // optional, for faster access
     bool operator==(const AtomImage& o) const {
       return atom_serial == o.atom_serial && same_image == o.same_image;
     }
@@ -30,7 +31,7 @@ struct BondIndex {
 
   void add_oneway_link(const Atom& a, const Atom& b, bool same_image) {
     std::vector<AtomImage>& list_a = index.at(a.serial);
-    AtomImage ai{b.serial, same_image};
+    AtomImage ai{b.serial, same_image, b.altloc};
     if (!in_vector(ai, list_a))
       list_a.push_back(ai);
   }
@@ -65,12 +66,12 @@ struct BondIndex {
   }
 
   bool are_linked(const Atom& a, const Atom& b, bool same_image) const {
-    return in_vector({b.serial, same_image}, index.at(a.serial));
+    return in_vector({b.serial, same_image, '\0'}, index.at(a.serial));
   }
 
   int graph_distance(const Atom& a, const Atom& b, bool same_image,
                      int max_distance=4) const {
-    std::vector<AtomImage> neighbors(1, {a.serial, true});
+    std::vector<AtomImage> neighbors(1, {a.serial, true, '\0'});
     for (int distance = 1; distance <= max_distance; ++distance) {
       for (size_t n = neighbors.size(); n--; ) {
         for (AtomImage ai : index.at(neighbors[n].atom_serial)) {
