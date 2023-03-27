@@ -540,8 +540,7 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
     }
 }
 
-void Topo::finalize_refmac_topology(const MonLib& monlib) {
-  // apply restraints
+void Topo::apply_all_restraints(const MonLib& monlib) {
   for (ChainInfo& chain_info : chain_infos)
     for (ResInfo& ri : chain_info.res_infos) {
       // link restraints
@@ -558,8 +557,9 @@ void Topo::finalize_refmac_topology(const MonLib& monlib) {
     }
   for (Link& link : extras)
     apply_restraints_from_link(link, monlib);
+}
 
-  // create indices
+void Topo::create_indices() {
   for (Bond& bond : bonds) {
     bond_index.emplace(bond.atoms[0], &bond);
     if (bond.atoms[1] != bond.atoms[0])
@@ -840,7 +840,10 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   }
 
   assign_serial_numbers(st.models[model_index]);
-  topo->finalize_refmac_topology(monlib);
+  // fill Topo::bonds, angles, ... and ResInfo::monomer_rules, Links::link_rules
+  topo->apply_all_restraints(monlib);
+  // fill bond_index, angle_index, etc
+  topo->create_indices();
 
   // the hydrogens added previously have positions not set
   if (h_change != HydrogenChange::NoChange)

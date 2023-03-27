@@ -256,7 +256,10 @@ struct GEMMI_DLL Topo {
   // This step stores pointers to gemmi::Atom's from model0,
   // so after this step don't add or remove atoms.
   // monlib is needed only for links.
-  void finalize_refmac_topology(const MonLib& monlib);
+  void apply_all_restraints(const MonLib& monlib);
+
+  // prepare bond_index, angle_index, torsion_index, plane_index
+  void create_indices();
 
   Link* find_polymer_link(const AtomAddress& a1, const AtomAddress& a2) {
     for (ChainInfo& ci : chain_infos)

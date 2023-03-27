@@ -196,7 +196,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       Topo topo;
       topo.warnings = &std::cerr;
       topo.initialize_refmac_topology(st, model, monlib);
-      topo.finalize_refmac_topology(monlib);
+      topo.apply_all_restraints(monlib);
 
       RMSes rmses;
       // We could iterate directly over Topo::bonds, Topo::angles, etc,
