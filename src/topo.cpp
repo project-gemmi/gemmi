@@ -3,7 +3,7 @@
 #include <gemmi/topo.hpp>
 #include <cmath>               // for sqrt, round
 #include <map>                 // for multimap
-#include <gemmi/bond_idx.hpp>  // for BondIndex
+#include <unordered_map>       // for unordered_multimap
 #include <gemmi/polyheur.hpp>  // for get_or_check_polymer_type, ...
 #include <gemmi/riding_h.hpp>  // for place_hydrogens_on_all_atoms, ...
 #include <gemmi/modify.hpp>    // for remove_hydrogens
@@ -700,7 +700,9 @@ void Topo::set_cispeps_in_structure(Structure& st) {
         }
 }
 
-static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
+namespace {
+
+void remove_hydrogens_from_atom(Topo::ResInfo* ri,
                                        const std::string& atom_name, char alt) {
   if (!ri)
     return;
@@ -715,7 +717,7 @@ static void remove_hydrogens_from_atom(Topo::ResInfo* ri,
   }
 }
 
-static void set_cis_in_link(Topo::Link& link, bool is_cis) {
+void set_cis_in_link(Topo::Link& link, bool is_cis) {
   if (is_cis) {
     if (ends_with(link.link_id, "TRANS"))
       link.link_id.replace(link.link_id.size() - 5, 5, "CIS");
@@ -726,7 +728,7 @@ static void set_cis_in_link(Topo::Link& link, bool is_cis) {
   link.is_cis = is_cis;
 }
 
-static void force_cispeps(Topo& topo, bool single_model, const Model& model,
+void force_cispeps(Topo& topo, bool single_model, const Model& model,
                           const std::vector<CisPep>& cispeps,
                           std::ostream* warnings) {
   std::multimap<const Residue*, const CisPep*> cispep_index;
@@ -760,10 +762,15 @@ static void force_cispeps(Topo& topo, bool single_model, const Model& model,
     }
 }
 
+struct Neigh {
+  char alt;
+  float occ;
+};
+using NeighMap = std::unordered_multimap<int, Neigh>;
+
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
-static void add_hydrogens_without_positions(Topo::ResInfo& ri, const BondIndex& b_idx,
-                                            const std::map<int, float>& serial_occ) {
+void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbors) {
   Residue& res = *ri.res;
   // Add H atom for each conformation (altloc) of the parent atom and its
   // first neighbors.
@@ -773,14 +780,14 @@ static void add_hydrogens_without_positions(Topo::ResInfo& ri, const BondIndex& 
     std::map<char, float> altlocs; // altloc + occupancy
     if (parent_alt == '\0') {
       float max_occ = 1.001f;
-      for (const BondIndex::AtomImage& ai : b_idx.index.at(res.atoms[i].serial))
-        if (ai.altloc && altlocs.count(ai.altloc) == 0) {
-          float occ = serial_occ.at(ai.atom_serial);
-          if (occ < max_occ) {
-            altlocs.emplace(ai.altloc, occ * parent_occ);
-            max_occ -= occ;
-          }
+      auto range = neighbors.equal_range(res.atoms[i].serial);
+      for (auto it = range.first; it != range.second; ++it) {
+        const Neigh& neigh = it->second;
+        if (neigh.alt && altlocs.count(neigh.alt) == 0 && neigh.occ < max_occ) {
+          altlocs.emplace(neigh.alt, neigh.occ * parent_occ);
+          max_occ -= neigh.occ;
         }
+      }
     }
     if (altlocs.empty())
       altlocs.emplace(parent_alt, parent_occ);
@@ -811,6 +818,34 @@ static void add_hydrogens_without_positions(Topo::ResInfo& ri, const BondIndex& 
     }
   }
 }
+
+NeighMap prepare_neighbor_data(Topo& topo, const MonLib& monlib) {
+  // disable warnings here, so they are not printed twice
+  std::streambuf *warnings_orig = nullptr;
+  if (topo.warnings)
+    warnings_orig = topo.warnings->rdbuf(nullptr);
+  // Prepare bonds. It fills topo.bonds - cleared later in this function,
+  // and monomer_rules/link_rules - overwritten if apply_all_restraints()
+  // is called again.
+  topo.only_bonds = true;
+  topo.apply_all_restraints(monlib);
+  topo.only_bonds = false;
+  // re-enable warnings
+  if (warnings_orig)
+    topo.warnings->rdbuf(warnings_orig);
+  NeighMap neighbors;
+  for (const Topo::Bond& bond : topo.bonds) {
+    const Atom* a1 = bond.atoms[0];
+    const Atom* a2 = bond.atoms[1];
+    neighbors.emplace(a1->serial, Neigh{a2->altloc, a2->occ});
+    if (a1 != a2)
+      neighbors.emplace(a2->serial, Neigh{a1->altloc, a1->occ});
+  }
+  topo.bonds.clear();
+  return neighbors;
+}
+
+}  // anonymous namespace
 
 std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
@@ -864,34 +899,13 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
   // add hydrogens
   if (h_change == HydrogenChange::ReAdd || h_change == HydrogenChange::ReAddButWater) {
-    const Model& model = st.models[model_index];
-    BondIndex b_index(model);
-    std::map<int, float> serial_occ;
-    for (const_CRA cra : model.all())
-      if (cra.atom->altloc)
-        serial_occ.emplace(cra.atom->serial, cra.atom->occ);
-    topo->only_bonds = true;
-    // disable warnings here, so they are not printed twice
-    std::streambuf *warnings_orig = nullptr;
-    if (warnings)
-      warnings_orig = warnings->rdbuf(nullptr);
-    // prepare bonds
-    topo->apply_all_restraints(monlib);
-    // re-enable warnings
-    if (warnings_orig)
-      warnings->rdbuf(warnings_orig);
-    topo->only_bonds = false;
-    bool same_asu = false; // it doesn't matter here
-    for (const Topo::Bond& b : topo->bonds)
-      b_index.add_link(*b.atoms[0], *b.atoms[1], same_asu);
-    topo->bonds.clear();
-
+    NeighMap neighbors = prepare_neighbor_data(*topo, monlib);
     for (Topo::ChainInfo& chain_info : topo->chain_infos)
       for (Topo::ResInfo& ri : chain_info.res_infos) {
         Residue& res = *ri.res;
         if (ri.orig_chemcomp != nullptr &&
             (h_change == HydrogenChange::ReAdd || !res.is_water())) {
-          add_hydrogens_without_positions(ri, b_index, serial_occ);
+          add_hydrogens_without_positions(ri, neighbors);
 
           // a special handling of HIS for compatibility with Refmac
           if (res.name == "HIS") {
