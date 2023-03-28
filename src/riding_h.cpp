@@ -114,63 +114,29 @@ struct BondedAtom {
   double dist;
 };
 
-// put atoms bonded to atom into two lists: heavy atoms (known positions) and hydrogens
-void gather_bonded_atoms(const Topo& topo, const Atom& atom,
-                         std::vector<BondedAtom>& known,
-                         std::vector<BondedAtom>& hs) {
-  known.clear();
-  hs.clear();
-  auto range = topo.bond_index.equal_range(&atom);
-  char limit_altoc = '\0';
-  for (auto i = range.first; i != range.second; ++i) {
-    const Topo::Bond* t = i->second;
-    Atom* other = t->atoms[t->atoms[0] == &atom ? 1 : 0];
-    if (other->altloc) {
-      if (atom.altloc) {
-        // We support links between different altlocs in Topo (e.g. link A-B),
-        // although these are rare, special cases.
-        // But if we had bonds between atom 1 (A/B) and atom 2 (A/B/C),
-        // and we had bonds B-B and B-C, we'd want to use only one of them (B-B).
-        // Checking atom's name is not robust, but should suffice here.
-        if (atom.altloc != other->altloc &&
-            in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
-                           known))
-          continue;
-      } else {  // atom.altoc == '\0', other->altloc != 0
-        // We can't rely on atom names: in microheterogeneities different
-        // conformations can have different atom names.
-        if (limit_altoc && other->altloc != limit_altoc)
-          continue;
-        limit_altoc = other->altloc;
-      }
-    }
-    auto& atom_list = other->is_hydrogen() ? hs : known;
-    atom_list.push_back({other, other->pos, t->restr->value});
-  }
-}
-
-// known and hs are lists of heavy atoms and hydrogens bonded to atom
+// known and hs are lists of heavy atoms and hydrogens bonded to atom.
+// hs is const, but nevertheless atoms it points to are modified.
 void place_hydrogens(const Topo& topo, const Atom& atom,
                      const std::vector<BondedAtom>& known,
-                     std::vector<BondedAtom>& hs) {
+                     const std::vector<BondedAtom>& hs) {
   using Angle = Restraints::Angle;
   assert(!hs.empty());
 
   auto giveup = [&](const std::string& message) {
-    for (BondedAtom& bonded_h : hs) {
+    for (const BondedAtom& bonded_h : hs) {
       bonded_h.ptr->occ = 0;
       bonded_h.ptr->calc_flag = CalcFlag::Dummy;
     }
     fail(message);
   };
 
-  for (BondedAtom& bonded_h : hs)
+  for (const BondedAtom& bonded_h : hs)
     bonded_h.ptr->calc_flag = CalcFlag::Calculated;
 
   // ==== only hydrogens ====
   if (known.size() == 0) {
     // we can only arbitrarily pick directions of atoms
-    for (BondedAtom& bonded_h : hs)
+    for (const BondedAtom& bonded_h : hs)
       bonded_h.ptr->occ = 0;
     hs[0].pos = atom.pos + Position(hs[0].dist, 0, 0);
     if (hs.size() > 1) {
@@ -293,7 +259,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
       giveup("Unusual: atom bonded to one heavy atoms and 4+ hydrogens.");
     }
     if (!tau_end || period > (int)hs.size())
-      for (BondedAtom& bonded_h : hs)
+      for (const BondedAtom& bonded_h : hs)
         bonded_h.ptr->occ = 0;
   // ==== two heavy atoms and hydrogens ====
   } else if (known.size() == 2) {
@@ -405,24 +371,65 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
 void place_hydrogens_on_all_atoms(Topo& topo) {
   std::vector<BondedAtom> known;
   std::vector<BondedAtom> hs;
+  auto filter = [](char alt, const std::vector<BondedAtom>& v) {
+    std::vector<BondedAtom> out;
+    out.reserve(v.size());
+    for (const BondedAtom& ba : v)
+      if (ba.ptr->altloc_matches(alt))
+        out.push_back(ba);
+    return out;
+  };
   for (Topo::ChainInfo& chain_info : topo.chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos) {
       // If we don't have monomer description from a cif file,
       // only ad-hoc restraints, don't try to place hydrogens.
       if (ri.orig_chemcomp == nullptr)
         continue;
-      for (Atom& atom : ri.res->atoms)
-        if (!atom.is_hydrogen()) {
-          try {
-            gather_bonded_atoms(topo, atom, known, hs);
-            if (hs.size() != 0)
-              place_hydrogens(topo, atom, known, hs);
-          } catch (const std::runtime_error& e) {
-            topo.err("Placing of hydrogen bonded to "
-                     + atom_str(chain_info.chain_ref, *ri.res, atom)
-                     + " failed:\n  " + e.what());
+      for (Atom& atom : ri.res->atoms) {
+        if (atom.is_hydrogen())
+          continue;
+        try {
+          // gather bonded atoms
+          known.clear();
+          hs.clear();
+          auto range = topo.bond_index.equal_range(&atom);
+          for (auto i = range.first; i != range.second; ++i) {
+            const Topo::Bond* t = i->second;
+            Atom* other = t->atoms[t->atoms[0] == &atom ? 1 : 0];
+            if (other->altloc && atom.altloc) {
+              // We support links between different altlocs in Topo (e.g. link A-B),
+              // although these are rare, special cases.
+              // But if we had bonds between atom 1 (A/B) and atom 2 (A/B/C),
+              // and we had bonds B-B and B-C, we'd want to use only one of them (B-B).
+              // Checking atom's name is not robust, but should suffice here.
+              if (atom.altloc != other->altloc &&
+                  in_vector_f([&](const BondedAtom& a) { return a.ptr->name == other->name; },
+                              known))
+                continue;
+            }
+            auto& atom_list = other->is_hydrogen() ? hs : known;
+            atom_list.push_back({other, other->pos, t->restr->value});
           }
+          if (hs.size() == 0)
+            continue;
+          if (atom.altloc == '\0') {
+            std::string altlocs;  // cf. add_distinct_altlocs
+            for (const auto& h : hs)
+              if (h.ptr->altloc && altlocs.find(h.ptr->altloc) == std::string::npos)
+                altlocs += h.ptr->altloc;
+            if (altlocs.size() > 1) {
+              for (char alt : altlocs)
+                place_hydrogens(topo, atom, filter(alt, known), filter(alt, hs));
+              continue;
+            }
+          }
+          place_hydrogens(topo, atom, known, hs);
+        } catch (const std::runtime_error& e) {
+          topo.err("Placing of hydrogen bonded to "
+                   + atom_str(chain_info.chain_ref, *ri.res, atom)
+                   + " failed:\n  " + e.what());
         }
+      }
     }
 }
 

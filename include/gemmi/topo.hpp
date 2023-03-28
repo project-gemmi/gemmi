@@ -177,6 +177,7 @@ struct GEMMI_DLL Topo {
   }
 
   std::ostream* warnings = nullptr;
+  bool only_bonds = false;  // an internal flag for apply_restraints()
   std::vector<ChainInfo> chain_infos;
   std::vector<Link> extras;
 

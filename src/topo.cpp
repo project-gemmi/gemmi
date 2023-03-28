@@ -3,6 +3,7 @@
 #include <gemmi/topo.hpp>
 #include <cmath>               // for sqrt, round
 #include <map>                 // for multimap
+#include <gemmi/bond_idx.hpp>  // for BondIndex
 #include <gemmi/polyheur.hpp>  // for get_or_check_polymer_type, ...
 #include <gemmi/riding_h.hpp>  // for place_hydrogens_on_all_atoms, ...
 #include <gemmi/modify.hpp>    // for remove_hydrogens
@@ -327,6 +328,10 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
           if (!with_alt)
             break;
         }
+
+  if (only_bonds)
+    return rules;
+
   for (const Restraints::Angle& angle : rt.angles)
     for (char alt : altlocs)
       if (Atom* at1 = angle.id1.get_from(res, res2, alt, altloc2))
@@ -411,8 +416,7 @@ void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
     rt = rt_copy.get();
     rt_storage.push_back(std::move(rt_copy));
   }
-  auto rules = apply_restraints(*rt, *link.res1, link.res2, link.alt1, link.alt2, false);
-  vector_move_extend(link.link_rules, std::move(rules));
+  link.link_rules = apply_restraints(*rt, *link.res1, link.res2, link.alt1, link.alt2, false);
 }
 
 // see comments above the declaration
@@ -547,12 +551,13 @@ void Topo::apply_all_restraints(const MonLib& monlib) {
       for (Link& link : ri.prev)
         apply_restraints_from_link(link, monlib);
       // monomer restraints
-      bool require_alt = false;
-      for (const auto& it : ri.chemcomps) {
-        auto rules = apply_restraints(it.cc->rt, *ri.res, nullptr,
-                                      it.altloc, '\0', require_alt);
+      auto it = ri.chemcomps.cbegin();
+      ri.monomer_rules = apply_restraints(it->cc->rt, *ri.res, nullptr,
+                                          it->altloc, '\0', /*require_alt=*/false);
+      while (++it != ri.chemcomps.end()) {
+        auto rules = apply_restraints(it->cc->rt, *ri.res, nullptr,
+                                      it->altloc, '\0', /*require_alt=*/true);
         vector_move_extend(ri.monomer_rules, std::move(rules));
-        require_alt = true;
       }
     }
   for (Link& link : extras)
@@ -757,11 +762,29 @@ static void force_cispeps(Topo& topo, bool single_model, const Model& model,
 
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
-static void add_hydrogens_without_positions(Topo::ResInfo& ri) {
+static void add_hydrogens_without_positions(Topo::ResInfo& ri, const BondIndex& b_idx,
+                                            const std::map<int, float>& serial_occ) {
   Residue& res = *ri.res;
-  // Add H atom for each conformation (altloc) of the parent atom.
+  // Add H atom for each conformation (altloc) of the parent atom and its
+  // first neighbors.
   for (size_t i = 0, size = res.atoms.size(); i != size; ++i) {
-    const ChemComp& cc = ri.get_final_chemcomp(res.atoms[i].altloc);
+    char parent_alt = res.atoms[i].altloc;
+    float parent_occ = res.atoms[i].occ;
+    std::map<char, float> altlocs; // altloc + occupancy
+    if (parent_alt == '\0') {
+      float max_occ = 1.001f;
+      for (const BondIndex::AtomImage& ai : b_idx.index.at(res.atoms[i].serial))
+        if (ai.altloc && altlocs.count(ai.altloc) == 0) {
+          float occ = serial_occ.at(ai.atom_serial);
+          if (occ < max_occ) {
+            altlocs.emplace(ai.altloc, occ * parent_occ);
+            max_occ -= occ;
+          }
+        }
+    }
+    if (altlocs.empty())
+      altlocs.emplace(parent_alt, parent_occ);
+    const ChemComp& cc = ri.get_final_chemcomp(parent_alt);
     for (const Restraints::Bond& bond : cc.rt.bonds) {
       // res.atoms may get re-allocated, so we can't set parent earlier
       const Atom& parent = res.atoms[i];
@@ -775,13 +798,15 @@ static void add_hydrogens_without_positions(Topo::ResInfo& ri) {
       if (it->is_hydrogen()) {
         gemmi::Atom atom;
         atom.name = it->id;
-        atom.altloc = parent.altloc;
         atom.element = it->el;
         // calc_flag will be changed to Calculated when the position is set
         atom.calc_flag = CalcFlag::Dummy;
-        atom.occ = parent.occ;
         atom.b_iso = parent.b_iso;
-        res.atoms.push_back(atom);
+        for (auto alt_occ : altlocs) {
+          atom.altloc = alt_occ.first;
+          atom.occ = alt_occ.second;
+          res.atoms.push_back(atom);
+        }
       }
     }
   }
@@ -800,7 +825,9 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   if (use_cispeps)
     force_cispeps(*topo, st.models.size() == 1, st.models[model_index], st.cispeps, warnings);
 
-  for (Topo::ChainInfo& chain_info : topo->chain_infos) {
+  // remove hydrogens, or change deuterium to fraction, or nothing
+  // and then check atom names
+  for (Topo::ChainInfo& chain_info : topo->chain_infos)
     for (Topo::ResInfo& ri : chain_info.res_infos) {
       Residue& res = *ri.res;
       if (h_change != HydrogenChange::NoChange && h_change != HydrogenChange::Shift
@@ -808,18 +835,6 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
           && (ri.orig_chemcomp != nullptr || h_change == HydrogenChange::Remove)) {
         // remove/add hydrogens
         remove_hydrogens(res);
-        if (h_change == HydrogenChange::ReAdd ||
-            (h_change == HydrogenChange::ReAddButWater && !res.is_water())) {
-          add_hydrogens_without_positions(ri);
-          if (h_change == HydrogenChange::ReAddButWater) {
-            // a special handling of HIS for compatibility with Refmac
-            if (res.name == "HIS") {
-              for (gemmi::Atom& atom : ri.res->atoms)
-                if (atom.name == "HD1" || atom.name == "HE2")
-                  atom.occ = 0;
-            }
-          }
-        }
       } else {
         // Special handling of Deuterium - mostly for Refmac.
         // Note: if the model has deuterium, it gets modified.
@@ -845,8 +860,54 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
           topo->err(msg);
         }
       }
-      // sort atoms in residues
+    }
+
+  // add hydrogens
+  if (h_change == HydrogenChange::ReAdd || h_change == HydrogenChange::ReAddButWater) {
+    const Model& model = st.models[model_index];
+    BondIndex b_index(model);
+    std::map<int, float> serial_occ;
+    for (const_CRA cra : model.all())
+      if (cra.atom->altloc)
+        serial_occ.emplace(cra.atom->serial, cra.atom->occ);
+    topo->only_bonds = true;
+    // disable warnings here, so they are not printed twice
+    std::streambuf *warnings_orig = nullptr;
+    if (warnings)
+      warnings_orig = warnings->rdbuf(nullptr);
+    // prepare bonds
+    topo->apply_all_restraints(monlib);
+    // re-enable warnings
+    if (warnings_orig)
+      warnings->rdbuf(warnings_orig);
+    topo->only_bonds = false;
+    bool same_asu = false; // it doesn't matter here
+    for (const Topo::Bond& b : topo->bonds)
+      b_index.add_link(*b.atoms[0], *b.atoms[1], same_asu);
+    topo->bonds.clear();
+
+    for (Topo::ChainInfo& chain_info : topo->chain_infos)
+      for (Topo::ResInfo& ri : chain_info.res_infos) {
+        Residue& res = *ri.res;
+        if (ri.orig_chemcomp != nullptr &&
+            (h_change == HydrogenChange::ReAdd || !res.is_water())) {
+          add_hydrogens_without_positions(ri, b_index, serial_occ);
+
+          // a special handling of HIS for compatibility with Refmac
+          if (res.name == "HIS") {
+            for (gemmi::Atom& atom : ri.res->atoms)
+              if (atom.name == "HD1" || atom.name == "HE2")
+                atom.occ = 0;
+          }
+        }
+      }
+  }
+
+  // sort atoms in residues
+  for (Topo::ChainInfo& chain_info : topo->chain_infos)
+    for (Topo::ResInfo& ri : chain_info.res_infos)
       if (reorder && ri.orig_chemcomp) {
+        Residue& res = *ri.res;
         const ChemComp& cc = *ri.orig_chemcomp;
         for (Atom& atom : res.atoms) {
           auto it = cc.find_atom(atom.name);
@@ -859,8 +920,6 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                                                 : a.altloc < b.altloc;
         });
       }
-    }
-  }
 
   // for atoms with ad-hoc links, for now we don't want hydrogens
   if (!ignore_unknown_links && h_change != HydrogenChange::NoChange) {
