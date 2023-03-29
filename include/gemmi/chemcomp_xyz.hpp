@@ -37,6 +37,7 @@ inline Residue make_residue_from_chemcomp_block(const cif::Block& block,
       break;
   }
   Residue res;
+  res.seqid.num = 1;
   cif::Column col =
     const_cast<cif::Block&>(block).find_values("_chem_comp_atom.comp_id");
   if (col && col.length() > 0)

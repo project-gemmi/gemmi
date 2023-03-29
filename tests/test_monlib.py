@@ -6,10 +6,10 @@ import gemmi
 
 SO2_FROM_MONOMER = """\
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1                      
-HETATM    1  S   SO3            -5.979   0.717  17.353  1.00 20.00           S  
-HETATM    2  O1  SO3            -5.035   1.876  17.325  1.00 20.00           O  
-HETATM    3  O2  SO3            -7.003   1.053  16.315  1.00 20.00           O1-
-HETATM    4  O3  SO3            -5.199  -0.407  16.748  1.00 20.00           O1-
+HETATM    1  S   SO3     1      -5.979   0.717  17.353  1.00 20.00           S  
+HETATM    2  O1  SO3     1      -5.035   1.876  17.325  1.00 20.00           O  
+HETATM    3  O2  SO3     1      -7.003   1.053  16.315  1.00 20.00           O1-
+HETATM    4  O3  SO3     1      -5.199  -0.407  16.748  1.00 20.00           O1-
 """  # noqa: W291 - trailing whitespace
 
 def full_path(filename):
