@@ -1,0 +1,144 @@
+### PDB entries used for topology testing ###
+
+# proteins
+1mru
+7s1c
+
+# dna
+7qvq
+
+# rna
+8d2b
+
+# dna/rna hybrid chain
+7een
+
+# d-peptide
+7rmr
+
+# carbohydrates ("branched" entities)
+2wmg
+
+# mostly water residues
+3p4j
+
+# molecule spanning several unit cells
+5xg2
+
+# altlocs
+6udz
+
+# altlocs - 3 alternatives for the same atom
+8eko
+7nnx
+
+# altlocs - 4 alternatives for the same atom
+5a7e
+6eky
+
+# altlocs - 5 alternatives for the same atom
+1alx
+7u7j
+
+# altlocs - 5 alternatives: B C D K L instead of usual A B ...
+1l3k
+
+# altlocs - 6 alternatives for the same atom
+5qy1
+
+# altlocs - 7 alternatives for all atoms except solvent
+3b2c
+
+# altlocs - 12 alternatives for CYS SG
+2v93
+
+# microheterogeneity
+4bsw
+
+# microheterogeneity with 3 alternative residues
+# (there are only 7 such PDB entries: 2izq 3jqh 4kl8 4ko2 4ko3 4ko4 3ned)
+3jqh
+3ned
+
+# microheterogeneity in two consecutive residues
+3a0m
+
+# microheterogeneity in three consecutive residues
+4mte
+6x5x
+
+# microheterogeneity in 4-5 consecutive residues
+6ukg
+
+# microheterogeneity in each chain residue (DA/DT)
+7w1y
+
+# microheterogeneity with shared atom
+1ejg
+
+# alternative conformations with both cis and trans bonds
+4ibi
+
+# alternative conformation - partial cleavage
+6ozo
+
+# two covalent bonds between the same residues
+4y8l  # THR-05W
+173d  # PXZ-PXZ (symmetry-related halves of PXZ)
+
+# C-N bond with non-polymer at the chain end
+5a5b
+
+# ligand absent in CCP4 monomer library (7PZ), with two conformations
+7vlg
+
+# link between conformers A and B
+2e7z
+
+# aliasing for peptide bond
+5c7w  # 50L
+#7k00  # MS6
+
+# aliasing for nucleotide bond
+7b3b  # F86
+
+# aliasing + microheterogeneity
+# 2ci1 has KOR/K1R, KOR has conventional names, K1R uses alias C2->C
+2ci1
+
+# link that adds hydrogen
+2amq # PJE-CYS
+2e84 # CYS-HEMB
+
+# atom on n-fold axis with occupancy 1/n
+
+# atom on n-fold axis with occupancy 1
+
+# inversion symmetry
+4rwc
+5eyq
+6ugb
+
+# insertion codes in inverse order
+
+# deuterium
+6kl0
+
+# H/D mixture
+8dhd
+
+# regression testing for hydrogen generation
+6s4n
+4zyw
+5aco
+1q0n
+1nlm
+
+# mistake: no altloc and altloc for the same atom name: 6c5b, 6gob, 4udf, 4xhy
+6c5b
+
+# sum of altloc occupancy > 1
+1c5z
+
+# numeric altlocs (1,2,3,4)
+1aac
