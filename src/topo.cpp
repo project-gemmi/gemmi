@@ -933,6 +933,10 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                     return a.serial != b.serial ? a.serial < b.serial
                                                 : a.altloc < b.altloc;
         });
+        // check for missing altloc
+        for (auto atom = res.atoms.begin(); atom + 1 < res.atoms.end(); ++atom)
+          if (atom->name == (atom + 1)->name && atom->altloc == '\0')
+            topo->err("missing altloc in " + atom_str(chain_info.chain_ref, *ri.res, *atom));
       }
 
   // for atoms with ad-hoc links, for now we don't want hydrogens
