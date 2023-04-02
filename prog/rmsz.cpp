@@ -66,12 +66,12 @@ struct RMSes {
   int wrong_plane = 0;
 };
 
-double check_restraint(const Topo::Rule rule,
-                       const Topo& topo,
-                       double cutoff,
-                       const char* tag,
-                       RMSes* rmses,
-                       int verbosity) {
+void check_restraint(const Topo::Rule rule,
+                     const Topo& topo,
+                     double cutoff,
+                     const char* tag,
+                     RMSes* rmses,
+                     int verbosity) {
   switch (rule.rkind) {
     case Topo::RKind::Bond: {
       const Topo::Bond& t = topo.bonds[rule.index];
@@ -80,15 +80,18 @@ double check_restraint(const Topo::Rule rule,
         rmses->wrong_bond++;
         if (verbosity >= 0) {
           int n = printf("%s bond %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
-          if (verbosity > 0)
+          if (verbosity > 0) {
             printf(verbosity < 2 ? " %*.3f -> %.3f" : " %*g -> %g",
                    std::max(50 - n, 7), t.restr->value, t.calculate());
+            if (verbosity > 2)
+              printf("    esd=%g", t.restr->esd);
+          }
           putchar('\n');
         }
       }
       rmses->z_bond.put(z);
       rmses->d_bond.put(z * t.restr->esd);
-      return z;
+      break;
     }
     case Topo::RKind::Angle: {
       const Topo::Angle& t = topo.angles[rule.index];
@@ -97,33 +100,43 @@ double check_restraint(const Topo::Rule rule,
         rmses->wrong_angle++;
         if (verbosity >= 0) {
           int n = printf("%s angle %s: |Z|=%.1f", tag, t.restr->str().c_str(), z);
-          if (verbosity > 0)
+          if (verbosity > 0) {
             printf(verbosity < 2 ? " %*.1f -> %.1f" : " %*g -> %g",
                    std::max(50 - n, 7), t.restr->value, gemmi::deg(t.calculate()));
+            if (verbosity > 2)
+              printf("    esd=%g", t.restr->esd);
+          }
           putchar('\n');
         }
       }
       rmses->z_angle.put(z);
       rmses->d_angle.put(z * t.restr->esd);
-      return z;
+      break;
     }
     case Topo::RKind::Torsion: {
       const Topo::Torsion& t = topo.torsions[rule.index];
+      // if _chem_comp_tor.value_angle_esd is 0 we skip it silently
+      // (Refmac also ignores such items)
+      if (t.restr->esd == 0)
+        break;
       double z = t.calculate_z();  // takes into account t.restr->period
       if (z > cutoff) {
         rmses->wrong_torsion++;
         if (verbosity >= 0) {
           int n = printf("%s torsion %s: |Z|=%.1f",
                          tag, t.restr->str().c_str(), z);
-          if (verbosity > 0)
+          if (verbosity > 0) {
             printf(verbosity < 2 ? " %*.1f -> %.1f" : " %*g -> %g",
                    std::max(50 - n, 7), t.restr->value, gemmi::deg(t.calculate()));
+            if (verbosity > 2)
+              printf("    esd=%g  period=%d", t.restr->esd, t.restr->period);
+          }
           putchar('\n');
         }
       }
       rmses->z_torsion.put(z);
       rmses->d_torsion.put(z * t.restr->esd);
-      return z;
+      break;
     }
     case Topo::RKind::Chirality: {
       const Topo::Chirality& t = topo.chirs[rule.index];
@@ -132,9 +145,8 @@ double check_restraint(const Topo::Rule rule,
         if (verbosity >= 0)
           printf("%s wrong chirality of %s\n", tag, t.restr->str().c_str());
         rmses->wrong_chirality++;
-        return 1.0;
       }
-      return 0.0;
+      break;
     }
     case Topo::RKind::Plane: {
       const Topo::Plane& t = topo.planes[rule.index];
@@ -147,8 +159,11 @@ double check_restraint(const Topo::Rule rule,
           if (z > cutoff) {
             printf("%s atom %s not in plane %s  |Z|=%.1f", tag,
                    atom->name.c_str(), t.restr->str().c_str(), z);
-            if (verbosity > 0)
+            if (verbosity > 0) {
               printf((verbosity < 2 ? "  d=%.1f" : "  d=%g"), dist);
+              if (verbosity > 2)
+                printf("    esd=%g", t.restr->esd);
+            }
             putchar('\n');
           }
         if (z > max_z)
@@ -158,10 +173,9 @@ double check_restraint(const Topo::Rule rule,
       rmses->d_plane.put(max_z * t.restr->esd);
       if (max_z > cutoff)
         rmses->wrong_plane++;
-      return max_z;
+      break;
     }
   }
-  gemmi::unreachable();
 }
 
 } // anonymous namespace
