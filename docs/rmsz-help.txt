@@ -1,6 +1,6 @@
 $ gemmi rmsz -h
 Usage:
- gemmi rmsz [options] INPUT_FILE
+ gemmi rmsz [options] [FILE]...
 
 Validate geometry of a coordinate file with (Refmac) monomer library.
 
@@ -12,3 +12,4 @@ Options:
   --monomers=DIR   Monomer library dir (default: $CLIBD_MON).
   --format=FORMAT  Input format (default: from the file extension).
   --cutoff=ZC      List bonds and angles with Z score > ZC (default: 2).
+  -s, --sort       Sort output according to |Z|.
