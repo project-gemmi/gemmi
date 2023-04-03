@@ -521,6 +521,8 @@ void add_mol(py::module& m) {
                             HowToNameCopiedChain how) {
         return make_assembly(assembly, model, how, nullptr);
   });
+  m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
+        py::arg("model"), py::arg("cell"), py::arg("max_dist")=0.2);
 
   // select.hpp
   py::class_<FilterProxy<Selection, Model>> pySelectionModelsProxy(m, "SelectionModelsProxy");

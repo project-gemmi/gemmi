@@ -105,6 +105,11 @@ inline Assembly expand_to_p1(const UnitCell& cell) {
   return assembly;
 }
 
+/// Searches and merges overlapping equivalent atoms from different chains.
+/// To be used after expand_ncs() and make_assembly().
+GEMMI_DLL void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
+                                             double max_dist=0.2);
+
 GEMMI_DLL void transform_to_assembly(Structure& st, const std::string& assembly_name,
                                      HowToNameCopiedChain how, std::ostream* out);
 

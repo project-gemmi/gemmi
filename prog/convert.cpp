@@ -13,7 +13,6 @@
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/select.hpp"    // for Selection
-#include "gemmi/neighbor.hpp"  // for merge_atoms_in_expanded_model
 
 #include <cstring>
 #include <iostream>

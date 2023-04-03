@@ -73,8 +73,6 @@ void add_search(py::module& m) {
         return cat("<gemmi.NeighborSearch with grid ",
                    self.grid.nu, ", ", self.grid.nv, ", ", self.grid.nw, '>');
     });
-  m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
-        py::arg("model"), py::arg("cell"), py::arg("max_dist")=0.2);
 
   py::class_<ContactSearch> contactsearch(m, "ContactSearch");
   py::enum_<ContactSearch::Ignore> csignore(contactsearch, "Ignore");
