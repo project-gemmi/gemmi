@@ -56,7 +56,7 @@ ext_modules = [
                   ['sprintf', 'mtz', 'to_pdb', 'to_mmcif', 'mtz2cif',
                    'read_cif', 'mmcif', 'mmread_gz', 'calculate', 'eig3',
                    'resinfo', 'polyheur', 'monlib', 'topo', 'riding_h', 'crd',
-                   'xds_ascii']],
+                   'xds_ascii', 'assembly']],
               include_dirs=zlib_include_dirs + [
                   'include',
                   'third_party',

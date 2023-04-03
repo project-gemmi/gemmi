@@ -185,7 +185,7 @@ if (GEMMI_VERSION_INFO)
 endif()
 
 add_library(gemmi_cpp
-            src/calculate.cpp src/crd.cpp src/eig3.cpp
+            src/assembly.cpp src/calculate.cpp src/crd.cpp src/eig3.cpp
             src/mmcif.cpp src/mmread_gz.cpp src/mtz.cpp src/mtz2cif.cpp
             src/polyheur.cpp src/read_cif.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
