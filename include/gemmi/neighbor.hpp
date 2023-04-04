@@ -162,11 +162,13 @@ struct NeighborSearch {
 
 private:
   void set_grid_size() {
-    grid.set_size_from_spacing(radius_specified, GridSizeRounding::Down);
-    if (grid.nu < 3 || grid.nv < 3 || grid.nw < 3)
-      grid.set_size_without_checking(std::max(grid.nu, 3),
-                                     std::max(grid.nv, 3),
-                                     std::max(grid.nw, 3));
+    // We don't use set_size_from_spacing() etc because we don't need
+    // FFT-friendly size nor symmetry.
+    double inv_radius = 1 / radius_specified;
+    const UnitCell& uc = grid.unit_cell;
+    grid.set_size_without_checking(std::max(int(inv_radius / uc.ar), 3),
+                                   std::max(int(inv_radius / uc.br), 3),
+                                   std::max(int(inv_radius / uc.cr), 3));
   }
 
   void set_bounding_cell(const UnitCell& cell) {

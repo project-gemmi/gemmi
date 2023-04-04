@@ -149,9 +149,9 @@ that was used to generate this mark, 0 for identity),
 
   >>> mark = marks[0]
   >>> mark
-  <gemmi.NeighborSearch.Mark O of atom 0/7/3>
+  <gemmi.NeighborSearch.Mark O of atom 0/7/2>
   >>> mark.x, mark.y, mark.z
-  (19.659000396728516, 20.248884201049805, 17.645000457763672)
+  (21.090999603271484, 18.22788429260254, 17.840999603271484)
   >>> mark.altloc
   '\x00'
   >>> mark.element
@@ -159,7 +159,7 @@ that was used to generate this mark, 0 for identity),
   >>> mark.image_idx
   11
   >>> mark.chain_idx, mark.residue_idx, mark.atom_idx
-  (0, 7, 3)
+  (0, 7, 2)
 
 The references to the original model and to atoms are not stored.
 ``Mark`` has a method ``to_cra()`` that needs to be called with ``Model``
@@ -175,7 +175,7 @@ as an argument to get a triple of Chain, Residue and Atom::
   >>> cra.residue
   <gemmi.Residue 8(DC) with 19 atoms>
   >>> cra.atom
-  <gemmi.Atom O5' at (-0.0, 13.8, -17.6)>
+  <gemmi.Atom OP2 at (1.4, 15.9, -17.8)>
 
 ``Mark`` also has a helper method ``pos()`` that returns
 ``Position(x, y, z)``::
@@ -185,7 +185,7 @@ as an argument to get a triple of Chain, Residue and Atom::
 .. doctest::
 
   >>> mark.pos()
-  <gemmi.Position(19.659, 20.2489, 17.645)>
+  <gemmi.Position(21.091, 18.2279, 17.841)>
 
 Note that it can be the position of a symmetric image of the atom.
 In this example the "original" atom is in a different location:
@@ -193,7 +193,7 @@ In this example the "original" atom is in a different location:
 .. doctest::
 
   >>> cra.atom.pos
-  <gemmi.Position(-0.028, 13.85, -17.645)>
+  <gemmi.Position(1.404, 15.871, -17.841)>
 
 The symmetry operation that relates the original position and its
 image is composed of two parts: one of symmetry transformations
@@ -219,7 +219,7 @@ image under PBC:
 .. doctest::
 
   >>> st.cell.find_nearest_pbc_image(point, cra.atom.pos, mark.image_idx)
-  <gemmi.NearestImage 12_665 in distance 2.39>
+  <gemmi.NearestImage 12_665 in distance 3.00>
 
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
