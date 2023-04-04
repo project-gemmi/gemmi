@@ -62,6 +62,7 @@ struct NeighborSearch {
   double radius_specified = 0.;
   Model* model = nullptr;
   SmallStructure* small_structure = nullptr;
+  bool use_pbc = true;
   bool include_h = true;
 
   NeighborSearch() = default;
@@ -85,7 +86,7 @@ struct NeighborSearch {
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
   void add_site(const SmallStructure::Site& site, int n);
 
-  // assumes data in [0, 1), but uses index_n to handle numeric deviations
+  // assumes data in [0, 1), but uses index_n to account for numerical errors
   std::vector<Mark>& get_subcell(const Fractional& fr) {
     return grid.data[grid.index_n(int(fr.x * grid.nu),
                                   int(fr.y * grid.nv),
@@ -132,7 +133,7 @@ struct NeighborSearch {
     Mark* mark = nullptr;
     float nearest_dist_sq = float(radius_specified * radius_specified);
     for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
-        Position p = grid.unit_cell.orthogonalize(fr);
+        Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
         for (Mark& m : marks) {
           float dist_sq = m.dist_sq_(p);
           if (dist_sq < nearest_dist_sq) {
@@ -172,7 +173,8 @@ private:
   }
 
   void set_bounding_cell(const UnitCell& cell) {
-    if (cell.is_crystal()) {
+    use_pbc = cell.is_crystal();
+    if (use_pbc) {
       grid.unit_cell = cell;
     } else {
       // cf. calculate_box()
@@ -190,9 +192,11 @@ private:
           for (const Transform& tr : ncs)
             box.extend(Position(tr.apply(cra.atom->pos)));
       }
-      box.add_margin(1.5 * radius_specified);  // much more than needed
+      box.add_margin(0.01);
       Position size = box.get_size();
       grid.unit_cell.set(size.x, size.y, size.z, 90, 90, 90);
+      grid.unit_cell.frac.vec -= grid.unit_cell.fractionalize(box.minimum);
+      grid.unit_cell.orth.vec += box.minimum;
       for (const Transform& tr : ncs) {
         UnitCell& c = grid.unit_cell;
         // cf. add_ncs_images_to_cs_images()
@@ -249,7 +253,8 @@ inline void NeighborSearch::add_atom(const Atom& atom,
   Fractional frac0 = gcell.fractionalize(atom.pos);
   {
     Fractional frac = frac0.wrap_to_unit();
-    Position pos = gcell.orthogonalize(frac);
+    // for non-crystals, frac==frac0 => pos = atom.pos
+    Position pos = use_pbc ? gcell.orthogonalize(frac) : atom.pos;
     get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
                                    0, n_ch, n_res, n_atom);
   }
@@ -291,25 +296,42 @@ inline void NeighborSearch::add_site(const SmallStructure::Site& site, int n) {
 
 template<typename Func>
 void NeighborSearch::for_each_cell(const Position& pos, const Func& func) {
-  Fractional fr = grid.unit_cell.fractionalize(pos).wrap_to_unit();
-  const int u0 = int(fr.x * grid.nu);
-  const int v0 = int(fr.y * grid.nv);
-  const int w0 = int(fr.z * grid.nw);
-  const int uend = u0 + std::min(3, grid.nu) - 1;
-  const int vend = v0 + std::min(3, grid.nv) - 1;
-  const int wend = w0 + std::min(3, grid.nw) - 1;
-  for (int w = w0 - 1; w < wend; ++w) {
-    int dw = w >= grid.nw ? -1 : w < 0 ? 1 : 0;
-    for (int v = v0 - 1; v < vend; ++v) {
-      int dv = v >= grid.nv ? -1 : v < 0 ? 1 : 0;
-      for (int u = u0 - 1; u < uend; ++u) {
-        int du = u >= grid.nu ? -1 : u < 0 ? 1 : 0;
-        size_t idx = grid.index_q(u + du * grid.nu,
-                                  v + dv * grid.nv,
-                                  w + dw * grid.nw);
-        func(grid.data[idx], Fractional(fr.x + du, fr.y + dv, fr.z + dw));
+  Fractional fr = grid.unit_cell.fractionalize(pos);
+  if (use_pbc)
+    fr = fr.wrap_to_unit();
+  int u0 = int(fr.x * grid.nu) - 1;
+  int v0 = int(fr.y * grid.nv) - 1;
+  int w0 = int(fr.z * grid.nw) - 1;
+  int uend = u0 + std::min(3, grid.nu);
+  int vend = v0 + std::min(3, grid.nv);
+  int wend = w0 + std::min(3, grid.nw);
+  if (use_pbc) {
+    for (int w = w0; w < wend; ++w) {
+      int dw = w >= grid.nw ? -1 : w < 0 ? 1 : 0;
+      for (int v = v0; v < vend; ++v) {
+        int dv = v >= grid.nv ? -1 : v < 0 ? 1 : 0;
+        for (int u = u0; u < uend; ++u) {
+          int du = u >= grid.nu ? -1 : u < 0 ? 1 : 0;
+          size_t idx = grid.index_q(u + du * grid.nu,
+                                    v + dv * grid.nv,
+                                    w + dw * grid.nw);
+          func(grid.data[idx], Fractional(fr.x + du, fr.y + dv, fr.z + dw));
+        }
       }
     }
+  } else {
+    u0 = std::max(0, u0);
+    v0 = std::max(0, v0);
+    w0 = std::max(0, w0);
+    uend = std::min(uend, grid.nu);
+    vend = std::min(vend, grid.nv);
+    wend = std::min(wend, grid.nw);
+    for (int w = w0; w < wend; ++w)
+      for (int v = v0; v < vend; ++v)
+        for (int u = u0; u < uend; ++u) {
+          size_t idx = grid.index_q(u, v, w);
+          func(grid.data[idx], fr);
+        }
   }
 }
 
@@ -319,7 +341,7 @@ void NeighborSearch::for_each(const Position& pos, char alt, float radius,
   if (radius <= 0.f)
     return;
   for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
-      Position p = grid.unit_cell.orthogonalize(fr);
+      Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
       for (Mark& m : marks) {
         float dist_sq = m.dist_sq_(p);
         if (dist_sq < sq(radius) && is_same_conformer(alt, m.altloc))
