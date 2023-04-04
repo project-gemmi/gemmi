@@ -9,6 +9,7 @@
 #include <gemmi/neighbor.hpp>
 #include "gemmi/assembly.hpp"  // for transform_to_assembly
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
+#include <gemmi/sprintf.hpp>   // for gstb_snprintf
 #define GEMMI_PROG contact
 #include "options.h"
 
@@ -18,7 +19,7 @@ using namespace gemmi;
 using std::printf;
 
 enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym, AsAssembly,
-                   NoH, NoWater, NoLigand, Count, Twice };
+                   NoH, NoWater, NoLigand, Count, Twice, Sort };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -52,6 +53,8 @@ const option::Descriptor Usage[] = {
     "  --count  \tPrint only a count of atom pairs." },
   { Twice, 0, "", "twice", Arg::None,
     "  --twice  \tPrint each atom pair A-B twice (A-B and B-A)." },
+  { Sort, 0, "", "sort", Arg::None,
+    "  --sort  \tSort output by distance." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -62,6 +65,7 @@ struct ContactParameters {
   bool no_hydrogens;
   bool no_symmetry;
   bool twice;
+  bool sort;
   float cov_tol = 0.0f;
   float cov_mult = 1.0f;
   float max_dist = 3.0f;
@@ -110,6 +114,8 @@ void print_contacts(Structure& st, const ContactParameters& params) {
   contacts.ignore = params.ignore;
   if (params.use_cov_radius)
     contacts.setup_atomic_radii(params.cov_mult, params.cov_tol);
+  std::multimap<float, std::string> lines;
+  char buf[256];
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                     int image_idx, float dist_sq) {
       ++counter;
@@ -125,8 +131,8 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       std::string conn_info;
       if (Connection* conn = st.find_connection_by_cra(cra1, cra2))
         conn_info = conn->name.empty() ? "(link)" : conn->name;
-      printf("%-11s %-4s%c%3s%2s%4s%c         "
-             "      %-4s%c%3s%2s%4s%c  %6s %6s %5.2f\n",
+      gstb_snprintf(buf, 255, "%-11s %-4s%c%3s%2s%4s%c         "
+                              "      %-4s%c%3s%2s%4s%c  %6s %6s %5.2f\n",
              conn_info.c_str(),
              cra1.atom->padded_name().c_str(),
              cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
@@ -139,7 +145,14 @@ void print_contacts(Structure& st, const ContactParameters& params) {
              cra2.chain->name.c_str(),
              cra2.residue->seqid.num.str().c_str(), cra2.residue->seqid.icode,
              sym1.c_str(), sym2.c_str(), std::sqrt(dist_sq));
+      if (params.sort)
+        lines.emplace(dist_sq, buf);
+      else
+        printf("%s", buf);
   });
+  if (params.sort)
+    for (const auto& it : lines)
+      printf("%s", it.second.c_str());
   if (params.print_count)
     printf("%s:%g\n", st.name.c_str(), 0.5 * counter);
 }
@@ -173,6 +186,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   params.no_hydrogens = p.options[NoH];
   params.no_symmetry = p.options[NoSym];
   params.twice = p.options[Twice];
+  params.sort = p.options[Sort];
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       std::string input = p.coordinate_input_file(i);

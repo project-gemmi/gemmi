@@ -18,3 +18,4 @@ Searches for contacts in a model (PDB or mmCIF).
   --noligand     Ignore ligands and water.
   --count        Print only a count of atom pairs.
   --twice        Print each atom pair A-B twice (A-B and B-A).
+  --sort         Sort output by distance.
