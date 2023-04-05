@@ -145,7 +145,8 @@ struct Selection {
       cid += residue_names.str();
       cid += ')';
     }
-    if (!from_seqid.empty() || !to_seqid.empty()) {
+    if ((!from_seqid.empty() || !to_seqid.empty()) &&
+        (from_seqid.seqnum != to_seqid.seqnum || from_seqid.icode != to_seqid.icode)) {
       cid += '-';
       cid += to_seqid.str();
     }
@@ -467,6 +468,8 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
     if (cid[pos] == '-') {
       ++pos;
       sel.to_seqid = parse_cid_seqid(cid, pos, INT_MAX);
+    } else if (sel.from_seqid.seqnum != INT_MIN) {
+      sel.to_seqid = sel.from_seqid;
     }
     sep = pos;
     if (cid[sep] != '/' && cid[sep] != ';' && cid[sep] != '\0')
