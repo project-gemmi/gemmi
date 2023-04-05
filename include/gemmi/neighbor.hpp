@@ -94,9 +94,9 @@ struct NeighborSearch {
   }
 
   template<typename Func>
-  void for_each_cell(const Position& pos, const Func& func);
+  void for_each_cell(const Position& pos, const Func& func, int k=1);
   template<typename Func>
-  void for_each(const Position& pos, char alt, float radius, const Func& func);
+  void for_each(const Position& pos, char alt, float radius, const Func& func, int k=1);
 
   // with radius==0 it uses radius_specified
   std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius) {
@@ -167,9 +167,9 @@ private:
     // FFT-friendly size nor symmetry.
     double inv_radius = 1 / radius_specified;
     const UnitCell& uc = grid.unit_cell;
-    grid.set_size_without_checking(std::max(int(inv_radius / uc.ar), 3),
-                                   std::max(int(inv_radius / uc.br), 3),
-                                   std::max(int(inv_radius / uc.cr), 3));
+    grid.set_size_without_checking(std::max(int(inv_radius / uc.ar), 1),
+                                   std::max(int(inv_radius / uc.br), 1),
+                                   std::max(int(inv_radius / uc.cr), 1));
   }
 
   void set_bounding_cell(const UnitCell& cell) {
@@ -295,27 +295,33 @@ inline void NeighborSearch::add_site(const SmallStructure::Site& site, int n) {
 }
 
 template<typename Func>
-void NeighborSearch::for_each_cell(const Position& pos, const Func& func) {
+void NeighborSearch::for_each_cell(const Position& pos, const Func& func, int k) {
   Fractional fr = grid.unit_cell.fractionalize(pos);
   if (use_pbc)
     fr = fr.wrap_to_unit();
-  int u0 = int(fr.x * grid.nu) - 1;
-  int v0 = int(fr.y * grid.nv) - 1;
-  int w0 = int(fr.z * grid.nw) - 1;
-  int uend = u0 + std::min(3, grid.nu);
-  int vend = v0 + std::min(3, grid.nv);
-  int wend = w0 + std::min(3, grid.nw);
+  int u0 = int(fr.x * grid.nu) - k;
+  int v0 = int(fr.y * grid.nv) - k;
+  int w0 = int(fr.z * grid.nw) - k;
+  int uend = u0 + 2 * k + 1;
+  int vend = v0 + 2 * k + 1;
+  int wend = w0 + 2 * k + 1;
   if (use_pbc) {
+    auto shift = [](int j, int n) {
+      if (j < 0)
+        return (j + 1) / n - 1;
+      if (j >= n)
+        return j / n;
+      return 0;
+    };
     for (int w = w0; w < wend; ++w) {
-      int dw = w >= grid.nw ? -1 : w < 0 ? 1 : 0;
+      int dw = shift(w, grid.nw);
       for (int v = v0; v < vend; ++v) {
-        int dv = v >= grid.nv ? -1 : v < 0 ? 1 : 0;
+        int dv = shift(v, grid.nv);
+        size_t idx0 = grid.index_q(0, v - dv * grid.nv, w - dw * grid.nw);
         for (int u = u0; u < uend; ++u) {
-          int du = u >= grid.nu ? -1 : u < 0 ? 1 : 0;
-          size_t idx = grid.index_q(u + du * grid.nu,
-                                    v + dv * grid.nv,
-                                    w + dw * grid.nw);
-          func(grid.data[idx], Fractional(fr.x + du, fr.y + dv, fr.z + dw));
+          int du = shift(u, grid.nu);
+          size_t idx = idx0 + (u - du * grid.nu);
+          func(grid.data[idx], Fractional(fr.x - du, fr.y - dv, fr.z - dw));
         }
       }
     }
@@ -337,7 +343,7 @@ void NeighborSearch::for_each_cell(const Position& pos, const Func& func) {
 
 template<typename Func>
 void NeighborSearch::for_each(const Position& pos, char alt, float radius,
-                              const Func& func) {
+                              const Func& func, int k) {
   if (radius <= 0.f)
     return;
   for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
@@ -347,7 +353,7 @@ void NeighborSearch::for_each(const Position& pos, char alt, float radius,
         if (dist_sq < sq(radius) && is_same_conformer(alt, m.altloc))
           func(m, dist_sq);
       }
-  });
+  }, k);
 }
 
 } // namespace gemmi

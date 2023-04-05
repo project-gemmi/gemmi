@@ -224,6 +224,8 @@ image under PBC:
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
 The neighbor search can also be used with small molecule structures.
+Here, we have MgI\ :sub:`2`, with each Mg atom surrounded by 6 iodine atoms,
+in a distance 2.92Å:
 
 .. doctest::
 
@@ -232,11 +234,13 @@ The neighbor search can also be used with small molecule structures.
   >>> ns = gemmi.NeighborSearch(small, 4.0).populate()
   >>> for mark in ns.find_site_neighbors(mg_site, min_dist=0.1):
   ...   site = mark.to_site(small)
-  ...   nim = small.cell.find_nearest_pbc_image(mg_site.fract, site.fract, mark.image_idx)
-  ...   print(site.label, 'image #%d' % mark.image_idx, nim.symmetry_code(),
-  ...         'dist=%.2f' % nim.dist())
-  I image #0 1_555 dist=2.92
-  I image #3 4_467 dist=2.92
+  ...   print(site.label, 'symmetry op #%d' % mark.image_idx)
+  I symmetry op #0
+  I symmetry op #0
+  I symmetry op #0
+  I symmetry op #3
+  I symmetry op #3
+  I symmetry op #3
 
 
 Contact search
