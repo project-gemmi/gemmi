@@ -62,6 +62,23 @@ class TestNeighborSearch(unittest.TestCase):
         marks2 = ns.find_neighbors(a1, 0.1, 3)
         self.assertEqual(len(marks2), 0)
 
+    def test_b208(self):
+        st = gemmi.read_structure('tests/4oz7.pdb')
+        hoh208 = gemmi.Selection('B/208').copy_model_selection(st[0])
+        self.assertEqual(hoh208.count_atom_sites(), 1)
+        point = hoh208[0][0][0].pos
+        for max_radius in [5, 20]:
+            ns = gemmi.NeighborSearch(st[0], st.cell, max_radius).populate()
+            marks = ns.find_atoms(point, radius=3, min_dist=1e-6)
+            self.assertEqual(len(marks), 2)
+            images = [m.image_idx for m in marks]
+            self.assertEqual(sorted(images), [2, 3])
+            image2 = st.cell.find_nearest_pbc_image(point, point, 2)
+            self.assertEqual(image2.symmetry_code(), '3_545')
+            self.assertAlmostEqual(image2.dist(), 2.9710496, delta=1e-6)
+            image3 = st.cell.find_nearest_pbc_image(point, point, 3)
+            self.assertEqual(image3.symmetry_code(), '4_355')
+
 
 class TestContactSearch(unittest.TestCase):
     def test_radii_setting(self):
