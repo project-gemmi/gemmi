@@ -99,34 +99,26 @@ struct NeighborSearch {
   void for_each(const Position& pos, char alt, float radius, const Func& func, int k=1);
 
   // with radius==0 it uses radius_specified
-  std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius) {
+  std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius,
+                                float min_dist=0) {
     if (radius == 0.f)
       radius = (float) radius_specified;
     std::vector<Mark*> out;
-    for_each(pos, alt, radius, [&out](Mark& a, float) { out.push_back(&a); });
-    return out;
-  }
-
-  // with max_dist==0 it uses radius_specified
-  std::vector<Mark*> find_neighbors_(const Position& pos, char altloc,
-                                     float min_dist, float max_dist) {
-    std::vector<Mark*> out;
-    if (max_dist == 0.f)
-      max_dist = (float) radius_specified;
-    for_each(pos, altloc, max_dist, [&](Mark& a, float dist_sq) {
+    for_each(pos, alt, radius, [&](Mark& a, float dist_sq) {
         if (dist_sq >= sq(min_dist))
           out.push_back(&a);
     });
     return out;
   }
-  std::vector<Mark*> find_neighbors(const Atom& atom,
-                                    float min_dist, float max_dist) {
-    return find_neighbors_(atom.pos, atom.altloc, min_dist, max_dist);
+
+  // min_dist and max_dist are in a different order than in find_atoms()
+  std::vector<Mark*> find_neighbors(const Atom& atom, float min_dist, float max_dist) {
+    return find_atoms(atom.pos, atom.altloc, max_dist, min_dist);
   }
   std::vector<Mark*> find_site_neighbors(const SmallStructure::Site& site,
                                          float min_dist, float max_dist) {
     Position pos = grid.unit_cell.orthogonalize(site.fract);
-    return find_neighbors_(pos, '\0', min_dist, max_dist);
+    return find_atoms(pos, '\0', max_dist, min_dist);
   }
 
   Mark* find_nearest_atom(const Position& pos) {
