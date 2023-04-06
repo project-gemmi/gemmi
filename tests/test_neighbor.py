@@ -63,7 +63,7 @@ class TestNeighborSearch(unittest.TestCase):
         self.assertEqual(len(marks2), 0)
 
     def test_b208(self):
-        st = gemmi.read_structure('tests/4oz7.pdb')
+        st = gemmi.read_structure(full_path('4oz7.pdb'))
         hoh208 = gemmi.Selection('B/208').copy_model_selection(st[0])
         self.assertEqual(hoh208.count_atom_sites(), 1)
         point = hoh208[0][0][0].pos
