@@ -62,6 +62,7 @@ void add_search(py::module& m) {
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,
          py::return_value_policy::move, py::keep_alive<0, 1>())
     .def("find_nearest_atom", &NeighborSearch::find_nearest_atom,
+         py::arg("pos"), py::arg("radius")=INFINITY,
          py::return_value_policy::reference_internal)
     .def("find_site_neighbors", &NeighborSearch::find_site_neighbors,
          py::arg("atom"), py::arg("min_dist")=0, py::arg("max_dist")=0,

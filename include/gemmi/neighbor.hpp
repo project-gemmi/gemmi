@@ -121,9 +121,10 @@ struct NeighborSearch {
     return find_atoms(pos, '\0', max_dist, min_dist);
   }
 
-  Mark* find_nearest_atom(const Position& pos) {
+  std::pair<Mark*, float>
+  find_nearest_atom_within_k(const Position& pos, int k, float radius) {
     Mark* mark = nullptr;
-    float nearest_dist_sq = float(radius_specified * radius_specified);
+    float nearest_dist_sq = float(radius * radius);
     for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
         Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
         for (Mark& m : marks) {
@@ -133,8 +134,30 @@ struct NeighborSearch {
             nearest_dist_sq = dist_sq;
           }
         }
-    });
-    return mark;
+    }, k);
+    return {mark, nearest_dist_sq};
+  }
+
+  // it would be good to return also NearestImage
+  Mark* find_nearest_atom(const Position& pos, float radius=INFINITY) {
+    float r_spec = (float) radius_specified;
+    if (radius == 0.f)
+      radius = r_spec;
+    int max_k = std::max(std::max(grid.nu, grid.nv), grid.nw);
+    for (int k = 1; k < max_k; k *= 2) {
+      auto result = find_nearest_atom_within_k(pos, k, radius);
+      // if Mark was not found, result.second is set to radius^2.
+      if (result.second < sq(k * r_spec))
+        return result.first;
+      if (result.first != nullptr) {
+        // We found an atom, but because it was further away than k*r_spec,
+        // so now it's sufficient to find the nearest atom in:
+        float dist = std::sqrt(result.second);
+        int sufficient_k = int(dist / r_spec + 1.0001);
+        return find_nearest_atom_within_k(pos, sufficient_k, radius).first;
+      }
+    }
+    return nullptr;
   }
 
   float dist_sq(const Position& pos1, const Position& pos2) const {
