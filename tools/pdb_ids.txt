@@ -16,8 +16,11 @@
 # d-peptide
 7rmr
 
-# carbohydrates ("branched" entities)
+# carbohydrates ("branched" entities) in addition to linear polymers
 2wmg
+
+# only carbohydrates (not counting ions and water)
+1c4s
 
 # mostly water residues
 3p4j
@@ -139,6 +142,9 @@
 
 # sum of altloc occupancy > 1
 1c5z
+
+# Water (A 68 DOD) without O, only D1 and D2
+1iu6
 
 # numeric altlocs (1,2,3,4)
 1aac

@@ -34,7 +34,7 @@ class TestNeighborSearch(unittest.TestCase):
                 for n_res, res in enumerate(chain):
                     for n_atom, atom in enumerate(res):
                         ns.add_atom(atom, n_ch, n_res, n_atom)
-        marks = ns.find_atoms(a1.pos, a1.altloc, 3)
+        marks = ns.find_atoms(a1.pos, a1.altloc, radius=3)
         m1, m2 = sorted(marks, key=lambda m: ns.dist(a1.pos, m.pos()))
         self.assertAlmostEqual(ns.dist(a1.pos, m1.pos()), 0, delta=5e-6)
         self.assertAlmostEqual(ns.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
@@ -54,7 +54,7 @@ class TestNeighborSearch(unittest.TestCase):
         a1 = st[0].sole_residue('A', gemmi.SeqId(85, ' '))[0]
         ns = gemmi.NeighborSearch(st[0], st.cell, 5)
         ns.populate()
-        marks = ns.find_atoms(a1.pos, a1.altloc, 3)
+        marks = ns.find_atoms(a1.pos, a1.altloc, radius=3)
         self.assertEqual(len(marks), 2)
         for mark in marks:
             d = ns.dist(a1.pos, mark.pos())
@@ -69,7 +69,7 @@ class TestNeighborSearch(unittest.TestCase):
         point = hoh208[0][0][0].pos
         for max_radius in [5, 20]:
             ns = gemmi.NeighborSearch(st[0], st.cell, max_radius).populate()
-            marks = ns.find_atoms(point, radius=3, min_dist=1e-6)
+            marks = ns.find_atoms(point, min_dist=1e-6, radius=3)
             self.assertEqual(len(marks), 2)
             images = [m.image_idx for m in marks]
             self.assertEqual(sorted(images), [2, 3])

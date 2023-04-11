@@ -95,30 +95,47 @@ struct NeighborSearch {
 
   template<typename Func>
   void for_each_cell(const Position& pos, const Func& func, int k=1);
+
   template<typename Func>
-  void for_each(const Position& pos, char alt, float radius, const Func& func, int k=1);
+  void for_each(const Position& pos, char alt, float radius, const Func& func, int k=1) {
+    if (radius <= 0.f)
+      return;
+    for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
+        Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
+        for (Mark& m : marks) {
+          float dist_sq = m.dist_sq_(p);
+          if (dist_sq < sq(radius) && is_same_conformer(alt, m.altloc))
+            func(m, dist_sq);
+        }
+    }, k);
+  }
+
+  int sufficient_k(double r) const {
+    // .00001 is added to account for possible numeric error in r
+    return r <= radius_specified ? 1 : int(r / radius_specified + 1.00001);
+  }
 
   // with radius==0 it uses radius_specified
-  std::vector<Mark*> find_atoms(const Position& pos, char alt, float radius,
-                                float min_dist=0) {
+  std::vector<Mark*> find_atoms(const Position& pos, char alt,
+                                float min_dist, float radius) {
+    int k = sufficient_k(radius);
     if (radius == 0.f)
       radius = (float) radius_specified;
     std::vector<Mark*> out;
     for_each(pos, alt, radius, [&](Mark& a, float dist_sq) {
         if (dist_sq >= sq(min_dist))
           out.push_back(&a);
-    });
+    }, k);
     return out;
   }
 
-  // min_dist and max_dist are in a different order than in find_atoms()
   std::vector<Mark*> find_neighbors(const Atom& atom, float min_dist, float max_dist) {
-    return find_atoms(atom.pos, atom.altloc, max_dist, min_dist);
+    return find_atoms(atom.pos, atom.altloc, min_dist, max_dist);
   }
   std::vector<Mark*> find_site_neighbors(const SmallStructure::Site& site,
                                          float min_dist, float max_dist) {
     Position pos = grid.unit_cell.orthogonalize(site.fract);
-    return find_atoms(pos, '\0', max_dist, min_dist);
+    return find_atoms(pos, '\0', min_dist, max_dist);
   }
 
   std::pair<Mark*, float>
@@ -151,10 +168,9 @@ struct NeighborSearch {
         return result.first;
       if (result.first != nullptr) {
         // We found an atom, but because it was further away than k*r_spec,
-        // so now it's sufficient to find the nearest atom in:
+        // so now it's sufficient to find the nearest atom in dist:
         float dist = std::sqrt(result.second);
-        int sufficient_k = int(dist / r_spec + 1.0001);
-        return find_nearest_atom_within_k(pos, sufficient_k, radius).first;
+        return find_nearest_atom_within_k(pos, sufficient_k(dist), radius).first;
       }
     }
     return nullptr;
@@ -354,21 +370,6 @@ void NeighborSearch::for_each_cell(const Position& pos, const Func& func, int k)
           func(grid.data[idx], fr);
         }
   }
-}
-
-template<typename Func>
-void NeighborSearch::for_each(const Position& pos, char alt, float radius,
-                              const Func& func, int k) {
-  if (radius <= 0.f)
-    return;
-  for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
-      Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
-      for (Mark& m : marks) {
-        float dist_sq = m.dist_sq_(p);
-        if (dist_sq < sq(radius) && is_same_conformer(alt, m.altloc))
-          func(m, dist_sq);
-      }
-  }, k);
 }
 
 } // namespace gemmi
