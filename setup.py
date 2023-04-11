@@ -15,7 +15,7 @@ def read_version_from_header():
     with open('include/gemmi/version.hpp') as f:
         for line in f:
             if line.startswith('#define GEMMI_VERSION '):
-                return line.split()[2].strip('"dev')
+                return line.split()[2].strip('"')
 
 __version__ = read_version_from_header()
 
