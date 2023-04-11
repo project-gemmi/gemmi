@@ -173,6 +173,10 @@ struct NeighborSearch {
         return find_nearest_atom_within_k(pos, sufficient_k(dist), radius).first;
       }
     }
+    if (!use_pbc)
+      // pos can be outside of bounding box. In such case, although it's slow,
+      // search in all cells. Using large number that will be clipped.
+      return find_nearest_atom_within_k(pos, INT_MAX/4, radius).first;
     return nullptr;
   }
 

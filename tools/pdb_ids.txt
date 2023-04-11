@@ -23,6 +23,7 @@
 1c4s
 
 # mostly water residues
+1l0r
 3p4j
 
 # molecule spanning several unit cells
