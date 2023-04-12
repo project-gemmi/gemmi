@@ -24,7 +24,7 @@ on the search radius. Each cell stores the list of atoms in its area;
 these lists are used for fast lookup of atoms.
 
 In Gemmi the cell technique is implemented in a class named ``NeighborSearch``.
-The implementation works with both crystal and non-crystal system and:
+The implementation works with both crystal and non-crystal systems and:
 
 * handles crystallographic symmetry (including non-standard settings with
   origin shift that are present in a couple hundreds of PDB entries),
@@ -42,22 +42,22 @@ The implementation works with both crystal and non-crystal system and:
 
 Note that while an atom can be bonded with its own symmetric image,
 it sometimes happens that an atom meant to be on a special position
-is slightly off, and its symmetric images represent the same atom
-(so we may have four nearby images each with occupancy 0.25).
+is slightly off, and its symmetric images represent the same atom (so after
+expanding the symmetry we may have four nearby images each with occupancy 0.25).
 Such images will be returned by the NeighborSearch class as neighbors
 and need to be filtered out by the users.
 
 The NeighborSearch constructor divides the unit cell into bins.
-For this it needs to know the maximum radius that will be used in searches,
+For this it needs to know the search radius for which we optimize bins,
 as well as the unit cell. Since the system may be non-periodic,
 the constructor also takes the model as an argument -- it is used to
 calculate the bounding box for the model if there is no unit cell.
-It is also stored and used if ``populate()`` is called.
-The C++ signature (in ``gemmi/neighbor.hpp``) is::
+The reference to model is stored and is also used if ``populate()`` is called.
+The C++ signature (in ``gemmi/neighbor.hpp``) of the constructor is::
 
-  NeighborSearch::NeighborSearch(Model& model, const UnitCell& cell, double max_radius)
+  NeighborSearch::NeighborSearch(Model& model, const UnitCell& cell, double radius)
 
-Then the cell lists need to be populated with items either by calling::
+The cell lists need to be populated with items either by calling::
 
   void NeighborSearch::populate(bool include_h=true)
 
@@ -79,13 +79,13 @@ An example in Python:
 
   >>> import gemmi
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3).populate(include_h=False)
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 5).populate(include_h=False)
 
 Here we do the same using ``add_chain()`` instead of ``populate()``:
 
 .. doctest::
 
-  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3)
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 5)
   >>> for chain in st[0]:
   ...     ns.add_chain(chain, include_h=False)
 
@@ -93,7 +93,7 @@ And again the same, with complete control over which atoms are included:
 
 .. doctest::
 
-  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 3)
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 5)
   >>> for n_ch, chain in enumerate(st[0]):
   ...     for n_res, res in enumerate(chain):
   ...         for n_atom, atom in enumerate(res):
@@ -101,6 +101,10 @@ And again the same, with complete control over which atoms are included:
   ...                 ns.add_atom(atom, n_ch, n_res, n_atom)
   ...
 
+All these function store ``Mark``\ s in cell-lists. A mark contains position of
+atom's symmetry image and indices that point to the original atom.
+Searching for neighbors returns marks, from which we can obtain original chains,
+residues and atoms.
 
 NeighborSearch has a couple of functions for searching.
 The first one takes atom as an argument::
@@ -117,13 +121,13 @@ The first one takes atom as an argument::
 ``find_neighbors()`` checks altloc of the atom and
 considers as potential neighbors only atoms from the same
 conformation. In particular, if altloc is empty all atoms are considered.
-Non-negative ``min_dist`` in the ``find_neighbors()`` call prevents
+Positive ``min_dist`` in the ``find_neighbors()`` call prevents
 the atom whose neighbors we search from being included in the results
 (the distance of the atom to itself is zero).
 
 The second one takes position and altloc as explicit arguments::
 
-  std::vector<Mark*> NeighborSearch::find_atoms(const Position& pos, char altloc, float radius)
+  std::vector<Mark*> NeighborSearch::find_atoms(const Position& pos, char altloc, float min_dist, float radius)
 
 .. doctest::
 
@@ -132,13 +136,28 @@ The second one takes position and altloc as explicit arguments::
   >>> len(marks)
   7
 
-Additionally, in C++ you may use a function that takes a callback
-as the last argument (usage examples are in the source code)::
+To find only the nearest atom (regardless of altloc), use function::
+
+  Mark* find_nearest_atom(const Position& pos, float radius=INFINITY)
+
+.. doctest::
+
+  >>> ns.find_nearest_atom(point)
+  <gemmi.NeighborSearch.Mark 3 of atom 0/7/9 element C>
+
+All the above functions can search in a radius bigger than the radius passed
+to the NeighborSearch constructor, but it requires checking more cells
+(125+ instead of 27), which is usually not optimal.
+On the other hand, it is usually also not optimal to use big cells
+(radius ≫ 10Å). And very small ones (radius < 4Å) are also inefficient.
+
+In C++ you may use a low-level function that takes a callback
+as an argument (usage examples are in the source code)::
 
   template<typename T>
-  void NeighborSearch::for_each(const Position& pos, char altloc, float radius, const T& func)
+  void NeighborSearch::for_each(const Position& pos, char altloc, float radius, const T& func, int k=1)
 
-Cell-lists store ``Mark``\ s. When searching for neighbors you get references
+Cell-lists contain ``Mark``\ s. When searching for neighbors you get references
 (in C++ -- pointers) to these marks.
 ``Mark`` has a number of properties: ``x``, ``y``, ``z``,
 ``altloc``, ``element``, ``image_idx`` (index of the symmetry operation
@@ -149,7 +168,7 @@ that was used to generate this mark, 0 for identity),
 
   >>> mark = marks[0]
   >>> mark
-  <gemmi.NeighborSearch.Mark O of atom 0/7/2>
+  <gemmi.NeighborSearch.Mark 11 of atom 0/7/2 element O>
   >>> mark.x, mark.y, mark.z
   (21.090999603271484, 18.22788429260254, 17.840999603271484)
   >>> mark.altloc
@@ -1017,7 +1036,7 @@ where
   is missing in the monomer library, or when link is missing,
   or the hydrogen adding procedure comes across an unexpected configuration.
   You can set warnings=sys.stderr to only print a warning to stderr
-  and continue. sys.stderr can be replaced with any object that has 
+  and continue. sys.stderr can be replaced with any object that has
   methods ``write(str)`` and ``flush()``.
 
 If hydrogen position is not uniquely determined its occupancy is set to zero.

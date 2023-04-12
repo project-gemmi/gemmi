@@ -26,6 +26,12 @@
 1l0r
 3p4j
 
+# water molecules 48A from polymer (in a crystal)
+1q9j
+
+# tiny unit cell
+2ol9
+
 # molecule spanning several unit cells
 5xg2
 
@@ -86,14 +92,14 @@
 # alternative conformation - partial cleavage
 6ozo
 
-# two covalent bonds between the same residues
+# a pair of residues linked with two covalent bonds
 4y8l  # THR-05W
 173d  # PXZ-PXZ (symmetry-related halves of PXZ)
 
 # C-N bond with non-polymer at the chain end
 5a5b
 
-# ligand absent in CCP4 monomer library (7PZ), with two conformations
+# ligand (7PZ) that is absent in CCP4 monomer library and has two conformations
 7vlg
 
 # link between conformers A and B
@@ -115,6 +121,7 @@
 2e84 # CYS-HEMB
 
 # atom on n-fold axis with occupancy 1/n
+1pfe
 
 # atom on n-fold axis with occupancy 1
 

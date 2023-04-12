@@ -67,15 +67,15 @@ struct NeighborSearch {
 
   NeighborSearch() = default;
   // Model is not const so it can be modified in for_each_contact()
-  NeighborSearch(Model& model_, const UnitCell& cell, double max_radius) {
+  NeighborSearch(Model& model_, const UnitCell& cell, double radius) {
     model = &model_;
-    radius_specified = max_radius;
+    radius_specified = radius;
     set_bounding_cell(cell);
     set_grid_size();
   }
-  NeighborSearch(SmallStructure& small, double max_radius) {
+  NeighborSearch(SmallStructure& small, double radius) {
     small_structure = &small;
-    radius_specified = max_radius;
+    radius_specified = radius;
     grid.unit_cell = small.cell;
     set_grid_size();
   }
