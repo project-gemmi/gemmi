@@ -67,10 +67,10 @@ const option::Descriptor Usage[] = {
 };
 
 struct Params {
-  float min_dist = 0.8f;
-  float max_dist = 15.0f;
-  float exponent = 2.0f;
-  float blur = 0.0f;
+  double min_dist = 0.8;
+  double max_dist = 15.0;
+  double exponent = 2.0;
+  double blur = 0.0;
   std::string chain_name;
   bool rotation_only = false;
   char sidechains = 'i';
@@ -144,11 +144,11 @@ struct Result {
   double relative_mean_abs_dev;
 };
 
-float calculate_weight(float dist_sq, const Params& params) {
+double calculate_weight(double dist_sq, const Params& params) {
   if (params.exponent == 2.0)  // canonical WCN
-    return 1.0f / dist_sq;
+    return 1.0 / dist_sq;
   if (params.exponent == 0.0) // CN (a.k.a ACN)
-    return 1.0f;
+    return 1.0;
   return std::pow(dist_sq, -0.5f * params.exponent);
 }
 
@@ -214,10 +214,10 @@ Result test_bfactor_models(Structure& st, const Params& params) {
         } else {
           double wcn = 0;
           ns->for_each(atom.pos, atom.altloc, params.max_dist,
-                       [&](const NeighborSearch::Mark& m, float dist_sq) {
+                       [&](const NeighborSearch::Mark& m, double dist_sq) {
               if (dist_sq > sq(params.min_dist)) {
                 CRA cra = m.to_cra(model);
-                float weight = calculate_weight(dist_sq, params);
+                double weight = calculate_weight(dist_sq, params);
                 // if an atom is one of multiple conformations we iterate here
                 // only over other atoms of the same conformation (and atoms
                 // with no altloc) so we don't weight by occupancy.
@@ -251,14 +251,14 @@ Result test_bfactor_models(Structure& st, const Params& params) {
   }
 
   // smoothing - average weighted by Gaussian(dist)
-  if (params.blur > 0.f) {
-    float mult = -0.5f / (params.blur * params.blur);
+  if (params.blur > 0) {
+    double mult = -0.5 / (params.blur * params.blur);
     for (size_t i = 0; i != atom_ptr.size(); ++i) {
       const Atom& atom = *atom_ptr[i];
       double b_sum = 0;
       double weight_sum = 0;
       ns->for_each(atom.pos, atom.altloc, 3 * params.blur,
-                   [&](const NeighborSearch::Mark& m, float dist_sq) {
+                   [&](const NeighborSearch::Mark& m, double dist_sq) {
           const_CRA cra = m.to_cra(model);
           if (cra.atom->flag) {
             double weight = std::exp(mult * dist_sq);

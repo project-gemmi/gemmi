@@ -81,7 +81,7 @@ void add_search(py::module& m) {
   py::class_<ContactSearch::Result> csresult(contactsearch, "Result");
 
   contactsearch
-    .def(py::init<float>())
+    .def(py::init<double>())
     .def_readwrite("search_radius", &ContactSearch::search_radius)
     .def_readwrite("ignore", &ContactSearch::ignore)
     .def_readwrite("twice", &ContactSearch::twice)

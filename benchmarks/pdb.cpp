@@ -76,7 +76,7 @@ static void neighbor_search_for_each(benchmark::State& state) {
   while (state.KeepRunning()) {
     double sum = 0;
     ns.for_each(ref, '\0', 4,
-                [&sum](NeighborSearch::Mark&, float d) { sum += d; });
+                [&sum](NeighborSearch::Mark&, double d) { sum += d; });
     benchmark::DoNotOptimize(sum);
   }
 }

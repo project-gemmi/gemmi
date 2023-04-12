@@ -20,7 +20,7 @@ using namespace gemmi;
 struct BondInfo {
   const_CRA cra1, cra2;
   int image_idx;
-  float dist_sq;
+  double dist_sq;
 
   void print(const UnitCell& cell) const {
     NearestImage im = cell.find_nearest_pbc_image(cra1.atom->pos, cra2.atom->pos, image_idx);
@@ -55,7 +55,7 @@ std::vector<BondInfo> find_disulfide_bonds1(const Model& model,
         NearestImage im = cell.find_nearest_image(a1->pos, a2->pos, asu);
         // if i == j and the image is nearby the atom is on special position
         if (im.dist_sq < max_dist * max_dist && (i != j || im.dist_sq > 1.0))
-          ret.push_back({atoms[i], atoms[j], im.sym_idx, (float) im.dist_sq});
+          ret.push_back({atoms[i], atoms[j], im.sym_idx, im.dist_sq});
       }
     }
   }
@@ -87,7 +87,7 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
         if (atom.element == El::S && atom.name == sg) {
           auto indices = model.get_indices(&chain, &res, &atom);
           ns.for_each(atom.pos, atom.altloc, max_dist,
-                      [&](const NeighborSearch::Mark& m, float dist_sq) {
+                      [&](const NeighborSearch::Mark& m, double dist_sq) {
               if (m.element != El::S)
                 return;
               if (indices[0] > m.chain_idx || (indices[0] == m.chain_idx &&
@@ -103,7 +103,7 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
 #else  // slower, but simpler
   ContactSearch contacts(max_dist);
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
-                                    int image_idx, float dist_sq) {
+                                    int image_idx, double dist_sq) {
       if (cra1.atom->element == El::S && cra1.atom->name == sg &&
           cra2.atom->element == El::S && cra2.atom->name == sg)
         ret.push_back({cra1, cra2, image_idx, dist_sq});

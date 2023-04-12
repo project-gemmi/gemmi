@@ -16,14 +16,14 @@ struct ContactSearch {
     Nothing=0, SameResidue, AdjacentResidues, SameChain, SameAsu
   };
   // parameters used to configure the search
-  float search_radius;
+  double search_radius;
   Ignore ignore = Ignore::SameResidue;
   bool twice = false;  // report both A-B and B-A
-  float special_pos_cutoff_sq = 0.8f * 0.8f;
   float min_occupancy = 0.f;
+  double special_pos_cutoff_sq = 0.8 * 0.8;
   std::vector<float> radii;
 
-  ContactSearch(float radius) noexcept : search_radius(radius) {}
+  ContactSearch(double radius) noexcept : search_radius(radius) {}
 
   // a helper function that sets per-atom radii basing on covalent_radius()
   void setup_atomic_radii(double multiplier, double tolerance) {
@@ -43,12 +43,12 @@ struct ContactSearch {
   struct Result {
     CRA partner1, partner2;
     int image_idx;
-    float dist_sq;
+    double dist_sq;
   };
   std::vector<Result> find_contacts(NeighborSearch& ns) {
     std::vector<Result> out;
     for_each_contact(ns, [&out](const CRA& cra1, const CRA& cra2,
-                                int image_idx, float dist_sq) {
+                                int image_idx, double dist_sq) {
         out.push_back({cra1, cra2, image_idx, dist_sq});
     });
     return out;
@@ -74,7 +74,7 @@ void ContactSearch::for_each_contact(NeighborSearch& ns, const Func& func) {
         if (atom.occ < min_occupancy)
           continue;
         ns.for_each(atom.pos, atom.altloc, search_radius,
-                    [&](NeighborSearch::Mark& m, float dist_sq) {
+                    [&](NeighborSearch::Mark& m, double dist_sq) {
             // do not consider connections inside a residue
             if (ignore != Ignore::Nothing && m.image_idx == 0 &&
                 m.chain_idx == n_ch && m.residue_idx == n_res)
@@ -105,7 +105,7 @@ void ContactSearch::for_each_contact(NeighborSearch& ns, const Func& func) {
             }
             // additionally, we may have per-element distances
             if (!radii.empty()) {
-              float d = radii[atom.element.ordinal()] + radii[m.element.ordinal()];
+              double d = radii[atom.element.ordinal()] + radii[m.element.ordinal()];
               if (d < 0 || dist_sq > d * d)
                 return;
             }

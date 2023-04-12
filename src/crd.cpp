@@ -60,7 +60,7 @@ void add_automatic_links(Model& model, Structure& st, const MonLib& monlib) {
   contacts.ignore = ContactSearch::Ignore::AdjacentResidues;
   int counter = 0;
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
-                                    int image_idx, float dist_sq) {
+                                    int image_idx, double dist_sq) {
     if (st.find_connection_by_cra(cra1, cra2))
       return;
     auto m = monlib.match_link(*cra1.residue, cra1.atom->name, cra1.atom->altloc,

@@ -170,7 +170,7 @@ that was used to generate this mark, 0 for identity),
   >>> mark
   <gemmi.NeighborSearch.Mark 11 of atom 0/7/2 element O>
   >>> mark.x, mark.y, mark.z
-  (21.090999603271484, 18.22788429260254, 17.840999603271484)
+  (21.091, 18.22788424860849, 17.841)
   >>> mark.altloc
   '\x00'
   >>> mark.element
@@ -379,7 +379,7 @@ The ContactSearch.Result class has four properties:
   >>> results[0].image_idx
   52
   >>> results[0].dist
-  2.8613362312316895
+  2.8613363437597505
 
 The first two properties are :ref:`CRA <CRA>`\ s for the involved atoms.
 The ``image_idx`` is an index of the symmetry image (both crystallographic

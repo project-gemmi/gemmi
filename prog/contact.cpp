@@ -117,7 +117,7 @@ void print_contacts(Structure& st, const ContactParameters& params) {
   std::multimap<float, std::string> lines;
   char buf[256];
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
-                                    int image_idx, float dist_sq) {
+                                    int image_idx, double dist_sq) {
       ++counter;
       if (params.print_count)
         return;

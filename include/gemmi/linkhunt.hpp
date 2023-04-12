@@ -23,7 +23,7 @@ struct LinkHunt {
     CRA cra1;
     CRA cra2;
     bool same_image;
-    float bond_length = 0.f;
+    double bond_length = 0;
     Connection* conn = nullptr;
   };
 
@@ -104,7 +104,7 @@ struct LinkHunt {
     ContactSearch contacts((float) search_radius);
     contacts.ignore = ignore;
     contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
-                                      int image_idx, float dist_sq) {
+                                      int image_idx, double dist_sq) {
         Match match;
 
         // search for a match in chem_links
