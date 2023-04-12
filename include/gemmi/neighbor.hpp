@@ -160,7 +160,7 @@ struct NeighborSearch {
     float r_spec = (float) radius_specified;
     if (radius == 0.f)
       radius = r_spec;
-    int max_k = std::max(std::max(grid.nu, grid.nv), grid.nw);
+    int max_k = std::max(std::max(std::max(grid.nu, grid.nv), grid.nw), 2);
     for (int k = 1; k < max_k; k *= 2) {
       auto result = find_nearest_atom_within_k(pos, k, radius);
       // if Mark was not found, result.second is set to radius^2.
