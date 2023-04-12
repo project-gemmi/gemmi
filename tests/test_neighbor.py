@@ -35,9 +35,9 @@ class TestNeighborSearch(unittest.TestCase):
                     for n_atom, atom in enumerate(res):
                         ns.add_atom(atom, n_ch, n_res, n_atom)
         marks = ns.find_atoms(a1.pos, a1.altloc, radius=3)
-        m1, m2 = sorted(marks, key=lambda m: ns.dist(a1.pos, m.pos()))
-        self.assertAlmostEqual(ns.dist(a1.pos, m1.pos()), 0, delta=5e-6)
-        self.assertAlmostEqual(ns.dist(a1.pos, m2.pos()), 0.13, delta=5e-3)
+        m1, m2 = sorted(marks, key=lambda m: ns.dist(a1.pos, m.pos))
+        self.assertAlmostEqual(ns.dist(a1.pos, m1.pos), 0, delta=5e-6)
+        self.assertAlmostEqual(ns.dist(a1.pos, m2.pos), 0.13, delta=5e-3)
         cra2 = m2.to_cra(st[0])
         self.assertEqual(cra2.chain.name, 'B')
         self.assertEqual(str(cra2.residue.seqid), '37')
@@ -57,7 +57,7 @@ class TestNeighborSearch(unittest.TestCase):
         marks = ns.find_atoms(a1.pos, a1.altloc, radius=3)
         self.assertEqual(len(marks), 2)
         for mark in marks:
-            d = ns.dist(a1.pos, mark.pos())
+            d = ns.dist(a1.pos, mark.pos)
             self.assertAlmostEqual(d, 0, delta=5e-6)
         marks2 = ns.find_neighbors(a1, 0.1, 3)
         self.assertEqual(len(marks2), 0)

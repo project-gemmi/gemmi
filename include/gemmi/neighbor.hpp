@@ -19,7 +19,7 @@ namespace gemmi {
 struct NeighborSearch {
 
   struct Mark {
-    double x, y, z;
+    Position pos;
     char altloc;
     Element element;
     int image_idx;
@@ -28,10 +28,8 @@ struct NeighborSearch {
     int atom_idx;
 
     Mark(const Position& p, char alt, El el, int im, int ch, int res, int atom)
-    : x(p.x), y(p.y), z(p.z), altloc(alt), element(el),
+    : pos(p), altloc(alt), element(el),
       image_idx(im), chain_idx(ch), residue_idx(res), atom_idx(atom) {}
-
-    Position pos() const { return {x, y, z}; }
 
     CRA to_cra(Model& mdl) const {
       Chain& c = mdl.chains.at(chain_idx);
@@ -50,11 +48,6 @@ struct NeighborSearch {
     }
     const SmallStructure::Site& to_site(const SmallStructure& small) const {
       return small.sites.at(atom_idx);
-    }
-    // Here the point p must not be across PBC boundary,
-    // typically p is orthogonalized Fractional in for_each_cell.
-    double dist_sq_(const Position& p) const {
-      return sq(p.x - x) + sq(p.y - y) + sq(p.z - z);
     }
   };
 
@@ -103,7 +96,7 @@ struct NeighborSearch {
     for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
         Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
         for (Mark& m : marks) {
-          double dist_sq = m.dist_sq_(p);
+          double dist_sq = m.pos.dist_sq(p);
           if (dist_sq < sq(radius) && is_same_conformer(alt, m.altloc))
             func(m, dist_sq);
         }
@@ -145,7 +138,7 @@ struct NeighborSearch {
     for_each_cell(pos, [&](std::vector<Mark>& marks, const Fractional& fr) {
         Position p = use_pbc ? grid.unit_cell.orthogonalize(fr) : pos;
         for (Mark& m : marks) {
-          double dist_sq = m.dist_sq_(p);
+          double dist_sq = m.pos.dist_sq(p);
           if (dist_sq < nearest_dist_sq) {
             mark = &m;
             nearest_dist_sq = dist_sq;

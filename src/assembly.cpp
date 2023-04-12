@@ -150,7 +150,7 @@ void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double ma
                   cra.atom->name == atom.name &&
                   cra.atom->b_iso == atom.b_iso &&
                   cra.residue->matches_noseg(res) &&
-                  m.dist_sq_(ns.grid.unit_cell.orthogonalize(fr)) < sq(max_dist))
+                  m.pos.dist_sq(ns.grid.unit_cell.orthogonalize(fr)) < sq(max_dist))
                 equiv.emplace_back(cra, m.image_idx);
             }
         });

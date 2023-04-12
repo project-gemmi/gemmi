@@ -169,8 +169,8 @@ that was used to generate this mark, 0 for identity),
   >>> mark = marks[0]
   >>> mark
   <gemmi.NeighborSearch.Mark 11 of atom 0/7/2 element O>
-  >>> mark.x, mark.y, mark.z
-  (21.091, 18.22788424860849, 17.841)
+  >>> mark.pos
+  <gemmi.Position(21.091, 18.2279, 17.841)>
   >>> mark.altloc
   '\x00'
   >>> mark.element
@@ -196,21 +196,13 @@ as an argument to get a triple of Chain, Residue and Atom::
   >>> cra.atom
   <gemmi.Atom OP2 at (1.4, 15.9, -17.8)>
 
-``Mark`` also has a helper method ``pos()`` that returns
-``Position(x, y, z)``::
-
-  Position NeighborSearch::Mark::pos() const
-
-.. doctest::
-
-  >>> mark.pos()
-  <gemmi.Position(21.091, 18.2279, 17.841)>
-
-Note that it can be the position of a symmetric image of the atom.
+Note that ``mark.pos`` can be the position of a symmetric image of the atom.
 In this example the "original" atom is in a different location:
 
 .. doctest::
 
+  >>> mark.pos
+  <gemmi.Position(21.091, 18.2279, 17.841)>
   >>> cra.atom.pos
   <gemmi.Position(1.404, 15.871, -17.841)>
 
