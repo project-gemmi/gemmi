@@ -20,7 +20,8 @@ using namespace gemmi;
 static std::string triple(double x, double y, double z) {
   using namespace std;  // VS2015/17 doesn't like std::snprintf
   char buf[128];
-  snprintf(buf, 128, "%g, %g, %g", x, y, z);
+  auto r = [](double d) { return std::fabs(d) >= 1e-15 ? d : 0; };
+  snprintf(buf, 128, "%g, %g, %g", r(x), r(y), r(z));
   return std::string(buf);
 }
 

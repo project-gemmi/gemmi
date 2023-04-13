@@ -152,8 +152,8 @@ We have usual methods expected in a matrix class:
   >>> mat33.determinant()
   1.0
   >>> mat33.inverse()
-  <gemmi.Mat33 [1, 0, -0]
-               [-0, 1, 5]
+  <gemmi.Mat33 [1, 0, 0]
+               [0, 1, 5]
                [0, 0, 1]>
 
 (and a few others that are not documented yet).
@@ -324,14 +324,14 @@ for switching between fractional and Cartesian coordinates:
     >>> cell.volume
     44720.2568
     >>> cell.frac.mat  # fractionalization matrix
-    <gemmi.Mat33 [0.0398089, -0, -0]
+    <gemmi.Mat33 [0.0398089, 0, 0]
                  [0, 0.0253165, 0]
                  [0, 0, 0.0221877]>
     >>> cell.fractionalize(gemmi.Position(10, 10, 10))
     <gemmi.Fractional(0.398089, 0.253165, 0.221877)>
     >>> cell.orth.mat  # orthogonalization matrix
     <gemmi.Mat33 [25.12, 0, 0]
-                 [0, 39.5, -0]
+                 [0, 39.5, 0]
                  [0, 0, 45.07]>
     >>> cell.orthogonalize(gemmi.Fractional(0.5, 0.5, 0.5))
     <gemmi.Position(12.56, 19.75, 22.535)>
