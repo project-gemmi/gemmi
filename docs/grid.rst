@@ -602,6 +602,13 @@ find it out with the help of :ref:`NeighborSearch <neighbor_search>`:
   >>> # to add a multiplicity of the unit cell vectors before calculating the distance.
   >>> st.cell.find_nearest_pbc_image(pos, mark.pos, 0)
   <gemmi.NearestImage 1_554 in distance 3.51>
+  >>> # You may also want to find a symmetry image of the blob that is near
+  >>> # the original molecule.
+  >>> atom_pos = mark.to_cra(st[0]).atom.pos
+  >>> st.cell.find_nearest_pbc_position(atom_pos, pos, mark.image_idx, inverse=True)
+  <gemmi.Position(12.8665, -2.3885, 0)>
+  >>> _.dist(atom_pos)
+  3.511341999194701
 
 Flood fill
 ----------

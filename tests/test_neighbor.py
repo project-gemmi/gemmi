@@ -62,6 +62,14 @@ class TestNeighborSearch(unittest.TestCase):
         marks2 = ns.find_neighbors(a1, 0.1, 3)
         self.assertEqual(len(marks2), 0)
 
+        pos = gemmi.Position(100, 150, 200)
+        mark = ns.find_nearest_atom(pos)
+        cra = mark.to_cra(st[0])
+        nim = st.cell.find_nearest_pbc_image(pos, mark.pos, 0)
+        p = st.cell.find_nearest_pbc_position(cra.atom.pos, pos,
+                                              mark.image_idx, inverse=True)
+        self.assertAlmostEqual(nim.dist(), p.dist(cra.atom.pos))
+
     def test_b208(self):
         st = gemmi.read_structure(full_path('4oz7.pdb'))
         hoh208 = gemmi.Selection('B/208').copy_model_selection(st[0])
