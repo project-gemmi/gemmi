@@ -22,12 +22,12 @@ struct NeighborSearch {
     Position pos;
     char altloc;
     Element element;
-    int image_idx;
+    short image_idx;
     int chain_idx;
     int residue_idx;
     int atom_idx;
 
-    Mark(const Position& p, char alt, El el, int im, int ch, int res, int atom)
+    Mark(const Position& p, char alt, El el, short im, int ch, int res, int atom)
     : pos(p), altloc(alt), element(el),
       image_idx(im), chain_idx(ch), residue_idx(res), atom_idx(atom) {}
 
@@ -290,7 +290,7 @@ inline void NeighborSearch::add_atom(const Atom& atom,
     Fractional frac = gcell.images[n_im].apply(frac0).wrap_to_unit();
     Position pos = gcell.orthogonalize(frac);
     get_subcell(frac).emplace_back(pos, atom.altloc, atom.element.elem,
-                                   n_im + 1, n_ch, n_res, n_atom);
+                                   short(n_im + 1), n_ch, n_res, n_atom);
   }
 }
 
@@ -317,7 +317,7 @@ inline void NeighborSearch::add_site(const SmallStructure::Site& site, int n) {
       continue;
     Position pos = gcell.orthogonalize(frac);
     get_subcell(frac).emplace_back(pos, '\0', site.element.elem,
-                                   n_im + 1, -1, -1, n);
+                                   short(n_im + 1), -1, -1, n);
     others.push_back(frac);
   }
 }

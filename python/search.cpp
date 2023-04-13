@@ -27,7 +27,7 @@ void add_search(py::module& m) {
     .def("to_site", (SmallStructure::Site& (NeighborSearch::Mark::*)(SmallStructure&) const)
                     &NeighborSearch::Mark::to_site)
     .def("__repr__", [](const NeighborSearch::Mark& self) {
-        return cat("<gemmi.NeighborSearch.Mark ", self.image_idx, " of atom ",
+        return cat("<gemmi.NeighborSearch.Mark ", int(self.image_idx), " of atom ",
                    self.chain_idx, '/', self.residue_idx, '/', self.atom_idx,
                    " element ", self.element.name(), ">");
     });
