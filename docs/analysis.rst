@@ -223,7 +223,6 @@ The corresponding transformation is:
                [0, -1, 0]
                [0, 0, -1]>
 
-
 To find the full symmetry operation we need to determine the nearest
 image under PBC:
 
@@ -231,6 +230,18 @@ image under PBC:
 
   >>> st.cell.find_nearest_pbc_image(point, cra.atom.pos, mark.image_idx)
   <gemmi.NearestImage 12_665 in distance 3.00>
+
+To calculate only the distance to the atom, you can use the same function
+with ``mark.pos`` and symmetry operation index 0. ``mark.pos`` represents
+the position of the atom that has already been transformed by the symmetry
+operation ``mark.image_idx`` (and shifted into the unit cell).
+
+.. doctest::
+
+  >>> st.cell.find_nearest_pbc_image(point, mark.pos, 0)
+  <gemmi.NearestImage 1_555 in distance 3.00>
+  >>> _.dist()
+  2.998659073040795
 
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 

@@ -586,6 +586,22 @@ with the model masked out. In this example we do the latter.
   >>> blobs[0].peak_pos
   <gemmi.Position(12.307, 0, 0)>
 
+In addition to the blob coordinates, it can be useful to know what is
+the nearest chain, residue and atom. Here is a quick recipe how to
+find it out with the help of :ref:`NeighborSearch <neighbor_search>`:
+
+.. doctest::
+
+  >>> pos = blobs[0].peak_pos
+  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 8).populate(include_h=False)
+  >>> mark = ns.find_nearest_atom(pos)
+  >>> mark.to_cra(st[0])
+  <gemmi.CRA A/GLN 303/O>
+  >>> # To calculate distance from the atom, we need to account for the periodicity
+  >>> # of crystal. mark.pos is atom.pos transformed by a symmetry op, but we may need
+  >>> # to add a multiplicity of the unit cell vectors before calculating the distance.
+  >>> st.cell.find_nearest_pbc_image(pos, mark.pos, 0)
+  <gemmi.NearestImage 1_554 in distance 3.51>
 
 Flood fill
 ----------
