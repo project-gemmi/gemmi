@@ -398,7 +398,7 @@ static void add_restraints(const Topo::Rule rule, const Topo& topo,
     add_restraint_row(restr_loop, "CHIR", ++counters[3],
                       chirality_to_string(t.restr->sign), ".",
                       {t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]},
-                      topo.ideal_chiral_abs_volume_sigma(t).first, 0.2, NAN, NAN,
+                      topo.ideal_chiral_abs_volume(t), 0.2, NAN, NAN,
                       t.calculate());
   } else if (rule.rkind == Topo::RKind::Plane) {
     const Topo::Plane& t = topo.planes[rule.index];

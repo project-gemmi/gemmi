@@ -239,8 +239,7 @@ struct GEMMI_DLL Topo {
     return nullptr;
   }
 
-  std::pair<double,double>
-  ideal_chiral_abs_volume_sigma(const Chirality &ch) const;
+  double ideal_chiral_abs_volume(const Chirality &ch) const;
 
   std::vector<Rule> apply_restraints(const Restraints& rt,
                                      Residue& res, Residue* res2,

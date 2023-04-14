@@ -309,25 +309,6 @@ inline double chiral_abs_volume(double bond1, double bond2, double bond3,
   return mult * std::sqrt(x + y);
 }
 
-inline double chiral_abs_volume_sigma(double bond1, double bond2, double bond3,
-                                      double angle1, double angle2, double angle3,
-                                      double sigb1, double sigb2, double sigb3,
-                                      double siga1, double siga2, double siga3) {
-  double mult = bond1 * bond2 * bond3;
-  auto cosine = [](double a) {return a == 90. ? 0. : std::cos(rad(a));};
-  double cosa1 = cosine(angle1);
-  double cosa2 = cosine(angle2);
-  double cosa3 = cosine(angle3);
-  double x_y = 1 + 2 * cosa1 * cosa2 * cosa3 - sq(cosa1) - sq(cosa2) - sq(cosa3);
-  double varv = x_y * (sq(bond2 * bond3) * sq(sigb1) +
-                       sq(bond1 * bond3) * sq(sigb2) +
-                       sq(bond1 * bond2) * sq(sigb3));
-  varv += sq(mult) / x_y * ((1 - sq(cosa1)) * sq(cosa1 - cosa2 * cosa3) * sq(rad(siga1)) +
-                            (1 - sq(cosa2)) * sq(cosa2 - cosa1 * cosa3) * sq(rad(siga2)) +
-                            (1 - sq(cosa3)) * sq(cosa3 - cosa1 * cosa2) * sq(rad(siga3)));
-  return std::sqrt(varv);
-}
-
 inline double Restraints::chiral_abs_volume(const Restraints::Chirality& ch) const {
   return gemmi::chiral_abs_volume(get_bond(ch.id_ctr, ch.id1).value,
                                   get_bond(ch.id_ctr, ch.id2).value,

@@ -284,8 +284,7 @@ static void add_polymer_links(PolymerType polymer_type,
   }
 }
 
-std::pair<double,double>
-Topo::ideal_chiral_abs_volume_sigma(const Chirality &ch) const {
+double Topo::ideal_chiral_abs_volume(const Chirality &ch) const {
   const Restraints::Bond* bond_c1 = take_bond(ch.atoms[0], ch.atoms[1]);
   const Restraints::Bond* bond_c2 = take_bond(ch.atoms[0], ch.atoms[2]);
   const Restraints::Bond* bond_c3 = take_bond(ch.atoms[0], ch.atoms[3]);
@@ -293,13 +292,9 @@ Topo::ideal_chiral_abs_volume_sigma(const Chirality &ch) const {
   const Restraints::Angle* angle_2c3 = take_angle(ch.atoms[2], ch.atoms[0], ch.atoms[3]);
   const Restraints::Angle* angle_3c1 = take_angle(ch.atoms[3], ch.atoms[0], ch.atoms[1]);
   if (bond_c1 && bond_c2 && bond_c3 && angle_1c2 && angle_2c3 && angle_3c1)
-    return std::make_pair(chiral_abs_volume(bond_c1->value, bond_c2->value, bond_c3->value,
-                                            angle_1c2->value, angle_2c3->value, angle_3c1->value),
-                          chiral_abs_volume_sigma(bond_c1->value, bond_c2->value, bond_c3->value,
-                                            angle_1c2->value, angle_2c3->value, angle_3c1->value,
-                                            bond_c1->esd, bond_c2->esd, bond_c3->esd,
-                                            angle_1c2->esd, angle_2c3->esd, angle_3c1->esd));
-  return std::make_pair(std::numeric_limits<double>::quiet_NaN(), 0);
+    return chiral_abs_volume(bond_c1->value, bond_c2->value, bond_c3->value,
+                             angle_1c2->value, angle_2c3->value, angle_3c1->value);
+  return std::numeric_limits<double>::quiet_NaN();
 }
 
 std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,

@@ -139,7 +139,7 @@ void add_topo(py::module& m) {
     .def_readonly("planes", &Topo::planes)
     .def_readonly("extras", &Topo::extras)
     .def_readonly("chain_infos", &Topo::chain_infos)
-    .def("ideal_chiral_abs_volume_sigma", &Topo::ideal_chiral_abs_volume_sigma)
+    .def("ideal_chiral_abs_volume", &Topo::ideal_chiral_abs_volume)
     .def("links_to_previous", [](Topo& self, Residue* res) {
         if (Topo::ResInfo* ri = self.find_resinfo(res))
           return ri->prev;
