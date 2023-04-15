@@ -168,6 +168,16 @@ class BuildExt(build_ext):
             ext.extra_link_args = link_opts
         build_ext.build_extensions(self)
 
+def long_description():
+    readme_path = os.path.join(os.path.dirname(__file__), "README.md")
+    with open(readme_path) as f:
+        lines = f.readlines()
+    # replace badges from README with this info:
+    lines[:2] = [
+            'Note: command-line program gemmi is in PyPI\n',
+            '[gemmi-program](https://pypi.org/project/gemmi-program/).\n']
+    return ''.join(lines)
+
 setup(
     name='gemmi',
     version=__version__,
@@ -175,18 +185,8 @@ setup(
     author_email='wojdyr@gmail.com',
     url='https://project-gemmi.github.io/',
     description='library for structural biology',
-    long_description='''\
-    Library for macromolecular crystallography and structural bioinformatics.
-    For working with coordinate files (mmCIF, PDB, mmJSON),
-    refinement restraints (monomer library), electron density maps (CCP4),
-    and crystallographic reflection data (MTZ, SF-mmCIF). It understands
-    crystallographic symmetries, it knows how to switch between the real
-    and reciprocal space and it can do a few other things.
-
-    The setup.py script builds only Python extension.
-    Use cmake to build also a command-line program.
-    ''',
-    long_description_content_type='text/plain',
+    long_description=long_description(),
+    long_description_content_type='text/markdown',
     libraries=build_libs,
     ext_modules=ext_modules,
     packages=['gemmi-examples'],
