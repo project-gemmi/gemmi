@@ -30,6 +30,7 @@ PolymerType check_polymer_type(const ConstResidueSpan& span) {
           ++aa;
         if (info.is_na_linking())
           ++na;
+        counts[info.kind]++;
       } else if (r.get_ca()) {
         ++aa;
       } else if (r.get_p()) {
