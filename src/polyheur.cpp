@@ -66,6 +66,10 @@ static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerTyp
   for (auto it = b; it != e; ++it) {
     ResidueInfo info = find_tabulated_residue(it->name);
     if (info.found()) {
+      if (info.is_water()) {
+        e = it;
+        break;
+      }
       bool maybe_linking = (is_polypeptide(ptype) && info.is_peptide_linking())
                         || (is_polynucleotide(ptype) && info.is_na_linking());
       // The first residue could be non-polymer.
@@ -90,7 +94,16 @@ static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerTyp
   for (auto it = b; it < last; ++it) {
     int gap = *(it+1)->seqid.num - *it->seqid.num;
     // The gap should be non-negative, but you can find exceptions in the PDB.
-    if (gap < -1 || gap > 10 || !are_connected2(*it, *(it+1), ptype))
+    if (gap < -1 || gap > 10)
+      return it+1;
+    // Usually polymers are longer than 1-2 residues, although there are
+    // exceptions (example: 1-residue polymers in 5N22), so we can't be sure.
+    // OTOH a protein can be capped with monomers different from amino-acid
+    // and are_connected2() may return false negative. So if there is no gap
+    // in numbering, it seems better to assume the polymer didn't end yet.
+    if (gap == 1 && it - chain.residues.begin() < 2)
+      continue;
+    if (!are_connected2(*it, *(it+1), ptype))
       return it+1;
   }
   return e;
