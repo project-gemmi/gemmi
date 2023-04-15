@@ -87,17 +87,21 @@ inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptyp
 
 /// are_connected2() is less exact, but requires only CA (or P) atoms.
 inline bool are_connected2(const Residue& r1, const Residue& r2, PolymerType ptype) {
-  auto this_or_first = [](const Atom* a, const Residue& r) -> const Atom* {
-    return a || r.atoms.empty() ? a : &r.atoms.front();
+  auto this_or_first = [](const Atom* a, const Residue& r, El el) -> const Atom* {
+    if (a || r.atoms.empty())
+      return a;
+    if (const Atom* b = r.find_by_element(el))
+      return b;
+    return &r.atoms.front();
   };
   if (is_polypeptide(ptype)) {
-    const Atom* a1 = this_or_first(r1.get_ca(), r1);
-    const Atom* a2 = this_or_first(r2.get_ca(), r2);
+    const Atom* a1 = this_or_first(r1.get_ca(), r1, El::C);
+    const Atom* a2 = this_or_first(r2.get_ca(), r2, El::C);
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(5.0);
   }
   if (is_polynucleotide(ptype)) {
-    const Atom* a1 = this_or_first(r1.get_p(), r1);
-    const Atom* a2 = this_or_first(r2.get_p(), r2);
+    const Atom* a1 = this_or_first(r1.get_p(), r1, El::P);
+    const Atom* a2 = this_or_first(r2.get_p(), r2, El::P);
     return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(7.5);
   }
   return false;
