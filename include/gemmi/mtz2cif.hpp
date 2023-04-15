@@ -11,7 +11,6 @@
 #define GEMMI_MTZ2CIF_HPP_
 
 #include <ostream>
-#include <unordered_map>
 #include "mtz.hpp"       // for Mtz
 #include "xds_ascii.hpp" // for XdsAscii
 #include "merge.hpp"     // for Intensities

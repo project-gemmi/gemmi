@@ -1,7 +1,6 @@
 // Copyright 2018-2022 Global Phasing Ltd.
 
 #include <gemmi/riding_h.hpp>
-#include <gemmi/calculate.hpp> // for calculate_angle
 
 namespace gemmi {
 

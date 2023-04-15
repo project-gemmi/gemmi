@@ -6,7 +6,6 @@
 #define GEMMI_CRD_HPP_
 
 #include "topo.hpp"      // for Topo
-#include "riding_h.hpp"  // for HydrogenChange
 
 namespace gemmi {
 

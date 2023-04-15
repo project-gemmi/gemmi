@@ -11,8 +11,6 @@
 
 #include <gemmi/fail.hpp>       // for fail
 #include <gemmi/sprintf.hpp>
-#include <gemmi/calculate.hpp>  // for calculate_omega
-#include <gemmi/polyheur.hpp>   // for are_connected
 #include <gemmi/resinfo.hpp>
 #include <gemmi/util.hpp>
 

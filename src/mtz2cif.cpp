@@ -3,8 +3,9 @@
 #include <gemmi/mtz2cif.hpp>
 
 #include <climits>       // for INT_MIN
-#include <set>
 #include <algorithm>     // for all_of
+#include <set>
+#include <unordered_map>
 
 #include <gemmi/asudata.hpp>   // for calculate_hkl_value_correlation
 #include <gemmi/eig3.hpp>      // for eigen_decomposition

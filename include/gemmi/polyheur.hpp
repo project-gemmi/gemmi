@@ -9,7 +9,6 @@
 #include <vector>
 #include "model.hpp"
 #include "resinfo.hpp"   // for find_tabulated_residue
-#include "calculate.hpp" // for calculate_omega
 #include "util.hpp"      // for vector_remove_if
 
 namespace gemmi {

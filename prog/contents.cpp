@@ -11,6 +11,7 @@
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include <gemmi/select.hpp>    // for Selection
 #include <gemmi/stats.hpp>     // for DataStats
+#include <gemmi/calculate.hpp> // for expand_box, calculate_omega
 #include "histogram.h"         // for print_histogram
 #define GEMMI_PROG contents
 #include "options.h"
