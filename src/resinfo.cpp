@@ -103,7 +103,7 @@ ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("PHI"): return { RI::AA,  1, 'f',  10, 291.086f };
       case ID("CRQ"): return { RI::AA,  1, 'q',  16, 344.322f };
       case ID("SME"): return { RI::AA,  1, 'm',  11, 165.211f };
-      case ID("GHP"): return { RI::AAD, 1, 'g',   9, 167.162f };
+      case ID("GHP"): return { RI::AA,  1, 'g',   9, 167.162f };  // d-peptide in CCD
       case ID("MHO"): return { RI::AA,  1, 'm',  11, 165.211f };
       case ID("NEP"): return { RI::AA,  1, 'h',  10, 235.134f };
       case ID("TRQ"): return { RI::AA,  1, 'w',  10, 234.208f };
@@ -135,7 +135,7 @@ ResidueInfo find_tabulated_residue(const std::string& name) {
       case ID("FVA"): return { RI::AA,  1, 'v',  11, 145.156f };
       case ID("PHL"): return { RI::AA,  1, 'f',  13, 151.206f };
       case ID("CRF"): return { RI::AA,  1, 't',  18, 342.349f };
-      case ID("OMZ"): return { RI::AAD, 1, ' ',  10, 231.633f };
+      case ID("OMZ"): return { RI::AA,  1, ' ',  10, 231.633f };  // d-peptide in CCD
       case ID("BFD"): return { RI::AA,  1, 'd',   6, 198.102f };
       case ID("MEQ"): return { RI::AA,  1, 'q',  12, 160.171f };
       case ID("DAB"): return { RI::AA,  1, 'a',  10, 118.134f };
@@ -363,6 +363,7 @@ ResidueInfo find_tabulated_residue(const std::string& name) {
         case 'I': return { RI::DNA, 2, 'I',  13, 332.207f };
         case 'T': return { RI::DNA, 2, 'T',  15, 322.208f };
         case 'U': return { RI::DNA, 2, 'U',  13, 308.182f };
+        case 'N': return { RI::DNA, 2, 'N',  14, 198.111f };  // unknown DNA
       }
     else
 #define ID(s) (s[0] << 8 | s[1])
