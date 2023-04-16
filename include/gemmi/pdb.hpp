@@ -204,7 +204,10 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       cispep.partner_c.res_id = read_res_id(r + 17, r + 11);
       cispep.partner_n.chain_name = read_string(r + 28, 2);
       cispep.partner_n.res_id = read_res_id(r + 31, r + 25);
-      cispep.model_str = read_string(r + 43, 3);
+      // In files with a single model in the PDB CISPEP modNum is 0,
+      // but _struct_mon_prot_cis.pdbx_PDB_model_num is 1.
+      cispep.model_str = st.models.size() == 1 ? st.models[0].name
+                                               : read_string(r + 43, 3);
       cispep.reported_angle = read_double(r + 53, 6);
       st.cispeps.push_back(cispep);
     }

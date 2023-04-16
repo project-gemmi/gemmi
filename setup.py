@@ -173,9 +173,8 @@ def long_description():
     with open(readme_path) as f:
         lines = f.readlines()
     # replace badges from README with this info:
-    lines[:2] = [
-            'Note: command-line program gemmi is in PyPI\n',
-            '[gemmi-program](https://pypi.org/project/gemmi-program/).\n']
+    lines[:2] = ['Note: command-line program gemmi is in PyPI\n',
+                 '[gemmi-program](https://pypi.org/project/gemmi-program/).\n']
     return ''.join(lines)
 
 setup(
