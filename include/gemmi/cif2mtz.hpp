@@ -105,7 +105,7 @@ struct CifToMtz {
       tokens.reserve(4);
       split_str_into_multi(line, " \t\r\n", tokens);
       if (tokens.size() != 4 && tokens.size() != 5)
-        fail("line should have 4  or 5 words: " + line);
+        fail("line should have 4 or 5 words: " + line);
       if (tokens[2].size() != 1 || tokens[3].size() != 1 ||
           (tokens[3][0] != '0' && tokens[3][0] != '1'))
         fail("incorrect line: " + line);
@@ -404,6 +404,13 @@ struct CifToMtz {
         }
         ++k;
       }
+    }
+    if (mtz.is_merged()) {
+      gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
+      if (type == gemmi::DataType::Anomalous)
+        out << "WARNING: CIF block " << rb.block.name << " has old-style anomalous data.\n";
+      else if (type == gemmi::DataType::Unmerged)
+        out << "WARNING: CIF block " << rb.block.name << " has old-style unmerged data.\n";
     }
     return mtz;
   }
