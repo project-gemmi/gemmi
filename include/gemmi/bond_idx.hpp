@@ -6,7 +6,8 @@
 #define GEMMI_BOND_IDX_HPP_
 
 #include <map>
-#include "model.hpp"      // for Residue, Atom
+#include "model.hpp"    // for Residue, Atom
+#include "monlib.hpp"   // for MonLib
 
 namespace gemmi {
 
