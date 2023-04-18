@@ -95,18 +95,25 @@ Fortran and C bindings
 ----------------------
 
 The Fortran bindings are in early stage and are not documented yet.
-They use the ISO_C_BINDING module introduced in Fortran 2003.
+They use the ISO_C_BINDING module introduced in Fortran 2003
+and `shroud <https://github.com/LLNL/shroud>`_ (the latest version from git).
 You may see the ``fortran/`` directory to know what to expect.
-The bindings and usage examples can be compiled with CMake::
+This directory contains Makefile -- run make to built the bindings.
+(They are currently not integrated with the cmake build.)
+
+..
+ The bindings and usage examples can be compiled with CMake::
 
     cmake -D USE_FORTRAN=1 .
     make
 
 The C bindings are used only for making Fortran bindings,
 but they should be usable on their own.
-If you use cmake to build the project
-you get a static library ``libcgemmi.a`` that can be used from C,
-together with the :file:`fortran/*.h` headers.
+
+..
+ If you use cmake to build the project
+ you get a static library ``libcgemmi.a`` that can be used from C,
+ together with the :file:`fortran/*.h` headers.
 
 Program
 -------

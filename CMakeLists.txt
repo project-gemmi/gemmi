@@ -55,9 +55,11 @@ if (INFO)
 endif()
 
 if (USE_FORTRAN)
+   message(STATUS "Currently, Fortran bindings are not built by cmake.")
+   message(STATUS "They can be built by running make in fortran directory.")
   enable_language(Fortran)
 else()
-  message(STATUS "Skipping Fortran bindings. Add -D USE_FORTRAN=1 to build them.")
+  #message(STATUS "Skipping Fortran bindings. Add -D USE_FORTRAN=1 to build them.")
 endif()
 
 if (DEFINED ENV{EXTRA_WFLAGS})

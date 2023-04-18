@@ -2,10 +2,12 @@ library: gemmi
 namespace: gemmi
 format:
   C_prefix: ge_
+  F_filename_suffix: f90
 options:
   wrap_struct_as: class
   C_line_length: 94
   F_line_length: 94
+  F_API_case: lower
 
 splicer_code:
   c:

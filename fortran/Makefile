@@ -34,7 +34,7 @@ clean:
 	rm -f $(TEST_PROGS) *.a *.o *.mod
 	rm -f wrap* types*.h util*.cpp *.json *.log gemmi_types.yaml
 
-$(C_OBJS:.o=.cpp) $(F_OBJS:.o=.f): gemmi.yaml
+$(C_OBJS:.o=.cpp) $(F_OBJS:.o=.f90): gemmi.yaml
 	shroud gemmi.yaml
 
 %.o: %.cpp
