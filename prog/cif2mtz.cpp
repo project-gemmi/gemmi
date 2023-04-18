@@ -86,6 +86,12 @@ gemmi::ReflnBlock& get_block_by_name(std::vector<gemmi::ReflnBlock>& rblocks,
   gemmi::fail("block not found: " + name);
 }
 
+gemmi::ReflnBlock& get_block_by_number(std::vector<gemmi::ReflnBlock>& rblocks, int n) {
+  if (size_t(n - 1) >= rblocks.size())
+    gemmi::fail("block index must be from 1 to ", std::to_string(rblocks.size()));
+  return rblocks.at(n - 1);
+}
+
 void zero_to_mnf(gemmi::Mtz& mtz) {
   std::vector<size_t> cols;
   for (size_t i = 3; i < mtz.columns.size() - 1; ++i) {
@@ -190,6 +196,29 @@ void transcript_old_anomalous_to_standard(gemmi::cif::Loop& loop) {
   loop.values = std::move(new_values);
 }
 
+void add_columns_from_other_mtz(gemmi::Mtz& mtz, const gemmi::Mtz& mtz2) {
+  size_t ncol = mtz.columns.size();
+  size_t ncol2 = mtz2.columns.size();
+  if (ncol2 <= 3)  // no data apart from hkl
+    return;
+  // first copy all columns apart from H K L;
+  // reflections that are only in mtz2 are ignored
+  mtz.copy_column(-1, mtz2.columns[3], std::vector<std::string>(ncol2 - 4));
+  // avoid the same names: remove or rename
+  for (size_t i = ncol; i < mtz.columns.size(); ++i) {
+    gemmi::Mtz::Column& col = mtz.columns[i];
+    for (size_t j = 3; j < ncol; ++j)
+      if (col.label == mtz.columns[j].label &&
+          col.dataset_id == mtz.columns[j].dataset_id) {
+        if (is_column_data_identical(mtz, i, j))
+          mtz.remove_column(i--);
+        else
+          change_label_to_unique(col);
+        break;
+      }
+  }
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -280,9 +309,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         rb = &get_block_by_name(rblocks, p.options[BlockName].arg);
       } else if (p.options[BlockNumber]) {
         int idx = std::atoi(p.options[BlockNumber].arg);
-        if (idx <= 0 || (size_t)idx > rblocks.size())
-          gemmi::fail("block index must be from 1 to ", std::to_string(rblocks.size()));
-        rb = &rblocks.at(idx - 1);
+        rb = &get_block_by_number(rblocks, idx);
       } else {
         rb = &rblocks.at(0);
       }
@@ -291,30 +318,26 @@ int GEMMI_MAIN(int argc, char **argv) {
           !rb->refln_loop->has_tag("_refln.pdbx_F_plus"))
         transcript_old_anomalous_to_standard(*rb->refln_loop);
       gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(*rb, std::cerr);
+      // add data from additional cif block
+      if (const option::Option* opt = p.options[BlockName])
+        while ((opt = opt->next()) != nullptr) {
+          const gemmi::ReflnBlock& rblock = get_block_by_name(rblocks, opt->arg);
+          gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblock, std::cerr);
+          add_columns_from_other_mtz(mtz, mtz2);
+        }
+      if (const option::Option* opt = p.options[BlockNumber])
+        while ((opt = opt->next()) != nullptr) {
+          const gemmi::ReflnBlock& rblock = get_block_by_number(rblocks, std::atoi(opt->arg));
+          gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblock, std::cerr);
+          add_columns_from_other_mtz(mtz, mtz2);
+        }
       for (const option::Option* opt = p.options[Add]; opt; opt = opt->next()) {
         if (cif2mtz.verbose)
           fprintf(stderr, "Reading %s ...\n", opt->arg);
         auto rblocks2 = gemmi::as_refln_blocks(
                           gemmi::read_first_block_gz(opt->arg, block_limit).blocks);
         gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblocks2.at(0), std::cerr);
-        size_t ncol = mtz.columns.size();
-        size_t ncol2 = mtz2.columns.size();
-        if (ncol2 < 4)
-          continue;
-        mtz.copy_column(-1, mtz2.columns[3], std::vector<std::string>(ncol2-4));
-        // avoid the same names: remove or rename
-        for (size_t i = ncol; i < mtz.columns.size(); ++i) {
-          gemmi::Mtz::Column& col = mtz.columns[i];
-          for (size_t j = 3; j < ncol; ++j)
-            if (col.label == mtz.columns[j].label &&
-                col.dataset_id == mtz.columns[j].dataset_id) {
-              if (is_column_data_identical(mtz, i, j))
-                mtz.remove_column(i--);
-              else
-                change_label_to_unique(col);
-              break;
-            }
-        }
+        add_columns_from_other_mtz(mtz, mtz2);
       }
       if (p.options[SkipNegativeSigma]) {
         for (const gemmi::Mtz::Column& col : mtz.columns)
