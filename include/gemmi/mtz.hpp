@@ -938,8 +938,7 @@ struct GEMMI_DLL Mtz {
       dst.min_value = src.min_value;
       dst.max_value = src.max_value;
       dst.source = src.source;
-      if (src_mtz == this)
-        dst.dataset_id = src.dataset_id;
+      dst.dataset_id = src.dataset_id;
     }
     if (src_mtz == this) {
       // internal copying
@@ -1006,6 +1005,7 @@ struct GEMMI_DLL Mtz {
     expand_data_rows(1 + trailing_cols.size(), dest_idx);
     // copy the data
     const Column& src_col_now = col_idx < 0 ? src_col : columns[col_idx];
+    // most of the work (hkl-based row matching and data copying) is done here:
     do_replace_column(dest_idx, src_col_now, trailing_cols);
     return columns[dest_idx];
   }
