@@ -177,7 +177,8 @@ void transcript_old_anomalous_to_standard(gemmi::cif::Loop& loop) {
     if (i == 0 || hkl[0] != -prev_hkl[0] || hkl[1] != -prev_hkl[1]
                                          || hkl[2] != -prev_hkl[2]) {
       new_values.insert(new_values.end(), row, row+f_idx);
-      new_f = new_values.insert(new_values.end(), {".", ".", ".", "."});
+      new_f = new_values.end();  // .reserve() above prevents re-allocations
+      new_values.resize(new_values.size() + 4, ".");
       new_values.insert(new_values.end(), row+f_idx+2, row+old_width);
       prev_hkl = hkl;
     }
