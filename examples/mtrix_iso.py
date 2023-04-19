@@ -26,7 +26,7 @@ def main():
     if len(sys.argv) < 2:
         sys.exit('Specify files, directories or PDB codes.')
     for arg in sys.argv[1:]:
-        for path in gemmi.CoorFileWalk(gemmi.expand_if_pdb_code(arg)):
+        for path in gemmi.CoorFileWalk(arg, try_pdbid='M'):
             check_mtrix_rot(path)
 
 if __name__ == '__main__':

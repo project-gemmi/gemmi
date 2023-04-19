@@ -34,6 +34,7 @@
 
 #include "util.hpp"  // for giends_with
 #include "fail.hpp"  // for sys_fail
+#include "pdb_id.hpp" // for is_pdb_code, expand_pdb_code_to_path
 #if defined(_WIN32) && defined(_UNICODE)
  #include "utf.hpp"
 #endif
@@ -123,23 +124,33 @@ struct IsMatchingFile {
   std::string pattern;
 };
 
+inline int utf8_tinydir_file_open(tinydir_file* file, const char* path) {
+#if defined(_WIN32) && defined(_UNICODE)
+  return tinydir_file_open(file, UTF8_to_wchar(path).c_str());
+#else
+  return tinydir_file_open(file, path);
+#endif
+}
+
 } // namespace impl
 
 
 template<bool FileOnly=true, typename Filter=impl::IsAnyFile>
 class DirWalk {
 public:
-  explicit DirWalk(const char* path) {
-#if defined(_WIN32) && defined(_UNICODE)
-    std::wstring str = UTF8_to_wchar(path);
-    const _tinydir_char_t* xpath = str.c_str();
-#else
-    const char* xpath = path;
-#endif
-    if (tinydir_file_open(&top_, xpath) == -1)
-      sys_fail("Cannot open " + std::string(path));
+  explicit DirWalk(const char* path, char try_pdbid='\0') {
+    if (impl::utf8_tinydir_file_open(&top_, path) != -1)
+      return;
+    if (try_pdbid != '\0' && is_pdb_code(path)) {
+      std::string epath = expand_pdb_code_to_path(path, try_pdbid, true);
+      if (impl::utf8_tinydir_file_open(&top_, epath.c_str()) != -1)
+        return;
+      sys_fail("Cannot open " + epath);
+    }
+    sys_fail("Cannot open " + std::string(path));
   }
-  explicit DirWalk(const std::string& path) : DirWalk(path.c_str()) {}
+  explicit DirWalk(const std::string& path, char try_pdbid='\0')
+    : DirWalk(path.c_str(), try_pdbid) {}
   ~DirWalk() {
     for (auto& d : dirs_)
       tinydir_close(&d.second);

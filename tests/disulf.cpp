@@ -11,7 +11,6 @@
 #include <gemmi/mmread.hpp>
 #include <gemmi/gz.hpp>
 #include <gemmi/dirwalk.hpp>
-#include <gemmi/pdb_id.hpp>
 #include <stdexcept>  // for runtime_error
 #include <chrono>
 
@@ -148,7 +147,7 @@ int main(int argc, char* argv[]) {
   }
   try {
     for (; pos != argc; ++pos)
-      for (std::string path : CoorFileWalk(expand_if_pdb_code(argv[pos])))
+      for (std::string path : CoorFileWalk(argv[pos], 'M'))
         check_disulf(path);
   } catch (std::runtime_error& err) {
     std::fprintf(stderr, "Error: %s\n", err.what());

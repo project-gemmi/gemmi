@@ -6,7 +6,6 @@
 #include <gemmi/cifdoc.hpp>     // for Document
 #include <gemmi/numb.hpp>       // for as_number
 #include <gemmi/dirwalk.hpp>    // for CifWalk
-#include <gemmi/pdb_id.hpp>     // for expand_if_pdb_code
 
 using namespace gemmi;
 
@@ -65,7 +64,7 @@ int main(int argc, char* argv[]) {
   int counter = 0;
   try {
     for (; pos != argc; ++pos) {
-      for (const std::string& path : CifWalk(expand_if_pdb_code(argv[pos]))) {
+      for (const std::string& path : CifWalk(argv[pos], 'M')) {
         cif::Document doc;
         Structure st = read_structure_gz(path, CoorFormat::Mmcif, &doc);
         check_struct_conn(st, doc.blocks[0]);

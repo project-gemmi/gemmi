@@ -30,17 +30,18 @@ template<typename T> int get_max_bin(const T& bins) {
 
 void add_misc(py::module& m) {
   py::class_<gemmi::CifWalk>(m, "CifWalk")
-    .def(py::init<const char*>())
+    .def(py::init<const char*, char>(), py::arg("path"), py::arg("try_pdbid")='\0')
     .def("__iter__", [](gemmi::CifWalk& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
   py::class_<gemmi::CoorFileWalk>(m, "CoorFileWalk")
-    .def(py::init<const char*>())
+    .def(py::init<const char*, char>(), py::arg("path"), py::arg("try_pdbid")='\0')
     .def("__iter__", [](gemmi::CoorFileWalk& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>());
   m.def("is_pdb_code", &gemmi::is_pdb_code);
-  m.def("expand_pdb_code_to_path", &gemmi::expand_pdb_code_to_path);
+  m.def("expand_pdb_code_to_path", &gemmi::expand_pdb_code_to_path,
+        py::arg("code"), py::arg("filetype"), py::arg("throw_if_unset")=false);
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
         py::arg("code"), py::arg("filetype")='M');
   m.attr("hc") = py::float_(gemmi::hc());
