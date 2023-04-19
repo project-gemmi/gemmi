@@ -44,6 +44,7 @@ void add_hkl(py::module& m) {
     .def_readonly("cell", &ReflnBlock::cell)
     .def_readonly("spacegroup", &ReflnBlock::spacegroup)
     .def_readonly("wavelength", &ReflnBlock::wavelength)
+    .def_readonly("default_loop", &ReflnBlock::default_loop)
     .def("column_labels", &ReflnBlock::column_labels)
     .def("make_int_array",
          [](ReflnBlock& self, const std::string& tag, int null) {
