@@ -5,7 +5,8 @@
 #include <cstdio>   // for fprintf, fopen
 #include <cstdlib>  // for strtol, strtod, exit
 #include <cstring>  // for strcmp, strchr
-#include <gemmi/fileutil.hpp>  // for expand_if_pdb_code, file_open_or
+#include <gemmi/fileutil.hpp>  // for file_open_or
+#include <gemmi/pdb_id.hpp>    // for expand_if_pdb_code
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
 #include <gemmi/util.hpp>   // for trim_str
 #include <gemmi/model.hpp>  // for gemmi::CoorFormat

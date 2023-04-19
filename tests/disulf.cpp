@@ -11,6 +11,7 @@
 #include <gemmi/mmread.hpp>
 #include <gemmi/gz.hpp>
 #include <gemmi/dirwalk.hpp>
+#include <gemmi/pdb_id.hpp>
 #include <stdexcept>  // for runtime_error
 #include <chrono>
 

@@ -3,7 +3,7 @@
 #include "gemmi/version.hpp"   // for GEMMI_VERSION
 #include "gemmi/math.hpp"      // for hc
 #include "gemmi/dirwalk.hpp"   // for CifWalk, CoorFileWalk
-#include "gemmi/fileutil.hpp"  // for expand_if_pdb_code
+#include "gemmi/pdb_id.hpp"    // for expand_if_pdb_code
 #include "gemmi/bessel.hpp"    // for bessel_i1_over_i0
 #include "gemmi/stats.hpp"     // for Correlation
 #include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error

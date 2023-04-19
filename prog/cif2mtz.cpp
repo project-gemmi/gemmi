@@ -8,7 +8,7 @@
 #include <memory>             // for unique_ptr
 #include <gemmi/read_cif.hpp> // for read_cif_gz, read_first_block_gz
 #include <gemmi/cif2mtz.hpp>  // for CifToMtz
-#include <gemmi/to_cif.hpp>  // for CifToMtz
+#include <gemmi/pdb_id.hpp>   // for is_pdb_code, expand_pdb_code_to_path
 
 #define GEMMI_PROG cif2mtz
 #include "options.h"

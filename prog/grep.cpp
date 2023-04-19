@@ -5,7 +5,7 @@
 #include "gemmi/cif.hpp"
 #include "gemmi/gz.hpp"
 #include "gemmi/dirwalk.hpp"
-#include "gemmi/fileutil.hpp"  // for is_pdb_code, expand_if_pdb_code
+#include "gemmi/pdb_id.hpp"    // for is_pdb_code, expand_if_pdb_code
 #include "gemmi/util.hpp"      // for replace_all
 #include <cstdio>
 #include <cstring>

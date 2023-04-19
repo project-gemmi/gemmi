@@ -6,7 +6,7 @@
 #include <gemmi/cifdoc.hpp>     // for Document
 #include <gemmi/numb.hpp>       // for as_number
 #include <gemmi/dirwalk.hpp>    // for CifWalk
-#include <gemmi/fileutil.hpp>   // for expand_if_pdb_code
+#include <gemmi/pdb_id.hpp>     // for expand_if_pdb_code
 
 using namespace gemmi;
 

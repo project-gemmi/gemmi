@@ -5,15 +5,11 @@
 #ifndef GEMMI_FILEUTIL_HPP_
 #define GEMMI_FILEUTIL_HPP_
 
-#include <cctype>    // for isdigit, isalnum
 #include <cstdio>    // for FILE, fopen, fclose
-#include <cstdlib>   // getenv
 #include <cstring>   // strlen
 #include <initializer_list>
 #include <memory>    // for unique_ptr
-#include <string>
-#include "fail.hpp"  // for fail, sys_fail
-#include "util.hpp"  // for to_lower
+#include "fail.hpp"  // for sys_fail
 #include "input.hpp"  // for CharArray
 
 #if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
@@ -70,50 +66,6 @@ inline std::size_t file_size(std::FILE* f, const std::string& path) {
   if (std::fseek(f, 0, SEEK_SET) != 0)
     sys_fail(path + ": fseek failed");
   return length;
-}
-
-inline bool is_pdb_code(const std::string& str) {
-  return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
-                              std::isalnum(str[2]) && std::isalnum(str[3]);
-}
-
-// Call it after checking the code with gemmi::is_pdb_code(code).
-// The convention for $PDB_DIR is the same as in BioJava, see the docs.
-// type is the requested file type: 'M' for mmCIF or 'P' for PDB, 'S' for SF-mmCIF.
-inline std::string expand_pdb_code_to_path(const std::string& code, char type) {
-  std::string path;
-  if (const char* pdb_dir = std::getenv("PDB_DIR")) {
-    int n = 0;
-    if (type == 'M')
-      n = 1;
-    else if (type == 'S')
-      n = 2;
-    std::string lc = to_lower(code);
-    path = pdb_dir;
-    path += "/structures/divided/";
-    const char* dir[] = {"pdb/", "mmCIF/", "structure_factors/"};
-    path += dir[n];
-    path += lc.substr(1, 2);
-    const char* prefix[] = {"/pdb", "/", "/r"};
-    path += prefix[n];
-    path += lc;
-    const char* suffix[] = {".ent.gz", ".cif.gz", "sf.ent.gz"};
-    path += suffix[n];
-  }
-  return path;
-}
-
-// type must be 'M' for mmCIF or 'P' for PDB
-inline std::string expand_if_pdb_code(const std::string& input, char type='M') {
-  std::string path;
-  if (is_pdb_code(input)) {
-    path = gemmi::expand_pdb_code_to_path(input, type);
-    if (path.empty())
-      fail(input + " is a PDB code, but $PDB_DIR is not set.");
-  } else {
-    path = input;
-  }
-  return path;
 }
 
 // helper function for working with binary files
