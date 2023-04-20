@@ -30,7 +30,7 @@ struct ReflnBlock {
 
   ReflnBlock() = default;
   ReflnBlock(ReflnBlock&& rblock_) = default;
-  ReflnBlock(cif::Block&& block_) : block(block_) {
+  ReflnBlock(cif::Block&& block_) : block(std::move(block_)) {
     entry_id = cif::as_string(block.find_value("_entry.id"));
     impl::set_cell_from_mmcif(block, cell);
     if (const std::string* hm = impl::find_spacegroup_hm_value(block))
