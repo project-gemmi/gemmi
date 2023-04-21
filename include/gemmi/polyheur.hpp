@@ -148,6 +148,9 @@ inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
 GEMMI_DLL void add_entity_types(Chain& chain, bool overwrite);
 GEMMI_DLL void add_entity_types(Structure& st, bool overwrite);
 
+/// Assigns Residue::entity_id based on Residue::subchain and Entity::subchains.
+GEMMI_DLL void add_entity_ids(Structure& st, bool overwrite);
+
 /// The subchain field in the residue is where we store_atom_site.label_asym_id
 /// from mmCIF files. As of 2018 wwPDB software splits author's chains
 /// (auth_asym_id) into label_asym_id units:

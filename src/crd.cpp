@@ -17,6 +17,7 @@ namespace gemmi {
 void setup_for_crd(Structure& st) {
   // setup_entities(st) but with forced subchain reassignment
   add_entity_types(st, /*overwrite=*/false);
+  add_entity_ids(st, /*overwrite=*/false);
   assign_subchains(st, /*force=*/true);
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
