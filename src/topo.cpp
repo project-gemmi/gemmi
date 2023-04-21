@@ -224,10 +224,23 @@ static void add_polymer_links(PolymerType polymer_type,
               else
                 link.link_id = link.is_cis ? "CIS" : "TRANS";
             } else if (monlib) {
-              link.link_id = add_auto_chemlink(*monlib,
-                                               ri1.res->name, c,
-                                               ri2.res->name, n,
-                                               1.34, 0.04);
+              // find custom link
+              bool invert;
+              const ChemLink* match = nullptr;
+              std::tie(match, invert, link.aliasing1, link.aliasing2) =
+                monlib->match_link(*link.res1, c, link.alt1, *link.res2, n, link.alt2);
+              if (match) {
+                link.link_id = match->id;
+                if (invert) {
+                  std::swap(link.res1, link.res2);
+                  std::swap(link.alt1, link.alt2);
+                  std::swap(link.aliasing1, link.aliasing2);
+                }
+              } else
+                link.link_id = add_auto_chemlink(*monlib,
+                                                 ri1.res->name, c,
+                                                 ri2.res->name, n,
+                                                 1.34, 0.04);
             }
             ri2.prev.push_back(link);
           }
@@ -268,11 +281,25 @@ static void add_polymer_links(PolymerType polymer_type,
             link.alt2 = a2.altloc;
             if (groups_ok)
               link.link_id = "p";
-            else if (monlib)
-              link.link_id = add_auto_chemlink(*monlib,
-                                               ri1.res->name, o3p,
-                                               ri2.res->name, p,
-                                               1.606, 0.02);
+            else if (monlib) {
+              // find custom link
+              bool invert;
+              const ChemLink* match = nullptr;
+              std::tie(match, invert, link.aliasing1, link.aliasing2) =
+                monlib->match_link(*link.res1, o3p, link.alt1, *link.res2, p, link.alt2);
+              if (match) {
+                link.link_id = match->id;
+                if (invert) {
+                  std::swap(link.res1, link.res2);
+                  std::swap(link.alt1, link.alt2);
+                  std::swap(link.aliasing1, link.aliasing2);
+                }
+              } else
+                link.link_id = add_auto_chemlink(*monlib,
+                                                 ri1.res->name, o3p,
+                                                 ri2.res->name, p,
+                                                 1.606, 0.02);
+            }
             ri2.prev.push_back(link);
           }
     }
