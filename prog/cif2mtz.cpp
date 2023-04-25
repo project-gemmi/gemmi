@@ -54,8 +54,8 @@ const option::Descriptor Usage[] = {
     "  --wavelength=LAMBDA  \tSet wavelength (default: from input file)." },
   { Unmerged, 0, "u", "unmerged", Arg::None,
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
-  { OldAnomalous, 0, "", "anomalous", Arg::None,
-    "  --anomalous  \tConvert _refln.F_meas_au as anomalous data." },
+  //{ OldAnomalous, 0, "", "anomalous", Arg::None,
+  //  "  --anomalous  \tConvert _refln.F_meas_au as anomalous data." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
   { SkipNegativeSigma, 0, "", "skip-negative-sigma", Arg::None,
@@ -117,6 +117,13 @@ void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
   for (const gemmi::Mtz::Column& col : mtz.columns)
     std::printf(" %s", col.label.c_str());
   std::putchar('\n');
+  if (mtz.is_merged()) {
+    gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
+    if (type == gemmi::DataType::Anomalous)
+      std::printf("  NOTE: this is old-style anomalous data.\n");
+    else if (type == gemmi::DataType::Unmerged)
+      std::printf("  NOTE: this is old-style unmerged data.\n");
+  }
   for (const std::string& d : rb.block.find_values("_diffrn.details"))
     std::printf("  details: %s\n", d.c_str());
 }
@@ -138,62 +145,6 @@ void change_label_to_unique(gemmi::Mtz::Column &col) {
     col.label.resize(label_size);
     assert(appendix < 1000);
   }
-}
-
-// Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
-// stored as two F_meas_au reflections, say (1,1,3) then (-1,-1,-3),
-// with F(-) directly after F(+). This function transcribes it to
-// how the anomalous data is stored PDBx/mmCIF nowadays:
-//  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
-//  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
-void transcript_old_anomalous_to_standard(gemmi::cif::Loop& loop) {
-  using gemmi::fail;
-  size_t old_width = loop.width();
-  size_t length = loop.length();
-  int hkl_idx = loop.find_tag_lc("_refln.index_h");
-  if (hkl_idx == -1)
-    fail("while reading old anomalous: _refln.index_h not found");
-  if ((size_t) hkl_idx+2 >= loop.width() ||
-      loop.tags[hkl_idx+1] != "_refln.index_k" ||
-      loop.tags[hkl_idx+2] != "_refln.index_l")
-    fail("while reading old anomalous: _refln.index_* not found");
-  int f_idx = loop.find_tag("_refln.F_meas_au");
-  if (f_idx == -1)
-    fail("while reading old anomalous: _refln.F_meas_au not found");
-  if ((size_t) f_idx+1 >= loop.width() || loop.tags[f_idx+1] != "_refln.F_meas_sigma_au")
-    fail("while reading old anomalous: _refln.F_meas_sigma_au not found");
-  const char* new_labels[4] = {"_refln.pdbx_F_plus", "_refln.pdbx_F_plus_sigma",
-                               "_refln.pdbx_F_minus", "_refln.pdbx_F_minus_sigma"};
-  for (const char* label : new_labels)
-    if (loop.has_tag(label))
-      fail("while reading old anomalous: _refln loop already has ", label);
-  loop.tags[f_idx] = new_labels[0];
-  loop.tags[f_idx+1] = new_labels[1];
-  loop.tags.insert(loop.tags.begin() + f_idx + 2, {new_labels[2], new_labels[3]});
-  size_t new_width = loop.width();
-  std::vector<std::string> new_values;
-  new_values.reserve(length * new_width); // upper bound
-  auto new_f = new_values.end();
-  gemmi::Miller prev_hkl = {0, 0, 0};
-  for (size_t i = 0; i < loop.values.size(); i += old_width) {
-    std::string* row = &loop.values[i];
-    gemmi::Miller hkl;
-    for (int j = 0; j < 3; ++j)
-      hkl[j] = gemmi::cif::as_int(row[hkl_idx + j]);
-    if (i == 0 || hkl[0] != -prev_hkl[0] || hkl[1] != -prev_hkl[1]
-                                         || hkl[2] != -prev_hkl[2]) {
-      new_values.insert(new_values.end(), row, row+f_idx);
-      new_f = new_values.end();  // .reserve() above prevents re-allocations
-      new_values.resize(new_values.size() + 4, ".");
-      new_values.insert(new_values.end(), row+f_idx+2, row+old_width);
-      prev_hkl = hkl;
-    }
-    // hkl asu for P1 is: l>0 or (l==0 and (h>0 or (h==0 and k>=0)))
-    bool minus = hkl[2] < 0 || (hkl[2] == 0 && (hkl[0] < 0 || (hkl[0] == 0 && hkl[1] < 0)));
-    *(new_f + 2 * minus) = row[f_idx];
-    *(new_f + 2 * minus + 1) = row[f_idx+1];
-  }
-  loop.values = std::move(new_values);
 }
 
 void add_columns_from_other_mtz(gemmi::Mtz& mtz, const gemmi::Mtz& mtz2) {
@@ -304,7 +255,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         return 1;
     } else {
       const char* mtz_path = p.nonOption(1);
-      const gemmi::ReflnBlock* rb;
+      gemmi::ReflnBlock* rb;
       if (p.options[BlockName]) {
         rb = &get_block_by_name(rblocks, p.options[BlockName].arg);
       } else if (p.options[BlockNumber]) {
@@ -314,21 +265,21 @@ int GEMMI_MAIN(int argc, char **argv) {
         rb = &rblocks.at(0);
       }
 
-      if (p.options[OldAnomalous] && rb->refln_loop != nullptr &&
-          !rb->refln_loop->has_tag("_refln.pdbx_F_plus"))
-        transcript_old_anomalous_to_standard(*rb->refln_loop);
-      gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(*rb, std::cerr);
+      //if (p.options[OldAnomalous] && gemmi::CifToMtz::possible_old_anomalous(*rb))
+      //  *rb->refln_loop
+      //    = std::move(gemmi::transcript_old_anomalous_to_standard(*rb->refln_loop));
+      gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(*rb, std::cerr);
       // add data from additional cif block
       if (const option::Option* opt = p.options[BlockName])
         while ((opt = opt->next()) != nullptr) {
-          const gemmi::ReflnBlock& rblock = get_block_by_name(rblocks, opt->arg);
-          gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblock, std::cerr);
+          gemmi::ReflnBlock& rblock = get_block_by_name(rblocks, opt->arg);
+          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr);
           add_columns_from_other_mtz(mtz, mtz2);
         }
       if (const option::Option* opt = p.options[BlockNumber])
         while ((opt = opt->next()) != nullptr) {
-          const gemmi::ReflnBlock& rblock = get_block_by_number(rblocks, std::atoi(opt->arg));
-          gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblock, std::cerr);
+          gemmi::ReflnBlock& rblock = get_block_by_number(rblocks, std::atoi(opt->arg));
+          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr);
           add_columns_from_other_mtz(mtz, mtz2);
         }
       for (const option::Option* opt = p.options[Add]; opt; opt = opt->next()) {
@@ -336,7 +287,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           fprintf(stderr, "Reading %s ...\n", opt->arg);
         auto rblocks2 = gemmi::as_refln_blocks(
                           gemmi::read_first_block_gz(opt->arg, block_limit).blocks);
-        gemmi::Mtz mtz2 = cif2mtz.convert_block_to_mtz(rblocks2.at(0), std::cerr);
+        gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblocks2.at(0), std::cerr);
         add_columns_from_other_mtz(mtz, mtz2);
       }
       if (p.options[SkipNegativeSigma]) {

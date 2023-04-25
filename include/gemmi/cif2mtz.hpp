@@ -44,6 +44,62 @@ DataType check_data_type_under_symmetry(const DataProxy& proxy) {
 }
 
 
+/// Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
+/// stored as two F_meas_au reflections, say (1,1,3) then (-1,-1,-3),
+/// with F(-) directly after F(+). This function transcribes it to
+/// how the anomalous data is stored PDBx/mmCIF nowadays:
+///  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
+///  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
+inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop) {
+  cif::Loop ret;
+  size_t length = loop.length();
+  int hkl_idx = loop.find_tag_lc("_refln.index_h");
+  if (hkl_idx == -1)
+    fail("while reading old anomalous: _refln.index_h not found");
+  if ((size_t) hkl_idx+2 >= loop.width() ||
+      loop.tags[hkl_idx+1] != "_refln.index_k" ||
+      loop.tags[hkl_idx+2] != "_refln.index_l")
+    fail("while reading old anomalous: _refln.index_* not found");
+  int f_idx = loop.find_tag("_refln.F_meas_au");
+  if (f_idx == -1)
+    fail("while reading old anomalous: _refln.F_meas_au not found");
+  if ((size_t) f_idx+1 >= loop.width() || loop.tags[f_idx+1] != "_refln.F_meas_sigma_au")
+    fail("while reading old anomalous: _refln.F_meas_sigma_au not found");
+  const char* new_labels[4] = {"_refln.pdbx_F_plus", "_refln.pdbx_F_plus_sigma",
+                               "_refln.pdbx_F_minus", "_refln.pdbx_F_minus_sigma"};
+  for (const char* label : new_labels)
+    if (loop.has_tag(label))
+      fail("while reading old anomalous: _refln loop already has ", label);
+  ret.tags = loop.tags;
+  ret.tags.reserve(ret.tags.size() + 2);
+  ret.tags[f_idx] = new_labels[0];
+  ret.tags[f_idx+1] = new_labels[1];
+  ret.tags.insert(ret.tags.begin() + f_idx + 2, {new_labels[2], new_labels[3]});
+  ret.values.reserve(length * ret.width()); // upper bound
+  auto new_f = ret.values.end();
+  Miller prev_hkl = {0, 0, 0};
+  for (size_t i = 0; i < loop.values.size(); i += loop.width()) {
+    const std::string* row = &loop.values[i];
+    Miller hkl;
+    for (int j = 0; j < 3; ++j)
+      hkl[j] = cif::as_int(row[hkl_idx + j]);
+    if (i == 0 || hkl[0] != -prev_hkl[0] || hkl[1] != -prev_hkl[1]
+                                         || hkl[2] != -prev_hkl[2]) {
+      ret.values.insert(ret.values.end(), row, row+f_idx);
+      new_f = ret.values.end();  // .reserve() above prevents re-allocations
+      ret.values.resize(ret.values.size() + 4, ".");
+      ret.values.insert(ret.values.end(), row + f_idx + 2, row + loop.width());
+      prev_hkl = hkl;
+    }
+    // hkl asu for P1 is: l>0 or (l==0 and (h>0 or (h==0 and k>=0)))
+    bool minus = hkl[2] < 0 || (hkl[2] == 0 && (hkl[0] < 0 || (hkl[0] == 0 && hkl[1] < 0)));
+    *(new_f + 2 * minus) = row[f_idx];
+    *(new_f + 2 * minus + 1) = row[f_idx+1];
+  }
+  return ret;
+}
+
+
 struct CifToMtz {
   // Alternative mmCIF tags for the same MTZ label should be consecutive
   static const char** default_spec(bool for_merged) {
@@ -405,12 +461,32 @@ struct CifToMtz {
         ++k;
       }
     }
+    return mtz;
+  }
+
+  static bool possible_old_anomalous(const ReflnBlock& rb) {
+    return rb.refln_loop != nullptr &&
+           !rb.refln_loop->has_tag("_refln.pdbx_F_plus") &&
+           !rb.refln_loop->has_tag("_refln.pdbx_I_plus");
+  }
+
+  Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out) const {
+    Mtz mtz = convert_block_to_mtz(rb, out);
     if (mtz.is_merged()) {
       gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
-      if (type == gemmi::DataType::Anomalous)
-        out << "WARNING: CIF block " << rb.block.name << " has old-style anomalous data.\n";
-      else if (type == gemmi::DataType::Unmerged)
+      if (type == gemmi::DataType::Anomalous) {
+        if (possible_old_anomalous(rb)) {
+          // this is rare, so it's OK to run the conversion twice
+          out << "NOTE: converting CIF block " << rb.block.name
+              << " as old-style anomalous.\n";
+          *rb.refln_loop = gemmi::transcript_old_anomalous_to_standard(*rb.refln_loop);
+          mtz = convert_block_to_mtz(rb, out);
+        } else {
+          out << "WARNING: redundant Miller indices in CIF block " << rb.block.name << ".\n";
+        }
+      } else if (type == gemmi::DataType::Unmerged) {
         out << "WARNING: CIF block " << rb.block.name << " has old-style unmerged data.\n";
+      }
     }
     return mtz;
   }
