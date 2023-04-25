@@ -67,6 +67,7 @@ void transform_sf_to_map(OptParser& p) {
     double mult = 1.0 / ccp4.hstats.rms;
     for (float& x : ccp4.grid.data)
       x = float((x - ccp4.hstats.dmean) * mult);
+    ccp4.update_ccp4_header(2);
   }
   if (p.options[MapMask]) {
     double margin = 5;
