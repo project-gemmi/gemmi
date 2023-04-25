@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15...3.22)
 # get version string from version.hpp
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/gemmi/version.hpp"
      gemmi_version_line REGEX "#define GEMMI_VERSION \"")
-string(REGEX REPLACE ".+\"([0-9]+\.[0-9]+\.[0-9]+)(.dev)?\"" "\\1"
+string(REGEX REPLACE ".+\"([0-9]+\.[0-9]+\.[0-9]+)(-dev)?\"" "\\1"
        gemmi_version_str ${gemmi_version_line})
 
 project(gemmi LANGUAGES C CXX VERSION ${gemmi_version_str})
