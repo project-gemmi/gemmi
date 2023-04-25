@@ -156,6 +156,24 @@ const std::string& add_auto_chemlink(MonLib& monlib,
   return it.first->first;
 }
 
+static const ChemLink* setup_link_if_matches(Topo::Link& link, const MonLib& monlib,
+                                             const std::string& atom1,
+                                             const std::string& atom2) {
+  bool invert;
+  const ChemLink* match = nullptr;
+  std::tie(match, invert, link.aliasing1, link.aliasing2) =
+    monlib.match_link(*link.res1, atom1, link.alt1, *link.res2, atom2, link.alt2);
+  if (match) {
+    link.link_id = match->id;
+    if (invert) {
+      std::swap(link.res1, link.res2);
+      std::swap(link.alt1, link.alt2);
+      std::swap(link.aliasing1, link.aliasing2);
+    }
+  }
+  return match;
+}
+
 static void add_polymer_links(PolymerType polymer_type,
                               const Topo::ResInfo& ri1,
                               Topo::ResInfo& ri2,
@@ -224,19 +242,7 @@ static void add_polymer_links(PolymerType polymer_type,
               else
                 link.link_id = link.is_cis ? "CIS" : "TRANS";
             } else if (monlib) {
-              // find custom link
-              bool invert;
-              const ChemLink* match = nullptr;
-              std::tie(match, invert, link.aliasing1, link.aliasing2) =
-                monlib->match_link(*link.res1, c, link.alt1, *link.res2, n, link.alt2);
-              if (match) {
-                link.link_id = match->id;
-                if (invert) {
-                  std::swap(link.res1, link.res2);
-                  std::swap(link.alt1, link.alt2);
-                  std::swap(link.aliasing1, link.aliasing2);
-                }
-              } else
+              if (!setup_link_if_matches(link, *monlib, c, n))
                 link.link_id = add_auto_chemlink(*monlib,
                                                  ri1.res->name, c,
                                                  ri2.res->name, n,
@@ -279,22 +285,10 @@ static void add_polymer_links(PolymerType polymer_type,
               in_nucleotide_bond_distance(&a1, &a2)) {
             link.alt1 = a1.altloc;
             link.alt2 = a2.altloc;
-            if (groups_ok)
+            if (groups_ok) {
               link.link_id = "p";
-            else if (monlib) {
-              // find custom link
-              bool invert;
-              const ChemLink* match = nullptr;
-              std::tie(match, invert, link.aliasing1, link.aliasing2) =
-                monlib->match_link(*link.res1, o3p, link.alt1, *link.res2, p, link.alt2);
-              if (match) {
-                link.link_id = match->id;
-                if (invert) {
-                  std::swap(link.res1, link.res2);
-                  std::swap(link.alt1, link.alt2);
-                  std::swap(link.aliasing1, link.aliasing2);
-                }
-              } else
+            } else if (monlib) {
+              if (!setup_link_if_matches(link, *monlib, o3p, p))
                 link.link_id = add_auto_chemlink(*monlib,
                                                  ri1.res->name, o3p,
                                                  ri2.res->name, p,
@@ -646,19 +640,11 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
       return;
     }
   } else {
-    bool invert;
     // we don't have link_id - use the best matching link (if any)
-    std::tie(match, invert, extra.aliasing1, extra.aliasing2) =
-      monlib.match_link(*extra.res1, conn.partner1.atom_name, extra.alt1,
-                        *extra.res2, conn.partner2.atom_name, extra.alt2);
-    if (match) {
+    match = setup_link_if_matches(extra, monlib,
+                                  conn.partner1.atom_name, conn.partner2.atom_name);
+    if (match)
       conn.link_id = match->id;
-      if (invert) {
-        std::swap(extra.res1, extra.res2);
-        std::swap(extra.alt1, extra.alt2);
-        std::swap(extra.aliasing1, extra.aliasing2);
-      }
-    }
   }
 
   // If a polymer link is also given in LINK/struct_conn,
