@@ -472,9 +472,11 @@ struct CifToMtz {
            !rb.refln_loop->has_tag("_refln.pdbx_I_plus");
   }
 
-  Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out) const {
+  Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out, char mode) const {
+    if (mode == 'f' && possible_old_anomalous(rb))
+      *rb.refln_loop = gemmi::transcript_old_anomalous_to_standard(*rb.refln_loop);
     Mtz mtz = convert_block_to_mtz(rb, out);
-    if (mtz.is_merged()) {
+    if (mtz.is_merged() && mode == 'a') {
       auto type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz}).first;
       if (type == gemmi::DataType::Anomalous) {
         if (possible_old_anomalous(rb)) {

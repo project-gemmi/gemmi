@@ -17,9 +17,15 @@ namespace {
 
 using std::fprintf;
 
+struct Cif2MtzArg: public Arg {
+  static option::ArgStatus ModeChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"normal", "friedel", "auto"});
+  }
+};
+
 enum OptionIndex {
   BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec, Title,
-  History, Wavelength, Unmerged, OldAnomalous,
+  History, Wavelength, Unmerged, ReflnTo,
   Sort, SkipNegativeSigma, ZeroToMnf, Local
 };
 
@@ -54,8 +60,9 @@ const option::Descriptor Usage[] = {
     "  --wavelength=LAMBDA  \tSet wavelength (default: from input file)." },
   { Unmerged, 0, "u", "unmerged", Arg::None,
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
-  //{ OldAnomalous, 0, "", "anomalous", Arg::None,
-  //  "  --anomalous  \tConvert _refln.F_meas_au as anomalous data." },
+  { ReflnTo, 0, "", "refln-to", Cif2MtzArg::ModeChoice,
+    "  --refln-to=MODE  \tRead refln category as: "
+    "normal, friedel (converts Fs to F+/F-) or auto (default)." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
   { SkipNegativeSigma, 0, "", "skip-negative-sigma", Arg::None,
@@ -118,14 +125,17 @@ void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
     std::printf(" %s", col.label.c_str());
   std::putchar('\n');
   if (mtz.is_merged()) {
-    gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz}).first;
-    if (type == gemmi::DataType::Anomalous)
-      std::printf("  NOTE: this is old-style anomalous data.\n");
-    else if (type == gemmi::DataType::Unmerged)
-      std::printf("  NOTE: this is old-style unmerged data.\n");
+    auto type_unique = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
+    if (type_unique.first == gemmi::DataType::Anomalous)
+      std::printf("  NOTE: probably old-style anomalous data of %zu reflections.\n",
+                  type_unique.second);
+    else if (type_unique.first == gemmi::DataType::Unmerged)
+      std::printf("  NOTE: probably old-style unmerged data, %zu unique reflections.\n",
+                  type_unique.second);
   }
   for (const std::string& d : rb.block.find_values("_diffrn.details"))
-    std::printf("  details: %s\n", d.c_str());
+    if (!gemmi::cif::is_null(d))
+      std::printf("  details: %s\n", d.c_str());
 }
 
 bool is_column_data_identical(const gemmi::Mtz& mtz, size_t i, size_t j) {
@@ -265,21 +275,19 @@ int GEMMI_MAIN(int argc, char **argv) {
         rb = &rblocks.at(0);
       }
 
-      //if (p.options[OldAnomalous] && gemmi::CifToMtz::possible_old_anomalous(*rb))
-      //  *rb->refln_loop
-      //    = std::move(gemmi::transcript_old_anomalous_to_standard(*rb->refln_loop));
-      gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(*rb, std::cerr);
+      char mode = p.options[ReflnTo] ? p.options[ReflnTo].arg[0] : 'a';
+      gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(*rb, std::cerr, mode);
       // add data from additional cif block
       if (const option::Option* opt = p.options[BlockName])
         while ((opt = opt->next()) != nullptr) {
           gemmi::ReflnBlock& rblock = get_block_by_name(rblocks, opt->arg);
-          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr);
+          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr, mode);
           add_columns_from_other_mtz(mtz, mtz2);
         }
       if (const option::Option* opt = p.options[BlockNumber])
         while ((opt = opt->next()) != nullptr) {
           gemmi::ReflnBlock& rblock = get_block_by_number(rblocks, std::atoi(opt->arg));
-          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr);
+          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr, mode);
           add_columns_from_other_mtz(mtz, mtz2);
         }
       for (const option::Option* opt = p.options[Add]; opt; opt = opt->next()) {
@@ -287,7 +295,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           fprintf(stderr, "Reading %s ...\n", opt->arg);
         auto rblocks2 = gemmi::as_refln_blocks(
                           gemmi::read_first_block_gz(opt->arg, block_limit).blocks);
-        gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblocks2.at(0), std::cerr);
+        gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblocks2.at(0), std::cerr, mode);
         add_columns_from_other_mtz(mtz, mtz2);
       }
       if (p.options[SkipNegativeSigma]) {

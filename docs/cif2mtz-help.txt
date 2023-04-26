@@ -17,6 +17,8 @@ Options:
   -H LINE, --history=LINE  Add a history line.
   --wavelength=LAMBDA      Set wavelength (default: from input file).
   -u, --unmerged           Write unmerged MTZ file(s).
+  --refln-to=MODE          Read refln category as: normal, friedel (converts Fs
+                           to F+/F-) or auto (default).
   --sort                   Order reflections according to Miller indices.
   --skip-negative-sigma    Skip reflections with sigma<0 (in any MTZ Q column).
   --zero-to-mnf            If value and sigma are 0, set both to MNF.
