@@ -6,6 +6,8 @@
 # - main category: R=_refln, D=_diffrn_refln
 # - number of columns
 # - number of rows
+# - number of unique Miller indices (all symmetry-equivalent reflections
+#   and Friedel pairs are counted as one)
 # - do Miller indices repeat? N=no, F=only Friedel pairs, Y=yes
 
 import sys
@@ -19,16 +21,18 @@ def process(path):
         loop = rblock.default_loop
         assert loop is not None, 'missing tag index_h'
         cat = loop.tags[0][1].upper()
-        data_type = gemmi.check_data_type_under_symmetry(rblock)
+        (data_type, unique) = gemmi.check_data_type_under_symmetry(rblock)
         if data_type == gemmi.DataType.Mean:
             r = 'N'
         elif data_type == gemmi.DataType.Anomalous:
             r = 'F'
-        elif data_type == gemmi.DataType.Unknown:
+        elif data_type == gemmi.DataType.Unmerged:
             r = 'Y'
         else:  # gemmi.DataType.Unknown - when space group is missing
             r = 'X'
-        print(f'{code}\t{n}\t{cat}\t{loop.width()}\t{loop.length()}\t{r}')
+        width = loop.width()
+        length = loop.length()
+        print(f'{code}\t{n}\t{cat}\t{width}\t{length}\t{unique}\t{r}')
 
 def main():
     for arg in sys.argv[1:]:

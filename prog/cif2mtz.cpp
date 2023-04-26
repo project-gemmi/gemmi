@@ -118,7 +118,7 @@ void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
     std::printf(" %s", col.label.c_str());
   std::putchar('\n');
   if (mtz.is_merged()) {
-    gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
+    gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz}).first;
     if (type == gemmi::DataType::Anomalous)
       std::printf("  NOTE: this is old-style anomalous data.\n");
     else if (type == gemmi::DataType::Unmerged)

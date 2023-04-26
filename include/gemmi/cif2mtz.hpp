@@ -20,10 +20,10 @@
 namespace gemmi {
 
 template<typename DataProxy>
-DataType check_data_type_under_symmetry(const DataProxy& proxy) {
+std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& proxy) {
   const SpaceGroup* sg = proxy.spacegroup();
   if (!sg)
-    return DataType::Unknown;
+    return {DataType::Unknown, 0};
   std::unordered_map<Op::Miller, int, MillerHash> seen;
   ReciprocalAsu asu(sg);
   GroupOps gops = sg->operations();
@@ -33,14 +33,16 @@ DataType check_data_type_under_symmetry(const DataProxy& proxy) {
     auto hkl_isym = asu.to_asu(proxy.get_hkl(i), gops);
     int sign = hkl_isym.second % 2 + 1;  // 2=positive, 1=negative
     auto r = seen.emplace(hkl_isym.first, sign);
-    if (!r.second) {
-      if ((r.first->second & sign) != 0 || centric)
-        return DataType::Unmerged;
-      r.first->second |= sign;
-      data_type = DataType::Anomalous;
+    if (data_type != DataType::Unmerged && !r.second) {
+      if ((r.first->second & sign) != 0 || centric) {
+        data_type = DataType::Unmerged;
+      } else {
+        r.first->second |= sign;
+        data_type = DataType::Anomalous;
+      }
     }
   }
-  return data_type;
+  return {data_type, seen.size()};
 }
 
 
@@ -473,7 +475,7 @@ struct CifToMtz {
   Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out) const {
     Mtz mtz = convert_block_to_mtz(rb, out);
     if (mtz.is_merged()) {
-      gemmi::DataType type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
+      auto type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz}).first;
       if (type == gemmi::DataType::Anomalous) {
         if (possible_old_anomalous(rb)) {
           // this is rare, so it's OK to run the conversion twice
