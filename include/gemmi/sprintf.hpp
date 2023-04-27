@@ -5,27 +5,26 @@
 #ifndef GEMMI_SPRINTF_HPP_
 #define GEMMI_SPRINTF_HPP_
 
+#include <string>
+
 #ifdef USE_STD_SNPRINTF  // for benchmarking and testing only
 # include <cstdio>
 # define gstb_snprintf std::snprintf
 # define gstb_sprintf std::sprintf
 #else
-# define STB_SPRINTF_DECORATE(name) gstb_##name
-// To use system stb_sprintf.h (not recommended, but some Linux distros
-// don't like bundled libraries) just remove third_party/stb_sprintf.h.
-# if defined(__has_include)
-#  if !__has_include("third_party/stb_sprintf.h")
-#   define GEMMI_USE_SYSTEM_STB 1
-#  endif
-# endif
-# ifdef GEMMI_USE_SYSTEM_STB
-#  pragma message("Using system stb_sprintf.h, not the bundled one. It may not work.")
-#  include <stb/stb_sprintf.h>
+# include "fail.hpp"  // for GEMMI_DLL
+  // On MinGW format(printf) doesn't support %zu.
+# if (defined(__GNUC__) && !defined(__MINGW32__)) || defined(__clang)
+#  define GEMMI_ATTRIBUTE_FORMAT(fmt,va) __attribute__((format(printf,fmt,va)))
 # else
-#  include "third_party/stb_sprintf.h"
+#  define GEMMI_ATTRIBUTE_FORMAT(fmt,va)
 # endif
+  namespace gemmi {
+  GEMMI_DLL int gstb_sprintf(char *buf, char const *fmt, ...) GEMMI_ATTRIBUTE_FORMAT(2,3);
+  GEMMI_DLL int gstb_snprintf(char *buf, int count, char const *fmt, ...)
+                                                              GEMMI_ATTRIBUTE_FORMAT(3,4);
+  }
 #endif
-#include <string>
 
 namespace gemmi {
 

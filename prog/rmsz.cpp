@@ -81,7 +81,7 @@ void check_restraint(const Topo::Rule rule,
   size_t pos = 0;
   #define PRINT(...) do { \
     pos = std::min(pos, (size_t)200); \
-    pos += gstb_snprintf(buf + pos, 200 - pos, __VA_ARGS__); \
+    pos += gemmi::gstb_snprintf(buf + pos, 200 - pos, __VA_ARGS__); \
   } while(0)
   auto end_line = [&]() {
     if (lines)

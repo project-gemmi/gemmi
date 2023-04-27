@@ -39,8 +39,7 @@
 #  define GEMMI_DLL
 # endif  // GEMMI_SHARED
 #else
-# define GEMMI_DLL
-//# define GEMMI_DLL __attribute__((visibility("default")))
+# define GEMMI_DLL __attribute__((visibility("default")))
 #endif
 
 namespace gemmi {
