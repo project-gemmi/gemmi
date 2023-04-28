@@ -71,7 +71,7 @@ inline std::array<char,8> encode_serial_in_hybrid36(int serial) {
   if (serial < 100000)
     gstb_sprintf(str.data(), "%5d", serial);
   else
-    base36_encode(str.data(), 5, serial - 100000 + 10 * 36 * 36 * 36 * 36);
+    base36_encode(str.data(), 5, serial + (10 * 36 * 36 * 36 * 36 - 100000));
   return str;
 }
 
@@ -80,7 +80,7 @@ inline void encode_seq_num_in_hybrid36(char* str, SeqId::OptionalNum seq_num) {
   if (*seq_num > -1000 && *seq_num < 10000)
     gstb_sprintf(str, "%4d", *seq_num);
   else if (seq_num.has_value())
-    base36_encode(str, 4, *seq_num - 10000 + 10 * 36 * 36 * 36);
+    base36_encode(str, 4, *seq_num + (10 * 36 * 36 * 36 - 10000));
   else
     std::memcpy(str, "    ", 4);
 }

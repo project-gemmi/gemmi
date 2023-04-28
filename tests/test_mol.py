@@ -120,6 +120,14 @@ ATOM     67  N   VAL A  10      23.342  43.662  37.798  1.00 13.44           N
 ANISOU   67  N   VAL A  10     2079   1653   1371   -123    133   -148       N  
 """  # noqa: W291 - trailing whitespace
 
+# from https://cci.lbl.gov/hybrid_36/
+HY36_EXAMPLE = """\
+ATOM  99998  SD  MET L9999      48.231 -64.383  -9.257  1.00 11.54           S
+ATOM  99999  CE  MET L9999      49.398 -63.242 -10.211  1.00 14.60           C
+ATOM  A0000  N   VAL LA000      52.228 -67.689 -12.196  1.00  8.76           N
+ATOM  A0001  CA  VAL LA000      53.657 -67.774 -12.458  1.00  3.40           C
+"""
+
 def read_lines_and_remove(path):
     with open(path) as f:
         out_lines = f.readlines()
@@ -818,6 +826,15 @@ class TestMol(unittest.TestCase):
         bio = gemmi.make_assembly(a1, model, gemmi.HowToNameCopiedChain.Short)
         self.assertEqual([ch.name for ch in bio], ['B'])
 
+    def test_hybrid36(self):
+        st = gemmi.read_pdb_string(HY36_EXAMPLE)
+        nums = [(cra.atom.serial, cra.residue.seqid.num) for cra in st[0].all()]
+        self.assertEqual(nums, [(99998, 9999), (99999, 9999),
+                                (100000, 10000), (100001, 10000)])
+        out = st.make_minimal_pdb().splitlines()
+        # original serial numbers are lost when writing pdb, check only seqid
+        self.assertEqual(out[1][17:30], 'MET L9999    ')
+        self.assertEqual(out[4][17:30], 'VAL LA000    ')
 
 if __name__ == '__main__':
     unittest.main()
