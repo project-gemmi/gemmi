@@ -477,19 +477,22 @@ struct CifToMtz {
       *rb.refln_loop = gemmi::transcript_old_anomalous_to_standard(*rb.refln_loop);
     Mtz mtz = convert_block_to_mtz(rb, out);
     if (mtz.is_merged() && mode == 'a') {
-      auto type = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz}).first;
-      if (type == gemmi::DataType::Anomalous) {
+      auto type_unique = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
+      if (type_unique.first == gemmi::DataType::Anomalous) {
         if (possible_old_anomalous(rb)) {
           // this is rare, so it's OK to run the conversion twice
           out << "NOTE: converting CIF block " << rb.block.name
-              << " as old-style anomalous.\n";
+              << " as old-style anomalous (" << rb.refln_loop->length()
+              << " -> " << type_unique.second << " rows).\n";
           *rb.refln_loop = gemmi::transcript_old_anomalous_to_standard(*rb.refln_loop);
           mtz = convert_block_to_mtz(rb, out);
         } else {
           out << "WARNING: redundant Miller indices in CIF block " << rb.block.name << ".\n";
         }
-      } else if (type == gemmi::DataType::Unmerged) {
-        out << "WARNING: CIF block " << rb.block.name << " has old-style unmerged data.\n";
+      } else if (type_unique.first == gemmi::DataType::Unmerged) {
+        out << "WARNING: CIF block " << rb.block.name
+            << " may have old-style unmerged data (only " << type_unique.second << " of "
+            << rb.refln_loop->length() << " reflections are unique under the symmetry).\n";
       }
     }
     return mtz;
