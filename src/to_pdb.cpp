@@ -69,27 +69,23 @@ inline std::array<char,8> encode_serial_in_hybrid36(int serial) {
   std::array<char,8> str;
   assert(serial >= 0);
   if (serial < 100000)
-    gstb_sprintf(str.data(), "%5d", serial);
+    to_chars_z(str.data(), str.data() + 8, serial);
   else
     base36_encode(str.data(), 5, serial + (10 * 36 * 36 * 36 * 36 - 100000));
   return str;
 }
 
-// based on http://cci.lbl.gov/hybrid_36/
-inline void encode_seq_num_in_hybrid36(char* str, SeqId::OptionalNum seq_num) {
-  if (*seq_num > -1000 && *seq_num < 10000)
-    gstb_sprintf(str, "%4d", *seq_num);
-  else if (seq_num.has_value())
-    base36_encode(str, 4, *seq_num + (10 * 36 * 36 * 36 - 10000));
-  else
-    std::memcpy(str, "    ", 4);
-}
-
 inline std::array<char,8> write_seq_id(const SeqId& seqid) {
   std::array<char,8> str;
-  encode_seq_num_in_hybrid36(str.data(), *seqid.num);
-  str[4] = seqid.icode;
-  str[5] = '\0';
+  char* ptr = str.data();
+  if (*seqid.num > -1000 && *seqid.num < 10000) {
+    ptr = to_chars_z(ptr, ptr + 5, *seqid.num);
+  } else if (seqid.num.has_value()) {
+    base36_encode(ptr, 4, *seqid.num + (10 * 36 * 36 * 36 - 10000));
+    ptr += 4;
+  }
+  *ptr++ = seqid.icode;
+  *ptr = '\0';
   return str;
 }
 

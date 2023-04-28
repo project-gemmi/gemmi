@@ -7,6 +7,11 @@
 
 #include <string>
 
+#include <version>  // for __cpp_lib_to_chars
+#if __cpp_lib_to_chars >= 201611L
+# include <charconv>
+#endif
+
 #ifdef USE_STD_SNPRINTF  // for benchmarking and testing only
 # include <cstdio>
 # define gstb_snprintf std::snprintf
@@ -47,6 +52,28 @@ std::string to_str_prec(double d) {
   int len = d > -1e8 && d < 1e8 ? gstb_sprintf(buf, "%.*f", Prec, d)
                                 : gstb_sprintf(buf, "%g", d);
   return std::string(buf, len > 0 ? len : 0);
+}
+
+/// zero-terminated to_chars()
+inline char* to_chars_z(char* first, char* last, int value) {
+#if __cpp_lib_to_chars >= 201611L
+  auto result = std::to_chars(first, last-1, value);
+  *result.ptr = '\0';
+  return result.ptr;
+#else
+  int n = gstb_snprintf(first, int(last - first), "%d", value);
+  return std::min(first + n, last - 1);
+#endif
+}
+inline char* to_chars_z(char* first, char* last, size_t value) {
+#if __cpp_lib_to_chars >= 201611L
+  auto result = std::to_chars(first, last-1, value);
+  *result.ptr = '\0';
+  return result.ptr;
+#else
+  int n = gstb_snprintf(first, int(last - first), "%zu", value);
+  return std::min(first + n, last - 1);
+#endif
 }
 
 } // namespace gemmi
