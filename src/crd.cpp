@@ -310,14 +310,7 @@ cif::Block prepare_crd(const Structure& st, const Topo& topo,
 
 template<int Prec>
 std::string to_str_dot(double d) {
-  static_assert(Prec >= 0 && Prec < 7, "unsupported precision");
-  if (!std::isnan(d)) {
-    char buf[16];
-    int len = gstb_sprintf(buf, "%.*f", Prec, d);
-    if (len > 0)
-      return std::string(buf, len);
-  }
-  return ".";
+  return std::isnan(d) ? "." : to_str_prec<Prec>(d);
 }
 
 static void add_restraint_row(cif::Loop& restr_loop,
