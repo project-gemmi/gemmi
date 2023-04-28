@@ -6,32 +6,25 @@
 #define GEMMI_SPRINTF_HPP_
 
 #include <string>
-
 #include <version>  // for __cpp_lib_to_chars
+
 #if __cpp_lib_to_chars >= 201611L
 # include <charconv>
 #endif
 
-#ifdef USE_STD_SNPRINTF  // for benchmarking and testing only
-# include <cstdio>
-# define gstb_snprintf std::snprintf
-# define gstb_sprintf std::sprintf
-#else
-# include "fail.hpp"  // for GEMMI_DLL
-  // On MinGW format(printf) doesn't support %zu.
-# if (defined(__GNUC__) && !defined(__MINGW32__)) || defined(__clang)
-#  define GEMMI_ATTRIBUTE_FORMAT(fmt,va) __attribute__((format(printf,fmt,va)))
-# else
-#  define GEMMI_ATTRIBUTE_FORMAT(fmt,va)
-# endif
-  namespace gemmi {
-  GEMMI_DLL int gstb_sprintf(char *buf, char const *fmt, ...) GEMMI_ATTRIBUTE_FORMAT(2,3);
-  GEMMI_DLL int gstb_snprintf(char *buf, int count, char const *fmt, ...)
-                                                              GEMMI_ATTRIBUTE_FORMAT(3,4);
-  }
-#endif
+#include "fail.hpp"  // for GEMMI_DLL
 
 namespace gemmi {
+
+// On MinGW format(printf) doesn't support %zu.
+#if (defined(__GNUC__) && !defined(__MINGW32__)) || defined(__clang__)
+# define GEMMI_ATTRIBUTE_FORMAT(fmt,va) __attribute__((format(printf,fmt,va)))
+#else
+# define GEMMI_ATTRIBUTE_FORMAT(fmt,va)
+#endif
+GEMMI_DLL int gstb_sprintf(char *buf, char const *fmt, ...) GEMMI_ATTRIBUTE_FORMAT(2,3);
+GEMMI_DLL int gstb_snprintf(char *buf, int count, char const *fmt, ...)
+                                                            GEMMI_ATTRIBUTE_FORMAT(3,4);
 
 inline std::string to_str(double d) {
   char buf[24];
