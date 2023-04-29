@@ -6,10 +6,10 @@
 #define GEMMI_SPRINTF_HPP_
 
 #include <string>
-#include <version>  // for __cpp_lib_to_chars
-
-#if __cpp_lib_to_chars >= 201611L
-# include <charconv>
+#ifdef __has_include
+# if __has_include(<charconv>)
+#  include <charconv>
+# endif
 #endif
 
 #include "fail.hpp"  // for GEMMI_DLL
