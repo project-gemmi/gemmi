@@ -23,10 +23,11 @@ namespace rules = gemmi::cif::rules;
 
 namespace {
 
-enum OptionIndex { FromFile=4, NamePattern, Recurse, MaxCount, OneBlock, And,
-                   Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
-                   OnlyTags, Summarize, MatchingFiles, NonMatchingFiles,
-                   Count, Raw };
+enum OptionIndex {
+  FromFile=4, NamePattern, PdbDirSf, Recurse, MaxCount, OneBlock, And,
+  Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
+  OnlyTags, Summarize, MatchingFiles, NonMatchingFiles, Count, Raw
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -47,6 +48,8 @@ const option::Descriptor Usage[] = {
   { NamePattern, 0, "", "name", Arg::Required,
     "  --name=PATTERN  \tfilename glob pattern used in recursive grep;"
     " by default, *.cif and *.cif.gz files are searched" },
+  { PdbDirSf, 0, "S", "pdb-sf", Arg::None,
+    "  -S, --pdb-sf \tif PDB ID is given, search structure factor file" },
   { MaxCount, 0, "m", "max-count", Arg::Int,
     "  -m, --max-count=NUM  \tprint max NUM values per file" },
   { OneBlock, 0, "O", "one-block", Arg::None,
@@ -542,13 +545,14 @@ int GEMMI_MAIN(int argc, char **argv) {
   size_t file_count = 0;
   int err_count = 0;
   try {
+    char expand_type = p.options[PdbDirSf] ? 'S' : 'M';
     for (const std::string& path : paths) {
       if (path == "-") {
         grep_file(path, params, err_count);
         file_count++;
       } else if (p.options[FromFile] ? starts_with_pdb_code(path)
                                      : gemmi::is_pdb_code(path)) {
-        std::string real_path = gemmi::expand_if_pdb_code(path.substr(0, 4));
+        std::string real_path = gemmi::expand_if_pdb_code(path.substr(0, 4), expand_type);
         params.last_block = true;  // PDB code implies -O
         grep_file(real_path, params, err_count);
         params.last_block = p.options[OneBlock];
