@@ -6,6 +6,7 @@
 #define GEMMI_FILEUTIL_HPP_
 
 #include <cstdio>    // for FILE, fopen, fclose
+#include <cstdint>
 #include <cstring>   // strlen
 #include <initializer_list>
 #include <memory>    // for unique_ptr
