@@ -5,6 +5,8 @@
 #ifndef GEMMI_ASUMASK_HPP_
 #define GEMMI_ASUMASK_HPP_
 
+#include <cstdint>
+
 #include "grid.hpp"
 
 namespace gemmi {
