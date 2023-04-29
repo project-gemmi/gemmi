@@ -9,7 +9,7 @@
 #include <gemmi/neighbor.hpp>
 #include "gemmi/assembly.hpp"  // for transform_to_assembly
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
-#include <gemmi/sprintf.hpp>   // for gstb_snprintf
+#include <gemmi/sprintf.hpp>   // for snprintf_z
 #define GEMMI_PROG contact
 #include "options.h"
 
@@ -131,8 +131,8 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       std::string conn_info;
       if (Connection* conn = st.find_connection_by_cra(cra1, cra2))
         conn_info = conn->name.empty() ? "(link)" : conn->name;
-      gstb_snprintf(buf, 255, "%-11s %-4s%c%3s%2s%4s%c         "
-                              "      %-4s%c%3s%2s%4s%c  %6s %6s %5.2f\n",
+      snprintf_z(buf, 255, "%-11s %-4s%c%3s%2s%4s%c         "
+                           "      %-4s%c%3s%2s%4s%c  %6s %6s %5.2f\n",
              conn_info.c_str(),
              cra1.atom->padded_name().c_str(),
              cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',

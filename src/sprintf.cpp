@@ -36,7 +36,7 @@
 namespace gemmi {
 
 // We copy functions from sprintf.h only to have them declared with GEMMI_DLL.
-int gstb_sprintf(char *buf, char const *fmt, ...) {
+int sprintf_z(char *buf, char const *fmt, ...) {
   int result;
   va_list va;
   va_start(va, fmt);
@@ -49,7 +49,7 @@ int gstb_sprintf(char *buf, char const *fmt, ...) {
   return result;
 }
 
-int gstb_snprintf(char *buf, int count, char const *fmt, ...) {
+int snprintf_z(char *buf, int count, char const *fmt, ...) {
   int result;
   va_list va;
   va_start(va, fmt);

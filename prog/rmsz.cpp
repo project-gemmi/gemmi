@@ -12,7 +12,7 @@
 #include "gemmi/polyheur.hpp"  // for setup_entities
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
-#include <gemmi/sprintf.hpp>   // for gstb_snprintf
+#include <gemmi/sprintf.hpp>   // for snprintf_z
 
 #define GEMMI_PROG rmsz
 #include "options.h"
@@ -81,7 +81,7 @@ void check_restraint(const Topo::Rule rule,
   size_t pos = 0;
   #define PRINT(...) do { \
     pos = std::min(pos, (size_t)200); \
-    pos += gemmi::gstb_snprintf(buf + pos, 200 - pos, __VA_ARGS__); \
+    pos += gemmi::snprintf_z(buf + pos, 200 - pos, __VA_ARGS__); \
   } while(0)
   auto end_line = [&]() {
     if (lines)

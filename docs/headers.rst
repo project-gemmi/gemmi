@@ -277,7 +277,7 @@ gemmi/span.hpp
     MutableVectorSpan - span of std::vector with insert() and erase()
 
 gemmi/sprintf.hpp
-    interface to stb_sprintf: gstb_snprintf, to_str(float|double)
+    interface to stb_sprintf: snprintf_z, to_str(float|double)
 
 gemmi/stats.hpp
     Statistics utilities: classes Covariance, Correlation, DataStats

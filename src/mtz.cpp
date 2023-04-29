@@ -131,7 +131,7 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
 
 
 #define WRITE(...) do { \
-    int len = gstb_snprintf(buf, 81, __VA_ARGS__); \
+    int len = snprintf_z(buf, 81, __VA_ARGS__); \
     if (len < 80) \
       std::memset(buf + len, ' ', 80 - len); \
     if (write(buf, 80, 1) != 1) \
@@ -196,7 +196,7 @@ void Mtz::write_to_stream(Write write) const {
     WRITE("VALM %f", valm);
   auto format17 = [](float f) {
     char buffer[18];
-    int len = gstb_snprintf(buffer, 18, "%.9f", f);
+    int len = snprintf_z(buffer, 18, "%.9f", f);
     return std::string(buffer, len > 0 ? std::min(len, 17) : 0);
   };
   for (const Column& col : columns) {
@@ -222,7 +222,7 @@ void Mtz::write_to_stream(Write write) const {
       std::memcpy(buf, "BATCH ", 6);
       int pos = 6;
       for (size_t j = i; j < std::min(batches.size(), i + 12); ++j, pos += 6)
-        gstb_snprintf(buf + pos, 7, "%6zu", j + 1);
+        snprintf_z(buf + pos, 7, "%6zu", j + 1);
       std::memset(buf + pos, ' ', 80 - pos);
       if (write(buf, 80, 1) != 1)
         fail("Writing MTZ file failed");

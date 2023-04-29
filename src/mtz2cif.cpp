@@ -9,7 +9,7 @@
 
 #include <gemmi/asudata.hpp>   // for calculate_hkl_value_correlation
 #include <gemmi/eig3.hpp>      // for eigen_decomposition
-#include <gemmi/sprintf.hpp>   // for gstb_snprintf, to_str
+#include <gemmi/sprintf.hpp>   // for snprintf_z, to_str
 #include <gemmi/atox.hpp>      // for read_word
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
 
@@ -62,7 +62,7 @@ int check_format(const std::string& fmt) {
   return min_width;
 }
 
-#define WRITE(...) os.write(buf, gstb_snprintf(buf, 255, __VA_ARGS__))
+#define WRITE(...) os.write(buf, snprintf_z(buf, 255, __VA_ARGS__))
 
 void write_cell_and_symmetry(const std::string& entry_id,
                              const UnitCell& cell, double* rmsds, const SpaceGroup* sg,
@@ -433,7 +433,7 @@ void write_main_loop(const MtzToCif& m2c, const SweepInfo& sweep_info,
   }
 
   auto write_int = [](char* p, int num) {
-    //return gstb_snprintf(p, 32, "%d", num);
+    //return snprintf_z(p, 32, "%d", num);
     std::string s = std::to_string(num);
     std::memcpy(p, s.data(), s.size());
     return s.size();
@@ -506,7 +506,7 @@ void write_main_loop(const MtzToCif& m2c, const SweepInfo& sweep_info,
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wformat-nonliteral"
 #endif
-          ptr += gstb_snprintf(ptr, 32, tr.format.c_str(), v);
+          ptr += snprintf_z(ptr, 32, tr.format.c_str(), v);
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
 #endif
@@ -812,14 +812,14 @@ void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
     if (refl.sigma < 0 && skip_negative_sigi)  // misfit
       continue;
     char* ptr = buf;
-    ptr += gstb_snprintf(ptr, 128, "%d %d %d %d %d %g %.5g ",
+    ptr += snprintf_z(ptr, 128, "%d %d %d %d %d %g %.5g ",
                          refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
                          refl.iobs, refl.sigma);
     if (xds.oscillation_range != 0.) {
       double angle = xds.rot_angle(refl);
-      ptr += gstb_snprintf(ptr, 16, "%.5g ", angle);
+      ptr += snprintf_z(ptr, 16, "%.5g ", angle);
     }
-    ptr += gstb_snprintf(ptr, 16, "%d\n", refl.frame());
+    ptr += snprintf_z(ptr, 16, "%d\n", refl.frame());
     os.write(buf, ptr - buf);
   }
 }

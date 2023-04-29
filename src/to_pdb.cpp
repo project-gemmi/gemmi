@@ -17,13 +17,13 @@
 namespace gemmi {
 
 #define WRITE(...) do { \
-    gstb_snprintf(buf, 82, __VA_ARGS__); \
+    snprintf_z(buf, 82, __VA_ARGS__); \
     buf[80] = '\n'; \
     os.write(buf, 81); \
   } while(0)
 
 #define WRITEU(...) do { \
-    gstb_snprintf(buf, 82, __VA_ARGS__); \
+    snprintf_z(buf, 82, __VA_ARGS__); \
     buf[80] = '\n'; \
     for (int i_ = 0; i_ != 80; i_++) \
       if (buf[i_] >= 'a' && buf[i_] <= 'z') buf[i_] -= 0x20; \
@@ -31,7 +31,7 @@ namespace gemmi {
   } while(0)
 
 #define WRITELN(...) do { \
-    int length__ = gstb_snprintf(buf, 82, __VA_ARGS__); \
+    int length__ = snprintf_z(buf, 82, __VA_ARGS__); \
     if (length__ < 80) \
       std::memset(buf + length__, ' ', 80 - length__); \
     buf[80] = '\n'; \
@@ -289,10 +289,10 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
         // re-using part of the buffer
         std::memcpy(buf, "ANISOU", 6);
         const double eps = 1e-6;
-        gstb_snprintf(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                      a.aniso.u11*1e4 + eps, a.aniso.u22*1e4 + eps,
-                      a.aniso.u33*1e4 + eps, a.aniso.u12*1e4 + eps,
-                      a.aniso.u13*1e4 + eps, a.aniso.u23*1e4 + eps);
+        snprintf_z(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
+                   a.aniso.u11*1e4 + eps, a.aniso.u22*1e4 + eps,
+                   a.aniso.u33*1e4 + eps, a.aniso.u12*1e4 + eps,
+                   a.aniso.u13*1e4 + eps, a.aniso.u23*1e4 + eps);
         buf[28+42] = ' ';
         buf[80] = '\n';
         os.write(buf, 81);
@@ -306,8 +306,8 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
       if (opt.numbered_ter) {
         // re-using part of the buffer in the middle, e.g.:
         // TER    4153      LYS B 286
-        gstb_snprintf(buf, 82, "TER   %5s",
-                      encode_serial_in_hybrid36(++serial).data());
+        snprintf_z(buf, 82, "TER   %5s",
+                   encode_serial_in_hybrid36(++serial).data());
         std::memset(buf+11, ' ', 6);
         std::memset(buf+28, ' ', 52);
         buf[80] = '\n';
@@ -416,11 +416,11 @@ inline void write_header(const Structure& st, std::ostream& os,
               begin = polymer.label_seq_id_to_auth(dbref.label_seq_begin);
               end = polymer.label_seq_id_to_auth(dbref.label_seq_end);
             }
-          gstb_snprintf(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
-                        dbref_entry_id, ch.name.c_str(),
-                        write_seq_id(begin).data(),
-                        write_seq_id(end).data(),
-                        dbref.db_name.c_str());
+          snprintf_z(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
+                     dbref_entry_id, ch.name.c_str(),
+                     write_seq_id(begin).data(),
+                     write_seq_id(end).data(),
+                     dbref.db_name.c_str());
           if (dbref.db_name == "PDB" && dbref.id_code == entry_id) {
             // PDB uses self-reference for fragments that don't have real
             // reference. No idea why. In such case the same begin/end is used.
@@ -429,13 +429,13 @@ inline void write_header(const Structure& st, std::ostream& os,
             end = dbref.db_end;
           }
           if (short_record) {
-            gstb_snprintf(buf+33, 82-33, "%-8s %-12s %5d%c %5d%c            \n",
-                          dbref.accession_code.c_str(), dbref.id_code.c_str(),
-                          *begin.num, begin.icode, *end.num, end.icode);
+            snprintf_z(buf+33, 82-33, "%-8s %-12s %5d%c %5d%c            \n",
+                       dbref.accession_code.c_str(), dbref.id_code.c_str(),
+                       *begin.num, begin.icode, *end.num, end.icode);
           } else {
             buf[5] = '1';  // -> DBREF1
-            gstb_snprintf(buf+33, 82-33, "              %-33s\n",
-                          dbref.id_code.c_str());
+            snprintf_z(buf+33, 82-33, "              %-33s\n",
+                       dbref.id_code.c_str());
           }
           buf[80] = '\n';
           os.write(buf, 81);
@@ -453,9 +453,9 @@ inline void write_header(const Structure& st, std::ostream& os,
         int col = 0;
         for (const std::string& monomers : entity->full_sequence) {
           if (col == 0)
-            gstb_snprintf(buf, 82, "SEQRES%4d%2s%5zu %62s\n",
-                          ++row, ch.name.c_str(),
-                          entity->full_sequence.size(), "");
+            snprintf_z(buf, 82, "SEQRES%4d%2s%5zu %62s\n",
+                       ++row, ch.name.c_str(),
+                       entity->full_sequence.size(), "");
           size_t end = monomers.find(',');
           if (end == std::string::npos)
             end = monomers.length();
@@ -479,7 +479,7 @@ inline void write_header(const Structure& st, std::ostream& os,
         counter = 0;
       // According to the PDB spec serial number can be from 1 to 999.
       // Here, we allow for up to 9999 helices by using columns 7 and 11.
-      gstb_snprintf(buf, 82, "HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
+      snprintf_z(buf, 82, "HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
             counter, counter,
             helix.start.res_id.name.c_str(), helix.start.chain_name.c_str(),
             write_seq_id(helix.start.res_id.seqid).data(),
@@ -565,7 +565,7 @@ inline void write_header(const Structure& st, std::ostream& os,
           // to be applied to the atom." But all files from wwPDB have
           // 1555 not blank, so here we also write 1555,
           // except for LINKR (Refmac variant of LINK).
-          gstb_snprintf(buf, 82, "LINK        %-4s%c%3s%2s%5s   "
+          snprintf_z(buf, 82, "LINK        %-4s%c%3s%2s%5s   "
                 "            %-4s%c%3s%2s%5s  %6s %6s %5s  \n",
                 cra1.atom ? cra1.atom->padded_name().c_str() : "",
                 cra1.atom && cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
@@ -583,7 +583,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             if (im_same_asu)
               std::memset(buf+58, ' ', 14); // erase symmetry
             // overwrite distance with link_id
-            gstb_snprintf(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
+            snprintf_z(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
           }
           buf[80] = '\n';
           os.write(buf, 81);

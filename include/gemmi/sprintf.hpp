@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// interface to stb_sprintf: gstb_snprintf, to_str(float|double)
+// interface to stb_sprintf: snprintf_z, to_str(float|double)
 
 #ifndef GEMMI_SPRINTF_HPP_
 #define GEMMI_SPRINTF_HPP_
@@ -22,19 +22,22 @@ namespace gemmi {
 #else
 # define GEMMI_ATTRIBUTE_FORMAT(fmt,va)
 #endif
-GEMMI_DLL int gstb_sprintf(char *buf, char const *fmt, ...) GEMMI_ATTRIBUTE_FORMAT(2,3);
-GEMMI_DLL int gstb_snprintf(char *buf, int count, char const *fmt, ...)
-                                                            GEMMI_ATTRIBUTE_FORMAT(3,4);
+/// stb_snprintf in gemmi namespace - like snprintf, but ignores locale
+/// and is always zero-terminated (hence _z).
+GEMMI_DLL int snprintf_z(char *buf, int count, char const *fmt, ...)
+                                                         GEMMI_ATTRIBUTE_FORMAT(3,4);
+/// stb_sprintf in gemmi namespace
+GEMMI_DLL int sprintf_z(char *buf, char const *fmt, ...) GEMMI_ATTRIBUTE_FORMAT(2,3);
 
 inline std::string to_str(double d) {
   char buf[24];
-  int len = gstb_sprintf(buf, "%.9g", d);
+  int len = sprintf_z(buf, "%.9g", d);
   return std::string(buf, len > 0 ? len : 0);
 }
 
 inline std::string to_str(float d) {
   char buf[16];
-  int len = gstb_sprintf(buf, "%.6g", d);
+  int len = sprintf_z(buf, "%.6g", d);
   return std::string(buf, len > 0 ? len : 0);
 }
 
@@ -42,8 +45,8 @@ template<int Prec>
 std::string to_str_prec(double d) {
   static_assert(Prec >= 0 && Prec < 7, "unsupported precision");
   char buf[16];
-  int len = d > -1e8 && d < 1e8 ? gstb_sprintf(buf, "%.*f", Prec, d)
-                                : gstb_sprintf(buf, "%g", d);
+  int len = d > -1e8 && d < 1e8 ? sprintf_z(buf, "%.*f", Prec, d)
+                                : sprintf_z(buf, "%g", d);
   return std::string(buf, len > 0 ? len : 0);
 }
 
@@ -54,7 +57,7 @@ inline char* to_chars_z(char* first, char* last, int value) {
   *result.ptr = '\0';
   return result.ptr;
 #else
-  int n = gstb_snprintf(first, int(last - first), "%d", value);
+  int n = snprintf_z(first, int(last - first), "%d", value);
   return std::min(first + n, last - 1);
 #endif
 }
@@ -64,7 +67,7 @@ inline char* to_chars_z(char* first, char* last, size_t value) {
   *result.ptr = '\0';
   return result.ptr;
 #else
-  int n = gstb_snprintf(first, int(last - first), "%zu", value);
+  int n = snprintf_z(first, int(last - first), "%zu", value);
   return std::min(first + n, last - 1);
 #endif
 }
