@@ -20,6 +20,7 @@ Options:
   -H, --with-filename      print the file name for each match
   -b, --no-blockname       suppress the block name on output
   -t, --with-tag           print the tag name for each match
+  -T, --only-tags          print only matching tags, not values
   -l, --files-with-tag     print only names of files with the tag
   -L, --files-without-tag  print only names of files without the tag
   -c, --count              print only a count of values per block or file

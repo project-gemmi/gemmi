@@ -25,7 +25,8 @@ namespace {
 
 enum OptionIndex { FromFile=4, NamePattern, Recurse, MaxCount, OneBlock, And,
                    Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
-                   Summarize, MatchingFiles, NonMatchingFiles, Count, Raw };
+                   OnlyTags, Summarize, MatchingFiles, NonMatchingFiles,
+                   Count, Raw };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -62,6 +63,8 @@ const option::Descriptor Usage[] = {
     "  -b, --no-blockname  \tsuppress the block name on output" },
   { WithTag, 0, "t", "with-tag", Arg::None,
     "  -t, --with-tag  \tprint the tag name for each match" },
+  { OnlyTags, 0, "T", "only-tags", Arg::None,
+    "  -T, --only-tags  \tprint only matching tags, not values" },
   { MatchingFiles, 0, "l", "files-with-tag", Arg::None,
     "  -l, --files-with-tag  \tprint only names of files with the tag" },
   { NonMatchingFiles, 0, "L", "files-without-tag", Arg::None,
@@ -86,6 +89,7 @@ struct GrepParams {
   bool with_blockname = true;
   bool with_line_numbers = false;
   bool with_tag = false;
+  bool only_tags = false;
   bool summarize = false;
   bool only_filenames = false;
   bool inverse = false;  // for now it refers to only_filenames only
@@ -126,10 +130,18 @@ void process_match(const Input& in, GrepParams& par, int n) {
     printf("%zu%s", in.iterator().line, sep);
   if (par.with_tag) {
     const std::string& tag = n < 0 ? par.search_tag : par.multi_tags[n];
-    if (par.delim.empty())
+    if (par.only_tags) {
+      printf("%s\n", tag.c_str());
+      if (n == -1)
+        par.match_column = -1;
+      else
+        par.multi_match_columns[n] = -1;
+      return;
+    } else if (par.delim.empty()) {
       printf("[%s] ", tag.c_str());
-    else
+    } else {
       printf("%s%s", tag.c_str(), sep);
+    }
   }
   std::string value = par.raw ? in.string() : cif::as_string(in.string());
   printf("%s\n", value.c_str());
@@ -477,6 +489,14 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   if (p.options[WithTag])
     params.with_tag = true;
+  if (p.options[OnlyTags]) {
+    if (p.options[And]) {
+      fprintf(stderr, "Options --only-tags and --and do not work together\n");
+      return 2;
+    }
+    params.with_tag = true;
+    params.only_tags = true;
+  }
   if (p.options[Summarize])
     params.summarize = true;
   if (p.options[MatchingFiles])

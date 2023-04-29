@@ -638,7 +638,7 @@ We could use multiple seeds to obtain a single mask for all blobs together.
 To find area with values below a certain value,
 run flood_fill_above() with optional argument ``negate=True``.
 
-Here are a few characteristics of the mask that we can easily show:
+Here we print a few characteristics of the mask:
 
 .. doctest::
 
