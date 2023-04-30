@@ -21,7 +21,7 @@
 // don't like bundled libraries) define GEMMI_USE_SYSTEM_STB or remove
 // third_party/stb_sprintf.h.
 # if defined(__has_include)
-#  if !__has_include("gemmi/third_party/stb_sprintf.h")
+#  if !__has_include("../third_party/stb_sprintf.h")
 #   define GEMMI_USE_SYSTEM_STB 1
 #  endif
 # endif
@@ -29,7 +29,7 @@
 #  pragma message("Using system stb_sprintf.h, not the bundled one. It may not work.")
 #  include <stb/stb_sprintf.h>
 # else
-#  include "gemmi/third_party/stb_sprintf.h"
+#  include "../third_party/stb_sprintf.h"
 # endif
 #endif  // USE_STD_SNPRINTF
 

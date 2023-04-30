@@ -166,8 +166,8 @@ Credits
 
 This project is using code from a number of third-party open-source projects.
 
-Projects used in the C++ library and included under
-``include/gemmi/third_party/``:
+Projects used in the C++ library, included under
+``include/gemmi/third_party/`` (if used in headers) or ``third_party/``:
 
 * `PEGTL <https://github.com/taocpp/PEGTL/>`_ -- library for creating PEG
   parsers. License: MIT.
@@ -192,8 +192,8 @@ Code derived from the following projects is used in the library:
   in ``fprime.hpp`` is based on CromerLiberman code from Larch.
   License: 2-clause BSD.
 
-Projects included under ``third_party/``, not used in the library itself,
-but used in command-line utilities, python bindings or tests:
+Projects included under ``third_party/`` that are not used in the library
+itself, but are used in command-line utilities, python bindings or tests:
 
 * `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
   command-line option parser. License: MIT.
@@ -209,7 +209,8 @@ Not distributed with Gemmi:
 
 * `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
   Python bindings. License: 3-clause BSD.
-* `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests and
+* `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests
+  (if cctbx is not present, these tests are skipped) and
   in scripts that generated space group data and 2-fold twinning operations.
   License: 3-clause BSD.
 
