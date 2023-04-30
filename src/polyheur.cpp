@@ -20,11 +20,12 @@ PolymerType check_polymer_type(const ConstResidueSpan& span) {
       ResidueInfo info = find_tabulated_residue(r.name);
       if (info.found()) {
         // Exclude water and ions - it can make difference
-        // if function is called for the whole chain.
-        if (info.kind == ResidueInfo::HOH)
-          continue;
-        // buffer molecules w/o hydrogens are mostly ions
-        if (info.kind == ResidueInfo::BUF && info.hydrogen_count == 0)
+        // if this function is called for the whole chain.
+        // Components w/o hydrogens are often ions and always non-polymers
+        // (and almost never are in a polymer - except PO4, PO2 and AZI (N3)
+        // which in a few PDB entries are included in polymers - but it
+        // doesn't matter here).
+        if (info.kind == ResidueInfo::HOH || info.hydrogen_count == 0)
           continue;
         if (info.is_peptide_linking())
           ++aa;
