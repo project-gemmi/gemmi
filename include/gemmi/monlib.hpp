@@ -151,7 +151,7 @@ struct GEMMI_DLL MonLib {
     bool inverted = false;
     const ChemComp::Aliasing* aliasing1 = nullptr;
     const ChemComp::Aliasing* aliasing2 = nullptr;
-    int best_score = -1;
+    int best_score = -1000;
     for (auto& ml : links) {
       const ChemLink& link = ml.second;
       if (link.rt.bonds.empty() || starts_with(link.name, "auto-"))
