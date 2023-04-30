@@ -236,6 +236,7 @@ void add_unitcell(py::module& m) {
 
   py::class_<NearestImage>(m, "NearestImage")
     .def("dist", &NearestImage::dist)
+    .def("same_asu", &NearestImage::same_asu)
     .def("symmetry_code", &NearestImage::symmetry_code, py::arg("underscore")=true)
     .def_readonly("sym_idx", &NearestImage::sym_idx)
     .def_property_readonly("pbc_shift", [](const NearestImage& self) {
