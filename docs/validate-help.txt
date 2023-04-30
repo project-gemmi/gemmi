@@ -11,5 +11,6 @@ Options:
   -d, --ddl=PATH  DDL for validation.
   --no-regex      Skip regex checking (when using DDL2)
   --no-mandatory  Skip checking if mandatory tags are present.
+  --no-unique     Skip checking if category keys (DDL2) are unique.
   -p              Check if parent items (DDL2) are present.
   -m, --monomer   Extra checks for Refmac dictionary files.

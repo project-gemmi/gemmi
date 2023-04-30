@@ -28,8 +28,9 @@ void check_monomer_doc(const cif::Document& doc);
 
 namespace {
 
-enum OptionIndex { Quiet=4, Fast, Stat, Ddl, NoRegex, NoMandatory, Parents,
-                   Monomer };
+enum OptionIndex {
+  Quiet=4, Fast, Stat, Ddl, NoRegex, NoMandatory, NoUniqueKeys, Parents, Monomer
+};
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
                                 "\n\nOptions:" },
@@ -44,6 +45,8 @@ const option::Descriptor Usage[] = {
     "  --no-regex  \tSkip regex checking (when using DDL2)" },
   { NoMandatory, 0, "", "no-mandatory", Arg::None,
     "  --no-mandatory  \tSkip checking if mandatory tags are present." },
+  { NoUniqueKeys, 0, "", "no-unique", Arg::None,
+    "  --no-unique  \tSkip checking if category keys (DDL2) are unique." },
   { Parents, 0, "p", "", Arg::None,
     "  -p  \tCheck if parent items (DDL2) are present." },
   { Monomer, 0, "m", "monomer", Arg::None,
@@ -87,6 +90,10 @@ std::string format_7zd(size_t k) {
   char buf[64];
   snprintf(buf, 63, "%7zu", k);
   return buf;
+}
+
+std::string br(const std::string& block_name) {
+  return "[" + block_name + "] ";
 }
 
 std::string token_stats(const cif::Document& d) {
@@ -205,7 +212,7 @@ public:
   }
 
   // check if the dictionary name/version correspond to _audit_conform_dict_*
-  void check_audit_conform(const cif::Document& doc) const;
+  void check_audit_conform(const cif::Document& doc, bool verbose) const;
 
   bool validate(cif::Document& doc, std::ostream& out, bool quiet);
 
@@ -231,18 +238,19 @@ public:
       std::string cat_name = cat.first.substr(1, cat.first.size()-2);
       cif::Block* cat_block = find_rules(cat_name);
       if (!cat_block) { // should not happen
-        out << "Category not in the dictionary: " << cat_name << std::endl;
+        out << br(b.name) << "category not in the dictionary: " << cat_name << std::endl;
         continue;
       }
       // check context type
       if (const std::string* context = cat_block->find_value("_pdbx_category_context.type"))
-        out << "Category indicated as " << *context << ": " << cat_name << std::endl;
+        out << br(b.name) << "category indicated as "
+            << *context << ": " << cat_name << std::endl;
       // check key items
       for (const std::string& v : cat_block->find_values("_category_key.name")) {
         std::string key = cif::as_string(v);
         assert(gemmi::starts_with(key, cat.first));
         if (!gemmi::in_vector(key.substr(cat.first.size()), cat.second))
-          out << "Missing category key: " << key << std::endl;
+          out << br(b.name) << "missing category key: " << key << std::endl;
       }
       // check mandatory items
       for (auto i = name_index_.lower_bound(cat.first);
@@ -251,9 +259,65 @@ public:
         cif::Table items = i->second->find("_item.", {"name", "mandatory_code"});
         if (items.find_row(i->first).str(1)[0] == 'y')
           if (!gemmi::in_vector(i->first.substr(cat.first.size()), cat.second))
-            out << "Missing mandatory tag: " << i->first << std::endl;
+            out << br(b.name) << "missing mandatory tag: " << i->first << std::endl;
       }
     }
+  }
+
+  void check_unique_keys_in_loop(const cif::Loop& loop, std::ostream& out,
+                                 const std::string& block_name) {
+    const std::string& tag1 = loop.tags[0];
+    size_t dot_pos = tag1.find('.');
+    std::string cat_name = tag1.substr(1, dot_pos - 1);
+    if (cif::Block* cat_block = find_rules(cat_name)) {
+      std::vector<int> key_positions;
+      for (const std::string& v : cat_block->find_values("_category_key.name")) {
+        int key_pos = loop.find_tag(cif::as_string(v));
+        if (key_pos < 0)  // missing keys are reported elsewhere
+          return;
+        key_positions.push_back(key_pos);
+      }
+      std::unordered_set<std::string> seen_keys;
+      size_t dup_row = 0;
+      int dup_counter = 0;
+      for (size_t row_pos = 0; row_pos < loop.values.size(); row_pos += loop.width()) {
+        std::string row_key;
+        for (int k : key_positions) {
+          row_key += cif::as_string(loop.values[row_pos + k]);
+          row_key += '\1';
+        }
+        auto r = seen_keys.insert(row_key);
+        if (!r.second) {
+          dup_counter++;
+          if (dup_row == 0)
+            dup_row = row_pos;
+        }
+      }
+      if (dup_counter != 0) {
+        out << br(block_name) << "category " << cat_name << " has ";
+        if (dup_counter == 1)
+          out << "1 duplicated key: ";
+        else
+          out << dup_counter << " duplicated keys, example: ";
+        bool first = true;
+        for (int k : key_positions) {
+          if (first)
+            first = false;
+          else
+            out << " and ";
+          out << loop.tags[k].substr(dot_pos+1) << '=' << loop.values[dup_row + k];
+        }
+        out << std::endl;
+      }
+    }
+  }
+
+  void check_unique_keys(const cif::Block& b, std::ostream& out) {
+    if (version_ != 2)
+      return;
+    for (const cif::Item& item : b.items)
+      if (item.type == cif::ItemType::Loop)
+        check_unique_keys_in_loop(item.loop, out, b.name);
   }
 
   void check_parents(cif::Block& b, std::ostream& out) {
@@ -303,7 +367,7 @@ private:
       return;
     cif::Table parent_tab = b.find(link.parent_tags);
     if (!parent_tab.ok()) {
-      out << "In data_" << b.name << ": missing "
+      out << br(b.name) << "missing "
           << gemmi::join_str(link.parent_tags, '+') << "\n  parent of "
           << gemmi::join_str(link.child_tags, '+') << std::endl;
       return;
@@ -317,7 +381,7 @@ private:
       if (!ret.second) {
         ++dup_counter;
         if (dup_counter < 2)
-          out << "In data_" << b.name << ": duplicated parent group "
+          out << br(b.name) << "duplicated parent group "
               << gemmi::join_str(link.parent_tags, '+') << ":\n  "
               << gemmi::join_str(row, '+') << std::endl;
       }
@@ -330,7 +394,7 @@ private:
       if (parent_hashes.count(row_as_string(row)) == 0) {
         ++miss_counter;
         if (miss_counter < 2)
-          out << "In data_" << b.name << ": "
+          out << br(b.name)
               << gemmi::join_str(row, '+') << " from "
               << gemmi::join_str(link.child_tags, '+') << "\n  not in "
               << gemmi::join_str(link.parent_tags, '+') << std::endl;
@@ -617,27 +681,25 @@ private:
 };
 
 
-void DDL::check_audit_conform(const cif::Document& doc) const {
+void DDL::check_audit_conform(const cif::Document& doc, bool verbose) const {
   std::string audit_conform = "_audit_conform";
   audit_conform += sep_;
   for (const cif::Block& b : doc.blocks) {
     const std::string* raw_name = b.find_value(audit_conform + "dict_name");
-    if (!raw_name) {
-      std::cout << "Note: the cif file (block " << b.name << ") is missing "
-                << audit_conform << "dict_name\n";
+    if (!raw_name)
       continue;
-    }
     std::string name = cif::as_string(*raw_name);
     if (name == dict_name_) {
-      const std::string* dict_ver = b.find_value(audit_conform + "dict_version");
-      if (dict_ver) {
-        std::string version = cif::as_string(*dict_ver);
-        if (version != dict_version_)
-          std::cout << "Note: CIF conforms to " << name << " ver. " << version
-                    << " while DDL has ver. " << dict_version_ << '\n';
-      }
+      if (verbose)
+        if (const std::string* dict_ver = b.find_value(audit_conform + "dict_version")) {
+          std::string version = cif::as_string(*dict_ver);
+          if (version != dict_version_)
+            std::cout << "Note: " << br(b.name) << "conforms to " << name
+                      << " ver. " << version << " while DDL has ver. " << dict_version_
+                      << '\n';
+        }
     } else {
-      std::cout << "Note: dictionary name mismatch in " << b.name << ": " << name
+      std::cout << "Note: " << br(b.name) << "dictionary name mismatch: " << name
                 << " vs " << dict_name_ << '\n';
     }
   }
@@ -650,7 +712,7 @@ bool DDL::validate(cif::Document& doc, std::ostream& out, bool quiet) {
                  const std::string& s) {
     ok = false;
     out << doc.source << ":" << item.line_number
-        << " in data_" << b.name << ": " << s << "\n";
+        << ' ' << br(b.name) << s << "\n";
   };
   for (cif::Block& b : doc.blocks) {
     for (const cif::Item& item : b.items) {
@@ -658,7 +720,7 @@ bool DDL::validate(cif::Document& doc, std::ostream& out, bool quiet) {
         cif::Block* dict_block = find_rules(item.pair[0]);
         if (!dict_block) {
           if (!quiet)
-            out << "Note: unknown tag in " << b.name << ": " << item.pair[0] << '\n';
+            out << "Note: " << br(b.name) << "unknown tag " << item.pair[0] << '\n';
           continue;
         }
         // validate pair
@@ -682,7 +744,7 @@ bool DDL::validate(cif::Document& doc, std::ostream& out, bool quiet) {
           cif::Block* dict_block = find_rules(tag);
           if (!dict_block) {
             if (!quiet)
-              out << "Note: unknown tag in " << b.name << ": " << tag << '\n';
+              out << "Note: " << br(b.name) << "unknown tag " << tag << '\n';
             continue;
           }
           // validate column in loop
@@ -759,12 +821,14 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[Stat])
           msg = token_stats(d);
         if (p.options[Ddl]) {
-          if (p.options[Verbose])
-            dict.check_audit_conform(d);
+          dict.check_audit_conform(d, p.options[Verbose]);
           ok = dict.validate(d, std::cout, quiet);
           if (!p.options[NoMandatory])
             for (cif::Block& block : d.blocks)
               dict.check_mandatory_items(block, std::cout);
+          if (!p.options[NoUniqueKeys])
+            for (cif::Block& block : d.blocks)
+              dict.check_unique_keys(block, std::cout);
           if (p.options[Parents])
             for (cif::Block& block : d.blocks)
               dict.check_parents(block, std::cout);
