@@ -9,6 +9,7 @@ Options:
   -f, --fast      Syntax-only check.
   -s, --stat      Show token statistics
   -d, --ddl=PATH  DDL for validation.
+  -c, --context   Check _pdbx_{category|item}_context.type.
   --no-regex      Skip regex checking (when using DDL2)
   --no-mandatory  Skip checking if mandatory tags are present.
   --no-unique     Skip checking if category keys (DDL2) are unique.

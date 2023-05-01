@@ -29,7 +29,7 @@ void check_monomer_doc(const cif::Document& doc);
 namespace {
 
 enum OptionIndex {
-  Quiet=4, Fast, Stat, Ddl, NoRegex, NoMandatory, NoUniqueKeys, Parents, Monomer
+  Quiet=4, Fast, Stat, Context, Ddl, NoRegex, NoMandatory, NoUniqueKeys, Parents, Monomer
 };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
@@ -41,6 +41,8 @@ const option::Descriptor Usage[] = {
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
   { Ddl, 0, "d", "ddl", Arg::Required, "  -d, --ddl=PATH  \tDDL for validation." },
+  { Context, 0, "c", "context", Arg::None,
+    "  -c, --context  \tCheck _pdbx_{category|item}_context.type." },
   { NoRegex, 0, "", "no-regex", Arg::None,
     "  --no-regex  \tSkip regex checking (when using DDL2)" },
   { NoMandatory, 0, "", "no-mandatory", Arg::None,
@@ -174,7 +176,10 @@ bool is_integer(const std::string& s) {
 // Class DDL that represents DDL1 or DDL2 dictionary (ontology).
 class DDL {
 public:
-  DDL(bool enable_regex) : regex_enabled_(enable_regex) {}
+  DDL(bool enable_regex)
+    : regex_enabled_(enable_regex), use_context_(false) {}
+
+  void set_use_context(bool use_context) { use_context_ = use_context; }
 
   void open_file(const std::string& filename) {
     ddl_ = cif::read_file(filename);
@@ -242,9 +247,10 @@ public:
         continue;
       }
       // check context type
-      if (const std::string* context = cat_block->find_value("_pdbx_category_context.type"))
-        out << br(b.name) << "category indicated as "
-            << *context << ": " << cat_name << std::endl;
+      if (use_context_)
+        if (const std::string* ct = cat_block->find_value("_pdbx_category_context.type"))
+          out << br(b.name) << "category indicated as "
+              << *ct << ": " << cat_name << std::endl;
       // check key items
       for (const std::string& v : cat_block->find_values("_category_key.name")) {
         std::string key = cif::as_string(v);
@@ -468,11 +474,12 @@ private:
   }
 
   int version_;
+  bool regex_enabled_;
+  bool use_context_;
   cif::Document ddl_;
   std::map<std::string, cif::Block*> name_index_;
   std::string dict_name_;
   std::string dict_version_;
-  bool regex_enabled_;
   std::map<std::string, std::regex> regexes_;
   std::vector<ParentLink> parents_;
   // "_" or ".", used to unify handling of DDL1 and DDL2, for example when
@@ -658,7 +665,7 @@ public:
     return false;
   }
 
-  bool validate_tag(std::string* msg) const {
+  bool check_context_type(std::string* msg) const {
     if (context_ == ItemContext::Deprecated) {
       *msg = " is deprecated";
       return false;
@@ -732,7 +739,7 @@ bool DDL::validate(cif::Document& doc, std::ostream& out, bool quiet) {
             err(b, item, msg);
         } else {
           Validator2 tc(*dict_block, regexes_);
-          if (!tc.validate_tag(&msg))
+          if (use_context_ && !tc.check_context_type(&msg))
             err(b, item, item.pair[0] + msg);
           if (!tc.validate_value(item.pair[1], &msg))
             err(b, item, msg);
@@ -759,7 +766,7 @@ bool DDL::validate(cif::Document& doc, std::ostream& out, bool quiet) {
               }
           } else {
             Validator2 tc(*dict_block, regexes_);
-            if (!tc.validate_tag(&msg))
+            if (use_context_ && !tc.check_context_type(&msg))
               err(b, item, tag + msg);
             for (size_t j = i; j < item.loop.values.size(); j += ncol)
               if (!tc.validate_value(item.loop.values[j], &msg)) {
@@ -795,6 +802,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 #else
   DDL dict(!p.options[NoRegex]);
 #endif
+  dict.set_use_context(p.options[Context]);
   if (p.options[Ddl]) {
     try {
       for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next()) {
