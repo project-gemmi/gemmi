@@ -327,8 +327,10 @@ void expand_ncs(Structure& st, HowToNameCopiedChain how) {
                 auto it = chain_mapping.find(aa.chain_name);
                 if (it != chain_mapping.end())
                   aa.chain_name = it->second;
-                else
+                else {
                   st.connections.pop_back();
+                  break;
+                }
               }
             }
           }
