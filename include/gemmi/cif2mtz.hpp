@@ -30,9 +30,9 @@ std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& prox
   bool centric = gops.is_centrosymmetric();
   DataType data_type = DataType::Mean;
   for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
-    auto hkl_isym = asu.to_asu(proxy.get_hkl(i), gops);
-    int sign = hkl_isym.second % 2 + 1;  // 2=positive, 1=negative
-    auto r = seen.emplace(hkl_isym.first, sign);
+    auto hkl_sign = asu.to_asu_sign(proxy.get_hkl(i), gops);
+    int sign = int(hkl_sign.second) + 1;  // 2=positive, 1=negative
+    auto r = seen.emplace(hkl_sign.first, sign);
     if (data_type != DataType::Unmerged && !r.second) {
       if ((r.first->second & sign) != 0 || centric) {
         data_type = DataType::Unmerged;
