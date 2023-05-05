@@ -47,12 +47,13 @@ std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& prox
 
 
 /// Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
-/// stored as two F_meas_au reflections, say (1,1,3) then (-1,-1,-3),
-/// with F(-) directly after F(+). This function transcribes it to
-/// how the anomalous data is stored PDBx/mmCIF nowadays:
+/// stored as two F_meas_au reflections, say (1,1,3) and (-1,-1,-3).
+/// This function transcribes it to how the anomalous data is stored
+/// in PDBx/mmCIF nowadays:
 ///  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
 ///  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
-inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop) {
+inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
+                                                      const SpaceGroup* sg) {
   cif::Loop ret;
   size_t length = loop.length();
   int hkl_idx = loop.find_tag_lc("_refln.index_h");
@@ -67,6 +68,8 @@ inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop) {
     fail("while reading old anomalous: _refln.F_meas_au not found");
   if ((size_t) f_idx+1 >= loop.width() || loop.tags[f_idx+1] != "_refln.F_meas_sigma_au")
     fail("while reading old anomalous: _refln.F_meas_sigma_au not found");
+  if (hkl_idx > f_idx)
+    fail("while reading old anomalous: index_h after F?");
   const char* new_labels[4] = {"_refln.pdbx_F_plus", "_refln.pdbx_F_plus_sigma",
                                "_refln.pdbx_F_minus", "_refln.pdbx_F_minus_sigma"};
   for (const char* label : new_labels)
@@ -78,25 +81,34 @@ inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop) {
   ret.tags[f_idx+1] = new_labels[1];
   ret.tags.insert(ret.tags.begin() + f_idx + 2, {new_labels[2], new_labels[3]});
   ret.values.reserve(length * ret.width()); // upper bound
-  auto new_f = ret.values.end();
-  Miller prev_hkl = {0, 0, 0};
+  std::unordered_map<Miller, std::string*, MillerHash> seen;
+  if (!sg)
+    sg = &get_spacegroup_p1();
+  ReciprocalAsu asu(sg);
+  GroupOps gops = sg->operations();
   for (size_t i = 0; i < loop.values.size(); i += loop.width()) {
     const std::string* row = &loop.values[i];
     Miller hkl;
     for (int j = 0; j < 3; ++j)
       hkl[j] = cif::as_int(row[hkl_idx + j]);
-    if (i == 0 || hkl[0] != -prev_hkl[0] || hkl[1] != -prev_hkl[1]
-                                         || hkl[2] != -prev_hkl[2]) {
+    auto hkl_sign = asu.to_asu_sign(hkl, gops);
+    // pointers don't change, .reserve() above prevents re-allocations
+    std::string* new_row = ret.values.data() + ret.values.size();
+    auto r = seen.emplace(hkl_sign.first, new_row);
+    if (r.second) {
       ret.values.insert(ret.values.end(), row, row+f_idx);
-      new_f = ret.values.end();  // .reserve() above prevents re-allocations
       ret.values.resize(ret.values.size() + 4, ".");
       ret.values.insert(ret.values.end(), row + f_idx + 2, row + loop.width());
-      prev_hkl = hkl;
+    } else {
+      new_row = r.first->second;
     }
-    // hkl asu for P1 is: l>0 or (l==0 and (h>0 or (h==0 and k>=0)))
-    bool minus = hkl[2] < 0 || (hkl[2] == 0 && (hkl[0] < 0 || (hkl[0] == 0 && hkl[1] < 0)));
-    *(new_f + 2 * minus) = row[f_idx];
-    *(new_f + 2 * minus + 1) = row[f_idx+1];
+    // Don't move hkl to asu here, only change the sign if F- is before F+.
+    if (!hkl_sign.second)  // negative sign
+      for (int j = 0; j < 3; ++j)
+        new_row[hkl_idx + j] = std::to_string(-hkl[j]);
+    size_t new_f_idx = hkl_sign.second ? f_idx : f_idx + 2;
+    new_row[new_f_idx+0] = row[f_idx+0];
+    new_row[new_f_idx+1] = row[f_idx+1];
   }
   return ret;
 }
@@ -476,22 +488,23 @@ struct CifToMtz {
 
   Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out, char mode) const {
     if (mode == 'f' && possible_old_anomalous(rb))
-      *rb.refln_loop = gemmi::transcript_old_anomalous_to_standard(*rb.refln_loop);
+      *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop, rb.spacegroup);
     Mtz mtz = convert_block_to_mtz(rb, out);
     if (mtz.is_merged() && mode == 'a') {
-      auto type_unique = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
-      if (type_unique.first == gemmi::DataType::Anomalous) {
+      auto type_unique = check_data_type_under_symmetry(MtzDataProxy{mtz});
+      if (type_unique.first == DataType::Anomalous) {
         if (possible_old_anomalous(rb)) {
           // this is rare, so it's OK to run the conversion twice
           out << "NOTE: converting CIF block " << rb.block.name
               << " as old-style anomalous (" << rb.refln_loop->length()
               << " -> " << type_unique.second << " rows).\n";
-          *rb.refln_loop = gemmi::transcript_old_anomalous_to_standard(*rb.refln_loop);
+          *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop,
+                                                                rb.spacegroup);
           mtz = convert_block_to_mtz(rb, out);
         } else {
           out << "WARNING: redundant Miller indices in CIF block " << rb.block.name << ".\n";
         }
-      } else if (type_unique.first == gemmi::DataType::Unmerged) {
+      } else if (type_unique.first == DataType::Unmerged) {
         out << "WARNING: CIF block " << rb.block.name
             << " may have old-style unmerged data (only " << type_unique.second << " of "
             << rb.refln_loop->length() << " reflections are unique under the symmetry).\n";
