@@ -480,10 +480,25 @@ struct CifToMtz {
     return mtz;
   }
 
+  // "Old-style" anomalous data is expected to have only these tags.
   static bool possible_old_anomalous(const ReflnBlock& rb) {
-    return rb.refln_loop != nullptr &&
-           !rb.refln_loop->has_tag("_refln.pdbx_F_plus") &&
-           !rb.refln_loop->has_tag("_refln.pdbx_I_plus");
+    if (rb.refln_loop == nullptr)
+      return false;
+    for (const std::string& tag : rb.refln_loop->tags) {
+      if (tag.size() < 7 + 6)
+        return false;
+      int tag_id = ialpha4_id(tag.c_str() + 7);
+      if (tag_id != ialpha4_id("inde") &&  // index_[hkl]
+          tag_id != ialpha4_id("wave") &&  // wavelength_id
+          tag_id != ialpha4_id("crys") &&  // crystal_id
+          tag_id != ialpha4_id("scal") &&  // scale_group_code
+          tag_id != ialpha4_id("stat") &&  // status
+          tag_id != ialpha4_id("F_me") &&  // F_meas_au, F_meas_sigma_au
+          tag_id != ialpha4_id("inte") &&  // intensity_meas, intensity_sigma
+          tag != "_refln.pdbx_r_free_flag")
+        return false;
+    }
+    return true;
   }
 
   Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out, char mode) const {
