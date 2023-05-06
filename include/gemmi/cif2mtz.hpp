@@ -52,35 +52,49 @@ std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& prox
 /// in PDBx/mmCIF nowadays:
 ///  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
 ///  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
+///  _refln.intensity_{meas,sigma} -> _refln.pdbx_F_plus{,_sigma} / ...
 inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
                                                       const SpaceGroup* sg) {
+  std::vector<int> positions;
+  positions.reserve(13);  // usually less, but it doesn't matter
+  for (const char* tag : {"_refln.index_h", "_refln.index_k", "_refln.index_l"}) {
+    int pos = loop.find_tag_lc(tag);
+    if (pos == -1)
+      fail("while reading old anomalous: _refln.index_{h,k,l} not found");
+    positions.push_back(pos);
+  }
+  for (const char* tag : {"_refln.status", "_refln.pdbx_r_free_flag"}) {
+    int pos = loop.find_tag_lc(tag);
+    if (pos != -1)
+      positions.push_back(pos);
+  }
+
   cif::Loop ret;
-  size_t length = loop.length();
-  int hkl_idx = loop.find_tag_lc("_refln.index_h");
-  if (hkl_idx == -1)
-    fail("while reading old anomalous: _refln.index_h not found");
-  if ((size_t) hkl_idx+2 >= loop.width() ||
-      loop.tags[hkl_idx+1] != "_refln.index_k" ||
-      loop.tags[hkl_idx+2] != "_refln.index_l")
-    fail("while reading old anomalous: _refln.index_* not found");
-  int f_idx = loop.find_tag("_refln.F_meas_au");
-  if (f_idx == -1)
-    fail("while reading old anomalous: _refln.F_meas_au not found");
-  if ((size_t) f_idx+1 >= loop.width() || loop.tags[f_idx+1] != "_refln.F_meas_sigma_au")
-    fail("while reading old anomalous: _refln.F_meas_sigma_au not found");
-  if (hkl_idx > f_idx)
-    fail("while reading old anomalous: index_h after F?");
-  const char* new_labels[4] = {"_refln.pdbx_F_plus", "_refln.pdbx_F_plus_sigma",
-                               "_refln.pdbx_F_minus", "_refln.pdbx_F_minus_sigma"};
-  for (const char* label : new_labels)
-    if (loop.has_tag(label))
-      fail("while reading old anomalous: _refln loop already has ", label);
-  ret.tags = loop.tags;
-  ret.tags.reserve(ret.tags.size() + 2);
-  ret.tags[f_idx] = new_labels[0];
-  ret.tags[f_idx+1] = new_labels[1];
-  ret.tags.insert(ret.tags.begin() + f_idx + 2, {new_labels[2], new_labels[3]});
-  ret.values.reserve(length * ret.width()); // upper bound
+  ret.tags.reserve(positions.size());
+  for (int p : positions)
+    ret.tags.push_back(loop.tags[p]);
+  const char* old_labels[2][2] = {
+    {"_refln.F_meas_au", "_refln.F_meas_sigma_au"},
+    {"_refln.intensity_meas", "_refln.intensity_sigma"}
+  };
+  const char* new_labels[2][4] = {
+    {"_refln.pdbx_F_plus", "_refln.pdbx_F_plus_sigma",
+     "_refln.pdbx_F_minus", "_refln.pdbx_F_minus_sigma"},
+    {"_refln.pdbx_I_plus", "_refln.pdbx_I_plus_sigma",
+     "_refln.pdbx_I_minus", "_refln.pdbx_I_minus_sigma"}
+  };
+  size_t common_tags = positions.size();
+  for (int n = 0; n < 2; ++n) {
+    int idx = loop.find_tag(old_labels[n][0]);
+    if (idx >= 0 && idx+1 < (int)loop.width() && loop.tags[idx+1] == old_labels[n][1]) {
+      positions.insert(positions.end(), {idx, idx+1, idx, idx+1});
+      ret.tags.insert(ret.tags.end(), new_labels[n], new_labels[n] + 4);
+    }
+  }
+  if (common_tags == positions.size())
+    fail("while reading old anomalous: _refln has neither F_meas_au nor intensity_meas");
+
+  ret.values.reserve(loop.length() * ret.width());  // upper bound
   std::unordered_map<Miller, std::string*, MillerHash> seen;
   if (!sg)
     sg = &get_spacegroup_p1();
@@ -89,27 +103,41 @@ inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
   for (size_t i = 0; i < loop.values.size(); i += loop.width()) {
     const std::string* row = &loop.values[i];
     Miller hkl;
-    for (int j = 0; j < 3; ++j)
-      hkl[j] = cif::as_int(row[hkl_idx + j]);
+    for (size_t j = 0; j < 3; ++j)
+      hkl[j] = cif::as_int(row[positions[j]]);
     auto hkl_sign = asu.to_asu_sign(hkl, gops);
     // pointers don't change, .reserve() above prevents re-allocations
     std::string* new_row = ret.values.data() + ret.values.size();
     auto r = seen.emplace(hkl_sign.first, new_row);
-    if (r.second) {
-      ret.values.insert(ret.values.end(), row, row+f_idx);
-      ret.values.resize(ret.values.size() + 4, ".");
-      ret.values.insert(ret.values.end(), row + f_idx + 2, row + loop.width());
-    } else {
-      new_row = r.first->second;
+    bool sign = hkl_sign.second;
+    if (r.second) {  // adding a new row
+      for (int p : positions)
+        ret.values.push_back(row[p]);
+      // Don't move hkl to asu here, only change the sign if F- is before F+.
+      if (!sign)  // negative sign
+        for (int j = 0; j < 3; ++j)
+          new_row[j] = std::to_string(-hkl[j]);
+      size_t first_absent = common_tags + (sign ? 2 : 0);
+      for (size_t j = first_absent; j < ret.width(); j += 4) {
+        new_row[j] = ".";
+        new_row[j+1] = ".";
+      }
+    } else {  // modifying existing row
+      std::string* modified_row = r.first->second;
+      if (sign)  // positive sign - this hkl might be better
+        for (int j = 0; j < 3; ++j)
+          modified_row[j] = row[positions[j]];
+      // if a status or free flag value differs, set it to null
+      for (size_t j = 3; j < common_tags; ++j)
+        if (modified_row[j] != row[positions[j]])
+          modified_row[j] = ".";
+      for (size_t j = common_tags + (sign ? 0 : 2); j < ret.width(); j += 4) {
+        modified_row[j] = row[positions[j]];
+        modified_row[j+1] = row[positions[j+1]];
+      }
     }
-    // Don't move hkl to asu here, only change the sign if F- is before F+.
-    if (!hkl_sign.second)  // negative sign
-      for (int j = 0; j < 3; ++j)
-        new_row[hkl_idx + j] = std::to_string(-hkl[j]);
-    size_t new_f_idx = hkl_sign.second ? f_idx : f_idx + 2;
-    new_row[new_f_idx+0] = row[f_idx+0];
-    new_row[new_f_idx+1] = row[f_idx+1];
   }
+
   return ret;
 }
 
