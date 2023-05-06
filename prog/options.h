@@ -53,6 +53,9 @@ struct Arg: public option::Arg {
   static option::ArgStatus CifStyle(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"plain", "pdbx", "aligned"});
   }
+  static option::ArgStatus AsuChoice(const option::Option& option, bool msg) {
+    return Arg::Choice(option, msg, {"ccp4", "tnt"});
+  }
 };
 
 struct OptParser : option::Parser {

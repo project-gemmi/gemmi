@@ -26,7 +26,7 @@ struct Cif2MtzArg: public Arg {
 enum OptionIndex {
   BlockName=4, BlockNumber, Add, List, Dir, Spec, PrintSpec, Title,
   History, Wavelength, Unmerged, ReflnTo,
-  Sort, SkipNegativeSigma, ZeroToMnf, Local
+  Sort, Asu, SkipNegativeSigma, ZeroToMnf, Local
 };
 
 const option::Descriptor Usage[] = {
@@ -65,6 +65,8 @@ const option::Descriptor Usage[] = {
     "normal, friedel (converts Fs to F+/F-) or auto (default)." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
+  { Asu, 0, "", "asu", Arg::AsuChoice,
+    "  --asu=ccp4|tnt  \tMove merged reflections into CCP4 or TNT ASU." },
   { SkipNegativeSigma, 0, "", "skip-negative-sigma", Arg::None,
     "  --skip-negative-sigma  \tSkip reflections with sigma<0 (in any MTZ Q column)." },
   { ZeroToMnf, 0, "", "zero-to-mnf", Arg::None,
@@ -305,6 +307,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       if (p.options[ZeroToMnf])
         zero_to_mnf(mtz);
+      if (p.options[Asu] && mtz.is_merged())
+        mtz.ensure_asu(p.options[Asu].arg[0] == 't');
       if (p.options[Sort]) {
         bool reordered = mtz.sort();
         if (cif2mtz.verbose)

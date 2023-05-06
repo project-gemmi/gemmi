@@ -16,12 +16,6 @@ using std::fprintf;
 
 namespace {
 
-struct ReindexArg: public Arg {
-  static option::ArgStatus AsuChoice(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"ccp4", "tnt"});
-  }
-};
-
 enum OptionIndex { Hkl=4, NoHistory, NoSort, Asu };
 
 const option::Descriptor Usage[] = {
@@ -37,7 +31,7 @@ const option::Descriptor Usage[] = {
     "  --no-history  \tDo not add 'Reindexed with...' line to mtz HISTORY." },
   { NoSort, 0, "", "no-sort", Arg::None,
     "  --no-sort  \tDo not reorder reflections." },
-  { Asu, 0, "", "asu", ReindexArg::AsuChoice,
+  { Asu, 0, "", "asu", Arg::AsuChoice,
     "  --asu=ccp4|tnt  \tWrite merged data in CCP4 (default) or TNT ASU." },
   { NoOp, 0, "", "", Arg::None,
     "\nInput file can be gzipped." },
