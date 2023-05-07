@@ -45,6 +45,28 @@ std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& prox
   return {data_type, seen.size()};
 }
 
+// "Old-style" anomalous or unmerged data is expected to have only these tags.
+inline bool possible_old_style(const ReflnBlock& rb, DataType data_type) {
+  if (rb.refln_loop == nullptr)
+    return false;
+  for (const std::string& tag : rb.refln_loop->tags) {
+    if (tag.size() < 7 + 6)
+      return false;
+    int tag_id = ialpha4_id(tag.c_str() + 7);
+    if (tag_id != ialpha4_id("inde") &&  // index_[hkl]
+        tag_id != ialpha4_id("wave") &&  // wavelength_id
+        tag_id != ialpha4_id("crys") &&  // crystal_id
+        tag_id != ialpha4_id("scal") &&  // scale_group_code
+        tag_id != ialpha4_id("stat") &&  // status
+        tag_id != ialpha4_id("inte") &&  // intensity_meas, intensity_sigma
+        (data_type == DataType::Unmerged ||
+         (tag_id != ialpha4_id("F_me") &&  // F_meas_au, F_meas_sigma_au
+          tag != "_refln.pdbx_r_free_flag")))
+      return false;
+  }
+  return true;
+}
+
 
 /// Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
 /// stored as two F_meas_au reflections, say (1,1,3) and (-1,-1,-3).
@@ -508,35 +530,14 @@ struct CifToMtz {
     return mtz;
   }
 
-  // "Old-style" anomalous data is expected to have only these tags.
-  static bool possible_old_anomalous(const ReflnBlock& rb) {
-    if (rb.refln_loop == nullptr)
-      return false;
-    for (const std::string& tag : rb.refln_loop->tags) {
-      if (tag.size() < 7 + 6)
-        return false;
-      int tag_id = ialpha4_id(tag.c_str() + 7);
-      if (tag_id != ialpha4_id("inde") &&  // index_[hkl]
-          tag_id != ialpha4_id("wave") &&  // wavelength_id
-          tag_id != ialpha4_id("crys") &&  // crystal_id
-          tag_id != ialpha4_id("scal") &&  // scale_group_code
-          tag_id != ialpha4_id("stat") &&  // status
-          tag_id != ialpha4_id("F_me") &&  // F_meas_au, F_meas_sigma_au
-          tag_id != ialpha4_id("inte") &&  // intensity_meas, intensity_sigma
-          tag != "_refln.pdbx_r_free_flag")
-        return false;
-    }
-    return true;
-  }
-
   Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out, char mode) const {
-    if (mode == 'f' && possible_old_anomalous(rb))
+    if (mode == 'f' && possible_old_style(rb, DataType::Anomalous))
       *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop, rb.spacegroup);
     Mtz mtz = convert_block_to_mtz(rb, out);
     if (mtz.is_merged() && mode == 'a') {
       auto type_unique = check_data_type_under_symmetry(MtzDataProxy{mtz});
       if (type_unique.first == DataType::Anomalous) {
-        if (possible_old_anomalous(rb)) {
+        if (possible_old_style(rb, DataType::Anomalous)) {
           // this is rare, so it's OK to run the conversion twice
           out << "NOTE: converting CIF block " << rb.block.name
               << " as old-style anomalous (" << rb.refln_loop->length()

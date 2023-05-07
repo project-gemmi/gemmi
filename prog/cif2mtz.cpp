@@ -128,12 +128,21 @@ void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
   std::putchar('\n');
   if (mtz.is_merged()) {
     auto type_unique = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
-    if (type_unique.first == gemmi::DataType::Anomalous)
-      std::printf("  NOTE: probably old-style anomalous data of %zu reflections.\n",
-                  type_unique.second);
-    else if (type_unique.first == gemmi::DataType::Unmerged)
-      std::printf("  NOTE: probably old-style unmerged data, %zu unique reflections.\n",
-                  type_unique.second);
+    if (type_unique.first == gemmi::DataType::Anomalous) {
+      if (possible_old_style(rb, gemmi::DataType::Anomalous))
+        std::printf("  NOTE: probably old-style anomalous data of %zu reflections.\n",
+                    type_unique.second);
+      else
+        std::printf("  NOTE: %zu unique (hkl)s, the rest is equivalent"
+                    " to Friedel mates.\n", type_unique.second);
+    } else if (type_unique.first == gemmi::DataType::Unmerged) {
+      if (possible_old_style(rb, gemmi::DataType::Unmerged))
+        std::printf("  NOTE: probably old-style unmerged data, %zu unique reflections.\n",
+                    type_unique.second);
+      else
+        std::printf("  NOTE: %zu unique (hkl)s, the rest is symmetry-equivalent.\n",
+                    type_unique.second);
+    }
   }
   for (const std::string& d : rb.block.find_values("_diffrn.details"))
     if (!gemmi::cif::is_null(d))
