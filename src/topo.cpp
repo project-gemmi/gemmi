@@ -779,16 +779,16 @@ using NeighMap = std::unordered_multimap<int, Neigh>;
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
 void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbors) {
-  Residue& res = *ri.res;
+  std::vector<Atom>& atoms = ri.res->atoms;
   // Add H atom for each conformation (altloc) of the parent atom and its
   // first neighbors.
-  for (size_t i = 0, size = res.atoms.size(); i != size; ++i) {
-    char parent_alt = res.atoms[i].altloc;
-    float parent_occ = res.atoms[i].occ;
+  for (size_t i = 0, size = atoms.size(); i != size; ++i) {
+    char parent_alt = atoms[i].altloc;
+    float parent_occ = atoms[i].occ;
     std::map<char, float> altlocs; // altloc + occupancy
     if (parent_alt == '\0') {
       float max_occ = 1.001f;
-      auto range = neighbors.equal_range(res.atoms[i].serial);
+      auto range = neighbors.equal_range(atoms[i].serial);
       for (auto it = range.first; it != range.second; ++it) {
         const Neigh& neigh = it->second;
         if (neigh.alt && altlocs.count(neigh.alt) == 0 && neigh.occ < max_occ) {
@@ -801,8 +801,8 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
       altlocs.emplace(parent_alt, parent_occ);
     const ChemComp& cc = ri.get_final_chemcomp(parent_alt);
     for (const Restraints::Bond& bond : cc.rt.bonds) {
-      // res.atoms may get re-allocated, so we can't set parent earlier
-      const Atom& parent = res.atoms[i];
+      // atoms may get re-allocated, so we can't set parent earlier
+      const Atom& parent = atoms[i];
       assert(!parent.is_hydrogen());
       const Restraints::AtomId* atom_id = bond.other(parent.name);
       if (!atom_id)
@@ -820,7 +820,7 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
         for (auto alt_occ : altlocs) {
           atom.altloc = alt_occ.first;
           atom.occ = alt_occ.second;
-          res.atoms.push_back(atom);
+          atoms.push_back(atom);
         }
       }
     }
