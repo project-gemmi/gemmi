@@ -83,8 +83,7 @@ void print_usage() {
   print_version("gemmi");
   printf("Command-line utility that accompanies the GEMMI library,\n"
          "which is a joint project of CCP4 and Global Phasing Ltd.\n"
-         "Licence: Mozilla Public License 2.0.\n"
-         "Copyright 2017-2020 Global Phasing Ltd.\n"
+         "Licence: Mozilla Public License 2.0. Copyright Global Phasing Ltd.\n"
          "https://github.com/project-gemmi/gemmi\n\n"
          "Usage: gemmi [--version] [--help] <command> [<args>]\n\n"
          "Commands:\n");

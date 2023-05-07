@@ -2,8 +2,7 @@ $ gemmi -h
 gemmi 0.6.2-dev
 Command-line utility that accompanies the GEMMI library,
 which is a joint project of CCP4 and Global Phasing Ltd.
-Licence: Mozilla Public License 2.0.
-Copyright 2017-2020 Global Phasing Ltd.
+Licence: Mozilla Public License 2.0. Copyright Global Phasing Ltd.
 https://github.com/project-gemmi/gemmi
 
 Usage: gemmi [--version] [--help] <command> [<args>]
