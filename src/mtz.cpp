@@ -56,7 +56,9 @@ void Mtz::ensure_asu(bool tnt_asu) {
         }
       }
     }
-    if (isym % 2 == 0 && !centric) {
+    if (isym % 2 == 0 && !centric &&
+        // usually, centric reflections have empty F(-), so avoid swapping it
+        !gops.is_reflection_centric(hkl)) {
       for (std::pair<int,int> cols : plus_minus_columns)
         std::swap(data[n + cols.first], data[n + cols.second]);
       for (int col : dano_columns)
