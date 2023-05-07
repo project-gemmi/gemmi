@@ -93,7 +93,8 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
       for (const Residue& res : chain.residues)
         for (const Atom& atom : res.atoms) {
           ++atom_site_count;
-          if (atom.calc_flag != CalcFlag::NotSet)
+          if (atom.calc_flag != CalcFlag::NotSet &&
+              atom.calc_flag != CalcFlag::NoHydrogen)
             has_calc_flag = true;
           if (atom.tls_group_id >= 0)
             has_tls_group_id = true;
@@ -146,7 +147,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
           vv.emplace_back(qchain(chain.name));
           vv.emplace_back(string_or_qmark(model.name));
           if (has_calc_flag)
-            vv.emplace_back(&".\0d\0c\0dum"[2 * (int) atom.calc_flag]);
+            vv.emplace_back(&".\0.\0d\0c\0dum"[2 * (int) atom.calc_flag]);
           if (has_tls_group_id)
             vv.emplace_back(int_or_qmark(atom.tls_group_id));
           if (st.has_d_fraction)

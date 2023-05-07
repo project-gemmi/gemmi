@@ -783,6 +783,8 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
   // Add H atom for each conformation (altloc) of the parent atom and its
   // first neighbors.
   for (size_t i = 0, size = atoms.size(); i != size; ++i) {
+    if (atoms[i].calc_flag == CalcFlag::NoHydrogen)
+      continue;
     char parent_alt = atoms[i].altloc;
     float parent_occ = atoms[i].occ;
     std::map<char, float> altlocs; // altloc + occupancy

@@ -79,7 +79,12 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 enum class CoorFormat { Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp };
 
 /// corresponds to _atom_site.calc_flag in mmCIF
-enum class CalcFlag : signed char { NotSet=0, Determined, Calculated, Dummy };
+enum class CalcFlag : signed char {
+  // NoHydrogen is the same as NotSet; it's used internally to mark atoms
+  // which should not have riding hydrogens.
+  // NB: add_cif_atoms() relies on this order.
+  NotSet=0, NoHydrogen, Determined, Calculated, Dummy
+};
 
 /// options affecting how pdb file is read
 struct PdbReadOptions {

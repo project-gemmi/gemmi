@@ -465,6 +465,7 @@ void add_mol(py::module& m) {
 
   py::enum_<CalcFlag>(m, "CalcFlag")
     .value("NotSet", CalcFlag::NotSet)
+    .value("NoHydrogen", CalcFlag::NoHydrogen)
     .value("Determined", CalcFlag::Determined)
     .value("Calculated", CalcFlag::Calculated)
     .value("Dummy", CalcFlag::Dummy);

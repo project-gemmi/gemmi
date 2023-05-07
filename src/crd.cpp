@@ -42,6 +42,7 @@ static bool has_anisou(const Model& model) {
 static std::string refmac_calc_flag(const Atom& a) {
   switch (a.calc_flag) {
     case CalcFlag::NotSet: return ".";
+    case CalcFlag::NoHydrogen: return ".";
     // Refmac seems to be using only flags R and M
     case CalcFlag::Calculated: return a.is_hydrogen() ? "R" : "M";
     // I think these are not used
