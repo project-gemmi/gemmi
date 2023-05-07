@@ -2093,10 +2093,21 @@ struct ReciprocalAsu {
     }
     fail("Oops, maybe inconsistent GroupOps?");
   }
-  /// Similar to to_asu(), but the second returned value is sign (true means +)
+  /// Similar to to_asu(), but the second returned value is sign: true for + or centric
   std::pair<Op::Miller,bool> to_asu_sign(const Op::Miller& hkl, const GroupOps& gops) const {
-    auto hkl_isym = to_asu(hkl, gops);
-    return {hkl_isym.first, hkl_isym.second % 2 != 0};
+    std::pair<Op::Miller,bool> neg = {{0,0,0}, true};
+    for (const Op& op : gops.sym_ops) {
+      Op::Miller new_hkl = op.apply_to_hkl_without_division(hkl);
+      if (is_in(new_hkl))
+        return {Op::divide_hkl_by_DEN(new_hkl), true};
+      Op::Miller negated_new_hkl{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+      if (is_in(negated_new_hkl))
+        // don't return it yet, because for centric reflection we prefer (+)
+        neg = {Op::divide_hkl_by_DEN(negated_new_hkl), false};
+    }
+    if (neg.second)
+      fail("Oops, maybe inconsistent GroupOps?");
+    return neg;
   }
 };
 

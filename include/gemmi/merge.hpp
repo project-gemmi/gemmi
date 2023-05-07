@@ -254,7 +254,7 @@ struct Intensities {
       bool sign;
       std::tie(refl.hkl, sign) = asu.to_asu_sign(refl.hkl, gops);
       if (!merged)
-        refl.isign = (sign || gops.is_reflection_centric(refl.hkl)) ? 1 : -1;
+        refl.isign = sign ? 1 : -1;
     }
   }
 
