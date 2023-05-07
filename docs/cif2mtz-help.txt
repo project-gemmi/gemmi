@@ -18,7 +18,7 @@ Options:
   --wavelength=LAMBDA      Set wavelength (default: from input file).
   -u, --unmerged           Write unmerged MTZ file(s).
   --refln-to=MODE          Read refln category as: normal, friedel (converts Fs
-                           to F+/F-) or auto (default).
+                           to F+/F-), unmerged or auto (default).
   --sort                   Order reflections according to Miller indices.
   --asu=ccp4|tnt           Move merged reflections into CCP4 or TNT ASU.
   --skip-negative-sigma    Skip reflections with sigma<0 (in any MTZ Q column).

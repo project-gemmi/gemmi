@@ -19,7 +19,7 @@ using std::fprintf;
 
 struct Cif2MtzArg: public Arg {
   static option::ArgStatus ModeChoice(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"normal", "friedel", "auto"});
+    return Arg::Choice(option, msg, {"normal", "friedel", "unmerged", "auto"});
   }
 };
 
@@ -62,7 +62,7 @@ const option::Descriptor Usage[] = {
     "  -u, --unmerged  \tWrite unmerged MTZ file(s)." },
   { ReflnTo, 0, "", "refln-to", Cif2MtzArg::ModeChoice,
     "  --refln-to=MODE  \tRead refln category as: "
-    "normal, friedel (converts Fs to F+/F-) or auto (default)." },
+    "normal, friedel (converts Fs to F+/F-), unmerged or auto (default)." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder reflections according to Miller indices." },
   { Asu, 0, "", "asu", Arg::AsuChoice,
@@ -213,6 +213,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   gemmi::CifToMtz cif2mtz;
   cif2mtz.verbose = p.options[Verbose];
   cif2mtz.force_unmerged = p.options[Unmerged];
+  if (p.options[ReflnTo] && p.options[ReflnTo].arg[0] == 'u')
+    cif2mtz.force_unmerged = true;
   if (p.options[Title])
     cif2mtz.title = p.options[Title].arg;
   for (const option::Option* opt = p.options[History]; opt; opt = opt->next())
