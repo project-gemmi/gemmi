@@ -538,20 +538,24 @@ struct CifToMtz {
       auto type_unique = check_data_type_under_symmetry(MtzDataProxy{mtz});
       if (type_unique.first == DataType::Anomalous) {
         if (possible_old_style(rb, DataType::Anomalous)) {
-          // this is rare, so it's OK to run the conversion twice
-          out << "NOTE: converting CIF block " << rb.block.name
-              << " as old-style anomalous (" << rb.refln_loop->length()
+          out << "NOTE: data in " << rb.block.name
+              << " is read as \"old-style\" anomalous (" << rb.refln_loop->length()
               << " -> " << type_unique.second << " rows).\n";
           *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop,
                                                                 rb.spacegroup);
+          // this is rare, so it's OK to run the conversion twice
           mtz = convert_block_to_mtz(rb, out);
         } else {
-          out << "WARNING: redundant Miller indices in CIF block " << rb.block.name << ".\n";
+          out << "WARNING: in " << rb.block.name << ", out of "
+              << rb.refln_loop->length() << " HKLs, only " << type_unique.second
+              << " are unique under symmetry; the rest are equivalent to Friedel mates\n";
         }
       } else if (type_unique.first == DataType::Unmerged) {
-        out << "WARNING: CIF block " << rb.block.name
-            << " may have old-style unmerged data (only " << type_unique.second << " of "
-            << rb.refln_loop->length() << " reflections are unique under the symmetry).\n";
+        out << "WARNING: in " << rb.block.name << ", out of "
+            << rb.refln_loop->length() << " HKLs, only " << type_unique.second
+            << " are unique under symmetry\n";
+        if (possible_old_style(rb, gemmi::DataType::Unmerged))
+          out << "Possibly unmerged data - you may use option --refln-to=unmerged\n";
       }
     }
     return mtz;

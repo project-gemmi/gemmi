@@ -119,34 +119,16 @@ void zero_to_mnf(gemmi::Mtz& mtz) {
 }
 
 void print_block_info(gemmi::ReflnBlock& rb, const gemmi::Mtz& mtz) {
-  std::printf("--block=%s - %.*s %zu x %zu ->",
-              rb.block.name.c_str(), (int)rb.tag_offset() - 1,
-              rb.default_loop->tags.at(0).c_str(),
+  std::printf("%.*s %zu x %zu ->",
+              (int)rb.tag_offset() - 1, rb.default_loop->tags.at(0).c_str(),
               rb.default_loop->width(), rb.default_loop->length());
   for (const gemmi::Mtz::Column& col : mtz.columns)
     std::printf(" %s", col.label.c_str());
   std::putchar('\n');
-  if (mtz.is_merged()) {
-    auto type_unique = check_data_type_under_symmetry(gemmi::MtzDataProxy{mtz});
-    if (type_unique.first == gemmi::DataType::Anomalous) {
-      if (possible_old_style(rb, gemmi::DataType::Anomalous))
-        std::printf("  NOTE: probably old-style anomalous data of %zu reflections.\n",
-                    type_unique.second);
-      else
-        std::printf("  NOTE: %zu unique (hkl)s, the rest is equivalent"
-                    " to Friedel mates.\n", type_unique.second);
-    } else if (type_unique.first == gemmi::DataType::Unmerged) {
-      if (possible_old_style(rb, gemmi::DataType::Unmerged))
-        std::printf("  NOTE: probably old-style unmerged data, %zu unique reflections.\n",
-                    type_unique.second);
-      else
-        std::printf("  NOTE: %zu unique (hkl)s, the rest is symmetry-equivalent.\n",
-                    type_unique.second);
-    }
-  }
   for (const std::string& d : rb.block.find_values("_diffrn.details"))
     if (!gemmi::cif::is_null(d))
-      std::printf("  details: %s\n", d.c_str());
+      std::printf("details: %s\n", gemmi::cif::as_string(d).c_str());
+  std::putchar('\n');
 }
 
 bool is_column_data_identical(const gemmi::Mtz& mtz, size_t i, size_t j) {
@@ -253,11 +235,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     else  // optimization: ignore other blocks
       doc = gemmi::read_first_block_gz(cif_path, block_limit);
     auto rblocks = gemmi::as_refln_blocks(std::move(doc.blocks));
+    char mode = p.options[ReflnTo] ? p.options[ReflnTo].arg[0] : 'a';
     if (convert_all) {
       bool ok = true;
       for (gemmi::ReflnBlock& rb : rblocks) {
         try {
-          gemmi::Mtz mtz = cif2mtz.convert_block_to_mtz(rb, std::cerr);
+          if (p.options[List])
+            std::printf("--block=%s\n", rb.block.name.c_str());
+          gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(rb, std::cerr, mode);
           if (p.options[List]) {
             print_block_info(rb, mtz);
             continue;
@@ -288,7 +273,6 @@ int GEMMI_MAIN(int argc, char **argv) {
         rb = &rblocks.at(0);
       }
 
-      char mode = p.options[ReflnTo] ? p.options[ReflnTo].arg[0] : 'a';
       gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(*rb, std::cerr, mode);
       // add data from additional cif block
       if (const option::Option* opt = p.options[BlockName])
