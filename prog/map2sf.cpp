@@ -20,7 +20,7 @@ namespace {
 
 using gemmi::Mtz;
 
-enum OptionIndex { Base=4, Section, DMin, FType, PhiType };
+enum OptionIndex { Base=4, Section, DMin, FType, PhiType, Spacegroup };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -41,6 +41,8 @@ const option::Descriptor Usage[] = {
     "  --ftype=TYPE   \tMTZ amplitude column type (default: F)." },
   { PhiType, 0, "", "phitype", Arg::Char,
     "  --phitype=TYPE  \tMTZ phase column type (default: P)." },
+  { Spacegroup, 0, "", "spacegroup", Arg::Required,
+    "  --spacegroup=SG  \tOverwrite space group from map header." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -56,6 +58,11 @@ void transform_map_to_sf(OptParser& p) {
     fprintf(stderr, "Reading %s ...\n", map_path);
   gemmi::Ccp4<float> map;
   map.read_ccp4(gemmi::MaybeGzipped(map_path));
+  if (p.options[Spacegroup]) {
+    map.grid.spacegroup = gemmi::find_spacegroup_by_name(p.options[Spacegroup].arg);
+    if (map.grid.spacegroup == nullptr)
+      gemmi::fail("unknown space group: ", p.options[Spacegroup].arg);
+  }
   map.setup(NAN);
   if (std::any_of(map.grid.data.begin(), map.grid.data.end(),
                   [](float x) { return std::isnan(x); }))

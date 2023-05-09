@@ -14,3 +14,4 @@ Options:
   --dmin=D_MIN     Resolution limit.
   --ftype=TYPE     MTZ amplitude column type (default: F).
   --phitype=TYPE   MTZ phase column type (default: P).
+  --spacegroup=SG  Overwrite space group from map header.
