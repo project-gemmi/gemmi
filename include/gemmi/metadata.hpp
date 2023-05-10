@@ -275,6 +275,13 @@ struct CisPep {
   double reported_angle = NAN;
 };
 
+struct ModRes {
+  std::string chain_name;
+  ResidueId res_id;
+  std::string parent_comp_id;
+  std::string details;
+};
+
 // Secondary structure. PDBx/mmCIF stores helices and sheets separately.
 
 // mmCIF spec defines 32 possible values for _struct_conf.conf_type_id -

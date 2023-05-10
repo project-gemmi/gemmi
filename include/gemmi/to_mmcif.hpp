@@ -36,6 +36,7 @@ struct MmcifOutputGroups {
   bool assembly:1;
   bool conn:1;
   bool cis:1;
+  bool modres:1;
   bool scale:1;
   bool atom_type:1;
   bool entity_poly_seq:1;
@@ -51,7 +52,7 @@ struct MmcifOutputGroups {
       struct_ref(all), chem_comp(all), exptl(all), diffrn(all),
       reflns(all), refine(all), title_keywords(all), ncs(all),
       struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),
-      struct_biol(all), assembly(all), conn(all), cis(all),
+      struct_biol(all), assembly(all), conn(all), cis(all), modres(all),
       scale(all), atom_type(all), entity_poly_seq(all), tls(all),
       software(all), group_pdb(all), auth_all(false) {}
 };

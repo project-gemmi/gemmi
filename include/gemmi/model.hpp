@@ -859,6 +859,7 @@ struct Structure {
   std::vector<Entity> entities;
   std::vector<Connection> connections;
   std::vector<CisPep> cispeps;
+  std::vector<ModRes> mod_residues;
   std::vector<Helix> helices;
   std::vector<Sheet> sheets;
   std::vector<Assembly> assemblies;

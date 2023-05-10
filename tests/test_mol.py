@@ -201,6 +201,7 @@ class TestMol(unittest.TestCase):
               '_entity.', '_entity_poly_seq.', '_entry.',
               '_exptl.', '_exptl_crystal.', '_pdbx_database_status.',
               '_pdbx_struct_assembly.', '_pdbx_struct_assembly_gen.',
+              '_pdbx_struct_mod_residue.',
               '_pdbx_struct_oper_list.', '_refine.', '_reflns.', '_software.',
               '_struct.', '_struct_asym.', '_struct_conf.',
               '_struct_conf_type.', '_struct_conn.', '_struct_conn_type.',

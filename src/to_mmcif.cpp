@@ -1019,6 +1019,24 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   if (groups.cis)  // _struct_mon_prot_cis
     write_cispeps(st, block);
 
+  // _pdbx_struct_mod_residue (MODRES)
+  if (groups.modres && !st.mod_residues.empty()) {
+    cif::Loop& loop = block.init_mmcif_loop("_pdbx_struct_mod_residue.",
+        {"id", "auth_asym_id", "auth_seq_id", "PDB_ins_code", "auth_comp_id",
+         "label_comp_id", "parent_comp_id", "details"});
+    int counter = 0;
+    for (const ModRes& modres : st.mod_residues)
+      loop.add_row({
+          std::to_string(++counter),
+          qchain(modres.chain_name),
+          modres.res_id.seqid.num.str(),
+          pdbx_icode(modres.res_id),
+          string_or_dot(modres.res_id.name),
+          string_or_qmark(modres.res_id.name),
+          string_or_qmark(modres.parent_comp_id),
+          string_or_qmark(modres.details)});
+  }
+
   // _atom_sites (SCALE)
   if (groups.scale && (st.has_origx || st.cell.explicit_matrices)) {
     cif::ItemSpan span(block.items, "_atom_sites.");

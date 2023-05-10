@@ -272,6 +272,26 @@ void read_prot_cis(cif::Block& block, Structure& st) {
   }
 }
 
+// MODRES equivalent
+void read_struct_mod_residue(cif::Block& block, Structure& st) {
+  // Here auth_asym_id etc are mandatory and label_asym_id etc optional.
+  for (auto row : block.find("_pdbx_struct_mod_residue.",
+                             {"auth_asym_id",  // 0
+                              "auth_seq_id", "?PDB_ins_code",  // 1-2
+                              "?auth_comp_id", "?label_comp_id",  // 3-4
+                              "?parent_comp_id", "?details"})) {  // 5-6
+    ModRes modres;
+    modres.chain_name = row.str(0);
+    modres.res_id.seqid = make_seqid(row.str(1), row.ptr_at(2));
+    modres.res_id.name = row.one_of(3, 4);
+    if (row.has(5))
+      modres.parent_comp_id = row.str(5);
+    if (row.has(6))
+      modres.details = row.str(6);
+    st.mod_residues.push_back(modres);
+  }
+}
+
 // Operation expression is an item type used for *.oper_expression.
 // Here, to keep it simple, we ignore products such as "(2)(3)".
 // We parse "3", "1,3,5", "one,two", "(3)", "(a)", "(1-60)", "(2,3-8,XY)", etc
@@ -877,6 +897,7 @@ Structure make_structure_from_block(const cif::Block& block_) {
   st.sheets = read_sheets(block);
   read_connectivity(block, st);
   read_prot_cis(block, st);
+  read_struct_mod_residue(block, st);
   st.assemblies = read_assemblies(block);
   read_sifts_unp(block, st);
 
