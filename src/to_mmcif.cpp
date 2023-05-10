@@ -859,21 +859,20 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       }
   }
 
-  if (groups.origx) { // _database_PDB_matrix (ORIGX)
-    if (st.has_origx && !st.origx.is_identity()) {
-      cif::ItemSpan span(block.items, "_database_PDB_matrix.");
-      span.set_pair("_database_PDB_matrix.entry_id", id);
-      std::string tag_mat = "_database_PDB_matrix.origx[0][0]";
-      std::string tag_vec = "_database_PDB_matrix.origx_vector[0]";
-      for (int i = 0; i < 3; ++i) {
-        tag_mat[27] += 1;  // origx[0] -> origx[1] -> origx[2]
-        tag_vec[34] += 1;
-        for (int j = 0; j < 3; ++j) {
-          tag_mat[30] = '1' + j;
-          span.set_pair(tag_mat, to_str(st.origx.mat[i][j]));
-        }
-        span.set_pair(tag_vec, to_str(st.origx.vec.at(i)));
+  bool nontrivial_origx = st.has_origx && !st.origx.is_identity();
+  if (groups.origx && nontrivial_origx) { // _database_PDB_matrix (ORIGX)
+    cif::ItemSpan span(block.items, "_database_PDB_matrix.");
+    span.set_pair("_database_PDB_matrix.entry_id", id);
+    std::string tag_mat = "_database_PDB_matrix.origx[0][0]";
+    std::string tag_vec = "_database_PDB_matrix.origx_vector[0]";
+    for (int i = 0; i < 3; ++i) {
+      tag_mat[27] += 1;  // origx[0] -> origx[1] -> origx[2]
+      tag_vec[34] += 1;
+      for (int j = 0; j < 3; ++j) {
+        tag_mat[30] = '1' + j;
+        span.set_pair(tag_mat, to_str(st.origx.mat[i][j]));
       }
+      span.set_pair(tag_vec, to_str(st.origx.vec.at(i)));
     }
   }
 
@@ -1038,7 +1037,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   // _atom_sites (SCALE)
-  if (groups.scale && (st.has_origx || st.cell.explicit_matrices)) {
+  if (groups.scale && (nontrivial_origx || st.cell.explicit_matrices)) {
     cif::ItemSpan span(block.items, "_atom_sites.");
     span.set_pair("_atom_sites.entry_id", id);
     std::string prefix = "_atom_sites.fract_transf_";
