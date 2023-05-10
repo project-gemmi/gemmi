@@ -151,6 +151,8 @@ struct GEMMI_DLL MonLib {
     bool inverted = false;
     const ChemComp::Aliasing* aliasing1 = nullptr;
     const ChemComp::Aliasing* aliasing2 = nullptr;
+    const ChemComp::Aliasing* aliasing1_final = nullptr;
+    const ChemComp::Aliasing* aliasing2_final = nullptr;
     int best_score = -1000;
     for (auto& ml : links) {
       const ChemLink& link = ml.second;
@@ -168,6 +170,8 @@ struct GEMMI_DLL MonLib {
         if (score > best_score) {
           best_link = &link;
           best_score = score;
+          aliasing1_final = aliasing1;
+          aliasing2_final = aliasing2;
           inverted = false;
         }
       }
@@ -179,11 +183,13 @@ struct GEMMI_DLL MonLib {
         if (score > best_score) {
           best_link = &link;
           best_score = score;
+          aliasing1_final = aliasing1;
+          aliasing2_final = aliasing2;
           inverted = true;
         }
       }
     }
-    return std::make_tuple(best_link, inverted, aliasing1, aliasing2);
+    return std::make_tuple(best_link, inverted, aliasing1_final, aliasing2_final);
   }
 
   void add_monomer_if_present(const cif::Block& block) {
