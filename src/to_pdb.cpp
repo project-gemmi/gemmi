@@ -344,6 +344,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
 inline void write_header(const Structure& st, std::ostream& os,
                          PdbWriteOptions opt) {
   const std::string& entry_id = st.get_info("_entry.id");
+  const char* entry_id_4 = entry_id.size() <= 4 ? entry_id.c_str() : "";
   char buf[88];
   { // header line
     const char* months = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC???";
@@ -404,7 +405,6 @@ inline void write_header(const Structure& st, std::ostream& os,
     for (size_t i = 0; i != entity_list.size(); ++i)
       if (const Entity* entity = entity_list[i]) {
         const Chain& ch = st.models[0].chains[i];
-        const char* dbref_entry_id = entry_id.size() <= 4 ? entry_id.c_str() : "";
         for (const Entity::DbRef& dbref : entity->dbrefs) {
           bool short_record = *dbref.db_end.num < 100000 &&
                               dbref.accession_code.size() < 9 &&
@@ -417,7 +417,7 @@ inline void write_header(const Structure& st, std::ostream& os,
               end = polymer.label_seq_id_to_auth(dbref.label_seq_end);
             }
           snprintf_z(buf, 82, "DBREF  %4s%2s %5s %5s %-6s  ",
-                     dbref_entry_id, ch.name.c_str(),
+                     entry_id_4, ch.name.c_str(),
                      write_seq_id(begin).data(),
                      write_seq_id(end).data(),
                      dbref.db_name.c_str());
@@ -441,7 +441,7 @@ inline void write_header(const Structure& st, std::ostream& os,
           os.write(buf, 81);
           if (!short_record)
             WRITE("DBREF2 %4s%2s     %-22s     %10d  %10d             ",
-                  dbref_entry_id, ch.name.c_str(),
+                  entry_id_4, ch.name.c_str(),
                   dbref.accession_code.c_str(), *begin.num, *end.num);
         }
       }
@@ -470,6 +470,16 @@ inline void write_header(const Structure& st, std::ostream& os,
           os.write(buf, 81);
         }
       }
+  }
+
+  for (const ModRes& modres : st.mod_residues) {
+    WRITE("MODRES %4s %3s%2s %5s %3s  %-51.51s\n",
+          entry_id_4,
+          modres.res_id.name.c_str(),
+          modres.chain_name.c_str(),
+          write_seq_id(modres.res_id.seqid).data(),
+          modres.parent_comp_id.c_str(),
+          modres.details.c_str());
   }
 
   if (!st.helices.empty()) {

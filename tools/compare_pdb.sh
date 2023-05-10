@@ -78,7 +78,6 @@ absent="\
 ^JRNL  |\
 ^MASTER|\
 ^MDLTYP|\
-^MODRES|\
 ^ORIGX|\
 ^REMARK   1|\
 ^REMARK   3|\

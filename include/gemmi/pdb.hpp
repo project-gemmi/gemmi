@@ -411,6 +411,15 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
           ent.full_sequence.emplace_back(res_name);
       }
 
+    } else if (is_record_type(line, "MODRES")) {
+      ModRes modres;
+      modres.chain_name = read_string(line + 15, 2);
+      modres.res_id = read_res_id(line + 18, line + 12);
+      modres.parent_comp_id = read_string(line + 24, 3);
+      if (len >= 30)
+        modres.details = read_string(line + 29, 41);
+      st.mod_residues.push_back(modres);
+
     } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2
       std::string chain_name = read_string(line+11, 2);
       Entity& ent = impl::find_or_add(st.entities, chain_name);

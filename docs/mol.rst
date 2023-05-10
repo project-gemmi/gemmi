@@ -508,6 +508,7 @@ The records that are interpreted can be converted from/to mmCIF:
 - REMARK 350
 - DBREF/DBREF1/DBREF2
 - SEQRES
+- MODRES
 - HELIX
 - SHEET
 - SSBOND
