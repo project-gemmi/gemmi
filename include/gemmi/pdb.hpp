@@ -417,7 +417,12 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       modres.res_id = read_res_id(line + 18, line + 12);
       modres.parent_comp_id = read_string(line + 24, 3);
       if (len >= 30)
+        // this field is named comment in PDB spec, but details in mmCIF
         modres.details = read_string(line + 29, 41);
+      // Refmac's extension: 73-80 mod_id
+      // Check for spaces to make sure it's not an overflowed comment
+      if (len >= 73 && line[70] == ' ' && line[71] == ' ')
+        modres.mod_id = read_string(line + 72, 6);
       st.mod_residues.push_back(modres);
 
     } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2

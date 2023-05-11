@@ -473,13 +473,14 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   for (const ModRes& modres : st.mod_residues) {
-    WRITE("MODRES %4s %3s%2s %5s %3s  %-51.51s\n",
+    WRITE("MODRES %4s %3s%2s %5s %3s  %-41.41s  %-8.8s\n",
           entry_id_4,
           modres.res_id.name.c_str(),
           modres.chain_name.c_str(),
           write_seq_id(modres.res_id.seqid).data(),
           modres.parent_comp_id.c_str(),
-          modres.details.c_str());
+          modres.details.c_str(),
+          modres.mod_id.c_str());
   }
 
   if (!st.helices.empty()) {

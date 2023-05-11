@@ -1020,20 +1020,29 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
   // _pdbx_struct_mod_residue (MODRES)
   if (groups.modres && !st.mod_residues.empty()) {
+    bool use_ccp4_mod_id = false;
+    for (const ModRes& modres : st.mod_residues)
+      if (!modres.mod_id.empty())
+        use_ccp4_mod_id = true;
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_struct_mod_residue.",
         {"id", "auth_asym_id", "auth_seq_id", "PDB_ins_code", "auth_comp_id",
          "label_comp_id", "parent_comp_id", "details"});
+    if (use_ccp4_mod_id)
+      loop.tags.push_back("_pdbx_struct_mod_residue.ccp4_mod_id");
     int counter = 0;
-    for (const ModRes& modres : st.mod_residues)
-      loop.add_row({
-          std::to_string(++counter),
-          qchain(modres.chain_name),
-          modres.res_id.seqid.num.str(),
-          pdbx_icode(modres.res_id),
-          string_or_dot(modres.res_id.name),
-          string_or_qmark(modres.res_id.name),
-          string_or_qmark(modres.parent_comp_id),
-          string_or_qmark(modres.details)});
+    for (const ModRes& modres : st.mod_residues) {
+      auto& v = loop.values;
+      v.push_back(std::to_string(++counter));
+      v.push_back(qchain(modres.chain_name));
+      v.push_back(modres.res_id.seqid.num.str());
+      v.push_back(pdbx_icode(modres.res_id));
+      v.push_back(string_or_dot(modres.res_id.name));
+      v.push_back(string_or_qmark(modres.res_id.name));
+      v.push_back(string_or_qmark(modres.parent_comp_id));
+      v.push_back(string_or_qmark(modres.details));
+      if (use_ccp4_mod_id)
+        v.push_back(string_or_qmark(modres.mod_id));
+    }
   }
 
   // _atom_sites (SCALE)

@@ -279,6 +279,7 @@ struct ModRes {
   std::string chain_name;
   ResidueId res_id;
   std::string parent_comp_id;
+  std::string mod_id;  // non-standard extension used in Refmac
   std::string details;
 };
 

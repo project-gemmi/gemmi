@@ -279,7 +279,8 @@ void read_struct_mod_residue(cif::Block& block, Structure& st) {
                              {"auth_asym_id",  // 0
                               "auth_seq_id", "?PDB_ins_code",  // 1-2
                               "?auth_comp_id", "?label_comp_id",  // 3-4
-                              "?parent_comp_id", "?details"})) {  // 5-6
+                              "?parent_comp_id", "?details",  // 5-6
+                              "?ccp4_mod_id"})) {  // 7
     ModRes modres;
     modres.chain_name = row.str(0);
     modres.res_id.seqid = make_seqid(row.str(1), row.ptr_at(2));
@@ -288,6 +289,8 @@ void read_struct_mod_residue(cif::Block& block, Structure& st) {
       modres.parent_comp_id = row.str(5);
     if (row.has(6))
       modres.details = row.str(6);
+    if (row.has(7))
+      modres.mod_id = row.str(7);
     st.mod_residues.push_back(modres);
   }
 }
