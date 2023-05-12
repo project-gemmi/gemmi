@@ -47,7 +47,8 @@ enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, CifStyle, AllAuth, BlockName,
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
-  ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain, SetSeq,
+  ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
+  ChangeCcdCode, SetSeq,
   SiftsNum, Biso, Anisou, SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
 
@@ -103,6 +104,8 @@ const option::Descriptor Usage[] = {
   { RenameChain, 0, "", "rename-chain", Arg::ColonPair,
     "  --rename-chain=OLD:NEW  \tRename chain OLD to NEW "
     "(--rename-chain=:A adds missing chain IDs)." },
+  { ChangeCcdCode, 0, "", "monomer", Arg::ColonPair,
+    "  --monomer=OLD:NEW  \tChange monomer name (CCD code) OLD to NEW." },
   { SetSeq, 0, "s", "", Arg::Required,
     "  -s FILE  \tUse sequence from FILE (PIR or FASTA format), "
     "which must contain either one sequence (for all chains) "
@@ -162,6 +165,15 @@ void convert(gemmi::Structure& st,
              const std::vector<option::Option>& options) {
   if (st.models.empty())
     gemmi::fail("No atoms in the input file. Wrong file format?");
+
+  for (const option::Option* opt = options[ChangeCcdCode]; opt; opt = opt->next()) {
+    const char* sep = std::strchr(opt->arg, ':');
+    std::string old_name(opt->arg, sep);
+    std::string new_name(sep+1);
+    if (options[Verbose])
+      std::cerr << "Renaming " << old_name << " to " << new_name << std::endl;
+    gemmi::change_ccd_code(st, old_name, new_name);
+  }
 
   if (st.input_format == CoorFormat::Pdb) {
     gemmi::setup_entities(st);

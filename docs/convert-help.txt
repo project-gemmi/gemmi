@@ -37,6 +37,7 @@ Any output options:
   --shorten               Shorten chain names to 1 (if # < 63) or 2 characters.
   --rename-chain=OLD:NEW  Rename chain OLD to NEW (--rename-chain=:A adds
                           missing chain IDs).
+  --monomer=OLD:NEW       Change monomer name (CCD code) OLD to NEW.
   -s FILE                 Use sequence from FILE (PIR or FASTA format), which
                           must contain either one sequence (for all chains) or
                           as many sequences as there are chains.

@@ -265,4 +265,49 @@ void deduplicate_entities(Structure& st) {
         }
 }
 
+void change_ccd_code(Structure& st, const std::string& old, const std::string& new_) {
+  auto process = [&](ResidueId& rid) {
+    if (rid.name == old)
+      rid.name = new_;
+  };
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        process(res);
+  for (Entity& ent : st.entities)
+    for (std::string& mon_ids : ent.full_sequence)
+      for (size_t start = 0;;) {
+        size_t end = mon_ids.find(',', start);
+        if (mon_ids.compare(start, end-start, old) == 0) {
+          mon_ids.replace(start, end-start, new_);
+          if (end != std::string::npos)
+            end = start + new_.size();
+        }
+        if (end == std::string::npos)
+          break;
+        start = end + 1;
+      }
+  for (Connection& conn : st.connections) {
+    process(conn.partner1.res_id);
+    process(conn.partner2.res_id);
+  }
+  for (CisPep& cispep : st.cispeps) {
+    process(cispep.partner_c.res_id);
+    process(cispep.partner_n.res_id);
+  }
+  for (ModRes& modres : st.mod_residues)
+    process(modres.res_id);
+  for (Helix& helix : st.helices) {
+    process(helix.start.res_id);
+    process(helix.end.res_id);
+  }
+  for (Sheet& sheet : st.sheets)
+    for (Sheet::Strand& strand : sheet.strands) {
+      process(strand.start.res_id);
+      process(strand.end.res_id);
+      process(strand.hbond_atom2.res_id);
+      process(strand.hbond_atom1.res_id);
+    }
+}
+
 } // namespace gemmi

@@ -222,5 +222,8 @@ inline void trim_to_alanine(Chain& chain) {
     trim_to_alanine(res);
 }
 
+GEMMI_DLL
+void change_ccd_code(Structure& st, const std::string& old, const std::string& new_);
+
 } // namespace gemmi
 #endif
