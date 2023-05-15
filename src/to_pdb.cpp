@@ -257,7 +257,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
       // 73-76      segment identifier, left-justified (non-standard)
       // 77-78  2s  element symbol, right-justified
       // 79-80  2s  charge
-      WRITE("%-6s%5s %-4.4s%c%3s"
+      WRITE("%-6s%5s %-4.4s%c%3.3s"
             "%2s%5s   %8.3f%8.3f%8.3f"
             "%6.2f%6.2f      %-4.4s%2s%c%c",
             as_het ? "HETATM" : "ATOM",
@@ -456,9 +456,7 @@ inline void write_header(const Structure& st, std::ostream& os,
             snprintf_z(buf, 82, "SEQRES%4d%2s%5zu %62s\n",
                        ++row, ch.name.c_str(),
                        entity->full_sequence.size(), "");
-          size_t end = monomers.find(',');
-          if (end == std::string::npos)
-            end = monomers.length();
+          size_t end = std::min(monomers.find(','), std::min(monomers.length(), (size_t)3));
           std::memcpy(buf + 18 + 4*col + 4-end, monomers.c_str(), end);
           if (++col == 13) {
             os.write(buf, 81);
@@ -473,7 +471,7 @@ inline void write_header(const Structure& st, std::ostream& os,
   }
 
   for (const ModRes& modres : st.mod_residues) {
-    WRITE("MODRES %4s %3s%2s %5s %3s  %-41.41s  %-8.8s\n",
+    WRITE("MODRES %4s %3.3s%2s %5s %3s  %-41.41s  %-8.8s\n",
           entry_id_4,
           modres.res_id.name.c_str(),
           modres.chain_name.c_str(),
@@ -490,7 +488,7 @@ inline void write_header(const Structure& st, std::ostream& os,
         counter = 0;
       // According to the PDB spec serial number can be from 1 to 999.
       // Here, we allow for up to 9999 helices by using columns 7 and 11.
-      snprintf_z(buf, 82, "HELIX %4d%4d %3s%2s %5s %3s%2s %5s%2d %35d    \n",
+      snprintf_z(buf, 82, "HELIX %4d%4d %3.3s%2s %5s %3.3s%2s %5s%2d %35d    \n",
             counter, counter,
             helix.start.res_id.name.c_str(), helix.start.chain_name.c_str(),
             write_seq_id(helix.start.res_id.seqid).data(),
@@ -511,8 +509,8 @@ inline void write_header(const Structure& st, std::ostream& os,
         const AtomAddress& a2 = strand.hbond_atom2;
         const AtomAddress& a1 = strand.hbond_atom1;
         // H-bond atom names are expected to be O and N
-        WRITE("SHEET%5d %3.3s%2zu %3s%2s%5s %3s%2s%5s%2d  %-3s%3s%2s%5s "
-              " %-3s%3s%2s%5s          ",
+        WRITE("SHEET%5d %3.3s%2zu %3.3s%2s%5s %3.3s%2s%5s%2d  %-3s%3.3s%2s%5s "
+              " %-3s%3.3s%2s%5s          ",
               ++strand_counter, sheet.name.c_str(), sheet.strands.size(),
               strand.start.res_id.name.c_str(), strand.start.chain_name.c_str(),
               write_seq_id(strand.start.res_id.seqid).data(),
@@ -542,7 +540,7 @@ inline void write_header(const Structure& st, std::ostream& os,
                                                        cra2.atom->pos, con.asu);
           if (++counter == 10000)
             counter = 0;
-          WRITE("SSBOND%4d %3s%2s %5s %5s%2s %5s %28s %6s %5.2f  ",
+          WRITE("SSBOND%4d %3.3s%2s %5s   %3.3s%2s %5s %28s %6s %5.2f  ",
              counter,
              cra1.residue->name.c_str(), cra1.chain->name.c_str(),
              write_seq_id(cra1.residue->seqid).data(),
@@ -576,8 +574,8 @@ inline void write_header(const Structure& st, std::ostream& os,
           // to be applied to the atom." But all files from wwPDB have
           // 1555 not blank, so here we also write 1555,
           // except for LINKR (Refmac variant of LINK).
-          snprintf_z(buf, 82, "LINK        %-4s%c%3s%2s%5s   "
-                "            %-4s%c%3s%2s%5s  %6s %6s %5s  \n",
+          snprintf_z(buf, 82, "LINK        %-4s%c%3.3s%2s%5s   "
+                "            %-4s%c%3.3s%2s%5s  %6s %6s %5s  \n",
                 cra1.atom ? cra1.atom->padded_name().c_str() : "",
                 cra1.atom && cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
                 cra1.residue->name.c_str(),
@@ -605,7 +603,7 @@ inline void write_header(const Structure& st, std::ostream& os,
     if (opt.cispep_records) {
       int counter = 0;
       for (const CisPep& cispep : st.cispeps) {
-        WRITE("CISPEP%4d %3s%2s %5s   %3s%2s %5s %9s %12.2f %20s",
+        WRITE("CISPEP%4d %3.3s%2s %5s   %3.3s%2s %5s %9s %12.2f %20s",
               ++counter,
               cispep.partner_c.res_id.name.c_str(),
               cispep.partner_c.chain_name.c_str(),
@@ -664,8 +662,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   WRITE("%-80s", "END");
 }
 
-void write_minimal_pdb(const Structure& st, std::ostream& os,
-                       PdbWriteOptions opt) {
+void write_minimal_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   check_if_structure_can_be_written_as_pdb(st);
   write_cryst1(st, os);
   write_ncs(st, os);
