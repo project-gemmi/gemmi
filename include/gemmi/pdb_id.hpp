@@ -14,8 +14,10 @@
 namespace gemmi {
 
 inline bool is_pdb_code(const std::string& str) {
-  return str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1]) &&
-                              std::isalnum(str[2]) && std::isalnum(str[3]);
+  return (str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1])
+                            && std::isalnum(str[2]) && std::isalnum(str[3]))
+      || (str.length() == 12 && str.compare(0, 4, "pdb_") == 0
+                             && std::isdigit(str[4]));
 }
 
 /// Call it after checking the code with gemmi::is_pdb_code(code).
@@ -25,6 +27,8 @@ inline std::string expand_pdb_code_to_path(const std::string& code, char type,
                                            bool throw_if_unset=false) {
   std::string path;
   if (const char* pdb_dir = std::getenv("PDB_DIR")) {
+    if (code.size() == 12)
+      fail("extended PDB codes are not supported yet: " + code);
     int n = 0;
     if (type == 'M')
       n = 1;
