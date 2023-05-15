@@ -425,6 +425,13 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
         modres.mod_id = read_string(line + 72, 6);
       st.mod_residues.push_back(modres);
 
+    } else if (is_record_type(line, "HETNAM")) {
+      if (len > 71 && line[70] == ' ') {
+        std::string full_code = read_string(line + 71, 8);
+        if (!full_code.empty())
+          st.shortened_ccd_codes.push_back({full_code, read_string(line + 11, 3)});
+      }
+
     } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2
       std::string chain_name = read_string(line+11, 2);
       Entity& ent = impl::find_or_add(st.entities, chain_name);
@@ -632,6 +639,8 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
 
   if (!options.skip_remarks)
     read_metadata_from_remarks(st);
+
+  restore_full_ccd_codes(st);
 
   return st;
 }

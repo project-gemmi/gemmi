@@ -357,7 +357,7 @@ void convert(gemmi::Structure& st,
       writer.write_json(doc);
     }
   } else if (output_type == CoorFormat::Pdb) {
-    // call wrapper from output.cpp - to make building faster
+    shorten_ccd_codes(st);
     gemmi::PdbWriteOptions opt;
     if (options[ShortTer])
       opt.numbered_ter = false;

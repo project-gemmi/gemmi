@@ -481,6 +481,9 @@ inline void write_header(const Structure& st, std::ostream& os,
           modres.mod_id.c_str());
   }
 
+  for (const OldToNew& mapping : st.shortened_ccd_codes)
+    WRITE("HETNAM     %3s %55s %-9s\n", mapping.new_.c_str(), "", mapping.old.c_str());
+
   if (!st.helices.empty()) {
     int counter = 0;
     for (const Helix& helix : st.helices) {

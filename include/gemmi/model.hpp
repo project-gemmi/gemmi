@@ -86,6 +86,9 @@ enum class CalcFlag : signed char {
   NotSet=0, NoHydrogen, Determined, Calculated, Dummy
 };
 
+/// helper type used for Structure::shortened_ccd_codes
+struct OldToNew { std::string old, new_; };
+
 /// options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
@@ -868,15 +871,17 @@ struct Structure {
   CoorFormat input_format = CoorFormat::Unknown;
   bool has_d_fraction = false;  // uses Refmac's ccp4_deuterium_fraction
 
-  // Store ORIGXn / _database_PDB_matrix.origx*
+  /// Store ORIGXn / _database_PDB_matrix.origx*
   bool has_origx = false;
   Transform origx;
 
-  // Minimal metadata with keys being mmcif tags: _entry.id, _cell.Z_PDB, ...
+  /// Minimal metadata with keys being mmcif tags: _entry.id, _cell.Z_PDB, ...
   std::map<std::string, std::string> info;
-  // original REMARK records stored if the file was read from the PDB format
+  /// Mapping of long (4+) CCD codes (residue names) to PDB-compatible ones
+  std::vector<OldToNew> shortened_ccd_codes;
+  /// original REMARK records stored if the file was read from the PDB format
   std::vector<std::string> raw_remarks;
-  // simplistic resolution value from/for REMARK 2
+  /// simplistic resolution value from/for REMARK 2
   double resolution = 0;
 
   const SpaceGroup* find_spacegroup() const {

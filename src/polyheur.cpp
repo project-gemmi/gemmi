@@ -310,4 +310,51 @@ void change_ccd_code(Structure& st, const std::string& old, const std::string& n
     }
 }
 
+void shorten_ccd_codes(Structure& st) {
+  // find all long residue names in both models and sequences
+  auto already_in = [&](const std::string& name) -> bool {
+    return in_vector_f([&](const OldToNew& x) { return x.old == name; },
+                       st.shortened_ccd_codes);
+  };
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        if (res.name.size() > 3 && !already_in(res.name))
+          st.shortened_ccd_codes.push_back({res.name, {}});
+  for (const Entity& ent : st.entities)
+    for (const std::string& mon_ids : ent.full_sequence) {
+      for (size_t start = 0;;) {
+        size_t end = mon_ids.find(',', start);
+        size_t len = std::min(end, mon_ids.size()) - start;
+        if (len > 3) {
+          std::string s(mon_ids, start, len);
+          if (!already_in(s))
+            st.shortened_ccd_codes.push_back({s, {}});
+        }
+        if (end == std::string::npos)
+          break;
+        start = end + 1;
+      }
+    }
+  // pick a new residue name and call change_ccd_code()
+  for (OldToNew& item : st.shortened_ccd_codes) {
+    std::string short_code = item.old.substr(0, 3);
+    short_code[2] = '~';
+    // if short_code it's already used, try X[0-9]~ and then [0-9][0-9]~
+    char c0 = '0', c1 = '0';
+    while (in_vector_f([&](const OldToNew& x) { return x.new_ == short_code; },
+                       st.shortened_ccd_codes)) {
+      short_code[1] = c1++;
+      if (c1 > '9') {
+        short_code[0] = c0++;
+        c1 = '0';
+        if (c0 > 'Z')  // shoudn't happen
+          break;
+      }
+    }
+    item.new_ = short_code;
+    change_ccd_code(st, item.old, item.new_);
+  }
+}
+
 } // namespace gemmi

@@ -486,7 +486,8 @@ We support the following popular extensions of the format:
 * segment ID (columns 73-76) from PDB v2,
 * hybrid-36_ encoding of sequence IDs for sequences longer than 9999
   (although we are yet to find an examples for this),
-* hybrid-36_ encoding of serial numbers for more than 99,999 atoms.
+* hybrid-36_ encoding of serial numbers for more than 99,999 atoms,
+* tilde-hetnam extension for extended CCD codes (residue names).
 
 .. _supported_records:
 
@@ -589,6 +590,13 @@ it starts in column 13 even if it has a one-letter element code:
 
    HETATM 6495  CAX R58 A 502      17.143 -29.934   7.180  1.00 58.54           C
    HETATM 6496 CAX3 R58 A 502      16.438 -31.175   6.663  1.00 57.68           C
+
+Columns 18-20 contain the residue name (CCD code). When the PDB ran out of
+three-character codes in 2023, it started assigning codes with 4+ characters,
+which no longer fit into the PDB format. The tilde-hetnam extension addresses
+this issue: long CCD code is substituted with 3 characters,
+of which the last one is a tilde (``~``);
+the original code is stored in columns 72-79 of the HETNAM record.
 
 Columns 23-27 contain a sequence ID. It consists of a number (columns 23-26)
 and, optionally, also an insertion code (A-Z) in column 27:
