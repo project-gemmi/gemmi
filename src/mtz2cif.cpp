@@ -379,7 +379,7 @@ const Trans* get_status_translation(const std::vector<Trans>& recipe) {
 
 void write_main_loop(const MtzToCif& m2c, const SweepInfo& sweep_info,
                      const Mtz& mtz, const std::vector<Trans>& recipe,
-                     char* buf, std::ostream& os) {
+                     char (&buf)[256], std::ostream& os) {
   // prepare indices
   std::vector<int> value_indices;  // used for --skip_empty
   std::vector<int> sigma_indices;  // used for status 'x' and --skip-negative-sigi
@@ -475,7 +475,8 @@ void write_main_loop(const MtzToCif& m2c, const SweepInfo& sweep_info,
         first = false;
       else
         *ptr++ = ' ';
-      if (ptr - buf > 220) {
+      static_assert(sizeof(buf) == 256, "sizeof buf");
+      if (ptr - buf > 256 - 36) {
         os.write(buf, ptr - buf);
         ptr = buf;
       }
@@ -813,8 +814,8 @@ void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
       continue;
     char* ptr = buf;
     ptr += snprintf_z(ptr, 128, "%d %d %d %d %d %g %.5g ",
-                         refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
-                         refl.iobs, refl.sigma);
+                      refl.iset, ++idx, refl.hkl[0], refl.hkl[1], refl.hkl[2],
+                      refl.iobs, refl.sigma);
     if (xds.oscillation_range != 0.) {
       double angle = xds.rot_angle(refl);
       ptr += snprintf_z(ptr, 16, "%.5g ", angle);
