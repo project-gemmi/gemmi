@@ -72,6 +72,7 @@ void add_topo(py::module& m) {
     .def_readonly("res2", &Topo::Link::res2)
     .def_readonly("alt1", &Topo::Link::alt1)
     .def_readonly("alt2", &Topo::Link::alt2)
+    .def_readonly("link_rules", &Topo::Link::link_rules)
     ;
   py::enum_<Topo::RKind>(m, "RKind")
     .value("Bond", Topo::RKind::Bond)
