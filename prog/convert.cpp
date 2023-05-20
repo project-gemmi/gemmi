@@ -183,7 +183,7 @@ void convert(gemmi::Structure& st,
       st.raw_remarks.clear();
   } else {
     // handles special tag from Refmac's mmCIF
-    expand_hd_mixture(st);
+    store_deuterium_as_fraction(st, false);
   }
 
   if (options[Select])
