@@ -124,7 +124,8 @@ Binaries
 ~~~~~~~~
 
 Binaries are distributed with the CCP4 suite and with Global Phasing software.
-They are also included in
+They are also in `PyPI <https://pypi.org/project/gemmi-program/>`_
+(``pip install gemmi-program``) and
 `conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_.
 
 The very latest builds (as well as a little older ones)

@@ -1286,6 +1286,9 @@ the ``Structure`` has the following properties:
   assemblies defined in the REMARK 350 in pdb, or in corresponding mmCIF
   categories (_pdbx_struct_assembly, _pdbx_struct_assembly_gen,
   _pdbx_struct_assembly_prop and _pdbx_struct_oper_list)
+* ``input_format`` (enum ``CoorFormat``) -- what file format the structure
+  was read from,
+* ``has_d_fraction`` (bool) -- how :ref:`deuterium is represented <deuterium>`,
 * ``info`` (C++ type: ``map<string, string>``) --
   minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
 * ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
@@ -1746,8 +1749,13 @@ the ``--assembly`` option in :ref:`gemmi-convert <convert>`.
 Common operations
 -----------------
 
-In Python, ``Structure`` has also methods for more specialized,
-but often needed operations:
+In Python, Structure has also methods for more specialized,
+but often needed operations.
+In C++, the corresponding functions are available in separate headers
+(such as ``modify.hpp`` and ``polyheur.hpp``) and they are often templates
+that work not only with Structure, but also with Model and Chain.
+
+We have functions that remove parts of the models:
 
 .. doctest::
 
@@ -1755,12 +1763,26 @@ but often needed operations:
   >>> st.remove_hydrogens()
   >>> st.remove_waters()
   >>> st.remove_ligands_and_waters()
-  >>> st.remove_empty_chains()
-  >>> st.assign_serial_numbers()
 
-In C++ these functions are implemented as templated free functions
-(headers ``modify.hpp`` and ``polyheur.hpp``) that can be applied
-not only to ``Structure``, but also to ``Model`` and ``Chain``.
+If it happens that all residues are removed from a chain,
+the chain is still present in ``Model.chains``.
+Usually, it doesn't matter, but if for any reasons it is preferable
+to discard empty chains, call:
+
+.. doctest::
+
+  >>> st.remove_empty_chains()
+
+After adding, removing or reordering atoms the serial numbers
+kept in property ``Atom.serial`` are no longer consecutive.
+This property is not used when writing a file (PDB and mmCIF files are
+always written with consecutive numbering of atoms),
+so you should care about this property only if your own code uses it.
+To re-number the atoms do:
+
+.. doctest::
+
+  >>> st.assign_serial_numbers()
 
 ----
 
@@ -1797,7 +1819,7 @@ In C++ this functions is in ``gemmi/assembly.hpp``.
 
 ----
 
-In Python, ``Structure`` has also methods to calculate the
+In Python, Structure has also methods to calculate the
 :ref:`bounding box <box>` for the models,
 in either Cartesian or fractional coordinates.
 Symmetry mates are not taken into account here.
@@ -1817,6 +1839,45 @@ Symmetry mates are not taken into account here.
   <gemmi.Fractional(0.85659, 0.838305, 1.32204)>
 
 In C++ these are stand-alone functions in ``gemmi/calculate.hpp``.
+
+.. _deuterium:
+
+Deuterium
+=========
+
+(Only relevant when working with models containing deuterium --
+about 0.1% of the PDB files.)
+
+In macromolecular coordinate files, hydrogen isotopes protium and
+deuterium are identified using the element names H and D, respectively.
+When a hydrogen site is modeled as a mixture of both isotopes,
+the PDB file contains alternative locations with different atom names
+but the same coordinates:
+
+.. code-block:: none
+
+  ATOM    694  HG ASER A  43      -8.832  -2.333  24.316  0.08 23.44           H
+  ATOM    695  DG BSER A  43      -8.832  -2.333  24.316  0.92 23.44           D
+      atom name^  ^altloc                                               element^
+
+Internally, it can be more convenient to store such mixture
+as a single atom site with a parameter indicating the deuterium fraction
+(e.g., 0.92 in the above example).
+It is also possible to write it to an mmCIF file in such a form,
+using Refmac's custom tag ``_atom_site.ccp4_deuterium_fraction`` to store
+the fraction parameter, but this approach is not widely supported.
+Therefore, writing it as two atoms is more portable.
+
+In gemmi, you can switch between the two representations
+(two sites or the fraction of D) with the following function:
+
+.. doctest::
+
+  >>> st.store_deuterium_as_fraction(True)
+  >>> st.store_deuterium_as_fraction(False)
+
+When the fraction parameter is used,
+``Structure.has_d_fraction`` is set to True.
 
 .. _sequence:
 
