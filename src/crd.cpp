@@ -105,8 +105,12 @@ void add_automatic_links(Model& model, Structure& st, const MonLib& monlib) {
 cif::Block prepare_crd(const Structure& st, const Topo& topo,
                        HydrogenChange h_change, const std::string& info_comment) {
   auto e_id = st.info.find("_entry.id");
-  std::string id = cif::quote(e_id != st.info.end() ? e_id->second : st.name);
+  std::string id = (e_id != st.info.end() ? e_id->second : st.name);
   cif::Block block("structure_" + id);
+  if (id.empty() || id == " " || id == "#")
+    id = "?";
+  else
+    id = cif::quote(id);
   auto& items = block.items;
 
   if (!info_comment.empty())
