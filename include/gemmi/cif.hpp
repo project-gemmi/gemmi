@@ -195,8 +195,10 @@ template<> struct Action<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Document& out) {
     out.blocks.emplace_back(in.string());
     Block& block = out.blocks.back();
-    if (block.name.empty()) // RELION's case
-      block.name += '#';
+    // Empty block name (just data_ ) is not STAR/CIF conformant,
+    // but it's written by RELION and buccaneer; we must support it.
+    if (block.name.empty())
+      block.name += ' ';
     out.items_ = &block.items;
   }
 };

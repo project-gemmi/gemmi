@@ -319,7 +319,7 @@ class TestBlock(unittest.TestCase):
             mic1/img000001.spi mic1 10000 10500
             mic1/img000002.spi mic1 10000 10501
             """).sole_block()
-        self.assertEqual(block.name, '#')
+        self.assertEqual(block.name, ' ')
         item = block[0]
         self.assertEqual(item.line_number, 2)
         table = block.item_as_table(item)
