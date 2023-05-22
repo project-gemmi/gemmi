@@ -824,8 +824,11 @@ int GEMMI_MAIN(int argc, char **argv) {
         ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
       } else {
         cif::Document d = cif::read(gemmi::MaybeGzipped(path));
-        for (const cif::Block& block : d.blocks)
+        for (const cif::Block& block : d.blocks) {
+          if (block.name == " ")
+            std::cout << d.source << ": missing block name (bare data_)\n";
           check_empty_loops(block);
+        }
         if (p.options[Stat])
           msg = token_stats(d);
         if (p.options[Ddl]) {
