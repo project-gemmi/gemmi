@@ -77,6 +77,11 @@ try:
 except ImportError:
     print('Tests that use networkx are disabled.', file=sys.stderr)
     networkx = None
+try:
+    import pynauty
+except ImportError:
+    print('Tests that use pynauty are disabled.', file=sys.stderr)
+    pynauty = None
 import os
 mdm2_unmerged_mtz_path = os.getenv('CCP4')
 if mdm2_unmerged_mtz_path:

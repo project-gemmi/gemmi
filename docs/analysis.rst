@@ -756,16 +756,17 @@ The graph algorithms in Gemmi are limited to finding the shortest path
 between atoms (bonds = graph edges). This part of the library is not
 documented yet.
 
-The rest of this section shows how to use Gemmi together with external
-graph analysis libraries to analyse the similarity of chemical molecules.
-To do this, first we set up a graph corresponding to the molecule.
+The rest of this section shows how to use dedicated graph libraries
+to analyse chemical molecules read with gemmi.
+First, we set up a graph corresponding to the molecule.
 
-Here we show how it can be done in the Boost Graph Library.
+Here is how it can be done in C++ with the Boost Graph Library
+(`BGL <http://boost.org/libs/graph>`_):
 
 .. literalinclude:: ../examples/with_bgl.cpp
    :lines: 9-10,13-41
 
-And here we use NetworkX in Python:
+Here we use `NetworkX <https://networkx.org/>`_ in Python:
 
 .. doctest::
   :skipif: networkx is None
@@ -782,7 +783,8 @@ And here we use NetworkX in Python:
   ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
   ...
 
-To show a quick example, let us count automorphisms of SO3:
+To show a quick example of working with the graph,
+let us count automorphisms of SO3:
 
 .. doctest::
   :skipif: networkx is None
@@ -793,7 +795,63 @@ To show a quick example, let us count automorphisms of SO3:
   >>> sum(1 for _ in GM.isomorphisms_iter())
   6
 
-With a bit more of code we could perform a real cheminformatics task.
+The median number of automorphisms of molecules in the CCD is only 4.
+However, the highest number of isomorphisms, as of 2023 (ignoring hydrogens,
+bond orders, chiralities), is a staggering 6879707136
+for `T8W <https://www.rcsb.org/ligand/T8W>`_.
+This value can be calculated almost instantly with nauty, which
+returns a set of *generators* of the automorphism group
+and the sets of equivalent vertices called *orbits*,
+rather than listing all automorphisms.
+Nauty is for "determining the automorphism group of a vertex-coloured graph,
+and for testing graphs for isomorphism". We can use it in Python through
+the pynauty module.
+
+Here we set up a graph in `pynauty <https://github.com/pdobsan/pynauty>`_,
+from the ``so3`` object prepared in the previous example:
+
+.. doctest::
+  :skipif: pynauty is None
+
+  >>> import pynauty
+
+  >>> n_vertices = len(so3.atoms)
+  >>> adjacency = {n: [] for n in range(n_vertices)}
+  >>> indices = {atom.id: n for n, atom in enumerate(so3.atoms)}
+  >>> elements = {atom.el.atomic_number for atom in so3.atoms}
+  >>> # The order of dict in Python 3.6+ is the insertion order.
+  >>> coloring = {elem: set() for elem in sorted(elements)}
+  >>> for n, atom in enumerate(so3.atoms):
+  ...   coloring[atom.el.atomic_number].add(n)
+  ...
+  >>> for bond in so3.rt.bonds:
+  ...   n1 = indices[bond.id1.atom]
+  ...   n2 = indices[bond.id2.atom]
+  ...   adjacency[n1].append(n2)
+  ...
+  >>> G = pynauty.Graph(n_vertices, adjacency_dict=adjacency, vertex_coloring=coloring.values())
+
+The colors of vertices in this graph correspond to elements.
+Pynauty takes a list of sets of vertices with the same color,
+without the information which color corresponds to which element.
+We sorted the elements to ensure that two graphs with the same atoms
+have the same coloring. However, SO3 and PO3 graphs would also have
+the same coloring and would be reported as isomorphic.
+So it is necessary to check if the elements in molecules are the same.
+
+You may also want to encode other properties in the graph, such as bond orders,
+atom charges and chiralities, as described in
+`this paper <https://jcheminf.biomedcentral.com/articles/10.1186/s13321-023-00692-1>`_.
+Here, we only present a simplified, minimal example.
+Now, to finish this example, let's get the order of the isomorphism group
+(which should be the same as in the NetworkX example, i.e. 6):
+
+.. doctest::
+  :skipif: pynauty is None
+
+  >>> (gen, grpsize1, grpsize2, orbits, numorb) = pynauty.autgrp(G)
+  >>> grpsize1 * 10**grpsize2
+  6.0
 
 .. _graph_isomorphism:
 
@@ -801,7 +859,7 @@ Graph isomorphism
 -----------------
 
 In this example we use Python NetworkX to compare molecules from the
-Refmac monomer library with Chemical Component Dictionary (CCD) from PDB.
+Refmac monomer library with the PDB's Chemical Component Dictionary (CCD).
 The same could be done with other graph analysis libraries,
 such as Boost Graph Library, igraph, etc.
 
