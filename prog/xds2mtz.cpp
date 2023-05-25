@@ -127,7 +127,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (const option::Option* opt = p.options[Title])
       mtz.title = opt->arg;
     else
-      mtz.title = "Converted from XDS_ASCII";
+      mtz.title = "Converted from " + gemmi::path_basename(input_path, {});
     if (const option::Option* opt = p.options[History]) {
       for (; opt; opt = opt->next())
         mtz.history.emplace_back(opt->arg);
