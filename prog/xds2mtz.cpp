@@ -164,6 +164,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.nreflections = (int) xds.data.size();
     mtz.data.resize(mtz.columns.size() * xds.data.size());
     gemmi::UnmergedHklMover hkl_mover(mtz.spacegroup);
+    int max_frame = 0;
+    for (const gemmi::XdsAscii::Refl& refl : xds.data)
+      max_frame = std::max(max_frame, refl.frame());
+    int iset_offset = (max_frame + 11000) / 10000 * 10000;
     // iset,frame -> batch
     std::map<std::pair<int,int>, int> frames;
     size_t k = 0;
@@ -174,7 +178,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.data[k++] = (float) hkl[j];
       mtz.data[k++] = (float) isym;
       int frame = refl.frame();
-      int batch = frame + 10000 * std::max(refl.iset - 1, 0);
+      int batch = frame + iset_offset * std::max(refl.iset - 1, 0);
       frames.emplace(std::make_pair(refl.iset, frame), batch);
       mtz.data[k++] = (float) batch;
       mtz.data[k++] = (float) refl.iobs;  // I
