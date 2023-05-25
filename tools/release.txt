@@ -8,11 +8,12 @@
 - bash ./run-tests.sh a
 - VERSION=$(grep -Po '\d\.\d\.\d' include/gemmi/version.hpp)
 
-- make, test and upload source package to PyPI:
+- make and test source package for PyPI:
   python3 setup.py sdist
   twine check dist/gemmi-$VERSION.tar.gz
-  python3 -m pip uninstall gemmi
-  python3 -m pip install dist/gemmi-$VERSION.tar.gz
+  python3.11 -m pip uninstall gemmi
+  python3.11 -m pip install dist/gemmi-$VERSION.tar.gz
+  PYTHON=python3.11 NO_DOCTEST=1 ./run-tests.sh n i
 
 - git commit -a -m "change version number to $VERSION"
   git push

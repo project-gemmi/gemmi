@@ -13,7 +13,9 @@ set -eu
 cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
-PYTHON=`grep ^_Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+if [ -z "${PYTHON-}" ]; then
+    PYTHON=`grep ^_Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+fi
 
 # Build all, except when we called with an option to avoid full compilation:
 #  G - only build the program,
@@ -27,7 +29,9 @@ if [ $# = 1 ] && [ $1 = P ]; then
     (cd $BUILD_DIR && make -j4 gemmi_py)
     exit
 fi
-if [ $# = 0 ] || [ $1 != n ]; then
+if [ $# != 0 ] && [ $1 = n ]; then
+    shift
+else
     (cd $BUILD_DIR && make -j4 all check)
     ./tools/cmp-size.py build/gemmi build/gemmi.*.so
     ./tools/docs-help.sh
@@ -35,23 +39,29 @@ fi
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
 
 # Run tests and checks.
-export PYTHONPATH=$BUILD_DIR
-export PATH="$BUILD_DIR:$PATH"
+if [ $# = 0 ] || [ $1 != i ]; then
+    export PYTHONPATH=$BUILD_DIR
+    export PATH="$BUILD_DIR:$PATH"
+fi
 $PYTHON -m unittest discover -s tests
 ./tools/header-list.py >docs/headers.rst
-# Where python 2 and 3 output differ, the docs have output from v3.
-# So 'make doctest' works only if sphinx-build was installed for python3.
-(cd docs && make doctest SPHINXOPTS="-q -n -E")
+
+if [ -z "${NO_DOCTEST-}" ]; then
+    # 'make doctest' works only if sphinx-build was installed for python3.
+    (cd docs && make doctest SPHINXOPTS="-q -n -E")
+fi
+
 flake8 docs/ examples/ tests/ tools/ setup.py
 # We want to avoid having '::' in pydoc from pybind11.
 $PYTHON -m pydoc gemmi | grep :: ||:
+
 
 # Usually, we stop here. Below are more extensive checks below that are run
 # before making a release. They are run when this script is called with 'a'
 # or with an option corresponding to the check.
 [ $# = 0 ] && exit;
 
-if [ $1 = a ]; then
+if [ $1 = i ]; then
     echo 'Check if gemmi package is found by setuptools pkg_resources...'
     $PYTHON -c '__requires__ = ["gemmi"]; import pkg_resources'
     echo 'OK'
