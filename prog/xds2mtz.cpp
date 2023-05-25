@@ -3,7 +3,7 @@
 // Convert reflection data from XDS_ASCII to MTZ.
 
 #include <cstdio>             // for fprintf
-#include <set>
+#include <map>
 #include <gemmi/gz.hpp>        // for MaybeGzipped
 #include <gemmi/xds_ascii.hpp> // for XdsAscii
 #include <gemmi/mtz.hpp>       // for Mtz
@@ -164,7 +164,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     mtz.nreflections = (int) xds.data.size();
     mtz.data.resize(mtz.columns.size() * xds.data.size());
     gemmi::UnmergedHklMover hkl_mover(mtz.spacegroup);
-    std::set<int> frames;
+    // iset,frame -> batch
+    std::map<std::pair<int,int>, int> frames;
     size_t k = 0;
     for (const gemmi::XdsAscii::Refl& refl : xds.data) {
       auto hkl = refl.hkl;
@@ -173,8 +174,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.data[k++] = (float) hkl[j];
       mtz.data[k++] = (float) isym;
       int frame = refl.frame();
-      frames.insert(frame);
-      mtz.data[k++] = (float) frame;
+      int batch = frame + 10000 * std::max(refl.iset - 1, 0);
+      frames.emplace(std::make_pair(refl.iset, frame), batch);
+      mtz.data[k++] = (float) batch;
       mtz.data[k++] = (float) refl.iobs;  // I
       mtz.data[k++] = (float) std::fabs(refl.sigma);  // SIGI
       mtz.data[k++] = (float) refl.xd;
@@ -254,8 +256,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     batch.floats[116] = (float) xds.ny;
     batch.axes.push_back("PHI");  // gonlab[0]
 
-    for (int frame : frames) {
-      batch.number = frame;
+    for (auto& t : frames) {
+      batch.set_dataset_id(t.first.first);
+      batch.number = t.second;
+      int frame = t.first.second;
       double phistt = xds.starting_angle +
                       xds.oscillation_range * (frame - xds.starting_frame);
       batch.floats[36] = float(phistt);
