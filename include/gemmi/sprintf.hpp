@@ -12,6 +12,10 @@
 # endif
 #endif
 
+#if __cpp_lib_to_chars < 201611L
+# include <algorithm> // for min
+#endif
+
 #include "fail.hpp"  // for GEMMI_DLL
 
 namespace gemmi {
