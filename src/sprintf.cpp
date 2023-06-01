@@ -1,10 +1,11 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <gemmi/sprintf.hpp>
+#include <stdarg.h>  // for va_list
+#include <algorithm> // for min
 
 #ifdef USE_STD_SNPRINTF  // useful for benchmarking and testing only
 # include <cstdio>
-# include <stdarg.h>  // for va_list
 #else
 # define STB_SPRINTF_IMPLEMENTATION
 # define STB_SPRINTF_STATIC
