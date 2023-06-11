@@ -9,12 +9,12 @@
 namespace py = pybind11;
 
 void add_scaling(py::module& m) {
+  m.def("adp_symmetry_constraints", &gemmi::adp_symmetry_constraints);
   using Scaling = gemmi::Scaling<float>;
   using FPhiData = gemmi::AsuData<std::complex<float>>;
   py::class_<Scaling>(m, "Scaling")
     .def(py::init<const gemmi::UnitCell&, const gemmi::SpaceGroup*>())
     .def_readwrite("cell", &Scaling::cell)
-    .def_readwrite("crystal_system", &Scaling::crystal_system)
     .def_readwrite("k_overall", &Scaling::k_overall)
     .def_property("b_overall", &Scaling::get_b_overall, &Scaling::set_b_overall)
     .def_readwrite("use_solvent", &Scaling::use_solvent)

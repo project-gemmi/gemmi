@@ -10,6 +10,67 @@
 
 namespace gemmi {
 
+using Vec6 = std::array<double, 6>;
+
+inline double vec6_dot(const Vec6& a, const SMat33<double>& s) {
+  return a[0] * s.u11 + a[1] * s.u22 + a[2] * s.u33
+       + a[3] * s.u12 + a[4] * s.u13 + a[5] * s.u23;
+}
+
+/// Symmetry constraints of ADP.
+/// The number of rows is the number of independent coefficients in U.
+/// For example, for tetragonal crystal returns two normalized Vec6 vectors
+/// in directions [1 1 0 0 0 0] and [0 0 1 0 0 0].
+inline std::vector<Vec6> adp_symmetry_constraints(const SpaceGroup* sg) {
+  auto constraints = [](const std::initializer_list<int>& l) {
+    constexpr double K2 = 0.70710678118654752440;  // sqrt(1/2)
+    constexpr double K3 = 0.57735026918962576451;  // sqrt(1/3)
+    static const Vec6 vv[10] = {
+      {1, 0, 0, 0, 0, 0},  // 0
+      {0, 1, 0, 0, 0, 0},  // 1
+      {0, 0, 1, 0, 0, 0},  // 2
+      {0, 0, 0, 1, 0, 0},  // 3
+      {0, 0, 0, 0, 1, 0},  // 4
+      {0, 0, 0, 0, 0, 1},  // 5
+      {K2, K2, 0, 0, 0, 0},  // 6
+      {2/3., 2/3., 0, 1/3., 0, 0},  // 7
+      {K3, K3, K3, 0, 0, 0},  // 8
+      {0, 0, 0, K3, K3, K3}   // 9
+    };
+    std::vector<Vec6> c;
+    c.reserve(l.size());
+    for (int i : l)
+      c.push_back(vv[i]);
+    return c;
+  };
+  CrystalSystem cr_system = sg ? sg->crystal_system() : CrystalSystem::Triclinic;
+  switch (cr_system) {
+    case CrystalSystem::Triclinic:
+      return constraints({0, 1, 2, 3, 4, 5});
+    case CrystalSystem::Monoclinic: {
+      // take first letter in "c" or "c1", but second in "-c1"
+      char letter = sg->qualifier[sg->qualifier[0] == '-'];
+      if (letter == 'a')
+        return constraints({0, 1, 2, 5});
+      if (letter == 'c')
+        return constraints({0, 1, 2, 3});
+      return constraints({0, 1, 2, 4});
+    }
+    case CrystalSystem::Orthorhombic:
+      return constraints({0, 1, 2});
+    case CrystalSystem::Tetragonal:
+      return constraints({6, 2});
+    case CrystalSystem::Hexagonal:
+    case CrystalSystem::Trigonal:
+      if (sg->ext == 'R')
+        return constraints({8, 9});
+      return constraints({7, 2});
+    case CrystalSystem::Cubic:
+      return constraints({8});
+  }
+  unreachable();
+}
+
 template<typename Real>
 struct Scaling {
   struct Point {
@@ -24,17 +85,11 @@ struct Scaling {
   };
 
   UnitCell cell;
-  // SpaceGroup is not stored, but we have special handling of monoclinic
-  // groups (to handle settings with either angle alpha or gamma being != 90),
-  // and trigonal space groups in hexagonal settings are regarded (for the
-  // purpose of scaling constraints) to be hexagonal.
-  CrystalSystem crystal_system = CrystalSystem::Triclinic;
-  signed char monoclinic_angle_idx;
-  double SMat33<double>::*monoclinic_angle;
   // model parameters
   double k_overall = 1.;
   // b_star = F B_cart F^T, where F - fractionalization matrix
   SMat33<double> b_star{0, 0, 0, 0, 0, 0};
+  std::vector<Vec6> constraint_matrix;
   bool use_solvent = false;
   bool fix_k_sol = false;
   bool fix_b_sol = false;
@@ -45,28 +100,7 @@ struct Scaling {
 
   // pre: calc and obs are sorted
   Scaling(const UnitCell& cell_, const SpaceGroup* sg)
-      : cell(cell_) {
-    if (sg) {
-      crystal_system = sg->crystal_system();
-      if (crystal_system == CrystalSystem::Monoclinic) {
-        // take first letter in "c" or "c1", but second in "-c1"
-        char letter = sg->qualifier[sg->qualifier[0] == '-'];
-        if (letter == 'a') {
-          monoclinic_angle_idx = 5;
-          monoclinic_angle = &SMat33<double>::u23;
-        } else if (letter == 'c') {
-          monoclinic_angle_idx = 3;
-          monoclinic_angle = &SMat33<double>::u12;
-        } else {
-          monoclinic_angle_idx = 4;
-          monoclinic_angle = &SMat33<double>::u13;
-        }
-      } else if (crystal_system == CrystalSystem::Trigonal) {
-        if (sg->ext != 'R')
-          crystal_system = CrystalSystem::Hexagonal;
-      }
-    }
-  }
+      : cell(cell_), constraint_matrix(adp_symmetry_constraints(sg)) {}
 
   // B_{overall} is stored as B* not B_{cartesian}.
   // Use getter and setter to convert from/to B_{cartesian}.
@@ -114,34 +148,12 @@ struct Scaling {
       if (!fix_b_sol)
         ret.push_back(b_sol);
     }
-    switch (crystal_system) {
-      case CrystalSystem::Triclinic:
-        ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33,
-                               b_star.u12, b_star.u13, b_star.u23});
-        break;
-      case CrystalSystem::Monoclinic:
-        ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33,
-                               b_star.*monoclinic_angle});
-        break;
-      case CrystalSystem::Orthorhombic:
-        ret.insert(ret.end(), {b_star.u11, b_star.u22, b_star.u33});
-        break;
-      case CrystalSystem::Tetragonal:
-        ret.insert(ret.end(), {b_star.u11, b_star.u33});
-        break;
-      case CrystalSystem::Trigonal:
-        ret.insert(ret.end(), {b_star.u11, b_star.u12});
-        break;
-      case CrystalSystem::Hexagonal:
-        ret.insert(ret.end(), {b_star.u11, b_star.u33});
-        break;
-      case CrystalSystem::Cubic:
-        ret.push_back(b_star.u11);
-        break;
-    }
+    for (const Vec6& v : constraint_matrix)
+      ret.push_back(vec6_dot(v, b_star));
     return ret;
   }
 
+  /// set k_overall, k_sol, b_sol, b_star
   void set_parameters(const std::vector<double>& p) {
     k_overall = p[0];
     int n = 0;
@@ -151,23 +163,15 @@ struct Scaling {
       if (!fix_b_sol)
         b_sol = p[++n];
     }
-    switch (crystal_system) {
-      case CrystalSystem::Triclinic:
-        b_star = {p[n+1], p[n+2], p[n+3], p[n+4], p[n+5], p[n+6]}; break;
-      case CrystalSystem::Monoclinic:
-        b_star = {p[n+1], p[n+2], p[n+3], 0, 0, 0};
-        b_star.*monoclinic_angle = p[n+4];
-        break;
-      case CrystalSystem::Orthorhombic:
-        b_star = {p[n+1], p[n+2], p[n+3], 0., 0., 0.}; break;
-      case CrystalSystem::Tetragonal:
-        b_star = {p[n+1], p[n+1], p[n+2], 0., 0., 0.}; break;
-      case CrystalSystem::Trigonal:
-        b_star = {p[n+1], p[n+1], p[n+1], p[n+2], p[n+2], p[n+2]}; break;
-      case CrystalSystem::Hexagonal:
-        b_star = {p[n+1], p[n+1], p[n+2], 0.5*p[n+1], 0., 0.}; break;
-      case CrystalSystem::Cubic:
-        b_star = {p[n+1], p[n+1], p[n+1], 0., 0., 0.}; break;
+    b_star = {0, 0, 0, 0, 0, 0};
+    for (const Vec6& row : constraint_matrix) {
+      double d = p[++n];
+      b_star.u11 += row[0] * d;
+      b_star.u22 += row[1] * d;
+      b_star.u33 += row[2] * d;
+      b_star.u12 += row[3] * d;
+      b_star.u13 += row[4] * d;
+      b_star.u23 += row[5] * d;
     }
   }
 
@@ -207,10 +211,6 @@ struct Scaling {
 
   double get_solvent_scale(double stol2) const {
     return k_sol * std::exp(-b_sol * stol2);
-  }
-
-  double get_overall_isotropic_scale_factor(const Miller& hkl) const {
-    return k_overall * std::exp(-b_star.u11 * Vec3(hkl).length_sq());
   }
 
   double get_overall_scale_factor(const Miller& hkl) const {
@@ -294,7 +294,7 @@ struct Scaling {
       double fe = fcalc_abs * kaniso;
       yy[i] = k_overall * fe;
       dy_da[i * npar + 0] = fe; // dy/d k_overall
-      double du[6] = {
+      SMat33<double> du = {
         -0.25 * yy[i] * (h.x * h.x),
         -0.25 * yy[i] * (h.y * h.y),
         -0.25 * yy[i] * (h.z * h.z),
@@ -303,36 +303,8 @@ struct Scaling {
         -0.5 * yy[i] * (h.y * h.z),
       };
       double* dy_db = &dy_da[i * npar + n];
-      switch (crystal_system) {
-        case CrystalSystem::Triclinic:
-          for (int j = 0; j < 6; ++j)
-            dy_db[j] = du[j];
-          break;
-        case CrystalSystem::Monoclinic:
-          for (int j = 0; j < 3; ++j)
-            dy_db[j] = du[j];
-          dy_db[3] = du[monoclinic_angle_idx];
-          break;
-        case CrystalSystem::Orthorhombic:
-          for (int j = 0; j < 3; ++j)
-            dy_db[j] = du[j];
-          break;
-        case CrystalSystem::Tetragonal:
-          dy_db[0] = du[0] + du[1];
-          dy_db[1] = du[2];
-          break;
-        case CrystalSystem::Trigonal:
-          dy_db[0] = du[0] + du[1] + du[2];
-          dy_db[1] = du[3] + du[4] + du[5];
-          break;
-        case CrystalSystem::Hexagonal:
-          dy_db[0] = du[0] + du[1] + 0.5 * du[3];
-          dy_db[1] = du[2];
-          break;
-        case CrystalSystem::Cubic:
-          dy_db[0] = du[0] + du[1] + du[2];
-          break;
-      }
+      for (size_t j = 0; j < constraint_matrix.size(); ++j)
+        dy_db[j] = vec6_dot(constraint_matrix[j], du);
     }
   }
 };
