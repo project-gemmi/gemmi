@@ -31,6 +31,8 @@ Options for density and FFT calculations (with --dmin):
   --test[=CACHE]       Calculate exact values and report differences (slow).
   --write-map=FILE     Write density (excl. bulk solvent) as CCP4 map.
   --to-mtz=FILE        Write Fcalc to a new MTZ file.
+
+Options for anisotropic scaling (only w/ FFT):
   --scale-to=FILE:COL  Anisotropic scaling to F from MTZ file.
                        Argument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF).
 

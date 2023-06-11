@@ -110,9 +110,12 @@ const option::Descriptor Usage[] = {
     "  --write-map=FILE  \tWrite density (excl. bulk solvent) as CCP4 map." },
   { ToMtz, 0, "", "to-mtz", Arg::Required,
     "  --to-mtz=FILE  \tWrite Fcalc to a new MTZ file." },
+
+  { NoOp, 0, "", "", Arg::None, "\nOptions for anisotropic scaling (only w/ FFT):" },
   { ScaleTo, 0, "", "scale-to", Arg::Required,
     "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file."
     "\n\tArgument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF)." },
+  // TODO: solvent option: mask, babinet, none
 
   { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
   { RadiiSet, 0, "", "radii-set", SfCalcArg::Radii,
@@ -573,6 +576,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   if (p.options[ScaleTo]) {
     std::string path = p.options[ScaleTo].arg;
     std::string flabel = "F";
+    // TODO: possibly, SIGF is not useful for scaling (it's not used now)
     std::string siglabel = "SIGF";
     size_t sep2 = path.rfind(':');
     if (sep2 != std::string::npos && sep2 != 0) {
@@ -638,7 +642,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         masker.rshrink = std::atof(p.options[Rshrink].arg);
 
       gemmi::Scaling<Real> scaling(cell, st.find_spacegroup());
-      if (p.options[Ksolv] || p.options[Bsolv]) {
+      if (p.options[Ksolv] || p.options[Bsolv] || scale_to.size() != 0) {
         scaling.use_solvent = true;
         if (p.options[Ksolv])
           scaling.k_sol = std::atof(p.options[Ksolv].arg);
