@@ -1195,6 +1195,13 @@ struct SpaceGroup { // typically 44 bytes
     return laue_to_pointgroup(laue_class()) == point_group();
   }
 
+  /// returns 'a', 'b' or 'c' for monoclinic SG, '\0' otherwise
+  char monoclinic_unique_axis() const {
+    if (crystal_system() == CrystalSystem::Monoclinic)
+      return qualifier[qualifier[0] == '-' ? 1 : 0];
+    return '\0';
+  }
+
   const char* basisop_str() const { return get_basisop(basisop_idx); }
   Op basisop() const { return parse_triplet(basisop_str()); }
   bool is_reference_setting() const { return basisop_idx == 0; }
@@ -1773,8 +1780,8 @@ const SpaceGroup Tables_<Dummy>::main[559] = {
   {229,  229, "I m -3 m"  ,   0,     "", "-I 4 2 3"      , 0 }, // 528
   {230,  230, "I a -3 d"  ,   0,     "", "-I 4bd 2c 3"   , 0 }, // 529
   // And extra entries from syminfo.lib
-  {  5, 5005, "I 1 21 1"  ,   0,     "", "I 2yb"         , 38}, // 530
-  {  5, 3005, "C 1 21 1"  ,   0,     "", "C 2yb"         , 14}, // 531
+  {  5, 5005, "I 1 21 1"  ,   0,   "b4", "I 2yb"         , 38}, // 530
+  {  5, 3005, "C 1 21 1"  ,   0,   "b5", "C 2yb"         , 14}, // 531
   { 18, 1018, "P 21212(a)",   0,     "", "P 2ab 2a"      , 14}, // 532
   { 20, 1020, "C 2 2 21a)",   0,     "", "C 2ac 2"       , 39}, // 533
   { 21, 1021, "C 2 2 2a"  ,   0,     "", "C 2ab 2b"      , 14}, // 534
@@ -1799,9 +1806,9 @@ const SpaceGroup Tables_<Dummy>::main[559] = {
   {  2,    0, "F -1"      ,   0,     "", "-F 1"          , 44}, // 547
   {  2,    0, "I -1"      ,   0,     "", "-I 1"          , 45}, // 548
   // monoclinic
-  {  3,    0, "C 1 1 2"  ,    0,     "", "C 2"           , 46}, // 549
-  {  4,    0, "C 1 1 21"  ,   0,     "", "C 2c"          , 46}, // 550
-  { 12,    0, "F 1 2/m 1" ,   0,     "", "-F 2y"         , 47}, // 551
+  {  3,    0, "C 1 1 2"  ,    0,   "c1", "C 2"           , 46}, // 549
+  {  4,    0, "C 1 1 21"  ,   0,   "c1", "C 2c"          , 46}, // 550
+  { 12,    0, "F 1 2/m 1" ,   0,   "b4", "-F 2y"         , 47}, // 551
   // orthorhombic
   { 64,    0, "A b a m"   ,   0,     "", "-A 2 2ab"      , 3 }, // 552 (==306)
   // tetragonal - enlarged C- and F-centred unit cells
