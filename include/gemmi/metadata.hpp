@@ -256,7 +256,7 @@ struct SiftsUnpResidue {
 // We assume that the nearest symmetry mate is connected.
 struct Connection {
   // in write_struct_conn() we assume that Unknown is at the end
-  enum Type { Covale=0, Disulf, Hydrog, MetalC, Unknown };
+  enum Type { Covale=0, Disulf, Hydrog, MetalC, Conect, Unknown };
   std::string name;
   std::string link_id;  // _struct_conn.ccp4_link_id (== _chem_link.id)
   Type type = Unknown;
