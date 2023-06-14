@@ -342,6 +342,7 @@ struct ChemComp {
     //  '0.000' which is not correct but we ignore it).
     float charge;
     std::string chem_type;
+    Position xyz;
 
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
@@ -362,6 +363,7 @@ struct ChemComp {
   std::string name;
   std::string type_or_group;  // _chem_comp.type or _chem_comp.group
   Group group = Group::Null;
+  bool has_coordinates = false;
   std::vector<Atom> atoms;
   std::vector<Aliasing> aliases;
   Restraints rt;
@@ -576,7 +578,8 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
                              "?charge", "?partial_charge"}))
     cc.atoms.push_back({row.str(0), Element(row.str(1)),
                         (float) cif::as_number(row.one_of(3, 4), 0.0),
-                        row.has(2) ? row.str(2) : ""});
+                        row.has(2) ? row.str(2) : "",
+                        Position()});
   for (auto row : block.find("_chem_comp_bond.",
                              {"atom_id_1", "atom_id_2",              // 0, 1
                               "?type", "?value_order",               // 2, 3
