@@ -5,6 +5,7 @@
 #ifndef GEMMI_TWIN_HPP_
 #define GEMMI_TWIN_HPP_
 
+#include <cstdint>       // for int8_t
 #include <algorithm>     // for sort
 #include <utility>       // for pair
 #include "symmetry.hpp"  // for Op
