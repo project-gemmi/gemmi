@@ -112,6 +112,7 @@ void add_mol(py::module& m) {
     .def_readwrite("entities", &Structure::entities)
     .def_readwrite("connections", &Structure::connections)
     .def_readwrite("cispeps", &Structure::cispeps)
+    .def_readwrite("mod_residues", &Structure::mod_residues)
     .def_readwrite("helices", &Structure::helices)
     .def_readwrite("sheets", &Structure::sheets)
     .def_readwrite("assemblies", &Structure::assemblies)
