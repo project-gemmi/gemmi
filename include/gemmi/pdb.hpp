@@ -422,7 +422,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       // Refmac's extension: 73-80 mod_id
       // Check for spaces to make sure it's not an overflowed comment
       if (len >= 73 && line[70] == ' ' && line[71] == ' ')
-        modres.mod_id = read_string(line + 72, 6);
+        modres.mod_id = read_string(line + 72, 8);
       st.mod_residues.push_back(modres);
 
     } else if (is_record_type(line, "HETNAM")) {
