@@ -13,11 +13,30 @@ namespace gemmi {
 
 inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
   {
-    cif::Table tab = block.find_or_add("_chem_comp_atom.",
-        {"comp_id", "atom_id", "type_symbol", "type_energy", "charge"});
-    for (const ChemComp::Atom& a : cc.atoms)
-      tab.append_row({cc.name, a.id, a.el.name(), cif::quote(a.chem_type),
-                      std::to_string(iround(a.charge))});
+    std::vector<std::string> tags =
+        {"comp_id", "atom_id", "type_symbol", "type_energy", "charge"};
+    if (cc.has_coordinates)
+      for (char c = 'x'; c <= 'z'; ++c)
+        tags.emplace_back(1, c);
+    cif::Table tab = block.find_or_add("_chem_comp_atom.", tags);
+    if (!tab.loop_item)
+      tab.convert_pair_to_loop();
+    size_t pos = tab.length();
+    cif::Loop& loop = tab.loop_item->loop;
+    loop.values.resize(loop.values.size() + loop.width() * cc.atoms.size(), ".");
+    for (const ChemComp::Atom& a : cc.atoms) {
+      cif::Table::Row row = tab[pos++];
+      row[0] = cc.name;
+      row[1] = a.id;
+      row[2] = a.el.name();
+      row[3] = cif::quote(a.chem_type);
+      row[4] = std::to_string(iround(a.charge));
+      if (cc.has_coordinates) {
+        row[5] = to_str(a.xyz.x);
+        row[6] = to_str(a.xyz.y);
+        row[7] = to_str(a.xyz.z);
+      }
+    }
   }
   {
     cif::Table tab = block.find_or_add("_chem_comp_bond.",

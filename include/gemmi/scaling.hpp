@@ -47,15 +47,9 @@ inline std::vector<Vec6> adp_symmetry_constraints(const SpaceGroup* sg) {
   switch (cr_system) {
     case CrystalSystem::Triclinic:
       return constraints({0, 1, 2, 3, 4, 5});
-    case CrystalSystem::Monoclinic: {
-      // take first letter in "c" or "c1", but second in "-c1"
-      char letter = sg->qualifier[sg->qualifier[0] == '-'];
-      if (letter == 'a')
-        return constraints({0, 1, 2, 5});
-      if (letter == 'c')
-        return constraints({0, 1, 2, 3});
-      return constraints({0, 1, 2, 4});
-    }
+    case CrystalSystem::Monoclinic:
+      // the last index is: a->5, b->4, c->3
+      return constraints({0, 1, 2, 3 + 'c' - sg->monoclinic_unique_axis()});
     case CrystalSystem::Orthorhombic:
       return constraints({0, 1, 2});
     case CrystalSystem::Tetragonal:

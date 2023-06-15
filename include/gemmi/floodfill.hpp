@@ -6,6 +6,7 @@
 #ifndef GEMMI_FLOODFILL_HPP_
 #define GEMMI_FLOODFILL_HPP_
 
+#include <cstdint>     // for int8_t
 #include "grid.hpp"    // for Grid
 
 namespace gemmi {

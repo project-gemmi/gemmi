@@ -35,6 +35,7 @@ Options for density and FFT calculations (with --dmin):
 Options for anisotropic scaling (only w/ FFT):
   --scale-to=FILE:COL  Anisotropic scaling to F from MTZ file.
                        Argument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF).
+  --sigma-cutoff=NUM   Use only data with F/SIGF > NUM (default: 0).
 
 Options for bulk solvent correction (only w/ FFT):
   --radii-set=SET      Set of per-element radii, one of: vdw, cctbx, refmac.

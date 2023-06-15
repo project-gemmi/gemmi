@@ -32,7 +32,7 @@ namespace {
 
 enum OptionIndex {
   Hkl=4, Dmin, For, NormalizeIt92, Rate, Blur, RCut, Test, ToMtz, Compare,
-  CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, FLabel,
+  CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, SigmaCutoff, FLabel,
   PhiLabel, Ksolv, Bsolv, Baniso, RadiiSet, Rprobe, Rshrink, WriteMap
 };
 
@@ -115,6 +115,8 @@ const option::Descriptor Usage[] = {
   { ScaleTo, 0, "", "scale-to", Arg::Required,
     "  --scale-to=FILE:COL  \tAnisotropic scaling to F from MTZ file."
     "\n\tArgument: FILE[:FCOL[:SIGFCOL]] (defaults: F and SIGF)." },
+  { SigmaCutoff, 0, "", "sigma-cutoff", Arg::Float,
+    "  --sigma-cutoff=NUM  \tUse only data with F/SIGF > NUM (default: 0)." },
   // TODO: solvent option: mask, babinet, none
 
   { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
@@ -283,18 +285,28 @@ void process_with_fft(const gemmi::Structure& st,
                 .prepare_asu_data(dencalc.d_min, 0);
   }
 
-  Comparator comparator;
   if (scale_to.size() != 0) {
     scaling.prepare_points(asu_data, scale_to, mask_data);
-    printf("Calculating scale factors using %lu points...\n",
-           (unsigned long) scaling.points.size()); // %zu is absent in old MinGW
+    printf("Calculating scale factors using %zu points...\n", scaling.points.size());
     scaling.fit_isotropic_b_approximately();
     //fprintf(stderr, "k_ov=%g B_ov=%g\n", scaling.k_overall, scaling.get_b_overall().u11);
     scaling.fit_parameters();
     gemmi::SMat33<double> b_aniso = scaling.get_b_overall();
+    if (scaling.use_solvent)
+      fprintf(stderr, "Bulk solvent parameters: k_sol=%g B_sol=%g\n",
+              scaling.k_sol, scaling.b_sol);
     fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
             scaling.k_overall, b_aniso.u11, b_aniso.u22, b_aniso.u33,
                                b_aniso.u12, b_aniso.u13, b_aniso.u23);
+    if (verbose) {
+      std::vector<double> computed = scaling.compute_values();
+      Comparator comparator;
+      for (size_t i = 0; i != scaling.points.size(); ++i)
+        comparator.add(computed[i], (double)scaling.points[i].fobs);
+      fprintf(stderr, "After scaling: ");
+      print_to_stderr(comparator);
+      fprintf(stderr, "\n");
+    }
   }
   scaling.scale_data(asu_data, mask_data);
 
@@ -304,6 +316,7 @@ void process_with_fft(const gemmi::Structure& st,
     for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v)
       print_sf(hv.value, hv.hkl);
   } else {
+    Comparator comparator;
     for (gemmi::HklValue<std::complex<Real>>& hv : asu_data.v) {
       std::complex<double> exact;
       if (file.path) {
@@ -576,7 +589,6 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   if (p.options[ScaleTo]) {
     std::string path = p.options[ScaleTo].arg;
     std::string flabel = "F";
-    // TODO: possibly, SIGF is not useful for scaling (it's not used now)
     std::string siglabel = "SIGF";
     size_t sep2 = path.rfind(':');
     if (sep2 != std::string::npos && sep2 != 0) {
@@ -588,6 +600,9 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         siglabel = path.substr(sep2+1);
       path.resize(sep);
     }
+    double sigma_cutoff = 0;
+    if (p.options[SigmaCutoff])
+      sigma_cutoff = std::atof(p.options[SigmaCutoff].arg);
     gemmi::Mtz mtz;
     mtz.read_input(gemmi::MaybeGzipped(path), true);
     if (siglabel.empty()) {
@@ -596,6 +611,13 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         hkl_value.value.sigma = std::sqrt(hkl_value.value.sigma);
     } else {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
+      size_t size_before = scale_to.size();
+      vector_remove_if(scale_to.v, [=](const gemmi::HklValue<gemmi::ValueSigma<Real>>& x) {
+          return x.value.value <= sigma_cutoff * x.value.sigma;
+      });
+      if (p.options[Verbose])
+        fprintf(stderr, "Sigma cutoff (F/sigF > %g) excluded %zu out of %zu points.\n",
+                sigma_cutoff, size_before - scale_to.size(), size_before);
     }
   }
 

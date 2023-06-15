@@ -14,6 +14,7 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
   std::unique_ptr<ChemComp> cc(new ChemComp());
   cc->name = res.name;
   cc->group = ChemComp::Group::Null;
+  cc->has_coordinates = true;
   // add atoms
   cc->atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
@@ -25,7 +26,7 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
     if (el == El::D)
       el = El::H;
     const std::string& chem_type = el.uname();
-    cc->atoms.push_back(ChemComp::Atom{a.name, el, float(a.charge), chem_type});
+    cc->atoms.push_back(ChemComp::Atom{a.name, el, float(a.charge), chem_type, a.pos});
   }
   // prepare pairs of atoms
   struct Pair {
