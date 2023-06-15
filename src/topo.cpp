@@ -439,7 +439,7 @@ void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
 // see comments above the declaration
 void Topo::initialize_refmac_topology(Structure& st, Model& model0,
                                       MonLib& monlib, bool ignore_unknown_links) {
-  // initialize chains and residues
+  // initialize chain_infos
   for (Chain& chain : model0.chains)
     for (ResidueSpan& sub : chain.subchains()) {
       // set Residue::group_idx which is used in Restraints::AtomId::get_from()
@@ -450,6 +450,17 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
       }
       const Entity* ent = st.get_entity_of(sub);
       chain_infos.emplace_back(sub, chain, ent);
+    }
+
+  // add modifications from MODRES records (Refmac's extension)
+  for (const ModRes& modres : st.mod_residues)
+    if (!modres.mod_id.empty()) {
+      for (Topo::ChainInfo& chain_info : chain_infos)
+        if (chain_info.chain_ref.name == modres.chain_name) {
+          for (Topo::ResInfo& res_info : chain_info.res_infos)
+            if (*res_info.res == modres.res_id)
+              res_info.add_mod(modres.mod_id, nullptr, '\0');
+        }
     }
 
   // setup pointers to monomers and links in the polymer
