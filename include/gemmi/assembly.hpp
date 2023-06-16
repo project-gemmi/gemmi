@@ -93,7 +93,7 @@ inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
 GEMMI_DLL Model make_assembly(const Assembly& assembly, const Model& model,
                               HowToNameCopiedChain how, std::ostream* out);
 
-inline Assembly expand_to_p1(const UnitCell& cell) {
+inline Assembly pseudo_assembly_for_unit_cell(const UnitCell& cell) {
   Assembly assembly("unit_cell");
   std::vector<Assembly::Operator> operators(cell.images.size() + 1);
   // operators[0] stays as identity
@@ -110,6 +110,7 @@ inline Assembly expand_to_p1(const UnitCell& cell) {
 GEMMI_DLL void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
                                              double max_dist=0.2);
 
+/// If called with assembly_name="unit_cell" changes structure to unit cell (P1).
 GEMMI_DLL void transform_to_assembly(Structure& st, const std::string& assembly_name,
                                      HowToNameCopiedChain how, std::ostream* out);
 

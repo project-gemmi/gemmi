@@ -183,7 +183,7 @@ void transform_to_assembly(Structure& st, const std::string& assembly_name,
   std::unique_ptr<Assembly> p1_assembly;
   if (!assembly) {
     if (assembly_name == "unit_cell") {
-      p1_assembly.reset(new Assembly(expand_to_p1(st.cell)));
+      p1_assembly.reset(new Assembly(pseudo_assembly_for_unit_cell(st.cell)));
       assembly = p1_assembly.get();
     } else if (st.assemblies.empty()) {
       fail("no bioassemblies are listed for this structure");
