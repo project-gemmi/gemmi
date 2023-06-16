@@ -189,6 +189,15 @@ void add_meta(py::module& m) {
     .def_readwrite("reported_angle", &CisPep::reported_angle)
     ;
 
+  py::class_<ModRes>(m, "ModRes")
+    .def(py::init<>())
+    .def_readwrite("chain_name", &ModRes::chain_name)
+    .def_readwrite("res_id", &ModRes::res_id)
+    .def_readwrite("parent_comp_id", &ModRes::parent_comp_id)
+    .def_readwrite("mod_id", &ModRes::mod_id)
+    .def_readwrite("details", &ModRes::details)
+    ;
+
   py::class_<Helix> helix(m, "Helix");
   py::enum_<Helix::HelixClass>(helix, "HelixClass")
     .value("UnknownHelix", Helix::HelixClass::UnknownHelix)
