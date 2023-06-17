@@ -276,6 +276,12 @@ struct GEMMI_DLL Mtz {
     return UnitCell(avg[0], avg[1], avg[2], avg[3], avg[4], avg[5]);
   }
 
+  void set_spacegroup(const SpaceGroup* new_sg) {
+    spacegroup = new_sg;
+    spacegroup_number = new_sg ? spacegroup->ccp4 : 0;
+    spacegroup_name = new_sg ? spacegroup->hm : "";
+  }
+
   Dataset& last_dataset() {
     if (datasets.empty())
       fail("MTZ dataset not found (missing DATASET header line?).");
@@ -826,6 +832,10 @@ struct GEMMI_DLL Mtz {
 
   /// reindex data, usually followed by ensure_asu()
   void reindex(const Op& op, std::ostream* out);
+
+  /// Change symmetry to P1 and expand reflections. Does not sort.
+  /// Similar to command EXPAND in SFTOOLS.
+  void expand_to_p1();
 
   // (for unmerged MTZ only) change HKL according to M/ISYM
   bool switch_to_original_hkl() {

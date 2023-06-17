@@ -5,6 +5,33 @@
 
 namespace gemmi {
 
+void shift_phase(float& phi, double shift, bool negate=false) {
+  double phi_ = phi + deg(shift);
+  if (negate)
+    phi_ = -phi_;
+  if (phi_ < 0 || phi_ >= 360.)
+    phi_ -= std::floor(phi_ / 360.) * 360.;
+  phi = float(phi_);
+}
+
+// apply phase shift to Hendrickson–Lattman coefficients HLA, HLB, HLC and HLD
+void shift_hl_coefficients(float& a, float& b, float& c, float& d, double shift) {
+  double sinx = std::sin(shift);
+  double cosx = std::cos(shift);
+  double sin2x = 2 * sinx * cosx;
+  double cos2x = sq(cosx)- sq(sinx);
+  // a sin(x+y) + b cos(x+y) = a sin(x) cos(y) - b sin(x) sin(y)
+  //                         + a cos(x) sin(y) + b cos(x) cos(y)
+  float a_ = float(a * cosx - b * sinx);
+  float b_ = float(a * sinx + b * cosx);
+  float c_ = float(c * cos2x - d * sin2x);
+  float d_ = float(c * sin2x + d * cos2x);
+  a = a_;
+  b = b_;
+  c = c_;
+  d = d_;
+}
+
 void Mtz::ensure_asu(bool tnt_asu) {
   if (!is_merged())
     fail("Mtz::ensure_asu() is for merged MTZ only");
@@ -32,29 +59,13 @@ void Mtz::ensure_asu(bool tnt_asu) {
     if (!phase_columns.empty() || !abcd_columns.empty()) {
       const Op& op = gops.sym_ops[(isym - 1) / 2];
       double shift = op.phase_shift(hkl);
-      if (shift != 0) {
-        if (isym % 2 == 0)
-          shift = -shift;
-        double shift_deg = deg(shift);
-        for (int col : phase_columns)
-          data[n + col] = float(data[n + col] + shift_deg);
-        for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4) {
-          double sinx = std::sin(shift);
-          double cosx = std::cos(shift);
-          double sin2x = 2 * sinx * cosx;
-          double cos2x = sq(cosx)- sq(sinx);
-          double a = data[n + *(i+0)];
-          double b = data[n + *(i+1)];
-          double c = data[n + *(i+2)];
-          double d = data[n + *(i+3)];
-          // a sin(x+y) + b cos(x+y) = a sin(x) cos(y) - b sin(x) sin(y)
-          //                         + a cos(x) sin(y) + b cos(x) cos(y)
-          data[n + *(i+0)] = float(a * cosx - b * sinx);
-          data[n + *(i+1)] = float(a * sinx + b * cosx);
-          data[n + *(i+2)] = float(c * cos2x - d * sin2x);
-          data[n + *(i+3)] = float(c * sin2x + d * cos2x);
-        }
-      }
+      bool negate = (isym % 2 == 0);
+      for (int col : phase_columns)
+        shift_phase(data[n + col], shift, negate);
+      for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4)
+        // we expect coefficients HLA, HLB, HLC and HLD - in this order
+        shift_hl_coefficients(data[n + *(i+0)], data[n + *(i+1)],
+                              data[n + *(i+2)], data[n + *(i+3)], shift);
     }
     if (isym % 2 == 0 && !centric &&
         // usually, centric reflections have empty F(-), so avoid swapping it
@@ -114,9 +125,7 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
       if (out)
         *out << "Space group changed from " << spacegroup->xhm() << " to "
              << new_sg->xhm() << ".\n";
-      spacegroup = new_sg;
-      spacegroup_number = spacegroup->ccp4;
-      spacegroup_name = spacegroup->hm;
+      set_spacegroup(new_sg);
     } else {
       if (out)
         *out << "Space group stays the same:" << spacegroup->xhm() << ".\n";
@@ -131,6 +140,48 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
     batch.set_cell(batch.get_cell().changed_basis_backward(transposed_op, false));
 }
 
+void Mtz::expand_to_p1() {
+  if (!spacegroup || !has_data())
+    return;
+  std::vector<int> phase_columns = positions_of_columns_with_type('P');
+  std::vector<int> abcd_columns = positions_of_columns_with_type('A');
+  bool has_phases = (!phase_columns.empty() || !abcd_columns.empty());
+  GroupOps gops = spacegroup->operations();
+  data.reserve(gops.sym_ops.size() * data.size());
+  size_t orig_size = data.size();
+  std::vector<Miller> hkl_copies;
+  for (size_t n = 0; n < orig_size; n += columns.size()) {
+    hkl_copies.clear();
+    Miller hkl = get_hkl(n);
+    // no reallocations because of reserve() above
+    auto orig_iter = data.begin() + n;
+    for (auto op = gops.sym_ops.begin() + 1; op < gops.sym_ops.end(); ++op) {
+      Miller new_hkl = op->apply_to_hkl(hkl);
+      Op::Miller negated{{-new_hkl[0], -new_hkl[1], -new_hkl[2]}};
+      if (new_hkl != hkl && !in_vector(new_hkl, hkl_copies) &&
+          negated != hkl && !in_vector(negated, hkl_copies)) {
+        hkl_copies.push_back(new_hkl);
+        size_t offset = data.size();
+        data.insert(data.end(), orig_iter, orig_iter + columns.size());
+        set_hkl(offset, new_hkl);
+        if (has_phases) {
+          double shift = op->phase_shift(hkl);
+          if (shift != 0) {
+            for (int col : phase_columns)
+              shift_phase(data[offset + col], shift);
+            for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4)
+              // we expect coefficients HLA, HLB, HLC and HLD - in this order
+              shift_hl_coefficients(data[n + *(i+0)], data[n + *(i+1)],
+                                    data[n + *(i+2)], data[n + *(i+3)], shift);
+          }
+        }
+      }
+    }
+  }
+  nreflections = int(data.size() / columns.size());
+  sort_order = {{0, 0, 0, 0, 0}};
+  set_spacegroup(&get_spacegroup_p1());
+}
 
 #define WRITE(...) do { \
     int len = snprintf_z(buf, 81, __VA_ARGS__); \

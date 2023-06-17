@@ -684,8 +684,8 @@ is written.
 
 .. _reindexing:
 
-Reindexing, ASU, sorting
-------------------------
+Reindexing, ASU, sorting, ...
+-----------------------------
 
 The reindexing function changes:
 
@@ -756,6 +756,21 @@ call ``mtz.sort(use_first=5)``.
   >>> mtz.sort_order
   [1, 2, 3, 4, 5]
 
+----
+
+"Sometimes you may want to reduce the symmetry of your space group and
+explicitly generate the symmetry related reflections. In most cases you will
+want to expand to P1 and generate data for a full hemisphere of reciprocal
+space." --- from documentation of the command EXPAND in Bart Hazes' SFTOOLS.
+
+Gemmi also has such a function:
+
+.. doctest::
+
+  >>> mtz.expand_to_p1()
+
+The reflections that are added may not be in the ASU and are not sorted.
+You may call ensure_asu() and sort() afterwards.
 
 Writing
 -------

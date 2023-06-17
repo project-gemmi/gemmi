@@ -253,6 +253,7 @@ void add_mtz(py::module& m) {
         self.reindex(op, &out);
         return out.str();
     }, py::arg("op"))
+    .def("expand_to_p1", &Mtz::expand_to_p1)
     .def("__repr__", [](const Mtz& self) {
         return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
                      self.nreflections, " reflections>");
