@@ -232,5 +232,23 @@ class TestBinner(unittest.TestCase):
         inv_d2 = [mtz.cell.calculate_1_d2(h) for h in hkls]
         self.assertEqual(list(binner.get_bins_from_1_d2(inv_d2)), bins)
 
+class TestConversion(unittest.TestCase):
+    def test_4aap(self):
+        def check_metadata(o, d):
+            self.assertEqual(o.spacegroup.hm, 'P 32 2 1')
+            self.assertEqual(o.cell.a, 68.575)
+            self.assertEqual(d.cell.gamma, 120)
+            self.assertEqual(d.wavelength, 0.97)
+        doc = gemmi.cif.read(full_path('4aap-sf-subset.cif'))
+        (rblock,) = gemmi.as_refln_blocks(doc)
+        check_metadata(rblock, rblock)
+        self.assertFalse(rblock.is_unmerged())
+        mtz = gemmi.CifToMtz().convert_block_to_mtz(rblock)
+        check_metadata(mtz, mtz.datasets[1])
+        cif_string = gemmi.MtzToCif().write_cif_to_string(mtz)
+        doc_out = gemmi.cif.read_string(cif_string)
+        (rblock_out,) = gemmi.as_refln_blocks(doc_out)
+        check_metadata(rblock_out, rblock_out)
+
 if __name__ == '__main__':
     unittest.main()

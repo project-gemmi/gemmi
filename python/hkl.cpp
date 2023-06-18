@@ -7,6 +7,7 @@
 #include "gemmi/fprime.hpp"
 #include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
 #include "gemmi/cif2mtz.hpp"  // for CifToMtz
+#include "gemmi/mtz2cif.hpp"  // for MtzToCif
 #include "gemmi/merge.hpp"    // for Intensities
 #include "gemmi/binner.hpp"   // for Binner
 
@@ -162,6 +163,16 @@ void add_hkl(py::module& m) {
         std::ostringstream out;
         return new Mtz(self.convert_block_to_mtz(rb, out));
     })
+    ;
+
+  py::class_<MtzToCif>(m, "MtzToCif")
+    .def(py::init<>())
+    .def_readwrite("spec_lines", &MtzToCif::spec_lines)
+    .def("write_cif_to_string", [](MtzToCif& self, const Mtz& mtz, const Mtz* mtz2) {
+        std::ostringstream out;
+        self.write_cif(mtz, mtz2, nullptr, out);
+        return out.str();
+    }, py::arg("mtz"), py::arg("mtz2")=nullptr)
     ;
 
   py::enum_<DataType>(m, "DataType")

@@ -1007,16 +1007,17 @@ MtzToCif and CifToMtz. This code is used in gemmi command-line utilities
 The converters can use *spec files* for customization, see the command-line
 program documentation for details.
 
-CifToMtz has also Python bindings.
-
 .. doctest::
 
-  >>> conv = gemmi.CifToMtz()
-  >>> conv.spec_lines = ['pdbx_r_free_flag FREE I 0',
-  ...                    'F_meas_au FP F 1',
-  ...                    'F_meas_sigma_au SIGFP Q 1']
-  >>> conv.convert_block_to_mtz(rblock)
+  >>> cif2mtz = gemmi.CifToMtz()
+  >>> cif2mtz.spec_lines = ['pdbx_r_free_flag FREE I 0',
+  ...                       'F_meas_au FP F 1',
+  ...                       'F_meas_sigma_au SIGFP Q 1']
+  >>> cif2mtz.convert_block_to_mtz(rblock)
   <gemmi.Mtz with 6 columns, 406 reflections>
+  >>>
+  >>> # and convert it back
+  >>> cif_string = gemmi.MtzToCif().write_cif_to_string(_)
 
 
 SX hkl CIF
