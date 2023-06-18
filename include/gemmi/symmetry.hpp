@@ -2074,11 +2074,11 @@ struct ReciprocalAsu {
       case 7: return "h>=k and k>=0 and (h>k or l>=0)";
       case 8: return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
       case 9: return "k>=l and l>=h and h>=0";
-      case 10: return "k>0 or (k==0 and (h>0 or (h==0 and l>=0)))";
-      case 11: return "k>=0 and (h>0 or (h==0 and l>=0))";
-      case 13: return "l>=0 and ((k>=0 and h>0) or (h==0 and k==0))";
-      case 15: return "(k>=0 and h>0) or (h==0 and k==0 and l>=0)";
-      case 18: return "k>=0 and l>=0 and ((h>k and h>l) or (h==k and h>=l))";
+      case 10: return "k>0 or (k==0 and (h>0 or (h=0 and l>=0)))";
+      case 11: return "k>=0 and (h>0 or (h=0 and l>=0))";
+      case 13: return "l>=0 and ((k>=0 and h>0) or (h=0 and k==0))";
+      case 15: return "(k>=0 and h>0) or (h=0 and k==0 and l>=0)";
+      case 18: return "k>=0 and l>=0 and ((h>k and h>l) or (h=k and h>=l))";
       case 19: return "h>=k and k>=l and l>=0";
     }
     unreachable();
