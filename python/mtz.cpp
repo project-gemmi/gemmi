@@ -254,6 +254,15 @@ void add_mtz(py::module& m) {
         return out.str();
     }, py::arg("op"))
     .def("expand_to_p1", &Mtz::expand_to_p1)
+    // handy for testing, but slow and can't handle duplicated column names
+    .def("row_as_dict", [](const Mtz& self, const Miller& hkl) {
+        size_t offset = self.find_offset_of_hkl(hkl);
+        py::dict data;
+        if (offset != (size_t)-1)
+          for (const Mtz::Column& column : self.columns)
+            data[column.label.c_str()] = self.data[offset++];
+        return data;
+    }, py::arg("hkl"))
     .def("__repr__", [](const Mtz& self) {
         return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
                      self.nreflections, " reflections>");

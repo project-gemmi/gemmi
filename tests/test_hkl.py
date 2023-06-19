@@ -251,6 +251,26 @@ class TestConversion(unittest.TestCase):
         self.assertEqual(rblock.default_loop.tags[3:],
                          rblock_out.default_loop.tags)
         check_metadata(rblock_out, rblock_out)
+        def cif_floats(rb, tag):
+            return [float(x) if x != '?' else 8008.8008  # (arbitrary number)
+                    for x in rb.block.find_values(tag)]
+        tag = '_refln.phase_calc'
+        self.assertEqual(cif_floats(rblock, tag), cif_floats(rblock_out, tag))
+        tag = '_refln.pdbx_HL_A_iso'
+        self.assertEqual(cif_floats(rblock, tag), cif_floats(rblock_out, tag))
+        d1 = mtz.row_as_dict((7, 5, -1))
+        self.assertEqual(d1['K'], 5)  # just to check row_as_dict()
+        self.assertAlmostEqual(d1['FC'], 22.7, delta=1e-5)
+        self.assertAlmostEqual(d1['PHIC'], 91.1, delta=1e-5)
+
+        # test phase shift
+        mtz.spacegroup = gemmi.SpaceGroup(1)
+        mtz.ensure_asu()
+        # (75-1) is not in P1 asu, we get Friedel mate
+        self.assertEqual(mtz.row_as_dict((7, 5, -1)), {})
+        d2 = mtz.row_as_dict((-7, -5, 1))
+        self.assertAlmostEqual(d2['FC'], 22.7, delta=1e-5)
+        self.assertAlmostEqual(d2['PHIC'], 360-91.1, delta=1e-5)
 
 if __name__ == '__main__':
     unittest.main()

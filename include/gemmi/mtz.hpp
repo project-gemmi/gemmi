@@ -827,6 +827,9 @@ struct GEMMI_DLL Mtz {
       data[offset + i] = static_cast<float>(hkl[i]);
   }
 
+  /// Returns offset of the first hkl or (size_t)-1. Can be slow.
+  size_t find_offset_of_hkl(const Miller& hkl, size_t start=0) const;
+
   /// (for merged MTZ only) change HKL to ASU equivalent, adjust phases, etc
   void ensure_asu(bool tnt_asu=false);
 

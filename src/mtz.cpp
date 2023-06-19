@@ -32,6 +32,18 @@ void shift_hl_coefficients(float& a, float& b, float& c, float& d, double shift)
   d = d_;
 }
 
+// for probing/testing individual reflections, no need to optimize it
+size_t Mtz::find_offset_of_hkl(const Miller& hkl, size_t start) const {
+  if (!has_data() || columns.size() < 3)
+    fail("No data.");
+  if (start != 0)
+    start -= (start % columns.size());
+  for (size_t n = start; n + 2 < data.size(); n += columns.size())
+    if (get_hkl(n) == hkl)
+      return n;
+  return (size_t)-1;
+}
+
 void Mtz::ensure_asu(bool tnt_asu) {
   if (!is_merged())
     fail("Mtz::ensure_asu() is for merged MTZ only");
