@@ -248,6 +248,8 @@ class TestConversion(unittest.TestCase):
         cif_string = gemmi.MtzToCif().write_cif_to_string(mtz)
         doc_out = gemmi.cif.read_string(cif_string)
         (rblock_out,) = gemmi.as_refln_blocks(doc_out)
+        self.assertEqual(rblock.default_loop.tags[3:],
+                         rblock_out.default_loop.tags)
         check_metadata(rblock_out, rblock_out)
 
 if __name__ == '__main__':
