@@ -684,8 +684,8 @@ is written.
 
 .. _reindexing:
 
-Reindexing, ASU, sorting
-------------------------
+Reindexing, ASU, sorting, ...
+-----------------------------
 
 The reindexing function changes:
 
@@ -756,6 +756,21 @@ call ``mtz.sort(use_first=5)``.
   >>> mtz.sort_order
   [1, 2, 3, 4, 5]
 
+----
+
+"Sometimes you may want to reduce the symmetry of your space group and
+explicitly generate the symmetry related reflections. In most cases you will
+want to expand to P1 and generate data for a full hemisphere of reciprocal
+space." --- from documentation of the command EXPAND in Bart Hazes' SFTOOLS.
+
+Gemmi also has such a function:
+
+.. doctest::
+
+  >>> mtz.expand_to_p1()
+
+The reflections that are added may not be in the ASU and are not sorted.
+You may call ensure_asu() and sort() afterwards.
 
 Writing
 -------
@@ -992,16 +1007,17 @@ MtzToCif and CifToMtz. This code is used in gemmi command-line utilities
 The converters can use *spec files* for customization, see the command-line
 program documentation for details.
 
-CifToMtz has also Python bindings.
-
 .. doctest::
 
-  >>> conv = gemmi.CifToMtz()
-  >>> conv.spec_lines = ['pdbx_r_free_flag FREE I 0',
-  ...                    'F_meas_au FP F 1',
-  ...                    'F_meas_sigma_au SIGFP Q 1']
-  >>> conv.convert_block_to_mtz(rblock)
+  >>> cif2mtz = gemmi.CifToMtz()
+  >>> cif2mtz.spec_lines = ['pdbx_r_free_flag FREE I 0',
+  ...                       'F_meas_au FP F 1',
+  ...                       'F_meas_sigma_au SIGFP Q 1']
+  >>> cif2mtz.convert_block_to_mtz(rblock)
   <gemmi.Mtz with 6 columns, 406 reflections>
+  >>>
+  >>> # and convert it back
+  >>> cif_string = gemmi.MtzToCif().write_cif_to_string(_)
 
 
 SX hkl CIF

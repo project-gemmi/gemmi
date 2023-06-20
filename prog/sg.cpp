@@ -106,9 +106,12 @@ void print_info(const gemmi::SpaceGroup* sg, bool verbose) {
   printf("Is enantiomorphic: %s\n", sg->is_enantiomorphic() ? "yes" : "no");
   std::array<int, 3> gf = ops.find_grid_factors();
   printf("Grid restrictions: NX=%dn NY=%dn NZ=%dn\n", gf[0], gf[1], gf[2]);
-  printf("Reciprocal space ASU%s: %s\n",
-         is_reference ? "" : " wrt. standard setting",
-         gemmi::ReciprocalAsu(sg).condition_str());
+  for (bool tnt : {false, true})
+    printf("Reciprocal space ASU (%s)%s: %s%s\n",
+           tnt ? "TNT" : "CCP4",
+           is_reference ? "" : " wrt. standard setting",
+           tnt ? " " : "",
+           gemmi::ReciprocalAsu(sg, tnt).condition_str());
   gemmi::AsuBrick brick = gemmi::find_asu_brick(sg);
   printf("Direct space ASU brick: %s\n", brick.str().c_str());
   print_symmetry_operations(ops);

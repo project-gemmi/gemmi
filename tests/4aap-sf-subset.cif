@@ -1,0 +1,104 @@
+# most of the reflections in this file were removed to make it smaller
+data_r4aapsf
+# 
+loop_
+_audit.revision_id 
+_audit.creation_date 
+_audit.update_record 
+1_0 2011-12-05 'Initial release'                        
+1_1 2012-06-01 'Format standardization'                 
+4_0 2013-04-03 'Format standardization and re-release.' 
+# 
+_cell.entry_id      4aap 
+_cell.length_a      68.575 
+_cell.length_b      68.575 
+_cell.length_c      269.003 
+_cell.angle_alpha   90.00 
+_cell.angle_beta    90.00 
+_cell.angle_gamma   120.00 
+# 
+_diffrn.id                  1 
+_diffrn.crystal_id          1 
+_diffrn.ambient_temp        ? 
+_diffrn.crystal_treatment   ? 
+_diffrn.details             ? 
+# 
+_diffrn_radiation_wavelength.id           1 
+_diffrn_radiation_wavelength.wavelength   0.97 
+# 
+_diffrn_reflns.diffrn_id         1 
+_diffrn_reflns.pdbx_d_res_high   2.600 
+_diffrn_reflns.pdbx_d_res_low    89.668 
+_diffrn_reflns.number            23588 
+# 
+_entry.id   4aap 
+# 
+_exptl_crystal.id   1 
+# 
+_reflns_scale.group_code   1 
+# 
+_symmetry.entry_id               4aap 
+_symmetry.space_group_name_H-M   'P 32 2 1' 
+# 
+loop_
+_symmetry_equiv.id 
+_symmetry_equiv.pos_as_xyz 
+1 X,Y,Z          
+2 -Y,X-Y,Z+2/3   
+3 -X+Y,-X,Z+1/3  
+4 Y,X,-Z         
+5 X-Y,-Y,-Z+1/3  
+6 -X,-X+Y,-Z+2/3 
+# 
+#
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.scale_group_code
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.status
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+_refln.F_calc
+_refln.phase_calc
+_refln.pdbx_HL_A_iso
+_refln.pdbx_HL_B_iso
+_refln.pdbx_HL_C_iso
+_refln.pdbx_HL_D_iso
+1 1 1    0    0   15 o    106.8   10.4       49.6   180.0   -0.01    0.00    0.00    0.00 
+1 1 1    0    0   18 o    520.9   70.1      964.4   180.0   -0.15    0.00    0.00    0.00 
+# ...
+1 1 1    4    0   99 o      9.6    4.4        5.1   180.0    0.00    0.00    0.00    0.00 
+1 1 1    4    0  100 o      9.1    4.2       47.0   300.0    0.00    0.00    0.00    0.00 
+1 1 1    4    0  101 o      8.3    3.8       19.7   240.0    0.00    0.00    0.00    0.00 
+1 1 1    4    1 -101 x        ?      ?       29.2   303.0       ?       ?       ?       ? 
+1 1 1    4    1 -100 o     15.5    4.2       16.0   341.4    0.00    0.00    0.00    0.00 
+1 1 1    4    1  -99 o     23.3    5.0       59.6   310.9    0.00    0.00    0.00    0.00 
+1 1 1    4    1  -98 o     16.5    4.3       25.8   122.8    0.00    0.00    0.00    0.00 
+1 1 1    4    1  -97 o     47.4    4.6       39.7   130.0    0.00    0.00    0.00    0.00 
+# ...
+1 1 1    7    1   -6 o    313.1    6.0      171.4   142.0  -15.26   11.26    2.06    4.11 
+1 1 1    7    1   -5 o    118.3    4.4      207.7   164.7  -11.59   -2.13    2.01   -1.72 
+1 1 1    7    1   -4 o    305.6    5.6      327.0    68.8    3.69   45.69    9.65    1.09 
+# ...
+1 1 1    7    5   -3 o    244.7    5.2      284.2   219.7  -27.59  -14.52    7.45   -7.86 
+1 1 1    7    5   -2 o    174.0    4.4       47.6   276.0   -4.63   -4.00    2.34   -3.66 
+1 1 1    7    5   -1 o     96.9    4.0       22.7    91.1   -6.05   -9.60    3.26   -3.65 
+1 1 1    7    5    0 o     95.9    4.5       82.1    29.2    1.81    1.31    0.15   -0.70 
+1 1 1    7    5    1 o    134.9    4.2      145.4    25.1    8.71   -2.41    0.84    1.28 
+1 1 1    7    5    2 o    348.3    7.0      355.6   349.3    0.03    0.02    0.54   -0.39 
+1 1 1    7    5    3 o    174.9    4.4      142.9   197.8  -20.36   -5.15    7.51   -0.57 
+1 1 1    7    5    4 o    401.4    7.8      371.1   337.0    7.20    2.40    2.17   -1.91 
+1 1 1    7    5    5 o    146.7    4.8      181.8   297.5   -3.39   -6.93    2.57   -1.90 
+1 1 1    7    5    6 o    474.1    7.8      467.1   311.7    4.64    1.38    1.15   -0.26 
+1 1 1    7    5    7 o    255.6    4.8      321.8   251.3   -2.94    1.23    0.86    0.25 
+1 1 1    7    5    8 f    346.7    6.2      417.9   312.4    1.98    1.06    0.52   -0.22 
+1 1 1    7    5    9 o    185.6    4.0      220.7   157.1   -5.09    0.87    0.79    0.47 
+# ...
+1 1 1    8    0   53 o    186.0    7.8      129.4   240.0   -0.01   -0.02    0.00    0.00 
+1 1 1    8    0   54 f    122.8    6.5       79.6   180.0   -0.48    0.00    0.00    0.00 
+1 1 1    8    0   55 o    369.5   11.9      204.9   120.0   -0.01    0.01    0.00    0.00 
+1 1 1    8    0   56 o    413.5   12.9      449.1    60.0   -0.03   -0.05    0.00    0.00 
+# ...

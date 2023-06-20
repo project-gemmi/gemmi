@@ -232,5 +232,45 @@ class TestBinner(unittest.TestCase):
         inv_d2 = [mtz.cell.calculate_1_d2(h) for h in hkls]
         self.assertEqual(list(binner.get_bins_from_1_d2(inv_d2)), bins)
 
+class TestConversion(unittest.TestCase):
+    def test_4aap(self):
+        def check_metadata(o, d):
+            self.assertEqual(o.spacegroup.hm, 'P 32 2 1')
+            self.assertEqual(o.cell.a, 68.575)
+            self.assertEqual(d.cell.gamma, 120)
+            self.assertEqual(d.wavelength, 0.97)
+        doc = gemmi.cif.read(full_path('4aap-sf-subset.cif'))
+        (rblock,) = gemmi.as_refln_blocks(doc)
+        check_metadata(rblock, rblock)
+        self.assertFalse(rblock.is_unmerged())
+        mtz = gemmi.CifToMtz().convert_block_to_mtz(rblock)
+        check_metadata(mtz, mtz.datasets[1])
+        cif_string = gemmi.MtzToCif().write_cif_to_string(mtz)
+        doc_out = gemmi.cif.read_string(cif_string)
+        (rblock_out,) = gemmi.as_refln_blocks(doc_out)
+        self.assertEqual(rblock.default_loop.tags[3:],
+                         rblock_out.default_loop.tags)
+        check_metadata(rblock_out, rblock_out)
+        def cif_floats(rb, tag):
+            return [float(x) if x != '?' else 8008.8008  # (arbitrary number)
+                    for x in rb.block.find_values(tag)]
+        tag = '_refln.phase_calc'
+        self.assertEqual(cif_floats(rblock, tag), cif_floats(rblock_out, tag))
+        tag = '_refln.pdbx_HL_A_iso'
+        self.assertEqual(cif_floats(rblock, tag), cif_floats(rblock_out, tag))
+        d1 = mtz.row_as_dict((7, 5, -1))
+        self.assertEqual(d1['K'], 5)  # just to check row_as_dict()
+        self.assertAlmostEqual(d1['FC'], 22.7, delta=1e-5)
+        self.assertAlmostEqual(d1['PHIC'], 91.1, delta=1e-5)
+
+        # test phase shift
+        mtz.spacegroup = gemmi.SpaceGroup(1)
+        mtz.ensure_asu()
+        # (75-1) is not in P1 asu, we get Friedel mate
+        self.assertEqual(mtz.row_as_dict((7, 5, -1)), {})
+        d2 = mtz.row_as_dict((-7, -5, 1))
+        self.assertAlmostEqual(d2['FC'], 22.7, delta=1e-5)
+        self.assertAlmostEqual(d2['PHIC'], 360-91.1, delta=1e-5)
+
 if __name__ == '__main__':
     unittest.main()
