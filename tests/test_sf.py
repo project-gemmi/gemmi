@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
 import unittest
+import math
+import cmath
 import gemmi
+from common import full_path, numpy
 
 # from 5nl9
 FRAGMENT_WITH_UNK = """\
@@ -34,6 +37,54 @@ class TestDensityCalculator(unittest.TestCase):
             dencalc.set_grid_cell_and_spacegroup(st)
             # we only check here that it doesn't crash
             dencalc.put_model_density_on_grid(st[0])
+
+class TestExpandingToP1(unittest.TestCase):
+    def test_1gdr(self):
+        st = gemmi.read_pdb(full_path('pdb1gdr.ent'), max_line_length=72)
+        sg = st.find_spacegroup()
+        order = len(sg.operations())
+        self.assertEqual(order, 12)
+        sfcalc = gemmi.StructureFactorCalculatorX(st.cell)
+        mtz = gemmi.Mtz(with_base=True)
+        mtz.spacegroup = sg
+        mtz.set_cell_for_all(st.cell)
+        mtz.add_dataset('calc')
+        mtz.add_column('FC', 'F')
+        mtz.add_column('PHIC', 'P')
+        hkl1 = (-7, 11, 5)
+        hkl2 = (6, 8, -1)
+        sf1 = sfcalc.calculate_sf_from_model(st[0], hkl1)
+        sf2 = sfcalc.calculate_sf_from_model(st[0], hkl2)
+        def polar(c):
+            mag, phase = cmath.polar(c)
+            return (mag, math.degrees(phase))
+        if not numpy:
+            return
+        data = numpy.array([hkl1 + polar(sf1),
+                            hkl2 + polar(sf2)], numpy.float32)
+        mtz.set_data(data)
+        mtz.expand_to_p1()
+        st.transform_to_assembly('unit_cell',
+                                 gemmi.HowToNameCopiedChain.AddNumber)
+        # AsuData as_is is not yet in ASU.
+        pre_asudata = mtz.get_f_phi('FC', 'PHIC', as_is=True)
+        # Check structure factors after expand_to_p1(),
+        # in particular we check here if phase shift is correct.
+        for v in pre_asudata:
+            usf = sfcalc.calculate_sf_from_model(st[0], v.hkl)
+            self.assertAlmostEqual(v.value, usf / order, delta=1e-4)
+        # The same after Mtz.ensure_asu(), which also changes phases.
+        mtz.ensure_asu()
+        asudata = mtz.get_f_phi('FC', 'PHIC', as_is=True)
+        self.assertEqual(hkl1, tuple(asudata[0].hkl))
+        for v in asudata:
+            usf = sfcalc.calculate_sf_from_model(st[0], v.hkl)
+            self.assertAlmostEqual(v.value, usf / order, delta=1e-4)
+        # Finally, test AsuData.ensure_asu().
+        pre_asudata.ensure_asu()
+        for v in pre_asudata:
+            usf = sfcalc.calculate_sf_from_model(st[0], v.hkl)
+            self.assertAlmostEqual(v.value, usf / order, delta=1e-4)
 
 if __name__ == '__main__':
     unittest.main()

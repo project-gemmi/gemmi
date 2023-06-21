@@ -732,8 +732,6 @@ When appropriate, changing hkl indices is also:
 * swapping anomalous pairs, such as I(+)/I(-), F(+)/F(-) and E(+)/E(-),
 * changing the sign of anomalous differences (column type D).
 
-**Current limitations:** H-L coefficients may not be handled properly.
-
 ----
 
 To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:

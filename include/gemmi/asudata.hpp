@@ -120,17 +120,17 @@ void move_to_asu(const GroupOps&, const Miller& hkl, int, HklValue<T>& hkl_value
 
 template<typename R>
 void move_to_asu(const GroupOps& gops, const Miller& hkl, int isym,
-                 HklValue<std::complex<R>>& hkl_value) {
-  hkl_value.hkl = hkl;
+                 HklValue<std::complex<R>>& v) {
+  v.hkl = hkl;
   // cf. Mtz::ensure_asu()
   const Op& op = gops.sym_ops[(isym - 1) / 2];
   double shift = op.phase_shift(hkl);
   if (shift != 0) {
-    if (isym % 2 == 0)
-      shift = -shift;
-    double phase = std::arg(hkl_value.value) + shift;
-    hkl_value.value = std::polar(std::abs(hkl_value.value), (R)phase);
+    double phase = std::arg(v.value) + shift;
+    v.value = std::polar(std::abs(v.value), (R)phase);
   }
+  if (isym % 2 == 0)
+    v.value.imag(-v.value.imag());
 }
 } // namespace impl
 

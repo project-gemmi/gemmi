@@ -264,13 +264,30 @@ class TestConversion(unittest.TestCase):
         self.assertAlmostEqual(d1['PHIC'], 91.1, delta=1e-5)
 
         # test phase shift
-        mtz.spacegroup = gemmi.SpaceGroup(1)
+        mtz.expand_to_p1()
+        self.assertEqual(mtz.row_as_dict((7, 5, -1)), d1)
         mtz.ensure_asu()
         # (75-1) is not in P1 asu, we get Friedel mate
         self.assertEqual(mtz.row_as_dict((7, 5, -1)), {})
         d2 = mtz.row_as_dict((-7, -5, 1))
         self.assertAlmostEqual(d2['FC'], 22.7, delta=1e-5)
         self.assertAlmostEqual(d2['PHIC'], 360-91.1, delta=1e-5)
+        self.assertAlmostEqual(d2['HLA'], d1['HLA'], delta=1e-5)
+        self.assertAlmostEqual(d2['HLB'], -d1['HLB'], delta=1e-5)
+        self.assertAlmostEqual(d2['HLC'], d1['HLC'], delta=1e-5)
+        self.assertAlmostEqual(d2['HLD'], -d1['HLD'], delta=1e-5)
+        # Expanding mtz file with SFTOOLS from CCP4 (command EXPAND)
+        # and cctbx (miller_array.expand_to_p1().map_to_asu()) gives
+        # different phases (and H-L coefficients) for some reflections,
+        # including (-12, 5, 1).
+        # Here we agree with cctbx (which gives PHIC -28.9).
+        d3 = mtz.row_as_dict((-12, 5, 1))
+        self.assertAlmostEqual(d3['FC'], 22.7, delta=1e-5)
+        self.assertAlmostEqual(d3['PHIC'], 360-28.9, delta=1e-5)
+        self.assertAlmostEqual(d3['HLA'], -5.28884, delta=1e-5)
+        self.assertAlmostEqual(d3['HLB'], 10.0395, delta=1e-4)
+        self.assertAlmostEqual(d3['HLC'], 1.53099, delta=1e-5)
+        self.assertAlmostEqual(d3['HLD'], 4.64824, delta=1e-5)
 
 if __name__ == '__main__':
     unittest.main()

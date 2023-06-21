@@ -5,17 +5,20 @@
 
 namespace gemmi {
 
+double wrap_degrees(double phi) {
+  if (phi >= 0 && phi < 360.)
+    return phi;
+  return phi - std::floor(phi / 360.) * 360.;
+}
+
 void shift_phase(float& phi, double shift, bool negate=false) {
   double phi_ = phi + deg(shift);
-  if (negate)
-    phi_ = -phi_;
-  if (phi_ < 0 || phi_ >= 360.)
-    phi_ -= std::floor(phi_ / 360.) * 360.;
-  phi = float(phi_);
+  phi = float(wrap_degrees(negate ? -phi_ : phi_));
 }
 
 // apply phase shift to Hendrickson–Lattman coefficients HLA, HLB, HLC and HLD
-void shift_hl_coefficients(float& a, float& b, float& c, float& d, double shift) {
+void shift_hl_coefficients(float& a, float& b, float& c, float& d,
+                           double shift, bool negate=false) {
   double sinx = std::sin(shift);
   double cosx = std::cos(shift);
   double sin2x = 2 * sinx * cosx;
@@ -26,10 +29,10 @@ void shift_hl_coefficients(float& a, float& b, float& c, float& d, double shift)
   float b_ = float(a * sinx + b * cosx);
   float c_ = float(c * cos2x - d * sin2x);
   float d_ = float(c * sin2x + d * cos2x);
-  a = a_;
-  b = b_;
-  c = c_;
-  d = d_;
+  a = a_;                 // cos(phi)
+  b = negate ? -b_ : b_;  // sin(phi)
+  c = c_;                 // cos(2 phi)
+  d = negate ? -d_ : d_;  // sin(2 phi)
 }
 
 // for probing/testing individual reflections, no need to optimize it
@@ -77,7 +80,8 @@ void Mtz::ensure_asu(bool tnt_asu) {
       for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4)
         // we expect coefficients HLA, HLB, HLC and HLD - in this order
         shift_hl_coefficients(data[n + *(i+0)], data[n + *(i+1)],
-                              data[n + *(i+2)], data[n + *(i+3)], shift);
+                              data[n + *(i+2)], data[n + *(i+3)],
+                              shift, negate);
     }
     if (isym % 2 == 0 && !centric &&
         // usually, centric reflections have empty F(-), so avoid swapping it
@@ -183,8 +187,8 @@ void Mtz::expand_to_p1() {
               shift_phase(data[offset + col], shift);
             for (auto i = abcd_columns.begin(); i+3 < abcd_columns.end(); i += 4)
               // we expect coefficients HLA, HLB, HLC and HLD - in this order
-              shift_hl_coefficients(data[n + *(i+0)], data[n + *(i+1)],
-                                    data[n + *(i+2)], data[n + *(i+3)], shift);
+              shift_hl_coefficients(data[offset + *(i+0)], data[offset + *(i+1)],
+                                    data[offset + *(i+2)], data[offset + *(i+3)], shift);
           }
         }
       }
