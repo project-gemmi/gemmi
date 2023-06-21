@@ -178,7 +178,8 @@ void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double ma
 }
 
 void transform_to_assembly(Structure& st, const std::string& assembly_name,
-                           HowToNameCopiedChain how, std::ostream* out) {
+                           HowToNameCopiedChain how, std::ostream* out,
+                           bool keep_spacegroup) {
   const Assembly* assembly = st.find_assembly(assembly_name);
   std::unique_ptr<Assembly> p1_assembly;
   if (!assembly) {
@@ -241,8 +242,14 @@ void transform_to_assembly(Structure& st, const std::string& assembly_name,
 
   // Should Assembly instructions be kept or removed? Currently - removing.
   st.assemblies.clear();
-  // Should st.spacegroup_hm and st.cell be kept? Here we remove only:
-  st.cell.images.clear();
+
+  if (!keep_spacegroup) {
+    st.spacegroup_hm = "P 1";  // maybe it should be empty?
+    if (assembly_name != "unit_cell")
+      st.cell = UnitCell();
+  } else {
+    st.cell.images.clear();
+  }
 }
 
 
