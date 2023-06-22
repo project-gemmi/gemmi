@@ -9,14 +9,18 @@
 #include <type_traits>  // for remove_cv
 #include <vector>
 
-#ifdef  __INTEL_COMPILER
-// warning #597: "X<T>::operator X<T>() const" will not be called for implicit
-// or explicit conversions. That warning is triggered when templates
-// StrideIter, IndirectIter and others are expanded with const Value.
-# pragma warning disable 597
-#endif
-
 namespace gemmi {
+
+// Disable warning "X<T>::operator X<T>() const will not be called for
+// implicit or explicit conversions", which is triggered when templates
+// StrideIter, IndirectIter and others are expanded with const Value.
+#if defined __INTEL_COMPILER or defined __NVCOMPILER
+  #pragma diagnostic push
+  #pragma diag_suppress = conversion_function_not_usable
+#elif defined __NVCC__
+  #pragma nv_diagnostic push
+  #pragma nv_diag_suppress = conversion_function_not_usable
+#endif
 
 // implements concept BidirectionalIterator
 template <typename Policy>
@@ -272,6 +276,12 @@ private:
   int extent_ = 0;
   Item* start_ = nullptr;
 };
+
+#if defined __INTEL_COMPILER or defined __NVCOMPILER
+  #pragma diagnostic pop
+#elif defined __NVCC__
+  #pragma nv_diagnostic pop
+#endif
 
 } // namespace gemmi
 #endif
