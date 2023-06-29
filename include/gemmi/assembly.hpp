@@ -111,8 +111,10 @@ GEMMI_DLL void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
                                              double max_dist=0.2);
 
 /// If called with assembly_name="unit_cell" changes structure to unit cell (P1).
+/// \par keep_spacegroup preserves space group and unit cell - is it needed?
 GEMMI_DLL void transform_to_assembly(Structure& st, const std::string& assembly_name,
-                                     HowToNameCopiedChain how, std::ostream* out);
+                                     HowToNameCopiedChain how, std::ostream* out,
+                                     bool keep_spacegroup=false);
 
 // chain is assumed to be from st.models[0]
 GEMMI_DLL void rename_chain(Structure& st, Chain& chain, const std::string& new_name);
