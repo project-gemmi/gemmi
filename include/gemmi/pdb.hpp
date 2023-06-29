@@ -362,6 +362,9 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
         if (st.assemblies.empty())
           continue;
         Assembly& assembly = st.assemblies.back();
+        auto r350_key = [&](int cpos, const char* text) {
+          return colon == line + cpos && starts_with(line+11, text);
+        };
         if (starts_with(line+11, "  BIOMT")) {
           if (read_matrix(matrix, line+13, len-13) == 3)
             if (!assembly.generators.empty()) {
@@ -371,23 +374,22 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
               opers.back().transform = matrix;
               matrix.set_identity();
             }
-#define CHECK(cpos, text) (colon == line+(cpos) && starts_with(line+11, text))
-        } else if (CHECK(44, "AUTHOR DETERMINED")) {
+        } else if (r350_key(44, "AUTHOR DETERMINED")) {
           assembly.author_determined = true;
           assembly.oligomeric_details = read_string(line+45, 35);
-        } else if (CHECK(51, "SOFTWARE DETERMINED")) {
+        } else if (r350_key(51, "SOFTWARE DETERMINED")) {
           assembly.software_determined = true;
           assembly.oligomeric_details = read_string(line+52, 28);
-        } else if (CHECK(24, "SOFTWARE USED")) {
+        } else if (r350_key(24, "SOFTWARE USED")) {
           assembly.software_name = read_string(line+25, 55);
-        } else if (CHECK(36, "TOTAL BURIED SURFACE AREA")) {
+        } else if (r350_key(36, "TOTAL BURIED SURFACE AREA")) {
           assembly.absa = read_double(line+37, 12);
-        } else if (CHECK(38, "SURFACE AREA OF THE COMPLEX")) {
+        } else if (r350_key(38, "SURFACE AREA OF THE COMPLEX")) {
           assembly.ssa = read_double(line+39, 12);
-        } else if (CHECK(40, "CHANGE IN SOLVENT FREE ENERGY")) {
+        } else if (r350_key(40, "CHANGE IN SOLVENT FREE ENERGY")) {
           assembly.more = read_double(line+41, 12);
-        } else if (CHECK(40, "APPLY THE FOLLOWING TO CHAINS") ||
-                   CHECK(40, "                   AND CHAINS")) {
+        } else if (r350_key(40, "APPLY THE FOLLOWING TO CHAINS") ||
+                   r350_key(40, "                   AND CHAINS")) {
           if (line[11] == 'A') // first line - APPLY ...
             assembly.generators.emplace_back();
           else if (assembly.generators.empty())
@@ -395,7 +397,6 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
           split_str_into_multi(read_string(line+41, 39), ", ",
                                assembly.generators.back().chains);
         }
-#undef CHECK
       }
 
     } else if (is_record_type(line, "CONECT")) {
