@@ -235,7 +235,7 @@ add_single_prog(merge GZ)
 add_single_prog(mondiff)
 add_single_prog(mtz GZ)
 add_single_prog(mtz2cif GZ)
-add_single_prog(prep)
+add_single_prog(prep ADD_SRC prog/monlib_opt.cpp GZ)
 add_single_prog(reindex GZ)
 add_single_prog(residues)
 add_single_prog(rmsz)
@@ -254,8 +254,8 @@ add_executable(gemmi_prog
                prog/contents.cpp prog/convert.cpp prog/fprime.cpp
                prog/grep.cpp prog/h.cpp prog/json2cif.cpp
                prog/main.cpp prog/map.cpp prog/map2sf.cpp
-               prog/mapcoef.cpp prog/mask.cpp
-               prog/merge.cpp prog/mondiff.cpp prog/mtz.cpp prog/mtz2cif.cpp
+               prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp
+               prog/mondiff.cpp prog/monlib_opt.cpp prog/mtz.cpp prog/mtz2cif.cpp
                prog/prep.cpp prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
                prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp

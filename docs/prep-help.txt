@@ -9,11 +9,13 @@ Options:
   -h, --help          Print usage and exit.
   -V, --version       Print version and exit.
   -v, --verbose       Verbose output.
-  --monomers=DIR      Monomer library dir (default: $CLIBD_MON).
-  --lib=CIF           User's library with priority over the monomer library. Can
-                      be given multiple times. If CIF is '+' reads INPUT_FILE
-                      (mmCIF only).
-  --low=CIF           Like --lib, but with the lowest priority.
+  --monomers=DIR      Monomer library (ML) dir (default: $CLIBD_MON).
+  -L CIF, --lib=CIF   User's restraint file. Can be used multiple times, in the
+                      order of priority. Special values:
+                      '+' = monomer blocks at the end of mmCIF INPUT_FILE,
+                      '@' = the priority of ML (default: lowest). E.g.:
+                       -L file.cif -L+   order: file.cif, input file, ML
+                       -L@ -L file.cif   order: ML, file.cif
   --auto-cis=Y|N      Assign cis/trans ignoring CISPEP record (default: Y).
   --auto-link=Y|N     Find links not included in LINK/SSBOND (default: N).
   --auto-ligand=Y|N   If ligand has no definition make ad-hoc restraints (N).
