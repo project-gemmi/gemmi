@@ -1,20 +1,18 @@
 // Copyright 2017 Global Phasing Ltd.
 
-#include <cstdio>
-#include <cstdlib>   // for getenv
-#include <stdexcept>
-#include <iostream>  // for cout
+#include <cstdio>     // for printf, fprintf
+#include <exception>  // for exception
+#include <iostream>   // for cout, cerr
 #include <gemmi/polyheur.hpp>  // for setup_entities
 #include <gemmi/modify.hpp>    // for remove_hydrogens
 #include <gemmi/to_cif.hpp>    // for write_cif_to_file
 #include <gemmi/to_mmcif.hpp>  // for make_mmcif_document
 #include <gemmi/to_pdb.hpp>    // for write_pdb
-#include <gemmi/monlib.hpp>    // for MonLib, read_monomer_lib
-#include <gemmi/topo.hpp>      // for Topo
+#include <gemmi/monlib.hpp>    // for MonLib
+#include <gemmi/topo.hpp>      // for Topo, prepare_topology
 #include <gemmi/fstream.hpp>   // for Ofstream
-#include <gemmi/riding_h.hpp>  // for prepare_topology
-#include <gemmi/read_cif.hpp>  // for read_cif_gz
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
+#include "monlib_opt.h"
 
 #define GEMMI_PROG h
 #include "options.h"
@@ -23,7 +21,7 @@ namespace cif = gemmi::cif;
 
 namespace {
 
-enum OptionIndex { Monomers=4, FormatIn, RemoveH, KeepH, Water, Sort };
+enum OptionIndex { FormatIn=AfterMonLibOptions, RemoveH, KeepH, Water, Sort };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -36,8 +34,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { Monomers, 0, "", "monomers", Arg::Required,
-    "  --monomers=DIR  \tMonomer library dir (default: $CLIBD_MON)." },
+  MonLibUsage[0], // Monomers
+  MonLibUsage[1], // Libin
   { FormatIn, 0, "", "format", Arg::CoorFormat,
     "  --format=FORMAT  \tInput format (default: from the file extension)." },
   { RemoveH, 0, "", "remove", Arg::None,
@@ -66,8 +64,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.require_positional_args(2);
-  const char* monomer_dir = p.options[Monomers] ? p.options[Monomers].arg
-                                                : std::getenv("CLIBD_MON");
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
   p.check_exclusive_pair(KeepH, RemoveH);
@@ -79,6 +75,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     h_change = gemmi::HydrogenChange::Shift;
   else if (p.options[Water])
     h_change = gemmi::HydrogenChange::ReAdd;
+
+  MonArguments mon_args;
+  if (h_change != gemmi::HydrogenChange::Remove)
+    mon_args = get_monomer_args(p.options);
 
   if (p.options[Verbose])
     std::printf("Reading coordinates from %s\n", input.c_str());
@@ -105,17 +105,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (h_change == gemmi::HydrogenChange::Remove) {
       gemmi::remove_hydrogens(st);
     } else {
-      if (monomer_dir == nullptr || *monomer_dir == '\0') {
-        std::fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
-        return 1;
-      }
-      std::vector<std::string> res_names = st.models[0].get_all_residue_names();
-      if (p.options[Verbose])
-        std::printf("Reading %zu monomers and all links from %s\n",
-                    res_names.size(), input.c_str());
-      std::string libin;
-      gemmi::MonLib monlib = gemmi::read_monomer_lib(monomer_dir, res_names,
-                                                     gemmi::read_cif_gz, libin, true);
+      gemmi::MonLib monlib;
+      std::vector<std::string> wanted = st.models[0].get_all_residue_names();
+      read_monomer_lib_and_user_files(monlib, wanted, mon_args, doc.get());
+      if (!wanted.empty())
+        gemmi::fail("Please create definitions for missing monomers.");
       for (size_t i = 0; i != st.models.size(); ++i)
         // preparing topology modifies hydrogens in the model
         prepare_topology(st, monlib, i, h_change, p.options[Sort], &std::cerr);
