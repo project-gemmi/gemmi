@@ -50,6 +50,7 @@ const option::Descriptor Usage[] = {
     "  -H, --no-hydrogens  \tRemove (and do not add) hydrogens." },
   { KeepHydrogens, 0, "", "keep-hydrogens", Arg::None,
     "  --keep-hydrogens  \tPreserve hydrogens from the input file." },
+  MonLibUsage[2], // details about Libin (--lib)
   { 0, 0, 0, 0, 0, 0 }
 };
 

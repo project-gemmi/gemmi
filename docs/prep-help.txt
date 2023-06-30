@@ -9,13 +9,8 @@ Options:
   -h, --help          Print usage and exit.
   -V, --version       Print version and exit.
   -v, --verbose       Verbose output.
-  --monomers=DIR      Monomer library (ML) dir (default: $CLIBD_MON).
-  -L CIF, --lib=CIF   User's restraint file. Can be used multiple times, in the
-                      order of priority. Special values:
-                      '+' = monomer blocks at the end of mmCIF INPUT_FILE,
-                      '@' = the priority of ML (default: lowest). E.g.:
-                       -L file.cif -L+   order: file.cif, input file, ML
-                       -L@ -L file.cif   order: ML, file.cif
+  --monomers=DIR      Monomer library directory (default: $CLIBD_MON).
+  -L CIF, --lib=CIF   User's restraint file(s). See more info below.
   --auto-cis=Y|N      Assign cis/trans ignoring CISPEP record (default: Y).
   --auto-link=Y|N     Find links not included in LINK/SSBOND (default: N).
   --auto-ligand=Y|N   If ligand has no definition make ad-hoc restraints (N).
@@ -24,3 +19,10 @@ Options:
 Hydrogen options (default: remove and add on riding positions):
   -H, --no-hydrogens  Remove (and do not add) hydrogens.
   --keep-hydrogens    Preserve hydrogens from the input file.
+
+Option -L/--lib can be used multiple times, in order of priority.
+Its argument is either a file path or one of the two special values:
+    '+' = monomer blocks in mmCIF INPUT_FILE (ignored by default)
+    '@' = the priority of the monomer library (ML, default: lowest)
+Example 1:   -L file.cif -L+    order: file.cif, input file, ML
+Example 2:   -L@ -L file.cif    order: ML, file.cif

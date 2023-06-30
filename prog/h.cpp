@@ -46,6 +46,7 @@ const option::Descriptor Usage[] = {
     "  --water  \tAdd hydrogens also to waters." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder atoms in residues according to _chem_comp_atom." },
+  MonLibUsage[2], // details about Libin (--lib)
   { 0, 0, 0, 0, 0, 0 }
 };
 

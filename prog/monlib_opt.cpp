@@ -11,14 +11,16 @@
 
 const option::Descriptor MonLibUsage[] = {
   { Monomers, 0, "", "monomers", Arg::Required,
-    "  --monomers=DIR  \tMonomer library (ML) dir (default: $CLIBD_MON)." },
+    "  --monomers=DIR  \tMonomer library directory (default: $CLIBD_MON)." },
   { Libin, 0, "L", "lib", Arg::Required,
-    "  -L CIF, --lib=CIF  \tUser's restraint file. "
-    "Can be used multiple times, in the order of priority. Special values:\n\t"
-    "'+' = monomer blocks at the end of mmCIF INPUT_FILE,\n\t"
-    "'@' = the priority of ML (default: lowest). E.g.:\n\t"
-    " -L file.cif -L+   order: file.cif, input file, ML\n\t"
-    " -L@ -L file.cif   order: ML, file.cif" },
+    "  -L CIF, --lib=CIF  \tUser's restraint file(s). See more info below." },
+  { NoOp, 0, "", "", Arg::None,
+    "\nOption -L/--lib can be used multiple times, in order of priority."
+    "\nIts argument is either a file path or one of the two special values:"
+    "\n    '+' = monomer blocks in mmCIF INPUT_FILE (ignored by default)"
+    "\n    '@' = the priority of the monomer library (ML, default: lowest)"
+    "\nExample 1:   -L file.cif -L+    order: file.cif, input file, ML"
+    "\nExample 2:   -L@ -L file.cif    order: ML, file.cif" }
 };
 
 MonArguments get_monomer_args(const std::vector<option::Option>& options) {

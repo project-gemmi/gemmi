@@ -42,6 +42,7 @@ const option::Descriptor Usage[] = {
     "  --cutoff=ZC  \tList bonds and angles with Z score > ZC (default: 2)." },
   { Sort, 0, "s", "sort", Arg::None,
     "  -s, --sort  \tSort output according to |Z|." },
+  MonLibUsage[2], // details about Libin (--lib)
   { 0, 0, 0, 0, 0, 0 }
 };
 
