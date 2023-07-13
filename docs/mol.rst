@@ -1716,6 +1716,10 @@ a shift between overlapping images.
 The ``max_dist`` parameter specifies cut-off for merging -- atom copies
 are merged only if their distance is smaller. The merged atom has summed
 occupancy and averaged position. B-factors are not changed.
+It is assumed, by default, that the identical atoms that are to be merged
+have the same serial number. If this function is not called directly after
+make_assembly() and the serial numbers were re-assigned in the meantime,
+add argument ``compare_serial=false``.
 
 Function ``transform_to_assembly()`` changes all models in the given structure
 to assemblies. Then it merges duplicated atoms,
