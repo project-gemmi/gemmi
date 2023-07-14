@@ -208,7 +208,7 @@ public:
   }
 
   // use _pdbx_item_linked_group_list
-  void read_parent_links() {
+  void read_parent_links(std::ostream& out) {
     cif::Table tab = ddl_.blocks.at(0).find("_pdbx_item_linked_group_list.",
                                             {"child_category_id", "link_group_id",
                                              "child_name", "parent_name"});
@@ -226,6 +226,26 @@ public:
       }
       it->child_tags.push_back(row.str(2));
       it->parent_tags.push_back(row.str(3));
+    }
+
+    // sanity check
+    for (ParentLink& link : parents_) {
+      bool ok = true;
+      if (common_category(link.child_tags) == 0) {
+        out << "Bad DDL2: linked group [" << link.group
+            << "] has children in different categories" << std::endl;
+        ok = false;
+      }
+      if (common_category(link.parent_tags) == 0) {
+        out << "Bad DDL2: linked group [" << link.group
+            << "] has parents in different categories" << std::endl;
+        ok = false;
+      }
+      if (!ok) {
+        // the simplest fix: leave only the first relation
+        link.child_tags.resize(1);
+        link.parent_tags.resize(1);
+      }
     }
   }
 
@@ -834,7 +854,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next()) {
         dict.open_file(ddl->arg);
         if (p.options[Parents])
-          dict.read_parent_links();
+          dict.read_parent_links(std::cout);
       }
     } catch (std::runtime_error& e) {
       std::cerr << "Error when reading dictionary: " << e.what() << std::endl;
