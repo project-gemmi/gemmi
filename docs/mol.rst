@@ -710,6 +710,16 @@ limiting the line length:
   >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
   <gemmi.Structure pdb1gdr.ent with 1 model(s)>
 
+TER records in the PDB, according the specification, mark the end of polymer
+(terminal carboxyl end for proteins, 3' end for nucleic acids).
+By default, gemmi interprets TER in this way and uses it to automatically
+setup entities (they can be later overwritten,
+see :ref:`add_entity_types() <add_entity_types>`).
+If you prefer to read each TER-separated segment as a new chain,
+call read_pdb() with option ``split_chain_on_ter=True``
+(and then, to write a file in the same way,
+use option ``ter_ignores_type=True``).
+
 All remarks from the PDB file are stored in ``raw_remarks``. Some of them
 (as listed :ref:`above <supported_records>`) are parsed and interpreted.
 When writing a structure from the PDB format back to the PDB format,
@@ -1404,6 +1414,8 @@ This method uses a simple heuristic to group residues into
 *subchains*, which are then mapped to entities.
 
 Internally, ``setup_entities()`` runs four functions (in this order):
+
+.. _add_entity_types:
 
 * ``add_entity_types()`` -- sets Residue.entity_type if it's not already set.
 
