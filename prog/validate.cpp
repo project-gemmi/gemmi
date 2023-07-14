@@ -76,6 +76,19 @@ inline std::string value_type_to_str(ValueType v) {
   return "";
 }
 
+// Returns after-dot position if all tags have the same category, otherwise 0.
+size_t common_category(const std::vector<std::string>& v) {
+  if (v.empty())
+    return 0;
+  size_t dot = v[0].find('.');
+  if (dot == std::string::npos)
+    return 0;
+  for (size_t i = 1; i < v.size(); ++i)
+    if (v[i].compare(0, dot+1, v[0], 0, dot+1) != 0)
+      return 0;
+  return dot+1;
+}
+
 // For now the infer_* functions are used only here, not sure where they belong
 inline ValueType infer_value_type(const std::string& val) {
   assert(!val.empty());
@@ -206,10 +219,10 @@ public:
       group += ' ';
       group += row[1];
       // here we assume the table is ordered
-      if (!it || group != prev_group) {
+      if (!it || group != it->group) {
         parents_.emplace_back();
         it = &parents_.back();
-        prev_group = group;
+        it->group = group;
       }
       it->child_tags.push_back(row.str(2));
       it->parent_tags.push_back(row.str(3));
@@ -346,9 +359,22 @@ public:
 
 private:
   struct ParentLink {
+    std::string group;
     std::vector<std::string> child_tags;
     std::vector<std::string> parent_tags;
   };
+
+  static std::string tags_as_str(const std::vector<std::string>& v) {
+    if (v.empty())
+      return "";
+    std::string s = v[0];
+    size_t pos = common_category(v);
+    for (size_t i = 1; i < v.size(); ++i) {
+      s += '+';
+      s += v[i].substr(pos);
+    }
+    return s;
+  }
 
   static bool equal_rows(cif::Table::Row r1, cif::Table::Row r2) {
     assert(r1.size() == r2.size());
@@ -374,8 +400,8 @@ private:
     cif::Table parent_tab = b.find(link.parent_tags);
     if (!parent_tab.ok()) {
       out << br(b.name) << "missing "
-          << gemmi::join_str(link.parent_tags, '+') << "\n  parent of "
-          << gemmi::join_str(link.child_tags, '+') << std::endl;
+          << tags_as_str(link.parent_tags) << "\n  parent of "
+          << tags_as_str(link.child_tags) << std::endl;
       return;
     }
     std::unordered_set<std::string> parent_hashes;
@@ -388,7 +414,7 @@ private:
         ++dup_counter;
         if (dup_counter < 2)
           out << br(b.name) << "duplicated parent group "
-              << gemmi::join_str(link.parent_tags, '+') << ":\n  "
+              << tags_as_str(link.parent_tags) << ":\n  "
               << gemmi::join_str(row, '+') << std::endl;
       }
       */
@@ -402,8 +428,8 @@ private:
         if (miss_counter < 2)
           out << br(b.name)
               << gemmi::join_str(row, '+') << " from "
-              << gemmi::join_str(link.child_tags, '+') << "\n  not in "
-              << gemmi::join_str(link.parent_tags, '+') << std::endl;
+              << tags_as_str(link.child_tags) << "\n  not in "
+              << tags_as_str(link.parent_tags) << std::endl;
       }
     }
     if (miss_counter > 1)
