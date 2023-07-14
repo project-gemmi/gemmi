@@ -233,6 +233,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
   if (max_line_length <= 0 || max_line_length > 120)
     max_line_length = 120;
   bool after_ter = false;
+  bool ignore_ter = false;
   Transform matrix;
   std::unordered_map<ResidueId, int> resmap;
   while (size_t len = copy_line_from_stream(line, max_line_length+1, stream)) {
@@ -543,13 +544,18 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       chain = nullptr;
 
     } else if (is_record_type3(line, "TER")) { // finishes polymer chains
-      // we don't expect more than one TER record in one chain
-      if (!chain || after_ter)
+      if (!chain || ignore_ter)
         continue;
       if (options.split_chain_on_ter) {
         chain = nullptr;
         // split_chain_on_ter is used for AMBER files that can have TER records
         // in various places. So in such case TER doesn't imply entity_type.
+        continue;
+      }
+      // If we have 2+ TER records in one chain, they are used in non-standard
+      // way and should be better ignored (in all the chains).
+      if (after_ter) {
+        ignore_ter = true;  // all entity_types will be later set to Unknown
         continue;
       }
       for (Residue& res : chain->residues)
@@ -622,7 +628,10 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
   if (st.models.empty())
     st.models.emplace_back("1");
 
-  // Here we assign Residue::subchain, but for chains with all
+  if (ignore_ter)
+    remove_entity_types(st);
+
+  // Here we assign Residue::subchain, but only for chains with all
   // Residue::entity_type assigned, i.e. for chains with TER.
   assign_subchains(st, /*force=*/false, /*fail_if_unknown=*/false);
 

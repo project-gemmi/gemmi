@@ -148,6 +148,9 @@ inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
 GEMMI_DLL void add_entity_types(Chain& chain, bool overwrite);
 GEMMI_DLL void add_entity_types(Structure& st, bool overwrite);
 
+/// Assigns entity_type=Unknown for all residues.
+GEMMI_DLL void remove_entity_types(Structure& st);
+
 /// Assigns Residue::entity_id based on Residue::subchain and Entity::subchains.
 GEMMI_DLL void add_entity_ids(Structure& st, bool overwrite);
 
