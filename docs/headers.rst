@@ -74,6 +74,9 @@ gemmi/contact.hpp
 gemmi/crd.hpp
     Generate Refmac intermediate (prepared) files crd and rst
 
+gemmi/ddl.hpp
+    Using DDL1/DDL2 dictionaries to validate CIF/mmCIF files.
+
 gemmi/dencalc.hpp
     Tools to prepare a grid with values of electron density of a model.
 
