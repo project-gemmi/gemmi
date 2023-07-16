@@ -5,6 +5,8 @@
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/fstream.hpp"
+#include "gemmi/ddl.hpp"
+#include "gemmi/read_cif.hpp"  // for read_cif_gz
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -400,4 +402,32 @@ void add_cif(py::module& cif) {
 
   cif.def("quote", &quote, py::arg("string"));
   cif.def("quote_list", &quote_list);
+
+  py::class_<Ddl>(cif, "Ddl")
+    .def(py::init([](bool print_unknown_tags, bool use_regex, bool use_context,
+                     bool use_linked_groups, bool use_mandatory, bool use_unique_keys) {
+          Ddl* ddl = new Ddl;
+          if (ddl) {
+            ddl->print_unknown_tags = print_unknown_tags;
+            ddl->use_regex = use_regex;
+            ddl->use_context = use_context;
+            ddl->use_linked_groups = use_linked_groups;
+            ddl->use_mandatory = use_mandatory;
+            ddl->use_unique_keys = use_unique_keys;
+          }
+          return ddl;
+    }), py::arg("print_unknown_tags")=true, py::arg("use_regex")=true,
+        py::arg("use_context")=true, py::arg("use_linked_groups")=true,
+        py::arg("use_mandatory")=true, py::arg("use_unique_keys")=true)
+    .def("read_ddl_file", [](Ddl& self, const std::string& path) {
+        std::ostringstream out;
+        self.read_ddl(gemmi::read_cif_gz(path), out);
+        return out.str();
+    }, py::arg("path"))
+    .def("validate_cif", [](Ddl& self, const Document& doc) {
+        std::ostringstream out;
+        self.validate_cif(doc, out);
+        return out.str();
+    })
+    ;
 }
