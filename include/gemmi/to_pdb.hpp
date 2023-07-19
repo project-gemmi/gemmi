@@ -20,6 +20,7 @@ struct PdbWriteOptions {
   bool numbered_ter = true;
   bool ter_ignores_type = false;
   bool use_linkr = false;
+  bool conect_records = false;
 };
 
 GEMMI_DLL void write_pdb(const Structure& st, std::ostream& os,

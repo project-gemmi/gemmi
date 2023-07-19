@@ -285,6 +285,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             // Sometimes PDB files have explicit 0s (5M05); we ignore them.
             a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
             a.charge ? a.charge > 0 ? '+' : '-' : ' ');
+      ((Atom&) a).serial = serial;
       if (a.aniso.nonzero()) {
         // re-using part of the buffer
         std::memcpy(buf, "ANISOU", 6);
@@ -338,6 +339,34 @@ inline void write_atoms(const Structure& st, std::ostream& os,
       write_chain_atoms(chain, os, serial, opt);
     if (st.models.size() > 1)
       WRITE("%-80s", "ENDMDL");
+    // CONECT  (note: CONECT redundancy represents bond order)
+    if (opt.conect_records) {
+      std::unordered_map<int, std::vector<int>> conects;
+      for (const Connection& con : st.connections)
+        if (con.type == Connection::Conect) {
+          const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
+          const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
+          // In special cases (LINKR gap) atoms are not there.
+          if (!cra1.residue || !cra2.residue)
+            continue;
+          conects[cra1.atom->serial].push_back(cra2.atom->serial);
+          if(con.order>=2)conects[cra1.atom->serial].push_back(cra2.atom->serial);
+          if(con.order>=3)conects[cra1.atom->serial].push_back(cra2.atom->serial);
+        }
+      for(auto ele : conects){
+          
+          snprintf_z(buf, 82, "CONECT%5s",
+                encode_serial_in_hybrid36(ele.first).data());
+          int columnOffset = 11;
+          for(int c : ele.second){
+            snprintf_z(buf+columnOffset, 82, "%5s",
+                  encode_serial_in_hybrid36(c).data());
+            columnOffset+=5;
+          }
+          buf[columnOffset] = '\n';
+          os.write(buf, columnOffset+1);
+      }
+    }
   }
 }
 

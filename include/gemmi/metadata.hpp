@@ -263,6 +263,7 @@ struct Connection {
   Asu asu = Asu::Any;
   AtomAddress partner1, partner2;
   double reported_distance = 0.0;
+  unsigned int order = 0;
 };
 
 // Corresponds to CISPEP or _struct_mon_prot_cis
