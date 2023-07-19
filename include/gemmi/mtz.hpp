@@ -99,6 +99,16 @@ struct GEMMI_DLL Mtz {
     bool is_integer() const {
       return type == 'H' || type == 'B' || type == 'Y' || type == 'I';
     }
+
+    const Column* get_next_column_if_type(char next_type) const {
+      if (idx + 1 < parent->columns.size()) {
+        const Column& next_col = parent->columns[idx + 1];
+        if (next_col.dataset_id == dataset_id && next_col.type == next_type)
+          return &next_col;
+      }
+      return nullptr;
+    }
+
     using iterator = StrideIter<float>;
     iterator begin() {
       assert(parent);

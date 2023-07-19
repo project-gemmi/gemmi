@@ -710,6 +710,16 @@ limiting the line length:
   >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
   <gemmi.Structure pdb1gdr.ent with 1 model(s)>
 
+TER records in the PDB, according the specification, mark the end of polymer
+(terminal carboxyl end for proteins, 3' end for nucleic acids).
+By default, gemmi interprets TER in this way and uses it to automatically
+setup entities (they can be later overwritten,
+see :ref:`add_entity_types() <add_entity_types>`).
+If you prefer to read each TER-separated segment as a new chain,
+call read_pdb() with option ``split_chain_on_ter=True``
+(and then, to write a file in the same way,
+use option ``ter_ignores_type=True``).
+
 All remarks from the PDB file are stored in ``raw_remarks``. Some of them
 (as listed :ref:`above <supported_records>`) are parsed and interpreted.
 When writing a structure from the PDB format back to the PDB format,
@@ -1405,6 +1415,8 @@ This method uses a simple heuristic to group residues into
 
 Internally, ``setup_entities()`` runs four functions (in this order):
 
+.. _add_entity_types:
+
 * ``add_entity_types()`` -- sets Residue.entity_type if it's not already set.
 
   When reading a PDB file, entity_type is assigned automatically if the chains
@@ -1716,6 +1728,10 @@ a shift between overlapping images.
 The ``max_dist`` parameter specifies cut-off for merging -- atom copies
 are merged only if their distance is smaller. The merged atom has summed
 occupancy and averaged position. B-factors are not changed.
+It is assumed, by default, that the identical atoms that are to be merged
+have the same serial number. If this function is not called directly after
+make_assembly() and the serial numbers were re-assigned in the meantime,
+add argument ``compare_serial=false``.
 
 Function ``transform_to_assembly()`` changes all models in the given structure
 to assemblies. Then it merges duplicated atoms,

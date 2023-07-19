@@ -200,7 +200,7 @@ struct CifToMtz {
       "pdbx_FWT FWT F 1",
       "pdbx_PHWT PHWT P 1",
       "pdbx_DELFWT DELFWT F 1",
-      "pdbx_DELPHWT DELPHWT P 1",
+      "pdbx_DELPHWT PHDELWT P 1",
       nullptr
     };
     static const char* unmerged[] = {

@@ -16,3 +16,9 @@ read_sf_and_fft_to_map(const char* input_path,
                        const std::vector<option::Option>& options,
                        FILE* output,
                        bool oversample_by_default=false);
+
+// avoid including both mapcoef.h and monlib_opt.h
+#ifdef GEMMI_OPTIONS_4
+#error Conflicting headers
+#endif
+#define GEMMI_OPTIONS_4

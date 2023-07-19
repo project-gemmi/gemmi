@@ -135,6 +135,13 @@ void add_entity_types(Structure& st, bool overwrite) {
       add_entity_types(chain, overwrite);
 }
 
+void remove_entity_types(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        res.entity_type = EntityType::Unknown;
+}
+
 void add_entity_ids(Structure& st, bool overwrite) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)

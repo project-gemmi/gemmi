@@ -124,7 +124,8 @@ static void remove_cras(Model& model, std::vector<CRA>& vec) {
   }
 }
 
-void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double max_dist) {
+void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double max_dist,
+                                   bool compare_serial) {
   using Mark = NeighborSearch::Mark;
   NeighborSearch ns(model, cell, 4.0);
   ns.populate(true);
@@ -146,7 +147,7 @@ void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double ma
               // Now check if everything else matches.
               CRA cra = m.to_cra(model);
               if (cra.atom &&
-                  cra.atom->serial == atom.serial &&
+                  (!compare_serial || cra.atom->serial == atom.serial) &&
                   cra.atom->name == atom.name &&
                   cra.atom->b_iso == atom.b_iso &&
                   cra.residue->matches_noseg(res) &&
@@ -164,8 +165,8 @@ void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double ma
             // Deleting now would invalidate indices in NeighborSearch.
             to_be_deleted.push_back(cra);
             // Modify the atoms to avoid processing them again.
-            cra.atom->serial = -1;  // this should be enough
-            cra.atom->name.clear(); // this is just in case
+            cra.atom->serial = -1;
+            cra.atom->name.clear();
           }
           size_t n = 1 + equiv.size();
           atom.pos = pos_sum / double(n);

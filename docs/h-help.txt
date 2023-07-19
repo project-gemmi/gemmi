@@ -7,12 +7,20 @@ By default, it removes and re-adds all hydrogens.
 By default, hydrogens are not added to water.
 
 Options:
-  -h, --help       Print usage and exit.
-  -V, --version    Print version and exit.
-  -v, --verbose    Verbose output.
-  --monomers=DIR   Monomer library dir (default: $CLIBD_MON).
-  --format=FORMAT  Input format (default: from the file extension).
-  --remove         Only remove hydrogens.
-  --keep           Do not add/remove hydrogens, only change positions.
-  --water          Add hydrogens also to waters.
-  --sort           Order atoms in residues according to _chem_comp_atom.
+  -h, --help         Print usage and exit.
+  -V, --version      Print version and exit.
+  -v, --verbose      Verbose output.
+  --monomers=DIR     Monomer library directory (default: $CLIBD_MON).
+  -L CIF, --lib=CIF  User's restraint file(s). See more info below.
+  --format=FORMAT    Input format (default: from the file extension).
+  --remove           Only remove hydrogens.
+  --keep             Do not add/remove hydrogens, only change positions.
+  --water            Add hydrogens also to waters.
+  --sort             Order atoms in residues according to _chem_comp_atom.
+
+Option -L/--lib can be used multiple times, in order of priority.
+Its argument is either a file path or one of the two special values:
+    '+' = monomer blocks in mmCIF INPUT_FILE (ignored by default)
+    '@' = the priority of the monomer library (ML, default: lowest)
+Example 1:   -L file.cif -L+    order: file.cif, input file, ML
+Example 2:   -L@ -L file.cif    order: ML, file.cif

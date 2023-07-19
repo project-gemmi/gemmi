@@ -5,11 +5,19 @@ Usage:
 Validate geometry of a coordinate file with (Refmac) monomer library.
 
 Options:
-  -h, --help       Print usage and exit.
-  -V, --version    Print version and exit.
-  -v, --verbose    Verbose output.
-  -q, --quiet      Show only summary.
-  --monomers=DIR   Monomer library dir (default: $CLIBD_MON).
-  --format=FORMAT  Input format (default: from the file extension).
-  --cutoff=ZC      List bonds and angles with Z score > ZC (default: 2).
-  -s, --sort       Sort output according to |Z|.
+  -h, --help         Print usage and exit.
+  -V, --version      Print version and exit.
+  -v, --verbose      Verbose output.
+  -q, --quiet        Show only summary.
+  --monomers=DIR     Monomer library directory (default: $CLIBD_MON).
+  -L CIF, --lib=CIF  User's restraint file(s). See more info below.
+  --format=FORMAT    Input format (default: from the file extension).
+  --cutoff=ZC        List bonds and angles with Z score > ZC (default: 2).
+  -s, --sort         Sort output according to |Z|.
+
+Option -L/--lib can be used multiple times, in order of priority.
+Its argument is either a file path or one of the two special values:
+    '+' = monomer blocks in mmCIF INPUT_FILE (ignored by default)
+    '@' = the priority of the monomer library (ML, default: lowest)
+Example 1:   -L file.cif -L+    order: file.cif, input file, ML
+Example 2:   -L@ -L file.cif    order: ML, file.cif
