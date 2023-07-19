@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <sstream>       // for ostringstream
+#include <unordered_map>
 
 #include <gemmi/fail.hpp>       // for fail
 #include <gemmi/sprintf.hpp>
