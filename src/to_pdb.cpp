@@ -342,7 +342,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
       WRITE("%-80s", "ENDMDL");
     // CONECT  (note: CONECT redundancy represents bond order)
     if (opt.conect_records) {
-      std::unordered_map<int, std::vector<int>> conects;
+      std::unordered_map<int, std::vector<int>> conectmap;
       for (const Connection& con : st.connections)
         if (con.type == Connection::Conect) {
           const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
@@ -350,11 +350,18 @@ inline void write_atoms(const Structure& st, std::ostream& os,
           // In special cases (LINKR gap) atoms are not there.
           if (!cra1.residue || !cra2.residue)
             continue;
-          conects[cra1.atom->serial].push_back(cra2.atom->serial);
-          if(con.order>=2)conects[cra1.atom->serial].push_back(cra2.atom->serial);
-          if(con.order>=3)conects[cra1.atom->serial].push_back(cra2.atom->serial);
+          conectmap[cra1.atom->serial].push_back(cra2.atom->serial);
+          conectmap[cra2.atom->serial].push_back(cra1.atom->serial);
+          if(con.order>=2){
+            conectmap[cra1.atom->serial].push_back(cra2.atom->serial);
+            conectmap[cra2.atom->serial].push_back(cra1.atom->serial);
+          }
+          if(con.order>=3){
+            conectmap[cra1.atom->serial].push_back(cra2.atom->serial);
+            conectmap[cra2.atom->serial].push_back(cra1.atom->serial);
+          }
         }
-      for(auto ele : conects){
+      for(auto ele : conectmap){
           
           snprintf_z(buf, 82, "CONECT%5s",
                 encode_serial_in_hybrid36(ele.first).data());
