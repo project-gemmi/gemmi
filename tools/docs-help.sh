@@ -16,6 +16,9 @@ done
 
 echo "\$ gemmi cif2mtz --print-spec" > docs/cif2mtz-spec.txt
 $BIN/gemmi cif2mtz --print-spec >> docs/cif2mtz-spec.txt
+echo "" >> docs/cif2mtz-spec.txt
+echo "\$ gemmi cif2mtz --print-spec --unmerged" >> docs/cif2mtz-spec.txt
+$BIN/gemmi cif2mtz --print-spec --unmerged >> docs/cif2mtz-spec.txt
 
 $BIN/gemmi cif2json tests/misc.cif tests/misc.json
 

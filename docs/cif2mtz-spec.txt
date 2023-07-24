@@ -5,10 +5,8 @@ $ gemmi cif2mtz --print-spec
 # - MTZ column type
 # - MTZ dataset for the column (must be 0 or 1)
 # - (optional) how to map mmCIF symbols to MTZ numbers
-# The first 3 (5 in unmerged) columns are not in the spec,
-# they are always H K L (M/ISYM BATCH).
-
 # For MERGED data only. Use --print-spec --unmerged for unmerged.
+# Conversion of the first MTZ columns (H K L) is hardcoded - not in the spec.
 pdbx_r_free_flag FreeR_flag I 0
 status FreeR_flag I 0 o=1,f=0
 intensity_meas IMEAN J 1
@@ -42,3 +40,19 @@ pdbx_FWT FWT F 1
 pdbx_PHWT PHWT P 1
 pdbx_DELFWT DELFWT F 1
 pdbx_DELPHWT PHDELWT P 1
+
+$ gemmi cif2mtz --print-spec --unmerged
+# Each line in the spec contains 4-5 words:
+# - tag (without category) from _refln or _diffrn_refln
+# - MTZ column label
+# - MTZ column type
+# - MTZ dataset for the column (must be 0 or 1)
+# - (optional) how to map mmCIF symbols to MTZ numbers
+# For UNMERGED data only. Conversion of the first MTZ columns
+# (H K L M/ISYM BATCH) is hardcoded - not in the spec.
+intensity_meas I J 0
+intensity_net I J 0
+intensity_sigma SIGI Q 0
+pdbx_detector_x XDET R 0
+pdbx_detector_y YDET R 0
+pdbx_scan_angle ROT R 0

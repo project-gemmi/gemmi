@@ -187,12 +187,15 @@ int GEMMI_MAIN(int argc, char **argv) {
                 "# - MTZ column label\n"
                 "# - MTZ column type\n"
                 "# - MTZ dataset for the column (must be 0 or 1)\n"
-                "# - (optional) how to map mmCIF symbols to MTZ numbers\n"
-                "# The first 3 (5 in unmerged) columns are not in the spec,\n"
-                "# they are always H K L (M/ISYM BATCH).\n\n");
+                "# - (optional) how to map mmCIF symbols to MTZ numbers\n");
     bool merged = !p.options[Unmerged];
     if (merged)
-      std::printf("# For MERGED data only. Use --print-spec --unmerged for unmerged.\n");
+      std::printf("# For MERGED data only. Use --print-spec --unmerged for unmerged.\n"
+                  "# Conversion of the first MTZ columns (H K L) is hardcoded -"
+                  " not in the spec.\n");
+    else
+      std::printf("# For UNMERGED data only. Conversion of the first MTZ columns\n"
+                  "# (H K L M/ISYM BATCH) is hardcoded - not in the spec.\n");
     for (const char** line = gemmi::CifToMtz::default_spec(merged); *line != nullptr; ++line)
       std::printf("%s\n", *line);
     return 0;
