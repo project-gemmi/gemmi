@@ -13,13 +13,14 @@ namespace gemmi {
 struct PdbWriteOptions {
   bool seqres_records = true;
   bool ssbond_records = true;
-  bool cryst1_record = true;
   bool link_records = true;
   bool cispep_records = true;
+  bool cryst1_record = true;
   bool ter_records = true;
   bool numbered_ter = true;
   bool ter_ignores_type = false;
   bool use_linkr = false;
+  bool preserve_serial = false;
 };
 
 GEMMI_DLL void write_pdb(const Structure& st, std::ostream& os,

@@ -63,48 +63,61 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     .def("write_pdb", [](const Structure& st, const std::string& path,
                          bool seqres_records, bool ssbond_records,
                          bool link_records, bool cispep_records,
-                         bool ter_records, bool numbered_ter,
-                         bool ter_ignores_type, bool use_linkr) {
+                         bool cryst1_record, bool ter_records,
+                         bool numbered_ter, bool ter_ignores_type,
+                         bool use_linkr, bool preserve_serial) {
        PdbWriteOptions options;
        options.seqres_records = seqres_records;
        options.ssbond_records = ssbond_records;
        options.link_records = link_records;
        options.cispep_records = cispep_records;
+       options.cryst1_record = cryst1_record;
        options.ter_records = ter_records;
        options.numbered_ter = numbered_ter;
        options.ter_ignores_type = ter_ignores_type;
        options.use_linkr = use_linkr;
+       options.preserve_serial = preserve_serial;
        Ofstream f(path);
        write_pdb(st, f.ref(), options);
     }, py::arg("path"),
        py::arg("seqres_records")=true, py::arg("ssbond_records")=true,
        py::arg("link_records")=true, py::arg("cispep_records")=true,
+       py::arg("cryst1_record")=true,
        py::arg("ter_records")=true, py::arg("numbered_ter")=true,
-       py::arg("ter_ignores_type")=false, py::arg("use_linkr")=false)
+       py::arg("ter_ignores_type")=false, py::arg("use_linkr")=false,
+       py::arg("preserve_serial")=false)
     .def("write_minimal_pdb",
          [](const Structure& st, const std::string& path,
-            bool ter_records, bool numbered_ter, bool ter_ignores_type) {
+            bool cryst1_record, bool ter_records,
+            bool numbered_ter, bool ter_ignores_type, bool preserve_serial) {
        PdbWriteOptions options;
+       options.cryst1_record = cryst1_record;
        options.ter_records = ter_records;
        options.numbered_ter = numbered_ter;
        options.ter_ignores_type = ter_ignores_type;
+       options.preserve_serial = preserve_serial;
        Ofstream f(path);
        write_minimal_pdb(st, f.ref(), options);
     }, py::arg("path"),
-       py::arg("ter_records")=true, py::arg("numbered_ter")=true,
-       py::arg("ter_ignores_type")=false)
+       py::arg("cryst1_record")=true, py::arg("ter_records")=true,
+       py::arg("numbered_ter")=true, py::arg("ter_ignores_type")=false,
+       py::arg("preserve_serial")=false)
     .def("make_minimal_pdb",
          [](const Structure& st,
-            bool ter_records, bool numbered_ter, bool ter_ignores_type) {
+            bool cryst1_record, bool ter_records,
+            bool numbered_ter, bool ter_ignores_type, bool preserve_serial) {
        PdbWriteOptions options;
+       options.cryst1_record = cryst1_record;
        options.ter_records = ter_records;
        options.numbered_ter = numbered_ter;
        options.ter_ignores_type = ter_ignores_type;
+       options.preserve_serial = preserve_serial;
        std::ostringstream os;
        write_minimal_pdb(st, os, options);
        return os.str();
-    }, py::arg("ter_records")=true, py::arg("numbered_ter")=true,
-       py::arg("ter_ignores_type")=false)
+    }, py::arg("cryst1_record")=true, py::arg("ter_records")=true,
+       py::arg("numbered_ter")=true, py::arg("ter_ignores_type")=false,
+       py::arg("preserve_serial")=false)
     .def("make_mmcif_document", &make_mmcif_document,
          py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
     .def("make_mmcif_block", &make_mmcif_block,

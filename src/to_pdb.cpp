@@ -237,6 +237,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
   for (const Residue& res : chain.residues) {
     bool as_het = use_hetatm(res);
     for (const Atom& a : res.atoms) {
+      serial = opt.preserve_serial ? a.serial : serial + 1;
       //  1- 6  6s  record name
       //  7-11  5d  integer serial
       // 12     1   -
@@ -261,7 +262,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
             "%2s%5s   %8.3f%8.3f%8.3f"
             "%6.2f%6.2f      %-4.4s%2s%c%c",
             as_het ? "HETATM" : "ATOM",
-            encode_serial_in_hybrid36(++serial).data(),
+            encode_serial_in_hybrid36(serial).data(),
             a.padded_name().c_str(),
             a.altloc ? std::toupper(a.altloc) : ' ',
             res.name.c_str(),

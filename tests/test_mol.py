@@ -128,6 +128,14 @@ ATOM  A0000  N   VAL LA000      52.228 -67.689 -12.196  1.00  8.76           N
 ATOM  A0001  CA  VAL LA000      53.657 -67.774 -12.458  1.00  3.40           C
 """
 
+# from 1keb.pdb
+TER_EXAMPLE = """\
+ATOM   1643  OXT ALA B 108      -2.885   7.940  32.034  1.00 44.47           O  
+TER    1644      ALA B 108                                                      
+HETATM 1645 CU    CU A 109       3.422  -7.286  12.794  1.00 20.53          CU  
+HETATM 1646 CU    CU B 109       3.446  18.122   8.201  1.00 15.05          CU  
+"""  # noqa: W291 - trailing whitespace
+
 def read_lines_and_remove(path):
     with open(path) as f:
         out_lines = f.readlines()
@@ -836,6 +844,22 @@ class TestMol(unittest.TestCase):
         # original serial numbers are lost when writing pdb, check only seqid
         self.assertEqual(out[1][17:30], 'MET L9999    ')
         self.assertEqual(out[4][17:30], 'VAL LA000    ')
+
+    def test_ter_writing(self):
+        st = gemmi.read_pdb_string(TER_EXAMPLE)
+        def write_and_read(**kwarg):
+            st_out = gemmi.read_pdb_string(st.make_minimal_pdb(**kwarg))
+            return [(cra.chain.name + ' ' + cra.atom.name, cra.atom.serial)
+                    for cra in st_out[0].all()]
+        self.assertEqual(write_and_read(),
+                         [('B OXT', 1), ('A CU', 3), ('B CU', 4)])
+        st.merge_chain_parts()
+        self.assertEqual(write_and_read(),
+                         [('B OXT', 1), ('B CU', 3), ('A CU', 4)])
+        self.assertEqual(write_and_read(numbered_ter=False),
+                         [('B OXT', 1), ('B CU', 2), ('A CU', 3)])
+        self.assertEqual(write_and_read(preserve_serial=True),
+                         [('B OXT', 1643), ('B CU', 1646), ('A CU', 1645)])
 
 if __name__ == '__main__':
     unittest.main()
