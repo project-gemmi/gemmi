@@ -82,15 +82,29 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
        py::arg("ter_records")=true, py::arg("numbered_ter")=true,
        py::arg("ter_ignores_type")=false, py::arg("use_linkr")=false)
     .def("write_minimal_pdb",
-         [](const Structure& st, const std::string& path) {
+         [](const Structure& st, const std::string& path,
+            bool ter_records, bool numbered_ter, bool ter_ignores_type) {
+       PdbWriteOptions options;
+       options.ter_records = ter_records;
+       options.numbered_ter = numbered_ter;
+       options.ter_ignores_type = ter_ignores_type;
        Ofstream f(path);
-       write_minimal_pdb(st, f.ref());
-    }, py::arg("path"))
-    .def("make_minimal_pdb", [](const Structure& st) -> std::string {
+       write_minimal_pdb(st, f.ref(), options);
+    }, py::arg("path"),
+       py::arg("ter_records")=true, py::arg("numbered_ter")=true,
+       py::arg("ter_ignores_type")=false)
+    .def("make_minimal_pdb",
+         [](const Structure& st,
+            bool ter_records, bool numbered_ter, bool ter_ignores_type) {
+       PdbWriteOptions options;
+       options.ter_records = ter_records;
+       options.numbered_ter = numbered_ter;
+       options.ter_ignores_type = ter_ignores_type;
        std::ostringstream os;
-       write_minimal_pdb(st, os);
+       write_minimal_pdb(st, os, options);
        return os.str();
-    })
+    }, py::arg("ter_records")=true, py::arg("numbered_ter")=true,
+       py::arg("ter_ignores_type")=false)
     .def("make_mmcif_document", &make_mmcif_document,
          py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
     .def("make_mmcif_block", &make_mmcif_block,
