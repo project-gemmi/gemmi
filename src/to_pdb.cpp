@@ -341,6 +341,22 @@ void write_atoms(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   }
 }
 
+void write_conect(const Structure& st, std::ostream& os) {
+  char buf[88];
+  auto num_str = [](const std::vector<int>& nums, size_t i) {
+    return i < nums.size() ? encode_serial_in_hybrid36(nums[i]) : std::array<char,8>{};
+  };
+  for (const auto& num_pair : st.conect_map)
+    for (size_t i = 0; i < num_pair.second.size(); i += 4)
+      WRITE("CONECT%5s%5s%5s%5s%5s%50s",
+            encode_serial_in_hybrid36(num_pair.first).data(),
+            encode_serial_in_hybrid36(num_pair.second[i]).data(),
+            num_str(num_pair.second, i+1).data(),
+            num_str(num_pair.second, i+2).data(),
+            num_str(num_pair.second, i+3).data(),
+            "");
+}
+
 void write_header(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   const std::string& entry_id = st.get_info("_entry.id");
   const char* entry_id_4 = entry_id.size() <= 4 ? entry_id.c_str() : "";
@@ -660,6 +676,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   check_if_structure_can_be_written_as_pdb(st);
   write_header(st, os, opt);
   write_atoms(st, os, opt);
+  write_conect(st, os);
   char buf[88];
   WRITE("%-80s", "END");
 }

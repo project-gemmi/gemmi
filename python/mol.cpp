@@ -158,6 +158,9 @@ void add_mol(py::module& m) {
     .def("setup_cell_images", &Structure::setup_cell_images)
     .def("add_entity_types", (void (*)(Structure&, bool)) &add_entity_types,
          py::arg("overwrite")=false)
+    .def("add_conect", &Structure::add_conect,
+         py::arg("serial1"), py::arg("serial2"), py::arg("order"))
+    .def("clear_conect", [](Structure& self) { self.conect_map.clear(); })
     .def("assign_subchains", &assign_subchains,
          py::arg("force")=false, py::arg("fail_if_unknown")=true)
     .def("ensure_entities", &ensure_entities)

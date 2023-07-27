@@ -866,6 +866,7 @@ struct Structure {
   std::vector<Helix> helices;
   std::vector<Sheet> sheets;
   std::vector<Assembly> assemblies;
+  std::map<int, std::vector<int>> conect_map;
   Metadata meta;
 
   CoorFormat input_format = CoorFormat::Unknown;
@@ -972,6 +973,16 @@ struct Structure {
   }
   bool ncs_not_expanded() const {
     return std::any_of(ncs.begin(), ncs.end(), [](const NcsOp& o) { return !o.given; });
+  }
+
+  void add_conect_one_way(int serial1, int serial2, int order) {
+    auto& vec = conect_map[serial1];
+    for (int i = 0; i < order; ++i)
+      vec.insert(std::upper_bound(vec.begin(), vec.end(), serial2), serial2);
+  }
+  void add_conect(int serial1, int serial2, int order) {
+    add_conect_one_way(serial1, serial2, order);
+    add_conect_one_way(serial2, serial1, order);
   }
 
   void merge_chain_parts(int min_sep=0) {
