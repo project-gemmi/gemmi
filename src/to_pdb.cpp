@@ -53,7 +53,7 @@ bool use_hetatm(const Residue& res) {
 }
 
 // works for non-negative values only
-inline void base36_encode(char* buffer, int width, int value) {
+void base36_encode(char* buffer, int width, int value) {
   const char base36[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   buffer[width] = '\0';
   do {
@@ -65,7 +65,7 @@ inline void base36_encode(char* buffer, int width, int value) {
 }
 
 // based on http://cci.lbl.gov/hybrid_36/
-inline std::array<char,8> encode_serial_in_hybrid36(int serial) {
+std::array<char,8> encode_serial_in_hybrid36(int serial) {
   std::array<char,8> str;
   assert(serial >= 0);
   if (serial < 100000)
@@ -75,7 +75,7 @@ inline std::array<char,8> encode_serial_in_hybrid36(int serial) {
   return str;
 }
 
-inline std::array<char,8> write_seq_id(const SeqId& seqid) {
+std::array<char,8> write_seq_id(const SeqId& seqid) {
   std::array<char,8> str;
   char* ptr = str.data();
   if (*seqid.num > -1000 && *seqid.num < 10000) {
@@ -89,7 +89,7 @@ inline std::array<char,8> write_seq_id(const SeqId& seqid) {
   return str;
 }
 
-inline const char* find_last_break(const char *str, int max_len) {
+const char* find_last_break(const char *str, int max_len) {
   int last_break = 0;
   for (int i = 0; i < max_len; i++) {
     if (str[i] == '\0')
@@ -102,8 +102,8 @@ inline const char* find_last_break(const char *str, int max_len) {
 
 // Write record with possible continuation lines, with the format:
 // 1-6 record name, 8-10 continuation, 11-lastcol string.
-inline void write_multiline(std::ostream& os, const char* record_name,
-                            const std::string& text, int lastcol) {
+void write_multiline(std::ostream& os, const char* record_name,
+                     const std::string& text, int lastcol) {
   if (text.empty())
     return;
   char buf[88]; // a few bytes extra, just in case
@@ -118,7 +118,7 @@ inline void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
-inline void write_cryst1(const Structure& st, std::ostream& os) {
+void write_cryst1(const Structure& st, std::ostream& os) {
   char buf[88];
   const UnitCell& cell = st.cell;
   WRITE("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s%4s          ",
@@ -127,7 +127,7 @@ inline void write_cryst1(const Structure& st, std::ostream& os) {
         st.get_info("_cell.Z_PDB").c_str());
 }
 
-inline void write_ncs_op(const NcsOp& op, std::ostream& os) {
+void write_ncs_op(const NcsOp& op, std::ostream& os) {
   char buf[88];
   for (int i = 0; i < 3; ++i) {
     WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c", i+1,
@@ -136,7 +136,7 @@ inline void write_ncs_op(const NcsOp& op, std::ostream& os) {
   }
 }
 
-inline void write_ncs(const Structure& st, std::ostream& os) {
+void write_ncs(const Structure& st, std::ostream& os) {
   if (st.ncs.empty())
     return;
   auto identity = st.info.find("_struct_ncs_oper.id");
@@ -147,7 +147,7 @@ inline void write_ncs(const Structure& st, std::ostream& os) {
     write_ncs_op(op, os);
 }
 
-inline void write_remarks(const Structure& st, std::ostream& os) {
+void write_remarks(const Structure& st, std::ostream& os) {
   char buf[88];
   if (st.resolution > 0) {
     WRITE("%-80s", "REMARK   2");
@@ -228,8 +228,8 @@ inline void write_remarks(const Structure& st, std::ostream& os) {
   }
 }
 
-inline void write_chain_atoms(const Chain& chain, std::ostream& os,
-                              int& serial, PdbWriteOptions opt) {
+void write_chain_atoms(const Chain& chain, std::ostream& os,
+                       int& serial, PdbWriteOptions opt) {
   char buf[88];
   buf[0] = '\0';
   if (chain.name.length() > 2)
@@ -320,8 +320,7 @@ inline void write_chain_atoms(const Chain& chain, std::ostream& os,
   }
 }
 
-inline void write_atoms(const Structure& st, std::ostream& os,
-                        PdbWriteOptions opt) {
+void write_atoms(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   char buf[88];
   for (const Model& model : st.models) {
     int serial = 0;
@@ -342,8 +341,7 @@ inline void write_atoms(const Structure& st, std::ostream& os,
   }
 }
 
-inline void write_header(const Structure& st, std::ostream& os,
-                         PdbWriteOptions opt) {
+void write_header(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   const std::string& entry_id = st.get_info("_entry.id");
   const char* entry_id_4 = entry_id.size() <= 4 ? entry_id.c_str() : "";
   char buf[88];
@@ -642,7 +640,7 @@ inline void write_header(const Structure& st, std::ostream& os,
   write_ncs(st, os);
 }
 
-inline void check_if_structure_can_be_written_as_pdb(const Structure& st) {
+void check_if_structure_can_be_written_as_pdb(const Structure& st) {
   for (const gemmi::Model& model : st.models)
     for (const gemmi::Chain& chain : model.chains)
       if (chain.name.size() > 2)
