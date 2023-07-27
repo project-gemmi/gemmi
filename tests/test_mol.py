@@ -860,6 +860,9 @@ class TestMol(unittest.TestCase):
                          [('B OXT', 1), ('B CU', 2), ('A CU', 3)])
         self.assertEqual(write_and_read(preserve_serial=True),
                          [('B OXT', 1643), ('B CU', 1646), ('A CU', 1645)])
+        st.assign_serial_numbers(numbered_ter=True)
+        self.assertEqual(write_and_read(preserve_serial=True),
+                         [('B OXT', 1), ('B CU', 3), ('A CU', 4)])
 
 if __name__ == '__main__':
     unittest.main()

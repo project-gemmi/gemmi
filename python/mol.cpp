@@ -169,7 +169,8 @@ void add_mol(py::module& m) {
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
     .def("store_deuterium_as_fraction", &store_deuterium_as_fraction)
-    .def("assign_serial_numbers", (void (*)(Structure&)) &assign_serial_numbers)
+    .def("assign_serial_numbers", (void (*)(Structure&, bool)) &assign_serial_numbers,
+         py::arg("numbered_ter")=false)
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, py::arg("how"))
     .def("transform_to_assembly",

@@ -93,15 +93,21 @@ template<> inline void transform_pos_and_adp(Atom& atom, const Transform& tr) {
     atom.aniso = atom.aniso.transformed_by<float>(tr.mat);
 }
 
-/// set atom site serial numbers to 1, 2, ...
-inline void assign_serial_numbers(Model& model) {
+/// set atom site serial numbers to 1, 2, ..., optionally leaving gaps for TERs
+inline void assign_serial_numbers(Model& model, bool numbered_ter=false) {
   int serial = 0;
-  for (CRA cra : model.all())
-    cra.atom->serial = ++serial;
+  for (Chain& chain : model.chains)
+    for (Residue& res : chain.residues) {
+      for (Atom& atom : res.atoms)
+        atom.serial = ++serial;
+      if (numbered_ter && res.entity_type == EntityType::Polymer &&
+          (&res == &chain.residues.back() || (&res + 1)->entity_type != EntityType::Polymer))
+        ++serial;
+    }
 }
-inline void assign_serial_numbers(Structure& st) {
+inline void assign_serial_numbers(Structure& st, bool numbered_ter=false) {
   for (Model& model : st.models)
-    assign_serial_numbers(model);
+    assign_serial_numbers(model, numbered_ter);
 }
 
 inline void replace_d_fraction_with_altlocs(Residue& res) {

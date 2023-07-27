@@ -1804,14 +1804,19 @@ to discard empty chains, call:
 
 After adding, removing or reordering atoms the serial numbers
 kept in property ``Atom.serial`` are no longer consecutive.
-This property is not used when writing a file (PDB and mmCIF files are
-always written with consecutive numbering of atoms),
-so you should care about this property only if your own code uses it.
+This property is typically not used when writing a file -- instead,
+consecutive numbers are generated on the fly. The only exception is when
+write_pdb() is called with option preserve_serial=True.
+So you should care about Atom.serial only if use it in your own code,
+or if you use option preserve_serial.
 To re-number the atoms do:
 
 .. doctest::
 
-  >>> st.assign_serial_numbers()
+  >>> st.assign_serial_numbers(numbered_ter=False)
+
+If called with numbered_ter=True, the serial numbers will be the same
+as they would be in a PDB file in which TER records also have serial numbers.
 
 ----
 
