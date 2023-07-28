@@ -115,6 +115,7 @@ inline int check_chemcomp_block_number(const cif::Document& doc) {
   // CCD file
   if (doc.blocks.size() == 1 &&
       !doc.blocks[0].has_tag("_atom_site.id") &&
+      !doc.blocks[0].has_tag("_cell.length_a") &&
       doc.blocks[0].has_tag("_chem_comp_atom.atom_id"))
     return 0;
   return -1;
