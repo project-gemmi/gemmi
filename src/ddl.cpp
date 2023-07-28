@@ -285,7 +285,7 @@ void Ddl::check_mandatory_items(const cif::Block& b, std::ostream& out) const {
   auto add_category = [&](const std::string& tag) {
     size_t pos = tag.find('.');
     if (pos != std::string::npos)
-      categories[tag.substr(0, pos+1)].emplace_back(tag, pos+1);
+      categories[to_lower(tag.substr(0, pos+1))].push_back(to_lower(tag.substr(pos+1)));
   };
   for (const cif::Item& item : b.items) {
     if (item.type == cif::ItemType::Pair)
@@ -296,7 +296,8 @@ void Ddl::check_mandatory_items(const cif::Block& b, std::ostream& out) const {
   }
   // go over categories and check if nothing is missing
   for (const auto& cat : categories) {
-    std::string cat_name = cat.first.substr(1, cat.first.size()-2);
+    size_t n = cat.first.size();
+    std::string cat_name = cat.first.substr(1, n-2);
     cif::Block* cat_block = find_rules(cat_name);
     if (!cat_block) { // should not happen
       out << br(b.name) << "category not in the dictionary: " << cat_name << std::endl;
@@ -310,17 +311,18 @@ void Ddl::check_mandatory_items(const cif::Block& b, std::ostream& out) const {
     // check key items
     for (const std::string& v : cat_block->find_values("_category_key.name")) {
       std::string key = cif::as_string(v);
-      assert(gemmi::starts_with(key, cat.first));
-      if (!gemmi::in_vector(key.substr(cat.first.size()), cat.second))
+      if (!gemmi::istarts_with(key, cat.first))  // inconsistent dictionary
+        out << "DDL2: wrong _category_key for " << cat_name << std::endl;
+      if (!gemmi::in_vector(to_lower(key.substr(n)), cat.second))
         out << br(b.name) << "missing category key: " << key << std::endl;
     }
     // check mandatory items
     for (auto i = name_index_.lower_bound(cat.first);
          i != name_index_.end() && gemmi::starts_with(i->first, cat.first);
          ++i) {
-      cif::Table items = i->second->find("_item.", {"name", "mandatory_code"});
-      if (items.find_row(i->first).str(1)[0] == 'y')
-        if (!gemmi::in_vector(i->first.substr(cat.first.size()), cat.second))
+      for (auto row : i->second->find("_item.", {"name", "mandatory_code"}))
+        if (row.str(1)[0] == 'y' && iequal(row.str(0), i->first) &&
+            !gemmi::in_vector(i->first.substr(n), cat.second))
           out << br(b.name) << "missing mandatory tag: " << i->first << std::endl;
     }
   }
@@ -436,7 +438,7 @@ void Ddl::check_linked_group_parents(const cif::Block& b, std::ostream& out) con
 
 void Ddl::read_ddl1_block(cif::Block& block) {
   for (std::string& name : block.find_values("_name"))
-    name_index_.emplace(cif::as_string(name), &block);
+    name_index_.emplace(to_lower(cif::as_string(name)), &block);
   if (block.name == "on_this_dictionary") {
     const std::string* dic_name = block.find_value("_dictionary_name");
     if (dic_name)
@@ -453,7 +455,7 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
       for (const char* tag : {"_item.name", "_category.id"}) {
         if (cif::Column col = item.frame.find_values(tag)) {
           for (const std::string& name : col)
-            name_index_.emplace(cif::as_string(name), &item.frame);
+            name_index_.emplace(to_lower(cif::as_string(name)), &item.frame);
           break;
         }
       }

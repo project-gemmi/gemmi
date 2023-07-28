@@ -48,7 +48,7 @@ private:
   std::vector<ParentLink> parents_;
 
   cif::Block* find_rules(const std::string& name) const {
-    auto iter = name_index_.find(name);
+    auto iter = name_index_.find(to_lower(name));
     return iter != name_index_.end() ? iter->second : nullptr;
   }
   void check_mandatory_items(const cif::Block& b, std::ostream& out) const;
