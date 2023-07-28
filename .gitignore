@@ -44,6 +44,7 @@ docs/X12.cif
 docs/5wkd.ccp4
 docs/out.ccp4
 docs/out.cif
+docs/out.pdb
 docs/output.mtz
 
 # file stored by tools/cmp-size.py

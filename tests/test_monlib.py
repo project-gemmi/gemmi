@@ -21,7 +21,7 @@ class TestChemCompXyz(unittest.TestCase):
         path = full_path('SO3.cif')
         block = gemmi.cif.read(path)[-1]
         st = gemmi.make_structure_from_chemcomp_block(block)
-        out = st.make_minimal_pdb()
+        out = st.make_pdb_string(gemmi.PdbWriteOptions(minimal=True))
         self.assertEqual(out.splitlines(), SO2_FROM_MONOMER.splitlines())
 
     # comparing HEM.cif from PDB CCD with HEM.pdb from PDBe
@@ -38,10 +38,11 @@ class TestChemCompXyz(unittest.TestCase):
         residue.het_flag = 'A'
         for atom in residue:
             atom.b_iso = 20
-        cif_out = cif_st.make_minimal_pdb()
+        minimal_opt = gemmi.PdbWriteOptions(minimal=True)
+        cif_out = cif_st.make_pdb_string(minimal_opt)
         pdb_path = full_path('HEM.pdb')
         pdb_st = gemmi.read_structure(pdb_path)
-        pdb_out = pdb_st.make_minimal_pdb()
+        pdb_out = pdb_st.make_pdb_string(minimal_opt)
         self.assertEqual(cif_out.splitlines(), pdb_out.splitlines())
 
     # HEN.cif from CCD does not provide ideal coordinates

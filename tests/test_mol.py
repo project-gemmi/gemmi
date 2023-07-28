@@ -840,15 +840,18 @@ class TestMol(unittest.TestCase):
         nums = [(cra.atom.serial, cra.residue.seqid.num) for cra in st[0].all()]
         self.assertEqual(nums, [(99998, 9999), (99999, 9999),
                                 (100000, 10000), (100001, 10000)])
-        out = st.make_minimal_pdb().splitlines()
+        minimal_opt = gemmi.PdbWriteOptions(minimal=True)
+        out = st.make_pdb_string(minimal_opt).splitlines()
         # original serial numbers are lost when writing pdb, check only seqid
         self.assertEqual(out[1][17:30], 'MET L9999    ')
         self.assertEqual(out[4][17:30], 'VAL LA000    ')
 
     def test_ter_writing(self):
         st = gemmi.read_pdb_string(TER_EXAMPLE)
-        def write_and_read(**kwarg):
-            st_out = gemmi.read_pdb_string(st.make_minimal_pdb(**kwarg))
+        def write_and_read(**kwargs):
+            opt = gemmi.PdbWriteOptions(**kwargs)
+            kwargs['minimal'] = True
+            st_out = gemmi.read_pdb_string(st.make_pdb_string(opt))
             return [(cra.chain.name + ' ' + cra.atom.name, cra.atom.serial)
                     for cra in st_out[0].all()]
         self.assertEqual(write_and_read(),

@@ -735,6 +735,18 @@ Then, only these records that can be parsed and formatted are written.
 Writing
 -------
 
+Gemmi has a number of switches to customize the output PDB file,
+primarily for controlling what records are included.
+One of the other customizable aspects is how the serial numbers are assigned.
+By default, they are set to 1,2,3,... regardless of Atom::serial
+and both atoms and TER records get unique numbers
+(note: giving TERs serial numbers affects the numbering of atoms after TER).
+TER records in files from wwPDB also have serial numbers,
+but many programs write just "TER".
+You can opt for bare TER records with ``numbered_ter=False``.
+To respect Atom::serial (without checking if the numbers are actually
+sequential or even unique) use ``preserve_serial=True``.
+
 **C++**
 
 Function for writing data from Structure to a pdb file are
@@ -742,60 +754,56 @@ in a header ``gemmi/to_pdb.hpp``::
 
   void write_pdb(const Structure& st, std::ostream& os,
                  PdbWriteOptions opt=PdbWriteOptions());
-  void write_minimal_pdb(const Structure& st, std::ostream& os);
-  std::string make_pdb_headers(const Structure& st);
+
+  std::string make_pdb_string(const Structure& st,
+                              PdbWriteOptions opt=PdbWriteOptions());
+
+Here are all the properties of PdbWriteOptions:
+
+.. literalinclude:: ../include/gemmi/to_pdb.hpp
+   :language: cpp
+   :start-after: struct PdbWriteOptions
+   :end-before: // end of snippet for mol.rst
+
+Additionally, PdbWriteOptions has two static functions:
+
+* ``minimal()`` -- options for writing only the atomic model (incl. CRYST1),
+* ``only_headers()`` -- options for writing only headers
+  (metadata, without the actual model).
+
+Usage example::
+
+  gemmi::write_pdb(st, std::cout, gemmi::PdbWriteOptions::minimal());
+
 
 **Python**
 
-To output a file or string in the PDB format use one of the functions:
+To output a file or string in the PDB format use:
 
 .. code-block:: python
 
   # To write full PDB use (the options are listed below):
   structure.write_pdb(path [, options])
+  # To get the same content as a string:
+  pdb_string = structure.make_pdb_string([options])
+
+Options are passed as an instance of class gemmi.PdbWriteOptions
+that has properties listed above, in the C++ section. Examples:
+
+.. testsetup::
+
+   import gemmi
+   output_path = 'out.pdb'
+   structure = gemmi.read_pdb('../tests/1orc.pdb')
+
+.. testcode::
 
   # To write only CRYST1 and coordinates, use:
-  structure.write_minimal_pdb(path [, options])
-
-  # To get the same as a string:
-  pdb_string = structure.make_minimal_pdb([options])
-
+  structure.write_pdb(output_path, gemmi.PdbWriteOptions(minimal=True))
+  # Additionally, write TER records without numbers:
+  structure.write_pdb(output_path, gemmi.PdbWriteOptions(minimal=True, numbered_ter=False))
   # To get PDB headers as a string:
-  header_string = structure.make_pdb_headers()
-
-``write_pdb()`` has options to suppress writing of various records,
-to control details of the TER records and serial numbers,
-and to use non-standard Refmac LINKR record instead of LINK.
-
-By default, the serial numbers of atom are assigned as 1,2,…
-regardless of Atom::serial and, like in the files from the PDB,
-the TER records also have unique serial numbers (which affects
-the numbering of atoms after TER).
-You can opt for bare TER records with ``numbered_ter=False``.
-To respect Atom::serial (without checking if the numbers are sequential
-or even unique) use ``preserve_serial=True``.
-
-Here is the full signature of write_pdb():
-
-.. doctest::
-
-  >>> print(gemmi.Structure.write_pdb.__doc__.replace(',', ',\n         '))
-  write_pdb(self: gemmi.Structure,
-            path: str,
-            seqres_records: bool = True,
-            ssbond_records: bool = True,
-            link_records: bool = True,
-            cispep_records: bool = True,
-            cryst1_record: bool = True,
-            ter_records: bool = True,
-            numbered_ter: bool = True,
-            ter_ignores_type: bool = False,
-            use_linkr: bool = False,
-            preserve_serial: bool = False) -> None
-  <BLANKLINE>
-
-Functions write_minimal_pdb() and make_minimal_pdb() support only the options
-relevant to records CRYST1, ATOM, HETATM and TER.
+  header_string = structure.make_pdb_string(gemmi.PdbWriteOptions(headers_only=True))
 
 PDBx/mmCIF format
 =================

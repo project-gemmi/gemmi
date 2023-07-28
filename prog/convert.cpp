@@ -359,14 +359,13 @@ void convert(gemmi::Structure& st,
   } else if (output_type == CoorFormat::Pdb) {
     shorten_ccd_codes(st);
     gemmi::PdbWriteOptions opt;
+    if (options[Minimal])
+      opt = gemmi::PdbWriteOptions::minimal();
     if (options[ShortTer])
       opt.numbered_ter = false;
     if (options[Linkr])
       opt.use_linkr = true;
-    if (options[Minimal])
-      gemmi::write_minimal_pdb(st, os.ref(), opt);
-    else
-      gemmi::write_pdb(st, os.ref(), opt);
+    gemmi::write_pdb(st, os.ref(), opt);
   }
 }
 
