@@ -5,7 +5,7 @@
 Molecular models
 ################
 
-In this section we show how to handle structural models of
+In this section, we show how to handle structural models of
 biomolecules (to some degree, it also applies to small molecules
 and inorganic structures).
 
@@ -20,7 +20,7 @@ Comparing with tools rooted in bioinformatics:
 
 * Gemmi focuses more on working with incomplete models
   (on all stages before they are published and submitted to the PDB),
-* and Gemmi is aware of the neighbouring molecules that are implied by
+* and Gemmi is aware of the neighbouring molecules implied by
   the crystallographic and non-crystallographic symmetry.
 
 .. _elements:
@@ -28,7 +28,7 @@ Comparing with tools rooted in bioinformatics:
 Elements
 ========
 
-When working with molecular structures it is good to have basic data
+When working with molecular structures, it is good to have basic data
 from the periodic table at hand.
 
 **C++**
@@ -80,7 +80,7 @@ Small Molecules
 ===============
 
 CIF files that describe small-molecule and inorganic structures
-can be read into an SmallStructure object.
+can be read into a SmallStructure object.
 Unlike macromolecular Structure, SmallStructure has no hierarchy.
 It is just a flat list of atomic sites (``SmallStructure::Site``)
 together with the unit cell and symmetry.
@@ -123,11 +123,12 @@ Each atomic site has the following properties:
     >>> site.charge   # obtained from type_symbol 'Si4+'
     4
 
-Occupancies in small molecules normally represent the real, chemical occupancy.
+The occupancies in small molecules normally represent the actual chemical
+occupancy.
 This differs from macromolecular crystallography, where models normally store
-"crystallographic" occupancy -- atoms on special positions have occupancy
+"crystallographic" occupancy -- atoms on special positions have their occupancy
 divided by the number of symmetry images in the same place.
-This reduction of occupancies simplifies calculation of structure factors.
+This reduction of occupancy simplifies the calculation of structure factors.
 
 .. doctest::
 
@@ -172,7 +173,7 @@ Alternatively, the same can be done in two steps:
     >>> SiC = gemmi.make_small_structure_from_block(cif_doc.sole_block())
 
 Now you also have access to the CIF document.
-Let's use it obtain SpaceGroup from the symmetry operators
+Let's use it to obtain SpaceGroup from the symmetry operators
 and check if it is consistent with the H-M name.
 
 .. doctest::
@@ -735,9 +736,9 @@ Then, only these records that can be parsed and formatted are written.
 Writing
 -------
 
-Gemmi has a number of switches to customize the output PDB file,
+Gemmi has several switches to customize the output PDB file,
 primarily for controlling what records are included.
-One of the other customizable aspects is how the serial numbers are assigned.
+Another customizable aspect is how the serial numbers are assigned.
 By default, they are set to 1,2,3,... regardless of Atom::serial
 and both atoms and TER records get unique numbers
 (note: giving TERs serial numbers affects the numbering of atoms after TER).
