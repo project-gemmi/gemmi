@@ -174,9 +174,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   dict.print_unknown_tags = !p.options[Quiet];
   dict.use_regex = !p.options[NoRegex];
   dict.use_context = p.options[Context];
-  dict.use_linked_groups = p.options[Parents];
+  dict.use_parents = p.options[Parents];
   dict.use_mandatory = !p.options[NoMandatory];
   dict.use_unique_keys = !p.options[NoUniqueKeys];
+  dict.print_extra_diagnostics = p.options[Verbose];
   if (p.options[Ddl]) {
     try {
       for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
@@ -203,7 +204,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[Stat])
           msg = token_stats(d);
         if (p.options[Ddl]) {
-          dict.check_audit_conform(d, std::cout, p.options[Verbose]);
+          dict.check_audit_conform(d, std::cout);
           ok = dict.validate_cif(d, std::cout);
         }
         if (p.options[Monomer])

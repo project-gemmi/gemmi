@@ -405,13 +405,13 @@ void add_cif(py::module& cif) {
 
   py::class_<Ddl>(cif, "Ddl")
     .def(py::init([](bool print_unknown_tags, bool use_regex, bool use_context,
-                     bool use_linked_groups, bool use_mandatory, bool use_unique_keys) {
+                     bool use_parents, bool use_mandatory, bool use_unique_keys) {
           Ddl* ddl = new Ddl;
           if (ddl) {
             ddl->print_unknown_tags = print_unknown_tags;
             ddl->use_regex = use_regex;
             ddl->use_context = use_context;
-            ddl->use_linked_groups = use_linked_groups;
+            ddl->use_parents = use_parents;
             ddl->use_mandatory = use_mandatory;
             ddl->use_unique_keys = use_unique_keys;
           }

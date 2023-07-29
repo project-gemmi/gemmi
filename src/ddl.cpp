@@ -254,8 +254,7 @@ private:
 } // anonymous namespace
 
 // check if the dictionary name/version correspond to _audit_conform_dict_*
-void Ddl::check_audit_conform(const cif::Document& doc, std::ostream& out,
-                              bool verbose) const{
+void Ddl::check_audit_conform(const cif::Document& doc, std::ostream& out) const {
   std::string audit_conform = "_audit_conform.";
   if (major_version == 1)
     audit_conform.back() = '_';  // for _audit_conform_dict_version, etc
@@ -265,7 +264,7 @@ void Ddl::check_audit_conform(const cif::Document& doc, std::ostream& out,
       continue;
     std::string name = cif::as_string(*raw_name);
     if (name == dict_name) {
-      if (verbose)
+      if (print_extra_diagnostics)
         if (const std::string* dict_ver = b.find_value(audit_conform + "dict_version")) {
           std::string version = cif::as_string(*dict_ver);
           if (version != dict_version)
@@ -420,7 +419,7 @@ static void check_parent_for(const std::vector<std::string>& child_tags,
     out << "  [total " << miss_counter << " missing parents in this group]\n";
 }
 
-void Ddl::check_linked_group_parents(const cif::Block& b, std::ostream& out) const {
+void Ddl::check_parents(const cif::Block& b, std::ostream& out) const {
   std::unordered_set<std::string> present;
   for (const cif::Item& item : b.items) {
     if (item.type == cif::ItemType::Pair) {
@@ -429,6 +428,30 @@ void Ddl::check_linked_group_parents(const cif::Block& b, std::ostream& out) con
     } else if (item.type == cif::ItemType::Loop) {
       for (const std::string& tag : item.loop.tags)
         present.insert(tag);
+    }
+  }
+  for (const std::string& child_tag : present) {
+    std::string first_missing;
+    auto it = item_parents_.find(child_tag);
+    if (it != item_parents_.end()) {
+      const std::string& parent_tag = it->second;
+      if (present.count(parent_tag) == 0) {
+        out << br(b.name) << "parent tag of " << child_tag << " is absent: "
+            << parent_tag << std::endl;
+      } else {
+        std::unordered_set<std::string> parent_hashes;
+        for (const std::string& parent : const_cast<cif::Block&>(b).find_values(parent_tag))
+          if (!cif::is_null(parent))
+            parent_hashes.insert(cif::as_string(parent));
+        int missing_counter = 0;
+        for (const std::string& child : const_cast<cif::Block&>(b).find_values(child_tag))
+          if (!cif::is_null(child) && parent_hashes.count(cif::as_string(child)) == 0)
+            if (missing_counter++ == 0)
+              first_missing = cif::as_string(child);
+        if (missing_counter != 0)
+          out << br(b.name) << missing_counter << " missing parent(s) of " << child_tag
+              << " in " << parent_tag << ", first one: " << first_missing << std::endl;
+      }
     }
   }
   for (const ParentLink& link : parents_)
@@ -490,7 +513,7 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
       }
     }
 
-  if (use_linked_groups) {
+  if (use_parents) {
     // read child-parent relations from _pdbx_item_linked_group_list
     cif::Table tab = block.find("_pdbx_item_linked_group_list.",
                                 {"child_category_id", "link_group_id",
@@ -515,13 +538,15 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
     for (ParentLink& link : parents_) {
       bool ok = true;
       if (common_category(link.child_tags) == 0) {
-        out << "Bad DDL2: linked group [" << link.group
-            << "] has children in different categories" << std::endl;
+        if (print_extra_diagnostics)
+          out << "Bad DDL2: linked group [" << link.group
+              << "] has children in different categories" << std::endl;
         ok = false;
       }
       if (common_category(link.parent_tags) == 0) {
-        out << "Bad DDL2: linked group [" << link.group
-            << "] has parents in different categories" << std::endl;
+        if (print_extra_diagnostics)
+          out << "Bad DDL2: linked group [" << link.group
+              << "] has parents in different categories" << std::endl;
         ok = false;
       }
       if (!ok) {
@@ -531,6 +556,22 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
       }
     }
   }
+
+  if (use_parents)
+    // check child-parent relations from _item_linked
+    for (cif::Item& item : block.items) {
+      if (item.type == cif::ItemType::Frame)
+        for (auto row : item.frame.find("_item_linked.", {"child_name", "parent_name"})) {
+          std::string child_name = row.str(0);
+          std::string parent_name = row.str(1);
+          auto it = item_parents_.find(child_name);
+          if (it == item_parents_.end())
+            item_parents_.emplace(child_name, parent_name);
+          else if (it->second != parent_name && print_extra_diagnostics)
+            out << "Bad DDL2: different parents for " << child_name << ": "
+                << it->second << " and " << parent_name << std::endl;
+        }
+    }
 }
 
 bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
@@ -608,8 +649,8 @@ bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
           if (item.type == cif::ItemType::Loop)
             check_unique_keys_in_loop(item.loop, out, b.name);
       }
-      if (use_linked_groups)
-        check_linked_group_parents(b, out);
+      if (use_parents)
+        check_parents(b, out);
     }
   }
 
