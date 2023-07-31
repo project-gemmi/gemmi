@@ -593,16 +593,17 @@ struct Grid : GridBase<T> {
   template <bool UsePbc>
   void check_size_for_points_in_box(int& du, int& dv, int& dw,
                                     bool fail_on_too_large_radius) const {
-    if (fail_on_too_large_radius) {
-      if (2 * du >= nu || 2 * dv >= nv || 2 * dw >= nw)
-        fail("grid operation failed: radius bigger than half the unit cell?");
-    }
-    if (UsePbc && !fail_on_too_large_radius) {
-      // If we'd use the minimum image convention the max would be (nu-1)/2.
-      // The limits set here are necessary for index_n() that is used below.
-      du = std::min(du, nu - 1);
-      dv = std::min(dv, nv - 1);
-      dw = std::min(dw, nw - 1);
+    if (UsePbc) {
+      if (fail_on_too_large_radius) {
+        if (2 * du >= nu || 2 * dv >= nv || 2 * dw >= nw)
+          fail("grid operation failed: radius bigger than half the unit cell?");
+      } else {
+        // If we'd use the minimum image convention the max would be (nu-1)/2.
+        // The limits set here are necessary for index_n() that is used below.
+        du = std::min(du, nu - 1);
+        dv = std::min(dv, nv - 1);
+        dw = std::min(dw, nw - 1);
+      }
     }
   }
 
