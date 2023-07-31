@@ -343,7 +343,7 @@ inline void mask_with_node_info(Grid<NodeInfo>& mask, const Model& model, double
   int du = (int) std::ceil(radius / mask.spacing[0]);
   int dv = (int) std::ceil(radius / mask.spacing[1]);
   int dw = (int) std::ceil(radius / mask.spacing[2]);
-  mask.template check_size_for_points_in_box<true>(du, dv, dw, true);
+  mask.template check_size_for_points_in_box<true>(du, dv, dw, false);
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {

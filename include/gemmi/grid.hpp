@@ -670,9 +670,9 @@ struct Grid : GridBase<T> {
   void set_points_around(const Position& ctr, double radius, T value, bool use_pbc=true) {
     Fractional fctr = unit_cell.fractionalize(ctr);
     if (use_pbc)
-      use_points_around<true>(fctr, radius, [&](T& ref, double) { ref = value; });
+      use_points_around<true>(fctr, radius, [&](T& ref, double) { ref = value; }, false);
     else
-      use_points_around<false>(fctr, radius, [&](T& ref, double) { ref = value; });
+      use_points_around<false>(fctr, radius, [&](T& ref, double) { ref = value; }, false);
   }
 
   void change_values(T old_value, T new_value) {
