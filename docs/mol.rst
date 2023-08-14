@@ -738,7 +738,7 @@ To avoid it:
 
 .. doctest::
 
-  >>> gemmi.raw_remarks = []
+  >>> st.raw_remarks = []
 
 Then, only these records that can be parsed and formatted are written.
 
