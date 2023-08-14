@@ -594,7 +594,7 @@ it starts in column 13 even if it has a one-letter element code:
    HETATM 6496 CAX3 R58 A 502      16.438 -31.175   6.663  1.00 57.68           C
 
 Columns 18-20 contain the residue name (CCD code). When the PDB ran out of
-three-character codes in 2023, it started assigning codes with 4+ characters,
+three-character codes in 2023, it started assigning codes with 5 characters,
 which no longer fit into the PDB format. The tilde-hetnam extension addresses
 this issue: long CCD code is substituted with 3 characters,
 of which the last one is a tilde (``~``);
@@ -797,14 +797,14 @@ To output a file or string in the PDB format use:
   # To get the same content as a string:
   pdb_string = structure.make_pdb_string([options])
 
-Options are passed as an instance of class gemmi.PdbWriteOptions
-that has properties listed above, in the C++ section. Examples:
+Options are passed as an instance of ``gemmi.PdbWriteOptions``
+that has properties listed in the C++ section above. Examples:
 
 .. testsetup::
 
-   import gemmi
-   output_path = 'out.pdb'
-   structure = gemmi.read_pdb('../tests/1orc.pdb')
+  import gemmi
+  output_path = 'out.pdb'
+  structure = gemmi.read_pdb('../tests/1orc.pdb')
 
 .. testcode::
 
@@ -814,6 +814,35 @@ that has properties listed above, in the C++ section. Examples:
   structure.write_pdb(output_path, gemmi.PdbWriteOptions(minimal=True, numbered_ter=False))
   # To get PDB headers as a string:
   header_string = structure.make_pdb_string(gemmi.PdbWriteOptions(headers_only=True))
+
+----
+
+**CONECT records** are not written unless explicitely requested.
+The data from and for these records is stored in C++ ``Structure::conect_map``
+as a mapping between serial numbers (int -> list of ints).
+When a model is modified, or serial atoms are re-assigned,
+the conect_map easily becomes outdated. Gemmi doesn't use the conect_map
+internally; it only provides a low-level API for users to read
+and write these records. We support the convention used in computational
+chemistry (but absent in the official PDB spec) where bond order
+is indicated by repeating a given bond. Here is an example of how
+to prepare and write CONECT records:
+
+.. testsetup::
+
+  res0 = structure[0][0][0]
+  atom1, atom2, atom3 = res0[0], res0[1], res0[2]
+
+.. testcode::
+
+  structure.assign_serial_numbers(numbered_ter=True)
+  structure.clear_conect()  # discard all data from conect_map
+  structure.add_conect(atom1.serial, atom2.serial, order=1)  # add single bond
+  structure.add_conect(atom2.serial, atom3.serial, order=2)  # add double bond
+  # ...
+  write_options = gemmi.PdbWriteOptions(preserve_serial=True, conect_records=True)
+  structure.write_pdb(output_path, write_options)
+
 
 PDBx/mmCIF format
 =================
