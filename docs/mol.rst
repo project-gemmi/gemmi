@@ -524,6 +524,7 @@ The records that are interpreted can be converted from/to mmCIF:
 - ATOM/HETATM
 - ANISOU
 - TER
+- CONECT (no equivalent in mmCIF, but there is a way to read/write it)
 - END
 
 Although the PDB format is widely used, some of its features can be easily
@@ -660,11 +661,19 @@ file format to avoid linking with the code you do not use::
   // or
   gemmi::Structure st2 = gemmi::read_pdb(gemmi::MaybeGzipped(path));
 
+These functions can take one more argument, an instance of:
+
+.. literalinclude:: ../include/gemmi/model.hpp
+   :language: cpp
+   :start-at: struct PdbReadOptions
+   :end-before: // end of PdbReadOptions for mol.rst
+
+that controls how the file is interpreted. Usually, the defaults are fine.
 
 The content of the file can also be read from a string or from memory::
 
-    Structure read_pdb_string(const std::string& str, const std::string& name);
-    Structure read_pdb_from_memory(const char* data, size_t size, const std::string& name);
+    Structure read_pdb_string(const std::string& str, const std::string& name, PdbReadOptions& options=PdbReadOptions());
+    Structure read_pdb_from_memory(const char* data, size_t size, const std::string& name, PdbReadOptions options=PdbReadOptions());
 
 **Python**
 

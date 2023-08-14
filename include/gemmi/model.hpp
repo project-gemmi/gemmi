@@ -95,6 +95,7 @@ struct PdbReadOptions {
   bool split_chain_on_ter = false;
   bool skip_remarks = false;
 };
+// end of PdbReadOptions for mol.rst
 
 // remove empty residues from chain, empty chains from model, etc
 template<class T> void remove_empty_children(T& obj) {

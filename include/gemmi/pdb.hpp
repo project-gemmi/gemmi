@@ -13,7 +13,7 @@
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
 
-#include <algorithm>  // for swap
+#include <algorithm>  // for min, swap
 #include <cctype>     // for isalpha
 #include <cstdio>     // for stdin, size_t
 #include <cstdlib>    // for strtol
@@ -401,7 +401,16 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       }
 
     } else if (is_record_type(line, "CONECT")) {
-      // ignore for now
+      int serial = read_serial(line+6);
+      if (len >= 11 && serial != 0) {
+        std::vector<int>& bonded_atoms = st.conect_map[serial];
+        int limit = std::min(27, (int)len - 1);
+        for (int offset = 11; offset <= limit; offset += 5) {
+          int n = read_serial(line+offset);
+          if (n != 0)
+            bonded_atoms.push_back(n);
+        }
+      }
 
     } else if (is_record_type(line, "SEQRES")) {
       std::string chain_name = read_string(line+10, 2);
