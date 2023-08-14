@@ -114,7 +114,7 @@ void print_contacts(Structure& st, const ContactParameters& params) {
   contacts.ignore = params.ignore;
   if (params.use_cov_radius)
     contacts.setup_atomic_radii(params.cov_mult, params.cov_tol);
-  std::multimap<float, std::string> lines;
+  std::multimap<double, std::string> lines;
   char buf[256];
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                     int image_idx, double dist_sq) {
