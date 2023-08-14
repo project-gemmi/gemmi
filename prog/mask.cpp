@@ -13,8 +13,10 @@
 
 namespace {
 
-enum OptionIndex { Timing=4, GridSpac, GridDims, Radius, RProbe, RShrink,
-                   IslandLimit, CctbxCompat, RefmacCompat, Invert };
+enum OptionIndex {
+  Timing=4, GridSpac, GridDims, Radius, RProbe, RShrink,
+  IslandLimit, Hydrogens, AnyOccupancy, CctbxCompat, RefmacCompat, Invert
+};
 
 struct MaskArg {
   static option::ArgStatus FileFormat(const option::Option& option, bool msg) {
@@ -44,6 +46,10 @@ const option::Descriptor Usage[] = {
     "  --r-shrink=Rs  \tFinally, remove a shell of thickness Rs (default: 1.1A)." },
   { IslandLimit, 0, "", "island-limit", Arg::Float,
     "  --island-limit=VOL  \tRemove \"islands\" up to VOL A^3." },
+  { Hydrogens, 0, "", "hydrogens", Arg::None,
+    "  --hydrogens  \tDon't ignore hydrogens." },
+  { AnyOccupancy, 0, "", "any-occupancy", Arg::None,
+    "  --any-occupancy  \tDon't ignore zero-occupancy atoms." },
   { CctbxCompat, 0, "", "cctbx-compat", Arg::None,
     "  --cctbx-compat  \tUse vdW, Rprobe, Rshrink radii from cctbx." },
   { RefmacCompat, 0, "", "refmac-compat", Arg::None,
@@ -122,6 +128,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       masker.rprobe = std::atof(p.options[RProbe].arg);
     if (p.options[RShrink])
       masker.rshrink = std::atof(p.options[RShrink].arg);
+    if (p.options[Hydrogens])
+      masker.ignore_hydrogen = false;
+    if (p.options[AnyOccupancy])
+      masker.ignore_zero_occupancy_atoms = false;
 
     timer.start();
     masker.clear(mask.grid);

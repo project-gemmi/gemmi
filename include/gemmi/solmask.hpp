@@ -93,6 +93,7 @@ inline float refmac_radius_for_bulk_solvent(El el) {
   // temporary solution used in Refmac
   switch (el) {
     case El::H: return 1.4f;
+    case El::D: return 1.4f;
     case El::O: return 1.08f;
     case El::C: return 2.0f;
     case El::N: return 1.12f;
@@ -104,20 +105,31 @@ inline float refmac_radius_for_bulk_solvent(El el) {
 // mask utilities
 template<typename T>
 void mask_points_in_constant_radius(Grid<T>& mask, const Model& model,
-                                    double radius, T value) {
+                                    double radius, T value,
+                                    bool ignore_hydrogen,
+                                    bool ignore_zero_occupancy_atoms) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
-      for (const Atom& atom : res.atoms)
+      for (const Atom& atom : res.atoms) {
+        if ((ignore_hydrogen && atom.is_hydrogen()) ||
+            (ignore_zero_occupancy_atoms && atom.occ <= 0))
+          continue;
         mask.set_points_around(atom.pos, radius, value);
+      }
 }
 
 template<typename T>
 void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
                                   AtomicRadiiSet atomic_radii_set,
-                                  double r_probe, T value) {
+                                  double r_probe, T value,
+                                  bool ignore_hydrogen,
+                                  bool ignore_zero_occupancy_atoms) {
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
+        if ((ignore_hydrogen && atom.is_hydrogen()) ||
+            (ignore_zero_occupancy_atoms && atom.occ <= 0))
+          continue;
         El elem = atom.element.elem;
         double r = 0;
         switch (atomic_radii_set) {
@@ -194,8 +206,9 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
 }
 
 struct SolventMasker {
-  // parameters for used only in put_solvent_mask_on_grid()
-  AtomicRadiiSet atomic_radii_set = AtomicRadiiSet::VanDerWaals;
+  AtomicRadiiSet atomic_radii_set;
+  bool ignore_hydrogen;
+  bool ignore_zero_occupancy_atoms;
   double rprobe;
   double rshrink;
   double island_min_volume;
@@ -205,9 +218,12 @@ struct SolventMasker {
     set_radii(choice, constant_r_);
   }
 
+  // currently this function sets also parameters other than radii
   void set_radii(AtomicRadiiSet choice, double constant_r_=0.) {
     atomic_radii_set = choice;
     constant_r = constant_r_;
+    ignore_hydrogen = true;
+    ignore_zero_occupancy_atoms = true;
     switch (choice) {
       case AtomicRadiiSet::VanDerWaals:
         rprobe = 1.0;
@@ -236,9 +252,11 @@ struct SolventMasker {
 
   template<typename T> void mask_points(Grid<T>& grid, const Model& model) const {
     if (atomic_radii_set == AtomicRadiiSet::Constant)
-      mask_points_in_constant_radius(grid, model, constant_r + rprobe, (T)0);
+      mask_points_in_constant_radius(grid, model, constant_r + rprobe, (T)0,
+                                     ignore_hydrogen, ignore_zero_occupancy_atoms);
     else
-      mask_points_in_varied_radius(grid, model, atomic_radii_set, rprobe, (T)0);
+      mask_points_in_varied_radius(grid, model, atomic_radii_set, rprobe, (T)0,
+                                   ignore_hydrogen, ignore_zero_occupancy_atoms);
   }
 
   template<typename T> void symmetrize(Grid<T>& grid) const {
