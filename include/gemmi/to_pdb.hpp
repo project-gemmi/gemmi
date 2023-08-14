@@ -19,7 +19,7 @@ struct PdbWriteOptions {
   bool cispep_records = true;   // write CISPEP
   bool cryst1_record = true;    // write CRYST1
   bool ter_records = true;      // write TER records
-  bool conect_records = true;   // write CONECT - matters only if add_conect() was used
+  bool conect_records = false;  // write CONECT - matters only if add_conect() was used
   bool end_record = true;       // write END
   bool numbered_ter = true;     // TER record gets own serial number
   bool ter_ignores_type = false; // put TER after last atom in Chain (even if it's water)
@@ -34,14 +34,12 @@ struct PdbWriteOptions {
     opt.ssbond_records = false;
     opt.link_records = false;
     opt.cispep_records = false;
-    opt.conect_records = false;
     opt.end_record = false;
     return opt;
   }
   static PdbWriteOptions headers_only() {
     PdbWriteOptions opt;
     opt.atom_records = false;
-    opt.conect_records = false;
     opt.end_record = false;
     return opt;
   }
