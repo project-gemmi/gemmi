@@ -557,9 +557,14 @@ which is sometimes called CID (Coordinate ID). The MMDB syntax is described
 at the bottom of
 the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
 
-The selection has a form of /-separated parts:
-/models/chains/residues/atoms. Empty parts can be omitted when it's
-not ambiguous. Gemmi (but not MMDB) can take additional properties
+The selection has a form of slash-separated parts:
+/models/chains/residues/atoms. Leading and trailing parts can be omitted
+when it's not ambiguous. An empty field means that all items match,
+with two exceptions. The empty chain part (e.g. ``/1//``) matches only
+a chain without an ID (blank chainID in the PDB format;
+not spec-conformant, but possible in working files). The empty altloc
+(examples will follow) matches atoms with a blank altLoc field.
+Gemmi (but not MMDB) can take additional properties
 added at the end after a semicolon (;).
 
 Let us go through the individual filters first:
@@ -567,23 +572,23 @@ Let us go through the individual filters first:
 * ``/1`` -- selects model 1 (if the PDB file doesn't have MODEL records,
   it is assumed that the only model is model 1).
 * ``//D`` (or just ``D``) -- selects chain D.
-* ``///10-30`` (or ``10-30``) -- residues with sequence IDs from 10 to 30.
-* ``///10A-30A`` (or ``10A-30A`` or ``///10.A-30.A`` or ``10.A-30.A``) --
+* ``//*/10-30`` (or ``10-30``) -- residues with sequence IDs from 10 to 30.
+* ``//*/10A-30A`` (or ``10A-30A`` or ``///10.A-30.A`` or ``10.A-30.A``) --
   sequence ID can include insertion code. The MMDB syntax has dot between
   sequence sequence number and insertion code. In Gemmi the dot is optional.
-* ``///(ALA)`` (or ``(ALA)``) -- selects residues with a given name.
-* ``////CB`` (or ``CB:*`` or ``CB[*]``) -- selects atoms with a given name.
-* ``////[P]`` (or just ``[P]``) -- selects phosphorus atoms.
-* ``////:B`` (or ``:B``) -- selects atoms with altloc B.
-* ``////;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5
+* ``//*/(ALA)`` (or ``(ALA)``) -- selects residues with a given name.
+* ``//*//CB`` (or ``CB:*`` or ``CB[*]``) -- selects atoms with a given name.
+* ``//*//[P]`` (or just ``[P]``) -- selects phosphorus atoms.
+* ``//*//:B`` (or ``:B``) -- selects atoms with altloc B.
+* ``//*//:`` (or ``:``) -- selects atoms without altloc.
+* ``//*//;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5
   (inspired by PyMOL, where it'd be ``q<0.5``).
-* ``////;b>40`` (or ``;b>40``) -- selects atoms with isotropic B-factor
+* ``//*//;b>40`` (or ``;b>40``) -- selects atoms with isotropic B-factor
   above a given value.
 * ``;polymer`` or ``;solvent`` -- selects polymer or solvent residues
   (if the PDB file doesn't have TER records, call setup_entities() first).
 * ``*`` -- selects all atoms.
 
-Note that the chain name and altloc can be an empty.
 The syntax supports also comma-separated lists and negations with ``!``:
 
 * ``(!ALA)`` -- all residues but alanine,
@@ -602,7 +607,7 @@ In Gemmi, if ':' is absent the altloc is not checked ("*").
 
 Note: the selections in Gemmi are not widely used yet and the API may evolve.
 
-A selection is is a standalone object with a list of filters that
+A selection is a standalone object with a list of filters that
 can be applied to any Structure, Model or its part.
 Empty selection matches all atoms:
 
@@ -610,37 +615,19 @@ Empty selection matches all atoms:
 
   >>> sel = gemmi.Selection()  # empty - no filters
 
-Selection initialized with a string parses the string and creates
-corresponding filters:
-
-.. doctest::
-
-  >>> # select all Cl atoms
-  >>> sel = gemmi.Selection('[CL]')
-
-The selection can then be used on any structure.
-A helper function ``first()`` returns the first matching atom:
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> # get the first result as pointer to model and CRA (chain, residue, atom)
-  >>> sel.first(st)
-  (<gemmi.Model 1 with 2 chain(s)>, <gemmi.CRA A/CL 20/CL>)
-
-Function ``str()`` creates a string from the selection:
+Selection initialized with a string:
 
 .. doctest::
 
   >>> sel = gemmi.Selection('A/1-4/N9')
-  >>> sel.str()
-  '//A/1.-4./N9'
 
-The Selection objects has methods for iterating over the selected items
-in the hierarchy:
+parses the string and creates filters corresponding to each part
+of the selection,
+which can then be used to iterate over the selected items in the hierarchy:
 
 .. doctest::
 
+  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
   >>> for model in sel.models(st):
   ...     print('Model', model.name)
   ...     for chain in sel.chains(model):
@@ -659,9 +646,23 @@ in the hierarchy:
             - N9
      - 4(DT)
 
+Function ``str()`` creates a CID string from the selection:
+
+.. doctest::
+
+  >>> sel.str()
+  '//A/1.-4./N9'
+
+A helper function ``first()`` returns the first matching atom:
+
+.. doctest::
+
+  >>> # find the first Cl atom - returns model and CRA (chain, residue, atom)
+  >>> gemmi.Selection('[CL]').first(st)
+  (<gemmi.Model 1 with 2 chain(s)>, <gemmi.CRA A/CL 20/CL>)
 
 Selection can be used to create a new structure (or model) with a copy
-of the selection. In this example, we copy alpha-carbon atoms:
+of the selected parts. In this example, we copy alpha-carbon atoms:
 
 .. doctest::
 
@@ -681,7 +682,7 @@ of the selection. In this example, we copy alpha-carbon atoms:
   64
 
 Selection can also be used to remove atoms.
-In this example we remove atoms with B-factor above 50:
+Here, we remove atoms with a B-factor above 50:
 
 .. doctest::
 
