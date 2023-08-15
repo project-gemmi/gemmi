@@ -33,7 +33,8 @@ void add_topo(py::module& m) {
     .value("Shift", HydrogenChange::Shift)
     .value("Remove", HydrogenChange::Remove)
     .value("ReAdd", HydrogenChange::ReAdd)
-    .value("ReAddButWater", HydrogenChange::ReAddButWater);
+    .value("ReAddButWater", HydrogenChange::ReAddButWater)
+    .value("ReAddKnown", HydrogenChange::ReAddKnown);
 
   py::class_<Topo::Bond>(topo, "Bond")
     .def_readonly("restr", &Topo::Bond::restr)

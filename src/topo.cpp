@@ -877,10 +877,11 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   topo->warnings = warnings;
   if (model_index >= st.models.size())
     fail("no such model index: " + std::to_string(model_index));
-  topo->initialize_refmac_topology(st, st.models[model_index], monlib, ignore_unknown_links);
+  Model& model = st.models[model_index];
+  topo->initialize_refmac_topology(st, model, monlib, ignore_unknown_links);
 
   if (use_cispeps)
-    force_cispeps(*topo, st.models.size() == 1, st.models[model_index], st.cispeps, warnings);
+    force_cispeps(*topo, st.models.size() == 1, model, st.cispeps, warnings);
 
   // remove hydrogens, or change deuterium to fraction, or nothing
   // and then check atom names
@@ -920,7 +921,9 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
     }
 
   // add hydrogens
-  if (h_change == HydrogenChange::ReAdd || h_change == HydrogenChange::ReAddButWater) {
+  if (h_change == HydrogenChange::ReAdd ||
+      h_change == HydrogenChange::ReAddButWater ||
+      h_change == HydrogenChange::ReAddKnown) {
     NeighMap neighbors = prepare_neighbor_data(*topo, monlib);
     for (Topo::ChainInfo& chain_info : topo->chain_infos)
       for (Topo::ResInfo& ri : chain_info.res_infos) {
@@ -979,7 +982,15 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
       remove_h_from_auto_links(link);
   }
 
-  assign_serial_numbers(st.models[model_index]);
+  if (h_change == HydrogenChange::ReAddKnown) {
+    // To leave only known hydrogens, we remove Hs with zero occupancy.
+    // As a side-effect, it removes any H atoms on zero-occupancy parents.
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        vector_remove_if(res.atoms, [](Atom& a) { return a.is_hydrogen() && a.occ == 0; });
+  }
+
+  assign_serial_numbers(model);
   // fill Topo::bonds, angles, ... and ResInfo::monomer_rules, Links::link_rules
   topo->apply_all_restraints(monlib);
   // fill bond_index, angle_index, etc

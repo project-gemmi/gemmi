@@ -16,7 +16,9 @@
 
 namespace gemmi {
 
-enum class HydrogenChange { NoChange, Shift, Remove, ReAdd, ReAddButWater };
+enum class HydrogenChange {
+  NoChange, Shift, Remove, ReAdd, ReAddButWater, ReAddKnown
+};
 
 struct GEMMI_DLL Topo {
   // We have internal pointers in this class (pointers setup in

@@ -1088,8 +1088,11 @@ where
   * HydrogenChange.NoChange -- no change,
   * HydrogenChange.Shift -- shift existing hydrogens to ideal (riding) positions,
   * HydrogenChange.Remove -- remove all H and D atoms,
-  * HydrogenChange.ReAdd -- discard and re-create hydrogens in ideal positions,
+  * HydrogenChange.ReAdd -- discard and re-create hydrogens in ideal positions
+    (if hydrogen position is not uniquely determined, its occupancy is set to zero),
   * HydrogenChange.ReAddButWater -- the same, but doesn't add H in waters,
+  * HydrogenChange.ReAddKnown -- the same, but doesn't add any H atoms which
+    positions are not uniquely determined,
 
 * ``reorder`` -- changes the order of atoms inside each residue
   to match the order in the corresponding monomer cif file,
@@ -1101,7 +1104,6 @@ where
   and continue. sys.stderr can be replaced with any object that has
   methods ``write(str)`` and ``flush()``.
 
-If hydrogen position is not uniquely determined its occupancy is set to zero.
 
 TBC
 
