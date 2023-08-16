@@ -168,6 +168,12 @@ void add_hkl(py::module& m) {
   py::class_<MtzToCif>(m, "MtzToCif")
     .def(py::init<>())
     .def_readwrite("spec_lines", &MtzToCif::spec_lines)
+    .def_readwrite("with_comments", &MtzToCif::with_comments)
+    .def_readwrite("with_history", &MtzToCif::with_history)
+    .def_readwrite("skip_empty", &MtzToCif::skip_empty)
+    .def_readwrite("skip_negative_sigi", &MtzToCif::skip_negative_sigi)
+    .def_readwrite("wavelength", &MtzToCif::wavelength)
+    .def_readwrite("free_flag_value", &MtzToCif::free_flag_value)
     .def("write_cif_to_string", [](MtzToCif& self, const Mtz& mtz, const Mtz* mtz2) {
         std::ostringstream out;
         self.write_cif(mtz, mtz2, nullptr, out);
