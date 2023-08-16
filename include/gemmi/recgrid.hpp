@@ -112,9 +112,10 @@ struct ReciprocalGrid : GridBase<T> {
     double max_1_d2 = 0.;
     if (dmin != 0.) {
       max_1_d2 = 1. / (dmin * dmin);
-      max_h = std::min(max_h, int(1. / (dmin * this->unit_cell.ar)));
-      max_k = std::min(max_k, int(1. / (dmin * this->unit_cell.br)));
-      max_l = std::min(max_l, int(1. / (dmin * this->unit_cell.cr)));
+      Miller lim = this->unit_cell.get_hkl_limits(dmin);
+      max_h = std::min(max_h, lim[0]);
+      max_k = std::min(max_k, lim[1]);
+      max_l = std::min(max_l, lim[2]);
     }
     gemmi::ReciprocalAsu asu(this->spacegroup);
     std::unique_ptr<GroupOps> gops;
