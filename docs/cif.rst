@@ -670,16 +670,20 @@ specific to either name-value pairs or to loops.
 
 .. warning::
 
-    Assuming what is a pair and what is in loop is a common source of bugs
-    when handling mmCIF files, so instead of these functions we recommend
-    using abstractions introduced in the next sections. For example,
-    when working with proteins one could assume that anisotropic ADP values
-    are in a loop, but wwPDB has entries with anisotropic ADP
-    for one atom only -- as name-value pairs.
-    On the other hand, one could think that R-free is always given as
-    name-value, but in entries from joint X-ray and neutron refinement
-    it is in a loop.
-    Be careful.
+    Assuming that a certain value is contained in a pair, or that it is
+    in a loop, is a common source of bugs when working with mmCIF files.
+    To get the data, instead of using the functions in this section,
+    it is recommended to use the abstractions (introduced in the next sections)
+    that work regardless of whether the values are in pairs or loops.
+
+    For instance, when working with proteins one could assume that anisotropic
+    ADP values are in a loop, but wwPDB also has entries with anisotropic ADP
+    for only one atom -- as name-value pairs.
+    Conversely, one could think that R-free is always given as
+    a name-value pair, but in entries from the joint X-ray and neutron
+    refinement it is in a loop.
+    Moreover, some CIF representations, such as mmJSON, do not preserve
+    the distinction between pairs and loops at all.
 
 The next sections introduce function that work with both pairs and loops.
 
@@ -698,8 +702,9 @@ or, if you want just the value::
 
   const std::string* Block::find_value(const std::string& tag) const
 
-Both functions return ``nullptr`` if the tag is not found (and they
-do not search in CIF loops).
+Both functions return ``nullptr`` if the tag is not found
+(but the latter also searches inside CIF loops and if there
+is a matching tag with only a single value, that value is returned).
 
 To add a pair to the block, or modify an existing one, use::
 

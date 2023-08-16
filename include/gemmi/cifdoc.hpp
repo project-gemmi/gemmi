@@ -411,12 +411,9 @@ struct Block {
   // access functions
   const Item* find_pair_item(const std::string& tag) const;
   const Pair* find_pair(const std::string& tag) const;
-  const std::string* find_value(const std::string& tag) const {
-    const Pair* pair = find_pair(tag);
-    return pair ? &(*pair)[1] : nullptr;
-  }
   Column find_loop(const std::string& tag);
   const Item* find_loop_item(const std::string& tag) const;
+  const std::string* find_value(const std::string& tag) const;
   Column find_values(const std::string& tag);
   bool has_tag(const std::string& tag) const {
     return const_cast<Block*>(this)->find_values(tag).item() != nullptr;
@@ -784,6 +781,20 @@ inline const Item* Block::find_loop_item(const std::string& tag) const {
   for (const Item& i : items)
     if (i.type == ItemType::Loop && i.loop.find_tag_lc(tag) != -1)
       return &i;
+  return nullptr;
+}
+
+inline const std::string* Block::find_value(const std::string& tag) const {
+  std::string lctag = gemmi::to_lower(tag);
+  for (const Item& i : items)
+    if (i.type == ItemType::Pair && gemmi::iequal(i.pair[0], lctag))
+      return &i.pair[1];
+  for (const Item& i : items)
+    if (i.type == ItemType::Loop) {
+      int pos = i.loop.find_tag_lc(lctag);
+      if (pos != -1 && i.loop.tags.size() == i.loop.values.size())
+        return &i.loop.values[pos];
+    }
   return nullptr;
 }
 
