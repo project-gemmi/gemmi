@@ -154,6 +154,11 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   if (mtz_paths[nargs-2] && gemmi::giends_with(mtz_paths[nargs-2], ".hkl"))
     std::swap(xds_path, mtz_paths[nargs-2]);
+  if (gemmi::giends_with(cif_output, ".mtz")) {
+    std::fprintf(stderr, "This must be a mistake, requested output cif file"
+                         " has mtz extension: %s\n", cif_output);
+    return 1;
+  }
   for (int i = 0; i < 2; ++i)
     if (mtz_paths[i]) {
       mtz[i].reset(new gemmi::Mtz);
