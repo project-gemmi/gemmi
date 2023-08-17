@@ -121,11 +121,11 @@ public:
 
   // The occupancy is assumed to take into account symmetry,
   // i.e. to be fractional if the atom is on special position.
-  std::complex<double> calculate_sf_from_small_structure(const SmallStructure& small,
+  std::complex<double> calculate_sf_from_small_structure(const SmallStructure& small_st,
                                                          const Miller& hkl) {
     std::complex<double> sf = 0.;
     set_stol2_and_scattering_factors(hkl);
-    for (const SmallStructure::Site& site : small.sites)
+    for (const SmallStructure::Site& site : small_st.sites)
       sf += calculate_sf_from_atom(site.fract, site, hkl);
     return sf;
   }

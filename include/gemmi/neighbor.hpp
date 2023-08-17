@@ -43,11 +43,11 @@ struct NeighborSearch {
       const Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
-    SmallStructure::Site& to_site(SmallStructure& small) const {
-      return small.sites.at(atom_idx);
+    SmallStructure::Site& to_site(SmallStructure& small_st) const {
+      return small_st.sites.at(atom_idx);
     }
-    const SmallStructure::Site& to_site(const SmallStructure& small) const {
-      return small.sites.at(atom_idx);
+    const SmallStructure::Site& to_site(const SmallStructure& small_st) const {
+      return small_st.sites.at(atom_idx);
     }
   };
 
@@ -66,10 +66,10 @@ struct NeighborSearch {
     set_bounding_cell(cell);
     set_grid_size();
   }
-  NeighborSearch(SmallStructure& small, double radius) {
-    small_structure = &small;
+  NeighborSearch(SmallStructure& small_st, double radius) {
+    small_structure = &small_st;
     radius_specified = radius;
-    grid.unit_cell = small.cell;
+    grid.unit_cell = small_st.cell;
     set_grid_size();
   }
 
