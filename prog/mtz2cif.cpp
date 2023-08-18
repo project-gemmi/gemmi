@@ -20,7 +20,7 @@ namespace {
 enum OptionIndex {
   Spec=4, PrintSpec, BlockName, EntryId, SkipEmpty, SkipNegativeSigI,
   NoComments, NoHistory, NoStaranisoTensor, RunFrom, Wavelength, Validate,
-  LessAnomalous, Separate, Deposition, Nfree, Trim
+  LessAnomalous, Separate, Deposition, NoIntensityCheck, Nfree, Trim
 };
 
 const option::Descriptor Usage[] = {
@@ -68,6 +68,7 @@ const option::Descriptor Usage[] = {
     "  --nfree=N  \tFlag value used for the free set (default: auto)" },
   { Trim, 0, "", "trim", Arg::Int,
     "  --trim=N  \t(for testing) output only reflections -N <= h,k,l <=N." },
+  { NoIntensityCheck, 0, "", "no-intensity-check", Arg::None, 0 },
   { NoOp, 0, "", "", Arg::None,
     "\nOne or two MTZ files are taken as the input. If two files are given,"
     "\none must be merged and the other unmerged."
@@ -296,9 +297,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       else if (xds_ascii)
         ui.read_unmerged_intensities_from_xds(*xds_ascii);
 
-      // If an old StarAniso version was used that doesn't store B tensor,
-      // allow intensities to differ.
-      bool relaxed_check = !mtz_to_cif.staraniso_version.empty() && !mi.staraniso_b.ok();
+      bool relaxed_check =
+        p.options[NoIntensityCheck] ||
+        // If an old StarAniso version was used that doesn't store B tensor,
+        // allow intensities to differ.
+        (!mtz_to_cif.staraniso_version.empty() && !mi.staraniso_b.ok());
 
       if (!gemmi::validate_merged_intensities(mi, ui, relaxed_check, std::cerr))
         ok = false;
