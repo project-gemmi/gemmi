@@ -22,7 +22,9 @@ bool any_subchain_matches(const Chain& chain, const Assembly::Gen& gen) {
 }
 
 struct AssemblyMapping {
-  std::vector<std::string> sub;  // records subchain name correspondence
+  // records subchain name correspondence (new->old)
+  std::map<std::string, std::string> sub;
+  // chain name mappings old->new for each Assembly::Operator used
   std::vector<std::map<std::string, std::string>> chain_maps;
 };
 
@@ -71,19 +73,12 @@ Model make_assembly_(const Assembly& assembly, const Model& model,
               transform_pos_and_adp(new_res, oper.transform);
               if (!new_res.subchain.empty()) {
                 // change subchain name for the residue
-                if (mapping && !mapping->sub.empty() &&
-                    *(mapping->sub.end() - 2) == new_res.subchain) {
-                  new_res.subchain = mapping->sub.back();
-                  continue;
-                }
                 if (how == HowToNameCopiedChain::Short)
                   new_res.subchain = new_chain.name + ":" + new_res.subchain;
                 else if (how == HowToNameCopiedChain::AddNumber)
                   new_res.subchain += new_chain.name.substr(chain.name.size());
-                if (mapping) {
-                  mapping->sub.push_back(res.subchain);
-                  mapping->sub.push_back(new_res.subchain);
-                }
+                if (mapping)
+                  mapping->sub.emplace(new_res.subchain, res.subchain);
               }
             }
         }
@@ -207,10 +202,9 @@ void transform_to_assembly(Structure& st, const std::string& assembly_name,
     for (Entity& ent : st.entities) {
       std::vector<std::string> new_subchains;
       for (const std::string& s : ent.subchains)
-        for (size_t i = 0; i < mapping.sub.size(); i += 2) {
-          if (mapping.sub[i] == s)
-            new_subchains.push_back(mapping.sub[i+1]);
-        }
+        for (const auto& new_old : mapping.sub)
+          if (new_old.second == s)
+            new_subchains.push_back(new_old.first);
       ent.subchains = std::move(new_subchains);
     }
 
