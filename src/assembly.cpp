@@ -28,6 +28,12 @@ struct AssemblyMapping {
   std::vector<std::map<std::string, std::string>> chain_maps;
 };
 
+void update_address(AtomAddress& a, const std::map<std::string, std::string>& chain_map) {
+  auto it = chain_map.find(a.chain_name);
+  if (it != chain_map.end())
+    a.chain_name = it->second;
+}
+
 Model make_assembly_(const Assembly& assembly, const Model& model,
                      HowToNameCopiedChain how, std::ostream* out,
                      AssemblyMapping* mapping) {
@@ -234,6 +240,32 @@ void transform_to_assembly(Structure& st, const std::string& assembly_name,
       // if it's needed - get in touch
     }
   st.connections = std::move(new_connections);
+
+  // secondary structure - helices
+  std::vector<Helix> new_helices;
+  new_helices.reserve(st.helices.size() * mapping.chain_maps.size());
+  for (const Helix& helix : st.helices)
+    for (const std::map<std::string, std::string>& ch_map : mapping.chain_maps) {
+      new_helices.push_back(helix);
+      update_address(new_helices.back().start, ch_map);
+      update_address(new_helices.back().end, ch_map);
+    }
+  st.helices = std::move(new_helices);
+
+  // secondary structure - sheets
+  std::vector<Sheet> new_sheets;
+  new_sheets.reserve(st.sheets.size() * mapping.chain_maps.size());
+  for (const Sheet& sheet : st.sheets)
+    for (const std::map<std::string, std::string>& ch_map : mapping.chain_maps) {
+      new_sheets.push_back(sheet);
+      for (Sheet::Strand& strand : new_sheets.back().strands) {
+        update_address(strand.start, ch_map);
+        update_address(strand.end, ch_map);
+        update_address(strand.hbond_atom2, ch_map);
+        update_address(strand.hbond_atom1, ch_map);
+      }
+    }
+  st.sheets = new_sheets;
 
   // Should Assembly instructions be kept or removed? Currently - removing.
   st.assemblies.clear();
