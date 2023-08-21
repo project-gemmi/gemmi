@@ -1794,9 +1794,13 @@ make_assembly() and the serial numbers were re-assigned in the meantime,
 add argument ``compare_serial=false``.
 
 Function ``transform_to_assembly()`` changes all models in the given structure
-to assemblies. Then it merges duplicated atoms,
+to assemblies. Then it merges duplicated atoms (unless the function is called
+with ``merge_dist=0``), re-assigns serial numbers, adjusts some metadata,
+such as secondary structure information,
 and removes the list of assemblies. The space group and
-unit cell are preserved. The choice of what is kept and what is removed
+unit cell are changed to non-crystal P1 (unless the function is called
+with optional arg keep_spacegroup=True).
+The choice of what is kept and what is removed
 is arbitrary, so this function may not be appropriate in all scenarios.
 
 .. doctest::
@@ -1868,20 +1872,22 @@ as they would be in a PDB file in which TER records also have serial numbers.
 ----
 
 When the file has NCS operations that are not "given",
-you can add NCS copies with:
+you can create a model with added NCS copies:
 
 .. doctest::
 
-  >>> st.expand_ncs(gemmi.HowToNameCopiedChain.Short)
+  >>> gemmi.expand_ncs_model(st[0], st.ncs, gemmi.HowToNameCopiedChain.Short)
+  <gemmi.Model 1 with 2 chain(s)>
 
-The meaning of the argument is the same as in ``make_assembly()`` above.
-
-And as with making assemblies, expansion of NCS may produce overlapping
-identical atoms, which can be merged with:
+Analogically to functions ``make_assembly()`` and ``transform_to_assembly()``,
+we also have a function that transforms a structure in-place,
+expanding NCS in all models, merging duplicated atoms and updating metadata:
 
 .. doctest::
 
-  >>> gemmi.merge_atoms_in_expanded_model(st[0], st.cell)
+  >>> st.expand_ncs(gemmi.HowToNameCopiedChain.Short, merge_dist=0.2)
+
+The meaning of the arguments is the same as in the "assembly" functions.
 
 See also the ``--expand-ncs`` option in command-line program
 :ref:`gemmi-convert <convert>`.

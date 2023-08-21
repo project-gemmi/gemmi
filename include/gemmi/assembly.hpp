@@ -105,16 +105,20 @@ inline Assembly pseudo_assembly_for_unit_cell(const UnitCell& cell) {
   return assembly;
 }
 
-/// Searches and merges overlapping equivalent atoms from different chains.
-/// To be used after expand_ncs() and make_assembly().
-GEMMI_DLL void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
-                                             double max_dist=0.2, bool compare_serial=true);
-
 /// If called with assembly_name="unit_cell" changes structure to unit cell (P1).
 /// \par keep_spacegroup preserves space group and unit cell - is it needed?
 GEMMI_DLL void transform_to_assembly(Structure& st, const std::string& assembly_name,
                                      HowToNameCopiedChain how, std::ostream* out,
-                                     bool keep_spacegroup=false);
+                                     bool keep_spacegroup=false, double merge_dist=0.2);
+
+
+GEMMI_DLL Model expand_ncs_model(const Model& model, const std::vector<NcsOp>& ncs,
+                                 HowToNameCopiedChain how);
+
+/// Searches and merges overlapping equivalent atoms from different chains.
+/// To be used after expand_ncs() and make_assembly().
+GEMMI_DLL void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
+                                             double max_dist=0.2, bool compare_serial=true);
 
 // chain is assumed to be from st.models[0]
 GEMMI_DLL void rename_chain(Structure& st, Chain& chain, const std::string& new_name);
@@ -132,7 +136,7 @@ inline void shorten_chain_names(Structure& st) {
                    namegen.make_short_name(chain.name.substr(0, max_len)));
 }
 
-GEMMI_DLL void expand_ncs(Structure& st, HowToNameCopiedChain how);
+GEMMI_DLL void expand_ncs(Structure& st, HowToNameCopiedChain how, double merge_dist=0.2);
 
 /// HowToNameCopiedChain::Dup adds segment name to chain name
 GEMMI_DLL void split_chains_by_segments(Model& model, HowToNameCopiedChain how);

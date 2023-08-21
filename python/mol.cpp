@@ -175,12 +175,14 @@ void add_mol(py::module& m) {
     .def("assign_serial_numbers", (void (*)(Structure&, bool)) &assign_serial_numbers,
          py::arg("numbered_ter")=false)
     .def("shorten_chain_names", &shorten_chain_names)
-    .def("expand_ncs", &expand_ncs, py::arg("how"))
+    .def("expand_ncs", &expand_ncs, py::arg("how"), py::arg("merge_dist")=0.2)
     .def("transform_to_assembly",
          [](Structure& st, const std::string& assembly_name, HowToNameCopiedChain how,
-            bool keep_spacegroup) {
-        return transform_to_assembly(st, assembly_name, how, nullptr, keep_spacegroup);
-    }, py::arg("assembly_name"), py::arg("how"), py::arg("keep_spacegroup")=false)
+            bool keep_spacegroup, double merge_dist) {
+        return transform_to_assembly(st, assembly_name, how, nullptr,
+                                     keep_spacegroup, merge_dist);
+    }, py::arg("assembly_name"), py::arg("how"), py::arg("keep_spacegroup")=false,
+       py::arg("merge_dist")=0.2)
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
     .def("clone", [](const Structure& self) { return new Structure(self); })
@@ -527,6 +529,7 @@ void add_mol(py::module& m) {
                             HowToNameCopiedChain how) {
         return make_assembly(assembly, model, how, nullptr);
   });
+  m.def("expand_ncs_model", &expand_ncs_model);
   m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
         py::arg("model"), py::arg("cell"), py::arg("max_dist")=0.2,
         py::arg("compare_serial")=true);
