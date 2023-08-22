@@ -232,8 +232,7 @@ void convert(gemmi::Structure& st,
     const char* sep = std::strchr(opt->arg, ':');
     std::string old_name(opt->arg, sep);
     std::string new_name(sep+1);
-    if (gemmi::Chain* chain = st.first_model().find_chain(old_name))
-      gemmi::rename_chain(st, *chain, new_name);
+    gemmi::rename_chain(st, old_name, new_name);
   }
   if (options[ShortenCN]) {
     shorten_chain_names(st);

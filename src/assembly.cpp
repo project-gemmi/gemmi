@@ -402,9 +402,10 @@ void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double ma
 }
 
 
-void rename_chain(Structure& st, Chain& chain, const std::string& new_name) {
+void rename_chain(Structure& st, const std::string& old_name,
+                                 const std::string& new_name) {
   auto rename_if_matches = [&](AtomAddress& aa) {
-    if (aa.chain_name == chain.name)
+    if (aa.chain_name == old_name)
       aa.chain_name = new_name;
   };
   for (Connection& con : st.connections) {
@@ -429,12 +430,12 @@ void rename_chain(Structure& st, Chain& chain, const std::string& new_name) {
   for (RefinementInfo& ri : st.meta.refinement)
     for (TlsGroup& tls : ri.tls_groups)
       for (TlsGroup::Selection& sel : tls.selections)
-        if (sel.chain == chain.name)
+        if (sel.chain == old_name)
           sel.chain = new_name;
-  for (auto it = st.models.begin() + 1; it != st.models.end(); ++it)
-    if (Chain* ch = it->find_chain(chain.name))
-      ch->name = new_name;
-  chain.name = new_name;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      if (chain.name == old_name)
+        chain.name = new_name;
 }
 
 
