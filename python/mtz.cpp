@@ -312,11 +312,14 @@ void add_mtz(py::module& m) {
   pyMtzBatch
     .def(py::init<>())
     .def_readwrite("number", &Mtz::Batch::number)
-    .def_property_readonly("dataset_id", &Mtz::Batch::dataset_id)
     .def_readwrite("title", &Mtz::Batch::title)
-    .def_readonly("ints", &Mtz::Batch::ints)
-    .def_readonly("floats", &Mtz::Batch::floats)
-    .def_readonly("axes", &Mtz::Batch::axes)
+    .def_readwrite("ints", &Mtz::Batch::ints)
+    .def_readwrite("floats", &Mtz::Batch::floats)
+    .def_readwrite("axes", &Mtz::Batch::axes)
+    .def_property("cell", &Mtz::Batch::get_cell, &Mtz::Batch::set_cell)
+    .def_property("dataset_id", &Mtz::Batch::dataset_id, &Mtz::Batch::set_dataset_id)
+    .def_property("wavelength", &Mtz::Batch::wavelength, &Mtz::Batch::set_wavelength)
+    .def("clone", [](const Mtz::Batch& self) { return new Mtz::Batch(self); })
     ;
 
   m.def("read_mtz_file", [](const std::string& path) {
