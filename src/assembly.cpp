@@ -240,6 +240,17 @@ void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
   if (mapping.how == HowToNameCopiedChain::Dup)
     return;
 
+  // cispeps
+  std::vector<CisPep> new_cispeps;
+  new_cispeps.reserve(st.cispeps.size() * mapping.chain_maps.size());
+  for (const CisPep& cispep : st.cispeps)
+    for (const ChainMap& chain_map : mapping.chain_maps) {
+      new_cispeps.push_back(cispep);
+      update_address(new_cispeps.back().partner_c, chain_map);
+      update_address(new_cispeps.back().partner_n, chain_map);
+    }
+  st.cispeps = std::move(new_cispeps);
+
   // secondary structure - helices
   std::vector<Helix> new_helices;
   new_helices.reserve(st.helices.size() * mapping.chain_maps.size());
@@ -399,6 +410,10 @@ void rename_chain(Structure& st, Chain& chain, const std::string& new_name) {
   for (Connection& con : st.connections) {
     rename_if_matches(con.partner1);
     rename_if_matches(con.partner2);
+  }
+  for (CisPep& cispep : st.cispeps) {
+    rename_if_matches(cispep.partner_c);
+    rename_if_matches(cispep.partner_n);
   }
   for (Helix& helix : st.helices) {
     rename_if_matches(helix.start);
