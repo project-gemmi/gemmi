@@ -16,6 +16,8 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Batch>)
+PYBIND11_MAKE_OPAQUE(std::vector<int>);    // for Batch::ints
+PYBIND11_MAKE_OPAQUE(std::vector<float>);  // for Batch::floats
 
 namespace gemmi {
   // operator<< is used by stl_bind for vector's __repr__
@@ -24,6 +26,27 @@ namespace gemmi {
        << '/' << ds.crystal_name << '/' << ds.dataset_name << '>';
     return os;
   }
+}
+
+
+// Minimal std::vector bindings, for Batch::ints and Batch::floats.
+// Don't allow the user to resize the vector, only to get and set values.
+template<typename Vector>
+void bind_batch_vector(py::handle scope, const char* name) {
+  using T = typename Vector::value_type;
+  using SizeType = typename Vector::size_type;
+  using DiffType = typename Vector::difference_type;
+  auto wrap_idx = [&](DiffType i, SizeType length) -> SizeType {
+    SizeType idx = (i >= 0 ? (SizeType)i : (SizeType)i + length);
+    if (idx >= length)
+      throw py::index_error();
+    return idx;
+  };
+  py::class_<Vector>(scope, name, py::module_local())
+    .def("__getitem__", [&](const Vector& v, DiffType i) { return v[wrap_idx(i, v.size())]; })
+    .def("__setitem__", [&](Vector& v, DiffType i, T x) { v[wrap_idx(i, v.size())] = x; })
+    .def("__len__", [](const Vector& v) { return v.size(); })
+    ;
 }
 
 template<typename F>
@@ -66,6 +89,8 @@ void add_mtz(py::module& m) {
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
   py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
   py::bind_vector<std::vector<Mtz::Batch>>(m, "MtzBatches");
+  bind_batch_vector<std::vector<int>>(m, "BatchInts");
+  bind_batch_vector<std::vector<float>>(m, "BatchFloats");
 
   mtz
     .def(py::init<bool>(), py::arg("with_base")=false)
