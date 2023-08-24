@@ -31,13 +31,10 @@ highlight_language = 'c++'
 
 # -- Options for HTML output ----------------------------------------------
 
-if not os.environ.get('READTHEDOCS'):
+if os.environ.get('READTHEDOCS'):
+    html_theme = 'default'
+else:
     html_theme = 'sphinx_rtd_theme'
-    #import cloud_sptheme as csp
-    #html_theme = "cloud"
-    #html_theme_path = [csp.get_theme_dir()]
-    #html_theme = 'bizstyle'
-    # html_theme_options = {}
 
 html_static_path = ['custom.css']
 
