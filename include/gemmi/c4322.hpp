@@ -26,16 +26,13 @@ struct C4322 {
   static Coef data[99];
 
   static bool has(El el) {
-    return (unsigned char)el < 99 || el == El::D;
+    return el <= El::Cf || el == El::D;
   }
 
-  static Coef& get(El el) {
-    // We have here the same elements as in it92.hpp, hence it92_pos().
-    return data[it92_pos(el)];
-  }
-
-  static Coef* get_ptr(El el) {
-    return has(el) ? &get(el) : nullptr;
+  static Coef& get(El el, signed char /*charge*/=0) {
+    // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
+    int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
+    return data[pos];
   }
 };
 

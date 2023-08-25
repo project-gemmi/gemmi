@@ -137,11 +137,5 @@ struct GaussianCoef {
   }
 };
 
-inline unsigned char it92_pos(El el) {
-  auto n = static_cast<unsigned char>(el);
-  // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
-  return n < 99 ? n : (unsigned char)(el == El::D);
-}
-
 } // namespace gemmi
 #endif

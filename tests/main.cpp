@@ -150,7 +150,7 @@ TEST_CASE("is_in_list") {
 
 TEST_CASE("IT92") {
   using Table = gemmi::IT92<double>;
-  const Table::Coef& coef = Table::get(gemmi::El::Mg);
+  const Table::Coef& coef = Table::get(gemmi::El::Mg, 0);
   double B = 23.4;
   double r = 1.5;
   double dens1 = coef.calculate_density_iso(r*r, B);

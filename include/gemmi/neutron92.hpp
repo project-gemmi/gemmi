@@ -27,8 +27,7 @@ struct Neutron92 {
 
   static Real& get_(El el) { return data[static_cast<int>(el)]; }
   static bool has(El el) { return get_(el) != 0; }
-  static Coef get(El el) { return Coef{{get_(el)}}; }
-  //static Real* get_ptr(El el) { return &get_(el); }
+  static Coef get(El el, signed char /*charge*/=0) { return Coef{{get_(el)}}; }
 };
 
 // real part of the bound coherent neutron scattering length (fm)

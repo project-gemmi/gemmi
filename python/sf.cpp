@@ -58,7 +58,7 @@ void add_dencalc(py::module& m, const char* name) {
             // rough estimate, so we don't calculate eigenvalues
             b = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
         }
-        auto coef = Table::get(atom.element);
+        auto coef = Table::get(atom.element, atom.charge);
         auto precal = coef.precalculate_density_iso(b, self.addends.get(atom.element));
         return self.estimate_radius(precal, b);
     })

@@ -1722,13 +1722,11 @@ used: one from the International Tables of Crystallography Vol. C
 Other parametrizations exist (for example, with only two Gaussians),
 but are not widely used.
 
-Currently, Gemmi includes only the ITC parametrization,
-ignoring charges of atoms. For example, the ITC provides separate form factors
-for Cu, Cu1+ and Cu2+, but we use only the first one.
-(If this is not sufficient for your needs, contact the developers).
+Currently, Gemmi includes only the ITC parametrization.
 
 In C++, the form factor coefficients are listed in the :file:`it92.hpp` header.
-In Python, they can be accessed as a property of an element (this may change).
+In Python, they can be accessed as a property of an element (only coefficients
+for neutral atoms).
 
 .. doctest::
 
@@ -1748,7 +1746,7 @@ You can get the coefficients as numbers:
   >>> fe_coef.c
   1.0369
 
-For neutral atoms the *a*'s and *c* should sum up to *Z*,
+The *a*'s and *c* should sum up to the number of electrons (*Z* - *charge*),
 but the numbers from the Tables may differ slightly:
 
 .. doctest::
@@ -1772,7 +1770,7 @@ which means multiplying them by a factor between 0.99995 and 1.00113.
   [11.7738..., 7.3600..., 3.5235..., 2.30535...]
 
 Now let's use function ``set_coefs()`` to change the coefficients back
-to the original values:
+to the original values (for neutral atoms):
 
 .. doctest::
 
@@ -1982,7 +1980,7 @@ Similarly, for small molecules:
   >>> small.change_occupancies_to_crystallographic()
   >>> calc_x = gemmi.StructureFactorCalculatorX(small.cell)
   >>> calc_x.calculate_sf_from_small_structure(small, (0,2,4))
-  (17.814263474967163-6.544854223135837e-15j)
+  (17.849693745125514-6.557871093218542e-15j)
 
 For each atom, the Debye-Waller factor (used in the structure factor
 calculation) is obtained using either isotropic or anisotropic ADPs

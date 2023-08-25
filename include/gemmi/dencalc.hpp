@@ -119,7 +119,7 @@ struct DensityCalculator {
   // pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     Element el = atom.element;
-    do_add_atom_density_to_grid(atom, Table::get(el), addends.get(el));
+    do_add_atom_density_to_grid(atom, Table::get(el, atom.charge), addends.get(el));
   }
 
   // Parameter c is a constant factor and has the same meaning as either addend

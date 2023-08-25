@@ -35,12 +35,12 @@ public:
     scattering_factors_.resize(addends.size(), 0.);
   }
 
-  double get_scattering_factor(Element element) {
+  double get_scattering_factor(Element element, signed char charge) {
     double& sfactor = scattering_factors_[element.ordinal()];
     if (sfactor == 0.) {
       if (!Table::has(element.elem))
         fail("Missing scattering factor for ", element.name());
-      sfactor = Table::get(element.elem).calculate_sf(stol2_) + addends.get(element);
+      sfactor = Table::get(element.elem, charge).calculate_sf(stol2_) + addends.get(element);
     }
     return sfactor;
   }
@@ -90,7 +90,8 @@ public:
   std::complex<double> calculate_sf_from_atom(const Fractional& fract,
                                               const Site& site,
                                               const Miller& hkl) {
-    return calculate_sf_from_atom_sf(fract, site, hkl, get_scattering_factor(site.element));
+    double atom_sf = get_scattering_factor(site.element, site.charge);
+    return calculate_sf_from_atom_sf(fract, site, hkl, atom_sf);
   }
 
   std::complex<double> calculate_sf_from_model(const Model& model, const Miller& hkl) {

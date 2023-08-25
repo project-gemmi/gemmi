@@ -80,10 +80,10 @@ void add_elem(py::module& m) {
     .def_property_readonly("is_hydrogen", &Element::is_hydrogen)
     .def_property_readonly("is_metal", &Element::is_metal)
     .def_property_readonly("it92", [](const Element& self) {
-        return IT92::get_ptr(self.elem);
+        return IT92::has(self.elem) ? &IT92::get(self.elem, 0) : nullptr;
     }, py::return_value_policy::reference_internal)
     .def_property_readonly("c4322", [](const Element& self) {
-        return C4322::get_ptr(self.elem);
+        return C4322::has(self.elem) ? &C4322::get(self.elem) : nullptr;
     }, py::return_value_policy::reference_internal)
     .def_property_readonly("neutron92", [](const Element& self) {
         return Neutron92::get(self.elem);  // a copy is created
