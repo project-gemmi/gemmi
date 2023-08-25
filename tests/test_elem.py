@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from gemmi import Element
+from gemmi import Element, IT92_get_exact
 
 
 class TestElem(unittest.TestCase):
@@ -35,6 +35,7 @@ class TestElem(unittest.TestCase):
     def test_coef(self):
         h = Element('H')
         d = Element('D')
+        fe = Element('Fe')
         cf = Element('Cf')
         es = Element('Es')
         self.assertIsNotNone(cf.it92)
@@ -45,6 +46,12 @@ class TestElem(unittest.TestCase):
         self.assertEqual(h.c4322.get_coefs(), d.c4322.get_coefs())
         self.assertEqual(Element('X').it92.get_coefs(),
                          Element('O').it92.get_coefs())
+        fe_coefs = fe.it92.get_coefs()
+        fe0_coefs = IT92_get_exact(fe, 0).get_coefs()
+        fe2_coefs = IT92_get_exact(fe, 2).get_coefs()
+        self.assertIsNone(IT92_get_exact(fe, 4))
+        self.assertEqual(fe_coefs, fe0_coefs)
+        self.assertNotEqual(fe_coefs, fe2_coefs)
 
 
 ELEMENT_MASS = {

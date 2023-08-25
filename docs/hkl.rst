@@ -1725,14 +1725,25 @@ but are not widely used.
 Currently, Gemmi includes only the ITC parametrization.
 
 In C++, the form factor coefficients are listed in the :file:`it92.hpp` header.
-In Python, they can be accessed as a property of an element (only coefficients
-for neutral atoms).
+In Python, these coefficients can be accessed as a property of an element
+(only coefficients for neutral atoms):
 
 .. doctest::
 
   >>> gemmi.Element('Fe').it92  #doctest: +ELLIPSIS
   <gemmi.IT92Coef object at 0x...>
   >>> gemmi.Element('Es').it92  # -> None (no parametrization for Einsteinium)
+
+or by using the function IT92_get_exact() that takes an element and a charge
+as arguments and returns None if this exact atom or ion is absent in the table.
+This function is used solely to inspect the coefficients.
+When calculating structure factors, coefficients for ions absent in the table
+are substituded with coefficients of neutral atoms.
+
+.. doctest::
+
+  >>> gemmi.IT92_get_exact(gemmi.Element('Mg'), +2)  # for Mg2+ #doctest: +ELLIPSIS
+  <gemmi.IT92Coef object at 0x...>
 
 You can get the coefficients as numbers:
 

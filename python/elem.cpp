@@ -33,6 +33,7 @@ void add_elem(py::module& m) {
              })(r2);
     }, py::arg("r2"), py::arg("B"))
     ;
+  m.def("IT92_normalize", &IT92::normalize);
 
   // c4322.hpp
   using C4322 = gemmi::C4322<double>;
@@ -60,7 +61,7 @@ void add_elem(py::module& m) {
          py::arg("r2"), py::arg("B"))
     ;
 
-  // elem.hpp
+  // elem.hpp (w/ properties from it92.hpp, ...)
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
@@ -92,6 +93,10 @@ void add_elem(py::module& m) {
     .def("__repr__", [](const Element& self) {
         return "<gemmi.Element: " + std::string(self.name()) + ">";
     });
+
+  m.def("IT92_get_exact", [](gemmi::Element el, signed char charge) {
+      return IT92::get_exact(el.elem, charge);
+  }, py::return_value_policy::reference_internal);
 
   // resinfo.hpp
   py::enum_<ResidueInfo::Kind>(m, "ResidueInfoKind")

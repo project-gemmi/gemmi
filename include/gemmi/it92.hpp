@@ -51,6 +51,15 @@ struct IT92 {
     return data[pos];
   }
 
+  static Coef* get_exact(El el, signed char charge) {
+    if (has(el)) {
+      Coef* coef = &get(el, charge);
+      if (charge == 0 || coef - data > int(El::Cf))
+        return coef;
+    }
+    return nullptr;
+  }
+
   // Make a1+a2+a3+a4+c equal exactly to the number of electrons.
   // It changes the values from ITC only slightly (by not more than 0.12%).
   static void normalize_one(Coef& f, int n) {
