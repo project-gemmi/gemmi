@@ -57,7 +57,11 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
         for (const Atom& atom : res.atoms) {
           mmdb::PAtom atom2 = mmdb::newAtom();
           const char altloc[2] = {atom.altloc, '\0'};
-          atom2->SetAtomName(0, atom.serial, atom.padded_name().c_str(),
+          std::string padded_name = atom.padded_name();
+          // padded_name() is padding from the left; MMDB from both sides
+          if (padded_name.size() < 4)
+            padded_name.resize(4, ' ');
+          atom2->SetAtomName(0, atom.serial, padded_name.c_str(),
                              altloc, res.segment.c_str(), atom.element.uname());
           atom2->Het = res.het_flag == 'H';
           atom2->SetCharge(atom.charge);
@@ -203,6 +207,8 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
   Structure st;
   const mmdb::Cryst& cryst = *manager->GetCrystData();
   st.cell.set(cryst.a, cryst.b, cryst.c, cryst.alpha, cryst.beta, cryst.gamma);
+  if (cryst.WhatIsSet & mmdb::CSET_ZValue)
+    st.info.emplace("_cell.Z_PDB", std::to_string(cryst.Z));
   st.spacegroup_hm = cryst.spaceGroup;
   int n = manager->GetNumberOfModels();
   st.models.reserve(n);
