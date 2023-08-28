@@ -44,7 +44,7 @@ const option::Descriptor Usage[] = {
   { Normalize, 0, "", "normalize", Arg::None,
     "  --normalize  \tScale the map to standard deviation 1 and mean 0." },
   { MapMask, 0, "", "mapmask", Arg::Required,
-    "  --mapmask=FILE  \tOutput only map covering the structure,"
+    "  --mapmask=FILE  \tOutput only map covering the structure from FILE,"
     " similarly to CCP4 MAPMASK with XYZIN." },
   { Margin, 0, "", "margin", Arg::Float,
     "  --margin=N  \t(w/ --mapmask) Border in Angstrom (default: 5)." },
@@ -74,6 +74,7 @@ void transform_sf_to_map(OptParser& p) {
     if (p.options[Margin])
       margin = std::atof(p.options[Margin].arg);
     gemmi::Structure st = gemmi::read_structure_gz(p.options[MapMask].arg);
+    st.cell = ccp4.grid.unit_cell; // needed in case the unit cells differ
     gemmi::Box<gemmi::Fractional> box;
     if (p.options[Select]) {
       gemmi::Selection sel(p.options[Select].arg);

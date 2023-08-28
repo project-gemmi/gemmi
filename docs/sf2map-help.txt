@@ -29,7 +29,7 @@ Options:
   -G                   Print size of the grid that would be used and exit.
   --timing             Print calculation times.
   --normalize          Scale the map to standard deviation 1 and mean 0.
-  --mapmask=FILE       Output only map covering the structure, similarly to CCP4
-                       MAPMASK with XYZIN.
+  --mapmask=FILE       Output only map covering the structure from FILE,
+                       similarly to CCP4 MAPMASK with XYZIN.
   --margin=N           (w/ --mapmask) Border in Angstrom (default: 5).
   --select=SEL         (w/ --mapmask) Selection of atoms in FILE, MMDB syntax.
