@@ -2,7 +2,6 @@
 
 #include "gemmi/mtz.hpp"
 #include "gemmi/fourier.hpp"
-#include "gemmi/gz.hpp"
 #include "tostr.hpp"
 
 #include "common.h"
@@ -348,6 +347,8 @@ void add_mtz(py::module& m) {
     ;
 
   m.def("read_mtz_file", [](const std::string& path) {
-      return read_mtz(MaybeGzipped(path), true);
-  }, py::arg("path"), py::return_value_policy::move);
+    std::unique_ptr<Mtz> mtz(new Mtz);
+    mtz->read_file_gz(path, true);
+    return mtz.release();
+  }, py::arg("path"));
 }

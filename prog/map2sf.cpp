@@ -71,12 +71,12 @@ void transform_map_to_sf(OptParser& p) {
     fprintf(stderr, "Fourier transform of grid %d x %d x %d...\n",
             map.grid.nu, map.grid.nv, map.grid.nw);
   gemmi::FPhiGrid<float> hkl = gemmi::transform_map_to_f_phi(map.grid, /*half_l=*/true);
-  if (gemmi::iends_with(output_path, ".mtz")) {
+  if (gemmi::giends_with(output_path, ".mtz")) {
     gemmi::Mtz mtz;
     if (p.options[Base]) {
       if (verbose)
         fprintf(stderr, "Reading %s ...\n", p.options[Base].arg);
-      mtz = gemmi::read_mtz_file(p.options[Base].arg);
+      mtz.read_file_gz(p.options[Base].arg);
       int dataset_id = -1;
       if (p.options[Section]) {
         const char* ds_name = p.options[Section].arg;

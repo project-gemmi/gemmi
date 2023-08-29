@@ -8,7 +8,6 @@
 #include <cstring>            // for strcmp
 #include <cstdlib>            // for strtod, exit
 #include <array>
-#include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/mtz.hpp>      // for Mtz
 #include <gemmi/fourier.hpp>  // for get_f_phi_on_grid, transform_f_phi_..
 #include <gemmi/recgrid.hpp>  // for ReciprocalGrid
@@ -183,7 +182,8 @@ read_sf_and_fft_to_map(const char* input_path,
           size, half_l, axis_order);
   } else {
     timer.start();
-    Mtz mtz = gemmi::read_mtz(gemmi::MaybeGzipped(input_path), true);
+    Mtz mtz;
+    mtz.read_file_gz(input_path);
     timer.print("MTZ read in");
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
     gemmi::MtzDataProxy data_proxy{mtz};

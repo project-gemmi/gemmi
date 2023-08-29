@@ -151,7 +151,6 @@ struct Binner {
   std::vector<double> limits;  // upper limit of each bin
 };
 
-// the result is in a
 inline Correlation combine_two_correlations(const Correlation& a, const Correlation& b) {
   Correlation r;
   r.n = a.n + b.n;

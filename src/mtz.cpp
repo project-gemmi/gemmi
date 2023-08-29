@@ -1,6 +1,7 @@
 // Copyright 2019-2023 Global Phasing Ltd.
 
 #include <gemmi/mtz.hpp>
+#include <gemmi/gz.hpp>
 #include <gemmi/sprintf.hpp>
 
 namespace gemmi {
@@ -197,6 +198,15 @@ void Mtz::expand_to_p1() {
   nreflections = int(data.size() / columns.size());
   sort_order = {{0, 0, 0, 0, 0}};
   set_spacegroup(&get_spacegroup_p1());
+}
+
+void Mtz::read_file_gz(const std::string& path, bool with_data) {
+  try {
+    read_input(MaybeGzipped(path), with_data);
+  } catch (std::runtime_error& e) {
+    // append path to the error like in read_file(), but shouldn't the path go first?
+    fail(std::string(e.what()) + ": " + path);
+  }
 }
 
 #define WRITE(...) do { \

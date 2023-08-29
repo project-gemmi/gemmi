@@ -795,6 +795,9 @@ struct GEMMI_DLL Mtz {
     }
   }
 
+  /// the same as read_input(MaybeGzipped(path), with_data)
+  void read_file_gz(const std::string& path, bool with_data=true);
+
   std::vector<int> sorted_row_indices(int use_first=3) const {
     if (!has_data())
       fail("No data.");
@@ -1110,7 +1113,6 @@ Mtz read_mtz(Input&& input, bool with_data) {
   mtz.read_input(std::forward<Input>(input), with_data);
   return mtz;
 }
-
 
 // Abstraction of data source, cf. ReflnDataProxy.
 struct MtzDataProxy {

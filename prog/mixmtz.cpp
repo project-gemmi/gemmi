@@ -68,7 +68,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       const char* path = p.nonOption(i);
       if (verbose)
         fprintf(stderr, "Reading %s ...\n", path);
-      input_list.emplace_back(gemmi::read_mtz_file(path));
+      input_list.emplace_back();
+      input_list.back().read_file_gz(path);
       if (p.options[Asu]) {
         // TODO
       }
