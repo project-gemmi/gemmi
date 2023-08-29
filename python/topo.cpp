@@ -42,18 +42,24 @@ void add_topo(py::module& m) {
     .def("calculate", &Topo::Bond::calculate)
     .def("calculate_z", &Topo::Bond::calculate_z)
     ;
+  py::bind_vector<std::vector<Topo::Bond>>(m, "TopoBonds");
+
   py::class_<Topo::Angle>(topo, "Angle")
     .def_readonly("restr", &Topo::Angle::restr)
     .def_readonly("atoms", &Topo::Angle::atoms)
     .def("calculate", &Topo::Angle::calculate)
     .def("calculate_z", &Topo::Angle::calculate_z)
     ;
+  py::bind_vector<std::vector<Topo::Angle>>(m, "TopoAngles");
+
   py::class_<Topo::Torsion>(topo, "Torsion")
     .def_readonly("restr", &Topo::Torsion::restr)
     .def_readonly("atoms", &Topo::Torsion::atoms)
     .def("calculate", &Topo::Torsion::calculate)
     .def("calculate_z", &Topo::Torsion::calculate_z)
     ;
+  py::bind_vector<std::vector<Topo::Torsion>>(m, "TopoTorsions");
+
   py::class_<Topo::Chirality>(topo, "Chirality")
     .def_readonly("restr", &Topo::Chirality::restr)
     .def_readonly("atoms", &Topo::Chirality::atoms)
@@ -62,19 +68,15 @@ void add_topo(py::module& m) {
          py::arg("ideal_abs_vol"), py::arg("esd"))
     .def("check", &Topo::Chirality::check)
     ;
+  py::bind_vector<std::vector<Topo::Chirality>>(m, "TopoChirs");
+
   py::class_<Topo::Plane>(topo, "Plane")
     .def_readonly("restr", &Topo::Plane::restr)
     .def_readonly("atoms", &Topo::Plane::atoms)
     .def("has", &Topo::Plane::has)
     ;
-  py::class_<Topo::Link>(topo, "Link")
-    .def_readonly("link_id", &Topo::Link::link_id)
-    .def_readonly("res1", &Topo::Link::res1)
-    .def_readonly("res2", &Topo::Link::res2)
-    .def_readonly("alt1", &Topo::Link::alt1)
-    .def_readonly("alt2", &Topo::Link::alt2)
-    .def_readonly("link_rules", &Topo::Link::link_rules)
-    ;
+  py::bind_vector<std::vector<Topo::Plane>>(m, "TopoPlanes");
+
   py::enum_<Topo::RKind>(m, "RKind")
     .value("Bond", Topo::RKind::Bond)
     .value("Angle", Topo::RKind::Angle)
@@ -86,17 +88,32 @@ void add_topo(py::module& m) {
     .def_readonly("rkind", &Topo::Rule::rkind)
     .def_readonly("index", &Topo::Rule::index)
     ;
+  py::bind_vector<std::vector<Topo::Rule>>(m, "TopoRules");
+
   py::class_<Topo::Mod>(topo, "Mod")
     .def_readonly("id", &Topo::Mod::id)
     .def_readonly("alias", &Topo::Mod::alias)
     .def_readonly("altloc", &Topo::Mod::altloc)
     ;
+  py::bind_vector<std::vector<Topo::Mod>>(m, "TopoMods");
+
   py::class_<Topo::FinalChemComp>(topo, "FinalChemComp")
     .def_readonly("altloc", &Topo::FinalChemComp::altloc)
     .def_readonly("cc", &Topo::FinalChemComp::cc)
     ;
-  py::class_<Topo::ResInfo> resinfo(topo, "ResInfo");
-  resinfo
+  py::bind_vector<std::vector<Topo::FinalChemComp>>(m, "TopoFinalChemComps");
+
+  py::class_<Topo::Link>(topo, "Link")
+    .def_readonly("link_id", &Topo::Link::link_id)
+    .def_readonly("res1", &Topo::Link::res1)
+    .def_readonly("res2", &Topo::Link::res2)
+    .def_readonly("alt1", &Topo::Link::alt1)
+    .def_readonly("alt2", &Topo::Link::alt2)
+    .def_readonly("link_rules", &Topo::Link::link_rules)
+    ;
+  py::bind_vector<std::vector<Topo::Link>>(m, "TopoLinks");
+
+  py::class_<Topo::ResInfo>(topo, "ResInfo")
     .def_readonly("res", &Topo::ResInfo::res)
     .def_readonly("prev", &Topo::ResInfo::prev)
     .def_readonly("mods", &Topo::ResInfo::mods)
@@ -104,6 +121,8 @@ void add_topo(py::module& m) {
     .def_readonly("monomer_rules", &Topo::ResInfo::monomer_rules)
     .def("get_final_chemcomp", &Topo::ResInfo::get_final_chemcomp)
     ;
+  py::bind_vector<std::vector<Topo::ResInfo>>(m, "TopoResInfos");
+
   py::class_<Topo::ChainInfo>(topo, "ChainInfo")
     .def_property_readonly("chain_ref", [](const Topo::ChainInfo& self)
         { return &self.chain_ref; }, py::return_value_policy::reference_internal)
@@ -113,17 +132,6 @@ void add_topo(py::module& m) {
     .def_readonly("polymer_type", &Topo::ChainInfo::polymer_type)
     .def_readonly("res_infos", &Topo::ChainInfo::res_infos)
     ;
-
-  py::bind_vector<std::vector<Topo::Bond>>(m, "TopoBonds");
-  py::bind_vector<std::vector<Topo::Angle>>(m, "TopoAngles");
-  py::bind_vector<std::vector<Topo::Torsion>>(m, "TopoTorsions");
-  py::bind_vector<std::vector<Topo::Chirality>>(m, "TopoChirs");
-  py::bind_vector<std::vector<Topo::Plane>>(m, "TopoPlanes");
-  py::bind_vector<std::vector<Topo::Link>>(m, "TopoLinks");
-  py::bind_vector<std::vector<Topo::Rule>>(m, "TopoRules");
-  py::bind_vector<std::vector<Topo::Mod>>(m, "TopoMods");
-  py::bind_vector<std::vector<Topo::FinalChemComp>>(m, "TopoFinalChemComps");
-  py::bind_vector<std::vector<Topo::ResInfo>>(m, "TopoResInfos");
 
   py::class_<std::vector<Topo::ChainInfo>>(m, "TopoChainInfos")
     .def("__len__", &std::vector<Topo::ChainInfo>::size)
