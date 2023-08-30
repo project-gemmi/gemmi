@@ -28,6 +28,7 @@ struct IT92 {
   using Coef = GaussianCoef<4, 1, Real>;
   static Coef data[99+112];
   static std::pair<El, signed char> ion_list[112];
+  static bool ignore_charge;
 
   static bool has(El el) {
     return el <= El::Cf || el == El::D;
@@ -36,7 +37,7 @@ struct IT92 {
   static Coef& get(El el, signed char charge) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
-    if (charge != 0) {
+    if (charge != 0 && !ignore_charge) {
       std::pair<El, signed char> p{el, charge};
       int start = std::max(0, (int)el - 8);  // optimization based on plot of index(El)
       for (int i = start; i < 112; ++i) {
@@ -413,6 +414,9 @@ std::pair<El, signed char> IT92<Real>::ion_list[112] = {
   {El::Pu, +4},
   {El::Pu, +6},
 };
+
+template<class Real>
+bool IT92<Real>::ignore_charge = false;
 
 #if defined(__GNUC__) && __GNUC__-0 > 4
 #pragma GCC diagnostic pop

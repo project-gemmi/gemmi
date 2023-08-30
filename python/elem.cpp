@@ -34,6 +34,9 @@ void add_elem(py::module& m) {
     }, py::arg("r2"), py::arg("B"))
     ;
   m.def("IT92_normalize", &IT92::normalize);
+  // can't define property for py::module_, and we don't expose IT92 as class
+  m.def("IT92_get_ignore_charge", []() { return IT92::ignore_charge; });
+  m.def("IT92_set_ignore_charge", [](bool v) { IT92::ignore_charge = v; });
 
   // c4322.hpp
   using C4322 = gemmi::C4322<double>;

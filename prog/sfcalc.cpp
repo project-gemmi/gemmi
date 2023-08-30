@@ -803,6 +803,8 @@ void process(const std::string& input, const OptParser& p) {
   if (table == 'x' || table == 'm') {
     if (p.options[NormalizeIt92])
       gemmi::IT92<double>::normalize();
+    if (table == 'm')
+      gemmi::IT92<double>::ignore_charge = true;
     process_with_table<gemmi::IT92<double>>(use_st, st, small, wavelength,
                                             table == 'm', p);
   } else if (table == 'e') {

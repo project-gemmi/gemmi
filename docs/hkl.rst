@@ -2195,6 +2195,7 @@ we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
 
 .. doctest::
 
+  >>> gemmi.IT92_set_ignore_charge(True)  # ignoring charges on atoms
   >>> dc = gemmi.DensityCalculatorX()
   >>> dc.d_min = 2.5
   >>> dc.addends.subtract_z()
