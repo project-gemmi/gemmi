@@ -422,10 +422,14 @@ struct UnitCell {
 
   // Helper function. PBC = periodic boundary conditions.
   bool search_pbc_images(Fractional&& diff, NearestImage& image) const {
-    int neg_shift[3] = { iround(diff.x), iround(diff.y), iround(diff.z) };
-    diff.x -= neg_shift[0];
-    diff.y -= neg_shift[1];
-    diff.z -= neg_shift[2];
+    int neg_shift[3] = {0, 0, 0};
+    if (is_crystal()) {
+      for (int j = 0; j < 3; ++j)
+        neg_shift[j] = iround(diff.at(j));
+      diff.x -= neg_shift[0];
+      diff.y -= neg_shift[1];
+      diff.z -= neg_shift[2];
+    }
     Position orth_diff = orthogonalize_difference(diff);
     double dsq = orth_diff.length_sq();
     if (dsq < image.dist_sq) {
@@ -443,7 +447,7 @@ struct UnitCell {
       image.dist_sq = INFINITY;
     else
       image.dist_sq = ref.dist_sq(pos);
-    if (asu == Asu::Same || !is_crystal())
+    if (asu == Asu::Same)
       return image;
     Fractional fpos = fractionalize(pos);
     Fractional fref = fractionalize(ref);
@@ -473,10 +477,7 @@ struct UnitCell {
     sym_image.dist_sq = INFINITY;
     sym_image.sym_idx = image_idx;
     apply_transform(fpos, image_idx, false);
-    if (is_crystal())
-      search_pbc_images(fpos - fref, sym_image);
-    else
-      sym_image.dist_sq = orthogonalize_difference(fpos - fref).length_sq();
+    search_pbc_images(fpos - fref, sym_image);
     return sym_image;
   }
   NearestImage find_nearest_pbc_image(const Position& ref, const Position& pos,
