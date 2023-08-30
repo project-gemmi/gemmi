@@ -52,8 +52,7 @@ if [ -z "${NO_DOCTEST-}" ]; then
 fi
 
 flake8 docs/ examples/ tests/ tools/ setup.py
-# We want to avoid having '::' in pydoc from pybind11.
-$PYTHON -m pydoc gemmi | grep :: ||:
+pybind11-stubgen --dry-run --exit-code gemmi
 
 
 # Usually, we stop here. Below are more extensive checks below that are run
