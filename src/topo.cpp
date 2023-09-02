@@ -573,6 +573,12 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
 }
 
 void Topo::apply_all_restraints(const MonLib& monlib) {
+  bonds.clear();
+  angles.clear();
+  torsions.clear();
+  chirs.clear();
+  planes.clear();
+  rt_storage.clear();
   for (ChainInfo& chain_info : chain_infos)
     for (ResInfo& ri : chain_info.res_infos) {
       // link restraints
@@ -593,18 +599,22 @@ void Topo::apply_all_restraints(const MonLib& monlib) {
 }
 
 void Topo::create_indices() {
+  bond_index.clear();
   for (Bond& bond : bonds) {
     bond_index.emplace(bond.atoms[0], &bond);
     if (bond.atoms[1] != bond.atoms[0])
       bond_index.emplace(bond.atoms[1], &bond);
   }
+  angle_index.clear();
   for (Angle& ang : angles)
     angle_index.emplace(ang.atoms[1], &ang);
+  torsion_index.clear();
   for (Torsion& tor : torsions) {
     torsion_index.emplace(tor.atoms[1], &tor);
     if (tor.atoms[1] != tor.atoms[2])
       torsion_index.emplace(tor.atoms[2], &tor);
   }
+  plane_index.clear();
   for (Plane& plane : planes)
     for (Atom* atom : plane.atoms)
       plane_index.emplace(atom, &plane);
@@ -846,9 +856,8 @@ NeighMap prepare_neighbor_data(Topo& topo, const MonLib& monlib) {
   std::streambuf *warnings_orig = nullptr;
   if (topo.warnings)
     warnings_orig = topo.warnings->rdbuf(nullptr);
-  // Prepare bonds. It fills topo.bonds - cleared later in this function,
-  // and monomer_rules/link_rules - overwritten if apply_all_restraints()
-  // is called again.
+  // Prepare bonds. Fills topo.bonds, monomer_rules/link_rules and rt_storage,
+  // but they are all reset when apply_all_restraints() is called again.
   topo.only_bonds = true;
   topo.apply_all_restraints(monlib);
   topo.only_bonds = false;
@@ -863,7 +872,6 @@ NeighMap prepare_neighbor_data(Topo& topo, const MonLib& monlib) {
     if (a1 != a2)
       neighbors.emplace(a2->serial, Neigh{a1->altloc, a1->occ});
   }
-  topo.bonds.clear();
   return neighbors;
 }
 
@@ -982,15 +990,6 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
       remove_h_from_auto_links(link);
   }
 
-  if (h_change == HydrogenChange::ReAddKnown) {
-    // To leave only known hydrogens, we remove Hs with zero occupancy.
-    // As a side-effect, it removes any H atoms on zero-occupancy parents.
-    for (Chain& chain : model.chains)
-      for (Residue& res : chain.residues)
-        vector_remove_if(res.atoms, [](Atom& a) { return a.is_hydrogen() && a.occ == 0; });
-  }
-
-  assign_serial_numbers(model);
   // fill Topo::bonds, angles, ... and ResInfo::monomer_rules, Links::link_rules
   topo->apply_all_restraints(monlib);
   // fill bond_index, angle_index, etc
@@ -1000,6 +999,26 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   if (h_change != HydrogenChange::NoChange)
     place_hydrogens_on_all_atoms(*topo);
 
+  if (h_change == HydrogenChange::ReAddKnown) {
+    // To leave only known hydrogens, we remove Hs with zero occupancy.
+    // As a side-effect, it removes any H atoms on zero-occupancy parents.
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        vector_remove_if(res.atoms, [](Atom& a) { return a.is_hydrogen() && a.occ == 0; });
+
+    // disable warnings here, so they are not printed twice
+    std::streambuf *warnings_orig = nullptr;
+    if (topo->warnings)
+      warnings_orig = topo->warnings->rdbuf(nullptr);
+    // re-set restraints and indices
+    topo->apply_all_restraints(monlib);
+    topo->create_indices();
+    // re-enable warnings
+    if (warnings_orig)
+      topo->warnings->rdbuf(warnings_orig);
+  }
+
+  assign_serial_numbers(model);
   return topo;
 }
 
