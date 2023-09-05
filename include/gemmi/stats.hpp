@@ -11,6 +11,13 @@
 
 namespace gemmi {
 
+struct Mean {
+  int n = 0;
+  double sum = 0.;
+  void add_point(double x) { ++n; sum += x; }
+  double get_mean() const { return sum / n; }
+};
+
 // popular single-pass algorithm for calculating variance and mean
 struct Variance {
   int n = 0;

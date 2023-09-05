@@ -89,6 +89,20 @@ struct Binner {
     return setup_from_1_d2(nbins, method, std::move(inv_d2), nullptr);
   }
 
+  /// the same as setup(), but returns mid values of 1/d^2.
+  template<typename DataProxy>
+  std::vector<double> setup_mid(int nbins, Method method, const DataProxy& proxy,
+                                const UnitCell* cell_=nullptr) {
+    setup(2 * nbins, method, proxy, cell_);
+    std::vector<double> mids(nbins);
+    for (int i = 0; i < nbins; ++i) {
+      mids[i] = limits[2*i];
+      limits[i] = limits[2*i+1];
+    }
+    limits.resize(nbins);
+    return mids;
+  }
+
   void ensure_limits_are_set() const {
     if (limits.empty())
       fail("Binner not set up");
@@ -133,6 +147,15 @@ struct Binner {
     std::vector<int> nums(proxy.size() / proxy.stride());
     for (size_t i = 0, offset = 0; i < nums.size(); ++i, offset += proxy.stride())
       nums[i] = get_bin_hinted(proxy.get_hkl(offset), hint);
+    return nums;
+  }
+
+  std::vector<int> get_bins_from_1_d2(const std::vector<double>& inv_d2) const {
+    ensure_limits_are_set();
+    int hint = 0;
+    std::vector<int> nums(inv_d2.size());
+    for (size_t i = 0; i < inv_d2.size(); ++i)
+      nums[i] = get_bin_from_1_d2_hinted(inv_d2[i], hint);
     return nums;
   }
 
