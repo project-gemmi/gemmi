@@ -87,6 +87,7 @@ struct OptParser : option::Parser {
       return (options[opt].arg[0] & ~0x20) == 'Y';
     return default_;
   }
+  int integer_or(int opt, int default_) const;
 };
 
 namespace gemmi { enum class CoorFormat; }

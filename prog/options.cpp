@@ -194,6 +194,12 @@ void OptParser::check_exclusive_group(const std::vector<int>& group) {
     }
 }
 
+int OptParser::integer_or(int opt, int default_) const {
+  if (options[opt])
+    return std::atoi(options[opt].arg);
+  return default_;
+}
+
 void OptParser::print_try_help_and_exit(const char* msg) const {
   fprintf(stderr, "%s\nTry '%s --help' for more information.\n",
                   msg, program_name);

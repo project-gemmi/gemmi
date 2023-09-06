@@ -12,7 +12,7 @@
 namespace {
 
 enum OptionIndex {
-  LabelF=4, LabelE, NoSigma, Method, BinSize
+  LabelF=4, LabelE, NoSigma, Method, BinSize, MaxBins
 };
 
 struct EcalcArg: public Arg {
@@ -36,13 +36,15 @@ const option::Descriptor Usage[] = {
     "  --no-sigma  \tDo not use sigma columns (SIGF->SIGE)." },
   { Method, 0, "", "method", EcalcArg::MethodChoice,
     "  --method=METHOD  \tMethod of calculating <F^2>, one of:\n\t"
-    "ma - moving average,\n\t"
+    "ma - moving average (not implemented yet),\n\t"
     "2 - resolution bins equispaced in 1/d^2,\n\t"
     "3 - resolution bins in 1/d^3 (default),\n\t"
     "ec - bins with equal count of reflections." },
-  { BinSize, 0, "n", "binsize", Arg::Int,
-    "  -n, --binsize=N  \tNumber of reflections per bin or in moving window\n\t"
+  { BinSize, 0, "", "binsize", Arg::Int,
+    "  --binsize=N  \tNumber of reflections per bin or in moving window\n\t"
     "(default: 200)." },
+  { MaxBins, 0, "", "maxbins", Arg::Int,
+    "  --maxbins=N  \tMaximum number of bins (default: 100)." },
   { NoOp, 0, "", "", Arg::None,
     "\nColumn for SIGF is always the next column after F (the type must be Q)."
     "\nIf INPUT.mtz has column E, it is replaced in OUTPUT.mtz."
@@ -103,13 +105,15 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
       if (!std::isnan(mtz.data[n + fcol_idx]))
         ++f_count;
-    int binsize = 200;
-    if (p.options[BinSize])
-      binsize = std::atoi(p.options[BinSize].arg);
+    int binsize = p.integer_or(BinSize, 200);
     int nbins = gemmi::iround((double)f_count / binsize);
-    if (verbose > 0)
+    nbins = std::min(nbins, p.integer_or(MaxBins, 100));
+
+    if (verbose > 0 || nbins < 3)
       std::fprintf(stderr, "%d reflections, %d Fs, %d shells\n",
                    mtz.nreflections, f_count, nbins);
+    if (nbins < 3)
+      gemmi::fail("not enough resolution bins");
     bool use_moving_average = false;
     auto method = gemmi::Binner::Method::Dstar3;
     if (p.options[Method])
@@ -141,35 +145,47 @@ int GEMMI_MAIN(int argc, char **argv) {
           denom[bin_index[i]].add_point(f2);
         }
       }
+
+      // simple smoothing with kernel [0.75 1 0.75]
+      std::vector<double> smoothed(denom.size());
+      {
+        const double k = 0.75;
+        smoothed[0] = (denom[0].sum + k * denom[1].sum) / (denom[0].n + k * denom[1].n);
+        size_t n = denom.size() - 1;
+        for (size_t i = 1; i < n; ++i)
+          smoothed[i] = (denom[i].sum + k * (denom[i-1].sum + denom[i+1].sum))
+                      / (denom[i].n + k * (denom[i-1].n + denom[i+1].n));
+        smoothed[n] = (denom[n].sum + k * denom[n-1].sum) / (denom[n].n + k * denom[n-1].n);
+      }
+
       if (verbose > 1) {
         // print shell statistics
         std::vector<int> refl_counts(binner.size());
-        printf(" shell\t    #F\t    d\t <F^2>\t  #refl\t mid d\n");
+        printf(" shell\t    #F\t    d\t <F^2>\tsmoothd\t  #refl\t mid d\n");
         for (int idx : bin_index)
           ++refl_counts[idx];
         for (size_t i = 0; i < binner.size(); ++i) {
           double d = 1 / std::sqrt(binner.limits[i]);
           double mid_d = 1 / std::sqrt(mids[i]);
-          printf("%6zu\t%6d\t%6.2f\t%7.1f\t%6d\t%6.2f\n",
-                 i+1, denom[i].n, d, denom[i].get_mean(), refl_counts[i], mid_d);
+          printf("%6zu\t%6d\t%6.2f\t%7.0f\t%7.0f\t%6d\t%6.2f\n",
+                 i+1, denom[i].n, d, denom[i].get_mean(), smoothed[i], refl_counts[i], mid_d);
         }
         printf("\n");
       }
-      // re-use Mean::sum for RMS
-      for (gemmi::Mean& m : denom)
-        m.sum = std::sqrt(m.get_mean());
+      for (double& x : smoothed)
+        x = std::sqrt(x);
       for (size_t i = 0; i < computed_values.size(); ++i) {
         double x = inv_d2[i];
         int bin = bin_index[i];
-        double rms = denom[bin].sum;
+        double rms = smoothed[bin];
         if (x > mids.front() && x < mids.back()) {
           // linear interpolation in 1/d^2
           if (x > mids[bin])
             ++bin;
           double x0 = mids[bin - 1];
           double x1 = mids[bin];
-          double y0 = denom[bin - 1].sum;
-          double y1 = denom[bin].sum;
+          double y0 = smoothed[bin - 1];
+          double y1 = smoothed[bin];
           assert(x0 <= x && x <= x1);
           rms = y0 + (x - x0) * (y1 - y0) / (x1 - x0);
         }
