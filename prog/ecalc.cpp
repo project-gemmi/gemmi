@@ -1,10 +1,9 @@
 // Copyright 2023 Global Phasing Ltd.
 
 #include <cstdio>   // for printf, fprintf
-#include <cstdlib>  // for atof
 #include "gemmi/binner.hpp"  // for Binner
 #include "gemmi/mtz.hpp"     // for Mtz
-#include "gemmi/stats.hpp"   // for Mean
+#include "gemmi/ecalc.hpp"   // for Mean
 
 #define GEMMI_PROG ecalc
 #include "options.h"
@@ -17,7 +16,7 @@ enum OptionIndex {
 
 struct EcalcArg: public Arg {
   static option::ArgStatus MethodChoice(const option::Option& option, bool msg) {
-    return Arg::Choice(option, msg, {"ma", "2", "3", "ec"});
+    return Arg::Choice(option, msg, {/*"ma",*/ "2", "3", "ec"});
   }
 };
 
@@ -49,8 +48,7 @@ const option::Descriptor Usage[] = {
     "\nColumn for SIGF is always the next column after F (the type must be Q)."
     "\nIf INPUT.mtz has column E, it is replaced in OUTPUT.mtz."
     "\nOtherwise, a new column is appended."
-    "\nThe name for SIGE, if it is added as a column, is 'SIG' + label of E."
-    "\nTo print the list of resolution shells add -vv." },
+    "\nThe name for SIGE, if it is added as a column, is 'SIG' + label of E." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -72,8 +70,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     Mtz mtz;
     mtz.read_file_gz(input);
-    if (mtz.spacegroup == nullptr)
-      gemmi::fail("Unknown space group of the input data: ", input);
     const Mtz::Column* fcol = &mtz.get_column_with_label(f_label);
     if (use_sigma && !fcol->get_next_column_if_type('Q'))
         gemmi::fail("Column ", f_label, " not followed by sigma column. Use --no-sigma.\n");
@@ -100,7 +96,6 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     if (!mtz.has_data())  // shouldn't happen
       gemmi::fail("no data");
-    gemmi::Binner binner;
     int f_count = 0;
     for (size_t n = 0; n < mtz.data.size(); n += mtz.columns.size())
       if (!std::isnan(mtz.data[n + fcol_idx]))
@@ -114,90 +109,28 @@ int GEMMI_MAIN(int argc, char **argv) {
                    mtz.nreflections, f_count, nbins);
     if (nbins < 3)
       gemmi::fail("not enough resolution bins");
-    bool use_moving_average = false;
+    //bool use_moving_average = false;
     auto method = gemmi::Binner::Method::Dstar3;
     if (p.options[Method])
       switch (p.options[Method].arg[0]) {
-        case '2': method = gemmi::Binner::Method::Dstar3; break;
+        case '2': method = gemmi::Binner::Method::Dstar2; break;
         case 'e': method = gemmi::Binner::Method::EqualCount; break;
-        case 'm': use_moving_average = true; break;
+        //case 'm': use_moving_average = true; break;
       }
     if (verbose > 0)
       std::fprintf(stderr, "Calculating E ...\n");
-    gemmi::GroupOps gops = mtz.spacegroup->operations();
-    std::vector<double> computed_values(mtz.nreflections, NAN);
-    if (use_moving_average) {
-      //TODO
-    } else {
-      std::vector<double> mids = binner.setup_mid(nbins, method, gemmi::MtzDataProxy{mtz});
-      std::vector<double> inv_d2(mtz.nreflections);
-      for (size_t i = 0, n = 0; n < mtz.data.size(); n += mtz.columns.size(), ++i)
-        inv_d2[i] = mtz.cell.calculate_1_d2(mtz.get_hkl(n));
-      std::vector<int> bin_index = binner.get_bins_from_1_d2(inv_d2);
-      std::vector<gemmi::Mean> denom(binner.size());
-      for (size_t i = 0, n = 0; n < mtz.data.size(); n += mtz.columns.size(), i++) {
-        gemmi::Miller hkl = mtz.get_hkl(n);
-        double f = mtz.data[n + fcol_idx];
-        if (!std::isnan(f)) {
-          double inv_epsilon = 1.0 / gops.epsilon_factor(hkl);
-          double f2 = f * f * inv_epsilon;
-          computed_values[i] = std::sqrt(inv_epsilon);
-          denom[bin_index[i]].add_point(f2);
-        }
-      }
+    gemmi::Binner binner;
+    gemmi::MtzDataProxy data_proxy{mtz};
+    binner.setup(nbins, method, data_proxy, nullptr, /*with_mids=*/true, fcol_idx);
+    std::vector<double> multipliers
+      = gemmi::calculate_amplitude_normalizers(data_proxy, fcol_idx, binner);
 
-      // simple smoothing with kernel [0.75 1 0.75]
-      std::vector<double> smoothed(denom.size());
-      {
-        const double k = 0.75;
-        smoothed[0] = (denom[0].sum + k * denom[1].sum) / (denom[0].n + k * denom[1].n);
-        size_t n = denom.size() - 1;
-        for (size_t i = 1; i < n; ++i)
-          smoothed[i] = (denom[i].sum + k * (denom[i-1].sum + denom[i+1].sum))
-                      / (denom[i].n + k * (denom[i-1].n + denom[i+1].n));
-        smoothed[n] = (denom[n].sum + k * denom[n-1].sum) / (denom[n].n + k * denom[n-1].n);
-      }
-
-      if (verbose > 1) {
-        // print shell statistics
-        std::vector<int> refl_counts(binner.size());
-        printf(" shell\t    #F\t    d\t <F^2>\tsmoothd\t  #refl\t mid d\n");
-        for (int idx : bin_index)
-          ++refl_counts[idx];
-        for (size_t i = 0; i < binner.size(); ++i) {
-          double d = 1 / std::sqrt(binner.limits[i]);
-          double mid_d = 1 / std::sqrt(mids[i]);
-          printf("%6zu\t%6d\t%6.2f\t%7.0f\t%7.0f\t%6d\t%6.2f\n",
-                 i+1, denom[i].n, d, denom[i].get_mean(), smoothed[i], refl_counts[i], mid_d);
-        }
-        printf("\n");
-      }
-      for (double& x : smoothed)
-        x = std::sqrt(x);
-      for (size_t i = 0; i < computed_values.size(); ++i) {
-        double x = inv_d2[i];
-        int bin = bin_index[i];
-        double rms = smoothed[bin];
-        if (x > mids.front() && x < mids.back()) {
-          // linear interpolation in 1/d^2
-          if (x > mids[bin])
-            ++bin;
-          double x0 = mids[bin - 1];
-          double x1 = mids[bin];
-          double y0 = smoothed[bin - 1];
-          double y1 = smoothed[bin];
-          assert(x0 <= x && x <= x1);
-          rms = y0 + (x - x0) * (y1 - y0) / (x1 - x0);
-        }
-        computed_values[i] /= rms;
-      }
-    }
     if (verbose > 0)
       std::fprintf(stderr, "Writing %s ...\n", output);
     for (size_t i = 0, n = 0; n < mtz.data.size(); n += mtz.columns.size(), ++i) {
-      mtz.data[n + ecol.idx] *= float(computed_values[i]);
+      mtz.data[n + ecol.idx] *= float(multipliers[i]);
       if (use_sigma)
-        mtz.data[n + ecol.idx + 1] *= float(computed_values[i]);
+        mtz.data[n + ecol.idx + 1] *= float(multipliers[i]);
     }
     mtz.write_to_file(output);
   } catch (std::runtime_error& e) {

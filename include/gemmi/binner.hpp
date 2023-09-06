@@ -80,27 +80,26 @@ struct Binner {
   }
 
   template<typename DataProxy>
-  int setup(int nbins, Method method, const DataProxy& proxy,
-            const UnitCell* cell_=nullptr) {
+  void setup(int nbins, Method method, const DataProxy& proxy,
+             const UnitCell* cell_=nullptr, bool with_mids=false, size_t col_idx=0) {
+    if (col_idx >= proxy.stride())
+      fail("wrong col_idx in Binner::setup()");
     cell = cell_ ? *cell_ : proxy.unit_cell();
-    std::vector<double> inv_d2(proxy.size() / proxy.stride());
-    for (size_t i = 0, offset = 0; i < inv_d2.size(); ++i, offset += proxy.stride())
-      inv_d2[i] = cell.calculate_1_d2(proxy.get_hkl(offset));
-    return setup_from_1_d2(nbins, method, std::move(inv_d2), nullptr);
-  }
-
-  /// the same as setup(), but returns mid values of 1/d^2.
-  template<typename DataProxy>
-  std::vector<double> setup_mid(int nbins, Method method, const DataProxy& proxy,
-                                const UnitCell* cell_=nullptr) {
-    setup(2 * nbins, method, proxy, cell_);
-    std::vector<double> mids(nbins);
-    for (int i = 0; i < nbins; ++i) {
-      mids[i] = limits[2*i];
-      limits[i] = limits[2*i+1];
+    std::vector<double> inv_d2;
+    inv_d2.reserve(proxy.size() / proxy.stride());
+    for (size_t offset = 0; offset < proxy.size(); offset += proxy.stride())
+      if (col_idx == 0 || !std::isnan(proxy.get_num(offset + col_idx)))
+        inv_d2.push_back(cell.calculate_1_d2(proxy.get_hkl(offset)));
+    setup_from_1_d2((with_mids ? 2 * nbins : nbins),
+                    method, std::move(inv_d2), nullptr);
+    if (with_mids) {
+      mids.resize(nbins);
+      for (int i = 0; i < nbins; ++i) {
+        mids[i] = limits[2*i];
+        limits[i] = limits[2*i+1];
+      }
+      limits.resize(nbins);
     }
-    limits.resize(nbins);
-    return mids;
   }
 
   void ensure_limits_are_set() const {
@@ -172,6 +171,7 @@ struct Binner {
   double min_1_d2;
   double max_1_d2;
   std::vector<double> limits;  // upper limit of each bin
+  std::vector<double> mids;    // the middle of each bin
 };
 
 inline Correlation combine_two_correlations(const Correlation& a, const Correlation& b) {

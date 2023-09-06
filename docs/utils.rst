@@ -454,6 +454,15 @@ Merge intensities from multi-record reflection file.
 .. literalinclude:: merge-help.txt
    :language: console
 
+ecalc
+=====
+
+Calculates normalized amplitudes E from amplitudes F.
+Uses "Karle" approach, similar to CCP4 ECALC.
+
+.. literalinclude:: ecalc-help.txt
+   :language: console
+
 .. _sfcalc:
 
 sfcalc

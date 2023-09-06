@@ -1,0 +1,24 @@
+$ gemmi ecalc -h
+Usage:
+ gemmi ecalc [options] INPUT.mtz OUTPUT.mtz
+
+Calculates E (normalised structure amplitudes) from F.
+  -h, --help       Print usage and exit.
+  -V, --version    Print version and exit.
+  -v, --verbose    Verbose output.
+  --F=LABEL        Label of the input column (default: F).
+  --E=LABEL        Label of the output column (default: E).
+  --no-sigma       Do not use sigma columns (SIGF->SIGE).
+  --method=METHOD  Method of calculating <F^2>, one of:
+                   ma - moving average (not implemented yet),
+                   2 - resolution bins equispaced in 1/d^2,
+                   3 - resolution bins in 1/d^3 (default),
+                   ec - bins with equal count of reflections.
+  --binsize=N      Number of reflections per bin or in moving window
+                   (default: 200).
+  --maxbins=N      Maximum number of bins (default: 100).
+
+Column for SIGF is always the next column after F (the type must be Q).
+If INPUT.mtz has column E, it is replaced in OUTPUT.mtz.
+Otherwise, a new column is appended.
+The name for SIGE, if it is added as a column, is 'SIG' + label of E.

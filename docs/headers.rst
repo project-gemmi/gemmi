@@ -85,6 +85,9 @@ gemmi/dirwalk.hpp
     in an alphabetical order.  It wraps the tinydir library (as we cannot
     depend on C++17 <filesystem> yet).
 
+gemmi/ecalc.hpp
+    Normalization of amplitudes F->E ("Karle" approach, similar to CCP4 ECALC).
+
 gemmi/eig3.hpp
     Eigen decomposition code for symmetric 3x3 matrices.
 

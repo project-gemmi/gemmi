@@ -4,12 +4,13 @@
 #include "gemmi/refln.hpp"
 #include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid, ...
 #include "tostr.hpp"
-#include "gemmi/fprime.hpp"
+#include "gemmi/fprime.hpp"   // for cromer_liberman
 #include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
 #include "gemmi/cif2mtz.hpp"  // for CifToMtz
 #include "gemmi/mtz2cif.hpp"  // for MtzToCif
 #include "gemmi/merge.hpp"    // for Intensities
 #include "gemmi/binner.hpp"   // for Binner
+#include "gemmi/ecalc.hpp"    // for calculate_amplitude_normalizers
 
 #include "common.h"
 #include "arrvec.h"  // py_array_from_vector
@@ -269,11 +270,13 @@ void add_hkl(py::module& m) {
     .def(py::init<>())
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      const Mtz& mtz, const UnitCell* cell) {
-        return self.setup(nbins, method, MtzDataProxy{mtz}, cell);
+        self.setup(nbins, method, MtzDataProxy{mtz}, cell);
+        return self.size();  // for compatibility with older versions
     }, py::arg("nbins"), py::arg("method"), py::arg("mtz"), py::arg("cell")=nullptr)
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      const ReflnBlock& r, const UnitCell* cell) {
-        return self.setup(nbins, method, ReflnDataProxy(r), cell);
+        self.setup(nbins, method, ReflnDataProxy(r), cell);
+        return self.size();  // for compatibility with older versions
     }, py::arg("nbins"), py::arg("method"), py::arg("r"), py::arg("cell")=nullptr)
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      py::array_t<int> hkl, const UnitCell* cell) {
@@ -333,6 +336,13 @@ void add_hkl(py::module& m) {
     ;
 
   m.def("combine_correlations", &combine_correlations);
+
+  m.def("calculate_amplitude_normalizers",
+        [](const Mtz& mtz, const std::string& f_col, const Binner& binner) {
+      const Mtz::Column& f = mtz.get_column_with_label(f_col);
+      return py_array_from_vector(
+          calculate_amplitude_normalizers(MtzDataProxy{mtz}, f.idx, binner));
+  });
 
   py::class_<HklMatch>(m, "HklMatch")
     .def(py::init([](py::array_t<int, py::array::c_style> hkl,
