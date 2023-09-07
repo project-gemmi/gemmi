@@ -1195,7 +1195,6 @@ The boundaries are set by one of the setup functions:
   >>> mtz = gemmi.read_mtz_file('../tests/5wkd_phases.mtz.gz')
   >>> binner = gemmi.Binner()
   >>> binner.setup(4, gemmi.Binner.Method.Dstar3, mtz)
-  4
 
 The MTZ file may contain multiple datasets with different unit cells.
 In such case we may explicitely specify the unit cell:
@@ -1203,7 +1202,6 @@ In such case we may explicitely specify the unit cell:
 .. doctest::
 
   >>> binner.setup(4, gemmi.Binner.Method.Dstar3, mtz, cell=mtz.get_cell(1))
-  4
 
 Alternatively, the binner can be set up with ReflnBlock or with an array
 of *hkl* or *d*:sup:`--2`:
@@ -1212,13 +1210,10 @@ of *hkl* or *d*:sup:`--2`:
   :skipif: numpy is None
 
   >>> binner.setup(4, gemmi.Binner.Method.Dstar3, rblock)
-  4
   >>> binner.setup(4, gemmi.Binner.Method.Dstar3,
   ...              mtz.make_miller_array(), mtz.get_cell())
-  4
   >>> binner.setup_from_1_d2(4, gemmi.Binner.Method.Dstar3,
   ...                        mtz.make_1_d2_array(), mtz.get_cell())
-  4
 
 The unit cell and the upper bin boundaries (in Å\ :sup:`--2`) are stored internally:
 

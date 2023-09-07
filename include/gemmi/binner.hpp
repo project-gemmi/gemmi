@@ -21,8 +21,8 @@ struct Binner {
     Dstar3,
   };
 
-  int setup_from_1_d2(int nbins, Method method, std::vector<double>&& inv_d2,
-                      const UnitCell* cell_) {
+  void setup_from_1_d2(int nbins, Method method, std::vector<double>&& inv_d2,
+                       const UnitCell* cell_) {
     if (nbins < 1)
       fail("Binner: nbins argument must be positive");
     if (inv_d2.empty())
@@ -76,7 +76,6 @@ struct Binner {
       }
     }
     limits.back() = std::numeric_limits<double>::infinity();
-    return (int) limits.size();
   }
 
   template<typename DataProxy>

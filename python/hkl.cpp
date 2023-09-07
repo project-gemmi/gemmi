@@ -271,12 +271,10 @@ void add_hkl(py::module& m) {
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      const Mtz& mtz, const UnitCell* cell) {
         self.setup(nbins, method, MtzDataProxy{mtz}, cell);
-        return self.size();  // for compatibility with older versions
     }, py::arg("nbins"), py::arg("method"), py::arg("mtz"), py::arg("cell")=nullptr)
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      const ReflnBlock& r, const UnitCell* cell) {
         self.setup(nbins, method, ReflnDataProxy(r), cell);
-        return self.size();  // for compatibility with older versions
     }, py::arg("nbins"), py::arg("method"), py::arg("r"), py::arg("cell")=nullptr)
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      py::array_t<int> hkl, const UnitCell* cell) {
@@ -287,13 +285,13 @@ void add_hkl(py::module& m) {
         if (cell)
           for (size_t i = 0; i < inv_d2.size(); ++i)
             inv_d2[i] = cell->calculate_1_d2_double(h(i, 0), h(i, 1), h(i, 2));
-        return self.setup_from_1_d2(nbins, method, std::move(inv_d2), cell);
+        self.setup_from_1_d2(nbins, method, std::move(inv_d2), cell);
     }, py::arg("nbins"), py::arg("method"), py::arg("hkl"), py::arg("cell"))
     .def("setup_from_1_d2", [](Binner& self, int nbins, Binner::Method method,
                                py::array_t<double> inv_d2, const UnitCell* cell) {
         double* ptr = (double*) inv_d2.request().ptr;
         auto len = inv_d2.shape(0);
-        return self.setup_from_1_d2(nbins, method, std::vector<double>(ptr, ptr+len), cell);
+        self.setup_from_1_d2(nbins, method, std::vector<double>(ptr, ptr+len), cell);
     }, py::arg("nbins"), py::arg("method"), py::arg("inv_d2"), py::arg("cell"))
     .def("get_bin", &Binner::get_bin)
     .def("get_bins", [](Binner& self, const Mtz& mtz) {
