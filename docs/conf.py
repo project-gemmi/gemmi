@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-import os
 
 # -- General configuration ------------------------------------------------
 
-needs_sphinx = '2.4.4'
+needs_sphinx = '7.0.0'
 
 extensions = ['sphinx.ext.doctest', 'sphinx.ext.githubpages']
 
@@ -14,7 +13,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 project = u'Gemmi'
-copyright = u'2017-2022 Global Phasing Ltd'
+copyright = u'Global Phasing Ltd'
 author = u'Marcin Wojdyr'
 
 with open('../include/gemmi/version.hpp') as _f:
@@ -31,13 +30,8 @@ highlight_language = 'c++'
 
 # -- Options for HTML output ----------------------------------------------
 
-if os.environ.get('READTHEDOCS'):
-    html_theme = 'default'
-else:
-    html_theme = 'sphinx_rtd_theme'
-
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['custom.css']
-
 
 # -- Options for LaTeX output ---------------------------------------------
 
