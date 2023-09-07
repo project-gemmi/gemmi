@@ -2,7 +2,7 @@
 
 # -- General configuration ------------------------------------------------
 
-needs_sphinx = '7.0.0'
+needs_sphinx = '5.3.0'
 
 extensions = ['sphinx.ext.doctest', 'sphinx.ext.githubpages']
 
