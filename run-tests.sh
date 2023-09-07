@@ -89,7 +89,7 @@ if [ $1 = h -o $1 = a ]; then
     for f in include/gemmi/*.hpp; do
         if [ $f != include/gemmi/mmdb.hpp ]; then
             echo -n .
-            gcc-9 -c -fsyntax-only $f
+            gcc-9 -c -fsyntax-only -Dsmall=.avoid/small $f
         fi
     done
     echo
