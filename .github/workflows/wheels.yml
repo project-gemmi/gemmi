@@ -52,7 +52,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - uses: pypa/cibuildwheel@v1.12.0
+    - uses: pypa/cibuildwheel@v1.15.0
       env:
         CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
         CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
