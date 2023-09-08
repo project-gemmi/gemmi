@@ -361,9 +361,9 @@ endif()
 ### benchmarks ###
 
 if (benchmark_FOUND)
-  foreach(b stoi elem mod niggli pdb resinfo round sym)
+  foreach(b stoi elem mod niggli pdb resinfo round sym writecif)
     add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
-    if (b MATCHES "resinfo|pdb")
+    if (b MATCHES "resinfo|pdb|writecif")
       target_link_libraries(${b}-bm PRIVATE gemmi_cpp)
     endif()
     target_link_libraries(${b}-bm PRIVATE benchmark::benchmark)
