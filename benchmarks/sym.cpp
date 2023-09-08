@@ -18,7 +18,7 @@ constexpr const char* HALL_SYMBOLS[] = {
 };
 
 static void bm_parse_triplet_all(benchmark::State& state) {
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (const char* triplet : TRIPLETS)
       benchmark::DoNotOptimize(gemmi::parse_triplet(triplet));
 }
@@ -26,7 +26,7 @@ static void bm_parse_triplet_all(benchmark::State& state) {
 /*static*/ void bm_make_triplet(benchmark::State& state) {
   int n = state.range(0);
   gemmi::Op op = gemmi::parse_triplet(TRIPLETS[n]);
-  while (state.KeepRunning())
+  for (auto _ : state)
     benchmark::DoNotOptimize(op.triplet());
 }
 
@@ -34,7 +34,7 @@ static void bm_make_triplet_all(benchmark::State& state) {
   gemmi::Op ops[10];
   for (int i = 0; i != 10; ++i)
     ops[i] = gemmi::parse_triplet(TRIPLETS[i]);
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (const gemmi::Op& op : ops)
       benchmark::DoNotOptimize(op.triplet());
 }
@@ -42,7 +42,7 @@ static void bm_make_triplet_all(benchmark::State& state) {
 static void bm_generators_from_hall(benchmark::State& state) {
   int n = state.range(0);
   const char* hall = HALL_SYMBOLS[n];
-  while (state.KeepRunning())
+  for (auto _ : state)
     benchmark::DoNotOptimize(gemmi::generators_from_hall(hall));
 }
 
@@ -50,7 +50,7 @@ static void bm_add_elements(benchmark::State& state) {
   int n = state.range(0);
   const char* hall = HALL_SYMBOLS[n];
   gemmi::GroupOps gops = gemmi::generators_from_hall(hall);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     gemmi::GroupOps copy = gops;
     copy.add_missing_elements();
     benchmark::DoNotOptimize(copy);

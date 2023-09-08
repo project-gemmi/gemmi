@@ -24,7 +24,7 @@ inline void run(benchmark::State& state, double(*func)(double)) {
   for (double& x : numbers) { // otherwise it would be all optimized out
     x = std::rand() % 10 == 0 ? -x : x;
   }
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (double x : numbers)
       benchmark::DoNotOptimize((*func)(x));
 }
@@ -33,7 +33,7 @@ inline void run2(benchmark::State& state, long(*func)(double)) {
   for (double& x : numbers) { // otherwise it would be all optimized out
     x = std::rand() % 10 == 0 ? -x : x;
   }
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (double x : numbers)
       benchmark::DoNotOptimize((*func)(x));
 }

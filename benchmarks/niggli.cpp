@@ -26,7 +26,7 @@ void print_iterations() {
 
 static void run_niggli(benchmark::State& state) {
   //print_iterations();
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     gemmi::GruberVector gv(cell, centring, false);
     gv.niggli_reduce();
     benchmark::DoNotOptimize(gv.parameters());
@@ -34,7 +34,7 @@ static void run_niggli(benchmark::State& state) {
 }
 
 static void run_niggli_with_tracking(benchmark::State& state) {
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     gemmi::GruberVector gv(cell, centring, true);
     gv.niggli_reduce();
     benchmark::DoNotOptimize(gv.parameters());
@@ -42,7 +42,7 @@ static void run_niggli_with_tracking(benchmark::State& state) {
 }
 
 static void run_buerger(benchmark::State& state) {
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     gemmi::GruberVector gv(cell, centring);
     gv.buerger_reduce();
     benchmark::DoNotOptimize(gv.parameters());
@@ -50,7 +50,7 @@ static void run_buerger(benchmark::State& state) {
 }
 
 static void run_selling(benchmark::State& state) {
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     gemmi::SellingVector sv(cell, centring);
     sv.reduce();
     benchmark::DoNotOptimize(sv.g6_parameters());

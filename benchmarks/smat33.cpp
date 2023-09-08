@@ -27,7 +27,7 @@ static void r_u_r1(benchmark::State& state) {
   for (int i = 0; i != 10; ++i)
     if (rand() % 1000 == 0)
       rr[i].x = 10.;
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     double sum = 0.;
     for (int i = 0; i != 10; ++i)
       sum += smat.r_u_r(rr[i]);
@@ -54,7 +54,7 @@ static void r_u_r2(benchmark::State& state) {
   gemmi::SMat33<double> smat{
     0.000211, 0.000119, 0.0004575, -4.71e-05, 0.0001238, 3.91e-05
   };
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     double sum = 0.;
     for (int i = 0; i != 10; ++i)
       sum += smat.r_u_r(rr[i]);

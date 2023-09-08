@@ -10,7 +10,7 @@
 #include <benchmark/benchmark.h>
 
 inline void run(benchmark::State& state, const char (&el)[10][3]) {
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (int i = 0; i != 10; ++i)
       benchmark::DoNotOptimize(gemmi::find_element(el[i]));
 }
@@ -41,7 +41,7 @@ static void heavy_elements(benchmark::State& state) {
 
 static void run_fprime(benchmark::State& state) {
   const double energy = 12398.4197386209 / (0.5 + (double)rand() / RAND_MAX);
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (int i = 3; i != 50; ++i)
       benchmark::DoNotOptimize(gemmi::cromer_liberman(i, energy, nullptr));
 }

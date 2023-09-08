@@ -23,7 +23,7 @@ void sequential(benchmark::State& state, int(*func)(const std::string&)) {
   for (size_t i = 0; i != v.size(); ++i)
     if ((*func)(v[i]) != (int)i)
       std::printf("ERROR: at %zu\n", i);
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (const std::string& s : v)
       benchmark::DoNotOptimize((*func)(s));
 }

@@ -46,7 +46,7 @@ inline void run(benchmark::State& state, int(*func)(int)) {
   for (int i = -30; i < 30; ++i)
     if ((*func)(i) != positive_modulo1(i))
       std::printf("ERROR: %d != %d modulo %d\n", (*func)(i), i, n);
-  while (state.KeepRunning())
+  for (auto _ : state)
     for (int i : divident)
       benchmark::DoNotOptimize((*func)(i));
 }

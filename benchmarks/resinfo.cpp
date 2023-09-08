@@ -16,7 +16,7 @@ static void find_tabulated_residue_x10(benchmark::State& state) {
   std::string names[10];
   for (int i = 0; i != 10; ++i)
     names[i] = rand() % 1000 == 0 ? "GLN" : residue_names[i];
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     int nh = 0;
     for (int i = 0; i != 10; ++i)
       nh += gemmi::find_tabulated_residue(names[i]).hydrogen_count;
@@ -56,7 +56,7 @@ static void sequence_weight(benchmark::State& state) {
     "VAL", "HIS", "ASN", "GLY", "GLU", "PRO", "PRO", "GLU", "ALA", "PRO",
     "LYS"};
 
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     double weight = gemmi::calculate_sequence_weight(seq);
     benchmark::DoNotOptimize(weight);
   }

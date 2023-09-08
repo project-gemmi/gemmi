@@ -13,7 +13,7 @@
 static const char* path;
 
 static void read_pdb_file(benchmark::State& state) {
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     gemmi::Structure st = gemmi::read_pdb_file(path);
     benchmark::DoNotOptimize(st);
   }
@@ -22,7 +22,7 @@ static void read_pdb_file(benchmark::State& state) {
 static void read_pdb_remarks(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     st.meta = gemmi::Metadata();
     read_metadata_from_remarks(st);
     benchmark::DoNotOptimize(st.meta);
@@ -34,7 +34,7 @@ static void find_atom_image(benchmark::State& state) {
   Structure st = read_pdb_file(path);
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(0).atoms.at(0).pos;
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     double sum_dist = 0;
     for (const Chain& ch1 : model.chains)
       for (const Residue& res1 : ch1.residues)
@@ -49,7 +49,7 @@ static void find_atom_image(benchmark::State& state) {
 static void neighbor_search_ctor(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     NeighborSearch ns(st.models.at(0), st.cell, 5.0);
     benchmark::DoNotOptimize(ns);
   }
@@ -61,7 +61,7 @@ static void neighbor_search_find(benchmark::State& state) {
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
   NeighborSearch ns(st.models.at(0), st.cell, 5.0);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     auto r = ns.find_atoms(ref, '\0', 0, 4);
     benchmark::DoNotOptimize(r);
   }
@@ -73,7 +73,7 @@ static void neighbor_search_for_each(benchmark::State& state) {
   const Model& model = st.models[0];
   Position ref = model.chains.at(0).residues.at(2).atoms.at(0).pos;
   NeighborSearch ns(st.models.at(0), st.cell, 5.0);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     double sum = 0;
     ns.for_each(ref, '\0', 4,
                 [&sum](NeighborSearch::Mark&, double d) { sum += d; });
@@ -84,7 +84,7 @@ static void neighbor_search_for_each(benchmark::State& state) {
 static void calculate_box(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     Box<Position> box = calculate_box(st);
     benchmark::DoNotOptimize(box);
   }
@@ -93,7 +93,7 @@ static void calculate_box(benchmark::State& state) {
 static void fractional_box(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     Box<Fractional> box = calculate_fractional_box(st);
     benchmark::DoNotOptimize(box);
   }
@@ -125,7 +125,7 @@ static bool has_hydrogen_with_selection(const gemmi::Structure& st) {
 static void has_hydrogen1(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     bool has_hydr = has_hydrogen_with_levels(st);
     benchmark::DoNotOptimize(has_hydr);
   }
@@ -134,7 +134,7 @@ static void has_hydrogen1(benchmark::State& state) {
 static void has_hydrogen2(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     bool has_hydr = has_hydrogen_with_cra(st);
     benchmark::DoNotOptimize(has_hydr);
   }
@@ -143,7 +143,7 @@ static void has_hydrogen2(benchmark::State& state) {
 static void has_hydrogen3(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
-  while (state.KeepRunning()) {
+  for (auto _ : state) {
     bool has_hydr = has_hydrogen_with_selection(st);
     benchmark::DoNotOptimize(has_hydr);
   }
