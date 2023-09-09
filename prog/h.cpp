@@ -131,7 +131,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       } else {
         doc.reset(new cif::Document(gemmi::make_mmcif_document(st)));
       }
-      cif::write_cif_to_stream(os.ref(), *doc, cif::Style::PreferPairs);
+      cif::WriteOptions cif_options;
+      cif_options.prefer_pairs = true;
+      cif::write_cif_to_stream(os.ref(), *doc, cif_options);
     }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

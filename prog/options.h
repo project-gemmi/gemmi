@@ -91,13 +91,13 @@ struct OptParser : option::Parser {
 };
 
 namespace gemmi { enum class CoorFormat; }
-namespace gemmi { namespace cif { enum class Style; } }
+namespace gemmi { namespace cif { struct WriteOptions; } }
 
 // to be used with Arg::CoorFormat
 gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in);
 
 // to be used with Arg::CifStyle
-gemmi::cif::Style cif_style_as_enum(const option::Option& cif_style);
+gemmi::cif::WriteOptions cif_write_options(const option::Option& cif_style);
 
 // can be used with paths_from_args_or_file()
 bool starts_with_pdb_code(const std::string& s);

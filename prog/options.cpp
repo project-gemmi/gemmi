@@ -10,7 +10,7 @@
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
 #include <gemmi/util.hpp>   // for trim_str
 #include <gemmi/model.hpp>  // for gemmi::CoorFormat
-#include <gemmi/to_cif.hpp>  // for gemmi::cif::Style
+#include <gemmi/to_cif.hpp>  // for gemmi::cif::WriteOptions
 #include <gemmi/atox.hpp>   // for skip_blank
 
 using std::fprintf;
@@ -278,14 +278,21 @@ gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in) {
   return format;
 }
 
-gemmi::cif::Style cif_style_as_enum(const option::Option& cif_style) {
+gemmi::cif::WriteOptions cif_write_options(const option::Option& cif_style) {
+  gemmi::cif::WriteOptions options;
+  options.prefer_pairs = true;
   if (cif_style)
     switch (cif_style.arg[0]) {
       // value for 'd' (default) is returned at end of this function
-      case 'p'/*pdbx*/: return gemmi::cif::Style::Pdbx;
-      case 'a'/*aligned*/: return gemmi::cif::Style::Aligned;
+      case 'p'/*pdbx*/:
+        options.misuse_hash = true;
+        break;
+      case 'a'/*aligned*/:
+        options.align_pairs = 33;
+        options.align_loops = 30;
+        break;
     }
-  return gemmi::cif::Style::PreferPairs;
+  return options;
 }
 
 void print_version(const char* program_name) {

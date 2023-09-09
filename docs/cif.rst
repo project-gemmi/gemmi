@@ -407,24 +407,23 @@ sequence with ``Document.parse_string()`` doing the main job:
 Writing a file
 ==============
 
-One often wants to write a modified Document back to a file.
-That file will contain blocks separated with blank lines.
-It is also possible to write only a single block.
+Document (or a single Block) can be written to a file or to a string.
+Reading from a file and then writing to a file does not preserve whitespace.
+The formatting of the output file is controlled by ``cif::WriteOptions``,
+which contains the following fields (by default, they are all false or 0):
 
-Reading and writing a file does not preserve whitespaces.
-Instead, we have a few choices for "styling" of the output:
-
-* ``Style::Simple`` writes out the DOM structure adding blank lines between
-  mmCIF categories,
-* ``Style::NoBlankLines`` does not add blank lines,
-* ``Style::PreferPairs`` writes single-row loops as pairs,
-* ``Style::Pdbx`` additionally puts ``#`` (empty comments) between categories,
-  mimicking the peculiar formatting of PDBx/mmCIF files in the official
-  wwPDB archive. It enables diff-ing original and modified files with
-  option ``--ignore-space-change``.
-* ``Style::Indent35`` writes values from pairs from 35th column,
-* ``Style::Aligned`` left-align columns in loops, pairs as in Indent35.
-
+* ``prefer_pairs`` (bool) -- if set to true, write single-row loops as pairs,
+* ``compact`` (bool) -- if set to true, do not add blank lines between categories,
+* ``misuse_hash`` (bool) -- if set to true, put ``#`` (empty comments) between
+  categories -- the peculiar formatting used in the wwPDB archive;
+  enables diff-ing (``diff --ignore-space-change``) with other such files,
+* ``align_pairs`` (int) -- pad tags in tag-value pairs to this width
+  (if set to 33, the values will be aligned at column 35,
+  except where tags have more than 33 characters),
+* ``align_loops`` (int) -- if non-zero, columns in loops are aligned
+  to the maximum string width in each column, but not more than
+  this value; if one string in the column is very wide, that row will be
+  misaligned, which is usually preferable to excessive padding.
 
 C++
 ---
@@ -432,8 +431,8 @@ C++
 The functions writing ``cif::Document`` and ``cif::Block`` to C++ stream
 is in a separate header ``gemmi/to_cif.hpp``::
 
-  void write_cif_to_stream(std::ostream& os, const Document& doc, Style style)
-  void write_cif_block_to_stream(std::ostream& os, const Block& block, Style style)
+  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOption options)
+  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOption options)
 
 Python
 ------
@@ -449,8 +448,10 @@ It can take the style as optional, second argument:
 
 .. doctest::
 
-  >>> doc.write_file('1pfe-modified.cif', cif.Style.PreferPairs)
-  >>> doc.write_file('1pfe-styled.cif', cif.Style.Pdbx)
+  >>> options = cif.WriteOptions()
+  >>> options.align_pairs = 33
+  >>> options.align_loops = 30
+  >>> doc.write_file('1pfe-aligned.cif', options)
 
 The ``Document`` class also has a method ``as_string()`` which returns
 the text that would be written by ``write_file()``.

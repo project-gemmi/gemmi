@@ -8,7 +8,7 @@
 #include <benchmark/benchmark.h>
 
 static void write_cif(benchmark::State& state, const gemmi::cif::Document& doc,
-                      gemmi::cif::Style options) {
+                      gemmi::cif::WriteOptions options) {
   for (auto _ : state) {
     std::ostringstream os;
     gemmi::cif::write_cif_to_stream(os, doc, options);
@@ -23,9 +23,15 @@ int main(int argc, char** argv) {
   }
   const char* path = argv[argc-1];
   gemmi::cif::Document doc = gemmi::read_cif_gz(path);
-  benchmark::RegisterBenchmark("write_cif", write_cif, doc, gemmi::cif::Style::Simple);
-  benchmark::RegisterBenchmark("write_cif2", write_cif, doc, gemmi::cif::Style::Pdbx);
-  benchmark::RegisterBenchmark("write_cif3", write_cif, doc, gemmi::cif::Style::Aligned);
+  benchmark::RegisterBenchmark("write_cif", write_cif, doc, gemmi::cif::WriteOptions());
+  gemmi::cif::WriteOptions options2;
+  options2.misuse_hash = true;
+  options2.prefer_pairs = true;
+  benchmark::RegisterBenchmark("write_cif2", write_cif, doc, options2);
+  gemmi::cif::WriteOptions options3;
+  options3.align_pairs = 33;
+  options3.align_loops = 30;
+  benchmark::RegisterBenchmark("write_cif3", write_cif, doc, options3);
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
   benchmark::Shutdown();

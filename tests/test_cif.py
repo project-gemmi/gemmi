@@ -305,7 +305,9 @@ class TestBlock(unittest.TestCase):
         doc = cif.read_string('data_one _x y')
         self.assertEqual(doc.as_string(), doc[0].as_string())
         self.assertEqual(doc.as_string().splitlines(), ['data_one', '_x y'])
-        self.assertEqual(doc.as_string(style=cif.Style.Indent35).splitlines(),
+        options = cif.WriteOptions()
+        options.align_pairs = 33
+        self.assertEqual(doc.as_string(options).splitlines(),
                          ['data_one', '_x                                y'])
 
     def test_relion_syntax_exception(self):

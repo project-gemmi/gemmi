@@ -20,6 +20,46 @@ enum class Style {
   Aligned,      // columns in tables are left-aligned
 };
 
+struct WriteOptions {
+  /// write single-row loops as pairs
+  bool prefer_pairs = false;
+  /// no blank lines between categories, only between blocks
+  bool compact = false;
+  /// put '#' (empty comments) before/after categories
+  bool misuse_hash = false;
+  /// width reserved for tags in pairs (e.g. 34 = value starts at 35th column)
+  std::uint16_t align_pairs = 0;
+  /// if non-zero, determines max width of each column in a loop and aligns
+  /// all values to this width; the width is capped with the given value
+  std::uint16_t align_loops = 0;
+
+  WriteOptions() {}
+  // implicit conversion from deprecated Style (for backward compatibility)
+  WriteOptions(Style style) {
+    switch (style) {
+      case Style::Simple:
+        break;
+      case Style::NoBlankLines:
+        compact = true;
+        break;
+      case Style::PreferPairs:
+        prefer_pairs = true;
+        break;
+      case Style::Pdbx:
+        prefer_pairs = true;
+        misuse_hash = true;
+        break;
+      case Style::Indent35:
+        align_pairs = 33;
+        break;
+      case Style::Aligned:
+        align_pairs = 33;
+        align_loops = 30;
+        break;
+    }
+  }
+};
+
 /// std::ostream with buffering. C++ streams are so slow that even primitive
 /// buffering makes it significantly more efficient.
 class BufOstream {
@@ -31,9 +71,10 @@ public:
     ptr = buf;
   }
   void write(const char* s, size_t len) {
-    if (ptr - buf + len > sizeof(buf) - 512) {
+    constexpr int margin = sizeof(buf) - 512;
+    if (ptr - buf + len > margin) {
       flush();
-      if (len > sizeof(buf) - 512) {
+      if (len > margin) {
         os.write(s, len);
         return;
       }
@@ -55,7 +96,7 @@ public:
 private:
   std::ostream& os;
   // increasing buffer to 8kb or 64kb doesn't make significant difference
-  char buf[1024];
+  char buf[4096];
   char* ptr;
 };
 
@@ -72,31 +113,30 @@ inline void write_text_field(BufOstream& os, const std::string& value) {
 }
 
 inline void write_out_pair(BufOstream& os, const std::string& name,
-                           const std::string& value, Style style) {
+                           const std::string& value, WriteOptions options) {
   os << name;
   if (is_text_field(value)) {
     os.put('\n');
     write_text_field(os, value);
   } else {
-    if (name.size() + value.size() > 120)
+    if (name.size() + value.size() > 120) {
       os.put('\n');
-    else if ((style == Style::Indent35 || style == Style::Aligned) && name.size() < 34)
-      os.pad(34 - name.size());
-    else
+    } else {
       os.put(' ');
+      if (name.size() < options.align_pairs)
+        os.pad(options.align_pairs - name.size());
+    }
     os << value;
   }
   os.put('\n');
 }
 
-inline void write_out_loop(BufOstream& os, const Loop& loop, Style style) {
-  constexpr size_t max_padding = 30;
+inline void write_out_loop(BufOstream& os, const Loop& loop, WriteOptions options) {
   if (loop.values.empty())
     return;
-  if ((style == Style::PreferPairs || style == Style::Pdbx) &&
-      loop.length() == 1) {
+  if (options.prefer_pairs && loop.length() == 1) {
     for (size_t i = 0; i != loop.tags.size(); ++i)
-      write_out_pair(os, loop.tags[i], loop.values[i], style);
+      write_out_pair(os, loop.tags[i], loop.values[i], options);
     return;
   }
   // tags
@@ -108,9 +148,8 @@ inline void write_out_loop(BufOstream& os, const Loop& loop, Style style) {
   // values
   size_t ncol = loop.tags.size();
 
-  std::vector<size_t> col_width;
-  if (style == Style::Aligned) {
-    col_width.resize(ncol, 1);
+  std::vector<size_t> col_width(ncol, 0);
+  if (options.align_loops > 0) {
     size_t col = 0;
     for (const std::string& val : loop.values) {
       if (!is_text_field(val))
@@ -119,7 +158,7 @@ inline void write_out_loop(BufOstream& os, const Loop& loop, Style style) {
         col = 0;
     }
     for (size_t& w : col_width)
-      w = std::min(w, max_padding);
+      w = std::min(w, (size_t)options.align_loops);
   }
 
   size_t col = 0;
@@ -133,7 +172,7 @@ inline void write_out_loop(BufOstream& os, const Loop& loop, Style style) {
     else
       os << val;
     if (col != ncol - 1) {
-      if (!col_width.empty() && val.size() < col_width[col])
+      if (val.size() < col_width[col])
         os.pad(col_width[col] - val.size());
       ++col;
     } else {
@@ -144,20 +183,20 @@ inline void write_out_loop(BufOstream& os, const Loop& loop, Style style) {
   os.put('\n');
 }
 
-inline void write_out_item(BufOstream& os, const Item& item, Style style) {
+inline void write_out_item(BufOstream& os, const Item& item, WriteOptions options) {
   switch (item.type) {
     case ItemType::Pair:
-      write_out_pair(os, item.pair[0], item.pair[1], style);
+      write_out_pair(os, item.pair[0], item.pair[1], options);
       break;
     case ItemType::Loop:
-      write_out_loop(os, item.loop, style);
+      write_out_loop(os, item.loop, options);
       break;
     case ItemType::Frame:
       os.write("save_", 5);
       os << item.frame.name;
       os.put('\n');
       for (const Item& inner_item : item.frame.items)
-        write_out_item(os, inner_item, style);
+        write_out_item(os, inner_item, options);
       os.write("save_\n", 6);
       break;
     case ItemType::Comment:
@@ -183,36 +222,36 @@ inline bool should_be_separated_(const Item& a, const Item& b) {
 }
 
 inline void write_cif_block_to_stream(std::ostream& os_, const Block& block,
-                                      Style style=Style::Simple) {
+                                      WriteOptions options=WriteOptions()) {
   BufOstream os(os_);
   os.write("data_", 5);
   os << block.name;
   os.put('\n');
-  if (style == Style::Pdbx)
+  if (options.misuse_hash)
     os.write("#\n", 2);
   const Item* prev = nullptr;
   for (const Item& item : block.items) {
     if (item.type == ItemType::Erased)
       continue;
-    if (prev && style != Style::NoBlankLines && should_be_separated_(*prev, item)) {
-      if (style == Style::Pdbx)
+    if (prev && !options.compact && should_be_separated_(*prev, item)) {
+      if (options.misuse_hash)
         os.put('#');
       os.put('\n');
     }
-    write_out_item(os, item, style);
+    write_out_item(os, item, options);
     prev = &item;
   }
-  if (style == Style::Pdbx)
+  if (options.misuse_hash)
     os.write("#\n", 2);
 }
 
 inline void write_cif_to_stream(std::ostream& os, const Document& doc,
-                                Style style=Style::Simple) {
+                                WriteOptions options=WriteOptions()) {
   bool first = true;
   for (const Block& block : doc.blocks) {
     if (!first)
       os.put('\n'); // extra blank line for readability
-    write_cif_block_to_stream(os, block, style);
+    write_cif_block_to_stream(os, block, options);
     first = false;
   }
 }

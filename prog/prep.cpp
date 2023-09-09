@@ -139,7 +139,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       fprintf(stderr, "Writing %s\n", output.c_str());
     Ofstream os(output, &std::cout);
-    write_cif_to_stream(os.ref(), crd, cif::Style::NoBlankLines);
+    cif::WriteOptions cif_options;
+    cif_options.compact = true;
+    write_cif_to_stream(os.ref(), crd, cif_options);
   } catch (std::exception& e) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;

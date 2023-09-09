@@ -48,7 +48,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* input = p.nonOption(0);
   const char* output = p.nonOption(1);
   namespace cif = gemmi::cif;
-  auto style = cif_style_as_enum(p.options[CifStyle]);
 
   if (p.options[Verbose])
     std::cerr << "Transcribing " << input << " to cif ..." << std::endl;
@@ -57,7 +56,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                                            : gemmi::read_mmjson_gz(input);
     apply_cif_doc_modifications(doc, p.options);
     gemmi::Ofstream os(output, &std::cout);
-    write_cif_to_stream(os.ref(), doc, style);
+    write_cif_to_stream(os.ref(), doc, cif_write_options(p.options[CifStyle]));
   } catch (std::runtime_error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 2;

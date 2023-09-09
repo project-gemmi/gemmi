@@ -348,8 +348,7 @@ void convert(gemmi::Structure& st,
     apply_cif_doc_modifications(doc, options);
 
     if (output_type == CoorFormat::Mmcif) {
-      auto style = cif_style_as_enum(options[CifStyle]);
-      write_cif_to_stream(os.ref(), doc, style);
+      write_cif_to_stream(os.ref(), doc, cif_write_options(options[CifStyle]));
     } else /*output_type == CoorFormat::Mmjson*/ {
       cif::JsonWriter writer(os.ref());
       writer.set_mmjson();
