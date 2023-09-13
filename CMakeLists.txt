@@ -201,6 +201,7 @@ if (BUILD_SHARED_LIBS)
   target_compile_definitions(gemmi_cpp PUBLIC GEMMI_SHARED)
 endif()
 support_gz(gemmi_cpp)
+target_include_directories(gemmi_cpp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 
 # Gemmi subcommands compiled as individual binaries.
