@@ -51,7 +51,7 @@ if [ -z "${NO_DOCTEST-}" ]; then
     (cd docs && make doctest SPHINXOPTS="-q -n -E")
 fi
 
-flake8 docs/ examples/ tests/ tools/ setup.py
+flake8 docs/ examples/ tests/ tools/
 pybind11-stubgen --dry-run --exit-code gemmi
 
 

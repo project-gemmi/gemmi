@@ -1,0 +1,75 @@
+[build-system]
+requires = ["scikit-build-core==0.5.0", "pybind11>=2.6.2"]
+build-backend = "scikit_build_core.build"
+
+# https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+[project]
+name = "gemmi"
+dynamic = ["version"]
+requires-python = ">=3.7"
+description="library for structural biology"
+readme = "README.md"
+authors = [
+  { name = "Marcin Wojdyr", email = "wojdyr@gmail.com" },
+]
+urls.repository = "https://github.com/project-gemmi/gemmi"
+license = {text = "MPL-2.0"}  # or, at your option, LGPL-3.0
+keywords = ["structural bioinformatics", "structural biology",
+            "crystallography", "CIF", "mmCIF", "PDB", "CCP4", "MTZ"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Programming Language :: C++",
+  "Programming Language :: Python",
+]
+
+[tool.scikit-build]
+#build-dir = "/tmp/gemmi_build2/{wheel_tag}"
+experimental = true  # needed for install-dir
+wheel.install-dir = "/data"
+wheel.expand-macos-universal-tags = true  # not sure if this is useful
+wheel.packages = []
+sdist.exclude = ["*"]
+sdist.include = [
+  "/README.md",
+  "/LICENSE.txt",
+  "/CMakeLists.txt",
+  "/pyproject.toml",
+  "docs/code/*.cpp",
+  "examples/*.py",
+  "examples/*.cpp",
+  "include/gemmi/**/*.hpp",
+  "include/gemmi/third_party/*.h",
+  "include/gemmi/third_party/tao/**",
+  "src/*.cpp",
+  "prog/*.cpp",
+  "prog/*.h*",
+  "python/*.cpp",
+  "python/*.h*",
+  "third_party/README",
+  "third_party/*.h",
+  "third_party/zlib/*",
+  "tests/*",
+  "!tests/*.pyc",
+  "tools/gemmi-config.cmake.in"
+]
+cmake.build-type = "Release"
+cmake.verbose = true
+[tool.scikit-build.cmake.define]
+USE_PYTHON = "ON"
+#BUILD_GEMMI_PROGRAM = "OFF"
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "include/gemmi/version.hpp"
+regex = "#define GEMMI_VERSION \"(?P<value>[0-9dev.-]+)\""
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "-q"]
+testpaths = ["tests"]

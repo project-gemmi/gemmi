@@ -84,9 +84,7 @@ If the compiler is not installed, pip shows a message with a download link.
 If gemmi is already installed, uninstall the old version first
 (``pip uninstall``) or add option ``--upgrade``.
 
-Setuptools compile only one unit at a time and the whole process
-takes several minutes. To make it faster, build in parallel with CMake.
-Clone the project and do::
+Alternatively, you can build a cloned project with CMake::
 
     cmake -D USE_PYTHON=1 .
     make -j4 py

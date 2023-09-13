@@ -1581,10 +1581,6 @@ Examples
 The examples here use C++11 or Python.
 Full working code code can be found in the examples__ directory.
 
-If you have the Python ``gemmi`` module installed you should also have
-the Python examples -- try ``python -m gemmi-examples`` if not sure
-where they are.
-
 The examples below can be run on one or more PDBx/mmCIF files.
 The ones that perform PDB-wide analysis are meant to be run on a
 `local copy <https://www.wwpdb.org/download/downloads>`_ of the mmCIF

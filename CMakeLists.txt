@@ -9,13 +9,19 @@ string(REGEX REPLACE ".+\"([0-9]+\.[0-9]+\.[0-9]+)(-dev)?\"" "\\1"
 project(gemmi LANGUAGES C CXX VERSION ${gemmi_version_str})
 message(STATUS "Gemmi version ${PROJECT_VERSION}")
 
-include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR
+include(GNUInstallDirs)  # for CMAKE_INSTALL_LIBDIR, etc
+
+if (DEFINED SKBUILD)  # building with scikit-build-core (pip install)
+  # we set wheel.install-dir="/data" in pyproject.toml,
+  # so here we need to only set paths to /platlib and /scripts
+  set(PYTHON_INSTALL_DIR "${SKBUILD_PLATLIB_DIR}")
+  #set(CMAKE_INSTALL_BINDIR "${SKBUILD_SCRIPTS_DIR}")
+endif()
 
 option(BUILD_SHARED_LIBS "Build using shared library" OFF)
 option(BUILD_GEMMI_PROGRAM "Build gemmi command-line program" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
-option(INSTALL_EGG_INFO "Install .egg-info via setup.py" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 set(GEMMI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gemmi" CACHE STRING
@@ -106,7 +112,10 @@ else()
   message(STATUS "The build will use zlib code from third_party/zlib.")
   include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib")
 endif()
-find_package(benchmark 1.3 QUIET)
+
+if (NOT DEFINED SKBUILD)
+  find_package(benchmark 1.3 QUIET)
+endif()
 if (benchmark_FOUND)
   message(STATUS "Found benchmark: ${benchmark_DIR}")
 else (NOT benchmark_FOUND)
@@ -379,6 +388,7 @@ endif()
 ### Python bindings ###
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
+  # CMake >=3.18 has subcomponent Development.Module
   find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
   if (EXISTS "${CMAKE_HOME_DIRECTORY}/pybind11")
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
@@ -422,6 +432,7 @@ write_basic_package_version_file(gemmi-config-version.cmake
 install(DIRECTORY include/gemmi DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 if (BUILD_GEMMI_PROGRAM)
+  # Is it useful to have the program location in gemmi-targets.cmake?
   install(TARGETS gemmi_prog EXPORT GemmiTargets)
 endif()
 install(TARGETS gemmi_cpp
@@ -439,24 +450,10 @@ if (USE_PYTHON)
   if (DEFINED PYTHON_INSTALL_DIR)
     message(STATUS "Install directory for Python module: ${PYTHON_INSTALL_DIR}")
     set(Python_SITEARCH "${PYTHON_INSTALL_DIR}")
-    set(Python_SITELIB "${PYTHON_INSTALL_DIR}")
   endif()
   file(TO_CMAKE_PATH "${Python_SITEARCH}" Python_SITEARCH)
-  file(TO_CMAKE_PATH "${Python_SITELIB}" Python_SITELIB)
-  # Using Python_SITEARCH and SITELIB is not good, because they are absolute
+  # Using Python_SITEARCH/SITELIB is not good, because they are absolute
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
   install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}")
-  install(DIRECTORY examples/ DESTINATION "${Python_SITELIB}/gemmi-examples"
-          FILES_MATCHING PATTERN "*.py")
-  if (INSTALL_EGG_INFO)
-    install(CODE
-     "execute_process(COMMAND \"${Python_EXECUTABLE}\" setup.py install_egg_info --install-dir \"\$ENV{DESTDIR}${Python_SITELIB}\"
-                      WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-                      RESULT_VARIABLE EGG_STATUS)"
-    )
-    if (EGG_STATUS AND NOT EGG_STATUS EQUAL 0)
-      message(FATAL_ERROR "Failed to install egg-info. Use -D INSTALL_EGG_INFO=OFF to disable.")
-    endif()
-  endif()
 endif()
