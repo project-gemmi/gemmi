@@ -124,7 +124,7 @@ jobs:
     - name: apt-get
       run: |
         sudo apt-get update
-        sudo apt-get install libz-dev python3-pip g++ gfortran python3-setuptools python3-numpy valgrind
+        sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
     - name: build and test
       run: |
         g++ --version
@@ -160,10 +160,10 @@ jobs:
       CXX: clang++-6.0
     steps:
     - uses: actions/checkout@v3
-    - run: sudo apt-get install clang-6.0 libz-dev python3-pip python3-setuptools python3-numpy
+    - run: sudo apt-get install clang-6.0 libz-dev python3-pip python3-numpy
     - name: install pybind11
       run: |
-        sudo /usr/bin/python3 -m pip install "pybind11[global]"
+        sudo /usr/bin/python3 -m pip install "pybind11[global]" build
     - name: build and test
       run: |
         $CXX --version
@@ -171,7 +171,7 @@ jobs:
         make -j2 all
         make -j2 check
         sudo make install
-        python3 setup.py sdist
+        python3 -m build --sdist
         python3 -m pip install -v dist/gemmi-*.tar.gz
         python3 -m unittest discover -v -s tests/
 

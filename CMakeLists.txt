@@ -35,11 +35,12 @@ if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
-# this makes almost no difference
 if (NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
   set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 endif()
-#set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+if (NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+endif()
 
 # By default, use LTO for non-debug builds.
 if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
@@ -209,11 +210,13 @@ target_compile_definitions(gemmi_cpp PRIVATE GEMMI_BUILD)
 if (BUILD_SHARED_LIBS)
   target_compile_definitions(gemmi_cpp PUBLIC GEMMI_SHARED)
 endif()
+if (DEFINED CMAKE_CXX_STANDARD)
+  target_compile_features(gemmi_cpp PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
+endif()
 support_gz(gemmi_cpp)
 target_include_directories(gemmi_cpp PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>  
-    $<INSTALL_INTERFACE:include>
-)
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
 # Gemmi subcommands compiled as individual binaries.
 # Not built by default and used mostly for testing.
@@ -394,7 +397,13 @@ if (USE_PYTHON)
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
     add_subdirectory(pybind11)
   else()
-    find_package(pybind11 2.6 CONFIG REQUIRED)
+    find_package(pybind11 2.6 CONFIG)
+    if (NOT pybind11_FOUND)
+        # try once more, using pybind11-config
+        execute_process(COMMAND pybind11-config --cmakedir OUTPUT_VARIABLE pybind11_DIR)
+        string(STRIP "${pybind11_DIR}" pybind11_DIR)
+        find_package(pybind11 2.6 CONFIG REQUIRED)
+    endif()
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
   pybind11_add_module(gemmi_py
