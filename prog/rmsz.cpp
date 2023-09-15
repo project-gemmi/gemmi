@@ -72,6 +72,7 @@ struct RMSes {
 
 void check_restraint(const Topo::Rule rule,
                      const Topo& topo,
+                     const gemmi::UnitCell& cell,
                      double cutoff,
                      const char* tag,
                      RMSes* rmses,
@@ -94,7 +95,10 @@ void check_restraint(const Topo::Rule rule,
   switch (rule.rkind) {
     case Topo::RKind::Bond: {
       const Topo::Bond& t = topo.bonds[rule.index];
-      z = t.calculate_z();
+      double dist = t.calculate();
+      if (t.asu == gemmi::Asu::Different)
+        dist = cell.find_nearest_image(t.atoms[0]->pos, t.atoms[1]->pos, t.asu).dist();
+      z = t.calculate_z_(dist);
       if (z > cutoff) {
         rmses->wrong_bond++;
         if (verbosity >= 0) {
@@ -254,18 +258,21 @@ int GEMMI_MAIN(int argc, char **argv) {
               std::string rtag = gemmi::cat(chain_info.chain_ref.name, ' ',
                                             prev.res1->str(), '-', ri.res->str());
               for (const Topo::Rule& rule : prev.link_rules)
-                check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity, lines);
+                check_restraint(rule, topo, st.cell, cutoff, rtag.c_str(),
+                                &rmses, verbosity, lines);
             }
             std::string rtag = chain_info.chain_ref.name + " ";
             if (st.input_format != gemmi::CoorFormat::ChemComp)
               rtag += ri.res->seqid.str();
             gemmi::cat_to(rtag, '(', ri.res->name,  ')');
             for (const Topo::Rule& rule : ri.monomer_rules)
-              check_restraint(rule, topo, cutoff, rtag.c_str(), &rmses, verbosity, lines);
+              check_restraint(rule, topo, st.cell, cutoff, rtag.c_str(),
+                              &rmses, verbosity, lines);
           }
         for (const Topo::Link& link : topo.extras)
           for (const Topo::Rule& rule : link.link_rules)
-            check_restraint(rule, topo, cutoff, "link", &rmses, verbosity, lines);
+            check_restraint(rule, topo, st.cell, cutoff, "link",
+                            &rmses, verbosity, lines);
 
         if (lines) {
           for (const auto& t : *lines)

@@ -108,7 +108,7 @@ void check_monomer_doc(const cif::Document& doc) {
         gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block,
                                                     gemmi::ChemCompModel::Xyz);
         Topo topo;
-        topo.apply_restraints(cc.rt, res, nullptr, '\0', '\0', false);
+        topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
         print_outliers(topo, (cc.name + " [atom.xyz]").c_str());
       } catch (const std::exception& e) {
         fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",

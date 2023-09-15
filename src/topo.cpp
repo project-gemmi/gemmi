@@ -320,9 +320,8 @@ double Topo::ideal_chiral_abs_volume(const Chirality &ch) const {
 }
 
 std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
-                                               Residue& res, Residue* res2,
-                                               char altloc1, char altloc2,
-                                               bool require_alt) {
+                                               Residue& res, Residue* res2, Asu asu,
+                                               char altloc1, char altloc2, bool require_alt) {
   std::string altlocs;
   if (altloc1 == '\0' && altloc2 == '\0') {
     add_distinct_altlocs(res, altlocs);
@@ -340,7 +339,7 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
           bool with_alt = at1->altloc || at2->altloc;
           if (with_alt || !require_alt) {
             rules.push_back({RKind::Bond, bonds.size()});
-            bonds.push_back({&bond, {{at1, at2}}});
+            bonds.push_back({&bond, {{at1, at2}}, asu});
           }
           if (!with_alt)
             break;
@@ -433,7 +432,8 @@ void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
     rt = rt_copy.get();
     rt_storage.push_back(std::move(rt_copy));
   }
-  link.link_rules = apply_restraints(*rt, *link.res1, link.res2, link.alt1, link.alt2, false);
+  link.link_rules = apply_restraints(*rt, *link.res1, link.res2, link.asu,
+                                     link.alt1, link.alt2, false);
 }
 
 // see comments above the declaration
@@ -586,10 +586,10 @@ void Topo::apply_all_restraints(const MonLib& monlib) {
         apply_restraints_from_link(link, monlib);
       // monomer restraints
       auto it = ri.chemcomps.cbegin();
-      ri.monomer_rules = apply_restraints(it->cc->rt, *ri.res, nullptr,
+      ri.monomer_rules = apply_restraints(it->cc->rt, *ri.res, nullptr, Asu::Same,
                                           it->altloc, '\0', /*require_alt=*/false);
       while (++it != ri.chemcomps.end()) {
-        auto rules = apply_restraints(it->cc->rt, *ri.res, nullptr,
+        auto rules = apply_restraints(it->cc->rt, *ri.res, nullptr, Asu::Same,
                                       it->altloc, '\0', /*require_alt=*/true);
         vector_move_extend(ri.monomer_rules, std::move(rules));
       }
