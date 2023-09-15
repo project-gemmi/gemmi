@@ -14,10 +14,10 @@ namespace gemmi {
 // Disable warning "X<T>::operator X<T>() const will not be called for
 // implicit or explicit conversions", which is triggered when templates
 // StrideIter, IndirectIter and others are expanded with const Value.
-#if defined __INTEL_COMPILER or defined __NVCOMPILER
+#if defined(__INTEL_COMPILER) || defined(__NVCOMPILER)
   #pragma diagnostic push
   #pragma diag_suppress = conversion_function_not_usable
-#elif defined __NVCC__
+#elif defined(__NVCC__)
   #pragma nv_diagnostic push
   #pragma nv_diag_suppress = conversion_function_not_usable
 #endif
@@ -277,9 +277,9 @@ private:
   Item* start_ = nullptr;
 };
 
-#if defined __INTEL_COMPILER or defined __NVCOMPILER
+#if defined(__INTEL_COMPILER) || defined(__NVCOMPILER)
   #pragma diagnostic pop
-#elif defined __NVCC__
+#elif defined(__NVCC__)
   #pragma nv_diagnostic pop
 #endif
 
