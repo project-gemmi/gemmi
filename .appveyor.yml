@@ -5,58 +5,43 @@
       - arch: x64
         CMAKE_GENERATOR: Visual Studio 17 2022
         CMAKE_CONFIG: Release
-        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=20 -DUSE_PYTHON=1 -DPython_EXECUTABLE="C:\\Python311-x64\\python.exe"
+        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=20 -DPython_EXECUTABLE="C:\\Python311-x64\\python.exe"
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
         PY_PYTHON: 3.11
-        USE_PIP: 1
+
       - arch: x64
         CMAKE_GENERATOR: Visual Studio 16 2019
         CMAKE_CONFIG: RelWithDebInfo
-        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=11 -DUSE_PYTHON=1 -DPython_EXECUTABLE="C:\\Python310-x64\\python.exe"
+        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=11 -DPython_EXECUTABLE="C:\\Python310-x64\\python.exe"
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
         PY_PYTHON: 3.10
-        USE_PIP: 1
+
       - arch: x86
         CMAKE_GENERATOR: Visual Studio 15 2017
         CMAKE_CONFIG: MinSizeRel
-        CMAKE_ARGS: -DUSE_PYTHON=1 -DPython_EXECUTABLE="C:\\Python38\\python.exe"
+        CMAKE_ARGS: -DPython_EXECUTABLE="C:\\Python38\\python.exe"
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
         PY_PYTHON: 3.8-32
-      - arch: x64
-        CMAKE_GENERATOR: MSYS Makefiles
-        CMAKE_ARGS: -DCMAKE_CXX_STANDARD=14
-        COMPILER: MinGW64-gcc-8.1.0
-        BINDIR: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw64\bin;C:\msys64\usr\bin
-        CMAKE_CONFIG: Release
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-        PY_PYTHON: 3.9-32
-        USE_PIP_INSTALL: 1
 
   build_script:
-  - if defined BINDIR (set "PATH=%BINDIR%;%PATH%")
   - path
   - cmake --version
-  - if defined CMAKE_ARGS (git clone --depth=1 -b stable https://github.com/pybind/pybind11.git)
-  - cmake -G "%CMAKE_GENERATOR%" %CMAKE_ARGS% .
+  - git clone --depth=1 -b stable https://github.com/pybind/pybind11.git
+  - cmake -G "%CMAKE_GENERATOR%" -DUSE_PYTHON=1 %CMAKE_ARGS% .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
   - cmake --install . --config %CMAKE_CONFIG%
-  - if exist gemmi.exe  strip gemmi.exe
   - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
-  - dir gemmi.exe
   - if exist "%CMAKE_CONFIG%\gemmi*.pyd" (copy "%CMAKE_CONFIG%\gemmi*.pyd" . /y)
-  - dir C:\mingw-w64\
+  - dir gemmi.exe gemmi*.pyd
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
-  - if defined USE_PIP_INSTALL (py -m pip install .)
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
 
   test_script:
   - ctest -C "%CMAKE_CONFIG%" --output-on-failure
-  - py -m pip install numpy
-  - if defined USE_PIP (py -m pip install pandas)
+  - py -m pip install numpy pandas
   - set PYTHONPATH=.
   - py -m unittest discover -v -s tests/
-  - if "%PY_PYTHON%"=="3.10-32" (appveyor exit)
   - cd docs
   - set PYTHONPATH=..
   - py -m pip install --no-warn-script-location sphinx
@@ -66,3 +51,29 @@
     - path: gemmi.exe
     - path: gemmi*.pyd
 
+-
+  version: '{branch}-{build}'
+  environment:
+    arch: x64
+    CMAKE_GENERATOR: MSYS Makefiles
+    COMPILER: MinGW64-gcc-8.1.0
+    CMAKE_CONFIG: Release
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+
+  build_script:
+  - set "PATH=C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw64\bin;C:\msys64\usr\bin;%PATH%"
+  - path
+  - dir C:\mingw-w64\
+  - cmake --version
+  - cmake -G "%CMAKE_GENERATOR%" -DCMAKE_CXX_STANDARD=14 .
+  - cmake --build . --config %CMAKE_CONFIG%
+  - cmake --build . --config %CMAKE_CONFIG% --target check
+  - cmake --install . --config %CMAKE_CONFIG%
+  - strip gemmi.exe
+  - dir gemmi.exe
+
+  test_script:
+  - ctest -C "%CMAKE_CONFIG%" --output-on-failure
+
+  artifacts:
+    - path: gemmi.exe
