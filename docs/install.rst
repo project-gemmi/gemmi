@@ -18,17 +18,44 @@ include path when compiling your program. For example::
 Otherwise, you either need to build gemmi_cpp library,
 or add (selected) files from src/ to your project.
 
-If you use cmake, you can use find_package and externally installed gemmi::
+If you use **CMake**, you may
 
-    find_package(gemmi 0.6 CONFIG REQUIRED)
-    add_executable(example example.cpp)
-    target_link_libraries(example PRIVATE gemmi::gemmi_cpp)
+* use find_package for installed gemmi::
 
-or add gemmi as a git submodule and use add_subdirectory::
+    find_package(gemmi 0.6.4 CONFIG REQUIRED)
+
+* or add gemmi as a git submodule and use add_subdirectory::
 
     add_subdirectory(gemmi EXCLUDE_FROM_ALL)
-    add_executable(example example.cpp)
-    target_link_libraries(example PRIVATE gemmi_cpp)
+
+* or use FetchContent::
+
+    add_subdirectory(gemmi EXCLUDE_FROM_ALL)
+    include(FetchContent)
+    FetchContent_Declare(
+      gemmi
+      GIT_REPOSITORY https://github.com/project-gemmi/gemmi.git
+      GIT_TAG        ...
+    )
+    FetchContent_GetProperties(gemmi)
+    if (NOT gemmi_POPULATED)
+      FetchContent_Populate(gemmi)
+      add_subdirectory(${gemmi_SOURCE_DIR} ${gemmi_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
+
+Then, to find headers and link your target with the library, use::
+
+    target_link_libraries(example PRIVATE gemmi::gemmi_cpp)
+
+If only headers are needed, do::
+
+    target_link_libraries(example PRIVATE gemmi::headers)
+
+The gemmi::headers interface, which is also included in gemmi::gemmi_cpp,
+adds two things: include dictory and *compile feature* cxx_std_11 (a minimal
+requirement for the compilation).
+
+----
 
 Note on Unicode: if a file name is passed to Gemmi (through ``std::string``)
 it is assumed to be in ASCII or UTF-8.

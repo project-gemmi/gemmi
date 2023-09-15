@@ -170,12 +170,12 @@ endif()
 #endif()
 
 add_library(gemmi_headers INTERFACE)
-add_library(gemmi::gemmi_headers ALIAS gemmi_headers)
 add_library(gemmi::headers ALIAS gemmi_headers)
 target_include_directories(gemmi_headers INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_compile_features(gemmi_headers INTERFACE cxx_std_11)
+set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
             src/assembly.cpp src/calculate.cpp src/crd.cpp
@@ -184,6 +184,7 @@ add_library(gemmi_cpp
             src/polyheur.cpp src/read_cif.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
             src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
+add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
 set_property(TARGET gemmi_cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
 #set_property(TARGET gemmi_cpp PROPERTY CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(gemmi_cpp PRIVATE GEMMI_BUILD)
@@ -269,17 +270,17 @@ add_executable(gemmi_prog
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp
                $<TARGET_OBJECTS:options>)
+add_executable(gemmi::prog ALIAS gemmi_prog)
 target_link_libraries(gemmi_prog PRIVATE gemmi_cpp)
 support_gz(gemmi_prog)
 target_include_directories(gemmi_prog PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 target_compile_definitions(gemmi_prog PRIVATE GEMMI_ALL_IN_ONE=1)
-set_property(TARGET gemmi_prog PROPERTY OUTPUT_NAME gemmi)
+set_target_properties(gemmi_prog PROPERTIES OUTPUT_NAME gemmi EXPORT_NAME prog)
 if (WIN32 AND USE_WMAIN)
   # _UNICODE=1 is now set globally
   #target_compile_definitions(gemmi_prog PRIVATE _UNICODE=1)
   if(MINGW)
-    # target_link_options were added in cmake 3.13
-    set_property(TARGET gemmi_prog PROPERTY LINK_FLAGS "-municode")
+    target_link_options(gemmi_prog PRIVATE "-municode")
   endif()
 endif()
 if (NOT BUILD_GEMMI_PROGRAM)
@@ -442,9 +443,7 @@ if (BUILD_GEMMI_PROGRAM)
   # Is it useful to have the program location in gemmi-targets.cmake?
   install(TARGETS gemmi_prog EXPORT GemmiTargets)
 endif()
-install(TARGETS gemmi_headers gemmi_cpp
-        EXPORT GemmiTargets
-        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(TARGETS gemmi_headers gemmi_cpp EXPORT GemmiTargets)
 
 install(EXPORT GemmiTargets FILE gemmi-targets.cmake NAMESPACE gemmi::
         DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
