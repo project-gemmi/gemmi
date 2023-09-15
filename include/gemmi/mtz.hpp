@@ -135,7 +135,7 @@ struct GEMMI_DLL Mtz {
       // COMBAT sets BSCALE=1, but Pointless sets it to 0.
       //floats[43] = 1.f; // batch scale
     }
-    int number;
+    int number = 0;
     std::string title;
     std::vector<int> ints;
     std::vector<float> floats;
@@ -853,52 +853,11 @@ struct GEMMI_DLL Mtz {
   /// Similar to command EXPAND in SFTOOLS.
   void expand_to_p1();
 
-  // (for unmerged MTZ only) change HKL according to M/ISYM
-  bool switch_to_original_hkl() {
-    if (indices_switched_to_original)
-      return false;
-    if (!has_data())
-      fail("switch_to_original_hkl(): data not read yet");
-    const Column* col = column_with_label("M/ISYM");
-    if (col == nullptr || col->type != 'Y' || col->idx < 3)
-      return false;
-    std::vector<Op> inv_symops;
-    inv_symops.reserve(symops.size());
-    for (const Op& op : symops)
-      inv_symops.push_back(op.inverse());
-    for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
-      int isym = static_cast<int>(data[n + col->idx]) & 0xFF;
-      const Op& op = inv_symops.at((isym - 1) / 2);
-      Miller hkl = op.apply_to_hkl(get_hkl(n));
-      int sign = (isym & 1) ? 1 : -1;
-      for (int i = 0; i < 3; ++i)
-        data[n+i] = static_cast<float>(sign * hkl[i]);
-    }
-    indices_switched_to_original = true;
-    return true;
-  }
+  /// (for unmerged MTZ only) change HKL according to M/ISYM
+  bool switch_to_original_hkl();
 
-  // (for unmerged MTZ only) change HKL to ASU equivalent and set ISYM
-  bool switch_to_asu_hkl() {
-    if (!indices_switched_to_original)
-      return false;
-    if (!has_data())
-      fail("switch_to_asu_hkl(): data not read yet");
-    const Column* col = column_with_label("M/ISYM");
-    if (col == nullptr || col->type != 'Y' || col->idx < 3 || !spacegroup)
-      return false;
-    size_t misym_idx = col->idx;
-    UnmergedHklMover hkl_mover(spacegroup);
-    for (size_t n = 0; n + col->idx < data.size(); n += columns.size()) {
-      Miller hkl = get_hkl(n);
-      int isym = hkl_mover.move_to_asu(hkl);  // modifies hkl
-      set_hkl(n, hkl);
-      float& misym = data[n + misym_idx];
-      misym = float(((int)misym & ~0xff) | isym);
-    }
-    indices_switched_to_original = false;
-    return true;
-  }
+  /// (for unmerged MTZ only) change HKL to ASU equivalent and set ISYM
+  bool switch_to_asu_hkl();
 
   Dataset& add_dataset(const std::string& name) {
     int id = 0;
