@@ -3,60 +3,55 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  standard:
-    strategy:
-      matrix:
-        include:
-          - os: macos-11
-            build: Release
-    name: ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  macos12:
+    name: "macOS 12"
+    runs-on: macos-12
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    env:
+      SKBUILD_CMAKE_ARGS: "-DEXTRA_WARNINGS=ON"
+      SKBUILD_CMAKE_TARGETS: "all;check"
     steps:
     - uses: actions/checkout@v3
-
-    - name: mkdir build
-      run: cmake -E make_directory ${{runner.workspace}}/build
-
-    - name: Configure CMake
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: |
-        cmake --version
-        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build }}
-
-    - name: Build
-      working-directory: ${{runner.workspace}}/build
-      shell: bash
-      run: cmake --build . --config ${{ matrix.build }}
-
-    - name: Install
-      working-directory: ${{runner.workspace}}/build
-      shell: bash
-      run: sudo cmake --install . --config ${{ matrix.build }}
-
-    - name: Test
-      working-directory: ${{runner.workspace}}/build
-      shell: bash
-      run: cmake --build . --config ${{ matrix.build }} --target check
-
-    - name: Python Setup
+    - name: Build wheel and install
       run: |
         python3 -m pip install wheel
         python3 -m pip wheel -v .
         python3 -m pip install gemmi-*.whl
-
     - name: Python Tests
       run: python3 -m unittest discover -v -s tests/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: gemmi-macos12
+        path: |
+          ${{runner.workspace}}/gemmi-*.whl
+        retention-days: 14
 
+  macos11:
+    name: "macOS 11"
+    runs-on: macos-11
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+    - uses: actions/checkout@v3
+    - name: mkdir build
+      run: cmake -E make_directory ${{runner.workspace}}/build
+    - name: CMake Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: |
+        cmake --version
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=MinSizeRel
+        cmake --build .
+        cmake --build . --target check
+    - name: Install
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: sudo cmake --install .
     - uses: actions/upload-artifact@v3
       with:
         name: gemmi-macos11
         path: |
           ${{runner.workspace}}/build/gemmi
-          ${{runner.workspace}}/gemmi-*.whl
         retention-days: 14
-
 
   windows2022:
     name: "Windows 2022"
@@ -131,12 +126,11 @@ jobs:
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Debug
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3
         cmake --build . --config Debug
         cmake --build . --config Debug --target check
         sudo cmake --install . --config Debug
         cd ..
-        python3 -m pip install . --user
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       run: |
@@ -145,11 +139,6 @@ jobs:
         sphinx-build -M doctest . _build -n -E
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
-    - uses: actions/upload-artifact@v3
-      with:
-        name: gemmi-linux
-        path: dist/gemmi*.egg
-        retention-days: 14
 
   ubuntu2004_clang6:
     name: "Ubuntu 20.04 with Clang 6.0"
@@ -158,22 +147,26 @@ jobs:
     env:
       CC: clang-6.0
       CXX: clang++-6.0
+      SKBUILD_CMAKE_ARGS: "-DCMAKE_CXX_STANDARD=11;-DEXTRA_WARNINGS=ON"
+      SKBUILD_CMAKE_TARGETS: "all;check"
     steps:
     - uses: actions/checkout@v3
     - run: sudo apt-get install clang-6.0 libz-dev python3-pip python3-numpy
     - name: install pybind11
       run: |
-        sudo /usr/bin/python3 -m pip install "pybind11[global]" build
+        sudo /usr/bin/python3 -m pip install "pybind11[global]" build wheel
     - name: build and test
       run: |
         $CXX --version
-        cmake -DCMAKE_CXX_STANDARD=11 -DEXTRA_WARNINGS=1 .
-        make -j2 all
-        make -j2 check
-        sudo make install
         python3 -m build --sdist
-        python3 -m pip install -v dist/gemmi-*.tar.gz
+        python3 -m pip wheel -v dist/gemmi-*.tar.gz
+        python3 -m pip install -v gemmi-*.whl
         python3 -m unittest discover -v -s tests/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: gemmi-linux
+        path: gemmi-*.whl
+        retention-days: 14
 
   centos:
     runs-on: ubuntu-latest
