@@ -4,7 +4,10 @@ import os
 import sys
 import subprocess
 import unittest
-import gemmi
+try:
+    import gemmi
+except ImportError:
+    gemmi = None
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 
@@ -20,7 +23,8 @@ def has_gemmi():
               '\n  output:', e.output.decode(),
               '\n  returncode:', e.returncode)
         return False
-    return v.split()[1].decode() == gemmi.__version__
+    assert v.startswith(b'gemmi 0.')
+    return gemmi is None or v.split()[1].decode() == gemmi.__version__
 
 @unittest.skipIf(not has_gemmi(), "Program gemmi not found.")
 class TestProg(unittest.TestCase):

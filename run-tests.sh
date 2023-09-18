@@ -33,7 +33,7 @@ if [ $# != 0 ] && [ $1 = n ]; then
     shift
 else
     (cd $BUILD_DIR && make -j4 all check)
-    ./tools/cmp-size.py build/gemmi build/gemmi.*.so
+    ./tools/cmp-size.py build/gemmi build/gemmi.*.so build/libgemmi_cpp.*
     ./tools/docs-help.sh
 fi
 (cd docs && make -j4 html SPHINXOPTS="-q -n")

@@ -18,7 +18,10 @@ jobs:
         python3 -m pip wheel -v .
         python3 -m pip install gemmi-*.whl
     - name: Python Tests
-      run: python3 -m unittest discover -v -s tests/
+      run: |
+        python3 -m unittest discover -v -s tests/
+        python3 -m pip install sphinx
+        sphinx-build -M doctest . _build -n -E
     - uses: actions/upload-artifact@v3
       with:
         name: gemmi-macos12
@@ -27,7 +30,7 @@ jobs:
         retention-days: 14
 
   macos11:
-    name: "macOS 11"
+    name: "macOS 11 (w/o python)"
     runs-on: macos-11
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
@@ -39,18 +42,23 @@ jobs:
       shell: bash
       run: |
         cmake --version
-        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=MinSizeRel
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=ON
         cmake --build .
         cmake --build . --target check
     - name: Install
       working-directory: ${{runner.workspace}}/build
       shell: bash
       run: sudo cmake --install .
+    - name: Test
+      run: |
+        ctest --output-on-failure
+        python3 tests/test_prog.py
     - uses: actions/upload-artifact@v3
       with:
         name: gemmi-macos11
         path: |
           ${{runner.workspace}}/build/gemmi
+          ${{runner.workspace}}/build/libgemmi*
         retention-days: 14
 
   windows2022:
@@ -72,7 +80,6 @@ jobs:
       run: |
         python -m pip install sphinx
         sphinx-build -M doctest . _build -n -E
-
 
   ubuntu2204:
     name: "Ubuntu 22.04"
@@ -120,6 +127,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
+    - name: install pybind11
+      run: |
+        python3 -m pip install pybind11
     - name: build and test
       run: |
         g++ --version
@@ -154,19 +164,18 @@ jobs:
     - run: sudo apt-get install clang-6.0 libz-dev python3-pip python3-numpy
     - name: install pybind11
       run: |
-        sudo /usr/bin/python3 -m pip install "pybind11[global]" build wheel
+        sudo /usr/bin/python3 -m pip install "pybind11[global]" build
     - name: build and test
       run: |
         $CXX --version
         python3 -m build --sdist
-        python3 -m pip wheel -v dist/gemmi-*.tar.gz
-        python3 -m pip install -v gemmi-*.whl
+        python3 -m pip install -v dist/gemmi-*.tar.gz
         python3 -m unittest discover -v -s tests/
-    - uses: actions/upload-artifact@v3
-      with:
-        name: gemmi-linux
-        path: gemmi-*.whl
-        retention-days: 14
+    - name: run doctest
+      run: |
+        python3 -m pip install -U sphinx
+        cd docs
+        sphinx-build -M doctest . _build -n -E
 
   centos:
     runs-on: ubuntu-latest
