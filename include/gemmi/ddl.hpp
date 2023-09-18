@@ -30,6 +30,12 @@ struct GEMMI_DLL Ddl {
   std::string dict_name;  // _dictionary_name or _dictionary.title
   std::string dict_version;  // _dictionary_version or _dictionary.version
 
+  Ddl() = default;
+  // MSVC with dllexport attempts to export all non-deleted member functions,
+  // failing with Error C2280 (because of ddl_docs_) if we don't delete these:
+  Ddl(Ddl const&) = delete;
+  Ddl& operator=(Ddl const&) = delete;
+
   void read_ddl(cif::Document&& doc, std::ostream& out);
 
   bool validate_cif(const cif::Document& doc, std::ostream& out) const;

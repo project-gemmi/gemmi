@@ -21,6 +21,7 @@ jobs:
       run: |
         python3 -m unittest discover -v -s tests/
         python3 -m pip install sphinx
+        cd docs
         sphinx-build -M doctest . _build -n -E
     - uses: actions/upload-artifact@v3
       with:
