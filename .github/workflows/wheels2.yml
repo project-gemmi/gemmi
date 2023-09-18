@@ -30,13 +30,14 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.12.3
+      uses: pypa/cibuildwheel@v2.15.0
       env:
         CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
         CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
         CIBW_ARCHS_MACOS: x86_64 arm64
         # increase pip debugging output
         CIBW_BUILD_VERBOSITY: 1
+        SKBUILD_CMAKE_ARGS: '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF'
 
     - run: ls -lh wheelhouse
       shell: bash

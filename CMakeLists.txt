@@ -20,6 +20,7 @@ endif()
 
 option(BUILD_SHARED_LIBS "Build using shared library" OFF)
 option(BUILD_GEMMI_PROGRAM "Build gemmi command-line program" ON)
+option(INSTALL_DEV_FILES "Install C++ headers, cmake configs, static lib" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
@@ -97,7 +98,7 @@ else()
   include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib")
 endif()
 
-if (NOT DEFINED SKBUILD)
+if (NOT DEFINED SKBUILD AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   find_package(benchmark 1.3 QUIET)
 endif()
 if (benchmark_FOUND)
@@ -436,21 +437,24 @@ write_basic_package_version_file(gemmi-config-version.cmake
                                  VERSION ${PROJECT_VERSION}
                                  COMPATIBILITY AnyNewerVersion)
 
-# In CMake 3.23 we'll be able to use FILE_SET to install the headers
-install(DIRECTORY include/gemmi DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-
 if (BUILD_GEMMI_PROGRAM)
   # Is it useful to have the program location in gemmi-targets.cmake?
   install(TARGETS gemmi_prog EXPORT GemmiTargets)
 endif()
-install(TARGETS gemmi_headers gemmi_cpp EXPORT GemmiTargets)
 
-install(EXPORT GemmiTargets FILE gemmi-targets.cmake NAMESPACE gemmi::
-        DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
-install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config-version.cmake"
-        DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
+if (INSTALL_DEV_FILES)
+  # In CMake 3.23 we'll be able to use FILE_SET to install the headers
+  install(DIRECTORY include/gemmi DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  install(TARGETS gemmi_headers gemmi_cpp EXPORT GemmiTargets)
+  install(EXPORT GemmiTargets FILE gemmi-targets.cmake NAMESPACE gemmi::
+          DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
+  install(FILES
+          "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config.cmake"
+          "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config-version.cmake"
+          DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
+elseif (BUILD_SHARED_LIBS)
+  install(TARGETS gemmi_cpp)
+endif()
 
 if (USE_PYTHON)
   if (DEFINED PYTHON_INSTALL_DIR)
