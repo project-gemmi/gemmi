@@ -238,6 +238,9 @@ void add_mol(py::module& m) {
         self.chains.emplace_back(name);
         return self.chains.back();
      }, py::arg("name"), py::return_value_policy::reference_internal)
+    .def("get_cra", &Model::get_cra)
+    .def("get_parent_of", &Model::get_parent_of,
+         py::return_value_policy::reference_internal)
     .def("remove_chain", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", remove_child<Model>, py::arg("index"))
