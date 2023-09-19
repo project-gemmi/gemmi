@@ -44,8 +44,8 @@ jobs:
       run: |
         cmake --version
         cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=ON
-        cmake --build .
-        cmake --build . --target check
+        cmake --build . -j3
+        cmake --build . --target check -j3
     - name: Install
       working-directory: ${{runner.workspace}}/build
       shell: bash
@@ -138,8 +138,8 @@ jobs:
         mkdir build
         cd build
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3
-        cmake --build . --config Debug
-        cmake --build . --config Debug --target check
+        cmake --build . --config Debug -j2
+        cmake --build . --config Debug --target check -j2
         sudo cmake --install . --config Debug
         cd ..
         python3 -m unittest discover -v -s tests/

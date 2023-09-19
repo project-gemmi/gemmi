@@ -1218,6 +1218,7 @@ of *hkl* or *d*:sup:`--2`:
 The unit cell and the upper bin boundaries (in Å\ :sup:`--2`) are stored internally:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> binner.cell
   <gemmi.UnitCell(50.347, 4.777, 14.746, 90, 101.73, 90)>

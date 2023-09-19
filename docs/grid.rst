@@ -191,6 +191,7 @@ on symmetry-equivalent points::
 Python bindings provide the following specializations:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> grid.symmetrize_min()      # minimum of equivalent values
   >>> grid.symmetrize_max()      # maximum

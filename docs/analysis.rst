@@ -240,8 +240,8 @@ operation ``mark.image_idx`` (and shifted into the unit cell).
 
   >>> st.cell.find_nearest_pbc_image(point, mark.pos, 0)
   <gemmi.NearestImage 1_555 in distance 3.00>
-  >>> _.dist()
-  2.998659073040795
+  >>> _.dist()  # doctest: +ELLIPSIS
+  2.998659073040...
 
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
