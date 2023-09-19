@@ -13,6 +13,7 @@
 #include <stdexcept>  // for out_of_range
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "elem.hpp"
 #include "fail.hpp"      // for fail
