@@ -746,7 +746,7 @@ class TestMol(unittest.TestCase):
                           'ALA', 'NCY', 'MVA'])
         self.assertEqual(len(polymer), 10)
         self.assertEqual(polymer.length(), 8)
-        # The bond between 4 MVA(v) and 5 DSN(s) is betwenn C and OG
+        # The bond between 4 MVA(v) and 5 DSN(s) is between C and OG
         # (so it's not a peptide bond as expected). Depending on the heuristic
         # used to determine gaps, this sequence could have a gap in the middle.
         self.assertEqual(polymer.make_one_letter_sequence(), 'sAXvsAXv')

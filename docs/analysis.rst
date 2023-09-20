@@ -211,7 +211,7 @@ image is composed of two parts: one of symmetry transformations
 in the unit cell and a shift of the unit cell that we often
 call here the PBC (periodic boundary conditions) shift.
 
-The first part is stored explicitely as ``mark.image_idx``.
+The first part is stored explicitly as ``mark.image_idx``.
 The corresponding transformation is:
 
 .. doctest::
@@ -719,7 +719,7 @@ we select residues in the radius of 8Å from a selected point:
 
   >>> selected_point = gemmi.Position(20, 40, 30)
   >>> ns = gemmi.NeighborSearch(st[0], st.cell, 8.0).populate()
-  >>> # First, a flag is set for neigbouring residues.
+  >>> # First, a flag is set for neighbouring residues.
   >>> for mark in ns.find_atoms(selected_point):
   ...     mark.to_cra(st[0]).residue.flag = 's'
   >>> # Then, we select residues with this flag.
@@ -739,7 +739,7 @@ Here, we select atoms in the radius of 8Å from a selected point:
 .. doctest::
 
   >>> # selected_point and ns are reused from the previous example
-  >>> # First, a flag is set for neigbouring atoms.
+  >>> # First, a flag is set for neighbouring atoms.
   >>> for mark in ns.find_atoms(selected_point):
   ...     mark.to_cra(st[0]).atom.flag = 's'
   >>> # Then, we select atoms with this flag.

@@ -355,7 +355,7 @@ void shorten_ccd_codes(Structure& st) {
       if (c1 > '9') {
         short_code[0] = c0++;
         c1 = '0';
-        if (c0 > 'Z')  // shoudn't happen
+        if (c0 > 'Z')  // shouldn't happen
           break;
       }
     }

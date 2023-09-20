@@ -515,7 +515,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   const gemmi::UnitCell& cell = use_st ? st.cell : small.cell;
   gemmi::StructureFactorCalculator<Table> calc(cell);
 
-  // assign f' given explicitely in a file
+  // assign f' given explicitly in a file
   if (p.options[CifFp]) {
     if (use_st) {
       // _atom_type.scat_dispersion_real is almost never used,

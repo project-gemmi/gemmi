@@ -837,7 +837,7 @@ inline Op hall_matrix_symbol(const char* start, const char* end,
 }
 
 // Parses either short (0 0 1) or long notation (x,y,z+1/12)
-// but without multpliers (such as 1/2x) to keep things simple for now.
+// but without multipliers (such as 1/2x) to keep things simple for now.
 inline Op parse_hall_change_of_basis(const char* start, const char* end) {
   if (std::memchr(start, ',', end - start) != nullptr) // long symbol
     return parse_triplet(std::string(start, end));

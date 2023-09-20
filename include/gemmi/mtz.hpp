@@ -479,7 +479,7 @@ struct GEMMI_DLL Mtz {
 
   // Functions for reading MTZ headers and data.
 
-  void toggle_endiannes() {
+  void toggle_endianness() {
     same_byte_order = !same_byte_order;
     swap_eight_bytes(&header_offset);
   }
@@ -501,7 +501,7 @@ struct GEMMI_DLL Mtz {
     // BE is denoted by 1 and LE by 4.
     // If we get a value different than 1 and 4 we assume the native byte order.
     if ((buf[9] & 0xf0) == (is_little_endian() ? 0x10 : 0x40))
-      toggle_endiannes();
+      toggle_endianness();
 
     std::int32_t tmp_header_offset;
     std::memcpy(&tmp_header_offset, buf + 4, 4);

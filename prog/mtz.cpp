@@ -35,14 +35,14 @@ enum OptionIndex {
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] MTZ_FILE[...]"
-    "\nPrint informations from an mtz file."},
+    "\nPrint information from an mtz file."},
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
   { Headers, 0, "H", "headers", Arg::None,
     "  -H, --headers  \tPrint raw headers, until the END record." },
   { Dump, 0, "d", "dump", Arg::None,
-    "  -d, --dump  \tPrint a subset of CCP4 mtzdmp informations." },
+    "  -d, --dump  \tPrint a subset of CCP4 mtzdmp information." },
   { PrintBatch, 0, "B", "batch", Arg::Int,
     "  -B N, --batch=N  \tPrint data from batch header N." },
   { PrintBatches, 0, "b", "batches", Arg::None,
@@ -64,7 +64,7 @@ const option::Descriptor Usage[] = {
   { Compare, 0, "", "compare", Arg::Required,
     "  --compare=FILE  \tCompare two MTZ files." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
-    "  --toggle-endian  \tToggle assumed endiannes (little <-> big)." },
+    "  --toggle-endian  \tToggle assumed endianness (little <-> big)." },
   { NoIsym, 0, "", "no-isym", Arg::None,
     "  --no-isym  \tDo not apply symmetry from M/ISYM column." },
   { UpdateReso, 0, "", "update-reso", Arg::None,
@@ -511,7 +511,7 @@ void print_mtz_info(Stream&& stream, const char* path,
   try {
     mtz.read_first_bytes(stream);
     if (options[ToggleEndian])
-      mtz.toggle_endiannes();
+      mtz.toggle_endianness();
   } catch (std::runtime_error& e) {
     gemmi::fail(std::string(e.what()) + ": " + path);
   }

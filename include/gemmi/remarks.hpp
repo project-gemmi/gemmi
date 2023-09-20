@@ -176,7 +176,7 @@ inline void read_remark3_line(const char* line, Metadata& meta,
   // and analysis of PDB files.
   // In special cases, such as joint X-ray and neutron refinement 5MOO,
   // PDB file can have two REMARK 3 blocks.
-  // Generally, after "REMARK   3" we have either a header-like sentance
+  // Generally, after "REMARK   3" we have either a header-like sentence
   // or a key:value pair with a colon, or a continuation of text from the
   // previous line.
   const char* key_start = skip_blank(line + 10);

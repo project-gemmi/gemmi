@@ -332,7 +332,7 @@ inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t 
   if (list.all || list.inverted)
     ++pos;
   list.list = cid.substr(pos, end - pos);
-  // if a list have punctation other than ',' something must be wrong
+  // if a list have punctuation other than ',' something must be wrong
   size_t idx = list.list.find_first_of("[]()!/*-.:;");
   if (idx != std::string::npos)
     wrong_syntax(cid, pos + idx, " in a list");

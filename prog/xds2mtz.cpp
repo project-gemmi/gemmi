@@ -93,7 +93,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       if (gemmi::likely_in_house_source(xds.wavelength))
         std::fprintf(stderr, "WARNING: likely in-house source (wavelength %g)\n"
-                             "         polarization corection can be inappropriate.\n",
+                             "         polarization correction can be inappropriate.\n",
                      xds.wavelength);
       if (verbose)
         std::fprintf(stderr, "Applying polarization correction...\n");

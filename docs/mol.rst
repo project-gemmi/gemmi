@@ -817,7 +817,7 @@ that has properties listed in the C++ section above. Examples:
 
 ----
 
-**CONECT records** are not written unless explicitely requested.
+**CONECT records** are not written unless explicitly requested.
 The data from and for these records is stored in C++ ``Structure::conect_map``
 as a mapping between serial numbers (int -> list of ints).
 When a model is modified, or serial atoms are re-assigned,
@@ -1228,7 +1228,7 @@ While *chain* and *residue* are not good names when referring to
 ligands and waters, we use this nomenclature as it is the most popular one.
 Some libraries (clipper) call it polymer - monomer - atom.
 PDBx/mmCIF uses more general (but not so obvious) terms:
-*entity* and *struct_asym* (structural component in asymetric unit)
+*entity* and *struct_asym* (structural component in asymmetric unit)
 instead of chain,
 and *chem_comp* (chemical component) for residue/monomer.
 
@@ -2243,7 +2243,7 @@ First, we try global alignment:
   >>> result.score
   -7
 
-We have only global aligment available, but we can use free-gaps to
+We have only global alignment available, but we can use free-gaps to
 approximate a semi-global alignment (infix method) where gaps at the start
 and at the end of the second sequence are not penalized.
 Approximate -- because only gap openings are not penalized,

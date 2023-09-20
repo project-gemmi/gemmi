@@ -66,6 +66,11 @@ if [ $1 = i ]; then
     echo 'OK'
 fi
 
+if [ $1 = a ]; then
+    echo 'Run codespell'
+    codespell include src prog python fortran tests examples docs wasm tools ||:
+fi
+
 if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb{1,2}.cpp'
     echo 'Example 1: gemmi -> mmdb'

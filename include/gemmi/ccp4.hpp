@@ -194,7 +194,7 @@ struct Ccp4 : public Ccp4Base {
     if (mode < 0) {
       mode = mode_for_data();
       if (mode < 0)
-        fail("update_ccp4_header: specify map mode explicitely (usually 2)");
+        fail("update_ccp4_header: specify map mode explicitly (usually 2)");
     }
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
@@ -238,7 +238,7 @@ struct Ccp4 : public Ccp4Base {
       fail("Not a CCP4 map: " + path);
     std::string machst = header_str(54, 4);
     if (machst[0] != 0x44 && machst[0] != 0x11)
-      fail("Unsupported machine stamp (endiannes) in the file?");
+      fail("Unsupported machine stamp (endianness) in the file?");
     same_byte_order = machst[0] == (is_little_endian() ? 0x44 : 0x11);
     grid.unit_cell.set(header_rfloat(11), header_rfloat(12), header_rfloat(13),
                        header_rfloat(14), header_rfloat(15), header_rfloat(16));

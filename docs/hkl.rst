@@ -1197,7 +1197,7 @@ The boundaries are set by one of the setup functions:
   >>> binner.setup(4, gemmi.Binner.Method.Dstar3, mtz)
 
 The MTZ file may contain multiple datasets with different unit cells.
-In such case we may explicitely specify the unit cell:
+In such case we may explicitly specify the unit cell:
 
 .. doctest::
 
@@ -1734,7 +1734,7 @@ or by using the function IT92_get_exact() that takes an element and a charge
 as arguments and returns None if this exact atom or ion is absent in the table.
 This function is used solely to inspect the coefficients.
 When calculating structure factors, coefficients for ions absent in the table
-are substituded with coefficients of neutral atoms.
+are substituted with coefficients of neutral atoms.
 
 .. doctest::
 

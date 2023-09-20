@@ -291,7 +291,7 @@ void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
         break;
       case 'c':
         if (it != chemcomp.atoms.end()) {
-          // the modification shouln't change the atom name, so we don't do:
+          // the modification shouldn't change the atom name, so we don't do:
           // if (!mod.new_id.empty())
           //   it->id = mod.new_id;
           if (mod.el != El::X)

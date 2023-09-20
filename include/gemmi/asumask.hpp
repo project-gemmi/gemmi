@@ -76,7 +76,7 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
 
   Grid<std::int8_t> grid;
   grid.spacegroup = sg;
-  // Testing with grid size 24 can't distiguish x<=1/8 and x<1/6,
+  // Testing with grid size 24 can't distinguish x<=1/8 and x<1/6,
   // but it happens to give the same results as grid size 48 for all
   // space groups tabulated in gemmi, so it's fine.
   // M=1 -> grid size 24; M=2 -> grid size 48

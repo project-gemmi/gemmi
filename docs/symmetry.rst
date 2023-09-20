@@ -257,7 +257,7 @@ Operations
 ==========
 
 Crystallographic symmetry operations have a few notations.
-Gemmi undertands only coordinate triplets (sometimes called
+Gemmi understands only coordinate triplets (sometimes called
 the Jones' faithful notation) such as ``x,x-y,z+1/2``.
 The symmetry operation is represented by class Op.
 It can be created in C++ as::

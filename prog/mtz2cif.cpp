@@ -95,7 +95,7 @@ const option::Descriptor Usage[] = {
     "\n      & SIGI Q intensity_sigma"
     "\nCOLUMN is MTZ column label. Columns H K L are added if not specified."
     "\n  Alternative labels can be separated with | (e.g. FREE|FreeR_flag)."
-    "\nTYPE is used for checking the columm type, unless it is '*'."
+    "\nTYPE is used for checking the column type, unless it is '*'."
     "\nTAG does not include category name, it is only the part after _refln."
     "\nFORMAT (optional) is printf-like floating-point format:"
     "\n - one of e, f, g with optional flag, width and precision"

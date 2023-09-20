@@ -51,7 +51,7 @@ FLAG (optional) is either ? or &:
       & SIGI Q intensity_sigma
 COLUMN is MTZ column label. Columns H K L are added if not specified.
   Alternative labels can be separated with | (e.g. FREE|FreeR_flag).
-TYPE is used for checking the columm type, unless it is '*'.
+TYPE is used for checking the column type, unless it is '*'.
 TAG does not include category name, it is only the part after _refln.
 FORMAT (optional) is printf-like floating-point format:
  - one of e, f, g with optional flag, width and precision

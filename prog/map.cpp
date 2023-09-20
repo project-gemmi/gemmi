@@ -48,7 +48,7 @@ template<typename T>
 void print_info(const gemmi::Ccp4<T>& map, const gemmi::DataStats& st) {
   const gemmi::Grid<T>& grid = map.grid;
   std::printf("Map mode: %d\n", map.header_i32(4));
-  std::printf("Endiannes: %snative\n", map.same_byte_order ? "" : "NOT ");
+  std::printf("Endianness: %snative\n", map.same_byte_order ? "" : "NOT ");
   std::printf("Number of columns, rows, sections: %5d %5d %5d %6s %d points\n",
               grid.nu, grid.nv, grid.nw, "->", grid.nu * grid.nv * grid.nw);
   int u0 = map.header_i32(5);

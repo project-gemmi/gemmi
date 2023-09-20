@@ -1,12 +1,12 @@
 $ gemmi mtz -h
 Usage:
  gemmi mtz [options] MTZ_FILE[...]
-Print informations from an mtz file.
+Print information from an mtz file.
   -h, --help            Print usage and exit.
   -V, --version         Print version and exit.
   -v, --verbose         Verbose output.
   -H, --headers         Print raw headers, until the END record.
-  -d, --dump            Print a subset of CCP4 mtzdmp informations.
+  -d, --dump            Print a subset of CCP4 mtzdmp information.
   -B N, --batch=N       Print data from batch header N.
   -b, --batches         Print data from all batch headers.
   -e                    (with -B or -b) expanded info from batch headers.
@@ -17,6 +17,6 @@ Print informations from an mtz file.
   --cells               Print cell parameters only.
   --check-asu=ccp4|tnt  Check if reflections are in ASU.
   --compare=FILE        Compare two MTZ files.
-  --toggle-endian       Toggle assumed endiannes (little <-> big).
+  --toggle-endian       Toggle assumed endianness (little <-> big).
   --no-isym             Do not apply symmetry from M/ISYM column.
   --update-reso         Recalculate resolution limits before printing.

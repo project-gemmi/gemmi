@@ -74,3 +74,7 @@ regex = "#define GEMMI_VERSION \"(?P<value>[0-9dev.-]+)\""
 minversion = "6.0"
 addopts = ["-ra", "-q"]
 testpaths = ["tests"]
+
+[tool.codespell]
+skip = 'third_party,*.pdb,*.crd,*.cif,*.mmcif,*.ent,*.log*,*.dic,*.idx,tags,*.bak,docs/_build,tests/mmcif_pdbx_v50_frag.dic,docs/*-help.txt'
+ignore-words-list = 'inout,fo,fom,te,nd,ser,unx,ket,acn,readd,conect'
