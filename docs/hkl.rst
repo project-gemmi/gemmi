@@ -321,10 +321,10 @@ but they can be accessed directly if needed:
 .. doctest::
   :skipif: mdm2_unmerged_mtz_path is None
 
-  >>> batch.ints
+  >>> list(batch.ints)
   [185, 29, 156, 0, -1, 1, -1, 0, 0, 0, 0, 0, 1, 0, 2, 1, 0, 1, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0]
-  >>> batch.floats[36:38]  # start and end of phi
-  [80.0, 80.5]
+  >>> batch.floats[36], batch.floats[37]  # start and end of phi
+  (80.0, 80.5)
 
 One peculiarity of the MTZ format is that instead of the original Miller
 indices it stores indices of the equivalent reflection in the ASU
@@ -1797,6 +1797,7 @@ The coefficients can be used to directly calculate the sum of Gaussians --
 the structure factor contribution:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
   9.303602485040315
@@ -1808,6 +1809,7 @@ In the simplest case, the atom's contribution to the electron density at a grid
 point can be calculated as:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> # arguments are distance^2 and isotropic ADP
   >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
@@ -1973,7 +1975,7 @@ SpaceGroup because UnitCell already contains a list of symmetry operations).
 Now we can compute structure factors from Model for any (hkl):
 
 .. doctest::
-  :skipif: sys.platform == 'win32'
+  :skipif: sys.platform == 'win32' or numpy is None
 
   >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
   (54.50873699946033+53.39498671218277j)

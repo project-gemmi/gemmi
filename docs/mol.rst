@@ -805,6 +805,8 @@ that has properties listed in the C++ section above. Examples:
   import gemmi
   output_path = 'out.pdb'
   structure = gemmi.read_pdb('../tests/1orc.pdb')
+  print('Running doctest. Disabled features:',
+        ', '.join(disabled_features) or 'none', file=sys.stderr)
 
 .. testcode::
 

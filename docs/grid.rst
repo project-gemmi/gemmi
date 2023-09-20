@@ -302,6 +302,7 @@ Unlike array slicing, these functions are aware of the cell repeat
 (PBC) -- the block area is not limited by the unit cell boundaries.
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> sub = gr.get_subarray(start=[3,3,3], shape=[2,3,4])
   >>> sub.shape
@@ -443,6 +444,7 @@ as in NumPy MaskedArray.
 The primary use for MaskedGrid is working with asymmetric unit (asu) only:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> asu = grid.masked_asu()
   >>> asu  # doctest: +ELLIPSIS

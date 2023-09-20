@@ -51,34 +51,38 @@ latex_documents = [
 ]
 
 doctest_global_setup = '''
+import os
 import sys
 assert sys.version_info[0] > 2, "Tests in docs are for Python 3 only"
+disabled_features = []
 try:
     import numpy
 except ImportError:
-    print('Tests that use NumPy are disabled.', file=sys.stderr)
+    disabled_features.append('NumPy')
     numpy = None
 try:
     import pandas
 except ImportError:
-    print('Tests that use pandas are disabled.', file=sys.stderr)
+    disabled_features.append('pandas')
     pandas = None
 try:
     import networkx
 except ImportError:
-    print('Tests that use networkx are disabled.', file=sys.stderr)
+    disabled_features.append('networkx')
     networkx = None
 try:
     import pynauty
 except ImportError:
-    print('Tests that use pynauty are disabled.', file=sys.stderr)
+    disabled_features.append('pynauty')
     pynauty = None
-import os
 mdm2_unmerged_mtz_path = os.getenv('CCP4')
 if mdm2_unmerged_mtz_path:
-    mdm2_unmerged_mtz_path += '/share/ccp4i2/demo_data/mdm2/mdm2_unmerged.mtz'
+    mdm2_unmerged_mtz_path += ('/lib/python3.7/site-packages/' +
+                               'ccp4i2/demo_data/mdm2/mdm2_unmerged.mtz')
     if not os.path.isfile(mdm2_unmerged_mtz_path):
         mdm2_unmerged_mtz_path = None
+if mdm2_unmerged_mtz_path is None:
+    disabled_features.append('$CCP4')
 '''
 
 def setup(app):
