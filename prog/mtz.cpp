@@ -98,8 +98,23 @@ void dump(const Mtz& mtz) {
          mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
          mtz.sort_order[3], mtz.sort_order[4]);
   printf("Space Group: %s\n", mtz.spacegroup_name.c_str());
-  printf("Space Group Number: %d\n\n", mtz.spacegroup_number);
-  printf("Header info (run with option -s for recalculated statistics):\n");
+  printf("Space Group Number: %d\n", mtz.spacegroup_number);
+  if (mtz.symops.empty()) {
+    printf("No SYMM records.\n");
+  } else {
+    gemmi::GroupOps gops = gemmi::split_centering_vectors(mtz.symops);
+    const gemmi::SpaceGroup* symm_sg = find_spacegroup_by_ops(gops);
+    if (symm_sg == nullptr) {
+      printf("Space Group from SYMM Records: unknown, the operations are:\n");
+      for (const gemmi::Op& op : mtz.symops)
+        printf("    %s\n", op.triplet().c_str());
+    } else {
+      printf("Space Group from SYMM Records: %s\n", symm_sg->xhm().c_str());
+      if (symm_sg != mtz.spacegroup)
+        printf("  WARNING: the space group differs!\n");
+    }
+  }
+  printf("\nHeader info (run with option -s for recalculated statistics):\n");
   printf("Column    Type  Dataset    Min        Max\n");
   for (const Mtz::Column& col : mtz.columns)
     printf("%-12s %c %2d %12.6g %10.6g\n",
