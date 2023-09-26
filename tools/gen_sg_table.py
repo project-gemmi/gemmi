@@ -187,6 +187,6 @@ for hm, hall in additional:
     counter += 1
 
 print('\n')
-for b in basisops:
+for n, b in enumerate(basisops):
     nice_b = gemmi.Op(b).triplet()
-    print('  "%s",' % nice_b)
+    print('    "%s",  // %d' % (nice_b, n))
