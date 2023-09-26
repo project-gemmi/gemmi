@@ -739,6 +739,14 @@ struct Grid : GridBase<T> {
   void symmetrize_nondefault(T default_) {
     symmetrize([default_](T a, T b) { return impl::is_same(a, default_) ? b : a; });
   }
+  void symmetrize_avg() {
+    symmetrize_sum();
+    if (spacegroup && spacegroup->number != 1) {
+      int n_ops = spacegroup->operations().order();
+      for (T& x : data)
+        x /= n_ops;
+    }
+  }
 
   /// scale the data to get mean == 0 and rmsd == 1 (doesn't work for T=complex)
   void normalize() {

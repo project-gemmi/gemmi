@@ -220,6 +220,7 @@ void add_grid(py::module& m) {
     ;
   auto grid_float = add_grid_common<float>(m, "FloatGrid");
   add_grid_interpolation<float>(grid_float);
+  grid_float.def("symmetrize_avg", &Grid<float>::symmetrize_avg);
   grid_float.def("normalize", &Grid<float>::normalize);
   grid_float.def("add_soft_edge_to_mask", &add_soft_edge_to_mask<float>);
 

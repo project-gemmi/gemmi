@@ -50,13 +50,16 @@ class TestFloatGrid(unittest.TestCase):
         self.assertTrue(math.isnan(m.grid.get_value(3, 4, 5)))
         m.grid.symmetrize_min()
         self.assertEqual(m.grid.get_value(3, 4, 5), 100)
+        m.grid.set_value(60-3, 24//2+4, 60-5, 80)
+        m.grid.symmetrize_avg()
+        self.assertEqual(m.grid.get_value(3, 4, 5), 90)
         m.grid.set_value(60-3, 24//2+4, 60-5, float('nan'))
         m.grid.symmetrize_max()
-        self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 100)
+        self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 90)
         if numpy:
             arr = numpy.array(m.grid, copy=False)
             self.assertEqual(arr.shape, (60, 24, 60))
-            self.assertEqual(arr[3][4][5], 100)
+            self.assertEqual(arr[3][4][5], 90)
             grid2 = gemmi.FloatGrid(arr)
             self.assertTrue(numpy.allclose(m.grid, grid2, atol=0.0, rtol=0,
                                            equal_nan=True))

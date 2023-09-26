@@ -195,8 +195,9 @@ Python bindings provide the following specializations:
 
   >>> grid.symmetrize_min()      # minimum of equivalent values
   >>> grid.symmetrize_max()      # maximum
-  >>> grid.symmetrize_abs_max()  # value corresponding to max(|x|)
-  >>> grid2.symmetrize_sum()     # sum symmetry-equivalent nodes
+  >>> grid.symmetrize_abs_max()  # max(|x|)
+  >>> grid.symmetrize_avg()      # average
+  >>> grid2.symmetrize_sum()     # sum (symmetry-equivalent nodes are added, multiplying nodes on special positions)
 
 .. _grid_cell:
 
