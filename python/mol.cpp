@@ -6,7 +6,6 @@
 #include "gemmi/polyheur.hpp"   // for one_letter_code, trim_to_alanine
 #include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChain
 #include "gemmi/select.hpp"     // for Selection
-#include "tostr.hpp"
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -93,7 +92,7 @@ void add_mol(py::module& m) {
     })
     .def("__str__", [](const CRA& self) { return atom_str(self); })
     .def("__repr__", [](const CRA& self) {
-        return tostr("<gemmi.CRA ", atom_str(self), '>');
+        return cat("<gemmi.CRA ", atom_str(self), '>');
     });
 
   py::class_<CraProxy>(m, "CraGenerator")
@@ -187,8 +186,8 @@ void add_mol(py::module& m) {
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
     .def("clone", [](const Structure& self) { return new Structure(self); })
     .def("__repr__", [](const Structure& self) {
-        return tostr("<gemmi.Structure ", self.name, " with ",
-                     self.models.size(), " model(s)>");
+        return cat("<gemmi.Structure ", self.name, " with ",
+                   self.models.size(), " model(s)>");
     });
     add_assign_label_seq_id(structure);
     add_write(m, structure);
@@ -262,8 +261,7 @@ void add_mol(py::module& m) {
     .def("split_chains_by_segments", &split_chains_by_segments)
     .def("clone", [](const Model& self) { return new Model(self); })
     .def("__repr__", [](const Model& self) {
-        return tostr("<gemmi.Model ", self.name, " with ",
-                     self.chains.size(), " chain(s)>");
+        return cat("<gemmi.Model ", self.name, " with ", self.chains.size(), " chain(s)>");
     });
 
   py::class_<UniqProxy<Residue>>(m, "FirstConformerRes")
@@ -335,8 +333,7 @@ void add_mol(py::module& m) {
          py::keep_alive<0, 1>())
     .def("clone", [](const Chain& self) { return new Chain(self); })
     .def("__repr__", [](const Chain& self) {
-        return tostr("<gemmi.Chain ", self.name,
-                     " with ", self.residues.size(), " res>");
+        return cat("<gemmi.Chain ", self.name, " with ", self.residues.size(), " res>");
     });
 
   pyResidueSpan
@@ -417,8 +414,7 @@ void add_mol(py::module& m) {
          py::arg("altloc"), py::return_value_policy::reference_internal)
     .def("name", &AtomGroup::name)
     .def("__repr__", [](const AtomGroup& self) {
-        return tostr("<gemmi.AtomGroup ", self.name(), ", sites: ",
-                     self.size(), '>');
+        return cat("<gemmi.AtomGroup ", self.name(), ", sites: ", self.size(), '>');
     });
 
   pyResidue
@@ -469,8 +465,7 @@ void add_mol(py::module& m) {
     .def("trim_to_alanine", (bool (*)(Residue&)) &trim_to_alanine)
     .def("clone", [](const Residue& self) { return new Residue(self); })
     .def("__repr__", [](const Residue& self) {
-        return tostr("<gemmi.Residue ", self.str(), " with ",
-                     self.atoms.size(), " atoms>");
+        return cat("<gemmi.Residue ", self.str(), " with ", self.atoms.size(), " atoms>");
     });
 
   py::enum_<CalcFlag>(m, "CalcFlag")

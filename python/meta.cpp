@@ -90,7 +90,7 @@ void add_meta(py::module& m) {
     .def_readwrite("altloc", &AtomAddress::altloc)
     .def("__str__", &AtomAddress::str)
     .def("__repr__", [](const AtomAddress& self) {
-        return tostr("<gemmi.AtomAddress ", self.str(), '>');
+        return cat("<gemmi.AtomAddress ", self.str(), '>');
     })
     .def(py::self == py::self)
     .def(py::pickle(
@@ -175,8 +175,8 @@ void add_meta(py::module& m) {
     .def_readwrite("partner2", &Connection::partner2)
     .def_readwrite("reported_distance", &Connection::reported_distance)
     .def("__repr__", [](const Connection& self) {
-        return tostr("<gemmi.Connection ", self.name, "  ",
-                     self.partner1.str(), " - ", self.partner2.str(), '>');
+        return cat("<gemmi.Connection ", self.name, "  ",
+                   self.partner1.str(), " - ", self.partner2.str(), '>');
     });
   py::bind_vector<std::vector<Connection>>(m, "ConnectionList");
 

@@ -1,7 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/cifdoc.hpp"
-#include "tostr.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
 #include "gemmi/fstream.hpp"
@@ -83,7 +82,7 @@ void add_cif(py::module& cif) {
         std::string str = self.str();
         if (str.empty())
           return "gemmi.cif.WriteOptions()";
-        return gemmi::tostr("<gemmi.cif.WriteOptions ", str, '>');
+        return gemmi::cat("<gemmi.cif.WriteOptions ", str, '>');
     });
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
@@ -313,7 +312,7 @@ void add_cif(py::module& cif) {
         return os.str();
     }, py::arg("style"))
     .def("__repr__", [](const Block &self) {
-        return gemmi::tostr("<gemmi.cif.Block ", self.name, '>');
+        return gemmi::cat("<gemmi.cif.Block ", self.name, '>');
     });
 
 
@@ -344,8 +343,7 @@ void add_cif(py::module& cif) {
          py::arg("new_values"), py::arg("pos")=-1)
     .def("set_all_values", &Loop::set_all_values, py::arg("columns"))
     .def("__repr__", [](const Loop &self) {
-        return gemmi::tostr("<gemmi.cif.Loop ", self.length(), " x ",
-                            self.width(), '>');
+        return gemmi::cat("<gemmi.cif.Loop ", self.length(), " x ", self.width(), '>');
     });
 
 
@@ -369,10 +367,12 @@ void add_cif(py::module& cif) {
     })
     .def("str", &Column::str, py::arg("index"))
     .def("__repr__", [](const Column &self) {
-        std::string desc = "nil";
+        std::string s = "<gemmi.cif.Column ";
         if (const std::string* tag = self.get_tag())
-          desc = gemmi::tostr(*tag, " length ", self.length());
-        return "<gemmi.cif.Column " + desc + ">";
+          gemmi::cat_to(s, *tag, " length ", self.length(), '>');
+        else
+          s += "nil>";
+        return s;
     });
 
   cif_table
@@ -402,10 +402,12 @@ void add_cif(py::module& cif) {
     .def("__bool__", &Table::ok)
     .def("__len__", &Table::length)
     .def("__repr__", [](const Table& self) {
-        return "<gemmi.cif.Table " +
-               (self.ok() ? gemmi::tostr(self.length(), " x ", self.width())
-                          : "nil") +
-               ">";
+        std::string s = "<gemmi.cif.Table ";
+        if (self.ok())
+          gemmi::cat_to(s, self.length(), " x ", self.width(), '>');
+        else
+          s += "nil>";
+        return s;
     });
 
   cif_table_row
