@@ -58,6 +58,22 @@ struct WriteOptions {
         break;
     }
   }
+  std::string str() const {
+    std::string s;
+    if (prefer_pairs)
+      s += "prefer_pairs,";
+    if (compact)
+      s += "compact,";
+    if (misuse_hash)
+      s += "misuse_hash,";
+    if (align_pairs != 0)
+      s += "align_pairs=" + std::to_string(align_pairs) + ",";
+    if (align_loops != 0)
+      s += "align_loops=" + std::to_string(align_loops) + ",";
+    if (!s.empty())
+      s.pop_back();
+    return s;
+  }
 };
 
 /// std::ostream with buffering. C++ streams are so slow that even primitive

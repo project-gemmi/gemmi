@@ -79,7 +79,12 @@ void add_cif(py::module& cif) {
     .def_readwrite("misuse_hash", &WriteOptions::misuse_hash)
     .def_readwrite("align_pairs", &WriteOptions::align_pairs)
     .def_readwrite("align_loops", &WriteOptions::align_loops)
-    ;
+    .def("__repr__", [](const WriteOptions &self) -> std::string {
+        std::string str = self.str();
+        if (str.empty())
+          return "gemmi.cif.WriteOptions()";
+        return gemmi::tostr("<gemmi.cif.WriteOptions ", str, '>');
+    });
   py::class_<Document>(cif, "Document")
     .def(py::init<>())
     .def_readwrite("source", &Document::source)
