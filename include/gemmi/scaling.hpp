@@ -107,17 +107,17 @@ struct Scaling {
 
   // Scale data, optionally adding bulk solvent correction.
   void scale_data(AsuData<std::complex<Real>>& asu_data,
-                  const AsuData<std::complex<Real>>& mask_data) const {
-    if (use_solvent && mask_data.size() != asu_data.size())
+                  const AsuData<std::complex<Real>>* mask_data) const {
+    if (use_solvent && !(mask_data && mask_data->size() == asu_data.size()))
       fail("scale_data(): mask data not prepared");
     bool use_scaling = (k_overall != 1 || !b_star.all_zero());
     for (size_t i = 0; i != asu_data.v.size(); ++i) {
       HklValue<std::complex<Real>>& hv = asu_data.v[i];
       if (use_solvent) {
-        if (hv.hkl != mask_data.v[i].hkl)
+        if (hv.hkl != mask_data->v[i].hkl)
           fail("scale_data(): data arrays don't match");
         double stol2 = cell.calculate_stol_sq(hv.hkl);
-        hv.value += (Real)get_solvent_scale(stol2) * mask_data.v[i].value;
+        hv.value += (Real)get_solvent_scale(stol2) * mask_data->v[i].value;
       }
       if (use_scaling)
         hv.value *= (Real) get_overall_scale_factor(hv.hkl);
@@ -171,8 +171,8 @@ struct Scaling {
 
   void prepare_points(const AsuData<std::complex<Real>>& calc,
                       const AsuData<ValueSigma<Real>>& obs,
-                      const AsuData<std::complex<Real>>& mask_data) {
-    if (use_solvent && mask_data.size() != calc.size())
+                      const AsuData<std::complex<Real>>* mask_data) {
+    if (use_solvent && !(mask_data && mask_data->size() == calc.size()))
       fail("prepare_points(): mask data not prepared");
     std::complex<Real> fmask;
     points.reserve(std::min(calc.size(), obs.size()));
@@ -188,7 +188,7 @@ struct Scaling {
           continue;
       }
       if (use_solvent) {
-        const HklValue<std::complex<Real>>& m = mask_data.v[c - calc.v.begin()];
+        const HklValue<std::complex<Real>>& m = mask_data->v[c - calc.v.begin()];
         if (m.hkl != c->hkl)
           fail("prepare_points(): unexpected data");
         fmask = m.value;

@@ -286,7 +286,7 @@ void process_with_fft(const gemmi::Structure& st,
   }
 
   if (scale_to.size() != 0) {
-    scaling.prepare_points(asu_data, scale_to, mask_data);
+    scaling.prepare_points(asu_data, scale_to, &mask_data);
     printf("Calculating scale factors using %zu points...\n", scaling.points.size());
     scaling.fit_isotropic_b_approximately();
     //fprintf(stderr, "k_ov=%g B_ov=%g\n", scaling.k_overall, scaling.get_b_overall().u11);
@@ -308,7 +308,7 @@ void process_with_fft(const gemmi::Structure& st,
       fprintf(stderr, "\n");
     }
   }
-  scaling.scale_data(asu_data, mask_data);
+  scaling.scale_data(asu_data, &mask_data);
 
   if (file.mode == RefFile::Mode::WriteMtz) {
     write_asudata_to_mtz(asu_data, file);
