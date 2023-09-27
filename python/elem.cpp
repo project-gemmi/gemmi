@@ -6,6 +6,7 @@
 #include "gemmi/it92.hpp"
 #include "gemmi/c4322.hpp"
 #include "gemmi/neutron92.hpp"
+#include "gemmi/util.hpp"  // for cat
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 
@@ -94,7 +95,7 @@ void add_elem(py::module& m) {
     })
     .def("__hash__", [](const Element &self) { return self.ordinal(); })
     .def("__repr__", [](const Element& self) {
-        return "<gemmi.Element: " + std::string(self.name()) + ">";
+        return gemmi::cat("gemmi.Element('", self.name(), "')");
     });
 
   m.def("IT92_get_exact", [](gemmi::Element el, signed char charge) {

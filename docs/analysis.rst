@@ -174,7 +174,7 @@ that was used to generate this mark, 0 for identity),
   >>> mark.altloc
   '\x00'
   >>> mark.element
-  <gemmi.Element: O>
+  gemmi.Element('O')
   >>> mark.image_idx
   11
   >>> mark.chain_idx, mark.residue_idx, mark.atom_idx

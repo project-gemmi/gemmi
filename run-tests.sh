@@ -52,7 +52,9 @@ if [ -z "${NO_DOCTEST-}" ]; then
 fi
 
 flake8 docs/ examples/ tests/ tools/
-pybind11-stubgen --dry-run --exit-code gemmi
+pybind11-stubgen --dry-run --exit-code gemmi \
+    --enum-class-locations='Ignore:gemmi.ContactSearch' \
+    --enum-class-locations='.+:gemmi'
 
 
 # Usually, we stop here. Below are more extensive checks below that are run

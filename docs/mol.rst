@@ -119,7 +119,7 @@ Each atomic site has the following properties:
     >>> site.u_iso  # not specified here
     0.0
     >>> site.element  # obtained from type_symbol 'Si4+'
-    <gemmi.Element: Si>
+    gemmi.Element('Si')
     >>> site.charge   # obtained from type_symbol 'Si4+'
     4
 
@@ -1328,7 +1328,7 @@ and mutates methionine residues (MET) to selenomethionine (MSE).
   >>> st[0].sole_residue('A', gemmi.SeqId('12'))
   <gemmi.Residue 12(MSE) with 8 atoms>
   >>> _.sole_atom('SE').element
-  <gemmi.Element: Se>
+  gemmi.Element('Se')
 
 
 Structure
@@ -2355,7 +2355,7 @@ alternatively implemented as:
   >>> st[0].sole_residue('A', gemmi.SeqId('12'))
   <gemmi.Residue 12(MSE) with 8 atoms>
   >>> _.sole_atom('SE').element
-  <gemmi.Element: Se>
+  gemmi.Element('Se')
 
 To add a chain to the model, in C++ use directly methods of ``Model::chains``
 and in Python use:
@@ -2901,7 +2901,7 @@ was mutated to selenium.
   >>> atom.name
   'CA'
   >>> atom.element
-  <gemmi.Element: C>
+  gemmi.Element('C')
   >>> atom.pos
   <gemmi.Position(-9.498, 10.028, 12.461)>
   >>> atom.occ
