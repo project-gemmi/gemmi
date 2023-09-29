@@ -251,6 +251,11 @@ void process_with_fft(const gemmi::Structure& st,
   }
 
   if (verbose) {
+#if GEMMI_COUNT_DC
+    fprintf(stderr, "Density-points calculated: %zu (avg per atom: %g)\n",
+            dencalc.density_computations,
+            double(dencalc.density_computations) / dencalc.atoms_added);
+#endif
     fprintf(stderr, "FFT of grid %d x %d x %d\n",
             dencalc.grid.nu, dencalc.grid.nv, dencalc.grid.nw);
     fflush(stderr);

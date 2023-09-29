@@ -97,6 +97,10 @@ struct DensityCalculator {
   double rate = 1.5;
   double blur = 0.;
   float cutoff = 1e-5f;
+#if GEMMI_COUNT_DC
+  size_t atoms_added = 0;
+  size_t density_computations = 0;
+#endif
   Addends addends;
 
   using coef_type = typename Table::Coef::coef_type;
@@ -138,6 +142,9 @@ struct DensityCalculator {
 
   template<typename Coef>
   void do_add_atom_density_to_grid(const Atom& atom, const Coef& coef, float addend) {
+#if GEMMI_COUNT_DC
+    ++atoms_added;
+#endif
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
     if (!atom.aniso.nonzero()) {
       // isotropic
@@ -146,6 +153,9 @@ struct DensityCalculator {
       double radius = estimate_radius(precal, b);
       grid.template use_points_around<true>(fpos, radius, [&](Real& point, double r2) {
           point += Real(atom.occ * precal.calculate((Real)r2));
+#if GEMMI_COUNT_DC
+          ++density_computations;
+#endif
       }, /*fail_on_too_large_radius=*/false);
     } else {
       // anisotropic
@@ -160,8 +170,12 @@ struct DensityCalculator {
       int dw = (int) std::ceil(radius / grid.spacing[2]);
       grid.template use_points_in_box<true>(fpos, du, dv, dw,
                              [&](Real& point, const Position& delta, int, int, int) {
-        if (delta.length_sq() < radius * radius)
+        if (delta.length_sq() < radius * radius) {
           point += Real(atom.occ * precal.calculate(delta));
+#if GEMMI_COUNT_DC
+          ++density_computations;
+#endif
+        }
       }, false);
     }
   }
