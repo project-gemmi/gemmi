@@ -437,6 +437,8 @@ void check_asu(const Mtz& mtz, bool tnt) {
     if (asu.is_in({{h, k, l}}))
       ++counter;
   }
+  if (!mtz.is_merged())
+    printf("NOTE: this is multirecord (unmerged) MTZ file\n");
   printf("spacegroup: %s\n", sg->xhm().c_str());
   printf("%s ASU convention wrt. standard setting: %s\n",
          tnt ? "TNT" : "CCP4", asu.condition_str());
@@ -600,8 +602,11 @@ int GEMMI_MAIN(int argc, char **argv) {
       const char* path = p.nonOption(i);
       if (i != 0)
         printf("\n\n");
-      if (p.options[Verbose])
+      if (p.options[Verbose]) {
+        std::fflush(stdout);
         std::fprintf(stderr, "Reading %s ...\n", path);
+        std::fflush(stderr);
+      }
       gemmi::MaybeGzipped input(path);
       if (input.is_stdin()) {
         print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
@@ -613,7 +618,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
     }
   } catch (std::runtime_error& e) {
+    std::fflush(stdout);
     std::fprintf(stderr, "ERROR: %s\n", e.what());
+    std::fflush(stderr);
     return 1;
   }
   return 0;
