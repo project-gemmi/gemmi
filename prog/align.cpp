@@ -71,7 +71,7 @@ void print_alignment_details(const gemmi::AlignmentResult& result,
                              const std::string& chain_name,
                              const gemmi::ConstResidueSpan& polymer,
                              const gemmi::Entity& ent) {
-  std::vector<bool> gaps = prepare_free_gapo(polymer, ent.polymer_type);
+  std::vector<int> gaps = prepare_target_gapo(polymer, ent.polymer_type, -1);
   auto gap = gaps.begin();
   int seq_pos = 0;
   auto model_residues = polymer.first_conformer();
@@ -93,7 +93,7 @@ void print_alignment_details(const gemmi::AlignmentResult& result,
         if (res->label_seq)
           printf("   id:%4d %c",
                  *res->label_seq, *res->label_seq == seq_pos ? ' ' : '!');
-        std::putchar(*gap++ ? '^' : ' ');
+        std::putchar(gap < gaps.end() && *(gap++) == 0 ? '^' : ' ');
         if (op == 'D' || fmon != res->name)
           printf("    <-- BAD");
         res++;
@@ -196,11 +196,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     std::string text1 = p.nonOption(0);
     std::string text2 = p.nonOption(1);
-    std::vector<bool> free_gapo(1, 1);
+    std::vector<int> target_gapo(1, 0);
     gemmi::AlignmentResult result
             = gemmi::align_string_sequences(string_to_vector(text1),
                                             string_to_vector(text2),
-                                            free_gapo, scoring);
+                                            target_gapo, scoring);
     printf("Score: %d   CIGAR: %s\n", result.score, result.cigar_str().c_str());
     if (p.options[PrintOneLetter])
       print_one_letter_alignment(result, text1, text2);
@@ -230,9 +230,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       gemmi::Structure& st2 = n_files == 2 ? st2_ : st1;
       if (p.options[Target].arg[0] == '+') {
         const gemmi::Entity* ent = get_entity(st2, p.options[Target].arg + 1);
-        std::vector<bool> free_gapo(1, 1);
+        std::vector<int> target_gapo(1, 0);
         result = gemmi::align_string_sequences(query, ent->full_sequence,
-                                               free_gapo, scoring);
+                                               target_gapo, scoring);
         print_result_summary(result);
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result, gemmi::one_letter_code(query),

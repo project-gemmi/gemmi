@@ -146,12 +146,12 @@ struct AlignmentResult {
   }
 };
 
-// All values in query and target must be less then m.
-// free_gapo marks positions in target where gap opening is free.
+/// All values in query and target must be less then m.
+/// target_gapo, if set, has gap opening penalties at specific positions in target.
 inline
 AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
                                 const std::vector<std::uint8_t>& target,
-                                const std::vector<bool>& free_gapo,
+                                const std::vector<int>& target_gapo,
                                 std::uint8_t m,
                                 const AlignmentScoring& scoring) {
   // generate the query profile
@@ -174,7 +174,7 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
 
   // fill the first row
   {
-    std::int32_t gap0 = !free_gapo.empty() && free_gapo[0] ? gape : gapoe;
+    std::int32_t gap0 = !target_gapo.empty() ? target_gapo[0] + gape : gapoe;
     eh[0].h = 0;
     eh[0].e = gap0 + gapoe;
     for (std::int32_t j = 1; j <= (std::int32_t)query.size(); ++j) {
@@ -192,8 +192,8 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
     std::uint8_t *zi = &z[i * query.size()];
     std::int32_t h1 = gapoe + gape * i;
     std::int32_t f = gapoe + gapoe + gape * i;
-    std::int32_t gapx = i+1 < (std::int32_t)free_gapo.size() && free_gapo[i+1]
-                        ? gape : gapoe;
+    std::int32_t gapx = i+1 < (std::int32_t)target_gapo.size()
+                        ? target_gapo[i+1] + gape : gapoe;
     for (std::size_t j = 0; j < query.size(); ++j) {
       // At the beginning of the loop:
       //  eh[j] = { H(i-1,j-1), E(i,j) }, f = F(i,j) and h1 = H(i,j-1)
@@ -252,7 +252,7 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
 inline
 AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const std::vector<std::string>& target,
-                                       const std::vector<bool>& free_gapo,
+                                       const std::vector<int>& target_gapo,
                                        const AlignmentScoring& scoring) {
   std::map<std::string, std::uint8_t> encoding;
   for (const std::string& res_name : scoring.matrix_encoding)
@@ -270,7 +270,7 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
   for (size_t i = 0; i != target.size(); ++i)
     encoded_target[i] = encoding.at(target[i]);
   return align_sequences(encoded_query, encoded_target,
-                         free_gapo, (std::uint8_t)encoding.size(), scoring);
+                         target_gapo, (std::uint8_t)encoding.size(), scoring);
 }
 
 inline AlignmentScoring prepare_blosum62_scoring() {

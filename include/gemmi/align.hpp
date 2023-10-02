@@ -15,17 +15,18 @@ namespace gemmi {
 // Sequence alignment and label_seq_id assignment
 
 // helper function for sequence alignment
-inline std::vector<bool> prepare_free_gapo(const ConstResidueSpan& polymer,
-                                           PolymerType polymer_type) {
-  std::vector<bool> gaps;
+inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
+                                            PolymerType polymer_type,
+                                            int default_gapo) {
+  std::vector<int> gaps;
   gaps.reserve(polymer.size());
-  gaps.push_back(true); // free gap opening at the beginning of sequence
+  gaps.push_back(0); // free gap opening at the beginning of sequence
   if (!is_polypeptide(polymer_type) && !is_polynucleotide(polymer_type))
     return gaps;
   auto first_conformer = polymer.first_conformer();
   auto res = first_conformer.begin();
   for (auto next_res = res; ++next_res != first_conformer.end(); res = next_res)
-    gaps.push_back(!are_connected3(*res, *next_res, polymer_type));
+    gaps.push_back(are_connected3(*res, *next_res, polymer_type) ? default_gapo : 0);
   return gaps;
 }
 
@@ -55,7 +56,7 @@ inline AlignmentResult align_sequence_to_polymer(
     encoded_model_seq.push_back(encoding.at(res.name));
 
   return align_sequences(encoded_full_seq, encoded_model_seq,
-                         prepare_free_gapo(polymer, polymer_type),
+                         prepare_target_gapo(polymer, polymer_type, scoring.gapo),
                          (std::uint8_t)encoding.size(), scoring);
 }
 

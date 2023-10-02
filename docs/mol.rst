@@ -2257,7 +2257,7 @@ residues in the gap still decrease the score:
   ...         gemmi.expand_protein_one_letter_string('LSPADKTNVKAA'),
   ...         gemmi.expand_protein_one_letter_string('PEEKSAV'),
   ...         # free gaps at 0 (start) and 7 (end):   01234567
-  ...         [i in (0, 7) for i in range(8)],
+  ...         [0, -10, -10, -10, -10, -10, -10, 0],
   ...         blosum62)
   >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')  #doctest: +NORMALIZE_WHITESPACE
   LSPADKTNVKAA

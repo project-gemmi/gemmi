@@ -7,7 +7,7 @@ from common import full_path
 class TestAlignment(unittest.TestCase):
     def test_string_align(self):
         result = gemmi.align_string_sequences(list('AABCC'),
-                                              list('ABC'), [True])
+                                              list('ABC'), [0])
         self.assertEqual(result.score, 0)
         self.assertEqual(result.cigar_str(), '1I3M1I')
         self.assertEqual(result.add_gaps('AABCC', 1), 'AABCC')
