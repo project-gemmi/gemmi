@@ -31,7 +31,8 @@ const option::Descriptor Usage[] = {
     "\n\n" EXE_NAME " [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2"
     "\n    Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2."
     "\n    By default, the sequence of residues in the model is used."
-    "\n    To use SEQRES prepend '+' to the chain name (e.g. --query=+A)."
+    "\n    To use SEQRES prepend '+' to the chain name (e.g. --query=+A),"
+    "\n    or, when using mmCIF, prepend '@' to entity name (--query=@1)."
     "\n\n" EXE_NAME " [options] --text-align STRING1 STRING2"
     "\n    Aligns two ASCII strings (used for testing)."
     "\n\nOptions:" },
@@ -41,9 +42,9 @@ const option::Descriptor Usage[] = {
   { CheckMmcif, 0, "", "check-mmcif", Arg::None,
     "  --check-mmcif  \tchecks alignment against _atom_site.label_seq_id" },
   { Query, 0, "", "query", Arg::Required,
-    "  --query=[+]CHAIN  \tAlign CHAIN from file INPUT1." },
+    "  --query=[+|@]CHAIN  \tAlign CHAIN from file INPUT1." },
   { Target, 0, "", "target", Arg::Required,
-    "  --target=[+]CHAIN  \tAlign CHAIN from file INPUT2." },
+    "  --target=[+|@]CHAIN  \tAlign CHAIN from file INPUT2." },
   { TextAlign, 0, "", "text-align", Arg::None,
     "  --text-align  \tAlign characters in two strings (for testing)." },
 
@@ -141,12 +142,18 @@ gemmi::ConstResidueSpan get_polymer(const gemmi::Model& model,
   return polymer;
 }
 
-const gemmi::Entity* get_entity(gemmi::Structure& st,
-                                const std::string& chain_name) {
-  auto polymer = get_polymer(get_first_model(st), chain_name);
-  if (const gemmi::Entity* ent = st.get_entity_of(polymer))
-    return ent;
-  gemmi::fail("No sequence (SEQRES) for chain " + chain_name);
+const gemmi::Entity* take_entity(gemmi::Structure& st, const char* arg) {
+  if (arg[0] == '+') {
+    auto polymer = get_polymer(get_first_model(st), arg+1);
+    if (const gemmi::Entity* ent = st.get_entity_of(polymer))
+      return ent;
+    gemmi::fail("No sequence (SEQRES) for chain ", arg+1);
+  } else if (arg[0] == '@') {
+    if (const gemmi::Entity* ent = st.get_entity(arg+1))
+      return ent;
+    gemmi::fail("No such entity: ", arg+1);
+  }
+  return nullptr;
 }
 
 void print_one_letter_alignment(const gemmi::AlignmentResult& result,
@@ -215,8 +222,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::vector<std::string> query;
       gemmi::PolymerType ptype = gemmi::PolymerType::Unknown;
       gemmi::Structure st1 = gemmi::read_structure_gz(p.coordinate_input_file(0));
-      if (p.options[Query].arg[0] == '+') {
-        const gemmi::Entity* ent = get_entity(st1, p.options[Query].arg + 1);
+      if (const gemmi::Entity* ent = take_entity(st1, p.options[Query].arg)) {
         query = ent->full_sequence;
         ptype = ent->polymer_type;
       } else {
@@ -228,8 +234,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (n_files == 2)
         st2_ = gemmi::read_structure_gz(p.coordinate_input_file(1));
       gemmi::Structure& st2 = n_files == 2 ? st2_ : st1;
-      if (p.options[Target].arg[0] == '+') {
-        const gemmi::Entity* ent = get_entity(st2, p.options[Target].arg + 1);
+      if (const gemmi::Entity* ent = take_entity(st2, p.options[Target].arg)) {
         std::vector<int> target_gapo(1, 0);
         result = gemmi::align_string_sequences(query, ent->full_sequence,
                                                target_gapo, scoring);
@@ -240,8 +245,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       } else {
         auto polymer = get_polymer(get_first_model(st2), p.options[Target].arg);
         if (ptype == gemmi::PolymerType::Unknown)
-          if (const gemmi::Entity* ent = st2.get_entity_of(polymer))
-            ptype = ent->polymer_type;
+          if (const gemmi::Entity* entity = st2.get_entity_of(polymer))
+            ptype = entity->polymer_type;
         result = gemmi::align_sequence_to_polymer(query, polymer, ptype, scoring);
         print_result_summary(result);
         if (p.options[PrintOneLetter])

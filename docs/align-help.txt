@@ -11,27 +11,28 @@ gemmi align [options] FILE[...]
 gemmi align [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2
     Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2.
     By default, the sequence of residues in the model is used.
-    To use SEQRES prepend '+' to the chain name (e.g. --query=+A).
+    To use SEQRES prepend '+' to the chain name (e.g. --query=+A),
+    or, when using mmCIF, prepend '@' to entity name (--query=@1).
 
 gemmi align [options] --text-align STRING1 STRING2
     Aligns two ASCII strings (used for testing).
 
 Options:
-  -h, --help         Print usage and exit.
-  -V, --version      Print version and exit.
-  --check-mmcif      checks alignment against _atom_site.label_seq_id
-  --query=[+]CHAIN   Align CHAIN from file INPUT1.
-  --target=[+]CHAIN  Align CHAIN from file INPUT2.
-  --text-align       Align characters in two strings (for testing).
+  -h, --help           Print usage and exit.
+  -V, --version        Print version and exit.
+  --check-mmcif        checks alignment against _atom_site.label_seq_id
+  --query=[+|@]CHAIN   Align CHAIN from file INPUT1.
+  --target=[+|@]CHAIN  Align CHAIN from file INPUT2.
+  --text-align         Align characters in two strings (for testing).
 
 Scoring (absolute values):
-  --match=INT        Match score (default: 1).
-  --mism=INT         Mismatch penalty (default: -1).
-  --gapo=INT         Gap opening penalty (default: -1).
-  --gape=INT         Gap extension penalty (default: -1).
+  --match=INT          Match score (default: 1).
+  --mism=INT           Mismatch penalty (default: -1).
+  --gapo=INT           Gap opening penalty (default: -1).
+  --gape=INT           Gap extension penalty (default: -1).
 
 Output options:
-  -p                 Print formatted alignment with one-letter codes.
-  --rmsd             In addition to aligning two CHAINs (--query and --target),
-                     superpose structures and print RMSD.
-  -v, --verbose      Verbose output.
+  -p                   Print formatted alignment with one-letter codes.
+  --rmsd               In addition to aligning two CHAINs (--query and
+                       --target), superpose structures and print RMSD.
+  -v, --verbose        Verbose output.
