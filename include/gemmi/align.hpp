@@ -21,12 +21,13 @@ inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
   std::vector<int> gaps;
   gaps.reserve(polymer.size());
   gaps.push_back(0); // free gap opening at the beginning of sequence
-  if (!is_polypeptide(polymer_type) && !is_polynucleotide(polymer_type))
-    return gaps;
-  auto first_conformer = polymer.first_conformer();
-  auto res = first_conformer.begin();
-  for (auto next_res = res; ++next_res != first_conformer.end(); res = next_res)
-    gaps.push_back(are_connected3(*res, *next_res, polymer_type) ? default_gapo : 0);
+  if (is_polypeptide(polymer_type) || is_polynucleotide(polymer_type)) {
+    auto first_conformer = polymer.first_conformer();
+    auto res = first_conformer.begin();
+    for (auto next_res = res; ++next_res != first_conformer.end(); res = next_res)
+      gaps.push_back(are_connected3(*res, *next_res, polymer_type) ? default_gapo : 0);
+    gaps.push_back(0); // free gap after the end of chain
+  }
   return gaps;
 }
 

@@ -2143,7 +2143,7 @@ The result provides statistics and methods of summarizing the alignment:
 
   >>> # score calculated according AlignmentScoring explained below
   >>> result.score
-  69
+  70
 
   >>> # number of matching (identical) residues
   >>> result.match_count
