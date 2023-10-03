@@ -28,8 +28,8 @@ const option::Descriptor Usage[] = {
     "\n    Aligns sequence from the model to the full sequence (SEQRES)."
     "\n    Both are from the same FILE - either in the PDB or mmCIF format."
     "\n    If the mmCIF format is used, option --check-mmcif can be used."
-    "\n\n" EXE_NAME " [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2"
-    "\n    Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2."
+    "\n\n" EXE_NAME " [options] --query=CHAIN1 --target=CHAIN2 FILE [FILE2]"
+    "\n    Aligns CHAIN1 from FILE to CHAIN2 from FILE2 (if given) or FILE."
     "\n    By default, the sequence of residues in the model is used."
     "\n    To use SEQRES prepend '+' to the chain name (e.g. --query=+A),"
     "\n    or, when using mmCIF, prepend '@' to entity name (--query=@1)."
@@ -98,6 +98,33 @@ void print_alignment_details(const gemmi::AlignmentResult& result,
         if (op == 'D' || fmon != res->name)
           printf("    <-- BAD");
         res++;
+      }
+      printf("\n");
+    }
+  }
+}
+
+// similar to print_alignment_details(), but for --target/--query
+void print_alignment_details_tq(const gemmi::AlignmentResult& result,
+                                const std::vector<std::string>& seq1,
+                                const std::vector<std::string>& seq2) {
+  size_t n1 = 0;
+  size_t n2 = 0;
+  printf("  query  -  target\n");
+  for (gemmi::AlignmentResult::Item item : result.cigar) {
+    char op = item.op();
+    for (uint32_t i = 0; i < item.len(); ++i) {
+      if (op == 'I' || op == 'M') {
+        printf("%4zu %-3s -", n1+1, seq1[n1].c_str());
+        n1++;
+      } else {
+        printf("         -");
+      }
+      if (op == 'D' || op == 'M') {
+        printf(" %-3s %4zu", seq2[n2].c_str(), n2+1);
+        if (op == 'M' && seq1[n1-1] != seq2[n2])
+          printf("    <-- DIFFERS");
+        n2++;
       }
       printf("\n");
     }
@@ -242,6 +269,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result, gemmi::one_letter_code(query),
                                    gemmi::one_letter_code(ent->full_sequence));
+        if (verbose)
+          print_alignment_details_tq(result, query, ent->full_sequence);
       } else {
         auto polymer = get_polymer(get_first_model(st2), p.options[Target].arg);
         if (ptype == gemmi::PolymerType::Unknown)
@@ -252,6 +281,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result, gemmi::one_letter_code(query),
                                      gemmi::one_letter_code(polymer));
+        if (verbose)
+          print_alignment_details_tq(result, query, polymer.extract_sequence());
       }
       if (p.options[Rmsd]) {
         auto poly1 = get_polymer(st1.models.at(0), p.options[Query].arg);

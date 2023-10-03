@@ -8,8 +8,8 @@ gemmi align [options] FILE[...]
     Both are from the same FILE - either in the PDB or mmCIF format.
     If the mmCIF format is used, option --check-mmcif can be used.
 
-gemmi align [options] --query=CHAIN1 --target=CHAIN2 FILE1 FILE2
-    Aligns CHAIN1 from FILE1 to CHAIN2 from FILE2.
+gemmi align [options] --query=CHAIN1 --target=CHAIN2 FILE [FILE2]
+    Aligns CHAIN1 from FILE to CHAIN2 from FILE2 (if given) or FILE.
     By default, the sequence of residues in the model is used.
     To use SEQRES prepend '+' to the chain name (e.g. --query=+A),
     or, when using mmCIF, prepend '@' to entity name (--query=@1).

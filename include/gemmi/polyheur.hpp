@@ -42,6 +42,7 @@ inline std::string one_letter_code(const std::vector<std::string>& seq) {
   return r;
 }
 
+// cf. ConstResidueSpan::extract_sequence()
 inline std::string one_letter_code(const ConstResidueSpan& polymer) {
   std::string r;
   for (const Residue& res : polymer.first_conformer())
