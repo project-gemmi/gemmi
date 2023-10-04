@@ -70,8 +70,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     Mtz mtz;
     mtz.read_file_gz(input);
-    const Mtz::Column* fcol = &mtz.get_column_with_label(f_label);
-    if (use_sigma && !fcol->get_next_column_if_type('Q'))
+    const Mtz::Column& fcol_before = mtz.get_column_with_label(f_label);
+    if (use_sigma && !fcol_before.get_next_column_if_type('Q'))
         gemmi::fail("Column ", f_label, " not followed by sigma column. Use --no-sigma.\n");
     int e_idx = -1;
     if (Mtz::Column* e = mtz.column_with_label(e_label)) {
@@ -85,9 +85,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "%s column %s ...\n",
                    (e_idx >= 0 ? "Replacing existing" : "Adding"), e_label);
     std::vector<std::string> trailing_cols(use_sigma ? 1 : 0);
-    int fcol_idx = fcol->idx; // fcol gets invalidated in the next line
-    Mtz::Column& ecol = mtz.copy_column(e_idx, *fcol, trailing_cols);
-    fcol = &mtz.columns[fcol_idx];
+    int fcol_idx = fcol_before.idx; // fcol_before gets invalidated in the next line
+    Mtz::Column& ecol = mtz.copy_column(e_idx, fcol_before, trailing_cols);
+    //const Mtz::Column* fcol = &mtz.columns[fcol_idx];
     ecol.label = e_label;
     ecol.type = 'E';
     if (use_sigma) {
