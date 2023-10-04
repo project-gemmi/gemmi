@@ -19,10 +19,19 @@ namespace gemmi {
 struct AlignmentScoring {
   int match = 1;
   int mismatch = -1;
-  int gapo = -1;
-  int gape = -1;
+  int gapo = -1;  // gap opening penalty
+  int gape = -1;  // gap extension penalty
+  // In a polymer in model, coordinates are used to determine expected gaps.
+  int good_gapo = 0;  // gap opening in expected place in a polymer
+  int bad_gapo = -2;  // gap opening that was not predicted
   std::vector<std::int8_t> score_matrix;
   std::vector<std::string> matrix_encoding;
+
+  /// Scoring for alignment of partially-modelled polymer to its full sequence
+  static AlignmentScoring* full_sequence_scoring() {
+    static AlignmentScoring scoring = { 100, -10000, -10000, -1, 0, -200, {}, {} };
+    return &scoring;
+  }
 };
 
 struct AlignmentResult {
@@ -155,7 +164,7 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
                                 std::uint8_t m,
                                 const AlignmentScoring& scoring) {
   // generate the query profile
-  std::int8_t *query_profile = new std::int8_t[query.size() * m];
+  std::int16_t *query_profile = new std::int16_t[query.size() * m];
   {
     std::uint32_t mat_size = (std::uint32_t) scoring.matrix_encoding.size();
     std::int32_t i = 0;
@@ -188,7 +197,7 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
   // DP loop
   for (std::int32_t i = 0; i < (std::int32_t)target.size(); ++i) {
     std::uint8_t target_item = target[i];
-    std::int8_t *scores = &query_profile[target_item * query.size()];
+    std::int16_t *scores = &query_profile[target_item * query.size()];
     std::uint8_t *zi = &z[i * query.size()];
     std::int32_t h1 = gapoe + gape * i;
     std::int32_t f = gapoe + gapoe + gape * i;
@@ -253,9 +262,12 @@ inline
 AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const std::vector<std::string>& target,
                                        const std::vector<int>& target_gapo,
-                                       const AlignmentScoring& scoring) {
+                                       const AlignmentScoring* scoring) {
+  AlignmentScoring default_scoring;
+  if (scoring == nullptr)
+    scoring = &default_scoring;
   std::map<std::string, std::uint8_t> encoding;
-  for (const std::string& res_name : scoring.matrix_encoding)
+  for (const std::string& res_name : scoring->matrix_encoding)
     encoding.emplace(res_name, (std::uint8_t)encoding.size());
   for (const std::string& s : query)
     encoding.emplace(s, (std::uint8_t)encoding.size());
@@ -270,7 +282,7 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
   for (size_t i = 0; i != target.size(); ++i)
     encoded_target[i] = encoding.at(target[i]);
   return align_sequences(encoded_query, encoded_target,
-                         target_gapo, (std::uint8_t)encoding.size(), scoring);
+                         target_gapo, (std::uint8_t)encoding.size(), *scoring);
 }
 
 inline AlignmentScoring prepare_blosum62_scoring() {

@@ -156,3 +156,9 @@
 
 # numeric altlocs (1,2,3,4)
 1aac
+
+# only UNK residues
+3kgv
+
+# chain C has only 1.57% of residues from SEQRES
+3zms

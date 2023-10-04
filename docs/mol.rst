@@ -2126,7 +2126,8 @@ is not to be imposed.
   >>> st = gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
   >>> result = gemmi.align_sequence_to_polymer(st.entities[0].full_sequence,
   ...                                          st[0][0].get_polymer(),
-  ...                                          gemmi.PolymerType.PeptideL)
+  ...                                          gemmi.PolymerType.PeptideL,
+  ...                                          gemmi.AlignmentScoring())
 
 The arguments of this functions are: sequence (a list of residue names),
 :ref:`ResidueSpan <residuespan>` (a span of residues in a chain),

@@ -30,19 +30,20 @@ void add_alignment(py::module& m) {
     .def_readwrite("mismatch", &AlignmentScoring::mismatch)
     .def_readwrite("gapo", &AlignmentScoring::gapo)
     .def_readwrite("gape", &AlignmentScoring::gape)
+    .def_readwrite("good_gapo", &AlignmentScoring::good_gapo)
+    .def_readwrite("bad_gapo", &AlignmentScoring::bad_gapo)
     ;
 
   m.def("prepare_blosum62_scoring", &prepare_blosum62_scoring);
   m.def("align_string_sequences", &align_string_sequences,
-        py::arg("query"), py::arg("target"), py::arg("free_gapo"),
-        py::arg_v("scoring", AlignmentScoring(), "gemmi.AlignmentScoring()"));
+        py::arg("query"), py::arg("target"), py::arg("target_gapo"),
+        py::arg("scoring")=nullptr);
   m.def("align_sequence_to_polymer",
-        [](const std::vector<std::string>& full_seq,
-           const ResidueSpan& polymer, PolymerType polymer_type,
-           AlignmentScoring& sco) {
-      return align_sequence_to_polymer(full_seq, polymer, polymer_type, sco);
-  }, py::arg("full_seq"), py::arg("polymer"), py::arg("polymer_type"),
-     py::arg_v("scoring", AlignmentScoring(), "gemmi.AlignmentScoring()"));
+        [](const std::vector<std::string>& full_seq, const ResidueSpan& polymer,
+           PolymerType polymer_type, AlignmentScoring* scoring) {
+      return align_sequence_to_polymer(full_seq, polymer, polymer_type, scoring);
+  }, py::arg("full_seq"), py::arg("polymer"),
+     py::arg("polymer_type"), py::arg("scoring")=nullptr);
 
   // structure superposition
   py::enum_<SupSelect>(m, "SupSelect")
