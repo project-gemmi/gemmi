@@ -25,7 +25,14 @@ void add_alignment(py::module& m) {
     ;
 
   py::class_<AlignmentScoring>(m, "AlignmentScoring")
-    .def(py::init<>())
+    .def(py::init([](char what) {
+          const AlignmentScoring* s = AlignmentScoring::simple();
+          if (what == 'p')
+            s = AlignmentScoring::partial_model();
+          else if (what == 'b')
+            s = AlignmentScoring::blosum62();
+          return new AlignmentScoring(*s);
+    }), py::arg("what")='s')
     .def_readwrite("match", &AlignmentScoring::match)
     .def_readwrite("mismatch", &AlignmentScoring::mismatch)
     .def_readwrite("gapo", &AlignmentScoring::gapo)
@@ -34,7 +41,6 @@ void add_alignment(py::module& m) {
     .def_readwrite("bad_gapo", &AlignmentScoring::bad_gapo)
     ;
 
-  m.def("prepare_blosum62_scoring", &prepare_blosum62_scoring);
   m.def("align_string_sequences", &align_string_sequences,
         py::arg("query"), py::arg("target"), py::arg("target_gapo"),
         py::arg("scoring")=nullptr);

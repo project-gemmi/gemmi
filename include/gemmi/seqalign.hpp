@@ -17,20 +17,53 @@
 namespace gemmi {
 
 struct AlignmentScoring {
-  int match = 1;
-  int mismatch = -1;
-  int gapo = -1;  // gap opening penalty
-  int gape = -1;  // gap extension penalty
+  int match;
+  int mismatch;
+  int gapo;  // gap opening penalty
+  int gape;  // gap extension penalty
   // In a polymer in model, coordinates are used to determine expected gaps.
-  int good_gapo = 0;  // gap opening in expected place in a polymer
-  int bad_gapo = -2;  // gap opening that was not predicted
+  int good_gapo;  // gap opening in expected place in a polymer
+  int bad_gapo;  // gap opening that was not predicted
   std::vector<std::int8_t> score_matrix;
   std::vector<std::string> matrix_encoding;
 
-  /// Scoring for alignment of partially-modelled polymer to its full sequence
-  static AlignmentScoring* full_sequence_scoring() {
-    static AlignmentScoring scoring = { 100, -10000, -10000, -1, 0, -200, {}, {} };
-    return &scoring;
+  static const AlignmentScoring* simple() {
+    static const AlignmentScoring s = { 1, -1, -1, -1, 0, -2, {}, {} };
+    return &s;
+  }
+  // Scoring for alignment of partially-modelled polymer to its full sequence
+  static const AlignmentScoring* partial_model() {
+    static const AlignmentScoring s = { 100, -10000, -10000, -1, 0, -200, {}, {} };
+    return &s;
+  }
+  static const AlignmentScoring* blosum62() {
+    // BLAST uses BLOSUM-62 with gap cost (10,1)
+    static const AlignmentScoring s = {
+      1, -4, -10, -1, 0, -10,
+      { 4,-1,-2,-2, 0,-1,-1, 0,-2,-1,-1,-1,-1,-2,-1, 1, 0,-3,-2, 0,
+       -1, 5, 0,-2,-3, 1, 0,-2, 0,-3,-2, 2,-1,-3,-2,-1,-1,-3,-2,-3,
+       -2, 0, 6, 1,-3, 0, 0, 0, 1,-3,-3, 0,-2,-3,-2, 1, 0,-4,-2,-3,
+       -2,-2, 1, 6,-3, 0, 2,-1,-1,-3,-4,-1,-3,-3,-1, 0,-1,-4,-3,-3,
+        0,-3,-3,-3, 9,-3,-4,-3,-3,-1,-1,-3,-1,-2,-3,-1,-1,-2,-2,-1,
+       -1, 1, 0, 0,-3, 5, 2,-2, 0,-3,-2, 1, 0,-3,-1, 0,-1,-2,-1,-2,
+       -1, 0, 0, 2,-4, 2, 5,-2, 0,-3,-3, 1,-2,-3,-1, 0,-1,-3,-2,-2,
+        0,-2, 0,-1,-3,-2,-2, 6,-2,-4,-4,-2,-3,-3,-2, 0,-2,-2,-3,-3,
+       -2, 0, 1,-1,-3, 0, 0,-2, 8,-3,-3,-1,-2,-1,-2,-1,-2,-2, 2,-3,
+       -1,-3,-3,-3,-1,-3,-3,-4,-3, 4, 2,-3, 1, 0,-3,-2,-1,-3,-1, 3,
+       -1,-2,-3,-4,-1,-2,-3,-4,-3, 2, 4,-2, 2, 0,-3,-2,-1,-2,-1, 1,
+       -1, 2, 0,-1,-3, 1, 1,-2,-1,-3,-2, 5,-1,-3,-1, 0,-1,-3,-2,-2,
+       -1,-1,-2,-3,-1, 0,-2,-3,-2, 1, 2,-1, 5, 0,-2,-1,-1,-1,-1, 1,
+       -2,-3,-3,-3,-2,-3,-3,-3,-1, 0, 0,-3, 0, 6,-4,-2,-2, 1, 3,-1,
+       -1,-2,-2,-1,-3,-1,-1,-2,-2,-3,-3,-1,-2,-4, 7,-1,-1,-4,-3,-2,
+        1,-1, 1, 0,-1, 0, 0, 0,-1,-2,-2, 0,-1,-2,-1, 4, 1,-3,-2,-2,
+        0,-1, 0,-1,-1,-1,-1,-2,-2,-1,-1,-1,-1,-2,-1, 1, 5,-2,-2, 0,
+       -3,-3,-4,-4,-2,-2,-3,-2,-2,-3,-2,-3,-1, 1,-4,-3,-2,11, 2,-3,
+       -2,-2,-2,-3,-2,-1,-2,-3, 2,-1,-1,-2,-1, 3,-3,-2,-2, 2, 7,-1,
+        0,-3,-3,-3,-1,-2,-2,-3,-3, 3, 1,-2, 1,-1,-2,-2, 0,-3,-1, 4},
+      {"ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
+       "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"}
+    };
+    return &s;
   }
 };
 
@@ -263,9 +296,8 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const std::vector<std::string>& target,
                                        const std::vector<int>& target_gapo,
                                        const AlignmentScoring* scoring) {
-  AlignmentScoring default_scoring;
   if (scoring == nullptr)
-    scoring = &default_scoring;
+    scoring = AlignmentScoring::simple();
   std::map<std::string, std::uint8_t> encoding;
   for (const std::string& res_name : scoring->matrix_encoding)
     encoding.emplace(res_name, (std::uint8_t)encoding.size());
@@ -283,41 +315,6 @@ AlignmentResult align_string_sequences(const std::vector<std::string>& query,
     encoded_target[i] = encoding.at(target[i]);
   return align_sequences(encoded_query, encoded_target,
                          target_gapo, (std::uint8_t)encoding.size(), *scoring);
-}
-
-inline AlignmentScoring prepare_blosum62_scoring() {
-  AlignmentScoring s;
-  s.match = 1;
-  s.mismatch = -4;
-  s.gapo = -10;  // BLAST uses BLOSUM-62 with gap cost (10,1)
-  s.gape = -1;
-  s.score_matrix = {
-    4,-1,-2,-2, 0,-1,-1, 0,-2,-1,-1,-1,-1,-2,-1, 1, 0,-3,-2, 0,
-   -1, 5, 0,-2,-3, 1, 0,-2, 0,-3,-2, 2,-1,-3,-2,-1,-1,-3,-2,-3,
-   -2, 0, 6, 1,-3, 0, 0, 0, 1,-3,-3, 0,-2,-3,-2, 1, 0,-4,-2,-3,
-   -2,-2, 1, 6,-3, 0, 2,-1,-1,-3,-4,-1,-3,-3,-1, 0,-1,-4,-3,-3,
-    0,-3,-3,-3, 9,-3,-4,-3,-3,-1,-1,-3,-1,-2,-3,-1,-1,-2,-2,-1,
-   -1, 1, 0, 0,-3, 5, 2,-2, 0,-3,-2, 1, 0,-3,-1, 0,-1,-2,-1,-2,
-   -1, 0, 0, 2,-4, 2, 5,-2, 0,-3,-3, 1,-2,-3,-1, 0,-1,-3,-2,-2,
-    0,-2, 0,-1,-3,-2,-2, 6,-2,-4,-4,-2,-3,-3,-2, 0,-2,-2,-3,-3,
-   -2, 0, 1,-1,-3, 0, 0,-2, 8,-3,-3,-1,-2,-1,-2,-1,-2,-2, 2,-3,
-   -1,-3,-3,-3,-1,-3,-3,-4,-3, 4, 2,-3, 1, 0,-3,-2,-1,-3,-1, 3,
-   -1,-2,-3,-4,-1,-2,-3,-4,-3, 2, 4,-2, 2, 0,-3,-2,-1,-2,-1, 1,
-   -1, 2, 0,-1,-3, 1, 1,-2,-1,-3,-2, 5,-1,-3,-1, 0,-1,-3,-2,-2,
-   -1,-1,-2,-3,-1, 0,-2,-3,-2, 1, 2,-1, 5, 0,-2,-1,-1,-1,-1, 1,
-   -2,-3,-3,-3,-2,-3,-3,-3,-1, 0, 0,-3, 0, 6,-4,-2,-2, 1, 3,-1,
-   -1,-2,-2,-1,-3,-1,-1,-2,-2,-3,-3,-1,-2,-4, 7,-1,-1,-4,-3,-2,
-    1,-1, 1, 0,-1, 0, 0, 0,-1,-2,-2, 0,-1,-2,-1, 4, 1,-3,-2,-2,
-    0,-1, 0,-1,-1,-1,-1,-2,-2,-1,-1,-1,-1,-2,-1, 1, 5,-2,-2, 0,
-   -3,-3,-4,-4,-2,-2,-3,-2,-2,-3,-2,-3,-1, 1,-4,-3,-2,11, 2,-3,
-   -2,-2,-2,-3,-2,-1,-2,-3, 2,-1,-1,-2,-1, 3,-3,-2,-2, 2, 7,-1,
-    0,-3,-3,-3,-1,-2,-2,-3,-3, 3, 1,-2, 1,-1,-2,-2, 0,-3,-1, 4,
-  };
-  s.matrix_encoding = {
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
-  };
-  return s;
 }
 
 } // namespace gemmi

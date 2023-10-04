@@ -17,7 +17,9 @@ namespace gemmi {
 // helper function for sequence alignment
 inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
                                             PolymerType polymer_type,
-                                            const AlignmentScoring& scoring) {
+                                            const AlignmentScoring* scoring=nullptr) {
+  if (!scoring)
+    scoring = AlignmentScoring::partial_model();
   std::vector<int> gaps;
   gaps.reserve(polymer.size());
   gaps.push_back(0); // free gap opening at the beginning of sequence
@@ -26,7 +28,7 @@ inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
     auto res = first_conformer.begin();
     for (auto next_res = res; ++next_res != first_conformer.end(); res = next_res) {
       bool connected = are_connected3(*res, *next_res, polymer_type);
-      gaps.push_back(connected ? scoring.bad_gapo : scoring.good_gapo);
+      gaps.push_back(connected ? scoring->bad_gapo : scoring->good_gapo);
     }
     gaps.push_back(0); // free gap after the end of chain
   }
@@ -41,7 +43,7 @@ inline AlignmentResult align_sequence_to_polymer(
                                      const AlignmentScoring* scoring=nullptr) {
   std::map<std::string, std::uint8_t> encoding;
   if (!scoring)
-    scoring = AlignmentScoring::full_sequence_scoring();
+    scoring = AlignmentScoring::partial_model();
   for (const std::string& res_name : scoring->matrix_encoding)
     encoding.emplace(res_name, (std::uint8_t)encoding.size());
   for (const Residue& res : polymer)
@@ -61,7 +63,7 @@ inline AlignmentResult align_sequence_to_polymer(
     encoded_model_seq.push_back(encoding.at(res.name));
 
   return align_sequences(encoded_full_seq, encoded_model_seq,
-                         prepare_target_gapo(polymer, polymer_type, *scoring),
+                         prepare_target_gapo(polymer, polymer_type, scoring),
                          (std::uint8_t)encoding.size(), *scoring);
 }
 
@@ -162,9 +164,9 @@ inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
                                                 SupSelect sel,
                                                 char altloc='\0',
                                                 std::vector<int>* ca_offsets=nullptr) {
-  AlignmentScoring scoring = prepare_blosum62_scoring();
   AlignmentResult result = align_sequence_to_polymer(fixed.extract_sequence(),
-                                                     movable, ptype, &scoring);
+                                                     movable, ptype,
+                                                     AlignmentScoring::blosum62());
   auto it1 = fixed.first_conformer().begin();
   auto it2 = movable.first_conformer().begin();
   std::vector<AtomNameElement> used_atoms;

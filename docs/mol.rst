@@ -2225,7 +2225,7 @@ like in `BLAST <https://www.ncbi.nlm.nih.gov/blast/html/sub_matrix.html>`_.
 
 .. doctest::
 
-  >>> blosum62 = gemmi.prepare_blosum62_scoring()
+  >>> blosum62 = gemmi.AlignmentScoring('b')
   >>> blosum62.gapo, blosum62.gape
   (-10, -1)
 

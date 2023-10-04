@@ -17,7 +17,7 @@ namespace {
 
 using std::printf;
 
-enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt, Blosum62, FullScores,
+enum OptionIndex { Match=4, Mismatch, GapOpen, GapExt, Blosum62, Partial,
                    CheckMmcif, PrintOneLetter, Query, Target, TextAlign, Rmsd };
 
 const option::Descriptor Usage[] = {
@@ -51,8 +51,8 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nScoring (absolute values):" },
   { Blosum62, 0, "", "blosum62", Arg::None,
     "  --blosum62  \tUse BLOSUM62 score matrix." },
-  { FullScores, 0, "", "full", Arg::YesNo,
-    "  --full=y|n  \tUse scoring meant to align partially-modelled polymer"
+  { Partial, 0, "", "partial", Arg::YesNo,
+    "  --partial=y|n  \tUse scoring meant to align partially-modelled polymer"
     " to its full sequence (default in 1st mode)." },
   { Match, 0, "", "match", Arg::Int,
     "  --match=INT  \tMatch score (default: 1)." },
@@ -77,8 +77,7 @@ void print_alignment_details(const gemmi::AlignmentResult& result,
                              const std::string& chain_name,
                              const gemmi::ConstResidueSpan& polymer,
                              const gemmi::Entity& ent) {
-  std::vector<int> gaps = prepare_target_gapo(polymer, ent.polymer_type,
-                                              gemmi::AlignmentScoring());
+  std::vector<int> gaps = prepare_target_gapo(polymer, ent.polymer_type);
   auto gap = gaps.begin();
   int seq_pos = 0;
   auto model_residues = polymer.first_conformer();
@@ -212,18 +211,22 @@ std::vector<std::string> string_to_vector(const std::string& s) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  p.check_exclusive_pair(Blosum62, FullScores);
+  p.check_exclusive_pair(Blosum62, Partial);
   if ((bool)p.options[Query] != (bool)p.options[Target]) {
     std::fputs("Options --query and --target must be used together.\n", stderr);
     return 1;
   }
   p.check_exclusive_pair(TextAlign, Query);
+
   gemmi::AlignmentScoring scoring;
-  if (p.options[Blosum62])
-    scoring = *gemmi::AlignmentScoring::full_sequence_scoring();
   bool first_mode = !(p.options[TextAlign] || p.options[Query]);
-  if (p.is_yes(FullScores, first_mode))
-    scoring = gemmi::prepare_blosum62_scoring();
+  if (p.options[Blosum62])
+    scoring = *gemmi::AlignmentScoring::blosum62();
+  else if (p.is_yes(Partial, first_mode))
+    scoring = *gemmi::AlignmentScoring::partial_model();
+  else
+    scoring = *gemmi::AlignmentScoring::simple();
+
   if (p.options[Match])
     scoring.match = std::atoi(p.options[Match].arg);
   if (p.options[Mismatch])

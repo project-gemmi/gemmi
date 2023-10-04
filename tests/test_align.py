@@ -40,7 +40,7 @@ class TestAlignment(unittest.TestCase):
         result = gemmi.align_string_sequences(hba_seq, hbb_seq, [], id_score)
         # "80 different alignments with the score 72"
         self.assertEqual(result.score, 72)
-        blosum62 = gemmi.prepare_blosum62_scoring()
+        blosum62 = gemmi.AlignmentScoring('b')
         blosum62.gapo = -9
         result = gemmi.align_string_sequences(hba_seq, hbb_seq, [], blosum62)
         # BioPython equivalent is:

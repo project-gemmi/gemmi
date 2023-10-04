@@ -27,7 +27,7 @@ Options:
 
 Scoring (absolute values):
   --blosum62           Use BLOSUM62 score matrix.
-  --full=y|n           Use scoring meant to align partially-modelled polymer to
+  --partial=y|n        Use scoring meant to align partially-modelled polymer to
                        its full sequence (default in 1st mode).
   --match=INT          Match score (default: 1).
   --mism=INT           Mismatch penalty (default: -1).
