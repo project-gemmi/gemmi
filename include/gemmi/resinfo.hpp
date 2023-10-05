@@ -78,5 +78,30 @@ inline std::vector<std::string> expand_protein_one_letter_string(const std::stri
   return r;
 }
 
+inline std::vector<std::string> expand_rna_one_letter_string(const std::string& s) {
+  std::vector<std::string> r;
+  r.reserve(s.size());
+  for (char c : s) {
+    char u = c & ~0x20;
+    if (u != 'A' && u != 'C' && u != 'G' && u != 'U' && u != 'I' && u != 'N')
+      fail("unexpected letter in RNA sequence: ", c);
+    r.emplace_back(1, u);
+  }
+  return r;
+}
+
+inline std::vector<std::string> expand_dna_one_letter_string(const std::string& s) {
+  std::vector<std::string> r;
+  r.reserve(s.size());
+  for (char c : s) {
+    char u = c & ~0x20;
+    if (u != 'A' && u != 'C' && u != 'G' && u != 'T' && u != 'U' && u != 'I' && u != 'N')
+      fail("unexpected letter in DNA sequence: ", c);
+    char two_letters[2] = {'D', u};
+    r.emplace_back(two_letters, 2);
+  }
+  return r;
+}
+
 } // namespace gemmi
 #endif
