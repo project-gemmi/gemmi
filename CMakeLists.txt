@@ -179,7 +179,7 @@ target_compile_features(gemmi_headers INTERFACE cxx_std_11)
 set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
-            src/assembly.cpp src/calculate.cpp src/crd.cpp
+            src/align.cpp src/assembly.cpp src/calculate.cpp src/crd.cpp
             src/ddl.cpp src/eig3.cpp
             src/mmcif.cpp src/mmread_gz.cpp src/mtz.cpp src/mtz2cif.cpp
             src/polyheur.cpp src/read_cif.cpp src/resinfo.cpp

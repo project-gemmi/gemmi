@@ -107,9 +107,8 @@ const option::Descriptor Usage[] = {
   { ChangeCcdCode, 0, "", "monomer", Arg::ColonPair,
     "  --monomer=OLD:NEW  \tChange monomer name (CCD code) OLD to NEW." },
   { SetSeq, 0, "s", "", Arg::Required,
-    "  -s FILE  \tUse sequence from FILE (PIR or FASTA format), "
-    "which must contain either one sequence (for all chains) "
-    "or as many sequences as there are chains." },
+    "  -s FILE  \tUse sequence(s) from FILE in PIR or FASTA format. Each chain"
+    " is assigned the best matching sequence, if any." },
   { SiftsNum, 0, "", "sifts-num", Arg::None,
     "  --sifts-num  \tUse SIFTS-mapped position in UniProt sequence as sequence ID." },
   { Biso, 0, "B", "", Arg::Required,
@@ -175,8 +174,8 @@ void convert(gemmi::Structure& st,
     gemmi::change_ccd_code(st, old_name, new_name);
   }
 
+  gemmi::setup_entities(st);
   if (st.input_format == CoorFormat::Pdb) {
-    gemmi::setup_entities(st);
     if (!options[SetSeq])
       gemmi::assign_label_seq_id(st, options[ForceLabel]);
     if (!options[CopyRemarks])
@@ -243,12 +242,15 @@ void convert(gemmi::Structure& st,
                     chain.name + "\nTry option --shorten");
   }
   if (options[SetSeq]) {
-    gemmi::Ifstream stream(options[SetSeq].arg);
-    std::string seq = gemmi::read_pir_or_fasta(stream.ref());
-    for (gemmi::Entity& ent : st.entities)
-      if (ent.entity_type == gemmi::EntityType::Polymer) {
-        ent.full_sequence = gemmi::expand_protein_one_letter_string(seq);
-      }
+    std::vector<std::string> fasta_sequences;
+    for (const option::Option* opt = options[SetSeq]; opt; opt = opt->next()) {
+      gemmi::Ifstream stream(opt->arg);
+      std::string seq = gemmi::read_pir_or_fasta(stream.ref());
+      fasta_sequences.push_back(seq);
+    }
+    if (options[Verbose])
+      std::cerr << fasta_sequences.size() << " sequence(s) was read..." << std::endl;
+    gemmi::assign_best_sequences(st, fasta_sequences);
     gemmi::deduplicate_entities(st);
     gemmi::assign_label_seq_id(st, options[ForceLabel]);
   }

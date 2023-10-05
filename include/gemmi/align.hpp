@@ -81,6 +81,9 @@ inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
   return true;
 }
 
+GEMMI_DLL
+void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_sequences);
+
 // Uses sequence alignment (model to SEQRES) to assign label_seq.
 // force: assign label_seq even if full sequence is not known (assumes no gaps)
 inline void assign_label_seq_to_polymer(ResidueSpan& polymer,

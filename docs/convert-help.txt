@@ -38,9 +38,8 @@ Any output options:
   --rename-chain=OLD:NEW  Rename chain OLD to NEW (--rename-chain=:A adds
                           missing chain IDs).
   --monomer=OLD:NEW       Change monomer name (CCD code) OLD to NEW.
-  -s FILE                 Use sequence from FILE (PIR or FASTA format), which
-                          must contain either one sequence (for all chains) or
-                          as many sequences as there are chains.
+  -s FILE                 Use sequence(s) from FILE in PIR or FASTA format. Each
+                          chain is assigned the best matching sequence, if any.
   --sifts-num             Use SIFTS-mapped position in UniProt sequence as
                           sequence ID.
   -B MIN[:MAX]            Set isotropic B-factors to a single value or change

@@ -160,5 +160,7 @@
 # only UNK residues
 3kgv
 
-# chain C has only 1.57% of residues from SEQRES
+# chain C has only 1.57% of residues from SEQRES (it's crystal)
 3zms
+# chain B has only 0.16% of SEQRES (it's not crystal)
+8b6z

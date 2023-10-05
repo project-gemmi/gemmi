@@ -1,0 +1,86 @@
+// Copyright 2023 Global Phasing Ltd.
+
+#include <gemmi/align.hpp>
+#include <gemmi/resinfo.hpp>  // for expand_protein_one_letter_string
+
+namespace gemmi {
+
+namespace {
+
+using FastaSeq = std::string;
+using Seq = std::vector<std::string>;  // three-letter-code sequence
+
+Seq expand_one_letter_seq(const std::string& seq, PolymerType ptype) {
+  if (is_polypeptide(ptype))
+    return expand_protein_one_letter_string(seq);
+  if (ptype == PolymerType::Rna)
+    return expand_rna_one_letter_string(seq);
+  if (ptype == PolymerType::Dna)
+    return expand_dna_one_letter_string(seq);
+  return {};
+}
+
+std::vector<Seq> expand_one_letter_sequences(const std::vector<FastaSeq>& fasta_sequences,
+                                             PolymerType ptype) {
+  std::vector<Seq> sequences;
+  std::string errors;
+  sequences.reserve(fasta_sequences.size());
+  for (const FastaSeq& fs : fasta_sequences) {
+    try {
+      sequences.push_back(expand_one_letter_seq(fs, ptype));
+    } catch (std::runtime_error& e) {
+      cat_to(errors, "\nsequence #", &fs - fasta_sequences.data() + 1, ": ", e.what());
+    }
+  }
+  if (sequences.empty()) {
+    const char* ptype_str = (ptype == PolymerType::Rna ? "RNA" :
+                             ptype == PolymerType::Dna ? "DNA" :
+                                                         "protein");
+    fail("no sequences for ", ptype_str, errors);
+  }
+  return sequences;
+}
+
+const Seq* find_best_matching_sequence(const ConstResidueSpan& polymer,
+                                       PolymerType ptype,
+                                       const std::vector<Seq>& sequences) {
+  double best_score = -5000; // only better scores are accepted
+  const Seq* best_seq = nullptr;
+  for (const Seq& seq : sequences) {
+    AlignmentResult result = align_sequence_to_polymer(seq, polymer, ptype);
+    if (result.score > best_score) {
+      best_score = result.score;
+      best_seq = &seq;
+    }
+  }
+  return best_seq;
+}
+
+} // anonymous namespace
+
+void assign_best_sequences(Structure& st, const std::vector<FastaSeq>& fasta_sequences) {
+  if (st.models.empty() && fasta_sequences.empty())
+    return;
+  // Fasta sequence can be protein (A->ALA), RNA (A->A) or DNA (A->DA),
+  // we treat the three separately.
+  std::array<bool,16> present_polymer_types{};
+  for (Entity& ent : st.entities)
+    present_polymer_types[(int)ent.polymer_type] = true;
+  PolymerType ptypes[3] = { PolymerType::PeptideL, PolymerType::Rna, PolymerType::Dna };
+  for (int i = 0; i < 3; ++i) {
+    PolymerType ptype = ptypes[i];
+    if (present_polymer_types[(int)ptype]) {
+      std::vector<Seq> sequences = expand_one_letter_sequences(fasta_sequences, ptype);
+      for (Entity& ent : st.entities)
+        for (std::string& subchain_name : ent.subchains) {
+          ConstResidueSpan polymer = st.models[0].get_subchain(subchain_name);
+          if (const Seq* best_seq = find_best_matching_sequence(polymer, ptype, sequences)) {
+            ent.full_sequence = *best_seq;
+            break;
+          }
+        }
+    }
+  }
+}
+
+} // namespace gemmi
