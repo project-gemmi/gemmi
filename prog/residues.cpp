@@ -6,6 +6,7 @@
 #include "gemmi/polyheur.hpp"  // for setup_entities
 #include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
+#include "histogram.h"         // for terminal_columns
 
 #define GEMMI_PROG residues
 #include "options.h"
@@ -169,28 +170,30 @@ const char* etype_str(const gemmi::Residue& res) {
 }
 
 void print_short_info(const gemmi::Model& model, OptParser& p) {
-  const int kWrap = 5;
-  const int kLimit = 8;
   int short_level = p.options[Short].count();
+  const int kWrap = 5;    // for level 1
+  const int kLimit = terminal_columns() - 22;  // for levels 2 and 3
   for (const gemmi::Chain& chain : model.chains) {
+    int col = 0;
     int counter = 0;
     auto prev = gemmi::EntityType::Unknown;
     for (const gemmi::Residue& res : chain.residues) {
-      if (!chain.is_first_in_group(res)) {
-        if (counter < 8)
-          printf("/%s", res.name.c_str());
+      if (!chain.is_first_in_group(res)) {  // microheterogeneity
+        if (counter < 8 && short_level < 3)
+          col += printf("/%s", res.name.c_str());
         continue;
       }
       if (res.entity_type != prev) {
         if (counter != 0) {
-          if (short_level > 1 && counter > kLimit)
+          if (short_level > 1 && col >= kLimit)
             printf("...  (%d residues)", counter);
           putchar('\n');
         }
         if (p.options[Label])
-          printf("%s (%s) %-12s", chain.name.c_str(), res.subchain.c_str(), etype_str(res));
+          col = printf("%s (%s) %-12s",
+                       chain.name.c_str(), res.subchain.c_str(), etype_str(res));
         else
-          printf("%-3s %-12s  ", chain.name.c_str(), etype_str(res));
+          col = printf("%-3s %-12s  ", chain.name.c_str(), etype_str(res));
         counter = 0;
         prev = res.entity_type;
       }
@@ -202,12 +205,21 @@ void print_short_info(const gemmi::Model& model, OptParser& p) {
         printf(" %5s%c %-3s",
                res.seqid.num.str().c_str(), res.seqid.icode, res.name.c_str());
       } else {
-        if (counter < kLimit)
-          printf(" %-3s", res.name.c_str());
+        if (col < kLimit) {
+          if (short_level == 2) {
+            col += printf(" %-3s", res.name.c_str());
+          } else { // short_level > 2
+            char c = gemmi::find_tabulated_residue(res.name).fasta_code();
+            if (res.entity_type == gemmi::EntityType::Polymer && c != 'X')
+              col += printf("%c", c);
+            else
+              col += printf("(%s)", res.name.c_str());
+          }
+        }
       }
       ++counter;
     }
-    if (short_level > 1 && counter > kLimit)
+    if (short_level > 1 && col >= kLimit)
       printf("...  (%d residues)", counter);
     putchar('\n');
   }
@@ -226,6 +238,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (i != 0)
         putchar('\n');
       std::string input = p.coordinate_input_file(i);
+      printf("%s\n", input.c_str());
       gemmi::Structure st = gemmi::read_structure_gz(input, format);
       if (p.options[Match]) {
         gemmi::Selection sel(p.options[Match].arg);
@@ -247,7 +260,6 @@ int GEMMI_MAIN(int argc, char **argv) {
           ++status;
         continue;
       }
-      printf("%s\n", input.c_str());
       for (gemmi::Model& model : st.models) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());
@@ -257,7 +269,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           print_long_info(model, p);
       }
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     fprintf(stderr, "Error: %s\n", e.what());
     return 1;
   }

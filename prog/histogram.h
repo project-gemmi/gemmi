@@ -11,6 +11,17 @@
 # include <cwchar>   // for wint_t
 #endif
 
+inline int terminal_columns() {
+  // In bash COLUMNS is a shell variable, not environment variable.
+  // It needs to be exported to be visible here.
+  if (const char* columns_env = std::getenv("COLUMNS")) {
+    long c = std::strtol(columns_env, nullptr, 10);
+    if (c > 10 && c < 1000)  // sanity check
+      return (int) c;
+  }
+  return 80;
+}
+
 template<typename T>
 void print_histogram(const std::vector<T>& data, double min, double max) {
 #ifdef USE_UNICODE
@@ -20,14 +31,7 @@ void print_histogram(const std::vector<T>& data, double min, double max) {
 #else
   constexpr int rows = 24;
 #endif
-  int cols = 80;
-  // In bash COLUMNS is a shell variable, not environment variable.
-  // It needs to be exported to be visible here.
-  if (const char* columns_env = std::getenv("COLUMNS")) {
-    long c = std::strtol(columns_env, nullptr, 10);
-    if (c > 10 && c < 1000)  // sanity check
-      cols = (int) c;
-  }
+  int cols = terminal_columns();
   std::vector<int> bins(cols+1, 0);
   double delta = max - min;
   for (T d : data) {
