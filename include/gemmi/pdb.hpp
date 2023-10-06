@@ -446,6 +446,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
     } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2
       std::string chain_name = read_string(line+11, 2);
       Entity& ent = impl::find_or_add(st.entities, chain_name);
+      ent.entity_type = EntityType::Polymer;
       if (line[5] == ' ' || line[5] == '1')
         ent.dbrefs.emplace_back();
       else if (ent.dbrefs.empty()) // DBREF2 without DBREF1?
