@@ -95,5 +95,8 @@ void add_alignment(py::module& m) {
 
 void add_assign_label_seq_id(py::class_<Structure>& structure) {
   structure
-    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false);
+    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
+    .def("clear_sequences", &clear_sequences)
+    .def("assign_best_sequences", &assign_best_sequences, py::arg("fasta_sequences"))
+    ;
 }

@@ -2272,6 +2272,45 @@ because we have 5 missing residues at the ends.
 
 See also the :ref:`gemmi-align <gemmi-align>` program.
 
+Assigning sequence
+------------------
+
+Let's suppose we have a coordinate file and want to add
+SEQRES records (PDB) or _entity_poly_seq (mmCIF) to it.
+
+The sequences for these records are stored in Entity objects.
+We may need to first call setup_entities() to ensure that
+our Structure contains Entity objects corresponding to the chains.
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/rnase_frag.pdb')
+  >>> st.setup_entities()
+
+The sequences can be assigned manually to individual entities:
+
+.. doctest::
+
+  >>> seq1 = ['ASP', 'VAL', 'SER'] #...
+  >>> # or
+  >>> seq1 = gemmi.expand_protein_one_letter_string('DVSGTVCLSALPPEATDTLNLI')
+  >>> st.entities[0].full_sequence = seq1
+
+Alternatively, we can provide a list of sequences and have them automatically
+matched to polymers in the model:
+
+.. doctest::
+
+  >>> seqs = ['DVSGTVCLSALPPEATDTLNLIASDGPFPYSQDGVVFQNRESVLPTQSYGYYHEYTVITPGARTRGTRRIICGEATQEDYYTGDHYATFSLIDQTC',
+  ...         'MTTPSHLSDRYELGEILGFGGMSEVHLARDLRLHRDVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVY']
+  >>> st.clear_sequences()  # remove sequence info (SEQRES, DBREF)
+  >>> st.assign_best_sequences(seqs)
+
+The assign_best_sequences() function assigns sequences that are the best match
+for each chain. If none of the provided sequences match,
+the Entity.full_sequence is left unchanged. If you don't want to preserve
+old sequences in such a case, call clear_sequences() first.
+
 .. _dbref:
 
 DBREF and SIFTS

@@ -47,6 +47,19 @@ class TestAlignment(unittest.TestCase):
         # pairwise2.align.globalds(seq1.seq, seq2.seq, blosum62, -10, -1)
         self.assertEqual(result.score, 290)
 
+    def test_assign_best_sequences(self):
+        st = gemmi.read_structure(full_path('1lzh.pdb.gz'))
+        st.setup_entities()
+        seq3 = st.entities[0].full_sequence
+        self.assertEqual(len(seq3), 129)
+        seq1 = gemmi.one_letter_code(seq3)
+        self.assertEqual(len(seq1), 129)
+        st.clear_sequences()
+        self.assertEqual(len(st.entities[0].full_sequence), 0)
+        st.assign_best_sequences([seq1+'A', seq1])
+        self.assertEqual(len(st.entities[0].full_sequence), 129)
+        self.assertEqual(st.entities[0].subchains, ['Axp', 'Bxp'])
+
     def test_superposition(self):
         model = gemmi.read_structure(full_path('4oz7.pdb'))[0]
         poly1 = model['A'].get_polymer()

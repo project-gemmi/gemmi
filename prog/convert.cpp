@@ -13,6 +13,7 @@
 #include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/select.hpp"    // for Selection
+#include "gemmi/enumstr.hpp"   // for polymer_type_to_string
 
 #include <cstring>
 #include <iostream>
@@ -250,9 +251,16 @@ void convert(gemmi::Structure& st,
     }
     if (options[Verbose])
       std::cerr << fasta_sequences.size() << " sequence(s) was read..." << std::endl;
+    gemmi::clear_sequences(st);
     gemmi::assign_best_sequences(st, fasta_sequences);
     gemmi::deduplicate_entities(st);
     gemmi::assign_label_seq_id(st, options[ForceLabel]);
+    for (gemmi::Entity& ent : st.entities) {
+      if (ent.entity_type == gemmi::EntityType::Polymer && ent.full_sequence.empty())
+        std::cerr << "No sequence found for "
+                  << polymer_type_to_string(ent.polymer_type) << " entity " << ent.name
+                  << " (" << gemmi::join_str(ent.subchains, ',') << ')' << std::endl;
+    }
   }
 
   if (options[SiftsNum]) {

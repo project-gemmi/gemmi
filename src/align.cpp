@@ -20,27 +20,6 @@ Seq expand_one_letter_seq(const std::string& seq, PolymerType ptype) {
   return {};
 }
 
-std::vector<Seq> expand_one_letter_sequences(const std::vector<FastaSeq>& fasta_sequences,
-                                             PolymerType ptype) {
-  std::vector<Seq> sequences;
-  std::string errors;
-  sequences.reserve(fasta_sequences.size());
-  for (const FastaSeq& fs : fasta_sequences) {
-    try {
-      sequences.push_back(expand_one_letter_seq(fs, ptype));
-    } catch (std::runtime_error& e) {
-      cat_to(errors, "\nsequence #", &fs - fasta_sequences.data() + 1, ": ", e.what());
-    }
-  }
-  if (sequences.empty()) {
-    const char* ptype_str = (ptype == PolymerType::Rna ? "RNA" :
-                             ptype == PolymerType::Dna ? "DNA" :
-                                                         "protein");
-    fail("no sequences for ", ptype_str, errors);
-  }
-  return sequences;
-}
-
 const Seq* find_best_matching_sequence(const ConstResidueSpan& polymer,
                                        PolymerType ptype,
                                        const std::vector<Seq>& sequences) {
@@ -65,20 +44,30 @@ void assign_best_sequences(Structure& st, const std::vector<FastaSeq>& fasta_seq
   // we treat the three separately.
   std::array<bool,16> present_polymer_types{};
   for (Entity& ent : st.entities)
-    present_polymer_types[(int)ent.polymer_type] = true;
+    if (ent.entity_type == EntityType::Polymer)
+      present_polymer_types[(int)ent.polymer_type] = true;
   PolymerType ptypes[3] = { PolymerType::PeptideL, PolymerType::Rna, PolymerType::Dna };
   for (int i = 0; i < 3; ++i) {
     PolymerType ptype = ptypes[i];
     if (present_polymer_types[(int)ptype]) {
-      std::vector<Seq> sequences = expand_one_letter_sequences(fasta_sequences, ptype);
-      for (Entity& ent : st.entities)
-        for (std::string& subchain_name : ent.subchains) {
-          ConstResidueSpan polymer = st.models[0].get_subchain(subchain_name);
-          if (const Seq* best_seq = find_best_matching_sequence(polymer, ptype, sequences)) {
-            ent.full_sequence = *best_seq;
-            break;
+      std::vector<Seq> sequences;
+      sequences.reserve(fasta_sequences.size());
+      for (const FastaSeq& fs : fasta_sequences) {
+        try {
+          sequences.push_back(expand_one_letter_seq(fs, ptype));
+        } catch (std::runtime_error&) {}
+      }
+      for (Entity& ent : st.entities) {
+        if (ent.entity_type == EntityType::Polymer)
+          for (std::string& subchain_name : ent.subchains) {
+            ConstResidueSpan polymer = st.models[0].get_subchain(subchain_name);
+            const Seq* best_seq = find_best_matching_sequence(polymer, ptype, sequences);
+            if (best_seq) {
+              ent.full_sequence = *best_seq;
+              break;
+            }
           }
-        }
+      }
     }
   }
 }
