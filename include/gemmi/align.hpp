@@ -81,6 +81,14 @@ inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
   return true;
 }
 
+inline void clear_sequences(Structure& st) {
+  for (Entity& ent : st.entities) {
+    ent.full_sequence.clear();
+    ent.dbrefs.clear();
+    ent.sifts_unp_acc.clear();
+  }
+}
+
 GEMMI_DLL
 void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_sequences);
 
