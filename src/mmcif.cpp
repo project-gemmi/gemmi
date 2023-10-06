@@ -251,19 +251,13 @@ void read_prot_cis(cif::Block& block, Structure& st) {
     cispep.model_str = row.str(kModelNum);
     cispep.partner_c.chain_name = row.str(kAuthAsymId);
     cispep.partner_c.res_id.seqid = make_seqid(row.str(kAuthSeqId), row.ptr_at(kInsCode));
-    cispep.partner_c.res_id.name = row.str(row.has2(kLabelCompId2) ? 4 : 5);
-    if (row.has(kLabelCompId))
-      cispep.partner_c.res_id.name = row.str(kLabelCompId);
-    else if (row.has(kAuthCompId))
-      cispep.partner_c.res_id.name = row.str(kAuthCompId);
+    cispep.partner_c.res_id.name = cif::as_string(row.one_of(kAuthCompId, kLabelCompId));
     if (row.has(kAuthAsymId2))
       cispep.partner_n.chain_name = row.str(kAuthAsymId2);
     if (row.has(kAuthSeqId2))
       cispep.partner_n.res_id.seqid = make_seqid(row.str(kAuthSeqId2), row.ptr_at(kInsCode2));
     if (row.has(kLabelCompId2))
-      cispep.partner_n.res_id.name = row.str(kLabelCompId2);
-    else if (row.has(kAuthCompId2))
-      cispep.partner_n.res_id.name = row.str(kAuthCompId2);
+    cispep.partner_n.res_id.name = cif::as_string(row.one_of(kAuthCompId2, kLabelCompId2));
     if (row.has(kAltId))
       cispep.only_altloc = cif::as_char(row[kAltId], '\0');
     if (row.has(kOmegaAngle))
