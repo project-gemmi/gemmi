@@ -216,7 +216,7 @@ gemmi/pdb_id.hpp
     handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path()
 
 gemmi/pirfasta.hpp
-    Read sequence from PIR or FASTA format.
+    Read sequence from PIR or (multi-)FASTA format.
 
 gemmi/polyheur.hpp
     Heuristic methods for working with chains and polymers.

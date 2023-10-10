@@ -7,7 +7,6 @@ namespace gemmi {
 
 namespace {
 
-using FastaSeq = std::string;
 using Seq = std::vector<std::string>;  // three-letter-code sequence
 
 Seq expand_one_letter_seq(const std::string& seq, PolymerType ptype) {
@@ -37,7 +36,7 @@ const Seq* find_best_matching_sequence(const ConstResidueSpan& polymer,
 
 } // anonymous namespace
 
-void assign_best_sequences(Structure& st, const std::vector<FastaSeq>& fasta_sequences) {
+void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_sequences) {
   if (st.models.empty() && fasta_sequences.empty())
     return;
   // Fasta sequence can be protein (A->ALA), RNA (A->A) or DNA (A->DA),
@@ -52,9 +51,9 @@ void assign_best_sequences(Structure& st, const std::vector<FastaSeq>& fasta_seq
     if (present_polymer_types[(int)ptype]) {
       std::vector<Seq> sequences;
       sequences.reserve(fasta_sequences.size());
-      for (const FastaSeq& fs : fasta_sequences) {
+      for (const std::string& seq : fasta_sequences) {
         try {
-          sequences.push_back(expand_one_letter_seq(fs, ptype));
+          sequences.push_back(expand_one_letter_seq(seq, ptype));
         } catch (std::runtime_error&) {}
       }
       for (Entity& ent : st.entities) {

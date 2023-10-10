@@ -5,6 +5,7 @@
 #include "gemmi/dirwalk.hpp"   // for CifWalk, CoorFileWalk
 #include "gemmi/pdb_id.hpp"    // for expand_if_pdb_code
 #include "gemmi/bessel.hpp"    // for bessel_i1_over_i0
+#include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/stats.hpp"     // for Correlation
 #include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error
 
@@ -52,6 +53,13 @@ void add_misc(py::module& m) {
         x = std::abs(x);
         return x + std::log1p(std::exp(-2 * x)) - std::log(2);
   }));
+
+  // pirfasta.hpp
+  py::class_<gemmi::FastaSeq>(m, "FastaSeq")
+    .def_readonly("header", &gemmi::FastaSeq::header)
+    .def_readonly("seq", &gemmi::FastaSeq::seq)
+    ;
+  m.def("read_pir_or_fasta", &gemmi::read_pir_or_fasta);
 
   // stats.hpp
   py::class_<gemmi::Correlation>(m, "Correlation")

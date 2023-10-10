@@ -2099,6 +2099,43 @@ number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
 Gemmi also includes a program that calculates the solvent content:
 :ref:`gemmi-contents <gemmi-contents>`.
 
+FASTA and PIR
+-------------
+
+The coordinate files can contain sequences internally.
+Nevertheless, we may need to use a sequence from UniProt or another source.
+Gemmi provides a function to parse two sequence file formats, FASTA and PIR.
+The function takes a string containing the file's content as an argument:
+
+.. doctest::
+
+  >>> with open('P0C805.fasta') as f:
+  ...     fasta_str = f.read()
+  >>> gemmi.read_pir_or_fasta(fasta_str)  #doctest: +ELLIPSIS
+  [<gemmi.FastaSeq object at 0x...>]
+
+The string must start with a header line that begins with ``>``.
+In the case of PIR format, which starts with ``>P1;`` (or F1, DL, DC, RL, RC,
+or XX instead of P1), the next line is also part of the header.
+The sequence file may contain multiple sequences, each preceded by a header.
+Whitespace in a sequence is ignored, except for blank lines,
+which are only allowed between sequences.
+A sequence can contain letters, dashes, and residue names in parentheses.
+The latter is an extension inspired by the format used in mmCIF files,
+in which non-standard residues are given in parentheses, e.g., ``MA(MSE)GVN``.
+The sequence may end with ``*``.
+
+FastaSeq objects, returned from ``read_pir_or_fasta()``,
+contain only two strings:
+
+.. doctest::
+
+  >>> (fasta_seq,) = _
+  >>> fasta_seq.header
+  'sp|P0C805|PSMA3_STAA8 Phenol-soluble modulin alpha 3 peptide OS=Staphylococcus aureus (strain NCTC 8325 / PS 47) OX=93061 GN=psmA3 PE=1 SV=1'
+  >>> fasta_seq.seq
+  'MEFVAKLFKFFKDLLGKFLGNN'
+
 .. _sequence-alignment:
 
 Sequence alignment

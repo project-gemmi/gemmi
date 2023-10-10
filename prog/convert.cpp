@@ -160,6 +160,18 @@ std::string format_as_string(CoorFormat format) {
   gemmi::unreachable();
 }
 
+std::string read_whole_file(std::istream& stream) {
+  constexpr std::size_t buf_size = 4096;
+  char buffer[buf_size];
+  stream.exceptions(std::ios_base::badbit);  // throw on fail/bad
+  std::string out;
+  while (stream) {
+    stream.read(buffer, buf_size);
+    out.append(buffer, stream.gcount());
+  }
+  return out;
+}
+
 void convert(gemmi::Structure& st,
              const std::string& output, CoorFormat output_type,
              const std::vector<option::Option>& options) {
@@ -246,8 +258,9 @@ void convert(gemmi::Structure& st,
     std::vector<std::string> fasta_sequences;
     for (const option::Option* opt = options[SetSeq]; opt; opt = opt->next()) {
       gemmi::Ifstream stream(opt->arg);
-      std::string seq = gemmi::read_pir_or_fasta(stream.ref());
-      fasta_sequences.push_back(seq);
+      std::string str = read_whole_file(stream.ref());
+      for (gemmi::FastaSeq& fs : gemmi::read_pir_or_fasta(str))
+        fasta_sequences.push_back(std::move(fs.seq));
     }
     if (options[Verbose])
       std::cerr << fasta_sequences.size() << " sequence(s) was read..." << std::endl;
