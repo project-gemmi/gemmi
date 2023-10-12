@@ -50,6 +50,17 @@ inline std::string one_letter_code(const ConstResidueSpan& polymer) {
   return r;
 }
 
+/// used with expand_one_letter_sequence()
+inline ResidueKind sequence_kind(PolymerType ptype) {
+  if (is_polypeptide(ptype))
+    return ResidueKind::AA;
+  if (ptype == PolymerType::Rna)
+    return ResidueKind::RNA;
+  if (ptype == PolymerType::Dna)
+    return ResidueKind::DNA;
+  fail("sequence of unknown or exotic polymer type " + std::to_string((int)ptype));
+}
+
 struct AtomNameElement { std::string atom_name; El el; };
 
 inline std::vector<AtomNameElement> get_mainchain_atoms(PolymerType ptype) {

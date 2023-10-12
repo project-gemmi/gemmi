@@ -7,7 +7,7 @@ namespace gemmi {
 PolymerType check_polymer_type(const ConstResidueSpan& span) {
   if (span.empty())
     return PolymerType::Unknown;
-  size_t counts[ResidueInfo::ELS+1] = {0};
+  size_t counts[(int)ResidueKind::ELS+1] = {0};
   size_t aa = 0;
   size_t na = 0;
   size_t total = 0;
@@ -25,13 +25,13 @@ PolymerType check_polymer_type(const ConstResidueSpan& span) {
         // (and almost never are in a polymer - except PO4, PO2 and AZI (N3)
         // which in a few PDB entries are included in polymers - but it
         // doesn't matter here).
-        if (info.kind == ResidueInfo::HOH || info.hydrogen_count == 0)
+        if (info.kind == ResidueKind::HOH || info.hydrogen_count == 0)
           continue;
         if (info.is_peptide_linking())
           ++aa;
         if (info.is_na_linking())
           ++na;
-        counts[info.kind]++;
+        counts[(int)info.kind]++;
       } else if (r.get_ca()) {
         ++aa;
       } else if (r.get_p()) {
@@ -49,12 +49,12 @@ PolymerType check_polymer_type(const ConstResidueSpan& span) {
   // ATOM records suggest a polymer, so weaken the condition for AA/NA polymers.
   size_t bonus = has_atom_record ? 1 : 0;
   if (2 * aa + bonus > total)
-    return counts[ResidueInfo::AA] >= counts[ResidueInfo::AAD]
+    return counts[(int)ResidueKind::AA] >= counts[(int)ResidueKind::AAD]
            ? PolymerType::PeptideL : PolymerType::PeptideD;
   if (2 * na + bonus > total) {
-    if (counts[ResidueInfo::DNA] == 0)
+    if (counts[(int)ResidueKind::DNA] == 0)
       return PolymerType::Rna;
-    if (counts[ResidueInfo::RNA] == 0)
+    if (counts[(int)ResidueKind::RNA] == 0)
       return PolymerType::Dna;
     return PolymerType::DnaRnaHybrid;
   }

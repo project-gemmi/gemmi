@@ -1,23 +1,13 @@
 // Copyright 2023 Global Phasing Ltd.
 
 #include <gemmi/align.hpp>
-#include <gemmi/resinfo.hpp>  // for expand_protein_one_letter_string
+#include <gemmi/resinfo.hpp>  // for expand_one_letter_sequence
 
 namespace gemmi {
 
 namespace {
 
 using Seq = std::vector<std::string>;  // three-letter-code sequence
-
-Seq expand_one_letter_seq(const std::string& seq, PolymerType ptype) {
-  if (is_polypeptide(ptype))
-    return expand_protein_one_letter_string(seq);
-  if (ptype == PolymerType::Rna)
-    return expand_rna_one_letter_string(seq);
-  if (ptype == PolymerType::Dna)
-    return expand_dna_one_letter_string(seq);
-  return {};
-}
 
 const Seq* find_best_matching_sequence(const ConstResidueSpan& polymer,
                                        PolymerType ptype,
@@ -53,7 +43,7 @@ void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_
       sequences.reserve(fasta_sequences.size());
       for (const std::string& seq : fasta_sequences) {
         try {
-          sequences.push_back(expand_one_letter_seq(seq, ptype));
+          sequences.push_back(expand_one_letter_sequence(seq, sequence_kind(ptype)));
         } catch (std::runtime_error&) {}
       }
       for (Entity& ent : st.entities) {

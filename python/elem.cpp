@@ -103,19 +103,19 @@ void add_elem(py::module& m) {
   }, py::return_value_policy::reference_internal);
 
   // resinfo.hpp
-  py::enum_<ResidueInfo::Kind>(m, "ResidueInfoKind")
-    .value("UNKNOWN", ResidueInfo::Kind::UNKNOWN)
-    .value("AA", ResidueInfo::Kind::AA)
-    .value("AAD", ResidueInfo::Kind::AAD)
-    .value("PAA", ResidueInfo::Kind::PAA)
-    .value("MAA", ResidueInfo::Kind::MAA)
-    .value("RNA", ResidueInfo::Kind::RNA)
-    .value("DNA", ResidueInfo::Kind::DNA)
-    .value("BUF", ResidueInfo::Kind::BUF)
-    .value("HOH", ResidueInfo::Kind::HOH)
-    .value("PYR", ResidueInfo::Kind::PYR)
-    .value("KET", ResidueInfo::Kind::KET)
-    .value("ELS", ResidueInfo::Kind::ELS);
+  py::enum_<ResidueKind>(m, "ResidueKind")
+    .value("UNKNOWN", ResidueKind::UNKNOWN)
+    .value("AA", ResidueKind::AA)
+    .value("AAD", ResidueKind::AAD)
+    .value("PAA", ResidueKind::PAA)
+    .value("MAA", ResidueKind::MAA)
+    .value("RNA", ResidueKind::RNA)
+    .value("DNA", ResidueKind::DNA)
+    .value("BUF", ResidueKind::BUF)
+    .value("HOH", ResidueKind::HOH)
+    .value("PYR", ResidueKind::PYR)
+    .value("KET", ResidueKind::KET)
+    .value("ELS", ResidueKind::ELS);
 
   py::class_<ResidueInfo>(m, "ResidueInfo")
     .def_readonly("kind", &ResidueInfo::kind)
@@ -131,6 +131,6 @@ void add_elem(py::module& m) {
 
   m.def("find_tabulated_residue", &find_tabulated_residue, py::arg("name"),
         "Find chemical component information in the internal table.");
-  m.def("expand_protein_one_letter", &expand_protein_one_letter);
-  m.def("expand_protein_one_letter_string", &expand_protein_one_letter_string);
+  m.def("expand_one_letter", &expand_one_letter);
+  m.def("expand_one_letter_sequence", &expand_one_letter_sequence);
 }

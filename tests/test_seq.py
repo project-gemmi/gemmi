@@ -110,6 +110,7 @@ class TestReadingSeq(unittest.TestCase):
             for (gseq, bseq) in zip(gemmi_seqs, biopy_seqs):
                 self.assertEqual(gseq.header, bseq.description)
                 self.assertEqual(gseq.seq, bseq.seq.rstrip('*'))
+
     def test_pir(self):
         for string in (PIR1, PIR2):
             gemmi_seqs = gemmi.read_pir_or_fasta(string)
@@ -122,6 +123,28 @@ class TestReadingSeq(unittest.TestCase):
                 self.assertEqual(g_id, bseq.id)
                 self.assertEqual(g_desc, bseq.description)
                 self.assertEqual(gseq.seq, bseq.seq)
+
+    def test_code_conversion_aa(self):
+        seq1 = gemmi.read_pir_or_fasta(FASTA1)[0].seq
+        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.AA)
+        self.assertEqual(seq1, gemmi.one_letter_code(seq3))
+
+    def test_code_conversion_dna(self):
+        seq1 = gemmi.read_pir_or_fasta(FASTA3)[0].seq
+        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.DNA)
+        self.assertEqual(seq1, gemmi.one_letter_code(seq3))
+
+    def test_code_conversion_rna(self):
+        seq1 = 'GGCGAUACCAGCCGAAAGGCCCUUGGCAGCGCC'  # from 8d2b
+        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.RNA)
+        self.assertEqual(seq1, gemmi.one_letter_code(seq3))
+
+    def test_code_with_brackets(self):
+        # test 1PFE _entity_poly.pdbx_seq_one_letter_code[_can]
+        seq1 = gemmi.read_pir_or_fasta(FASTA4)[1].seq
+        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.AA)
+        self.assertEqual(seq3, ['DSN', 'ALA', 'N2C', 'MVA',
+                                'DSN', 'ALA', 'NCY', 'MVA'])
 
 if __name__ == '__main__':
     unittest.main()

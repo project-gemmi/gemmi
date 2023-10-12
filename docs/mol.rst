@@ -2037,15 +2037,24 @@ To go in the opposite direction, use:
 
 .. doctest::
 
-  >>> [gemmi.expand_protein_one_letter(letter) for letter in _]
+  >>> [gemmi.expand_one_letter(letter, gemmi.ResidueKind.AA) for letter in _]
   ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
 
 or
 
 .. doctest::
 
-  >>> gemmi.expand_protein_one_letter_string('XAXXXAXX')
+  >>> gemmi.expand_one_letter_sequence('XAXXXAXX', gemmi.ResidueKind.AA)
   ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
+
+For DNA and RNA it will be, respectively:
+
+.. doctest::
+
+  >>> gemmi.expand_one_letter_sequence('GATTACA', gemmi.ResidueKind.DNA)
+  ['DG', 'DA', 'DT', 'DT', 'DA', 'DC', 'DA']
+  >>> gemmi.expand_one_letter_sequence('GAUUACA', gemmi.ResidueKind.RNA)
+  ['G', 'A', 'U', 'U', 'A', 'C', 'A']
 
 Molecular weight
 ----------------
@@ -2272,9 +2281,10 @@ First, we try global alignment:
 
 .. doctest::
 
+  >>> AA = gemmi.ResidueKind.AA
   >>> result = gemmi.align_string_sequences(
-  ...         gemmi.expand_protein_one_letter_string('LSPADKTNVKAA'),
-  ...         gemmi.expand_protein_one_letter_string('PEEKSAV'),
+  ...         gemmi.expand_one_letter_sequence('LSPADKTNVKAA', AA),
+  ...         gemmi.expand_one_letter_sequence('PEEKSAV', AA),
   ...         [], blosum62)
   >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')
   LSPADKTNVKAA
@@ -2292,8 +2302,8 @@ residues in the gap still decrease the score:
 .. doctest::
 
   >>> result = gemmi.align_string_sequences(
-  ...         gemmi.expand_protein_one_letter_string('LSPADKTNVKAA'),
-  ...         gemmi.expand_protein_one_letter_string('PEEKSAV'),
+  ...         gemmi.expand_one_letter_sequence('LSPADKTNVKAA', AA),
+  ...         gemmi.expand_one_letter_sequence('PEEKSAV', AA),
   ...         # free gaps at 0 (start) and 7 (end):   01234567
   ...         [0, -10, -10, -10, -10, -10, -10, 0],
   ...         blosum62)
@@ -2330,7 +2340,7 @@ The sequences can be assigned manually to individual entities:
 
   >>> seq1 = ['ASP', 'VAL', 'SER'] #...
   >>> # or
-  >>> seq1 = gemmi.expand_protein_one_letter_string('DVSGTVCLSALPPEATDTLNLI')
+  >>> seq1 = gemmi.expand_one_letter_sequence('DVSGTVCLSALPPEATDTLNLI', gemmi.ResidueKind.AA)
   >>> st.entities[0].full_sequence = seq1
 
 Alternatively, we can provide a list of sequences and have them automatically

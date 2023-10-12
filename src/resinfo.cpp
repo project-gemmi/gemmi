@@ -6,7 +6,7 @@ namespace gemmi {
 
 // hydrogen_count needs to be verified
 ResidueInfo find_tabulated_residue(const std::string& name) {
-  using RI = ResidueInfo;
+  using RI = ResidueKind;
   if (name.size() == 3) {
 #define ID(s) (s[0] << 16 | s[1] << 8 | s[2])
     switch (ID(name.c_str())) {

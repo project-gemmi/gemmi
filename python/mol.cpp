@@ -71,6 +71,7 @@ void add_mol(py::module& m) {
         (std::string (*)(const std::vector<std::string>&)) &one_letter_code);
   m.def("one_letter_code",
         [](const ResidueSpan& span) { return one_letter_code(span); });
+  m.def("sequence_kind", &sequence_kind);
   m.def("make_address", &make_address);
 
   py::enum_<CoorFormat>(m, "CoorFormat")

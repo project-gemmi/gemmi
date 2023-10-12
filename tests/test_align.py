@@ -30,8 +30,9 @@ class TestAlignment(unittest.TestCase):
         hbb_human = ("MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAV"
                      "MGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNV"
                      "LVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH")
-        hba_seq = gemmi.expand_protein_one_letter_string(hba_human)
-        hbb_seq = gemmi.expand_protein_one_letter_string(hbb_human)
+        AA = gemmi.ResidueKind.AA
+        hba_seq = gemmi.expand_one_letter_sequence(hba_human, AA)
+        hbb_seq = gemmi.expand_one_letter_sequence(hbb_human, AA)
         id_score = gemmi.AlignmentScoring()
         id_score.match = 1
         id_score.mismatch = 0
