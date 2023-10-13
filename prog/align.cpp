@@ -294,7 +294,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         print_result_summary(result);
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result, gemmi::one_letter_code(query),
-                                     gemmi::one_letter_code(polymer));
+                                     gemmi::one_letter_code(polymer.extract_sequence()));
         if (verbose)
           print_alignment_details_tq(result, query, polymer.extract_sequence());
       }
@@ -353,7 +353,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[PrintOneLetter])
           print_one_letter_alignment(result,
                                      gemmi::one_letter_code(ent->full_sequence),
-                                     gemmi::one_letter_code(polymer));
+                                     gemmi::one_letter_code(polymer.extract_sequence()));
         if (verbose)
           print_alignment_details(result, chain.name, polymer, *ent);
       }

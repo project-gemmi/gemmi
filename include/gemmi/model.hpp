@@ -316,7 +316,6 @@ struct ConstResidueSpan : Span<const Residue> {
 
   ConstResidueGroup find_residue_group(SeqId id) const;
 
-  // cf. one_letter_code(const ConstResidueSpan& polymer)
   std::vector<std::string> extract_sequence() const {
     std::vector<std::string> seq;
     for (const Residue& res : first_conformer())

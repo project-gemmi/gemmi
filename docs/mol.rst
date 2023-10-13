@@ -2242,7 +2242,7 @@ and property ``match_string``:
   'MRLFGYARVSTSQQSLDIQVRALKDAGVKANRIFTDKASGSSSDRKGLDLLRMKVEEGDVILVKKLDRLG'
   >>> result.match_string[:70]
   '|||||||||||   |||||||||||||||||||||||       ||||||||||||||||||||||||||'
-  >>> result.add_gaps(gemmi.one_letter_code(st[0][0].get_polymer()), 2)[:70]
+  >>> result.add_gaps(gemmi.one_letter_code(st[0][0].get_polymer().extract_sequence()), 2)[:70]
   'MRLFGYARVST---SLDIQVRALKDAGVKANRIFTDK-------RKGLDLLRMKVEEGDVILVKKLDRLG'
 
 or we can use function ``AlignmentResult.formatted()``.

@@ -67,10 +67,7 @@ void add_mol(py::module& m) {
     .value("Dup", HowToNameCopiedChain::Dup)
     ;
 
-  m.def("one_letter_code",
-        (std::string (*)(const std::vector<std::string>&)) &one_letter_code);
-  m.def("one_letter_code",
-        [](const ResidueSpan& span) { return one_letter_code(span); });
+  m.def("one_letter_code", &one_letter_code);
   m.def("sequence_kind", &sequence_kind);
   m.def("make_address", &make_address);
 
