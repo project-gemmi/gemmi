@@ -2033,21 +2033,45 @@ or use:
   >>> gemmi.one_letter_code(seq)
   'XAXXXAXX'
 
-To go in the opposite direction, use:
+To go in the opposite direction, from one-letter code to the residue name,
+we need to know what kind of sequence it is: amino acids, DNA or RNA. This
+is specified as one of three values: AA, DNA or RNA of the ResidueKind enum.
 
 .. doctest::
 
-  >>> [gemmi.expand_one_letter(letter, gemmi.ResidueKind.AA) for letter in _]
-  ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
-
-or
-
-.. doctest::
-
+  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.AA)
+  'CYS'
+  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.DNA)
+  'DC'
   >>> gemmi.expand_one_letter_sequence('XAXXXAXX', gemmi.ResidueKind.AA)
   ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
 
-For DNA and RNA it will be, respectively:
+ResidueKind can be obtained from PolymerType:
+
+.. doctest::
+
+  >>> st.get_entity('2').polymer_type
+  <PolymerType.PeptideL: 1>
+  >>> gemmi.sequence_kind(_)
+  <ResidueKind.AA: 1>
+
+MmCIF files from the PDB contain also a sequence in a hybrid format,
+one-letter for a standard residue, CCD codes in parenthesis for non-standard:
+
+.. doctest::
+
+  >>> block = gemmi.cif.read('../tests/1pfe.cif.gz')[0]
+  >>> block.find_values('_entity_poly.pdbx_seq_one_letter_code').str(1)
+  '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
+
+This sequence can be unambiguously expanded to residue names:
+
+.. doctest::
+
+  >>> gemmi.expand_one_letter_sequence(_, gemmi.ResidueKind.AA)
+  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+
+The same function works also for DNA and RNA:
 
 .. doctest::
 
@@ -2386,6 +2410,9 @@ so it is read in a separate function.
 The residue-level cross-referencing to UniProt is written for every residue
 and also for every atom in the structure. Gemmi ignores the redundant
 per-atom annotations, in hope that they will be abandoned).*
+
+Sadly, since 2023, the redundant SIFTS annotations have also been present in
+`NextGen Archive <https://www.rcsb.org/news/feature/63cedad9b5f08ee94ab73826>`_.
 
 Gemmi has limited support for both DBREF and SIFTS annotations.
 The API is undocumented yet and may change in the future.

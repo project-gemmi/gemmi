@@ -67,8 +67,8 @@ inline const char* expand_one_letter(char c, ResidueKind kind) {
     "ALA\0ASX\0CYS\0ASP\0GLU\0PHE\0GLY\0HIS\0ILE\0\0   LYS\0LEU\0MET\0"  // A-M
     "ASN\0PYL\0PRO\0GLN\0ARG\0SER\0THR\0SEC\0VAL\0TRP\0UNK\0TYR\0GLX\0"  // N-Z
     // DNA
-    "DA\0 \0b  DC\0 \0d  \0e  \0f  DG\0 \0h  DI\0 \0j  \0k  \0l  \0m  "  // A-M
-    "DN\0 \0o  \0p  \0q  \0r  \0s  DT\0 DU\0 \0v  \0w  \0x  \0y  \0z  "; // N-Z
+    "DA\0 \0\0  DC\0 \0\0  \0\0  \0\0  DG\0 \0\0  DI\0 \0\0  \0\0  \0\0  \0\0  "   // A-M
+    "DN\0 \0\0  \0\0  \0\0  \0\0  \0\0  DT\0 DU\0 \0\0  \0\0  \0\0  \0\0  \0\0  "; // N-Z
   c &= ~0x20;
   const char* ret = nullptr;
   if (c >= 'A' && c <= 'Z') {
@@ -87,35 +87,8 @@ inline const char* expand_one_letter(char c, ResidueKind kind) {
 }
 
 /// kind can be AA, RNA or DNA
-inline std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
-                                                           ResidueKind kind) {
-  std::vector<std::string> r;
-  r.reserve(seq.size());
-  auto kind_str = [&]() {
-    switch (kind) {
-      case ResidueKind::AA: return "peptide";
-      case ResidueKind::RNA: return "RNA";
-      case ResidueKind::DNA: return "DNA";
-      default: return "unknown";
-    }
-  };
-  for (size_t i = 0; i != seq.size(); ++i) {
-    char c = seq[i];
-    if (c == '(') { // special case, e.g. (MSE)
-      size_t start = i + 1;
-      i = seq.find(')', start);
-      if (i == std::string::npos)
-        fail("unmatched '(' in sequence");
-      r.emplace_back(seq, start, i - start);
-    } else {
-      const char* str = expand_one_letter(c, kind);
-      if (str == nullptr)
-        fail("unexpected letter in ", kind_str(), " sequence: ", c);
-      r.emplace_back(str);
-    }
-  }
-  return r;
-}
+GEMMI_DLL std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
+                                                              ResidueKind kind);
 
 // deprecated
 inline const char* expand_protein_one_letter(char c) {

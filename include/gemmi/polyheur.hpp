@@ -54,11 +54,13 @@ inline std::string one_letter_code(const ConstResidueSpan& polymer) {
 inline ResidueKind sequence_kind(PolymerType ptype) {
   if (is_polypeptide(ptype))
     return ResidueKind::AA;
-  if (ptype == PolymerType::Rna)
-    return ResidueKind::RNA;
   if (ptype == PolymerType::Dna)
     return ResidueKind::DNA;
-  fail("sequence of unknown or exotic polymer type " + std::to_string((int)ptype));
+  if (ptype == PolymerType::Rna || ptype == PolymerType::DnaRnaHybrid)
+    return ResidueKind::RNA;
+  if (ptype == PolymerType::Unknown)
+    fail("sequence_kind(): unknown polymer type");
+  return ResidueKind::AA;
 }
 
 struct AtomNameElement { std::string atom_name; El el; };
