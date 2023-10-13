@@ -385,6 +385,7 @@ struct ResidueSpan : MutableVectorSpan<Residue> {
   GroupingProxy residue_groups();
   const std::string& subchain_id() const { return const_().subchain_id(); }
   ResidueGroup find_residue_group(SeqId id);
+  std::vector<std::string> extract_sequence() const { return const_().extract_sequence(); }
   ConstResidueGroup find_residue_group(SeqId id) const;
   SeqId label_seq_id_to_auth(SeqId::OptionalNum label_seq_id) const {
     return const_().label_seq_id_to_auth(label_seq_id);
