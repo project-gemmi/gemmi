@@ -626,20 +626,33 @@ struct Grid : GridBase<T> {
       w_lo = std::max(w_lo, 0);
       w_hi = std::min(w_hi, nw - 1);
     }
-    const Position orth0(unit_cell.orth.mat.column_copy(0));
-    for (int w = w_lo; w <= w_hi; ++w) {
-      int w_ = UsePbc ? modulo(w, nw) : w;
-      double fw = w * (1.0 / nw);
-      for (int v = v_lo; v <= v_hi; ++v) {
-        int v_ = UsePbc ? modulo(v, nv) : v;
-        double fv = v * (1.0 / nv);
-        size_t idx0 = this->index_q(0, v_, w_);
-        Position delta0 = unit_cell.orthogonalize_difference(fctr - Fractional(0., fv, fw));
-        for (int u = u_lo; u <= u_hi; ++u) {
-          int u_ = UsePbc ? modulo(u, nu) : u;
-          double fu = u * (1.0 / nu);
-          Position delta = delta0 - orth0 * fu;
-          func(data[idx0 + u_], delta, u, v, w);
+    int u_0 = UsePbc ? modulo(u_lo, nu) : u_lo;
+    int v_0 = UsePbc ? modulo(v_lo, nv) : v_lo;
+    int w_0 = UsePbc ? modulo(w_lo, nw) : w_lo;
+    auto wrap = [](int& q, int nq) { if (UsePbc && q == nq) q = 0; };
+    double inv_nu = 1.0 / nu;
+    double inv_nv = 1.0 / nv;
+    double inv_nw = 1.0 / nw;
+    const Position orth0_nu(unit_cell.orth.mat.column_copy(0) * inv_nu);
+    for (int w = w_lo, w_ = w_0; w <= w_hi; ++w, wrap(++w_, nw)) {
+      Fractional fdelta;
+      fdelta.z = fctr.z - w * inv_nw;
+      for (int v = v_lo, v_ = v_0; v <= v_hi; ++v, wrap(++v_, nv)) {
+        fdelta.y = fctr.y - v * inv_nv;
+        fdelta.x = fctr.x - u_lo * inv_nu;
+        Position delta = unit_cell.orthogonalize_difference(fdelta);
+        T* t = &data[this->index_q(u_0, v_, w_)];
+        for (int u = u_lo, u_ = u_0;;) {
+          func(*t, delta, u, v, w);
+          if (++u > u_hi)
+            break;
+          ++u_;
+          ++t;
+          if (UsePbc && u_ == nu) {
+            u_ = 0;
+            t -= nu;
+          }
+          delta -= orth0_nu;
         }
       }
     }
