@@ -2043,6 +2043,8 @@ is specified as one of three values: AA, DNA or RNA of the ResidueKind enum.
   'CYS'
   >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.DNA)
   'DC'
+  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.RNA)
+  'C'
   >>> gemmi.expand_one_letter_sequence('XAXXXAXX', gemmi.ResidueKind.AA)
   ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
 
@@ -2055,8 +2057,9 @@ ResidueKind can be obtained from PolymerType:
   >>> gemmi.sequence_kind(_)
   <ResidueKind.AA: 1>
 
-MmCIF files from the PDB contain also a sequence in a hybrid format,
-one-letter for a standard residue, CCD codes in parenthesis for non-standard:
+In mmCIF ``_entity_poly.pdbx_seq_one_letter_code`` and in the OneDep interface,
+the PDB uses a hybrid sequence format: a single letter for standard
+residues and a parenthesized CCD code for non-standard ones.
 
 .. doctest::
 
@@ -2064,21 +2067,12 @@ one-letter for a standard residue, CCD codes in parenthesis for non-standard:
   >>> block.find_values('_entity_poly.pdbx_seq_one_letter_code').str(1)
   '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
 
-This sequence can be unambiguously expanded to residue names:
+Such a sequence can be unambiguously expanded to residue names:
 
 .. doctest::
 
   >>> gemmi.expand_one_letter_sequence(_, gemmi.ResidueKind.AA)
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
-
-The same function works also for DNA and RNA:
-
-.. doctest::
-
-  >>> gemmi.expand_one_letter_sequence('GATTACA', gemmi.ResidueKind.DNA)
-  ['DG', 'DA', 'DT', 'DT', 'DA', 'DC', 'DA']
-  >>> gemmi.expand_one_letter_sequence('GAUUACA', gemmi.ResidueKind.RNA)
-  ['G', 'A', 'U', 'U', 'A', 'C', 'A']
 
 Molecular weight
 ----------------
@@ -2409,10 +2403,9 @@ so it is read in a separate function.
 *(The SIFTS extension is also grossly redundant.
 The residue-level cross-referencing to UniProt is written for every residue
 and also for every atom in the structure. Gemmi ignores the redundant
-per-atom annotations, in hope that they will be abandoned).*
-
-Sadly, since 2023, the redundant SIFTS annotations have also been present in
-`NextGen Archive <https://www.rcsb.org/news/feature/63cedad9b5f08ee94ab73826>`_.
+per-atom annotations, in hope that they will be abandoned.
+Update 2023: the redundant SIFTS annotations are also been present
+in the PDB NextGen Archive.)*
 
 Gemmi has limited support for both DBREF and SIFTS annotations.
 The API is undocumented yet and may change in the future.
