@@ -135,7 +135,8 @@ struct ReciprocalGrid : GridBase<T> {
             if (asu.is_in(hkl) &&
                 (max_1_d2 == 0. || this->unit_cell.calculate_1_d2(hkl) < max_1_d2) &&
                 (with_sys_abs || !gops->is_systematically_absent(hkl)))
-              asu_data.v.push_back({hkl, this->get_value_q(hi_, ki_, -hkl[2])});
+              asu_data.v.push_back({hkl,
+                  friedel_mate_value(this->get_value_q(hi_, ki_, -hkl[2]))});
         }
         int ki = hkl[1] >= 0 ? hkl[1] : hkl[1] + this->nv;
         for (; hkl[2] <= max_l; ++hkl[2])
