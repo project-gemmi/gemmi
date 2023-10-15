@@ -608,10 +608,11 @@ struct Grid : GridBase<T> {
   }
 
   template <bool UsePbc, typename Func>
-  void do_use_points_in_box(Fractional fctr, int du, int dv, int dw, Func&& func) {
-    int u0 = iround(fctr.x * nu);
-    int v0 = iround(fctr.y * nv);
-    int w0 = iround(fctr.z * nw);
+  void do_use_points_in_box(const Fractional& fctr, int du, int dv, int dw, Func&& func) {
+    const Fractional nctr(fctr.x * nu, fctr.y * nv, fctr.z * nw);
+    int u0 = iround(nctr.x);
+    int v0 = iround(nctr.y);
+    int w0 = iround(nctr.z);
     int u_lo = u0 - du;
     int u_hi = u0 + du;
     int v_lo = v0 - dv;
@@ -630,48 +631,46 @@ struct Grid : GridBase<T> {
     int v_0 = UsePbc ? modulo(v_lo, nv) : v_lo;
     int w_0 = UsePbc ? modulo(w_lo, nw) : w_lo;
     auto wrap = [](int& q, int nq) { if (UsePbc && q == nq) q = 0; };
-    double inv_nu = 1.0 / nu;
-    double inv_nv = 1.0 / nv;
-    double inv_nw = 1.0 / nw;
-    const Position orth0_nu(unit_cell.orth.mat.column_copy(0) * inv_nu);
+    Vec3 inv_n(1.0 / nu, 1.0 / nv, 1.0 / nw);
+    Mat33 orth = unit_cell.orth.mat.multiply_by_diagonal(inv_n);
+    Fractional fdelta(nctr.x - u_lo, 0, 0);
     for (int w = w_lo, w_ = w_0; w <= w_hi; ++w, wrap(++w_, nw)) {
-      Fractional fdelta;
-      fdelta.z = fctr.z - w * inv_nw;
+      fdelta.z = nctr.z - w;
       for (int v = v_lo, v_ = v_0; v <= v_hi; ++v, wrap(++v_, nv)) {
-        fdelta.y = fctr.y - v * inv_nv;
-        fdelta.x = fctr.x - u_lo * inv_nu;
-        Position delta = unit_cell.orthogonalize_difference(fdelta);
+        fdelta.y = nctr.y - v;
+        Position delta = Position(orth.multiply(fdelta));
         T* t = &data[this->index_q(u_0, v_, w_)];
         for (int u = u_lo, u_ = u_0;;) {
           func(*t, delta, u, v, w);
-          if (++u > u_hi)
+          if (u >= u_hi)
             break;
+          ++u;
           ++u_;
           ++t;
           if (UsePbc && u_ == nu) {
             u_ = 0;
             t -= nu;
           }
-          delta -= orth0_nu;
+          delta -= Position(orth.column_copy(0));
         }
       }
     }
   }
 
   template <bool UsePbc, typename Func>
-  void use_points_in_box(Fractional fctr, int du, int dv, int dw,
+  void use_points_in_box(const Fractional& fctr, int du, int dv, int dw,
                          Func&& func, bool fail_on_too_large_radius=true) {
     check_size_for_points_in_box<UsePbc>(du, dv, dw, fail_on_too_large_radius);
     do_use_points_in_box<UsePbc>(fctr, du, dv, dw, func);
   }
 
   template <bool UsePbc, typename Func>
-  void use_points_around(const Fractional& fctr_, double radius, Func&& func,
+  void use_points_around(const Fractional& fctr, double radius, Func&& func,
                          bool fail_on_too_large_radius=true) {
     int du = (int) std::ceil(radius / spacing[0]);
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
-    use_points_in_box<UsePbc>(fctr_, du, dv, dw,
+    use_points_in_box<UsePbc>(fctr, du, dv, dw,
                       [&](T& ref, const Position& delta, int, int, int) {
                         double d2 = delta.length_sq();
                         if (d2 < radius * radius)
