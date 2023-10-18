@@ -1361,6 +1361,9 @@ the ``Structure`` has the following properties:
 * ``input_format`` (enum ``CoorFormat``) -- what file format the structure
   was read from,
 * ``has_d_fraction`` (bool) -- how :ref:`deuterium is represented <deuterium>`,
+* ``origx`` (:ref:`Transform <transform>`) -- matrix from the PDB ORIGX
+  records (or from mmCIF _database_pdb_matrix.origx);
+  in the absence of ORIGX it is set to the identity matrix,
 * ``info`` (C++ type: ``map<string, string>``) --
   minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
 * ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
@@ -1828,11 +1831,10 @@ use the same function with the special assembly name ``unit_cell``:
 The command-line equivalent to transform_to_assembly() is
 the ``--assembly`` option in :ref:`gemmi-convert <convert>`.
 
-Common operations
------------------
+Various operations
+------------------
 
-In Python, Structure has also methods for more specialized,
-but often needed operations.
+In Python, Structure has also methods for more specialized operations.
 In C++, the corresponding functions are available in separate headers
 (such as ``modify.hpp`` and ``polyheur.hpp``) and they are often templates
 that work not only with Structure, but also with Model and Chain.
@@ -1881,8 +1883,8 @@ you can create a model with added NCS copies:
   >>> gemmi.expand_ncs_model(st[0], st.ncs, gemmi.HowToNameCopiedChain.Short)
   <gemmi.Model 1 with 2 chain(s)>
 
-Analogically to functions ``make_assembly()`` and ``transform_to_assembly()``,
-we also have a function that transforms a structure in-place,
+Analogous to the functions ``make_assembly()`` and ``transform_to_assembly()``,
+we also have a function that transforms a structure in-place by
 expanding NCS in all models, merging duplicated atoms and updating metadata:
 
 .. doctest::
@@ -1892,6 +1894,35 @@ expanding NCS in all models, merging duplicated atoms and updating metadata:
 The meaning of the arguments is the same as in the "assembly" functions.
 
 See also the ``--expand-ncs`` option in command-line program
+:ref:`gemmi-convert <convert>`.
+
+----
+
+PDB and mmCIF files may, in principle, contain coordinates in any arbitrary
+orthogonal coordinate frame. The frame is described by the PDB records SCALEn
+(which corresponds to _atom_sites.fract_transf_… in mmCIF).
+In practice, coordinate files almost always use the standard frame,
+in which the x-axis is along the unit cell vector **a**, and the z-axis is
+along **a**\ ⨯\ **b**.
+The exceptions are primarily viruses with the coordinate system selected
+to simplify NCS operations. As of 2023, a non-standard coordinate system
+is used in less than 100 of the PDB entries. This number is lower than
+a decade ago, because the PDB have remediated some entries to bring them
+to the standard frame.
+
+Gemmi can work with coordinates in any arbitrary frame, but other programs
+may ignore the SCALEn records, so it is safer to use the standard frame.
+Here is a function that converts to the standard frame:
+
+.. doctest::
+
+  >>> st.standardize_crystal_frame()
+
+It modifies coordinates, NCS matrices (MTRIX records),
+as well as the SCALE and ORIGX matrices. The latter can be used to restore
+the original coordinates.
+
+See also the ``--reframe`` option in command-line program
 :ref:`gemmi-convert <convert>`.
 
 ----

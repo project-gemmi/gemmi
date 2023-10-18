@@ -192,5 +192,21 @@ inline void store_deuterium_as_fraction(Structure& st, bool store_fraction) {
         }
 }
 
+/// Convert coordinates to the standard coordinate system for the unit cell.
+inline void standardize_crystal_frame(Structure& st) {
+  if (!st.cell.explicit_matrices || !st.cell.is_crystal())
+    return;
+  Transform orig_frac = st.cell.frac;
+  st.cell.explicit_matrices = false;
+  st.cell.calculate_properties();
+  Transform tr = st.cell.orth.combine(orig_frac);
+  Transform tr_inv = tr.inverse();
+  st.has_origx = true;
+  st.origx = tr_inv.combine(st.origx);
+  for (NcsOp& ncsop : st.ncs)
+    ncsop.tr = tr.combine(ncsop.tr).combine(tr_inv);
+  transform_pos_and_adp(st, tr);
+}
+
 } // namespace gemmi
 #endif

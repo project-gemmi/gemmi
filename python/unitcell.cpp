@@ -267,6 +267,7 @@ void add_unitcell(py::module& m) {
     .def_readonly("beta", &UnitCell::beta)
     .def_readonly("gamma", &UnitCell::gamma)
     .def_readonly("volume", &UnitCell::volume)
+    .def_readonly("explicit_matrices", &UnitCell::explicit_matrices)
     .def_readonly("images", &UnitCell::images)
     .def_property_readonly("parameters", &make_parameters_tuple)
     .def_readonly("frac", &UnitCell::frac)

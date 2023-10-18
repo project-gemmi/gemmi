@@ -48,7 +48,7 @@ enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, CifStyle, AllAuth, BlockName,
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
-  ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
+  Reframe, ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
   ChangeCcdCode, SetSeq,
   SiftsNum, Biso, Anisou, SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
@@ -129,6 +129,8 @@ const option::Descriptor Usage[] = {
     "  --remove=SEL  \tRemove the selection." },
   { ApplySymop, 0, "", "apply-symop", Arg::Required,
     "  --apply-symop=OP  \tApply symmetry operation (e.g. '-x,y+1/2,-z'." },
+  { Reframe, 0, "", "reframe", Arg::None,
+    "  --reframe  \tStandardize the coordinate system (frame)." },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
     "  --expand-ncs=dup|num|x  \tExpand strict NCS from in MTRIXn or"
     " _struct_ncs_oper. New chain names are the same, have added numbers,"
@@ -208,6 +210,8 @@ void convert(gemmi::Structure& st,
     gemmi::Op op = gemmi::parse_triplet(options[ApplySymop].arg);
     transform_pos_and_adp(st, st.cell.op_as_transform(op));
   }
+  if (options[Reframe])
+    standardize_crystal_frame(st);
 
   if (options[Biso]) {
     const char* start = options[Biso].arg;

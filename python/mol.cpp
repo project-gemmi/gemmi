@@ -115,6 +115,8 @@ void add_mol(py::module& m) {
     .def_readwrite("assemblies", &Structure::assemblies)
     .def_readwrite("meta", &Structure::meta)
     .def_readwrite("has_d_fraction", &Structure::has_d_fraction)
+    .def_readwrite("has_origx", &Structure::has_origx)
+    .def_readonly("origx", &Structure::origx)
     .def_readwrite("info", &Structure::info)
     .def_readwrite("raw_remarks", &Structure::raw_remarks)
     .def("find_spacegroup", &Structure::find_spacegroup)
@@ -169,6 +171,7 @@ void add_mol(py::module& m) {
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
     .def("store_deuterium_as_fraction", &store_deuterium_as_fraction)
+    .def("standardize_crystal_frame", &standardize_crystal_frame)
     .def("assign_serial_numbers", (void (*)(Structure&, bool)) &assign_serial_numbers,
          py::arg("numbered_ter")=false)
     .def("shorten_chain_names", &shorten_chain_names)
