@@ -263,10 +263,10 @@ struct UnitCell {
   }
 
   void set_matrices_from_fract(const Transform& f) {
-    // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually
-    // have less significant digits than unit cell parameters, and should
-    // be ignored unless we have non-standard settings.
-    if (f.mat.approx(frac.mat, 5e-6) && f.vec.approx(frac.vec, 1e-6))
+    // mmCIF _atom_sites.fract_transf_* and PDB SCALEn records usually contain
+    // fewer significant digits than the unit cell parameters, and sometimes are
+    // just wrong. Use them only if we seem to have non-standard crystal frame.
+    if (f.mat.approx(frac.mat, 1e-4) && f.vec.approx(frac.vec, 1e-6))
       return;
     // The SCALE record is sometimes incorrect. Here we only catch cases
     // when CRYST1 is set as for non-crystal and SCALE is very suspicious.
