@@ -121,7 +121,7 @@ Fortran and C bindings
 
 The Fortran bindings are in early stage and are not documented yet.
 They use the ISO_C_BINDING module introduced in Fortran 2003
-and `shroud <https://github.com/LLNL/shroud>`_ (the latest version from git).
+and `shroud <https://github.com/LLNL/shroud>`_.
 You may see the ``fortran/`` directory to know what to expect.
 This directory contains Makefile -- run make to built the bindings.
 (They are currently not integrated with the cmake build.)

@@ -349,6 +349,19 @@ that operates on Cartesian coordinates:
     >>> _.apply(gemmi.Position(0, 6, 2.1))
     <gemmi.Vec3(-1.17045, 25.75, 0)>
 
+In very rare cases,
+as described in :ref:`the section on coordinate frames <standard_frame>`,
+the fractionalization and orthogonalization transformations are not related
+to the unit cell parameters in the usual way. These cases are so rare that
+you probably do not need to worry about them. But they are the reason
+why the transformations also have a shift component (which is zero
+in the usual cases):
+
+.. doctest::
+
+    >>> cell.orth.vec
+    <gemmi.Vec3(0, 0, 0)>
+
 Cells can be compared with:
 
 * ``approx()`` --- meant for almost identical cells that differ only

@@ -458,8 +458,8 @@ The file form
 PDB format
 ==========
 
-The PDB format evolved between 1970's and 2012. Nowadays the PDB organization
-uses PDBx/mmCIF as the primary format and the legacy PDB format is frozen.
+The PDB format evolved from the 1970s to 2012. Nowadays the PDB organization
+uses PDBx/mmCIF as the primary format, and the legacy PDB format is frozen.
 
 .. note::
 
@@ -1839,6 +1839,9 @@ In C++, the corresponding functions are available in separate headers
 (such as ``modify.hpp`` and ``polyheur.hpp``) and they are often templates
 that work not only with Structure, but also with Model and Chain.
 
+Removing parts
+~~~~~~~~~~~~~~
+
 We have functions that remove parts of the models:
 
 .. doctest::
@@ -1857,6 +1860,9 @@ to discard empty chains, call:
 
   >>> st.remove_empty_chains()
 
+Serial numbers
+~~~~~~~~~~~~~~
+
 After adding, removing or reordering atoms the serial numbers
 kept in property ``Atom.serial`` are no longer consecutive.
 This property is typically not used when writing a file -- instead,
@@ -1873,7 +1879,8 @@ To re-number the atoms do:
 If called with numbered_ter=True, the serial numbers will be the same
 as they would be in a PDB file in which TER records also have serial numbers.
 
-----
+Expanding NCS
+~~~~~~~~~~~~~
 
 When the file has NCS operations that are not "given",
 you can create a model with added NCS copies:
@@ -1896,36 +1903,61 @@ The meaning of the arguments is the same as in the "assembly" functions.
 See also the ``--expand-ncs`` option in command-line program
 :ref:`gemmi-convert <convert>`.
 
-----
+.. _standard_frame:
+
+Standard frame
+~~~~~~~~~~~~~~
 
 PDB and mmCIF files may, in principle, contain coordinates in any arbitrary
-orthogonal coordinate frame. The frame is described by the PDB records SCALEn
-(which corresponds to _atom_sites.fract_transf_… in mmCIF).
-In practice, coordinate files almost always use the standard frame,
-in which the x-axis is along the unit cell vector **a**, and the z-axis is
-along **a**\ ⨯\ **b**.
-The exceptions are primarily viruses with the coordinate system selected
-to simplify NCS operations. As of 2023, a non-standard coordinate system
-is used in less than 100 of the PDB entries. This number is lower than
-a decade ago, because the PDB have remediated some entries to bring them
-to the standard frame.
+orthogonal coordinate frame. The frame is described by the PDB records
+SCALE\ *n* and by the corresponding _atom_sites.fract_transf_… in mmCIF.
 
-Gemmi can work with coordinates in any arbitrary frame, but other programs
-may ignore the SCALEn records, so it is safer to use the standard frame.
-Here is a function that converts to the standard frame:
+The SCALE\ *n* and ORIGX\ *n* records, which contain 4x3 matrices,
+have been part of the PDB format since the 1970s.
+The former transforms "from stored [in the data bank] to fractional
+coordinates", the latter "from stored to original coordinates".
+According to the docs from 1978, the depositor was supposed to submit
+his coordinates together with a transformation from his frame
+to the standard PDB frame (the x-axis along the unit cell vector **a**,
+the z-axis along **a**\ ⨯\ **b**, and **y**\ =\ **z**\ ⨯\ **x**).
+Then, the PDB would recalculate coordinates and matrices to its preferred
+frame. In case of some viruses a non-standard frame that simplifies
+the NCS operations could be preferred.
+
+Currently, AFAIK, all MX software uses the PDB standard frame,
+and only some old PDB entries use a different coordinate system.
+As of 2023, there are less than 100 of them (in an unknown number
+of these entries it is a mistake in the SCALE record rather than
+a genuinely different frame).
+Non-zero shift vector is present in only about 20 entries.
+These numbers are lower than a decade ago, because the PDB has remediated
+many entries to bring them to the standard frame.
+
+Gemmi can work with coordinates in any arbitrary frame, but not all programs
+consult the SCALEn records, so it is safer to use the standard frame.
+Here is a converting function:
 
 .. doctest::
 
   >>> st.standardize_crystal_frame()
 
-It modifies coordinates, NCS matrices (MTRIX records),
+It does nothing if the structure is already in the standard system.
+Otherwise, it modifies coordinates, NCS matrices (MTRIX records),
 as well as the SCALE and ORIGX matrices. The latter can be used to restore
 the original coordinates.
 
-See also the ``--reframe`` option in command-line program
-:ref:`gemmi-convert <convert>`.
+The same conversion can be performed from the command line using
+:ref:`gemmi-convert <convert>` with the option ``--reframe``.
 
-----
+As a side note, non-crystal coordinate files, which must have dummy unit cell
+parameters (1 for lengths, 90 for angles), in almost all cases have the SCALE
+transformation set to the identity. However, there are about 200 exceptions in
+the PDB, mostly NMR and EM models, with a different fractionalization matrix.
+These matrices are diagonal or, in a few cases, upper triangular, and shouldn't
+cause any problems. But just in case, it's something to be aware of.
+
+Short chain names
+~~~~~~~~~~~~~~~~~
 
 Occasionally, you may come across an mmCIF file with chain names longer
 than necessary. To store such structure in a PDB format you need to shorten
@@ -1937,7 +1969,8 @@ the chain names first:
 
 In C++ this functions is in ``gemmi/assembly.hpp``.
 
-----
+Bounding box
+~~~~~~~~~~~~
 
 In Python, Structure has also methods to calculate the
 :ref:`bounding box <box>` for the models,
