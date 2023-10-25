@@ -139,9 +139,10 @@ void add_mol(py::module& m) {
     .def("__delitem__", &remove_children<Structure>)
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("__setitem__", &set_child<Structure, Model>)
-    .def("find_connection_by_cra", [](Structure& st, CRA cra1, CRA cra2) {
-        return st.find_connection_by_cra(cra1, cra2);
-    }, py::return_value_policy::reference_internal)
+    .def("find_connection_by_cra", [](Structure& st, CRA cra1, CRA cra2, bool ignore_segment) {
+        return st.find_connection_by_cra(cra1, cra2, ignore_segment);
+    }, py::arg("cra1"), py::arg("cra2"), py::arg("ignore_segment")=false,
+       py::return_value_policy::reference_internal)
     .def("find_connection", &Structure::find_connection,
          py::arg("partner1"), py::arg("partner2"),
          py::return_value_policy::reference_internal)

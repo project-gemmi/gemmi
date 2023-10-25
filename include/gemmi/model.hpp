@@ -615,9 +615,10 @@ inline std::string atom_str(const const_CRA& cra) {
                   cra.atom ? cra.atom->altloc : '\0');
 }
 
-inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr) {
+inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr, bool ignore_segment=false) {
   return cra.chain && cra.chain->name == addr.chain_name &&
-         cra.residue && cra.residue->matches(addr.res_id) &&
+         cra.residue && cra.residue->matches_noseg(addr.res_id) &&
+         (ignore_segment || cra.residue->segment == addr.res_id.segment) &&
          cra.atom && cra.atom->name == addr.atom_name &&
          cra.atom->altloc == addr.altloc;
 }
@@ -1013,10 +1014,13 @@ struct Structure {
   }
 
   Connection* find_connection_by_cra(const const_CRA& cra1,
-                                     const const_CRA& cra2) {
+                                     const const_CRA& cra2,
+                                     bool ignore_segment=false) {
     for (Connection& c : connections)
-      if ((atom_matches(cra1, c.partner1) && atom_matches(cra2, c.partner2)) ||
-          (atom_matches(cra1, c.partner2) && atom_matches(cra2, c.partner1)))
+      if ((atom_matches(cra1, c.partner1, ignore_segment) &&
+           atom_matches(cra2, c.partner2, ignore_segment)) ||
+          (atom_matches(cra1, c.partner2, ignore_segment) &&
+           atom_matches(cra2, c.partner1, ignore_segment)))
         return &c;
     return nullptr;
   }
