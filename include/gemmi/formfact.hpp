@@ -13,6 +13,24 @@
 
 namespace gemmi {
 
+// NOTE: the argument x must be between -88 and 88.
+// It is based on expapprox() from
+// https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
+// Relative error is below 1e-5.
+inline float unsafe_expapprox(float x) {
+  //static float zero = 0.f;  // non-const to disable optimization
+  float val = 12102203.1615614f * x + 1065353216.f;
+  //val = std::max(val, zero);  // check if x < -88.02969
+  int32_t vali = static_cast<std::int32_t>(val);
+  std::int32_t xu1 = vali & 0x7F800000;
+  std::int32_t xu2 = (vali & 0x7FFFFF) | 0x3F800000;
+  float a, b;
+  std::memcpy(&a, &xu1, 4);
+  std::memcpy(&b, &xu2, 4);
+  return a * (0.509871020f + b * (0.312146713f + b * (0.166617139f + b *
+          (-2.190619930e-3f + b * 1.3555747234e-2f))));
+}
+
 // precalculated density of an isotropic atom
 template<int N, typename Real>
 struct ExpSum {
@@ -37,6 +55,34 @@ struct ExpSum {
   }
 };
 
+template<int N>
+struct ExpSum<N, float> {
+  float a[N], b[N];
+  float calculate(float r2) const {
+    float density = 0;
+    float tmp[N];
+    for (int i = 0; i < N; ++i)
+      tmp[i] = std::max(b[i] * r2, -88.f);
+    for (int i = 0; i < N; ++i)
+      density += a[i] * unsafe_expapprox(tmp[i]);
+    return density;
+  }
+
+  std::pair<float,float> calculate_with_derivative(float r) const {
+    float density = 0;
+    float derivative = 0;
+    float tmp[N];
+    for (int i = 0; i < N; ++i)
+      tmp[i] = std::max(b[i] * (r * r), -88.f);
+    for (int i = 0; i < N; ++i) {
+      float y = a[i] * unsafe_expapprox(tmp[i]);
+      density += y;
+      derivative += 2 * b[i] * r * y;
+    }
+    return std::make_pair(density, derivative);
+  }
+};
+
 // precalculated density of an anisotropic atom
 template<int N, typename Real>
 struct ExpAnisoSum {
@@ -47,6 +93,22 @@ struct ExpAnisoSum {
     Real density = 0;
     for (int i = 0; i < N; ++i)
       density += a[i] * std::exp((Real) b[i].r_u_r(r));
+    return density;
+  }
+};
+
+template<int N>
+struct ExpAnisoSum<N, float> {
+  float a[N];
+  SMat33<float> b[N];
+
+  float calculate(const Vec3& r) const {
+    float density = 0;
+    float tmp[N];
+    for (int i = 0; i < N; ++i)
+      tmp[i] = std::max((float)b[i].r_u_r(r), -88.f);
+    for (int i = 0; i < N; ++i)
+      density += a[i] * unsafe_expapprox(tmp[i]);
     return density;
   }
 };
