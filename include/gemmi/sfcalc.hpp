@@ -27,10 +27,12 @@ inline std::complex<double> calculate_sf_part(const Fractional& fpos,
 template <typename Table>
 class StructureFactorCalculator {
 public:
+  using coef_type = typename Table::Coef::coef_type;
+
   StructureFactorCalculator(const UnitCell& cell) : cell_(cell) {}
 
   void set_stol2_and_scattering_factors(const Miller& hkl) {
-    stol2_ = cell_.calculate_stol_sq(hkl);
+    stol2_ = (coef_type) cell_.calculate_stol_sq(hkl);
     scattering_factors_.clear();
     scattering_factors_.resize(addends.size(), 0.);
   }
@@ -107,12 +109,13 @@ public:
   // Z part of Mott-Bethe formula (when need to use different model)
   std::complex<double> calculate_mb_z(const Model& model, const Miller& hkl, bool only_h) {
     std::complex<double> sf = 0.;
-    stol2_ = cell_.calculate_stol_sq(hkl);
+    stol2_ = (coef_type) cell_.calculate_stol_sq(hkl);
     for (const Chain& chain : model.chains)
       for (const Residue& res : chain.residues)
         for (const Atom& site : res.atoms)
           if (!only_h || site.element.is_hydrogen())
-            sf += calculate_sf_from_atom_sf(cell_.fractionalize(site.pos), site, hkl, -1.*site.element.atomic_number());
+            sf += calculate_sf_from_atom_sf(cell_.fractionalize(site.pos), site, hkl,
+                                            -site.element.atomic_number());
     return sf;
   }
 
@@ -133,7 +136,7 @@ public:
 
 private:
   const UnitCell& cell_;
-  double stol2_;
+  coef_type stol2_;
   std::vector<double> scattering_factors_;
 public:
   Addends addends;  // usually f' for X-rays

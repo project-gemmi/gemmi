@@ -29,7 +29,7 @@ struct ExpSum {
     Real density = 0;
     Real derivative = 0;
     for (int i = 0; i < N; ++i) {
-      Real y = a[i] * std::exp(b[i] * r * r);
+      Real y = a[i] * std::exp(b[i] * (r * r));
       density += y;
       derivative += 2 * b[i] * r * y;
     }
@@ -46,10 +46,13 @@ struct ExpAnisoSum {
   Real calculate(const Vec3& r) const {
     Real density = 0;
     for (int i = 0; i < N; ++i)
-      density += a[i] * std::exp(b[i].r_u_r(r));
+      density += a[i] * std::exp((Real) b[i].r_u_r(r));
     return density;
   }
 };
+
+template<typename Real>
+constexpr Real pow15(Real x) { return x * std::sqrt(x); }
 
 // Gaussian coefficients with functions to calculate sf and density.
 template<int N, int WithC, typename Real>
@@ -71,11 +74,9 @@ struct GaussianCoef {
     return sf;
   }
 
-  static constexpr Real pow15(Real x) { return x * std::sqrt(x); }
-
   Real calculate_density_iso(Real r2, Real B) const {
-    constexpr Real _4pi = 4 * pi();
-    Real r2pi = r2 * pi();
+    constexpr Real _4pi = Real(4 * pi());
+    Real r2pi = Real(r2 * pi());
     Real density = c() * pow15(_4pi / B) * std::exp(-(_4pi / B) * r2pi);
     for (int i = 0; i < N; ++i) {
       Real t = _4pi / (b(i)+B);
@@ -87,16 +88,16 @@ struct GaussianCoef {
   // note: addend is considered only if WithC (addend is usually dispersion f')
   ExpSum<N+WithC,Real> precalculate_density_iso(Real B, Real addend=0) const {
     ExpSum<N+WithC,Real> prec;
-    constexpr Real _4pi = 4 * pi();
+    constexpr Real _4pi = Real(4 * pi());
     for (int i = 0; i < N; ++i) {
       Real t = _4pi / (b(i)+B);
       prec.a[i] = a(i) * pow15(t);
-      prec.b[i] = -t * pi();
+      prec.b[i] = -t * Real(pi());
     }
     if (WithC) {
       Real t = _4pi / B;
       prec.a[N] = (c() + addend) * pow15(t);
-      prec.b[N] = -t * pi();
+      prec.b[N] = -t * Real(pi());
     }
     return prec;
   }
@@ -116,15 +117,16 @@ struct GaussianCoef {
 
   ExpAnisoSum<N+WithC,Real> precalculate_density_aniso_b(const SMat33<Real>& B,
                                                          Real addend=0) const {
-    constexpr Real m4pi2 = -4 * sq(pi());
+    constexpr Real m4pi2 = Real(-4 * sq(pi()));
+    constexpr Real pow_4pi_15 = (Real) pow15(4 * pi());
     ExpAnisoSum<N+WithC,Real> prec;
     for (int i = 0; i < N; ++i) {
       SMat33<Real> Bb = B.added_kI(b(i));
-      prec.a[i] = a(i) * pow15(4 * pi()) / std::sqrt(Bb.determinant());
+      prec.a[i] = a(i) * pow_4pi_15 / std::sqrt(Bb.determinant());
       prec.b[i] = Bb.inverse().scaled(m4pi2);
     }
     if (WithC) {
-      prec.a[N] = (c() + addend) * pow15(4 * pi()) / std::sqrt(B.determinant());
+      prec.a[N] = (c() + addend) * pow_4pi_15 / std::sqrt(B.determinant());
       prec.b[N] = B.inverse().scaled(m4pi2);
     }
     return prec;

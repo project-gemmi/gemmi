@@ -13,19 +13,19 @@
 
 namespace gemmi {
 
-template <typename PrecalExpSum>
-double determine_cutoff_radius(double x1, const PrecalExpSum& precal, double cutoff_level) {
-  double y1, dy;
+template<int N, typename Real>
+Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff_level) {
+  Real y1, dy;
   std::tie(y1, dy) = precal.calculate_with_derivative(x1);
   // Generally, density is supposed to decrease with radius.
   // But if we have addends (in particular -Z for Mott-Bothe),
   // it can first rise, then decrease. We want to be after the maximum.
   while (dy > 0) { // unlikely
-    x1 += 1.0;
+    x1 += 1.0f;
     std::tie(y1, dy) = precal.calculate_with_derivative(x1);
   }
-  double x2 = x1;
-  double y2 = y1;
+  Real x2 = x1;
+  Real y2 = y1;
   if (y1 < cutoff_level) {
     while (y1 < cutoff_level) {
       x2 = x1;
@@ -34,8 +34,8 @@ double determine_cutoff_radius(double x1, const PrecalExpSum& precal, double cut
       std::tie(y1, dy) = precal.calculate_with_derivative(x1);
       // with addends it's possible to land on the left side of the maximum
       if (dy > 0) { // unlikely
-        while (dy > 0 && x1 + 0.1 < x2) {
-          x1 += 0.1;
+        while (dy > 0 && x1 + 0.1f < x2) {
+          x1 += 0.1f;
           std::tie(y1, dy) = precal.calculate_with_derivative(x1);
         }
         if (y1 < cutoff_level)
@@ -61,8 +61,9 @@ double determine_cutoff_radius(double x1, const PrecalExpSum& precal, double cut
 }
 
 // approximated radius of electron density (IT92) above cutoff=1e-5 for C
-inline double it92_radius_approx(double b) {
-  return (8.5 + 0.075 * b) / (2.4 + 0.0045 * b);
+template <typename Real>
+Real it92_radius_approx(Real b) {
+  return (8.5f + 0.075f * b) / (2.4f + 0.0045f * b);
 }
 
 inline double get_minimum_b(const Model& model) {
@@ -90,9 +91,11 @@ inline double get_minimum_b(const Model& model) {
 // - call put_model_density_on_grid()
 // - do FFT using transform_map_to_f_phi()
 // - if blur is used, multiply the SF by reciprocal_space_multiplier()
-template <typename Table, typename Real>
+template <typename Table, typename GReal>
 struct DensityCalculator {
-  Grid<Real> grid;
+  // GReal = type of grid; CReal = type of coefficients in Table
+  using CReal = typename Table::Coef::coef_type;
+  Grid<GReal> grid;
   double d_min = 0.;
   double rate = 1.5;
   double blur = 0.;
@@ -102,8 +105,6 @@ struct DensityCalculator {
   size_t density_computations = 0;
 #endif
   Addends addends;
-
-  using coef_type = typename Table::Coef::coef_type;
 
   double requested_grid_spacing() const {
     const UnitCell &cell = grid.unit_cell;
@@ -129,15 +130,15 @@ struct DensityCalculator {
   // Parameter c is a constant factor and has the same meaning as either addend
   // or c in scattering factor coefficients (a1, b1, ..., c).
   void add_c_contribution_to_grid(const Atom& atom, float c) {
-    do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, coef_type>{0}, c);
+    do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, CReal>{0}, c);
   }
 
   template<int N>
-  double estimate_radius(const ExpSum<N, coef_type>& precal, double b) const {
+  CReal estimate_radius(const ExpSum<N, CReal>& precal, CReal b) const {
     if (N == 1)
       return std::sqrt(std::log(cutoff / std::abs(precal.a[0])) / precal.b[0]);
-    double x1 = it92_radius_approx(b);
-    return determine_cutoff_radius(x1, precal, cutoff);
+    CReal x1 = it92_radius_approx(b);
+    return determine_cutoff_radius(x1, precal, (CReal)cutoff);
   }
 
   template<typename Coef>
@@ -148,20 +149,20 @@ struct DensityCalculator {
     Fractional fpos = grid.unit_cell.fractionalize(atom.pos);
     if (!atom.aniso.nonzero()) {
       // isotropic
-      double b = atom.b_iso + blur;
+      CReal b = static_cast<CReal>(atom.b_iso + blur);
       auto precal = coef.precalculate_density_iso(b, addend);
-      double radius = estimate_radius(precal, b);
-      grid.template use_points_around<true>(fpos, radius, [&](Real& point, double r2) {
-          point += Real(atom.occ * precal.calculate((Real)r2));
+      CReal radius = estimate_radius(precal, b);
+      grid.template use_points_around<true>(fpos, radius, [&](GReal& point, double r2) {
+          point += GReal(atom.occ * precal.calculate((CReal)r2));
 #if GEMMI_COUNT_DC
           ++density_computations;
 #endif
       }, /*fail_on_too_large_radius=*/false);
     } else {
       // anisotropic
-      SMat33<double> aniso_b = atom.aniso.scaled(u_to_b()).added_kI(blur);
+      auto aniso_b = atom.aniso.scaled(CReal(u_to_b())).added_kI(CReal(blur));
       // rough estimate, so we don't calculate eigenvalues
-      double b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
+      CReal b_max = std::max(std::max(aniso_b.u11, aniso_b.u22), aniso_b.u33);
       auto precal_iso = coef.precalculate_density_iso(b_max, addend);
       double radius = estimate_radius(precal_iso, b_max);
       auto precal = coef.precalculate_density_aniso_b(aniso_b, addend);
@@ -169,9 +170,9 @@ struct DensityCalculator {
       int dv = (int) std::ceil(radius / grid.spacing[1]);
       int dw = (int) std::ceil(radius / grid.spacing[2]);
       grid.template use_points_in_box<true>(fpos, du, dv, dw,
-                             [&](Real& point, const Position& delta, int, int, int) {
+                             [&](GReal& point, const Position& delta, int, int, int) {
         if (delta.length_sq() < radius * radius) {
-          point += Real(atom.occ * precal.calculate(delta));
+          point += GReal(atom.occ * precal.calculate(delta));
 #if GEMMI_COUNT_DC
           ++density_computations;
 #endif

@@ -807,13 +807,13 @@ void process(const std::string& input, const OptParser& p) {
     gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
   if (table == 'x' || table == 'm') {
     if (p.options[NormalizeIt92])
-      gemmi::IT92<double>::normalize();
+      gemmi::IT92<float>::normalize();
     if (table == 'm')
-      gemmi::IT92<double>::ignore_charge = true;
-    process_with_table<gemmi::IT92<double>>(use_st, st, small, wavelength,
-                                            table == 'm', p);
+      gemmi::IT92<float>::ignore_charge = true;
+    process_with_table<gemmi::IT92<float>>(use_st, st, small, wavelength,
+                                           table == 'm', p);
   } else if (table == 'e') {
-    process_with_table<gemmi::C4322<double>>(use_st, st, small, 0., false, p);
+    process_with_table<gemmi::C4322<float>>(use_st, st, small, 0., false, p);
   } else if (table == 'n') {
     process_with_table<gemmi::Neutron92<double>>(use_st, st, small, 0., false, p);
   }

@@ -1800,7 +1800,7 @@ the structure factor contribution:
   :skipif: numpy is None
 
   >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
-  9.303602485040315
+  9.303603172302246
 
 The large number of reflections in macromolecular crystallography makes direct
 calculation of structure factors inefficient. Instead, we can calculate electron
@@ -1813,7 +1813,7 @@ point can be calculated as:
 
   >>> # arguments are distance^2 and isotropic ADP
   >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
-  0.5279340932571192
+  0.5279340744018555
 
 The C++ interface provides more functions to calculate the electron density.
 We have separate functions to work with isotropic and anisotropic ADPs.
@@ -1914,9 +1914,9 @@ structure factors and density:
 .. doctest::
 
   >>> fe_coef.calculate_sf(stol2=0.4)  # argument: (sin(theta)/lambda)^2
-  0.9971508092073326
+  0.9971507787704468
   >>> fe_coef.calculate_density_iso(r2=2.3, B=50)
-  0.13794779230350634
+  0.13794779777526855
 
 Unlike for X-ray form factors, we do not add anomalous scattering here.
 
@@ -1978,7 +1978,7 @@ Now we can compute structure factors from Model for any (hkl):
   :skipif: sys.platform == 'win32' or numpy is None
 
   >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
-  (54.50873699946033+53.39498671218277j)
+  (54.50873522837474+53.39498672056236j)
 
 Similarly, for small molecules:
 
@@ -1989,7 +1989,7 @@ Similarly, for small molecules:
   >>> small.change_occupancies_to_crystallographic()
   >>> calc_x = gemmi.StructureFactorCalculatorX(small.cell)
   >>> calc_x.calculate_sf_from_small_structure(small, (0,2,4))
-  (17.849693745125514-6.557871093218542e-15j)
+  (17.849694728851315-6.557871454633539e-15j)
 
 For each atom, the Debye-Waller factor (used in the structure factor
 calculation) is obtained using either isotropic or anisotropic ADPs
@@ -2046,7 +2046,7 @@ Structure factors calculated at this point incorporate the addends:
   :skipif: sys.platform == 'win32'
 
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (182.36559664489897+269.0002625524421j)
+  (182.36556950421118+269.0002281115778j)
 
 Addends can also be employed to calculate the electron scattering
 from X-ray form factors, according to the Mott–Bethe formula:
@@ -2057,7 +2057,7 @@ from X-ray form factors, according to the Mott–Bethe formula:
   >>> calc_x.addends.clear()
   >>> calc_x.addends.subtract_z()
   >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (54.0656580930728+52.96833236362286j)
+  (54.06570370099805+52.96838667006469j)
 
 The next section gives slightly more details on the Mott-Bethe formula.
 
@@ -2127,7 +2127,7 @@ into a structure factor grid:
   >>> sf_grid
   <gemmi.ReciprocalComplexGrid(48, 50, 50)>
   >>> sf_grid.get_value(3, 4, 5)
-  (54.53636169433594+53.37517166137695j)
+  (54.536354064941406+53.37517547607422j)
 
 In addition to ``d_min`` and ``rate``, which govern the grid density,
 DensityCalculator has two more parameters that affect accuracy
@@ -2211,7 +2211,7 @@ We either multiply individual values by ``mott_bethe_factor()``
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.063179065680515+52.97124428577224j)
+  (54.06309366876474+52.971226494748116j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
@@ -2220,7 +2220,7 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
   >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True, unblur=dencalc.blur)
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
-  array([54.06318+52.971245j], dtype=complex64)
+  array([54.06309+52.971226j], dtype=complex64)
 
 That is all.
 If you would like to separate positions of hydrogen nuclei

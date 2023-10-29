@@ -62,7 +62,7 @@ Se	12345.0	 1.00433	 -3.1985	0.52258
     def test_sfcalc1(self):
         self.do('''\
 $ gemmi sfcalc --compare=tests/2242624.hkl tests/2242624.cif
-RMSE=0.019256  0.2252%  max|dF|=0.04784  R=0.191%  sum(F^2)_ratio=1.00094
+RMSE=0.019256  0.2252%  max|dF|=0.04785  R=0.191%  sum(F^2)_ratio=1.00094
 ''')
 
     def test_sfcalc2(self):
@@ -80,9 +80,9 @@ RMSE=0.019724  0.2307%  max|dF|=0.04863  R=0.196%  sum(F^2)_ratio=1.00101
     def test_sfcalc4(self):
         self.do('''\
 $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
- (4 9 0)	1.12314668	180.000000
- (5 6 4)	1.49089619	180.000000
- (1 1 1)	11.22159034	360.000000
+ (4 9 0)	1.12314664	180.000000
+ (5 6 4)	1.49089617	180.000000
+ (1 1 1)	11.22159039	360.000000
 ''')
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
@@ -90,7 +90,7 @@ $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
         self.do('''\
 $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.pdb
 [...]
-RMSE=2.1005e-05  2.973e-05%  max|dF|=0.0001133  R=0.000%  <dPhi>=3.152e-06
+RMSE=2.5037e-05  3.544e-05%  max|dF|=0.0001476  R=0.000%  <dPhi>=3.694e-06
 ''')  # noqa: E501
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
@@ -98,7 +98,7 @@ RMSE=2.1005e-05  2.973e-05%  max|dF|=0.0001133  R=0.000%  <dPhi>=3.152e-06
         self.do('''\
 $ gemmi sfcalc --dmin=9 --rate=4 --blur=60 --rcut=1e-7 --test -v tests/1pfe.cif.gz
 [...]
-RMSE=0.00051590  8.120e-05%  max|dF|=0.003041  R=0.000%  <dPhi>=2.208e-06
+RMSE=0.00049055  7.721e-05%  max|dF|=0.002941  R=0.000%  <dPhi>=1.895e-06
 ''')  # noqa: E501
 
     # example from utils.rst

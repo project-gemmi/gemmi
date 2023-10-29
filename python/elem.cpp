@@ -13,23 +13,32 @@
 namespace py = pybind11;
 using namespace gemmi;
 
+// Round coefficients.
+// Decimal number from tables, such as 11.7695, after -> 32-bit float -> double
+// becomes 11.769499778747559. Let's round it, it's for printing only anyway.
+double roc(float x) {
+  float ax = std::abs(x);
+  double n = ax < 16.f ? 1e6 : ax < 128.f ? 1e5 : 1e4;
+  return std::round(x * n) / n;
+}
+
 void add_elem(py::module& m) {
   // it92.hpp
-  using IT92 = gemmi::IT92<double>;
+  using IT92 = gemmi::IT92<float>;
   py::class_<IT92::Coef>(m, "IT92Coef")
     .def_property_readonly("a", [](IT92::Coef& c) -> std::array<double,4> {
-        return {{ c.a(0), c.a(1), c.a(2), c.a(3) }};
+        return {{ roc(c.a(0)), roc(c.a(1)), roc(c.a(2)), roc(c.a(3)) }};
     })
     .def_property_readonly("b", [](IT92::Coef& c) -> std::array<double,4> {
-        return {{ c.b(0), c.b(1), c.b(2), c.b(3) }};
+        return {{ roc(c.b(0)), roc(c.b(1)), roc(c.b(2)), roc(c.b(3)) }};
     })
-    .def_property_readonly("c", &IT92::Coef::c)
+    .def_property_readonly("c", [](IT92::Coef& c) { return roc(c.c()); })
     .def("get_coefs", [](const IT92::Coef &self) { return self.coefs; })
     .def("set_coefs", &IT92::Coef::set_coefs)
     .def("calculate_sf", py::vectorize(&IT92::Coef::calculate_sf), py::arg("stol2"))
     .def("calculate_density_iso",
-         [](const IT92::Coef &self, py::array_t<double> r2, double B) {
-             return py::vectorize([&self,B](double r2) {
+         [](const IT92::Coef &self, py::array_t<float> r2, float B) {
+             return py::vectorize([&self,B](float r2) {
                  return self.calculate_density_iso(r2, B);
              })(r2);
     }, py::arg("r2"), py::arg("B"))
@@ -40,13 +49,13 @@ void add_elem(py::module& m) {
   m.def("IT92_set_ignore_charge", [](bool v) { IT92::ignore_charge = v; });
 
   // c4322.hpp
-  using C4322 = gemmi::C4322<double>;
+  using C4322 = gemmi::C4322<float>;
   py::class_<C4322::Coef>(m, "C4322Coef")
     .def_property_readonly("a", [](C4322::Coef& c) -> std::array<double,5> {
-        return {{ c.a(0), c.a(1), c.a(2), c.a(3), c.a(4) }};
+        return {{ roc(c.a(0)), roc(c.a(1)), roc(c.a(2)), roc(c.a(3)), roc(c.a(4)) }};
     })
     .def_property_readonly("b", [](C4322::Coef& c) -> std::array<double,5> {
-        return {{ c.b(0), c.b(1), c.b(2), c.b(3), c.b(4) }};
+        return {{ roc(c.b(0)), roc(c.b(1)), roc(c.b(2)), roc(c.b(3)), roc(c.b(4)) }};
     })
     .def("get_coefs", [](const C4322::Coef &self) { return self.coefs; })
     .def("set_coefs", &C4322::Coef::set_coefs)
