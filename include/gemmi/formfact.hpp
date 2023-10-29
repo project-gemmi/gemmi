@@ -114,7 +114,7 @@ struct ExpAnisoSum<N, float> {
 };
 
 template<typename Real>
-constexpr Real pow15(Real x) { return x * std::sqrt(x); }
+Real pow15(Real x) { return x * std::sqrt(x); }
 
 // Gaussian coefficients with functions to calculate sf and density.
 template<int N, int WithC, typename Real>
@@ -180,7 +180,7 @@ struct GaussianCoef {
   ExpAnisoSum<N+WithC,Real> precalculate_density_aniso_b(const SMat33<Real>& B,
                                                          Real addend=0) const {
     constexpr Real m4pi2 = Real(-4 * sq(pi()));
-    constexpr Real pow_4pi_15 = (Real) pow15(4 * pi());
+    constexpr Real pow_4pi_15 = (Real) 44.546623974653663; // pow15(4 * pi())
     ExpAnisoSum<N+WithC,Real> prec;
     for (int i = 0; i < N; ++i) {
       SMat33<Real> Bb = B.added_kI(b(i));
