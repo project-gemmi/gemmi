@@ -264,7 +264,7 @@ void process_with_fft(const gemmi::Structure& st,
   gemmi::FPhiGrid<Real> sf = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true);
   if (verbose) {
     timer.print("...took");
-    fprintf(stderr, "Printing results...\n");
+    fprintf(stderr, "Preparing results...\n");
     fflush(stderr);
   }
   gemmi::StructureFactorCalculator<Table> calc(st.cell);

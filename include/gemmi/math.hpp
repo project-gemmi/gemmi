@@ -227,6 +227,34 @@ struct Mat33 {
   double column_dot(int i, int j) const {
     return a[0][i] * a[0][j] + a[1][i] * a[1][j] + a[2][i] * a[2][j];
   }
+
+  bool is_upper_triangular() const {
+    return a[1][0] == 0 && a[2][0] == 0 && a[2][1] == 0;
+  }
+};
+
+struct UpperTriangularMat33 {
+  double a11 = 0, a12 = 0, a13 = 0;
+  double          a22 = 0, a23 = 0;
+  double                   a33 = 0;
+  UpperTriangularMat33() = default;
+  void operator=(const Mat33& m) {
+    if (m.is_upper_triangular()) {
+      a11 = m[0][0];
+      a12 = m[0][1];
+      a13 = m[0][2];
+      a22 = m[1][1];
+      a23 = m[1][2];
+      a33 = m[2][2];
+    } else {
+      a11 = a12 = a13 = a22 = a23 = a33 = NAN;
+    }
+  }
+  Vec3 multiply(const Vec3& p) const {
+    return {a11 * p.x + a12 * p.y + a13 * p.z,
+                        a22 * p.y + a23 * p.z,
+                                    a33 * p.z};
+  }
 };
 
 // Symmetric matrix 3x3. Used primarily for an ADP tensor.

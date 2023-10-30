@@ -310,6 +310,8 @@ struct Grid : GridBase<T> {
 
   /// spacing between virtual planes, not between points
   double spacing[3] = {0., 0., 0.};
+  /// unit_cell.orth.mat columns divided by nu, nv, nw
+  UpperTriangularMat33 orth_n;
 
   /// copy unit_cell, spacegroup, nu, nv, nw, axis_order and set spacing
   void copy_metadata_from(const GridMeta& g) {
@@ -327,6 +329,10 @@ struct Grid : GridBase<T> {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);
     spacing[2] = 1.0 / (nw * unit_cell.cr);
+    Vec3 inv_n(1.0 / nu, 1.0 / nv, 1.0 / nw);
+    orth_n = unit_cell.orth.mat.multiply_by_diagonal(inv_n);
+    if (!unit_cell.orth.mat.is_upper_triangular())
+      fail("Grids work only with the standard orientation of crystal frame (SCALEn)");
   }
 
   double min_spacing() const {
@@ -367,7 +373,7 @@ struct Grid : GridBase<T> {
   template<typename S>
   void setup_from(const S& st, double approx_spacing) {
     spacegroup = st.find_spacegroup();
-    set_unit_cell(st.cell);
+    unit_cell = st.cell;
     set_size_from_spacing(approx_spacing, GridSizeRounding::Up);
   }
 
@@ -631,14 +637,12 @@ struct Grid : GridBase<T> {
     int v_0 = UsePbc ? modulo(v_lo, nv) : v_lo;
     int w_0 = UsePbc ? modulo(w_lo, nw) : w_lo;
     auto wrap = [](int& q, int nq) { if (UsePbc && q == nq) q = 0; };
-    Vec3 inv_n(1.0 / nu, 1.0 / nv, 1.0 / nw);
-    Mat33 orth = unit_cell.orth.mat.multiply_by_diagonal(inv_n);
     Fractional fdelta(nctr.x - u_lo, 0, 0);
     for (int w = w_lo, w_ = w_0; w <= w_hi; ++w, wrap(++w_, nw)) {
       fdelta.z = nctr.z - w;
       for (int v = v_lo, v_ = v_0; v <= v_hi; ++v, wrap(++v_, nv)) {
         fdelta.y = nctr.y - v;
-        Position delta = Position(orth.multiply(fdelta));
+        Position delta(orth_n.multiply(fdelta));
         T* t = &data[this->index_q(u_0, v_, w_)];
         for (int u = u_lo, u_ = u_0;;) {
           func(*t, delta, u, v, w);
@@ -651,7 +655,7 @@ struct Grid : GridBase<T> {
             u_ = 0;
             t -= nu;
           }
-          delta -= Position(orth.column_copy(0));
+          delta.x -= orth_n.a11;
         }
       }
     }
