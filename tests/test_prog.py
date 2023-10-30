@@ -98,7 +98,7 @@ RMSE=5.7890e-05  8.194e-05%  max|dF|=0.0001430  R=0.000%  <dPhi>=1.158e-05
         self.do('''\
 $ gemmi sfcalc --dmin=9 --rate=4 --blur=60 --rcut=1e-7 --test -v tests/1pfe.cif.gz
 [...]
-RMSE=0.00050535  7.954e-05%  max|dF|=0.002944  R=0.000%  <dPhi>=2.615e-06
+RMSE=0.00051262  8.068e-05%  max|dF|=0.002945  R=0.000%  <dPhi>=2.468e-06
 ''')  # noqa: E501
 
     # example from utils.rst

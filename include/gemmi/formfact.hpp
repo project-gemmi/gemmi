@@ -21,7 +21,7 @@ inline float unsafe_expapprox(float x) {
   //static float zero = 0.f;  // non-const to disable optimization
   float val = 12102203.1615614f * x + 1065353216.f;
   //val = std::max(val, zero);  // check if x < -88.02969
-  int32_t vali = static_cast<std::int32_t>(val);
+  std::int32_t vali = static_cast<std::int32_t>(val);
   std::int32_t xu1 = vali & 0x7F800000;
   std::int32_t xu2 = (vali & 0x7FFFFF) | 0x3F800000;
   float a, b;
@@ -77,7 +77,7 @@ struct ExpSum<N, float> {
     for (int i = 0; i < N; ++i) {
       float y = a[i] * unsafe_expapprox(tmp[i]);
       density += y;
-      derivative += 2 * b[i] * r * y;
+      derivative += y * b[i] * (2 * r);
     }
     return std::make_pair(density, derivative);
   }
@@ -92,7 +92,7 @@ struct ExpAnisoSum {
   Real calculate(const Vec3& r) const {
     Real density = 0;
     for (int i = 0; i < N; ++i)
-      density += a[i] * std::exp((Real) b[i].r_u_r(r));
+      density += a[i] * std::exp(b[i].r_u_r(r));
     return density;
   }
 };
@@ -102,11 +102,12 @@ struct ExpAnisoSum<N, float> {
   float a[N];
   SMat33<float> b[N];
 
-  float calculate(const Vec3& r) const {
+  float calculate(const Vec3& r_) const {
+    Vec3f r((float)r_.x, (float)r_.y, (float)r_.z);
     float density = 0;
     float tmp[N];
     for (int i = 0; i < N; ++i)
-      tmp[i] = std::max((float)b[i].r_u_r(r), -88.f);
+      tmp[i] = std::max(b[i].r_u_r(r), -88.f);
     for (int i = 0; i < N; ++i)
       density += a[i] * unsafe_expapprox(tmp[i]);
     return density;

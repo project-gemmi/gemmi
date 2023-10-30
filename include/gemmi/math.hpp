@@ -44,14 +44,15 @@ inline double angle_abs_diff(double a, double b, double full=360.0) {
   return std::min(d, full - d);
 }
 
-struct Vec3 {
-  double x, y, z;
+template <typename Real>
+struct Vec3_ {
+  Real x, y, z;
 
-  Vec3() : x(0), y(0), z(0) {}
-  Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
-  explicit Vec3(std::array<int, 3> h) : x(h[0]), y(h[1]), z(h[2]) {}
+  Vec3_() : x(0), y(0), z(0) {}
+  Vec3_(Real x_, Real y_, Real z_) : x(x_), y(y_), z(z_) {}
+  explicit Vec3_(std::array<int, 3> h) : x(h[0]), y(h[1]), z(h[2]) {}
 
-  double& at(int i) {
+  Real& at(int i) {
     switch (i) {
       case 0: return x;
       case 1: return y;
@@ -59,36 +60,36 @@ struct Vec3 {
       default: throw std::out_of_range("Vec3 index must be 0, 1 or 2.");
     }
   }
-  double at(int i) const { return const_cast<Vec3*>(this)->at(i); }
+  Real at(int i) const { return const_cast<Vec3_*>(this)->at(i); }
 
-  Vec3 operator-() const { return {-x, -y, -z}; }
-  Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
-  Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
-  Vec3 operator*(double d) const { return {x*d, y*d, z*d}; }
-  Vec3 operator/(double d) const { return *this * (1.0/d); }
-  Vec3& operator-=(const Vec3& o) { *this = *this - o; return *this; }
-  Vec3& operator+=(const Vec3& o) { *this = *this + o; return *this; }
-  Vec3& operator*=(double d) { *this = *this * d; return *this; }
-  Vec3& operator/=(double d) { return operator*=(1.0/d); }
+  Vec3_ operator-() const { return {-x, -y, -z}; }
+  Vec3_ operator-(const Vec3_& o) const { return {x-o.x, y-o.y, z-o.z}; }
+  Vec3_ operator+(const Vec3_& o) const { return {x+o.x, y+o.y, z+o.z}; }
+  Vec3_ operator*(Real d) const { return {x*d, y*d, z*d}; }
+  Vec3_ operator/(Real d) const { return *this * (1.0/d); }
+  Vec3_& operator-=(const Vec3_& o) { *this = *this - o; return *this; }
+  Vec3_& operator+=(const Vec3_& o) { *this = *this + o; return *this; }
+  Vec3_& operator*=(Real d) { *this = *this * d; return *this; }
+  Vec3_& operator/=(Real d) { return operator*=(1.0/d); }
 
-  Vec3 negated() const { return {-x, -y, -z}; }
-  double dot(const Vec3& o) const { return x*o.x + y*o.y + z*o.z; }
-  Vec3 cross(const Vec3& o) const {
+  Vec3_ negated() const { return {-x, -y, -z}; }
+  Real dot(const Vec3_& o) const { return x*o.x + y*o.y + z*o.z; }
+  Vec3_ cross(const Vec3_& o) const {
     return {y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x};
   }
-  double length_sq() const { return x * x + y * y + z * z; }
-  double length() const { return std::sqrt(length_sq()); }
-  Vec3 changed_magnitude(double m) const { return operator*(m / length()); }
-  Vec3 normalized() const { return changed_magnitude(1.0); }
-  double dist_sq(const Vec3& o) const { return (*this - o).length_sq(); }
-  double dist(const Vec3& o) const { return std::sqrt(dist_sq(o)); }
-  double cos_angle(const Vec3& o) const {
+  Real length_sq() const { return x * x + y * y + z * z; }
+  Real length() const { return std::sqrt(length_sq()); }
+  Vec3_ changed_magnitude(Real m) const { return operator*(m / length()); }
+  Vec3_ normalized() const { return changed_magnitude(1.0); }
+  Real dist_sq(const Vec3_& o) const { return (*this - o).length_sq(); }
+  Real dist(const Vec3_& o) const { return std::sqrt(dist_sq(o)); }
+  Real cos_angle(const Vec3_& o) const {
     return dot(o) / std::sqrt(length_sq() * o.length_sq());
   }
-  double angle(const Vec3& o) const {
+  Real angle(const Vec3_& o) const {
     return std::acos(std::max(-1., std::min(1., cos_angle(o))));
   }
-  bool approx(const Vec3& o, double epsilon) const {
+  bool approx(const Vec3_& o, Real epsilon) const {
     return std::fabs(x - o.x) <= epsilon &&
            std::fabs(y - o.y) <= epsilon &&
            std::fabs(z - o.z) <= epsilon;
@@ -97,6 +98,9 @@ struct Vec3 {
     return std::isnan(x) || std::isnan(y) || std::isnan(z);
   }
 };
+
+using Vec3 = Vec3_<double>;
+using Vec3f = Vec3_<float>;
 
 inline Vec3 operator*(double d, const Vec3& v) { return v * d; }
 
@@ -260,7 +264,8 @@ template<typename T> struct SMat33 {
   }
 
   // returns squared norm r^T U r where U is this matrix and vector r is arg
-  double r_u_r(const Vec3& r) const {
+  template<typename VT>
+  auto r_u_r(const Vec3_<VT>& r) const -> decltype(r.x+u11) {
     return r.x * r.x * u11 + r.y * r.y * u22 + r.z * r.z * u33 +
       2 * (r.x * r.y * u12 + r.x * r.z * u13 + r.y * r.z * u23);
   }
