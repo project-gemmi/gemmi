@@ -102,6 +102,6 @@ gemmi::cif::WriteOptions cif_write_options(const option::Option& cif_style);
 // can be used with paths_from_args_or_file()
 bool starts_with_pdb_code(const std::string& s);
 
-void print_version(const char* program_name);
+void print_version(const char* program_name, bool verbose=false);
 
 void read_spec_file(const char* path, std::vector<std::string>& output);

@@ -24,7 +24,7 @@ namespace rules = gemmi::cif::rules;
 
 namespace {
 
-enum OptionIndex { CountFiles=3, Glob, Full, EntriesIdx, Sf };
+enum OptionIndex { CountFiles=4, Glob, Full, EntriesIdx, Sf };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,

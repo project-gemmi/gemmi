@@ -173,7 +173,7 @@ void OptParser::simple_parse(int argc, char** argv,
     std::exit(0);
   }
   if (options[Version]) {
-    print_version(program_name);
+    print_version(program_name, options[Verbose]);
     std::exit(0);
   }
   if (options[NoOp]) {
@@ -295,12 +295,25 @@ gemmi::cif::WriteOptions cif_write_options(const option::Option& cif_style) {
   return options;
 }
 
-void print_version(const char* program_name) {
+void print_version(const char* program_name, bool verbose) {
   std::printf("%s " GEMMI_VERSION
 #ifdef GEMMI_VERSION_INFO
          " (" GEMMI_XSTRINGIZE(GEMMI_VERSION_INFO) ")"
 #endif
          "\n", program_name);
+  if (verbose) {
+#if defined(_MSC_VER)
+    std::printf("Compiler: MSVC %d (C++ %ld)\n", _MSC_FULL_VER, _MSVC_LANG);
+#else
+#  if defined(__clang__)
+    std::printf("Compiler: Clang %d.%d.%d (C++ %ld)\n",
+                __clang_major__, __clang_minor__, __clang_patchlevel__, __cplusplus);
+#  elif defined(__GNUC__)
+    std::printf("Compiler: GCC %d.%d.%d (C++ %ld)\n",
+                __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__, __cplusplus);
+#  endif
+#endif
+  }
 }
 
 void read_spec_file(const char* path, std::vector<std::string>& output) {

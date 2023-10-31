@@ -13,7 +13,7 @@
 
 namespace {
 
-enum OptionIndex { FormatIn=3, Match, Label, CheckSeqId, NoAlt, Short, };
+enum OptionIndex { FormatIn=4, Match, Label, CheckSeqId, NoAlt, Short, };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
