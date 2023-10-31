@@ -2043,21 +2043,19 @@ well below 1ms.
 Structure factors calculated at this point incorporate the addends:
 
 .. doctest::
-  :skipif: sys.platform == 'win32'
 
-  >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (182.36556950421118+269.0002281115778j)
+  >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
+  (182.36556950...+269.00022811...j)
 
 Addends can also be employed to calculate the electron scattering
 from X-ray form factors, according to the Mott–Bethe formula:
 
 .. doctest::
-  :skipif: sys.platform == 'win32'
 
   >>> calc_x.addends.clear()
   >>> calc_x.addends.subtract_z()
-  >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))
-  (54.06570370099805+52.96838667006469j)
+  >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
+  (54.06570370099...+52.96838667006...j)
 
 The next section gives slightly more details on the Mott-Bethe formula.
 

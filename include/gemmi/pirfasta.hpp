@@ -60,6 +60,7 @@ inline std::vector<FastaSeq> read_pir_or_fasta(const std::string& str) {
         blank_lines = 0;
         if (('a' <= (c | 0x20) && (c | 0x20) <= 'z') || c == '-' ||
             (paren_level != 0 && '0' <= c && c <= '9')) {
+          // good character, nothing to be done here
         } else if (c == '*') {
           ended = true;
           continue;
