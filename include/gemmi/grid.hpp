@@ -614,7 +614,9 @@ struct Grid : GridBase<T> {
   }
 
   template <bool UsePbc, typename Func>
-  void do_use_points_in_box(const Fractional& fctr, int du, int dv, int dw, Func&& func) {
+  void do_use_points_in_box(const Fractional& fctr, int du, int dv, int dw, Func&& func,
+                            double radius=INFINITY) {
+    double max_dist_sq = radius * radius;
     const Fractional nctr(fctr.x * nu, fctr.y * nv, fctr.z * nw);
     int u0 = iround(nctr.x);
     int v0 = iround(nctr.y);
@@ -644,8 +646,13 @@ struct Grid : GridBase<T> {
         fdelta.y = nctr.y - v;
         Position delta(orth_n.multiply(fdelta));
         T* t = &data[this->index_q(u_0, v_, w_)];
+        double dist_sq0 = sq(delta.y) + sq(delta.z);
+        if (dist_sq0 > max_dist_sq)
+          continue;
         for (int u = u_lo, u_ = u_0;;) {
-          func(*t, delta, u, v, w);
+          double dist_sq = dist_sq0 + sq(delta.x);
+          if (!(dist_sq > max_dist_sq))
+            func(*t, dist_sq, delta, u, v, w);
           if (u >= u_hi)
             break;
           ++u;
@@ -663,9 +670,10 @@ struct Grid : GridBase<T> {
 
   template <bool UsePbc, typename Func>
   void use_points_in_box(const Fractional& fctr, int du, int dv, int dw,
-                         Func&& func, bool fail_on_too_large_radius=true) {
+                         Func&& func, bool fail_on_too_large_radius=true,
+                         double radius=INFINITY) {
     check_size_for_points_in_box<UsePbc>(du, dv, dw, fail_on_too_large_radius);
-    do_use_points_in_box<UsePbc>(fctr, du, dv, dw, func);
+    do_use_points_in_box<UsePbc>(fctr, du, dv, dw, func, radius);
   }
 
   template <bool UsePbc, typename Func>
@@ -674,13 +682,11 @@ struct Grid : GridBase<T> {
     int du = (int) std::ceil(radius / spacing[0]);
     int dv = (int) std::ceil(radius / spacing[1]);
     int dw = (int) std::ceil(radius / spacing[2]);
-    use_points_in_box<UsePbc>(fctr, du, dv, dw,
-                      [&](T& ref, const Position& delta, int, int, int) {
-                        double d2 = delta.length_sq();
-                        if (d2 < radius * radius)
-                          func(ref, d2);
-                      },
-                      fail_on_too_large_radius);
+    use_points_in_box<UsePbc>(
+        fctr, du, dv, dw,
+        [&](T& ref, double d2, const Position&, int, int, int) { func(ref, d2); },
+        fail_on_too_large_radius,
+        radius);
   }
 
   void set_points_around(const Position& ctr, double radius, T value, bool use_pbc=true) {

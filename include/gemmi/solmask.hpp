@@ -366,18 +366,19 @@ inline void mask_with_node_info(Grid<NodeInfo>& mask, const Model& model, double
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
         Fractional frac0 = mask.unit_cell.fractionalize(atom.pos);
-        mask.template do_use_points_in_box<true>(frac0, du, dv, dw,
-                      [&](NodeInfo& ni, const Position& delta, int u, int v, int w) {
-                        double d2 = delta.length_sq();
-                        if (d2 < ni.dist_sq) {
-                          ni.dist_sq = d2;
-                          ni.found = true;
-                          //ni.elem = atom.element;
-                          ni.u = u;
-                          ni.v = v;
-                          ni.w = w;
-                        }
-                      });
+        mask.template do_use_points_in_box<true>(
+            frac0, du, dv, dw,
+            [&](NodeInfo& ni, double d2, const Position&, int u, int v, int w) {
+              if (d2 < ni.dist_sq) {
+                ni.dist_sq = d2;
+                ni.found = true;
+                //ni.elem = atom.element;
+                ni.u = u;
+                ni.v = v;
+                ni.w = w;
+              }
+            },
+            radius);
       }
 }
 
@@ -441,14 +442,14 @@ void add_soft_edge_to_mask(Grid<T>& grid, double width) {
         if (grid.data[idx] >= 1e-3) continue;
         double min_d2 = width2 + 1;
         Fractional fctr = grid.get_fractional(u, v, w);
-        grid.template use_points_in_box<true>(fctr, du, dv, dw,
-                          [&](T& point, const Position& delta, int, int, int) {
-                            if (point > 0.999) {
-                              double d2 = delta.length_sq();
-                              if (d2 < min_d2)
-                                min_d2 = d2;
-                            }
-                          });
+        grid.template use_points_in_box<true>(
+            fctr, du, dv, dw,
+            [&](T& point, double d2, const Position&, int, int, int) {
+              if (point > 0.999) {
+                if (d2 < min_d2)
+                min_d2 = d2;
+              }
+            });
         if (min_d2 < width2)
           grid.data[idx] = T(0.5 + 0.5 * std::cos(pi() * std::sqrt(min_d2) / width));
       }

@@ -169,15 +169,15 @@ struct DensityCalculator {
       int du = (int) std::ceil(radius / grid.spacing[0]);
       int dv = (int) std::ceil(radius / grid.spacing[1]);
       int dw = (int) std::ceil(radius / grid.spacing[2]);
-      grid.template use_points_in_box<true>(fpos, du, dv, dw,
-                             [&](GReal& point, const Position& delta, int, int, int) {
-        if (delta.length_sq() < radius * radius) {
-          point += GReal(atom.occ * precal.calculate(delta));
+      grid.template use_points_in_box<true>(
+          fpos, du, dv, dw,
+          [&](GReal& point, double, const Position& delta, int, int, int) {
+            point += GReal(atom.occ * precal.calculate(delta));
 #if GEMMI_COUNT_DC
-          ++density_computations;
+            ++density_computations;
 #endif
-        }
-      }, false);
+          },
+          false, radius);
     }
   }
 
