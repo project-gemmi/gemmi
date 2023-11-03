@@ -7,6 +7,7 @@
 #define GEMMI_FORMFACT_HPP_
 
 #include <cmath>     // for exp, sqrt
+#include <limits>    // for numeric_limits
 #include <utility>   // for pair
 #include "math.hpp"  // for pi()
 #include "elem.hpp"  // for El
@@ -18,6 +19,7 @@ namespace gemmi {
 // https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
 // Relative error is below 1e-5.
 inline float unsafe_expapprox(float x) {
+  static_assert(std::numeric_limits<float>::is_iec559, "float is not IEEE 754?");
   //static float zero = 0.f;  // non-const to disable optimization
   float val = 12102203.1615614f * x + 1065353216.f;
   //val = std::max(val, zero);  // check if x < -88.02969
