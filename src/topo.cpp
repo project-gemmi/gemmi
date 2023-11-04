@@ -1022,4 +1022,19 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   return topo;
 }
 
+std::vector<AtomAddress> find_missing_atoms(const Topo& topo, bool including_hydrogen) {
+  std::vector<AtomAddress> ret;
+  for (const Topo::ChainInfo& chain_info : topo.chain_infos)
+    for (const Topo::ResInfo& ri : chain_info.res_infos) {
+      // check only the first conformation
+      const Topo::FinalChemComp& fcc = ri.chemcomps.at(0);
+      char altloc = fcc.altloc != '\0' ? fcc.altloc : '*';
+      for (const ChemComp::Atom& at : fcc.cc->atoms)
+        if ((including_hydrogen || !at.is_hydrogen()) &&
+            ri.res->find_atom(at.id, altloc) == nullptr)
+          ret.emplace_back(chain_info.chain_ref.name, *ri.res, at.id, fcc.altloc);
+    }
+  return ret;
+}
+
 }

@@ -312,5 +312,8 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
 
 GEMMI_DLL std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res);
 
+GEMMI_DLL std::vector<AtomAddress> find_missing_atoms(const Topo& topo,
+                                                      bool including_hydrogen=false);
+
 } // namespace gemmi
 #endif

@@ -21,7 +21,7 @@ using gemmi::Topo;
 
 namespace {
 
-enum OptionIndex { Quiet=AfterMonLibOptions, FormatIn, Cutoff, Sort };
+enum OptionIndex { Quiet=AfterMonLibOptions, FormatIn, Cutoff, Sort, Missing };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -42,6 +42,8 @@ const option::Descriptor Usage[] = {
     "  --cutoff=ZC  \tList bonds and angles with Z score > ZC (default: 2)." },
   { Sort, 0, "s", "sort", Arg::None,
     "  -s, --sort  \tSort output according to |Z|." },
+  { Missing, 0, "", "missing", Arg::None,
+    "  --missing  \tList missing atoms." },
   MonLibUsage[2], // details about Libin (--lib)
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -242,6 +244,14 @@ int GEMMI_MAIN(int argc, char **argv) {
         topo.warnings = &std::cerr;
         topo.initialize_refmac_topology(st, model, monlib);
         topo.apply_all_restraints(monlib);
+
+        if (p.options[Missing]) {
+          std::vector<gemmi::AtomAddress> vec = find_missing_atoms(topo);
+          printf("%zu missing atoms.\n", vec.size());
+          for (const gemmi::AtomAddress& aa : vec)
+            printf("    %s\n", aa.str().c_str());
+          continue;
+        }
 
         RMSes rmses;
         std::multimap<double, std::string> line_storage;

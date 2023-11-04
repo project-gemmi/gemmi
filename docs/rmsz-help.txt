@@ -14,6 +14,7 @@ Options:
   --format=FORMAT    Input format (default: from the file extension).
   --cutoff=ZC        List bonds and angles with Z score > ZC (default: 2).
   -s, --sort         Sort output according to |Z|.
+  --missing          List missing atoms.
 
 Option -L/--lib can be used multiple times, in order of priority.
 Its argument is either a file path or one of the two special values:
