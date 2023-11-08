@@ -43,16 +43,16 @@ if (NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
   set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 endif()
 
-# By default, use LTO for non-debug builds.
-if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION
-    # problems were reported for GCC 4.8 and LTO
-    # https://github.com/pybind/pybind11/issues/1415
-    AND NOT (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9))
+# Unless it's explicitly specifed, we want LTO for non-debug builds only.
+# pybind11Common.cmake has its own logic to set LTO options.
+# Having different options in pybind11_add_module than for gemmi_cpp
+# may cause problems -- we may need to handle it at some point.
+if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
   include(CheckIPOSupported)
   check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)
   if(is_ipo_supported)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MISIZEREL ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
   else()
     message(STATUS "Interprocedural optimization not supported: ${error}")
   endif()
@@ -89,6 +89,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE)
 endif()
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 find_package(ZLIB)
 if (ZLIB_FOUND)
@@ -110,7 +111,6 @@ endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND EXTRA_WARNINGS)
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wformat=2 -Wredundant-decls -Wfloat-conversion -Wdisabled-optimization -Wshadow $ENV{EXTRA_WFLAGS}")
-  message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
   string(TOUPPER "CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}" cxx_flags_config)
   message(STATUS "C++ flags set to: ${CMAKE_CXX_FLAGS} ${${cxx_flags_config}}")
 endif()
