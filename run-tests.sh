@@ -123,6 +123,21 @@ if [ $1 = p -o $1 = a ]; then
     done
 fi
 
+if [ $1 = c -o $1 = a ]; then
+    echo "test with tools/compare_pdb.sh"
+    echo "=== part 1: cif -> pdb, pdb -> pdb ==="
+    for pdbid in 2aa2 3ee3 4ii4 5oo5 6yy6 5xx5 6dd6 7uu7 7ww7 8ff8; do
+        ./tools/compare_pdb.sh $pdbid  # cif -> pdb
+        FROM_PDB=1 ./tools/compare_pdb.sh $pdbid  # pdb -> pdb
+    done
+    echo
+    echo "=== part 2: cif -> cif -> pdb, pdb -> cif -> pdb ==="
+    for pdbid in 2aa2 3ee3 4ii4 5oo5 6yy6 5xx5 6dd6 7ww7 8ff8; do
+        VIA_CIF=1 ./tools/compare_pdb.sh $pdbid  # cif -> cif -> pdb
+        FROM_PDB=1 VIA_CIF=1 ./tools/compare_pdb.sh $pdbid  # pdb -> cif -> pdb
+    done
+fi
+
 if [ $1 = w -o $1 = a ]; then
     echo "check if wasm/mtz and project-gemmi/wasm can be built"
     [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh

@@ -25,7 +25,7 @@
 # tail -n +3 entries.idx | cut -f1,3 | grep "05/../17$" |\
 # while read -r code date; do ./compare_pdb.sh $code; done
 
-set -eu
+set -euo pipefail
 cd `dirname $0`
 LOCAL_COPY="$PDB_DIR/structures/divided"
 REMOTE_COPY="http://ftp.ebi.ac.uk/pub/databases/rcsb/pdb-remediated/data/structures/divided"
@@ -102,6 +102,13 @@ absent="\
 ^SLTBRG|\
 ^SOURCE|\
 ^SPRSDE"
+
+# remark 2 (resolution) is not preserved in PDB->mmCIF
+if [[ ${FROM_PDB:-} = 1 && ${VIA_CIF:-} = 1 ]]; then
+    absent="${absent}|\
+^REMARK   2"
+fi
+
 zgrep -v -E "$not_identical|$absent" "$pdb" > "$pout"
 inp="$cif"
 [[ ${FROM_PDB:-} = 1 ]] && inp="$pout"
@@ -126,4 +133,6 @@ else
     diff -u "$gout" "$pout" | diffstat -q
 fi
 
-[[ ${3:-} = c ]] && /bin/rm "$gout" "$pout"
+if [[ ${3:-} != c ]]; then
+    /bin/rm "$gout" "$pout"
+fi
