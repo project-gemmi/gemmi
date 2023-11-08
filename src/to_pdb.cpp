@@ -445,7 +445,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   // MODRES
   if (!opt.minimal_file)
     for (const ModRes& modres : st.mod_residues) {
-      WRITE("MODRES %4s %3.3s%2s %5s %3s  %-41.41s  %-8.8s\n",
+      WRITEU("MODRES %4s %3.3s%2s %5s %3s  %-41.41s  %-8.8s\n",
             entry_id_4,
             modres.res_id.name.c_str(),
             modres.chain_name.c_str(),
