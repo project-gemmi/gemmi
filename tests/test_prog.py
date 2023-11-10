@@ -88,8 +88,8 @@ $ gemmi sfcalc -w0 --hkl=4,9,0 --hkl=5,6,4 --hkl=1,1,1 tests/2013551.cif
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
     def test_sfcalc_5wkd(self):
         self.do('''\
-$ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test -v tests/5wkd.pdb
-[...] 71 87
+$ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test tests/5wkd.pdb
+[...] 65 81
  (-3 1 5)	  52.06	  52.061 	 92.51	 92.510	d= 2.51
  (-2 0 1)	 150.22	 150.220 	360.00	360.000	d=13.74
  (-2 0 2)	  28.77	  28.772 	180.00	180.000	d= 7.34

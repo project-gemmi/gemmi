@@ -2,6 +2,8 @@
 # Reads a mask, reads a coordinate file, and checks how the mask compares
 # with a bulk solvent mask for the coordinate file.
 
+# To check if we produce identical maps as Refmac, use tools/compare_mask.sh.
+#
 # To check if we produce identical maps as cctbx, do:
 #   cctbx.python -m mmtbx.command_line.mask file.pdb
 #   maskcheck.py mask.ccp4 file.pdb

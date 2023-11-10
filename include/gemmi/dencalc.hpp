@@ -187,6 +187,7 @@ struct DensityCalculator {
     if (spacing > 0)
       grid.set_size_from_spacing(spacing, GridSizeRounding::Up);
     else if (grid.point_count() > 0)
+      // d_min not set, but a custom grid has been setup by the user
       grid.fill(0.);
     else
       fail("initialize_grid(): d_min is not set");

@@ -237,12 +237,11 @@ void process_with_fft(const gemmi::Structure& st,
     fprintf(stderr, "Preparing electron density on a grid...\n");
     fflush(stderr);
   }
-  Timer timer(true);
+  Timer timer(verbose);
   timer.start();
   dencalc.set_grid_cell_and_spacegroup(st);
   dencalc.put_model_density_on_grid(st.models[0]);
-  if (verbose)
-    timer.print("...took");
+  timer.print("...took");
   if (map_file) {
     gemmi::Ccp4<Real> ccp4;
     ccp4.grid = dencalc.grid;
