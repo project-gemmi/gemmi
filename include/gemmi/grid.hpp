@@ -716,7 +716,7 @@ struct Grid : GridBase<T> {
     if (ops.empty())
       return;
     std::vector<size_t> mates(ops.size(), 0);
-    std::vector<bool> visited(data.size(), false);
+    std::vector<signed char> visited(data.size(), 0);  // faster than vector<bool>
     size_t idx = 0;
     for (int w = 0; w != nw; ++w)
       for (int v = 0; v != nv; ++v)
@@ -735,10 +735,10 @@ struct Grid : GridBase<T> {
             value = func(value, data[k]);
           }
           data[idx] = value;
-          visited[idx] = true;
+          visited[idx] = 1;
           for (size_t k : mates) {
             data[k] = value;
-            visited[k] = true;
+            visited[k] = 1;
           }
         }
     assert(idx == data.size());
