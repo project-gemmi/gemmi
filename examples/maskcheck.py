@@ -43,20 +43,24 @@ def maskcheck(mask_path, coor_path, output_diff_map=None, verbose=False):
     grid2.copy_metadata_from(grid)
     masker.put_mask_on_int8_grid(grid2, st[0])
 
-    compare_mask_arrays(grid, grid2)
+    compare_mask_arrays(grid, grid2, verbose)
     if verbose:
         print_nearby_atoms(st, grid, grid2)
     if output_diff_map:
         write_diff_map(grid, grid2, output_diff_map)
 
 
-def compare_mask_arrays(grid1, grid2):
+def compare_mask_arrays(grid1, grid2, verbose):
     arr1 = numpy.array(grid1, copy=False)
     arr2 = numpy.array(grid2, copy=False)
     if arr1.shape != arr2.shape:
         sys.exit('Different grid sizes %s and %s. Exiting.' %
                  (arr1.shape, arr2.shape))
     print('Size: %d x %d x %d,' % arr1.shape, 'total', arr1.size, 'points')
+    if (arr1 == arr2).all():
+        print("Identical.")
+        if not verbose:
+            return
     t = 2 * (arr1 != 0) + (arr2 != 0)
     print('File-Gemmi Count Fraction')
     for (a, b) in [(0, 0), (1, 1), (0, 1), (1, 0)]:

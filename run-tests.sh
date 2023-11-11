@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # I use this script for building, testing and updating docs.
 
@@ -143,4 +143,16 @@ if [ $1 = w -o $1 = a ]; then
     [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh
     (cd wasm/mtz && ./compile.sh)
     (cd ../wasm/convert && make clean && make)
+fi
+
+if [ $1 = M -o $1 = a ]; then
+    echo "check bulk solvent mask against cctbx"
+    for code in 1keb 1mru 5oo5 6dd6; do
+        echo Testing mask for $code ...
+        pdb="${PDB_DIR}/structures/divided/pdb/${code:1:2}/pdb${code}.ent.gz"
+        zcat $pdb > /tmp/file.pdb
+        mmtbx.python -m mmtbx.command_line.mask /tmp/file.pdb
+        $PYTHON examples/maskcheck.py mask.ccp4 /tmp/file.pdb
+        /bin/rm mask.ccp4
+    done
 fi

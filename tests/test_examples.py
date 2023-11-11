@@ -79,10 +79,10 @@ class TestExamples2(unittest.TestCase):
 Generating CCTBX-compatible mask ...
 Size: 72 x 72 x 150, total 777600 points
 File-Gemmi Count Fraction
-0-0       511128  65.73%
-1-1       265740  34.17%
-0-1            0   0.00%
-1-0          732   0.09%
+0-0       509676  65.54%
+1-1       265788  34.18%
+0-1         1452   0.19%
+1-0          684   0.09%
 '''
         self.assertEqual(output.splitlines(), expected_output.splitlines())
 

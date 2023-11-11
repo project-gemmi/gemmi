@@ -231,7 +231,7 @@ struct SolventMasker {
         island_min_volume = 0.;
         break;
       case AtomicRadiiSet::Cctbx:
-        rprobe = 1.11;
+        rprobe = 1.1;
         rshrink = 0.9;
         island_min_volume = 0.;
         break;

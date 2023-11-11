@@ -509,7 +509,7 @@ The parameters of SolventMasker can be inspected and changed:
   >>> masker.atomic_radii_set
   <AtomicRadiiSet.Cctbx: 1>
   >>> masker.rprobe
-  1.11
+  1.1
   >>> masker.rshrink
   0.9
   >>> masker.island_min_volume  # 0 = unused
