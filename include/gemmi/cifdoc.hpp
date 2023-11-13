@@ -184,6 +184,19 @@ struct Loop {
   }
 
   void set_all_values(std::vector<std::vector<std::string>> columns);
+
+  std::string common_prefix() const {
+    if (tags.empty())
+      return {};
+    size_t len = tags[0].size();
+    for (auto it = tags.begin() + 1; it != tags.end(); ++it)
+      for (size_t n = 0; n != len; ++n)
+        if (!isame(tags[0][n], (*it)[n])) {
+          len = n;
+          break;
+        }
+    return tags[0].substr(0, len);
+  }
 };
 
 

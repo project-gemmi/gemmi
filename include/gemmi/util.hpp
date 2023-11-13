@@ -72,18 +72,21 @@ inline std::string to_upper(std::string str) {
   return str;
 }
 
-// Case-insensitive comparisons. The second arg must be lowercase.
-
-inline bool iequal(const std::string& str, const std::string& low) {
-  return str.length() == low.length() &&
-         std::equal(std::begin(low), std::end(low), str.begin(),
-                    [](char c1, char c2) { return c1 == lower(c2); });
+// case-insensitive character comparison
+inline bool isame(char a, char b) {
+  return a == b || ((a^b) == 0x20 && (a|0x20) >= 'a' && (a|0x20) <= 'z');
 }
+
+// Case-insensitive comparisons. The second arg must be lowercase.
 
 inline bool iequal_from(const std::string& str, size_t offset, const std::string& low) {
   return str.length() == low.length() + offset &&
          std::equal(std::begin(low), std::end(low), str.begin() + offset,
                     [](char c1, char c2) { return c1 == lower(c2); });
+}
+
+inline bool iequal(const std::string& str, const std::string& low) {
+  return iequal_from(str, 0, low);
 }
 
 inline bool istarts_with(const std::string& str, const std::string& prefix) {

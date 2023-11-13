@@ -259,7 +259,9 @@ template<> struct Action<rules::loop> {
     assert(last_item.type == ItemType::Loop);
     const Loop& loop = last_item.loop;
     if (loop.values.size() % loop.tags.size() != 0)
-      throw pegtl::parse_error("Wrong number of values in the loop", in);
+      throw pegtl::parse_error(
+          "Wrong number of values in loop " + loop.common_prefix() + "*",
+          in);
   }
 };
 
