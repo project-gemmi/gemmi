@@ -12,6 +12,11 @@ corresponding to a subcommand:
 .. literalinclude:: gemmi-help.txt
    :language: console
 
+Hint. To process multiple files in parallel, in multiple threads,
+use a tool such as `GNU parallel <https://www.gnu.org/software/parallel/>`_::
+
+  $ find $PDB_DIR/structures/divided/mmCIF/ -name '*.cif.gz' | parallel gemmi grep _exptl.method
+
 validate
 ========
 
