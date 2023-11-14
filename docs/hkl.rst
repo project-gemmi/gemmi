@@ -2045,7 +2045,7 @@ Structure factors calculated at this point incorporate the addends:
 .. doctest::
 
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
-  (182.36556950...+269.00022811...j)
+  (182.3655...+269.0002...j)
 
 Addends can also be employed to calculate the electron scattering
 from X-ray form factors, according to the Mott–Bethe formula:

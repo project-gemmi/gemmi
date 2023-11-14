@@ -23,7 +23,11 @@ namespace gemmi {
 template<typename T>
 double phase_in_angles(const std::complex<T>& v) {
   double angle = gemmi::deg(std::arg(v));
-  return angle >= 0. ? angle : angle + 360.;
+  if (angle < 0)
+    angle += 360.;
+  if (static_cast<T>(angle) == 360.f)
+    angle = 0.;
+  return angle;
 }
 
 // the first arg is usually Mtz::data
