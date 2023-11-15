@@ -105,6 +105,9 @@
 # link between conformers A and B
 2e7z
 
+# link between conformer A and non-altloc Fe (practically, also conformer A)
+8bbc
+
 # aliasing for peptide bond
 5c7w  # 50L
 #7k00  # MS6
@@ -165,3 +168,8 @@
 3zms
 # chain B has only 0.16% of SEQRES (it's not crystal)
 8b6z
+
+# 1st residue with altloc A, no B; occupancy 0.75 like in 2nd and 3rd residue
+6ey1
+# atom with two conformations in a residue w/ partial occupancy (A/200 FLR)
+7euv

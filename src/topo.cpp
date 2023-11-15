@@ -800,7 +800,7 @@ using NeighMap = std::unordered_multimap<int, Neigh>;
 
 // Assumes no hydrogens in the residue.
 // Position and serial number are not assigned for new atoms.
-void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbors) {
+void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor_altlocs) {
   std::vector<Atom>& atoms = ri.res->atoms;
   // Add H atom for each conformation (altloc) of the parent atom and its
   // first neighbors.
@@ -811,15 +811,22 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
     float parent_occ = atoms[i].occ;
     std::map<char, float> altlocs; // altloc + occupancy
     if (parent_alt == '\0') {
-      float max_occ = 1.001f;
-      auto range = neighbors.equal_range(atoms[i].serial);
+      // We could have neighbor 1 with altlocs A,B and neighbor 2 with C,D.
+      // Or A,B and A,B,C. Or, neighbor 1 could have different occupancy
+      // of altloc A than neighbor 2. We don't want to check for all possible
+      // weird cases. Only ensure that the added H has total occupancy <= 1.
+      float occ_sum = 0;
+      auto range = neighbor_altlocs.equal_range(atoms[i].serial);
       for (auto it = range.first; it != range.second; ++it) {
         const Neigh& neigh = it->second;
-        if (neigh.alt && altlocs.count(neigh.alt) == 0 && neigh.occ < max_occ) {
-          altlocs.emplace(neigh.alt, neigh.occ * parent_occ);
-          max_occ -= neigh.occ;
+        if (altlocs.count(neigh.alt) == 0 && occ_sum + neigh.occ <= 1.001f) {
+          occ_sum += neigh.occ;
+          altlocs.emplace(neigh.alt, neigh.occ);
         }
       }
+      if (occ_sum - parent_occ > 0.001f)
+        for (auto& it : altlocs)
+          it.second *= parent_occ;
     }
     if (altlocs.empty())
       altlocs.emplace(parent_alt, parent_occ);
@@ -851,9 +858,9 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
   }
 }
 
-NeighMap prepare_neighbor_data(Topo& topo, const MonLib& monlib) {
+NeighMap prepare_neighbor_altlocs(Topo& topo, const MonLib& monlib) {
   // disable warnings here, so they are not printed twice
-  std::streambuf *warnings_orig = nullptr;
+  std::streambuf* warnings_orig = nullptr;
   if (topo.warnings)
     warnings_orig = topo.warnings->rdbuf(nullptr);
   // Prepare bonds. Fills topo.bonds, monomer_rules/link_rules and rt_storage,
@@ -868,8 +875,9 @@ NeighMap prepare_neighbor_data(Topo& topo, const MonLib& monlib) {
   for (const Topo::Bond& bond : topo.bonds) {
     const Atom* a1 = bond.atoms[0];
     const Atom* a2 = bond.atoms[1];
-    neighbors.emplace(a1->serial, Neigh{a2->altloc, a2->occ});
-    if (a1 != a2)
+    if (a2->altloc)
+      neighbors.emplace(a1->serial, Neigh{a2->altloc, a2->occ});
+    if (a1->altloc && a1 != a2)
       neighbors.emplace(a2->serial, Neigh{a1->altloc, a1->occ});
   }
   return neighbors;
@@ -932,13 +940,13 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
   if (h_change == HydrogenChange::ReAdd ||
       h_change == HydrogenChange::ReAddButWater ||
       h_change == HydrogenChange::ReAddKnown) {
-    NeighMap neighbors = prepare_neighbor_data(*topo, monlib);
+    NeighMap neighbor_altlocs = prepare_neighbor_altlocs(*topo, monlib);
     for (Topo::ChainInfo& chain_info : topo->chain_infos)
       for (Topo::ResInfo& ri : chain_info.res_infos) {
         Residue& res = *ri.res;
         if (ri.orig_chemcomp != nullptr &&
             (h_change == HydrogenChange::ReAdd || !res.is_water())) {
-          add_hydrogens_without_positions(ri, neighbors);
+          add_hydrogens_without_positions(ri, neighbor_altlocs);
 
           // a special handling of HIS for compatibility with Refmac
           if (res.name == "HIS") {
