@@ -411,18 +411,20 @@ void place_hydrogens_on_all_atoms(Topo& topo) {
           }
           if (hs.size() == 0)
             continue;
-          if (atom.altloc == '\0') {
-            std::string altlocs;  // cf. add_distinct_altlocs
-            for (const auto& h : hs)
-              if (h.ptr->altloc && altlocs.find(h.ptr->altloc) == std::string::npos)
-                altlocs += h.ptr->altloc;
-            if (altlocs.size() > 1) {
-              for (char alt : altlocs)
+          std::string altlocs;
+          // In a special case: Hs with altlocs on a parent without altloc,
+          // we need to process conformations one by one.
+          if (atom.altloc == '\0')
+            for (const auto& h : hs) {
+              char alt = h.ptr->altloc;
+              if (alt && altlocs.find(alt) == std::string::npos) {
+                altlocs += alt;
                 place_hydrogens(topo, atom, filter(alt, known), filter(alt, hs));
-              continue;
+              }
             }
-          }
-          place_hydrogens(topo, atom, known, hs);
+          // In all other cases, all bonded atoms are from the same conformation.
+          if (altlocs.empty())
+            place_hydrogens(topo, atom, known, hs);
         } catch (const std::runtime_error& e) {
           topo.err("Placing of hydrogen bonded to "
                    + atom_str(chain_info.chain_ref, *ri.res, atom)
