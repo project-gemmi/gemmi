@@ -16,6 +16,7 @@ Options:
   --remove           Only remove hydrogens.
   --keep             Do not add/remove hydrogens, only change positions.
   --water            Add hydrogens also to waters.
+  --unique           Add only hydrogens with uniquely determined positions.
   --sort             Order atoms in residues according to _chem_comp_atom.
 
 Option -L/--lib can be used multiple times, in order of priority.

@@ -21,7 +21,7 @@ namespace cif = gemmi::cif;
 
 namespace {
 
-enum OptionIndex { FormatIn=AfterMonLibOptions, RemoveH, KeepH, Water, Sort };
+enum OptionIndex { FormatIn=AfterMonLibOptions, RemoveH, KeepH, Water, Unique, Sort };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -44,6 +44,8 @@ const option::Descriptor Usage[] = {
     "  --keep  \tDo not add/remove hydrogens, only change positions." },
   { Water, 0, "", "water", Arg::None,
     "  --water  \tAdd hydrogens also to waters." },
+  { Unique, 0, "", "unique", Arg::None,
+    "  --unique  \tAdd only hydrogens with uniquely determined positions." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder atoms in residues according to _chem_comp_atom." },
   MonLibUsage[2], // details about Libin (--lib)
@@ -67,7 +69,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_positional_args(2);
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
-  p.check_exclusive_pair(KeepH, RemoveH);
+  p.check_exclusive_group({KeepH, RemoveH, Water, Unique});
 
   gemmi::HydrogenChange h_change = gemmi::HydrogenChange::ReAddButWater;
   if (p.options[RemoveH])
@@ -76,6 +78,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     h_change = gemmi::HydrogenChange::Shift;
   else if (p.options[Water])
     h_change = gemmi::HydrogenChange::ReAdd;
+  else if (p.options[Unique])
+    h_change = gemmi::HydrogenChange::ReAddKnown;
 
   MonArguments mon_args;
   if (h_change != gemmi::HydrogenChange::Remove)
