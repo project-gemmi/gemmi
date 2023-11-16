@@ -4,7 +4,7 @@
 
 namespace gemmi {
 
-PolymerType check_polymer_type(const ConstResidueSpan& span) {
+PolymerType check_polymer_type(const ConstResidueSpan& span, bool ignore_entity_type) {
   if (span.empty())
     return PolymerType::Unknown;
   size_t counts[(int)ResidueKind::ELS+1] = {0};
@@ -13,7 +13,8 @@ PolymerType check_polymer_type(const ConstResidueSpan& span) {
   size_t total = 0;
   bool has_atom_record = false;
   for (const Residue& r : span)
-    if (r.entity_type == EntityType::Unknown ||
+    if (ignore_entity_type ||
+        r.entity_type == EntityType::Unknown ||
         r.entity_type == EntityType::Polymer) {
       if (r.het_flag == 'A')
         has_atom_record = true;
@@ -115,7 +116,7 @@ void add_entity_types(Chain& chain, bool overwrite) {
       std::all_of(chain.residues.begin(), chain.residues.end(),
                   [](const Residue& r) { return r.entity_type != EntityType::Unknown; }))
     return;
-  PolymerType ptype = check_polymer_type(chain.whole());
+  PolymerType ptype = check_polymer_type(chain.whole(), /*ignore_entity_type=*/overwrite);
   auto it = chain.residues.begin();
   if (ptype != PolymerType::Unknown) {
     auto polymer_end = infer_polymer_end(chain, ptype);

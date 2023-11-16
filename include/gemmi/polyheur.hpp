@@ -16,7 +16,8 @@ namespace gemmi {
 // A simplistic classification. It may change in the future.
 // It returns PolymerType which corresponds to _entity_poly.type,
 // but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
-GEMMI_DLL PolymerType check_polymer_type(const ConstResidueSpan& span);
+GEMMI_DLL PolymerType check_polymer_type(const ConstResidueSpan& span,
+                                         bool ignore_entity_type=false);
 
 inline PolymerType get_or_check_polymer_type(const Entity* ent,
                                              const ConstResidueSpan& polymer) {
