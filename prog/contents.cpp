@@ -144,6 +144,21 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
           mol_atom_count += atom.occ;
           mol_weight += atom.occ * atom.element.weight();
         }
+
+        // sanity check: occupancies
+        if (atom.occ > 1.0f || atom.occ < 0.f)
+          printf("WARNING: Occupancy of %s: %g\n",
+                 atom_str(chain, res, atom).c_str(), atom.occ);
+        if (atom.altloc && (&atom == &res.atoms[0] || (&atom - 1)->name != atom.name)) {
+          float occ_sum = atom.occ;
+          for (const Atom* a = &atom + 1; a < res.atoms.data() + res.atoms.size(); ++a)
+            if (a->name == atom.name)
+              occ_sum += a->occ;
+          if (occ_sum > 1.0f)
+            printf("WARNING: Sum of altloc occupancies of %s/%s %s/%s: %g\n",
+                   chain.name.c_str(), res.name.c_str(), res.seqid.str().c_str(),
+                   atom.name.c_str(), occ_sum);
+        }
       }
     }
   }
