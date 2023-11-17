@@ -131,20 +131,26 @@ class TestReadingSeq(unittest.TestCase):
 
     def test_code_conversion_dna(self):
         seq1 = gemmi.read_pir_or_fasta(FASTA3)[0].seq
-        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.DNA)
+        kind = gemmi.ResidueKind.DNA
+        seq3 = gemmi.expand_one_letter_sequence(seq1, kind)
         self.assertEqual(seq1, gemmi.one_letter_code(seq3))
+        self.assertEqual(seq1, gemmi.pdbx_one_letter_code(seq3, kind))
 
     def test_code_conversion_rna(self):
         seq1 = 'GGCGAUACCAGCCGAAAGGCCCUUGGCAGCGCC'  # from 8d2b
-        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.RNA)
+        kind = gemmi.ResidueKind.RNA
+        seq3 = gemmi.expand_one_letter_sequence(seq1, kind)
         self.assertEqual(seq1, gemmi.one_letter_code(seq3))
+        self.assertEqual(seq1, gemmi.pdbx_one_letter_code(seq3, kind))
 
     def test_code_with_brackets(self):
         # test 1PFE _entity_poly.pdbx_seq_one_letter_code[_can]
         seq1 = gemmi.read_pir_or_fasta(FASTA4)[1].seq
-        seq3 = gemmi.expand_one_letter_sequence(seq1, gemmi.ResidueKind.AA)
+        kind = gemmi.ResidueKind.AA
+        seq3 = gemmi.expand_one_letter_sequence(seq1, kind)
         self.assertEqual(seq3, ['DSN', 'ALA', 'N2C', 'MVA',
                                 'DSN', 'ALA', 'NCY', 'MVA'])
+        self.assertEqual(seq1, gemmi.pdbx_one_letter_code(seq3, kind))
 
 if __name__ == '__main__':
     unittest.main()

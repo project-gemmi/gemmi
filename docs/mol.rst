@@ -2131,12 +2131,16 @@ residues and a parenthesized CCD code for non-standard ones.
   >>> block.find_values('_entity_poly.pdbx_seq_one_letter_code').str(1)
   '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
 
-Such a sequence can be unambiguously expanded to residue names:
+Such a sequence can be unambiguously expanded to residue names, and the other
+way around, if we know the kind of residues encoded with single letters:
 
 .. doctest::
 
+  >>> gemmi.pdbx_one_letter_code(seq, gemmi.ResidueKind.AA)
+  '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
   >>> gemmi.expand_one_letter_sequence(_, gemmi.ResidueKind.AA)
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+
 
 Molecular weight
 ----------------

@@ -43,6 +43,23 @@ inline std::string one_letter_code(const std::vector<std::string>& seq) {
   return r;
 }
 
+/// Returns the format used in _entity_poly.pdbx_seq_one_letter_code,
+/// in which non-standard amino acids/nucleotides are represented by CCD codes
+/// in parenthesis, e.g. AA(MSE)H.
+inline std::string pdbx_one_letter_code(const std::vector<std::string>& seq,
+                                        ResidueKind kind) {
+  std::string r;
+  for (const std::string& item : seq) {
+    std::string code = Entity::first_mon(item);
+    ResidueInfo ri = find_tabulated_residue(code);
+    if (ri.is_standard() && ri.kind == kind)
+      r += ri.one_letter_code;
+    else
+      cat_to(r, '(', code, ')');
+  }
+  return r;
+}
+
 /// used with expand_one_letter_sequence()
 inline ResidueKind sequence_kind(PolymerType ptype) {
   if (is_polypeptide(ptype))

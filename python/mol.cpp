@@ -68,6 +68,7 @@ void add_mol(py::module& m) {
     ;
 
   m.def("one_letter_code", &one_letter_code);
+  m.def("pdbx_one_letter_code", &pdbx_one_letter_code);
   m.def("sequence_kind", &sequence_kind);
   m.def("make_address", &make_address);
 

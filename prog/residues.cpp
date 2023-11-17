@@ -209,6 +209,7 @@ void print_short_info(const gemmi::Model& model, OptParser& p) {
           if (short_level == 2) {
             col += printf(" %-3s", res.name.c_str());
           } else { // short_level > 2
+            // cf. pdbx_one_letter_code()
             char c = gemmi::find_tabulated_residue(res.name).fasta_code();
             if (res.entity_type == gemmi::EntityType::Polymer && c != 'X')
               col += printf("%c", c);
