@@ -18,7 +18,7 @@ if (DEFINED SKBUILD)  # building with scikit-build-core (pip install)
   #set(CMAKE_INSTALL_BINDIR "${SKBUILD_SCRIPTS_DIR}")
 endif()
 
-option(BUILD_SHARED_LIBS "Build using shared library" OFF)
+option(BUILD_SHARED_LIBS "Build shared library" ON)
 option(BUILD_GEMMI_PROGRAM "Build gemmi command-line program" ON)
 option(INSTALL_DEV_FILES "Install C++ headers, cmake configs, static lib" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
