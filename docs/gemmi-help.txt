@@ -15,6 +15,7 @@ Commands:
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
+ diff          compare tags in mmCIF files
  ecalc         calculate normalized amplitudes E
  fprime        calculate anomalous scattering factors f' and f"
  grep          search for tags in CIF file(s)

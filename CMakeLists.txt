@@ -231,6 +231,7 @@ add_single_prog(cif2mtz)
 add_single_prog(contact)
 add_single_prog(contents)
 add_single_prog(convert)
+add_single_prog(diff GZ)
 add_single_prog(ecalc GZ)
 add_single_prog(fprime NOLIB)
 add_single_prog(grep NOLIB GZ)
@@ -261,7 +262,7 @@ add_executable(gemmi_prog
                prog/align.cpp prog/blobs.cpp
                prog/cif2mtz.cpp prog/cif2json.cpp prog/contact.cpp
                prog/contents.cpp prog/convert.cpp
-               prog/ecalc.cpp prog/fprime.cpp
+               prog/diff.cpp prog/ecalc.cpp prog/fprime.cpp
                prog/grep.cpp prog/h.cpp prog/json2cif.cpp
                prog/main.cpp prog/map.cpp prog/map2sf.cpp
                prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp

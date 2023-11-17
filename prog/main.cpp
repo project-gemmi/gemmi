@@ -12,6 +12,7 @@ int cif2json_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
+int diff_main(int argc, char** argv);
 int ecalc_main(int argc, char** argv);
 int fprime_main(int argc, char** argv);
 int grep_main(int argc, char** argv);
@@ -56,6 +57,7 @@ static SubCmd subcommands[] = {
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),
+  CMD(diff, "compare tags in mmCIF files"),
   CMD(ecalc, "calculate normalized amplitudes E"),
   CMD(fprime, "calculate anomalous scattering factors f' and f\""),
   CMD(grep, "search for tags in CIF file(s)"),
