@@ -10,7 +10,6 @@
 #include "gemmi/to_mmcif.hpp"  // for update_mmcif_block
 #include "gemmi/assembly.hpp"  // for ChainNameGenerator, transform_to_assembly
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
-#include "gemmi/resinfo.hpp"   // for expand_protein_one_letter
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/select.hpp"    // for Selection
 #include "gemmi/enumstr.hpp"   // for polymer_type_to_string
@@ -18,7 +17,6 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>           // for sort
-#include <map>
 
 #define GEMMI_PROG convert
 #include "options.h"

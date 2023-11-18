@@ -8,7 +8,6 @@
 #include "small.hpp"     // for SmallStructure
 #include "cifdoc.hpp"
 #include "numb.hpp"      // for as_number
-#include "symmetry.hpp"  // for SpaceGroup
 #include "sprintf.hpp"   // for to_str
 
 namespace gemmi {

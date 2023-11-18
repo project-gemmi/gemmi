@@ -7,7 +7,6 @@
 #include <cassert>
 #include <cstdio>       // fseek, ftell, fread
 #include <climits>      // INT_MAX
-#include <memory>
 #include <string>
 #include <zlib.h>
 #include "fail.hpp"     // fail, sys_fail

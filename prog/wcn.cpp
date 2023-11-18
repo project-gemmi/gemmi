@@ -13,7 +13,7 @@
 #define GEMMI_PROG wcn
 #include "options.h"
 #include <stdio.h>
-#include <cstdlib>  // for strtod
+#include <cstdlib>    // for strtof, atoi
 #include <algorithm>  // for sort
 
 using namespace gemmi;

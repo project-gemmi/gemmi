@@ -23,7 +23,6 @@
 #ifndef GEMMI_DIRWALK_HPP_
 #define GEMMI_DIRWALK_HPP_
 
-#include <stdexcept>  // for runtime_error
 #include <string>
 #include <vector>
 #include <cassert>

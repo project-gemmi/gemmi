@@ -7,10 +7,10 @@
 #define GEMMI_FORMFACT_HPP_
 
 #include <cmath>     // for exp, sqrt
+#include <cstring>   // for memcpy
 #include <limits>    // for numeric_limits
 #include <utility>   // for pair
 #include "math.hpp"  // for pi()
-#include "elem.hpp"  // for El
 
 namespace gemmi {
 

@@ -5,8 +5,6 @@
 #ifndef GEMMI_RECIPROC_HPP_
 #define GEMMI_RECIPROC_HPP_
 
-#include <array>
-#include "fail.hpp"      // for fail
 #include "symmetry.hpp"  // for SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
 

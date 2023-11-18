@@ -6,9 +6,9 @@
 #define GEMMI_PIRFASTA_HPP_
 
 #include <cctype>   // for isspace
-#include <istream>
+#include <vector>
+#include <algorithm>  // for min
 #include "fail.hpp"
-#include "util.hpp"
 
 namespace gemmi {
 

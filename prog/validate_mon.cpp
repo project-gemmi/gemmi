@@ -4,7 +4,7 @@
 // the Refmac monomer dictionary ("gemmi validate --monomer").
 
 #include <stdio.h>
-#include <stdexcept>
+#include <exception>
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/chemcomp.hpp"     // for ChemComp
 #include "gemmi/chemcomp_xyz.hpp" // for make_residue_from_chemcomp_block

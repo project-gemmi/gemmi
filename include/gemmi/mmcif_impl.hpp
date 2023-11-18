@@ -9,7 +9,6 @@
 #include "cifdoc.hpp"    // for cif::Block
 #include "numb.hpp"      // for cif::as_number
 #include "unitcell.hpp"  // for UnitCell
-#include "symmetry.hpp"  // for SpaceGroup
 
 namespace gemmi {
 namespace impl {

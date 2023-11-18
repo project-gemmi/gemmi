@@ -3,7 +3,6 @@
 #ifndef GEMMI_UTF_HPP_
 #define GEMMI_UTF_HPP_
 
-#include <stdexcept>  // for runtime_error
 #include <string>
 
 namespace gemmi {

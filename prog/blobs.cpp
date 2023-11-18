@@ -7,7 +7,7 @@
 #include "gemmi/assembly.hpp"  // for expand_ncs
 #include "gemmi/polyheur.hpp"  // for remove_waters
 #include "gemmi/modify.hpp"    // for remove_hydrogens
-#include "gemmi/math.hpp"      // for Variance
+#include "gemmi/stats.hpp"     // for Variance
 #include "gemmi/neighbor.hpp"  // for NeighborSearch
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/calculate.hpp" // for calculate_center_of_mass

@@ -9,8 +9,7 @@
 #include <algorithm>  // for min
 #include <array>
 #include <stdexcept>  // for out_of_range
-#include <string>
-#include <vector>
+#include <type_traits>  // for enable_if, is_integral
 
 namespace gemmi {
 
@@ -38,7 +37,7 @@ constexpr double sq(double x) { return x * x; }
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 
 inline double angle_abs_diff(double a, double b, double full=360.0) {
-  double d = std::abs(a - b);
+  double d = std::fabs(a - b);
   if (d > full)
     d -= std::floor(d / full) * full;
   return std::min(d, full - d);

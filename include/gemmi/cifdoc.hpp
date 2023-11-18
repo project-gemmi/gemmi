@@ -10,11 +10,11 @@
 #include "fail.hpp"  // for fail
 #include "util.hpp"  // for starts_with, to_lower, cat
 #include <cassert>
+#include <cstddef>   // for size_t
 #include <cstring>   // for memchr
 #include <algorithm> // for move, find_if, all_of, min, rotate
 #include <array>
 #include <initializer_list>
-#include <iosfwd>    // for size_t, ptrdiff_t
 #include <new>
 #include <stdexcept>
 #include <string>

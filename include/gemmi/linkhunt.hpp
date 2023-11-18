@@ -6,7 +6,6 @@
 #define GEMMI_LINKHUNT_HPP_
 
 #include <map>
-#include <unordered_map>
 #include "elem.hpp"
 #include "model.hpp"
 #include "monlib.hpp"
