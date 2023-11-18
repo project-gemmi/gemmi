@@ -47,8 +47,7 @@ struct MmcifOutputGroups {
 
   explicit MmcifOutputGroups(bool all)
     : atoms(all), block_name(all), entry(all), database_status(all),
-      author(all), cell(all), symmetry(all), entity(all),
-      entity_poly(false),  // see the comment under "if (groups.entity_poly)"
+      author(all), cell(all), symmetry(all), entity(all), entity_poly(all),
       struct_ref(all), chem_comp(all), exptl(all), diffrn(all),
       reflns(all), refine(all), title_keywords(all), ncs(all),
       struct_asym(all), origx(all), struct_conf(all), struct_sheet(all),

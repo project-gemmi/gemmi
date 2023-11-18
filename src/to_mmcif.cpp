@@ -11,6 +11,7 @@
 #include <gemmi/atox.hpp>       // no_sign_atoi
 #include <gemmi/sprintf.hpp>
 #include <gemmi/enumstr.hpp>    // for entity_type_to_string, ...
+#include <gemmi/seqtools.hpp>   // for pdbx_one_letter_code, ...
 
 namespace gemmi {
 
@@ -488,18 +489,37 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                            entity_type_to_string(ent.entity_type)});
   }
 
+  std::map<std::string, std::string> subs_to_strands;
+  if (groups.entity_poly || groups.struct_ref)
+    subs_to_strands = st.models[0].subchain_to_chain();
+
   if (groups.entity_poly) {
-    // In this category we write mandatory tags only.
-    // But if such a file is deposited to the wwPDB it causes:
-    //  ERROR: Missing '_entity_poly.pdbx_strand_id' item.
-    // If pdbx_strand_id was present, OneDep would complain about missing
-    // _entity_poly.pdbx_seq_one_letter_code. So just in case, by default
-    // MmcifOutputGroups::entity_poly is false.
-    cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.", {"entity_id", "type"});
+    // If the _entity_poly category is included when depositing to the PDB,
+    // it must contain entity_id, type, pdbx_seq_one_letter_code
+    // and pdbx_strand_id. The last one is not documented as required,
+    // but OneDep shows error when it's not included.
+    cif::Loop& ent_poly_loop = block.init_mmcif_loop("_entity_poly.",
+        {"entity_id", "type", "pdbx_strand_id", "pdbx_seq_one_letter_code"});
     for (const Entity& ent : st.entities)
-      if (ent.entity_type == EntityType::Polymer)
+      if (ent.entity_type == EntityType::Polymer) {
+        if (ent.polymer_type == PolymerType::Unknown)
+          continue;  // not sure what to do here
+        ResidueKind kind = sequence_kind(ent.polymer_type);
+        std::string seq1 = pdbx_one_letter_code(ent.full_sequence, kind);
+        std::string strand_ids;
+        for (const std::string& sub : ent.subchains) {
+          auto strand_id = subs_to_strands.find(sub);
+          if (strand_id != subs_to_strands.end()) {
+            if (!strand_ids.empty())
+              strand_ids += ',';
+            strand_ids += strand_id->second;
+          }
+        }
         ent_poly_loop.add_row({qchain(ent.name),
-                               polymer_type_to_string(ent.polymer_type)});
+                               polymer_type_to_string(ent.polymer_type),
+                               string_or_qmark(strand_ids),
+                               string_or_qmark(seq1)});
+      }
   }
 
   if (groups.struct_ref) { // _struct_ref, _struct_ref_seq
@@ -515,7 +535,6 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "pdbx_auth_seq_align_end", "pdbx_seq_align_end_ins_code"});
     int counter = 0;
     int counter2 = 0;
-    std::map<std::string, std::string> subs = st.models[0].subchain_to_chain();
     for (const Entity& ent : st.entities)
       for (const Entity::DbRef& dbref : ent.dbrefs) {
         ref_loop.add_row({std::to_string(++counter),
@@ -525,8 +544,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                           string_or_qmark(dbref.accession_code),
                           string_or_qmark(dbref.isoform)});
         for (const std::string& subchain : ent.subchains) {
-          auto strand_id = subs.find(subchain);
-          if (strand_id == subs.end())
+          auto strand_id = subs_to_strands.find(subchain);
+          if (strand_id == subs_to_strands.end())
             continue;
           // DbRef::label_seq_begin/end (_struct_ref_seq.seq_align_beg/end) is
           // not filled in when reading PDB file, so we check it here.
