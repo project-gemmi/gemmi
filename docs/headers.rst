@@ -265,6 +265,9 @@ gemmi/seqalign.hpp
 gemmi/seqid.hpp
     SeqId -- residue number and insertion code together.
 
+gemmi/seqtools.hpp
+    Functions for working with sequences (other than alignment).
+
 gemmi/sfcalc.hpp
     Direct calculation of structure factors.
 

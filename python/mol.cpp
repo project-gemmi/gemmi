@@ -67,9 +67,6 @@ void add_mol(py::module& m) {
     .value("Dup", HowToNameCopiedChain::Dup)
     ;
 
-  m.def("one_letter_code", &one_letter_code);
-  m.def("pdbx_one_letter_code", &pdbx_one_letter_code);
-  m.def("sequence_kind", &sequence_kind);
   m.def("make_address", &make_address);
 
   py::enum_<CoorFormat>(m, "CoorFormat")
@@ -525,8 +522,6 @@ void add_mol(py::module& m) {
         py::arg("pos"), py::arg("coeff"));
   m.def("calculate_omega", &calculate_omega,
         py::arg("residue"), py::arg("next_residue"));
-  m.def("calculate_sequence_weight", &calculate_sequence_weight,
-        py::arg("sequence"), py::arg("unknown")=0.);
   m.def("make_assembly", [](const Assembly& assembly, const Model& model,
                             HowToNameCopiedChain how) {
         return make_assembly(assembly, model, how, nullptr);

@@ -2,6 +2,7 @@
 
 #include <gemmi/align.hpp>
 #include <gemmi/resinfo.hpp>  // for expand_one_letter_sequence
+#include <gemmi/seqtools.hpp> // for sequence_kind
 
 namespace gemmi {
 

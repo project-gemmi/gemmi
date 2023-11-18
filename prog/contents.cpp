@@ -7,7 +7,8 @@
 #include <cstdio>
 #include <gemmi/symmetry.hpp>
 #include <gemmi/resinfo.hpp>
-#include <gemmi/polyheur.hpp>  // for setup_entities, calculate_sequence_weight
+#include <gemmi/polyheur.hpp>  // for setup_entities
+#include <gemmi/seqtools.hpp>  // for calculate_sequence_weight
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include <gemmi/select.hpp>    // for Selection
 #include <gemmi/stats.hpp>     // for DataStats

@@ -6,6 +6,7 @@
 #include "gemmi/pdb_id.hpp"    // for expand_if_pdb_code
 #include "gemmi/bessel.hpp"    // for bessel_i1_over_i0
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
+#include "gemmi/seqtools.hpp"  // for calculate_sequence_weight
 #include "gemmi/stats.hpp"     // for Correlation
 #include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error
 
@@ -60,6 +61,13 @@ void add_misc(py::module& m) {
     .def_readonly("seq", &gemmi::FastaSeq::seq)
     ;
   m.def("read_pir_or_fasta", &gemmi::read_pir_or_fasta);
+
+  // seqtools.hpp
+  m.def("calculate_sequence_weight", &gemmi::calculate_sequence_weight,
+        py::arg("sequence"), py::arg("unknown")=0.);
+  m.def("one_letter_code", &gemmi::one_letter_code);
+  m.def("pdbx_one_letter_code", &gemmi::pdbx_one_letter_code);
+  m.def("sequence_kind", &gemmi::sequence_kind);
 
   // stats.hpp
   py::class_<gemmi::Correlation>(m, "Correlation")

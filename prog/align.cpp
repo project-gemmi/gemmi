@@ -4,6 +4,7 @@
 
 #include <gemmi/model.hpp>
 #include <gemmi/polyheur.hpp>  // for setup_entities
+#include <gemmi/seqtools.hpp>  // for one_letter_code
 #include <gemmi/align.hpp>     // for align_sequence_to_polymer
 #include <gemmi/seqalign.hpp>  // for align_string_sequences
 #include <gemmi/mmread_gz.hpp>

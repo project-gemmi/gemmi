@@ -103,8 +103,6 @@ inline double molecular_weight(El el) {
   return weights[static_cast<int>(el)];
 }
 
-constexpr double h2o_weight() { return 2 * 1.00794 + 15.9994; }
-
 // Covalent radius data from https://en.wikipedia.org/wiki/Covalent_radius
 // which in turn comes from
 // Cordero et al (2008). "Covalent radii revisited". Dalton Trans. 21, 2832

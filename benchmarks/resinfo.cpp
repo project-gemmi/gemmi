@@ -5,7 +5,7 @@
 // c++ -Wall -O2 -I../include -I$GB/include resinfo.cpp $GB/src/libbenchmark.a -pthread
 
 #include "gemmi/resinfo.hpp"
-#include "gemmi/polyheur.hpp"
+#include "gemmi/seqtools.hpp"  // for calculate_sequence_weight
 #include <benchmark/benchmark.h>
 #include <stdlib.h>               // for rand
 
