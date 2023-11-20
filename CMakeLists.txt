@@ -43,6 +43,12 @@ if (NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
   set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 endif()
 
+# We don't need to set policy CMP0069 for this file, because the minimum
+# version is 3.15 and for versions >= 3.9 it's automatically set to NEW.
+# But a FindPython script in cmake 3.15 have "cmake_policy(VERSION 3.7)"
+# so we need to set CMP0069 because of that.
+set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
+
 # Unless it's explicitly specifed, we want LTO for non-debug builds only.
 # pybind11Common.cmake has its own logic to set LTO options.
 # Having different options in pybind11_add_module than for gemmi_cpp

@@ -14,7 +14,7 @@ cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 if [ -z "${PYTHON-}" ]; then
-    PYTHON=`grep ^_Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+    PYTHON=`grep ^PYBIND11_PYTHON_EXECUTABLE_LAST: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 fi
 
 # Build all, except when we called with an option to avoid full compilation:
@@ -33,7 +33,7 @@ if [ $# != 0 ] && [ $1 = n ]; then
     shift
 else
     (cd $BUILD_DIR && make -j4 all check)
-    ./tools/cmp-size.py build/gemmi build/gemmi.*.so build/libgemmi_cpp.*
+    ./tools/cmp-size.py build/gemmi build/*gemmi*.so
     ./tools/docs-help.sh
 fi
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
