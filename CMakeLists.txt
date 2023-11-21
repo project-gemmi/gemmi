@@ -403,13 +403,10 @@ if (USE_PYTHON)
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
     add_subdirectory(pybind11)
   else()
-    find_package(pybind11 2.6 CONFIG)
-    if (NOT pybind11_FOUND)
-        # try once more, using pybind11-config
-        execute_process(COMMAND pybind11-config --cmakedir OUTPUT_VARIABLE pybind11_DIR)
-        string(STRIP "${pybind11_DIR}" pybind11_DIR)
-        find_package(pybind11 2.6 CONFIG REQUIRED)
-    endif()
+    # use pybind11-config (if available) to determine pybind11_DIR
+    execute_process(COMMAND pybind11-config --cmakedir OUTPUT_VARIABLE pybind11_DIR)
+    string(STRIP "${pybind11_DIR}" pybind11_DIR)
+    find_package(pybind11 2.6 CONFIG REQUIRED)
     message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
   endif()
   pybind11_add_module(gemmi_py
