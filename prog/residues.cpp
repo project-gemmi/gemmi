@@ -6,6 +6,7 @@
 #include "gemmi/polyheur.hpp"  // for setup_entities
 #include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
+#include "gemmi/enumstr.hpp"   // for polymer_type_to_string, entity_type_to_string
 #include "histogram.h"         // for terminal_columns
 
 #define GEMMI_PROG residues
@@ -13,12 +14,12 @@
 
 namespace {
 
-enum OptionIndex { FormatIn=4, Match, Label, CheckSeqId, NoAlt, Short, };
+enum OptionIndex { FormatIn=4, Match, Label, CheckSeqId, NoAlt, Short, Ent };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] INPUT[...]"
-    "\nPrints one residue per line, with atom names." },
+    "\nPrints chains, residues and atoms. Or without atoms. Or only entities." },
   CommonUsage[Help],
   CommonUsage[Version],
   { FormatIn, 0, "", "format", Arg::CoorFormat,
@@ -32,10 +33,12 @@ const option::Descriptor Usage[] = {
   { NoAlt, 0, "", "no-alt", Arg::None,
     "  --no-alt  \tDo not print altlocs." },
   { Short, 0, "s", "--short", Arg::None,
-    "  -s, --short  \tShorter output (no atom info). Can be given twice." },
+    "  -s, --short  \tShorter output (no atom info). Can be given 2x or 3x." },
+  { Ent, 0, "e", "entities", Arg::None,
+    "  -e, --entities  \tList (so-called, in mmCIF speak) entities." },
   { NoOp, 0, "", "", Arg::None,
     "INPUT is a coordinate file (mmCIF, PDB, etc)."
-    "\nThe selection SEL has MMDB syntax:"
+    "\nThe optional selection SEL has MMDB syntax:"
     "\n/mdl/chn/s1.i1(res)-s2.i2/at[el]:aloc (all fields are optional)\n" },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -226,6 +229,73 @@ void print_short_info(const gemmi::Model& model, OptParser& p) {
   }
 }
 
+void print_entity_info(const gemmi::Structure& st) {
+  if (st.models.size() > 1)
+    printf("Checking only the first model.\n");
+  const gemmi::Model& model = st.models.at(0);
+  printf("Polymers\n");
+  std::map<std::string, std::string> sub_to_strand = model.subchain_to_chain();
+  for (const gemmi::Entity& ent : st.entities)
+    if (ent.entity_type == gemmi::EntityType::Polymer) {
+      printf("  entity %s, %s, length %zu, subchains:\n",
+             ent.name.c_str(),
+             gemmi::polymer_type_to_string(ent.polymer_type).c_str(),
+             ent.full_sequence.size());
+      for (const std::string& sub : ent.subchains) {
+        auto strand = sub_to_strand.find(sub);
+        if (strand == sub_to_strand.end())
+          throw std::runtime_error("error in subchain_to_chain()");
+        auto polymer = model.get_subchain(sub);
+        auto conformer = polymer.first_conformer();
+        int length = 0;
+        std::vector<std::pair<int,int>> gaps;
+        int prev = 0;
+        for (const gemmi::Residue& res : conformer) {
+          if (length != 0 && prev != *res.label_seq - 1)
+            gaps.emplace_back(prev+1, *res.label_seq-1);
+          prev = *res.label_seq;
+          ++length;
+        }
+        printf("    - %s from strand %s, %d residues",
+               sub.c_str(), strand->second.c_str(), length);
+        if (!polymer.empty()) {
+          printf(": %s-%s", polymer.front().label_seq.str().c_str(),
+                              polymer.back().label_seq.str().c_str());
+          if (!gaps.empty()) {
+            printf(" except");
+            for (std::pair<int, int> gap : gaps) {
+              printf(" %d", gap.first);
+              if (gap.second != gap.first)
+                printf("-%d", gap.second);
+            }
+          }
+        }
+        putchar('\n');
+      }
+    }
+  printf("Others\n");
+  for (const gemmi::Entity& ent : st.entities)
+    if (ent.entity_type != gemmi::EntityType::Polymer) {
+      printf("  entity %s, %s",
+             ent.name.c_str(), gemmi::entity_type_to_string(ent.entity_type).c_str());
+      if (ent.entity_type != gemmi::EntityType::Branched) {
+        // one residue is expected
+        std::string name;
+        for (const std::string& sub : ent.subchains)
+          for (const gemmi::Residue& res : model.get_subchain(sub)) {
+            if (name.empty()) {
+              name = res.name;
+            } else if (name != res.name) {
+              name += ", ...";
+              break;
+            }
+          }
+        printf(" (%s)", name.c_str());
+      }
+      printf(", subchains: %s\n", gemmi::join_str(ent.subchains, ' ').c_str());
+    }
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -246,19 +316,23 @@ int GEMMI_MAIN(int argc, char **argv) {
         sel.remove_not_selected(st);
       }
       if (st.input_format == gemmi::CoorFormat::Pdb) {
-        if (p.options[Short])
-          gemmi::add_entity_types(st, false);
-        if (p.options[Label]) {
+        if (p.options[Label] || p.options[Ent]) {
           gemmi::setup_entities(st);
           // hidden feature: -ll generates label_seq even if SEQRES is missing
           bool force = p.options[Label].count() > 1;
           gemmi::assign_label_seq_id(st, force);
+        } else if (p.options[Short]) {
+          gemmi::add_entity_types(st, false);
         }
       }
       if (p.options[CheckSeqId]) {
         bool ok = check_sequence_id(st);
         if (!ok)
           ++status;
+        continue;
+      }
+      if (p.options[Ent]) {
+        print_entity_info(st);
         continue;
       }
       for (gemmi::Model& model : st.models) {

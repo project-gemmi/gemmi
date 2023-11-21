@@ -1,7 +1,7 @@
 $ gemmi residues -h
 Usage:
  gemmi residues [options] INPUT[...]
-Prints one residue per line, with atom names.
+Prints chains, residues and atoms. Or without atoms. Or only entities.
   -h, --help          Print usage and exit.
   -V, --version       Print version and exit.
   --format=FORMAT     Input format (default: from the file extension).
@@ -9,8 +9,9 @@ Prints one residue per line, with atom names.
   -l, --label         Print 'label' chain ID and seq ID in brackets.
   --check-seqid       Check if sequence IDs are unique and exit.
   --no-alt            Do not print altlocs.
-  -s, --short         Shorter output (no atom info). Can be given twice.
+  -s, --short         Shorter output (no atom info). Can be given 2x or 3x.
+  -e, --entities      List (so-called, in mmCIF speak) entities.
 INPUT is a coordinate file (mmCIF, PDB, etc).
-The selection SEL has MMDB syntax:
+The optional selection SEL has MMDB syntax:
 /mdl/chn/s1.i1(res)-s2.i2/at[el]:aloc (all fields are optional)
 
