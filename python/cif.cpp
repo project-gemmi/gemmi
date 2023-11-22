@@ -342,6 +342,8 @@ void add_cif(py::module& cif) {
     .def("val", &Loop::val, py::arg("row"), py::arg("col"))
     .def("add_row", &Loop::add_row<std::vector<std::string>>,
          py::arg("new_values"), py::arg("pos")=-1)
+    .def("add_columns", &Loop::add_columns,
+         py::arg("column_names"), py::arg("value"), py::arg("pos")=-1)
     .def("set_all_values", &Loop::set_all_values, py::arg("columns"))
     .def("__repr__", [](const Loop &self) {
         return gemmi::cat("<gemmi.cif.Loop ", self.length(), " x ", self.width(), '>');

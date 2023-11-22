@@ -183,6 +183,15 @@ struct Loop {
       std::rotate(dst, src, src+w);
   }
 
+  void add_columns(const std::vector<std::string>& column_names,
+                   const std::string& value, int pos=-1) {
+    size_t old_width = tags.size();
+    size_t len = length();
+    size_t upos = std::min((size_t)pos, old_width);
+    tags.insert(tags.begin() + upos, column_names.begin(), column_names.end());
+    vector_insert_columns(values, old_width, len, column_names.size(), upos, value);
+  }
+
   void set_all_values(std::vector<std::vector<std::string>> columns);
 
   std::string common_prefix() const {

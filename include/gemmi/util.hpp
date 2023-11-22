@@ -5,9 +5,10 @@
 #ifndef GEMMI_UTIL_HPP_
 #define GEMMI_UTIL_HPP_
 
-#include <algorithm>  // for equal, find, remove_if
+#include <cassert>
 #include <cctype>     // for isspace
 #include <cstring>    // for strncmp
+#include <algorithm>  // for equal, find, remove_if
 #include <iterator>   // for begin, end, make_move_iterator
 #include <string>
 #include <vector>
@@ -264,6 +265,26 @@ void vector_move_extend(std::vector<T>& dst, std::vector<T>&& src) {
 template <class T, typename F>
 void vector_remove_if(std::vector<T>& v, F&& condition) {
   v.erase(std::remove_if(v.begin(), v.end(), condition), v.end());
+}
+
+/// \par data - 2d array (old_width x length) in a vector
+/// Insert \par n new columns at position ins_pos (at the end if ins_pos < 0).
+template <class T>
+void vector_insert_columns(std::vector<T>& data, size_t old_width,
+                           size_t length, size_t n, size_t pos, T new_value) {
+  assert(data.size() == old_width * length);
+  assert(pos <= old_width);
+  data.resize(data.size() + n * length);
+  typename std::vector<T>::iterator dst = data.end();
+  for (size_t i = length; i-- != 0; ) {
+    for (size_t j = old_width; j-- != pos; )
+      *--dst = data[i * old_width + j];
+    for (size_t j = n; j-- != 0; )
+      *--dst = new_value;
+    for (size_t j = pos; j-- != 0; )
+      *--dst = data[i * old_width + j];
+  }
+  assert(dst == data.begin());
 }
 
 

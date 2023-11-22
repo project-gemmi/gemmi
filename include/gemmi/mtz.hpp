@@ -1026,20 +1026,10 @@ struct GEMMI_DLL Mtz {
     size_t old_row_size = columns.size() - added;
     if (data.size() != old_row_size * nreflections)
       fail("Internal error");
-    data.resize(columns.size() * nreflections);
     size_t pos = pos_ == -1 ? old_row_size : (size_t) pos_;
     if (pos > old_row_size)
       fail("expand_data_rows(): pos out of range");
-    std::vector<float>::iterator dst = data.end();
-    for (int i = nreflections; i-- != 0; ) {
-      for (size_t j = old_row_size; j-- != pos; )
-        *--dst = data[i * old_row_size + j];
-      for (size_t j = added; j-- != 0; )
-        *--dst = NAN;
-      for (size_t j = pos; j-- != 0; )
-        *--dst = data[i * old_row_size + j];
-    }
-    assert(dst == data.begin());
+    vector_insert_columns(data, old_row_size, (size_t)nreflections, added, pos, NAN);
   }
 
   void set_data(const float* new_data, size_t n) {

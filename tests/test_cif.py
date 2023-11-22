@@ -170,12 +170,16 @@ class TestBlock(unittest.TestCase):
         block.find(['_x']).append_row(['xa'])
         block.find(['_y']).append_row(['ya'])
         block.find(['_y', '_x']).append_row(['yb', 'xb'])
+        loop.add_columns(column_names=['_z'], value='A')
+        self.assertEqual(loop.tags, ['_x', '_y', '_z'])
         block.find(['_x', '_y']).append_row(['xc', 'yc'])
         self.assertEqual(loop.length(), 8)
         self.assertEqual(list(block.find_values('_x')),
                          '? 1 3 5 xa . xb xc'.split())
         self.assertEqual(list(block.find_values('_y')),
                          '0 2 4 6 . ya yb yc'.split())
+        self.assertEqual(list(block.find_values('_z')),
+                         'A A A A A A A .'.split())
 
     def test_set_mmcif_category(self):
         doc = cif.Document()
