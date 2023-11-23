@@ -268,7 +268,7 @@ void vector_remove_if(std::vector<T>& v, F&& condition) {
 }
 
 /// \par data - 2d array (old_width x length) in a vector
-/// Insert \par n new columns at position ins_pos (at the end if ins_pos < 0).
+/// Insert \par n new columns at position pos.
 template <class T>
 void vector_insert_columns(std::vector<T>& data, size_t old_width,
                            size_t length, size_t n, size_t pos, T new_value) {
@@ -285,6 +285,16 @@ void vector_insert_columns(std::vector<T>& data, size_t old_width,
       *--dst = data[i * old_width + j];
   }
   assert(dst == data.begin());
+}
+/// \par data - 2d array with new_width+1 columns, in a vector
+/// Remove column at position pos.
+template <class T>
+void vector_remove_column(std::vector<T>& data, size_t new_width, size_t pos) {
+  assert(pos <= new_width);
+  for (size_t source = pos + 1; source < data.size(); ++source)
+    for (size_t i = 0; i < new_width && source < data.size(); ++i)
+      data[pos++] = data[source++];
+  data.resize(pos);
 }
 
 

@@ -1000,10 +1000,8 @@ struct GEMMI_DLL Mtz {
     columns.erase(columns.begin() + idx);
     for (size_t i = idx; i < columns.size(); ++i)
       --columns[i].idx;
-    for (size_t dest = idx, source = idx + 1; source < data.size(); ++source)
-      for (size_t i = 0; i < columns.size() && source < data.size(); ++i)
-        data[dest++] = data[source++];
-    data.resize(columns.size() * nreflections);
+    vector_remove_column(data, columns.size(), idx);
+    assert(columns.size() * nreflections == data.size());
   }
 
   template <typename Func>

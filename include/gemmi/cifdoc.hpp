@@ -183,13 +183,24 @@ struct Loop {
       std::rotate(dst, src, src+w);
   }
 
+  // column_names are not checked for duplicates nor for category name
   void add_columns(const std::vector<std::string>& column_names,
                    const std::string& value, int pos=-1) {
+    for (const std::string& name : column_names)
+      assert_tag(name);
     size_t old_width = tags.size();
     size_t len = length();
     size_t upos = std::min((size_t)pos, old_width);
     tags.insert(tags.begin() + upos, column_names.begin(), column_names.end());
     vector_insert_columns(values, old_width, len, column_names.size(), upos, value);
+  }
+
+  void remove_column(const std::string& column_name) {
+    int n = find_tag(column_name);
+    if (n == -1)
+      fail("remove_column(): tag not found: " + column_name);
+    tags.erase(tags.begin() + n);
+    vector_remove_column(values, tags.size(), n);
   }
 
   void set_all_values(std::vector<std::vector<std::string>> columns);

@@ -736,7 +736,10 @@ A new loop can be added using function::
   Loop& Block::init_loop(const std::string& prefix, std::vector<std::string> tags)
 
 Then it can be populated by either setting directly ``tags`` and ``values``,
-or my using Loop's methods such as ``add_row()`` or ``set_all_values()``.
+or by using Loop's methods such as ``add_row()`` or ``set_all_values()``.
+
+Loop has a few other methods for editing its content, such as
+``move_row()``, ``add_columns()`` and ``remove_column()``.
 
 Python
 ------
@@ -840,6 +843,17 @@ if necessary. If you have a list Python values use ``quote_list`` first:
 
   >>> cif.quote_list([None, False, 3, -2.5, 'word', 'two words'])
   ['?', '.', '3', '-2.5', 'word', "'two words'"]
+
+Columns can be added and removed:
+
+.. doctest::
+
+  >>> loop.add_columns(['_atom_type.description', '_atom_type.oxidation_number'], value='?')
+  >>> loop
+  <gemmi.cif.Loop 8 x 3>
+  >>> loop.remove_column('_atom_type.description')
+  >>> loop
+  <gemmi.cif.Loop 8 x 2>
 
 ``set_all_values`` sets all the data in a table. It takes as an argument
 a list of lists of string. The lists of strings correspond to columns.
