@@ -233,7 +233,6 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
   if (max_line_length <= 0 || max_line_length > 120)
     max_line_length = 120;
   bool after_ter = false;
-  bool ignore_ter = false;
   Transform matrix;
   std::unordered_map<ResidueId, int> resmap;
   while (size_t len = copy_line_from_stream(line, max_line_length+1, stream)) {
@@ -554,8 +553,9 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       chain = nullptr;
 
     } else if (is_record_type3(line, "TER")) { // finishes polymer chains
-      if (!chain || ignore_ter)
+      if (!chain || st.ter_status == 'e')
         continue;
+      st.ter_status = 'y';
       if (options.split_chain_on_ter) {
         chain = nullptr;
         // split_chain_on_ter is used for AMBER files that can have TER records
@@ -565,11 +565,15 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       // If we have 2+ TER records in one chain, they are used in non-standard
       // way and should be better ignored (in all the chains).
       if (after_ter) {
-        ignore_ter = true;  // all entity_types will be later set to Unknown
+        st.ter_status = 'e';  // all entity_types will be later set to Unknown
         continue;
       }
-      for (Residue& res : chain->residues)
+      for (Residue& res : chain->residues) {
         res.entity_type = EntityType::Polymer;
+        // Sanity check: water should not be marked as a polymer.
+        if GEMMI_UNLIKELY(res.is_water())
+          st.ter_status = 'e';  // all entity_types will be later set to Unknown
+      }
       after_ter = true;
     } else if (is_record_type(line, "SCALEn")) {
       if (read_matrix(matrix, line, len) == 3) {
@@ -638,7 +642,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
   if (st.models.empty())
     st.models.emplace_back("1");
 
-  if (ignore_ter)
+  if (st.ter_status == 'e')
     remove_entity_types(st);
 
   // Here we assign Residue::subchain, but only for chains with all

@@ -177,6 +177,9 @@ void convert(gemmi::Structure& st,
              const std::vector<option::Option>& options) {
   if (st.models.empty())
     gemmi::fail("No atoms in the input file. Wrong file format?");
+  if (st.ter_status == 'e')
+    std::cerr << "WARNING: TER records in the input PDB are clearly where they shouldn't be."
+                 "\nWARNING: Ignoring all TER records." << std::endl;
 
   for (const option::Option* opt = options[ChangeCcdCode]; opt; opt = opt->next()) {
     const char* sep = std::strchr(opt->arg, ':');

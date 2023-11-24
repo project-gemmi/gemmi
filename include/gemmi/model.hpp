@@ -936,6 +936,8 @@ struct Structure {
 
   CoorFormat input_format = CoorFormat::Unknown;
   bool has_d_fraction = false;  // uses Refmac's ccp4_deuterium_fraction
+  /// in input PDB file: y = TER records were read, e = errors were detected
+  char ter_status = '\0';
 
   /// Store ORIGXn / _database_PDB_matrix.origx*
   bool has_origx = false;
