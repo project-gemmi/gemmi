@@ -96,15 +96,17 @@ void print_content_info(const Structure& st, bool /*verbose*/) {
            box.minimum.x, box.maximum.x,
            box.minimum.y, box.maximum.y,
            box.minimum.z, box.maximum.z);
-    for (const NcsOp& ncs_op : st.ncs) {
-      if (!ncs_op.given)
-        for (const_CRA cra : model.all())
-          box.extend(ncs_op.apply(cra.atom->pos));
+    if (st.ncs_not_expanded()) {
+      for (const NcsOp& ncs_op : st.ncs) {
+        if (!ncs_op.given)
+          for (const_CRA cra : model.all())
+            box.extend(ncs_op.apply(cra.atom->pos));
+      }
+      printf("   With NCS: x [%g, %g]  y [%g, %g]  z [%g, %g]\n",
+             box.minimum.x, box.maximum.x,
+             box.minimum.y, box.maximum.y,
+             box.minimum.z, box.maximum.z);
     }
-    printf("   With NCS: x [%g, %g]  y [%g, %g]  z [%g, %g]\n",
-           box.minimum.x, box.maximum.x,
-           box.minimum.y, box.maximum.y,
-           box.minimum.z, box.maximum.z);
   }
   if (!st.origx.is_identity())
     printf("   The ORIGX matrix is not identity.\n");
