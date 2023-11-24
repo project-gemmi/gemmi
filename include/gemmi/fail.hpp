@@ -31,9 +31,12 @@
 #if __cplusplus >= 202002L || _MSVC_LANG >= 202002L
 #  define GEMMI_LIKELY(x) (x) [[likely]]
 #  define GEMMI_UNLIKELY(x) (x) [[unlikely]]
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined(__clang__)
 #  define GEMMI_LIKELY(x) (__builtin_expect(!!(x), 1))
 #  define GEMMI_UNLIKELY(x) (__builtin_expect(!!(x), 0))
+#else
+#  define GEMMI_LIKELY(x) (x)
+#  define GEMMI_UNLIKELY(x) (x)
 #endif
 
 #if defined(_WIN32)
