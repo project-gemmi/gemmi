@@ -28,6 +28,14 @@
 # define GEMMI_COLD __attribute__((noinline))
 #endif
 
+#if __cplusplus >= 202002L || _MSVC_LANG >= 202002L
+#  define GEMMI_LIKELY(x) (x) [[likely]]
+#  define GEMMI_UNLIKELY(x) (x) [[unlikely]]
+#elif defined(__GNUC__)
+#  define GEMMI_LIKELY(x) (__builtin_expect(!!(x), 1))
+#  define GEMMI_UNLIKELY(x) (__builtin_expect(!!(x), 0))
+#endif
+
 #if defined(_WIN32)
 # if defined(GEMMI_SHARED)
 #  if defined(GEMMI_BUILD)
