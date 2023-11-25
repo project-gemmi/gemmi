@@ -350,6 +350,16 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block.get_index('_lBBB'), 5)
         self.assertEqual(block.find_pair('_Three'), ('_thrEE', '3'))
 
+        values.erase()
+        block.find_values('_two').erase()
+        block.find_values('_nonloop_b').erase()
+        expected = """\
+            data_test
+            _One 1 _thrEE 3
+            _NonLoop_a alpha
+            loop_ _lbBb _ln  B 1  D 2"""
+        self.assertEqual(block.as_string().split(), expected.split())
+
 class TestQuote(unittest.TestCase):
     def test_quote(self):
         self.assertEqual(cif.quote('a.b-c'), 'a.b-c')

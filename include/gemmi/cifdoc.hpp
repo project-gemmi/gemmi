@@ -199,6 +199,11 @@ struct Loop {
     int n = find_tag(column_name);
     if (n == -1)
       fail("remove_column(): tag not found: " + column_name);
+    remove_column_at(n);
+  }
+
+  /// \pre: n < tags.size()
+  void remove_column_at(size_t n) {
     tags.erase(tags.begin() + n);
     vector_remove_column(values, tags.size(), n);
   }
@@ -263,6 +268,8 @@ public:
   const Item* item() const { return item_; }
   Item* item() { return item_; }
   size_t col() const { return col_; }
+
+  void erase();
 
 private:
   Item* item_;
@@ -655,6 +662,13 @@ inline std::string* Column::get_tag() {
   if (Loop* loop = get_loop())
     return &loop->tags.at(col_);
   return &item_->pair[0];
+}
+
+inline void Column::erase() {
+  if (Loop* loop = get_loop())
+    loop->remove_column_at(col_);
+  else if (item_)
+    item_->erase();
 }
 
 inline Loop* Column::get_loop() const {

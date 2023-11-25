@@ -370,6 +370,7 @@ void add_cif(py::module& cif) {
         self.at(idx) = value;
     })
     .def("str", &Column::str, py::arg("index"))
+    .def("erase", &Column::erase)
     .def("__repr__", [](const Column &self) {
         std::string s = "<gemmi.cif.Column ";
         if (const std::string* tag = self.get_tag())

@@ -940,7 +940,7 @@ The C++ signature of ``find_values`` is::
   // Returns underlying Item (which contains either Pair or Loop).
   Item* item();
 
-  // Returns pointer to the DOM structure containing the whole table.
+  // If it's in Loop, returns pointer to Loop; otherwise, nullptr.
   Loop* get_loop() const;
 
   // Get raw value (no bounds checking).
@@ -951,6 +951,9 @@ The C++ signature of ``find_values`` is::
 
   // Short-cut for cif::as_string(column.at(n)).
   std::string str(int n) const;
+
+  // Erases item for name-value pair; removes column for Loop
+  void erase();
 
 ``Column`` also provides support for C++11 range-based ``for``::
 
@@ -1010,6 +1013,16 @@ to this ``Loop`` in the DOM. Otherwise it returns ``None``.
 
   >>> column.get_loop()
   <gemmi.cif.Loop 12 x 7>
+
+``erase()`` removes the column from a loop, if this column is in a loop;
+if it's a tag-value pair it erases the containing item.
+
+.. doctest::
+
+  >>> loop = column.get_loop()
+  >>> column.erase()
+  >>> loop  # one column less
+  <gemmi.cif.Loop 12 x 6>
 
 Table
 =====
