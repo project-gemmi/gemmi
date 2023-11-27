@@ -249,6 +249,7 @@ void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
     }
     return atom_id;
   };
+  cat_to(chemcomp.name, '+', id);
   // _chem_mod_atom
   for (const AtomMod& mod : atom_mods) {
     if (mod.func == 'a') {
