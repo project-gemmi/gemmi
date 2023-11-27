@@ -60,7 +60,9 @@ for:
   - py -m sphinx -M doctest . _build -n -E
 
   artifacts:
-    - path: gemmi*.*
+    - path: gemmi.exe
+    - path: gemmi*.pyd
+    - path: gemmi*.dll
 
 -
   matrix:

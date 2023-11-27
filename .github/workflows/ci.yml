@@ -27,7 +27,7 @@ jobs:
       with:
         name: gemmi-macos12
         path: |
-          ${{runner.workspace}}/gemmi-*.whl
+          ./gemmi-*.whl
         retention-days: 14
 
   macos11:
@@ -220,5 +220,6 @@ jobs:
         name: gemmi-linux
         path: |
           ./gemmi
+          ./libgemmi_cpp.so
           ./gemmi.cpython*.so
         retention-days: 14
