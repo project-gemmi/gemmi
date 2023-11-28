@@ -131,7 +131,10 @@ static void tql2(gemmi::Mat33& V, double d[3], double e[3]) {
     // Find small subdiagonal element
     tst1 = std::max(tst1, std::fabs(d[l]) + std::fabs(e[l]));
     int m = l;
-    while (m < 3) {
+    // MW: I changed "m < 3" to "m < 2", because if m==2 is followed by m++,
+    // we access out of bounds d[3] in "p = d[m];" and later on e[3], getting
+    // *** stack smashing detected ***.
+    while (m < 2) {
       if (std::fabs(e[m]) <= eps*tst1) {
         break;
       }
