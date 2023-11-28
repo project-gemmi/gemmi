@@ -2,16 +2,20 @@ $ gemmi validate -h
 Usage: gemmi validate [options] FILE [...]
 
 Options:
-  -h, --help      Print usage and exit.
-  -V, --version   Print version and exit.
-  -v, --verbose   Verbose output.
-  -q, --quiet     Show only errors.
-  -f, --fast      Syntax-only check.
-  -s, --stat      Show token statistics
-  -d, --ddl=PATH  DDL for validation.
-  -c, --context   Check _pdbx_{category|item}_context.type.
-  --no-regex      Skip regex checking (when using DDL2)
-  --no-mandatory  Skip checking if mandatory tags are present.
-  --no-unique     Skip checking if category keys (DDL2) are unique.
-  -p              Check if parent items (DDL2) are present.
-  -m, --monomer   Extra checks for Refmac dictionary files.
+  -h, --help       Print usage and exit.
+  -V, --version    Print version and exit.
+  -v, --verbose    Verbose output.
+  -q, --quiet      Show only errors.
+  -f, --fast       Syntax-only check.
+  -s, --stat       Show token statistics
+  -d, --ddl=PATH   DDL for validation.
+  -c, --context    Check _pdbx_{category|item}_context.type.
+  --no-regex       Skip regex checking (when using DDL2)
+  --no-mandatory   Skip checking if mandatory tags are present.
+  --no-unique      Skip checking if category keys (DDL2) are unique.
+  -p               Check if parent items (DDL2) are present.
+  -r, --recursive  Recurse directories and process all CIF files.
+
+Validation specific to CCP4 monomer files:
+  -m, --monomer    Run checks specific to monomer dictionary.
+  --z-score=Z      Use Z for validating _chem_comp_atom.[xyz] (default: 2.0).

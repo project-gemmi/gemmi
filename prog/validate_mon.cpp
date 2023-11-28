@@ -58,26 +58,25 @@ static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
   }
 }
 
-void print_outliers(const Topo& topo, const char* tag) {
-  const double esd_mult = 2.0;
+void print_outliers(const Topo& topo, const char* tag, double z_score) {
   for (const Topo::Bond& t : topo.bonds) {
     double value = t.calculate();
-    if (std::abs(value - t.restr->value) > esd_mult * t.restr->esd)
+    if (std::abs(value - t.restr->value) > z_score * t.restr->esd)
       printf("%s bond %s should be %g (esd %g) but is %.2f\n", tag,
              t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Angle& t : topo.angles) {
     double value = gemmi::deg(t.calculate());
-    if (gemmi::angle_abs_diff(value, t.restr->value) > esd_mult * t.restr->esd)
+    if (gemmi::angle_abs_diff(value, t.restr->value) > z_score * t.restr->esd)
       printf("%s angle %s should be %g (esd %g) but is %.2f\n", tag,
              t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Torsion& t : topo.torsions) {
     double value = gemmi::deg(t.calculate());
     double full = 360. / std::max(1, t.restr->period);
-    if (gemmi::angle_abs_diff(value, t.restr->value, full) > esd_mult * t.restr->esd)
-      printf("%s torsion %s should be %g (esd %g) but is %.2f\n", tag,
-             t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
+    if (gemmi::angle_abs_diff(value, t.restr->value, full) > z_score * t.restr->esd)
+      printf("%s torsion %s should be %g (period %d, esd %g) but is %.2f\n", tag,
+             t.restr->str().c_str(), t.restr->value, t.restr->period, t.restr->esd, value);
   }
   for (const Topo::Chirality& t : topo.chirs) {
     double value = t.calculate();
@@ -90,14 +89,14 @@ void print_outliers(const Topo& topo, const char* tag) {
     auto coeff = find_best_plane(t.atoms);
     for (const gemmi::Atom* atom : t.atoms) {
       double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
-      if (dist > esd_mult * t.restr->esd)
+      if (dist > z_score * t.restr->esd)
         printf("%s plane %s has atom %s in a distance %.2f\n", tag,
                t.restr->str().c_str(), atom->name.c_str(), dist);
     }
   }
 }
 
-void check_monomer_doc(const cif::Document& doc) {
+void check_monomer_doc(const cif::Document& doc, double z_score) {
   for (const cif::Block& block : doc.blocks)
     if (block.name != "comp_list") {
       try {
@@ -109,7 +108,7 @@ void check_monomer_doc(const cif::Document& doc) {
                                                     gemmi::ChemCompModel::Xyz);
         Topo topo;
         topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
-        print_outliers(topo, (cc.name + " [atom.xyz]").c_str());
+        print_outliers(topo, (cc.name + " [atom.xyz]").c_str(), z_score);
       } catch (const std::exception& e) {
         fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",
                 block.name.c_str(), doc.source.c_str(), e.what());

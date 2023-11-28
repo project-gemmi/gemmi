@@ -5,6 +5,7 @@
 #include "gemmi/gz.hpp"
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/numb.hpp"
+#include "gemmi/dirwalk.hpp"  // for CifWalk
 #include <cstdio>
 #include <iostream>
 #include <stdexcept>  // for std::runtime_error
@@ -19,12 +20,13 @@
 namespace cif = gemmi::cif;
 
 // defined in validate_mon.cpp
-void check_monomer_doc(const cif::Document& doc);
+void check_monomer_doc(const cif::Document& doc, double z_score);
 
 namespace {
 
 enum OptionIndex {
-  Quiet=4, Fast, Stat, Context, Ddl, NoRegex, NoMandatory, NoUniqueKeys, Parents, Monomer
+  Quiet=4, Fast, Stat, Context, Ddl, NoRegex, NoMandatory, NoUniqueKeys,
+  Parents, Recurse, Monomer, Zscore
 };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
@@ -46,8 +48,14 @@ const option::Descriptor Usage[] = {
     "  --no-unique  \tSkip checking if category keys (DDL2) are unique." },
   { Parents, 0, "p", "", Arg::None,
     "  -p  \tCheck if parent items (DDL2) are present." },
+  { Recurse, 0, "r", "recursive", Arg::None,
+    "  -r, --recursive  \tRecurse directories and process all CIF files." },
+
+  { NoOp, 0, "", "", Arg::None, "\nValidation specific to CCP4 monomer files:" },
   { Monomer, 0, "m", "monomer", Arg::None,
-    "  -m, --monomer  \tExtra checks for Refmac dictionary files." },
+    "  -m, --monomer  \tRun checks specific to monomer dictionary." },
+  { Zscore, 0, "", "z-score", Arg::Float,
+    "  --z-score=Z  \tUse Z for validating _chem_comp_atom.[xyz] (default: 2.0)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -157,6 +165,47 @@ void check_empty_loops(const cif::Block& block) {
   }
 }
 
+bool process_file(const char* path, const cif::Ddl& dict,
+                  const std::vector<option::Option>& options) {
+  bool ok = true;
+  std::string msg;
+  if (options[Verbose])
+    std::cout << "Reading " << path << "..." << std::endl;
+  try {
+    if (options[Fast]) {
+      ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
+    } else {
+      cif::Document d = cif::read(gemmi::MaybeGzipped(path));
+      for (const cif::Block& block : d.blocks) {
+        if (block.name == " ")
+          std::cout << d.source << ": missing block name (bare data_)\n";
+        check_empty_loops(block);
+      }
+      if (options[Stat])
+        msg = token_stats(d);
+      if (options[Ddl]) {
+        dict.check_audit_conform(d, std::cout);
+        ok = dict.validate_cif(d, std::cout);
+      }
+      if (options[Monomer]) {
+        double z_score = 2.0;
+        if (options[Zscore])
+          z_score = std::atof(options[Zscore].arg);
+        check_monomer_doc(d, z_score);
+      }
+    }
+  } catch (std::runtime_error& e) {
+    ok = false;
+    msg = e.what();
+  }
+  if (!msg.empty())
+    std::cout << msg << std::endl;
+
+  if (options[Verbose])
+    std::cout << (ok ? "OK" : "FAILED") << std::endl;
+  return ok;
+}
+
 } // anonymous namespace
 
 
@@ -189,37 +238,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* path = p.nonOption(i);
-    std::string msg;
-    bool ok = true;
-    try {
-      if (p.options[Fast]) {
-        ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
-      } else {
-        cif::Document d = cif::read(gemmi::MaybeGzipped(path));
-        for (const cif::Block& block : d.blocks) {
-          if (block.name == " ")
-            std::cout << d.source << ": missing block name (bare data_)\n";
-          check_empty_loops(block);
-        }
-        if (p.options[Stat])
-          msg = token_stats(d);
-        if (p.options[Ddl]) {
-          dict.check_audit_conform(d, std::cout);
-          ok = dict.validate_cif(d, std::cout);
-        }
-        if (p.options[Monomer])
-          check_monomer_doc(d);
-      }
-    } catch (std::runtime_error& e) {
-      ok = false;
-      msg = e.what();
+    if (p.options[Recurse]) {
+      for (const std::string& file : gemmi::CifWalk(path))
+        total_ok = process_file(file.c_str(), dict, p.options) && total_ok;
+    } else {
+      total_ok = process_file(path, dict, p.options) && total_ok;
     }
-    if (!msg.empty())
-      std::cout << msg << std::endl;
-
-    if (p.options[Verbose])
-      std::cout << (ok ? "OK" : "FAILED") << std::endl;
-    total_ok = total_ok && ok;
   }
   return total_ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
