@@ -17,7 +17,6 @@ using gemmi::Topo;
 
 // some rules for the number of bonds (currently only for H and P)
 static void check_valency(const gemmi::ChemComp& cc) {
-  const std::string tag = cc.name + " [valency]";
   for (const gemmi::ChemComp::Atom& atom : cc.atoms) {
     if (cc.atoms.size() == 1)
       continue;
@@ -33,7 +32,7 @@ static void check_valency(const gemmi::ChemComp& cc) {
       ok = (valency == 3.0f || valency == 5.0f || valency == 5.5f);
     }
     if (!ok)
-      printf("%s %s (%s) has bond order %g\n", tag.c_str(),
+      printf("%s [valency] %s (%s) has bond order %g\n", cc.name.c_str(),
              atom.id.c_str(), element_name(atom.el), valency);
   }
 }
@@ -58,39 +57,58 @@ static void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
   }
 }
 
-void print_outliers(const Topo& topo, const char* tag, double z_score) {
+template <typename T>
+bool check_esd(const std::string& name, const T* restr) {
+  if (restr->esd <= 0.) {
+    printf("%s [esd] %s %s has non-positive esd: %g\n", name.c_str(),
+           restr->what(), restr->str().c_str(), restr->esd);
+    return false;
+  }
+  return true;
+}
+
+void print_outliers(const Topo& topo, const std::string& name, double z_score) {
   for (const Topo::Bond& t : topo.bonds) {
+    if (!check_esd(name, t.restr))
+      continue;
     double value = t.calculate();
     if (std::abs(value - t.restr->value) > z_score * t.restr->esd)
-      printf("%s bond %s should be %g (esd %g) but is %.2f\n", tag,
+      printf("%s [atom.xyz] bond %s should be %g (esd %g) but is %.2f\n", name.c_str(),
              t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Angle& t : topo.angles) {
+    if (!check_esd(name, t.restr))
+      continue;
     double value = gemmi::deg(t.calculate());
     if (gemmi::angle_abs_diff(value, t.restr->value) > z_score * t.restr->esd)
-      printf("%s angle %s should be %g (esd %g) but is %.2f\n", tag,
+      printf("%s [atom.xyz] angle %s should be %g (esd %g) but is %.2f\n", name.c_str(),
              t.restr->str().c_str(), t.restr->value, t.restr->esd, value);
   }
   for (const Topo::Torsion& t : topo.torsions) {
+    if (!check_esd(name, t.restr))
+      continue;
     double value = gemmi::deg(t.calculate());
     double full = 360. / std::max(1, t.restr->period);
     if (gemmi::angle_abs_diff(value, t.restr->value, full) > z_score * t.restr->esd)
-      printf("%s torsion %s should be %g (period %d, esd %g) but is %.2f\n", tag,
+      printf("%s [atom.xyz] torsion %s should be %g (period %d, esd %g) but is %.2f\n",
+             name.c_str(),
              t.restr->str().c_str(), t.restr->value, t.restr->period, t.restr->esd, value);
   }
   for (const Topo::Chirality& t : topo.chirs) {
     double value = t.calculate();
     if (t.restr->is_wrong(value))
-      printf("%s chir %s should be %s but is %.2f\n", tag,
+      printf("%s [atom.xyz] chir %s should be %s but is %.2f\n", name.c_str(),
              t.restr->str().c_str(), gemmi::chirality_to_string(t.restr->sign),
              value);
   }
   for (const Topo::Plane& t : topo.planes) {
+    if (!check_esd(name, t.restr))
+      continue;
     auto coeff = find_best_plane(t.atoms);
     for (const gemmi::Atom* atom : t.atoms) {
       double dist = gemmi::get_distance_from_plane(atom->pos, coeff);
       if (dist > z_score * t.restr->esd)
-        printf("%s plane %s has atom %s in a distance %.2f\n", tag,
+        printf("%s [atom.xyz] plane %s has atom %s in a distance %.2f\n", name.c_str(),
                t.restr->str().c_str(), atom->name.c_str(), dist);
     }
   }
@@ -108,7 +126,7 @@ void check_monomer_doc(const cif::Document& doc, double z_score) {
                                                     gemmi::ChemCompModel::Xyz);
         Topo topo;
         topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
-        print_outliers(topo, (cc.name + " [atom.xyz]").c_str(), z_score);
+        print_outliers(topo, cc.name, z_score);
       } catch (const std::exception& e) {
         fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",
                 block.name.c_str(), doc.source.c_str(), e.what());

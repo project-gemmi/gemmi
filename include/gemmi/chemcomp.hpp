@@ -69,6 +69,7 @@ struct Restraints {
   enum class DistanceOf { ElectronCloud, Nucleus };
 
   struct Bond {
+    static const char* what() { return "bond"; }
     AtomId id1, id2;
     BondType type;
     bool aromatic;
@@ -91,6 +92,7 @@ struct Restraints {
   };
 
   struct Angle {
+    static const char* what() { return "angle"; }
     AtomId id1, id2, id3;
     double value;  // degrees
     double esd;
@@ -101,6 +103,7 @@ struct Restraints {
   };
 
   struct Torsion {
+    static const char* what() { return "torsion"; }
     std::string label;
     AtomId id1, id2, id3, id4;
     double value;
@@ -112,6 +115,7 @@ struct Restraints {
   };
 
   struct Chirality {
+    static const char* what() { return "chirality"; }
     AtomId id_ctr, id1, id2, id3;
     ChiralityType sign;
 
@@ -125,6 +129,7 @@ struct Restraints {
   };
 
   struct Plane {
+    static const char* what() { return "plane"; }
     std::string label;
     std::vector<AtomId> ids;
     double esd;
