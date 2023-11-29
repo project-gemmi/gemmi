@@ -14,6 +14,15 @@
 
 namespace gemmi {
 
+// DOD.cif was removed from CCP4 monomer library, change it to HOH
+void change_any_water_to_hoh(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        if (res.is_water() && res.name != "HOH")
+          res.name = "HOH";
+}
+
 void setup_for_crd(Structure& st) {
   // setup_entities(st) but with forced subchain reassignment
   add_entity_types(st, /*overwrite=*/false);
@@ -28,6 +37,7 @@ void setup_for_crd(Structure& st) {
       }
   ensure_entities(st);
   deduplicate_entities(st);
+  change_any_water_to_hoh(st);
 }
 
 static bool has_anisou(const Model& model) {
