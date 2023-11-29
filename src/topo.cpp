@@ -544,8 +544,8 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
                   try {
                     chem_mod->apply_to(*cc_copy, mod.alias);
                   } catch(std::runtime_error& e) {
-                    err("failed to apply modification " + chem_mod->id
-                        + " to " + ri.res->name + ": " + e.what());
+                    err(cat("failed to apply modification ", chem_mod->id,
+                            " to ", ri.res->name, ": ", e.what()));
                   }
                 } else {
                   err("modification not found: " + mod.id);

@@ -63,7 +63,7 @@ struct Restraints {
 
   static std::string lexicographic_str(const std::string& name1,
                                        const std::string& name2) {
-    return name1 < name2 ? name1 + "-" + name2 : name2 + "-" + name1;
+    return name1 < name2 ? cat(name1, '-', name2) : cat(name2, '-', name1);
   }
 
   enum class DistanceOf { ElectronCloud, Nucleus };
@@ -77,7 +77,7 @@ struct Restraints {
     double esd;
     double value_nucleus;
     double esd_nucleus;
-    std::string str() const { return id1.atom + "-" + id2.atom; }
+    std::string str() const { return cat(id1.atom, '-', id2.atom); }
     std::string lexicographic_str() const {
       return Restraints::lexicographic_str(id1.atom, id2.atom);
     }
@@ -98,7 +98,7 @@ struct Restraints {
     double esd;
     double radians() const { return rad(value); }
     std::string str() const {
-      return id1.atom + "-" + id2.atom + "-" + id3.atom;
+      return cat(id1.atom, '-', id2.atom, '-', id3.atom);
     }
   };
 
@@ -110,7 +110,7 @@ struct Restraints {
     double esd;
     int period;
     std::string str() const {
-      return id1.atom + "-" + id2.atom + "-" + id3.atom + "-" + id4.atom;
+      return cat(id1.atom, '-', id2.atom, '-', id3.atom, '-', id4.atom);
     }
   };
 
@@ -124,7 +124,7 @@ struct Restraints {
              (sign == ChiralityType::Negative && volume > 0);
     }
     std::string str() const {
-      return id_ctr.atom + "," + id1.atom + "," + id2.atom + "," + id3.atom;
+      return cat(id_ctr.atom, ',', id1.atom, ',', id2.atom, ',', id3.atom);
     }
   };
 
