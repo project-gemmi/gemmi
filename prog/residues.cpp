@@ -14,7 +14,9 @@
 
 namespace {
 
-enum OptionIndex { FormatIn=4, Match, Label, CheckSeqId, NoAlt, Short, Ent };
+enum OptionIndex {
+  FormatIn=4, Match, Label, CheckSeqId, NoAlt, Short, Chains, Ent
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -36,6 +38,8 @@ const option::Descriptor Usage[] = {
     "  -s, --short  \tShorter output (no atom info). Can be given 2x or 3x." },
   { Ent, 0, "e", "entities", Arg::None,
     "  -e, --entities  \tList (so-called, in mmCIF speak) entities." },
+  { Chains, 0, "c", "chains", Arg::None,
+    "  -c, --chains  \tList chain IDs." },
   { NoOp, 0, "", "", Arg::None,
     "INPUT is a coordinate file (mmCIF, PDB, etc)."
     "\nThe optional selection SEL has MMDB syntax:"
@@ -161,21 +165,10 @@ void print_long_info(const gemmi::Model& model, OptParser& p) {
   }
 }
 
-const char* etype_str(const gemmi::Residue& res) {
-  switch (res.entity_type) {
-    case gemmi::EntityType::Polymer:    return "polymer";
-    case gemmi::EntityType::NonPolymer: return "non-polymers";
-    case gemmi::EntityType::Branched:   return "branched";
-    case gemmi::EntityType::Water:      return "waters";
-    case gemmi::EntityType::Unknown:    return "?";
-  }
-  gemmi::unreachable();
-}
-
 void print_short_info(const gemmi::Model& model, OptParser& p) {
   int short_level = p.options[Short].count();
   const int kWrap = 5;    // for level 1
-  const int kLimit = terminal_columns() - 22;  // for levels 2 and 3
+  const int kLimit = terminal_columns() - 23;  // for levels 2 and 3
   for (const gemmi::Chain& chain : model.chains) {
     int col = 0;
     int counter = 0;
@@ -192,11 +185,11 @@ void print_short_info(const gemmi::Model& model, OptParser& p) {
             printf("...  (%d residues)", counter);
           putchar('\n');
         }
+        const char* etype = entity_type_to_string(res.entity_type);
         if (p.options[Label])
-          col = printf("%s (%s) %-12s",
-                       chain.name.c_str(), res.subchain.c_str(), etype_str(res));
+          col = printf("%s (%s) %-11s", chain.name.c_str(), res.subchain.c_str(), etype);
         else
-          col = printf("%-3s %-12s  ", chain.name.c_str(), etype_str(res));
+          col = printf("%-3s %-11s ", chain.name.c_str(), etype);
         counter = 0;
         prev = res.entity_type;
       }
@@ -229,6 +222,26 @@ void print_short_info(const gemmi::Model& model, OptParser& p) {
   }
 }
 
+void print_chain_info(const gemmi::Model& model) {
+  for (const gemmi::Chain& chain : model.chains) {
+    printf("%s  length/count:", chain.name.c_str());
+    gemmi::EntityType prev_et = gemmi::EntityType::Unknown;
+    int counter = 0;
+    for (const gemmi::Residue& res :  chain.first_conformer()) {
+      if (res.entity_type != prev_et) {
+        if (counter != 0) {
+          printf("  %s %d", gemmi::entity_type_to_string(prev_et), counter);
+        }
+        counter = 0;
+        prev_et = res.entity_type;
+      }
+      ++counter;
+    }
+    printf("  %s %d", gemmi::entity_type_to_string(prev_et), counter);
+    putchar('\n');
+  }
+}
+
 void print_entity_info(const gemmi::Structure& st) {
   if (st.models.size() > 1)
     printf("Checking only the first model.\n");
@@ -239,7 +252,7 @@ void print_entity_info(const gemmi::Structure& st) {
     if (ent.entity_type == gemmi::EntityType::Polymer) {
       printf("  entity %s, %s, length %zu, subchains:\n",
              ent.name.c_str(),
-             gemmi::polymer_type_to_string(ent.polymer_type).c_str(),
+             gemmi::polymer_type_to_string(ent.polymer_type),
              ent.full_sequence.size());
       for (const std::string& sub : ent.subchains) {
         auto strand = sub_to_strand.find(sub);
@@ -277,7 +290,7 @@ void print_entity_info(const gemmi::Structure& st) {
   for (const gemmi::Entity& ent : st.entities)
     if (ent.entity_type != gemmi::EntityType::Polymer) {
       printf("  entity %s, %s",
-             ent.name.c_str(), gemmi::entity_type_to_string(ent.entity_type).c_str());
+             ent.name.c_str(), gemmi::entity_type_to_string(ent.entity_type));
       if (ent.entity_type != gemmi::EntityType::Branched) {
         // one residue is expected
         std::string name;
@@ -335,10 +348,14 @@ int GEMMI_MAIN(int argc, char **argv) {
         print_entity_info(st);
         continue;
       }
+      if (p.options[Chains])
+        st.merge_chain_parts();
       for (gemmi::Model& model : st.models) {
         if (st.models.size() != 1)
           printf("Model %s\n", model.name.c_str());
-        if (p.options[Short])
+        if (p.options[Chains])
+          print_chain_info(model);
+        else if (p.options[Short])
           print_short_info(model, p);
         else
           print_long_info(model, p);

@@ -1,3 +1,6 @@
+// Copyright Global Phasing Ltd.
+#pragma once
+
 #include <map>
 #include "gemmi/cifdoc.hpp"
 

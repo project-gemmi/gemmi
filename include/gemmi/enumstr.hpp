@@ -11,7 +11,7 @@
 
 namespace gemmi {
 
-inline std::string entity_type_to_string(EntityType entity_type) {
+inline const char* entity_type_to_string(EntityType entity_type) {
   switch (entity_type) {
     case EntityType::Polymer: return "polymer";
     case EntityType::Branched: return "branched";
@@ -30,7 +30,7 @@ inline EntityType entity_type_from_string(const std::string& t) {
 }
 
 
-inline std::string polymer_type_to_string(PolymerType polymer_type) {
+inline const char* polymer_type_to_string(PolymerType polymer_type) {
   switch (polymer_type) {
     case PolymerType::PeptideL: return "polypeptide(L)";
     case PolymerType::PeptideD: return "polypeptide(D)";

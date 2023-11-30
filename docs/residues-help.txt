@@ -11,6 +11,7 @@ Prints chains, residues and atoms. Or without atoms. Or only entities.
   --no-alt            Do not print altlocs.
   -s, --short         Shorter output (no atom info). Can be given 2x or 3x.
   -e, --entities      List (so-called, in mmCIF speak) entities.
+  -c, --chains        List chain IDs.
 INPUT is a coordinate file (mmCIF, PDB, etc).
 The optional selection SEL has MMDB syntax:
 /mdl/chn/s1.i1(res)-s2.i2/at[el]:aloc (all fields are optional)
