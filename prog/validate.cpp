@@ -6,6 +6,7 @@
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/numb.hpp"
 #include "gemmi/dirwalk.hpp"  // for CifWalk
+#include "validate_mon.h"  // for check_monomer_doc
 #include <cstdio>
 #include <iostream>
 #include <stdexcept>  // for std::runtime_error
@@ -19,14 +20,11 @@
 
 namespace cif = gemmi::cif;
 
-// defined in validate_mon.cpp
-void check_monomer_doc(const cif::Document& doc, double z_score);
-
 namespace {
 
 enum OptionIndex {
   Quiet=4, Fast, Stat, Context, Ddl, NoRegex, NoMandatory, NoUniqueKeys,
-  Parents, Recurse, Monomer, Zscore
+  Parents, Recurse, Monomer, Zscore, Ccd
 };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
@@ -56,6 +54,8 @@ const option::Descriptor Usage[] = {
     "  -m, --monomer  \tRun checks specific to monomer dictionary." },
   { Zscore, 0, "", "z-score", Arg::Float,
     "  --z-score=Z  \tUse Z for validating _chem_comp_atom.[xyz] (default: 2.0)." },
+  { Ccd, 0, "", "ccd", Arg::Required,
+    "  --ccd=PATH  \tCCD file for comparison." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -166,6 +166,7 @@ void check_empty_loops(const cif::Block& block) {
 }
 
 bool process_file(const char* path, const cif::Ddl& dict,
+                  const std::map<std::string, cif::Block>& ccd_map,
                   const std::vector<option::Option>& options) {
   bool ok = true;
   std::string msg;
@@ -175,23 +176,23 @@ bool process_file(const char* path, const cif::Ddl& dict,
     if (options[Fast]) {
       ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
     } else {
-      cif::Document d = cif::read(gemmi::MaybeGzipped(path));
-      for (const cif::Block& block : d.blocks) {
+      cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
+      for (const cif::Block& block : doc.blocks) {
         if (block.name == " ")
-          std::cout << d.source << ": missing block name (bare data_)\n";
+          std::cout << doc.source << ": missing block name (bare data_)\n";
         check_empty_loops(block);
       }
       if (options[Stat])
-        msg = token_stats(d);
+        msg = token_stats(doc);
       if (options[Ddl]) {
-        dict.check_audit_conform(d, std::cout);
-        ok = dict.validate_cif(d, std::cout);
+        dict.check_audit_conform(doc, std::cout);
+        ok = dict.validate_cif(doc, std::cout);
       }
-      if (options[Monomer]) {
-        double z_score = 2.0;
-        if (options[Zscore])
-          z_score = std::atof(options[Zscore].arg);
-        check_monomer_doc(d, z_score);
+      if (options[Monomer] || options[Zscore] || options[Ccd]) {
+        bool normal_checks = options[Monomer];
+        double z_score = options[Zscore] ? std::atof(options[Zscore].arg)
+                                         : normal_checks ? 2.0 : INFINITY;
+        check_monomer_doc(doc, normal_checks, z_score, ccd_map, options[Verbose]);
       }
     }
   } catch (std::runtime_error& e) {
@@ -236,13 +237,28 @@ int GEMMI_MAIN(int argc, char **argv) {
       return EXIT_FAILURE;
     }
   }
+  std::map<std::string, cif::Block> ccd_map;
+  if (p.options[Ccd]) {
+    try {
+      for (option::Option* ccd = p.options[Ccd]; ccd; ccd = ccd->next()) {
+        cif::Document ccd_doc(cif::read(gemmi::MaybeGzipped(ccd->arg)));
+        for (cif::Block& ccd_block : ccd_doc.blocks) {
+          std::string name = ccd_block.name;
+          ccd_map.emplace(name, std::move(ccd_block));
+        }
+      }
+    } catch (std::runtime_error& e) {
+      std::cerr << "Error when reading CCD file: " << e.what() << std::endl;
+      return EXIT_FAILURE;
+    }
+  }
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* path = p.nonOption(i);
     if (p.options[Recurse]) {
       for (const std::string& file : gemmi::CifWalk(path))
-        total_ok = process_file(file.c_str(), dict, p.options) && total_ok;
+        total_ok = process_file(file.c_str(), dict, ccd_map, p.options) && total_ok;
     } else {
-      total_ok = process_file(path, dict, p.options) && total_ok;
+      total_ok = process_file(path, dict, ccd_map, p.options) && total_ok;
     }
   }
   return total_ok ? EXIT_SUCCESS : EXIT_FAILURE;
