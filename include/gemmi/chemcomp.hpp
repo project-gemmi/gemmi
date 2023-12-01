@@ -341,6 +341,7 @@ struct ChemComp {
 
   struct Atom {
     std::string id;
+    std::string old_id;  // read from _chem_comp_atom.alt_atom_id
     Element el;
     // _chem_comp_atom.partial_charge can be non-integer,
     // _chem_comp_atom.charge is always integer (but sometimes has format
@@ -433,6 +434,14 @@ struct ChemComp {
   }
   bool has_atom(const std::string& atom_id) const {
     return find_atom(atom_id) != atoms.end();
+  }
+
+  std::vector<Atom>::iterator find_atom_by_old_name(const std::string& old_id) {
+    return std::find_if(atoms.begin(), atoms.end(),
+                        [&](const Atom& a) { return a.old_id == old_id; });
+  }
+  std::vector<Atom>::const_iterator find_atom_by_old_name(const std::string& old_id) const {
+    return const_cast<ChemComp*>(this)->find_atom_by_old_name(old_id);
   }
 
   int get_atom_index(const std::string& atom_id) const {
@@ -580,8 +589,10 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     cc.type_or_group = type_col.str(0);
   for (auto row : block.find("_chem_comp_atom.",
                              {"atom_id", "type_symbol", "?type_energy",
-                             "?charge", "?partial_charge"}))
-    cc.atoms.push_back({row.str(0), Element(row.str(1)),
+                             "?charge", "?partial_charge", "?alt_atom_id"}))
+    cc.atoms.push_back({row.str(0),
+                        row.has(5) ? row.str(5) : "",
+                        Element(row.str(1)),
                         (float) cif::as_number(row.one_of(3, 4), 0.0),
                         row.has(2) ? row.str(2) : "",
                         Position()});

@@ -26,7 +26,7 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
     if (el == El::D)
       el = El::H;
     const std::string& chem_type = el.uname();
-    cc->atoms.push_back(ChemComp::Atom{a.name, el, float(a.charge), chem_type, a.pos});
+    cc->atoms.push_back(ChemComp::Atom{a.name, "", el, float(a.charge), chem_type, a.pos});
   }
   // prepare pairs of atoms
   struct Pair {
@@ -929,8 +929,13 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
         if (!cc.has_atom(atom.name)) {
           std::string msg = "definition not found for "
                           + atom_str(chain_info.chain_ref, *ri.res, atom);
-          if (ri.orig_chemcomp && ri.orig_chemcomp->has_atom(atom.name))
+          if (ri.orig_chemcomp && ri.orig_chemcomp->has_atom(atom.name)) {
             msg += " (linkage should remove this atom)";
+          } else {
+            auto it = cc.find_atom_by_old_name(atom.name);
+            if (it != cc.atoms.end())
+              cat_to(msg, " (replace ", atom.name, " with ", it->id, ')');
+          }
           topo->err(msg);
         }
       }
