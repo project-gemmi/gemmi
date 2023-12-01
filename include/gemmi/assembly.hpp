@@ -120,21 +120,8 @@ GEMMI_DLL Model expand_ncs_model(const Model& model, const std::vector<NcsOp>& n
 GEMMI_DLL void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell,
                                              double max_dist=0.2, bool compare_serial=true);
 
-GEMMI_DLL void rename_chain(Structure& st, const std::string& old_name,
-                                           const std::string& new_name);
 
-inline void shorten_chain_names(Structure& st) {
-  ChainNameGenerator namegen(HowToNameCopiedChain::Short);
-  Model& model0 = st.models[0];
-  size_t max_len = model0.chains.size() < 63 ? 1 : 2;
-  for (const Chain& chain : model0.chains)
-    if (chain.name.length() <= max_len)
-      namegen.used_names.push_back(chain.name);
-  for (Chain& chain : model0.chains)
-    if (chain.name.length() > max_len)
-      rename_chain(st, chain.name,
-                   namegen.make_short_name(chain.name.substr(0, max_len)));
-}
+GEMMI_DLL void shorten_chain_names(Structure& st);
 
 GEMMI_DLL void expand_ncs(Structure& st, HowToNameCopiedChain how, double merge_dist=0.2);
 

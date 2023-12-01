@@ -402,40 +402,17 @@ void merge_atoms_in_expanded_model(Model& model, const UnitCell& cell, double ma
 }
 
 
-void rename_chain(Structure& st, const std::string& old_name,
-                                 const std::string& new_name) {
-  auto rename_if_matches = [&](AtomAddress& aa) {
-    if (aa.chain_name == old_name)
-      aa.chain_name = new_name;
-  };
-  for (Connection& con : st.connections) {
-    rename_if_matches(con.partner1);
-    rename_if_matches(con.partner2);
-  }
-  for (CisPep& cispep : st.cispeps) {
-    rename_if_matches(cispep.partner_c);
-    rename_if_matches(cispep.partner_n);
-  }
-  for (Helix& helix : st.helices) {
-    rename_if_matches(helix.start);
-    rename_if_matches(helix.end);
-  }
-  for (Sheet& sheet : st.sheets)
-    for (Sheet::Strand& strand : sheet.strands) {
-      rename_if_matches(strand.start);
-      rename_if_matches(strand.end);
-      rename_if_matches(strand.hbond_atom2);
-      rename_if_matches(strand.hbond_atom1);
-    }
-  for (RefinementInfo& ri : st.meta.refinement)
-    for (TlsGroup& tls : ri.tls_groups)
-      for (TlsGroup::Selection& sel : tls.selections)
-        if (sel.chain == old_name)
-          sel.chain = new_name;
-  for (Model& model : st.models)
-    for (Chain& chain : model.chains)
-      if (chain.name == old_name)
-        chain.name = new_name;
+void shorten_chain_names(Structure& st) {
+  ChainNameGenerator namegen(HowToNameCopiedChain::Short);
+  Model& model0 = st.models[0];
+  size_t max_len = model0.chains.size() < 63 ? 1 : 2;
+  for (const Chain& chain : model0.chains)
+    if (chain.name.length() <= max_len)
+      namegen.used_names.push_back(chain.name);
+  for (Chain& chain : model0.chains)
+    if (chain.name.length() > max_len)
+      rename_chain(st, chain.name,
+                   namegen.make_short_name(chain.name.substr(0, max_len)));
 }
 
 

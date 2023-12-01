@@ -110,6 +110,69 @@ inline void assign_serial_numbers(Structure& st, bool numbered_ter=false) {
     assign_serial_numbers(model, numbered_ter);
 }
 
+
+template<typename Func>
+void process_addresses(Structure& st, Func func) {
+  for (Connection& con : st.connections) {
+    func(con.partner1);
+    func(con.partner2);
+  }
+  for (CisPep& cispep : st.cispeps) {
+    func(cispep.partner_c);
+    func(cispep.partner_n);
+  }
+  for (Helix& helix : st.helices) {
+    func(helix.start);
+    func(helix.end);
+  }
+  for (Sheet& sheet : st.sheets)
+    for (Sheet::Strand& strand : sheet.strands) {
+      func(strand.start);
+      func(strand.end);
+      func(strand.hbond_atom2);
+      func(strand.hbond_atom1);
+    }
+}
+
+
+inline void rename_chain(Structure& st, const std::string& old_name,
+                                        const std::string& new_name) {
+  process_addresses(st, [&](AtomAddress& aa) {
+      if (aa.chain_name == old_name)
+        aa.chain_name = new_name;
+  });
+  for (RefinementInfo& ri : st.meta.refinement)
+    for (TlsGroup& tls : ri.tls_groups)
+      for (TlsGroup::Selection& sel : tls.selections)
+        if (sel.chain == old_name)
+          sel.chain = new_name;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      if (chain.name == old_name)
+        chain.name = new_name;
+}
+
+inline void rename_atom_names(Structure& st, const std::string& res_name,
+                              const std::map<std::string, std::string>& old_new) {
+  auto update = [&old_new](std::string& name) {
+    auto it = old_new.find(name);
+    if (it != old_new.end())
+      name = it->second;
+  };
+  process_addresses(st, [&](AtomAddress& aa) {
+      if (aa.res_id.name == res_name)
+        update(aa.atom_name);
+  });
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        if (res.name == res_name) {
+          for (Atom& atom : res.atoms)
+            update(atom.name);
+        }
+}
+
+
 inline void replace_d_fraction_with_altlocs(Residue& res) {
   for (size_t i = res.atoms.size(); i-- != 0; ) {
     Atom& atom = res.atoms[i];
