@@ -149,7 +149,7 @@ void check_consistency_with_ccd(const gemmi::ChemComp& lib, const cif::Block& cc
         }
       }
     } else {
-      printf("%s [ccd] different number of %ss: %zu and %zu in CCD\n", name, kind,
+      printf("%s [ccd] different number of %ss: %zu (%zu in CCD)\n", name, kind,
              lib_atoms.size(), ccd_atoms.size());
       same_atoms = false;
     }
@@ -168,10 +168,34 @@ void check_consistency_with_ccd(const gemmi::ChemComp& lib, const cif::Block& cc
         printf("%s [ccd]   missing _pdbx_chem_comp_audit in CCD\n", name);
       }
     }
-    if (!same_atoms)
-      break;
-    // TODO: check bonds
   }
+
+  // check bonds
+  std::map<std::string, const Restraints::Bond*> ccd_bonds;
+  for (const Restraints::Bond& bond : ccd.rt.bonds)
+    ccd_bonds.emplace(bond.lexicographic_str(), &bond);
+  std::string bond_str;
+  for (const Restraints::Bond& bond : lib.rt.bonds) {
+    std::string prev_bond_str = bond_str;
+    bond_str = bond.lexicographic_str();
+    if (bond_str == prev_bond_str) {
+      printf("%s [ccd:bond]   duplicated bond %s\n", name, bond_str.c_str());
+      continue;
+    }
+    auto ccd_iter = ccd_bonds.find(bond_str);
+    if (ccd_iter == ccd_bonds.end()) {
+      printf("%s [ccd:bond]   extra bond %s\n", name, bond_str.c_str());
+    } else {
+      if (bond.type != ccd_iter->second->type)
+        printf("%s [ccd:bond]   %s bond type is: %s (%s in CCD)\n", name,
+               bond_str.c_str(),
+               gemmi::bond_type_to_string(bond.type),
+               gemmi::bond_type_to_string(ccd_iter->second->type));
+      ccd_bonds.erase(ccd_iter);
+    }
+  }
+  for (const auto& it : ccd_bonds)
+    printf("%s [ccd:bond]   missing bond %s\n", name, it.first.c_str());
 }
 
 }  // anonymous namespace
