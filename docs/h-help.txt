@@ -13,11 +13,15 @@ Options:
   --monomers=DIR     Monomer library directory (default: $CLIBD_MON).
   -L CIF, --lib=CIF  User's restraint file(s). See more info below.
   --format=FORMAT    Input format (default: from the file extension).
-  --remove           Only remove hydrogens.
-  --keep             Do not add/remove hydrogens, only change positions.
-  --water            Add hydrogens also to waters.
-  --unique           Add only hydrogens with uniquely determined positions.
   --sort             Order atoms in residues according to _chem_comp_atom.
+  --update           If deprecated atom names (from _chem_comp_atom.alt_atom_id)
+                     are used in the model, change them.
+Hydrogen options, mutually exclusive. Default: add hydrogens, but not to water.
+  --water            Add hydrogens also to water.
+  --unique           Add only hydrogens with uniquely determined positions.
+  --keep             Do not add/remove hydrogens, only change positions.
+  --no-change        Do not change hydrogens, not even positions.
+  --remove           Only remove hydrogens.
 
 Option -L/--lib can be used multiple times, in order of priority.
 Its argument is either a file path or one of the two special values:

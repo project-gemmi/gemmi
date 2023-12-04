@@ -21,7 +21,9 @@ namespace cif = gemmi::cif;
 
 namespace {
 
-enum OptionIndex { FormatIn=AfterMonLibOptions, RemoveH, KeepH, Water, Unique, Sort };
+enum OptionIndex {
+  FormatIn=AfterMonLibOptions, Sort, Update, RemoveH, KeepH, Water, Unique, NoChange
+};
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,16 +40,23 @@ const option::Descriptor Usage[] = {
   MonLibUsage[1], // Libin
   { FormatIn, 0, "", "format", Arg::CoorFormat,
     "  --format=FORMAT  \tInput format (default: from the file extension)." },
-  { RemoveH, 0, "", "remove", Arg::None,
-    "  --remove  \tOnly remove hydrogens." },
-  { KeepH, 0, "", "keep", Arg::None,
-    "  --keep  \tDo not add/remove hydrogens, only change positions." },
-  { Water, 0, "", "water", Arg::None,
-    "  --water  \tAdd hydrogens also to waters." },
-  { Unique, 0, "", "unique", Arg::None,
-    "  --unique  \tAdd only hydrogens with uniquely determined positions." },
   { Sort, 0, "", "sort", Arg::None,
     "  --sort  \tOrder atoms in residues according to _chem_comp_atom." },
+  { Update, 0, "", "update", Arg::None,
+    "  --update  \tIf deprecated atom names (from _chem_comp_atom.alt_atom_id)"
+    " are used in the model, change them." },
+  { NoOp, 0, "", "", Arg::None,
+    "Hydrogen options, mutually exclusive. Default: add hydrogens, but not to water." },
+  { Water, 0, "", "water", Arg::None,
+    "  --water  \tAdd hydrogens also to water." },
+  { Unique, 0, "", "unique", Arg::None,
+    "  --unique  \tAdd only hydrogens with uniquely determined positions." },
+  { KeepH, 0, "", "keep", Arg::None,
+    "  --keep  \tDo not add/remove hydrogens, only change positions." },
+  { NoChange, 0, "", "no-change", Arg::None,
+    "  --no-change  \tDo not change hydrogens, not even positions." },
+  { RemoveH, 0, "", "remove", Arg::None,
+    "  --remove  \tOnly remove hydrogens." },
   MonLibUsage[2], // details about Libin (--lib)
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -72,14 +81,16 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.check_exclusive_group({KeepH, RemoveH, Water, Unique});
 
   gemmi::HydrogenChange h_change = gemmi::HydrogenChange::ReAddButWater;
-  if (p.options[RemoveH])
-    h_change = gemmi::HydrogenChange::Remove;
-  else if (p.options[KeepH])
-    h_change = gemmi::HydrogenChange::Shift;
-  else if (p.options[Water])
+  if (p.options[Water])
     h_change = gemmi::HydrogenChange::ReAdd;
   else if (p.options[Unique])
     h_change = gemmi::HydrogenChange::ReAddKnown;
+  else if (p.options[KeepH])
+    h_change = gemmi::HydrogenChange::Shift;
+  else if (p.options[NoChange])
+    h_change = gemmi::HydrogenChange::NoChange;
+  else if (p.options[RemoveH])
+    h_change = gemmi::HydrogenChange::Remove;
 
   MonArguments mon_args;
   if (h_change != gemmi::HydrogenChange::Remove)
@@ -107,17 +118,19 @@ int GEMMI_MAIN(int argc, char **argv) {
     size_t initial_h = 0;
     if (p.options[Verbose])
       initial_h = count_hydrogens(st);
-    if (h_change == gemmi::HydrogenChange::Remove) {
+    if (h_change == gemmi::HydrogenChange::Remove)
       gemmi::remove_hydrogens(st);
-    } else {
+    if (h_change != gemmi::HydrogenChange::Remove || p.options[Sort] || p.options[Update]) {
       gemmi::MonLib monlib;
       std::vector<std::string> wanted = st.models[0].get_all_residue_names();
       read_monomer_lib_and_user_files(monlib, wanted, mon_args, doc.get());
       if (!wanted.empty())
         gemmi::fail("Please create definitions for missing monomers.");
-      for (size_t i = 0; i != st.models.size(); ++i)
+      for (size_t i = 0; i != st.models.size(); ++i) {
         // preparing topology modifies hydrogens in the model
-        prepare_topology(st, monlib, i, h_change, p.options[Sort], &std::cerr);
+        prepare_topology(st, monlib, i, h_change, p.options[Sort], &std::cerr,
+                         false, false, p.options[Update]);
+      }
     }
     if (p.options[Verbose])
       std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
