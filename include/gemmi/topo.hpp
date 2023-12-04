@@ -303,11 +303,12 @@ private:
                         bool ignore_unknown_links);
 };
 
+// too many options here, the API will change
 GEMMI_DLL std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
                  std::ostream* warnings=nullptr, bool ignore_unknown_links=false,
-                 bool use_cispeps=false);
+                 bool use_cispeps=false, bool update_all_atom_names=false);
 
 
 GEMMI_DLL std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res);
