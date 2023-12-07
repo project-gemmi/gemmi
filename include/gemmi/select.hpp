@@ -302,13 +302,9 @@ inline GEMMI_COLD void wrong_syntax(const std::string& cid, size_t pos,
   std::string msg = "Invalid selection syntax";
   if (info)
     msg += info;
-  if (pos != 0) {
-    msg += " near \"";
-    msg += cid.substr(pos, 8);
-    msg += '"';
-  }
-  msg += ": ";
-  msg += cid;
+  if (pos != 0)
+    cat_to(msg, " near \"", cid.substr(pos, 8), '"');
+  cat_to(msg, ": ", cid);
   fail(msg);
 }
 
@@ -325,7 +321,8 @@ inline int determine_omitted_cid_fields(const std::string& cid) {
   return 3;  // atom
 }
 
-inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end) {
+inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t end,
+                                     const char* disallowed_chars="-[]()!/*.:;") {
   Selection::List list;
   list.all = (cid[pos] == '*');
   list.inverted = (cid[pos] == '!');
@@ -333,9 +330,9 @@ inline Selection::List make_cid_list(const std::string& cid, size_t pos, size_t 
     ++pos;
   list.list = cid.substr(pos, end - pos);
   // if a list have punctuation other than ',' something must be wrong
-  size_t idx = list.list.find_first_of("[]()!/*-.:;");
+  size_t idx = list.list.find_first_of(disallowed_chars);
   if (idx != std::string::npos)
-    wrong_syntax(cid, pos + idx, " in a list");
+    wrong_syntax(cid, pos + idx, cat(" ('", list.list[idx], "' in a list)").c_str());
   return list;
 }
 
@@ -443,7 +440,10 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
   if (omit <= 1 && sep < semi) {
     size_t pos = (sep == 0 ? 0 : sep + 1);
     sep = std::min(cid.find('/', pos), semi);
-    sel.chain_ids = make_cid_list(cid, pos, sep);
+    // These characters are not really disallowed, but are unexpected.
+    // "-" is expected, it's in chain IDs in bioassembly files from RCSB.
+    const char* disallowed_chars = "[]()!/*.:;";
+    sel.chain_ids = make_cid_list(cid, pos, sep, disallowed_chars);
   }
 
   // residue; MMDB CID syntax: s1.i1-s2.i2 or *(res).ic
