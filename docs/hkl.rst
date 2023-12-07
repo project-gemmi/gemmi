@@ -2114,7 +2114,7 @@ would only zero the grid values.
 .. doctest::
 
   >>> dencalc.grid
-  <gemmi.FloatGrid(48, 50, 50)>
+  <gemmi.FloatGrid(48, 48, 50)>
 
 which we can transform (as described :ref:`above <fft>`)
 into a structure factor grid:
@@ -2123,9 +2123,9 @@ into a structure factor grid:
 
   >>> sf_grid = gemmi.transform_map_to_f_phi(dencalc.grid)
   >>> sf_grid
-  <gemmi.ReciprocalComplexGrid(48, 50, 50)>
+  <gemmi.ReciprocalComplexGrid(48, 48, 50)>
   >>> sf_grid.get_value(3, 4, 5)
-  (54.53636932373047+53.37513732910156j)
+  (54.52766036987305+53.41892623901367j)
 
 In addition to ``d_min`` and ``rate``, which govern the grid density,
 DensityCalculator has two more parameters that affect accuracy
@@ -2168,7 +2168,7 @@ and *B*\ :sub:`min`):
 
   >>> dencalc.set_refmac_compatible_blur(st[0])
   >>> dencalc.blur
-  28.828779529973495
+  31.01648695048263
 
 The :ref:`sfcalc <sfcalc>` program can be used to test different choices
 of *B*\ :sub:`extra`.
@@ -2209,7 +2209,7 @@ We either multiply individual values by ``mott_bethe_factor()``
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.06278054674026+52.97144710344719j)
+  (54.0637280809978+52.970120646098756j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
@@ -2218,7 +2218,7 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
   >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True, unblur=dencalc.blur)
   >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
-  array([54.06278+52.971447j], dtype=complex64)
+  array([54.06373+52.97012j], dtype=complex64)
 
 That is all.
 If you would like to separate positions of hydrogen nuclei

@@ -105,16 +105,16 @@ $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test tests/5wkd.pdb
  (0 0 3)	 101.65	 101.648 	180.00	180.000	d= 4.81
  (0 0 4)	 319.37	 319.372 	  0.00	  0.000	d= 3.61
  (0 0 5)	 235.60	 235.597 	  0.00	  0.000	d= 2.89
- (1 1 0)	  43.04	  43.044 	166.28	166.275	d= 4.75
+ (1 1 0)	  43.04	  43.044 	166.27	166.275	d= 4.75
 ''')  # noqa: E501
 #RMSE=5.7890e-05  8.194e-05%  max|dF|=0.0001430  R=0.000%  <dPhi>=1.158e-05
 
     @unittest.skipIf(sys.platform == 'win32', 'with MSVC it differs slightly')
     def test_sfcalc_1pfe(self):
         self.do('''\
-$ gemmi sfcalc --dmin=9 --rate=4 --blur=60 --rcut=1e-7 --test -v tests/1pfe.cif.gz
+$ gemmi sfcalc --dmin=9 --rate=4 --blur=70 --rcut=1e-7 --test -v tests/1pfe.cif.gz
 [...]
-RMSE=0.00051262  8.068e-05%  max|dF|=0.002945  R=0.000%  <dPhi>=2.468e-06
+RMSE=0.00054812  8.627e-05%  max|dF|=0.002943  R=0.000%  <dPhi>=3.569e-06
 ''')  # noqa: E501
 
     # example from utils.rst

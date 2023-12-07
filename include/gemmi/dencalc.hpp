@@ -106,12 +106,7 @@ struct DensityCalculator {
 #endif
   Addends addends;
 
-  double requested_grid_spacing() const {
-    const UnitCell &cell = grid.unit_cell;
-    auto spacing = [&](double l, double lr) { return 1. / (2 * rate * l / d_min + 1) / lr; };
-    return std::min(spacing(cell.a, cell.ar),
-                    std::min(spacing(cell.b, cell.br), spacing(cell.c, cell.cr)));
-  }
+  double requested_grid_spacing() const { return d_min / (2 * rate); }
 
   void set_refmac_compatible_blur(const Model& model) {
     double spacing = requested_grid_spacing();

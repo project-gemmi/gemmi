@@ -350,11 +350,10 @@ struct Grid : GridBase<T> {
     set_size_without_checking(nu_, nv_, nw_);
   }
 
-  // The resulting spacing can be smaller (if denser=true) or greater than arg.
   void set_size_from_spacing(double approx_spacing, GridSizeRounding rounding) {
-    std::array<double, 3> limit = {{1. / (unit_cell.ar * approx_spacing),
-                                    1. / (unit_cell.br * approx_spacing),
-                                    1. / (unit_cell.cr * approx_spacing)}};
+    std::array<double, 3> limit = {{unit_cell.a / approx_spacing,
+                                    unit_cell.b / approx_spacing,
+                                    unit_cell.c / approx_spacing}};
     auto m = good_grid_size(limit, rounding, spacegroup);
     set_size_without_checking(m[0], m[1], m[2]);
   }
