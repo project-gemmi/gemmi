@@ -262,9 +262,9 @@ void print_entity_info(const gemmi::Structure& st) {
         auto conformer = polymer.first_conformer();
         int length = 0;
         std::vector<std::pair<int,int>> gaps;
-        int prev = 0;
+        int prev = gemmi::SeqId::OptionalNum::None;
         for (const gemmi::Residue& res : conformer) {
-          if (length != 0 && prev != *res.label_seq - 1)
+          if (prev != gemmi::SeqId::OptionalNum::None && prev != *res.label_seq - 1)
             gaps.emplace_back(prev+1, *res.label_seq-1);
           prev = *res.label_seq;
           ++length;
