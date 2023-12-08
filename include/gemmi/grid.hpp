@@ -324,7 +324,7 @@ struct Grid : GridBase<T> {
     calculate_spacing();
   }
 
-  /// set #spacing
+  /// set #spacing and #orth_n
   void calculate_spacing() {
     spacing[0] = 1.0 / (nu * unit_cell.ar);
     spacing[1] = 1.0 / (nv * unit_cell.br);

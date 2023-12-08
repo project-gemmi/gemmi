@@ -668,22 +668,22 @@ both the Grid class and all the meta-data from the CCP4 file header.
 The CCP4 format has a few different modes that correspond to different
 data types. Gemmi supports:
 
-* mode 0 -- which correspond to the C++ type int8_t,
+* mode 0 -- which corresponds to the C++ type int8_t,
 * mode 1 -- corresponds to int16_t,
 * mode 2 -- float,
 * and mode 6 -- uint16_t.
 
-CCP4 programs use mode 2 (float) for the electron density,
-and mode 0 (int8_t) for masks. A mask is 0/1 data that marks part of the volume,
+CCP4 programs use mode 2 (float) for the electron density, and
+mode 0 (int8_t) for masks. A mask is 0/1 data that marks a part of the volume,
 such as the solvent region. Other modes are not used in crystallography,
 but may be used for CryoEM data.
 
 The CCP4 format is quite flexible. The data is stored as sections,
 rows and columns that correspond to a permutation of the X, Y and Z axes
 as defined in the file header.
-The file can contain only a part of the asymmetric unit,
-or more than an asymmetric unit (i.e. redundant data).
-There are two typical approaches to generate a crystallographic map:
+The file can contain only a part of the asymmetric unit
+or more than one asymmetric unit (i.e., redundant data).
+Typically, a span of the crystallographic map is one of the following:
 
 * Covering a molecule with some margin around it.
   This is necessary for programs such as PyMOL that don't know about symmetry.
@@ -701,6 +701,11 @@ as compared in the
 
 Nowadays, the CCP4 format is rarely used in crystallography.
 Almost all programs read the reflection data and calculate maps on the fly.
+
+The MRC variant of the format contains the ORIGIN header records (words 50-52)
+that specify the location (in Angstroms) of a subvolume taken
+from a larger volume. Gemmi functions ignore this header because our focus
+was on crystallographic applications. Using it is up for discussion.
 
 Reading
 -------

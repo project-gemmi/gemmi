@@ -228,9 +228,7 @@ struct Ccp4 : public Ccp4Base {
       // NXSTART et al. must be 0
       header_i32(5) == 0 && header_i32(6) == 0 && header_i32(7) == 0 &&
       // MX == NX
-      header_i32(8) == grid.nu && header_i32(9) == grid.nv && header_i32(10) == grid.nw &&
-      // just in case, check ORIGIN
-      header_i32(50) == 0 && header_i32(51) == 0 && header_i32(52) == 0;
+      header_i32(8) == grid.nu && header_i32(9) == grid.nv && header_i32(10) == grid.nw;
   }
 
   template<typename Stream>
