@@ -328,15 +328,13 @@ int GEMMI_MAIN(int argc, char **argv) {
         gemmi::Selection sel(p.options[Match].arg);
         sel.remove_not_selected(st);
       }
-      if (st.input_format == gemmi::CoorFormat::Pdb) {
-        if (p.options[Label] || p.options[Ent]) {
-          gemmi::setup_entities(st);
-          // hidden feature: -ll generates label_seq even if SEQRES is missing
-          bool force = p.options[Label].count() > 1;
-          gemmi::assign_label_seq_id(st, force);
-        } else if (p.options[Short]) {
-          gemmi::add_entity_types(st, false);
-        }
+      if (p.options[Label] || p.options[Ent]) {
+        gemmi::setup_entities(st);
+        // hidden feature: -ll generates label_seq even if SEQRES is missing
+        bool force = p.options[Label].count() > 1;
+        gemmi::assign_label_seq_id(st, force);
+      } else if (p.options[Short]) {
+        gemmi::add_entity_types(st, false);
       }
       if (p.options[CheckSeqId]) {
         bool ok = check_sequence_id(st);

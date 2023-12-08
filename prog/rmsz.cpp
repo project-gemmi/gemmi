@@ -227,9 +227,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         fprintf(stderr, "No atoms in the input file. Wrong format?\n");
         return 1;
       }
-      if (st.input_format == gemmi::CoorFormat::Pdb ||
-          st.input_format == gemmi::CoorFormat::ChemComp)
-        gemmi::setup_entities(st);
+      gemmi::setup_entities(st);
 
       gemmi::MonLib monlib;
       std::vector<std::string> wanted = st.models[0].get_all_residue_names();
