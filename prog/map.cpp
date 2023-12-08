@@ -75,13 +75,9 @@ void print_info(const gemmi::Ccp4<T>& map, const gemmi::DataStats& st) {
                order, "->", mx * my * mz / order);
   std::printf("Cell dimensions: %g %g %g  %g %g %g\n",
               cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
-  int origin[3] = {
-    map.header_i32(50),
-    map.header_i32(51),
-    map.header_i32(52)
-  };
-  if (origin[0] != 0 || origin[1] != 0 || origin[2] != 0)
-    std::printf("Non-zero origin: %d %d %d\n", origin[0], origin[1], origin[2]);
+  gemmi::Position origin = map.get_origin();
+  if (origin.x != 0 || origin.y != 0 || origin.z != 0)
+    std::printf("Non-zero origin: %g %g %g\n", origin.x, origin.y, origin.z);
   if (map.has_skew_transformation())
     std::printf("Defines skew transformation with translation length %.5g A.\n",
                 map.get_skew_transformation().vec.length());

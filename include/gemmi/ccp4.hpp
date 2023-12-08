@@ -132,6 +132,11 @@ struct Ccp4Base {
       { header_float(35), header_float(36), header_float(37) }
     };
   }
+
+  // ORIGIN (words 50-52), used in MRC format, zeros in CCP4 format
+  Position get_origin() const {
+    return Position(header_float(50), header_float(51), header_float(52));
+  }
 };
 
 template<typename T=float>
