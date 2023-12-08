@@ -144,7 +144,7 @@ const option::Descriptor Usage[] = {
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
   { NoOp, 0, "", "", Arg::None,
-    "\nWhen output file is -, write to standard output." },
+    "\nWhen output file is -, write to standard output (default format: pdb)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -411,8 +411,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* output = p.nonOption(1);
 
   CoorFormat out_type = coor_format_as_enum(p.options[FormatOut]);
-  if (out_type == CoorFormat::Unknown)
-    out_type = gemmi::coor_format_from_ext_gz(output);
+  if (out_type == CoorFormat::Unknown) {
+    if (output[0] == '-' && output[1] == '\0')
+      out_type = CoorFormat::Pdb;
+    else
+      out_type = gemmi::coor_format_from_ext_gz(output);
+  }
   if (out_type == CoorFormat::ChemComp) {
     std::cerr << "The output format cannot be chemcomp.\n";
     return 1;

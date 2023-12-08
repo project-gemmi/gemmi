@@ -60,4 +60,4 @@ Macromolecular operations:
   --remove-lig-wat        Remove ligands and waters.
   --trim-to-ala           Trim aminoacids to alanine.
 
-When output file is -, write to standard output.
+When output file is -, write to standard output (default format: pdb).
