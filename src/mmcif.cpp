@@ -390,19 +390,16 @@ void fill_residue_entity_type(Structure& st) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (ResidueSpan& sub : chain.subchains()) {
-        EntityType etype = EntityType::Unknown;
-        if (const Entity* ent = st.get_entity_of(sub))
-          etype = ent->entity_type;
-        if (etype == EntityType::Unknown) {
-          if (sub[0].is_water())
-            etype = EntityType::Water;
-          else if (sub.length() > 1)
-            etype = EntityType::Polymer;
-          else
-            etype = EntityType::NonPolymer;
+        if (const Entity* ent = st.get_entity_of(sub)) {
+          for (Residue& res : sub)
+            res.entity_type = ent->entity_type;
+        } else {
+          // Don't attempt to distinguish Polymer, Branched and NonPolymer here.
+          // Third-party software may not use the same conventions regarding
+          // label_seq_id and label_asym_id that the PDB uses.
+          for (Residue& res : sub)
+            res.entity_type = res.is_water() ? EntityType::Water : EntityType::Unknown;
         }
-        for (Residue& residue : sub)
-          residue.entity_type = etype;
       }
 }
 
