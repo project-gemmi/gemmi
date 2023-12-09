@@ -176,7 +176,8 @@ void add_topo(py::module& m) {
         warnings = &os;
       }
       return prepare_topology(st, monlib, model_index, h_change, reorder,
-                              warnings, ignore_unknown_links, use_cispeps);
+                              warnings, ignore_unknown_links, use_cispeps,
+                              update_old_atom_names);
     }, py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
        py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
        py::arg("warnings")=py::none(), py::arg("ignore_unknown_links")=false,
