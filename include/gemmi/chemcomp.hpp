@@ -311,7 +311,7 @@ inline double chiral_abs_volume(double bond1, double bond2, double bond3,
     x -= cosine * cosine;
     y *= cosine;
   }
-  return mult * std::sqrt(x + y);
+  return mult * std::sqrt(std::max(0., x + y));
 }
 
 inline double Restraints::chiral_abs_volume(const Restraints::Chirality& ch) const {
