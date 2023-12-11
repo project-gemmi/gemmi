@@ -2,6 +2,7 @@
 
 #include <gemmi/monlib.hpp>
 #include <gemmi/calculate.hpp>  // for calculate_chiral_volume
+#include <gemmi/modify.hpp>     // for rename_atom_names
 
 namespace gemmi {
 
@@ -513,6 +514,43 @@ double MonLib::find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2)
       r[j] = (j==0 ? cra1 : cra2).atom->element.covalent_r();
   }
   return r[0] + r[1];
+}
+
+// Returns a multi-line message that can be shown to the user.
+// When we have a logging mechanism, the return type will be void.
+std::string MonLib::update_old_atom_names(Structure& st) const {
+  std::string msg;
+  for (const auto& it : monomers)
+    // monomers should have only monomers needed for this structure.
+    // Few of them (usually none or one) have old names defined.
+    if (it.second.has_old_names()) {
+      const std::string& resname = it.first;
+      const ChemComp& cc = it.second;
+      int old_vs_new = 0;
+      for (const Model& model : st.models)
+        for (const Chain& chain : model.chains)
+          for (const Residue& res : chain.residues)
+            if (res.name == resname) {
+              for (const Atom& atom : res.atoms) {
+                if (cc.find_atom(atom.name) == cc.atoms.end())
+                  ++old_vs_new;
+                if (cc.find_atom_by_old_name(atom.name) == cc.atoms.end())
+                  --old_vs_new;
+              }
+            }
+      if (old_vs_new > 0) {
+        cat_to(msg, "Updating atom names in ", resname, ':');
+        std::map<std::string, std::string> mapping;
+        for (const ChemComp::Atom& a : cc.atoms)
+          if (!a.old_id.empty() && a.old_id != a.id) {
+            mapping.emplace(a.old_id, a.id);
+            cat_to(msg, ' ', a.old_id, "->", a.id);
+          }
+        msg += '\n';
+        rename_atom_names(st, resname, mapping);
+      }
+    }
+  return msg;
 }
 
 } // namespace gemmi

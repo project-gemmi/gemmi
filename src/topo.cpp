@@ -888,8 +888,7 @@ NeighMap prepare_neighbor_altlocs(Topo& topo, const MonLib& monlib) {
 std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings, bool ignore_unknown_links,
-                 bool use_cispeps, bool update_old_atom_names) {
+                 std::ostream* warnings, bool ignore_unknown_links, bool use_cispeps) {
   std::unique_ptr<Topo> topo(new Topo);
   topo->warnings = warnings;
   if (model_index >= st.models.size())
@@ -934,21 +933,8 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
             msg += " (linkage should remove this atom)";
           } else {
             auto it = cc.find_atom_by_old_name(atom.name);
-            if (it != cc.atoms.end()) {
-              if (update_old_atom_names && ri.orig_chemcomp) {
-                const std::string& resname = ri.orig_chemcomp->name;
-                std::map<std::string, std::string> mapping;
-                for (const ChemComp::Atom& a : ri.orig_chemcomp->atoms)
-                  if (a.old_id != a.id)
-                    mapping.emplace(a.old_id, a.id);
-                cat_to(msg, " - updating all ", resname, " residues:");
-                for (auto& old_new : mapping)
-                  cat_to(msg, ' ', old_new.first, "->", old_new.second);
-                rename_atom_names(st, resname, mapping);
-              } else {
-                cat_to(msg, " (replace ", atom.name, " with ", it->id, ')');
-              }
-            }
+            if (it != cc.atoms.end())
+              cat_to(msg, " (replace ", atom.name, " with ", it->id, ')');
           }
           topo->err(msg);
         }

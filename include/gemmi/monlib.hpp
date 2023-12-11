@@ -308,6 +308,7 @@ struct GEMMI_DLL MonLib {
   }
 
   double find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2) const;
+  std::string update_old_atom_names(Structure& st) const;
 };
 
 // to be deprecated

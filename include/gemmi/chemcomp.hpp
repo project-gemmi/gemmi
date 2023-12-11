@@ -443,6 +443,10 @@ struct ChemComp {
   std::vector<Atom>::const_iterator find_atom_by_old_name(const std::string& old_id) const {
     return const_cast<ChemComp*>(this)->find_atom_by_old_name(old_id);
   }
+  bool has_old_names() const {
+    return std::any_of(atoms.begin(), atoms.end(),
+                       [&](const Atom& a) { return !a.old_id.empty() && a.old_id != a.id; });
+  }
 
   int get_atom_index(const std::string& atom_id) const {
     auto it = find_atom(atom_id);

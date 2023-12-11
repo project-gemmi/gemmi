@@ -165,8 +165,7 @@ void add_topo(py::module& m) {
   m.def("prepare_topology",
     [](Structure& st, MonLib& monlib, size_t model_index,
        HydrogenChange h_change, bool reorder,
-       const py::object& pywarnings, bool ignore_unknown_links,
-       bool use_cispeps, bool update_old_atom_names) {
+       const py::object& pywarnings, bool ignore_unknown_links, bool use_cispeps) {
       std::ostream* warnings = nullptr;
       std::ostream os(nullptr);
       std::unique_ptr<py::detail::pythonbuf> buffer;
@@ -176,12 +175,11 @@ void add_topo(py::module& m) {
         warnings = &os;
       }
       return prepare_topology(st, monlib, model_index, h_change, reorder,
-                              warnings, ignore_unknown_links, use_cispeps,
-                              update_old_atom_names);
+                              warnings, ignore_unknown_links, use_cispeps);
     }, py::arg("st"), py::arg("monlib"), py::arg("model_index")=0,
        py::arg("h_change")=HydrogenChange::NoChange, py::arg("reorder")=false,
        py::arg("warnings")=py::none(), py::arg("ignore_unknown_links")=false,
-       py::arg("use_cispeps")=false, py::arg("update_old_atom_names")=false);
+       py::arg("use_cispeps")=false);
 
   // crd.hpp
   m.def("setup_for_crd", &setup_for_crd);
