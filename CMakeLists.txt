@@ -456,7 +456,7 @@ if (INSTALL_DEV_FILES)
           "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config.cmake"
           "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config-version.cmake"
           DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
-elseif (BUILD_SHARED_LIBS)
+elseif (BUILD_SHARED_LIBS AND BUILD_GEMMI_PROGRAM)
   install(TARGETS gemmi_cpp)
 endif()
 

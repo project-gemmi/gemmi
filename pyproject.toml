@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core==0.5.0", "pybind11>=2.6.2"]
+requires = ["scikit-build-core==0.7.0", "pybind11>=2.6.2"]
 build-backend = "scikit_build_core.build"
 
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
@@ -63,7 +63,8 @@ cmake.build-type = "Release"
 cmake.verbose = true
 [tool.scikit-build.cmake.define]
 USE_PYTHON = "ON"
-#BUILD_GEMMI_PROGRAM = "OFF"
+BUILD_GEMMI_PROGRAM = "OFF"
+INSTALL_DEV_FILES = "OFF"
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
