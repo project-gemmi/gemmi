@@ -77,7 +77,7 @@ if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb{1,2}.cpp'
     echo 'Example 1: gemmi -> mmdb'
     cmd="c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb.cpp \
-        -lmmdb2 -Lbuild -lgemmi_cpp -lz -o test_mmdb"
+        -lmmdb2 -Lbuild -lgemmi_cpp -lz -Wl,-rpath=build -o test_mmdb"
     awk '/Example 1/,/^}/' include/gemmi/mmdb.hpp > test_mmdb.cpp
     ${cmd}1
     echo "Converting tests/1orc.pdb to /tmp/example1.pdb"

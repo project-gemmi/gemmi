@@ -11,7 +11,8 @@ TAGGED_REPOS = {
     'pybind/pybind11': 'v2.6.1',
     'scikit-build/scikit-build-core': 'v0.5.1',
     'taocpp/PEGTL': '2.4.0',
-    'cxong/tinydir': '1.2.5',
+    'cxong/tinydir': '1.2.6',
+    'fastfloat/fast_float': 'v5.0.0',
     #'madler/zlib': 'v1.2.11',
 }
 
@@ -19,7 +20,6 @@ NOT_TAGGED_REPOS = {
     'chadaustin/sajson': 'include/sajson.h',
     'sgorsten/linalg': 'linalg.h',
     'nothings/stb': 'stb_sprintf.h',
-    'fastfloat/fast_float': 'include/fast_float',
 }
 
 def load_json(url):
