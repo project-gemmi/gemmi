@@ -397,8 +397,12 @@ endif()
 ### Python bindings ###
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
-  # CMake >=3.18 has subcomponent Development.Module
-  find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
+  # CMake >=3.18 has subcomponent Development.Module, scikit-build-core also has it
+  if (${CMAKE_VERSION} VERSION_LESS 3.18 AND NOT SKBUILD)
+    find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
+  else()
+    find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development.Module)
+  endif()
   if (EXISTS "${CMAKE_HOME_DIRECTORY}/pybind11")
     message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
     add_subdirectory(pybind11)
