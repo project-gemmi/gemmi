@@ -79,3 +79,10 @@ testpaths = ["tests"]
 [tool.codespell]
 skip = 'third_party,*.pdb,*.crd,*.cif,*.mmcif,*.ent,*.log*,*.dic,*.idx,tags,*.bak,docs/_build,tests/mmcif_pdbx_v50_frag.dic,docs/*-help.txt'
 ignore-words-list = 'inout,fo,fom,te,nd,ser,unx,ket,acn,readd,conect'
+
+[tool.cibuildwheel]
+# increase pip debugging output
+build-verbosity = 1
+test-command = "python -m unittest discover -v -s {project}/tests/"
+[tool.cibuildwheel.environment]
+SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF'

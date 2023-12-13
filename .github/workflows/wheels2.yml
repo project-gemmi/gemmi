@@ -13,10 +13,7 @@ on:
         description: 'CIBW_SKIP'
         # To limit the number of builds, skip most of musl-based versions,
         # older PyPy versions, and 32-bit builds.
-        default: 'pp{37,38}-* cp{36,37,38}-musllinux* *_i686 *-win32'
-
-env:
-  CIBW_TEST_COMMAND: python -m unittest discover -v -s {project}/tests/
+        default: 'pp{37,38,39}-* cp{37,38,39}-musllinux* *_i686 *-win32'
 
 jobs:
   build_wheels:
@@ -35,9 +32,6 @@ jobs:
         CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
         CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
         CIBW_ARCHS_MACOS: x86_64 arm64
-        # increase pip debugging output
-        CIBW_BUILD_VERBOSITY: 1
-        SKBUILD_CMAKE_ARGS: '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF'
 
     - run: ls -lh wheelhouse
       shell: bash
