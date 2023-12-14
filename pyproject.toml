@@ -56,8 +56,9 @@ sdist.include = [
   "third_party/*.h",
   "third_party/zlib/*",
   "tests/*",
-  "!tests/*.pyc",
-  "tools/gemmi-config.cmake.in"
+  "tools/gemmi-config.cmake.in",
+  "!__pycache__",
+  "!*.pyc"
 ]
 cmake.build-type = "Release"
 cmake.verbose = true

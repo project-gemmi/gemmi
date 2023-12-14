@@ -9,7 +9,9 @@
 - VERSION=$(grep -Po '\d\.\d\.\d' include/gemmi/version.hpp)
 
 - make and test source package for PyPI:
-  python3 -m build --sdist
+  git clone . /tmp/gemmi-copy
+  python3 -m build --sdist --outdir=dist/ /tmp/gemmi-copy
+  rm -rf /tmp/gemmi-copy
   twine check dist/gemmi-$VERSION.tar.gz
   python3.11 -m pip uninstall gemmi
   python3.11 -m pip install dist/gemmi-$VERSION.tar.gz
