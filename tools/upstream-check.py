@@ -9,7 +9,7 @@ from urllib.request import urlopen
 
 TAGGED_REPOS = {
     'pybind/pybind11': 'v2.6.1',
-    'scikit-build/scikit-build-core': 'v0.5.1',
+    'scikit-build/scikit-build-core': 'v0.7.0',
     'taocpp/PEGTL': '2.4.0',
     'cxong/tinydir': '1.2.6',
     'fastfloat/fast_float': 'v5.0.0',
@@ -39,7 +39,7 @@ def check_tags():
         print('%-18s %10s %10s%s' % (repo[-18:], version, latest_tag, mark))
 
 def check_recent_commits():
-    since = datetime.datetime.now() - datetime.timedelta(days=30)
+    since = datetime.datetime.now() - datetime.timedelta(days=90)
     for repo, filename in NOT_TAGGED_REPOS.items():
         url = 'https://api.github.com/repos/%s/commits?path=%s&since=%s' % (
               repo, filename, since.isoformat())
