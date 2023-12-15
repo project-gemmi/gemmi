@@ -161,7 +161,7 @@ else()
   endif()
   set_property(TARGET ungz PROPERTY POSITION_INDEPENDENT_CODE ON)
   macro(support_gz exe)
-    target_sources(${exe} PUBLIC $<TARGET_OBJECTS:ungz>)
+    target_sources(${exe} PRIVATE $<TARGET_OBJECTS:ungz>)
   endmacro()
 endif()
 
@@ -473,5 +473,5 @@ if (USE_PYTHON)
   # Using Python_SITEARCH/SITELIB is not good, because they are absolute
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
-  install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}")
+  install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}" COMPONENT py)
 endif()
