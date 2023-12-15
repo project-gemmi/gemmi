@@ -25,8 +25,13 @@ option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
-set(GEMMI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gemmi" CACHE STRING
-    "Install path for gemmi CMake files")
+if (WIN32)
+  set(GEMMI_INSTALL_CMAKEDIR "cmake" CACHE STRING
+      "Install path for gemmi CMake files")
+else()
+  set(GEMMI_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/gemmi" CACHE STRING
+      "Install path for gemmi CMake files")
+endif()
 option(STRIP_BINARY "Strip symbols from program" OFF)
 
 # uncomment to show compilation times for each compilation unit
