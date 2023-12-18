@@ -52,41 +52,75 @@ so that non-conformance is not accidental).
 grep
 ====
 
-Searches for a specified tag in CIF files and prints the associated values,
-one value per line::
+Searches for values in CIF files that correspond to the given tag(s).
+
+Option ``-h`` shows the usage.
+Some of the command-line options (``-c``, ``-l``, ``-H``, ``-n``)
+correspond to the options of GNU grep.
+
+
+.. literalinclude:: grep-help.txt
+   :language: console
+
+When used without any options, it prints the values associated
+with the specified tag. Each line contains the block name and the value::
 
   $ gemmi grep _refine.ls_R_factor_R_free 5fyi.cif.gz
   5FYI:0.2358
+
   $ gemmi grep _refine.ls_R_factor_R_free mmCIF/mo/?moo.cif.gz
   1MOO:0.177
   3MOO:0.21283
   4MOO:0.22371
   5MOO:0.1596
   5MOO:0.1848
+
   $ gemmi grep -b _software.name 5fyi.cif.gz
   DIMPLE
   PHENIX
 
-Some of the command-line options correspond to the options of GNU grep
-(``-c``, ``-l``, ``-H``, ``-n``).
-As with other utilities, option ``--help`` shows the usage:
+The output can be easily processed with well-known Unix utilities, therefore
+gemmi-grep does not have internal options for sorting and filtering.
 
-.. literalinclude:: grep-help.txt
-   :language: console
+* For text-based filtering, use ``grep``::
 
-This is a minimalistic program designed to be used together with Unix
-text-processing utilities. For example, it cannot filter values itself,
-but one may use grep::
+    $ # list mmCIF files with links to EMDB
+    $ gemmi grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
+    4AAS:EMDB
+    5AA0:EMDB
 
-  $ gemmi grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
-  4AAS:EMDB
-  5AA0:EMDB
+* For numeric filtering, use ``awk``
+  (see the example with cell angles below).
 
-Gemmi-grep tries to be simple to use like Unix grep, but at the same time
-it is aware of the CIF syntax rules. In particular, ``gemmi grep _one``
-will give the same output for both ``_one 1`` and ``loop_ _one _two 1 2``.
-This is helpful in surprising corner cases. For example, when a PDB entry
-has two Rfree values (see the 5MOO example above).
+* For sorting the output, use ``sort``::
+
+    $ # the heaviest monomers in CCD
+    $ gemmi grep _chem_comp.formula_weight components.cif.gz | sort -k2 -t: -nr | head -3
+    JGH:5496.513
+    WO2:4363.030
+    HFW:4343.697
+
+* For counting different enumeration values, use ``sort | uniq -c``
+  (see the example with _entity_poly.type below).
+
+* If you add ``cut`` to the mix, you could even count the number of distinct
+  values (we won't go further than this)::
+
+    $ # chemical components with the greatest variety of elements
+    $ # LC_COLLATE=C avoids ignoring ':', which could result in order HOH:H HO:HO HOH:O
+    $ gemmi grep _chem_comp_atom.type_symbol components.cif.gz | LC_COLLATE=C sort -u | cut -d: -f1 | uniq -c | sort -nr | head -5
+        8 YL6
+        8 YF7
+        8 VM5
+
+
+Gemmi-grep parses the CIF syntax and prints values from both name-value
+pairs and loops. In particular, ``gemmi grep _one`` will give the same
+output for both ``_one 1`` and ``loop_ _one _two 1 2``.
+It makes it more robust than using Unix grep. For example,
+if one was using Unix grep to get R-free from mmCIF file,
+it would fail in special cases such as the PDB entry 5MOO, which has two
+Rfree values in a loop (see above, the second example in this section).
 
 Gemmi-grep does not support regular expression, only globbing (wildcards):
 ``?`` represents any single character, ``*`` represents any number of
@@ -139,8 +173,8 @@ and it makes the program useful for ad-hoc PDB statistics::
      4559 polyribonucleotide
        18 polysaccharide(D)
 
-Option ``-c`` counts the values in each block or file. As an example
-we may check which entries have the biggest variety of chemical components
+Option ``-c`` counts the values in each block or file. As an example,
+we may check which entries have the greatest variety of chemical components
 (spoiler: ribosomes)::
 
   $ gemmi grep -O -c _chem_comp.id /pdb/mmCIF | sort -t: -k2 -nr | head
@@ -154,6 +188,13 @@ we may check which entries have the biggest variety of chemical components
   5IT8:57
   5IQR:50
   5AFI:50
+
+or which chemical components in the CCD have the biggest number of atoms::
+
+  $ gemmi grep -c _chem_comp_atom.atom_id components.cif.gz | sort -t: -k2 -nr | head -3
+  JSG:440
+  KDL:355
+  TQN:348
 
 Going back to moo, we may want to know to what experimental method
 the Rfree values correspond::
@@ -173,6 +214,15 @@ repeated for 5MOO::
     5MOO:0.1596;X-RAY DIFFRACTION;2016-12-14
     5MOO:0.1848;NEUTRON DIFFRACTION;2016-12-14
 
+gemmi-grep operates on the syntax level and cannot match values from
+different tables, as this would require consulting a DDL dictionary.
+In the example above we have two values from the same table (``_refine``)
+and a deposition date (single value). This works well. However,
+would not be able to add the corresponding wavelengths from ``_diffrn_source``.
+If an extra tag (specified with ``-a``) is not in the same table
+as the main tag, gemmi-grep will use the first value for this tag,
+not the corresponding one.
+
 To output TSV (tab-separated values) add ``--delimiter='\t'``.
 What are the heaviest chains?
 
@@ -183,21 +233,12 @@ What are the heaviest chains?
   5T2C    1640238.125     28S rRNA
   5LKS    1640238.125     28S ribosomal RNA
 
-With some further processing the option ``-a`` can be used to generate
+With some further processing, the option ``-a`` can be used to generate
 quite sophisticated reports. Here is a little demo:
-https://project-gemmi.github.io/pdb-stats/
+https://project-gemmi.github.io/pdb-stats/xray.html
 
-The major limitation here is that gemmi-grep cannot match
-corresponding values from different tables (it is not possible
-on the syntax level).
-In the example above we have two values from the same table (``_refine``)
-and a deposition date (single value). This works well.
-But we are not able to add corresponding wavelengths from ``_diffrn_source``.
-If an extra tag (specified with ``-a``) is not in the same table
-as the main tag, gemmi-grep uses only the first value for this tag.
-
-Unless we just count the number of value. Counting works for any combination
-of tags::
+If ``-a`` is used together with ``-c``, the values are counted
+independently for each tag::
 
   $ gemmi grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
   r5paysf:63611;0
@@ -207,8 +248,7 @@ of tags::
 Strangely these files in the PDB have extension ``ent`` not ``cif``.)
 
 The first number in the output above is the number of specified intensities.
-If you would like to count in also values ``?`` and ``.`` specify
-the option ``--raw``::
+To count also null values ``?`` and ``.``, add ``--raw``::
 
   $ gemmi grep --raw -c _refln.intensity_meas r5paysf.ent.gz
   r5paysf:63954
