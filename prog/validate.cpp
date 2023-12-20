@@ -24,7 +24,7 @@ namespace {
 
 enum OptionIndex {
   Quiet=4, Fast, Stat, Context, Ddl, NoRegex, NoMandatory, NoUniqueKeys,
-  Parents, Recurse, Monomer, Zscore, Ccd
+  Parents, Recurse, Monomer, Zscore, Ccd, AuditDate
 };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
@@ -56,6 +56,8 @@ const option::Descriptor Usage[] = {
     "  --z-score=Z  \tUse Z for validating _chem_comp_atom.[xyz] (default: 2.0)." },
   { Ccd, 0, "", "ccd", Arg::Required,
     "  --ccd=PATH  \tCCD file for comparison." },
+  { AuditDate, 0, "", "audit-on", Arg::Required,
+    "  --audit-on=DATE  \tCheck only if CCD component was remediated on DATE." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -165,6 +167,13 @@ void check_empty_loops(const cif::Block& block) {
   }
 }
 
+bool column_contains(const cif::Column& column, const char* value) {
+  for (const std::string& v : column)
+    if (cif::as_string(v) == value)
+      return true;
+  return false;
+}
+
 bool process_file(const char* path, const cif::Ddl& dict,
                   const std::map<std::string, cif::Block>& ccd_map,
                   const std::vector<option::Option>& options) {
@@ -188,11 +197,42 @@ bool process_file(const char* path, const cif::Ddl& dict,
         dict.check_audit_conform(doc, std::cout);
         ok = dict.validate_cif(doc, std::cout);
       }
+
       if (options[Monomer] || options[Zscore] || options[Ccd]) {
-        bool normal_checks = options[Monomer];
-        double z_score = options[Zscore] ? std::atof(options[Zscore].arg)
-                                         : normal_checks ? 2.0 : INFINITY;
-        check_monomer_doc(doc, normal_checks, z_score, ccd_map, options[Verbose]);
+        for (const cif::Block& block : doc.blocks) {
+          if (block.name == "comp_list")
+            continue;
+          const std::string cc_name =
+            block.name.substr(gemmi::starts_with(block.name, "comp_") ? 5 : 0);
+          try {
+            if (options[Monomer] || options[Zscore]) {
+              double z_score = options[Zscore] ? std::atof(options[Zscore].arg) : 2.0;
+              check_monomer(block, z_score);
+            }
+            if (options[Ccd]) {
+              auto it = ccd_map.find(cc_name);
+              if (it == ccd_map.end()) {
+                std::cout << cc_name << " [ccd] monomer not found in CCD file(s)\n";
+                continue;
+              }
+              const cif::Block& ccd_block = it->second;
+              if (options[AuditDate]) {
+                cif::Column col = const_cast<cif::Block&>(ccd_block)
+                                   .find_values("_pdbx_chem_comp_audit.date");
+                if (!column_contains(col, options[AuditDate].arg)) {
+                  if (options[Verbose])
+                    std::cout << cc_name << " [ccd] ignored - audit date does not match\n";
+                  continue;
+                }
+              }
+              compare_monomer_with_ccd(block, ccd_block, options[Verbose]);
+            }
+          } catch (const std::exception& e) {
+            std::cerr << "Failed to interpret monomer: block " << block.name
+                      << " from " << doc.source << '\n'
+                      << e.what() << std::endl;
+          }
+        }
       }
     }
   } catch (std::runtime_error& e) {

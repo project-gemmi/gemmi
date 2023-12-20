@@ -4,5 +4,7 @@
 #include <map>
 #include "gemmi/cifdoc.hpp"
 
-void check_monomer_doc(const gemmi::cif::Document& doc, bool normal_checks, double z_score,
-                       const std::map<std::string, gemmi::cif::Block>& ccd_map, bool verbose);
+void check_monomer(const gemmi::cif::Block& block, double z_score);
+void compare_monomer_with_ccd(const gemmi::cif::Block& lib_block,
+                              const gemmi::cif::Block& ccd_block,
+                              bool verbose);

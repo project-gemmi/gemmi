@@ -14,12 +14,13 @@
 namespace cif = gemmi::cif;
 using gemmi::Restraints;
 using gemmi::Topo;
+using gemmi::ChemComp;
 
 namespace {
 
 // some rules for the number of bonds (currently only for H and P)
-void check_valency(const gemmi::ChemComp& cc) {
-  for (const gemmi::ChemComp::Atom& atom : cc.atoms) {
+void check_valency(const ChemComp& cc) {
+  for (const ChemComp::Atom& atom : cc.atoms) {
     if (cc.atoms.size() == 1)
       continue;
     float valency = 0.0f;
@@ -39,7 +40,7 @@ void check_valency(const gemmi::ChemComp& cc) {
   }
 }
 
-void check_bond_angle_consistency(const gemmi::ChemComp& cc) {
+void check_bond_angle_consistency(const ChemComp& cc) {
   const std::string tag = cc.name + " [restr]";
   for (const Restraints::Angle& angle : cc.rt.angles) {
     if (!cc.rt.are_bonded(angle.id1, angle.id2) ||
@@ -116,120 +117,172 @@ void print_outliers(const Topo& topo, const std::string& name, double z_score) {
   }
 }
 
-template<typename T, typename Compare>
-std::vector<const T*> sorted_pointers(const std::vector<T>& vec, Compare comp, bool h) {
-  std::vector<const T*> pp;
-  for (const T& x : vec)
-    if (h == x.is_hydrogen())
-      pp.push_back(&x);
-  std::sort(pp.begin(), pp.end(), comp);
-  return pp;
+struct HeavyAtom {
+  const ChemComp::Atom* atom;
+  std::vector<std::string> hydrogens;
+  HeavyAtom(const ChemComp::Atom* atom_) : atom(atom_) {}
+  bool operator<(const HeavyAtom& o) const { return atom->id < o.atom->id; }
+};
+
+struct SortedAtoms {
+  std::vector<HeavyAtom> heavys;
+  std::map<std::string, const Restraints::Bond*> bond_map;
+};
+
+SortedAtoms sorted_heavy_atoms(const ChemComp& cc) {
+  SortedAtoms sa;
+  std::map<std::string, int> hydrogen_names;
+  for (const ChemComp::Atom& a : cc.atoms) {
+    if (a.is_hydrogen())
+      hydrogen_names.emplace(a.id, 0);
+    else
+      sa.heavys.emplace_back(&a);
+  }
+  std::sort(sa.heavys.begin(), sa.heavys.end());
+  auto process_h = [&](const std::string& h_name, const std::string& parent_name) -> bool {
+    auto h = hydrogen_names.find(h_name);
+    if (h == hydrogen_names.end())
+      return false;
+    if (h->second != 0)
+      gemmi::fail("2+ bonds for hydrogen ", h_name, " in ", cc.name);
+    h->second = 1;
+    auto parent = std::find_if(sa.heavys.begin(), sa.heavys.end(),
+                               [&](const HeavyAtom& a) { return a.atom->id == parent_name; });
+    if (parent == sa.heavys.end())
+      gemmi::fail("missing parent atom for hydrogen ", h_name, " in ", cc.name);
+    parent->hydrogens.push_back(h_name);
+    return true;
+  };
+
+  for (const Restraints::Bond& bond : cc.rt.bonds) {
+    if (process_h(bond.id2.atom, bond.id1.atom) ||
+        process_h(bond.id1.atom, bond.id2.atom)) {
+      if (bond.type != gemmi::BondType::Single)
+        printf("%s [ccd] bond %s (hydrogen atom) is not SINGle\n",
+               cc.name.c_str(), bond.str().c_str());
+    } else {
+      auto result = sa.bond_map.emplace(bond.lexicographic_str(), &bond);
+      if (!result.second)
+        printf("%s [ccd:bond]   duplicated bond %s\n", cc.name.c_str(),
+               result.first->first.c_str());
+    }
+  }
+  for (const auto& h : hydrogen_names)
+    if (h.second == 0)
+      gemmi::fail("hydrogen atom without any bond: ", h.first, " in ", cc.name);
+  for (HeavyAtom& heavy : sa.heavys)
+    std::sort(heavy.hydrogens.begin(), heavy.hydrogens.end());
+  return sa;
 }
 
-void check_consistency_with_ccd(const gemmi::ChemComp& lib, const cif::Block& ccd_block,
+// both arguments are sorted vectors
+bool is_subset(const std::vector<std::string>& subset,
+               const std::vector<std::string>& superset) {
+  size_t i = 0, j = 0;
+  for (;;) {
+    if (i == subset.size())
+      return true;
+    if (j == superset.size())
+      return false;
+    if (subset[i] == superset[j])
+      ++i;
+    ++j;
+  }
+  gemmi::unreachable();
+}
+
+void check_consistency_with_ccd(const ChemComp& lib, const cif::Block& ccd_block,
                                 bool verbose) {
-  using gemmi::ChemComp;
   const char* name = lib.name.c_str();
   const ChemComp ccd = gemmi::make_chemcomp_from_block(ccd_block);
-  auto cmp = [](const ChemComp::Atom* a, const ChemComp::Atom* b) { return a->id < b->id; };
-  for (int h = 0; h <= 1; ++h) {  // bool : { false, true }
-    bool same_atoms = true;
-    const char* kind = !h ? "heavy atom" : "hydrogen";
-    std::vector<const ChemComp::Atom*> lib_atoms = sorted_pointers(lib.atoms, cmp, !!h);
-    std::vector<const ChemComp::Atom*> ccd_atoms = sorted_pointers(ccd.atoms, cmp, !!h);
-    if (lib_atoms.size() == ccd_atoms.size()) {
-      for (size_t i = 0; i != lib_atoms.size(); ++i) {
-        if (lib_atoms[i]->id == ccd_atoms[i]->id) {
-          if (lib_atoms[i]->el != ccd_atoms[i]->el)
-            printf("%s [ccd] different element for %s\n", name, lib_atoms[i]->id.c_str());
-        } else {
-          printf("%s [ccd] different %ss names\n", name, kind);
-          same_atoms = false;
-          break;
-        }
-      }
-    } else {
-      printf("%s [ccd] different number of %ss: %zu (%zu in CCD)\n", name, kind,
-             lib_atoms.size(), ccd_atoms.size());
-      same_atoms = false;
-    }
-    if (!same_atoms && verbose) {
-      auto getter = [](const ChemComp::Atom* a) { return a->id; };
-      printf("%s [ccd]   %s\n", name, gemmi::join_str(lib_atoms, ' ', getter).c_str());
-      printf("%s [ccd]   %s\n", name, gemmi::join_str(ccd_atoms, ' ', getter).c_str());
-      cif::Table tab = const_cast<cif::Block&>(ccd_block)
-                           .find("_pdbx_chem_comp_audit.", {"action_type", "date"});
-      int audit_len = tab.length();
-      if (audit_len > 0) {
-        cif::Table::Row last_row = tab[audit_len-1];
-        printf("%s [ccd]   Last modification: %s  %s\n", name,
-               last_row[1].c_str(), last_row.str(0).c_str());
+
+  // compare heavy atoms
+  bool same_atoms = true;
+  SortedAtoms lib_sa = sorted_heavy_atoms(lib);
+  SortedAtoms ccd_sa = sorted_heavy_atoms(ccd);
+  if (lib_sa.heavys.size() == ccd_sa.heavys.size()) {
+    for (size_t i = 0; i != lib_sa.heavys.size(); ++i) {
+      if (lib_sa.heavys[i].atom->id == ccd_sa.heavys[i].atom->id) {
+        const HeavyAtom& lib_heavy = lib_sa.heavys[i];
+        const HeavyAtom& ccd_heavy = ccd_sa.heavys[i];
+        const char* atom_id = lib_heavy.atom->id.c_str();
+        if (lib_heavy.atom->el != ccd_heavy.atom->el)
+          printf("%s [ccd] different element for %s\n", name, atom_id);
+        if (lib_heavy.hydrogens.size() != ccd_heavy.hydrogens.size())
+          printf("%s [ccd] different protonation of %s, #H=%zu (%zu in CCD)\n",
+                 name, atom_id, lib_heavy.hydrogens.size(), ccd_heavy.hydrogens.size());
+        const auto* shorter = &lib_heavy.hydrogens;
+        const auto* longer = &ccd_heavy.hydrogens;
+        if (shorter->size() > longer->size())
+          std::swap(shorter, longer);
+        if (!is_subset(*shorter, *longer))
+          printf("%s [ccd] different names of hydrogens on %s: %s  vs  %s\n",
+                 name, atom_id,
+                 gemmi::join_str(lib_heavy.hydrogens, ' ').c_str(),
+                 gemmi::join_str(ccd_heavy.hydrogens, ' ').c_str());
       } else {
-        printf("%s [ccd]   missing _pdbx_chem_comp_audit in CCD\n", name);
+        printf("%s [ccd] different names of heavy atoms\n", name);
+        same_atoms = false;
+        break;
       }
+    }
+  } else {
+    printf("%s [ccd] different number of heavy atoms: %zu (%zu in CCD)\n", name,
+           lib_sa.heavys.size(), ccd_sa.heavys.size());
+    same_atoms = false;
+  }
+  if (!same_atoms && verbose) {
+    auto getter = [](const HeavyAtom& a) { return a.atom->id; };
+    printf("%s [ccd]   %s\n", name, gemmi::join_str(lib_sa.heavys, ' ', getter).c_str());
+    printf("%s [ccd]   %s\n", name, gemmi::join_str(ccd_sa.heavys, ' ', getter).c_str());
+    cif::Table audit = const_cast<cif::Block&>(ccd_block)
+                         .find("_pdbx_chem_comp_audit.", {"action_type", "date"});
+    int audit_len = audit.length();
+    if (audit_len > 0) {
+      cif::Table::Row last_row = audit[audit_len-1];
+      printf("%s [ccd]   Last modification: %s  %s\n", name,
+             last_row[1].c_str(), last_row.str(0).c_str());
+    } else {
+      printf("%s [ccd]   missing _pdbx_chem_comp_audit in CCD\n", name);
     }
   }
 
-  // check bonds
-  std::map<std::string, const Restraints::Bond*> ccd_bonds;
-  for (const Restraints::Bond& bond : ccd.rt.bonds)
-    ccd_bonds.emplace(bond.lexicographic_str(), &bond);
-  std::string bond_str;
-  for (const Restraints::Bond& bond : lib.rt.bonds) {
-    std::string prev_bond_str = bond_str;
-    bond_str = bond.lexicographic_str();
-    if (bond_str == prev_bond_str) {
-      printf("%s [ccd:bond]   duplicated bond %s\n", name, bond_str.c_str());
+  // check bonds between heavy atoms
+  for (const auto& lib_bond : lib_sa.bond_map) {
+    const std::string& bond_str = lib_bond.first;
+    auto ccd_iter = ccd_sa.bond_map.find(bond_str);
+    if (ccd_iter == ccd_sa.bond_map.end()) {
+      printf("%s [ccd:bond]   extra bond %s\n", name, bond_str.c_str());
       continue;
     }
-    auto ccd_iter = ccd_bonds.find(bond_str);
-    if (ccd_iter == ccd_bonds.end()) {
-      printf("%s [ccd:bond]   extra bond %s\n", name, bond_str.c_str());
-    } else {
-      if (bond.type != ccd_iter->second->type)
-        printf("%s [ccd:bond]   %s bond type is: %s (%s in CCD)\n", name,
-               bond_str.c_str(),
-               gemmi::bond_type_to_string(bond.type),
-               gemmi::bond_type_to_string(ccd_iter->second->type));
-      ccd_bonds.erase(ccd_iter);
-    }
+    if (lib_bond.second->type != ccd_iter->second->type && verbose)
+      printf("%s [ccd:bond]   %s bond type is: %s (%s in CCD)\n", name,
+             bond_str.c_str(),
+             gemmi::bond_type_to_string(lib_bond.second->type),
+             gemmi::bond_type_to_string(ccd_iter->second->type));
+    ccd_sa.bond_map.erase(ccd_iter);
   }
-  for (const auto& it : ccd_bonds)
-    printf("%s [ccd:bond]   missing bond %s\n", name, it.first.c_str());
+  for (const auto& ccd_iter : ccd_sa.bond_map)
+    printf("%s [ccd:bond]   missing bond %s\n", name, ccd_iter.first.c_str());
 }
 
 }  // anonymous namespace
 
-void check_monomer_doc(const cif::Document& doc, bool normal_checks, double z_score,
-                       const std::map<std::string, cif::Block>& ccd_map, bool verbose) {
-  for (const cif::Block& block : doc.blocks) {
-    if (block.name == "comp_list")
-      continue;
-    gemmi::ChemComp cc;
-    try {
-      cc = gemmi::make_chemcomp_from_block(block);
-    } catch (const std::exception& e) {
-      fprintf(stderr, "Failed to interpret %s from %s:\n %s\n",
-              block.name.c_str(), doc.source.c_str(), e.what());
-    }
-    if (normal_checks) {
-      check_valency(cc);
-      check_bond_angle_consistency(cc);
-    }
-    if (z_score != +INFINITY) {
-      // check consistency of _chem_comp_atom.x/y/z with restraints
-      gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block,
-                                                  gemmi::ChemCompModel::Xyz);
-      Topo topo;
-      topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
-      print_outliers(topo, cc.name, z_score);
-    }
-    if (!ccd_map.empty()) {
-      auto it = ccd_map.find(cc.name);
-      if (it != ccd_map.end())
-        check_consistency_with_ccd(cc, it->second, verbose);
-      else
-        printf("%s [ccd] monomer not found in provided CCD file(s)\n", cc.name.c_str());
-    }
+void check_monomer(const cif::Block& block, double z_score) {
+  gemmi::ChemComp cc = gemmi::make_chemcomp_from_block(block);
+  check_valency(cc);
+  check_bond_angle_consistency(cc);
+  if (z_score != +INFINITY) {
+    // check consistency of _chem_comp_atom.x/y/z with restraints
+    gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block,
+                                                gemmi::ChemCompModel::Xyz);
+    Topo topo;
+    topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
+    print_outliers(topo, cc.name, z_score);
   }
+}
+
+void compare_monomer_with_ccd(const cif::Block& lib_block, const cif::Block& ccd_block,
+                              bool verbose) {
+  check_consistency_with_ccd(gemmi::make_chemcomp_from_block(lib_block), ccd_block, verbose);
 }

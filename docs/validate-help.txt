@@ -20,3 +20,4 @@ Validation specific to CCP4 monomer files:
   -m, --monomer    Run checks specific to monomer dictionary.
   --z-score=Z      Use Z for validating _chem_comp_atom.[xyz] (default: 2.0).
   --ccd=PATH       CCD file for comparison.
+  --audit-on=DATE  Check only if CCD component was remediated on DATE.
