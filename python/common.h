@@ -39,13 +39,17 @@ void add_assign_label_seq_id(pybind11::class_<gemmi::Structure>& structure);
 void cif_parse_string(gemmi::cif::Document& doc, const std::string& data);
 void cif_parse_file(gemmi::cif::Document& doc, const std::string& filename);
 
-
-template<typename T> int normalize_index(int index, const T& container) {
+// convert pythonic index to C++ index
+inline int c_index(int index, size_t size) {
   if (index < 0)
-    index += (int) container.size();
-  if ((size_t) index >= container.size())
+    index += (int) size;
+  if ((size_t) index >= size)
     throw pybind11::index_error();
   return index;
+}
+
+template<typename T> int normalize_index(int index, const T& container) {
+  return c_index(index, container.size());
 }
 
 template<typename Item>

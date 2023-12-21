@@ -141,8 +141,10 @@ struct Loop {
   bool has_tag(const std::string& tag) const { return find_tag(tag) != -1; }
   size_t width() const { return tags.size(); }
   size_t length() const { return values.size() / tags.size(); }
+
+  std::string& val(size_t row, size_t col) { return values[row * tags.size() + col]; }
   const std::string& val(size_t row, size_t col) const {
-    return values[row * tags.size() + col];
+    return const_cast<Loop*>(this)->val(row, col);
   }
 
   void clear() { tags.clear(); values.clear(); }

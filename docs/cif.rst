@@ -869,6 +869,16 @@ a list of lists of string. The lists of strings correspond to columns.
   ['primary', "'Alice A.'", '1']
   ['primary', "'Bob B.'", '2']
 
+Individual values can be be accessed with (row,column) tuples:
+
+.. doctest::
+
+  >>> loop[0,1]
+  "'Alice A.'"
+  >>> loop[0,1] = "'Carol C.'"
+  >>> loop.values  # Loop.values is a read-only list (a copy of all values)
+  ['primary', "'Carol C.'", '1', 'primary', "'Bob B.'", '2']
+
 To add a new loop (replacing old one if it exists) use ``init_loop``:
 
 .. doctest::

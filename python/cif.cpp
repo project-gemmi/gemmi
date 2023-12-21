@@ -339,7 +339,14 @@ void add_cif(py::module& cif) {
     .def("length", &Loop::length, "Returns number of rows")
     .def_readonly("tags", &Loop::tags)
     .def_readonly("values", &Loop::values)
-    .def("val", &Loop::val, py::arg("row"), py::arg("col"))
+    .def("__getitem__", [](Loop &self, std::pair<int,int> idx) {
+        return self.val(c_index(idx.first, self.length()),
+                        c_index(idx.second, self.width()));
+    })
+    .def("__setitem__", [](Loop &self, std::pair<int,int> idx, std::string value) {
+        self.val(c_index(idx.first, self.length()),
+                 c_index(idx.second, self.width())) = value;
+    })
     .def("add_row", &Loop::add_row<std::vector<std::string>>,
          py::arg("new_values"), py::arg("pos")=-1)
     .def("add_columns", &Loop::add_columns,
