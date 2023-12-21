@@ -56,8 +56,6 @@ void add_hkl(py::module& m) {
          [](ReflnBlock& self, const std::string& tag, double null) {
            return py_array_from_vector(self.make_vector(tag, null));
     }, py::arg("tag"), py::arg("null")=NAN)
-    .def("make_float_array", &ReflnBlock::make_vector<double>,
-         py::arg("tag"), py::arg("null")=NAN)
     .def("make_miller_array", [](ReflnBlock& self) {
         return py::array_t<int>(py::cast(self.make_miller_vector()));
     })

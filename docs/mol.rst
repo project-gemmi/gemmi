@@ -2013,6 +2013,9 @@ but the same coordinates:
   ATOM    695  DG BSER A  43      -8.832  -2.333  24.316  0.92 23.44           D
       atom name^  ^altloc                                               element^
 
+(There are exceptions to this, see section 3.3.3 in D. Liebschner *et al* (2018),
+`Acta Cryst D 74, 800 <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6079631/#sec3.3.3>`_.)
+
 Internally, it can be more convenient to store such mixture
 as a single atom site with a parameter indicating the deuterium fraction
 (e.g., 0.92 in the above example).

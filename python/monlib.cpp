@@ -69,7 +69,9 @@ void add_monlib(py::module& m) {
   py::class_<EnerLib>(m, "EnerLib");
   py::class_<MonLib>(m, "MonLib")
     .def(py::init<>())
-    .def_readwrite("monomer_dir", &MonLib::monomer_dir)
+    .def_property("monomer_dir",
+                  [](const MonLib& self) { return self.monomer_dir; },
+                  &MonLib::set_monomer_dir)
     .def_readonly("ener_lib", &MonLib::ener_lib)
     .def_readonly("monomers", &MonLib::monomers)
     .def_readonly("links", &MonLib::links)

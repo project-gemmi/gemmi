@@ -266,7 +266,7 @@ struct GEMMI_DLL MonLib {
 
   void set_monomer_dir(const std::string& monomer_dir_) {
     monomer_dir = monomer_dir_;
-    if (monomer_dir.back() != '/' && monomer_dir.back() != '\\')
+    if (!monomer_dir.empty() && monomer_dir.back() != '/' && monomer_dir.back() != '\\')
       monomer_dir += '/';
   }
 
