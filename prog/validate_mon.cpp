@@ -213,13 +213,23 @@ void check_consistency_with_ccd(const ChemComp& lib, const cif::Block& ccd_block
                  name, atom_id, lib_heavy.hydrogens.size(), ccd_heavy.hydrogens.size());
         const auto* shorter = &lib_heavy.hydrogens;
         const auto* longer = &ccd_heavy.hydrogens;
-        if (shorter->size() > longer->size())
+        bool ccd_less = (longer->size() < shorter->size());
+        if (ccd_less)
           std::swap(shorter, longer);
-        if (!is_subset(*shorter, *longer))
+        if (is_subset(*shorter, *longer)) {
+          if (ccd_less)
+            for (const std::string& h : lib_heavy.hydrogens)
+              for (const HeavyAtom& heavy : ccd_sa.heavys) {
+                if (&heavy != &ccd_heavy && gemmi::in_vector(h, heavy.hydrogens))
+                  printf("%s [ccd] wrong parent for hydrogen %s: %s (%s in CCD)\n",
+                         name, h.c_str(), atom_id, heavy.atom->id.c_str());
+              }
+        } else {
           printf("%s [ccd] different names of hydrogens on %s: %s  vs  %s\n",
                  name, atom_id,
                  gemmi::join_str(lib_heavy.hydrogens, ' ').c_str(),
                  gemmi::join_str(ccd_heavy.hydrogens, ' ').c_str());
+        }
       } else {
         printf("%s [ccd] different names of heavy atoms\n", name);
         same_atoms = false;
