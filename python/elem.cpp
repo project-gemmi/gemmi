@@ -9,6 +9,7 @@
 #include "gemmi/util.hpp"  // for cat
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <pybind11/operators.h>
 
 namespace py = pybind11;
 using namespace gemmi;
@@ -78,14 +79,7 @@ void add_elem(py::module& m) {
   py::class_<Element>(m, "Element")
     .def(py::init<const std::string &>())
     .def(py::init<int>())
-    .def("__eq__",
-         [](const Element &a, const Element &b) { return a.elem == b.elem; },
-         py::is_operator())
-#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
-    .def("__ne__",
-         [](const Element &a, const Element &b) { return a.elem != b.elem; },
-         py::is_operator())
-#endif
+    .def(py::self == py::self)
     .def_property_readonly("name", &Element::name)
     .def_property_readonly("weight", &Element::weight)
     .def_property_readonly("covalent_r", &Element::covalent_r)

@@ -6,6 +6,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/numpy.h>
+#include <pybind11/operators.h>
 #include "miller_a.h"
 
 namespace py = pybind11;
@@ -61,26 +62,14 @@ void add_symmetry(py::module& m) {
     .def("apply_to_xyz", &Op::apply_to_xyz, py::arg("xyz"))
     .def("apply_to_hkl", &Op::apply_to_hkl, py::arg("hkl"))
     .def("phase_shift", &Op::phase_shift, py::arg("hkl"))
-    .def("__mul__", [](const Op& a, const Op& b) { return a * b; },
+    .def(py::self * py::self)
+    .def("__mul__", [](const Op &a, const std::string& b) { return a * parse_triplet(b); },
          py::is_operator())
-    .def("__mul__", [](const Op &a, const std::string& b) {
-            return a * parse_triplet(b);
-         }, py::is_operator())
-    .def("__rmul__", [](const Op& a, const std::string& b) {
-            return parse_triplet(b) * a;
-         }, py::is_operator())
-    .def("__eq__", [](const Op& a, const Op& b) { return a == b; },
+    .def("__rmul__", [](const Op& a, const std::string& b) { return parse_triplet(b) * a; },
          py::is_operator())
-    .def("__eq__", [](const Op& a, const std::string& b) {
-            return a == parse_triplet(b);
-         }, py::is_operator())
-#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
-    .def("__ne__", [](const Op& a, const Op& b) { return a != b; },
+    .def(py::self == py::self)
+    .def("__eq__", [](const Op& a, const std::string& b) { return a == parse_triplet(b); },
          py::is_operator())
-    .def("__ne__", [](const Op& a, const std::string& b) {
-            return a != parse_triplet(b);
-         }, py::is_operator())
-#endif
     .def("__copy__", [](const Op& self) { return Op(self); })
     .def("__deepcopy__", [](const Op& self, py::dict) { return Op(self); }, py::arg("memo"))
     .def("__hash__", [](const Op& self) { return std::hash<Op>()(self); })
@@ -101,14 +90,8 @@ void add_symmetry(py::module& m) {
     .def("__iter__", [](const GroupOps& self) {
         return py::make_iterator(self);
     }, py::keep_alive<0, 1>())
-    .def("__eq__", [](const GroupOps &a, const GroupOps &b) {
-            return a.is_same_as(b);
-    }, py::is_operator())
-#if PY_MAJOR_VERSION < 3  // in Py3 != is inferred from ==
-    .def("__ne__", [](const GroupOps &a, const GroupOps &b) {
-            return !a.is_same_as(b);
-    }, py::is_operator())
-#endif
+    .def("__eq__", [](const GroupOps &a, const GroupOps &b) { return a.is_same_as(b); },
+         py::is_operator())
     .def("__len__", [](const GroupOps& g) { return g.order(); })
     .def("__deepcopy__", [](const GroupOps& g, py::dict) { return GroupOps(g); },
          py::arg("memo"))
