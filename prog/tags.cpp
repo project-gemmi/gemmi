@@ -32,6 +32,7 @@ const option::Descriptor Usage[] = {
     "\nList CIF tags with counts of blocks and values."},
   CommonUsage[Help],
   CommonUsage[Version],
+  CommonUsage[Verbose],
   { CountFiles, 0, "", "count-files", Arg::None,
     "  --count-files  \tCount files instead of blocks." },
   { Glob, 0, "", "glob", Arg::Required,
@@ -116,6 +117,7 @@ struct Context {
   size_t column = 0;
   bool per_block = true;
   bool full_output = false;
+  bool list_blocks = false;
 };
 
 template<typename Rule> struct Counter : pegtl::nothing<Rule> {};
@@ -124,6 +126,9 @@ template<> struct Counter<rules::datablockname> {
   template<typename Input> static void apply(const Input& in, Context& ctx) {
     ctx.block_name = in.string();
     ctx.total_blocks++;
+    if (ctx.list_blocks)
+      std::fprintf(stderr, "+ processing block #%d: %s\n",
+                   ctx.total_blocks, ctx.block_name.c_str());
   }
 };
 template<> struct Counter<rules::str_global> {
@@ -298,6 +303,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   Context ctx;
   ctx.full_output = p.options[Full];
   ctx.per_block = !p.options[CountFiles];
+  ctx.list_blocks = p.options[Verbose];
   if (p.options[EntriesIdx]) {
     if (p.nonOptionsCount() != 1) {
       std::fprintf(stderr, "Expected one argument with --entries-idx\n");

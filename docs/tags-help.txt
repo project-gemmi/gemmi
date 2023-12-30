@@ -4,6 +4,7 @@ Usage:
 List CIF tags with counts of blocks and values.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
+  -v, --verbose  Verbose output.
   --count-files  Count files instead of blocks.
   --glob=GLOB    Process files matching glob pattern.
 
