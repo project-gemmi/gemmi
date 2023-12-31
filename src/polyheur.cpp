@@ -318,17 +318,21 @@ void change_ccd_code(Structure& st, const std::string& old, const std::string& n
     }
 }
 
+template <size_t I, typename T1, typename T2>
+bool in_vector_at(T1& x, std::vector<T2>& v) {
+  for (const auto& el : v)
+    if (std::get<I>(el) == x)
+      return true;
+  return false;
+}
+
 void shorten_ccd_codes(Structure& st) {
   // find all long residue names in both models and sequences
-  auto already_in = [&](const std::string& name) -> bool {
-    return in_vector_f([&](const OldToNew& x) { return x.old == name; },
-                       st.shortened_ccd_codes);
-  };
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (Residue& res : chain.residues)
-        if (res.name.size() > 3 && !already_in(res.name))
-          st.shortened_ccd_codes.push_back({res.name, {}});
+        if (res.name.size() > 3 && !in_vector_at<0>(res.name, st.shortened_ccd_codes))
+          st.shortened_ccd_codes.emplace_back(res.name, "");
   for (const Entity& ent : st.entities)
     for (const std::string& mon_ids : ent.full_sequence) {
       for (size_t start = 0;;) {
@@ -336,8 +340,8 @@ void shorten_ccd_codes(Structure& st) {
         size_t len = std::min(end, mon_ids.size()) - start;
         if (len > 3) {
           std::string s(mon_ids, start, len);
-          if (!already_in(s))
-            st.shortened_ccd_codes.push_back({s, {}});
+          if (!in_vector_at<0>(s, st.shortened_ccd_codes))
+            st.shortened_ccd_codes.emplace_back(s, "");
         }
         if (end == std::string::npos)
           break;
@@ -345,13 +349,12 @@ void shorten_ccd_codes(Structure& st) {
       }
     }
   // pick a new residue name and call change_ccd_code()
-  for (OldToNew& item : st.shortened_ccd_codes) {
-    std::string short_code = item.old.substr(0, 3);
-    short_code[2] = '~';
+  for (auto& old_new : st.shortened_ccd_codes) {
+    const std::string& old = old_new.first;
+    char short_code[4] = {old[0], old[1], '~', '\0'};
     // if short_code it's already used, try X[0-9]~ and then [0-9][0-9]~
     char c0 = '0', c1 = '0';
-    while (in_vector_f([&](const OldToNew& x) { return x.new_ == short_code; },
-                       st.shortened_ccd_codes)) {
+    while (in_vector_at<1>(short_code, st.shortened_ccd_codes)) {
       short_code[1] = c1++;
       if (c1 > '9') {
         short_code[0] = c0++;
@@ -360,8 +363,8 @@ void shorten_ccd_codes(Structure& st) {
           break;
       }
     }
-    item.new_ = short_code;
-    change_ccd_code(st, item.old, item.new_);
+    old_new.second = short_code;
+    change_ccd_code(st, old_new.first, old_new.second);
   }
 }
 

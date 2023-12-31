@@ -142,6 +142,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::printf("Writing coordinates to %s\n", output.c_str());
     gemmi::Ofstream os(output, &std::cout);
     if (gemmi::coor_format_from_ext_gz(output) == gemmi::CoorFormat::Pdb) {
+      shorten_ccd_codes(st);
       gemmi::write_pdb(st, os.ref());
     } else {
       if (preserve_doc) {

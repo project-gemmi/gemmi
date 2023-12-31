@@ -210,8 +210,8 @@ void change_ccd_code(Structure& st, const std::string& old, const std::string& n
 GEMMI_DLL void shorten_ccd_codes(Structure& st);
 
 inline void restore_full_ccd_codes(Structure& st) {
-  for (const OldToNew& item : st.shortened_ccd_codes)
-    change_ccd_code(st, item.new_, item.old);
+  for (const auto& item : st.shortened_ccd_codes)
+    change_ccd_code(st, item.second, item.first);
   st.shortened_ccd_codes.clear();
 }
 

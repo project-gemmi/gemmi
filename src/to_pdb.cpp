@@ -456,8 +456,8 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
     }
 
   // HETNAM - but it's used only for tilde-hetnam extension
-  for (const OldToNew& mapping : st.shortened_ccd_codes)
-    WRITE("HETNAM     %3s %55s %-9s\n", mapping.new_.c_str(), "", mapping.old.c_str());
+  for (const auto& mapping : st.shortened_ccd_codes)
+    WRITE("HETNAM     %3s %55s %-9s\n", mapping.second.c_str(), "", mapping.first.c_str());
 
   // HELIX
   if (!opt.minimal_file && !st.helices.empty()) {

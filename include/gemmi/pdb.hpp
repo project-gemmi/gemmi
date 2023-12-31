@@ -439,7 +439,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       if (len > 71 && line[70] == ' ') {
         std::string full_code = read_string(line + 71, 8);
         if (!full_code.empty())
-          st.shortened_ccd_codes.push_back({full_code, read_string(line + 11, 3)});
+          st.shortened_ccd_codes.emplace_back(full_code, read_string(line + 11, 3));
       }
 
     } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2

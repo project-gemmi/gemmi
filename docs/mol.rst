@@ -593,6 +593,8 @@ it starts in column 13 even if it has a one-letter element code:
    HETATM 6495  CAX R58 A 502      17.143 -29.934   7.180  1.00 58.54           C
    HETATM 6496 CAX3 R58 A 502      16.438 -31.175   6.663  1.00 57.68           C
 
+.. _tilde_hetnam:
+
 Columns 18-20 contain the residue name (CCD code). When the PDB ran out of
 three-character codes in 2023, it started assigning codes with 5 characters,
 which no longer fit into the PDB format. The tilde-hetnam extension addresses
@@ -1968,6 +1970,45 @@ the chain names first:
   >>> st.shorten_chain_names()
 
 In C++ this functions is in ``gemmi/assembly.hpp``.
+
+Long monomer names
+~~~~~~~~~~~~~~~~~~
+
+Five-character monomer names are new.
+Until Dec 2023, monomer names were up to 3 characters (and were often
+called three-letter codes). Therefore, not all programs support
+residue names longer than three characters. In particular, the PDB
+file format does not support them. To work around this, we introduced
+the :ref:`tilde-hetnam extension <tilde_hetnam>`.
+However, the problem is not limited to the PDB format.
+Programs using the mmCIF format may also not support 5-character codes.
+
+Therefore, gemmi provides a file format independent aliasing mechanism
+with two functions:
+
+
+* ``shorten_ccd_codes()`` replaces 5-character residue names in a structure
+  with 3-character names (aliases) where the third character is ``~``,
+
+* ``restore_full_ccd_codes()`` restores the original names.
+
+When reading a PDB file with the tilde-hetnam extension,
+the long names are restored automatically. Apart from this,
+switching between long and short names requires function calls.
+
+Internally, the mapping between old and new names is stored in
+``Structure::shortened_ccd_codes``.
+
+.. doctest::
+  :skipif: not os.path.isfile('8xfm.cif')
+
+  >>> st_8xfm = gemmi.read_structure('8xfm.cif')
+  >>> st_8xfm.shorten_ccd_codes()
+  >>> st_8xfm.shortened_ccd_codes
+  [('A1LU6', 'A1~')]
+  >>> st_8xfm.restore_full_ccd_codes()
+  >>> st_8xfm.shortened_ccd_codes
+  []
 
 Bounding box
 ~~~~~~~~~~~~

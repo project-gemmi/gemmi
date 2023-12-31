@@ -47,6 +47,7 @@ docs/out.ccp4
 docs/out.cif
 docs/out.pdb
 docs/output.mtz
+docs/8xfm.cif
 
 # file stored by tools/cmp-size.py
 /.size-save.txt

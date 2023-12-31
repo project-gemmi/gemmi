@@ -164,15 +164,21 @@ void add_mol(py::module& m) {
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
+    .def("remove_waters", remove_waters<Structure>)
+    .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
+    .def("shorten_ccd_codes", &shorten_ccd_codes)
+    .def("restore_full_ccd_codes", &restore_full_ccd_codes)
+    .def_readwrite("shortened_ccd_codes", &Structure::shortened_ccd_codes)
+
+    // modify.hpp
     .def("remove_alternative_conformations",
          remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
-    .def("remove_waters", remove_waters<Structure>)
-    .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
     .def("store_deuterium_as_fraction", &store_deuterium_as_fraction)
     .def("standardize_crystal_frame", &standardize_crystal_frame)
     .def("assign_serial_numbers", (void (*)(Structure&, bool)) &assign_serial_numbers,
          py::arg("numbered_ter")=false)
+    // assembly.hpp
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, py::arg("how"), py::arg("merge_dist")=0.2)
     .def("transform_to_assembly",
@@ -182,8 +188,10 @@ void add_mol(py::module& m) {
                                      keep_spacegroup, merge_dist);
     }, py::arg("assembly_name"), py::arg("how"), py::arg("keep_spacegroup")=false,
        py::arg("merge_dist")=0.2)
+    // calculate.hpp
     .def("calculate_box", &calculate_box, py::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, py::arg("margin")=0.)
+
     .def("clone", [](const Structure& self) { return new Structure(self); })
     .def("__repr__", [](const Structure& self) {
         return cat("<gemmi.Structure ", self.name, " with ",

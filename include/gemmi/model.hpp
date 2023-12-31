@@ -87,9 +87,6 @@ enum class CalcFlag : signed char {
   NotSet=0, NoHydrogen, Determined, Calculated, Dummy
 };
 
-/// helper type used for Structure::shortened_ccd_codes
-struct OldToNew { std::string old, new_; };
-
 /// options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
@@ -946,7 +943,7 @@ struct Structure {
   /// Minimal metadata with keys being mmcif tags: _entry.id, _cell.Z_PDB, ...
   std::map<std::string, std::string> info;
   /// Mapping of long (4+) CCD codes (residue names) to PDB-compatible ones
-  std::vector<OldToNew> shortened_ccd_codes;
+  std::vector<std::pair<std::string,std::string>> shortened_ccd_codes;
   /// original REMARK records stored if the file was read from the PDB format
   std::vector<std::string> raw_remarks;
   /// simplistic resolution value from/for REMARK 2
