@@ -350,9 +350,9 @@ The contact search uses an instance of NeighborSearch.
 
 .. doctest::
 
-  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
-  >>> st.setup_entities()
-  >>> ns = gemmi.NeighborSearch(st[0], st.cell, 5).populate()
+  >>> st_virus = gemmi.read_structure('../tests/5cvz_final.pdb')
+  >>> st_virus.setup_entities()
+  >>> ns = gemmi.NeighborSearch(st_virus[0], st_virus.cell, 5).populate()
 
 If you'd like to ignore hydrogens from the model,
 call ``ns.populate(include_h=False)``.
@@ -408,9 +408,9 @@ is in contact with ``partner1`` with:
 
 .. doctest::
 
-  >>> st.cell.find_nearest_pbc_position(results[0].partner1.atom.pos,
-  ...                                   results[0].partner2.atom.pos,
-  ...                                   results[0].image_idx)
+  >>> st_virus.cell.find_nearest_pbc_position(results[0].partner1.atom.pos,
+  ...                                         results[0].partner2.atom.pos,
+  ...                                         results[0].image_idx)
   <gemmi.Position(42.6647, 47.5137, 16.8644)>
 
 You could also find the symmetry image of ``partner1``
@@ -418,9 +418,9 @@ that is near the original position of ``partner2``:
 
 .. doctest::
 
-  >>> st.cell.find_nearest_pbc_position(results[0].partner2.atom.pos,
-  ...                                   results[0].partner1.atom.pos,
-  ...                                   results[0].image_idx, inverse=True)
+  >>> st_virus.cell.find_nearest_pbc_position(results[0].partner2.atom.pos,
+  ...                                         results[0].partner1.atom.pos,
+  ...                                         results[0].image_idx, inverse=True)
   <gemmi.Position(49.2184, 39.9091, 16.7278)>
 
 See also the command-line program :ref:`gemmi-contact <gemmi-contact>`.
@@ -983,7 +983,7 @@ which takes four points in the space as arguments.
 .. doctest::
 
   >>> from math import degrees
-  >>> chain = gemmi.read_structure('../tests/5cvz_final.pdb')[0]['A']
+  >>> chain = st_virus[0]['A']
   >>> degrees(gemmi.calculate_omega(chain[0], chain[1]))
   159.9092215006572
   >>> for res in chain[:5]:
