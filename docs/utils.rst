@@ -361,6 +361,51 @@ The opposite of cif2json, but currently the only supported input is mmJSON.
 .. literalinclude:: json2cif-help.txt
    :language: console
 
+cifdiff
+=======
+
+Compares categories and tags that are present in two (mm)CIF files.
+It does not compare values.
+
+.. literalinclude:: cifdiff-help.txt
+   :language: console
+
+The output resembles the output of diff, so it can be colored by editors that
+highlight "syntax" or by the `colordiff <https://www.colordiff.org/>`_ script.
+Here is an example:
+
+.. code-block:: diff
+
+  $ gemmi diff deposit.cif output.cif
+  --- Reading deposit.cif
+  +++ Reading output.cif
+    _entity.                              rows:     8  ->    11
+          id
+          type
+  + _chem_comp.                           rows:     0  ->    25
+  +       id
+  +       type
+    _exptl.                               rows:     1
+          entry_id
+          method
+  +       crystals_number
+    _reflns.                              rows:     1
+  +       entry_id
+          pdbx_ordinal
+  +       pdbx_diffrn_id
+          number_obs
+          d_resolution_high
+          d_resolution_low
+          percent_possible_obs
+          pdbx_redundancy
+          pdbx_Rmerge_I_obs
+  -       pdbx_Rrim_I_all
+  -       pdbx_Rpim_I_all
+  +       pdbx_Rsym_value
+          pdbx_netI_over_sigmaI
+  -       pdbx_CC_half
+  [...]
+
 .. _convert:
 
 convert

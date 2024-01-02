@@ -4,7 +4,7 @@
 #include <algorithm>  // for find
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 
-#define GEMMI_PROG diff
+#define GEMMI_PROG cifdiff
 #include "options.h"
 
 namespace cif = gemmi::cif;
@@ -17,7 +17,7 @@ enum OptionIndex {
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Usage:\n " EXE_NAME " [options] INPUT.cif OUTPUT.cif"
+    "Usage:\n " EXE_NAME " [options] FILE1.cif FILE2.cif"
     "\n\nCompares categories and tags in CIF files." },
   CommonUsage[Help],
   CommonUsage[Version],

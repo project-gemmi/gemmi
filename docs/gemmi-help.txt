@@ -12,10 +12,10 @@ Commands:
  blobs         list unmodelled electron density blobs
  cif2mtz       convert structure factor mmCIF to MTZ
  cif2json      translate (mm)CIF to (mm)JSON
+ cifdiff       compare tags in two (mm)CIF files
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
- diff          compare tags in mmCIF files
  ecalc         calculate normalized amplitudes E
  fprime        calculate anomalous scattering factors f' and f"
  grep          search for tags in CIF file(s)

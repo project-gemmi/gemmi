@@ -239,10 +239,10 @@ add_single_prog(align)
 add_single_prog(blobs ADD_SRC prog/mapcoef.cpp GZ)
 add_single_prog(cif2json)
 add_single_prog(cif2mtz)
+add_single_prog(cifdiff)
 add_single_prog(contact)
 add_single_prog(contents)
 add_single_prog(convert)
-add_single_prog(diff GZ)
 add_single_prog(ecalc GZ)
 add_single_prog(fprime NOLIB)
 add_single_prog(grep NOLIB GZ)
@@ -271,9 +271,9 @@ add_single_prog(xds2mtz GZ)
 # gemmi program with a number of subcommands
 add_executable(gemmi_prog
                prog/align.cpp prog/blobs.cpp
-               prog/cif2mtz.cpp prog/cif2json.cpp prog/contact.cpp
-               prog/contents.cpp prog/convert.cpp
-               prog/diff.cpp prog/ecalc.cpp prog/fprime.cpp
+               prog/cif2mtz.cpp prog/cif2json.cpp prog/cifdiff.cpp
+               prog/contact.cpp prog/contents.cpp prog/convert.cpp
+               prog/ecalc.cpp prog/fprime.cpp
                prog/grep.cpp prog/h.cpp prog/json2cif.cpp
                prog/main.cpp prog/map.cpp prog/map2sf.cpp
                prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp
