@@ -505,16 +505,17 @@ cif::Block prepare_rst(const Topo& topo, const MonLib& monlib, const UnitCell& c
   return block;
 }
 
-cif::Document prepare_refmac_crd(const Structure& st, const Topo& topo,
+cif::Document prepare_refmac_crd(Structure& st, const Topo& topo,
                                  const MonLib& monlib, HydrogenChange h_change) {
   cif::Document doc;
   std::string info_comment = "# Refmac CRD file generated with gemmi " GEMMI_VERSION
                              "\n# Monomer library version: " + monlib.lib_version;
+  std::vector<std::string> resnames = st.models.at(0).get_all_residue_names();
+  shorten_ccd_codes(st);
   doc.blocks.push_back(prepare_crd(st, topo, h_change, info_comment));
   doc.blocks.push_back(prepare_rst(topo, monlib, st.cell));
 
   doc.blocks.emplace_back("for_refmac_mmcif");
-  std::vector<std::string> resnames = st.models.at(0).get_all_residue_names();
   for (const std::string& resname : resnames) {
     auto it = monlib.monomers.find(resname);
     if (it != monlib.monomers.end()) {
