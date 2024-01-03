@@ -1992,11 +1992,16 @@ with two functions:
 
 * ``restore_full_ccd_codes()`` restores the original names.
 
-When reading a PDB file with the tilde-hetnam extension,
-the long names are restored automatically. Apart from this,
-switching between long and short names requires function calls.
+When reading a file with monomer names shortened in a gemmi-compatible way:
 
-Internally, the mapping between old and new names is stored in
+* the tilde-hetnam extension in PDB
+* shortened and original names in ``_chem_comp.id`` and
+  ``_chem_comp.three_letter_code`` in mmCIF,
+
+the long names are automatically restored. Apart from this,
+switching between the long and short names requires function calls.
+
+Internally, the mapping between names is stored in
 ``Structure::shortened_ccd_codes``.
 
 .. doctest::

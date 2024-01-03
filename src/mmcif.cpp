@@ -5,6 +5,7 @@
 #include <gemmi/mmcif_impl.hpp> // for set_cell_from_mmcif
 #include <gemmi/atox.hpp>    // for string_to_int
 #include <gemmi/enumstr.hpp> // for entity_type_from_string, polymer_type_from_string
+#include <gemmi/polyheur.hpp>  // for restore_full_ccd_codes
 
 namespace gemmi {
 
@@ -894,6 +895,17 @@ Structure make_structure_from_block(const cif::Block& block_) {
   read_struct_mod_residue(block, st);
   st.assemblies = read_assemblies(block);
   read_sifts_unp(block, st);
+
+  cif::Table chem_comp_table = block.find("_chem_comp.", {"id", "three_letter_code"});
+  if (chem_comp_table.ok()) {
+    for (auto row : chem_comp_table) {
+      std::string alias = row.str(0);
+      std::string long_id = row.str(1);
+      if (!alias.empty() && !long_id.empty() && alias != long_id && alias.back() == '~')
+        st.shortened_ccd_codes.emplace_back(long_id, alias);
+    }
+    restore_full_ccd_codes(st);
+  }
 
   return st;
 }

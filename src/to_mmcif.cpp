@@ -583,8 +583,18 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       for (const std::string& item : ent.full_sequence)
         resnames.insert(Entity::first_mon(item));
     cif::Loop& chem_comp_loop = block.init_mmcif_loop("_chem_comp.", {"id", "type"});
-    for (const std::string& name : resnames)
-      chem_comp_loop.add_row({cif::quote(name), "."});
+    if (!st.shortened_ccd_codes.empty())
+      chem_comp_loop.tags.push_back("_chem_comp.three_letter_code");
+    for (const std::string& name : resnames) {
+      chem_comp_loop.values.push_back(cif::quote(name));
+      chem_comp_loop.values.push_back(".");
+      if (!st.shortened_ccd_codes.empty()) {
+        chem_comp_loop.values.push_back(cif::quote(name));
+        for (const auto& old_new : st.shortened_ccd_codes)
+          if (old_new.second == name)
+            chem_comp_loop.values.back() = old_new.first;
+      }
+    }
   }
 
   if (groups.exptl) {

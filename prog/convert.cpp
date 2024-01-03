@@ -47,7 +47,7 @@ enum OptionIndex {
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   Reframe, ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
-  ChangeCcdCode, SetSeq,
+  ShortenTLC, ChangeCcdCode, SetSeq,
   SiftsNum, Biso, Anisou, SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
 
@@ -103,6 +103,8 @@ const option::Descriptor Usage[] = {
   { RenameChain, 0, "", "rename-chain", Arg::ColonPair,
     "  --rename-chain=OLD:NEW  \tRename chain OLD to NEW "
     "(--rename-chain=:A adds missing chain IDs)." },
+  { ShortenTLC, 0, "", "shorten-tlc", Arg::None,
+    "  --shorten-tlc  \tChange 5-character monomer names to 3-char. aliases." },
   { ChangeCcdCode, 0, "", "monomer", Arg::ColonPair,
     "  --monomer=OLD:NEW  \tChange monomer name (CCD code) OLD to NEW." },
   { SetSeq, 0, "s", "", Arg::Required,
@@ -359,6 +361,9 @@ void convert(gemmi::Structure& st,
     for (gemmi::Model& model : st.models)
       split_chains_by_segments(model, gemmi::HowToNameCopiedChain::Dup);
 
+  if (options[ShortenTLC] || output_type == CoorFormat::Pdb)
+    shorten_ccd_codes(st);
+
   gemmi::Ofstream os(output, &std::cout);
 
   if (output_type == CoorFormat::Mmcif || output_type == CoorFormat::Mmjson) {
@@ -383,7 +388,6 @@ void convert(gemmi::Structure& st,
       writer.write_json(doc);
     }
   } else if (output_type == CoorFormat::Pdb) {
-    shorten_ccd_codes(st);
     gemmi::PdbWriteOptions opt;
     if (options[Minimal])
       opt = gemmi::PdbWriteOptions::minimal();

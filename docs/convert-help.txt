@@ -37,6 +37,7 @@ Any output options:
   --shorten               Shorten chain names to 1 (if # < 63) or 2 characters.
   --rename-chain=OLD:NEW  Rename chain OLD to NEW (--rename-chain=:A adds
                           missing chain IDs).
+  --shorten-tlc           Change 5-character monomer names to 3-char. aliases.
   --monomer=OLD:NEW       Change monomer name (CCD code) OLD to NEW.
   -s FILE                 Use sequence(s) from FILE in PIR or FASTA format. Each
                           chain is assigned the best matching sequence, if any.
