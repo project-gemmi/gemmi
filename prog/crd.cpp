@@ -10,7 +10,7 @@
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "monlib_opt.h"
 
-#define GEMMI_PROG prep
+#define GEMMI_PROG crd
 #include "options.h"
 
 using namespace gemmi;

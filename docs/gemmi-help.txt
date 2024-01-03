@@ -16,6 +16,7 @@ Commands:
  contact       searches for contacts (neighbouring atoms)
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
+ crd           prepare topology file (.crd) for Refmac
  ecalc         calculate normalized amplitudes E
  fprime        calculate anomalous scattering factors f' and f"
  grep          search for tags in CIF file(s)
@@ -28,7 +29,6 @@ Commands:
  mondiff       compare two monomer CIF files
  mtz           print info about MTZ reflection file
  mtz2cif       convert MTZ to structure factor mmCIF
- prep          prepare topology file (.crd) for Refmac
  reindex       reindex MTZ file
  residues      list residues from a coordinate file
  rmsz          validate geometry using monomer library

@@ -13,6 +13,7 @@ int cifdiff_main(int argc, char** argv);
 int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
+int crd_main(int argc, char** argv);
 int ecalc_main(int argc, char** argv);
 int fprime_main(int argc, char** argv);
 int grep_main(int argc, char** argv);
@@ -25,7 +26,6 @@ int merge_main(int argc, char** argv);
 int mondiff_main(int argc, char** argv);
 int mtz_main(int argc, char** argv);
 int mtz2cif_main(int argc, char** argv);
-int prep_main(int argc, char** argv);
 int reindex_main(int argc, char** argv);
 int residues_main(int argc, char** argv);
 int rmsz_main(int argc, char** argv);
@@ -58,6 +58,7 @@ static SubCmd subcommands[] = {
   CMD(contact, "searches for contacts (neighbouring atoms)"),
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),
+  CMD(crd, "prepare topology file (.crd) for Refmac"),
   CMD(ecalc, "calculate normalized amplitudes E"),
   CMD(fprime, "calculate anomalous scattering factors f' and f\""),
   CMD(grep, "search for tags in CIF file(s)"),
@@ -70,7 +71,6 @@ static SubCmd subcommands[] = {
   CMD(mondiff, "compare two monomer CIF files"),
   CMD(mtz, "print info about MTZ reflection file"),
   CMD(mtz2cif, "convert MTZ to structure factor mmCIF"),
-  CMD(prep, "prepare topology file (.crd) for Refmac"),
   CMD(reindex, "reindex MTZ file"),
   CMD(residues, "list residues from a coordinate file"),
   CMD(rmsz, "validate geometry using monomer library"),

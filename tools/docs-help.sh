@@ -7,9 +7,9 @@ BIN=.
 
 echo "\$ gemmi -h" > docs/gemmi-help.txt
 $BIN/gemmi -h >> docs/gemmi-help.txt
-for prog in align blobs cif2json cif2mtz cifdiff contact contents convert \
+for prog in align blobs cif2json cif2mtz cifdiff contact contents convert crd \
     ecalc fprime grep h json2cif map map2sf mask merge mondiff mtz mtz2cif \
-    prep reindex residues rmsz sf2map sfcalc sg tags validate wcn xds2mtz; do
+    reindex residues rmsz sf2map sfcalc sg tags validate wcn xds2mtz; do
   echo "\$ gemmi $prog -h" > docs/$prog-help.txt
   $BIN/gemmi $prog -h >> docs/$prog-help.txt
 done

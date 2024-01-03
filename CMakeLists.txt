@@ -243,6 +243,7 @@ add_single_prog(cifdiff)
 add_single_prog(contact)
 add_single_prog(contents)
 add_single_prog(convert)
+add_single_prog(crd ADD_SRC prog/monlib_opt.cpp GZ)
 add_single_prog(ecalc GZ)
 add_single_prog(fprime NOLIB)
 add_single_prog(grep NOLIB GZ)
@@ -256,7 +257,6 @@ add_single_prog(merge GZ)
 add_single_prog(mondiff)
 add_single_prog(mtz GZ)
 add_single_prog(mtz2cif GZ)
-add_single_prog(prep ADD_SRC prog/monlib_opt.cpp GZ)
 add_single_prog(reindex GZ)
 add_single_prog(residues)
 add_single_prog(rmsz)
@@ -272,13 +272,13 @@ add_single_prog(xds2mtz GZ)
 add_executable(gemmi_prog
                prog/align.cpp prog/blobs.cpp
                prog/cif2mtz.cpp prog/cif2json.cpp prog/cifdiff.cpp
-               prog/contact.cpp prog/contents.cpp prog/convert.cpp
+               prog/contact.cpp prog/contents.cpp prog/convert.cpp prog/crd.cpp
                prog/ecalc.cpp prog/fprime.cpp
                prog/grep.cpp prog/h.cpp prog/json2cif.cpp
                prog/main.cpp prog/map.cpp prog/map2sf.cpp
                prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp
                prog/mondiff.cpp prog/monlib_opt.cpp prog/mtz.cpp prog/mtz2cif.cpp
-               prog/prep.cpp prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
+               prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
                prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp

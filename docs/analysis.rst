@@ -1041,6 +1041,8 @@ Six of the resulting plots are shown here (click to enlarge):
     :align: center
     :scale: 60
 
+.. _topology:
+
 Topology
 ========
 
