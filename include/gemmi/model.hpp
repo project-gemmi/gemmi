@@ -191,10 +191,12 @@ struct Residue : public ResidueId {
   Residue empty_copy() const {
     Residue res((ResidueId&)*this);
     res.subchain = subchain;
+    res.entity_id = entity_id;
     res.label_seq = label_seq;
     res.entity_type = entity_type;
     res.het_flag = het_flag;
     res.flag = flag;
+    res.sifts_unp = sifts_unp;
     return res;
   }
   using child_type = Atom;
@@ -1071,18 +1073,21 @@ struct Structure {
     st.ncs = ncs;
     st.entities = entities;
     st.connections = connections;
+    st.cispeps = cispeps;
+    st.mod_residues = mod_residues;
     st.helices = helices;
     st.sheets = sheets;
     st.assemblies = assemblies;
     st.meta = meta;
+    st.input_format = input_format;
     st.has_origx = has_origx;
     st.origx = origx;
     st.info = info;
     st.raw_remarks = raw_remarks;
     st.resolution = resolution;
-    st.input_format = input_format;
     return st;
   }
+
   using child_type = Model;
   std::vector<Model>& children() { return models; }
   const std::vector<Model>& children() const { return models; }
