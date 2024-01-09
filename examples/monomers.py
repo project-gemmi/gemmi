@@ -48,7 +48,7 @@ def check_formulas(ccd):
             print('[%s]' % b.name, formula, '<>', to_formula(atoms))
 
 
-def compare_monlib_with_ccd(mon_path, ccd):
+def compare_monlib_with_ccd(mon_path, ccd, verbose=False):
     'compare monomers from monomer library and CCD that have the same names'
     PRINT_MISSING_ENTRIES = False
     cnt = 0
@@ -61,6 +61,8 @@ def compare_monlib_with_ccd(mon_path, ccd):
             name = mb.name[5:]
             cb = ccd.find_block(name)
             if cb:
+                if verbose:
+                    print('Comparing', cb.name)
                 compare_chem_comp(mb, cb)
                 cnt += 1
             elif PRINT_MISSING_ENTRIES:
@@ -95,8 +97,6 @@ def bond_dict(block, ccb_names, atom_names):
 
 
 def compare_chem_comp(mb, cb):
-    if verbose:
-        print('Comparing', cb.name)
     mon_names = get_heavy_atom_names(mb)
     ccd_names = get_heavy_atom_names(cb)
 
@@ -136,8 +136,6 @@ def main():
     parser.add_argument('-f', action='store_true', help='check CCD formulas')
     parser.add_argument('-v', action='store_true', help='verbose')
     args = parser.parse_args()
-    global verbose
-    verbose = args.v
     mon_path = args.m or os.getenv('CLIBD_MON')
     if not mon_path and not args.f:
         sys.exit('Unknown monomer library path: use -m or set $CLIBD_MON.')
@@ -145,7 +143,7 @@ def main():
     if args.f:
         check_formulas(ccd)
     if mon_path:
-        compare_monlib_with_ccd(mon_path, ccd)
+        compare_monlib_with_ccd(mon_path, ccd, verbose=args.v)
 
 
 if __name__ == '__main__':

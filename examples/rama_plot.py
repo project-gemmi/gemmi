@@ -8,11 +8,12 @@ from matplotlib.ticker import MultipleLocator
 
 def plot(data_file, label, output=None):
     x, y = [], []
-    for line in open(data_file):
-        phi, psi = line.split()
-        if phi != 'nan' and psi != 'nan':
-            x.append(float(phi))
-            y.append(float(psi))
+    with open(data_file) as f:
+        for line in f:
+            phi, psi = line.split()
+            if phi != 'nan' and psi != 'nan':
+                x.append(float(phi))
+                y.append(float(psi))
     print('Plotting %d points for %s' % (len(x), label))
 
     plt.figure(figsize=(5.5, 5.5))

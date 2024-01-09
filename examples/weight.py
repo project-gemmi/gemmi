@@ -34,7 +34,7 @@ def check_chem_comp_formula_weight(block):
         fdict = formula_to_dict(cc.str(1).title())
         calc_weight = sum(n * Element(e).weight for (e, n) in fdict.items())
         diff = calc_weight - cif.as_number(cc[2])
-        if not (abs(diff) < 0.1):  # also true if diff is NaN
+        if not abs(diff) < 0.1:  # also true if diff is NaN
             print('%s %s  %-16s % 9.3f - %9s = %+.3f' %
                   (block.name, cc[0], cc.str(1), calc_weight, cc[2], diff))
 

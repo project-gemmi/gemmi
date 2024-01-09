@@ -85,3 +85,16 @@ build-verbosity = 1
 test-command = "python -m unittest discover -v -s {project}/tests/"
 [tool.cibuildwheel.environment]
 SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF'
+
+[tool.pylint]
+basic.const-naming-style = "any"
+basic.variable-naming-style = "any"
+basic.module-naming-style = "any"
+refactoring.max-nested-blocks = 7
+design.max-locals = 16
+exceptions.overgeneral-exceptions = ["builtins.BaseException"]
+"message control".disable = [
+  "missing-module-docstring", "missing-function-docstring",
+  "duplicate-code", "import-outside-toplevel", "unspecified-encoding",
+  "consider-using-f-string"
+]

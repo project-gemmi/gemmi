@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # IF YOU ADD OR REMOVE LINES, ADJUST :lines: in docs/hkl.rst
 
-import gemmi
 import numpy
 import pandas
 from matplotlib import pyplot
+import gemmi
 
 MTZ_PATH = 'tests/5wkd_phases.mtz.gz'
 SFCIF_PATH = 'tests/r5wkdsf.ent'

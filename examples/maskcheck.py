@@ -93,7 +93,7 @@ def write_diff_map(grid1, grid2, output_diff_map):
 
 def main():
     args = sys.argv[1:]
-    verbose = ('-v' in args)
+    verbose = ('-v' in args)  # pylint: disable=superfluous-parens
     if verbose:
         args.remove('-v')
     if len(args) not in (2, 3):
