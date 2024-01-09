@@ -3,6 +3,7 @@
 
 # Usage:
 #  ./matthews.py $PDB_DIR/structures/divided/mmCIF | tee data.tsv
+#  (plotting requires seaborn==0.9.1 and statsmodels)
 #  ./matthews.py plot data.tsv
 # Plotting uses numpy, statsmodels, pandas, matplotlib, seaborn.
 # There is also a "check" command that was used to estimate data quality.
@@ -61,7 +62,7 @@ def parse_date(date_str):
 
 
 def gather_data():
-    "read mmCIF files and write down a few numbers (one file -> one line)"
+    'read mmCIF files and write down a few numbers (one file -> one line)'
     writer = csv.writer(sys.stdout, dialect='excel-tab')
     writer.writerow(['code', 'na_chains', 'vs', 'vm', 'd_min', 'date', 'group'])
     for path in get_file_paths_from_args():
@@ -81,6 +82,7 @@ def gather_data():
 def plot(our_csv):
     from numpy import array
     import seaborn as sns
+    import matplotlib.pyplot as plt
     x, y = [], []
     with open(our_csv) as csvfile:
         for row in csv.DictReader(csvfile, dialect='excel-tab'):
@@ -93,24 +95,23 @@ def plot(our_csv):
             # skip entries with inconsistent Vs and Vm
             if vm == 0 or abs(vs - 100 * (1 - 1.23 / vm)) > 1.0:
                 continue
-            if row['date'] >= '2015-01-01':  # and not row['group']:
+            if '2015' <= row['date'] < '2017-05':  # and not row['group']:
                 x.append(d_min)
                 y.append(vs)
     print('Plotting kernel density estimation from', len(x), 'points.')
-    sns.set_style("whitegrid")
-    sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 1.5})
-    g = sns.JointGrid(array(x), array(y), space=0, xlim=(0, 4.5), ylim=(20, 90))
+    sns.set(context='notebook', style='whitegrid', font_scale=1)
+    g = sns.JointGrid(x=array(x), y=array(y), space=0, xlim=(0, 4.5), ylim=(20, 90))
     # calculation time is proportional to gridsize^2; gridsize=100 is default
     g = g.plot_joint(sns.kdeplot, n_levels=30, bw=(0.05, 0.3), gridsize=300,
-                     shade=True, shade_lowest=False, cmap="gnuplot2_r")
-    sns.plt.sca(g.ax_marg_x)
+                     shade=True, shade_lowest=False, cmap='gnuplot2_r')
+    plt.sca(g.ax_marg_x)
     sns.kdeplot(g.x, shade=True, bw=0.03, gridsize=10000, vertical=False)
-    sns.plt.sca(g.ax_marg_y)
+    plt.sca(g.ax_marg_y)
     sns.kdeplot(g.y, shade=True, bw=0.2, gridsize=5000, vertical=True)
-    g.ax_joint.set(xlabel=u'$d_{min}$ [Å]', ylabel='solvent volume [%]')
-    #g.annotate(lambda a, b: 0, template="1970s - 2014")
-    g.annotate(lambda a, b: 0, template="2015 - 4/2017")
-    sns.plt.show()
+    g.ax_joint.set(xlabel='$d_{min}$ [Å]', ylabel='solvent volume [%]')
+    g.ax_joint.text(3.0, 83, '2015 - 4/2017')
+    plt.tight_layout(pad=0.5)
+    plt.show()
 
 
 # This function compares our data with the CSV file available from B.Rupp's
