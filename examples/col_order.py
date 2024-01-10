@@ -2,7 +2,6 @@
 # Check column presence and order in the _atom_site category.
 # In mmCIF v5 esd _atom_site.*esd columns were removed.
 
-from __future__ import print_function
 import sys
 from gemmi import cif, CifWalk
 

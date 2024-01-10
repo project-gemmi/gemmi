@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Usage:
 #  ./matthews.py $PDB_DIR/structures/divided/mmCIF | tee data.tsv
@@ -8,7 +7,6 @@
 # Plotting uses numpy, statsmodels, pandas, matplotlib, seaborn.
 # There is also a "check" command that was used to estimate data quality.
 
-from __future__ import print_function
 import datetime
 import sys
 import os
@@ -40,8 +38,8 @@ def get_file_paths_from_args():
     only = None
     if args.only:
         with open(args.only) as list_file:
-            only = set(line.split()[0].lower() for line in list_file
-                       if line.strip())
+            only = {line.split()[0].lower() for line in list_file
+                    if line.strip()}
     for arg in args.path:
         if os.path.isdir(arg):
             for root, dirs, files in os.walk(arg):
@@ -81,7 +79,7 @@ def gather_data():
 
 def plot(our_csv):
     from numpy import array
-    import seaborn as sns
+    import seaborn as sns  # pytype: disable=pyi-error
     import matplotlib.pyplot as plt
     x, y = [], []
     with open(our_csv) as csvfile:
@@ -100,7 +98,8 @@ def plot(our_csv):
                 y.append(vs)
     print('Plotting kernel density estimation from', len(x), 'points.')
     sns.set(context='notebook', style='whitegrid', font_scale=1)
-    g = sns.JointGrid(x=array(x), y=array(y), space=0, xlim=(0, 4.5), ylim=(20, 90))
+    g = sns.JointGrid(x=array(x), y=array(y), space=0,
+                      xlim=(0, 4.5), ylim=(20, 90))
     # calculation time is proportional to gridsize^2; gridsize=100 is default
     g = g.plot_joint(sns.kdeplot, n_levels=30, bw=(0.05, 0.3), gridsize=300,
                      shade=True, shade_lowest=False, cmap='gnuplot2_r')

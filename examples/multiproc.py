@@ -14,7 +14,7 @@ def main(top_dir):
     with multiprocessing.Pool(processes=4) as pool:
         it = pool.imap_unordered(f, gemmi.CoorFileWalk(top_dir))
         for (name, weight) in it:
-            print('%s %.1f kDa' % (name, weight / 1000))
+            print(f'{name} {weight / 1000:.1f} kDa')
 
 if __name__ == '__main__':
     main(sys.argv[1])

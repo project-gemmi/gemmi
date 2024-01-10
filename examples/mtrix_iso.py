@@ -3,7 +3,6 @@
 # This script checks if 3x3 matrices from the MTRIX record (or _struct_ncs_oper
 # in mmCIF) are rotation matrices (i.e. orthogonal with det=1).
 
-from __future__ import print_function
 import sys
 import gemmi
 

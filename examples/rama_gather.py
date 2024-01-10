@@ -30,4 +30,4 @@ for path in gemmi.CoorFileWalk(sys.argv[1]):
 for aa, data in ramas.items():
     with open('ramas/' + aa + '.tsv', 'w') as f:
         for phi, psi in data:
-            f.write('%.4f\t%.4f\n' % (degrees(phi), degrees(psi)))
+            f.write(f'{degrees(phi):.4f}\t{degrees(psi):.4f}\n')

@@ -95,8 +95,8 @@ def get_file_paths_from_args():
     only = None
     if args.only:
         with open(args.only) as list_file:
-            only = set(line.split()[0].lower() for line in list_file
-                       if line.strip())
+            only = {line.split()[0].lower() for line in list_file
+                    if line.strip()}
     for arg in args.path:
         if os.path.isdir(arg):
             for root, dirs, files in os.walk(arg):

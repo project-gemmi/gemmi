@@ -2166,7 +2166,7 @@ a :ref:`converter <json>` utility, but just as an exercise
 let us convert mmJSON to mmCIF in Python:
 
 .. literalinclude:: ../examples/from_json.py
-   :lines: 6-
+   :lines: 5-
 
 .. _ccd_example:
 

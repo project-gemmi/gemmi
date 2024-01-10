@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 "Find PDB entries with more than 50,000 anisotropic B-factors."
 
-from __future__ import print_function
 import sys
 from gemmi import cif, CifWalk
 

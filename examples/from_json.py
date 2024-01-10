@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # This example shows how to put pythonic data structure into an mmCIF file.
 # Two paths are required as arguments: input (mmJSON file) and output.
-from __future__ import print_function
 
 import json
 import sys

@@ -79,7 +79,7 @@ def print_nearby_atoms(st, grid1, grid2):
         print('\n%s %d blobs' % ((negate and '0-1' or '1-0'), len(blobs)))
         for blob in blobs:
             cra = ns.find_nearest_atom(blob.centroid).to_cra(st[0])
-            print('    %.1f A^3 near %s' % (blob.volume, cra))
+            print(f'    {blob.volume:.1f} A^3 near {cra}')
 
 def get_diff_grid(grid1, grid2):
     arr = (grid1.array - grid2.array).astype(dtype=numpy.float32)
