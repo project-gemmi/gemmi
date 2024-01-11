@@ -23,6 +23,7 @@ option(BUILD_GEMMI_PROGRAM "Build gemmi command-line program" ON)
 option(INSTALL_DEV_FILES "Install C++ headers, cmake configs, static lib" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
+option(GENERATE_STUBS "Generate Python type stubs" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 if (WIN32)
@@ -438,6 +439,25 @@ if (USE_PYTHON)
     target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
   endif()
   support_gz(gemmi_py)
+
+  if (GENERATE_STUBS)
+    set(sep ":")
+    if (WIN32)
+      set(sep ";")
+    endif()
+    set(PYTHONPATH "${CMAKE_CURRENT_BINARY_DIR}${sep}$ENV{PYTHONPATH}")
+    add_custom_command(TARGET gemmi_py POST_BUILD
+     COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${PYTHONPATH}"
+       pybind11-stubgen gemmi
+         --enum-class-locations=Ignore:gemmi.ContactSearch
+         --enum-class-locations=.+:gemmi
+         --numpy-array-remove-parameters
+         --output-dir stubs
+     COMMAND ${CMAKE_COMMAND} -E touch stubs/gemmi/py.typed
+     COMMENT "Generate type stubs with pybind11-stubgen"
+     BYPRODUCTS stubs/gemmi/__init__.pyi stubs/gemmi/cif.pyi stubs/gemmi/py.typed
+     VERBATIM)
+  endif()
 else()
   message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
 endif()
@@ -483,4 +503,8 @@ if (USE_PYTHON)
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
   install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}" COMPONENT py)
+  if (GENERATE_STUBS)
+    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
+            DESTINATION "${Python_SITEARCH}" COMPONENT py)
+  endif()
 endif()
