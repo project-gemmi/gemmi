@@ -52,10 +52,6 @@ if [ -z "${NO_DOCTEST-}" ]; then
 fi
 
 flake8 docs/ examples/ tests/ tools/
-pybind11-stubgen --dry-run --exit-code gemmi \
-    --enum-class-locations='Ignore:gemmi.ContactSearch' \
-    --enum-class-locations='.+:gemmi'
-
 
 # Usually, we stop here. Below are more extensive checks below that are run
 # before making a release. They are run when this script is called with 'a'
@@ -71,6 +67,10 @@ fi
 if [ $1 = a ]; then
     echo 'Run codespell'
     codespell include src prog python fortran tests examples docs wasm tools ||:
+    echo 'Run pybind11-stubgen'
+    pybind11-stubgen --dry-run --exit-code gemmi \
+        --enum-class-locations='Ignore:gemmi.ContactSearch' \
+        --enum-class-locations='.+:gemmi'
 fi
 
 if [ $1 = m -o $1 = a ]; then

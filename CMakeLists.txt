@@ -445,9 +445,9 @@ if (USE_PYTHON)
     if (WIN32)
       set(sep ";")
     endif()
-    set(PYTHONPATH "${CMAKE_CURRENT_BINARY_DIR}${sep}$ENV{PYTHONPATH}")
     add_custom_command(TARGET gemmi_py POST_BUILD
-     COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${PYTHONPATH}"
+    COMMAND ${CMAKE_COMMAND} -E env
+         "PYTHONPATH=$<TARGET_FILE_DIR:gemmi_py>${sep}${PYTHONPATH}"
        pybind11-stubgen gemmi
          --enum-class-locations=Ignore:gemmi.ContactSearch
          --enum-class-locations=.+:gemmi
