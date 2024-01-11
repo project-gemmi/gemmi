@@ -348,22 +348,24 @@ void shorten_ccd_codes(Structure& st) {
         start = end + 1;
       }
     }
-  // pick a new residue name and call change_ccd_code()
+  // the first try on renaming: ABCDE -> ~DE
   for (auto& old_new : st.shortened_ccd_codes) {
     const std::string& old = old_new.first;
-    char short_code[4] = {old[0], old[1], '~', '\0'};
-    // if short_code it's already used, try X[0-9]~ and then [0-9][0-9]~
-    char c0 = '0', c1 = '0';
-    while (in_vector_at<1>(short_code, st.shortened_ccd_codes)) {
-      short_code[1] = c1++;
-      if (c1 > '9') {
-        short_code[0] = c0++;
-        c1 = '0';
-        if (c0 > 'Z')  // shouldn't happen
-          break;
-      }
+    char short_code[4] = {'~', *(old.end()-2), *(old.end()-1), '\0'};
+    if (!in_vector_at<1>(short_code, st.shortened_ccd_codes))
+      old_new.second = short_code;
+  }
+  // pick a new residue name and call change_ccd_code()
+  int i = -1;
+  for (auto& old_new : st.shortened_ccd_codes) {
+    // If ~DE was not unique, use ~00, ~01, ...
+    // After ~99, the middle character will be punctation or letter.
+    // After ~Z9 (430+ names), we give up and the names will be empty.
+    while (old_new.second.empty() && ++i < 'Z'*10) {
+      char short_code[4] = {'~', char('0' + i/10), char('0' + i%10), '\0'};
+      if (!in_vector_at<1>(short_code, st.shortened_ccd_codes))
+        old_new.second = short_code;
     }
-    old_new.second = short_code;
     change_ccd_code(st, old_new.first, old_new.second);
   }
 }

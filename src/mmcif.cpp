@@ -901,7 +901,7 @@ Structure make_structure_from_block(const cif::Block& block_) {
     for (auto row : chem_comp_table) {
       std::string alias = row.str(0);
       std::string long_id = row.str(1);
-      if (!alias.empty() && !long_id.empty() && alias != long_id && alias.back() == '~')
+      if (alias[0] == '~' && long_id[0] != '~' && long_id[0] != '\0')
         st.shortened_ccd_codes.emplace_back(long_id, alias);
     }
     restore_full_ccd_codes(st);

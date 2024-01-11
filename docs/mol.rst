@@ -598,8 +598,8 @@ it starts in column 13 even if it has a one-letter element code:
 Columns 18-20 contain the residue name (CCD code). When the PDB ran out of
 three-character codes in 2023, it started assigning codes with 5 characters,
 which no longer fit into the PDB format. The tilde-hetnam extension addresses
-this issue: long CCD code is substituted with 3 characters,
-of which the last one is a tilde (``~``);
+this issue: long CCD code is substituted with a 3-character alias
+that starts with a tilde (``~``);
 the original code is stored in columns 72-79 of the HETNAM record.
 
 Columns 23-27 contain a sequence ID. It consists of a number (columns 23-26)
@@ -1988,7 +1988,7 @@ with two functions:
 
 
 * ``shorten_ccd_codes()`` replaces 5-character residue names in a structure
-  with 3-character names (aliases) where the third character is ``~``,
+  with 3-character names (aliases) that start with ``~``,
 
 * ``restore_full_ccd_codes()`` restores the original names.
 
@@ -2010,7 +2010,7 @@ Internally, the mapping between names is stored in
   >>> st_8xfm = gemmi.read_structure('8xfm.cif')
   >>> st_8xfm.shorten_ccd_codes()
   >>> st_8xfm.shortened_ccd_codes
-  [('A1LU6', 'A1~')]
+  [('A1LU6', '~U6')]
   >>> st_8xfm.restore_full_ccd_codes()
   >>> st_8xfm.shortened_ccd_codes
   []
