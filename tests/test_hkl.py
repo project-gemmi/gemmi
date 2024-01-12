@@ -171,6 +171,15 @@ class TestMtz(unittest.TestCase):
                         self.assertIsNone(value)
                 self.assertEqual(counter, mtz_data.shape[0])
 
+    def test_batch_headers(self):
+        b = gemmi.Mtz.Batch()
+        self.assertEqual(b.ints[12], 0)
+        b.ints[12] = 555
+        self.assertEqual(b.ints[12], 555)
+        self.assertEqual(b.floats[3], 0)
+        b.floats[3] = 1234.5
+        self.assertEqual(b.floats[3], 1234.5)
+
 
 class TestSfMmcif(unittest.TestCase):
     def test_reading(self):
