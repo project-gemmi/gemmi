@@ -15,8 +15,6 @@ using namespace gemmi;
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Column>)
 PYBIND11_MAKE_OPAQUE(std::vector<Mtz::Batch>)
-PYBIND11_MAKE_OPAQUE(std::vector<int>);    // for Batch::ints
-PYBIND11_MAKE_OPAQUE(std::vector<float>);  // for Batch::floats
 
 namespace gemmi {
   // operator<< is used by stl_bind for vector's __repr__
@@ -28,23 +26,29 @@ namespace gemmi {
 }
 
 
+template<typename T>
+struct VectorRef {
+  std::vector<T>& v;
+  VectorRef(std::vector<T>& vec) : v(vec) {}
+};
+
 // Minimal std::vector bindings, for Batch::ints and Batch::floats.
 // Don't allow the user to resize the vector, only to get and set values.
-template<typename Vector>
-void bind_batch_vector(py::handle scope, const char* name) {
-  using T = typename Vector::value_type;
-  using SizeType = typename Vector::size_type;
-  using DiffType = typename Vector::difference_type;
+template<typename T>
+void bind_wrapped_vector(py::handle scope, const char* name) {
+  using SizeType = typename std::vector<T>::size_type;
+  using DiffType = typename std::vector<T>::difference_type;
   auto wrap_idx = [&](DiffType i, SizeType length) -> SizeType {
     SizeType idx = (i >= 0 ? (SizeType)i : (SizeType)i + length);
     if (idx >= length)
       throw py::index_error();
     return idx;
   };
-  py::class_<Vector>(scope, name, py::module_local())
-    .def("__getitem__", [&](const Vector& v, DiffType i) { return v[wrap_idx(i, v.size())]; })
-    .def("__setitem__", [&](Vector& v, DiffType i, T x) { v[wrap_idx(i, v.size())] = x; })
-    .def("__len__", [](const Vector& v) { return v.size(); })
+  using VR = VectorRef<T>;
+  py::class_<VR>(scope, name)
+    .def("__getitem__", [&](VR& r, DiffType i) { return r.v[wrap_idx(i, r.v.size())]; })
+    .def("__setitem__", [&](VR& r, DiffType i, T x) { r.v[wrap_idx(i, r.v.size())] = x; })
+    .def("__len__", [](const VR& r) { return r.v.size(); })
     ;
 }
 
@@ -88,8 +92,8 @@ void add_mtz(py::module& m) {
   py::bind_vector<std::vector<Mtz::Dataset>>(m, "MtzDatasets");
   py::bind_vector<std::vector<Mtz::Column>>(m, "MtzColumns");
   py::bind_vector<std::vector<Mtz::Batch>>(m, "MtzBatches");
-  bind_batch_vector<std::vector<int>>(m, "BatchInts");
-  bind_batch_vector<std::vector<float>>(m, "BatchFloats");
+  bind_wrapped_vector<int>(m, "BatchInts");
+  bind_wrapped_vector<float>(m, "BatchFloats");
 
   mtz
     .def(py::init<bool>(), py::arg("with_base")=false)
@@ -337,8 +341,14 @@ void add_mtz(py::module& m) {
     .def(py::init<>())
     .def_readwrite("number", &Mtz::Batch::number)
     .def_readwrite("title", &Mtz::Batch::title)
-    .def_readwrite("ints", &Mtz::Batch::ints)
-    .def_readwrite("floats", &Mtz::Batch::floats)
+    .def_property("ints",
+        [](Mtz::Batch& self) { return VectorRef<int>(self.ints); },
+        [](Mtz::Batch& self, const VectorRef<int>& x) { self.ints = x.v; },
+        py::return_value_policy::reference_internal)
+    .def_property("floats",
+        [](Mtz::Batch& self) { return VectorRef<float>(self.floats); },
+        [](Mtz::Batch& self, const VectorRef<float>& x) { self.floats = x.v; },
+        py::return_value_policy::reference_internal)
     .def_readwrite("axes", &Mtz::Batch::axes)
     .def_property("cell", &Mtz::Batch::get_cell, &Mtz::Batch::set_cell)
     .def_property("dataset_id", &Mtz::Batch::dataset_id, &Mtz::Batch::set_dataset_id)

@@ -179,6 +179,11 @@ class TestMtz(unittest.TestCase):
         self.assertEqual(b.floats[3], 0)
         b.floats[3] = 1234.5
         self.assertEqual(b.floats[3], 1234.5)
+        another_batch = gemmi.Mtz.Batch()
+        another_batch.ints = b.ints
+        self.assertEqual(another_batch.ints[12], 555)
+        another_batch.floats = b.floats
+        self.assertEqual(another_batch.floats[3], 1234.5)
 
 
 class TestSfMmcif(unittest.TestCase):
