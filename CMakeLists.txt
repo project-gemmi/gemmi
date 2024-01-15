@@ -144,37 +144,6 @@ if (USE_FORTRAN)
   endif()
 endif()
 
-
-if (ZLIB_FOUND)
-  macro(support_gz exe)
-    target_link_libraries(${exe} PRIVATE ZLIB::ZLIB)
-  endmacro()
-else()
-  add_library(ungz OBJECT
-      "third_party/zlib/adler32.c"
-      "third_party/zlib/crc32.c"
-      "third_party/zlib/gzlib.c"
-      "third_party/zlib/gzread.c"
-      "third_party/zlib/inflate.c"
-      "third_party/zlib/inftrees.c"
-      "third_party/zlib/inffast.c"
-      "third_party/zlib/zutil.c")
-  check_include_file(unistd.h has_unistd_h)
-  target_compile_definitions(ungz PRIVATE NO_GZCOMPRESS=1)
-  if (has_unistd_h)
-    target_compile_definitions(ungz PRIVATE Z_HAVE_UNISTD_H=1)
-  endif()
-  if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    # /wd4996 - the POSIX name for this item is deprecated.
-    # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
-    target_compile_options(ungz PRIVATE /wd4996 /wd4267)
-  endif()
-  set_property(TARGET ungz PROPERTY POSITION_INDEPENDENT_CODE ON)
-  macro(support_gz exe)
-    target_sources(${exe} PRIVATE $<TARGET_OBJECTS:ungz>)
-  endmacro()
-endif()
-
 if (WIN32 AND USE_WMAIN)
   add_definitions(-D_UNICODE=1)
 endif()
@@ -211,7 +180,33 @@ if (BUILD_SHARED_LIBS)
   target_compile_definitions(gemmi_cpp PUBLIC GEMMI_SHARED)
 endif()
 target_link_libraries(gemmi_cpp PUBLIC gemmi_headers)
-support_gz(gemmi_cpp)
+
+if (ZLIB_FOUND)
+  target_link_libraries(gemmi_cpp PRIVATE ZLIB::ZLIB)
+else()
+  add_library(ungz OBJECT
+      "third_party/zlib/adler32.c"
+      "third_party/zlib/crc32.c"
+      "third_party/zlib/gzlib.c"
+      "third_party/zlib/gzread.c"
+      "third_party/zlib/inflate.c"
+      "third_party/zlib/inftrees.c"
+      "third_party/zlib/inffast.c"
+      "third_party/zlib/zutil.c")
+  check_include_file(unistd.h has_unistd_h)
+  target_compile_definitions(ungz PRIVATE NO_GZCOMPRESS=1)
+  if (has_unistd_h)
+    target_compile_definitions(ungz PRIVATE Z_HAVE_UNISTD_H=1)
+  endif()
+  if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    # /wd4996 - the POSIX name for this item is deprecated.
+    # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
+    target_compile_options(ungz PRIVATE /wd4996 /wd4267)
+  endif()
+  set_property(TARGET ungz PROPERTY POSITION_INDEPENDENT_CODE ON)
+  target_sources(gemmi_cpp PRIVATE $<TARGET_OBJECTS:ungz>)
+endif()
+
 
 ### programs from prog/ ###
 
@@ -225,7 +220,7 @@ endif()
 # Gemmi subcommands compiled as individual binaries.
 # Not built by default and used mostly for testing.
 function(add_single_prog target)
-  cmake_parse_arguments(arg "NOLIB;GZ" "ADD_SRC" "" ${ARGN})
+  cmake_parse_arguments(arg "NOLIB" "ADD_SRC" "" ${ARGN})
   add_executable(gemmi-${target} EXCLUDE_FROM_ALL prog/${target}.cpp ${arg_ADD_SRC}
                  $<TARGET_OBJECTS:options>)
   if (arg_NOLIB)
@@ -235,43 +230,40 @@ function(add_single_prog target)
   endif()
   target_include_directories(gemmi-${target} PRIVATE
                              "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
-  if (arg_GZ)
-    support_gz(gemmi-${target})
-  endif()
 endfunction()
 
 add_single_prog(align)
-add_single_prog(blobs ADD_SRC prog/mapcoef.cpp GZ)
+add_single_prog(blobs ADD_SRC prog/mapcoef.cpp)
 add_single_prog(cif2json)
 add_single_prog(cif2mtz)
 add_single_prog(cifdiff)
 add_single_prog(contact)
 add_single_prog(contents)
 add_single_prog(convert)
-add_single_prog(crd ADD_SRC prog/monlib_opt.cpp GZ)
-add_single_prog(ecalc GZ)
+add_single_prog(crd ADD_SRC prog/monlib_opt.cpp)
+add_single_prog(ecalc)
 add_single_prog(fprime NOLIB)
-add_single_prog(grep NOLIB GZ)
+add_single_prog(grep)
 add_single_prog(h)
 add_single_prog(json2cif)
-add_single_prog(map GZ)
-add_single_prog(map2sf GZ)
+add_single_prog(map)
+add_single_prog(map2sf)
 add_single_prog(mask)
 add_single_prog(mixmtz)
-add_single_prog(merge GZ)
+add_single_prog(merge)
 add_single_prog(mondiff)
-add_single_prog(mtz GZ)
-add_single_prog(mtz2cif GZ)
-add_single_prog(reindex GZ)
+add_single_prog(mtz)
+add_single_prog(mtz2cif)
+add_single_prog(reindex)
 add_single_prog(residues)
 add_single_prog(rmsz)
-add_single_prog(sf2map ADD_SRC prog/mapcoef.cpp GZ)
-add_single_prog(sfcalc GZ)
+add_single_prog(sf2map ADD_SRC prog/mapcoef.cpp)
+add_single_prog(sfcalc)
 add_single_prog(sg NOLIB)
-add_single_prog(tags NOLIB GZ)
-add_single_prog(validate ADD_SRC prog/validate_mon.cpp GZ)
+add_single_prog(tags)
+add_single_prog(validate ADD_SRC prog/validate_mon.cpp)
 add_single_prog(wcn)
-add_single_prog(xds2mtz GZ)
+add_single_prog(xds2mtz)
 
 # gemmi program with a number of subcommands
 add_executable(gemmi_prog
@@ -290,7 +282,6 @@ add_executable(gemmi_prog
                $<TARGET_OBJECTS:options>)
 add_executable(gemmi::prog ALIAS gemmi_prog)
 target_link_libraries(gemmi_prog PRIVATE gemmi_cpp)
-support_gz(gemmi_prog)
 target_include_directories(gemmi_prog PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 target_compile_definitions(gemmi_prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi_prog PROPERTIES OUTPUT_NAME gemmi EXPORT_NAME prog)
@@ -335,10 +326,8 @@ add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 target_link_libraries(doc_example2 PRIVATE gemmi_headers)
 add_executable(doc_maybegz EXCLUDE_FROM_ALL docs/code/maybegz.cpp docs/code/mutate.cpp)
 target_link_libraries(doc_maybegz PRIVATE gemmi_cpp)
-support_gz(doc_maybegz)
 add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
 target_link_libraries(doc_newmtz PRIVATE gemmi_cpp)
-support_gz(doc_newmtz)
 
 # always compile these tests with assertions enabled
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Intel")
@@ -347,15 +336,10 @@ endif()
 
 add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
 target_link_libraries(test_disulf PRIVATE gemmi_cpp)
-support_gz(test_disulf)
 
 # auth_label requires <experimental/filesystem> and -lstdc++fs
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cpp)
-target_link_libraries(auth_label PRIVATE gemmi_headers)
-if (NOT MSVC)
-  target_link_libraries(auth_label PRIVATE stdc++fs)
-endif()
-support_gz(auth_label)
+target_link_libraries(auth_label PRIVATE gemmi_cpp)
 
 add_executable(check_conn EXCLUDE_FROM_ALL examples/check_conn.cpp)
 target_link_libraries(check_conn PRIVATE gemmi_cpp)
@@ -438,7 +422,6 @@ if (USE_PYTHON)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
   endif()
-  support_gz(gemmi_py)
 
   if (GENERATE_STUBS)
     set(sep ":")
