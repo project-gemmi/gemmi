@@ -1,11 +1,10 @@
 // Compare pairs of columns from the _atom_site table.
-// Compiled with: g++-6 -O2 -Iinclude auth_label.cc -lstdc++fs -lz
 #include <gemmi/gz.hpp>
 #include <gemmi/cif.hpp>
 #include <iostream>
-#include <experimental/filesystem>  // just <filesystem> in C++17
+#include <filesystem>  // requires C++17
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 namespace cif = gemmi::cif;
 
 void print_differences(cif::Block& block, const std::string& name) {
