@@ -4,7 +4,14 @@
 #include <cassert>
 #include <cstdio>       // fseek, ftell, fread
 #include <climits>      // INT_MAX
-#include <zlib.h>
+#if USE_ZLIB_NG
+# define WITH_GZFILEOP 1
+# include <zlib-ng.h>
+# define GG(name) zng_ ## name
+#else
+# include <zlib.h>
+# define GG(name) name
+#endif
 #include <gemmi/fileutil.hpp> // file_open
 
 namespace gemmi {
@@ -40,8 +47,10 @@ size_t estimate_uncompressed_size(const std::string& path) {
 }
 
 size_t big_gzread(gzFile file, void* buf, size_t len) {
+#if USE_ZLIB_NG
+  return GG(gzfread)(buf, 1, len, file);
+#else
   // In zlib >= 1.2.9 we could use gzfread()
-  // return gzfread(buf, len, 1, f) == 1;
   size_t read_bytes = 0;
   while (len > INT_MAX) {
     int ret = gzread(file, buf, INT_MAX);
@@ -53,14 +62,15 @@ size_t big_gzread(gzFile file, void* buf, size_t len) {
   }
   read_bytes += gzread(file, buf, (unsigned) len);
   return read_bytes;
+#endif
 }
 
 char* GzStream::gets(char* line, int size) {
-  return gzgets((gzFile)f, line, size);
+  return GG(gzgets)((gzFile)f, line, size);
 }
 
 int GzStream::getc() {
-  return gzgetc((gzFile)f);
+  return GG(gzgetc)((gzFile)f);
 }
 
 bool GzStream::read(void* buf, size_t len) {
@@ -72,8 +82,8 @@ MaybeGzipped::MaybeGzipped(const std::string& path) : BasicInput(path) {}
 
 MaybeGzipped::~MaybeGzipped() {
   if (file_)
-#if ZLIB_VERNUM >= 0x1235
-    gzclose_r((gzFile)file_);
+#if USE_ZLIB_NG || (ZLIB_VERNUM >= 0x1235)
+    GG(gzclose_r)((gzFile)file_);
 #else
     gzclose((gzFile)file_);
 #endif
@@ -82,9 +92,9 @@ MaybeGzipped::~MaybeGzipped() {
 size_t MaybeGzipped::gzread_checked(void* buf, size_t len) {
   gzFile file = (gzFile) file_;
   size_t read_bytes = big_gzread(file, buf, len);
-  if (read_bytes != len && !gzeof(file)) {
+  if (read_bytes != len && !GG(gzeof)(file)) {
     int errnum = 0;
-    std::string err_str = gzerror(file, &errnum);
+    std::string err_str = GG(gzerror)(file, &errnum);
     if (errnum == Z_ERRNO)
       sys_fail("failed to read " + path());
     if (errnum)
@@ -99,7 +109,7 @@ CharArray MaybeGzipped::uncompress_into_buffer(size_t limit) {
   if (!is_compressed())
     return BasicInput::uncompress_into_buffer();
   size_t size = (limit == 0 ? estimate_uncompressed_size(path()) : limit);
-  file_ = gzopen(path().c_str(), "rb");
+  file_ = GG(gzopen)(path().c_str(), "rb");
   if (!file_)
     sys_fail("Failed to gzopen " + path());
   if (size > 3221225471)
@@ -114,11 +124,11 @@ CharArray MaybeGzipped::uncompress_into_buffer(size_t limit) {
   } else if (limit == 0) { // read_bytes == size
   // if the file is longer than the size from header, read in the rest
     int next_char;
-    while (!gzeof((gzFile)file_) && (next_char = gzgetc((gzFile)file_)) != -1) {
+    while (!GG(gzeof)((gzFile)file_) && (next_char = GG(gzgetc)((gzFile)file_)) != -1) {
       if (mem.size() > 3221225471)
         fail("For now gz files above 3 GiB uncompressed are not supported.\n"
              "To read " + path() + " first uncompress it.");
-      gzungetc(next_char, (gzFile)file_);
+      GG(gzungetc)(next_char, (gzFile)file_);
       size_t old_size = mem.size();
       mem.resize(2 * old_size);
       size_t n = gzread_checked(mem.data() + old_size, old_size);
@@ -130,11 +140,11 @@ CharArray MaybeGzipped::uncompress_into_buffer(size_t limit) {
 
 GzStream MaybeGzipped::get_uncompressing_stream() {
   assert(is_compressed());
-  file_ = gzopen(path().c_str(), "rb");
+  file_ = GG(gzopen)(path().c_str(), "rb");
   if (!file_)
     sys_fail("Failed to gzopen " + path());
 #if ZLIB_VERNUM >= 0x1235
-  gzbuffer((gzFile)file_, 64*1024);
+  GG(gzbuffer)((gzFile)file_, 64*1024);
 #endif
   return GzStream{file_};
 }
