@@ -34,7 +34,7 @@ inline bool atom_match_with_alias(const std::string& atom_id, const std::string&
   return atom_id == atom;
 }
 
-struct ChemLink {
+struct GEMMI_DLL ChemLink {
   struct Side {
     using Group = ChemComp::Group;
     std::string comp;
