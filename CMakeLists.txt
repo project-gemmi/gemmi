@@ -200,14 +200,14 @@ else()
       "third_party/zlib/inffast.c"
       "third_party/zlib/zutil.c")
   check_include_file(unistd.h has_unistd_h)
-  target_compile_definitions(gemmi_cpp PRIVATE NO_GZCOMPRESS=1)
+  target_compile_definitions(gemmi_cpp PRIVATE NO_GZCOMPRESS=1 DYNAMIC_CRC_TABLE=1)
   if (has_unistd_h)
     target_compile_definitions(gemmi_cpp PRIVATE Z_HAVE_UNISTD_H=1)
   endif()
+  target_include_directories(gemmi_cpp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib")
   if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    # /wd4996 - the POSIX name for this item is deprecated.
     # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
-    target_compile_options(gemmi_cpp PRIVATE /wd4996 /wd4267)
+    target_compile_options(gemmi_cpp PRIVATE /wd4267)
   endif()
 endif()
 

@@ -228,13 +228,15 @@ itself, but are used in command-line utilities, python bindings or tests:
 * `linalg.h <http://github.com/sgorsten/linalg/>`_ -- linear algebra library.
   License: Public Domain.
 * `zlib <https://github.com/madler/zlib>`_ -- a subset of the zlib library
-  for uncompressing gz files, used as a fallback when the zlib library
+  for decompressing gz files, used as a fallback when the zlib library
   is not found in the system. License: zlib.
 
 Not distributed with Gemmi:
 
 * `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
   Python bindings. License: 3-clause BSD.
+* `zlib-ng <https://github.com/zlib-ng/zlib-ng>`_ -- can be used instead
+  of zlib, for faster reading of gzipped files.
 * `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests
   (if cctbx is not present, these tests are skipped) and
   in scripts that generated space group data and 2-fold twinning operations.
