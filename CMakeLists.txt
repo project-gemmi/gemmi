@@ -184,7 +184,7 @@ target_link_libraries(gemmi_cpp PUBLIC gemmi_headers)
 if (ZLIB_FOUND)
   target_link_libraries(gemmi_cpp PRIVATE ZLIB::ZLIB)
 else()
-  add_library(ungz OBJECT
+  target_sources(gemmi_cpp PRIVATE
       "third_party/zlib/adler32.c"
       "third_party/zlib/crc32.c"
       "third_party/zlib/gzlib.c"
@@ -194,17 +194,15 @@ else()
       "third_party/zlib/inffast.c"
       "third_party/zlib/zutil.c")
   check_include_file(unistd.h has_unistd_h)
-  target_compile_definitions(ungz PRIVATE NO_GZCOMPRESS=1)
+  target_compile_definitions(gemmi_cpp PRIVATE NO_GZCOMPRESS=1)
   if (has_unistd_h)
-    target_compile_definitions(ungz PRIVATE Z_HAVE_UNISTD_H=1)
+    target_compile_definitions(gemmi_cpp PRIVATE Z_HAVE_UNISTD_H=1)
   endif()
   if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     # /wd4996 - the POSIX name for this item is deprecated.
     # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
-    target_compile_options(ungz PRIVATE /wd4996 /wd4267)
+    target_compile_options(gemmi_cpp PRIVATE /wd4996 /wd4267)
   endif()
-  set_property(TARGET ungz PROPERTY POSITION_INDEPENDENT_CODE ON)
-  target_sources(gemmi_cpp PRIVATE $<TARGET_OBJECTS:ungz>)
 endif()
 
 
