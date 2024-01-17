@@ -211,8 +211,6 @@ else()
     # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
     target_compile_options(gemmi_cpp PRIVATE /wd4267)
   endif()
-  # C11 may help. Zlib checks if __STDC_VERSION__>=201112L before using atomics.
-  target_compile_features(gemmi_cpp PRIVATE c_std_11)
 endif()
 
 
