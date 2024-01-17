@@ -86,7 +86,7 @@ ignore-words-list = 'inout,fo,fom,te,nd,ser,unx,ket,acn,readd,conect'
 build-verbosity = 1
 test-command = "python -m unittest discover -v -s {project}/tests/"
 [tool.cibuildwheel.environment]
-SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF'
+SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF;-DBUILD_SHARED_LIBS=OFF'
 
 [tool.pylint]
 basic.const-naming-style = "any"

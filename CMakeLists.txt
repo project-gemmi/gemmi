@@ -27,6 +27,7 @@ option(USE_ZLIB_NG "Use zlib-ng instead of zlib" OFF)
 option(GENERATE_STUBS "Generate Python type stubs" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
+option(STANDALONE_PYTHON_MODULE "Avoid linking Python module to libgemmi_cpp DLL" OFF)
 if (WIN32)
   set(GEMMI_INSTALL_CMAKEDIR "cmake" CACHE STRING
       "Install path for gemmi CMake files")
@@ -93,6 +94,7 @@ endif()
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 
 include(CheckIncludeFile)  # for check_include_file
 
@@ -209,6 +211,8 @@ else()
     # /wd4267 - conversion from 'size_t' to 'unsigned int', possible loss of data
     target_compile_options(gemmi_cpp PRIVATE /wd4267)
   endif()
+  # C11 may help. Zlib checks if __STDC_VERSION__>=201112L before using atomics.
+  target_compile_features(gemmi_cpp PRIVATE c_std_11)
 endif()
 
 
@@ -289,6 +293,15 @@ target_link_libraries(gemmi_prog PRIVATE gemmi_cpp)
 target_include_directories(gemmi_prog PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 target_compile_definitions(gemmi_prog PRIVATE GEMMI_ALL_IN_ONE=1)
 set_target_properties(gemmi_prog PROPERTIES OUTPUT_NAME gemmi EXPORT_NAME prog)
+if (BUILD_SHARED_LIBS)
+  if (APPLE)
+    set(origin "@loader_path")
+  else ()
+    set(origin "$ORIGIN")
+  endif ()
+  set_property(TARGET gemmi_prog
+               PROPERTY INSTALL_RPATH "${origin}/../${CMAKE_INSTALL_LIBDIR}")
+endif()
 if (WIN32 AND USE_WMAIN)
   # _UNICODE=1 is now set globally
   #target_compile_definitions(gemmi_prog PRIVATE _UNICODE=1)
@@ -420,7 +433,12 @@ if (USE_PYTHON)
           python/scaling.cpp python/search.cpp
           python/sf.cpp python/sym.cpp python/topo.cpp
           python/unitcell.cpp python/write.cpp)
-  target_link_libraries(gemmi_py PRIVATE gemmi_cpp)
+  if (STANDALONE_PYTHON_MODULE)
+    target_sources(gemmi_py PRIVATE $<TARGET_OBJECTS:gemmi_cpp>)
+    target_link_libraries(gemmi_py PRIVATE gemmi_headers)
+  else()
+    target_link_libraries(gemmi_py PRIVATE gemmi_cpp)
+  endif()
   set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
@@ -488,6 +506,11 @@ if (USE_PYTHON)
   # Using Python_SITEARCH/SITELIB is not good, because they are absolute
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
+  if (BUILD_SHARED_LIBS AND NOT STANDALONE_PYTHON_MODULE)
+    file(RELATIVE_PATH rpath_rel
+         "${Python_SITEARCH}" "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+    set_target_properties(gemmi_py PROPERTIES INSTALL_RPATH "${origin}/${rpath_rel}")
+  endif()
   install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}" COMPONENT py)
   if (GENERATE_STUBS)
     install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
