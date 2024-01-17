@@ -27,7 +27,7 @@ option(USE_ZLIB_NG "Use zlib-ng instead of zlib" OFF)
 option(GENERATE_STUBS "Generate Python type stubs" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
-option(STANDALONE_PYTHON_MODULE "Avoid linking Python module to libgemmi_cpp DLL" OFF)
+option(STANDALONE_PYTHON_MODULE "Avoid linking Python module to libgemmi_cpp DLL" ON)
 if (WIN32)
   set(GEMMI_INSTALL_CMAKEDIR "cmake" CACHE STRING
       "Install path for gemmi CMake files")
