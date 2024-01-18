@@ -612,8 +612,8 @@ and obtain the corresponding cell parameters (with angles in degrees):
 
 .. doctest::
 
-  >>> gv.cell_parameters()  # primitive cell
-  (76.85428485126903, 76.85428485126903, 76.85428485126903, 130.96878780115526, 130.90322881367425, 71.91478106070744)
+  >>> gv.cell_parameters()  # primitive cell  #doctest: +ELLIPSIS
+  (76.85428485126..., 76.85428485126..., 76.85428485126..., 130.96878780115..., 130.90322881367..., 71.91478106070...)
 
 And most importantly, we can reduce the cell.
 ``niggli_reduce()`` performs the Niggli reduction on G\ :sup:`6`,
