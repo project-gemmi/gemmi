@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <cstring>
 
-void print_version(const char* program_name, bool verbose=false);  // in options.h
+void print_version(const char* program_name, bool verbose);  // in options.h
 
 int blobs_main(int argc, char** argv);
 int cif2mtz_main(int argc, char** argv);
@@ -84,7 +84,7 @@ static SubCmd subcommands[] = {
 };
 
 void print_usage() {
-  print_version("gemmi");
+  print_version("gemmi", /*verbose=*/false);
   printf("Command-line utility that accompanies the GEMMI library,\n"
          "which is a joint project of CCP4 and Global Phasing Ltd.\n"
          "Licence: Mozilla Public License 2.0. Copyright Global Phasing Ltd.\n"
@@ -128,34 +128,68 @@ int main(int argc, char** argv)
     argv[i] = &utf8_args[i][0];
   }
 #endif
-  if (eq(argv[1], "--version") || eq(argv[1], "-V")) {
-    bool verbose = argc > 2 && (eq(argv[2], "-v") || eq(argv[2], "--verbose"));
+  bool verbose = false;
+  bool version = false;
+  bool help = false;
+  int command = 0;
+  int wrong_option = 0;
+  for (int i = 1; i < argc && wrong_option == 0; ++i) {
+    const char* arg = argv[i];
+    if (arg[0] == '-' && arg[1] == '-') {          // long options
+      if (eq(arg+2, "version"))
+        version = true;
+      else if (eq(arg+2, "help"))
+        help = true;
+      else if (eq(arg+2, "verbose"))
+        verbose = true;
+      else
+        wrong_option = i;
+    } else if (arg[0] == '-' && arg[1] != '-') {   // short options
+      for (int j = 1; arg[j] != '\0'; ++j) {
+        if (arg[j] == 'V')
+          version = true;
+        else if (arg[j] == 'h')
+          help = true;
+        else if (arg[j] == 'v')
+          verbose = true;
+        else
+          wrong_option = i;
+      }
+    } else {                                       // not options
+      if (eq(arg, "help")) {
+        help = true;
+      } else if (eq(arg, "version")) {
+        version = true;
+      } else {
+        command = i;
+        break;
+      }
+    }
+  }
+  if (wrong_option != 0) {
+    printf("Invalid option '%s'. See 'gemmi --help'.\n", argv[wrong_option]);
+    return 1;
+  }
+  if (version) {
     print_version("gemmi", verbose);
     return 0;
   }
-  if (eq(argv[1], "--help") || eq(argv[1], "-h") || eq(argv[1], "help")) {
-    if (argc == 2) {
-      print_usage();
-      return 0;
-    }
-    main_type func = get_subcommand_function(argv[2]);
-    if (!func) {
-      printf("'%s' is not a gemmi command. See 'gemmi --help'.\n", argv[2]);
-      return 1;
-    }
-    char help_str[] = "--help";
-    char* args[] = { argv[0], argv[2], help_str };
-    return (*func)(3, args);
-  }
-  if (argv[1][0] == '-') {
-    printf("Invalid option '%s'. See 'gemmi --help'.\n", argv[1]);
-    return 1;
+  if (command == 0) {  // handles both "gemmi" and "gemmi --help"
+    print_usage();
+    return 0;
   }
   // call function
-  main_type func = get_subcommand_function(argv[1]);
+  main_type func = get_subcommand_function(argv[command]);
   if (!func) {
-    printf("'%s' is not a gemmi command. See 'gemmi --help'.\n", argv[1]);
+    printf("'%s' is not a gemmi command. See 'gemmi --help'.\n", argv[command]);
     return 1;
   }
-  return (*func)(argc - 1, &argv[1]);
+  if (verbose)
+    printf("Note: Option -v/--verbose before subcommand has no effect.\n");
+  if (help) {  // if we are here, command != 0
+    char help_str[] = "--help";
+    char* args[] = { argv[0], argv[command], help_str };
+    return (*func)(3, args);
+  }
+  return (*func)(argc - command, &argv[command]);
 }
