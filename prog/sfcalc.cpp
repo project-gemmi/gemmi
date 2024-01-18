@@ -349,7 +349,7 @@ void process_with_fft(const gemmi::Structure& st,
       comparator.add_complex(hv.value, exact);
       printf(" (%d %d %d)\t%7.2f\t%8.3f \t%6.2f\t%7.3f\td=%5.2f\n",
              hv.hkl[0], hv.hkl[1], hv.hkl[2], std::abs(hv.value), std::abs(exact),
-             gemmi::phase_in_angles(hv.value), gemmi::phase_in_angles(exact),
+             gemmi::phase_in_angles(hv.value, 5e-4), gemmi::phase_in_angles(exact, 5e-4),
              sf.unit_cell.calculate_d(hv.hkl));
     }
     print_to_stderr(comparator);

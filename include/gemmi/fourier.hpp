@@ -20,14 +20,16 @@
 
 namespace gemmi {
 
+// Returns angle in [0, 360). When it's negative but approximately zero,
+// printing 0.00 than 360.00 might be better, hence the second arg.
+// The default value is for similar precision as float around 360:
+// std::nextafter(360.f, 361.f) - 360.f -> 3.052e-5
 template<typename T>
-double phase_in_angles(const std::complex<T>& v) {
+double phase_in_angles(const std::complex<T>& v, double eps=2e-5) {
   double angle = gemmi::deg(std::arg(v));
-  if (angle < 0)
+  if (angle < -eps)
     angle += 360.;
-  if (static_cast<T>(angle) == 360.f)
-    angle = 0.;
-  return angle;
+  return std::max(0., angle);  // the order matters when angle is -0.0
 }
 
 // the first arg is usually Mtz::data
