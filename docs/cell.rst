@@ -580,7 +580,7 @@ This class can be initialized with UnitCell and SpaceGroup:
 
 .. doctest::
 
-  >>> cell = gemmi.UnitCell(63.78, 63.86, 124.40, 90.0, 90.0, 90.0)
+  >>> cell = gemmi.UnitCell(63.78, 63.86, 124.42, 90.0, 90.0, 90.0)
   >>> sg = gemmi.SpaceGroup('I 2 2 2')
   >>> gv = gemmi.GruberVector(cell, sg)
 
@@ -590,7 +590,7 @@ or with 6-tuple corresponding to G\ :sup:`6` of a primitive cell:
 
   >>> g6_param = gv.parameters  # obtain such a tuple
   >>> gemmi.GruberVector(g6_param)
-  <gemmi.GruberVector((5905.34, 5905.34, 5905.34, -7742.79, -7732.57, 3664.69))>
+  <gemmi.GruberVector((5906.58, 5906.58, 5906.58, -7745.27, -7735.06, 3667.17))>
 
 We can check if G\ :sup:`6` already corresponds to a Buerger and Niggli cell:
 
@@ -606,15 +606,14 @@ We can access the G\ :sup:`6` parameters as a tuple:
 .. doctest::
 
   >>> gv.parameters
-  (5905.337, 5905.337, 5905.337, -7742.7856, -7732.5744, 3664.686)
+  (5906.5811, 5906.5811, 5906.5811, -7745.2738, -7735.0626, 3667.1742)
 
 and obtain the corresponding cell parameters (with angles in degrees):
 
 .. doctest::
-  :skipif: sys.platform == 'win32'  # the last digit differs with MSVC
 
   >>> gv.cell_parameters()  # primitive cell
-  (76.84619053668177, 76.84619053668177, 76.84619053668177, 130.96328311485175, 130.89771578326727, 71.92353702711762)
+  (76.85428485126903, 76.85428485126903, 76.85428485126903, 130.96878780115526, 130.90322881367425, 71.91478106070744)
 
 And most importantly, we can reduce the cell.
 ``niggli_reduce()`` performs the Niggli reduction on G\ :sup:`6`,
@@ -630,21 +629,21 @@ Now G\ :sup:`6` contains smaller numbers:
 .. doctest::
 
   >>> gv
-  <gemmi.GruberVector((4067.89, 4078.10, 5905.34, -4078.10, -4067.89, -0.00))>
+  <gemmi.GruberVector((4067.89, 4078.10, 5906.58, -4078.10, -4067.89, -0.00))>
 
 To create a new UnitCell with reduced parameters do:
 
 .. doctest::
 
   >>> gemmi.UnitCell(* gv.cell_parameters())
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
 or use a helper method:
 
 .. doctest::
 
   >>> gv.get_cell()
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
 Similarly, we can perform the Buerger reduction:
 
@@ -661,7 +660,7 @@ In this case both functions gave the same result.
   >>> gv.is_niggli()
   True
   >>> gv.get_cell()
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
 Functions ``niggli_reduce``, ``is_niggli`` and ``is_buerger`` can take optional
 parameter ``epsilon`` (default: 1e-9) that is used for comparing numbers.
@@ -677,7 +676,7 @@ To check how the computations would work without ε we can set it to 0:
   >>> gv.niggli_reduce(epsilon=0, iteration_limit=100)
   6
   >>> gv.get_cell()
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
 Here, the Niggli conditions were initially found not fulfilled, because
 one expression that should be non-negative was about -5e-13.
@@ -715,14 +714,14 @@ This operator transforms Niggli cell to the original cell
 .. doctest::
 
   >>> gv.get_cell().changed_basis_forward(cob, set_images=False)
-  <gemmi.UnitCell(63.78, 63.86, 124.4, 90, 90, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 124.42, 90, 90, 90)>
 
 and the other way around:
 
 .. doctest::
 
   >>> cell.changed_basis_backward(cob, set_images=False)
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
 Currently, tracking is implemented only for the Niggli reduction,
 not for the Buerger reduction.
@@ -763,9 +762,9 @@ or with a tuple of six numbers S\ :sup:`6`:
 .. doctest::
 
   >>> sv.parameters
-  (-3871.3928, -3866.2872, 1832.343, -3871.3928, -3866.2872, 1832.343)
+  (-3872.6369, -3867.5313, 1833.5871, -3872.6369, -3867.5313, 1833.5871)
   >>> gemmi.SellingVector(_)
-  <gemmi.SellingVector((-3871.39, -3866.29, 1832.34, -3871.39, -3866.29, 1832.34))>
+  <gemmi.SellingVector((-3872.64, -3867.53, 1833.59, -3872.64, -3867.53, 1833.59))>
 
 Similarly as in the previous section, we can check if S\ :sup:`6`
 already corresponds to a Delaunay cell:
@@ -783,7 +782,7 @@ The sum Σ\ **b**\ :sub:`i`:sup:`2` can be calculated with:
 .. doctest::
 
   >>> sv.sum_b_squared()
-  23621.348
+  23626.3244
 
 Similarly to ``niggli_reduce()``, the Selling reduction procedure takes
 optional arguments ``epsilon`` and ``iteration_limit``
@@ -799,11 +798,11 @@ Now we can check the result:
 .. doctest::
 
   >>> sv
-  <gemmi.SellingVector((-2033.94, -2033.94, -1832.34, -2039.05, -2039.05, 0.00))>
+  <gemmi.SellingVector((-2033.94, -2033.94, -1833.59, -2039.05, -2039.05, 0.00))>
   >>> sv.is_reduced()
   True
   >>> sv.sum_b_squared()
-  19956.662
+  19959.1502
 
 Now, the corresponding four vectors can be in any order.
 We may sort them so that *a*\ ≤\ *b*\ ≤\ *c*\ ≤\ *d*:
@@ -812,25 +811,25 @@ We may sort them so that *a*\ ≤\ *b*\ ≤\ *c*\ ≤\ *d*:
 
   >>> sv.sort()
   >>> sv
-  <gemmi.SellingVector((-2039.05, -2033.94, 0.00, -2033.94, -2039.05, -1832.34))>
+  <gemmi.SellingVector((-2039.05, -2033.94, 0.00, -2033.94, -2039.05, -1833.59))>
 
 Finally, we can get the corresponding UnitCell:
 
 .. doctest::
 
   >>> gemmi.UnitCell(* sv.cell_parameters())
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
   >>> sv.get_cell()  # helper function that does the same
-  <gemmi.UnitCell(63.78, 63.86, 76.8462, 114.551, 114.518, 90)>
+  <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
 S\ :sup:`6` can be used to calculate G\ :sup:`6`, and the other way around:
 
 .. doctest::
 
   >>> sv.gruber()
-  <gemmi.GruberVector((4067.89, 4078.10, 5905.34, -4078.10, -4067.89, 0.00))>
+  <gemmi.GruberVector((4067.89, 4078.10, 5906.58, -4078.10, -4067.89, 0.00))>
   >>> _.selling()
-  <gemmi.SellingVector((-2039.05, -2033.94, 0.00, -2033.94, -2039.05, -1832.34))>
+  <gemmi.SellingVector((-2039.05, -2033.94, 0.00, -2033.94, -2039.05, -1833.59))>
 
 TBC
 

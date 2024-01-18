@@ -372,8 +372,8 @@ or tricubic interpolation that uses 64 nodes.
   2.0333263874053955
   >>> grid.tricubic_interpolation(gemmi.Fractional(1/24, 1/24, 1/24))
   1.283477783203125
-  >>> grid.tricubic_interpolation(gemmi.Position(2, 3, 4))
-  2.6075661737715046
+  >>> grid.tricubic_interpolation(gemmi.Position(2, 3, 4))  # doctest: +ELLIPSIS
+  2.6075661737715...
   >>> # calculate also derivatives in directions of unit cell axes
   >>> grid.tricubic_interpolation_der(gemmi.Fractional(1/24, 1/24, 1/24))
   [1.283477783203125, 35.523193359375, 36.343505859375, 35.523193359375]
@@ -582,9 +582,9 @@ with the model masked out. In this example we do the latter.
   >>> blobs[0].volume
   9.967250538023837
   >>> blobs[0].score  #doctest: +ELLIPSIS
-  10.1815458...
-  >>> blobs[0].peak_value
-  1.8486430644989014
+  10.18154...
+  >>> blobs[0].peak_value  # doctest: +ELLIPSIS
+  1.848643...
   >>> blobs[0].centroid
   <gemmi.Position(12.5868, -0.45056, 0)>
   >>> blobs[0].peak_pos

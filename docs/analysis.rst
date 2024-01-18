@@ -542,10 +542,9 @@ changing the atomic positions in-place:
 
 .. doctest::
   :hide:
-  :skipif: sys.platform == 'win32'
 
-  >>> gemmi.calculate_current_rmsd(polymer1, polymer2, ptype, gemmi.SupSelect.CaP).rmsd
-  0.14626891689940602
+  >>> gemmi.calculate_current_rmsd(polymer1, polymer2, ptype, gemmi.SupSelect.CaP).rmsd  # doctest: +ELLIPSIS
+  0.1462689168994...
 
 .. _selections:
 

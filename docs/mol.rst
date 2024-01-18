@@ -3208,8 +3208,8 @@ Gemmi can calculate both:
 
   >>> atom.b_eq()                    # B_eq
   9.443238117199861
-  >>> gemmi.calculate_b_est(atom)    # B_est
-  9.15448356208817
+  >>> gemmi.calculate_b_est(atom)    # B_est  # doctest: +ELLIPSIS
+  9.15448356208...
 
 
 .. _atom_address:

@@ -674,8 +674,8 @@ To update properties ``min_1_d2`` and ``max_1_d2`` call ``update_reso()``:
   :skipif: numpy is None
 
   >>> mtz.update_reso()
-  >>> mtz.min_1_d2, mtz.max_1_d2
-  (0.02664818727144997, 0.03101414716625602)
+  >>> mtz.min_1_d2, mtz.max_1_d2  # doctest: +ELLIPSIS
+  (0.0266481872714499..., 0.03101414716625602)
 
 You do not need to call ``update_reso()`` before writing an MTZ file --
 the values for the RESO record are re-calculated automatically when the file
@@ -1975,10 +1975,9 @@ SpaceGroup because UnitCell already contains a list of symmetry operations).
 Now we can compute structure factors from Model for any (hkl):
 
 .. doctest::
-  :skipif: sys.platform == 'win32' or numpy is None
 
-  >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))
-  (54.50873522837474+53.39498672056236j)
+  >>> calc_e.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
+  (54.50873...+53.39498...j)
 
 Similarly, for small molecules:
 
@@ -2055,7 +2054,7 @@ from X-ray form factors, according to the Mott–Bethe formula:
   >>> calc_x.addends.clear()
   >>> calc_x.addends.subtract_z()
   >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
-  (54.06570370099...+52.96838667006...j)
+  (54.065...+52.968...j)
 
 The next section gives slightly more details on the Mott-Bethe formula.
 
@@ -2124,8 +2123,8 @@ into a structure factor grid:
   >>> sf_grid = gemmi.transform_map_to_f_phi(dencalc.grid)
   >>> sf_grid
   <gemmi.ReciprocalComplexGrid(48, 48, 50)>
-  >>> sf_grid.get_value(3, 4, 5)
-  (54.52766036987305+53.41892623901367j)
+  >>> sf_grid.get_value(3, 4, 5)  #doctest: +ELLIPSIS
+  (54.5276...+53.4189...j)
 
 In addition to ``d_min`` and ``rate``, which govern the grid density,
 DensityCalculator has two more parameters that affect accuracy
@@ -2208,8 +2207,8 @@ We either multiply individual values by ``mott_bethe_factor()``
 
 .. doctest::
 
-  >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)
-  (54.0637280809978+52.970120646098756j)
+  >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)  #doctest: +ELLIPSIS
+  (54.063...+52.970...j)
 
 or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 
@@ -2217,8 +2216,8 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
   :skipif: numpy is None
 
   >>> asu_data = grid.prepare_asu_data(dmin=2.5, mott_bethe=True, unblur=dencalc.blur)
-  >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]
-  array([54.06373+52.97012j], dtype=complex64)
+  >>> asu_data.value_array[numpy.all(asu_data.miller_array == [3,4,5], axis=1)]  #doctest: +ELLIPSIS
+  array([54.063...+52.970...j], dtype=complex64)
 
 That is all.
 If you would like to separate positions of hydrogen nuclei
