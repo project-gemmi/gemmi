@@ -370,7 +370,7 @@ inline Selection::SequenceId parse_cid_seqid(const std::string& cid, size_t& pos
   if (cid[pos] == '*') {
     ++pos;
     icode = '*';
-  } else if (std::isdigit(cid[pos])) {
+  } else if (std::isdigit(cid[pos]) || cid[pos] == '-') {
     char* endptr;
     seqnum = std::strtol(&cid[pos], &endptr, 10);
     pos = endptr - &cid[0];
@@ -473,7 +473,7 @@ inline void parse_cid(const std::string& cid, Selection& sel) {
     }
     sep = pos;
     if (cid[sep] != '/' && cid[sep] != ';' && cid[sep] != '\0')
-      wrong_syntax(cid, 0);
+      wrong_syntax(cid, 0, " (at residue)");
   }
 
   // atom;  at[el]:aloc

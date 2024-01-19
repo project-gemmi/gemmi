@@ -51,6 +51,9 @@ class TestMisc(unittest.TestCase):
                          '//*//[!H,D];!polymer,solvent')
         self.assertEqual(selstr('A/33.-120.A/[C]'), '//A/33.-120.A/[C]')
         self.assertEqual(selstr('B/7'), '//B/7./')
+        self.assertEqual(selstr('/1/C/-72(DA)'), '/1/C/-72.(DA)/')
+        self.assertEqual(selstr('C/-72--30'), '//C/-72.--30./')
+        self.assertEqual(selstr('C/-72-2'), '//C/-72.-2./')
 
 if __name__ == '__main__':
     unittest.main()
