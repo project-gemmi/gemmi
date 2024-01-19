@@ -335,10 +335,6 @@ struct Grid : GridBase<T> {
       fail("Grids work only with the standard orientation of crystal frame (SCALEn)");
   }
 
-  double min_spacing() const {
-    return std::min(std::min(spacing[0], spacing[1]), spacing[2]);
-  }
-
   void set_size_without_checking(int nu_, int nv_, int nw_) {
     GridBase<T>::set_size_without_checking(nu_, nv_, nw_);
     calculate_spacing();

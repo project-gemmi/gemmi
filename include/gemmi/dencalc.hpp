@@ -111,7 +111,7 @@ struct DensityCalculator {
   void set_refmac_compatible_blur(const Model& model) {
     double spacing = requested_grid_spacing();
     if (spacing <= 0)
-      spacing = grid.min_spacing();
+      spacing = std::min(std::min(grid.spacing[0], grid.spacing[1]), grid.spacing[2]);
     double b_min = get_minimum_b(model);
     blur = std::max(u_to_b() / 1.1 * sq(spacing) - b_min, 0.);
   }
