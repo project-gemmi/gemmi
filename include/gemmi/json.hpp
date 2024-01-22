@@ -42,8 +42,13 @@ inline std::string as_cif_value(const sajson::value& val) {
       return val.as_string();
     case sajson::TYPE_NULL:
       return "?";
+    // mmJSON files from PDBj (this format has no spec) have special support
+    // for boolean YES|NO, which is used only in category _em_specimen.
+    // IMO it's a bad idea, but we must handle it if we want to read mmJSON.
     case sajson::TYPE_FALSE:
-      return ".";
+      return "NO";  // "." in CIF-JSON
+    case sajson::TYPE_TRUE:
+      return "YES";
     case sajson::TYPE_STRING:
       return quote(val.as_string());
     default:
