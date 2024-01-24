@@ -890,14 +890,12 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   } else {
     GroupOps gops1 = ui.spacegroup->operations();
     GroupOps gops2 = mi.spacegroup->operations();
-    if (!gops1.has_same_centring(gops2) || !gops1.has_same_rotations(gops2))
+    if (!gops1.has_same_centring(gops2) || !gops1.has_same_rotations(gops2)) {
       ok = false;
-    out << (ok ? "WARNING" : "ERROR")
-        << ". Different space groups in merged and unmerged files:\n"
+      out << "ERROR. ";
+    }
+    out << "Different space groups in merged and unmerged files:\n"
         << mi.spacegroup_str() << " and " << ui.spacegroup_str() << '\n';
-    if (!ok)
-      out << "(in the future, this app may recognize compatible space groups\n"
-             "and reindex unmerged data if needed; for now, it's on you)\n";
   }
 
   auto eq = [](double x, double y, double rmsd) { return std::fabs(x - y) < rmsd + 0.02; };
