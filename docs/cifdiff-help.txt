@@ -1,9 +1,12 @@
 $ gemmi cifdiff -h
 Usage:
  gemmi cifdiff [options] FILE1.cif FILE2.cif
+ gemmi cifdiff [options] -n FILE.cif
 
-Compares categories and tags in CIF files.
+Compares (or just prints) categories and tags in CIF files.
+First block only.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
   -v, --verbose  Verbose output.
   -q             Print only categories.
+  -n             No comparison, just list categories and tags.

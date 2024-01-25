@@ -12,18 +12,23 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  OnlyCategories=4
+  OnlyCategories=4, NoComparison,
 };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
-    "Usage:\n " EXE_NAME " [options] FILE1.cif FILE2.cif"
-    "\n\nCompares categories and tags in CIF files." },
+    "Usage:\n"
+    " " EXE_NAME " [options] FILE1.cif FILE2.cif\n"
+    " " EXE_NAME " [options] -n FILE.cif\n\n"
+    "Compares (or just prints) categories and tags in CIF files.\n"
+    "First block only." },
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
   { OnlyCategories, 0, "q", "", Arg::None,
     "  -q  \tPrint only categories." },
+  { NoComparison, 0, "n", "", Arg::None,
+    "  -n  \tNo comparison, just list categories and tags." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -60,23 +65,36 @@ Diff make_diff(const T& a, const T& b) {
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  p.require_positional_args(2);
+  bool one_file = p.options[NoComparison];
+  p.require_positional_args(one_file ? 1 : 2);
   const char* path1 = p.nonOption(0);
-  const char* path2 = p.nonOption(1);
+  const char* path2 = one_file ? nullptr : p.nonOption(1);
   //int verbose = p.options[Verbose].count();
   try {
     // Starting like an unified diff (with "--- ") enables colordiff.
-    printf("--- Reading %s\n", path1);
-    cif::Document doc1 = gemmi::read_cif_gz(path1);
-    printf("+++ Reading %s\n", path2);
-    cif::Document doc2 = gemmi::read_cif_gz(path2);
-    cif::Block& b1 = doc1.blocks.at(0);
-    cif::Block& b2 = doc2.blocks.at(0);
-    Diff category_diff = make_diff(b1.get_mmcif_category_names(),
-                                   b2.get_mmcif_category_names());
+    printf("%sReading %s\n", one_file ? "" : "--- ", path1);
+    cif::Document doc1 = gemmi::read_cif_or_mmjson_gz(path1);
+    cif::Block* b1 = &doc1.blocks.at(0);
+    // NoComparison mode is implemented as comparing Block with itself
+    // (inefficient, but simple).
+    cif::Document doc2;
+    cif::Block* b2 = b1;
+    if (!one_file) {
+      printf("+++ Reading %s\n", path2);
+      doc2 = gemmi::read_cif_or_mmjson_gz(path2);
+      b2 = &doc2.blocks.at(0);
+    }
+    if (b1->name == b2->name) {
+      printf("  block name: %s\n", b1->name.c_str());
+    } else {
+      printf("- block name: %s\n", b1->name.c_str());
+      printf("+ block name: %s\n", b2->name.c_str());
+    }
+    Diff category_diff = make_diff(b1->get_mmcif_category_names(),
+                                   b2->get_mmcif_category_names());
     for (DiffItem& cat : category_diff) {
-      cif::Table t1 = b1.find_mmcif_category(cat.str);
-      cif::Table t2 = b2.find_mmcif_category(cat.str);
+      cif::Table t1 = b1->find_mmcif_category(cat.str);
+      cif::Table t2 = b2->find_mmcif_category(cat.str);
       size_t len1 = t1.length();
       size_t len2 = t2.length();
       printf("%c %-37s rows: %5zu", cat.change, cat.str.c_str(), len1);
