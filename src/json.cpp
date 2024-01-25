@@ -40,8 +40,21 @@ static std::string as_cif_value(const sajson::value& val) {
       return "YES";
     case sajson::TYPE_STRING:
       return quote(val.as_string());
+    // Another undocumented feature of mmJSON: arrays as values.
+    // It seems that obscure types int-range and float-range are converted to
+    // 2-element arrays. But not only. link_entity_pdbjplus.db_accession has
+    // arrays with strings.
+    case sajson::TYPE_ARRAY: {
+      std::string s;
+      for (size_t i = 0; i < val.get_length(); ++i) {
+        if (i != 0)
+          s += ' ';
+        s += val.get_array_element(0).as_string();
+      }
+      return quote(s);
+    }
     default:
-      fail("Unexpected ", json_type_as_string(val.get_type()), " in JSON.");
+      fail("Unexpected ", json_type_as_string(val.get_type()), " as value in JSON.");
       return "";
   }
 }
