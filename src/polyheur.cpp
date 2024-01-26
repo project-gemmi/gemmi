@@ -162,11 +162,14 @@ void add_entity_ids(Structure& st, bool overwrite) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
       for (ResidueSpan& sub : chain.subchains()) {
-        if (Entity* ent = st.get_entity_of(sub))
-          for (Residue& res : sub) {
+        if (Entity* ent = st.get_entity_of(sub)) {
+          for (Residue& res : sub)
             if (overwrite || res.entity_id.empty())
               res.entity_id = ent->name;
-          }
+        } else if (overwrite) {
+          for (Residue& res : sub)
+            res.entity_id.clear();
+        }
       }
 }
 
