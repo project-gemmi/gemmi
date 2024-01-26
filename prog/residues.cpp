@@ -7,6 +7,7 @@
 #include "gemmi/align.hpp"     // for assign_label_seq_id
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/enumstr.hpp"   // for polymer_type_to_string, entity_type_to_string
+#include "gemmi/resinfo.hpp"   // for find_tabulated_residue
 #include "histogram.h"         // for terminal_columns
 
 #define GEMMI_PROG residues

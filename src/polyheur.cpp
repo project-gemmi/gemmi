@@ -1,6 +1,7 @@
 // Copyright 2017-2022 Global Phasing Ltd.
 
 #include <gemmi/polyheur.hpp>
+#include <gemmi/resinfo.hpp>   // for find_tabulated_residue
 
 namespace gemmi {
 
@@ -60,6 +61,20 @@ PolymerType check_polymer_type(const ConstResidueSpan& span, bool ignore_entity_
     return PolymerType::DnaRnaHybrid;
   }
   return PolymerType::Unknown;
+}
+
+std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
+  std::string seq;
+  const Residue* prev = nullptr;
+  PolymerType ptype = check_polymer_type(polymer);
+  for (const Residue& residue : polymer.first_conformer()) {
+    ResidueInfo info = find_tabulated_residue(residue.name);
+    if (prev && !are_connected2(*prev, residue, ptype))
+      seq += '-';
+    seq += (info.one_letter_code != ' ' ? info.one_letter_code : 'X');
+    prev = &residue;
+  }
+  return seq;
 }
 
 static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerType ptype) {

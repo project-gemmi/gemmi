@@ -8,7 +8,6 @@
 
 #include <vector>
 #include "model.hpp"
-#include "resinfo.hpp"   // for find_tabulated_residue
 #include "util.hpp"      // for vector_remove_if
 
 namespace gemmi {
@@ -103,19 +102,7 @@ inline bool are_connected3(const Residue& r1, const Residue& r2, PolymerType pty
   return false;
 }
 
-inline std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
-  std::string seq;
-  const Residue* prev = nullptr;
-  PolymerType ptype = check_polymer_type(polymer);
-  for (const Residue& residue : polymer.first_conformer()) {
-    ResidueInfo info = find_tabulated_residue(residue.name);
-    if (prev && !are_connected2(*prev, residue, ptype))
-      seq += '-';
-    seq += (info.one_letter_code != ' ' ? info.one_letter_code : 'X');
-    prev = &residue;
-  }
-  return seq;
-}
+GEMMI_DLL std::string make_one_letter_sequence(const ConstResidueSpan& polymer);
 
 /// Assigns entity_type=Polymer|NonPolymer|Water for each Residue (only
 /// for residues with entity_type==Unknown, unless overwrite=true).
