@@ -398,7 +398,7 @@ namespace linalg
     // linalg::identity is a constant which can be assigned to any square matrix type
     struct identity_t
     {
-        constexpr identity_t() {};
+        constexpr identity_t() {}
         template<class T> constexpr operator mat<T,2,2>() const { return {{1,0},{0,1}}; }
         template<class T> constexpr operator mat<T,3,3>() const { return {{1,0,0},{0,1,0},{0,0,1}}; }
         template<class T> constexpr operator mat<T,4,4>() const { return {{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}}; }

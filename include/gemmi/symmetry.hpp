@@ -667,8 +667,8 @@ struct GroupOps {
     bool operator!=(const Iter& other) const { return !(*this == other); }
   };
 
-  Iter begin() const { return {*this, 0, 0}; };
-  Iter end() const { return {*this, 0, (int) cen_ops.size()}; };
+  Iter begin() const { return {*this, 0, 0}; }
+  Iter end() const { return {*this, 0, (int) cen_ops.size()}; }
 };
 
 inline void GroupOps::add_missing_elements() {

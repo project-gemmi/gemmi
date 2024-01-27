@@ -213,7 +213,7 @@ struct CifToMtz {
       nullptr
     };
     return for_merged ? merged : unmerged;
-  };
+  }
 
   struct Entry {
     std::string refln_tag;

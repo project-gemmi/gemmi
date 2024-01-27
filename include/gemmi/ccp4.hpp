@@ -66,17 +66,17 @@ struct Ccp4Base {
     if (!same_byte_order)
       swap_four_bytes(&value);
     ccp4_header.at(w - 1) = value;
-  };
+  }
   void set_header_3i32(int w, int32_t x, int32_t y, int32_t z) {
     set_header_i32(w, x);
     set_header_i32(w+1, y);
     set_header_i32(w+2, z);
-  };
+  }
   void set_header_float(int w, float value) {
     int32_t int32_value;
     std::memcpy(&int32_value, &value, 4);
     set_header_i32(w, int32_value);
-  };
+  }
   void set_header_str(int w, const std::string& str) {
     std::memcpy(header_word(w), str.c_str(), str.size());
   }

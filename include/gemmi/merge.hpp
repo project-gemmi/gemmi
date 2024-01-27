@@ -120,7 +120,7 @@ struct Intensities {
       s += ' ';
       s += miller_str(hkl);
       return s;
-    };
+    }
   };
 
   struct AnisoScaling {

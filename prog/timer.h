@@ -14,7 +14,7 @@ public:
   double count() const {
     std::chrono::duration<double> elapsed = Clock::now() - start_time_;
     return elapsed.count();
-  };
+  }
   void print(const char* msg) const {
     if (enabled_)
       std::fprintf(stderr, "%s %g s.\n", msg, count());

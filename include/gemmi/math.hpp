@@ -278,7 +278,7 @@ template<typename T> struct SMat33 {
 
   void scale(T s) const {
     u11 *= s; u22 *= s; u33 *= s; u12 *= s; u13 *= s; u23 *= s;
-  };
+  }
 
   template<typename Real>
   SMat33<Real> scaled(Real s) const {

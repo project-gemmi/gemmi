@@ -103,7 +103,7 @@ class CharArray {
   size_t size_;
 public:
   CharArray() : ptr_(nullptr, &std::free), size_(0) {}
-  explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), &std::free), size_(n) {};
+  explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), &std::free), size_(n) {}
   explicit operator bool() const { return (bool)ptr_; }
   char* data() { return ptr_.get(); }
   const char* data() const { return ptr_.get(); }
@@ -133,13 +133,13 @@ class BasicInput {
 public:
   explicit BasicInput(const std::string& path) : path_(path) {}
 
-  const std::string& path() const { return path_; };
-  const std::string& basepath() const { return path_; };
+  const std::string& path() const { return path_; }
+  const std::string& basepath() const { return path_; }
 
   // Does the path stands for stdin?
   // Each reading function needs to call it (some functions use stdin
   // and some std::cin, so we don't try to unify it here).
-  bool is_stdin() const { return path() == "-"; };
+  bool is_stdin() const { return path() == "-"; }
 
   // providing the same interface as MaybeGzipped
   bool is_compressed() const { return false; }
