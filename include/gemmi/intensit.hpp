@@ -146,6 +146,8 @@ struct GEMMI_DLL Intensities {
   // returns STARANISO version or empty string
   std::string take_staraniso_b_from_mtz(const Mtz& mtz);
   bool take_staraniso_b_from_mmcif(const cif::Block& block);
+
+  Mtz prepare_merged_mtz(bool with_nobs);
 };
 
 } // namespace gemmi

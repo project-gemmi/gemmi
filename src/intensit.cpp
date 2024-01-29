@@ -346,6 +346,54 @@ std::string Intensities::take_staraniso_b_from_mtz(const Mtz& mtz) {
 bool Intensities::take_staraniso_b_from_mmcif(const cif::Block& block) {
   return read_staraniso_b_from_mmcif(block, staraniso_b.b);
 }
+
+Mtz Intensities::prepare_merged_mtz(bool with_nobs) {
+  gemmi::Mtz mtz(/*with_base=*/true);
+  mtz.spacegroup = spacegroup;
+  mtz.set_cell_for_all(unit_cell);
+  mtz.add_dataset("unknown").wavelength = wavelength;
+  if (type == DataType::Mean) {
+    mtz.add_column("IMEAN", 'J', -1, -1, false);
+    mtz.add_column("SIGIMEAN", 'Q', -1, -1, false);
+    if (with_nobs)
+      mtz.add_column("NOBS", 'I', -1, -1, false);
+  } else if (type == DataType::Anomalous) {
+    mtz.add_column("I(+)", 'K', -1, -1, false);
+    mtz.add_column("SIGI(+)", 'M', -1, -1, false);
+    mtz.add_column("I(-)", 'K', -1, -1, false);
+    mtz.add_column("SIGI(-)", 'M', -1, -1, false);
+    if (with_nobs) {
+      mtz.add_column("NOBS(+)", 'I', -1, -1, false);
+      mtz.add_column("NOBS(-)", 'I', -1, -1, false);
+    }
+  } else {
+    fail("prepare_merged_mtz(): data is not merged");
+  }
+  mtz.data.resize(data.size() * mtz.columns.size(), NAN);
+  gemmi::Miller prev_hkl = data[0].hkl;
+  mtz.set_hkl(0, prev_hkl);
+  size_t offset = 0;
+  for (const Intensities::Refl& refl : data) {
+    if (refl.hkl != prev_hkl) {
+      offset += mtz.columns.size();
+      mtz.set_hkl(offset, refl.hkl);
+      prev_hkl = refl.hkl;
+    }
+    size_t value_offset = offset + (refl.isign >= 0 ? 3 : 5);
+    mtz.data[value_offset] = (float) refl.value;
+    mtz.data[value_offset + 1] = (float) refl.sigma;
+    if (with_nobs) {
+      size_t nobs_offset = offset + 5;  // for "NOBS"
+      if (type == DataType::Anomalous)
+        nobs_offset += (refl.isign >= 0 ? 2 : 3);
+      mtz.data[nobs_offset] = (float) refl.nobs;
+    }
+  }
+  mtz.data.resize(offset + mtz.columns.size());
+  mtz.nreflections = int(mtz.data.size() / mtz.columns.size());
+  return mtz;
+}
+
 } // namespace gemmi
 
 #if WITH_TEST

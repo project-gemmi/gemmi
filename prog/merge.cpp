@@ -129,51 +129,7 @@ Intensities read_intensities(DataType data_type, const char* input_path,
   }
 }
 
-void write_merged_intensities(const Intensities& intensities, bool write_nobs,
-                              const char* output_path) {
-  gemmi::Mtz mtz(/*with_base=*/true);
-  mtz.spacegroup = intensities.spacegroup;
-  mtz.set_cell_for_all(intensities.unit_cell);
-  mtz.add_dataset("unknown").wavelength = intensities.wavelength;
-  if (intensities.type == DataType::Mean) {
-    mtz.add_column("IMEAN", 'J', -1, -1, false);
-    mtz.add_column("SIGIMEAN", 'Q', -1, -1, false);
-    if (write_nobs)
-      mtz.add_column("NOBS", 'I', -1, -1, false);
-  } else if (intensities.type == DataType::Anomalous) {
-    mtz.add_column("I(+)", 'K', -1, -1, false);
-    mtz.add_column("SIGI(+)", 'M', -1, -1, false);
-    mtz.add_column("I(-)", 'K', -1, -1, false);
-    mtz.add_column("SIGI(-)", 'M', -1, -1, false);
-    if (write_nobs) {
-      mtz.add_column("NOBS(+)", 'I', -1, -1, false);
-      mtz.add_column("NOBS(-)", 'I', -1, -1, false);
-    }
-  } else {
-    return;
-  }
-  mtz.data.resize(intensities.data.size() * mtz.columns.size(), NAN);
-  gemmi::Miller prev_hkl = intensities.data[0].hkl;
-  mtz.set_hkl(0, prev_hkl);
-  size_t offset = 0;
-  for (const Intensities::Refl& refl : intensities.data) {
-    if (refl.hkl != prev_hkl) {
-      offset += mtz.columns.size();
-      mtz.set_hkl(offset, refl.hkl);
-      prev_hkl = refl.hkl;
-    }
-    size_t value_offset = offset + (refl.isign >= 0 ? 3 : 5);
-    mtz.data[value_offset] = (float) refl.value;
-    mtz.data[value_offset + 1] = (float) refl.sigma;
-    if (write_nobs) {
-      size_t nobs_offset = offset + 5;  // for "NOBS"
-      if (intensities.type == DataType::Anomalous)
-        nobs_offset += (refl.isign >= 0 ? 2 : 3);
-      mtz.data[nobs_offset] = (float) refl.nobs;
-    }
-  }
-  mtz.data.resize(offset + mtz.columns.size());
-  mtz.nreflections = int(mtz.data.size() / mtz.columns.size());
+void write_merged_intensities(const gemmi::Mtz& mtz, const char* output_path) {
   try {
     if (gemmi::giends_with(output_path, ".mtz")) {
       mtz.write_to_file(output_path);
@@ -352,7 +308,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
                      intensities.data.size(), output_path);
-      write_merged_intensities(intensities, p.options[NumObs], output_path);
+      bool with_nobs = p.options[NumObs];
+      write_merged_intensities(intensities.prepare_merged_mtz(with_nobs),
+                               output_path);
     }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

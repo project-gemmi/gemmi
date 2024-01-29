@@ -202,6 +202,8 @@ void add_hkl(py::module& m) {
     .def("remove_systematic_absences", &Intensities::remove_systematic_absences)
     .def("merge_in_place", &Intensities::merge_in_place, py::arg("itype"))
     .def("read_mtz", &Intensities::read_mtz, py::arg("mtz"), py::arg("type"))
+    .def("prepare_merged_mtz", &Intensities::prepare_merged_mtz,
+         py::arg("with_nobs"))
     .def_property_readonly("miller_array", [](const Intensities& self) {
       const Intensities::Refl* data = self.data.data();
       py::array::ShapeContainer shape({(py::ssize_t)self.data.size(), 3});
