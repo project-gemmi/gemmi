@@ -9,7 +9,7 @@
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/fstream.hpp>  // for Ofstream
 #include <gemmi/util.hpp>     // for giends_with
-#include <gemmi/merge.hpp>    // for Intensities
+#include <gemmi/intensit.hpp> // for Intensities
 #include <gemmi/read_cif.hpp> // for read_cif_gz
 #include <gemmi/xds_ascii.hpp>
 #define GEMMI_PROG mtz2cif

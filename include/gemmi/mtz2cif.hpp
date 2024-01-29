@@ -13,7 +13,7 @@
 #include <ostream>
 #include "mtz.hpp"       // for Mtz
 #include "xds_ascii.hpp" // for XdsAscii
-#include "merge.hpp"     // for Intensities
+#include "intensit.hpp"  // for Intensities
 
 namespace gemmi {
 

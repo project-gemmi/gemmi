@@ -170,7 +170,7 @@ set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
             src/align.cpp src/assembly.cpp src/calculate.cpp src/crd.cpp
-            src/ddl.cpp src/eig3.cpp src/gz.cpp src/json.cpp
+            src/ddl.cpp src/eig3.cpp src/gz.cpp src/intensit.cpp src/json.cpp
             src/mmcif.cpp src/mmread_gz.cpp src/mtz.cpp src/mtz2cif.cpp
             src/polyheur.cpp src/read_cif.cpp src/resinfo.cpp
             src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
@@ -325,8 +325,7 @@ endif()
 #add_executable(c_test EXCLUDE_FROM_ALL fortran/c_test.c)
 #target_link_libraries(c_test PRIVATE cgemmi)
 
-add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp
-                                        src/mtz2cif.cpp src/eig3.cpp src/sprintf.cpp)
+add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp)
 target_compile_definitions(cpptest PRIVATE USE_STD_SNPRINTF=1)
 target_link_libraries(cpptest PRIVATE gemmi_headers)
 target_include_directories(cpptest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")

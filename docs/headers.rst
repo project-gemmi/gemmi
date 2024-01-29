@@ -133,6 +133,11 @@ gemmi/input.hpp
     Input abstraction.
     Used to decouple file reading and uncompression.
 
+gemmi/intensit.hpp
+    Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
+    and merges it into mean or anomalous intensities.
+    It can also read merged data.
+
 gemmi/interop.hpp
     Interoperability between Model (MX) and SmallStructure (SX).
 
@@ -155,11 +160,6 @@ gemmi/linkhunt.hpp
 
 gemmi/math.hpp
     Math utilities. 3D linear algebra.
-
-gemmi/merge.hpp
-    Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
-    and merges it into mean or anomalous intensities.
-    It can also read merged data.
 
 gemmi/metadata.hpp
     Metadata from coordinate files.
@@ -214,6 +214,9 @@ gemmi/pdb.hpp
 
 gemmi/pdb_id.hpp
     handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path()
+
+gemmi/pickler.hpp
+    Serializing support for zpp::serializer (third_party/serializer.h).
 
 gemmi/pirfasta.hpp
     Read sequence from PIR or (multi-)FASTA format.

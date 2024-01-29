@@ -8,7 +8,7 @@
 #include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
 #include "gemmi/cif2mtz.hpp"  // for CifToMtz
 #include "gemmi/mtz2cif.hpp"  // for MtzToCif
-#include "gemmi/merge.hpp"    // for Intensities
+#include "gemmi/intensit.hpp" // for Intensities
 #include "gemmi/binner.hpp"   // for Binner
 #include "gemmi/ecalc.hpp"    // for calculate_amplitude_normalizers
 
