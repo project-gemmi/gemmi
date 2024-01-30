@@ -32,6 +32,7 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
 
 for:
+-
   matrix:
     only:
       - CMAKE_GENERATOR: Visual Studio 17 2022
@@ -40,7 +41,7 @@ for:
   cache:
     - c:\tools\vcpkg\installed\
 
-for:
+-
   matrix:
     only:
       - CMAKE_GENERATOR: Visual Studio 16 2019
@@ -49,7 +50,6 @@ for:
   cache:
     - c:\tools\vcpkg\installed\
 
-for:
 -
   matrix:
     except:
