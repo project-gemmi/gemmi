@@ -505,8 +505,14 @@ if (USE_PYTHON)
   # and don't respect CMAKE_INSTALL_PREFIX.
   # https://discourse.cmake.org/t/findpython3-how-to-specify-local-installation-directory-for-python-module/3580/5
   if (BUILD_SHARED_LIBS AND NOT STANDALONE_PYTHON_MODULE)
-    file(RELATIVE_PATH rpath_rel
-         "${Python_SITEARCH}" "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+    if (DEFINED SKBUILD)
+      # When building via pip, Python_SITEARCH is /tmp.../wheel/platlib,
+      # different from the actual install path. Best guess:
+      set(rpath_rel "../../../${CMAKE_INSTALL_LIBDIR}")
+    else()
+      file(RELATIVE_PATH rpath_rel
+           "${Python_SITEARCH}" "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+    endif()
     set_target_properties(gemmi_py PROPERTIES INSTALL_RPATH "${origin}/${rpath_rel}")
   endif()
   install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}" COMPONENT py)

@@ -1,18 +1,21 @@
 version: '{branch}-{build}'
+shallow_clone: true
 environment:
   matrix:
     - arch: x64
       CMAKE_GENERATOR: Visual Studio 17 2022
       CMAKE_CONFIG: Release
-      CMAKE_ARGS: -DCMAKE_CXX_STANDARD=20 -DPython_EXECUTABLE="C:\\Python311-x64\\python.exe" -DBUILD_SHARED_LIBS=ON
+      CMAKE_ARGS: -DCMAKE_CXX_STANDARD=20 -DPython_EXECUTABLE="C:\\Python311-x64\\python.exe" -DBUILD_SHARED_LIBS=ON -DUSE_ZLIB_NG=ON -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+      VCPKG_BUILD_TYPE: "release"
       PY_PYTHON: 3.11
 
     - arch: x64
       CMAKE_GENERATOR: Visual Studio 16 2019
       CMAKE_CONFIG: RelWithDebInfo
-      CMAKE_ARGS: -DCMAKE_CXX_STANDARD=11 -DPython_EXECUTABLE="C:\\Python310-x64\\python.exe" -DBUILD_SHARED_LIBS=OFF
+      CMAKE_ARGS: -DCMAKE_CXX_STANDARD=11 -DPython_EXECUTABLE="C:\\Python310-x64\\python.exe" -DBUILD_SHARED_LIBS=OFF -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      VCPKG_BUILD_TYPE: "release"
       PY_PYTHON: 3.10
 
     - arch: x86
@@ -27,6 +30,24 @@ environment:
       COMPILER: MinGW64-gcc-8.1.0
       CMAKE_CONFIG: Release
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+
+for:
+  matrix:
+    only:
+      - CMAKE_GENERATOR: Visual Studio 17 2022
+  install:
+    - vcpkg install zlib-ng:x64-windows-static
+  cache:
+    - c:\tools\vcpkg\installed\
+
+for:
+  matrix:
+    only:
+      - CMAKE_GENERATOR: Visual Studio 16 2019
+  install:
+    - vcpkg install zlib:x64-windows-static
+  cache:
+    - c:\tools\vcpkg\installed\
 
 for:
 -
