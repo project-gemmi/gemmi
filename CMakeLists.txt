@@ -114,6 +114,7 @@ if (USE_ZLIB_NG)
   set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/tools")
   find_package(ZLIB_NG REQUIRED)
 else()
+  # CMake >= 3.24 respects variable ZLIB_USE_STATIC_LIBS
   find_package(ZLIB)
   if (NOT ZLIB_FOUND)
     message(STATUS "The build will use zlib code from third_party/zlib.")

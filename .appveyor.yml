@@ -34,27 +34,12 @@ environment:
 for:
 -
   matrix:
-    only:
-      - CMAKE_GENERATOR: Visual Studio 17 2022
-  install:
-    - vcpkg install zlib-ng:x64-windows-static
-  cache:
-    - c:\tools\vcpkg\installed\
-
--
-  matrix:
-    only:
-      - CMAKE_GENERATOR: Visual Studio 16 2019
-  install:
-    - vcpkg install zlib:x64-windows-static
-  cache:
-    - c:\tools\vcpkg\installed\
-
--
-  matrix:
     except:
       - CMAKE_GENERATOR: MSYS Makefiles
 
+  install:
+  - if "%PY_PYTHON%"=="3.11" vcpkg install zlib-ng:x64-windows-static
+  - if "%PY_PYTHON%"=="3.10" vcpkg install zlib:x64-windows-static
   build_script:
   - path
   - cmake --version
@@ -84,6 +69,8 @@ for:
     - path: gemmi.exe
     - path: gemmi*.pyd
     - path: gemmi*.dll
+  cache:
+    - c:\tools\vcpkg\installed\
 
 -
   matrix:
