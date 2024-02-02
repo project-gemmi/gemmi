@@ -38,8 +38,8 @@ for:
       - CMAKE_GENERATOR: MSYS Makefiles
 
   install:
-  - if "%PY_PYTHON%"=="3.11" vcpkg install zlib-ng:x64-windows-static
-  - if "%PY_PYTHON%"=="3.10" vcpkg install zlib:x64-windows-static
+  - if "%PY_PYTHON%"=="3.11" vcpkg install zlib-ng
+  - if "%PY_PYTHON%"=="3.10" vcpkg install zlib
   build_script:
   - path
   - cmake --version
