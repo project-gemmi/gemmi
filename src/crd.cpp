@@ -33,7 +33,15 @@ void setup_for_crd(Structure& st) {
       for (Residue& res : chain.residues) {
         size_t n = chain.name.size();
         assert(res.subchain[n] == 'x');
-        res.subchain[n] = '_';
+        if (n < 3)
+          // Translate Axp to A_p. Refmac reads a single chain id from crd,
+          // but it recognizes '_' as separator and sets auth_asym_id to A.
+          res.subchain[n] = '_';
+        else
+          // Refmac checks for '_' only in 2nd and 3rd place. If the chain id
+          // length is 3-4 (it's rare), put the bare id, without appending _x.
+          // It will result in incorrect _struct_asym, but Refmac should work.
+          res.subchain = chain.name;
       }
   ensure_entities(st);
   deduplicate_entities(st);
