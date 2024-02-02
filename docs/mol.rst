@@ -353,8 +353,10 @@ files, but they contain example coordinates of a single residue.
 
 All the files can be compressed with gzip (with extension .gz).
 In Python, the reading function expects that a file can be gzipped.
-In C++, separate functions are used for reading possibly-gzipped files,
-and you must link the zlib library if you use them.
+In C++, separate functions are used for reading possibly-gzipped files
+(to allow for a smaller program size if this feature is not needed).
+Uncompressing is performed using the zlib or zlib-ng library,
+depending on which one gemmi was built with.
 
 To read a coordinate file without knowing the format of the file,
 call read_structure*() with format:
@@ -363,6 +365,10 @@ call read_structure*() with format:
 * ``CoorFormat.Detect`` -- to guess the format from the file content
   (PDB is assumed if it's neither CIF nor JSON; it also
   recognizes monomer (ligand/CCD) files).
+
+Users of the MMDB2 library from the CCP4 suite can convert between
+mmdb::Manager and gemmi::Structure using functions  ``copy_to_mmdb()``
+and ``copy_from_mmdb()`` from ``<gemmi/mmdb.hpp>``.
 
 In this section we show how to read a coordinate file in Gemmi.
 In the next sections we will go into details of the individual formats.

@@ -35,6 +35,37 @@ inline void set_seqid_in_mmdb(int* seqnum, mmdb::InsCode& icode, SeqId seqid) {
   icode[1] = '\0';
 }
 
+inline SeqId seqid_from_mmdb(int seqnum, const mmdb::InsCode& inscode) {
+  return SeqId(seqnum, inscode[0] ? inscode[0] : ' ');
+}
+
+inline mmdb::CisPep* cispep_to_mmdb(const CisPep& g, int ser_num, int model_num) {
+  mmdb::CisPep* m = new mmdb::CisPep();
+  m->serNum = ser_num;
+  strcpy_to_mmdb(m->pep1, g.partner_c.res_id.name);
+  strcpy_to_mmdb(m->chainID1, g.partner_c.chain_name);
+  set_seqid_in_mmdb(&m->seqNum1, m->icode1, g.partner_c.res_id.seqid);
+  strcpy_to_mmdb(m->pep2, g.partner_n.res_id.name);
+  strcpy_to_mmdb(m->chainID2, g.partner_n.chain_name);
+  set_seqid_in_mmdb(&m->seqNum2, m->icode2, g.partner_n.res_id.seqid);
+  m->modNum = model_num;
+  m->measure = g.reported_angle;
+  return m;
+}
+
+inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, const std::string& model_str) {
+  CisPep g;
+  g.partner_c.res_id.name = m.pep1;
+  g.partner_c.res_id.seqid = seqid_from_mmdb(m.seqNum1, m.icode1);
+  g.partner_c.chain_name = m.chainID1;
+  g.partner_n.res_id.name = m.pep2;
+  g.partner_n.res_id.seqid = seqid_from_mmdb(m.seqNum2, m.icode2);
+  g.partner_n.chain_name = m.chainID2;
+  g.model_str = model_str;
+  g.reported_angle = m.measure;
+  return g;
+}
+
 inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   for (const std::string& s : st.raw_remarks) {
     std::string line = rtrim_str(s);
@@ -43,19 +74,19 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
 
   for (int imodel = 0; imodel < (int) st.models.size(); ++imodel) {
     const Model& model = st.models[imodel];
-    mmdb::PModel model2 = mmdb::newModel();
+    mmdb::Model* model2 = mmdb::newModel();
     model2->SetMMDBManager(manager, imodel);
 
     for (const Chain& chain : model.chains) {
-      mmdb::PChain chain2 = model2->CreateChain(chain.name.c_str());
+      mmdb::Chain* chain2 = model2->CreateChain(chain.name.c_str());
       for (const Residue& res : chain.residues) {
         const char icode[2] = {res.seqid.icode, '\0'};
-        mmdb::PResidue res2 = chain2->GetResidueCreate(res.name.c_str(),
+        mmdb::Residue* res2 = chain2->GetResidueCreate(res.name.c_str(),
                                                        *res.seqid.num,
                                                        icode,
                                                        true);
         for (const Atom& atom : res.atoms) {
-          mmdb::PAtom atom2 = mmdb::newAtom();
+          mmdb::Atom* atom2 = mmdb::newAtom();
           const char altloc[2] = {atom.altloc, '\0'};
           std::string padded_name = atom.padded_name();
           // padded_name() is padding from the left; MMDB from both sides
@@ -82,16 +113,14 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
         if (res.entity_type == EntityType::Polymer &&
             (&res == &chain.residues.back() ||
              (&res + 1)->entity_type != EntityType::Polymer)) {
-          mmdb::PAtom atom2 = mmdb::newAtom();
+          mmdb::Atom* atom2 = mmdb::newAtom();
           atom2->MakeTer();
           atom2->serNum = res.atoms.back().serial + 1;
           res2->AddAtom(atom2);
         }
       }
     }
-    int n_model = manager->AddModel(model2);
-    // currently we don't setup CisPeps, so this doesn't do anything
-    manager->GetModel(n_model)->CopyCisPeps(model2);
+    manager->AddModel(model2);
     manager->PutCell(st.cell.a, st.cell.b, st.cell.c,
                      st.cell.alpha, st.cell.beta, st.cell.gamma, 1);
     manager->SetSpaceGroup(st.spacegroup_hm.c_str());
@@ -120,6 +149,16 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
         copy_transform_to_mmdb(op.tr, m, v);
         cryst->AddNCSMatrix(m, v, op.given);
       }
+    }
+  }
+  if (!st.cispeps.empty() && !st.models.empty()) {
+    int ser_num = 0;
+    for (const CisPep& cispep : st.cispeps) {
+      // In the PDB, CISPEP records have modNum=0 if there is only one model
+      int modnum = st.models.size() > 1 ? std::stoi(cispep.model_str) : 0;
+      int model_no = std::max(1, modnum);  // GetModel() takes 1-based index
+      if (mmdb::Model* m_model = manager->GetModel(model_no))
+        m_model->AddCisPep(cispep_to_mmdb(cispep, ++ser_num, modnum));
     }
   }
   return manager;
@@ -151,9 +190,7 @@ inline Atom copy_atom_from_mmdb(mmdb::Atom& m_atom) {
 inline Residue copy_residue_from_mmdb(mmdb::Residue& m_res) {
   Residue res;
   res.name = m_res.name;
-  res.seqid.num = m_res.seqNum;
-  if (m_res.insCode[0])
-    res.seqid.icode = m_res.insCode[0];
+  res.seqid = seqid_from_mmdb(m_res.seqNum, m_res.insCode);
   int n = m_res.GetNumberOfAtoms();
   res.atoms.reserve(n);
   bool first = true;
@@ -212,9 +249,14 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
   st.spacegroup_hm = cryst.spaceGroup;
   int n = manager->GetNumberOfModels();
   st.models.reserve(n);
-  for (int i = 0; i < n; ++i)
-    if (mmdb::Model* m_model = manager->GetModel(i+1))
+  for (int i = 1; i <= n; ++i)
+    if (mmdb::Model* m_model = manager->GetModel(i)) {
       st.models.push_back(copy_model_from_mmdb(*m_model));
+      const std::string& model_name = st.models.back().name;
+      for (int j = 1; j <= m_model->GetNumberOfCisPeps(); ++j)
+        if (const mmdb::CisPep* m_cispep = m_model->GetCisPep(j))
+          st.cispeps.push_back(cispep_from_mmdb(*m_cispep, model_name));
+    }
   return st;
 }
 

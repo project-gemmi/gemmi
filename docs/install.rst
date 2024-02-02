@@ -235,8 +235,8 @@ Not distributed with Gemmi:
 
 * `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
   Python bindings. License: 3-clause BSD.
-* `zlib-ng <https://github.com/zlib-ng/zlib-ng>`_ -- can be used instead
-  of zlib, for faster reading of gzipped files.
+* `zlib-ng <https://github.com/zlib-ng/zlib-ng>`_ -- optional, can be used
+  instead of zlib for faster reading of gzipped files.
 * `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests
   (if cctbx is not present, these tests are skipped) and
   in scripts that generated space group data and 2-fold twinning operations.
