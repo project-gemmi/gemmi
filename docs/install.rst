@@ -9,7 +9,7 @@ C++ library
 
 Before version 0.6 gemmi was a header-only library.
 Many functions are still in headers. If you use only such function,
-you only need to ensure that the ``include`` directory is in your
+you only need to ensure that the `include` directory is in your
 include path when compiling your program. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
@@ -57,7 +57,7 @@ requirement for the compilation).
 
 ----
 
-Note on Unicode: if a file name is passed to Gemmi (through ``std::string``)
+Note on Unicode: if a file name is passed to Gemmi (through `std::string`)
 it is assumed to be in ASCII or UTF-8.
 
 .. _install_py:
@@ -109,7 +109,7 @@ On Windows Python should automatically find an appropriate compiler (MSVC).
 If the compiler is not installed, pip shows a message with a download link.
 
 If gemmi is already installed, uninstall the old version first
-(``pip uninstall``) or add option ``--upgrade``.
+(`pip uninstall`) or add option `--upgrade`.
 
 Alternatively, you can build a cloned project with CMake::
 
@@ -122,7 +122,7 @@ Fortran and C bindings
 The Fortran bindings are in early stage and are not documented yet.
 They use the ISO_C_BINDING module introduced in Fortran 2003
 and `shroud <https://github.com/LLNL/shroud>`_.
-You may see the ``fortran/`` directory to know what to expect.
+You may see the `fortran/` directory to know what to expect.
 This directory contains Makefile -- run make to built the bindings.
 (They are currently not integrated with the cmake build.)
 
@@ -137,20 +137,20 @@ but they should be usable on their own.
 
 ..
  If you use cmake to build the project
- you get a static library ``libcgemmi.a`` that can be used from C,
+ you get a static library `libcgemmi.a` that can be used from C,
  together with the :file:`fortran/*.h` headers.
 
 Program
 -------
 
-The library comes with a command-line program also named ``gemmi``.
+The library comes with a command-line program also named `gemmi`.
 
 Binaries
 ~~~~~~~~
 
 Binaries are distributed with the CCP4 suite and with Global Phasing software.
 They are also in `PyPI <https://pypi.org/project/gemmi-program/>`_
-(``pip install gemmi-program``) and
+(`pip install gemmi-program`) and
 `conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_.
 
 The very latest builds (as well as a little older ones)
@@ -170,7 +170,7 @@ From source
 ~~~~~~~~~~~
 
 To build it from source, first make sure you have git, cmake and C++ compiler
-installed (on Ubuntu: ``sudo apt install git cmake make g++``), then::
+installed (on Ubuntu: `sudo apt install git cmake make g++`), then::
 
     git clone https://github.com/project-gemmi/gemmi.git
     cd gemmi
@@ -185,7 +185,7 @@ The main automated tests are in Python::
     python3 -m unittest discover -v tests/
 
 We also have doctest tests in the documentation, and some others.
-All of them can be run from the ``run-tests.sh`` script in the repository.
+All of them can be run from the `run-tests.sh` script in the repository.
 
 Credits
 -------
@@ -193,7 +193,7 @@ Credits
 This project is using code from a number of third-party open-source projects.
 
 Projects used in the C++ library, included under
-``include/gemmi/third_party/`` (if used in headers) or ``third_party/``:
+`include/gemmi/third_party/` (if used in headers) or `third_party/`:
 
 * `PEGTL <https://github.com/taocpp/PEGTL/>`_ -- library for creating PEG
   parsers. License: MIT.
@@ -211,14 +211,14 @@ Projects used in the C++ library, included under
 Code derived from the following projects is used in the library:
 
 * `ksw2 <https://github.com/lh3/ksw2>`_ -- sequence alignment in
-  ``seqalign.hpp`` is based on the ksw_gg function from ksw2. License: MIT.
+  `seqalign.hpp` is based on the ksw_gg function from ksw2. License: MIT.
 * `QCProt <https://theobald.brandeis.edu/qcp/>`_ -- superposition method
-  in ``qcp.hpp`` is taken from QCProt and adapted to our project. License: BSD.
+  in `qcp.hpp` is taken from QCProt and adapted to our project. License: BSD.
 * `Larch <https://github.com/xraypy/xraylarch>`_ -- calculation of f' and f"
-  in ``fprime.hpp`` is based on CromerLiberman code from Larch.
+  in `fprime.hpp` is based on CromerLiberman code from Larch.
   License: 2-clause BSD.
 
-Projects included under ``third_party/`` that are not used in the library
+Projects included under `third_party/` that are not used in the library
 itself, but are used in command-line utilities, python bindings or tests:
 
 * `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
@@ -247,7 +247,7 @@ Email me if I forgot about something.
 List of C++ headers
 -------------------
 
-Here is a list of C++ headers in ``gemmi/include/``.
+Here is a list of C++ headers in `gemmi/include/`.
 This list also gives an overview of the library.
 
 .. include:: headers.rst

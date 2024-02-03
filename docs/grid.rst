@@ -34,7 +34,7 @@ we effectively have a box with periodic boundary conditions (PBC).
 C++
 ~~~
 
-The ``gemmi/grid.hpp`` header defines::
+The `gemmi/grid.hpp` header defines::
 
   template<typename T=float> struct Grid;
 
@@ -43,10 +43,10 @@ which stores dimensions and data::
   int nu, nv, nw;
   std::vector<T> data;
 
-To specify the grid size use function ``set_size()``
-or ``set_size_from_spacing()``. They both check that the size
+To specify the grid size use function `set_size()`
+or `set_size_from_spacing()`. They both check that the size
 is compatible with the space group (so it is better to call
-these functions after setting ``Grid::spacegroup``.
+these functions after setting `Grid::spacegroup`.
 The latter function additionally ensures that the size is FFT-friendly.
 
 The data point can be accessed with::
@@ -89,14 +89,14 @@ Alternatively, you may set (or change) the size later on:
   >>> # grid3.spacegroup = ...
   >>> grid3.set_size(12, 12, 12)
 
-The advantage of calling ``set_size()`` after a space group was set
+The advantage of calling `set_size()` after a space group was set
 is that this function checks if the size is compatible with the space group
 (a symmetry operation cannot map a node to a point between nodes).
 
 If a unit cell is assigned to the grid (it will be discussed
 :ref:`later <grid_cell>`), you can request the size that gives approximately
-the specified spacing, with one of the possible rounding modes: ``Nearest``,
-``Up`` (denser grid) and ``Down``:
+the specified spacing, with one of the possible rounding modes: `Nearest`,
+`Up` (denser grid) and `Down`:
 
 .. doctest::
 
@@ -143,7 +143,7 @@ without copying the data:
 The buffer protocol is not specific to NumPy -- any other Python library
 that supports this protocol can directly access the grid data.
 Alternatively, the grid can be viewed as a NumPy array through
-the ``array`` property:
+the `array` property:
 
 .. doctest::
   :skipif: numpy is None or sys.platform == 'win32'
@@ -204,11 +204,11 @@ Python bindings provide the following specializations:
 Unit cell
 ---------
 
-The unit cell parameters (in a member variable ``unit_cell``: UnitCell)
+The unit cell parameters (in a member variable `unit_cell`: UnitCell)
 enable conversion between coordinates and grid points.
 
-The unit cell should be set using ``Grid<T>::set_unit_cell()``,
-which in addition to setting ``unit_cell`` sets also ``spacing``,
+The unit cell should be set using `Grid<T>::set_unit_cell()`,
+which in addition to setting `unit_cell` sets also `spacing`,
 the spacing between grid planes that is precalculated for efficiency.
 
 .. doctest::
@@ -407,7 +407,7 @@ contact developers.
 If you have a large number of points, making a Python function call
 each time would be slow.
 If these points are on a regular 3D grid (which may not be aligned
-with our grid) call ``interpolate_values()`` (with s at the end)
+with our grid) call `interpolate_values()` (with s at the end)
 with two arguments: a 3D NumPy array (for storing the results)
 and a :ref:`Transform <transform>` that relates indices of the array
 to positions in the grid:
@@ -490,7 +490,7 @@ It uses van der Waals (or similar) atomic radii *r* and two parameters:
   (contiguous areas of 1's) up to a certain volume.
   This step was added for compatibility with Refmac.
 
-Here is how to create a mask identical as ``phenix.mask``:
+Here is how to create a mask identical as `phenix.mask`:
 
 .. doctest::
 
@@ -542,8 +542,8 @@ or with constant radius, similarly to the NCSMASK program from CCP4:
   >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Constant, 3.0)
 
 If the mask is to be FFT-ed to structure factors, store it on FloatGrid
-(function ``put_mask_on_float_grid`` in Python
-and ``put_mask_on_grid`` in C++).
+(function `put_mask_on_float_grid` in Python
+and `put_mask_on_grid` in C++).
 See the section about :ref:`bulk solvent coorection <scaling>`
 for details and examples.
 
@@ -640,7 +640,7 @@ The second argument of flood_fill_above() is a list of positions used as seeds.
 We could use multiple seeds to obtain a single mask for all blobs together.
 
 To find area with values below a certain value,
-run flood_fill_above() with optional argument ``negate=True``.
+run flood_fill_above() with optional argument `negate=True`.
 
 Here we print a few characteristics of the mask:
 
@@ -687,7 +687,7 @@ Typically, a span of the crystallographic map is one of the following:
 
 * Covering a molecule with some margin around it.
   This is necessary for programs such as PyMOL that don't know about symmetry.
-  CCP4 utilities ``fft`` + ``mapmask`` can make such a map.
+  CCP4 utilities `fft` + `mapmask` can make such a map.
 * Covering the asymmetric unit (asu). The program that reads
   the map is supposed to expand the symmetry. This approach is used by
   the CCP4 clipper library and by programs such as Coot.
@@ -732,8 +732,8 @@ but in principle the values can be from -127 to 128)::
 If the grid data type does not match the file data type, the library
 will attempt to convert the data when reading.
 
-Alternatively, you can use helper functions ``read_ccp4_map()``
-and ``read_ccp4_mask()`` defined in ``gemmi/read_map.hpp``.
+Alternatively, you can use helper functions `read_ccp4_map()`
+and `read_ccp4_mask()` defined in `gemmi/read_map.hpp`.
 
 Python
 ~~~~~~
@@ -746,7 +746,7 @@ To read a ccp4 map:
     >>> m
     <gemmi.Ccp4Map with grid 8x6x10 in SG #4>
 
-Similarly, to read a mask (ccp4 map in mode 0) call ``read_ccp4_mask()``.
+Similarly, to read a mask (ccp4 map in mode 0) call `read_ccp4_mask()`.
 
 
 Header
@@ -807,16 +807,16 @@ When the file is read, the header is used to set properties of the grid:
 setup()
 -------
 
-``read_ccp4_map()`` and ``read_ccp4_mask()`` read the data from file
+`read_ccp4_map()` and `read_ccp4_mask()` read the data from file
 into a Grid class, by default keeping the same axis order and the same
 dimensions as in the file.
-But the functions that operate on the grid data (such as ``get_position()``,
-``interpolate_value()``, ``symmetrize()``) expect that the grid covers
+But the functions that operate on the grid data (such as `get_position()`,
+`interpolate_value()`, `symmetrize()`) expect that the grid covers
 the whole unit cell and that the axes are in the X,Y,Z order.
 So before calling a function that uses either the symmetry or the unit
 cell parameters we need to *setup* the grid as required.
 You do this either by calling the reading function with the optional
-argument ``setup=True``, or by calling the ``setup()`` method afterwards.
+argument `setup=True`, or by calling the `setup()` method afterwards.
 
 The setup function has two arguments.
 The first one is a value to be used for unknown values.
@@ -871,7 +871,7 @@ Writing
 
 To write a map to a file, update the header if necessary,
 (optionally) set the extent of the map that is to be written,
-and call ``write_ccp4_map()``.
+and call `write_ccp4_map()`.
 
 ::
 
@@ -889,17 +889,17 @@ update_ccp4_header() does the following:
 
 - if the map header is empty (a new map was created):
   it prepares the header,
-- if the optional argument ``mode`` is given and if it is different than
+- if the optional argument `mode` is given and if it is different than
   the current mode: the mode is changed and the data type will be
   converted while writing the file; the mode can be 0, 1, 2, 6, or
   -1 (default -- no action),
-- if the optional argument ``update_stats`` is true (the default is true):
+- if the optional argument `update_stats` is true (the default is true):
   DMIN, DMAX, DMEAN and RMS in the map header are re-calculated.
 
 .. _set_extent:
 
 By default, the written map covers the whole unit cell.
-To change this, call ``set_extent()`` before writing the map.
+To change this, call `set_extent()` before writing the map.
 As an example, let us cover a molecule with 5Å margin
 (equivalent of running CCP4 program MAPMASK with XYZIN and BORDER 5).
 
@@ -914,13 +914,13 @@ As an example, let us cover a molecule with 5Å margin
     >>> m.write_ccp4_map('out.ccp4')
 
 
-After calling ``set_extent()`` we have the same situation as before calling
-``setup()`` -- some grid functions may not work correctly.
+After calling `set_extent()` we have the same situation as before calling
+`setup()` -- some grid functions may not work correctly.
 
 Here we show three other scenarios of setting the map extent.
 
 You may want to preserve the original map extent, which can be
-read by calling ``get_extent()`` before the setup:
+read by calling `get_extent()` before the setup:
 
 .. doctest::
 
@@ -944,7 +944,7 @@ For this, use the brick extent:
   >>> box = brick.get_extent()
 
 At last, if the map would be padded with zeros or NaNs you could determine
-the box that contains real data with ``get_nonzero_extent()``:
+the box that contains real data with `get_nonzero_extent()`:
 
 .. doctest::
 
@@ -958,7 +958,7 @@ Map from Grid
 -------------
 
 To write grid data as a ccp4 file: create a new Ccp4 class,
-set the grid, call ``update_ccp4_header()`` and write the file.
+set the grid, call `update_ccp4_header()` and write the file.
 
 .. doctest::
   :skipif: numpy is None

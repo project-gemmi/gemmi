@@ -3,7 +3,7 @@ Symmetry
 
 This section describes functionality related to the 3D space groups.
 
-In C++: ``#include <gemmi/symmetry.hpp>`` (it's header-only).
+In C++: `#include <gemmi/symmetry.hpp>` (it's header-only).
 
 Space group table
 =================
@@ -11,17 +11,17 @@ Space group table
 Gemmi tabulates 550+ settings of the 230 crystallographic space groups.
 Each entry includes:
 
-* ``number`` -- space group number (1-230),
-* ``ccp4`` -- ccp4 number (assigned to particular settings; modulo 1000
+* `number` -- space group number (1-230),
+* `ccp4` -- ccp4 number (assigned to particular settings; modulo 1000
   they give space group number: 3 and 1003 correspond to
-  ``P 1 2 1`` and ``P 1 1 2``; 0 means none),
-* ``hm`` -- Hermann-Mauguin (H-M) symbol a.k.a. the international notation
-  (``I a -3 d``, ``C 1 2 1``),
-* ``ext`` -- extension to the H-M notations (none, ``1``, ``2``, ``H``
-  or ``R``) that make extended H-M symbol (``R 3:H``, ``P 4/n:1``),
-* ``hall`` -- the Hall symbol (``-I 4bd 2c 3``, ``C 2y``, ``P 32 2c (0 0 -1)``)
+  `P 1 2 1` and `P 1 1 2`; 0 means none),
+* `hm` -- Hermann-Mauguin (H-M) symbol a.k.a. the international notation
+  (`I a -3 d`, `C 1 2 1`),
+* `ext` -- extension to the H-M notations (none, `1`, `2`, `H`
+  or `R`) that make extended H-M symbol (`R 3:H`, `P 4/n:1`),
+* `hall` -- the Hall symbol (`-I 4bd 2c 3`, `C 2y`, `P 32 2c (0 0 -1)`)
   used to generate the space group operations,
-* and ``basisop`` -- change of basis operator from the reference setting.
+* and `basisop` -- change of basis operator from the reference setting.
 
 This data is derived primarily from the CCP4 :file:`syminfo.lib` file,
 which in turn is based on the data from sgtbx_ that was augmented
@@ -52,7 +52,7 @@ Volume A of the `International Tables <http://it.iucr.org/>`_,
 named Aem2 not Abm2.
 Most of the crystallographic software (as well as ITfC Vol.B)
 still uses the old names.
-(spglib_ uses new ones, sgtbx reads new names with the option ``ad_hoc_1992``).
+(spglib_ uses new ones, sgtbx reads new names with the option `ad_hoc_1992`).
 
 The usual way to access a space group from the table is to search
 it by name. In C++::
@@ -95,7 +95,7 @@ Furthermore, ITfC vol. A, PDB and SCALEPACK assign different meanings to
 This ambiguity can be resolved by comparing angles of the unit cell.
 The ratio of *γ* to *α* angles is 120:90 in the hexagonal system
 and 1:1 in rhombohedral. (Note: gemmi assumes that H3 refers to
-space group 146 (R3), not 143 (P3)). Therefore, ``find_spacegroup_by_name()``
+space group 146 (R3), not 143 (P3)). Therefore, `find_spacegroup_by_name()`
 accepts also *α* and *γ* angles. If the angles are not passed,
 the hexagonal system is returned:
 
@@ -184,7 +184,7 @@ of the table. In Python, we have a helper function for this:
 SpaceGroup
 ==========
 
-``gemmi.SpaceGroup`` represents an entry in the space group table.
+`gemmi.SpaceGroup` represents an entry in the space group table.
 It has the properties listed at the beginning of this section:
 
 .. doctest::
@@ -237,7 +237,7 @@ and a few methods:
   >>> sg.operations()             #doctest: +ELLIPSIS
   <gemmi.GroupOps object at 0x...>
 
-Chirality-related functions ``is_enantiomorphic()`` and ``is_sohncke()``
+Chirality-related functions `is_enantiomorphic()` and `is_sohncke()`
 can be confusing. Here, we follow the IUCr dictionary:
 
 * `Sohncke groups <https://dictionary.iucr.org/Sohncke_groups>`_
@@ -258,7 +258,7 @@ Operations
 
 Crystallographic symmetry operations have a few notations.
 Gemmi understands only coordinate triplets (sometimes called
-the Jones' faithful notation) such as ``x,x-y,z+1/2``.
+the Jones' faithful notation) such as `x,x-y,z+1/2`.
 The symmetry operation is represented by class Op.
 It can be created in C++ as::
 
@@ -293,7 +293,7 @@ Alternatively, the letters can be hkl or abc, or uppercase:
 
 The operation consists of a 3x3 rotation matrix and
 a translation vector, both stored internally as integers that need to be
-divided by ``DEN`` == 24 to get the actual values.
+divided by `DEN` == 24 to get the actual values.
 
 .. doctest::
 
@@ -344,7 +344,7 @@ Wrapping applies *modulo* 1 to the translational part.
 Which is usually desirable for crystallographic symmetry.
 But the triplets and matrices may represent also, for example,
 generation of a biological assembly.
-For this reason, ``x,y+1,z`` is not automatically reduced to the identity.
+For this reason, `x,y+1,z` is not automatically reduced to the identity.
 But when operations are combined,
 they are assumed to be symmetry operations and the result is wrapped to [0,1):
 
@@ -357,7 +357,7 @@ they are assumed to be symmetry operations and the result is wrapped to [0,1):
     >>> op * op * op  # without wrapping we'd have z+1
     <gemmi.Op("x,y,z")>
 
-The ``Op.rot`` matrix is called "rotation matrix", because that's the primary
+The `Op.rot` matrix is called "rotation matrix", because that's the primary
 purpose, but it can also represent different linear transformations:
 
 .. doctest::
@@ -394,7 +394,7 @@ Groups of Operations
 ====================
 
 Each space group setting corresponds to a unique set of operations.
-This set is represented by class ``GroupOps``.
+This set is represented by class `GroupOps`.
 
 Symmetry operations (rotation + translation) and
 centring vectors (translation only) are stored separately:
@@ -448,7 +448,7 @@ In particular, we can switch between enantiomorphic pairs using inversion:
   >>> gemmi.find_spacegroup_by_ops(ops)
   <gemmi.SpaceGroup("P 43")>
 
-and change to primitive space group using ``centred_to_primitive()``:
+and change to primitive space group using `centred_to_primitive()`:
 
 .. doctest::
 
@@ -463,7 +463,7 @@ and change to primitive space group using ``centred_to_primitive()``:
   'P'
 
 We can create GroupOps from a list of operations
-(in C++ use function ``split_centering_vectors``):
+(in C++ use function `split_centering_vectors`):
 
 .. doctest::
 
@@ -551,7 +551,7 @@ operations map the reflection onto itself:
   4
 
 We also have a function that calculates ε ignoring centering vectors
-(equivalent to the ``epsilon()`` function in cctbx):
+(equivalent to the `epsilon()` function in cctbx):
 
 .. doctest::
 
@@ -654,7 +654,7 @@ In Gemmi, to make calculations simpler, such a grid (class Grid)
 spans over the whole unit cell.
 To process only points in an ASU we use an ASU mask -- this is described
 in the section about :ref:`MaskedGrid <masked_grid>`.
-Such an ASU, generated by ``masked_asu()``, is inside the ASU brick,
+Such an ASU, generated by `masked_asu()`, is inside the ASU brick,
 but for some space groups it is not contiguous (which shouldn't be a problem).
 
 .. _reciprocal_asu:
@@ -673,7 +673,7 @@ such as TNT, use different ASU choice).
   >>> asu.condition_str()
   'k>=0 and (l>0 or (l=0 and h>=0))'
 
-The condition returned from ``condition_str()`` refers to the standard settings
+The condition returned from `condition_str()` refers to the standard settings
 of the space group, so it is the same for P 1 2 1 and P 1 1 2.
 Other functions depend on the settings used.
 
@@ -693,12 +693,12 @@ and what is the equivalent reflection in the ASU:
   >>> asu.to_asu([1, -2, 3], p2.operations())
   ([1, 2, 3], 4)
 
-``to_asu()`` returns also index of the symmetry operation between
+`to_asu()` returns also index of the symmetry operation between
 the original and the returned reflection -- the same number as ISYM in
 the MTZ format, odd for reflections in the positive asu (I+),
 even for negative (I-).
 The second argument (GroupOps) is passed explicitly to avoid determining
-space group operations many times when ``to_asu()`` is in a loop.
+space group operations many times when `to_asu()` is in a loop.
 
 Twinning
 ========
@@ -731,8 +731,8 @@ The threshold limits the obliquity (δ angle as defined by Le Page)
 of 2-fold rotations that are used as generators for the symmetry group.
 The function returns a GroupOps object with all the lattice symmetry operations
 except inversion (you can call GroupOps.add_inversion() to add it).
-Rotations are in ``sym_ops`` and the cell centering vectors
-(unimportant) are in ``cen_ops``.
+Rotations are in `sym_ops` and the cell centering vectors
+(unimportant) are in `cen_ops`.
 
 .. doctest::
 
@@ -850,11 +850,11 @@ and so-called *centring vectors* (max. 4 for the face-centered lattice).
   Example: Mantid_ (:file:`SpaceGroupFactory.cpp`).
 
 * Finally, one can use one of the two computer-adapted descriptions from ITfC.
-  The so-called explicit notation (``ICC$I3Q000$P4C393$P2D933``) is the
+  The so-called explicit notation (`ICC$I3Q000$P4C393$P2D933`) is the
   longer of the two, but easier to parse by the computer.
   It is used in the SPGGEN_ program.
 
-* The Hall notation (``-I 4bd 2c 3``), first proposed by Sydney R. Hall
+* The Hall notation (`-I 4bd 2c 3`), first proposed by Sydney R. Hall
   in 1981, is shorter and more popular.
   It can be interpreted by a few libraries:
 

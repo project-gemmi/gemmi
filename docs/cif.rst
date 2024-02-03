@@ -41,7 +41,7 @@ Key-value pairs have the form::
 
     _year 2017  # means year = 2017
 
-Blocks (sections) begin with the ``data_`` keyword
+Blocks (sections) begin with the `data_` keyword
 with a block name glued to it::
 
     data_tomato   # [tomato]
@@ -55,7 +55,7 @@ to concisely represent tabular data. This example from TOML docs::
                { x = 7, y = 8, z = 9 },
                { x = 2, y = 4, z = 8 } ]
 
-could be expressed as a so-called *loop* in STAR (keyword ``loop_``
+could be expressed as a so-called *loop* in STAR (keyword `loop_`
 followed by column names followed by values)::
 
     # STAR/CIF
@@ -74,13 +74,13 @@ Typically, long tables (loops) make most of the CIF content::
     5332 C CE  . MET C 238 ? 1.5699 1.6247 1.6108 -0.0907 0.0388  -0.0244
 
 The dot and question mark in the example above are two null types.
-In the CIF spec: ``?`` = *unknown* and ``.`` = *not applicable*.
-In mmCIF files ``.`` is used for mandatory items, ``?`` for not mandatory.
+In the CIF spec: `?` = *unknown* and `.` = *not applicable*.
+In mmCIF files `.` is used for mandatory items, `?` for not mandatory.
 
 The CIF syntax has a serious flaw resulting from historical trade-offs:
 a string that can be interpreted as a number does not need to be quoted.
-Therefore, the type of ``5332`` above is not certain:
-the JSON equivalent can be either ``5332`` or ``"5332"``.
+Therefore, the type of `5332` above is not certain:
+the JSON equivalent can be either `5332` or `"5332"`.
 
 Note: "STAR File" is trademarked by IUCr, and it used to be patented_.
 
@@ -135,8 +135,8 @@ We use it to read:
 The parser handles:
 
 * all constructs of CIF 1.1 (including *save frames*),
-* the ``global_`` and ``stop_`` keywords from STAR -- needed for Refmac
-  monomer library and ``mmcif_nmr-star.dic``, respectively.
+* the `global_` and `stop_` keywords from STAR -- needed for Refmac
+  monomer library and `mmcif_nmr-star.dic`, respectively.
 
 It could be extended to handle also the new features of CIF 2.0
 or even the full STAR format, but we don't have a good reason to do this.
@@ -167,7 +167,7 @@ the following rules to relax the syntax:
   (such files were written by old versions of Refmac and SHELXL,
   and were also present in the CCP4 monomer library),
 * block name (*blockcode*) can be empty, i.e. the block can start
-  with bare ``data_`` keyword (RELION and buccaneer write such files),
+  with bare `data_` keyword (RELION and buccaneer write such files),
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   `StarTools doc <http://www.globalphasing.com/startools/>`_ for details;
@@ -176,7 +176,7 @@ the following rules to relax the syntax:
   if whitespace after the tag ends with a new-line character.
   More specifically, the parsing step allows for missing value in such case,
   but the next validation step (which can be skipped when using using
-  low-level functions, such as ``parse_file()``) throws an error.
+  low-level functions, such as `parse_file()`) throws an error.
 
 
 Getting started
@@ -188,7 +188,7 @@ C++
 CIF parser is implemented in header files,
 so you do not need to compile Gemmi.
 It has a single dependency: PEGTL (also header-only),
-which is included under the ``include/gemmi/third_party`` directory.
+which is included under the `include/gemmi/third_party` directory.
 All you need is to make sure that Gemmi headers are in your
 project's include path, and compile your program as C++11 or later.
 
@@ -213,7 +213,7 @@ Python
 
 Python module can be installed with pip, as described in the
 :ref:`Installation <install_py>` section.
-After installation ``pydoc gemmi.cif`` should list all classes and methods.
+After installation `pydoc gemmi.cif` should list all classes and methods.
 
 To start with a simple example, here is a program that says hello to each
 element found in mmCIF:
@@ -241,7 +241,7 @@ Gemmi can parse CIF files in two ways that correspond to DOM and SAX:
 
 * Alternatively, from C++ only, one can define own
   `PEGTL Actions <https://github.com/taocpp/PEGTL/blob/master/doc/Actions-and-States.md>`_
-  for to the grammar rules from ``cif.hpp``.
+  for to the grammar rules from `cif.hpp`.
   These actions will be triggered while reading a CIF file.
 
 This documentation covers the DOM parsing only.
@@ -252,10 +252,10 @@ The hierarchy in the DOM reflects the structure of CIF 1.1:
 * Frame can contain name-value pairs and loops.
 * Loop (*m*\ ×\ *n* table) contains *n* column names and *m*\ ×\ *n* values.
 
-Names are often called *tags*. The leading ``_`` is usually treated
+Names are often called *tags*. The leading `_` is usually treated
 as part of the tag, not just a syntactic feature. So we store tag string
-with the underscore (``_my_tag``), and function that take tags as arguments
-expect strings starting with ``_``.
+with the underscore (`_my_tag`), and function that take tags as arguments
+expect strings starting with `_`.
 The case of tags is preserved.
 
 Values have types. CIF 1.1 defines four base types:
@@ -263,25 +263,25 @@ Values have types. CIF 1.1 defines four base types:
 * char (string)
 * uchar (ughh.. case-insensitive string)
 * numb (number that cannot be recognized as number on the syntax level)
-* null (one of two possible nulls: ``?`` and ``.``)
+* null (one of two possible nulls: `?` and `.`)
 
 Additionally, DDL2 dictionaries specify subtypes.
-For example, ``int`` and ``float`` are mmCIF subtypes of ``numb``.
+For example, `int` and `float` are mmCIF subtypes of `numb`.
 
 Since in general it is not possible to infer type without
 the corresponding dictionary, the DOM stores raw strings (including quotes).
 They can be later converted to required type using the following helper
 functions:
 
-* ``as_string()`` -- gets unquoted string,
-* ``as_number()`` -- gets floating-point number,
-* ``as_int()`` -- gets integer,
-* ``as_char()`` -- gets single character,
-* ``is_null()`` -- check if the value is null (i.e. ``?`` or ``.``),
+* `as_string()` -- gets unquoted string,
+* `as_number()` -- gets floating-point number,
+* `as_int()` -- gets integer,
+* `as_char()` -- gets single character,
+* `is_null()` -- check if the value is null (i.e. `?` or `.`),
 
 and we have also
 
-* ``quote()`` -- the opposite of ``as_string()`` -- add quotes appropriate
+* `quote()` -- the opposite of `as_string()` -- add quotes appropriate
   for the content of the string (usually, no quotes are necessary and no
   quotes are added).
 
@@ -290,8 +290,8 @@ C++
 
 .. highlight:: cpp
 
-All these helper functions are defined in ``gemmi/cifdoc.hpp``
-except for ``as_number()`` which is in ``gemmi/numb.hpp``.
+All these helper functions are defined in `gemmi/cifdoc.hpp`
+except for `as_number()` which is in `gemmi/numb.hpp`.
 They take a string as an argument and work as expected, for example::
 
   double rfree = cif::as_number(raw_rfree_string); // NaN if it's '?' or '.'
@@ -318,12 +318,12 @@ Reading a file
 ==============
 
 We have a few reading functions that read a file (or a string, or a stream)
-and return a document (DOM) -- an instance of class ``Document``.
+and return a document (DOM) -- an instance of class `Document`.
 
 C++
 ---
 
-The reading functions are in the ``gemmi::cif`` namespace::
+The reading functions are in the `gemmi::cif` namespace::
 
   #include <gemmi/cif.hpp>
 
@@ -332,27 +332,27 @@ The reading functions are in the ``gemmi::cif`` namespace::
   Document read_cstream(std::FILE *f, size_t bufsize, const char* name)
   Document read_istream(std::istream &is, size_t bufsize, const char* name)
 
-Parameter ``name`` is used only when reporting errors.
-Parameter ``bufsize`` determines the buffer size and only affects performance.
+Parameter `name` is used only when reporting errors.
+Parameter `bufsize` determines the buffer size and only affects performance.
 Regardless of the buffer size, the last two options are slower
-than ``read_file()`` -- they were not optimized for.
+than `read_file()` -- they were not optimized for.
 
-Additional header ``<gemmi/gz.hpp>`` is needed to transparently open
+Additional header `<gemmi/gz.hpp>` is needed to transparently open
 a gzipped file (by uncompressing it first into a memory buffer)
-if the filename ends with ``.gz``::
+if the filename ends with `.gz`::
 
     // in this and all the next examples: namespace cif = gemmi::cif;
     cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
 
 If you use it, you must also link the program with zlib. On Unix systems
-it usually means adding ``-lz`` to the compiler invocation.
+it usually means adding `-lz` to the compiler invocation.
 
-And if the ``path`` above is ``-``, the standard input is read.
+And if the `path` above is `-`, the standard input is read.
 
 If you use these functions in multiple compilation units, having
 the CIF parser implemented in headers makes the compilation time longer.
-To avoid it, include only ``<gemmi/read_cif.hpp>``
-and either link with libgemmi or add ``src/read_cif.cpp`` to your project.
+To avoid it, include only `<gemmi/read_cif.hpp>`
+and either link with libgemmi or add `src/read_cif.cpp` to your project.
 
 
 Python
@@ -374,7 +374,7 @@ Python
 Low-level functions
 -------------------
 
-The ``read_file()`` call is equivalent to the following sequence:
+The `read_file()` call is equivalent to the following sequence:
 
 .. testcode::
 
@@ -389,8 +389,8 @@ The last two functions check for, respectively, missing values in tag-value
 pairs and duplicated names.
 It is possible to read erroneous CIF files by skipping these checks.
 
-Analogically, function ``read_string()`` can be replaced by a similar
-sequence with ``Document.parse_string()`` doing the main job:
+Analogically, function `read_string()` can be replaced by a similar
+sequence with `Document.parse_string()` doing the main job:
 
 .. doctest::
 
@@ -409,18 +409,18 @@ Writing a file
 
 Document (or a single Block) can be written to a file or to a string.
 Reading from a file and then writing to a file does not preserve whitespace.
-The formatting of the output file is controlled by ``cif::WriteOptions``,
+The formatting of the output file is controlled by `cif::WriteOptions`,
 which contains the following fields (by default, they are all false or 0):
 
-* ``prefer_pairs`` (bool) -- if set to true, write single-row loops as pairs,
-* ``compact`` (bool) -- if set to true, do not add blank lines between categories,
-* ``misuse_hash`` (bool) -- if set to true, put ``#`` (empty comments) between
+* `prefer_pairs` (bool) -- if set to true, write single-row loops as pairs,
+* `compact` (bool) -- if set to true, do not add blank lines between categories,
+* `misuse_hash` (bool) -- if set to true, put `#` (empty comments) between
   categories -- the peculiar formatting used in the wwPDB archive;
-  enables diff-ing (``diff --ignore-space-change``) with other such files,
-* ``align_pairs`` (int) -- pad tags in tag-value pairs to this width
+  enables diff-ing (`diff --ignore-space-change`) with other such files,
+* `align_pairs` (int) -- pad tags in tag-value pairs to this width
   (if set to 33, the values will be aligned at column 35,
   except where tags have more than 33 characters),
-* ``align_loops`` (int) -- if non-zero, columns in loops are aligned
+* `align_loops` (int) -- if non-zero, columns in loops are aligned
   to the maximum string width in each column, but not more than
   this value; if one string in the column is very wide, that row will be
   misaligned, which is usually preferable to excessive padding.
@@ -428,8 +428,8 @@ which contains the following fields (by default, they are all false or 0):
 C++
 ---
 
-The functions writing ``cif::Document`` and ``cif::Block`` to C++ stream
-is in a separate header ``gemmi/to_cif.hpp``::
+The functions writing `cif::Document` and `cif::Block` to C++ stream
+is in a separate header `gemmi/to_cif.hpp`::
 
   void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOption options)
   void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOption options)
@@ -438,7 +438,7 @@ Python
 ------
 
 In Python, the function that writes the document to a file is a method
-of the ``Document`` class:
+of the `Document` class:
 
 .. doctest::
 
@@ -453,35 +453,35 @@ It can take the style as optional, second argument:
   >>> options.align_loops = 30
   >>> doc.write_file('1pfe-aligned.cif', options)
 
-The ``Document`` class also has a method ``as_string()`` which returns
-the text that would be written by ``write_file()``.
+The `Document` class also has a method `as_string()` which returns
+the text that would be written by `write_file()`.
 
-The ``Block`` class also has methods ``write_file()`` and ``as_string()``
+The `Block` class also has methods `write_file()` and `as_string()`
 with the same arguments.
 
 Document
 ========
 
-``Document`` is made of blocks with data. The blocks can be iterated over,
+`Document` is made of blocks with data. The blocks can be iterated over,
 accessed by index or by name (each CIF block must have a unique name).
 
 As it is common for cif files to contain only a single block,
-gemmi has a method ``sole_block()`` that returns the first block
+gemmi has a method `sole_block()` that returns the first block
 if the document has only one block; otherwise it throws an exception.
 
-At last, is also has a member variable ``source`` that contains
+At last, is also has a member variable `source` that contains
 the path of the file from which the document was read (if it was read
 from a file).
 
 C++
 ---
 
-``Document`` has the two member variables::
+`Document` has the two member variables::
 
   std::string source;  // filename or the name passed to read_memory()
   std::vector<Block> blocks;
 
-Each ``Block`` corresponds to a data block.
+Each `Block` corresponds to a data block.
 To access a block with known name use::
 
   Block* Document::find_block(const std::string& name)
@@ -490,7 +490,7 @@ To access the only block in the file you may use::
 
   Block& Document::sole_block()
 
-A new ``Document`` instance can be created with default constructor.
+A new `Document` instance can be created with default constructor.
 To modify a document you need to access directly its member variables.
 With one exception: when adding new blocks you can use a function that
 additionally checks if the new name is unique::
@@ -501,7 +501,7 @@ additionally checks if the new name is unique::
 Python
 ------
 
-``Document`` can be iterated, accessed by block index and by block name:
+`Document` can be iterated, accessed by block index and by block name:
 
 .. doctest::
 
@@ -533,8 +533,8 @@ It has two other ways of accessing a block:
 Blocks can be inserted (by default -- appended after existing blocks)
 using one of the two functions:
 
-* ``Document.add_new_block(name, pos=-1)``
-* ``Document.add_copied_block(block, pos=-1)``
+* `Document.add_new_block(name, pos=-1)`
+* `Document.add_copied_block(block, pos=-1)`
 
 As an example, here is how to start a new document:
 
@@ -544,7 +544,7 @@ As an example, here is how to start a new document:
   >>> block_one = d.add_new_block('block-one')
   >>> # populate block_one
 
-To delete a block use ``Document.__delitem__`` (for example: ``del doc[1]``).
+To delete a block use `Document.__delitem__` (for example: `del doc[1]`).
 
 Document has also one property
 
@@ -562,9 +562,9 @@ Document has also one property
    The same applies to functions that add/remove items in a block.
    More precisely:
 
-   * functions that add items (e.g. ``add_new_block``) may cause memory
+   * functions that add items (e.g. `add_new_block`) may cause memory
      re-allocation invalidating references to all other items (blocks),
-   * functions that remove items (``__delitem__``) invalidate references to
+   * functions that remove items (`__delitem__`) invalidate references to
      all items after the removed one.
 
    This means that you need to update a reference before using it:
@@ -585,11 +585,11 @@ Each item is one of:
 * table, a.k.a loop (Loop)
 * or save frame (Block -- the same data structure as for block).
 
-A block headed by the word ``global_``, part of the STAR syntax, although
+A block headed by the word `global_`, part of the STAR syntax, although
 `not allowed <https://onlinelibrary.wiley.com/iucr/itc/Ga/ch2o2v0001/sec2o2o7o1o9o5/>`_
 in CIF, is :ref:`parsed <what_is_parsed>` into a Block with empty name.
 
-A block headed by bare ``data_``, although not allowed neither in CIF nor
+A block headed by bare `data_`, although not allowed neither in CIF nor
 in STAR, is parsed into a Block with name set to " " (the space character).
 
 C++
@@ -600,7 +600,7 @@ Each block contains::
     std::string name;
     std::vector<Item> items;
 
-where ``Item`` is implemented as an unrestricted (C++11) union
+where `Item` is implemented as an unrestricted (C++11) union
 that holds one of Pair, Loop or Block.
 
 Python
@@ -641,11 +641,11 @@ Frame
 
 (Very few people need it, skip this section.)
 
-The *named save frames* (keyword ``save_``) from the STAR specification
+The *named save frames* (keyword `save_`) from the STAR specification
 are used in CIF files only as sub-sections of a block.
 The only place where they are encountered are mmCIF dictionaries.
 
-The save-frame is stored as ``Block`` and can be accessed with::
+The save-frame is stored as `Block` and can be accessed with::
 
   Block* Block::find_frame(std::string name)
 
@@ -703,7 +703,7 @@ or, if you want just the value::
 
   const std::string* Block::find_value(const std::string& tag) const
 
-Both functions return ``nullptr`` if the tag is not found
+Both functions return `nullptr` if the tag is not found
 (but the latter also searches inside CIF loops and if there
 is a matching tag with only a single value, that value is returned).
 
@@ -712,7 +712,7 @@ To add a pair to the block, or modify an existing one, use::
   void Block::set_pair(const std::string& tag, std::string value)
 
 If the value needs quoting, the passed argument needs to be already quoted
-(you may pass ``cif::quote(value)``).
+(you may pass `cif::quote(value)`).
 
 ----
 
@@ -728,18 +728,18 @@ To get values corresponding to a tag in a loop (table) you may use::
 
   Column Block::find_loop(const std::string& tag)
 
-``struct Column``, which is documented further on, has method ``get_loop()``
-which gives access to ``struct Loop``.
+`struct Column`, which is documented further on, has method `get_loop()`
+which gives access to `struct Loop`.
 
 A new loop can be added using function::
 
   Loop& Block::init_loop(const std::string& prefix, std::vector<std::string> tags)
 
-Then it can be populated by either setting directly ``tags`` and ``values``,
-or by using Loop's methods such as ``add_row()`` or ``set_all_values()``.
+Then it can be populated by either setting directly `tags` and `values`,
+or by using Loop's methods such as `add_row()` or `set_all_values()`.
 
 Loop has a few other methods for editing its content, such as
-``move_row()``, ``add_columns()`` and ``remove_column()``.
+`move_row()`, `add_columns()` and `remove_column()`.
 
 Python
 ------
@@ -767,15 +767,15 @@ Accessing name-value pairs:
   >>> block.find_pair_item('_nothing')  # return None
 
 To add a name-value pair, replacing current item if it exists,
-use function ``set_pair``:
+use function `set_pair`:
 
 .. doctest::
 
   >>> block.set_pair('_year', '2030')
 
 If a new item is added, it is placed at the end of the block.
-Then you can move it to a more appropriate position with ``move_item()``.
-Alternatively, you can use function ``set_pairs`` that takes a prefix and,
+Then you can move it to a more appropriate position with `move_item()`.
+Alternatively, you can use function `set_pairs` that takes a prefix and,
 when adding a new item, places it after the last item with the given prefix:
 
 .. doctest::
@@ -784,10 +784,10 @@ when adding a new item, places it after the last item with the given prefix:
   ...                            'length_b_esd': '?',
   ...                            'length_c_esd': '?'}, raw=True)
 
-(In C++ the equivalent is ``cif::ItemSpan(block, "_cell.").set_pair(…)``).
+(In C++ the equivalent is `cif::ItemSpan(block, "_cell.").set_pair(…)`).
 This is recommended when editing mmCIF files, because all name-value pairs
 in the same category must be consecutive (an unwritten rule of the PDB).
-The argument ``raw`` has the same meaning as in the function
+The argument `raw` has the same meaning as in the function
 :ref:`set_mmcif_category <set_mmcif_category>`.
 
 If the value needs quoting, it must be passed quoted:
@@ -826,7 +826,7 @@ To access values in loop:
   >>> _.loop
   <gemmi.cif.Loop 6 x 1>
 
-To add a row to an existing table (loop) use ``add_row``:
+To add a row to an existing table (loop) use `add_row`:
 
 .. doctest::
 
@@ -836,8 +836,8 @@ To add a row to an existing table (loop) use ``add_row``:
   >>> list(block.find_loop('_atom_type.symbol'))
   ['Au', 'C', 'CL', 'N', 'O', 'P', 'S', 'Zr']
 
-``add_row`` takes as an argument a list of strings, which should be quoted
-if necessary. If you have a list Python values use ``quote_list`` first:
+`add_row` takes as an argument a list of strings, which should be quoted
+if necessary. If you have a list Python values use `quote_list` first:
 
 .. doctest::
 
@@ -855,7 +855,7 @@ Columns can be added and removed:
   >>> loop
   <gemmi.cif.Loop 8 x 2>
 
-``set_all_values`` sets all the data in a table. It takes as an argument
+`set_all_values` sets all the data in a table. It takes as an argument
 a list of lists of string. The lists of strings correspond to columns.
 
 .. doctest::
@@ -879,7 +879,7 @@ Individual values can be be accessed with (row,column) tuples:
   >>> loop.values  # Loop.values is a read-only list (a copy of all values)
   ['primary', "'Carol C.'", '1', 'primary', "'Bob B.'", '2']
 
-To add a new loop (replacing old one if it exists) use ``init_loop``:
+To add a new loop (replacing old one if it exists) use `init_loop`:
 
 .. doctest::
 
@@ -887,8 +887,8 @@ To add a new loop (replacing old one if it exists) use ``init_loop``:
   >>> # empty table is invalid in CIF, we need to add something
   >>> loop.add_row(['1', cif.quote('Atlantic Ocean')])
 
-In the above example, if the block already has tags ``_ocean_id``
-and/or ``_ocean_name`` and
+In the above example, if the block already has tags `_ocean_id`
+and/or `_ocean_name` and
 
 * if they are in a table: the table will be cleared and re-used,
 * if they are in name-value pairs: the pairs will be removed
@@ -896,8 +896,8 @@ and/or ``_ocean_name`` and
 
 ----
 
-To reorder items, use ``block.move_item(old_pos, new_pos)``.
-The current position of a tag can be obtained using ``block.get_index(tag)``.
+To reorder items, use `block.move_item(old_pos, new_pos)`.
+The current position of a tag can be obtained using `block.get_index(tag)`.
 
 .. doctest::
 
@@ -925,20 +925,20 @@ To copy an item:
 Column
 ======
 
-``Column`` is a lightweight proxy class for working with both loop columns
+`Column` is a lightweight proxy class for working with both loop columns
 and name-value pairs.
 
-It was returned from ``find_loop`` above, but it is also returned from
-a more general function ``find_values()``, which searches for a given
+It was returned from `find_loop` above, but it is also returned from
+a more general function `find_values()`, which searches for a given
 tag in both loops and pairs.
 
 C++
 ---
-The C++ signature of ``find_values`` is::
+The C++ signature of `find_values` is::
 
   Column Block::find_values(const std::string& tag)
 
-``Column`` has a few member functions::
+`Column` has a few member functions::
 
   // Number of rows in the loop. 0 means that the tag was not found.
   int length() const;
@@ -965,15 +965,15 @@ The C++ signature of ``find_values`` is::
   // Erases item for name-value pair; removes column for Loop
   void erase();
 
-``Column`` also provides support for C++11 range-based ``for``::
+`Column` also provides support for C++11 range-based `for`::
 
   // mmCIF _chem_comp_atom is usually a table, but not always
   for (const std::string &s : block.find_values("_chem_comp_atom.type_symbol"))
     std::cout << s << std::endl;
 
 If the column represents a name-value pair,
-``Column::get_loop()`` return ``nullptr``
-(and ``Column::get_length()`` returns 1).
+`Column::get_loop()` return `nullptr`
+(and `Column::get_length()` returns 1).
 
 Python
 ------
@@ -985,9 +985,9 @@ Python
   >>> block.find_values('_atom_site.Cartn_x')  # column in a loop
   <gemmi.cif.Column _atom_site.Cartn_x length 342>
 
-Column's special method ``__bool__`` tells if the tag was found.
-``__len__`` returns the number of corresponding values.
-``__iter__``,  ``__getitem__`` and ``__setitem__``
+Column's special method `__bool__` tells if the tag was found.
+`__len__` returns the number of corresponding values.
+`__iter__`,  `__getitem__` and `__setitem__`
 get or set a raw string (i.e. string with quotes, if applicable).
 
 As an example, let us shift all the atoms by 1A in the x direction:
@@ -999,7 +999,7 @@ As an example, let us shift all the atoms by 1A in the x direction:
   ...   col_x[n] = str(float(x) + 1)
 
 To get the actual string content (without quotes) one may use
-the method ``str``:
+the method `str`:
 
 .. doctest::
 
@@ -1009,22 +1009,22 @@ the method ``str``:
   >>> column.str(7)  # short-cut for cif.as_string(column[7])
   'H2 O'
 
-The tag is accessible (read/write) through the ``tag`` property:
+The tag is accessible (read/write) through the `tag` property:
 
 .. doctest::
 
   >>> column.tag
   '_chem_comp.formula'
 
-If the tag was found in a loop, method ``get_loop`` returns a reference
-to this ``Loop`` in the DOM. Otherwise it returns ``None``.
+If the tag was found in a loop, method `get_loop` returns a reference
+to this `Loop` in the DOM. Otherwise it returns `None`.
 
 .. doctest::
 
   >>> column.get_loop()
   <gemmi.cif.Loop 12 x 7>
 
-``erase()`` removes the column from a loop, if this column is in a loop;
+`erase()` removes the column from a loop, if this column is in a loop;
 if it's a tag-value pair it erases the containing item.
 
 .. doctest::
@@ -1038,14 +1038,14 @@ Table
 =====
 
 Usually we want to access multiple columns at once,
-so the library has another abstraction (``Table``)
+so the library has another abstraction (`Table`)
 that can be used with multiple tags.
 
-``Table`` is returned by ``Block.find()``.
+`Table` is returned by `Block.find()`.
 Like column, it is a lightweight, iterable view of the data,
 but it is for querying multiple related tags at the same time.
 
-The first form of ``find()`` takes a list of tags::
+The first form of `find()` takes a list of tags::
 
   Table Block::find(const std::vector<std::string>& tags)
 
@@ -1071,7 +1071,7 @@ as the first argument::
   <gemmi.cif.Table 18 x 3>
 
 
-Note that ``find`` is not aware of dictionaries and categories,
+Note that `find` is not aware of dictionaries and categories,
 therefore the category name should end with a separator
 (dot for mmCIF files, as shown above).
 
@@ -1085,7 +1085,7 @@ the returned Table is empty.
   <gemmi.cif.Table nil>
 
 Tags (all except the first one) can be marked
-as *optional* by adding prefix ``?``::
+as *optional* by adding prefix `?`::
 
   Table table = block.find({"_required_tag", "?_optional_tag"})
 
@@ -1095,8 +1095,8 @@ as *optional* by adding prefix ``?``::
 
 In such case the returned table may contain either one or two columns.
 Before accessing column corresponding to an optional tag one must check
-if the column exists with ``Table::has_column()`` (or, alternatively,
-with equivalent function ``Table::Row::has()`` which will be introduced
+if the column exists with `Table::has_column()` (or, alternatively,
+with equivalent function `Table::Row::has()` which will be introduced
 later)::
 
   bool Table::has_column(int n) const
@@ -1108,7 +1108,7 @@ later)::
   >>> _.has_column(0), _.has_column(1), _.has_column(2)
   (True, True, False)
 
-The ``Table`` has functions to check its shape::
+The `Table` has functions to check its shape::
 
   bool ok() const;  // true if the table is not empty
   size_t width() const;  // number of columns
@@ -1146,7 +1146,7 @@ and the prefix can be retrieved::
   >>> table.get_prefix()
   '_entity_poly_seq.'
 
-Table also has function ``erase()`` that deletes all tags and data
+Table also has function `erase()` that deletes all tags and data
 associated with the table.
 See an example in the :ref:`CCD section <ccd_example>` below.
 
@@ -1155,7 +1155,7 @@ Row-wise access
 ---------------
 
 Most importantly, the Table provides access to data in rows and columns.
-We can get a row (``Table::Row``) that in turn provides access to value strings::
+We can get a row (`Table::Row`) that in turn provides access to value strings::
 
   Row Table::operator[](int n)  // access Row
   Row Table::at(int n)          // the same but with bounds checking
@@ -1200,7 +1200,7 @@ Such table has 0 rows, but it can be iterated like an empty list:
   ... # nothing gets printed, but there is no error
 
 
-``Table::Row`` has functions for accessing the values::
+`Table::Row` has functions for accessing the values::
 
   // Get raw value.
   std::string& Table::Row::operator[](int n)  // no bounds checking
@@ -1252,7 +1252,7 @@ and a property::
 
 ----
 
-We can append a row to Table (function ``Table::append_row``):
+We can append a row to Table (function `Table::append_row`):
 
 .. doctest::
 
@@ -1270,14 +1270,14 @@ move a row to a different position:
   >>> table[0]
   <gemmi.cif.Table.Row: 3 4 new>
 
-and remove a row from Table (function ``Table::remove_row``):
+and remove a row from Table (function `Table::remove_row`):
 
 .. doctest::
 
   >>> table.remove_row(18)  # or: del table[18]
 
 To efficiently remove multiple consecutive rows use
-C++ function ``Table::remove_rows`` or Python ``__delitem__`` with slice:
+C++ function `Table::remove_rows` or Python `__delitem__` with slice:
 
 .. doctest::
 
@@ -1314,8 +1314,8 @@ As an example, let us swap two tag names
 Column-wise access
 ------------------
 
-``Table`` gives also access to columns, represented by the previously
-introduced ``Column``::
+`Table` gives also access to columns, represented by the previously
+introduced `Column`::
 
     Column Table::column(int index)
 
@@ -1330,7 +1330,7 @@ introduced ``Column``::
   <gemmi.cif.Column _entity_poly_seq.mon_id length 15>
 
 If the table is created in a function that uses prefix,
-the prefix can be omitted in ``find_column``::
+the prefix can be omitted in `find_column`::
 
   Table t = block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"});
   Column col = t.find_column(2);
@@ -1345,11 +1345,11 @@ the prefix can be omitted in ``find_column``::
   <gemmi.cif.Column _entity_poly_seq.mon_id length 15>
 
 C++ note:
-both ``Column`` and ``Table::Row`` have functions ``begin()`` and ``end()``
-in const and non-const variants, returning ``iterator`` and
-``const_iterator`` types, respectively. These types satisfy requirements
+both `Column` and `Table::Row` have functions `begin()` and `end()`
+in const and non-const variants, returning `iterator` and
+`const_iterator` types, respectively. These types satisfy requirements
 of the BidirectionalIterator concept.
-Conversely, the iterator over the rows of ``Table`` is a minimalistic
+Conversely, the iterator over the rows of `Table` is a minimalistic
 structure -- just enough get the range-for work.
 
 
@@ -1357,7 +1357,7 @@ mmCIF categories
 ----------------
 
 mmCIF files group data into categories. All mmCIF tags have a dot
-(e.g. ``_entry.id``) and the category name is the part before the dot.
+(e.g. `_entry.id`) and the category name is the part before the dot.
 
 C++
 ~~~
@@ -1367,7 +1367,7 @@ One returns a list of all categories in the block::
 
   std::vector<std::string> Block::get_mmcif_category_names() const
 
-The other returns a ``Table`` with all tags (and values) belonging to
+The other returns a `Table` with all tags (and values) belonging to
 the specified category::
 
   Table Block::find_mmcif_category(std::string cat)
@@ -1400,8 +1400,8 @@ Python bindings have the same two functions:
   >>> cat[3][1]
   'D_1000019291'
 
-Additionally, two Python-specific functions: ``get_mmcif_category``
-and ``set_mmcif_category`` translate between an mmCIF category and
+Additionally, two Python-specific functions: `get_mmcif_category`
+and `set_mmcif_category` translate between an mmCIF category and
 Python dictionary:
 
 .. doctest::
@@ -1411,8 +1411,8 @@ Python dictionary:
   >>> sorted(block.get_mmcif_category('_database_2.').keys())
   ['database_code', 'database_id']
 
-``?`` and ``.`` are translated to ``None`` and ``False``.
-To disable this translation and get "raw" strings, add argument ``raw=True``.
+`?` and `.` are translated to `None` and `False`.
+To disable this translation and get "raw" strings, add argument `raw=True`.
 
 .. doctest::
 
@@ -1427,7 +1427,7 @@ To disable this translation and get "raw" strings, add argument ``raw=True``.
 
 .. _set_mmcif_category:
 
-``set_mmcif_category()`` takes a category name and a dictionary (that
+`set_mmcif_category()` takes a category name and a dictionary (that
 maps tags to lists) and creates or replaces the corresponding category:
 
 .. doctest::
@@ -1435,8 +1435,8 @@ maps tags to lists) and creates or replaces the corresponding category:
   >>> ocean_data = {'id': [1, 2, 3], 'name': ['Atlantic', 'Pacific', 'Indian']}
   >>> block.set_mmcif_category('_ocean', ocean_data)
 
-It also takes the optional ``raw`` parameter (default: ``False``).
-Specify ``raw=True`` if the values are already quoted, otherwise
+It also takes the optional `raw` parameter (default: `False`).
+Specify `raw=True` if the values are already quoted, otherwise
 they will be quoted twice.
 
 .. doctest::
@@ -1452,24 +1452,24 @@ they will be quoted twice.
   ['?', '.', "'a b'"]
 
 
-Finally, we have a variant of ``init_loop`` for working with mmCIF categories:
+Finally, we have a variant of `init_loop` for working with mmCIF categories:
 
 .. doctest::
 
   >>> loop = block.init_mmcif_loop('_ocean.', ['id', 'name'])
   >>> loop.add_row(['1', 'Atlantic'])
 
-The subtle difference from generic ``init_loop`` is that if the block
-has other name-value pairs in the same category (say, ``_ocean.depth 8.5``)
-``init_loop`` leaves them untouched, but ``init_mmcif_loop`` removes them.
-Additionally, like in other ``_mmcif_`` functions, the trailing dot
+The subtle difference from generic `init_loop` is that if the block
+has other name-value pairs in the same category (say, `_ocean.depth 8.5`)
+`init_loop` leaves them untouched, but `init_mmcif_loop` removes them.
+Additionally, like in other `_mmcif_` functions, the trailing dot
 in the category name may be omitted (but the leading underscore is required).
 
 
 JSON
 ====
 
-``cif::Document`` can be stored in a JSON format, and it can be read from
+`cif::Document` can be stored in a JSON format, and it can be read from
 JSON file. This is in general true about CIF files - their content can
 be converted to JSON and back. In gemmi we have a number of options to
 customize the translation. In particular, both mmCIF and CIF-JSON flavours
@@ -1480,21 +1480,21 @@ More details about the flavours are given in the description of
 C++
 ---
 
-Header ``gemmi/to_json.hpp`` provides code for serializing
-``cif::Document`` as JSON.
+Header `gemmi/to_json.hpp` provides code for serializing
+`cif::Document` as JSON.
 
-Such JSON files can be read back into the ``cif::Document`` structure
-using function from ``gemmi/json.hpp``.
+Such JSON files can be read back into the `cif::Document` structure
+using function from `gemmi/json.hpp`.
 
 Python
 ------
 
-``Document.as_json()`` returns the document serialized in JSON string.
-To output mmJSON add argument ``mmjson=True``.
+`Document.as_json()` returns the document serialized in JSON string.
+To output mmJSON add argument `mmjson=True`.
 
-mmJSON (possibly gzipped) can be read using function ``cif.read_mmjson()``.
-In addition, the function ``cif.read()`` will also read mmJSON format
-if the file name ends with ``.json`` or ``.json.gz``.
+mmJSON (possibly gzipped) can be read using function `cif.read_mmjson()`.
+In addition, the function `cif.read()` will also read mmJSON format
+if the file name ends with `.json` or `.json.gz`.
 
 
 Design choices
@@ -1539,12 +1539,12 @@ We decided to rely on the C++ standard library where we can.
 Generally, storage of such data involves (in C++ terms) some containers
 and a union/variant type for storing values of mixed types.
 
-We use primarily ``std::vector`` as a container.
+We use primarily `std::vector` as a container.
 
-A custom structure ``Item`` with (unrestricted) union is used as
+A custom structure `Item` with (unrestricted) union is used as
 a variant-like class.
 
-Strings are stored in ``std::string`` and it is fast enough.
+Strings are stored in `std::string` and it is fast enough.
 Mainstream C++ standard libraries have short string optimization (SSO)
 for up to 15 or 22 characters, which covers most of the values in mmCIF files.
 
@@ -1564,7 +1564,7 @@ Directory walking
 Many of the utilities and examples developed for this project
 work with archives of CIF files such as wwPDB or COD.
 To make it easier to iterate over all CIF files in a directory tree
-we provide a class ``CifWalk``.
+we provide a class `CifWalk`.
 
 C++
 ---
@@ -1580,9 +1580,9 @@ C++
     // ...
   }
 
-This header file contains also a more general ``DirWalk`` class,
-and classes specific to macromolecular files (``PdbWalk``, ``MmCifWalk``,
-``CoorFileWalk``). The file type of each file is guessed from
+This header file contains also a more general `DirWalk` class,
+and classes specific to macromolecular files (`PdbWalk`, `MmCifWalk`,
+`CoorFileWalk`). The file type of each file is guessed from
 the file name.
 
 Python
@@ -1598,7 +1598,7 @@ Anyway, we provide bindings for CifWalk:
   >>> list(gemmi.CifWalk('../tests/'))[:2]
   ['../tests/list/mon_lib_list.cif', '../tests/1011031.cif']
 
-We also have Python bindings for ``CoorFileWalk`` that picks macromolecular
+We also have Python bindings for `CoorFileWalk` that picks macromolecular
 coordinate files.
 
 ----
@@ -1608,7 +1608,7 @@ the functions above raise an error (std::runtime_error / RuntimeError).
 
 All these directory walking functions are powered by the
 `tinydir <https://github.com/cxong/tinydir>`_ library
-(a single-header library copied into ``include/gemmi/third_party``).
+(a single-header library copied into `include/gemmi/third_party`).
 
 .. _cif_examples:
 
@@ -1641,7 +1641,7 @@ to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
 auth vs label
 -------------
 
-When you look at the list of atoms (``_atom_site.*``) in mmCIF files
+When you look at the list of atoms (`_atom_site.*`) in mmCIF files
 some columns seem to be completely redundant. Are they?
 
 .. raw:: html
@@ -1781,8 +1781,8 @@ some columns seem to be completely redundant. Are they?
     </table>
 
 It is hard to manually find an example
-where ``_atom_site.auth_atom_id`` differs from ``_atom_site.label_atom_id``, or
-where ``_atom_site.auth_comp_id`` differs from ``_atom_site.label_comp_id``.
+where `_atom_site.auth_atom_id` differs from `_atom_site.label_atom_id`, or
+where `_atom_site.auth_comp_id` differs from `_atom_site.label_comp_id`.
 So here is a small C++ program:
 
 .. literalinclude:: ../examples/auth_label.cpp
@@ -2002,9 +2002,9 @@ First, let us look at chem_comp tables:
     ...
 
 We expect that by using molecular weights of elements and a simple arithmetic
-we can recalculate ``_chem_comp.formula_weight`` from ``_chem_comp.formula``.
-The full code is in :file:`examples/weights.py``.
-It includes a function that converts ``'C2 H6 O2'`` to ``{C:2, H:6, O:2}``.
+we can recalculate `_chem_comp.formula_weight` from `_chem_comp.formula`.
+The full code is in :file:`examples/weights.py`.
+It includes a function that converts `'C2 H6 O2'` to `{C:2, H:6, O:2}`.
 Here we only show the few lines of code that sum the element weights
 and compare the result:
 
@@ -2036,7 +2036,7 @@ the 0.01u difference in the input masses of the elements.
 In two entries D3O is missing D in the formula, and -2.016 in HFW
 suggests two missing hydrogens.
 
-Now let us try to re-calculate ``_entity.formula_weight`` from the chem_comp
+Now let us try to re-calculate `_entity.formula_weight` from the chem_comp
 weights and the sequence.
 The PDB software calculates it as a sum of components in the chain,
 minus the weight of N-1 waters.
@@ -2070,7 +2070,7 @@ Disulfide bonds
 
 If we were curious what residues take part in disulfide bonds we could
 write a little script that inspects annotation in the _struct_conn category.
-But to show something else, here we will use ``gemmi grep``, a little
+But to show something else, here we will use `gemmi grep`, a little
 utility that is documented in a :ref:`separate section <grep>`.
 
 First we try how to extract interesting data from a single entry:
@@ -2085,7 +2085,7 @@ First we try how to extract interesting data from a single entry:
     5CBL covale ILE CD1 BME C2
 
 Then we pipe the output through Unix shell utilities.
-``| grep disulf`` limits the output to the disulfide bonds.
+`| grep disulf` limits the output to the disulfide bonds.
 ``| awk '{ print $3, $4 "\n" $5, $6 }'`` changes each line into two;
 the first output line above becomes:
 
@@ -2147,7 +2147,7 @@ statistics. The complete command is:
           1 6ML S1
           1 5O8 SBH
 
-And what other bond types are annotated in ``_struct_conn``?
+And what other bond types are annotated in `_struct_conn`?
 
 .. code-block:: console
 

@@ -30,7 +30,7 @@ MTZ format
 
 MTZ format has textual headers and a binary data table, where all numbers
 are stored in a 32-bit floating point format.
-The headers, as well as data, are stored in class ``Mtz``.
+The headers, as well as data, are stored in class `Mtz`.
 We have two types of MTZ files:
 
 * merged -- single record per (*hkl*) reflection
@@ -42,7 +42,7 @@ Normally, the column name is all that is needed; the hierarchy can be ignored.
 In Gemmi, the hierarchy is flattened:
 we have a list of columns and a list of datasets.
 Each columns is associated with one dataset, and each dataset has properties
-``dataset_name``, ``project_name`` and ``crystal_name``,
+`dataset_name`, `project_name` and `crystal_name`,
 which is enough to reconstruct the tree-like hierarchy if needed.
 
 In unmerged files it is records, not columns, that are the associated
@@ -107,7 +107,7 @@ The resolution can also be checked using functions:
   1.6639645192598425
 
 Importantly, Mtz class has a list of datasets and a list of columns.
-Datasets are stored in the variable ``datasets``::
+Datasets are stored in the variable `datasets`::
 
   std::vector<Mtz::Dataset> Mtz::datasets
 
@@ -152,7 +152,7 @@ Python bindings provide the same properties:
   >>> mtz.dataset(0).wavelength
   0.0
 
-Columns are stored in variable ``columns``::
+Columns are stored in variable `columns`::
 
   std::vector<Mtz::Column> Mtz::columns
 
@@ -187,8 +187,8 @@ To get all columns of the specified type use:
   [<gemmi.Mtz.Column SIGFP type Q>, <gemmi.Mtz.Column SIGI type Q>]
 
 Different programs use different column names for the same thing.
-To access the column free set flags you may use function ``rfree_column``
-which searches for column of type ``I`` named
+To access the column free set flags you may use function `rfree_column`
+which searches for column of type `I` named
 FREE, RFREE, FREER, FreeR_flag or R-free-flags:
 
 .. doctest::
@@ -229,14 +229,14 @@ Python bindings provide the same properties:
   >>> intensity.source
   'CREATED_17/05/2019_12:15:14'
 
-C++ function ``Mtz::Column::size()`` is wrapped in Python as ``__len__``:
+C++ function `Mtz::Column::size()` is wrapped in Python as `__len__`:
 
 .. doctest::
 
   >>> len(intensity)
   441
 
-In both C++ and Python ``Column`` supports the iteration protocol:
+In both C++ and Python `Column` supports the iteration protocol:
 
 .. doctest::
   :skipif: numpy is None
@@ -340,7 +340,7 @@ It can be useful to switch between the two:
   True
 
 The return value indicates that the indices were switched.
-It would be ``False`` only if it was a merged MTZ file.
+It would be `False` only if it was a merged MTZ file.
 Keeping track what the current indices mean is up to the user.
 They are "asu" after reading a file and they must be "asu" before writing
 to a file.
@@ -356,7 +356,7 @@ Data in NumPy and pandas
 
   >>> numpy.set_printoptions(threshold=5)
 
-In Python Column has a read-only ``array`` property that provides
+In Python Column has a read-only `array` property that provides
 a view of the data compatible with NumPy. It does not copy the data,
 so the data is not contiguous (because it's stored row-wise in MTZ):
 
@@ -382,7 +382,7 @@ similar to `#3 <http://www.auspex.de/pathol/#3>`_:
   :align: center
   :scale: 100
 
-The Mtz class also has a read-only property named ``array``.
+The Mtz class also has a read-only property named `array`.
 It provides access to all the MTZ data as 2D NumPy array
 (C-style contiguous), without copying it:
 
@@ -394,7 +394,7 @@ It provides access to all the MTZ data as 2D NumPy array
 
 Another way to access MTZ data in Python is through the
 `buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
-For example, here is equivalent of ``mtz.array``:
+For example, here is equivalent of `mtz.array`:
 
 .. doctest::
   :skipif: numpy is None
@@ -429,9 +429,9 @@ Another way to get Miller indices as a N×3 array of integers is:
 
 The same method is available also in ReflnBlock (which represents SF-mmCIF
 and is described in a later section). Similarly, :ref:`AsuData <asu_data>`
-has a property ``miller_array``.
+has a property `miller_array`.
 
-There is also a standalone function ``make_miller_array()``
+There is also a standalone function `make_miller_array()`
 that returns all reflections in a resolution shell.
 To get all unique reflections up to the same resolution
 as the example MTZ file we can do:
@@ -449,12 +449,12 @@ as the example MTZ file we can do:
          [ 5,  2,  1],
          [ 5,  2,  2]]...)
 
-This function has two optional parameters (not used above): ``dmax`` and ``unique``.
-Setting ``unique=False`` returns all equivalent reflections.
+This function has two optional parameters (not used above): `dmax` and `unique`.
+Setting `unique=False` returns all equivalent reflections.
 By default, only reflections from the reciprocal space ASU are returned.
 
 Note: if you'd like to only count the reflections, use function
-``count_reflections`` that takes the same parameters:
+`count_reflections` that takes the same parameters:
 
 .. doctest::
   :skipif: numpy is None
@@ -523,7 +523,7 @@ To show that it really has an effect we print the appropriate
   >>> mtz.get_size_for_hkl()
   [10, 10, 20]
 
-Columns can be removed with ``Mtz::remove_column(index)``,
+Columns can be removed with `Mtz::remove_column(index)`,
 where index is 0-based column index:
 
 .. doctest::
@@ -532,7 +532,7 @@ where index is 0-based column index:
   3
   >>> mtz.remove_column(_)  # removes column 3 (FREE)
 
-Columns can be added with ``Mtz::add_column()``:
+Columns can be added with `Mtz::add_column()`:
 
 .. doctest::
 
@@ -552,11 +552,11 @@ the second one is inserting a new column::
 The column can be copied from either the same or another Mtz object.
 Copying a column between objects is more involved: *hkl*\ s are compared,
 values for matching Miller indices are copied, the rest is filled with NaNs.
-``dest_idx`` is position of the resulting column.
-The second function can take negative ``dest_idx`` -- to add the copied column
+`dest_idx` is position of the resulting column.
+The second function can take negative `dest_idx` -- to add the copied column
 at the end. Often, two or four consecutive columns are handled together
 (value and sigma, absolute value and angle, the ABCD coefficients).
-In such case you can use ``trailing_cols``:
+In such case you can use `trailing_cols`:
 
 .. doctest::
 
@@ -570,11 +570,11 @@ In such case you can use ``trailing_cols``:
 
 The call above checked that the next column has label SIGFP and copied it
 as well. To copy the next column without checking the label pass the empty
-string, i.e. ``trailing_cols=['']``.
+string, i.e. `trailing_cols=['']`.
 
 ----
 
-To demonstrate other functions, we will create a complete ``Mtz`` object
+To demonstrate other functions, we will create a complete `Mtz` object
 from scratch.
 The code below is in Python, but all the functions and properties have
 equivalents with the same names in C++.
@@ -585,7 +585,7 @@ We start from creating an object:
 
   >>> mtz = gemmi.Mtz(with_base=True)
 
-``with_base=True`` adds the base dataset (HKL_base)
+`with_base=True` adds the base dataset (HKL_base)
 with columns H, K and L.
 
 Then we set its space group and unit cell:
@@ -597,7 +597,7 @@ Then we set its space group and unit cell:
 
 The MTZ format evolved -- first it stored "general" cell dimensions
 (keyword CELL), then separate cell dimensions for datasets were added
-(keyword DCELL). ``set_cell_for_all()`` sets all of them:
+(keyword DCELL). `set_cell_for_all()` sets all of them:
 
 .. doctest::
 
@@ -613,8 +613,8 @@ Now we need to add remaining datasets and columns.
   >>> mtz.add_dataset('synthetic')
   <gemmi.Mtz.Dataset 1 synthetic/synthetic/synthetic>
 
-The name passed to ``add_dataset()`` is used to set ``dataset_name``,
-``crystal_name`` and ``project_name``. These three names are often
+The name passed to `add_dataset()` is used to set `dataset_name`,
+`crystal_name` and `project_name`. These three names are often
 kept the same, but if needed, they can be changed afterwards.
 The cell dimensions of the new dataset are a copy of the "general" CELL.
 
@@ -639,7 +639,7 @@ But we can choose any dataset and position:
   ['H', 'K', 'L', 'FREE', 'F', 'SIGF']
 
 Now it is time to add data.
-We will use the ``set_data()`` function that takes 2D NumPy array
+We will use the `set_data()` function that takes 2D NumPy array
 of floating point numbers (even indices are converted to floats,
 but they need to be converted at some point anyway -- the MTZ format
 stores all numbers as 32-bit floats).
@@ -653,7 +653,7 @@ stores all numbers as 32-bit floats).
   >>> mtz
   <gemmi.Mtz with 6 columns, 2 reflections>
 
-In C++ the ``set_data`` function takes a pointer to row-wise ordered data
+In C++ the `set_data` function takes a pointer to row-wise ordered data
 and its size (columns x rows)::
 
   void Mtz::set_data(const float* new_data, size_t n)
@@ -664,11 +664,11 @@ We can also start the file history:
 
   >>> mtz.history = ['This MTZ file was created today.']
 
-``mtz.history`` in Python is a property that gets a copy of the C++ data.
-Changing it (for example, ``mtz.history.append()``) won't affect the original data.
-Only assignment works: ``mtz.history = ...`` or ``mtz.history += ...``.
+`mtz.history` in Python is a property that gets a copy of the C++ data.
+Changing it (for example, `mtz.history.append()`) won't affect the original data.
+Only assignment works: `mtz.history = ...` or `mtz.history += ...`.
 
-To update properties ``min_1_d2`` and ``max_1_d2`` call ``update_reso()``:
+To update properties `min_1_d2` and `max_1_d2` call `update_reso()`:
 
 .. doctest::
   :skipif: numpy is None
@@ -677,7 +677,7 @@ To update properties ``min_1_d2`` and ``max_1_d2`` call ``update_reso()``:
   >>> mtz.min_1_d2, mtz.max_1_d2  # doctest: +ELLIPSIS
   (0.0266481872714499..., 0.03101414716625602)
 
-You do not need to call ``update_reso()`` before writing an MTZ file --
+You do not need to call `update_reso()` before writing an MTZ file --
 the values for the RESO record are re-calculated automatically when the file
 is written.
 
@@ -720,7 +720,7 @@ you may switch to the usual ones with:
 
   >>> mtz.ensure_asu()
 
-(You may also call ``mtz.ensure_asu(tnt=True)`` to use the ASU defined
+(You may also call `mtz.ensure_asu(tnt=True)` to use the ASU defined
 in the `TNT <https://www.uoxray.uoregon.edu/tnt/manual/node110.html>`_
 program, but it is unlikely that you will ever need it).
 
@@ -734,7 +734,7 @@ When appropriate, changing hkl indices is also:
 
 ----
 
-To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
+To sort data rows by the *h,k,l* indices call `Mtz::sort()`:
 
 .. doctest::
 
@@ -744,7 +744,7 @@ To sort data rows by the *h,k,l* indices call ``Mtz::sort()``:
   [1, 2, 3, 0, 0]
 
 If you'd like to use the first 5 columns for sorting (for multirecord data),
-call ``mtz.sort(use_first=5)``.
+call `mtz.sort(use_first=5)`.
 
 .. doctest::
   :hide:
@@ -799,26 +799,26 @@ The mmCIF format is also used to store reflection data from crystallographic
 experiments. Reflections and coordinates are normally stored in separate
 mmCIF files. The files with reflections are called structure factor mmCIF
 or shortly SF mmCIF. Such file for the 1ABC PDB entry
-is usually named either ``1ABC-sf.cif`` (if downloaded through RCSB website)
-or ``r1abcsf.ent`` (if downloaded through PDBe website or through FTP).
+is usually named either `1ABC-sf.cif` (if downloaded through RCSB website)
+or `r1abcsf.ent` (if downloaded through PDBe website or through FTP).
 
 SF mmCIF files usually contain one block, but may have
 multiple blocks, for example merged and unmerged data in separate blocks.
-Merged and unmerged data is expected in mmCIF categories ``_refln``
-and ``_diffrn_refln``, respectively.
+Merged and unmerged data is expected in mmCIF categories `_refln`
+and `_diffrn_refln`, respectively.
 Usually, also the unit cell, space group, and sometimes the radiation
 wavelength is recorded.
 
 The support for SF mmCIF files in Gemmi is built on top of the generic
 support for the CIF format.
-We have class ``ReflnBlock`` that wraps ``cif::Block``
-and a function ``as_refln_blocks``::
+We have class `ReflnBlock` that wraps `cif::Block`
+and a function `as_refln_blocks`::
 
   // in C++ it can be called:
   // auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(path).blocks);
   std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks)
 
-In Python this function takes ``cif.Document`` as an argument:
+In Python this function takes `cif.Document` as an argument:
 
 .. doctest::
 
@@ -852,7 +852,7 @@ to initialize the following properties:
   0.9791
 
 To check if block has either merged or unmerged data, in C++ use function
-``ok()``, and in Python:
+`ok()`, and in Python:
 
 .. doctest::
 
@@ -891,7 +891,7 @@ Finally, ReflnBlock has functions for working with the data table::
   std::vector<double> ReflnBlock::make_d_vector() const
 
 We will describe these functions while going through its Python equivalents.
-``column_labels()`` returns list of tags associated with the columns,
+`column_labels()` returns list of tags associated with the columns,
 excluding the category part. Unlike in the MTZ format, here the tags
 must be unique.
 
@@ -944,7 +944,7 @@ or just *d* values:
 The script below renders the same colorful *I*/*σ* image as in the previous
 section, but it can take as an argument a file downloaded directly from
 the wwPDB (for example,
-``$PDB_DIR/structures/divided/structure_factors/de/r5deisf.ent.gz``).
+`$PDB_DIR/structures/divided/structure_factors/de/r5deisf.ent.gz`).
 
 .. literalinclude:: ../examples/cif_i_sigi.py
   :language: python
@@ -1093,7 +1093,7 @@ Such an array can be created in two ways:
   The choice of ASU differs between programs. By default, reflections
   in AsuData are moved to the :ref:`ASU used in CCP4 <reciprocal_asu>`
   and sorted. If you want to keep original Miller indices and the order
-  from the file, add parameter ``as_is=True``. You can also switch the indices
+  from the file, add parameter `as_is=True`. You can also switch the indices
   and sort reflections using separate functions:
 
   .. doctest::
@@ -1113,7 +1113,7 @@ Such an array can be created in two ways:
     >>> asu_data
     <gemmi.ComplexAsuData with 407 values>
 
-  Arguments of the ``prepare_asu_data`` function are optional.
+  Arguments of the `prepare_asu_data` function are optional.
   By default, the resolution is not limited, the (000) reflection is not
   included and systematic absences are also not included.
 
@@ -1270,7 +1270,7 @@ ReflnBlock, array of Miller indices or array of *d*:sup:`--2`:
 
 These are all Binner's functions.
 Now we will show how the bin numbers can be used.
-First, let use ``numpy.bincount()`` to find out how many reflections
+First, let use `numpy.bincount()` to find out how many reflections
 are in each bin.
 
 .. doctest::
@@ -1307,7 +1307,7 @@ Now let's calculate R\ :sub:`work` and R\ :sub:`free` of the whole dataset.
   >>> print('Rfree', calculate_rfactor(fo[rfree==1], fc[rfree==1]))
   Rfree 0.19464952
 
-In the example above we use ``nansum`` to handle correctly NaN values
+In the example above we use `nansum` to handle correctly NaN values
 that can be present in the data (missing observations).
 Sometimes it is easier to remove these NaNs first:
 
@@ -1416,17 +1416,17 @@ This grid is represented by C++ class ReciprocalGrid,
 which shares most of the properties with the real-space
 class :ref:`Grid <grid>`.
 
-In C++, the ``<gemmi/fourier.hpp>`` header defines templated function
-``get_f_phi_on_grid()`` that can be used with MTZ and SF mmCIF data,
+In C++, the `<gemmi/fourier.hpp>` header defines templated function
+`get_f_phi_on_grid()` that can be used with MTZ and SF mmCIF data,
 as well as with AsuData.
 Here, we focus on the usage from Python.
 
 Mtz, ReflnBlock and ComplexAsuData classes
-have method ``get_f_phi_on_grid`` that takes three mandatory arguments:
+have method `get_f_phi_on_grid` that takes three mandatory arguments:
 column names for the amplitude and phase, and the grid size.
 It returns reciprocal grid of complex numbers
-(``ReciprocalGrid<std::complex<float>>`` in C++,
-``ReciprocalComplexGrid`` in Python).
+(`ReciprocalGrid<std::complex<float>>` in C++,
+`ReciprocalComplexGrid` in Python).
 Symmetry-related reflections are filled automatically (with phase shift).
 All the missing values are set to 0:
 
@@ -1503,9 +1503,9 @@ Miller indices and resolution corresponding to the point can be obtained with:
 Grid size
 ---------
 
-To get an appropriate size, we can use method ``get_size_for_hkl``
-that has two optional parameters: ``min_size`` and ``sample_rate``.
-``min_size`` sets explicitly the minimal size of the grid:
+To get an appropriate size, we can use method `get_size_for_hkl`
+that has two optional parameters: `min_size` and `sample_rate`.
+`min_size` sets explicitly the minimal size of the grid:
 
 .. doctest::
 
@@ -1518,9 +1518,9 @@ The actual size can be increased to make room for all reflections,
 to obey restrictions imposed by the spacegroup, and to make the size
 FFT-friendly (currently this means factors 2, 3 and 5).
 
-``sample_rate`` sets the minimal grid size in relation to *d*:sub:`min`.
+`sample_rate` sets the minimal grid size in relation to *d*:sub:`min`.
 It has the same meaning as the keyword SAMPLE in the CCP4 FFT program.
-For example, ``sample_rate=3`` requests grid size that corresponds
+For example, `sample_rate=3` requests grid size that corresponds
 to real-space sampling *d*:sub:`min`/3.
 (N.B. 3 here is equivalent to Clipper oversampling parameter equal 1.5).
 
@@ -1532,9 +1532,9 @@ to real-space sampling *d*:sub:`min`/3.
 Array layout
 ------------
 
-The ``get_f_phi_on_grid`` function has also two optional arguments:
-``half_l`` and ``axis_order``.
-The ``half_l`` flag is used to shrink the size of the grid in the memory.
+The `get_f_phi_on_grid` function has also two optional arguments:
+`half_l` and `axis_order`.
+The `half_l` flag is used to shrink the size of the grid in the memory.
 When set, the grid does not include data with negative index *l*.
 If the data is Hermitian, i.e. if it is a Fourier transform of
 the real data (electron density), the (*h* *k* *l*) reflection
@@ -1546,8 +1546,8 @@ with negative *l* can be restored as a complex conjugate of its Friedel mate
   >>> rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18], half_l=True)
   <gemmi.ReciprocalComplexGrid(54, 6, 10)>
 
-``axis_order`` can take one of the two values : ``AxisOrder.XYZ`` (the default)
-or ``AxisOrder.ZYX``. With the former -- the *h* direction is along the first
+`axis_order` can take one of the two values : `AxisOrder.XYZ` (the default)
+or `AxisOrder.ZYX`. With the former -- the *h* direction is along the first
 (fast) axis of the grid. The latter results in *l* along the fast axis.
 (The fast axis is first, which is a Fortran convention. This convention
 affected the design of the CCP4 format, which in turn affected the design of
@@ -1580,7 +1580,7 @@ tool.
   >>> round(real_map.std(), 5)
   0.66338
 
-Above, we could use ``fftn(array)`` instead of ``ifftn(array.conj())``,
+Above, we could use `fftn(array)` instead of `ifftn(array.conj())`,
 but the inverse FFT is more appropriate here (or so I think).
 
 Since the data is Hermitian, using complex-to-complex FFT is equivalent to
@@ -1608,12 +1608,12 @@ to transform between real space and reciprocal space.
 This library was picked after evaluation and
 `benchmarking of many FFT libraries <https://github.com/project-gemmi/benchmarking-fft>`_.
 
-In C++, the relevant functions are in the ``<gemmi/fourier.hpp>`` header,
+In C++, the relevant functions are in the `<gemmi/fourier.hpp>` header,
 and the :ref:`gemmi-sf2map <sf2map>` program may serve as a code example.
 Like in the previous section, here we will cover only the Python interface.
 
 Instead of using numpy.fft as in the example above,
-we can use ``gemmi.transform_f_phi_grid_to_map()``
+we can use `gemmi.transform_f_phi_grid_to_map()`
 and we expect to get the same result (wrapped in a :ref:`Grid <grid>` class):
 
 .. doctest::
@@ -1624,12 +1624,12 @@ and we expect to get the same result (wrapped in a :ref:`Grid <grid>` class):
   >>> round(_.get_value(1, 2, 3), 5)
   -0.40554
 
-Mtz, ReflnBlock and ComplexAsuData classes have method ``transform_f_phi_to_map``
-that combines ``get_f_phi_on_grid()`` with ``transform_f_phi_grid_to_map()``.
+Mtz, ReflnBlock and ComplexAsuData classes have method `transform_f_phi_to_map`
+that combines `get_f_phi_on_grid()` with `transform_f_phi_grid_to_map()`.
 
-``transform_f_phi_to_map`` takes column names for amplitude and
-phase (in degrees), and optional parameters ``min_size``, ``exact_size`` and
-``sample_rate`` (normally only one of them is given):
+`transform_f_phi_to_map` takes column names for amplitude and
+phase (in degrees), and optional parameters `min_size`, `exact_size` and
+`sample_rate` (normally only one of them is given):
 
 .. doctest::
 
@@ -1661,7 +1661,7 @@ and it can be stored in a CCP4 map format:
   >>> ccp4.write_ccp4_map('5wkd.ccp4')
 
 To transform the electron density back to reciprocal space coefficients
-use function ``transform_map_to_f_phi``:
+use function `transform_map_to_f_phi`:
 
 .. doctest::
 
@@ -1670,7 +1670,7 @@ use function ``transform_map_to_f_phi``:
   >>> gemmi.transform_map_to_f_phi(ccp4.grid)
   <gemmi.ReciprocalComplexGrid(72, 8, 24)>
 
-Now you can access hkl reflections using ``Grid.get_value()``:
+Now you can access hkl reflections using `Grid.get_value()`:
 
 .. doctest::
 
@@ -1678,9 +1678,9 @@ Now you can access hkl reflections using ``Grid.get_value()``:
   (18.4402...+26.1892...j)
 
 
-``transform_map_to_f_phi`` has one optional flag: ``half_l``.
-It has the same meaning as in the function ``get_f_phi_on_grid``.
-When you set ``half_l=True`` you cannot access directly a data point
+`transform_map_to_f_phi` has one optional flag: `half_l`.
+It has the same meaning as in the function `get_f_phi_on_grid`.
+When you set `half_l=True` you cannot access directly a data point
 with negative Miller index l, but you can use its Friedel mate:
 
 .. doctest::
@@ -1690,7 +1690,7 @@ with negative Miller index l, but you can use its Friedel mate:
   >>> _.get_value(-23, 1, 3).conjugate()  # value for (23, -1, -3)  #doctest: +ELLIPSIS
   (18.4402...+26.1892...j)
 
-Then again, you can use ``transform_f_phi_grid_to_map()``
+Then again, you can use `transform_f_phi_grid_to_map()`
 to transform it back to the direct space, and so on...
 
 Example
@@ -1776,7 +1776,7 @@ which means multiplying them by a factor between 0.99995 and 1.00113.
   >>> fe_coef.a  # doctest: +ELLIPSIS
   [11.7738..., 7.3600..., 3.5235..., 2.30535...]
 
-Now let's use function ``set_coefs()`` to change the coefficients back
+Now let's use function `set_coefs()` to change the coefficients back
 to the original values (for neutral atoms):
 
 .. doctest::
@@ -1829,7 +1829,7 @@ Anomalous scattering
 --------------------
 
 The anomalous dispersion is wavelength dependent.
-Gemmi provides function ``cromer_liberman`` that calculates
+Gemmi provides function `cromer_liberman` that calculates
 real and imaginary components *f'* and *f"*
 for isolated atoms from Z=3 to Z=92.
 
@@ -1868,7 +1868,7 @@ Therefore, it gives different results than the
 `crossec <http://legacy.ccp4.ac.uk/html/crossec.html>`_ program,
 which was contributed to CCP4 directly by Don Cromer in the 1990's.
 
-The ``cromer_liberman`` function is available in both C++ and Python:
+The `cromer_liberman` function is available in both C++ and Python:
 
 .. doctest::
 
@@ -2013,7 +2013,7 @@ to the structure factor):
 When calculating X-ray structure factors, one may want to include *f'*
 (real part of the :ref:`anomalous scattering <anomalous>`).
 To do this, *f'* needs to be set for each element present in the system:
-This is done with function ``set_addend()``, which sets angle-independent
+This is done with function `set_addend()`, which sets angle-independent
 value that will be added to the value calculated from the form factors.
 
 .. doctest::
@@ -2070,8 +2070,8 @@ density of the scatterer (usually electrons) on a grid. For this we use
   and DensityCalculatorN (neutrons).
 
 DensityCalculator contains a grid. The size of the grid is determined
-from two parameters that we need to set: ``d_min`` which corresponds to
-our resolution limit, and ``rate`` -- oversampling rate (1.5 by default).
+from two parameters that we need to set: `d_min` which corresponds to
+our resolution limit, and `rate` -- oversampling rate (1.5 by default).
 
 .. doctest::
 
@@ -2097,7 +2097,7 @@ Almost all the work is in the latter:
   >>> dencalc.set_grid_cell_and_spacegroup(st)
   >>> dencalc.put_model_density_on_grid(st[0])
 
-Calling ``put_model_density_on_grid`` is equivalent to these three functions:
+Calling `put_model_density_on_grid` is equivalent to these three functions:
 
 .. doctest::
 
@@ -2105,9 +2105,9 @@ Calling ``put_model_density_on_grid`` is equivalent to these three functions:
   >>> dencalc.add_model_density_to_grid(st[0])
   >>> dencalc.grid.symmetrize_sum()
 
-Function initialize_grid(), in this case, uses ``d_min`` and ``rate``
+Function initialize_grid(), in this case, uses `d_min` and `rate`
 to determine required grid spacing and uses this spacing to setup the grid.
-If ``d_min`` would not be set and the grid size would be set, initialize_grid()
+If `d_min` would not be set and the grid size would be set, initialize_grid()
 would only zero the grid values.
 
 .. doctest::
@@ -2126,15 +2126,15 @@ into a structure factor grid:
   >>> sf_grid.get_value(3, 4, 5)  #doctest: +ELLIPSIS
   (54.5276...+53.4189...j)
 
-In addition to ``d_min`` and ``rate``, which govern the grid density,
+In addition to `d_min` and `rate`, which govern the grid density,
 DensityCalculator has two more parameters that affect accuracy
 of the calculated structure factors:
 
-* ``cutoff`` (default: 1e-5) -- density cut-off in the same unit as the map.
+* `cutoff` (default: 1e-5) -- density cut-off in the same unit as the map.
   It is used to determine atomic radius in which the density is calculated
-  (density in the radius distance should be approximately ``cutoff``).
+  (density in the radius distance should be approximately `cutoff`).
   Smaller cutoff means more accurate but slower calculations.
-* ``blur`` (default: 0) -- Gaussian dampening (blurring) factor --
+* `blur` (default: 0) -- Gaussian dampening (blurring) factor --
   artificial temperature factor *B*\ :sub:`extra` added to all atomic B-factors
   (the structure factors must be later corrected to cancel it out).
 
@@ -2173,14 +2173,14 @@ The :ref:`sfcalc <sfcalc>` program can be used to test different choices
 of *B*\ :sub:`extra`.
 
 If the density was blurred, you need to calculate it by either
-adding option ``unblur`` to ``prepare_asu_data()``:
+adding option `unblur` to `prepare_asu_data()`:
 
 .. doctest::
 
   >>> asu_data = grid.prepare_asu_data(dmin=dencalc.d_min, unblur=dencalc.blur)
 
 or multiplying individual structure factor by
-``dencalc.reciprocal_space_multiplier(inv_d2)``.
+`dencalc.reciprocal_space_multiplier(inv_d2)`.
 
 Mott-Bethe formula
 ~~~~~~~~~~~~~~~~~~
@@ -2202,15 +2202,15 @@ we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
 Then we multiply it by –1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`2`)
 to get *f*\ :sub:`e`.
 
-We either multiply individual values by ``mott_bethe_factor()``
-(which includes ``reciprocal_space_multiplier()``):
+We either multiply individual values by `mott_bethe_factor()`
+(which includes `reciprocal_space_multiplier()`):
 
 .. doctest::
 
   >>> dc.mott_bethe_factor([3,4,5]) * grid.get_value(3,4,5)  #doctest: +ELLIPSIS
   (54.063...+52.970...j)
 
-or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
+or we call `prepare_asu_data()` with `mott_bethe=True`:
 
 .. doctest::
   :skipif: numpy is None
@@ -2222,7 +2222,7 @@ or we call ``prepare_asu_data()`` with ``mott_bethe=True``:
 That is all.
 If you would like to separate positions of hydrogen nuclei
 and electron clouds then, assuming that the model
-has positions for electrons, call ``subtract_z()`` as:
+has positions for electrons, call `subtract_z()` as:
 
 .. doctest::
 

@@ -54,8 +54,8 @@ grep
 
 Searches for values in CIF files that correspond to the given tag(s).
 
-Option ``-h`` shows the usage.
-Some of the command-line options (``-c``, ``-l``, ``-H``, ``-n``)
+Option `-h` shows the usage.
+Some of the command-line options (`-c`, `-l`, `-H`, `-n`)
 correspond to the options of GNU grep.
 
 
@@ -82,17 +82,17 @@ with the specified tag. Each line contains the block name and the value::
 The output can be easily processed with well-known Unix utilities, therefore
 gemmi-grep does not have internal options for sorting and filtering.
 
-* For text-based filtering, use ``grep``::
+* For text-based filtering, use `grep`::
 
     $ # list mmCIF files with links to EMDB
     $ gemmi grep _pdbx_database_related.db_name /pdb/mmCIF/aa/* | grep EMDB
     4AAS:EMDB
     5AA0:EMDB
 
-* For numeric filtering, use ``awk``
+* For numeric filtering, use `awk`
   (see the example with cell angles below).
 
-* For sorting the output, use ``sort``::
+* For sorting the output, use `sort`::
 
     $ # the heaviest monomers in CCD
     $ gemmi grep _chem_comp.formula_weight components.cif.gz | sort -k2 -t: -nr | head -3
@@ -100,10 +100,10 @@ gemmi-grep does not have internal options for sorting and filtering.
     WO2:4363.030
     HFW:4343.697
 
-* For counting different enumeration values, use ``sort | uniq -c``
+* For counting different enumeration values, use `sort | uniq -c`
   (see the example with _entity_poly.type below).
 
-* If you add ``cut`` to the mix, you could even count the number of distinct
+* If you add `cut` to the mix, you could even count the number of distinct
   values (we won't go further than this)::
 
     $ # chemical components with the greatest variety of elements
@@ -115,17 +115,17 @@ gemmi-grep does not have internal options for sorting and filtering.
 
 
 Gemmi-grep parses the CIF syntax and prints values from both name-value
-pairs and loops. In particular, ``gemmi grep _one`` will give the same
-output for both ``_one 1`` and ``loop_ _one _two 1 2``.
+pairs and loops. In particular, `gemmi grep _one` will give the same
+output for both `_one 1` and `loop_ _one _two 1 2`.
 It makes it more robust than using Unix grep. For example,
 if one was using Unix grep to get R-free from mmCIF file,
 it would fail in special cases such as the PDB entry 5MOO, which has two
 Rfree values in a loop (see above, the second example in this section).
 
 Gemmi-grep does not support regular expression, only globbing (wildcards):
-``?`` represents any single character, ``*`` represents any number of
+`?` represents any single character, `*` represents any number of
 characters (including zero). When using wildcards you may also want
-to use the ``-t`` option which prints the tag::
+to use the `-t` option which prints the tag::
 
   $ gemmi grep -t _*free 3gem.cif
   3GEM:[_refine.ls_R_factor_R_free] 0.182
@@ -136,7 +136,7 @@ to use the ``-t`` option which prints the tag::
   3GEM:[_refine_ls_shell.number_reflns_R_free] 253
 
 Let say we want to find extreme unit cell angles in the PDB.
-``_cell.angle_*a`` will match _cell.angle_alpha as well as beta and gamma,
+`_cell.angle_*a` will match _cell.angle_alpha as well as beta and gamma,
 but not _cell.angle_alpha_esd etc.
 
 ::
@@ -150,7 +150,7 @@ but not _cell.angle_alpha_esd etc.
   1SPG 141.90
   2W1I 146.58
 
-The option ``-O`` is used to make gemmi-grep faster.
+The option `-O` is used to make gemmi-grep faster.
 With this option the program finds only the first occurrence of the tag
 in file. Note that if the file has only one block (like mmCIF coordinate
 files) and the tag is specified without wildcards then we cannot have
@@ -173,7 +173,7 @@ and it makes the program useful for ad-hoc PDB statistics::
      4559 polyribonucleotide
        18 polysaccharide(D)
 
-Option ``-c`` counts the values in each block or file. As an example,
+Option `-c` counts the values in each block or file. As an example,
 we may check which entries have the greatest variety of chemical components
 (spoiler: ribosomes)::
 
@@ -206,8 +206,8 @@ the Rfree values correspond::
   5MOO:0.1596;X-RAY DIFFRACTION
   5MOO:0.1848;NEUTRON DIFFRACTION
 
-Option ``-a`` (``--and``) can be specified many times.
-If we would add ``-a _pdbx_database_status.recvd_initial_deposition_date``
+Option `-a` (`--and`) can be specified many times.
+If we would add `-a _pdbx_database_status.recvd_initial_deposition_date`
 we would get the deposition date in each line. In this case it would be
 repeated for 5MOO::
 
@@ -216,10 +216,10 @@ repeated for 5MOO::
 
 gemmi-grep operates on the syntax level and cannot match values from
 different tables, as this would require consulting a DDL dictionary.
-In the example above we have two values from the same table (``_refine``)
+In the example above we have two values from the same table (`_refine`)
 and a deposition date (single value). This works well. However,
-would not be able to add the corresponding wavelengths from ``_diffrn_source``.
-If an extra tag (specified with ``-a``) is not in the same table
+would not be able to add the corresponding wavelengths from `_diffrn_source`.
+If an extra tag (specified with `-a`) is not in the same table
 as the main tag, gemmi-grep will use the first value for this tag,
 not the corresponding one.
 
@@ -233,11 +233,11 @@ What are the heaviest chains?
   5T2C    1640238.125     28S rRNA
   5LKS    1640238.125     28S ribosomal RNA
 
-With some further processing, the option ``-a`` can be used to generate
+With some further processing, the option `-a` can be used to generate
 quite sophisticated reports. Here is a little demo:
 https://project-gemmi.github.io/pdb-stats/xray.html
 
-If ``-a`` is used together with ``-c``, the values are counted
+If `-a` is used together with `-c`, the values are counted
 independently for each tag::
 
   $ gemmi grep -c _refln.intensity_meas -a _diffrn_refln.intensity_net r5paysf.ent.gz
@@ -245,10 +245,10 @@ independently for each tag::
   r5payAsf:0;356684
 
 (The file used in this example is structure factor (SF) mmCIF.
-Strangely these files in the PDB have extension ``ent`` not ``cif``.)
+Strangely these files in the PDB have extension `ent` not `cif`.)
 
 The first number in the output above is the number of specified intensities.
-To count also null values ``?`` and ``.``, add ``--raw``::
+To count also null values `?` and `.`, add `--raw`::
 
   $ gemmi grep --raw -c _refln.intensity_meas r5paysf.ent.gz
   r5paysf:63954
@@ -256,9 +256,9 @@ To count also null values ``?`` and ``.``, add ``--raw``::
 
 Gemmi-grep can work with any CIF files but it has one feature
 specific to the PDB data. When :ref:`$PDB_DIR <pdb_dir>` is set
-one may use PDB codes: just ``5moo`` or ``5MOO`` instead of the path
-to ``5moo.cif.gz``. And for convenience, using a PDB code implies
-option ``-O``.
+one may use PDB codes: just `5moo` or `5MOO` instead of the path
+to `5moo.cif.gz`. And for convenience, using a PDB code implies
+option `-O`.
 
 The file paths or PDB codes can be read from a file.
 For example, if we want to analyse PDB data deposited in 2016
@@ -289,7 +289,7 @@ comp_id check
 ~~~~~~~~~~~~~
 
 The monomer library (Refmac dictionary) has tags such as
-``_chem_comp_atom.comp_id``, ``_chem_comp_bond.comp_id`` that are expected
+`_chem_comp_atom.comp_id`, `_chem_comp_bond.comp_id` that are expected
 to be consistent with the block name::
 
   $ gemmi grep _*.comp_id $CLIBD_MON/a/ASN.cif
@@ -308,7 +308,7 @@ planarity
 ~~~~~~~~~
 
 The monomer library includes planarity restraints.
-Each row in the ``_chem_comp_plane_atom`` table with the same ``plane_id``
+Each row in the `_chem_comp_plane_atom` table with the same `plane_id`
 represents atom belonging to the same plane.
 What is the maximum number of atoms in one plane?
 
@@ -419,15 +419,15 @@ Conversion between macromolecular coordinate formats: PDB, mmCIF and mmJSON.
    :language: console
 
 The PDB records written by Gemmi are formatted in the same way as in the wwPDB.
-This makes possible to use ``diff`` to compare a PDB file from wwPDB
+This makes possible to use `diff` to compare a PDB file from wwPDB
 and a file converted by Gemmi from mmCIF. The file from wwPDB will have
 more records, but the diff should still be readable.
 
-The option ``--expand-ncs`` expands strict NCS, defined in
-the ``MTRIX`` record (PDB) or in the ``_struct_ncs_oper`` table (mmCIF).
+The option `--expand-ncs` expands strict NCS, defined in
+the `MTRIX` record (PDB) or in the `_struct_ncs_oper` table (mmCIF).
 It is not obvious how to name the new chains that are added.
-We have two options: either new names are generated (``=new``) or
-the chain names are not changed but distinct segment IDs are added (``=dup``).
+We have two options: either new names are generated (`=new`) or
+the chain names are not changed but distinct segment IDs are added (`=dup`).
 
 tags
 ====
@@ -452,7 +452,7 @@ and the total number of non-null values for the tag:
   Block count: 29749
   File count: 1
 
-This program is run with option ``--full``
+This program is run with option `--full`
 on the whole PDB archive to produce data for
 `pdb-stats/tags.html <https://project-gemmi.github.io/pdb-stats/tags.html>`_.
 
@@ -467,7 +467,7 @@ It plots a histogram of values in the console.
 All histograms plotted by gemmi have a default width of 80 characters,
 which can be overridden by the environment variable COLUMNS.
 In Bash shell this variable is set automatically, but you need
-``export COLUMNS`` to pass it to the program.
+`export COLUMNS` to pass it to the program.
 
 .. literalinclude:: map-help.txt
    :language: console
@@ -512,7 +512,7 @@ Converts reflection data from mmCIF to MTZ.
 
 Similarly to mtz2cif, this converter can also be customized using *spec files*.
 The default spec files can be generated using options
-``--print-spec`` for merged data and ``--print-spec --unmerged`` for unmerged.
+`--print-spec` for merged data and `--print-spec --unmerged` for unmerged.
 
 .. literalinclude:: cif2mtz-spec.txt
    :language: none
@@ -527,7 +527,7 @@ Transforms map coefficients from either MTZ or SF mmCIF to CCP4 map.
 .. literalinclude:: sf2map-help.txt
    :language: console
 
-The ``--sample`` option is named after the ``GRID SAMPLE`` keyword of
+The `--sample` option is named after the `GRID SAMPLE` keyword of
 the venerable CCP4 FFT program; its value has the same meaning.
 
 map2sf
@@ -575,19 +575,19 @@ This program can measure the errors resulting from the latter method
 (in addition to its main function -- calculation of the structure factors).
 The errors depend on
 
-* the grid spacing -- controlled by the oversampling ``--rate=R``;
+* the grid spacing -- controlled by the oversampling `--rate=R`;
   the maximum spacing is *d*\ :sub:`min`/2\ *R*,
 * atomic radius -- we neglect electron density of the atom beyond this radius;
   only density contributions above the (absolute) value specified with
-  ``--rcut`` are taken into account,
+  `--rcut` are taken into account,
 * :ref:`Gaussian dampening (blurring) factor <blur>` --
   artificial temperature factor *B*\ :sub:`extra` added to all atomic
   B-factors (the structure factors are later corrected to cancel it out);
-  either specified with ``--blur`` or picked automatically.
+  either specified with `--blur` or picked automatically.
 
 Choosing these parameters is a trade-off between efficiency and accuracy,
 as described :ref:`elsewhere <blur>`.
-The option ``--test`` can be used to see how accuracy and efficiency
+The option `--test` can be used to see how accuracy and efficiency
 depends on the choice of parameters.  For example, this shell script
 performs a series of calculations with differing *B*\ :sub:`extra`:
 
@@ -693,7 +693,7 @@ Example::
   A   85  CYS: N CA C O CB SG H HA HB2 HB3 HG
   A  152  CSD: N CA CB SG C O OD1 OD2 HA HB2 HB3
 
-Note the options ``-s`` (short) that can be used up to 3 times,
+Note the options `-s` (short) that can be used up to 3 times,
 making the output more concise::
 
   $ echo $PDB_DIR
@@ -704,7 +704,7 @@ making the output more concise::
   A   non-polymers   MG  MG  AGS
   B   non-polymers   MG  MG  AG
 
-Option ``-e`` lists so-called entities::
+Option `-e` lists so-called entities::
 
   $ gemmi residues -e 3oov
   /data/structures/divided/mmCIF/oo/3oov.cif.gz
@@ -756,7 +756,7 @@ contents
 ========
 
 Analyzes and summarizes the content of a coordinate file.
-Inspired by the CCP4 program ``rwcontents``.
+Inspired by the CCP4 program `rwcontents`.
 
 By default, it prints the atom count, estimated number of hydrogens in the protein,
 molecular weight of the protein, ASU volume, Matthews coefficient,
@@ -827,7 +827,7 @@ for Refmac.
 It reads a coordinate file, a monomer library and, optionally,
 additional monomer CIF files. It writes out a :ref:`topology <topology>`
 file in a format understood by CCP4 Refmac.
-Using it as XYZIN requires adding ``make coordinates prepared``::
+Using it as XYZIN requires adding `make coordinates prepared`::
 
     $ gemmi crd in.pdb in.crd
     $ refmac5 xyzin in.crd hklin in.mtz xyzout out.pdb hklout out.mtz << eof
@@ -838,7 +838,7 @@ Using it as XYZIN requires adding ``make coordinates prepared``::
 
 Such intermediate step is always present in Refmac, even if it is not visible
 to the user. In normal operation, Refmac writes, reads and deletes temporary
-files with extensions crd and rst. ``gemmi crd`` writes a single file
+files with extensions crd and rst. `gemmi crd` writes a single file
 with the content of both crd and rst.
 
 .. literalinclude:: crd-help.txt

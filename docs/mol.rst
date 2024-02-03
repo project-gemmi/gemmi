@@ -9,7 +9,7 @@ In this section, we show how to handle structural models of
 biomolecules (to some degree, it also applies to small molecules
 and inorganic structures).
 
-Models from a single file (PDB, mmCIF, etc.) are stored in the ``Structure``
+Models from a single file (PDB, mmCIF, etc.) are stored in the `Structure`
 class, with the usual Model-Chain-Residue-Atom hierarchy.
 Gemmi provides basic functions to access and manipulate the structure,
 and on top of it more complex functions, such as
@@ -82,7 +82,7 @@ Small Molecules
 CIF files that describe small-molecule and inorganic structures
 can be read into a SmallStructure object.
 Unlike macromolecular Structure, SmallStructure has no hierarchy.
-It is just a flat list of atomic sites (``SmallStructure::Site``)
+It is just a flat list of atomic sites (`SmallStructure::Site`)
 together with the unit cell and symmetry.
 
 .. literalinclude:: code/smcif.cpp
@@ -164,7 +164,7 @@ We will need another cif file to show anisotropic ADPs and disorder_group:
 
 ----
 
-The Python examples above read CIF files using ``read_small_structure()``.
+The Python examples above read CIF files using `read_small_structure()`.
 Alternatively, the same can be done in two steps:
 
 .. doctest::
@@ -239,7 +239,7 @@ Gemmi can use three sources of knowledge about chemical components:
 Built-in data
 -------------
 
-The built-in data is accessed through the function ``find_tabulated_residue``.
+The built-in data is accessed through the function `find_tabulated_residue`.
 It contains only minimal information about each residue:
 assigned category, the "standard" flag (non-standard residues are marked
 as HETATM in the PDB, even in polymer), one-letter code,
@@ -269,8 +269,8 @@ the number of hydrogens and molecular weight:
 
 One-letter code is an upper case letter if it is a standard residue.
 Otherwise, it can be the letter for the parent residue in lower case,
-or a space. It is common to use ``X`` for non-standard residue --
-for this we have helper function ``fasta_code()``:
+or a space. It is common to use `X` for non-standard residue --
+for this we have helper function `fasta_code()`:
 
 .. doctest::
 
@@ -315,7 +315,7 @@ Therefore, they have own dictionaries of monomers (a.k.a monomer libraries),
 such as the Refmac dictionary, where each monomer is described by one cif file.
 These libraries are often complemented by user's own cif files.
 
-Gemmi has class ``ChemComp`` that corresponds to the data about a monomer
+Gemmi has class `ChemComp` that corresponds to the data about a monomer
 from either the CCD or a cif file.
 
 .. literalinclude:: ../examples/with_bgl.cpp
@@ -327,15 +327,15 @@ from either the CCD or a cif file.
     >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
     >>> so3 = gemmi.make_chemcomp_from_block(block)
 
-It also has class ``MonLib`` that corresponds to a monomer library.
-In addition to storing a mapping between residue names and ``ChemComp``\ s,
+It also has class `MonLib` that corresponds to a monomer library.
+In addition to storing a mapping between residue names and `ChemComp`\ s,
 it also stores information that in the CCP4 monomer library is kept in
 :file:`mon_lib_list.cif`: description of chemical links and modifications,
 and classification of the residues.
 
 These classes are not documented yet.
 The examples in :ref:`graph_analysis`
-show how to access the lists of atoms and bonds from ``ChemComp``.
+show how to access the lists of atoms and bonds from `ChemComp`.
 
 Reading coordinate files
 ========================
@@ -360,14 +360,14 @@ depending on which one gemmi was built with.
 To read a coordinate file without knowing the format of the file,
 call read_structure*() with format:
 
-* ``CoorFormat.Unknown`` -- to guess the format from the file extension,
-* ``CoorFormat.Detect`` -- to guess the format from the file content
+* `CoorFormat.Unknown` -- to guess the format from the file extension,
+* `CoorFormat.Detect` -- to guess the format from the file content
   (PDB is assumed if it's neither CIF nor JSON; it also
   recognizes monomer (ligand/CCD) files).
 
 Users of the MMDB2 library from the CCP4 suite can convert between
-mmdb::Manager and gemmi::Structure using functions  ``copy_to_mmdb()``
-and ``copy_from_mmdb()`` from ``<gemmi/mmdb.hpp>``.
+mmdb::Manager and gemmi::Structure using functions  `copy_to_mmdb()`
+and `copy_from_mmdb()` from `<gemmi/mmdb.hpp>`.
 
 In this section we show how to read a coordinate file in Gemmi.
 In the next sections we will go into details of the individual formats.
@@ -394,10 +394,10 @@ For example::
 In this example the file format is not specified and is determined from
 the file extension.
 
-``gemmi::Structure`` is defined in ``gemmi/model.hpp`` and
+`gemmi::Structure` is defined in `gemmi/model.hpp` and
 it will be documented :ref:`later on <mcra>`.
 
-Gemmi also has a templated function ``read_structure`` that you can use
+Gemmi also has a templated function `read_structure` that you can use
 to customize how you provide the data (bytes) to the parsers.
 This function is used to uncompress gzipped files on the fly:
 
@@ -417,12 +417,12 @@ and is relatively slow to compile. For this reason, consider including it in
 only one compilation unit (that does not change often).
 
 Alternatively, if you want to support gzipped files,
-use function ``gemmi::read_structure_gz()`` declared in the header
-``gemmi/mmread_gz.hpp`` (requires linking with libgemmi).
+use function `gemmi::read_structure_gz()` declared in the header
+`gemmi/mmread_gz.hpp` (requires linking with libgemmi).
 
 If you know the format of files that you will read, you may also
 use a function specific to this format. For example, the next section
-shows how to read just a PDB file (``read_pdb_file(path)``).
+shows how to read just a PDB file (`read_pdb_file(path)`).
 
 Python
 ------
@@ -457,7 +457,7 @@ or detect it from the content of the file:
   <gemmi.Structure ...>
 
 The file form
-``gemmi.Structure`` will be documented :ref:`later on <mcra>`.
+`gemmi.Structure` will be documented :ref:`later on <mcra>`.
 
 
 PDB format
@@ -476,7 +476,7 @@ uses PDBx/mmCIF as the primary format, and the legacy PDB format is frozen.
    only for files released by the PDB.
    Therefore no software generates files conforming to the specification
    except for the wwPDB software (and even this one is not strictly
-   conforming: it writes ``1555`` in the LINK record for the identity operator
+   conforming: it writes `1555` in the LINK record for the identity operator
    while the specification requires leaving these fields blank).
 
    Do not read too much into the specification.
@@ -604,7 +604,7 @@ Columns 18-20 contain the residue name (CCD code). When the PDB ran out of
 three-character codes in 2023, it started assigning codes with 5 characters,
 which no longer fit into the PDB format. The tilde-hetnam extension addresses
 this issue: long CCD code is substituted with a 3-character alias
-that starts with a tilde (``~``);
+that starts with a tilde (`~`);
 the original code is stored in columns 72-79 of the HETNAM record.
 
 Columns 23-27 contain a sequence ID. It consists of a number (columns 23-26)
@@ -733,14 +733,14 @@ By default, gemmi interprets TER in this way and uses it to automatically
 setup entities (they can be later overwritten,
 see :ref:`add_entity_types() <add_entity_types>`).
 If you prefer to read each TER-separated segment as a new chain,
-call read_pdb() with option ``split_chain_on_ter=True``
+call read_pdb() with option `split_chain_on_ter=True`
 (and then, to write a file in the same way,
-use option ``ter_ignores_type=True``).
+use option `ter_ignores_type=True`).
 
-All remarks from the PDB file are stored in ``raw_remarks``. Some of them
+All remarks from the PDB file are stored in `raw_remarks`. Some of them
 (as listed :ref:`above <supported_records>`) are parsed and interpreted.
 When writing a structure from the PDB format back to the PDB format,
-by default, remarks are copied over from ``raw_remarks``.
+by default, remarks are copied over from `raw_remarks`.
 To avoid it:
 
 .. doctest::
@@ -760,14 +760,14 @@ and both atoms and TER records get unique numbers
 (note: giving TERs serial numbers affects the numbering of atoms after TER).
 TER records in files from wwPDB also have serial numbers,
 but many programs write just "TER".
-You can opt for bare TER records with ``numbered_ter=False``.
+You can opt for bare TER records with `numbered_ter=False`.
 To respect Atom::serial (without checking if the numbers are actually
-sequential or even unique) use ``preserve_serial=True``.
+sequential or even unique) use `preserve_serial=True`.
 
 **C++**
 
 Function for writing data from Structure to a pdb file are
-in a header ``gemmi/to_pdb.hpp``::
+in a header `gemmi/to_pdb.hpp`::
 
   void write_pdb(const Structure& st, std::ostream& os,
                  PdbWriteOptions opt=PdbWriteOptions());
@@ -784,8 +784,8 @@ Here are all the properties of PdbWriteOptions:
 
 Additionally, PdbWriteOptions has two static functions:
 
-* ``minimal()`` -- options for writing only the atomic model (incl. CRYST1),
-* ``only_headers()`` -- options for writing only headers
+* `minimal()` -- options for writing only the atomic model (incl. CRYST1),
+* `only_headers()` -- options for writing only headers
   (metadata, without the actual model).
 
 Usage example::
@@ -804,7 +804,7 @@ To output a file or string in the PDB format use:
   # To get the same content as a string:
   pdb_string = structure.make_pdb_string([options])
 
-Options are passed as an instance of ``gemmi.PdbWriteOptions``
+Options are passed as an instance of `gemmi.PdbWriteOptions`
 that has properties listed in the C++ section above. Examples:
 
 .. testsetup::
@@ -827,7 +827,7 @@ that has properties listed in the C++ section above. Examples:
 ----
 
 **CONECT records** are not written unless explicitly requested.
-The data from and for these records is stored in C++ ``Structure::conect_map``
+The data from and for these records is stored in C++ `Structure::conect_map`
 as a mapping between serial numbers (int -> list of ints).
 When a model is modified, or serial atoms are re-assigned,
 the conect_map easily becomes outdated. Gemmi doesn't use the conect_map
@@ -874,33 +874,33 @@ Here we focus on things specific to mmCIF:
   While a single block in a single file always describes a single PDB entry,
   some relations between tables seem to be designed for any number of entries
   in one block.
-  For example, although a file has only one ``_entry.id`` and
-  ``_struct.title``, the dictionary uses an extra item called
-  ``_struct.entry_id`` to match the title with id.
-  Is it a good practice to check ``_struct.entry_id`` before reading
-  ``_struct.title``? Probably not, as I have seen files with missing
-  ``_struct.entry_id`` but never (yet) with multiple ``_struct.title``.
+  For example, although a file has only one `_entry.id` and
+  `_struct.title`, the dictionary uses an extra item called
+  `_struct.entry_id` to match the title with id.
+  Is it a good practice to check `_struct.entry_id` before reading
+  `_struct.title`? Probably not, as I have seen files with missing
+  `_struct.entry_id` but never (yet) with multiple `_struct.title`.
 
 * Any category (RDBMS table) can be written as a CIF loop (table).
   If such a table would have a single row it can be (and always is in wwPDB)
   written as key-value pairs.
   So when accessing a value it is safer to use abstraction that hides the
   difference between a loop and a key-value pair
-  (``cif::Table`` in Gemmi).
+  (`cif::Table` in Gemmi).
 
 * Arguably, the mmCIF format is harder to parse than the old PDB format.
-  Using ``grep`` and ``awk`` to extract atoms will work only with files
+  Using `grep` and `awk` to extract atoms will work only with files
   written in a specific layout, usually by a particular software.
   It is unfortunate that the wwPDB FAQ encourages it, so one may expect
   portability problems when using mmCIF.
 
-* The atoms (``_atom_site``) table has four "author defined alternatives"
-  (``.auth_*``) that have similar meaning to the "primary" identifiers
-  (``.label_*``).
-  Two of them, atom name (``atom_id``) and residue name (``comp_id``)
+* The atoms (`_atom_site`) table has four "author defined alternatives"
+  (`.auth_*`) that have similar meaning to the "primary" identifiers
+  (`.label_*`).
+  Two of them, atom name (`atom_id`) and residue name (`comp_id`)
   :ref:`almost never <auth_label_example>` differ (update: these few
   differences were removed from the PDB in 2018).
-  The other two, chain name (``asym_id``) and sequence number (``seq_id``)
+  The other two, chain name (`asym_id`) and sequence number (`seq_id`)
   may differ in a confusing way (A,B,C <-> C,A,B).
   Which one is presented to the user depends on a program (usually
   the author's version). This may lead to funny situations.
@@ -908,7 +908,7 @@ Here we focus on things specific to mmCIF:
 * There is a formal distinction between mmCIF and PDBx/mmCIF
   dictionaries (they are controlled by separate committees).
   The latter is built upon the former. So we have
-  the ``pdbx_`` prefix in otherwise random places, to mark tags
+  the `pdbx_` prefix in otherwise random places, to mark tags
   that are not in the vanilla mmCIF.
 
 Here are example lines from a PDB file (3B9F) with the fields
@@ -937,33 +937,33 @@ and the corresponding lines from PDBx/mmCIF v5 (as served by the PDB in 2018):
                 type_symbol | label_entity_id     Cartn_y                 |  auth_seq_id   pdbx_PDB_model_num
                             label_asym_id                                 pdbx_formal_charge
 
-``x`` marks columns not present in the PDB file.
+`x` marks columns not present in the PDB file.
 The numbers in column 2 differ because in the PDB file the TER record
 (that marks the end of a polymer) is also assigned a number.
 
-``auth_seq_id`` used to be the full author's sequence ID,
+`auth_seq_id` used to be the full author's sequence ID,
 but currently in the wwPDB entries it is only the sequence number;
-the insertion code is stored in a separate column (``pdbx_PDB_ins_code``).
-Confusingly, ``pdbx_PDB_ins_code`` is placed next to ``label_seq_id``
-not ``auth_seq_id``
-(``label_seq_id`` is always a positive number and has nothing to do
+the insertion code is stored in a separate column (`pdbx_PDB_ins_code`).
+Confusingly, `pdbx_PDB_ins_code` is placed next to `label_seq_id`
+not `auth_seq_id`
+(`label_seq_id` is always a positive number and has nothing to do
 with the insertion code).
 
 As mentioned above, the mmCIF format has two sets of names/numbers:
 *label* and *auth* (for "author").
-Both atom names (``label_atom_id`` and ``auth_atom_id``) are normally the same.
-Both residue names (``label_comp_id`` and ``auth_comp_id``) are also normally
+Both atom names (`label_atom_id` and `auth_atom_id`) are normally the same.
+Both residue names (`label_comp_id` and `auth_comp_id`) are also normally
 the same. So Gemmi reads and stores only one name: *auth* if it is present,
 otherwise *label*.
 
-On the other hand, chain names (``asym_id``) and sequence numbers often
+On the other hand, chain names (`asym_id`) and sequence numbers often
 differ and in the user interface it is better to use the author-defined
 names, for consistency with the PDB format and with the literature.
 
 .. _subchain:
 
 While this is not guaranteed by the specification, in all PDB entries
-each ``auth_asym_id`` "chain" is split into one or more ``label_asym_id``
+each `auth_asym_id` "chain" is split into one or more `label_asym_id`
 "chains"; let us call them *subchains*.
 The polymer (residues before the TER record in the PDB format) goes into
 one subchain; all the other (non-polymer) residues are put into
@@ -977,7 +977,7 @@ Currently, wwPDB treats non-linear polymers (such as sugars) as non-polymers.
    Making them look the same so they can be confused is a bad design.
 
    Additionally, the label_* identifiers are not unique: waters have null
-   ``label_seq_id`` and therefore all waters in one chain have the same
+   `label_seq_id` and therefore all waters in one chain have the same
    identifier. If a water atom is referenced in another table (_struct_conn
    or _struct_site_gen) the label_* identifier is ambiguous,
    so it is necessary to use the auth_* identifier anyway.
@@ -1031,12 +1031,12 @@ Reading
 -------
 
 As a reminder, you may use the functions common for all file formats
-(such as ``read_structure_gz()``) to read a structure.
+(such as `read_structure_gz()`) to read a structure.
 
 But you may also use two functions that give you more control.
 These functions correspond to two stages
 of reading mmCIF files in Gemmi:
-file → ``cif::Document`` → ``Structure``.
+file → `cif::Document` → `Structure`.
 
 **C++**
 
@@ -1051,7 +1051,7 @@ file → ``cif::Document`` → ``Structure``.
     cif::Document doc = cif::read(gemmi::MaybeGzipped(mmcif_file));
     gemmi::Structure structure = gemmi::make_structure(doc);
 
-``cif::Document`` can be additionally used to access meta-data,
+`cif::Document` can be additionally used to access meta-data,
 such as the details of the experiment or software used for data processing.
 The examples are provided in the :ref:`CIF parser <cif_examples>` section.
 
@@ -1067,12 +1067,12 @@ The examples are provided in the :ref:`CIF parser <cif_examples>` section.
   >>> cif_block = gemmi.cif.read(mmcif_path)[0]
   >>> structure = gemmi.make_structure_from_block(cif_block)
 
-``cif_block`` can be additionally used to access meta-data.
+`cif_block` can be additionally used to access meta-data.
 
 Writing
 -------
 
-Writing is also in two stages: first a ``cif::Document`` is created
+Writing is also in two stages: first a `cif::Document` is created
 and then it is written to disk.
 
 **C++**
@@ -1121,7 +1121,7 @@ parameters and atoms we would do:
   >>> doc = structure.make_mmcif_document(groups)
   >>> doc.write_file('new2.cif')
 
-All group names (about 30) are listed in ``gemmi/to_mmcif.hpp``.
+All group names (about 30) are listed in `gemmi/to_mmcif.hpp`.
 
 The first three lines of the previous example can be replaced with:
 
@@ -1129,8 +1129,8 @@ The first three lines of the previous example can be replaced with:
 
   >>> groups = gemmi.MmcifOutputGroups(False, cell=True, atoms=True)
 
-We also have a convenience function ``make_mmcif_headers()`` that writes everything except
-the list of atoms (categories ``_atom_site`` and ``_atom_site_anisotrop``).
+We also have a convenience function `make_mmcif_headers()` that writes everything except
+the list of atoms (categories `_atom_site` and `_atom_site_anisotrop`).
 These two calls are equivalent:
 
 .. doctest::
@@ -1170,7 +1170,7 @@ although available only from PDBj.
     | BinaryCIF (bcif.gz): 24 → 45
     | MMTF (mmtf.gz): 24 → 37
 
-Gemmi reads mmJSON files into ``cif::Document``,
+Gemmi reads mmJSON files into `cif::Document`,
 as it does with mmCIF files.
 
 Reading
@@ -1294,10 +1294,10 @@ or left as separate chains (iotbx).
 
 In gemmi we support both ways. Since merging is easier than splitting,
 the chains are first read separately and after reading the file
-the user can call ``Structure::merge_chain_parts()``.
+the user can call `Structure::merge_chain_parts()`.
 
 In the Python interface merging is also controlled
-by second argument to the ``gemmi.read_structure()`` function:
+by second argument to the `gemmi.read_structure()` function:
 
 .. code-block:: python
 
@@ -1355,37 +1355,37 @@ contains one or more models. This is the top level in the hierarchy:
 structure - model - chain - residue - atom.
 
 Apart from storing models (usually just a single model)
-the ``Structure`` has the following properties:
+the `Structure` has the following properties:
 
-* ``name`` (string) -- usually the file basename or PDB code,
-* ``cell`` -- :ref:`unit cell <unitcell>`,
-* ``spacegroup_hm`` (string) -- full space group name in Hermann–Mauguin
+* `name` (string) -- usually the file basename or PDB code,
+* `cell` -- :ref:`unit cell <unitcell>`,
+* `spacegroup_hm` (string) -- full space group name in Hermann–Mauguin
   notation (usually taken from the coordinate file),
-* ``ncs`` (C++ type: ``vector<NcsOp>``) -- list of NCS operations,
+* `ncs` (C++ type: `vector<NcsOp>`) -- list of NCS operations,
   usually taken from the MTRIX record or from the _struct_ncs_oper category,
-* ``resolution`` (C++ type: ``double``) -- resolution value from REMARK 2 or 3,
-* ``entities`` (C++ type: ``vector<Entity>``) -- additional information
+* `resolution` (C++ type: `double`) -- resolution value from REMARK 2 or 3,
+* `entities` (C++ type: `vector<Entity>`) -- additional information
   about :ref:`subchains <subchain>`, such as entity type and polymer's
   sequence,
-* ``connections`` (C++ type: ``vector<Connection>``) -- list of connections
+* `connections` (C++ type: `vector<Connection>`) -- list of connections
   corresponding to the _struct_conn category in mmCIF, or to the pdb records
   LINK and SSBOND,
-* ``assemblies`` (C++ type: ``vector<Assembly>``) -- list of biological
+* `assemblies` (C++ type: `vector<Assembly>`) -- list of biological
   assemblies defined in the REMARK 350 in pdb, or in corresponding mmCIF
   categories (_pdbx_struct_assembly, _pdbx_struct_assembly_gen,
   _pdbx_struct_assembly_prop and _pdbx_struct_oper_list)
-* ``input_format`` (enum ``CoorFormat``) -- what file format the structure
+* `input_format` (enum `CoorFormat`) -- what file format the structure
   was read from,
-* ``has_d_fraction`` (bool) -- how :ref:`deuterium is represented <deuterium>`,
-* ``origx`` (:ref:`Transform <transform>`) -- matrix from the PDB ORIGX
+* `has_d_fraction` (bool) -- how :ref:`deuterium is represented <deuterium>`,
+* `origx` (:ref:`Transform <transform>`) -- matrix from the PDB ORIGX
   records (or from mmCIF _database_pdb_matrix.origx);
   in the absence of ORIGX it is set to the identity matrix,
-* ``info`` (C++ type: ``map<string, string>``) --
+* `info` (C++ type: `map<string, string>`) --
   minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
-* ``raw_remarks`` (C++ type: ``vector<string>``) -- REMARK records
+* `raw_remarks` (C++ type: `vector<string>`) -- REMARK records
   from a PDB file, empty if the input file has different format.
 
-In Python, the ``info`` member variable is a dictionary-like object:
+In Python, the `info` member variable is a dictionary-like object:
 
 .. doctest::
 
@@ -1399,16 +1399,16 @@ In Python, the ``info`` member variable is a dictionary-like object:
   _struct_keywords.text GENE REGULATING PROTEIN
 
 Gemmi parses many more records from the PDB format, including
-REMARK 3 and 200/230. This information is stored in the ``Metadata`` structure
-defined in ``gemmi/metadata.hpp``. Currently, it's not exposed to Python.
+REMARK 3 and 200/230. This information is stored in the `Metadata` structure
+defined in `gemmi/metadata.hpp`. Currently, it's not exposed to Python.
 
-``Structure`` has also a number of methods.
+`Structure` has also a number of methods.
 To access or delete a model with known name use::
 
   Model* Structure::find_model(const std::string& model_name)
   void Structure::remove_model(const std::string& model_name)
 
-In Python these functions are wrapped as ``__getitem__`` and ``__delitem__``:
+In Python these functions are wrapped as `__getitem__` and `__delitem__`:
 
 .. doctest::
 
@@ -1442,9 +1442,9 @@ for example,
    from the same Structure. This is expected when working with a C++ vector,
    but when using Gemmi from Python it is a flaw. More precisely:
 
-   * ``add_model`` may cause memory re-allocation invalidating references
+   * `add_model` may cause memory re-allocation invalidating references
      to all other models,
-   * ``remove_model`` and ``__delitem__`` invalidate references only to
+   * `remove_model` and `__delitem__` invalidate references only to
      models that are after the removed one.
 
    This means that you need to update a reference before using it:
@@ -1457,7 +1457,7 @@ for example,
 
 
    The same rules apply to functions that add and remove chains, residues
-   and atoms (``add_chain``, ``add_residue``, ``add_atom``, ``__delitem__``).
+   and atoms (`add_chain`, `add_residue`, `add_atom`, `__delitem__`).
 
 
 After adding or removing models you may call:
@@ -1469,8 +1469,8 @@ After adding or removing models you may call:
 which will set model *names* to sequential numbers (next section
 explains why models have names).
 
-The space group string is stored as ``spacegroup_hm``.
-To get a matching entry in the table of space groups use ``find_spacegroup()``
+The space group string is stored as `spacegroup_hm`.
+To get a matching entry in the table of space groups use `find_spacegroup()`
 (which uses angles to distinguish hexagonal and rhombohedral settings
 for names such as "R 3"):
 
@@ -1490,15 +1490,15 @@ Polymers that have the same sequence --- the same entity.
 In the mmCIF format entities are explicitly linked with structural units
 that we call here :ref:`subchains <subchain>`. PDB files do not have
 this concept. If we read the structure from a PDB file,
-we can assign entities by calling ``setup_entities``.
+we can assign entities by calling `setup_entities`.
 This method uses a simple heuristic to group residues into
 *subchains*, which are then mapped to entities.
 
-Internally, ``setup_entities()`` runs four functions (in this order):
+Internally, `setup_entities()` runs four functions (in this order):
 
 .. _add_entity_types:
 
-* ``add_entity_types()`` -- sets Residue.entity_type if it's not already set.
+* `add_entity_types()` -- sets Residue.entity_type if it's not already set.
 
   When reading a PDB file, entity_type is assigned automatically if the chains
   contains the TER record. TER marks the end of polymer, so residues before
@@ -1515,7 +1515,7 @@ Internally, ``setup_entities()`` runs four functions (in this order):
 
     >>> structure.add_entity_types(overwrite=True)
 
-* ``assign_subchains()`` -- assigns subchain names in each chain that doesn't
+* `assign_subchains()` -- assigns subchain names in each chain that doesn't
   have all the subchains assigned yet. Structural units in the chain are
   implied by the previously assigned entity_type variables.
   The name for each unit is set by setting Residue.subchain variables in all
@@ -1531,10 +1531,10 @@ Internally, ``setup_entities()`` runs four functions (in this order):
   but the PDB OneDep software, contrary to the mmCIF spec,
   requires that label_asym_id is alphanumeric only.
 
-* ``ensure_entities()`` -- makes sure that each subchain is linked to
+* `ensure_entities()` -- makes sure that each subchain is linked to
   one of Entity objects in Structure.entities. Creates Entity objects if needed.
 
-* ``deduplicate_entities()`` -- polymers with identical sequence
+* `deduplicate_entities()` -- polymers with identical sequence
   in the SEQRES record are mapped to the same entity and redundant Entity
   objects are deleted.
 
@@ -1550,10 +1550,10 @@ Here is a snippet that converts PDB to mmCIF:
   >>> st.assign_label_seq_id()
   >>> st.make_mmcif_document().write_file('out.cif')
 
-The ``assign_label_seq_id()`` function above :ref:`aligns <sequence-alignment>`
+The `assign_label_seq_id()` function above :ref:`aligns <sequence-alignment>`
 sequence from the model to the full sequence (SEQRES) and sets
-``Residue.label_seq`` (which corresponds to _atom_site.label_seq_id)
-accordingly. It doesn't do anything if ``label_seq`` is already set or
+`Residue.label_seq` (which corresponds to _atom_site.label_seq_id)
+accordingly. It doesn't do anything if `label_seq` is already set or
 if the full sequence is not known.
 
 Properties of the Entity class are shown in this example:
@@ -1633,7 +1633,7 @@ Each connection stores:
     >>> st.connections[0].link_id  # no link ID -> empty string
     ''
 
-* addresses of two atoms (``partner1`` and ``partner2``),
+* addresses of two atoms (`partner1` and `partner2`),
 
   .. doctest::
 
@@ -1657,7 +1657,7 @@ Each connection stores:
     2.22
 
 The symmetry image and the distance
-can be recalculated using function ``find_nearest_image()``:
+can be recalculated using function `find_nearest_image()`:
 
 .. doctest::
 
@@ -1764,7 +1764,7 @@ Storing it differently in Gemmi would complicate reading and writing files.
 
 ----
 
-To actually construct the assembly as a new Model use ``make_assembly()``.
+To actually construct the assembly as a new Model use `make_assembly()`.
 
 As always, naming things is hard.
 Biological unit may contain a number of copies of one chain.
@@ -1780,7 +1780,7 @@ Each copy needs to be named. Gemmi provides three options:
   until exhausted (after 26*2+10=62 chains), then two-character names are used.
   This option is appropriate when the output is to be stored in the PDB format.
 
-Function ``make_assembly`` takes Assembly, Model and one of the naming
+Function `make_assembly` takes Assembly, Model and one of the naming
 options above, and returns a new Model that represents the assembly.
 
 .. doctest::
@@ -1793,7 +1793,7 @@ options above, and returns a new Model that represents the assembly.
   >>> list(assem)
   [<gemmi.Chain B1 with 26 res>]
 
-In C++ ``make_assembly()`` is defined in ``<gemmi/assembly.hpp>``.
+In C++ `make_assembly()` is defined in `<gemmi/assembly.hpp>`.
 
 Atoms at special position usually have fractional occupancy.
 When making an assembly such atoms are copied like all other atoms resulting in,
@@ -1806,17 +1806,17 @@ If you'd like to merge such overlapping identical atoms, use function:
 
 Atoms are sometimes slightly off the special position, which means
 a shift between overlapping images.
-The ``max_dist`` parameter specifies cut-off for merging -- atom copies
+The `max_dist` parameter specifies cut-off for merging -- atom copies
 are merged only if their distance is smaller. The merged atom has summed
 occupancy and averaged position. B-factors are not changed.
 It is assumed, by default, that the identical atoms that are to be merged
 have the same serial number. If this function is not called directly after
 make_assembly() and the serial numbers were re-assigned in the meantime,
-add argument ``compare_serial=false``.
+add argument `compare_serial=false`.
 
-Function ``transform_to_assembly()`` changes all models in the given structure
+Function `transform_to_assembly()` changes all models in the given structure
 to assemblies. Then it merges duplicated atoms (unless the function is called
-with ``merge_dist=0``), re-assigns serial numbers, adjusts some metadata,
+with `merge_dist=0`), re-assigns serial numbers, adjusts some metadata,
 such as secondary structure information,
 and removes the list of assemblies. The space group and
 unit cell are changed to non-crystal P1 (unless the function is called
@@ -1835,7 +1835,7 @@ is arbitrary, so this function may not be appropriate in all scenarios.
   500
 
 To expand the structure (asu) to the whole unit cell (P1)
-use the same function with the special assembly name ``unit_cell``:
+use the same function with the special assembly name `unit_cell`:
 
 .. doctest::
 
@@ -1845,14 +1845,14 @@ use the same function with the special assembly name ``unit_cell``:
   200
 
 The command-line equivalent to transform_to_assembly() is
-the ``--assembly`` option in :ref:`gemmi-convert <convert>`.
+the `--assembly` option in :ref:`gemmi-convert <convert>`.
 
 Various operations
 ------------------
 
 In Python, Structure has also methods for more specialized operations.
 In C++, the corresponding functions are available in separate headers
-(such as ``modify.hpp`` and ``polyheur.hpp``) and they are often templates
+(such as `modify.hpp` and `polyheur.hpp`) and they are often templates
 that work not only with Structure, but also with Model and Chain.
 
 Removing parts
@@ -1868,7 +1868,7 @@ We have functions that remove parts of the models:
   >>> st.remove_ligands_and_waters()
 
 If it happens that all residues are removed from a chain,
-the chain is still present in ``Model.chains``.
+the chain is still present in `Model.chains`.
 Usually, it doesn't matter, but if for any reasons it is preferable
 to discard empty chains, call:
 
@@ -1880,7 +1880,7 @@ Serial numbers
 ~~~~~~~~~~~~~~
 
 After adding, removing or reordering atoms the serial numbers
-kept in property ``Atom.serial`` are no longer consecutive.
+kept in property `Atom.serial` are no longer consecutive.
 This property is typically not used when writing a file -- instead,
 consecutive numbers are generated on the fly. The only exception is when
 write_pdb() is called with option preserve_serial=True.
@@ -1906,7 +1906,7 @@ you can create a model with added NCS copies:
   >>> gemmi.expand_ncs_model(st[0], st.ncs, gemmi.HowToNameCopiedChain.Short)
   <gemmi.Model 1 with 2 chain(s)>
 
-Analogous to the functions ``make_assembly()`` and ``transform_to_assembly()``,
+Analogous to the functions `make_assembly()` and `transform_to_assembly()`,
 we also have a function that transforms a structure in-place by
 expanding NCS in all models, merging duplicated atoms and updating metadata:
 
@@ -1916,7 +1916,7 @@ expanding NCS in all models, merging duplicated atoms and updating metadata:
 
 The meaning of the arguments is the same as in the "assembly" functions.
 
-See also the ``--expand-ncs`` option in command-line program
+See also the `--expand-ncs` option in command-line program
 :ref:`gemmi-convert <convert>`.
 
 .. _standard_frame:
@@ -1963,7 +1963,7 @@ as well as the SCALE and ORIGX matrices. The latter can be used to restore
 the original coordinates.
 
 The same conversion can be performed from the command line using
-:ref:`gemmi-convert <convert>` with the option ``--reframe``.
+:ref:`gemmi-convert <convert>` with the option `--reframe`.
 
 As a side note, non-crystal coordinate files, which must have dummy unit cell
 parameters (1 for lengths, 90 for angles), in almost all cases have the SCALE
@@ -1983,7 +1983,7 @@ the chain names first:
 
   >>> st.shorten_chain_names()
 
-In C++ this functions is in ``gemmi/assembly.hpp``.
+In C++ this functions is in `gemmi/assembly.hpp`.
 
 Long monomer names
 ~~~~~~~~~~~~~~~~~~
@@ -2001,22 +2001,22 @@ Therefore, gemmi provides a file format independent aliasing mechanism
 with two functions:
 
 
-* ``shorten_ccd_codes()`` replaces 5-character residue names in a structure
-  with 3-character names (aliases) that start with ``~``,
+* `shorten_ccd_codes()` replaces 5-character residue names in a structure
+  with 3-character names (aliases) that start with `~`,
 
-* ``restore_full_ccd_codes()`` restores the original names.
+* `restore_full_ccd_codes()` restores the original names.
 
 When reading a file with monomer names shortened in a gemmi-compatible way:
 
 * the tilde-hetnam extension in PDB
-* shortened and original names in ``_chem_comp.id`` and
-  ``_chem_comp.three_letter_code`` in mmCIF,
+* shortened and original names in `_chem_comp.id` and
+  `_chem_comp.three_letter_code` in mmCIF,
 
 the long names are automatically restored. Apart from this,
 switching between the long and short names requires function calls.
 
 Internally, the mapping between names is stored in
-``Structure::shortened_ccd_codes``.
+`Structure::shortened_ccd_codes`.
 
 .. doctest::
   :skipif: not os.path.isfile('8xfm.cif')
@@ -2051,7 +2051,7 @@ Symmetry mates are not taken into account here.
   >>> st.calculate_fractional_box(margin=5).get_size()
   <gemmi.Fractional(0.85659, 0.838305, 1.32204)>
 
-In C++ these are stand-alone functions in ``gemmi/calculate.hpp``.
+In C++ these are stand-alone functions in `gemmi/calculate.hpp`.
 
 .. _deuterium:
 
@@ -2080,7 +2080,7 @@ Internally, it can be more convenient to store such mixture
 as a single atom site with a parameter indicating the deuterium fraction
 (e.g., 0.92 in the above example).
 It is also possible to write it to an mmCIF file in such a form,
-using Refmac's custom tag ``_atom_site.ccp4_deuterium_fraction`` to store
+using Refmac's custom tag `_atom_site.ccp4_deuterium_fraction` to store
 the fraction parameter, but this approach is not widely supported.
 Therefore, writing it as two atoms is more portable.
 
@@ -2093,7 +2093,7 @@ In gemmi, you can switch between the two representations
   >>> st.store_deuterium_as_fraction(False)
 
 When the fraction parameter is used,
-``Structure.has_d_fraction`` is set to True.
+`Structure.has_d_fraction` is set to True.
 
 .. _sequence:
 
@@ -2107,7 +2107,7 @@ In the previous section we introduced sequence with the following example:
   >>> ent.full_sequence[:5]
   ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
 
-``Entity.full_sequence`` is a list (in C++: ``std::vector``) of residue names.
+`Entity.full_sequence` is a list (in C++: `std::vector`) of residue names.
 It stores sequence from the SEQRES record (pdb) or
 from the _entity_poly_seq category (mmCIF).
 The latter can contain microheterogeneity (point mutation).
@@ -2122,7 +2122,7 @@ in sequence are separated by commas:
   ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
   >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
 
-To ignore point mutations we can use a helper function ``Entity::first_mon``:
+To ignore point mutations we can use a helper function `Entity::first_mon`:
 
 .. doctest::
 
@@ -2142,7 +2142,7 @@ the :ref:`built-in table <find_tabulated_residue>` of popular residues:
   >>> [gemmi.find_tabulated_residue(resname).one_letter_code for resname in _]
   ['s', 'A', ' ', 'v', 's', 'A', ' ', 'v']
 
-``one_letter_code`` is lowercase for non-standard residues where it denotes
+`one_letter_code` is lowercase for non-standard residues where it denotes
 the parent component. If the code is blank, either the parent component is
 not known, or the component is not tabulated in Gemmi (i.e. it's not in the
 top 300+ most popular components in the PDB).
@@ -2184,7 +2184,7 @@ ResidueKind can be obtained from PolymerType:
   >>> gemmi.sequence_kind(_)
   <ResidueKind.AA: 1>
 
-In mmCIF ``_entity_poly.pdbx_seq_one_letter_code`` and in the OneDep interface,
+In mmCIF `_entity_poly.pdbx_seq_one_letter_code` and in the OneDep interface,
 the PDB uses a hybrid sequence format: a single letter for standard
 residues and a parenthesized CCD code for non-standard ones.
 
@@ -2272,18 +2272,18 @@ The function takes a string containing the file's content as an argument:
   >>> gemmi.read_pir_or_fasta(fasta_str)  #doctest: +ELLIPSIS
   [<gemmi.FastaSeq object at 0x...>]
 
-The string must start with a header line that begins with ``>``.
-In the case of PIR format, which starts with ``>P1;`` (or F1, DL, DC, RL, RC,
+The string must start with a header line that begins with `>`.
+In the case of PIR format, which starts with `>P1;` (or F1, DL, DC, RL, RC,
 or XX instead of P1), the next line is also part of the header.
 The sequence file may contain multiple sequences, each preceded by a header.
 Whitespace in a sequence is ignored, except for blank lines,
 which are only allowed between sequences.
 A sequence can contain letters, dashes, and residue names in parentheses.
 The latter is an extension inspired by the format used in mmCIF files,
-in which non-standard residues are given in parentheses, e.g., ``MA(MSE)GVN``.
-The sequence may end with ``*``.
+in which non-standard residues are given in parentheses, e.g., `MA(MSE)GVN`.
+The sequence may end with `*`.
 
-FastaSeq objects, returned from ``read_pir_or_fasta()``,
+FastaSeq objects, returned from `read_pir_or_fasta()`,
 contain only two strings:
 
 .. doctest::
@@ -2311,7 +2311,7 @@ Let say that we want to align residues in the model to the full sequence.
 Sometimes, the alignment is ambiguous. If we'd align texts ABBC and ABC,
 both A-BC and AB-C would have the same score. In a 3D structure, the position
 of gap can be informed by inter-atomic distances.
-This information is used automatically in the ``align_sequence_to_polymer``
+This information is used automatically in the `align_sequence_to_polymer`
 function. Gap positions, determined by a simple heuristic, are passed
 to the alignment algorithm as places where the gap opening penalty
 is not to be imposed.
@@ -2358,8 +2358,8 @@ The result provides statistics and methods of summarizing the alignment:
   >>> result.cigar_str()
   '11M3I23M7I71M25I'
 
-To print out the alignment, we can combine function ``add_gaps``
-and property ``match_string``:
+To print out the alignment, we can combine function `add_gaps`
+and property `match_string`:
 
 .. doctest::
 
@@ -2370,7 +2370,7 @@ and property ``match_string``:
   >>> result.add_gaps(gemmi.one_letter_code(st[0][0].get_polymer().extract_sequence()), 2)[:70]
   'MRLFGYARVST---SLDIQVRALKDAGVKANRIFTDK-------RKGLDLLRMKVEEGDVILVKKLDRLG'
 
-or we can use function ``AlignmentResult.formatted()``.
+or we can use function `AlignmentResult.formatted()`.
 
 We also have a function that aligns two sequences.
 We can exercise it by comparing two strings:
@@ -2392,8 +2392,8 @@ Now we can visualize the match:
   0
 
 The alignment and the score is calculate according to AlignmentScoring,
-which can be passed as the last argument to both ``align_string_sequences``
-and ``align_sequence_to_polymer`` functions.
+which can be passed as the last argument to both `align_string_sequences`
+and `align_sequence_to_polymer` functions.
 The default scoring is +1 for match, -1 for mismatch, -1 for gap opening,
 and -1 for each residue in the gap.
 If we would like to calculate the
@@ -2546,7 +2546,7 @@ If you'd like to use it -- get in touch.
 Model
 =====
 
-Model contains chains (class ``Chain``) that
+Model contains chains (class `Chain`) that
 can be accessed by index or by name::
 
   // to access or delete a chain by index use directly the chains vector:
@@ -2568,7 +2568,7 @@ can be accessed by index or by name::
 
 As it was shown in the :ref:`MET to MSE example <met_mse_example>`,
 you can iterate over chains in the model.
-You can also use function ``all()`` to iterate over all atoms in the model,
+You can also use function `all()` to iterate over all atoms in the model,
 getting objects of the :ref:`CRA <CRA>` class which holds three pointers --
 chain, residue and atom. The function mutating MET to MSE could be
 alternatively implemented as:
@@ -2595,7 +2595,7 @@ alternatively implemented as:
   >>> _.sole_atom('SE').element
   gemmi.Element('Se')
 
-To add a chain to the model, in C++ use directly methods of ``Model::chains``
+To add a chain to the model, in C++ use directly methods of `Model::chains`
 and in Python use:
 
 .. code-block:: python
@@ -2610,11 +2610,11 @@ for example,
   model.add_chain(model[0])          # add a copy of chain #0
   model.add_chain(model[0], unique_name=True)
 
-In the example with ``unique_name=True``, if the model already has a chain
+In the example with `unique_name=True`, if the model already has a chain
 with the same name, the added chain is assigned a new name
 (see :ref:`HowToNameCopiedChain.Short <how_to_name_copied_chain>`).
 
-Each ``Model`` in a Structure must have a unique name (``string name``).
+Each `Model` in a Structure must have a unique name (`string name`).
 Normally, models are numbered and the name is a number.
 But according to the mmCIF spec the name does not need to be a number,
 so just in case we store it as a string.
@@ -2628,11 +2628,11 @@ so just in case we store it as a string.
 
 As was discussed before, the PDBx/mmCIF format has also
 a set of parallel identifiers. In particular, it has
-``label_asym_id`` in parallel to ``auth_asym_id``.
-In Gemmi the residues with the same ``label_asym_id`` are called
+`label_asym_id` in parallel to `auth_asym_id`.
+In Gemmi the residues with the same `label_asym_id` are called
 :ref:`subchain <subchain>`.
-Subchain is represented by class ``ResidueSpan``.
-If you want to access a subchain with the specified ``label_asym_id``, use::
+Subchain is represented by class `ResidueSpan`.
+If you want to access a subchain with the specified `label_asym_id`, use::
 
   Model::get_subchain(const std::string& sub_name) -> ResidueSpan
 
@@ -2660,7 +2660,7 @@ Alternatively, we could do:
   >>> [subchain.subchain_id() for subchain in model.subchains()]
   ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
-The ``ResidueSpan`` is described in the next section.
+The `ResidueSpan` is described in the next section.
 
 ..
   TODO: find_residue_group, sole_residue, get_all_residue_names
@@ -2669,7 +2669,7 @@ The ``ResidueSpan`` is described in the next section.
 
 .. _model_count_atom:
 
-In Python, ``Model`` has also methods for often needed calculations:
+In Python, `Model` has also methods for often needed calculations:
 
 .. doctest::
 
@@ -2695,17 +2695,17 @@ as an argument. For example, we can count sulfur atoms with:
   2.0
 
 In C++, the same functionality is provided by templated functions
-from ``gemmi/calculate.hpp`` and ``gemmi/select.hpp``.
+from `gemmi/calculate.hpp` and `gemmi/select.hpp`.
 These functions (in C++) can be applied not only
-to ``Model``, but also to ``Structure``, ``Chain`` and ``Residue``.
+to `Model`, but also to `Structure`, `Chain` and `Residue`.
 
 
 Chain
 =====
 
 Chain corresponds to the chain in the PDB format and
-to ``_atom_site.auth_asym_id`` in the mmCIF format.
-It has a name and a list of residues (class ``Residue``).
+to `_atom_site.auth_asym_id` in the mmCIF format.
+It has a name and a list of residues (class `Residue`).
 
 To get the name or access a residue by index,
 in C++ you may access these properties directly::
@@ -2713,7 +2713,7 @@ in C++ you may access these properties directly::
   std::string name;
   std::vector<Residue> residues;
 
-In Python, we also have the ``name`` property:
+In Python, we also have the `name` property:
 
 .. doctest::
 
@@ -2737,7 +2737,7 @@ the chain object:
   70
 
 To add a residue to the chain, in C++ use directly methods
-of ``Chain::residues`` and in Python use:
+of `Chain::residues` and in Python use:
 
 .. code-block:: python
 
@@ -2778,10 +2778,10 @@ how to extract the residue we want:
 ----
 
 Often, we need to refer to a part of the chain.
-A span of consecutive residues can be represented by ``ResidueSpan``.
+A span of consecutive residues can be represented by `ResidueSpan`.
 For example, if we want to process separately the polymer, ligand
 and water parts of the chain, we can use the following functions
-that return ``ResidueSpan``::
+that return `ResidueSpan`::
 
   ResidueSpan Chain::get_polymer()
   ResidueSpan Chain::get_ligands()
@@ -2812,8 +2812,8 @@ We also have a function that returns the whole chain as a residue span::
   >>> chain_a.whole()
   <gemmi.ResidueSpan of 79: A - F [1(DG) 2(DC) 3(DG) ... 2070(HOH)]>
 
-``Chain`` has also functions ``get_subchain()`` and ``subchains()``
-that do the same as the functions of ``Model`` with the same names:
+`Chain` has also functions `get_subchain()` and `subchains()`
+that do the same as the functions of `Model` with the same names:
 
 .. doctest::
 
@@ -2832,7 +2832,7 @@ about :ref:`alternative conformations <altconf>`.
 
 For quick and approximate analysis of the structure, one may get by
 with ignoring all but the first (main) conformer.
-Both ``Chain`` and ``ResidueSpan`` have function ``first_conformer()``
+Both `Chain` and `ResidueSpan` have function `first_conformer()`
 which returns iterator over residues of the main conformer.
 
 .. _polymer_b_sequence:
@@ -2849,8 +2849,8 @@ which returns iterator over residues of the main conformer.
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
 
 A more complex approach is to group together the alternatives.
-Such a group is represented by ``ResidueGroup``, which is derived from
-``ResidueSpan``.
+Such a group is represented by `ResidueGroup`, which is derived from
+`ResidueSpan`.
 
 .. doctest::
 
@@ -2880,7 +2880,7 @@ and a function that changes a polypeptide chain into polyalanine:
 
   >>> chain_a.trim_to_alanine()
 
-In C++ ``trim_to_alanine()`` is defined in ``gemmi/polyheur.hpp``.
+In C++ `trim_to_alanine()` is defined in `gemmi/polyheur.hpp`.
 
 .. _residuespan:
 
@@ -2935,7 +2935,7 @@ The functions for adding and removing residues are the same as in Chain:
   >>> # and delete it
   >>> del polymer_b[0]
 
-If ResidueSpan represents a subchain we can get its ID (``label_asym_id``):
+If ResidueSpan represents a subchain we can get its ID (`label_asym_id`):
 
 .. doctest::
 
@@ -2951,17 +2951,17 @@ If it's a polymer, we can ask for polymer type and sequence:
   >>> polymer_b.make_one_letter_sequence()
   'sAXvsAXv'
 
-In C++ these two functions are available in ``gemmi/polyheur.hpp``.
+In C++ these two functions are available in `gemmi/polyheur.hpp`.
 
 The latter function uses a simple heuristic to check for gaps
-and the result includes a single dash (``-``) in places
+and the result includes a single dash (`-`) in places
 where the distance between residues suggests a gap.
 
 In addition to the numeric indexing,
-``ResidueSpan.__getitem__`` (like ``Chain.__getitem__``) can take
+`ResidueSpan.__getitem__` (like `Chain.__getitem__`) can take
 sequence ID as a string, returning ResidueGroup.
 In ResidueGroup we can uniquely address a residue by name, therefore
-``ResidueGroup.__getitem__`` (and ``__delitem__``) takes residue name.
+`ResidueGroup.__getitem__` (and `__delitem__`) takes residue name.
 
 .. doctest::
 
@@ -2973,7 +2973,7 @@ In ResidueGroup we can uniquely address a residue by name, therefore
 Residue
 =======
 
-Residue contains atoms (class ``Atom``).
+Residue contains atoms (class `Atom`).
 
 From C++ you may access directly the list of atoms::
 
@@ -2981,20 +2981,20 @@ From C++ you may access directly the list of atoms::
 
 Or you may use helper functions that take:
 atom name,
-alternative location (``'*'`` = take the first matching atom regardless
+alternative location (`'*'` = take the first matching atom regardless
 of altloc, ``'\0'`` = no altloc)
 and, optionally, also the expected element if you want to verify it::
 
   Atom* Residue::find_atom(const std::string& atom_name, char altloc, El el=El::X)
   std::vector<Atom>::iterator Residue::find_atom_iter(const std::string& atom_name, char altloc, El el=El::X)
 
-If atom is not found, the first function return ``nullptr``,
+If atom is not found, the first function return `nullptr`,
 the second one throws exception.
 
-To get all atoms with given name as ``AtomGroup`` (most often it will be
-just a single atom) use ``Residue::get(const std::string& name)``.
+To get all atoms with given name as `AtomGroup` (most often it will be
+just a single atom) use `Residue::get(const std::string& name)`.
 
-In Python it is similar (but ``__getitem__`` is used instead of ``get()``):
+In Python it is similar (but `__getitem__` is used instead of `get()`):
 
 .. doctest::
 
@@ -3010,7 +3010,7 @@ In Python it is similar (but ``__getitem__`` is used instead of ``get()``):
   >>> residue['CA']
   <gemmi.AtomGroup CA, sites: 1>
 
-  >>> # Residue also has ``__contains__`` and ``__iter__``
+  >>> # Residue also has __contains__ and __iter__
   >>> 'CB' in residue
   True
   >>> ' '.join(a.name for a in residue)
@@ -3028,21 +3028,21 @@ Atoms can be added, modified and removed:
 
 Residue contains also a number of properties:
 
-* ``name`` -- residue name, such as ALA,
-* ``seqid`` -- sequence ID, class SeqId with two properties:
+* `name` -- residue name, such as ALA,
+* `seqid` -- sequence ID, class SeqId with two properties:
 
-  * ``num`` -- sequence number,
-  * ``icode`` -- insertion code (a single character, ``' '`` = none),
+  * `num` -- sequence number,
+  * `icode` -- insertion code (a single character, `' '` = none),
 
-* ``segment`` -- segment from the PDB format v2,
-* ``subchain`` -- label_asym_id from mmCIF file, or ID generated by
-  ``Structure.assign_subchains()``,
-* ``label_seq`` -- numeric value from the label_seq_id field.
-* ``entity_type`` -- one of EntityType.Unknown, Polymer, NonPolymer, Water,
-* ``het_flag`` -- a single character based on the PDB record or
+* `segment` -- segment from the PDB format v2,
+* `subchain` -- label_asym_id from mmCIF file, or ID generated by
+  `Structure.assign_subchains()`,
+* `label_seq` -- numeric value from the label_seq_id field.
+* `entity_type` -- one of EntityType.Unknown, Polymer, NonPolymer, Water,
+* `het_flag` -- a single character based on the PDB record or
   on the _atom_site.group_PDB field:
-  ``A``\ =ATOM, ``H``\ =HETATM, ``\0``\ =unspecified,
-* ``flag`` -- custom flag, a single character that can be used for anything.
+  `A`\ =ATOM, `H`\ =HETATM, ``\0``\ =unspecified,
+* `flag` -- custom flag, a single character that can be used for anything.
 
 .. doctest::
 
@@ -3059,7 +3059,7 @@ Residue contains also a number of properties:
   >>> residue.flag
   '\x00'
 
-You may check if a residue is water with ``is_water()``.
+You may check if a residue is water with `is_water()`.
 More specifically, normal water (residue names HOH, WAT, H2O) and heavy water
 (DOD) return true, while hydroxide ion (OH), hydronium (H3O) and all other
 residues return false.
@@ -3069,9 +3069,9 @@ residues return false.
   >>> residue.is_water()
   False
 
-Classes Chain and ResidueSpan have function ``first_conformer()``
+Classes Chain and ResidueSpan have function `first_conformer()`
 for iterating over residues of one conformer.
-Similarly, ``Residue::first_conformer()`` iterates over atoms of
+Similarly, `Residue::first_conformer()` iterates over atoms of
 a single conformer:
 
 .. doctest::
@@ -3115,18 +3115,18 @@ Atom
 
 Atom (more accurately: atom site) has the following properties:
 
-* ``name`` -- atom name, such as ``CA`` or ``CB``,
-* ``altloc`` -- alternative location indicator (one character),
-* ``charge`` -- integer number (partial charges are not supported),
-* ``element`` -- :ref:`element <elements>` from a periodic table,
-* ``pos`` -- coordinates in Angstroms (instance of ``Position``),
-* ``occ`` -- occupancy,
-* ``b_iso`` -- isotropic temperature factor or, more accurately,
+* `name` -- atom name, such as `CA` or `CB`,
+* `altloc` -- alternative location indicator (one character),
+* `charge` -- integer number (partial charges are not supported),
+* `element` -- :ref:`element <elements>` from a periodic table,
+* `pos` -- coordinates in Angstroms (instance of `Position`),
+* `occ` -- occupancy,
+* `b_iso` -- isotropic temperature factor or, more accurately,
   atomic displacement parameter (ADP),
-* ``aniso`` -- anisotropic atomic displacement parameters (U not B).
-* ``serial`` -- atom serial number (integer).
-* ``calc_flag`` -- mmCIF _atom_site.calc_flag (used since 2020).
-* ``flag`` -- custom flag, a single character that can be used for anything
+* `aniso` -- anisotropic atomic displacement parameters (U not B).
+* `serial` -- atom serial number (integer).
+* `calc_flag` -- mmCIF _atom_site.calc_flag (used since 2020).
+* `flag` -- custom flag, a single character that can be used for anything
   by the user.
 
 These properties can be read and written from both C++ and Python,
@@ -3153,10 +3153,10 @@ was mutated to selenium.
   >>> atom.flag
   '\x00'
 
-``altloc`` is stored as a single character. Majority of atoms has
+`altloc` is stored as a single character. Majority of atoms has
 a single conformations and the altloc character set to NUL (``'\0'``).
 If you want to check if an atom has non-NUL altloc, you may also use
-method ``has_altloc()``:
+method `has_altloc()`:
 
 .. doctest::
 
@@ -3165,9 +3165,9 @@ method ``has_altloc()``:
   >>> atom.has_altloc()
   False
 
-``element`` can be compared (``==``, ``!=``) with other instances
+`element` can be compared (`==`, `!=`) with other instances
 of gemmi.Element. For checking if it is a hydrogen we have a dedicated
-function ``is_hydrogen()`` which returns true for both H and D:
+function `is_hydrogen()` which returns true for both H and D:
 
 .. doctest::
 

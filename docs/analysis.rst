@@ -23,7 +23,7 @@ located) is divided into small cells. The size of these cells depends
 on the search radius. Each cell stores a list of atoms in its area;
 these lists are used for fast lookup of atoms.
 
-In Gemmi the cell technique is implemented in a class named ``NeighborSearch``.
+In Gemmi the cell technique is implemented in a class named `NeighborSearch`.
 The implementation works with both crystal and non-crystal systems and:
 
 * handles crystallographic symmetry (including non-standard settings with
@@ -52,8 +52,8 @@ For this, it needs to know the search radius for which we optimize bins,
 as well as the unit cell. Since the system may be non-periodic,
 the constructor also takes the model as an argument -- it is used to
 calculate the bounding box for the model if there is no unit cell. The
-reference to the model is stored and is also used if ``populate()`` is called.
-The C++ signature (in ``gemmi/neighbor.hpp``) of the constructor is::
+reference to the model is stored and is also used if `populate()` is called.
+The C++ signature (in `gemmi/neighbor.hpp`) of the constructor is::
 
   NeighborSearch::NeighborSearch(Model& model, const UnitCell& cell, double radius)
 
@@ -69,8 +69,8 @@ or by adding individual atoms::
 
   void NeighborSearch::add_atom(const Atom& atom, int n_ch, int n_res, int n_atom)
 
-where ``n_ch`` is the index of the chain in the model, ``n_res`` is the index
-of the residue in the chain, and ``n_atom`` is the index of the atom
+where `n_ch` is the index of the chain in the model, `n_res` is the index
+of the residue in the chain, and `n_atom` is the index of the atom
 in the residue.
 
 An example in Python:
@@ -81,7 +81,7 @@ An example in Python:
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
   >>> ns = gemmi.NeighborSearch(st[0], st.cell, 5).populate(include_h=False)
 
-Here we do the same using ``add_chain()`` instead of ``populate()``:
+Here we do the same using `add_chain()` instead of `populate()`:
 
 .. doctest::
 
@@ -103,7 +103,7 @@ And again the same, with complete control over which atoms are included:
 
 
 
-All these functions store ``Mark``\ s in cell-lists. A mark contains the
+All these functions store `Mark`\ s in cell-lists. A mark contains the
 position of an atom's symmetry image and indices that point to the original
 atom. Searching for neighbors returns marks, from which we can obtain
 original chains, residues and atoms.
@@ -120,10 +120,10 @@ The first one takes atom as an argument::
   >>> len(marks)
   6
 
-``find_neighbors()`` checks altloc of the atom and
+`find_neighbors()` checks altloc of the atom and
 considers as potential neighbors only atoms from the same
 conformation. In particular, if altloc is empty all atoms are considered.
-Positive ``min_dist`` in the ``find_neighbors()`` call prevents
+Positive `min_dist` in the `find_neighbors()` call prevents
 the atom whose neighbors we search from being included in the results
 (the distance of the atom to itself is zero).
 
@@ -159,12 +159,12 @@ as an argument (usage examples are in the source code)::
   template<typename T>
   void NeighborSearch::for_each(const Position& pos, char altloc, float radius, const T& func, int k=1)
 
-Cell-lists contain ``Mark``\ s. When searching for neighbors you get references
+Cell-lists contain `Mark`\ s. When searching for neighbors you get references
 (in C++ -- pointers) to these marks.
-``Mark`` has a number of properties: ``x``, ``y``, ``z``,
-``altloc``, ``element``, ``image_idx`` (index of the symmetry operation
+`Mark` has a number of properties: `x`, `y`, `z`,
+`altloc`, `element`, `image_idx` (index of the symmetry operation
 that was used to generate this mark, 0 for identity),
-``chain_idx``, ``residue_idx`` and ``atom_idx``.
+`chain_idx`, `residue_idx` and `atom_idx`.
 
 .. doctest::
 
@@ -183,7 +183,7 @@ that was used to generate this mark, 0 for identity),
   (0, 7, 2)
 
 The references to the original model and to atoms are not stored.
-``Mark`` has a method ``to_cra()`` that needs to be called with ``Model``
+`Mark` has a method `to_cra()` that needs to be called with `Model`
 as an argument to get a triple of Chain, Residue and Atom::
 
   CRA NeighborSearch::Mark::to_cra(Model& model) const
@@ -198,7 +198,7 @@ as an argument to get a triple of Chain, Residue and Atom::
   >>> cra.atom
   <gemmi.Atom OP2 at (1.4, 15.9, -17.8)>
 
-Note that ``mark.pos`` can be the position of a symmetric image of the atom.
+Note that `mark.pos` can be the position of a symmetric image of the atom.
 In this example the "original" atom is in a different location:
 
 .. doctest::
@@ -213,7 +213,7 @@ image is composed of two parts: one of symmetry transformations
 in the unit cell and a shift of the unit cell that we often
 call here the PBC (periodic boundary conditions) shift.
 
-The first part is stored explicitly as ``mark.image_idx``.
+The first part is stored explicitly as `mark.image_idx`.
 The corresponding transformation is:
 
 .. doctest::
@@ -234,9 +234,9 @@ image under PBC:
   <gemmi.NearestImage 12_665 in distance 3.00>
 
 To calculate only the distance to the atom, you can use the same function
-with ``mark.pos`` and symmetry operation index 0. ``mark.pos`` represents
+with `mark.pos` and symmetry operation index 0. `mark.pos` represents
 the position of the atom that has already been transformed by the symmetry
-operation ``mark.image_idx`` (and shifted into the unit cell).
+operation `mark.image_idx` (and shifted into the unit cell).
 
 .. doctest::
 
@@ -276,7 +276,7 @@ class ContactSearch. It uses the neighbor search to find pairs of atoms
 close to each other and applies the filters described below.
 
 When constructing ContactSearch we set the overall maximum search distance.
-This distance is stored as the ``search_radius`` property:
+This distance is stored as the `search_radius` property:
 
 .. doctest::
 
@@ -304,7 +304,7 @@ Then each radius can be accessed and modified individually:
   >>> cs.set_radius(gemmi.Element('Hg'), 1.5)
 
 
-Next, we have the ``ignore`` property that can take
+Next, we have the `ignore` property that can take
 one of the following values:
 
 * ContactSearch.Ignore.Nothing -- no filtering here,
@@ -328,7 +328,7 @@ threshold:
   >>> cs.min_occupancy = 0.01
 
 Sometimes, it is handy to get each atom pair twice (as A-B and B-A).
-In such case make the ``twice`` property true. By default, it is false:
+In such case make the `twice` property true. By default, it is false:
 
 .. doctest::
 
@@ -357,10 +357,10 @@ The contact search uses an instance of NeighborSearch.
   >>> ns = gemmi.NeighborSearch(st_virus[0], st_virus.cell, 5).populate()
 
 If you'd like to ignore hydrogens from the model,
-call ``ns.populate(include_h=False)``.
+call `ns.populate(include_h=False)`.
 
 If you'd like to ignore waters, either remove waters from the Model
-(function ``remove_waters()``) or ignore results that contain waters.
+(function `remove_waters()`) or ignore results that contain waters.
 
 The actual contact search is done by:
 
@@ -387,15 +387,15 @@ The ContactSearch.Result class has four properties:
   2.8613363437597505
 
 The first two properties are :ref:`CRA <CRA>`\ s for the involved atoms.
-The ``image_idx`` is an index of the symmetry image (both crystallographic
+The `image_idx` is an index of the symmetry image (both crystallographic
 symmetry and strict NCS count).
-Value 0 would mean that both atoms (``partner1`` and ``partner2``)
+Value 0 would mean that both atoms (`partner1` and `partner2`)
 are in the same unit.
 In this example the value can be high because it is a structure of
 icosahedral viral capsid with 240 identical units in the unit cell.
 The last property is the distance between atoms.
 
-Atoms pointed to by ``partner1`` and ``partner2`` can be far apart
+Atoms pointed to by `partner1` and `partner2` can be far apart
 in the asymmetric unit:
 
 .. doctest::
@@ -405,8 +405,8 @@ in the asymmetric unit:
   >>> results[0].partner2.atom.pos
   <gemmi.Position(49.409, 39.333, 19.524)>
 
-But you can find the position of symmetry image of ``partner2`` that
-is in contact with ``partner1`` with:
+But you can find the position of symmetry image of `partner2` that
+is in contact with `partner1` with:
 
 .. doctest::
 
@@ -415,8 +415,8 @@ is in contact with ``partner1`` with:
   ...                                         results[0].image_idx)
   <gemmi.Position(42.6647, 47.5137, 16.8644)>
 
-You could also find the symmetry image of ``partner1``
-that is near the original position of ``partner2``:
+You could also find the symmetry image of `partner1`
+that is near the original position of `partner2`:
 
 .. doctest::
 
@@ -438,7 +438,7 @@ Superposition
 Gemmi includes the `QCP method <https://theobald.brandeis.edu/qcp/>`_
 (Liu P, Agrafiotis DK, & Theobald DL, 2010)
 for superposing two lists of points in 3D.
-The C++ function ``superpose_positions()`` takes two arrays of positions
+The C++ function `superpose_positions()` takes two arrays of positions
 and an optional array of weights. Before applying this function to chains
 it is necessary to determine pairs of corresponding atoms.
 Here, as a minimal example, we superpose backbone of the third residue:
@@ -456,7 +456,7 @@ Here, as a minimal example, we superpose backbone of the third residue:
   0.006558389527590043
 
 To make it easier, we also have a higher-level function
-``calculate_superposition()`` that operates on ``ResidueSpan``\ s.
+`calculate_superposition()` that operates on `ResidueSpan`\ s.
 This function first performs the sequence alignment.
 Then the matching residues are superposed, using either
 all atoms in both residues, or only Cα atoms (for peptides)
@@ -491,16 +491,16 @@ Here is a usage example:
   >>> sup.transform.vec
   <gemmi.Vec3(-17.764, 16.9915, -1.77262)>
 
-The arguments to ``calculate_superposition()`` are:
+The arguments to `calculate_superposition()` are:
 
-- two ``ResidueSpan``\ s,
+- two `ResidueSpan`\ s,
 - polymer type (to avoid determining it when it's already known).
   The information whether it's protein or nucleic acid is used
   during sequence alignment (to detect gaps between residues in the polymer --
   it helps in rare cases when the sequence alignment alone is ambiguous),
   and it decides whether to use Cα or P atoms (see the next point),
-- atom selection: one of ``SupSelect.CaP`` (only Cα or P atoms),
-  ``SupSelect.MainChain`` or ``SupSelect.All`` (all atoms),
+- atom selection: one of `SupSelect.CaP` (only Cα or P atoms),
+  `SupSelect.MainChain` or `SupSelect.All` (all atoms),
 - (optionally) altloc -- the conformer choice.
   By default, atoms with non-blank altloc are ignored.
   With altloc='A', only the A conformer is considered
@@ -520,7 +520,7 @@ The arguments to ``calculate_superposition()`` are:
 - (optionally) trim_cutoff (default: 2.0) --  outlier rejection cutoff in RMSD,
 
 To calculate current RMSD between atoms (without superposition)
-use function ``calculate_current_rmsd()`` that takes the same arguments
+use function `calculate_current_rmsd()` that takes the same arguments
 except the ones for trimming:
 
   .. doctest::
@@ -561,7 +561,7 @@ the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
 The selection has a form of slash-separated parts:
 /models/chains/residues/atoms. Leading and trailing parts can be omitted
 when it's not ambiguous. An empty field means that all items match,
-with two exceptions. The empty chain part (e.g. ``/1//``) matches only
+with two exceptions. The empty chain part (e.g. `/1//`) matches only
 a chain without an ID (blank chainID in the PDB format;
 not spec-conformant, but possible in working files). The empty altloc
 (examples will follow) matches atoms with a blank altLoc field.
@@ -570,38 +570,38 @@ added at the end after a semicolon (;).
 
 Let us go through the individual filters first:
 
-* ``/1`` -- selects model 1 (if the PDB file doesn't have MODEL records,
+* `/1` -- selects model 1 (if the PDB file doesn't have MODEL records,
   it is assumed that the only model is model 1).
-* ``//D`` (or just ``D``) -- selects chain D.
-* ``//*/10-30`` (or ``10-30``) -- residues with sequence IDs from 10 to 30.
-* ``//*/10A-30A`` (or ``10A-30A`` or ``///10.A-30.A`` or ``10.A-30.A``) --
+* `//D` (or just `D`) -- selects chain D.
+* `//*/10-30` (or `10-30`) -- residues with sequence IDs from 10 to 30.
+* `//*/10A-30A` (or `10A-30A` or `///10.A-30.A` or `10.A-30.A`) --
   sequence ID can include insertion code. The MMDB syntax has dot between
   sequence sequence number and insertion code. In Gemmi the dot is optional.
-* ``//*/(ALA)`` (or ``(ALA)``) -- selects residues with a given name.
-* ``//*//CB`` (or ``CB:*`` or ``CB[*]``) -- selects atoms with a given name.
-* ``//*//[P]`` (or just ``[P]``) -- selects phosphorus atoms.
-* ``//*//:B`` (or ``:B``) -- selects atoms with altloc B.
-* ``//*//:`` (or ``:``) -- selects atoms without altloc.
-* ``//*//;q<0.5`` (or ``;q<0.5``) -- selects atoms with occupancy below 0.5
-  (inspired by PyMOL, where it'd be ``q<0.5``).
-* ``//*//;b>40`` (or ``;b>40``) -- selects atoms with isotropic B-factor
+* `//*/(ALA)` (or `(ALA)`) -- selects residues with a given name.
+* `//*//CB` (or `CB:*` or `CB[*]`) -- selects atoms with a given name.
+* `//*//[P]` (or just `[P]`) -- selects phosphorus atoms.
+* `//*//:B` (or `:B`) -- selects atoms with altloc B.
+* `//*//:` (or `:`) -- selects atoms without altloc.
+* `//*//;q<0.5` (or `;q<0.5`) -- selects atoms with occupancy below 0.5
+  (inspired by PyMOL, where it'd be `q<0.5`).
+* `//*//;b>40` (or `;b>40`) -- selects atoms with isotropic B-factor
   above a given value.
-* ``;polymer`` or ``;solvent`` -- selects polymer or solvent residues
+* `;polymer` or `;solvent` -- selects polymer or solvent residues
   (if the PDB file doesn't have TER records, call setup_entities() first).
-* ``*`` -- selects all atoms.
+* `*` -- selects all atoms.
 
-The syntax supports also comma-separated lists and negations with ``!``:
+The syntax supports also comma-separated lists and negations with `!`:
 
-* ``(!ALA)`` -- all residues but alanine,
-* ``[C,N,O]`` -- all C, N and O atoms,
-* ``[!C,N,O]`` -- all atoms except C, N and O,
-* ``:,A`` -- altloc either empty or A (which makes one conformation),
-* ``/1/A,B/20-40/CA[C]:,A`` -- multiple selection criteria, all of them
+* `(!ALA)` -- all residues but alanine,
+* `[C,N,O]` -- all C, N and O atoms,
+* `[!C,N,O]` -- all atoms except C, N and O,
+* `:,A` -- altloc either empty or A (which makes one conformation),
+* `/1/A,B/20-40/CA[C]:,A` -- multiple selection criteria, all of them
   must be fulfilled.
-* ``(CYS);!polymer`` -- select cysteine ligands
+* `(CYS);!polymer` -- select cysteine ligands
 
 **Incompatibility** with MMDB.
-In MMDB, if the chemical element is specified (e.g. ``[C]`` or ``[*]``),
+In MMDB, if the chemical element is specified (e.g. `[C]` or `[*]`),
 the alternative location indicator defaults to "" (no altloc),
 rather than to "*" (any altloc). This might be surprising.
 In Gemmi, if ':' is absent the altloc is not checked ("*").
@@ -647,14 +647,14 @@ which can then be used to iterate over the selected items in the hierarchy:
             - N9
      - 4(DT)
 
-Function ``str()`` creates a CID string from the selection:
+Function `str()` creates a CID string from the selection:
 
 .. doctest::
 
   >>> sel.str()
   '//A/1.-4./N9'
 
-A helper function ``first()`` returns the first matching atom:
+A helper function `first()` returns the first matching atom:
 
 .. doctest::
 
@@ -732,7 +732,7 @@ we select residues in the radius of 8Å from a selected point:
 Note: NeighborSearch searches for atoms in all symmetry images.
 This is why it takes UnitCell as a parameter.
 To search only in atoms directly listed in the file pass empty cell
-(``gemmi.UnitCell()``).
+(`gemmi.UnitCell()`).
 
 Instead of the whole residues, we can select atoms.
 Here, we select atoms in the radius of 8Å from a selected point:
@@ -810,7 +810,7 @@ and for testing graphs for isomorphism". We can use it in Python through
 the pynauty module.
 
 Here we set up a graph in `pynauty <https://github.com/pdobsan/pynauty>`_,
-from the ``so3`` object prepared in the previous example:
+from the `so3` object prepared in the previous example:
 
 .. doctest::
   :skipif: pynauty is None
@@ -952,7 +952,7 @@ Maximum common subgraph
 
 In this example we use McGregor's algorithm implemented in the Boost Graph
 Library to find maximum common induced subgraph. We call the MCS searching
-function with option ``only_connected_subgraphs=true``, which has obvious
+function with option `only_connected_subgraphs=true`, which has obvious
 meaning and can be changed if needed.
 
 To illustrate this example, we compare ligands AUD and LSA:
@@ -975,11 +975,11 @@ Torsion angles
 
 This section presents functions dedicated to calculation of the dihedral angles
 φ (phi), ψ (psi) and ω (omega) of the protein backbone.
-These functions are built upon the more general ``calculate_dihedral`` function,
+These functions are built upon the more general `calculate_dihedral` function,
 introduced in :ref:`the section about coordinates <coordinates>`,
 which takes four points in the space as arguments.
 
-``calculate_omega()`` calculates the ω angle, which is usually around 180°:
+`calculate_omega()` calculates the ω angle, which is usually around 180°:
 
 .. doctest::
 
@@ -1000,7 +1000,7 @@ which takes four points in the space as arguments.
   SER 176.74223937657652
 
 The φ and ψ angles are often used together, so they are calculated
-in one function ``calculate_phi_psi()``:
+in one function `calculate_phi_psi()`:
 
 .. doctest::
 
@@ -1016,7 +1016,7 @@ in one function ``calculate_phi_psi()``:
   THR   -62.01   147.45
   SER   -92.85   161.53
 
-In C++ these functions can be found in ``gemmi/calculate.hpp``.
+In C++ these functions can be found in `gemmi/calculate.hpp`.
 
 The torsion angles φ and ψ can be visualized on the Ramachandran plot.
 Let us plot angles from all PDB entries with the resolution higher than 1.5A.
@@ -1076,7 +1076,7 @@ In Python we have one function that does it all:
 
 where
 
-* ``monlib`` is an instance of an undocumented MonLib class.
+* `monlib` is an instance of an undocumented MonLib class.
   For now, here is an example how to read the CCP4 monomer library
   (a.k.a Refmac dictionary):
 
@@ -1086,7 +1086,7 @@ where
     resnames = st[0].get_all_residue_names()
     monlib = gemmi.read_monomer_lib(monlib_path, resnames)
 
-* ``h_change`` is one of:
+* `h_change` is one of:
 
   * HydrogenChange.NoChange -- no change,
   * HydrogenChange.Shift -- shift existing hydrogens to ideal (riding) positions,
@@ -1097,15 +1097,15 @@ where
   * HydrogenChange.ReAddKnown -- the same, but doesn't add any H atoms which
     positions are not uniquely determined,
 
-* ``reorder`` -- changes the order of atoms inside each residue
+* `reorder` -- changes the order of atoms inside each residue
   to match the order in the corresponding monomer cif file,
 
-* ``warnings`` --  by default, exception is raised when a chemical component
+* `warnings` --  by default, exception is raised when a chemical component
   is missing in the monomer library, or when link is missing,
   or the hydrogen adding procedure comes across an unexpected configuration.
   You can set warnings=sys.stderr to only print a warning to stderr
   and continue. sys.stderr can be replaced with any object that has
-  methods ``write(str)`` and ``flush()``.
+  methods `write(str)` and `flush()`.
 
 
 TBC
@@ -1119,8 +1119,8 @@ Some of the examples in this documentation work with a local copy
 of the Protein Data Bank archive. This subsection describes
 the assumed setup.
 
-Like in BioJava, we assume that the ``$PDB_DIR`` environment variable
-points to a directory that contains ``structures/divided/mmCIF`` -- the same
+Like in BioJava, we assume that the `$PDB_DIR` environment variable
+points to a directory that contains `structures/divided/mmCIF` -- the same
 arrangement as on the
 `PDB's FTP <ftp://ftp.wwpdb.org/pub/pdb/data/structures/>`_ server.
 

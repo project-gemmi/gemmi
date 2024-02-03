@@ -10,12 +10,12 @@ Vectors and coordinates
 
 Coordinates are represented by two classes:
 
-* ``Position`` for coordinates in Angstroms (orthogonal coordinates),
-* ``Fractional`` for coordinates relative to the unit cell
+* `Position` for coordinates in Angstroms (orthogonal coordinates),
+* `Fractional` for coordinates relative to the unit cell
   (fractional coordinates).
 
-Both ``Position`` and ``Fractional`` are derived from ``Vec3``,
-which has three numeric properties: ``x``, ``y`` and ``z``.
+Both `Position` and `Fractional` are derived from `Vec3`,
+which has three numeric properties: `x`, `y` and `z`.
 
 .. doctest::
 
@@ -103,15 +103,15 @@ coordinates:
     90.0
 
 There are more functions in C++.
-See headers ``gemmi/math.hpp`` and ``gemmi/calculate.hpp``.
+See headers `gemmi/math.hpp` and `gemmi/calculate.hpp`.
 
 
 3x3 matrices
 ============
 
 Gemmi has only 3x3 matrices.
-``Mat33`` is a matrix that can represent rotation and scaling,
-and ``SMat33`` is a symmetric matrix (6 elements) that can represent
+`Mat33` is a matrix that can represent rotation and scaling,
+and `SMat33` is a symmetric matrix (6 elements) that can represent
 anisotropic ADP tensor. Let us start with the former.
 
 Similarly to vectors, Mat33 can be converted to and from a Python's list:
@@ -165,8 +165,8 @@ that can work with either 32- or 64-bit floating point numbers.
 In Python we have two corresponding classes: SMat33f (32-bit)
 and SMat33d (64-bit).
 These classes are used primarily for anisotropic ADP tensors;
-their member variables are named ``u11``, ``u22``, ``u33``,
-``u12``, ``u13`` and ``u23``.
+their member variables are named `u11`, `u22`, `u33`,
+`u12`, `u13` and `u23`.
 
 .. doctest::
 
@@ -204,8 +204,8 @@ and fractionalization and orthogonalization of coordinates.
 3D transformations tend to be represented either by a 4x4 matrix,
 or by a dual quaternion, or by a 3x3 matrix and a translation vector.
 Gemmi uses the latter. Transformations are represented by
-the ``Transform`` class that has two member variables:
-``mat`` (of type ``Mat33``) and ``vec`` (of type ``Vec3``).
+the `Transform` class that has two member variables:
+`mat` (of type `Mat33`) and `vec` (of type `Vec3`).
 
 .. doctest::
 
@@ -256,16 +256,16 @@ Here is an example that shows a transformation read from a PDB file:
   <gemmi.Vec3(20, 30, 40)>
 
 To avoid mixing of orthogonal and fractional coordinates
-Gemmi also has ``FTransform``, which is like ``Transform``,
-but can be applied only to ``Fractional`` coordinates.
+Gemmi also has `FTransform`, which is like `Transform`,
+but can be applied only to `Fractional` coordinates.
 
 .. _box:
 
 Box
 ===
 
-``Box`` is a small utility for calculation of bounding boxes.
-It comes in two variants: for ``Position`` and ``Fractional``:
+`Box` is a small utility for calculation of bounding boxes.
+It comes in two variants: for `Position` and `Fractional`:
 
 .. doctest::
 
@@ -285,7 +285,7 @@ It comes in two variants: for ``Position`` and ``Fractional``:
   >>> # Fractional variant works in the same way
   >>> box = gemmi.FractionalBox()
 
-In C++ it is a template ``Box<T>`` defined in ``gemmi/math.hpp``.
+In C++ it is a template `Box<T>` defined in `gemmi/math.hpp`.
 
 
 .. _unitcell:
@@ -298,7 +298,7 @@ the unit cell. In particular, we use the unit cell to switch between
 orthogonal (Cartesian) and fractional coordinates.
 
 The UnitCell class stores the cell parameters
-(``a``, ``b``, ``c``, ``alpha``, ``beta``, ``gamma``)
+(`a`, `b`, `c`, `alpha`, `beta`, `gamma`)
 and other properties of the cell precalculated for efficiency
 (orthogonalization and fractionalization transformations,
 the volume, parameters of the reciprocal unit cell).
@@ -364,7 +364,7 @@ in the usual cases):
 
 Cells can be compared with:
 
-* ``approx()`` --- meant for almost identical cells that differ only
+* `approx()` --- meant for almost identical cells that differ only
   due to numeric errors. It checks if the cell parameters differ
   by less than a given absolute tolerance ε:
 
@@ -374,7 +374,7 @@ Cells can be compared with:
       >>> cell.approx(cell2, epsilon=1e-6)
       False
 
-* ``is_similar()`` --- uses relative tolerance to compare the edge lengths
+* `is_similar()` --- uses relative tolerance to compare the edge lengths
   and absolute tolerance in degrees to compare the angles:
 
   .. doctest::
@@ -401,7 +401,7 @@ in the direct and reciprocal space:
 
 If the lattice is centered, we can obtain a primitive cell.
 We have a function that takes centring type (return value of
-``SpaceGroup.centring_type()``), uses matrix from ``centred_to_primitive()``
+`SpaceGroup.centring_type()`), uses matrix from `centred_to_primitive()`
 and returns orthogonalization matrix of a primitive cell:
 of the primitive cell:
 
@@ -416,7 +416,7 @@ of the primitive cell:
 This matrix can be used to obtain the G\ :sup:`6` and S\ :sup:`6` vectors,
 which are used in Niggli and Selling-Delaunay :ref:`cell reduction <niggli>`.
 
-Function ``is_compatible_with_spacegroup`` checks if the space group
+Function `is_compatible_with_spacegroup` checks if the space group
 operations don't change the metric tensor elements by more than *ε*
 (*ε*\ =0.001 by default):
 
@@ -428,14 +428,14 @@ operations don't change the metric tensor elements by more than *ε*
     False
 
 
-The UnitCell object stores internally (in `UnitCell.images``) a list of
+The UnitCell object stores internally (in `UnitCell.images`) a list of
 symmetry transformations -- crystallographic symmetry and, in case of
 macromolecules, also NCS -- that transform asymmetric unit (ASU) into
 the complete unit cell. This list is populated by the class that contains
 the UnitCell. It is done automatically when reading a coordinate file.
 If you set the unit cell, space group or NCS manually,
 call Structure.setup_cell_images() or SmallStructure.setup_cell_images()
-to update ``images``.
+to update `images`.
 (The NCS operarations in this list are only those marked as not "given"
 in the MTRIX record in the PDB format or in _struct_ncs_oper in mmCIF).
 
@@ -443,7 +443,7 @@ UnitCell.images are used for searching neighbors,
 calculating structure factors, and a few other things.
 The following functions also rely on it:
 
-* ``UnitCell::volume_per_image() -> double`` -- returns ``UnitCell::volume``
+* `UnitCell::volume_per_image() -> double` -- returns `UnitCell::volume`
   divided by the number of the molecule images in the unit cell,
 
   .. doctest::
@@ -454,7 +454,7 @@ The following functions also rely on it:
     >>> st.cell.volume / st.cell.volume_per_image()
     12.0
 
-* ``UnitCell::is_special_position(const Position& pos, double max_dist=0.8) -> int`` --
+* `UnitCell::is_special_position(const Position& pos, double max_dist=0.8) -> int` --
   returns the number of nearby symmetry mates of an atom.
   Non-zero only for atoms on special positions.
   For example, returns 3 for an atom on 4-fold symmetry axis.
@@ -474,12 +474,12 @@ The following functions also rely on it:
     >>> st.cell.is_special_position(cl.pos, max_dist=1.2)
     5
 
-* ``UnitCell::find_nearest_image(const Position& ref, const Position& pos, Asu asu) -> NearestImage`` --
-  with the last argument set to ``Asu::Any``,
-  it returns the symmetric image of ``pos`` that is nearest to ``ref``.
-  The last argument can also be set to ``Asu::Same`` or ``Asu::Different``.
+* `UnitCell::find_nearest_image(const Position& ref, const Position& pos, Asu asu) -> NearestImage` --
+  with the last argument set to `Asu::Any`,
+  it returns the symmetric image of `pos` that is nearest to `ref`.
+  The last argument can also be set to `Asu::Same` or `Asu::Different`.
 
-* ``UnitCell::find_nearest_pbc_image(const Position& ref, const Position& pos, int image_idx)`` --
+* `UnitCell::find_nearest_pbc_image(const Position& ref, const Position& pos, int image_idx)` --
   similar to the function above, but takes the index of symmetry transformation
   as an argument and finds only the unit cell shift. The section about
   :ref:`neighbor search <neighbor_search>` has an example of usage.
@@ -502,15 +502,15 @@ need the latter you can calculate it directly:
 
 When changing a symmetry setting of coordinates or reindexing reflections
 we need a new unit cell, which can be obtained with one of functions
-``changed_basis_forward()`` and ``changed_basis_backward()``:
+`changed_basis_forward()` and `changed_basis_backward()`:
 
 .. doctest::
 
     >>> cell.changed_basis_backward(gemmi.Op('y,z,x'), set_images=True)
     <gemmi.UnitCell(45.07, 25.12, 39.5, 90, 90, 90)>
 
-With ``set_images=False`` the ``images`` list in the new unit cell is empty.
-With ``True`` -- it contains transformed original list
+With `set_images=False` the `images` list in the new unit cell is empty.
+With `True` -- it contains transformed original list
 (but it doesn't work correctly when the cell volume changes).
 
 
@@ -616,7 +616,7 @@ and obtain the corresponding cell parameters (with angles in degrees):
   (76.85428485126..., 76.85428485126..., 76.85428485126..., 130.96878780115..., 130.90322881367..., 71.91478106070...)
 
 And most importantly, we can reduce the cell.
-``niggli_reduce()`` performs the Niggli reduction on G\ :sup:`6`,
+`niggli_reduce()` performs the Niggli reduction on G\ :sup:`6`,
 returning the number of iterations it took:
 
 .. doctest::
@@ -662,9 +662,9 @@ In this case both functions gave the same result.
   >>> gv.get_cell()
   <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
-Functions ``niggli_reduce``, ``is_niggli`` and ``is_buerger`` can take optional
-parameter ``epsilon`` (default: 1e-9) that is used for comparing numbers.
-Additionally, ``niggli_reduce`` can take ``iteration_limit`` (default: 100).
+Functions `niggli_reduce`, `is_niggli` and `is_buerger` can take optional
+parameter `epsilon` (default: 1e-9) that is used for comparing numbers.
+Additionally, `niggli_reduce` can take `iteration_limit` (default: 100).
 To check how the computations would work without ε we can set it to 0:
 
 .. doctest::
@@ -681,7 +681,7 @@ To check how the computations would work without ε we can set it to 0:
 Here, the Niggli conditions were initially found not fulfilled, because
 one expression that should be non-negative was about -5e-13.
 A few extra iterations sorted it out (without any real changes),
-but it's not always the case -- that's why we have ``iteration_limit``
+but it's not always the case -- that's why we have `iteration_limit`
 to prevent infinite loop.
 
 The original Křivý-Gruber algorithm doesn't calculate the change-of-basis
@@ -698,7 +698,7 @@ To track the change of basis, pass the following option:
   >>> gv = gemmi.GruberVector(cell, sg, track_change_of_basis=True)
 
 After the Niggli reduction, the transformation will be available
-in the ``change_of_basis`` property:
+in the `change_of_basis` property:
 
 .. doctest::
 
@@ -784,8 +784,8 @@ The sum Σ\ **b**\ :sub:`i`:sup:`2` can be calculated with:
   >>> sv.sum_b_squared()
   23626.3244
 
-Similarly to ``niggli_reduce()``, the Selling reduction procedure takes
-optional arguments ``epsilon`` and ``iteration_limit``
+Similarly to `niggli_reduce()`, the Selling reduction procedure takes
+optional arguments `epsilon` and `iteration_limit`
 and returns the iteration count:
 
 .. doctest::
