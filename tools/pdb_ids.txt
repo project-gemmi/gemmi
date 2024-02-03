@@ -95,6 +95,7 @@
 # a pair of residues linked with two covalent bonds
 4y8l  # THR-05W
 173d  # PXZ-PXZ (symmetry-related halves of PXZ)
+5jbq  # 05N-BB9 (peptide-linking residues with C-N and C-SG bonds)
 
 # C-N bond with non-polymer at the chain end
 5a5b

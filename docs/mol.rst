@@ -344,8 +344,7 @@ Gemmi support the following coordinate file formats:
 
     * mmCIF (PDBx/mmCIF),
     * PDB (with popular extensions),
-    * mmJSON,
-    * a binary format (MMTF, binary CIF, or own format) is to be considered.
+    * mmJSON.
 
 It can also read coordinates from the chemical components dictionary
 (CCD) and from Refmac monomer library -- these are not really coordinate
@@ -1145,22 +1144,31 @@ These two calls are equivalent:
 mmJSON format
 =============
 
-The mmJSON_ format is a JSON representation of the mmCIF data.
-This format can be easily parsed with any JSON parser (Gemmi uses
-`sajson <https://github.com/chadaustin/sajson>`_).
-It is a good alternative to PDBML -- easier to parse and smaller.
+The mmJSON_ format is a JSON representation of the mmCIF data
+used by PDBj. This format can be easily parsed with any JSON parser.
+It is a good alternative to PDBML, easier to parse and smaller,
+although available only from PDBj.
 
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
-Files in this format are available from PDBj using REST API:
+.. note::
 
-.. code-block:: none
+    wwPDB distributes files in three formats: mmCIF (full name: PDBx/mmCIF),
+    PDB (legacy), and PDBML (mmCIF in XML).
+    Since none of these is well-suited for molecular graphics web apps,
+    in the late 2010s each PDB site introduced a new format.
+    We got MMTF from RCSB, mmJSON from PDBj, and BinaryCIF from PDBe.
+    MMTF was the only one that gained some popularity,
+    but in 2024 RCSB retired it in favor of BinaryCIF.
 
-    curl -o 5MOO.json.gz 'https://pdbj.org/rest/downloadPDBfile?id=5MOO&format=mmjson-all'
+    Here are the sizes of 8glv, the largest coordinate file in the PDB
+    as of 2024, in various formats (in MB, gzipped → uncompressed):
 
-as well as `ftp/rsync`__.
-
-__ mmJSON_
+    | mmCIF (cif.gz): 84  → 432 (94 → 581 in PDB NextGen Archive)  
+    | PDBML (xml.gz): 114 → 4076  
+    | mmJSON (json.gz): 51 → 484  
+    | BinaryCIF (bcif.gz): 24 → 45
+    | MMTF (mmtf.gz): 24 → 37
 
 Gemmi reads mmJSON files into ``cif::Document``,
 as it does with mmCIF files.

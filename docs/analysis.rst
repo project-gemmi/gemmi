@@ -15,44 +15,44 @@ Neighbor search
 
 Fixed-radius near neighbor search is usually implemented using
 the `cell lists <https://en.wikipedia.org/wiki/Cell_lists>`_ method,
-also known as binning, bucketing or cell technique
+also known as binning, bucketing, or the cell technique
 (or cubing -- as it was called in an
 `article <https://web.stanford.edu/class/sbio228/public/readings/Molecular_Simulation_I_Lecture4/Levinthal_SCIAM_66_Protein_folding.pdf>`_ from 1966).
 The method is simple. The unit cell (or the area where the molecules are
 located) is divided into small cells. The size of these cells depends
-on the search radius. Each cell stores the list of atoms in its area;
+on the search radius. Each cell stores a list of atoms in its area;
 these lists are used for fast lookup of atoms.
 
 In Gemmi the cell technique is implemented in a class named ``NeighborSearch``.
 The implementation works with both crystal and non-crystal systems and:
 
 * handles crystallographic symmetry (including non-standard settings with
-  origin shift that are present in a couple hundreds of PDB entries),
+  origin shift that are present in a couple of hundreds of PDB entries),
 * handles strict NCS (MTRIX record in the PDB format that is not "given";
   in mmCIF it is the _struct_ncs_oper category),
 * handles alternative locations (atoms from different conformers are not
   neighbors),
 * can find neighbors any number of unit cells apart; surprisingly,
-  molecules from different and not neighboring unit cells can be
-  in contact, either because of the molecule shape (a single chain can be
-  :ref:`longer then four unit cells <long_chain>`) or because of
+  molecules from different and non-neighboring unit cells can be
+  in contact, either because of the molecule's shape (a single chain can be
+  :ref:`longer than four unit cells <long_chain>`) or because of
   the non-optimal choice of symmetric images in the model
-  (some PDB entries have even links between chains more than
+  (some PDB entries even have links between chains more than
   10 unit cells away which cannot be expressed in the 1555 type of notation).
 
 Note that while an atom can be bonded with its own symmetric image,
 it sometimes happens that an atom meant to be on a special position
 is slightly off, and its symmetric images represent the same atom (so after
-expanding the symmetry we may have four nearby images each with occupancy 0.25).
+expanding the symmetry, we may have four nearby images, each with occupancy 0.25).
 Such images will be returned by the NeighborSearch class as neighbors
 and need to be filtered out by the users.
 
 The NeighborSearch constructor divides the unit cell into bins.
-For this it needs to know the search radius for which we optimize bins,
+For this, it needs to know the search radius for which we optimize bins,
 as well as the unit cell. Since the system may be non-periodic,
 the constructor also takes the model as an argument -- it is used to
-calculate the bounding box for the model if there is no unit cell.
-The reference to model is stored and is also used if ``populate()`` is called.
+calculate the bounding box for the model if there is no unit cell. The
+reference to the model is stored and is also used if ``populate()`` is called.
 The C++ signature (in ``gemmi/neighbor.hpp``) of the constructor is::
 
   NeighborSearch::NeighborSearch(Model& model, const UnitCell& cell, double radius)
@@ -101,10 +101,12 @@ And again the same, with complete control over which atoms are included:
   ...                 ns.add_atom(atom, n_ch, n_res, n_atom)
   ...
 
-All these function store ``Mark``\ s in cell-lists. A mark contains position of
-atom's symmetry image and indices that point to the original atom.
-Searching for neighbors returns marks, from which we can obtain original chains,
-residues and atoms.
+
+
+All these functions store ``Mark``\ s in cell-lists. A mark contains the
+position of an atom's symmetry image and indices that point to the original
+atom. Searching for neighbors returns marks, from which we can obtain
+original chains, residues and atoms.
 
 NeighborSearch has a couple of functions for searching.
 The first one takes atom as an argument::

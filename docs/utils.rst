@@ -320,7 +320,7 @@ What is the maximum number of atoms in one plane?
    36 comp_SA3:plan-1
 
 
-.. _json:
+.. _cif2json:
 
 cif2json
 ========
@@ -352,6 +352,8 @@ The minor differences are:
 .. _CIF-JSON: http://comcifs.github.io/cif-json
 .. _mmJSON: https://pdbj.org/help/mmjson?lang=en
 
+
+.. _json2cif:
 
 json2cif
 ========

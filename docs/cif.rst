@@ -1475,7 +1475,7 @@ be converted to JSON and back. In gemmi we have a number of options to
 customize the translation. In particular, both mmCIF and CIF-JSON flavours
 are supported.
 More details about the flavours are given in the description of
-:ref:`gemmi convert <json>`.
+:ref:`gemmi cif2json <cif2json>`.
 
 C++
 ---
@@ -2162,8 +2162,8 @@ mmJSON-like data
 ----------------
 
 Gemmi has a built-in support for mmJSON and comes with
-a :ref:`converter <json>` utility, but just as an exercise
-let us convert mmJSON to mmCIF in Python:
+converters :ref:`cif2json <cif2json>` and :ref:`json2cif <json2cif>`,
+but just as an exercise let us convert mmJSON to mmCIF in Python:
 
 .. literalinclude:: ../examples/from_json.py
    :lines: 5-
