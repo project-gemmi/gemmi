@@ -103,13 +103,13 @@ And again the same, with complete control over which atoms are included:
 
 
 
-All these functions store `Mark`\ s in cell-lists. A mark contains the
+All these functions store `Mark`\ s in cell-lists. A Mark contains the
 position of an atom's symmetry image and indices that point to the original
-atom. Searching for neighbors returns marks, from which we can obtain
-original chains, residues and atoms.
+atom. Searching for neighbors returns Marks, from which we can obtain
+original chains, residues, and atoms.
 
 NeighborSearch has a couple of functions for searching.
-The first one takes atom as an argument::
+The first one takes an atom as an argument::
 
   std::vector<Mark*> NeighborSearch::find_neighbors(const Atom& atom, float min_dist, float max_dist)
 
@@ -120,14 +120,14 @@ The first one takes atom as an argument::
   >>> len(marks)
   6
 
-`find_neighbors()` checks altloc of the atom and
-considers as potential neighbors only atoms from the same
-conformation. In particular, if altloc is empty all atoms are considered.
-Positive `min_dist` in the `find_neighbors()` call prevents
-the atom whose neighbors we search from being included in the results
-(the distance of the atom to itself is zero).
+`find_neighbors()` checks the atom's altloc and only considers
+atoms from the same conformation as potential neighbors.
+In particular, if the altloc is empty, all atoms are considered.
+A positive `min_dist` in the `find_neighbors()` call prevents
+the atom whose neighbors we are searching for from being included
+in the results (since the distance of an atom to itself is zero).
 
-The second one takes position and altloc as explicit arguments::
+The second one takes the position and altloc as explicit arguments::
 
   std::vector<Mark*> NeighborSearch::find_atoms(const Position& pos, char altloc, float min_dist, float radius)
 
@@ -138,7 +138,7 @@ The second one takes position and altloc as explicit arguments::
   >>> len(marks)
   7
 
-To find only the nearest atom (regardless of altloc), use function::
+To find only the nearest atom (regardless of altloc), use::
 
   Mark* find_nearest_atom(const Position& pos, float radius=INFINITY)
 
@@ -249,7 +249,7 @@ For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
 The neighbor search can also be used with small molecule structures.
 Here, we have MgI\ :sub:`2`, with each Mg atom surrounded by 6 iodine atoms,
-in a distance 2.92Å:
+at a distance of 2.92Å:
 
 .. doctest::
 
@@ -271,12 +271,12 @@ Contact search
 ==============
 
 Contacts in a molecule or in a crystal can be found using the neighbor search
-described in the previous section. But to make it easier we have a dedicated
-class ContactSearch. It uses the neighbor search to find pairs of atoms
-close to each other and applies the filters described below.
+described in the previous section. However, to make it easier, we have
+a dedicated class ContactSearch. It uses the neighbor search to find pairs
+of atoms that are close to each other and applies the filters described below.
 
-When constructing ContactSearch we set the overall maximum search distance.
-This distance is stored as the `search_radius` property:
+When constructing a ContactSearch object we set the overall maximum search
+distance. This distance is stored as the `search_radius` property:
 
 .. doctest::
 
@@ -295,7 +295,7 @@ The radii are initialized as a linear function of the
 
   >>> cs.setup_atomic_radii(1.0, 1.5)
 
-Then each radius can be accessed and modified individually:
+Then, each radius can be accessed and modified individually:
 
 .. doctest::
 
@@ -328,21 +328,20 @@ threshold:
   >>> cs.min_occupancy = 0.01
 
 Sometimes, it is handy to get each atom pair twice (as A-B and B-A).
-In such case make the `twice` property true. By default, it is false:
+In such cases, set the `twice` property to true. By default, it is false:
 
 .. doctest::
 
   >>> cs.twice
   False
 
-Next property deals with atoms at special positions (such as rotation axis).
-Such atoms can be slightly off the special position (because macromolecular
-refinement programs usually don't constrain coordinates), so we must ensure
-that an atom that should sit on the special position and its apparent symmetry
-image are not regarded a contact. We assume that if the distance between
-an atom and its image is small, it is not a real thing.
-For larger distances we assume it is a real contact with atom's symmetry mate.
-To tell apart the two cases we use a cut-off distance that can be modified:
+Now consider an atom near a special position, such as a rotation axis.
+An atom that is intended to be on a rotation axis can be slightly off,
+as macromolecular refinement programs typically don't constrain coordinates.
+In such a case, the atom appears to be near its symmetry images, but that's
+not a contact, only an artifact. On the other hand, it's entirely possible for
+an atom to be near a symmetry axis and bonded to its symmetry image.
+To distinguish these two cases, we use a configurable cutoff distance:
 
 .. doctest::
 
@@ -386,14 +385,15 @@ The ContactSearch.Result class has four properties:
   >>> results[0].dist
   2.8613363437597505
 
-The first two properties are :ref:`CRA <CRA>`\ s for the involved atoms.
-The `image_idx` is an index of the symmetry image (both crystallographic
-symmetry and strict NCS count).
-Value 0 would mean that both atoms (`partner1` and `partner2`)
-are in the same unit.
-In this example the value can be high because it is a structure of
-icosahedral viral capsid with 240 identical units in the unit cell.
-The last property is the distance between atoms.
+* The first two properties are :ref:`CRA <CRA>`\ s for the involved atoms.
+
+* The `image_idx` is an index of the symmetry image (both crystallographic
+  symmetry and strict NCS count) -- it is 0 iff both atoms (`partner1`
+  and `partner2`) are in the same unit.
+  In this example, the value can be high because it is a structure of
+  an icosahedral viral capsid with 240 identical units in the unit cell.
+
+* The last property is the distance between atoms.
 
 Atoms pointed to by `partner1` and `partner2` can be far apart
 in the asymmetric unit:
@@ -405,7 +405,7 @@ in the asymmetric unit:
   >>> results[0].partner2.atom.pos
   <gemmi.Position(49.409, 39.333, 19.524)>
 
-But you can find the position of symmetry image of `partner2` that
+But you can find the position of the symmetry image of `partner2` that
 is in contact with `partner1` with:
 
 .. doctest::
@@ -427,10 +427,10 @@ that is near the original position of `partner2`:
 
 See also the command-line program :ref:`gemmi-contact <gemmi-contact>`.
 
-Gemmi provides also an undocumented class LinkHunt which matches
-contacts to links definitions from :ref:`monomer library <CCD_etc>`
+Gemmi also provides an undocumented class LinkHunt which matches
+contacts to link definitions from :ref:`monomer library <CCD_etc>`
 and to connections (LINK, SSBOND) from the structure.
-If you would find it useful, contact the author.
+If you find it useful, please contact the author.
 
 Superposition
 =============
@@ -441,7 +441,7 @@ for superposing two lists of points in 3D.
 The C++ function `superpose_positions()` takes two arrays of positions
 and an optional array of weights. Before applying this function to chains
 it is necessary to determine pairs of corresponding atoms.
-Here, as a minimal example, we superpose backbone of the third residue:
+Here, as a minimal example, we superpose the backbone of the third residue:
 
 .. doctest::
 
@@ -461,15 +461,14 @@ This function first performs the sequence alignment.
 Then the matching residues are superposed, using either
 all atoms in both residues, or only Cα atoms (for peptides)
 and P atoms (for nucleotides).
-Atoms that don't have counterparts in the other span are skipped.
-The returned object (SupResult) contains RMSD and the transformation
+Atoms without matching counterparts are ignored.
+The returned object (SupResult) contains the RMSD and the transformation
 (rotation matrix + translation vector) that superposes the second span
 onto the first one.
 
-Note that RMSD can be defined in two ways:
-the sum of squared deviations is divided either by 3N (PyMOL)
-or by N (SciPy).
-QCP (and gemmi) returns the former. To get the latter multiply it by √3.
+Note that the RMSD can be defined in two ways: the sum of squared deviations
+is divided either by 3N (as in PyMOL and QCP) or by N (as in SciPy).
+Gemmi returns the former. To get the latter, multiply it by √3.
 
 Here is a usage example:
 
@@ -495,7 +494,7 @@ The arguments to `calculate_superposition()` are:
 
 - two `ResidueSpan`\ s,
 - polymer type (to avoid determining it when it's already known).
-  The information whether it's protein or nucleic acid is used
+  The information of whether it's a protein or nucleic acid is used
   during sequence alignment (to detect gaps between residues in the polymer --
   it helps in rare cases when the sequence alignment alone is ambiguous),
   and it decides whether to use Cα or P atoms (see the next point),
@@ -519,8 +518,8 @@ The arguments to `calculate_superposition()` are:
 
 - (optionally) trim_cutoff (default: 2.0) --  outlier rejection cutoff in RMSD,
 
-To calculate current RMSD between atoms (without superposition)
-use function `calculate_current_rmsd()` that takes the same arguments
+To calculate current RMSD between atoms (without superposition),
+call `calculate_current_rmsd()`. It takes the same arguments
 except the ones for trimming:
 
   .. doctest::
@@ -575,8 +574,9 @@ Let us go through the individual filters first:
 * `//D` (or just `D`) -- selects chain D.
 * `//*/10-30` (or `10-30`) -- residues with sequence IDs from 10 to 30.
 * `//*/10A-30A` (or `10A-30A` or `///10.A-30.A` or `10.A-30.A`) --
-  sequence ID can include insertion code. The MMDB syntax has dot between
-  sequence sequence number and insertion code. In Gemmi the dot is optional.
+  sequence ID can include insertion code. The MMDB syntax has a dot between
+  the sequence sequence number and the insertion code.
+  In Gemmi, the dot is optional.
 * `//*/(ALA)` (or `(ALA)`) -- selects residues with a given name.
 * `//*//CB` (or `CB:*` or `CB[*]`) -- selects atoms with a given name.
 * `//*//[P]` (or just `[P]`) -- selects phosphorus atoms.
@@ -647,7 +647,7 @@ which can then be used to iterate over the selected items in the hierarchy:
             - N9
      - 4(DT)
 
-Function `str()` creates a CID string from the selection:
+`str()` creates a CID string from the selection:
 
 .. doctest::
 
@@ -714,7 +714,7 @@ of them to count heavy atoms in polymers:
 
 Each residue and atom has a flag that can be set manually
 and used to create a selection. In the following example
-we select residues in the radius of 8Å from a selected point:
+we select residues within a radius of 8Å from a selected point:
 
 .. doctest::
 
@@ -731,10 +731,10 @@ we select residues in the radius of 8Å from a selected point:
 
 Note: NeighborSearch searches for atoms in all symmetry images.
 This is why it takes UnitCell as a parameter.
-To search only in atoms directly listed in the file pass empty cell
+To search only in atoms directly listed in the file, pass an empty cell
 (`gemmi.UnitCell()`).
 
-Instead of the whole residues, we can select atoms.
+Instead of selecting whole residues, we can select atoms.
 Here, we select atoms in the radius of 8Å from a selected point:
 
 .. doctest::
@@ -754,21 +754,20 @@ Here, we select atoms in the radius of 8Å from a selected point:
 Graph analysis
 ==============
 
-The graph algorithms in Gemmi are limited to finding the shortest path
-between atoms (bonds = graph edges). This part of the library is not
-documented yet.
+This section shows how to analyze chemical molecules (``gemmi.ChemComp``)
+using external libraries dedicated to graph analysis.
+We don't plan to implement graph algorithms within gemmi,
+except for the simplest ones, like breadth-first search,
+which is used in a couple of functions
+( ``Restraints::find_shortest_path()``, ``BondIndex::graph_distance()``).
 
-The rest of this section shows how to use dedicated graph libraries
-to analyse chemical molecules read with gemmi.
-First, we set up a graph corresponding to the molecule.
-
-Here is how it can be done in C++ with the Boost Graph Library
-(`BGL <http://boost.org/libs/graph>`_):
+Here is how to set up a graph in the Boost Graph Library
+(`BGL <http://boost.org/libs/graph>`_) in C++:
 
 .. literalinclude:: ../examples/with_bgl.cpp
    :lines: 9-10,13-41
 
-Here we use `NetworkX <https://networkx.org/>`_ in Python:
+Here, we set up a `NetworkX <https://networkx.org/>`_ graph in Python:
 
 .. doctest::
   :skipif: networkx is None
@@ -785,8 +784,7 @@ Here we use `NetworkX <https://networkx.org/>`_ in Python:
   ...     G.add_edge(bond.id1.atom, bond.id2.atom)  # ignoring bond type
   ...
 
-To show a quick example of working with the graph,
-let us count automorphisms of SO3:
+Now, as a quick example, we can count automorphisms:
 
 .. doctest::
   :skipif: networkx is None
@@ -798,19 +796,19 @@ let us count automorphisms of SO3:
   6
 
 The median number of automorphisms of molecules in the CCD is only 4.
-However, the highest number of isomorphisms, as of 2023 (ignoring hydrogens,
-bond orders, chiralities), is a staggering 6879707136
+However, the highest number of isomorphisms as of 2023 (ignoring hydrogens,
+bond orders, chiralities) is a staggering 6879707136
 for `T8W <https://www.rcsb.org/ligand/T8W>`_.
 This value can be calculated almost instantly with nauty, which
 returns a set of *generators* of the automorphism group
 and the sets of equivalent vertices called *orbits*,
 rather than listing all automorphisms.
-Nauty is for "determining the automorphism group of a vertex-coloured graph,
-and for testing graphs for isomorphism". We can use it in Python through
-the pynauty module.
+Nauty is a software for "determining the automorphism group
+of a vertex-coloured graph, and for testing graphs for isomorphism".
+We can use it in Python through the pynauty module.
 
-Here we set up a graph in `pynauty <https://github.com/pdobsan/pynauty>`_,
-from the `so3` object prepared in the previous example:
+Here we set up a `pynauty <https://github.com/pdobsan/pynauty>`_
+graph from the `so3` object prepared in the previous example:
 
 .. doctest::
   :skipif: pynauty is None
@@ -821,7 +819,7 @@ from the `so3` object prepared in the previous example:
   >>> adjacency = {n: [] for n in range(n_vertices)}
   >>> indices = {atom.id: n for n, atom in enumerate(so3.atoms)}
   >>> elements = {atom.el.atomic_number for atom in so3.atoms}
-  >>> # The order of dict in Python 3.6+ is the insertion order.
+  >>> # The order in dict in Python 3.6+ is the insertion order.
   >>> coloring = {elem: set() for elem in sorted(elements)}
   >>> for n, atom in enumerate(so3.atoms):
   ...   coloring[atom.el.atomic_number].add(n)
@@ -835,7 +833,7 @@ from the `so3` object prepared in the previous example:
 
 The colors of vertices in this graph correspond to elements.
 Pynauty takes a list of sets of vertices with the same color,
-without the information which color corresponds to which element.
+without knowing which color corresponds to which element.
 We sorted the elements to ensure that two graphs with the same atoms
 have the same coloring. However, SO3 and PO3 graphs would also have
 the same coloring and would be reported as isomorphic.
@@ -902,7 +900,7 @@ So in M10 the two atoms marked green are swapped:
 Substructure matching
 ---------------------
 
-Now a little script to illustrate subgraph isomorphism.
+Now, a little script to illustrate subgraph isomorphism.
 The script takes a (three-letter-)code of a molecule that is to be used
 as a pattern and finds CCD entries that contain such a substructure.
 As in the previous example, hydrogens and bond types are ignored.
@@ -911,7 +909,7 @@ As in the previous example, hydrogens and bond types are ignored.
    :language: python
    :lines: 3-
 
-Let us check what entries have HEM as a substructure:
+Let us check which entries have HEM as a substructure:
 
 .. code-block:: console
 
@@ -950,19 +948,18 @@ Let us check what entries have HEM as a substructure:
 Maximum common subgraph
 -----------------------
 
-In this example we use McGregor's algorithm implemented in the Boost Graph
-Library to find maximum common induced subgraph. We call the MCS searching
-function with option `only_connected_subgraphs=true`, which has obvious
-meaning and can be changed if needed.
+In this example, we use McGregor's algorithm, implemented in the Boost Graph
+Library, to identify the largest common induced subgraphs. To ensure connectivity,
+we set the option `only_connected_subgraphs=true`.
 
-To illustrate this example, we compare ligands AUD and LSA:
+To illustrate this example, we compare the ligands AUD and LSA:
 
 .. image:: img/aud_lsa.png
     :align: center
     :scale: 100
 
-The whole code is in :file:`examples/with_bgl.cpp`. The same file has also
-examples of using the BGL implementation of VF2 to check graph
+The complete code is in :file:`examples/with_bgl.cpp`. This file also contains
+examples of using the BGL's VF2 implementation for checking graph
 and subgraph isomorphisms.
 
 .. literalinclude:: ../examples/with_bgl.cpp
@@ -973,11 +970,11 @@ and subgraph isomorphisms.
 Torsion angles
 ==============
 
-This section presents functions dedicated to calculation of the dihedral angles
-φ (phi), ψ (psi) and ω (omega) of the protein backbone.
+This section presents functions dedicated to the calculation of the dihedral
+angles φ (phi), ψ (psi), and ω (omega) of the protein backbone.
 These functions are built upon the more general `calculate_dihedral` function,
 introduced in :ref:`the section about coordinates <coordinates>`,
-which takes four points in the space as arguments.
+which takes four points in space as arguments.
 
 `calculate_omega()` calculates the ω angle, which is usually around 180°:
 
@@ -1000,7 +997,7 @@ which takes four points in the space as arguments.
   SER 176.74223937657652
 
 The φ and ψ angles are often used together, so they are calculated
-in one function `calculate_phi_psi()`:
+in the same function `calculate_phi_psi()`:
 
 .. doctest::
 
@@ -1019,10 +1016,10 @@ in one function `calculate_phi_psi()`:
 In C++ these functions can be found in `gemmi/calculate.hpp`.
 
 The torsion angles φ and ψ can be visualized on the Ramachandran plot.
-Let us plot angles from all PDB entries with the resolution higher than 1.5A.
+Let us plot angles from all PDB entries with a resolution higher than 1.5Å.
 Usually, glycine, proline and the residue preceding proline (pre-proline)
 are plotted separately. Here, we will exclude pre-proline and make
-separate plot for each amino acid. So first, we calculate angles
+a separate plot for each amino acid. So first, we calculate angles
 and save φ,ψ pairs in a set of files -- one file per residue.
 
 .. literalinclude:: ../examples/rama_gather.py
@@ -1034,7 +1031,7 @@ supported by gemmi (PDB, mmCIF, mmJSON). As of 2019, processing
 a :ref:`local copy of the PDB archive <pdb_dir>`
 in the PDB format takes about 20 minutes.
 
-In the second step we plot the data points with Matplotlib.
+In the second step, we plot the data points with Matplotlib.
 We use a script that can be found in :file:`examples/rama_plot.py`.
 Six of the resulting plots are shown here (click to enlarge):
 
@@ -1047,22 +1044,47 @@ Six of the resulting plots are shown here (click to enlarge):
 Topology
 ========
 
-A macromolecular refinement program typically starts from reading
-a coordinate file and a monomer library. The monomer library specifies
-restraints (bond distances, angles, ...) in monomers
-as well as modifications introduced by links between monomers.
+In gemmi, topology contains restraints *applied* to a model,
+as well as information about the provenance of these restraints,
+and related utilities. (The restraints include bond-distance
+restraints and therefore also bonding information).
 
-The coordinates and restraints are combined into
-what we call here a *topology*.
-It contains restraints applied to the model.
-A monomer library may specify angle CD2-CE2-NE1 in TRP.
-In contrast, the topology specifies angles between concrete atoms
-(say, angle #721-#720-#719).
+Applied restraints differ from *template* restraints in a monomer library,
+although both are referred to as restraints.
+The library (template) restraints specify, for instance,
+how to restrain the angle CD2-CE2-NE1 in any TRP residue.
+In contrast, topology (concrete, applied to a model) restraints specify
+how to restrain the angle between specific atoms in the model (say, atoms #721-#723-#722).
+The latter seems like a trivial application of the former, and it often is.
+But in general, if the aim is to support all atomic models present in the PDB,
+including those with unusual arrangements of alternative conformations,
+the process of determining the topology is quite convoluted.
 
-Together with preparing a topology, macromolecular programs
-(in particular, Refmac) may also add or shift hydrogens (to
-the riding positions) and reorder atoms.
-In Python we have one function that does it all:
+The typical macromolecular refinement workflow begins by reading
+a coordinate file and a monomer library. The template monomer restraints
+from the library (for bond distances, angles, etc.) are applied to monomers,
+and link definitions are matched to explicit and implicit links between
+monomers. Link definitions contain additional restraints and modifications
+to restraints within the linked monomers.
+
+Currently, our topology works only with the monomer library from CCP4.
+This library was introduced in the
+`early 2000s <https://doi.org/10.1107/S0907444904023510>`_.
+Monomer libraries distributed with other popular macromolecular refinement
+programs, PHENIX and BUSTER, are organized somewhat differently
+(geostd from PHENIX is actually quite similar).
+
+The restraints that we use are also similar to what is used
+in molecular dynamics (bond, angle, dihedral and improper dihedral restraints).
+Although the MD potentials have been deemed inadequate for refinement,
+and the restraints in experimental structural biology have been
+improved independently of the restraints in MD,
+they haven't diverged too much and with a little work one could be
+substituted for the other.
+
+When preparing a topology, macromolecular programs (in particular, Refmac)
+may also add hydrogens or shift existing hydrogens to the riding positions.
+And reorder atoms. In Python, we have one function that does it all:
 
 .. code-block:: python
 
@@ -1077,8 +1099,8 @@ In Python we have one function that does it all:
 where
 
 * `monlib` is an instance of an undocumented MonLib class.
-  For now, here is an example how to read the CCP4 monomer library
-  (a.k.a Refmac dictionary):
+  For now, here is an example of how to read the CCP4 monomer library
+  (Refmac dictionary):
 
   .. code-block:: python
 
@@ -1086,26 +1108,26 @@ where
     resnames = st[0].get_all_residue_names()
     monlib = gemmi.read_monomer_lib(monlib_path, resnames)
 
-* `h_change` is one of:
+* `h_change` can be one of the following:
 
   * HydrogenChange.NoChange -- no change,
-  * HydrogenChange.Shift -- shift existing hydrogens to ideal (riding) positions,
+  * HydrogenChange.Shift -- shift existing hydrogens to their ideal (riding) positions,
   * HydrogenChange.Remove -- remove all H and D atoms,
   * HydrogenChange.ReAdd -- discard and re-create hydrogens in ideal positions
-    (if hydrogen position is not uniquely determined, its occupancy is set to zero),
-  * HydrogenChange.ReAddButWater -- the same, but doesn't add H in waters,
-  * HydrogenChange.ReAddKnown -- the same, but doesn't add any H atoms which
+    (if the hydrogen position is not uniquely determined, its occupancy is set to zero),
+  * HydrogenChange.ReAddButWater -- the same as above, but doesn't add H in waters,
+  * HydrogenChange.ReAddKnown -- the same as above, but doesn't add any H atoms whose
     positions are not uniquely determined,
 
-* `reorder` -- changes the order of atoms inside each residue
+* `reorder` -- changes the order of atoms within each residue
   to match the order in the corresponding monomer cif file,
 
-* `warnings` --  by default, exception is raised when a chemical component
-  is missing in the monomer library, or when link is missing,
-  or the hydrogen adding procedure comes across an unexpected configuration.
+* `warnings` --  by default, an exception is raised when a chemical component
+  is missing in the monomer library, or when a link is missing,
+  or when the hydrogen adding procedure encounters an unexpected configuration.
   You can set warnings=sys.stderr to only print a warning to stderr
   and continue. sys.stderr can be replaced with any object that has
-  methods `write(str)` and `flush()`.
+  the methods `write(str)` and `flush()`.
 
 
 TBC
@@ -1189,9 +1211,8 @@ UnitCell and SpaceGroup.
 
 Usually, it is possible to organize multiprocessing in such a way that
 gemmi objects are not passed between processes. The example script below
-traverses subdirectories and asynchronously analyses coordinate files.
-It uses 4 worker processes in parallel. The processes get file path
-and return a tuple.
+traverses subdirectories and asynchronously analyzes coordinate files,
+using 4 worker processes in parallel.
 
 .. literalinclude:: ../examples/multiproc.py
    :language: python
