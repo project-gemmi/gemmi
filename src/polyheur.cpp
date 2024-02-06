@@ -377,7 +377,7 @@ void shorten_ccd_codes(Structure& st) {
   int i = -1;
   for (auto& old_new : st.shortened_ccd_codes) {
     // If ~DE was not unique, use ~00, ~01, ...
-    // After ~99, the middle character will be punctation or letter.
+    // After ~99, the middle character will be punctuation or letter.
     // After ~Z9 (430+ names), we give up and the names will be empty.
     while (old_new.second.empty() && ++i < 'Z'*10) {
       char short_code[4] = {'~', char('0' + i/10), char('0' + i%10), '\0'};

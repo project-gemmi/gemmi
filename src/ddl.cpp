@@ -65,7 +65,7 @@ public:
       if (*type == "numb")
         numb_only_ = true;
     /*
-    // Hypotetically _type_conditions could be a list, but it never is.
+    // Hypothetically, _type_conditions could be a list, but it never is.
     // It is commented out b/c we don't check esd/su - should we?
     const std::string* conditions = b.find_value("_type_conditions");
     if (conditions)
