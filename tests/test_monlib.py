@@ -114,6 +114,7 @@ class TestMonLib(unittest.TestCase):
         monlib = gemmi.MonLib()
         ok = monlib.read_monomer_lib(os.environ['CLIBD_MON'], resnames)
         self.assertTrue(ok)
+        monlib.update_old_atom_names(st)
         topo = gemmi.prepare_topology(st, monlib, model_index=0)
         topo = gemmi.prepare_topology(st, monlib, model_index=0,
                                       h_change=gemmi.HydrogenChange.Shift)
