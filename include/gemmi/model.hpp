@@ -697,6 +697,7 @@ struct Model {
   static const char* what() { return "Model"; }
   std::string name;  // actually an integer number
   std::vector<Chain> chains;
+  Model() = default;
   explicit Model(std::string mname) noexcept : name(mname) {}
 
   // Returns the first chain with given name, or nullptr.
