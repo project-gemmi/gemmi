@@ -375,6 +375,14 @@ static void add_restraint_row(cif::Loop& restr_loop,
   }
 }
 
+// For printing _restr.val_obs for torsion angles [-180,180].
+// Numerical errors still can change the output, but it's less likely.
+static double make_torsion_angle_consistent(double d) {
+  if (d < -179.99999)  // ensure 180.000 instead of -180.000,
+    d += 360.;
+  return std::fabs(d) > 1e-5 ? d : 0.;  // ensure 0.000 instead of -0.000
+}
+
 static void add_restraints(const Topo::Rule rule, const Topo& topo,
                            cif::Loop& restr_loop, int (&counters)[6],
                            const UnitCell* cell=nullptr) {
@@ -409,7 +417,7 @@ static void add_restraints(const Topo::Rule rule, const Topo& topo,
                       t.restr->label, std::to_string(t.restr->period),
                       {t.atoms[0], t.atoms[1], t.atoms[2], t.atoms[3]},
                       t.restr->value, t.restr->esd, NAN, NAN,
-                      deg(t.calculate()));
+                      make_torsion_angle_consistent(deg(t.calculate())));
   } else if (rule.rkind == Topo::RKind::Chirality) {
     const Topo::Chirality& t = topo.chirs[rule.index];
     add_restraint_row(restr_loop, "CHIR", ++counters[3],
@@ -421,11 +429,13 @@ static void add_restraints(const Topo::Rule rule, const Topo& topo,
     const Topo::Plane& t = topo.planes[rule.index];
     ++counters[4];
     auto coeff = find_best_plane(t.atoms);
-    for (const Atom* atom : t.atoms)
+    for (const Atom* atom : t.atoms) {
+      double calc = get_distance_from_plane(atom->pos, coeff);
       add_restraint_row(restr_loop, "PLAN", counters[4], t.restr->label, ".",
                         {atom},
                         t.restr->esd, NAN, NAN, NAN,
-                        get_distance_from_plane(atom->pos, coeff));
+                        std::fabs(calc) > 1e-5 ? calc : 0.);
+    }
   }
 }
 
