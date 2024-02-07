@@ -97,6 +97,10 @@ struct GEMMI_DLL Topo {
     Asu asu = Asu::Any;  // used only in Links in ChainInfo::extras
     bool is_cis = false;  // helper field for CISPEP record generation
 
+    // helper fields used in Topo::find_polymer_link()
+    int atom1_name_id = 0;
+    int atom2_name_id = 0;
+
     // aliasing1/2 points to vector element in ChemComp::aliases.
     // The pointers should stay valid even if a ChemComp is moved.
     const ChemComp::Aliasing* aliasing1 = nullptr;
@@ -265,23 +269,8 @@ struct GEMMI_DLL Topo {
   // prepare bond_index, angle_index, torsion_index, plane_index
   void create_indices();
 
-  Link* find_polymer_link(const AtomAddress& a1, const AtomAddress& a2) {
-    for (ChainInfo& ci : chain_infos)
-      if (a1.chain_name == ci.chain_ref.name && a2.chain_name == ci.chain_ref.name) {
-        for (ResInfo& ri : ci.res_infos)
-          for (Link& link : ri.prev) {
-            assert(link.res1 && link.res2);
-            if ((a1.res_id.matches_noseg(*link.res1) &&
-                 a2.res_id.matches_noseg(*link.res2) &&
-                 a1.altloc == link.alt1 && a2.altloc == link.alt2) ||
-                (a2.res_id.matches_noseg(*link.res1) &&
-                 a1.res_id.matches_noseg(*link.res2) &&
-                 a1.altloc == link.alt2 && a2.altloc == link.alt1))
-              return &link;
-          }
-      }
-    return nullptr;
-  }
+  // Searches for matching Link in ResInfo::prev lists.
+  Link* find_polymer_link(const AtomAddress& a1, const AtomAddress& a2);
 
   void set_cispeps_in_structure(Structure& st);
 

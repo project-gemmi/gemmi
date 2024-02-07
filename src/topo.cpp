@@ -169,10 +169,20 @@ static const ChemLink* setup_link_if_matches(Topo::Link& link, const MonLib& mon
     if (invert) {
       std::swap(link.res1, link.res2);
       std::swap(link.alt1, link.alt2);
+      std::swap(link.atom1_name_id, link.atom2_name_id);
       std::swap(link.aliasing1, link.aliasing2);
     }
   }
   return match;
+}
+
+static int atom_name_id(const std::string& s) {
+  int id = 0;
+  if (s.size() > 0)  // there is '\0' at the end
+    id = (s[0] << 24 | s[1] << 16);
+  if (s.size() > 2)
+    id |= (s[2] << 8 | s[3]);
+  return id | 0x20202020;
 }
 
 static void add_polymer_links(PolymerType polymer_type,
@@ -230,6 +240,8 @@ static void add_polymer_links(PolymerType polymer_type,
             // and CA atoms in 2+ conformations making both CIS and TRANS links.
             link.alt1 = a1.altloc;
             link.alt2 = a2.altloc;
+            link.atom1_name_id = atom_name_id(a1.name);
+            link.atom2_name_id = atom_name_id(a2.name);
             if (groups_ok) {
               // Deciding CIS/TRANS based on omega angle.
               char alt = a1.altloc_or(a2.altloc_or('*'));
@@ -286,6 +298,8 @@ static void add_polymer_links(PolymerType polymer_type,
               in_nucleotide_bond_distance(&a1, &a2)) {
             link.alt1 = a1.altloc;
             link.alt2 = a2.altloc;
+            link.atom1_name_id = atom_name_id(a1.name);
+            link.atom2_name_id = atom_name_id(a2.name);
             if (groups_ok) {
               link.link_id = "p";
             } else if (monlib) {
@@ -620,13 +634,35 @@ void Topo::create_indices() {
       plane_index.emplace(atom, &plane);
 }
 
+Topo::Link* Topo::find_polymer_link(const AtomAddress& aa1, const AtomAddress& aa2) {
+  auto are_bonded = [&](const Link& link, const AtomAddress& a1, const AtomAddress& a2) {
+    return a1.res_id.matches_noseg(*link.res1) &&
+           a2.res_id.matches_noseg(*link.res2) &&
+           a1.altloc == link.alt1 &&
+           a2.altloc == link.alt2 &&
+           atom_name_id(a1.atom_name) == link.atom1_name_id &&
+           atom_name_id(a2.atom_name) == link.atom2_name_id;
+  };
+  if (aa1.chain_name != aa2.chain_name)
+    return nullptr;
+  for (ChainInfo& ci : chain_infos)
+    if (aa1.chain_name == ci.chain_ref.name) {
+      for (ResInfo& ri : ci.res_infos)
+        for (Link& link : ri.prev) {
+          assert(link.res1 && link.res2);
+          if (are_bonded(link, aa1, aa2) || are_bonded(link, aa2, aa1))
+            return &link;
+        }
+    }
+  return nullptr;
+}
+
 // Tries to construct Topo::Link and append it to extras.
 // Side-effects: it may modify conn.link_id and add ChemLink to monlib.links.
 void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                             bool ignore_unknown_links) {
   if (conn.link_id == "gap") {
-    Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2);
-    if (polymer_link)
+    if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2))
       polymer_link->link_id.clear();  // disable polymer link
     return;
   }
@@ -674,11 +710,14 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
   // or if it matches residue-specific link from monomer library, use it;
   // otherwise, LINK is repetition of TRANS/CIS, so ignore LINK.
   if (Link* polymer_link = find_polymer_link(conn.partner1, conn.partner2)) {
-    if (conn.link_id.empty() && !cif::is_null(polymer_link->link_id) &&
-        polymer_link->link_id != "gap" &&
-        (!match || (match->side1.comp.empty() && match->side2.comp.empty())))
+    if (!conn.link_id.empty() ||  // conn has explicit link name
+        // polymer link was not really identified
+        cif::is_null(polymer_link->link_id) || polymer_link->link_id == "gap" ||
+        // conn is residue-specific
+        (match && !(match->side1.comp.empty() && match->side2.comp.empty())))
+      polymer_link->link_id.clear();  // disable polymer link, use conn
+    else
       return;
-    polymer_link->link_id.clear();  // disable polymer link
   }
 
   if (match) {
