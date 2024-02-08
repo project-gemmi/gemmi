@@ -334,9 +334,9 @@ template<typename T> struct SMat33 {
            u13 * (u12*u23 - u13*u22);
   }
 
-  SMat33 inverse() const {
+  SMat33 inverse_(T det) const {
     SMat33 inv;
-    T inv_det = 1.0f / determinant();
+    T inv_det = 1.0f / det;
     inv.u11 = inv_det * (u22 * u33 - u23 * u23);
     inv.u22 = inv_det * (u11 * u33 - u13 * u13);
     inv.u33 = inv_det * (u11 * u22 - u12 * u12);
@@ -344,6 +344,9 @@ template<typename T> struct SMat33 {
     inv.u13 = inv_det * (u12 * u23 - u13 * u22);
     inv.u23 = inv_det * (u12 * u13 - u11 * u23);
     return inv;
+  }
+  SMat33 inverse() const {
+    return inverse_(determinant());
   }
 
   /// Based on https://en.wikipedia.org/wiki/Eigenvalue_algorithm

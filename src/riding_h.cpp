@@ -357,10 +357,11 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     };
     SMat33<double> m{1., 1., 1., u10.dot(u20), u10.dot(u30), u20.dot(u30)};
     Vec3 rhs(cos_tetrahedral(0), cos_tetrahedral(1), cos_tetrahedral(2));
-    Vec3 abc = m.inverse().multiply(rhs);
+    double det = m.determinant();
+    if (std::fabs(det) < 1e-12)
+      giveup("tetrahedral configuration with four co-planar atoms.");
+    Vec3 abc = m.inverse_(det).multiply(rhs);
     Vec3 h_dir = abc.x * u10 + abc.y * u20 + abc.z * u30;
-    if (std::isnan(h_dir.x))
-      giveup("bonded atoms are exactly overlapping (case 3).");
     hs[0].pos = atom.pos + Position(h_dir.changed_magnitude(hs[0].dist));
   }
 }
