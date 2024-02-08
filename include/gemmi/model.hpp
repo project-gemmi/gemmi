@@ -210,15 +210,20 @@ struct Residue : public ResidueId {
     return nullptr;
   }
 
-  // default values accept anything
-  Atom* find_atom(const std::string& atom_name, char altloc, El el=El::X) {
+  /// El::X means anything;
+  /// in strict_altloc mode, '*' = any altloc, otherwise it's \0
+  Atom* find_atom(const std::string& atom_name, char altloc, El el=El::X,
+                  bool strict_altloc=true) {
+    if (!strict_altloc && altloc == '\0')
+      altloc = '*';
     for (Atom& a : atoms)
       if (a.name == atom_name && a.altloc_matches(altloc) && (el == El::X || a.element == el))
         return &a;
     return nullptr;
   }
-  const Atom* find_atom(const std::string& atom_name, char altloc, El el=El::X) const {
-    return const_cast<Residue*>(this)->find_atom(atom_name, altloc, el);
+  const Atom* find_atom(const std::string& atom_name, char altloc, El el=El::X,
+                        bool strict_altloc=true) const {
+    return const_cast<Residue*>(this)->find_atom(atom_name, altloc, el, strict_altloc);
   }
 
   std::vector<Atom>::iterator find_atom_iter(const std::string& atom_name,
