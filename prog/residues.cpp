@@ -152,6 +152,8 @@ void print_long_info(const gemmi::Model& model, OptParser& p) {
           prev = &at.name;
         } else {
           if (print_alt) {
+            if GEMMI_UNLIKELY((&at-1)->altloc == '\0')
+              putchar(':');
             putchar(',');
             if (at.altloc)
               putchar(at.altloc);

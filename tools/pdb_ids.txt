@@ -150,8 +150,13 @@
 1q0n
 1nlm
 
-# mistake: no altloc and altloc for the same atom name: 6c5b, 6gob, 4udf, 4xhy
+# regression testing for link assignment
+5uqa
+
+# mistake: no altloc and altloc for the same atom name: 4udf, 4xhy
+# (6c5b and 6gob were fixed in 2023?)
 6c5b
+4xhy
 
 # sum of altloc occupancy > 1
 1c5z
