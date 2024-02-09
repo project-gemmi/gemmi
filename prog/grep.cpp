@@ -9,6 +9,7 @@
 #include "gemmi/util.hpp"      // for replace_all
 #include <cstdio>
 #include <cstring>
+#include <regex>
 #include <stdexcept>
 #include <string>
 
@@ -24,7 +25,8 @@ namespace rules = gemmi::cif::rules;
 namespace {
 
 enum OptionIndex {
-  FromFile=4, NamePattern, PdbDirSf, Recurse, MaxCount, OneBlock, And,
+  FromFile=4, NamePattern, PdbDirSf, Recurse, MaxCount, OneBlock,
+  ExtRegexp, And,
   Delim, WithFileName, NoBlockName, WithLineNumbers, WithTag,
   OnlyTags, Summarize, MatchingFiles, NonMatchingFiles, Count, Raw
 };
@@ -36,6 +38,7 @@ const option::Descriptor Usage[] = {
     "Search for TAG in CIF files."
     "\nBy default, recursive directory search checks only *.cif(.gz) files."
     "\nTo change it, specify --name=* or --name=*.hkl."
+    "\nBy default (without -E), TAG it a tag or a glob pattern. Must start with _."
     "\n\nOptions:" },
   { Help, 0, "h", "help", Arg::None,
     "  -h, --help  \tdisplay this help and exit" },
@@ -54,6 +57,8 @@ const option::Descriptor Usage[] = {
     "  -m, --max-count=NUM  \tprint max NUM values per file" },
   { OneBlock, 0, "O", "one-block", Arg::None,
     "  -O, --one-block  \toptimize assuming one block per file" },
+  { ExtRegexp, 0, "E", "extended-regexp", Arg::None,
+    "  -E, --extended-regexp  \tinterpret TAG as egrep-like regular expression" },
   { And, 0, "a", "and", Arg::Required,
     "  -a, --and=tag  \tAppend delimiter (default ';') and the tag value" },
   { Delim, 0, "d", "delimiter", Arg::Required,
@@ -100,7 +105,7 @@ struct GrepParams {
   bool raw = false;
   std::string delim;
   std::vector<std::string> multi_tags;
-  bool globbing = false;
+  char globbing = '\0';  // g = globbing, r = regexp
   // working parameters
   const char* path = "";
   std::string block_name;
@@ -113,6 +118,7 @@ struct GrepParams {
   bool last_block = false;
   std::vector<int> multi_match_columns;
   std::vector<std::vector<std::string>> multi_values;
+  std::regex re;
 };
 
 template<typename Input>
@@ -228,6 +234,12 @@ void print_count(const GrepParams& par) {
   std::putc('\n', stdout);
 }
 
+bool tag_matches(const GrepParams& p, const std::string& str) {
+  if (p.globbing == 'g')
+    return gemmi::glob_match(p.search_tag, str);
+  std::smatch results;
+  return std::regex_match(str, results, p.re);
+}
 
 template<typename Rule> struct Search : pegtl::nothing<Rule> {};
 
@@ -261,11 +273,11 @@ template<> struct Search<rules::endframe> {
 };
 template<> struct Search<rules::item_tag> {
   template<typename Input> static void apply(const Input& in, GrepParams& p) {
-    if (!p.globbing) {
+    if (p.globbing == '\0') {
       if (p.search_tag.size() == in.size() && p.search_tag == in.string())
         p.match_value = 1;
     } else {
-      if (gemmi::glob_match(p.search_tag, in.string())) {
+      if (tag_matches(p, in.string())) {
         p.multi_tags.resize(1);
         p.multi_tags[0] = in.string();
         p.match_value = 1;
@@ -278,8 +290,8 @@ template<> struct Search<rules::item_value> {
   template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (p.match_value) {
       p.match_value = 0;
-      process_match(in, p, p.globbing ? 0 : -1);
-      if (p.last_block && !p.globbing)
+      process_match(in, p, p.globbing != '\0' ? 0 : -1);
+      if (p.last_block && p.globbing == '\0')
         throw true;
     }
   }
@@ -287,7 +299,7 @@ template<> struct Search<rules::item_value> {
 template<> struct Search<rules::str_loop> {
   template<typename Input> static void apply(const Input&, GrepParams& p) {
     p.table_width = 0;
-    if (p.globbing) {
+    if (p.globbing != '\0') {
       p.multi_tags.clear();
       p.multi_match_columns.clear();
     }
@@ -295,13 +307,13 @@ template<> struct Search<rules::str_loop> {
 };
 template<> struct Search<rules::loop_tag> {
   template<typename Input> static void apply(const Input& in, GrepParams& p) {
-    if (!p.globbing) {
-      if (p.search_tag == in.string()) {
+    if (p.globbing == '\0') {
+      if (p.search_tag.size() == in.size() && p.search_tag == in.string()) {
         p.match_column = p.table_width;
         p.column = 0;
       }
     } else {
-      if (gemmi::glob_match(p.search_tag, in.string())) {
+      if (tag_matches(p, in.string())) {
         p.multi_tags.emplace_back(in.string());
         p.multi_match_columns.emplace_back(p.table_width);
         p.match_column = 0;
@@ -316,7 +328,7 @@ template<> struct Search<rules::loop_end> {
   template<typename Input> static void apply(const Input&, GrepParams& p) {
     if (p.match_column != -1) {
       p.match_column = -1;
-      if (p.last_block && !p.globbing)
+      if (p.last_block && p.globbing == '\0')
         throw true;
     }
   }
@@ -325,7 +337,7 @@ template<> struct Search<rules::loop_value> {
   template<typename Input> static void apply(const Input& in, GrepParams& p) {
     if (p.match_column == -1)
       return;
-    if (!p.globbing) {
+    if (p.globbing == '\0') {
       if (p.column == p.match_column)
         process_match(in, p, -1);
     } else {
@@ -424,7 +436,7 @@ void grep_file(const std::string& path, GrepParams& par, int& err_count) {
   par.path = path.c_str();
   par.block_name.clear();
   par.counters.clear();
-  if (par.globbing)
+  if (par.globbing != '\0')
     par.multi_tags.clear();
   size_t n_multi = par.multi_tags.size();
   par.counters.resize(n_multi == 0 ? 1 : n_multi, 0);
@@ -483,20 +495,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     params.with_filename = true;
   if (p.options[NoBlockName])
     params.with_blockname = false;
-  if (p.options[WithLineNumbers]) {
-    if (p.options[And]) {
-      fprintf(stderr, "Options --line-number and --and do not work together\n");
-      return 2;
-    }
+  p.check_exclusive_pair(And, WithLineNumbers);
+  p.check_exclusive_pair(And, ExtRegexp);
+  p.check_exclusive_pair(And, OnlyTags);
+  if (p.options[WithLineNumbers])
     params.with_line_numbers = true;
-  }
   if (p.options[WithTag])
     params.with_tag = true;
   if (p.options[OnlyTags]) {
-    if (p.options[And]) {
-      fprintf(stderr, "Options --only-tags and --and do not work together\n");
-      return 2;
-    }
     params.with_tag = true;
     params.only_tags = true;
   }
@@ -519,7 +525,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   auto paths = p.paths_from_args_or_file(FromFile, 1);
   const char* tag = p.nonOption(0);
-  if (tag[0] != '_') {
+  if (tag[0] != '_' && !p.options[ExtRegexp]) {
     fprintf(stderr, "CIF tag must start with \"_\": %s\n", tag);
     return 2;
   }
@@ -538,8 +544,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
   } else {
     params.search_tag = tag;
-    if (params.search_tag.find_first_of("?*") != std::string::npos)
-      params.globbing = true;
+    if (p.options[ExtRegexp]) {
+      params.globbing = 'r';
+      params.re.assign(tag, std::regex::extended | std::regex::icase);
+    } else if (params.search_tag.find_first_of("?*") != std::string::npos) {
+      params.globbing = 'g';
+    }
   }
 
   size_t file_count = 0;

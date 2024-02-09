@@ -4,6 +4,7 @@ Usage: gemmi grep [options] TAG FILE_OR_DIR_OR_PDBID[...]
 Search for TAG in CIF files.
 By default, recursive directory search checks only *.cif(.gz) files.
 To change it, specify --name=* or --name=*.hkl.
+By default (without -E), TAG it a tag or a glob pattern. Must start with _.
 
 Options:
   -h, --help               display this help and exit
@@ -15,6 +16,7 @@ Options:
   -S, --pdb-sf             if PDB ID is given, search structure factor file
   -m, --max-count=NUM      print max NUM values per file
   -O, --one-block          optimize assuming one block per file
+  -E, --extended-regexp    interpret TAG as egrep-like regular expression
   -a, --and=tag            Append delimiter (default ';') and the tag value
   -d, --delimiter=DELIM    CSV-like output with specified delimiter
   -n, --line-number        print line number with output lines
