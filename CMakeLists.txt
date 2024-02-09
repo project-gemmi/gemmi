@@ -24,6 +24,7 @@ option(INSTALL_DEV_FILES "Install C++ headers, cmake configs, static lib" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
 option(USE_ZLIB_NG "Use zlib-ng instead of zlib" OFF)
+option(FETCH_ZLIB_NG "Download, build (statically) and use zlib-ng" OFF)
 option(GENERATE_STUBS "Generate Python type stubs" OFF)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
@@ -110,7 +111,34 @@ if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-if (USE_ZLIB_NG)
+if (FETCH_ZLIB_NG)
+  message(STATUS " =============== fetching and building zlib-ng ===============")
+  include(FetchContent)
+  FetchContent_Declare(zlib-ng GIT_REPOSITORY https://github.com/zlib-ng/zlib-ng.git
+                               GIT_TAG        2.1.x
+                               GIT_SHALLOW TRUE)
+  FetchContent_GetProperties(zlib-ng)
+  if (NOT zlib-ng_POPULATED)
+    FetchContent_Populate(zlib-ng)
+    set(ZLIB_ENABLE_TESTS OFF CACHE INTERNAL "")
+    set(BUILD_SHARED_LIBS_here ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "build static zlib-ng")
+    add_subdirectory(${zlib-ng_SOURCE_DIR} ${zlib-ng_BINARY_DIR} EXCLUDE_FROM_ALL)
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_here} CACHE BOOL "Build shared library" FORCE)
+    set_property(TARGET zlib PROPERTY POSITION_INDEPENDENT_CODE ON)
+    # zlib-ng, unless built WITH_NATIVE_INSTRUCTIONS=ON (-march=native),
+    # builds multiple variants of some functions, using different CPU features.
+    # IPO (LTO) has been reported to mess it up leading to illegal-instruction
+    # crash. When zlib-ng is built as a standalone project, not subdirectory,
+    # these flags are set in zlib-ng/CMakeLists.txt.
+    if (NOT WITH_NATIVE_INSTRUCTIONS)
+      set_target_properties(zlib PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
+                                            INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF
+                                            INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL OFF)
+    endif()
+    message(STATUS " =============== end of zlib-ng configuration ===============\n")
+  endif()
+elseif (USE_ZLIB_NG)
   set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/tools")
   find_package(ZLIB_NG REQUIRED)
 else()
@@ -187,7 +215,10 @@ if (BUILD_SHARED_LIBS)
 endif()
 target_link_libraries(gemmi_cpp PUBLIC gemmi_headers)
 
-if (ZLIB_NG_FOUND)
+if (FETCH_ZLIB_NG)
+  target_compile_definitions(gemmi_cpp PRIVATE USE_ZLIB_NG=1)
+  target_link_libraries(gemmi_cpp PRIVATE zlib)
+elseif (ZLIB_NG_FOUND)
   target_compile_definitions(gemmi_cpp PRIVATE USE_ZLIB_NG=1)
   target_link_libraries(gemmi_cpp PRIVATE ZLIB_NG::ZLIB_NG)
 elseif (ZLIB_FOUND)
