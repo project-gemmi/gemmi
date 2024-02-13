@@ -423,14 +423,14 @@ struct GEMMI_DLL Mtz {
   }
 
   Column* iplus_column() {
-    return column_with_type_and_one_of_labels('K', {"I(+)", "IOBS(+)", "I-obs(+)"});
+    return column_with_type_and_one_of_labels('K', {"I(+)", "IOBS(+)", "I-obs(+)", "Iplus"});
   }
   const Column* iplus_column() const {
     return const_cast<Mtz*>(this)->iplus_column();
   }
 
   Column* iminus_column() {
-    return column_with_type_and_one_of_labels('K', {"I(-)", "IOBS(-)", "I-obs(-)"});
+    return column_with_type_and_one_of_labels('K', {"I(-)", "IOBS(-)", "I-obs(-)", "Iminus"});
   }
   const Column* iminus_column() const {
     return const_cast<Mtz*>(this)->iminus_column();

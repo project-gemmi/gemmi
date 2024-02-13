@@ -866,7 +866,7 @@ bool validate_merged_mtz_deposition_columns(const Mtz& mtz, std::ostream& out) {
     ok = false;
   }
   if (!mtz.column_with_one_of_labels({"F", "FP", "FOBS", "F-obs",
-                                      "F(+)", "FOBS(+)", "F-obs(+)"})) {
+                                      "F(+)", "FOBS(+)", "F-obs(+)", "Fplus"})) {
     out << "Merged file is missing amplitudes\n"
            "(which is fine if intensities were used for refinement)\n";
   }
