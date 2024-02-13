@@ -397,23 +397,30 @@ void write_main_loop(const MtzToCif& m2c, const SweepInfo& sweep_info,
   }
 
   bool unmerged = !mtz.is_merged();
-  os << "\nloop_\n";
-  for (const Trans& tr : recipe) {
-    os << (unmerged ? "_diffrn_refln." : "_refln.");
-    if (m2c.with_comments && tr.col_idx >= 0) {
-      WRITE("%-26s # ", tr.tag.c_str());
+  os << '\n';
+  if (m2c.with_comments) {
+    // Add original MTZ column names as a comment, avoiding OneDep failure.
+    // OneDep uses sf-convert to convert SF mmCIF to SF mmCIF. Sadly,
+    // CIF parsing in sf-convert is not properly implemented. As a result:
+    // - Comments on the same line as a tag make the tag unrecognized,
+    // - Comments after loop_ line apparently prevent reading reflections:
+    //     Error: Number of reflections <10 (pdbid=xxxx; blockId=mtz)!
+    // - Comments above loop_ are added to _diffrn.details with such a warning:
+    //     Warning: (.) Text below is put into _diffrn.details. (Check carefully)!
+    //   But not when they start with "__" (!!!). So that's why we have "# __ ".
+    for (const Trans& tr : recipe) {
+      if (tr.col_idx < 0)
+        continue;
       const Mtz::Column& col = mtz.columns.at(tr.col_idx);
-      const Mtz::Dataset& ds = mtz.dataset(col.dataset_id);
-      // dataset is assigned to column only in merged MTZ
-      if (unmerged)
-        os << col.label;
-      else
-        WRITE("%-14s from dataset %s", col.label.c_str(), ds.dataset_name.c_str());
-    } else {
-      os << tr.tag;
+      os << "# __ ";
+      if (!unmerged) // dataset is assigned to column only in merged MTZ
+        os << mtz.dataset(col.dataset_id).dataset_name << " / ";
+      os << col.label << " -> " << tr.tag << "\n";
     }
-    os << '\n';
   }
+  os << "loop_\n";
+  for (const Trans& tr : recipe)
+    os << (unmerged ? "_diffrn_refln." : "_refln.") << tr.tag << '\n';
   int batch_idx = find_column_index("BATCH", mtz);
   std::unordered_map<int, const Mtz::Batch*> batch_by_number;
   for (const Mtz::Batch& b : mtz.batches)
