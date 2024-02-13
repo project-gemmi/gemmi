@@ -8,7 +8,7 @@ C++ library
 -----------
 
 Before version 0.6 gemmi was a header-only library.
-Many functions are still in headers. If you use only such function,
+Some functions are still in headers. If you use only such function,
 you only need to ensure that the `include` directory is in your
 include path when compiling your program. For example::
 
@@ -54,6 +54,17 @@ If only headers are needed, do::
 The gemmi::headers interface, which is also included in gemmi::gemmi_cpp,
 adds two things: include dictory and *compile feature* cxx_std_11 (a minimal
 requirement for the compilation).
+
+Gemmi can be compiled with either zlib or zlib-ng.
+The only difference is that zlib-ng is faster.
+Here are the relevant cmake options:
+
+* FETCH_ZLIB_NG -- download, build statically, and use zlib-ng.
+* USE_ZLIB_NG -- find zlib-ng installed on the system.
+* INTERNAL_ZLIB -- compile third_party/zlib (a subset of zlib distributed
+  with gemmi).
+* None of the above -- find zlib installed on the system;
+  if not found, use third_party/zlib.
 
 ----
 
