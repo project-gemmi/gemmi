@@ -95,7 +95,9 @@ bool read_staraniso_b_from_mmcif(const cif::Block& block, SMat33<double>& output
   return true;
 }
 
-// returns STARANISO version or empty string
+} // anonymous namespace
+
+// This function is used in wasm/to_cif.cpp.
 std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output) {
   std::string version;
   size_t hlen = mtz.history.size();
@@ -122,7 +124,6 @@ std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output) {
   return version;
 }
 
-} // anonymous namespace
 
 std::array<double,2> Intensities::resolution_range() const {
   double min_1_d2 = INFINITY;
@@ -337,10 +338,6 @@ void Intensities::read_unmerged_intensities_from_xds(const XdsAscii& xds) {
     add_if_valid(*this, in.hkl, 0, in.iobs, in.sigma);
   switch_to_asu_indices();
   type = DataType::Unmerged;
-}
-
-std::string Intensities::take_staraniso_b_from_mtz(const Mtz& mtz) {
-  return read_staraniso_b_from_mtz(mtz, staraniso_b.b);
 }
 
 bool Intensities::take_staraniso_b_from_mmcif(const cif::Block& block) {

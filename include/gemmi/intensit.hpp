@@ -22,6 +22,9 @@ inline std::string miller_str(const Miller& hkl) {
   return cat('(', hkl[0], ' ', hkl[1], ' ', hkl[2], ')');
 }
 
+/// Returns STARANISO version or empty string.
+GEMMI_DLL std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output);
+
 struct GEMMI_DLL Intensities {
   struct Refl {
     Miller hkl;
@@ -144,7 +147,9 @@ struct GEMMI_DLL Intensities {
   void read_unmerged_intensities_from_xds(const XdsAscii& xds);
 
   // returns STARANISO version or empty string
-  std::string take_staraniso_b_from_mtz(const Mtz& mtz);
+  std::string take_staraniso_b_from_mtz(const Mtz& mtz) {
+    return read_staraniso_b_from_mtz(mtz, staraniso_b.b);
+  }
   bool take_staraniso_b_from_mmcif(const cif::Block& block);
 
   Mtz prepare_merged_mtz(bool with_nobs);
