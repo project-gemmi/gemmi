@@ -551,6 +551,9 @@ if (USE_PYTHON)
     set_target_properties(gemmi_py PROPERTIES INSTALL_RPATH "${origin}/${rpath_rel}")
   endif()
   install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}" COMPONENT py)
+  install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
+          FILES_MATCHING PATTERN "*.py"
+          PATTERN "[._]*" EXCLUDE)
   if (GENERATE_STUBS)
     install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
             DESTINATION "${Python_SITEARCH}" COMPONENT py)
