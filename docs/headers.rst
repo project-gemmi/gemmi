@@ -215,9 +215,6 @@ gemmi/pdb.hpp
 gemmi/pdb_id.hpp
     handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path()
 
-gemmi/pickler.hpp
-    Serializing support for zpp::serializer (third_party/serializer.h).
-
 gemmi/pirfasta.hpp
     Read sequence from PIR or (multi-)FASTA format.
 
@@ -270,6 +267,9 @@ gemmi/seqid.hpp
 
 gemmi/seqtools.hpp
     Functions for working with sequences (other than alignment).
+
+gemmi/serialize.hpp
+    Binary serialization for Structure (as well as Model, UnitCell, etc)
 
 gemmi/sfcalc.hpp
     Direct calculation of structure factors.
