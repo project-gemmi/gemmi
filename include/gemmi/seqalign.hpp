@@ -200,11 +200,13 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
   std::int16_t *query_profile = new std::int16_t[query.size() * m];
   {
     std::uint32_t mat_size = (std::uint32_t) scoring.matrix_encoding.size();
+    if (mat_size * mat_size != scoring.score_matrix.size())
+      fail("align_sequences: internal error (wrong score_matrix)");
     std::int32_t i = 0;
     for (std::uint8_t k = 0; k < m; ++k)
       for (std::uint8_t q : query)
         if (k < mat_size && q < mat_size)
-          query_profile[i++] = scoring.score_matrix[k * m + q];
+          query_profile[i++] = scoring.score_matrix[k * mat_size + q];
         else
           query_profile[i++] = (k == q ? scoring.match : scoring.mismatch);
   }
