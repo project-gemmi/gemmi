@@ -110,6 +110,7 @@ struct NearestImage {
 
 /// Like Transform, but apply() arg is Fractional (not Vec3 - for type safety).
 struct FTransform : Transform {
+  FTransform() = default;
   FTransform(const Transform& t) : Transform(t) {}
   Fractional apply(const Fractional& p) const {
     return Fractional(Transform::apply(p));

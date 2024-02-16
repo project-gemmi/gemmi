@@ -468,6 +468,7 @@ struct Chain {
   std::string name;
   std::vector<Residue> residues;
 
+  Chain() = default;
   explicit Chain(std::string cname) noexcept : name(cname) {}
 
   ResidueSpan whole() {

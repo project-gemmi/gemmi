@@ -121,7 +121,9 @@ struct RefinementInfo : BasicRefinementInfo {
     double weight = NAN;
     std::string function;
     double dev_ideal = NAN;
-    Restr(const std::string& name_) : name(name_) {}
+
+    Restr() = default;
+    explicit Restr(const std::string& name_) : name(name_) {}
   };
   std::string id;
   std::string cross_validation_method; // _refine.pdbx_ls_cross_valid_method
@@ -237,6 +239,7 @@ struct Entity {
   /// SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
   std::vector<std::string> full_sequence;
 
+  Entity() = default;
   explicit Entity(std::string name_) noexcept : name(name_) {}
   static std::string first_mon(const std::string& mon_list) {
     return mon_list.substr(0, mon_list.find(','));
@@ -325,6 +328,8 @@ struct Sheet {
   };
   std::string name;
   std::vector<Strand> strands;
+
+  Sheet() = default;
   explicit Sheet(std::string sheet_id) noexcept : name(sheet_id) {}
 };
 
@@ -355,7 +360,9 @@ struct Assembly {
   double ssa = NAN;  // SURFACE AREA OF THE COMPLEX: ... ANGSTROM**2
   double more = NAN; // CHANGE IN SOLVENT FREE ENERGY: ... KCAL/MOL
   std::vector<Gen> generators;
-  Assembly(const std::string& name_) : name(name_) {}
+
+  Assembly() = default;
+  explicit Assembly(const std::string& name_) : name(name_) {}
 };
 
 } // namespace gemmi
