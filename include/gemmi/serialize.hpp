@@ -35,7 +35,7 @@ SERIALIZE_T1(OptionalInt, int, o.value)
 
 //SERIALIZE(Element, o.elem) is ambiguous because of El->Element conversion
 template <typename Archive>
-void serialize(Archive& archive, Element& o) { archive(o.elem); }
+void serialize(Archive& archive, Element& o) { archive((unsigned char&)o.elem); }
 template <typename Archive>
 void serialize(Archive& archive, const Element& o) { archive((unsigned char)o.elem); }
 
