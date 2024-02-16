@@ -66,7 +66,7 @@ inline bool is_metal(El el) {
 
 inline double molecular_weight(El el) {
   static constexpr double weights[] = {
-    /*X*/ 0.0,
+    /*X*/ 1.0,
     /*H*/ 1.00794, /*He*/ 4.0026,
     /*Li*/ 6.941, /*Be*/ 9.012182, /*B*/ 10.811, /*C*/ 12.0107,
     /*N*/ 14.0067, /*O*/ 15.9994, /*F*/ 18.998403, /*Ne*/ 20.1797,
