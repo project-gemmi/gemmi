@@ -477,7 +477,9 @@ if (USE_PYTHON)
     target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
   endif()
 
-  if (GENERATE_STUBS)
+  if (GENERATE_STUBS AND CMAKE_CROSSCOMPILING)
+    message(WARNING "Stubs cannot be generated when cross-compiling - skipping.")
+  elseif (GENERATE_STUBS)
     set(sep ":")
     if (WIN32)
       set(sep ";")
@@ -554,7 +556,7 @@ if (USE_PYTHON)
   install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
           FILES_MATCHING PATTERN "*.py"
           PATTERN "[._]*" EXCLUDE)
-  if (GENERATE_STUBS)
+  if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
     install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
             DESTINATION "${Python_SITEARCH}" COMPONENT py)
   endif()
