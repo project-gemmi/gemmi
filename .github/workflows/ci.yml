@@ -186,6 +186,8 @@ jobs:
     container: centos:7
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
+    # used v3 of actions/checkout and upload/artifact, v4 give errors:
+    # /__e/node20/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found
     - uses: actions/checkout@v3
     - name: yum
       run: |
@@ -217,7 +219,7 @@ jobs:
         pip3 install -U sphinx
         cd docs
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v3
       with:
         name: gemmi-linux
         path: |
