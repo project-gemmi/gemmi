@@ -129,7 +129,7 @@ of pip (in recent pip versions only)::
 
   pip install . --config-settings="cmake.args=-DFETCH_ZLIB_NG=ON"
 
-or using enviroment variables such as `CMAKE_ARGS`. See
+or using environment variables such as `CMAKE_ARGS`. See
 `scikit-build-core docs <https://scikit-build-core.readthedocs.io/en/latest/configuration.html#configuring-cmake-arguments-and-defines>`_
 for details.
 
