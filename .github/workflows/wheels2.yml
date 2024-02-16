@@ -13,7 +13,10 @@ on:
         description: 'CIBW_SKIP'
         # To limit the number of builds, skip most of musl-based versions,
         # older PyPy versions, and 32-bit builds.
-        default: 'pp{37,38,39}-* cp{37,38,39}-musllinux* *_i686 *-win32'
+        default: 'pp{37,38,39}-* cp{37,38,39}-musllinux* *_i686 *-win32 cp38-macosx_arm64'
+      cibw_config_settings:
+        description: 'CIBW_CONFIG_SETTINGS'
+        default: ''
 
 jobs:
   build_wheels:
@@ -31,11 +34,12 @@ jobs:
       env:
         CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
         CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
+        CIBW_CONFIG_SETTINGS: ${{ github.event.inputs.cibw_config_settings }}
 
     - run: ls -lh wheelhouse
       shell: bash
 
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels2
+        name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
         path: wheelhouse/*.whl
