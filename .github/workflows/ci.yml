@@ -23,7 +23,7 @@ jobs:
         python3 -m pip install sphinx
         cd docs
         sphinx-build -M doctest . _build -n -E
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: gemmi-macos12
         path: |
@@ -54,7 +54,7 @@ jobs:
       run: |
         ctest --output-on-failure
         python3 tests/test_prog.py
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: gemmi-macos11
         path: |
@@ -70,7 +70,7 @@ jobs:
       SKBUILD_CMAKE_ARGS: "-DFETCH_ZLIB_NG=ON"
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     - name: build and test
@@ -217,7 +217,7 @@ jobs:
         pip3 install -U sphinx
         cd docs
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: gemmi-linux
         path: |
