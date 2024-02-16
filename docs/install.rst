@@ -66,6 +66,10 @@ Here are the relevant cmake options:
 * None of the above -- find zlib installed on the system;
   if not found, use third_party/zlib.
 
+On Windows, when a program or library is linked with zlib(-ng) DLL,
+it may require the DLL to be in the same directory.
+It is simpler to build zlib-ng statically or use `-D FETCH_ZLIB_NG=ON`.
+
 ----
 
 Note on Unicode: if a file name is passed to Gemmi (through `std::string`)
@@ -116,13 +120,23 @@ or clone the `project <https://github.com/project-gemmi/gemmi/>`_
 
     pip install .
 
-On Windows Python should automatically find an appropriate compiler (MSVC).
+On Windows, Python should automatically find an appropriate compiler (MSVC).
 If the compiler is not installed, pip shows a message with a download link.
+
+Building with pip uses scikit-build-core and CMake underneath.
+You might pass options to CMake either as the `--config-settings` option
+of pip (in recent pip versions only)::
+
+  pip install . --config-settings="cmake.args=-DFETCH_ZLIB_NG=ON"
+
+or using enviroment variables such as `CMAKE_ARGS`. See
+`scikit-build-core docs <https://scikit-build-core.readthedocs.io/en/latest/configuration.html#configuring-cmake-arguments-and-defines>`_
+for details.
 
 If gemmi is already installed, uninstall the old version first
 (`pip uninstall`) or add option `--upgrade`.
 
-Alternatively, you can build a cloned project with CMake::
+Alternatively, you can build a cloned project directly with CMake::
 
     cmake -D USE_PYTHON=1 .
     make -j4 py

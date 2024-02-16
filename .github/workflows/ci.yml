@@ -66,8 +66,8 @@ jobs:
     name: "Windows 2022"
     runs-on: windows-2022
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    #env:
-    #  SKBUILD_CMAKE_ARGS: "-DFETCH_ZLIB_NG=ON"
+    env:
+      SKBUILD_CMAKE_ARGS: "-DFETCH_ZLIB_NG=ON"
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
