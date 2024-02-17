@@ -91,7 +91,7 @@ SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF;-DBUILD_
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#macos-building-cpython-38-wheels-on-arm64
 [[tool.cibuildwheel.overrides]]
 select = "cp38-macosx_arm64"
-environment.SKBUILD_CMAKE_DEFINE = 'GENERATE_STUBS=OFF'
+environment.SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF;-DBUILD_SHARED_LIBS=OFF;-DFETCH_ZLIB_NG=ON;-DGENERATE_STUBS=OFF'
 
 [tool.pylint]
 basic.const-naming-style = "any"

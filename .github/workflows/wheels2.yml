@@ -12,8 +12,8 @@ on:
       cibw_skip:
         description: 'CIBW_SKIP'
         # To limit the number of builds, skip most of musl-based versions,
-        # older PyPy versions, and 32-bit builds.
-        default: 'pp{37,38,39}-* cp{37,38,39}-musllinux* *_i686 *-win32 cp38-macosx_arm64'
+        # PyPy, and 32-bit builds.
+        default: 'pp* cp{37,38,39}-musllinux* *_i686 *-win32'
       cibw_config_settings:
         description: 'CIBW_CONFIG_SETTINGS'
         default: ''
@@ -41,5 +41,5 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
-        name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+        name: cibw-wheels-${{ matrix.os }}
         path: wheelhouse/*.whl
