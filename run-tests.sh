@@ -51,26 +51,32 @@ if [ -z "${NO_DOCTEST-}" ]; then
     (cd docs && make doctest SPHINXOPTS="-q -n -E")
 fi
 
-flake8 docs/ examples/ tests/ tools/
-
 # Usually, we stop here. Below are more extensive checks below that are run
 # before making a release. They are run when this script is called with 'a'
 # or with an option corresponding to the check.
 [ $# = 0 ] && exit;
 
+flake8 docs/ examples/ tests/ tools/
+
+# this check is only for pip-installed packages
 if [ $1 = i ]; then
     echo 'Check if gemmi package is found by setuptools pkg_resources...'
     $PYTHON -c '__requires__ = ["gemmi"]; import pkg_resources'
     echo 'OK'
 fi
 
-if [ $1 = a ]; then
+# a few quick extra (x) checks
+if [ $1 = x -o $1 = a ]; then
     echo 'Run codespell'
     codespell include src prog python fortran tests examples docs wasm tools ||:
+
     echo 'Run pybind11-stubgen'
     pybind11-stubgen --dry-run --exit-code gemmi \
         --enum-class-locations='Ignore:gemmi.ContactSearch' \
         --enum-class-locations='.+:gemmi'
+
+    echo 'Checking serialize.hpp...'
+    $PYTHON tools/check_serialize.py
 fi
 
 if [ $1 = m -o $1 = a ]; then

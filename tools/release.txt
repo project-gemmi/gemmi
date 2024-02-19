@@ -20,8 +20,10 @@
 - git commit -a -m "change version number to $VERSION"
   git push
 
-- Run https://github.com/project-gemmi/gemmi/actions/workflows/wheels2.yml
+- run https://github.com/project-gemmi/gemmi/actions/workflows/wheels2.yml
   download wheels2.zip and unpack to wheelhouse/
+- check if all wheels have the same content:
+  tools/compare_wheels.py wheelhouse/*.whl
 - twine upload dist/gemmi-$VERSION.tar.gz
 - twine upload wheelhouse/*.whl
 
