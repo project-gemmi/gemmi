@@ -2,6 +2,10 @@ name: TestWheel
 
 on:
   workflow_dispatch:
+    inputs:
+      runid:
+        description: 'run-id (if empty, downloads from PyPI)'
+        default: ''
 
 jobs:
   testwheel:
@@ -19,5 +23,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py }}
+
       - run: python -m pip install gemmi
+        if: ${{ github.event.inputs.runid == '' }}
+
+      - uses: actions/download-artifact@v4
+        if: ${{ github.event.inputs.runid != '' }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.inputs.runid }}
+          path: wheels
+          merge-multiple: true
+      - run: python -m pip install --no-index --find-links=wheels gemmi
+        if: ${{ github.event.inputs.runid != '' }}
+
       - run: python -m unittest discover -s tests -v

@@ -21,7 +21,8 @@
   git push
 
 - run https://github.com/project-gemmi/gemmi/actions/workflows/wheels2.yml
-  download wheels2.zip and unpack to wheelhouse/
+- download artifact with wheels and unpack to wheelhouse/
+- run https://github.com/project-gemmi/gemmi/actions/workflows/testwheel.yml
 - check if all wheels have the same content:
   tools/compare_wheels.py wheelhouse/*.whl
 - twine upload dist/gemmi-$VERSION.tar.gz
