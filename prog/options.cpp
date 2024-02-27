@@ -5,13 +5,14 @@
 #include <cstdio>   // for fprintf, fopen
 #include <cstdlib>  // for strtol, strtod, exit
 #include <cstring>  // for strcmp, strchr
+#include <gemmi/atox.hpp>      // for skip_blank
 #include <gemmi/fileutil.hpp>  // for file_open_or
+#include <gemmi/gz.hpp>        // for zlib_version
+#include <gemmi/model.hpp>     // for CoorFormat
 #include <gemmi/pdb_id.hpp>    // for expand_if_pdb_code
+#include <gemmi/to_cif.hpp>    // for cif::WriteOptions
+#include <gemmi/util.hpp>      // for trim_str
 #include <gemmi/version.hpp>   // for GEMMI_VERSION
-#include <gemmi/util.hpp>   // for trim_str
-#include <gemmi/model.hpp>  // for gemmi::CoorFormat
-#include <gemmi/to_cif.hpp>  // for gemmi::cif::WriteOptions
-#include <gemmi/atox.hpp>   // for skip_blank
 
 using std::fprintf;
 
@@ -312,6 +313,7 @@ void print_version(const char* program_name, bool verbose) {
     std::printf("Compiler: GCC %d.%d.%d (C++ %ld)\n",
                 __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__, __cplusplus);
 #  endif
+    std::printf("Built with: %s\n", gemmi::zlib_description);
 #endif
   }
 }

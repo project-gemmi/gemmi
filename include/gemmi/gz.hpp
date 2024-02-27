@@ -11,6 +11,8 @@
 
 namespace gemmi {
 
+GEMMI_DLL extern const char* const zlib_description;
+
 GEMMI_DLL size_t estimate_uncompressed_size(const std::string& path);
 
 // the same interface as FileStream and MemoryStream

@@ -16,6 +16,13 @@
 
 namespace gemmi {
 
+const char* const zlib_description =
+#if USE_ZLIB_NG
+  "zlib-ng " ZLIBNG_VERSION;
+#else
+  "zlib " ZLIB_VERSION;
+#endif
+
 // Throws if the size is not found or if it is suspicious.
 // Anything outside of the arbitrary limits from 1 to 10x of the compressed
 // size looks suspicious to us.
