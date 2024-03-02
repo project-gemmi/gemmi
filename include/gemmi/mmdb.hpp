@@ -24,7 +24,7 @@ inline void copy_transform_to_mmdb(const Transform& tr,
 
 template<int N>
 void strcpy_to_mmdb(char (&dest)[N], const std::string& src) {
-  if (src.size() >= N)
+  if (src.size() + 1 >= N)
     fail("This string is too long: " + src);
   std::memcpy(dest, src.c_str(), src.size() + 1);
 }
@@ -75,7 +75,7 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
   for (int imodel = 0; imodel < (int) st.models.size(); ++imodel) {
     const Model& model = st.models[imodel];
     mmdb::Model* model2 = mmdb::newModel();
-    model2->SetMMDBManager(manager, imodel);
+    manager->AddModel(model2);
 
     for (const Chain& chain : model.chains) {
       mmdb::Chain* chain2 = model2->CreateChain(chain.name.c_str());
@@ -120,7 +120,6 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
         }
       }
     }
-    manager->AddModel(model2);
     manager->PutCell(st.cell.a, st.cell.b, st.cell.c,
                      st.cell.alpha, st.cell.beta, st.cell.gamma, 1);
     manager->SetSpaceGroup(st.spacegroup_hm.c_str());
