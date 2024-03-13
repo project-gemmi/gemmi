@@ -761,11 +761,20 @@ except for the simplest ones, like breadth-first search,
 which is used in a couple of functions
 ( ``Restraints::find_shortest_path()``, ``BondIndex::graph_distance()``).
 
+ChemComp to graph
+-----------------
+
+BGL
+~~~
+
 Here is how to set up a graph in the Boost Graph Library
 (`BGL <http://boost.org/libs/graph>`_) in C++:
 
 .. literalinclude:: ../examples/with_bgl.cpp
    :lines: 9-10,13-41
+
+NetworkX
+~~~~~~~~
 
 Here, we set up a `NetworkX <https://networkx.org/>`_ graph in Python:
 
@@ -794,6 +803,9 @@ Now, as a quick example, we can count automorphisms:
   >>> # expecting 3! automorphisms (permutations of the three oxygens)
   >>> sum(1 for _ in GM.isomorphisms_iter())
   6
+
+nauty
+~~~~~
 
 The median number of automorphisms of molecules in the CCD is only 4.
 However, the highest number of isomorphisms as of 2023 (ignoring hydrogens,
@@ -852,6 +864,15 @@ Now, to finish this example, let's get the order of the isomorphism group
   >>> (gen, grpsize1, grpsize2, orbits, numorb) = pynauty.autgrp(G)
   >>> grpsize1 * 10**grpsize2
   6.0
+
+RDKit
+~~~~~
+
+Similarly to the graph libraries,
+we can construct a molecule (molecular graph) in RDKit.
+
+.. literalinclude:: ../examples/to_rdkit.py
+   :language: python
 
 .. _graph_isomorphism:
 
