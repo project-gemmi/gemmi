@@ -42,7 +42,7 @@ option(STRIP_BINARY "Strip symbols from program" OFF)
 # uncomment to show compilation times for each compilation unit
 #set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
 
-if (DEFINED ENV{FC} OR CMAKE_Fortran_COMPILER)
+if ((DEFINED ENV{FC} AND NOT "$ENV{FC}" STREQUAL "") OR CMAKE_Fortran_COMPILER)
   set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
 endif()
 
@@ -83,9 +83,9 @@ if (INFO)
 endif()
 
 if (USE_FORTRAN)
-   message(STATUS "Currently, Fortran bindings are not built by cmake.")
-   message(STATUS "They can be built by running make in fortran directory.")
-  enable_language(Fortran)
+  message(STATUS "Currently, Fortran bindings are not built by cmake.")
+  message(STATUS "They can be built by running make in fortran/.")
+  #enable_language(Fortran)
 else()
   #message(STATUS "Skipping Fortran bindings. Add -D USE_FORTRAN=1 to build them.")
 endif()
