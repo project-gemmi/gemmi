@@ -282,7 +282,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         mi.read_merged_intensities_from_mtz(*mtz[0]);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
-            gemmi::read_cif_from_buffer(cif_buf, cif_input).blocks, {});
+            gemmi::read_cif_from_memory(cif_buf.data(), cif_buf.size(), cif_input).blocks,
+            {});
         if (!rblock.entry_id.empty() && rblock.entry_id != mtz_to_cif.entry_id) {
           fprintf(stderr, "Note: using _entry.id from mmCIF (%s) instead of %s.\n",
                   rblock.entry_id.c_str(), mtz_to_cif.entry_id.c_str());

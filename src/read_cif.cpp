@@ -19,8 +19,8 @@ CharArray read_into_buffer_gz(const std::string& path) {
   return read_into_buffer(MaybeGzipped(path));
 }
 
-cif::Document read_cif_from_buffer(const CharArray& buffer, const char* name) {
-  return cif::read_memory(buffer.data(), buffer.size(), name);
+cif::Document read_cif_from_memory(const char* data, size_t size, const char* name) {
+  return cif::read_memory(data, size, name);
 }
 
 cif::Document read_first_block_gz(const std::string& path, size_t limit) {

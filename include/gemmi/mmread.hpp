@@ -57,12 +57,15 @@ inline Structure make_structure_from_doc(cif::Document&& doc, bool possible_chem
   return make_structure(std::move(doc), save_doc);
 }
 
-inline Structure read_structure_from_char_array(char* data, size_t size,
-                                                const std::string& path,
-                                                cif::Document* save_doc=nullptr) {
+// when reading JSON, the input buffer is changed (as an optimization)
+inline Structure read_structure_from_memory(char* data, size_t size,
+                                            const std::string& path,
+                                            CoorFormat format=CoorFormat::Unknown,
+                                            cif::Document* save_doc=nullptr) {
   if (save_doc)
     save_doc->clear();
-  CoorFormat format = coor_format_from_content(data, data + size);
+  if (format == CoorFormat::Unknown || format == CoorFormat::Detect)
+    format = coor_format_from_content(data, data + size);
   if (format == CoorFormat::Pdb)
     return read_pdb_from_memory(data, size, path);
   if (format == CoorFormat::Mmcif)
@@ -73,12 +76,19 @@ inline Structure read_structure_from_char_array(char* data, size_t size,
   fail("wrong format of coordinate file " + path);
 }
 
+// deprecated
+inline Structure read_structure_from_char_array(char* data, size_t size,
+                                                const std::string& path,
+                                                cif::Document* save_doc=nullptr) {
+  return read_structure_from_memory(data, size, path, CoorFormat::Unknown, save_doc);
+}
+
 template<typename T>
 Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown,
                          cif::Document* save_doc=nullptr) {
   if (format == CoorFormat::Detect) {
     CharArray mem = read_into_buffer(input);
-    return read_structure_from_char_array(mem.data(), mem.size(), input.path(), save_doc);
+    return read_structure_from_memory(mem.data(), mem.size(), input.path(), format, save_doc);
   }
   if (save_doc)
     save_doc->clear();
