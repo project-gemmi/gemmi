@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2020 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAO_PEGTL_INTERNAL_STAR_MUST_HPP
@@ -16,7 +16,7 @@ namespace tao
       namespace internal
       {
          template< typename Cond, typename... Rules >
-         using star_must = star< if_must< Cond, Rules... > >;
+         using star_must = star< if_must< false, Cond, Rules... > >;
 
       }  // namespace internal
 

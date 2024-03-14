@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2020 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAO_PEGTL_INTERNAL_PEEK_UTF32_HPP
@@ -8,8 +8,8 @@
 
 #include "../config.hpp"
 
-#include "endian.hpp"
 #include "input_pair.hpp"
+#include "read_uint.hpp"
 
 namespace tao
 {
@@ -28,37 +28,19 @@ namespace tao
             template< typename Input >
             static pair_t peek( Input& in ) noexcept( noexcept( in.size( 4 ) ) )
             {
-               const std::size_t s = in.size( 4 );
-               if( s >= 4 ) {
-                  const char32_t t = R::read( in.current() );
-                  if( ( 0 <= t ) && ( t <= 0x10ffff ) ) {
-                     return { t, 4 };
-                  }
+               if( in.size( 4 ) < 4 ) {
+                  return { 0, 0 };
+               }
+               const char32_t t = R::read( in.current() );
+               if( ( t <= 0x10ffff ) && !( t >= 0xd800 && t <= 0xdfff ) ) {
+                  return { t, 4 };
                }
                return { 0, 0 };
             }
          };
 
-         struct read_utf32_be
-         {
-            static std::uint32_t read( const void* d ) noexcept
-            {
-               return be_to_h< std::uint32_t >( d );
-            }
-         };
-
-         struct read_utf32_le
-         {
-            static std::uint32_t read( const void* d ) noexcept
-            {
-               return le_to_h< std::uint32_t >( d );
-            }
-         };
-
-         using peek_utf32_be = peek_utf32_impl< read_utf32_be >;
-         using peek_utf32_le = peek_utf32_impl< read_utf32_le >;
-
-         using peek_utf32 = peek_utf32_le;
+         using peek_utf32_be = peek_utf32_impl< read_uint32_be >;
+         using peek_utf32_le = peek_utf32_impl< read_uint32_le >;
 
       }  // namespace internal
 

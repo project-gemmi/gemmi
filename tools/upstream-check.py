@@ -9,8 +9,8 @@ from urllib.request import urlopen
 
 TAGGED_REPOS = {
     'pybind/pybind11': 'v2.6.1',
-    'scikit-build/scikit-build-core': 'v0.8.0',
-    'taocpp/PEGTL': '2.4.0',
+    'scikit-build/scikit-build-core': 'v0.8.2',
+    'taocpp/PEGTL': '2.8.3',
     'cxong/tinydir': '1.2.6',
     'fastfloat/fast_float': 'v6.1.0',
     'madler/zlib': 'v1.3.1',

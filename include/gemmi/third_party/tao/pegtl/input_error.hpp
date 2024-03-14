@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2020 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAO_PEGTL_INPUT_ERROR_HPP
@@ -42,6 +42,14 @@ namespace tao
    do {                                                                                 \
       const int errorno = errno;                                                        \
       std::ostringstream oss;                                                           \
+      oss << TAO_PEGTL_INTERNAL_UNWRAP( MESSAGE ); \
+      throw std::system_error( errorno, std::system_category(), oss.str() );            \
+   } while( false )
+
+#define TAO_PEGTL_THROW_INPUT_WIN32_ERROR( MESSAGE )                                             \
+   do {                                                                                          \
+      const int errorno = GetLastError();                                                        \
+      std::ostringstream oss;                                                                    \
       oss << TAO_PEGTL_INTERNAL_UNWRAP( MESSAGE ); \
       throw std::system_error( errorno, std::system_category(), oss.str() );            \
    } while( false )

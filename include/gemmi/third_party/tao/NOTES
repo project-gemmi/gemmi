@@ -1,6 +1,6 @@
-This directory contains files from PEGTL 2.4.0:
+This directory contains files from PEGTL 2.8.3:
  LICENSE and include/tao/* except include/tao/pegtl/contrib
-with minor local modifications:
+with minor local modifications (in position.hpp and input_error.hpp):
 - changed formatting of error messages,
 - using std::system_error instead of pegtl::input_error.
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2020 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAO_PEGTL_READ_INPUT_HPP
@@ -40,7 +40,7 @@ namespace tao
 
       }  // namespace internal
 
-      template< tracking_mode P = tracking_mode::IMMEDIATE, typename Eol = eol::lf_crlf >
+      template< tracking_mode P = tracking_mode::eager, typename Eol = eol::lf_crlf >
       struct read_input
          : private internal::filename_holder,
            public string_input< P, Eol, const char* >
@@ -67,6 +67,11 @@ namespace tao
          void operator=( const read_input& ) = delete;
          void operator=( read_input&& ) = delete;
       };
+
+#ifdef __cpp_deduction_guides
+      template< typename... Ts >
+      explicit read_input( Ts&&... )->read_input<>;
+#endif
 
    }  // namespace TAO_PEGTL_NAMESPACE
 

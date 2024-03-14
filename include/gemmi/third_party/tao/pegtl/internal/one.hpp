@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018 Dr. Colin Hirsch and Daniel Frey
+// Copyright (c) 2014-2020 Dr. Colin Hirsch and Daniel Frey
 // Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
 
 #ifndef TAO_PEGTL_INTERNAL_ONE_HPP
@@ -30,17 +30,15 @@ namespace tao
          template< result_on_found R, typename Peek, typename Peek::data_t... Cs >
          struct one
          {
-            using analyze_t = analysis::generic< analysis::rule_type::ANY >;
+            using analyze_t = analysis::generic< analysis::rule_type::any >;
 
             template< typename Input >
-            static bool match( Input& in ) noexcept( noexcept( in.empty() ) )
+            static bool match( Input& in ) noexcept( noexcept( Peek::peek( in ) ) )
             {
-               if( !in.empty() ) {
-                  if( const auto t = Peek::peek( in ) ) {
-                     if( contains( t.data, { Cs... } ) == bool( R ) ) {
-                        bump_help< R, Input, typename Peek::data_t, Cs... >( in, t.size );
-                        return true;
-                     }
+               if( const auto t = Peek::peek( in ) ) {
+                  if( contains( t.data, { Cs... } ) == bool( R ) ) {
+                     bump_help< R, Input, typename Peek::data_t, Cs... >( in, t.size );
+                     return true;
                   }
                }
                return false;
@@ -50,17 +48,15 @@ namespace tao
          template< result_on_found R, typename Peek, typename Peek::data_t C >
          struct one< R, Peek, C >
          {
-            using analyze_t = analysis::generic< analysis::rule_type::ANY >;
+            using analyze_t = analysis::generic< analysis::rule_type::any >;
 
             template< typename Input >
-            static bool match( Input& in ) noexcept( noexcept( in.empty() ) )
+            static bool match( Input& in ) noexcept( noexcept( Peek::peek( in ) ) )
             {
-               if( !in.empty() ) {
-                  if( const auto t = Peek::peek( in ) ) {
-                     if( ( t.data == C ) == bool( R ) ) {
-                        bump_help< R, Input, typename Peek::data_t, C >( in, t.size );
-                        return true;
-                     }
+               if( const auto t = Peek::peek( in ) ) {
+                  if( ( t.data == C ) == bool( R ) ) {
+                     bump_help< R, Input, typename Peek::data_t, C >( in, t.size );
+                     return true;
                   }
                }
                return false;
