@@ -1,12 +1,10 @@
 // Copyright Global Phasing Ltd.
 
+#include "common.h"
 #include <gemmi/model.hpp>
 #include <gemmi/select.hpp>   // for Selection
 #include <gemmi/mmread.hpp>   // for read_structure_from_memory
-#include <emscripten/bind.h>
 #include <emscripten/val.h>
-
-namespace em = emscripten;
 
 gemmi::CoorFormat format_to_enum(const std::string& format) {
   using gemmi::CoorFormat;
@@ -35,18 +33,21 @@ template <typename T>
 size_t get_children_length(const T& t) { return t.children().size(); }
 
 template <typename T>
-typename T::child_type* get_child(T& t, size_t n) { return &t.children().at(n); }
+typename T::child_type* get_child(T& t, int n) {
+  size_t idx = n >= 0 ? (size_t) n : n + t.children().size();
+  return &t.children().at(idx);
+}
 
 template <typename T>
 em::class_<T> wrap_children() {
   return em::class_<T>(T::what())
     .template constructor<>()
     .property("length", &get_children_length<T>)
-    .function("get", &get_child<T>, em::allow_raw_pointers())
+    .function("at", &get_child<T>, em::allow_raw_pointers())
     ;
 }
 
-EMSCRIPTEN_BINDINGS(Gemmi) {
+void add_mol() {
   em::class_<gemmi::UnitCell>("UnitCell")
     .property("a", &gemmi::UnitCell::a)
     .property("b", &gemmi::UnitCell::b)
@@ -89,6 +90,6 @@ EMSCRIPTEN_BINDINGS(Gemmi) {
     .constructor<>()
     ;
 
-  // wrapped in pre.js to add default value
+  // wrapped in post.js to add default value
   em::function("_read_structure", &read_structure);
 }

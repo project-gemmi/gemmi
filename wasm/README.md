@@ -29,11 +29,11 @@ Binaries → `npm i mtz`
 The module is generated with Emscripten option MODULARIZE,
 which wraps everything into a function that invoked (once) gives the module:
 
-    var module = GemmiMtz();
+    var module = Gemmi();
 
 To wait until the module is ready-to-use call a promise-like `then` method:
 
-    GemmiMtz().then(function(module) {
+    Gemmi().then(function(module) {
       mtz = module.readMtz(array_buffer);
       ...
       mtz.delete();
