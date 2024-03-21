@@ -116,7 +116,8 @@ void add_monlib(py::module& m) {
                std::to_string(self.monomers.size()) + " monomers, " +
                std::to_string(self.links.size()) + " links, " +
                std::to_string(self.modifications.size()) + " modifications>";
-    });
+    })
+    .def("clone", [](const MonLib& self) { return new MonLib(self); });
 
   m.def("read_monomer_lib", [](const std::string& monomer_dir,
                                const std::vector<std::string>& resnames,
