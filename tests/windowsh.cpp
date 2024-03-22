@@ -2,6 +2,7 @@
 // Windows headers contain typedefs and macros (#define small char)
 // that cause surprising effects when these names are used in the code.
 #ifdef _WIN32
+#define NOMINMAX
 #include <windows.h>
 #include <gemmi/addends.hpp>
 #include <gemmi/align.hpp>
