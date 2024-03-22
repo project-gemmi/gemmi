@@ -266,6 +266,9 @@ void add_meta(py::module& m) {
     .def_readwrite("oligomeric_details", &Assembly::oligomeric_details)
     .def_readonly("generators", &Assembly::generators)
     .def_readwrite("special_kind", &Assembly::special_kind)
+    .def("__repr__", [](const Assembly& self) {
+        return cat("<gemmi.Assembly ", self.name, ">");
+    });
     ;
   py::bind_vector<std::vector<Assembly>>(m, "AssemblyList");
 
