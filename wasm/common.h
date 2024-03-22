@@ -4,5 +4,6 @@
 #include <emscripten/bind.h>
 namespace em = emscripten;
 
-void add_mol();
-void add_mtz_fft();
+void add_cell();    // cell.cpp
+void add_mol();     // mol.cpp
+void add_mtz_fft(); // mtz_fft.cpp

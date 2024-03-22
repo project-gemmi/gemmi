@@ -1,3 +1,7 @@
+Work in progress...
+
+here is old documentation for reading MTZ only
+
 # MTZ reader in WebAssembly
 
 The MTZ file format is used for the storage of reflection data --

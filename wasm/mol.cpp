@@ -48,15 +48,6 @@ em::class_<T> wrap_children() {
 }
 
 void add_mol() {
-  em::class_<gemmi::UnitCell>("UnitCell")
-    .property("a", &gemmi::UnitCell::a)
-    .property("b", &gemmi::UnitCell::b)
-    .property("c", &gemmi::UnitCell::c)
-    .property("alpha", &gemmi::UnitCell::alpha)
-    .property("beta", &gemmi::UnitCell::beta)
-    .property("gamma", &gemmi::UnitCell::gamma)
-    ;
-
   wrap_children<gemmi::Structure>()
     .property("name", &gemmi::Structure::name)
     .property("cell", &gemmi::Structure::cell)

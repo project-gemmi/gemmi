@@ -1,4 +1,4 @@
-# currently using Emscripten 3.1.53
+# currently using Emscripten 3.1.56
 CXX = em++
 
 INCLUDE = -I../include
@@ -14,7 +14,7 @@ LINK_FLAGS = \
   --post-js post.js \
   --no-entry \
   -lembind \
-  -s EXPORTED_RUNTIME_METHODS=ccall,writeArrayToMemory,getValue,UTF8ToString \
+  -s EXPORTED_RUNTIME_METHODS=writeArrayToMemory,HEAPU8 \
   -s EXPORTED_FUNCTIONS=_malloc \
   -s INCOMING_MODULE_JS_API=print,printErr,setStatus,onRuntimeInitialized \
   -s ALLOW_MEMORY_GROWTH=1 \
@@ -25,19 +25,19 @@ LINK_FLAGS = \
 
 GEMMI_OBJS = mmcif.o polyheur.o resinfo.o sprintf.o json.o
 
-BINDING_OBJS = gemmi.o mol.o mtz_fft.o
+BINDING_OBJS = gemmi.o cell.o mol.o mtz_fft.o
 
 gemmi.js: $(GEMMI_OBJS) $(BINDING_OBJS)
 	$(CXX) $(FLAGS) $(LINK_FLAGS) $(GEMMI_OBJS) $(BINDING_OBJS) -o $@
 
 # old mtz module (not built by default)
-mtz.js: mtz_fft.cpp
+mtz.js: mtz_fft.cpp cell.o
 	$(CXX) -DSTANDALONE_MTZ=1 $(INCLUDE) $(FLAGS) \
 	-lembind --no-entry --pre-js=pre.js \
 	-s MODULARIZE=1 -s ALLOW_MEMORY_GROWTH=1 \
 	-s EXPORTED_FUNCTIONS=_malloc \
 	-s EXPORTED_RUNTIME_METHODS=writeArrayToMemory \
-	-s EXPORT_NAME=GemmiMtz $< -o $@
+	-s EXPORT_NAME=GemmiMtz $^ -o $@
 
 $(GEMMI_OBJS): %.o: ../src/%.cpp
 	$(CXX) $(INCLUDE) $(FLAGS) -c $< -o $@
@@ -49,6 +49,6 @@ $(BINDING_OBJS): %.o: %.cpp
 	$(CXX) $(INCLUDE) $(FLAGS) -c $<
 
 clean:
-	rm -f *.o gemmi.js *.wasm
+	rm -f *.o gemmi.js mtz.js *.wasm
 
 .PHONY: clean

@@ -118,6 +118,7 @@ void add_mtz_fft() {
 
 #ifdef STANDALONE_MTZ
 EMSCRIPTEN_BINDINGS(GemmiMtz) {
+  add_cell();
   add_mtz_fft();
 }
 #endif
