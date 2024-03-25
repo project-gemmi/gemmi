@@ -15,13 +15,11 @@ using gemmi::Mtz;
 
 class MtzFft {
 public:
-  MtzFft() {}
-  // char* or void* cannot be used
-  // https://github.com/emscripten-core/emscripten/issues/9448
-  bool read(int32_t data, size_t size) {
-    data_ = (char*) data;
+  MtzFft(std::string buf): buf_(buf) {}
+
+  bool read() {
     try {
-      mtz_.read_stream(gemmi::MemoryStream(data_, size), false);
+      mtz_.read_stream(gemmi::MemoryStream(buf_.data(), buf_.size()), false);
     } catch (std::runtime_error& e) {
       last_error_ = "Failed to read MTZ file: ";
       last_error_ += e.what();
@@ -30,14 +28,10 @@ public:
     return true;
   }
 
-  ~MtzFft() {
-    std::free(data_);
-  }
-
   em::val calculate_map_from_columns(const Mtz::Column* f_col,
                                      const Mtz::Column* phi_col) {
     try {
-      const float* raw_data = (const float*)(data_ + 80);
+      const float* raw_data = (const float*)(buf_.data() + 80);
       gemmi::MtzExternalDataProxy proxy(mtz_, raw_data);
       auto size = gemmi::get_size_for_hkl(proxy, {{0, 0, 0}}, 3.);
       gemmi::FPhiProxy<gemmi::MtzExternalDataProxy> fphi(proxy, f_col->idx, phi_col->idx);
@@ -95,7 +89,7 @@ public:
 
 private:
   gemmi::Mtz mtz_;
-  char* data_ = nullptr;
+  std::string buf_;
   gemmi::Grid<float> grid_;
   double rmsd_ = 0.;
   std::string last_error_;
@@ -103,8 +97,8 @@ private:
 
 void add_mtz_fft() {
   em::class_<MtzFft>("Mtz")
-    .constructor<>()
-    .function("read", &MtzFft::read, em::allow_raw_pointers())
+    .constructor<std::string>()
+    .function("read", &MtzFft::read)
     .function("calculate_map", &MtzFft::calculate_map)
     .function("calculate_map_from_labels", &MtzFft::calculate_map_from_labels)
     .property("nx", &MtzFft::get_nx)

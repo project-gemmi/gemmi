@@ -36,7 +36,7 @@ mtz.js: mtz_fft.cpp cell.o
 	-lembind --no-entry --pre-js=pre.js \
 	-s MODULARIZE=1 -s ALLOW_MEMORY_GROWTH=1 \
 	-s EXPORTED_FUNCTIONS=_malloc \
-	-s EXPORTED_RUNTIME_METHODS=writeArrayToMemory \
+	-s EXPORTED_RUNTIME_METHODS=writeArrayToMemory,HEAPU8 \
 	-s EXPORT_NAME=GemmiMtz $^ -o $@
 
 $(GEMMI_OBJS): %.o: ../src/%.cpp
