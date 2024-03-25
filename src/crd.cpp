@@ -534,6 +534,13 @@ cif::Document prepare_refmac_crd(Structure& st, const Topo& topo,
   doc.blocks.push_back(prepare_rst(topo, monlib, st.cell));
 
   doc.blocks.emplace_back("for_refmac_mmcif");
+  add_dictionary_blocks(doc, resnames, topo, monlib);
+
+  return doc;
+}
+
+void add_dictionary_blocks(cif::Document& doc, const std::vector<std::string>& resnames,
+                           const Topo& topo, const MonLib& monlib) {
   for (const std::string& resname : resnames) {
     auto it = monlib.monomers.find(resname);
     if (it != monlib.monomers.end()) {
@@ -585,8 +592,6 @@ cif::Document prepare_refmac_crd(Structure& st, const Topo& topo,
       block.init_mmcif_loop("_chem_mod.", {"id", "name", "comp_id", "group_id"})
         .add_row({q(mod->id), q(mod->name), q(mod->comp_id), q(mod->group_id)});
     }
-
-  return doc;
 }
 
 }

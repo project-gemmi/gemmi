@@ -185,4 +185,5 @@ void add_topo(py::module& m) {
   m.def("setup_for_crd", &setup_for_crd);
   m.def("prepare_refmac_crd", &prepare_refmac_crd);
   m.def("add_automatic_links", &add_automatic_links);
+  m.def("add_dictionary_blocks", &add_dictionary_blocks);
 }
