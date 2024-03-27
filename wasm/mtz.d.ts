@@ -24,5 +24,6 @@ export interface Mtz {
 }
 
 export interface Module {
+  readonly HEAPU8: Uint8Array;
   readMtz(mtz_buf: string|ArrayBuffer): Mtz;
 }
