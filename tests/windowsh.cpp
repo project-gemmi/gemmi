@@ -2,7 +2,16 @@
 // Windows headers contain typedefs and macros (#define small char)
 // that cause surprising effects when these names are used in the code.
 #ifdef _WIN32
+
+// this is necessary, we use std::min etc.
 #define NOMINMAX
+
+// tinydir.h defines both UNICODE and _UNICODE if only one is defined.
+// If including <windows.h> before tinydir.h, the same needs to be done.
+#if defined(_UNICODE) && !defined(UNICODE)
+# define UNICODE
+#endif
+
 #include <windows.h>
 #include <gemmi/addends.hpp>
 #include <gemmi/align.hpp>
