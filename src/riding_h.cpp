@@ -146,22 +146,17 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
                                       hs[1].dist * sin(theta), 0);
     }
     if (hs.size() > 2) {
-      if (hs.size() == 3) {
-        // for now only NH3 (NH2.cif and NH3.cif) has such configuration,
-        // so we are cheating here a little.
-        double y = 2 * atom.pos.y - hs[1].pos.y;
-        hs[2].pos = Position(hs[1].pos.x, y, hs[1].pos.z);
-      } else if (hs.size() == 4) {
-        // similarly, only CH4 (CH2.cif) and NH4 (NH4.cif) are handled here
-        const Angle* ang1 = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr);
-        const Angle* ang2 = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr);
-        double theta1 = rad(ang1 ? ang1->value : 109.47122);
-        double theta2 = rad(ang2 ? ang2->value : 109.47122);
-        auto pos = position_from_two_angles(atom.pos, hs[0].pos, hs[1].pos,
-                                            hs[2].dist, theta1, theta2);
-        hs[2].pos = pos.first;
+      const Angle* ang1 = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr);
+      const Angle* ang2 = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr);
+      double theta1 = rad(ang1 ? ang1->value : 109.47122);
+      double theta2 = rad(ang2 ? ang2->value : 109.47122);
+      auto pos = position_from_two_angles(atom.pos, hs[0].pos, hs[1].pos,
+                                          hs[2].dist, theta1, theta2);
+      hs[2].pos = pos.first;
+      // 3 hydrogens: for now happens only NH3 (NH2.cif and NH3.cif)
+      // 4 hydrogens: CH4 (CH2.cif) and NH4 (NH4.cif)
+      if (hs.size() == 4)
         hs[3].pos = pos.second;
-      }
     }
 
   // ==== one heavy atom and hydrogens ====
