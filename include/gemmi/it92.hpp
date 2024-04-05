@@ -416,7 +416,7 @@ std::pair<El, signed char> IT92<Real>::ion_list[112] = {
 };
 
 template<class Real>
-bool IT92<Real>::ignore_charge = false;
+bool IT92<Real>::ignore_charge = true;
 
 #if defined(__GNUC__) && __GNUC__-0 > 4
 #pragma GCC diagnostic pop

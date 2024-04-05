@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from gemmi import Element, IT92_get_exact
+from gemmi import Element, IT92_get_exact, IT92_set_ignore_charge
 
 
 class TestElem(unittest.TestCase):
@@ -48,6 +48,7 @@ class TestElem(unittest.TestCase):
                          Element('O').it92.get_coefs())
         fe_coefs = fe.it92.get_coefs()
         fe0_coefs = IT92_get_exact(fe, 0).get_coefs()
+        IT92_set_ignore_charge(False)
         fe2_coefs = IT92_get_exact(fe, 2).get_coefs()
         self.assertIsNone(IT92_get_exact(fe, 4))
         self.assertEqual(fe_coefs, fe0_coefs)

@@ -1732,12 +1732,15 @@ In Python, these coefficients can be accessed as a property of an element
 
 or by using the function IT92_get_exact() that takes an element and a charge
 as arguments and returns None if this exact atom or ion is absent in the table.
-This function is used solely to inspect the coefficients.
-When calculating structure factors, coefficients for ions absent in the table
-are substituted with coefficients of neutral atoms.
+
+The charges listed in a coordinates file might not be reliable in determining
+the scattering of an atom, so by default, we use coefficients for neutral atoms
+regardless of the formal charge. To use coefficients for ions, you need to first
+change ``IT92::ignore_charge``:
 
 .. doctest::
 
+  >>> gemmi.IT92_set_ignore_charge(False)
   >>> gemmi.IT92_get_exact(gemmi.Element('Mg'), +2)  # for Mg2+ #doctest: +ELLIPSIS
   <gemmi.IT92Coef object at 0x...>
 
@@ -1783,6 +1786,7 @@ to the original values (for neutral atoms):
 
   >>> for i in range(1, 99):
   ...     gemmi.Element(i).it92.set_coefs(orig_coefs[i])
+
 
 Macromolecular models may have unknown atoms (UNK)
 with element specified as X. By default, we use oxygen's coefficients for X,
@@ -2190,7 +2194,6 @@ we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
 
 .. doctest::
 
-  >>> gemmi.IT92_set_ignore_charge(True)  # ignoring charges on atoms
   >>> dc = gemmi.DensityCalculatorX()
   >>> dc.d_min = 2.5
   >>> dc.addends.subtract_z()
