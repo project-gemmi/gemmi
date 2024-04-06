@@ -213,6 +213,7 @@ struct SolventMasker {
   double rshrink;
   double island_min_volume;
   double constant_r;
+  double requested_spacing = 0.;
 
   SolventMasker(AtomicRadiiSet choice, double constant_r_=0.) {
     set_radii(choice, constant_r_);

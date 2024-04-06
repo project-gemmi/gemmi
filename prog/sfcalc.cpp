@@ -31,9 +31,11 @@
 namespace {
 
 enum OptionIndex {
-  Hkl=4, Dmin, For, NormalizeIt92, Rate, Blur, RCut, Test, ToMtz, Compare,
+  Hkl=4, Dmin, For, NormalizeIt92, UseCharge, Rate, Blur, RCut,
+  Test, ToMtz, Compare,
   CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, SigmaCutoff, FLabel,
-  PhiLabel, Ksolv, Bsolv, Baniso, RadiiSet, Rprobe, Rshrink, WriteMap
+  PhiLabel, Ksolv, Bsolv, Kov, Baniso,
+  MaskSpacing, RadiiSet, Rprobe, Rshrink, WriteMap
 };
 
 struct SfCalcArg: public Arg {
@@ -84,6 +86,8 @@ const option::Descriptor Usage[] = {
     "  --for=TYPE  \tTYPE is xray (default), electron, neutron or mott-bethe." },
   { NormalizeIt92, 0, "", "normalize-it92", Arg::None,
     "  --normalize-it92  \tNormalize X-ray form factors (a tiny change)." },
+  { UseCharge, 0, "", "use-charge", Arg::None,
+    "  --use-charge  \tUse X-ray form factors with charges when available." },
   { CifFp, 0, "", "ciffp", Arg::None,
     "  --ciffp  \tRead f' from _atom_type_scat_dispersion_real in CIF." },
   { Wavelength, 0, "w", "wavelength", Arg::Float,
@@ -119,7 +123,10 @@ const option::Descriptor Usage[] = {
     "  --sigma-cutoff=NUM  \tUse only data with F/SIGF > NUM (default: 0)." },
   // TODO: solvent option: mask, babinet, none
 
-  { NoOp, 0, "", "", Arg::None, "\nOptions for bulk solvent correction (only w/ FFT):" },
+  { NoOp, 0, "", "", Arg::None,
+    "\nOptions for bulk solvent correction and scaling (only w/ FFT):" },
+  { MaskSpacing, 0, "", "d-mask", Arg::Float,
+    "  --d-mask=NUM  \tMask grid spacing (default: same as for model)." },
   { RadiiSet, 0, "", "radii-set", SfCalcArg::Radii,
     "  --radii-set=SET  \tSet of per-element radii, one of: vdw, cctbx, refmac." },
   { Rprobe, 0, "", "r-probe", Arg::Float,
@@ -130,6 +137,8 @@ const option::Descriptor Usage[] = {
     "  --ksolv=NUM  \tValue (if optimizing: initial value) of k_solv." },
   { Bsolv, 0, "", "bsolv", Arg::Float,
     "  --bsolv=NUM  \tValue (if optimizing: initial value) of B_solv." },
+  { Kov, 0, "", "kov", Arg::Float,
+    "  --kov=NUM  \tValue (if optimizing: initial value) of k_overall." },
   { Baniso, 0, "", "baniso", SfCalcArg::Float6,
     "  --baniso=B11:...:B23 \tAnisotropic scale matrix (6 colon-separated numbers: "
       "B11, B22, B33, B12, B13, B23)." },
@@ -283,19 +292,37 @@ void process_with_fft(const gemmi::Structure& st,
 
   gemmi::AsuData<std::complex<Real>> mask_data;
   if (scaling.use_solvent) {
-    // uses scaling.grid as a temporary array
-    masker.put_mask_on_grid(dencalc.grid, st.models[0]);
-    mask_data = transform_map_to_f_phi(dencalc.grid, /*half_l=*/true)
+    // by default, use DensityCalculator::grid as a temporary array
+    auto mask_grid = &dencalc.grid;
+    std::unique_ptr<gemmi::Grid<Real>> custom_grid;
+    if (masker.requested_spacing != 0) {
+      custom_grid.reset(new gemmi::Grid<Real>());
+      custom_grid->unit_cell = dencalc.grid.unit_cell;
+      custom_grid->spacegroup = dencalc.grid.spacegroup;
+      custom_grid->set_size_from_spacing(masker.requested_spacing,
+                                         gemmi::GridSizeRounding::Up);
+      mask_grid = custom_grid.get();
+      fprintf(stderr, "Solvent mask grid: %d x %d x %d\n",
+              mask_grid->nu, mask_grid->nv, mask_grid->nw);
+    }
+    masker.put_mask_on_grid(*mask_grid, st.models[0]);
+    mask_data = transform_map_to_f_phi(*mask_grid, /*half_l=*/true)
                 .prepare_asu_data(dencalc.d_min, 0);
   }
 
   if (scale_to.size() != 0) {
     scaling.prepare_points(asu_data, scale_to, &mask_data);
     printf("Calculating scale factors using %zu points...\n", scaling.points.size());
-    scaling.fit_isotropic_b_approximately();
-    //fprintf(stderr, "k_ov=%g B_ov=%g\n", scaling.k_overall, scaling.get_b_overall().u11);
-    scaling.fit_parameters();
     gemmi::SMat33<double> b_aniso = scaling.get_b_overall();
+    if (b_aniso.all_zero()) {
+      scaling.fit_isotropic_b_approximately();
+      //fprintf(stderr, "initial k_ov=%g B_ov=%g\n",
+      //        scaling.k_overall, scaling.get_b_overall().u11);
+    } else if (scaling.k_overall == 1.) {
+      scaling.k_overall = scaling.lsq_k_overall();
+      //fprintf(stderr, "initial k_ov=%g\n", scaling.k_overall);
+    }
+    scaling.fit_parameters();
     if (scaling.use_solvent)
       fprintf(stderr, "Bulk solvent parameters: k_sol=%g B_sol=%g\n",
               scaling.k_sol, scaling.b_sol);
@@ -666,6 +693,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         masker.rprobe = std::atof(p.options[Rprobe].arg);
       if (p.options[Rshrink])
         masker.rshrink = std::atof(p.options[Rshrink].arg);
+      if (p.options[MaskSpacing])
+        masker.requested_spacing = std::atof(p.options[MaskSpacing].arg);
 
       gemmi::Scaling<Real> scaling(cell, st.find_spacegroup());
       if (p.options[Ksolv] || p.options[Bsolv] || scale_to.size() != 0) {
@@ -675,6 +704,8 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         if (p.options[Bsolv])
           scaling.b_sol = std::atof(p.options[Bsolv].arg);
       }
+      if (p.options[Kov])
+        scaling.k_overall = std::atof(p.options[Kov].arg);
       if (p.options[Baniso]) {
         char* endptr = nullptr;
         gemmi::SMat33<double> b_aniso;
@@ -805,10 +836,9 @@ void process(const std::string& input, const OptParser& p) {
   if (p.options[CifFp] && table != 'x')
     gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
   if (table == 'x' || table == 'm') {
+    gemmi::IT92<float>::ignore_charge = (table == 'm' || !p.options[UseCharge]);
     if (p.options[NormalizeIt92])
       gemmi::IT92<float>::normalize();
-    if (table == 'm')
-      gemmi::IT92<float>::ignore_charge = true;
     process_with_table<gemmi::IT92<float>>(use_st, st, small, wavelength,
                                            table == 'm', p);
   } else if (table == 'e') {

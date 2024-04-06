@@ -211,6 +211,12 @@ struct Scaling {
     return k_overall * std::exp(-0.25 * b_star.r_u_r(hkl));
   }
 
+  std::complex<Real> get_fcalc(const Point& p) const {
+    if (!use_solvent)
+      return p.fcmol;
+    return p.fcmol + (Real)get_solvent_scale(p.stol2) * p.fmask;
+  }
+
   // quick linear fit (ignoring sigma) to get initial parameters
   void fit_isotropic_b_approximately() {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
@@ -218,9 +224,8 @@ struct Scaling {
     for (const Point& p : points) {
       if (p.fobs < 1 || p.fobs < p.sigma)  // skip weak reflections
         continue;
+      double fcalc = std::abs(get_fcalc(p));
       double x = p.stol2;
-      double fcalc = std::abs(use_solvent ? p.fcmol + (Real)get_solvent_scale(x) * p.fmask
-                                          : p.fcmol);
       double y = std::log(static_cast<float>(p.fobs / fcalc));
       sx += x;
       sy += y;
@@ -237,6 +242,19 @@ struct Scaling {
     set_b_overall({b_iso, b_iso, b_iso, 0, 0, 0});
   }
 
+  double lsq_k_overall() const {
+    double sxx = 0, sxy = 0;
+    for (const Point& p : points) {
+      if (p.fobs < 1 || p.fobs < p.sigma)  // skip weak reflections
+        continue;
+      double x = std::abs(get_fcalc(p));
+      double y = p.fobs;
+      sxx += x * x;
+      sxy += x * y;
+    }
+    return sxx != 0. ? sxy / sxx : 1.;
+  }
+
   void fit_parameters() {
     LevMar levmar;
     levmar.fit(*this);
@@ -248,7 +266,7 @@ struct Scaling {
     std::vector<double> values;
     values.reserve(points.size());
     for (const Point& p : points) {
-      double fcalc = std::abs(p.fcmol + (Real)get_solvent_scale(p.stol2) * p.fmask);
+      double fcalc = std::abs(get_fcalc(p));
       values.push_back(fcalc * (Real) get_overall_scale_factor(p.hkl));
     }
     return values;
