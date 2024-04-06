@@ -295,6 +295,13 @@ void write_cell_parameters(const UnitCell& cell, cif::ItemSpan& span) {
   span.set_pair("_cell.angle_gamma", to_str(cell.gamma));
 }
 
+bool is_valid_block_name(const std::string& name) {
+  return !name.empty() &&
+         std::all_of(name.begin(), name.end(), [](char c){ return c >= '!' && c <= '~'; });
+}
+
+} // anonymous namespace
+
 void write_ncs_oper(const Structure& st, cif::Block& block) {
   // _struct_ncs_oper (MTRIX)
   if (st.ncs.empty())
@@ -320,13 +327,6 @@ void write_ncs_oper(const Structure& st, cif::Block& block) {
   for (const NcsOp& op : st.ncs)
     add_op(op);
 }
-
-bool is_valid_block_name(const std::string& name) {
-  return !name.empty() &&
-         std::all_of(name.begin(), name.end(), [](char c){ return c >= '!' && c <= '~'; });
-}
-
-} // anonymous namespace
 
 void write_struct_conn(const Structure& st, cif::Block& block) {
   // example:

@@ -223,6 +223,12 @@ cif::Block prepare_crd(const Structure& st, const Topo& topo,
   if (const SpaceGroup* sg = st.find_spacegroup())
     items.emplace_back("_symmetry.Int_Tables_number",
                        std::to_string(sg->number));
+  if (!st.ncs.empty()) {
+    items.emplace_back(cif::CommentArg{"#########\n"
+                                       "## NCS ##\n"
+                                       "#########"});
+    write_ncs_oper(st, block);
+  }
   const Model& model0 = st.first_model();
   items.emplace_back(cif::CommentArg{"#################\n"
                                      "## STRUCT_ASYM ##\n"

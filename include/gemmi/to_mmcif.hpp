@@ -66,6 +66,7 @@ GEMMI_DLL cif::Block make_mmcif_headers(const Structure& st);
 GEMMI_DLL void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
 
 // temporarily we use it in crd.cpp
+GEMMI_DLL void write_ncs_oper(const Structure& st, cif::Block& block);
 GEMMI_DLL void write_struct_conn(const Structure& st, cif::Block& block);
 GEMMI_DLL void write_cispeps(const Structure& st, cif::Block& block);
 
