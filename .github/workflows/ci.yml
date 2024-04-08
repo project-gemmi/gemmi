@@ -14,7 +14,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build wheel and install
       run: |
-        python3 -m pip install wheel
+        #python3 -m pip install wheel
         python3 -m pip wheel -v .
         python3 -m pip install gemmi-*.whl
     - name: Python Tests
@@ -180,46 +180,44 @@ jobs:
         cd docs
         sphinx-build -M doctest . _build -n -E
 
-  centos:
+  almalinux:
     runs-on: ubuntu-latest
-    name: "CentOS 7"
-    container: centos:7
+    name: "AlmaLinux 8"
+    container: almalinux:8
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
-    # used v3 of actions/checkout and upload/artifact, v4 give errors:
-    # /__e/node20/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: yum
       run: |
-        yum update -y && yum install -y epel-release
-        yum install -y gcc-c++ cmake3 make git python3-devel
-        pip3 install -U numpy
+        dnf update -y
+        dnf install -y gcc-c++ cmake make git python38-devel python38-pip
+        python3.8 -m pip install -U numpy
         g++ --version
-        python3 --version
-        cmake3 --version
-        type python3
+        python3.8 --version
+        cmake --version
+        type python3.8
     - name: install pybind11
       run: |
         git clone --branch stable --depth=1 https://github.com/pybind/pybind11.git
         cd pybind11
-        cmake3 . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
+        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.8 -DPYBIND11_TEST=OFF
         make
         make install
     - name: build and test
       run: |
         pwd
-        cmake3 . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3 -DFETCH_ZLIB_NG=ON
+        cmake3 . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3.8 -DFETCH_ZLIB_NG=ON
         make -j2
         make -j2 check
         make install
-        python3 -m unittest discover -v -s ./tests/
+        python3.8 -m unittest discover -v -s ./tests/
         strip --strip-unneeded ./gemmi ./gemmi.cpython*.so
     - name: run doctest
       run: |
-        pip3 install -U sphinx
+        python3.8 -m pip install -U sphinx
         cd docs
         PYTHONPATH=.. sphinx-build -M doctest . _build -n -E
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: gemmi-linux
         path: |
