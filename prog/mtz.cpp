@@ -29,7 +29,7 @@ struct MtzArg: public Arg {
 enum OptionIndex {
   Headers=4, Dump, PrintBatch, PrintBatches, ExpandedBatches, PrintAppendix,
   PrintTsv, PrintStats, PrintHistogram, PrintCells, CheckAsu,
-  Compare, ToggleEndian, NoIsym, UpdateReso
+  Compare, ToggleEndian, NoIsym
 };
 
 const option::Descriptor Usage[] = {
@@ -67,8 +67,6 @@ const option::Descriptor Usage[] = {
     "  --toggle-endian  \tToggle assumed endianness (little <-> big)." },
   { NoIsym, 0, "", "no-isym", Arg::None,
     "  --no-isym  \tDo not apply symmetry from M/ISYM column." },
-  { UpdateReso, 0, "", "update-reso", Arg::None,
-    "  --update-reso  \tRecalculate resolution limits before printing." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -358,6 +356,7 @@ void print_stats(const Mtz& mtz) {
       stat.var.add_point(v);
     }
   }
+  printf("Resolution: %.5f - %.5f A\n", mtz.resolution_high(), mtz.resolution_low());
   printf("column type @dataset  completeness        min       max"
          "       mean   stddev\n");
   for (size_t i = 0; i != column_stats.size(); ++i) {
@@ -547,10 +546,8 @@ void print_mtz_info(Stream&& stream, const char* path,
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
   if (options[PrintTsv] || options[PrintStats] || options[PrintHistogram] ||
-      options[CheckAsu] || options[Compare] || options[UpdateReso])
+      options[CheckAsu] || options[Compare])
     mtz.read_raw_data(stream);
-  if (options[UpdateReso])
-    mtz.update_reso();
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
         options[PrintStats] || options[PrintHistogram] ||
@@ -582,6 +579,8 @@ void print_mtz_info(Stream&& stream, const char* path,
     print_column_statistics(mtz, opt->arg);
   if (options[PrintTsv])
     print_tsv(mtz);
+  if (options[CheckAsu] || options[PrintStats])
+    mtz.update_reso();
   if (options[PrintStats])
     print_stats(mtz);
   if (options[CheckAsu])

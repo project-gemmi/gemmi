@@ -19,4 +19,3 @@ Print information from an mtz file.
   --compare=FILE        Compare two MTZ files.
   --toggle-endian       Toggle assumed endianness (little <-> big).
   --no-isym             Do not apply symmetry from M/ISYM column.
-  --update-reso         Recalculate resolution limits before printing.
