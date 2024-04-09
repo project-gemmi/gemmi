@@ -344,6 +344,7 @@ class TestMol(unittest.TestCase):
         output_block = st.make_mmcif_document().sole_block()
         software = output_block.get_mmcif_category('_software')
         del software['date']
+        del software['description']
         assert software['version'][0] is False
         software['version'][0] = None
         self.assertEqual(input_block.get_mmcif_category('_software'), software)

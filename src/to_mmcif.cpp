@@ -1171,7 +1171,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
   if (groups.software && !st.meta.software.empty()) {
     cif::Loop& loop = block.init_mmcif_loop("_software.",
-                 {"pdbx_ordinal", "classification", "name", "version", "date"});
+        {"pdbx_ordinal", "classification", "name", "version", "date", "description"});
     int ordinal = 0;
     for (const SoftwareItem& item : st.meta.software)
       loop.add_row({
@@ -1179,7 +1179,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
           cif::quote(software_classification_to_string(item.classification)),
           cif::quote(item.name),
           string_or_dot(item.version),
-          string_or_qmark(item.date)});
+          string_or_qmark(item.date),
+          string_or_qmark(item.description)});
   }
 }
 

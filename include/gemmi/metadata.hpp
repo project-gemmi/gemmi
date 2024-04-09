@@ -24,6 +24,7 @@ struct SoftwareItem {
   std::string name;
   std::string version;
   std::string date;
+  std::string description;
   Classification classification = Unspecified;
 };
 
