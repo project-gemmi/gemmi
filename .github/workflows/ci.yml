@@ -10,11 +10,12 @@ jobs:
     env:
       SKBUILD_CMAKE_ARGS: "-DEXTRA_WARNINGS=ON;-DFETCH_ZLIB_NG=ON"
       SKBUILD_CMAKE_TARGETS: "all;check"
+      PIP_REQUIRE_VIRTUALENV: "false"
     steps:
     - uses: actions/checkout@v4
     - name: Build wheel and install
       run: |
-        #python3 -m pip install wheel
+        python3 -m pip install wheel
         python3 -m pip wheel -v .
         python3 -m pip install gemmi-*.whl
     - name: Python Tests
@@ -206,7 +207,7 @@ jobs:
     - name: build and test
       run: |
         pwd
-        cmake3 . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3.8 -DFETCH_ZLIB_NG=ON
+        cmake . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3.8 -DFETCH_ZLIB_NG=ON
         make -j2
         make -j2 check
         make install
