@@ -39,10 +39,11 @@ Options for anisotropic scaling (only w/ FFT):
   --sigma-cutoff=NUM   Use only data with F/SIGF > NUM (default: 0).
 
 Options for bulk solvent correction and scaling (only w/ FFT):
-  --d-mask=NUM         Mask grid spacing (default: same as for model).
+  --d-mask=NUM         Spacing of mask grid (default: same as for model).
   --radii-set=SET      Set of per-element radii, one of: vdw, cctbx, refmac.
   --r-probe=NUM        Value added to VdW radius (default: 1.0A).
   --r-shrink=NUM       Value for shrinking the solvent area (default: 1.1A).
+  --solvent-mask=FILE  Use mask from file instead of calculating it.
   --ksolv=NUM          Value (if optimizing: initial value) of k_solv.
   --bsolv=NUM          Value (if optimizing: initial value) of B_solv.
   --kov=NUM            Value (if optimizing: initial value) of k_overall.

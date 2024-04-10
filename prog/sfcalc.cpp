@@ -32,10 +32,9 @@ namespace {
 
 enum OptionIndex {
   Hkl=4, Dmin, For, NormalizeIt92, UseCharge, Rate, Blur, RCut,
-  Test, ToMtz, Compare,
-  CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, SigmaCutoff, FLabel,
-  PhiLabel, Ksolv, Bsolv, Kov, Baniso,
-  MaskSpacing, RadiiSet, Rprobe, Rshrink, WriteMap
+  Test, WriteMap, ToMtz, Compare, FLabel, PhiLabel,
+  CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, SigmaCutoff,
+  MaskSpacing, RadiiSet, Rprobe, Rshrink, MaskFile, Ksolv, Bsolv, Kov, Baniso
 };
 
 struct SfCalcArg: public Arg {
@@ -126,13 +125,15 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "\nOptions for bulk solvent correction and scaling (only w/ FFT):" },
   { MaskSpacing, 0, "", "d-mask", Arg::Float,
-    "  --d-mask=NUM  \tMask grid spacing (default: same as for model)." },
+    "  --d-mask=NUM  \tSpacing of mask grid (default: same as for model)." },
   { RadiiSet, 0, "", "radii-set", SfCalcArg::Radii,
     "  --radii-set=SET  \tSet of per-element radii, one of: vdw, cctbx, refmac." },
   { Rprobe, 0, "", "r-probe", Arg::Float,
     "  --r-probe=NUM  \tValue added to VdW radius (default: 1.0A)." },
   { Rshrink, 0, "", "r-shrink", Arg::Float,
     "  --r-shrink=NUM  \tValue for shrinking the solvent area (default: 1.1A)." },
+  { MaskFile, 0, "", "solvent-mask", Arg::Required,
+    "  --solvent-mask=FILE  \tUse mask from file instead of calculating it." },
   { Ksolv, 0, "", "ksolv", Arg::Float,
     "  --ksolv=NUM  \tValue (if optimizing: initial value) of k_solv." },
   { Bsolv, 0, "", "bsolv", Arg::Float,
@@ -236,7 +237,7 @@ template<typename Table, typename Real>
 void process_with_fft(const gemmi::Structure& st,
                       gemmi::DensityCalculator<Table, Real>& dencalc,
                       bool mott_bethe,
-                      const gemmi::SolventMasker& masker,
+                      const gemmi::AsuData<std::complex<Real>>* mask_data,
                       gemmi::Scaling<Real>& scaling,
                       bool verbose, const RefFile& file,
                       const gemmi::AsuData<gemmi::ValueSigma<Real>>& scale_to,
@@ -248,7 +249,6 @@ void process_with_fft(const gemmi::Structure& st,
   }
   Timer timer(verbose);
   timer.start();
-  dencalc.set_grid_cell_and_spacegroup(st);
   dencalc.put_model_density_on_grid(st.models[0]);
   timer.print("...took");
   if (map_file) {
@@ -290,28 +290,8 @@ void process_with_fft(const gemmi::Structure& st,
   }
   auto asu_data = sf.prepare_asu_data(dencalc.d_min, dencalc.blur, false, false, mott_bethe);
 
-  gemmi::AsuData<std::complex<Real>> mask_data;
-  if (scaling.use_solvent) {
-    // by default, use DensityCalculator::grid as a temporary array
-    auto mask_grid = &dencalc.grid;
-    std::unique_ptr<gemmi::Grid<Real>> custom_grid;
-    if (masker.requested_spacing != 0) {
-      custom_grid.reset(new gemmi::Grid<Real>());
-      custom_grid->unit_cell = dencalc.grid.unit_cell;
-      custom_grid->spacegroup = dencalc.grid.spacegroup;
-      custom_grid->set_size_from_spacing(masker.requested_spacing,
-                                         gemmi::GridSizeRounding::Up);
-      mask_grid = custom_grid.get();
-      fprintf(stderr, "Solvent mask grid: %d x %d x %d\n",
-              mask_grid->nu, mask_grid->nv, mask_grid->nw);
-    }
-    masker.put_mask_on_grid(*mask_grid, st.models[0]);
-    mask_data = transform_map_to_f_phi(*mask_grid, /*half_l=*/true)
-                .prepare_asu_data(dencalc.d_min, 0);
-  }
-
   if (scale_to.size() != 0) {
-    scaling.prepare_points(asu_data, scale_to, &mask_data);
+    scaling.prepare_points(asu_data, scale_to, mask_data);
     printf("Calculating scale factors using %zu points...\n", scaling.points.size());
     gemmi::SMat33<double> b_aniso = scaling.get_b_overall();
     if (b_aniso.all_zero()) {
@@ -339,7 +319,7 @@ void process_with_fft(const gemmi::Structure& st,
       fprintf(stderr, "\n");
     }
   }
-  scaling.scale_data(asu_data, &mask_data);
+  scaling.scale_data(asu_data, mask_data);
 
   if (file.mode == RefFile::Mode::WriteMtz) {
     write_asudata_to_mtz(asu_data, file);
@@ -663,6 +643,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[RCut])
         dencalc.cutoff = (float) std::atof(p.options[RCut].arg);
       dencalc.addends = calc.addends;
+      dencalc.set_grid_cell_and_spacegroup(st);
       if (p.options[Blur]) {
         dencalc.blur = std::atof(p.options[Blur].arg);
       } else if (dencalc.rate < 3) {
@@ -718,7 +699,36 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         scaling.set_b_overall(b_aniso);
       }
       const char* map_file = p.options[WriteMap] ? p.options[WriteMap].arg : nullptr;
-      process_with_fft(st, dencalc, mott_bethe, masker, scaling,
+
+      // mask's coefficients
+      gemmi::AsuData<std::complex<Real>> mask_data;
+      auto mask_data_ptr = &mask_data;
+      if (scaling.use_solvent) {
+        gemmi::Grid<Real> gr;
+        if (p.options[MaskFile]) {
+          gemmi::Ccp4<Real> ccp4;
+          ccp4.read_ccp4(gemmi::MaybeGzipped(p.options[MaskFile].arg));
+          ccp4.setup(0, gemmi::MapSetup::Full);
+          gr = std::move(ccp4.grid);
+        } else {
+          gr.unit_cell = dencalc.grid.unit_cell;
+          gr.spacegroup = dencalc.grid.spacegroup;
+          double spacing = masker.requested_spacing;
+          if (spacing <= 0)
+            spacing = dencalc.requested_grid_spacing();
+          gr.set_size_from_spacing(spacing, gemmi::GridSizeRounding::Up);
+          masker.put_mask_on_grid(gr, st.models[0]);
+        }
+        if (p.options[Verbose])
+          fprintf(stderr, "Solvent mask: %.1f%% of %d x %d x %d grid.\n",
+                  100. * gr.sum() / gr.point_count(), gr.nu, gr.nv, gr.nw);
+        mask_data = transform_map_to_f_phi(gr, /*half_l=*/true)
+                    .prepare_asu_data(dencalc.d_min, 0);
+      } else {
+        mask_data_ptr = nullptr;
+      }
+
+      process_with_fft(st, dencalc, mott_bethe, mask_data_ptr, scaling,
                        p.options[Verbose], file, scale_to, map_file);
     } else {
       if (p.options[Rate] || p.options[RCut] || p.options[Blur] ||
@@ -854,6 +864,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.check_exclusive_group({ToMtz, Test, Compare});
+  if (p.options[MaskFile]) {
+    for (int opt2 : {MaskSpacing, RadiiSet, Rprobe, Rshrink})
+      if (p.options[opt2])
+        std::fprintf(stderr, "WARNING: -%s is ignored when --solvent-mask is given.\n",
+                     p.given_name(opt2));
+  }
   p.require_input_files_as_args();
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
