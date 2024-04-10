@@ -113,7 +113,7 @@ $ gemmi sfcalc --blur=12 --dmin=2.5 --rate=2.5 --rcut=1e-7 --test tests/5wkd.pdb
     def test_sfcalc_1pfe(self):
         self.do('''\
 $ gemmi sfcalc --dmin=9 --rate=4 --blur=70 --rcut=1e-7 --test -v tests/1pfe.cif.gz
-[...] 40 50
+[...] 41 51
  (2 1 5)	 251.29	 251.287 	214.22	214.220	d=10.02
  (2 1 6)	 300.96	 300.961 	 41.99	 41.989	d= 9.25
  (2 2 0)	 349.07	 349.072 	180.00	180.000	d= 9.84

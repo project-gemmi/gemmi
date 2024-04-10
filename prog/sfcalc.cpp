@@ -526,19 +526,6 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   const gemmi::UnitCell& cell = use_st ? st.cell : small.cell;
   gemmi::StructureFactorCalculator<Table> calc(cell);
 
-  // assign f' given explicitly in a file
-  if (p.options[CifFp]) {
-    if (use_st) {
-      // _atom_type.scat_dispersion_real is almost never used,
-      // so for now we ignore it.
-    } else { // small molecule
-      if (p.options[Verbose])
-        fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
-                (unsigned) small.atom_types.size());
-      for (const gemmi::SmallStructure::AtomType& atom_type : small.atom_types)
-        calc.addends.set(atom_type.element, (float)atom_type.dispersion_real);
-    }
-  }
 
   auto present_elems = use_st ? st.models[0].present_elements()
                               : small.present_elements();
@@ -547,12 +534,31 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   for (size_t i = 1; i != present_elems.size(); ++i)
     if (present_elems[i] && !Table::has((gemmi::El)i))
       gemmi::fail("Missing form factor for element ", element_name((gemmi::El)i));
-  if (wavelength > 0) {
+
+  if (p.options[CifFp]) { // assign f' given explicitly in a file
+    if (use_st) {
+      // _atom_type.scat_dispersion_real is almost never used,
+      // so for now we ignore it.
+      fprintf(stderr, "WARNING: --ciffp ignored, f' is not read (yet) from mmCIF and PDB.\n");
+    } else { // small molecule
+      if (p.options[Verbose])
+        fprintf(stderr, "Using f' read from cif file (%u atom types)\n",
+                (unsigned) small.atom_types.size());
+      for (const gemmi::SmallStructure::AtomType& atom_type : small.atom_types)
+        calc.addends.set(atom_type.element, (float)atom_type.dispersion_real);
+    }
+  } else if (wavelength > 0) {
+    if (p.options[Verbose])
+      fprintf(stderr, "Wavelength %g A. Using Cromer-Liberman approximation for f'.\n",
+              wavelength);
     double energy = gemmi::hc() / wavelength;
     for (int z = 1; z <= 92; ++z)
       if (present_elems[z] && calc.addends.values[z] == 0) {
         calc.addends.values[z] = (float) gemmi::cromer_liberman(z, energy, nullptr);
       }
+  } else {
+    if (p.options[Verbose])
+      fprintf(stderr, "Unknown wavelength, f' not used.\n");
   }
   if (mott_bethe)
     calc.addends.subtract_z();
