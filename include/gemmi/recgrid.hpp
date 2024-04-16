@@ -106,6 +106,10 @@ struct ReciprocalGrid : GridBase<T> {
     AsuData<R> asu_data;
     if (this->axis_order == AxisOrder::ZYX)
       fail("get_asu_values(): ZYX order is not supported yet");
+    // Why "- 1" below? To skip the value at Nyquist frequency (±n/2).
+    // For even lengths of DFT (real -> reciprocal space) the resulting
+    // h=+nu/2 and h=-nu/2 are both represented by one (strictly real) value.
+    // The grid should be big enough so that these values are not needed.
     int max_h = (this->nu - 1) / 2;
     int max_k = (this->nv - 1) / 2;
     int max_l = half_l ? this->nw - 1 : (this->nw - 1) / 2;
