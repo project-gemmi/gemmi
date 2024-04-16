@@ -76,7 +76,7 @@ inline int round_with_small_factorization(double exact, GridSizeRounding roundin
   return n;
 }
 
-inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
+inline std::array<int, 3> good_grid_size(std::array<double, 3> limit,
                                          GridSizeRounding rounding,
                                          const SpaceGroup* sg) {
   std::array<int, 3> m = {{0, 0, 0}};
@@ -84,25 +84,33 @@ inline std::array<int, 3> good_grid_size(const std::array<double, 3>& limit,
   if (sg)
     gops = sg->operations();
   std::array<int, 3> sg_fac = gops.find_grid_factors();
-  for (int i = 0; i != 3; ++i) {
+
+  // If two dimensions are symmetry-related, they must have the same size.
+  // Otherwise, if two dimensions are almost equal, the same grid size
+  // looks better and is preferred.
+  for (int i = 1; i < 3; ++i)
     for (int j = 0; j < i; ++j)
-      if (std::fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j]) {
-        m[i] = m[j];
-        break;
+      if (gops.are_directions_symmetry_related(i, j) ||
+          (std::fabs(limit[i] - limit[j]) < 0.5 && sg_fac[i] == sg_fac[j])) {
+        if (rounding == GridSizeRounding::Up)
+          limit[j] = std::max(limit[i], limit[j]);
+        else if (rounding == GridSizeRounding::Down)
+          limit[j] = std::min(limit[i], limit[j]);
+        else // GridSizeRounding::Nearest
+          limit[j] = 0.5 * (limit[i] + limit[j]);
+        sg_fac[i] = -j;  // mark the dimension with higher index
       }
-    if (m[i] == 0) {
-      // having sizes always even simplifies things
-      int f = sg_fac[i] % 2 == 0 ? sg_fac[i] : 2 * sg_fac[i];
-      int n = round_with_small_factorization(limit[i] / f, rounding);
-      m[i] = n * f;
+
+  for (int i = 0; i < 3; ++i) {
+    int f = sg_fac[i];
+    if (f > 0) {  // need to calculate the size
+      if (f % 2 != 0)
+        f *= 2; // always use even sizes - it simplifies things
+      m[i] = f * round_with_small_factorization(limit[i] / f, rounding);
+    } else { // the same size was already calculated
+      m[i] = m[-f];
     }
   }
-  for (int i = 1; i != 3; ++i)
-    for (int j = 0; j != i; ++j)
-      if (gops.are_directions_symmetry_related(i, j) && m[i] != m[j]) {
-        bool denser = rounding != GridSizeRounding::Down;
-        m[i] = m[j] = (denser ? std::max(m[i], m[j]) : std::min(m[i], m[j]));
-      }
   return m;
 }
 

@@ -85,6 +85,28 @@ class TestFloatGrid(unittest.TestCase):
         m.symmetrize_min()
         self.assertEqual(m.sum(), 2 * N * N * N - 2 * 12)
 
+    def test_grid_size(self):
+        # original cell from 4a0g, and a cell with a <-> b
+        cell = gemmi.UnitCell(79.442, 80.066, 136.939, 99.96, 107.12, 97.25)
+        cell2 = gemmi.UnitCell(80.066, 79.442, 136.939, 99.96, 107.12, 97.25)
+        self.assertAlmostEqual(cell.calculate_d([4, -32, 9]), 2.501956204)
+        dmin = 2.5
+        self.assertEqual(cell.get_hkl_limits(dmin), [31, 32, 54])
+        self.assertEqual(cell2.get_hkl_limits(dmin), [32, 31, 54])
+        # In prepare_asu_data(), max_k == (grid.nv - 1) / 2,
+        # so for k=31 we need nv>=63, for k=32 we need nv>=65.
+        # But when choosing grid size, we take the same n for almost equal
+        # lengths (a and b here). So both nu and nv are 72 instead of 64.
+        grid = gemmi.FloatGrid()
+        grid.spacegroup = gemmi.SpaceGroup('P 1')
+        grid.unit_cell = cell
+        grid.set_size_from_spacing(dmin / 2, gemmi.GridSizeRounding.Up)
+        self.assertTrue([grid.nu, grid.nv, grid.nw] == [72, 72, 120])
+        grid.unit_cell = cell2
+        grid.set_size_from_spacing(dmin / 2, gemmi.GridSizeRounding.Up)
+        self.assertTrue([grid.nu, grid.nv, grid.nw] == [72, 72, 120])
+
+
 class TestCcp4Map(unittest.TestCase):
     @unittest.skipIf(numpy is None, "NumPy not installed.")
     def test_567_map(self):
