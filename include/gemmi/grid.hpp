@@ -374,10 +374,11 @@ struct Grid : GridBase<T> {
   }
 
   template<typename S>
-  void setup_from(const S& st, double approx_spacing) {
+  void setup_from(const S& st, double approx_spacing=0) {
     spacegroup = st.find_spacegroup();
     unit_cell = st.cell;
-    set_size_from_spacing(approx_spacing, GridSizeRounding::Up);
+    if (approx_spacing > 0)
+      set_size_from_spacing(approx_spacing, GridSizeRounding::Up);
   }
 
   /// Returns index in data array for (u,v,w). Safe but slower than index_q().

@@ -110,7 +110,7 @@ py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::strin
     .def("change_values", &Gr::change_values, py::arg("old_value"), py::arg("new_value"))
     .def("copy_metadata_from", &Gr::copy_metadata_from)
     .def("setup_from", &Gr::template setup_from<Structure>,
-         py::arg("st"), py::arg("spacing"))
+         py::arg("st"), py::arg("spacing")=0.)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def("set_points_around", &Gr::set_points_around,
          py::arg("position"), py::arg("radius"), py::arg("value"), py::arg("use_pbc")=true)
