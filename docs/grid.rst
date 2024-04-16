@@ -291,8 +291,9 @@ a macromolecular structure (Structure):
 
 .. doctest::
 
+  >>> new_grid = gemmi.FloatGrid()
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
-  >>> grid2.setup_from(st)
+  >>> new_grid.setup_from(st)
 
 ----
 
