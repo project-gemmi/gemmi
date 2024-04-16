@@ -2015,11 +2015,14 @@ struct ReciprocalAsu {
     if (sg == nullptr)
       fail("Missing space group");
     idx = spacegroup_tables::ccp4_hkl_asu[sg->number - 1];
-    if (tnt)
+    if (tnt) {
       idx += 10;
-    is_ref = sg->is_reference_setting();
-    if (!is_ref)
-      rot = sg->basisop().rot;
+      is_ref = true; // TNT ASU is given wrt current (not standard) settings
+    } else {
+      is_ref = sg->is_reference_setting();
+      if (!is_ref)
+        rot = sg->basisop().rot;
+    }
   }
 
   bool is_in(const Op::Miller& hkl) const {
