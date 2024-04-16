@@ -10,16 +10,18 @@ jobs:
     env:
       SKBUILD_CMAKE_ARGS: "-DEXTRA_WARNINGS=ON;-DFETCH_ZLIB_NG=ON"
       SKBUILD_CMAKE_TARGETS: "all;check"
-      PIP_REQUIRE_VIRTUALENV: "false"
     steps:
     - uses: actions/checkout@v4
     - name: Build wheel and install
       run: |
+        python3 -m venv pyenv
+        source pyenv/bin/activate
         python3 -m pip install wheel
         python3 -m pip wheel -v .
         python3 -m pip install gemmi-*.whl
     - name: Python Tests
       run: |
+        source pyenv/bin/activate
         python3 -m unittest discover -v -s tests/
         python3 -m pip install sphinx
         cd docs
