@@ -293,8 +293,7 @@ void process_with_fft(const gemmi::Structure& st,
   if (scale_to.size() != 0) {
     scaling.prepare_points(asu_data, scale_to, mask_data);
     printf("Calculating scale factors using %zu points...\n", scaling.points.size());
-    gemmi::SMat33<double> b_aniso = scaling.get_b_overall();
-    if (b_aniso.all_zero()) {
+    if (scaling.b_star.all_zero()) {
       scaling.fit_isotropic_b_approximately();
       //fprintf(stderr, "initial k_ov=%g B_ov=%g\n",
       //        scaling.k_overall, scaling.get_b_overall().u11);
@@ -306,6 +305,7 @@ void process_with_fft(const gemmi::Structure& st,
     if (scaling.use_solvent)
       fprintf(stderr, "Bulk solvent parameters: k_sol=%g B_sol=%g\n",
               scaling.k_sol, scaling.b_sol);
+    gemmi::SMat33<double> b_aniso = scaling.get_b_overall();
     fprintf(stderr, "k_ov=%g B11=%g B22=%g B33=%g B12=%g B13=%g B23=%g\n",
             scaling.k_overall, b_aniso.u11, b_aniso.u22, b_aniso.u33,
                                b_aniso.u12, b_aniso.u13, b_aniso.u23);
