@@ -649,7 +649,7 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       if (p.options[RCut])
         dencalc.cutoff = (float) std::atof(p.options[RCut].arg);
       dencalc.addends = calc.addends;
-      dencalc.set_grid_cell_and_spacegroup(st);
+      dencalc.grid.setup_from(st);
       if (p.options[Blur]) {
         dencalc.blur = std::atof(p.options[Blur].arg);
       } else if (dencalc.rate < 3) {

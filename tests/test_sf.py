@@ -34,7 +34,7 @@ class TestDensityCalculator(unittest.TestCase):
                            gemmi.DensityCalculatorN]:
             dencalc = calculator()
             dencalc.d_min = 2.1
-            dencalc.set_grid_cell_and_spacegroup(st)
+            dencalc.grid.setup_from(st)
             # we only check here that it doesn't crash
             dencalc.put_model_density_on_grid(st[0])
 

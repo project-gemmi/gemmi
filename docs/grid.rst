@@ -286,6 +286,16 @@ The other way around, we can find the grid point nearest to a position:
 Common operations
 -----------------
 
+We have a helper function to copy the spacegroup and unit cell from
+a macromolecular structure (Structure):
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> grid2.setup_from(st)
+
+----
+
 The Grid class is often used for electron density maps.
 A common operation on such maps is normalization -- scaling
 that changes the mean to 0 and RMSD to 1:
@@ -499,7 +509,7 @@ Here is how to create a mask identical as `phenix.mask`:
   >>> grid = gemmi.Int8Grid()
   >>> # take space group and unit cell from Structure,
   >>> # and set size based on the specified minimal spacing
-  >>> grid.setup_from(st, spacing=1.0)
+  >>> grid.setup_from(st, spacing=0.6)
   >>> masker.put_mask_on_int8_grid(grid, st[0])
 
 The parameters of SolventMasker can be inspected and changed:

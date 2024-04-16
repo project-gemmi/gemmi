@@ -86,7 +86,7 @@ inline double get_minimum_b(const Model& model) {
 // Usual usage:
 // - set d_min and optionally also other parameters,
 // - set addends to f' values for your wavelength (see fprime.hpp)
-// - use set_grid_cell_and_spacegroup() to set grid's unit cell and space group
+// - use grid.setup_from() to set grid's unit cell and space group
 // - check that Table has SF coefficients for all elements that are to be used
 // - call put_model_density_on_grid()
 // - do FFT using transform_map_to_f_phi()
@@ -202,9 +202,9 @@ struct DensityCalculator {
     grid.symmetrize_sum();
   }
 
+  // deprecated, use directly grid.setup_from(st)
   void set_grid_cell_and_spacegroup(const Structure& st) {
-    grid.unit_cell = st.cell;
-    grid.spacegroup = st.find_spacegroup();
+    grid.setup_from(st);
   }
 
   // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).

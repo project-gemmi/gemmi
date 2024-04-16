@@ -2098,7 +2098,7 @@ Almost all the work is in the latter:
 
 .. doctest::
 
-  >>> dencalc.set_grid_cell_and_spacegroup(st)
+  >>> dencalc.grid.setup_from(st)
   >>> dencalc.put_model_density_on_grid(st[0])
 
 Calling `put_model_density_on_grid` is equivalent to these three functions:
@@ -2197,7 +2197,7 @@ we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
   >>> dc = gemmi.DensityCalculatorX()
   >>> dc.d_min = 2.5
   >>> dc.addends.subtract_z()
-  >>> dc.set_grid_cell_and_spacegroup(st)
+  >>> dc.grid.setup_from(st)
   >>> dc.set_refmac_compatible_blur(st[0])
   >>> dc.put_model_density_on_grid(st[0])
   >>> grid = gemmi.transform_map_to_f_phi(dc.grid)
