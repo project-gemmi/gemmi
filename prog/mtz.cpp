@@ -439,8 +439,11 @@ void check_asu(const Mtz& mtz, bool tnt) {
   if (!mtz.is_merged())
     printf("NOTE: this is multirecord (unmerged) MTZ file\n");
   printf("spacegroup: %s\n", sg->xhm().c_str());
-  printf("%s ASU convention wrt. standard setting: %s\n",
-         tnt ? "TNT" : "CCP4", asu.condition_str());
+  std::string wrt;
+  if (!tnt && !sg->is_reference_setting())
+    wrt = " wrt. " + gemmi::get_spacegroup_reference_setting(sg->number).xhm();
+  printf("%s ASU convention%s: %s\n",
+         tnt ? "TNT" : "CCP4", wrt.c_str(), asu.condition_str());
   printf("inside / outside of ASU: %d / %d\n",
          counter, mtz.nreflections - counter);
   double dmin = mtz.resolution_high() - 1e-6;
