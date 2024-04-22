@@ -56,14 +56,45 @@ struct SmallStructure {
   std::string name;
   UnitCell cell;
   std::string spacegroup_hm;
+  std::vector<std::string> symop_xyz;
+  const SpaceGroup* sg_cache = nullptr;
   std::vector<Site> sites;
   std::vector<AtomType> atom_types;
   double wavelength = 0.; // the first wavelength if multiple
 
   std::vector<Site> get_all_unit_cell_sites() const;
 
+  /// \param order should be one of: "n", "x", "nx", "xn", ""
+  /// n = spacegroup H-M name, x = list of xyz symmetry operation
+  bool determine_spacegroup_from(const std::string& order) {
+    sg_cache = nullptr;
+    for (char letter : order) {
+      if (letter == 'n' || letter == 'N')
+        sg_cache = find_spacegroup();  // from spacegroup_hm
+      else if (letter == 'x' || letter == 'X')
+        sg_cache = find_spacegroup_from_symop_xyz();
+      if (sg_cache)
+        break;
+    }
+    // Note: if sg_cache is left null, find_spacegroup() uses spacegroup_hm,
+    // as it was before determine_spacegroup_from() was introduced.
+    setup_cell_images();
+    return sg_cache != nullptr;
+  }
+
   const SpaceGroup* find_spacegroup() const {
+    if (sg_cache)
+      return sg_cache;
     return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
+  }
+
+  const SpaceGroup* find_spacegroup_from_symop_xyz() const {
+    std::vector<Op> ops;
+    ops.reserve(symop_xyz.size());
+    for (const std::string& xyz : symop_xyz)
+      ops.push_back(parse_triplet(xyz));
+    GroupOps gops = split_centering_vectors(ops);
+    return find_spacegroup_by_ops(gops);
   }
 
   const AtomType* get_atom_type(const std::string& symbol) const {

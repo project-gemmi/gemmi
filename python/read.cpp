@@ -131,6 +131,7 @@ void add_small(py::module& m) {
     .def_readwrite("name", &SmallStructure::name)
     .def_readwrite("cell", &SmallStructure::cell)
     .def_readwrite("spacegroup_hm", &SmallStructure::spacegroup_hm)
+    .def_readwrite("symop_xyz", &SmallStructure::symop_xyz)
     .def_readonly("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
     .def_readwrite("wavelength", &SmallStructure::wavelength)
@@ -138,6 +139,7 @@ void add_small(py::module& m) {
         self.sites.push_back(site);
     })
     .def("find_spacegroup", &SmallStructure::find_spacegroup)
+    .def("determine_spacegroup_from", &SmallStructure::determine_spacegroup_from)
     .def("get_atom_type", &SmallStructure::get_atom_type)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
     .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
