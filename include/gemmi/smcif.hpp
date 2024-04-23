@@ -15,7 +15,6 @@ namespace gemmi {
 inline
 SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   using cif::as_number;
-  using cif::as_string;
   cif::Block& block = const_cast<cif::Block&>(block_);
   SmallStructure st;
   st.name = block.name;
@@ -33,7 +32,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   for (const char* tag : {"_space_group_name_H-M_alt",
                           "_symmetry_space_group_name_H-M"})
     if (const std::string* val = block.find_value(tag)) {
-      st.spacegroup_hm = as_string(*val);
+      st.spacegroup_hm = cif::as_string(*val);
       break;
     }
   for (const char* tag : {"_space_group_symop_operation_xyz",
@@ -45,6 +44,14 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       break;
     }
   }
+  for (const char* tag : { "_space_group_name_Hall", "_symmetry_space_group_name_Hall"})
+    if (const std::string* val = block.find_value(tag))
+      st.spacegroup_hall = cif::as_string(*val);
+  for (const char* tag : {"_space_group_IT_number", "_symmetry_Int_Tables_number"})
+    if (const std::string* val = block.find_value(tag)) {
+      st.spacegroup_number = cif::as_int(*val, 0);
+      break;
+    }
 
   enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kBiso, kOcc, kDisorderGroup };
   cif::Table atom_table = block.find("_atom_site_",
@@ -59,9 +66,9 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
                                       "?disorder_group"});
   for (auto row : atom_table) {
     SmallStructure::Site site;
-    site.label = as_string(row[kLabel]);
+    site.label = cif::as_string(row[kLabel]);
     if (row.has(kSymbol))
-      site.type_symbol = as_string(row[kSymbol]);
+      site.type_symbol = cif::as_string(row[kSymbol]);
     else
       site.type_symbol = site.label;
     if (row.has(kX))

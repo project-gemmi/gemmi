@@ -56,6 +56,8 @@ struct SmallStructure {
   std::string name;
   UnitCell cell;
   std::string spacegroup_hm;
+  std::string spacegroup_hall;
+  int spacegroup_number = 0;
   std::vector<std::string> symop_xyz;
   const SpaceGroup* sg_cache = nullptr;
   std::vector<Site> sites;
@@ -64,28 +66,27 @@ struct SmallStructure {
 
   std::vector<Site> get_all_unit_cell_sites() const;
 
-  /// \param order should be one of: "n", "x", "nx", "xn", ""
-  /// n = spacegroup H-M name, x = list of xyz symmetry operation
+  /// \param order should be made of letter xamn, for example: "xm"
+  /// x = list of xyz symmetry operation
+  /// a = Hall name,
+  /// m = H-M name,
+  /// n = space group number
   bool determine_spacegroup_from(const std::string& order) {
     sg_cache = nullptr;
     for (char letter : order) {
-      if (letter == 'n' || letter == 'N')
-        sg_cache = find_spacegroup();  // from spacegroup_hm
-      else if (letter == 'x' || letter == 'X')
-        sg_cache = find_spacegroup_from_symop_xyz();
+      sg_cache = find_spacegroup_from(letter);
       if (sg_cache)
         break;
     }
-    // Note: if sg_cache is left null, find_spacegroup() uses spacegroup_hm,
-    // as it was before determine_spacegroup_from() was introduced.
+    // note: null sg_cache causes find_spacegroup() to fallback
     setup_cell_images();
     return sg_cache != nullptr;
   }
 
+  // If sg_cache is left null, uses spacegroup_hm,
+  // as it was before determine_spacegroup_from() was introduced.
   const SpaceGroup* find_spacegroup() const {
-    if (sg_cache)
-      return sg_cache;
-    return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
+    return sg_cache ? sg_cache : find_spacegroup_from('m');
   }
 
   const SpaceGroup* find_spacegroup_from_symop_xyz() const {
@@ -95,6 +96,26 @@ struct SmallStructure {
       ops.push_back(parse_triplet(xyz));
     GroupOps gops = split_centering_vectors(ops);
     return find_spacegroup_by_ops(gops);
+  }
+
+  const SpaceGroup* find_spacegroup_from(char letter) const {
+    switch (lower(letter)) {
+      case 'x':
+        return find_spacegroup_from_symop_xyz();
+      case 'a':
+        if (!spacegroup_hall.empty())
+          return find_spacegroup_by_ops(symops_from_hall(spacegroup_hall.c_str()));
+        return nullptr;
+      case 'm':
+        return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
+      case 'n':
+        if (spacegroup_number != 0)
+          return find_spacegroup_by_number(spacegroup_number);
+        return nullptr;
+      default:
+        throw std::invalid_argument(cat("determine_spacegroup_from(): symbol '",
+                                        letter, "' is not one of x a m n"));
+    }
   }
 
   const AtomType* get_atom_type(const std::string& symbol) const {
