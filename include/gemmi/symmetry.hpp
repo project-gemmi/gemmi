@@ -1823,8 +1823,8 @@ const SpaceGroup Tables_<Dummy>::main[559] = {
 template<class Dummy>
 const SpaceGroupAltName Tables_<Dummy>::alt_names[28] = {
   // In 1990's ITfC vol.A changed some of the standard names, introducing
-  // symbols 'e' and 'g'. sgtbx interprets these new symbols with
-  // option ad_hoc_1992. spglib uses only the new symbols.
+  // symbol 'e'. sgtbx interprets these new symbols with option ad_hoc_1992.
+  // spglib uses only the new symbols.
   {"A e m 2",   0, 190}, // A b m 2
   {"B m e 2",   0, 191}, // B m a 2
   {"B 2 e m",   0, 192}, // B 2 c m
@@ -1935,7 +1935,11 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
       if (sg.hm[2] == *p) {
         const char* a = impl::skip_blank(p + 1);
         const char* b = impl::skip_blank(sg.hm + 3);
-        while (*a == *b && *b != '\0') {
+        // In IT 1935 and 1952, symbols of centrosymmetric, cubic space groups
+        // 200-206 and 221-230 had symbol 3 (not -3), e.g. Pm3 instead of Pm-3,
+        // as listed in Table 3.3.3.1 in ITfC (2016) vol. A, p.788.
+        while ((*a == *b && *b != '\0') ||
+               (*a == '3' && *b == '-' && b == sg.hm + 4 && *++b == '3')) {
           a = impl::skip_blank(a+1);
           b = impl::skip_blank(b+1);
         }
