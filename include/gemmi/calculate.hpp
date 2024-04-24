@@ -78,6 +78,8 @@ inline Box<Position> calculate_box(const Structure& st, double margin=0.) {
 }
 
 inline Box<Fractional> calculate_fractional_box(const Structure& st, double margin=0.) {
+  if (!st.cell.is_crystal())
+    fail("calculate_fractional_box(): Structure has no unit cell for fractionalization");
   Box<Fractional> box;
   for (const Model& model : st.models)
     for (const Chain& chain : model.chains)
