@@ -1926,6 +1926,11 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
         if (name[i] >= 'a' && name[i] <= 'z')
           name[i] &= ~0x20;  // to uppercase
   }
+  // allow names ending with R or H, such as R3R instead of R3:R
+  if (name.back() == 'h' || name.back() == 'r') {
+    name.back() &= ~0x20;  // to uppercase
+    name.insert(name.end() - 1, ':');
+  }
   // The string that const char* p points to was just modified.
   // This confuses some compilers (GCC 4.8), so let's re-assign p.
   p = name.c_str() + start;
