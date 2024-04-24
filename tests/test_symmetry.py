@@ -48,6 +48,48 @@ OTHER_SINGLES = {
     "-z-5/6": [ 0, 0,-D, -D*5//6],
 }
 
+# From PLATON manual (WinGX v1.80, Chapter 9.3 PLATON),
+# Table 7.1 Space group names known to the program
+PLATON_SPACE_GROUP_NAMES = """\
+P1 P-1 P2 P112 P21 P1121 C2 A2
+B112 PM P11M PC PA PN P11B CM
+AM B11M CC IC IA AA B11B P2/M
+P112/M P21/M P1121/M C2/M A2/M B112/M P2/C P2/A
+P112/B P21/C P21/A P2/N P1121/B P21/N P21/N11 C2/C
+A2/A C2/N I2/C I2/N I2/M I2/A B112/B P222
+P2221 P2212 P2122 P21212 P212121 C2221 B2212 C222
+F222 I222 I212121 PMM2 PMC21 PCC2 PMA2 PCA21
+PNC2 PMN21 PBA2 PNA21 P21NB PC21N PN21A PBN21
+P21CN PNN2 CMM2 CMC21 CCC2 AMM2 ABM2 AMA2
+ABA2 FMM2 FDD2 IMM2 IBA2 IMA2 PMMM PNNN
+PCCM PBAN PMMA PNNA PMNA PCCA PBAM PCCN
+PBCM PNNM PMMN PBCN PBCA PCAB PNMA PBNM
+PMCN PNAM PMNB PCMN CMCM CMCA CMMM CCCM
+CMMA CCCA FMMM FDDD IMMM IBAM IBCA IMMA
+P4 P41 P42 P43 I4 I41 P-4 I-4
+P4/M P42/M P4/N P42/N I4/M I41/A P422 P4212
+P4122 P41212 P4222 P42212 P4322 P43212 I422 I4122
+P4MM P4BM P42CM P42NM P4CC P4NC P42MC P42BC
+I4MM I4CM I41MD I41CD P-42M P-42C P-421M P-421C
+P-4M2 P-4C2 P-4B2 P-4N2 I-4M2 I-4C2 I-42M I-42D
+P4/MMM P4/MCC P4/NBM P4/NNC P4/MBM P4/MNC P4/NMM P4/NCC
+P42/MMC P42/MCM P42/NBC P42/NNM P42/MBC P42/MNM P42/NMC P42/NCM
+I4/MMM I4/MCM I41/AMD I41/ACD P3 P31 P32 R3
+R3R P-3 R-3 R-3R P312 P321 P3112 P3121
+P3212 P3221 R32 R32R P3M1 P31M P3C1 P31C
+R3M R3MR R3C R3CR P-31M P-31C P-3M1 P-3C1
+R-3M R-3MR R-3C R-3CR P6 P61 P65 P62
+P64 P63 P-6 P6/M P63/M P622 P6122 P6522
+P6222 P6422 P6322 P6MM P6CC P63CM P63MC P-6M2
+P-6C2 P-62M P-62C P6/MMM P6/MCC P63/MCM P63/MMC P23
+F23 I23 P213 I213 PM3 PM-3 PN3 PN-3
+FM3 FM-3 FD3 FD-3 IM3 IM-3 PA3 PA-3
+IA3 IA-3 P432 P4232 F432 F4132 I432 P4332
+P4132 I4132 P-43M F-43M I43M P-43N F-43C I-43D
+PM3M PM-3M PN3N PN-3N PM3N PM-3N PN3M PN-3M
+FM3M FM-3M FM3C FM-3C FD3M FD-3M FD3C FD-3C
+IM3M IM-3M IA3D IA-3D
+"""
 
 class TestSymmetry(unittest.TestCase):
     def test_parse_triplet_part(self):
@@ -372,6 +414,22 @@ class TestSymmetry(unittest.TestCase):
         result = pickle.loads(pkl_string)
         self.assertTrue(isinstance(result, gemmi.SpaceGroup))
         self.assertEqual(sg.xhm(), result.xhm())
+
+    # test space group names listed in PLATON docs
+    def test_platon_spacegroup_names(self):
+        if sgtbx is None:
+            return
+        for s in PLATON_SPACE_GROUP_NAMES.split():
+            # these names are not recognized neither by sgtbx nor by gemmi
+            if s in ['I2/N', 'I43M']:
+                continue
+            # By default, for groups such as Pnnn, gemmi uses the first
+            # settings (ext==1) and sgtbx the ones with ext==2.
+            # But with table_id='A', sgtbx also uses extension 1.
+            sgtbx_group = sgtbx.space_group_type(s, table_id='A')
+            sgtbx_ops = gemmi.symops_from_hall(sgtbx_group.hall_symbol())
+            gemmi_ops = gemmi.SpaceGroup(s).operations()
+            self.assertEqual(sgtbx_ops, gemmi_ops)
 
 if __name__ == '__main__':
     unittest.main()
