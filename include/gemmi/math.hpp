@@ -34,6 +34,13 @@ constexpr double rad(double angle) { return pi() / 180.0 * angle; }
 constexpr float sq(float x) { return x * x; }
 constexpr double sq(double x) { return x * x; }
 
+inline double log_cosh(double x) {
+  // cosh(x) would overflow for x > 710.5, so we calculate:
+  // ln(cosh(x)) = ln(e^x + e^-x) - ln(2) = ln(e^x * (1 + e^-2x)) - ln(2)
+  x = std::abs(x);
+  return x - std::log(2) + std::log1p(std::exp(-2 * x));
+}
+
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 
 inline double angle_abs_diff(double a, double b, double full=360.0) {
