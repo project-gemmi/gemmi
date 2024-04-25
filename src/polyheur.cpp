@@ -80,6 +80,13 @@ std::string make_one_letter_sequence(const ConstResidueSpan& polymer) {
 static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerType ptype) {
   auto b = chain.residues.begin();
   auto e = chain.residues.end();
+
+  // find the last residue w/ record type ATOM
+  auto last_a = e;
+  for (auto it = e; it-- != b;)
+    if (it->het_flag == 'A')
+      last_a = it;
+
   for (auto it = b; it != e; ++it) {
     ResidueInfo info = find_tabulated_residue(it->name);
     if (info.found()) {
@@ -94,8 +101,10 @@ static std::vector<Residue>::iterator infer_polymer_end(Chain& chain, PolymerTyp
         e = it;
         break;
       }
-      // If a standard residue is HETATM we assume that it is in the buffer.
-      if (info.is_standard() && it->het_flag == 'H') {
+      // If a standard residue is HETATM, it should be in the buffer. Although
+      // it could happen that a non-standard residue was mutated to a standard
+      // one, but the record type was not updated, so it's not 100% reliable.
+      if (info.is_standard() && it->het_flag == 'H' && it > last_a) {
         e = it;
         break;
       }
