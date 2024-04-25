@@ -180,21 +180,7 @@ template<> inline void remove_ligands_and_waters(Chain& ch) {
 }
 
 // Trim to alanine. Returns true if trimmed, false if it's (likely) not AA.
-inline bool trim_to_alanine(Residue& res) {
-  static const std::pair<std::string, El> ala_atoms[6] = {
-    {"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}, {"CB", El::C},
-    {"OXT", El::O}
-  };
-  if (res.get_ca() == nullptr)
-    return false;
-  vector_remove_if(res.atoms, [](const Atom& a) {
-      for (const auto& name_el : ala_atoms)
-        if (a.name == name_el.first && a.element == name_el.second)
-          return false;
-      return true;
-  });
-  return true;
-}
+GEMMI_DLL bool trim_to_alanine(Residue& res);
 
 inline void trim_to_alanine(Chain& chain) {
   for (Residue& res : chain.residues)

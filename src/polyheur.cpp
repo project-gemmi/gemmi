@@ -309,6 +309,25 @@ char recommended_het_flag(const Residue& res) {
     return 'H';
 }
 
+bool trim_to_alanine(Residue& res) {
+  static const std::pair<std::string, El> ala_atoms[6] = {
+    {"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}, {"CB", El::C},
+    {"OXT", El::O}
+  };
+  if (res.get_ca() == nullptr)
+    return false;
+  vector_remove_if(res.atoms, [](const Atom& a) {
+      for (const auto& name_el : ala_atoms)
+        if (a.name == name_el.first && a.element == name_el.second)
+          return false;
+      return true;
+  });
+  // if non-standard polymer residue was mutated, update het_flag
+  if (res.entity_type == EntityType::Polymer && res.het_flag == 'H')
+    res.het_flag = 'A';
+  return true;
+}
+
 void change_ccd_code(Structure& st, const std::string& old, const std::string& new_) {
   auto process = [&](ResidueId& rid) {
     if (rid.name == old)
