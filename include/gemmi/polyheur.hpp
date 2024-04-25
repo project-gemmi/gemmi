@@ -144,6 +144,18 @@ inline void setup_entities(Structure& st) {
   deduplicate_entities(st);
 }
 
+// Determine and assign ATOM/HETATM flags.
+GEMMI_DLL char recommended_het_flag(const Residue& res);
+template<class T> void assign_het_flags(T& obj, char flag='?') {
+  for (auto& child : obj.children())
+    assign_het_flags(child, flag);
+}
+template<> inline void assign_het_flags(Residue& res, char flag) {
+  if (flag != '?' && flag != '\0' && flag != 'A' && flag != 'H')
+    fail("assign_het_flags(): the only allowed values are A, H and \\0");
+  res.het_flag = flag == '?' ? recommended_het_flag(res) : flag;
+}
+
 // Remove waters. It may leave empty chains.
 template<class T> void remove_waters(T& obj) {
   for (auto& child : obj.children())

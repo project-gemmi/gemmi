@@ -40,6 +40,17 @@ struct ConvArg: public Arg {
   static option::ArgStatus NcsChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"dup", "num", "x"});
   }
+
+  static option::ArgStatus RecordChoice(const option::Option& option, bool msg) {
+    auto status = Arg::Optional(option, msg);
+    if (status == option::ARG_OK && option.arg[0] != 'A' && option.arg[0] != 'H') {
+      if (msg)
+        fprintf(stderr, "If option %.*s has argument, it must be ATOM or HETATM.\n",
+                option.namelen, option.name);
+      status = option::ARG_ILLEGAL;
+    }
+    return status;
+  }
 };
 
 enum OptionIndex {
@@ -47,8 +58,8 @@ enum OptionIndex {
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   Reframe, ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
-  ShortenTLC, ChangeCcdCode, SetSeq,
-  SiftsNum, Biso, Anisou, SetCis, SegmentAsChain, OldPdb, ForceLabel
+  ShortenTLC, ChangeCcdCode, SetSeq, SiftsNum,
+  Biso, Anisou, AssignRecords, SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
 
 const option::Descriptor Usage[] = {
@@ -117,6 +128,8 @@ const option::Descriptor Usage[] = {
       "out of given range to MIN/MAX." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
+  { AssignRecords, 0, "", "assign-records", ConvArg::RecordChoice,
+    "  --assign-records[=A|H]  \tRe-assign ATOM/HETATM (w/o argument: auto)." },
   // disabled: probably not used and implementing it would require either
   // using Topo::set_cispeps_in_structure() or duplicating the code.
   //{ SetCis, 0, "", "set-cispep", Arg::None,
@@ -192,6 +205,9 @@ void convert(gemmi::Structure& st,
     gemmi::change_ccd_code(st, old_name, new_name);
   }
 
+  if (options[AssignRecords])
+    // avoid using initial ATOM/HETATM in setup_entities()
+    gemmi::assign_het_flags(st, '\0');
   gemmi::setup_entities(st);
   if (st.input_format == CoorFormat::Pdb) {
     if (!options[SetSeq])
@@ -245,6 +261,11 @@ void convert(gemmi::Structure& st,
               if (!atom.is_hydrogen())
                 gemmi::ensure_anisou(atom);
     }
+  }
+
+  if (const option::Option* opt = options[AssignRecords]) {
+    char flag = opt->arg ? opt->arg[0] : '?';
+    gemmi::assign_het_flags(st, flag);
   }
 
   for (const option::Option* opt = options[RenameChain]; opt; opt = opt->next()) {

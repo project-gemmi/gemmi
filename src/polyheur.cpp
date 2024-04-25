@@ -291,6 +291,15 @@ void deduplicate_entities(Structure& st) {
         }
 }
 
+char recommended_het_flag(const Residue& res) {
+    if (res.entity_type == EntityType::Unknown)
+      return '\0';
+    if (res.entity_type == EntityType::Polymer &&
+        find_tabulated_residue(res.name).is_standard())
+      return 'A';
+    return 'H';
+}
+
 void change_ccd_code(Structure& st, const std::string& old, const std::string& new_) {
   auto process = [&](ResidueId& rid) {
     if (rid.name == old)

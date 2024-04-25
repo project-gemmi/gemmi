@@ -1579,6 +1579,20 @@ The last property is the sequence from the PDB SEQRES record
 (or its mmCIF equivalent).
 More details in the :ref:`section about sequence <sequence>`.
 
+Residue.entity_type can be used to determine what should Residue.het_flag be,
+based on the rules from the official PDB spec
+(i.e. non-standard residues are marked as HETATM even in a polymer).
+We also have a function to re-assign all het_flag values:
+
+.. doctest::
+
+  >>> st[0][0][0].recommended_het_flag()
+  'A'
+  >>> st.assign_het_flags('A')  # set all values to A=ATOM
+  >>> st.assign_het_flags('H')  # set all values to H=HETATM
+  >>> st.assign_het_flags('\0') # unset all values
+  >>> st.assign_het_flags()     # set correct values
+
 Connection
 ----------
 
