@@ -125,7 +125,6 @@ struct EnerLib {
 
 struct GEMMI_DLL MonLib {
   std::string monomer_dir;
-  std::string lib_version;
   EnerLib ener_lib;
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
@@ -257,11 +256,7 @@ struct GEMMI_DLL MonLib {
   void read_monomer_doc(const cif::Document& doc);
 
   void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
-    const cif::Document& doc = (*read_cif)(path_);
-    if (!doc.blocks.empty() && doc.blocks[0].name == "lib")
-      if (const std::string* ver = doc.blocks[0].find_value("_lib.version"))
-        lib_version = *ver;
-    read_monomer_doc(doc);
+    read_monomer_doc((*read_cif)(path_));
   }
 
   void set_monomer_dir(const std::string& monomer_dir_) {
