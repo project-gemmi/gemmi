@@ -275,7 +275,12 @@ struct GEMMI_DLL MonLib {
       fail("read_monomer_lib: monomer_dir not specified.");
     set_monomer_dir(monomer_dir_);
 
-    read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
+    // Only recent versions of CCP4 Monomer Library have links_and_mods.cif
+    try {
+      read_monomer_cif(monomer_dir + "links_and_mods.cif", read_cif);
+    } catch (std::system_error&) {
+      read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
+    }
     ener_lib.read((*read_cif)(monomer_dir + "ener_lib.cif"));
 
     bool ok = true;
