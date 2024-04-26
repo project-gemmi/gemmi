@@ -144,15 +144,17 @@ inline void setup_entities(Structure& st) {
   deduplicate_entities(st);
 }
 
-// Determine and assign ATOM/HETATM flags.
+/// Determine ATOM/HETATM record type, based on Residue::entity_type
 GEMMI_DLL char recommended_het_flag(const Residue& res);
-template<class T> void assign_het_flags(T& obj, char flag='?') {
+/// R = recommended_het_flag(), other valid values are A, H and '\0'
+template<class T> void assign_het_flags(T& obj, char flag='R') {
   for (auto& child : obj.children())
     assign_het_flags(child, flag);
 }
 template<> inline void assign_het_flags(Residue& res, char flag) {
-  if (flag != '?' && flag != '\0' && flag != 'A' && flag != 'H')
-    fail("assign_het_flags(): the only allowed values are A, H and \\0");
+  flag &= ~0x20; // uppercase letters, ' ' -> \0
+  if (flag != 'R' && flag != '\0' && flag != 'A' && flag != 'H')
+    fail("assign_het_flags(): the only allowed values are A, H, ' ' and R");
   res.het_flag = flag == '?' ? recommended_het_flag(res) : flag;
 }
 

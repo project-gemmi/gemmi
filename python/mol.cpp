@@ -166,7 +166,7 @@ void add_mol(py::module& m) {
     .def("ensure_entities", &ensure_entities)
     .def("deduplicate_entities", &deduplicate_entities)
     .def("setup_entities", &setup_entities)
-    .def("assign_het_flags", assign_het_flags<Structure>, py::arg("flag")='?')
+    .def("assign_het_flags", assign_het_flags<Structure>, py::arg("flag")='R')
     .def("remove_waters", remove_waters<Structure>)
     .def("remove_ligands_and_waters", remove_ligands_and_waters<Structure>)
     .def("shorten_ccd_codes", &shorten_ccd_codes)
