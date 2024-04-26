@@ -46,6 +46,12 @@ OTHER_SINGLES = {
     "1+Y"   : [ 0, D, 0,  D],
     "-2+Y"  : [ 0, D, 0, -D*2],
     "-z-5/6": [ 0, 0,-D, -D*5//6],
+    # some CIF files from COD have decimal fractions
+    "0.5-x":  [-D, 0, 0,  D//2],
+    ".5+Y":   [ 0, D, 0, D//2],
+    "-Z+0.25": [ 0, 0, -D, D//4],
+    "x+0.6666666667": [ D, 0, 0, D*2//3],
+    "1.25000-y": [ 0, -D, 0, D*5//4],
 }
 
 # From PLATON manual (WinGX v1.80, Chapter 9.3 PLATON),

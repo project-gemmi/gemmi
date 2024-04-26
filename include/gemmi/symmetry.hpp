@@ -262,10 +262,23 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       fail("wrong or unsupported triplet format: " + s);
     int r_idx;
     int den = 1;
-    if (*c >= '0' && *c <= '9') {
+    if ((*c >= '0' && *c <= '9') || *c == '.') {
       // syntax examples in this branch: "1", "-1/2", "+2*x", "1/2 * b"
       char* endptr;
-      num *= std::strtol(c, &endptr, 10);
+      int n = std::strtol(c, &endptr, 10);
+      // some COD CIFs have decimal fractions ("-x+0.25", ".5+Y", "1.25000-y")
+      if (*endptr == '.') {
+        // avoiding strtod() etc which is locale-dependent
+        double fract = n;
+        for (double denom = 0.1; *++endptr >= '0' && *endptr <= '9'; denom *= 0.1)
+          fract += int(*endptr - '0') * denom;
+        double rounded = std::round(fract * num);
+        if (std::fabs(rounded - fract * num) > 0.05)
+          fail("unexpected number in a symmetry triplet part: " + s);
+        num = int(rounded);
+      } else {
+        num *= n;
+      }
       if (*endptr == '/')
         den = std::strtol(endptr + 1, &endptr, 10);
       if (*endptr == '*') {
