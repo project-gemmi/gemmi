@@ -114,14 +114,15 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   if (p.options[PrintSpec]) {
-    std::printf("                                for merged mtz\n");
+    std::printf(" ========   for merged mtz   ========\n");
     const char** lines = gemmi::MtzToCif::default_spec(/*for_merged=*/true);
     for (; *lines != nullptr; ++lines)
       std::printf("%s\n", *lines);
-    std::printf("\n                             for unmerged mtz\n");
+    std::printf("\n ========   for unmerged mtz   ========\n");
     lines = gemmi::MtzToCif::default_spec(/*for_merged=*/false);
     for (; *lines != nullptr; ++lines)
       std::printf("%s\n", *lines);
+    std::printf("\n");
     return 0;
   }
 
