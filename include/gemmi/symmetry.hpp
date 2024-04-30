@@ -62,14 +62,20 @@ struct Op {
 
   Op inverse() const;
 
+  Op::Tran wrapped_tran() const {
+    Op::Tran t = tran;
+    for (int i = 0; i != 3; ++i) {
+      if (t[i] >= DEN) // elements need to be in [0,DEN)
+        t[i] %= DEN;
+      else if (t[i] < 0)
+        t[i] = ((t[i] + 1) % DEN) + DEN - 1;
+    }
+    return t;
+  }
+
   // If the translation points outside of the unit cell, wrap it.
   Op& wrap() {
-    for (int i = 0; i != 3; ++i) {
-      if (tran[i] >= DEN) // elements need to be in [0,DEN)
-        tran[i] %= DEN;
-      else if (tran[i] < 0)
-        tran[i] = ((tran[i] + 1) % DEN) + DEN - 1;
-    }
+    tran = wrapped_tran();
     return *this;
   }
 
@@ -744,9 +750,10 @@ inline GroupOps split_centering_vectors(const std::vector<Op>& ops) {
   go.sym_ops.push_back(identity);
   for (const Op& op : ops)
     if (Op* old_op = go.find_by_rotation(op.rot)) {
+      Op::Tran tran = op.wrapped_tran();
       if (op.rot == identity.rot)  // pure shift
-        go.cen_ops.push_back(op.tran);
-      if (op.tran == identity.tran)  // or rather |op.tran| < |old_op->tran| ?
+        go.cen_ops.push_back(tran);
+      if (tran == identity.tran)  // or rather |tran| < |old_op->tran| ?
         old_op->tran = op.tran;
     } else {
       go.sym_ops.push_back(op);
