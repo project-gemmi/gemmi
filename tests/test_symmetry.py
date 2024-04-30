@@ -252,7 +252,7 @@ class TestSymmetry(unittest.TestCase):
                                  hand_sgtbx.as_xyz())
             ops = gemmi.get_spacegroup_reference_setting(sg.number).operations()
             ops.change_basis_forward(sg.basisop)
-            self.assertEqual(ops, sg.operations())
+            self.assertEqual(ops, sg.operations(), msg=sg.xhm())
         itb = gemmi.spacegroup_table_itb()
         if sgtbx:
             for s in sgtbx.space_group_symbol_iterator():
@@ -267,6 +267,7 @@ class TestSymmetry(unittest.TestCase):
             ops = sg.operations()
             ops.change_basis_forward(coh)
             other_hand = gemmi.find_spacegroup_by_ops(ops)
+            self.assertIsNotNone(other_hand, msg=f'{sg} {coh}')
             if sg.hall != other_hand.hall:
                 counter += 1
             elif sg != other_hand:
@@ -280,7 +281,7 @@ class TestSymmetry(unittest.TestCase):
             symmor_ops = ops.derive_symmorphic()
             self.assertEqual(len(ops), len(symmor_ops))
             symmor = gemmi.find_spacegroup_by_ops(symmor_ops)
-            self.assertTrue(symmor is not None)
+            self.assertTrue(symmor is not None, msg=sg.xhm())
             self.assertTrue(symmor.is_symmorphic())
             if sg.is_symmorphic():
                 self.assertEqual(sg.number, symmor.number)

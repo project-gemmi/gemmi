@@ -114,7 +114,7 @@ hall_to_idx = {}
 counter = 0
 def check_dup(hall):
     n = hall_to_idx.setdefault(hall, counter)
-    return '' if n == counter else f'(=={n})'
+    return '' if n == counter else f' (=={n})'
 fmt = '  {%3d, %4d, %-12s, %s, %6s, %-16s, %-2d}, // %3d%s'
 def quot(s):
     return '"%s"' % s.replace('"', r'\"')
@@ -174,12 +174,15 @@ additional = [
     ('C -1', '-C 1'),
     ('F -1', '-F 1'),
     ('I -1', '-I 1'),
-    'monoclinic',
+    'monoclinic (qualifiers such as "b1" are assigned arbitrary unique numbers)',
     ('B 1 2 1', 'B 2y'),  # 3
     ('C 1 1 2', 'C 2'),  # 3
-    ('B 1 21 1', 'B 2yb'), # 4
-    ('C 1 1 21', 'C 2c'), # 4
-    ('F 1 2/m 1', '-F 2y'), # 12
+    ('B 1 21 1', 'B 2yb'),  # 4
+    ('C 1 1 21', 'C 2c'),  # 4
+    ('F 1 2 1', 'F 2y'),  # 5
+    ('F 1 m 1', 'F -2y'),  # 8
+    ('F 1 d 1', 'F -2yuw'),  # 9
+    ('F 1 2/m 1', '-F 2y'),  # 12
     'orthorhombic',
     ('A b a m', '-A 2 2ab'),
     'tetragonal - enlarged C- and F-centred unit cells',
@@ -190,6 +193,25 @@ additional = [
     ('C -4 2 b', 'C -4 2ya'),
     ('F 4/m m m', '-F 4 2'),
 ]
+
+def has_symmorphic(hall):
+    symmor_ops = gemmi.symops_from_hall(hall).derive_symmorphic()
+    if gemmi.find_spacegroup_by_ops(symmor_ops):
+        return True
+    return any(gemmi.symops_from_hall(x[1]) == symmor_ops for x in additional
+               if type(x) == tuple)
+
+def find_unique_axis(hm):
+    s = hm.split()
+    assert len(s) == 4
+    if s[1] == s[3]:
+        return 'b'
+    if s[2] == s[3]:
+        return 'a'
+    if s[1] == s[2]:
+        return 'c'
+    return '?'
+
 system = None
 for item in additional:
     if type(item) == str:
@@ -201,10 +223,15 @@ for item in additional:
     cctbx_info = sgtbx.space_group_info(group=cctbx_sg)
     from_ref, basisop_idx = get_basisop(cctbx_info)
     number = cctbx_info.type().number()
-    print(fmt % (number, 0, quot(hm), '  0', '""', quot(hall),
+    qual = '""'
+    if system == 'monoclinic':
+        qual = '"%s"' % find_unique_axis(hm)
+    print(fmt % (number, 0, quot(hm), '  0', qual, quot(hall),
                  basisop_idx, counter, check_dup(hall)))
     if gemmi:
         assert gemmi.SpaceGroup(number).crystal_system_str() == system
+        if not has_symmorphic(hall):
+            print('// -- check derive_symmorphic() for', hm)
     counter += 1
 
 print('\n')
