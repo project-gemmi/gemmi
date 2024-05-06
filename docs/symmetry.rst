@@ -83,7 +83,7 @@ It can be an "alternative" name:
 
 .. doctest::
 
-    >>> gemmi.find_spacegroup_by_name('C m m e') # new names have 'e' and 'g'
+    >>> gemmi.find_spacegroup_by_name('C m m e') # a relatively new name with 'e'
     <gemmi.SpaceGroup("C m m a")>
 
 Sometimes in the PDB, the setting of the hexagonal crystal family
@@ -96,7 +96,7 @@ This ambiguity can be resolved by comparing angles of the unit cell.
 The ratio of *γ* to *α* angles is 120:90 in the hexagonal system
 and 1:1 in rhombohedral. (Note: gemmi assumes that H3 refers to
 space group 146 (R3), not 143 (P3)). Therefore, `find_spacegroup_by_name()`
-accepts also *α* and *γ* angles. If the angles are not passed,
+accepts also *α* and *γ* angles. If the optional args are not passed,
 the hexagonal system is returned:
 
 .. doctest::
@@ -110,6 +110,22 @@ the hexagonal system is returned:
     >>> # of course, you do not need angles if you use extended H-M symbol
     >>> gemmi.find_spacegroup_by_name('R 3 2:R')
     <gemmi.SpaceGroup("R 3 2:R")>
+
+The preferred settings can be changed with optional arg `prefer`,
+a string where each character denotes preferred settings where applicable.
+The allowed characters are `1`/`2` (the choice of origin),
+and `H`/`R` (hexagonal/rhombohedral). The defaults are `1` and `H`.
+
+.. doctest::
+
+    >>> gemmi.find_spacegroup_by_name('R 3 2', prefer='R')
+    <gemmi.SpaceGroup("R 3 2:R")>
+    >>> gemmi.find_spacegroup_by_name('P n n n', prefer='1') # the same as default
+    <gemmi.SpaceGroup("P n n n:1")>
+    >>> gemmi.find_spacegroup_by_name('P n n n', prefer='2')
+    <gemmi.SpaceGroup("P n n n:2")>
+    >>> gemmi.find_spacegroup_by_name('P 1', prefer='2H')  # not applicable
+    <gemmi.SpaceGroup("P 1")>
 
 You can also get space group by number:
 

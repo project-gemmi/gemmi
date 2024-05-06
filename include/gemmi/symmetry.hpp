@@ -1929,10 +1929,25 @@ inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
                               + std::to_string(number));
 }
 
-// the angles alpha and gamma are optional. If provided they are only used
-// to distinguish hexagonal and rhombohedral settings (e.g. for "R 3").
+/// If angles alpha and gamma are provided, they are used to
+/// distinguish hexagonal and rhombohedral settings (e.g. for "R 3").
+/// \param prefer can specify preferred H/R settings and 1/2 origin choice.
+/// For example, prefer="2H" means the origin choice 2 and hexagonal
+/// settings. The default is "1H".
 inline const SpaceGroup* find_spacegroup_by_name(std::string name,
-                                  double alpha=0., double gamma=0.) noexcept {
+                                  double alpha=0., double gamma=0.,
+                                  const char* prefer=nullptr) {
+  bool prefer_2 = false;
+  bool prefer_R = false;
+  if (prefer)
+    for (const char* p = prefer; *p != '\0'; ++p) {
+      if (*p == '2')
+        prefer_2 = true;
+      else if (*p == 'R')
+        prefer_R = true;
+      else if (*p != '1' && *p != 'H')
+        throw std::invalid_argument("find_spacegroup_by_name(): invalid arg 'prefer'");
+    }
   const char* p = impl::skip_blank(name.c_str());
   if (*p >= '0' && *p <= '9') { // handle numbers
     char *endptr;
@@ -1977,19 +1992,25 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
           a = impl::skip_blank(a+1);
           b = impl::skip_blank(b+1);
         }
-        if (*b == '\0' &&
-            (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext))) {
-          // Change hexagonal settings to rhombohedral if the unit cell angles
-          // are more consistent with the latter.
-          // We have possible ambiguity in the hexagonal crystal family.
-          // For instance, "R 3" may mean "R 3:H" (hexagonal setting) or
-          // "R 3:R" (rhombohedral setting). The :H symbols come first
-          // in the table and are used by default. The ratio gamma:alpha
-          // is 120:90 in the hexagonal system and 1:1 in rhombohedral.
-          // We assume that the 'R' entry follows directly the 'H' entry.
-          if (*a == '\0' && sg.ext == 'H' && gamma < 1.125 * alpha)
-            return &sg + 1;
-          return &sg;
+        if (*b == '\0') {
+          if (*a == '\0') {
+            // Change hexagonal settings to rhombohedral if the unit cell
+            // angles are more consistent with the latter.
+            // We have possible ambiguity in the hexagonal crystal family.
+            // For instance, "R 3" may mean "R 3:H" (hexagonal setting) or
+            // "R 3:R" (rhombohedral setting). The :H symbols come first
+            // in the table and are used by default. The ratio gamma:alpha
+            // is 120:90 in the hexagonal system and 1:1 in rhombohedral.
+            // We assume that the 'R' entry follows directly the 'H' entry.
+            if (sg.ext == 'H' && (alpha == 0. ? prefer_R : gamma < 1.125 * alpha))
+              return &sg + 1;
+            // Similarly, the origin choice #2 follows directly #1.
+            if (sg.ext == '1' && prefer_2)
+              return &sg + 1;
+            return &sg;
+          } else if (*a == ':' && *impl::skip_blank(a+1) == sg.ext) {
+            return &sg;
+          }
         }
       } else if (sg.hm[2] == '1' && sg.hm[3] == ' ') {
         // check monoclinic short names, matching P2 to "P 1 2 1";

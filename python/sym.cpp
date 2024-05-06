@@ -222,7 +222,7 @@ void add_symmetry(py::module& m) {
         py::arg("ccp4"), py::return_value_policy::reference,
         "Returns space-group of given number.");
   m.def("find_spacegroup_by_name", &find_spacegroup_by_name,
-        py::arg("hm"), py::arg("alpha")=0., py::arg("gamma")=0.,
+        py::arg("hm"), py::arg("alpha")=0., py::arg("gamma")=0., py::arg("prefer")=nullptr,
         py::return_value_policy::reference,
         "Returns space-group with given name.");
   m.def("get_spacegroup_reference_setting", &get_spacegroup_reference_setting,
