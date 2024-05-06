@@ -97,6 +97,14 @@ FM3M FM-3M FM3C FM-3C FD3M FD-3M FD3C FD-3C
 IM3M IM-3M IA3D IA-3D
 """
 
+def simple_monoclinic_unique_axis(hm):
+    hm_split = hm.split()
+    if len(hm_split) == 4 and hm_split.count('1') == 2:
+        for i in [1,2,3]:
+            if hm_split[i] != '1':
+                return chr(ord('a') + i - 1)
+    return '\0'
+
 class TestSymmetry(unittest.TestCase):
     def test_parse_triplet_part(self):
         for single, row in CANONICAL_SINGLES.items():
@@ -253,6 +261,8 @@ class TestSymmetry(unittest.TestCase):
             ops = gemmi.get_spacegroup_reference_setting(sg.number).operations()
             ops.change_basis_forward(sg.basisop)
             self.assertEqual(ops, sg.operations(), msg=sg.xhm())
+            self.assertEqual(sg.monoclinic_unique_axis(),
+                             simple_monoclinic_unique_axis(sg.hm))
         itb = gemmi.spacegroup_table_itb()
         if sgtbx:
             for s in sgtbx.space_group_symbol_iterator():
