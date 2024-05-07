@@ -130,23 +130,26 @@ void add_small(py::module& m) {
     .def(py::init<>())
     .def_readwrite("name", &SmallStructure::name)
     .def_readwrite("cell", &SmallStructure::cell)
+    .def_readonly("spacegroup", &SmallStructure::spacegroup,
+                  py::return_value_policy::reference_internal)
     .def_readwrite("spacegroup_hm", &SmallStructure::spacegroup_hm)
-    .def_readwrite("symop_xyz", &SmallStructure::symop_xyz)
+    .def_readwrite("spacegroup_hall", &SmallStructure::spacegroup_hall)
+    .def_readwrite("spacegroup_number", &SmallStructure::spacegroup_number)
+    .def_readwrite("symops", &SmallStructure::symops)
     .def_readonly("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
     .def_readwrite("wavelength", &SmallStructure::wavelength)
     .def("add_site", [](SmallStructure& self, const SmallStructure::Site& site) {
         self.sites.push_back(site);
     })
-    .def("find_spacegroup", &SmallStructure::find_spacegroup)
-    .def("determine_spacegroup_from", &SmallStructure::determine_spacegroup_from)
+    .def("set_spacegroup", &SmallStructure::set_spacegroup, py::arg("order"))
+    .def("check_spacegroup", &SmallStructure::check_spacegroup)
     .def("get_atom_type", &SmallStructure::get_atom_type)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)
     .def("remove_hydrogens", &SmallStructure::remove_hydrogens)
     .def("change_occupancies_to_crystallographic",
          &SmallStructure::change_occupancies_to_crystallographic,
          py::arg("max_dist")=0.4)
-    .def("setup_cell_images", &SmallStructure::setup_cell_images)
     .def("make_cif_block", &make_cif_block_from_small_structure)
     .def("__repr__", [](const SmallStructure& self) {
         return "<gemmi.SmallStructure: " + std::string(self.name) + ">";

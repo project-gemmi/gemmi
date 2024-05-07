@@ -38,13 +38,13 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   for (const char* tag : {"_space_group_symop_operation_xyz",
                           "_symmetry_equiv_pos_as_xyz"}) {
     if (const cif::Column col = block.find_values(tag)) {
-      st.symop_xyz.reserve(col.length());
+      st.symops.reserve(col.length());
       for (const std::string& value : col)
-        st.symop_xyz.push_back(cif::as_string(value));
+        st.symops.push_back(cif::as_string(value));
       break;
     }
   }
-  for (const char* tag : { "_space_group_name_Hall", "_symmetry_space_group_name_Hall"})
+  for (const char* tag : {"_space_group_name_Hall", "_symmetry_space_group_name_Hall"})
     if (const std::string* val = block.find_value(tag))
       st.spacegroup_hall = cif::as_string(*val);
   for (const char* tag : {"_space_group_IT_number", "_symmetry_Int_Tables_number"})
@@ -52,6 +52,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       st.spacegroup_number = cif::as_int(*val, 0);
       break;
     }
+  st.set_spacegroup("SH2");
 
   enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kBiso, kOcc, kDisorderGroup };
   cif::Table atom_table = block.find("_atom_site_",
@@ -123,8 +124,6 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   }
   if (cif::Column w_col = block.find_values("_diffrn_radiation_wavelength"))
     st.wavelength = cif::as_number(w_col.at(0));
-  st.setup_cell_images();
-
   return st;
 }
 

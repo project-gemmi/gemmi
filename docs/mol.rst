@@ -94,9 +94,7 @@ together with the unit cell and symmetry.
     >>> SiC.cell
     <gemmi.UnitCell(4.358, 4.358, 4.358, 90, 90, 90)>
     >>> # content of _symmetry_space_group_name_H-M or _space_group_name_H-M_alt
-    >>> SiC.spacegroup_hm
-    'F -4 3 m'
-    >>> SiC.find_spacegroup()  # based on spacegroup_hm
+    >>> SiC.spacegroup
     <gemmi.SpaceGroup("F -4 3 m")>
     >>> list(SiC.sites)
     [<gemmi.SmallStructure.Site Si1>, <gemmi.SmallStructure.Site C1>]
@@ -173,25 +171,85 @@ Alternatively, the same can be done in two steps:
     >>> SiC = gemmi.make_small_structure_from_block(cif_doc.sole_block())
 
 Now you also have access to the CIF document.
-Let's use it to obtain SpaceGroup from the symmetry operators
-and check if it is consistent with the H-M name.
+
+.. _small_spacegroup:
+
+SmallStructure::spacegroup
+--------------------------
+
+When reading a small-molecule CIF file, a few CIF items that describe
+the space group are read and stored in member variables:
 
 .. doctest::
 
-    >>> op_list = cif_doc[0].find_values('_symmetry_equiv_pos_as_xyz')
-    >>> gops = gemmi.GroupOps([gemmi.Op(o) for o in op_list])
-    >>> gemmi.find_spacegroup_by_ops(gops)
-    <gemmi.SpaceGroup("F -4 3 m")>
-    >>> # find_spacegroup() is based on the H-M name.
-    >>> _ is SiC.find_spacegroup()
-    True
+    >>> st = gemmi.read_small_structure('../tests/2013551.cif')
+    >>> st.symops
+    ['x, y, z', '-y, x-y, z', 'y, x, -z', '-x+y, -x, z', '-x, -x+y, -z', 'x-y, -y, -z', '-x, -y, -z', 'y, -x+y, -z', '-y, -x, z', 'x-y, x, -z', 'x, x-y, z', '-x+y, y, z']
+    >>> st.spacegroup_hall
+    '-P 3 2"'
+    >>> st.spacegroup_hm
+    'P -3 m 1'
+    >>> st.spacegroup_number
+    164
+
+and the function `set_spacegroup("SH2")` is automatically
+run to set `spacegroup`:
+
+.. doctest::
+
+    >>> st.spacegroup
+    <gemmi.SpaceGroup("P -3 m 1")>
+
+`set_spacegroup()` takes one argument, a string in which each character
+specifies what to use for space group determination:
+
+* `S` = symmetry operations stored in `symops`,
+* `H` = Hall symbol from `spacegroup_hall` (we compare symmetry operations
+  encoded in the Hall symbol, not the strings),
+* `1` = H-M symbol; for space groups such as "P n n n" that have two origin
+  choices listed in the International Tables, use *Origin Choice 1*,
+* `2` = H-M symbol, with *Origin Choice 2* where applicable,
+* `N` = the space group number.
+
+The first item that matches one of the 560+ space group settings tabulated
+in Gemmi sets `spacegroup`. To use a different order of items than SH2,
+call set_spacegroup() again:
+
+.. doctest::
+
+    >>> st.set_spacegroup('S1')
+
+Errors such as an incorrect format of the symop triplets or of the Hall
+symbol are silently ignored, and the consistency between different items
+is not checked. That's because this function is run when reading a file;
+throwing an exception at that stage would prevent reading a file.
+We have a separate function to check for errors and inconsistencies.
+It returns a string, one line -- one error:
+
+.. doctest::
+
+    >>> st.check_spacegroup()
+    ''
+
+If the spacegroup setting used in a file is not tabulated in Gemmi,
+you can still create a GroupOps object with symmetry operations:
+
+.. doctest::
+
+    >>> gemmi.GroupOps([gemmi.Op(o) for o in st.symops])  #doctest: +ELLIPSIS
+    <gemmi.GroupOps object at 0x...>
+    >>> # or
+    >>> gemmi.symops_from_hall(st.spacegroup_hall)  #doctest: +ELLIPSIS
+    <gemmi.GroupOps object at 0x...>
 
 In C++ it would be similar, except that the following function
-would be used to make gemmi::GroupOps::
+would be used to make gemmi::GroupOps from symops::
 
     GroupOps split_centering_vectors(const std::vector<Op>& ops)
 
-----
+
+SmallStructure <-> Structure
+----------------------------
 
 If your structure is stored in a macromolecular format (PDB, mmCIF)
 you can read it first as macromolecular :ref:`hierarchy <mcra>`
@@ -209,7 +267,7 @@ You could also create SmallStructure from scratch:
     >>> small = gemmi.SmallStructure()
     >>> small.spacegroup_hm = 'F -4 3 m'
     >>> small.cell = gemmi.UnitCell(4.358, 4.358, 4.358, 90, 90, 90)
-    >>> small.setup_cell_images()
+    >>> small.set_spacegroup("2")
     >>> # add a single atom
     >>> site = gemmi.SmallStructure.Site()
     >>> site.label = 'C1'
