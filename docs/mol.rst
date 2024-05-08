@@ -192,7 +192,7 @@ the space group are read and stored in member variables:
     >>> st.spacegroup_number
     164
 
-and the function `set_spacegroup("SH2")` is automatically
+and the function `set_spacegroup("S.H2")` is automatically
 run to set `spacegroup`:
 
 .. doctest::
@@ -200,8 +200,8 @@ run to set `spacegroup`:
     >>> st.spacegroup
     <gemmi.SpaceGroup("P -3 m 1")>
 
-`set_spacegroup()` takes one argument, a string in which each character
-specifies what to use for space group determination:
+`set_spacegroup()` takes one argument, a string in which characters
+specify what to use, and in what order, for space group determination:
 
 * `S` = symmetry operations stored in `symops`,
 * `H` = Hall symbol from `spacegroup_hall` (we compare symmetry operations
@@ -209,15 +209,25 @@ specifies what to use for space group determination:
 * `1` = H-M symbol; for space groups such as "P n n n" that have two origin
   choices listed in the International Tables, use *Origin Choice 1*,
 * `2` = H-M symbol, with *Origin Choice 2* where applicable,
-* `N` = the space group number.
+* `N` = the space group number,
+* `.` (after S or H) = if the symmetry operations pass sanity checks,
+  stop and use them regardless of whether they correspond to one of
+  the settings tabulated in Gemmi.
 
-The first item that matches one of the 560+ space group settings tabulated
-in Gemmi sets `spacegroup`. To use a different order of items than SH2,
-call set_spacegroup() again:
+If a symbol or operations match one of the 560+ space group settings tabulated
+in Gemmi, `spacegroup` is set to this setting. Otherwise, if `.` is encountered
+and the previous character (`S` or `H`) was evaluated to a valid set of symops,
+it is assumed that these operations were correct: `spacegroup` is left null
+and `cell.images` are set from the list of operations.
+About 350 (out of 500,000+) entries in the COD use such settings.
+Most of them have an unconventional choice of the origin
+(e.g. "P 1 21 1 (a,b,c-1/4)").
+
+To use a different order of items than "S.H2", call set_spacegroup() again:
 
 .. doctest::
 
-    >>> st.set_spacegroup('S1')
+    >>> st.set_spacegroup('H.1')
 
 Errors such as an incorrect format of the symop triplets or of the Hall
 symbol are silently ignored, and the consistency between different items
@@ -248,8 +258,8 @@ would be used to make gemmi::GroupOps from symops::
     GroupOps split_centering_vectors(const std::vector<Op>& ops)
 
 
-SmallStructure <-> Structure
-----------------------------
+without CIF file
+----------------
 
 If your structure is stored in a macromolecular format (PDB, mmCIF)
 you can read it first as macromolecular :ref:`hierarchy <mcra>`

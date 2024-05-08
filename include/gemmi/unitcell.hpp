@@ -335,18 +335,21 @@ struct UnitCell {
     return sg ? is_compatible_with_groupops(sg->operations(), eps) : false;
   }
 
-  void set_cell_images_from_spacegroup(const SpaceGroup* sg) {
+  void set_cell_images_from_groupops(const GroupOps& group_ops) {
     images.clear();
-    cs_count = 0;
-    if (!sg)
-      return;
-    GroupOps group_ops = sg->operations();
     cs_count = (short) group_ops.order() - 1;
     images.reserve(cs_count);
-    for (Op op : group_ops) {
-      if (op == Op::identity())
-        continue;
-      images.push_back(Transform{rot_as_mat33(op), tran_as_vec3(op)});
+    for (Op op : group_ops)
+      if (op != Op::identity())
+        images.push_back(Transform{rot_as_mat33(op), tran_as_vec3(op)});
+  }
+
+  void set_cell_images_from_spacegroup(const SpaceGroup* sg) {
+    if (sg) {
+      set_cell_images_from_groupops(sg->operations());
+    } else {
+      images.clear();
+      cs_count = 0;
     }
   }
 
@@ -356,9 +359,9 @@ struct UnitCell {
       if (!ncs_op.given) {
         // We need it to operates on fractional, not orthogonal coordinates.
         FTransform f = frac.combine(ncs_op.tr.combine(orth));
-        images.emplace_back(f);
+        images.push_back(f);
         for (int i = 0; i < cs_count; ++i)
-          images.emplace_back(images[i].combine(f));
+          images.push_back(images[i].combine(f));
       }
   }
 

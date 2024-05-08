@@ -380,7 +380,7 @@ void print_structure_factors_sm(const gemmi::SmallStructure& small,
   int max_h = int(max_1_d / small.cell.ar);
   int max_k = int(max_1_d / small.cell.br);
   int max_l = int(max_1_d / small.cell.cr);
-  const gemmi::SpaceGroup* sg = small.find_spacegroup();
+  const gemmi::SpaceGroup* sg = small.spacegroup;
   if (!sg)
     sg = &gemmi::get_spacegroup_p1();
   gemmi::ReciprocalAsu asu(sg);

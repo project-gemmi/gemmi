@@ -52,7 +52,7 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
       st.spacegroup_number = cif::as_int(*val, 0);
       break;
     }
-  st.set_spacegroup("SH2");
+  st.set_spacegroup("S.H2");
 
   enum { kLabel, kSymbol, kX, kY, kZ, kUiso, kBiso, kOcc, kDisorderGroup };
   cif::Table atom_table = block.find("_atom_site_",

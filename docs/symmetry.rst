@@ -8,7 +8,7 @@ In C++: `#include <gemmi/symmetry.hpp>` (it's header-only).
 Space group table
 =================
 
-Gemmi tabulates 550+ settings of the 230 crystallographic space groups.
+Gemmi tabulates 560+ settings of the 230 crystallographic space groups.
 Each entry includes:
 
 * `number` -- space group number (1-230),

@@ -19,6 +19,22 @@
 
 namespace gemmi {
 
+inline bool is_complete(const GroupOps& gops) {
+  for (Op op1 : gops.sym_ops)
+    for (Op op2 : gops.sym_ops)
+      if (gops.find_by_rotation((op1 * op2).rot) == nullptr)
+        return false;
+  return true;
+}
+
+inline std::vector<Op> triplets_to_ops(const std::vector<std::string>& symops) {
+  std::vector<Op> ops;
+  ops.reserve(symops.size());
+  for (const std::string& xyz : symops)
+    ops.push_back(parse_triplet(xyz));
+  return ops;
+}
+
 struct SmallStructure {
   struct Site {
     std::string label;
@@ -58,7 +74,7 @@ struct SmallStructure {
   const SpaceGroup* spacegroup = nullptr;
   std::string spacegroup_hm;
   std::string spacegroup_hall;
-  int spacegroup_number;
+  int spacegroup_number = 0;
   std::vector<std::string> symops;
   std::vector<Site> sites;
   std::vector<AtomType> atom_types;
@@ -66,35 +82,34 @@ struct SmallStructure {
 
   std::vector<Site> get_all_unit_cell_sites() const;
 
-  // deprecated, use directly spacegroup
-  const SpaceGroup* find_spacegroup() const { return spacegroup; }
-
-  const SpaceGroup* find_spacegroup_from_symops() const {
-    if (symops.empty())
-      return nullptr;
-    std::vector<Op> ops;
-    ops.reserve(symops.size());
-    for (const std::string& xyz : symops)
-      ops.push_back(parse_triplet(xyz));
-    GroupOps gops = split_centering_vectors(ops);
-    return find_spacegroup_by_ops(gops);
-  }
-
   void set_spacegroup(const char* order) {
     spacegroup = nullptr;
     if (order)
       for (const char* c = order; *c != '\0' && spacegroup == nullptr; ++c) {
         try {
-          spacegroup = get_spacegroup_from(*c);
+          GroupOps gops;
+          spacegroup = get_spacegroup_from(*c, gops);
+          if (!spacegroup && *(c+1) == '.') {
+            // If symops don't correspond to tabulated settings,
+            // we can't set spacegroup, but we can set UnitCell::images.
+            if (gops.order() == (int) symops.size() && is_complete(gops)) {
+              cell.set_cell_images_from_groupops(gops);
+              return;
+            }
+            ++c;
+          }
         } catch (std::exception&) {}
       }
     setup_cell_images();
   }
 
-  const SpaceGroup* get_spacegroup_from(char c) const {
+  const SpaceGroup* get_spacegroup_from(char c, GroupOps& gops) const {
     switch (lower(c)) {
       case 's':
-        return find_spacegroup_from_symops();
+        if (symops.empty())
+          return nullptr;
+        gops = split_centering_vectors(triplets_to_ops(symops));
+        return find_spacegroup_by_ops(gops);
       case 'h':
         if (spacegroup_hall.empty())
           return nullptr;
@@ -119,7 +134,16 @@ struct SmallStructure {
     std::string err;
     if (!symops.empty())
       try {
-        auto sg = find_spacegroup_from_symops();
+        std::vector<Op> ops = triplets_to_ops(symops);
+        for (Op& op : ops)
+          op.wrap();
+        std::sort(ops.begin(), ops.end());
+        GroupOps gops = split_centering_vectors(ops);
+        if (!is_complete(gops))
+          cat_to(err, "symops list is incomplete or incorrect\n");
+        else if (gops.all_ops_sorted() != ops)
+          cat_to(err, "symops list is incorrect or incomplete or redundant\n");
+        auto sg = find_spacegroup_by_ops(gops);
         if (!sg)
           cat_to(err, "space group from symops not found in the table\n");
         else if (sg != spacegroup)
@@ -182,7 +206,7 @@ struct SmallStructure {
   }
 
   void setup_cell_images() {
-    cell.set_cell_images_from_spacegroup(find_spacegroup());
+    cell.set_cell_images_from_spacegroup(spacegroup);
   }
 };
 
