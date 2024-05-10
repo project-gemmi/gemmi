@@ -192,13 +192,13 @@ void print_short_info(const gemmi::Model& model, OptParser& p) {
         if (p.options[Label])
           col = printf("%s (%s) %-11s", chain.name.c_str(), res.subchain.c_str(), etype);
         else
-          col = printf("%-3s %-11s ", chain.name.c_str(), etype);
+          col = printf("%-4s %-11s ", chain.name.c_str(), etype);
         counter = 0;
         prev = res.entity_type;
       }
       if (short_level == 1) {
         if (counter == kWrap) {
-          printf("\n                  ");
+          printf("\n                 ");
           counter = 0;
         }
         printf(" %5s%c %-3s",
@@ -276,7 +276,7 @@ void print_entity_info(const gemmi::Structure& st) {
                sub.c_str(), strand->second.c_str(), length);
         if (!polymer.empty()) {
           printf(": %s-%s", polymer.front().label_seq.str().c_str(),
-                              polymer.back().label_seq.str().c_str());
+                            polymer.back().label_seq.str().c_str());
           if (!gaps.empty()) {
             printf(" except");
             for (std::pair<int, int> gap : gaps) {
@@ -287,6 +287,8 @@ void print_entity_info(const gemmi::Structure& st) {
           }
         }
         putchar('\n');
+        if (!ent.sifts_unp_acc.empty())
+          printf("    SIFTS mapping: %s\n", gemmi::join_str(ent.sifts_unp_acc, ' ').c_str());
       }
     }
   printf("Others\n");
