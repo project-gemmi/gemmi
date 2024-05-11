@@ -429,6 +429,22 @@ It is not obvious how to name the new chains that are added.
 We have two options: either new names are generated (`=new`) or
 the chain names are not changed but distinct segment IDs are added (`=dup`).
 
+The `--sifts-num` option changes sequence IDs to the corresponding sequence
+positions from UniProt. The mapping between PDB and UniProt is based on
+SIFTS (not DBREF) :ref:`annotations in mmCIF files <dbref>`.
+Currently, these annotations are present only in the PDB NextGen Archive
+and in PDBe "updated" files.
+Most PDB chains are mapped to a single UniProt entry.
+For chimeric chains that correspond to 2+ UniProt sequences,
+we default to selecting the sequence with more corresponding residues.
+This default can be overridden by explicitly specifying the preferred
+UniProtKB identifiers (usually just one AC, but it's possible to specify
+multiple comma-separated ACs, in the order of preference).
+To avoid clashes in sequence IDs, and also to indicate which IDs are based
+on UniProt mapping, the non-mapped sequence numbers are increased by
+an offset of 5000 (this default value is inspired by PDBrenum)
+or bigger if necessary (when UniProt positions are that large).
+
 tags
 ====
 

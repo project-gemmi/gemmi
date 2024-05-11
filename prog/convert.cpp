@@ -121,8 +121,9 @@ const option::Descriptor Usage[] = {
   { SetSeq, 0, "s", "", Arg::Required,
     "  -s FILE  \tUse sequence(s) from FILE in PIR or FASTA format. Each chain"
     " is assigned the best matching sequence, if any." },
-  { SiftsNum, 0, "", "sifts-num", Arg::None,
-    "  --sifts-num  \tUse SIFTS-mapped position in UniProt sequence as sequence ID." },
+  { SiftsNum, 0, "", "sifts-num", Arg::Optional,
+    "  --sifts-num[=AC]  \tSet sequence ID to SIFTS-mapped UniProt positions."
+    " In chimeric chains use AC. Adds 5000 to other seqnums." },
   { Biso, 0, "B", "", Arg::Required,
     "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or change values "
       "out of given range to MIN/MAX." },
@@ -185,6 +186,68 @@ std::string read_whole_file(std::istream& stream) {
     out.append(buffer, stream.gcount());
   }
   return out;
+}
+
+std::uint8_t select_acc_index(const std::vector<std::string>& acc, // Entity::sifts_unp_acc
+                              const gemmi::ConstResidueSpan& polymer,
+                              const std::vector<std::string>& preferred_acs) {
+  if (acc.size() < 2)
+    return 0;
+  for (const std::string& pa : preferred_acs) {
+    auto it = std::find(acc.begin(), acc.end(), pa);
+    if (it != acc.end())
+      return std::uint8_t(it - acc.begin());
+  }
+  // return SIFTS mapping with most residues
+  std::vector<int> counts(acc.size(), 0);
+  for (const gemmi::Residue& res : polymer)
+    if (res.sifts_unp.res && res.sifts_unp.acc_index < acc.size())
+      ++counts[res.sifts_unp.acc_index];
+  auto max_el = std::max_element(counts.begin(), counts.end());
+  return std::uint8_t(max_el - counts.begin());
+}
+
+// Set seqid corresponding to one UniProt sequence.
+// Other residues have seqid changed to avoid conflicts.
+void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferred_acs) {
+  bool first_model = true;
+  std::map<gemmi::SeqId, gemmi::SeqId> seqid_map;
+  for (gemmi::Model& model: st.models)
+    for (gemmi::Chain& chain : model.chains) {
+      seqid_map.clear();
+      auto polymer = chain.get_polymer();
+      gemmi::Entity* ent = st.get_entity_of(polymer);
+      std::uint8_t acc_index = 0;
+      if (ent)
+        acc_index = select_acc_index(ent->sifts_unp_acc, polymer, preferred_acs);
+      std::uint16_t offset = 4950;
+      for (gemmi::Residue& res : chain.residues) {
+        if (res.sifts_unp.res && res.sifts_unp.acc_index == acc_index) {
+          if (!ent || res.entity_id != ent->name)
+            gemmi::fail("SIFTS ooops"); // XXX remove it after testing
+          gemmi::SeqId new_seqid(res.sifts_unp.num, ' ');
+          seqid_map.emplace(res.seqid, new_seqid);
+          res.seqid = new_seqid;
+          offset = std::max(offset, res.sifts_unp.num);
+        }
+      }
+      offset = (offset + 50) / 1000 * 1000;  // always >= 5000
+      for (gemmi::Residue& res : chain.residues)
+        if (!res.sifts_unp.res || res.sifts_unp.acc_index != acc_index)
+          res.seqid.num += offset;
+      if (first_model) {
+        gemmi::process_addresses(st, [&](gemmi::AtomAddress& aa) {
+            if (aa.chain_name == chain.name) {
+              auto it = seqid_map.find(aa.res_id.seqid);
+              if (it != seqid_map.end())
+                aa.res_id.seqid = it->second;
+              else
+                aa.res_id.seqid.num += offset;
+            }
+        });
+        first_model = false;
+      }
+    }
 }
 
 void convert(gemmi::Structure& st,
@@ -304,39 +367,19 @@ void convert(gemmi::Structure& st,
     }
   }
 
-  if (options[SiftsNum]) {
-    // Currently, we change seqid only for residues _pdbx_sifts_xref_db.unp_num
-    // set, and leave seqid for other residues.
-    // A more robust method would be to re-assign the whole polymer always when
-    // nup_num is set for any residue. This would mean:
-    // using insertion codes for insertions (up to 26 residues),
-    // renumbering ligands and waters if needed, and
-    // failing if we get duplicated seqid (multiple mappings for one chain).
-    bool changed = false;
-    for (gemmi::Model& model: st.models)
-      for (gemmi::Chain& chain : model.chains) {
-        const gemmi::Residue* prev_res = nullptr;
-        bool wrong_order = false;
-        for (gemmi::Residue& res : chain.residues) {
-          if (res.sifts_unp.res) {
-            res.seqid = gemmi::SeqId(res.sifts_unp.num, ' ');
-            if (prev_res && !(prev_res->seqid < res.seqid))
-              wrong_order = true;
-            changed = true;
-          }
-          prev_res = &res;
-        }
-        if (wrong_order) {
-          std::cerr << "WARNING: new sequence IDs are in wrong order in chain "
-                    << chain.name;
-          if (st.models.size() > 1)
-            std::cerr << " (model " << model.name << ')';
-          std::cerr << std::endl;
-        }
-      }
-    if (options[Verbose] && !changed)
-      std::cerr << "Option --sifts-num had no effect, "
-                   "it works only with _pdbx_sifts_xref_db.unp_num." << std::endl;
+  if (const option::Option* opt = options[SiftsNum]) {
+    if (std::all_of(st.entities.begin(), st.entities.end(),
+                    [](const gemmi::Entity& ent) { return ent.sifts_unp_acc.empty(); }))
+      gemmi::fail("--sifts-num failed: SIFTS annotation not found in the file.\n"
+                  "Check if tags such as _pdbx_sifts_xref_db.unp_num are present.");
+    std::vector<std::string> preferred_acs;
+    if (opt->arg) {
+      gemmi::split_str_into(opt->arg, ',', preferred_acs);
+      for (const std::string& ac : preferred_acs)
+        if (ac.size() < 6 || ac[0] < 'A' || ac[0] > 'Z' || ac[1] < '0' || ac[1] > '9')
+          gemmi::fail(ac + " is not in UniProtKB AC format, from: " + opt->name);
+    }
+    to_sifts_num(st, preferred_acs);
   }
 
   HowToNameCopiedChain how = HowToNameCopiedChain::AddNumber;
