@@ -265,7 +265,7 @@ void convert(gemmi::Structure& st,
     std::string new_name(sep+1);
     if (options[Verbose])
       std::cerr << "Renaming " << old_name << " to " << new_name << std::endl;
-    gemmi::change_ccd_code(st, old_name, new_name);
+    gemmi::rename_residues(st, old_name, new_name);
   }
 
   if (options[AssignRecords])

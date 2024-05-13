@@ -111,6 +111,11 @@ inline void assign_serial_numbers(Structure& st, bool numbered_ter=false) {
 }
 
 
+/// Helper function for processing (usually: changing) names and numbers
+/// in AtomAddress instances in metadata:
+/// Connection, CisPep, Helix, Sheet::Strand.
+/// Other fields are not updated here, in particular: ModRes, Entity::DbRef,
+/// Entity::full_sequence, TlsGroup::Selection.
 template<typename Func>
 void process_addresses(Structure& st, Func func) {
   for (Connection& con : st.connections) {
@@ -134,23 +139,52 @@ void process_addresses(Structure& st, Func func) {
     }
 }
 
-
 inline void rename_chain(Structure& st, const std::string& old_name,
                                         const std::string& new_name) {
-  process_addresses(st, [&](AtomAddress& aa) {
-      if (aa.chain_name == old_name)
-        aa.chain_name = new_name;
-  });
+  auto update = [&](std::string& name) {
+    if (name == old_name)
+      name = new_name;
+  };
+  process_addresses(st, [&](AtomAddress& aa) { update(aa.chain_name); });
+  for (ModRes& modres : st.mod_residues)
+    update(modres.chain_name);
   for (RefinementInfo& ri : st.meta.refinement)
     for (TlsGroup& tls : ri.tls_groups)
       for (TlsGroup::Selection& sel : tls.selections)
-        if (sel.chain == old_name)
-          sel.chain = new_name;
+        update(sel.chain);
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
-      if (chain.name == old_name)
-        chain.name = new_name;
+      update(chain.name);
 }
+
+inline void rename_residues(Structure& st, const std::string& old_name,
+                                           const std::string& new_name) {
+  auto update = [&](ResidueId& rid) {
+    if (rid.name == old_name)
+      rid.name = new_name;
+  };
+  process_addresses(st, [&](AtomAddress& aa) { update(aa.res_id); });
+  for (ModRes& modres : st.mod_residues)
+    update(modres.res_id);
+  for (Entity& ent : st.entities)
+    for (std::string& mon_ids : ent.full_sequence)
+      for (size_t start = 0;;) {
+        size_t end = mon_ids.find(',', start);
+        if (mon_ids.compare(start, end-start, old_name) == 0) {
+          mon_ids.replace(start, end-start, new_name);
+          if (end != std::string::npos)
+            end = start + new_name.size();
+        }
+        if (end == std::string::npos)
+          break;
+        start = end + 1;
+      }
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        update(res);
+}
+
 
 inline void rename_atom_names(Structure& st, const std::string& res_name,
                               const std::map<std::string, std::string>& old_new) {

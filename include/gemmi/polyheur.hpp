@@ -191,16 +191,8 @@ inline void trim_to_alanine(Chain& chain) {
 
 // Functions for switching between long (>3 chars) residue names (CCD codes)
 // and shortened ones that are compatible with the PDB format.
-GEMMI_DLL
-void change_ccd_code(Structure& st, const std::string& old, const std::string& new_);
-
 GEMMI_DLL void shorten_ccd_codes(Structure& st);
-
-inline void restore_full_ccd_codes(Structure& st) {
-  for (const auto& item : st.shortened_ccd_codes)
-    change_ccd_code(st, item.second, item.first);
-  st.shortened_ccd_codes.clear();
-}
+GEMMI_DLL void restore_full_ccd_codes(Structure& st);
 
 } // namespace gemmi
 #endif

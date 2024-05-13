@@ -2,6 +2,7 @@
 
 #include <gemmi/polyheur.hpp>
 #include <gemmi/resinfo.hpp>   // for find_tabulated_residue
+#include <gemmi/modify.hpp>   // for rename_residues
 
 namespace gemmi {
 
@@ -328,51 +329,6 @@ bool trim_to_alanine(Residue& res) {
   return true;
 }
 
-void change_ccd_code(Structure& st, const std::string& old, const std::string& new_) {
-  auto process = [&](ResidueId& rid) {
-    if (rid.name == old)
-      rid.name = new_;
-  };
-  for (Model& model : st.models)
-    for (Chain& chain : model.chains)
-      for (Residue& res : chain.residues)
-        process(res);
-  for (Entity& ent : st.entities)
-    for (std::string& mon_ids : ent.full_sequence)
-      for (size_t start = 0;;) {
-        size_t end = mon_ids.find(',', start);
-        if (mon_ids.compare(start, end-start, old) == 0) {
-          mon_ids.replace(start, end-start, new_);
-          if (end != std::string::npos)
-            end = start + new_.size();
-        }
-        if (end == std::string::npos)
-          break;
-        start = end + 1;
-      }
-  for (Connection& conn : st.connections) {
-    process(conn.partner1.res_id);
-    process(conn.partner2.res_id);
-  }
-  for (CisPep& cispep : st.cispeps) {
-    process(cispep.partner_c.res_id);
-    process(cispep.partner_n.res_id);
-  }
-  for (ModRes& modres : st.mod_residues)
-    process(modres.res_id);
-  for (Helix& helix : st.helices) {
-    process(helix.start.res_id);
-    process(helix.end.res_id);
-  }
-  for (Sheet& sheet : st.sheets)
-    for (Sheet::Strand& strand : sheet.strands) {
-      process(strand.start.res_id);
-      process(strand.end.res_id);
-      process(strand.hbond_atom2.res_id);
-      process(strand.hbond_atom1.res_id);
-    }
-}
-
 template <size_t I, typename T1, typename T2>
 bool in_vector_at(T1& x, std::vector<T2>& v) {
   for (const auto& el : v)
@@ -410,7 +366,7 @@ void shorten_ccd_codes(Structure& st) {
     if (!in_vector_at<1>(short_code, st.shortened_ccd_codes))
       old_new.second = short_code;
   }
-  // pick a new residue name and call change_ccd_code()
+  // pick a new residue name and call rename_residues()
   int i = -1;
   for (auto& old_new : st.shortened_ccd_codes) {
     // If ~DE was not unique, use ~00, ~01, ...
@@ -421,8 +377,15 @@ void shorten_ccd_codes(Structure& st) {
       if (!in_vector_at<1>(short_code, st.shortened_ccd_codes))
         old_new.second = short_code;
     }
-    change_ccd_code(st, old_new.first, old_new.second);
+    rename_residues(st, old_new.first, old_new.second);
   }
 }
+
+void restore_full_ccd_codes(Structure& st) {
+  for (const auto& item : st.shortened_ccd_codes)
+    rename_residues(st, item.second, item.first);
+  st.shortened_ccd_codes.clear();
+}
+
 
 } // namespace gemmi
