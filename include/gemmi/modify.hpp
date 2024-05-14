@@ -139,6 +139,22 @@ void process_addresses(Structure& st, Func func) {
     }
 }
 
+/// Takes func(const std::string& chain_name, gemmi::SeqId& seqid).
+/// It doesn't process Entity::DbRef::seq_begin/seq_end (b/c there is no
+/// single corresponding chain name).
+template<typename Func>
+void process_sequence_ids(Structure& st, Func func) {
+  process_addresses(st, [&](AtomAddress& aa) { func(aa.chain_name, aa.res_id.seqid); });
+  for (ModRes& modres : st.mod_residues)
+    func(modres.chain_name, modres.res_id.seqid);
+  for (RefinementInfo& ri : st.meta.refinement)
+    for (TlsGroup& tls : ri.tls_groups)
+      for (TlsGroup::Selection& sel : tls.selections) {
+        func(sel.chain, sel.res_begin);
+        func(sel.chain, sel.res_end);
+      }
+}
+
 inline void rename_chain(Structure& st, const std::string& old_name,
                                         const std::string& new_name) {
   auto update = [&](std::string& name) {

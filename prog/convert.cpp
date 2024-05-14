@@ -210,11 +210,11 @@ std::uint8_t select_acc_index(const std::vector<std::string>& acc, // Entity::si
 // Set seqid corresponding to one UniProt sequence.
 // Other residues have seqid changed to avoid conflicts.
 void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferred_acs) {
+  using Key = std::pair<std::string, gemmi::SeqId>;
+  std::map<Key, gemmi::SeqId> seqid_map;
   bool first_model = true;
-  std::map<gemmi::SeqId, gemmi::SeqId> seqid_map;
-  for (gemmi::Model& model: st.models)
+  for (gemmi::Model& model: st.models) {
     for (gemmi::Chain& chain : model.chains) {
-      seqid_map.clear();
       auto polymer = chain.get_polymer();
       gemmi::Entity* ent = st.get_entity_of(polymer);
       std::uint8_t acc_index = 0;
@@ -223,31 +223,39 @@ void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferre
       std::uint16_t offset = 4950;
       for (gemmi::Residue& res : chain.residues) {
         if (res.sifts_unp.res && res.sifts_unp.acc_index == acc_index) {
-          if (!ent || res.entity_id != ent->name)
-            gemmi::fail("SIFTS ooops"); // XXX remove it after testing
+          // assert(ent && res.entity_id == ent->name);
           gemmi::SeqId new_seqid(res.sifts_unp.num, ' ');
-          seqid_map.emplace(res.seqid, new_seqid);
+          if (first_model)
+            seqid_map.emplace(std::make_pair(chain.name, res.seqid), new_seqid);
           res.seqid = new_seqid;
           offset = std::max(offset, res.sifts_unp.num);
         }
       }
       offset = (offset + 50) / 1000 * 1000;  // always >= 5000
       for (gemmi::Residue& res : chain.residues)
-        if (!res.sifts_unp.res || res.sifts_unp.acc_index != acc_index)
+        if (!res.sifts_unp.res || res.sifts_unp.acc_index != acc_index) {
+          gemmi::SeqId orig_seqid = res.seqid;
           res.seqid.num += offset;
-      if (first_model) {
-        gemmi::process_addresses(st, [&](gemmi::AtomAddress& aa) {
-            if (aa.chain_name == chain.name) {
-              auto it = seqid_map.find(aa.res_id.seqid);
-              if (it != seqid_map.end())
-                aa.res_id.seqid = it->second;
-              else
-                aa.res_id.seqid.num += offset;
-            }
-        });
-        first_model = false;
-      }
+          if (first_model)
+            seqid_map.emplace(std::make_pair(chain.name, orig_seqid), res.seqid);
+        }
     }
+    first_model = false;
+  }
+
+  auto update_seqid = [&](const std::string& chain_name, gemmi::SeqId& seqid) {
+    auto it = seqid_map.find(std::make_pair(chain_name, seqid));
+    if (it != seqid_map.end())
+      seqid = it->second;
+    else
+      seqid.num = gemmi::SeqId::OptionalNum();
+  };
+  process_sequence_ids(st, update_seqid);
+  // Just remove outdated DbRef::seq_*; it is needed when writing a PDB file,
+  // but if it's absent, it's determined from DbRef::label_seq_*.
+  for (gemmi::Entity& ent : st.entities)
+    for (gemmi::Entity::DbRef& dbref : ent.dbrefs)
+      dbref.seq_begin = dbref.seq_end = gemmi::SeqId();
 }
 
 void convert(gemmi::Structure& st,
