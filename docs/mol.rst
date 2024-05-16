@@ -2765,6 +2765,8 @@ In Python, `Model` has also methods for often needed calculations:
   <gemmi.Position(-5.7572, 16.4099, 2.88299)>
   >>> model.has_hydrogen()
   False
+  >>> model.calculate_b_iso_range()
+  (7.670000076293945, 46.880001068115234)
 
 The first two function can take a :ref:`Selection <selections>`
 as an argument. For example, we can count sulfur atoms with:
