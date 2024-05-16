@@ -814,6 +814,8 @@ Structure make_structure_from_block(const cif::Block& block_) {
         ent.polymer_type = polymer_type_from_string(poly_type);
       } catch (std::runtime_error&) {}
     }
+    // _entity_poly_seq is supposed to reflect heterogeneities in _atom_site.
+    ent.reflects_microhetero = true;
     st.entities.push_back(ent);
   }
 
@@ -825,7 +827,7 @@ Structure make_structure_from_block(const cif::Block& block_) {
       if (pos == (int) ent->full_sequence.size())
         ent->full_sequence.push_back(row.str(2));
       else if (pos >= 0 && pos < (int) ent->full_sequence.size())
-        ent->full_sequence[pos] += "," + row.str(2);
+        cat_to(ent->full_sequence[pos], ',', row.str(2));
     }
 
   cif::Table struct_ref = block.find("_struct_ref.",

@@ -234,6 +234,8 @@ struct Entity {
   std::vector<std::string> subchains;
   EntityType entity_type = EntityType::Unknown;
   PolymerType polymer_type = PolymerType::Unknown;
+  // In case of microheterogeneity, PDB SEQRES has only the first residue name.
+  bool reflects_microhetero = false;
   std::vector<DbRef> dbrefs;
   /// List of SIFTS Uniprot ACs referenced by SiftsUnpResidue::acc_index
   std::vector<std::string> sifts_unp_acc;

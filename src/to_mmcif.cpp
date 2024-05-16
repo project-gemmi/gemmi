@@ -1106,23 +1106,25 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.entity_poly_seq) {
-    // SEQRES from PDB doesn't record microheterogeneity, so if the resulting
-    // cif has unknown("?") _entity_poly_seq.num, it cannot be trusted.
     cif::Loop& poly_loop = block.init_mmcif_loop("_entity_poly_seq.",
-                                           {"entity_id", "num", "mon_id"});
+                                     {"entity_id", "num", "mon_id", "hetero"});
     for (const Entity& ent : st.entities)
-      if (ent.entity_type == EntityType::Polymer)
+      if (ent.entity_type == EntityType::Polymer) {
+        // SEQRES from PDB doesn't record microheterogeneity.
+        std::string hetero_no = ent.reflects_microhetero ? "n" : "?";
         for (size_t i = 0; i != ent.full_sequence.size(); ++i) {
           const std::string& mon_ids = ent.full_sequence[i];
           std::string num = std::to_string(i+1);
           size_t start = 0, end;
           while ((end = mon_ids.find(',', start)) != std::string::npos) {
             poly_loop.add_row({qchain(ent.name), num,
-                               mon_ids.substr(start, end-start)});
+                               mon_ids.substr(start, end-start), "y"});
             start = end + 1;
           }
-          poly_loop.add_row({qchain(ent.name), num, mon_ids.substr(start)});
+          poly_loop.add_row({qchain(ent.name), num, mon_ids.substr(start),
+                             start == 0 ? hetero_no : "y"});
         }
+      }
   }
 
   if (groups.atoms)
