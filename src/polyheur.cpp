@@ -387,5 +387,40 @@ void restore_full_ccd_codes(Structure& st) {
   st.shortened_ccd_codes.clear();
 }
 
+// Unlike _entity_poly_seq, SEQRES doesn't contain alternative residue names.
+// This function adds the alternative names to full_sequence.
+void add_microhetero_to_sequence(Entity& ent, ConstResidueSpan polymer) {
+  ent.reflects_microhetero = false;
+  int max_n = -1;  // max label_seq seen so far
+  for (const Residue& res : polymer) {
+    int n = *res.label_seq;
+    if (size_t(n-1) > ent.full_sequence.size())
+      return;
+    std::string& seq_item = ent.full_sequence[n-1];
+    if (n > max_n) {
+      if (!is_in_list(res.name, seq_item))
+        return;
+      max_n = n;
+    } else {  // n < max_n shouldn't happen
+      if (!is_in_list(res.name, seq_item))
+        cat_to(seq_item, ',', res.name);
+    }
+  }
+  ent.reflects_microhetero = true;
+}
+
+void add_microhetero_to_sequences(Structure& st, bool overwrite) {
+  if (st.models.empty())
+    return;
+  for (Entity& ent : st.entities) {
+    if (ent.subchains.empty())
+      continue;
+    ConstResidueSpan polymer = st.models[0].get_subchain(ent.subchains[0]);
+    if (!polymer || !polymer.front().label_seq)
+      continue;
+    if (overwrite || !ent.reflects_microhetero)
+      add_microhetero_to_sequence(ent, polymer);
+  }
+}
 
 } // namespace gemmi

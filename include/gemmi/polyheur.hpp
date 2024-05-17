@@ -194,5 +194,8 @@ inline void trim_to_alanine(Chain& chain) {
 GEMMI_DLL void shorten_ccd_codes(Structure& st);
 GEMMI_DLL void restore_full_ccd_codes(Structure& st);
 
+/// Modifies Entity::full_sequence. Uses only the first chain for each Entity.
+GEMMI_DLL void add_microhetero_to_sequences(Structure& st, bool overwrite=false);
+
 } // namespace gemmi
 #endif

@@ -279,10 +279,16 @@ void convert(gemmi::Structure& st,
   if (options[AssignRecords])
     // avoid using initial ATOM/HETATM in setup_entities()
     gemmi::assign_het_flags(st, '\0');
-  gemmi::setup_entities(st);
+  // gemmi::setup_entities(st) with postponed deduplicate_entities()
+  gemmi::add_entity_types(st, /*overwrite=*/false);
+  assign_subchains(st, /*force=*/false);
+  ensure_entities(st);
+  // call deduplicate_entities() after add_microhetero_to_sequences()
   if (st.input_format == CoorFormat::Pdb) {
-    if (!options[SetSeq])
+    if (!options[SetSeq]) {
       gemmi::assign_label_seq_id(st, options[ForceLabel]);
+      gemmi::add_microhetero_to_sequences(st);
+    }
     if (!options[CopyRemarks])
       st.raw_remarks.clear();
   } else {
@@ -365,8 +371,8 @@ void convert(gemmi::Structure& st,
       std::cerr << fasta_sequences.size() << " sequence(s) was read..." << std::endl;
     gemmi::clear_sequences(st);
     gemmi::assign_best_sequences(st, fasta_sequences);
-    gemmi::deduplicate_entities(st);
     gemmi::assign_label_seq_id(st, options[ForceLabel]);
+    gemmi::add_microhetero_to_sequences(st);
     for (gemmi::Entity& ent : st.entities) {
       if (ent.entity_type == gemmi::EntityType::Polymer && ent.full_sequence.empty())
         std::cerr << "No sequence found for "
@@ -374,6 +380,8 @@ void convert(gemmi::Structure& st,
                   << " (" << gemmi::join_str(ent.subchains, ',') << ')' << std::endl;
     }
   }
+  // call it after add_microhetero_to_sequences()
+  gemmi::deduplicate_entities(st);
 
   if (const option::Option* opt = options[SiftsNum]) {
     if (std::all_of(st.entities.begin(), st.entities.end(),
