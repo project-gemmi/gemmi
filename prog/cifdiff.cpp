@@ -3,6 +3,7 @@
 #include <cstdio>   // for printf, fprintf
 #include <algorithm>  // for find
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
+#include "gemmi/pdb_id.hpp"  // for expand_if_pdb_code
 
 #define GEMMI_PROG cifdiff
 #include "options.h"
@@ -73,7 +74,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     // Starting like an unified diff (with "--- ") enables colordiff.
     printf("%sReading %s\n", one_file ? "" : "--- ", path1);
-    cif::Document doc1 = gemmi::read_cif_or_mmjson_gz(path1);
+    cif::Document doc1 = gemmi::read_cif_or_mmjson_gz(gemmi::expand_if_pdb_code(path1));
     cif::Block* b1 = &doc1.blocks.at(0);
     // NoComparison mode is implemented as comparing Block with itself
     // (inefficient, but simple).
@@ -81,7 +82,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     cif::Block* b2 = b1;
     if (!one_file) {
       printf("+++ Reading %s\n", path2);
-      doc2 = gemmi::read_cif_or_mmjson_gz(path2);
+      doc2 = gemmi::read_cif_or_mmjson_gz(gemmi::expand_if_pdb_code(path2));
       b2 = &doc2.blocks.at(0);
     }
     if (b1->name == b2->name) {
