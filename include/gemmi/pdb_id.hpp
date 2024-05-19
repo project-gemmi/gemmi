@@ -13,11 +13,17 @@
 
 namespace gemmi {
 
+inline bool all_alnums(const char* p) {
+  for (;;++p)
+    if (!std::isalnum(*p))
+      return *p == '\0';
+  unreachable();
+}
+
 inline bool is_pdb_code(const std::string& str) {
-  return (str.length() == 4 && std::isdigit(str[0]) && std::isalnum(str[1])
-                            && std::isalnum(str[2]) && std::isalnum(str[3]))
+  return (str.length() == 4 && std::isdigit(str[0]) && all_alnums(&str[1]))
       || (str.length() == 12 && str.compare(0, 4, "pdb_") == 0
-                             && std::isdigit(str[4]));
+                             && std::isdigit(str[4]) && all_alnums(&str[5]));
 }
 
 /// Call it after checking the code with gemmi::is_pdb_code(code).
