@@ -8,5 +8,6 @@ First block only.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
   -v, --verbose  Verbose output.
+  -t TAG         Compare values of TAG.
   -q             Print only categories.
   -n             No comparison, just list categories and tags.

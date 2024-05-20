@@ -13,7 +13,7 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  OnlyCategories=4, NoComparison,
+  Tag=4, OnlyCategories, NoComparison,
 };
 
 const option::Descriptor Usage[] = {
@@ -26,6 +26,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Tag, 0, "t", "", Arg::Required,
+    "  -t TAG \tCompare values of TAG." },
   { OnlyCategories, 0, "q", "", Arg::None,
     "  -q  \tPrint only categories." },
   { NoComparison, 0, "n", "", Arg::None,
@@ -61,11 +63,44 @@ Diff make_diff(const T& a, const T& b) {
   return diff;
 }
 
+void compare_tag_values(cif::Block& b1, cif::Block& b2, const std::string& tag) {
+  printf("  checking %s ...\n", tag.c_str());
+  auto col1 = b1.find_values(tag);
+  auto col2 = b2.find_values(tag);
+  if (!col1 || !col2) {
+    if (!col1)
+      std::printf("    NOT FOUND in file 1 block %s\n", b1.name.c_str());
+    if (!col2)
+      std::printf("    NOT FOUND in file 2 block %s\n", b2.name.c_str());
+    return;
+  }
+  int n1 = col1.length();
+  int n2 = col2.length();
+  int n = std::min(n1, n2);
+  if (n1 != n2) {
+    std::printf("-   number of values: %d\n", n1);
+    std::printf("+   number of values: %d\n", n2);
+    printf("  comparing the first %d values...\n", n);
+  }
+  int diff_count = 0;
+  for (int i = 0; i < n; ++i)
+    if (col1[i] != col2[i] && col1.str(i) != col2.str(i) && diff_count++ < 4) {
+      std::printf("-   value %d: %s\n", i, col1[i].c_str());
+      std::printf("+   value %d: %s\n", i, col2[i].c_str());
+    }
+  if (diff_count >= 4)
+    printf("    ...\n"
+           "  %d of %d values differ\n", diff_count, n);
+  else if (diff_count == 0)
+    printf("  %d identical values\n", n);
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
+  p.check_exclusive_pair(Tag, NoComparison);
   bool one_file = p.options[NoComparison];
   p.require_positional_args(one_file ? 1 : 2);
   const char* path1 = p.nonOption(0);
@@ -90,6 +125,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     } else {
       printf("- block name: %s\n", b1->name.c_str());
       printf("+ block name: %s\n", b2->name.c_str());
+    }
+    if (p.options[Tag]) {
+      for (const option::Option* opt = p.options[Tag]; opt; opt = opt->next())
+        compare_tag_values(*b1, *b2, opt->arg);
+      return 0;
     }
     Diff category_diff = make_diff(b1->get_mmcif_category_names(),
                                    b2->get_mmcif_category_names());
