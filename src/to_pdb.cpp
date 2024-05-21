@@ -240,8 +240,7 @@ void write_chain_atoms(const Chain& chain, std::ostream& os,
       // 79-80  2s  charge
       int written_bytes = snprintf_z(buf, 82,
             "%-6s%5s %-4.4s%c%3.3s"
-            "%2s%5s   %8.3f%8.3f%8.3f"
-            "%6.2f%6.2f      %-4.4s%2s%c%c",
+            "%2s%5s   %8.3f%8.3f%8.3f",
             as_het ? "HETATM" : "ATOM",
             encode_serial_in_hybrid36(serial).data(),
             a.padded_name().c_str(),
@@ -253,7 +252,19 @@ void write_chain_atoms(const Chain& chain, std::ostream& os,
             // if they originally had one digit more and that digit was 5.
             a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
             a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
-            a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10,
+            a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10);
+      if GEMMI_UNLIKELY(written_bytes > 54) {
+        // The only items expected to overflow above are the coordinates,
+        // if the integer part of the number exceeds 5 characters.
+        // This happens when something goes wrong and the model is far from
+        // the origin. Such a model should be shifted; it can't be written it
+        // in a spec-conforming format: Real(8.3). Here we overwrite the last
+        // digits - trimming is better than overflowing the line.
+        snprintf_z(buf+38, 82-38, "%8.3f", a.pos.y);
+        snprintf_z(buf+46, 82-46, "%8.3f", a.pos.z);
+      }
+      snprintf_z(buf+54, 82-54,
+            "%6.2f%6.2f      %-4.4s%2s%c%c",
             // Occupancy is stored as single prec, but we know it's <= 1,
             // so no precision is lost even if it had 6 digits after dot.
             a.occ + 1e-6,
@@ -267,24 +278,6 @@ void write_chain_atoms(const Chain& chain, std::ostream& os,
             // Sometimes PDB files have explicit 0s (5M05); we ignore them.
             a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
             a.charge ? a.charge > 0 ? '+' : '-' : ' ');
-      if GEMMI_UNLIKELY(written_bytes > 80) {
-        // The only items expected to overflow above are the coordinates,
-        // if the integer part of the number exceeds 5 characters.
-        // This happens when something goes wrong and the model is far from
-        // the origin. Such a model should be shifted; it can't be written it
-        // in a spec-conforming format: Real(8.3). Here we overwrite the last
-        // digits - trimming is better than overflowing the line.
-        snprintf_z(buf+38, 82-38, "%8.3f", a.pos.y);
-        snprintf_z(buf+46, 82-46, "%8.3f", a.pos.z);
-        snprintf_z(buf+54, 82-54,
-            "%6.2f%6.2f      %-4.4s%2s%c%c",
-            a.occ + 1e-6,
-            std::min(a.b_iso + 0.5e-5, 999.99),
-            res.segment.c_str(),
-            a.element.uname(),
-            a.charge ? a.charge > 0 ? '0'+a.charge : '0'-a.charge : ' ',
-            a.charge ? a.charge > 0 ? '+' : '-' : ' ');
-      }
       buf[80] = '\n';
       os.write(buf, 81);
       if (a.aniso.nonzero()) {
