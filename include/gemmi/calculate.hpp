@@ -6,6 +6,7 @@
 #define GEMMI_CALCULATE_HPP_
 
 #include <array>
+#include <algorithm>  // for std::min, std::minmax
 #include "model.hpp"
 
 namespace gemmi {
@@ -72,6 +73,28 @@ template<class T> std::pair<float,float> calculate_b_iso_range(const T& obj) {
 template<> inline std::pair<float,float> calculate_b_iso_range(const Atom& atom) {
   return {atom.b_iso, atom.b_iso};
 }
+
+/// uses min/max eigenvalues of Baniso, or Biso if B-factor is isotropic
+inline std::pair<double, double> calculate_b_aniso_range(const Model& model) {
+  std::pair<double, double> range{INFINITY, -INFINITY};
+  for (const Chain& chain : model.chains)
+    for (const Residue& residue : chain.residues)
+      for (const Atom& atom : residue.atoms) {
+        if (atom.occ == 0)
+          continue;
+        if (atom.aniso.nonzero()) {
+          std::array<double,3> eig = atom.aniso.calculate_eigenvalues();
+          auto u = std::minmax({eig[0], eig[1], eig[2]});
+          range.first = std::min(range.first, u.first * u_to_b());
+          range.second = std::max(range.second, u.second * u_to_b());
+        } else {
+          range.first = std::min(range.first, (double) atom.b_iso);
+          range.second = std::max(range.second, (double) atom.b_iso);
+        }
+      }
+  return range;
+}
+
 
 template<class T> void expand_box(const T& obj, Box<Position>& box) {
   for (const auto& child : obj.children())

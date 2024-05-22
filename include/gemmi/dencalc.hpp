@@ -10,6 +10,7 @@
 #include "formfact.hpp" // for ExpSum
 #include "grid.hpp"     // for Grid
 #include "model.hpp"    // for Structure, ...
+#include "calculate.hpp" // for calculate_b_aniso_range
 
 namespace gemmi {
 
@@ -66,23 +67,6 @@ Real it92_radius_approx(Real b) {
   return (8.5f + 0.075f * b) / (2.4f + 0.0045f * b);
 }
 
-inline double get_minimum_b(const Model& model) {
-  double b_min = 1000.;
-  for (const Chain& chain : model.chains)
-    for (const Residue& residue : chain.residues)
-      for (const Atom& atom : residue.atoms) {
-        if (atom.occ == 0) continue;
-        double b = atom.b_iso;
-        if (atom.aniso.nonzero()) {
-          std::array<double,3> eig = atom.aniso.calculate_eigenvalues();
-          b = std::min(std::min(eig[0], eig[1]), eig[2]) * u_to_b();
-        }
-        if (b < b_min)
-          b_min = b;
-      }
-  return b_min;
-}
-
 // Usual usage:
 // - set d_min and optionally also other parameters,
 // - set addends to f' values for your wavelength (see fprime.hpp)
@@ -112,7 +96,7 @@ struct DensityCalculator {
     double spacing = requested_grid_spacing();
     if (spacing <= 0)
       spacing = std::min(std::min(grid.spacing[0], grid.spacing[1]), grid.spacing[2]);
-    double b_min = get_minimum_b(model);
+    double b_min = calculate_b_aniso_range(model).first;
     blur = std::max(u_to_b() / 1.1 * sq(spacing) - b_min, 0.);
   }
 

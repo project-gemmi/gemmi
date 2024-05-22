@@ -269,6 +269,7 @@ void add_mol(py::module& m) {
         return calculate_center_of_mass(self).get();
     })
     .def("calculate_b_iso_range", &calculate_b_iso_range<Model>)
+    .def("calculate_b_aniso_range", &calculate_b_aniso_range)
     .def("transform_pos_and_adp", transform_pos_and_adp<Model>, py::arg("tr"))
     .def("split_chains_by_segments", &split_chains_by_segments)
     .def("clone", [](const Model& self) { return new Model(self); })

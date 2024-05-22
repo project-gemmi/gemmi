@@ -2706,7 +2706,8 @@ so just in case we store it as a string.
   >>> model.name
   '1'
 
-----
+Subchains
+---------
 
 As was discussed before, the PDBx/mmCIF format has also
 a set of parallel identifiers. In particular, it has
@@ -2747,7 +2748,8 @@ The `ResidueSpan` is described in the next section.
 ..
   TODO: find_residue_group, sole_residue, get_all_residue_names
 
-----
+Helper functions
+----------------
 
 .. _model_count_atom:
 
@@ -2765,8 +2767,6 @@ In Python, `Model` has also methods for often needed calculations:
   <gemmi.Position(-5.7572, 16.4099, 2.88299)>
   >>> model.has_hydrogen()
   False
-  >>> model.calculate_b_iso_range()
-  (7.670000076293945, 46.880001068115234)
 
 The first two function can take a :ref:`Selection <selections>`
 as an argument. For example, we can count sulfur atoms with:
@@ -2777,6 +2777,18 @@ as an argument. For example, we can count sulfur atoms with:
   4
   >>> model.count_occupancies(gemmi.Selection('[S]'))
   2.0
+
+Two functions calculate the range of ADP (B-factor) values in the model.
+One function considers only isotropic B values, while the other uses
+minimum and maximum eigenvalues of anisotropic ADPs. For atoms lacking
+ANISOU records, it falls back to the isotropic B-factor.
+
+.. doctest::
+
+  >>> model.calculate_b_iso_range()  # doctest: +ELLIPSIS
+  (7.67000..., 46.88000...)
+  >>> model.calculate_b_aniso_range()  # doctest: +ELLIPSIS
+  (3.523999..., 122.568275...)
 
 In C++, the same functionality is provided by templated functions
 from `gemmi/calculate.hpp` and `gemmi/select.hpp`.

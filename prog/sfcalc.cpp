@@ -661,9 +661,10 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
         // and on the atomic cutoff radius, and probably it would be too
         // hard to estimate. Here we use the same formula as in Refmac.
         dencalc.set_refmac_compatible_blur(st.models[0]);
-        if (p.options[Verbose])
-          fprintf(stderr, "B_min=%g, B_add=%g\n",
-                  gemmi::get_minimum_b(st.models[0]), dencalc.blur);
+        if (p.options[Verbose]) {
+          double b_min = gemmi::calculate_b_aniso_range(st.models[0]).first;
+          fprintf(stderr, "B_min=%g, B_add=%g\n", b_min, dencalc.blur);
+        }
       }
       gemmi::AtomicRadiiSet radii_choice = gemmi::AtomicRadiiSet::VanDerWaals;
       if (p.options[RadiiSet]) {
