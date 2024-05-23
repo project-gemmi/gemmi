@@ -23,6 +23,7 @@ void add_scaling(py::module& m) {
     .def("prepare_points", &Scaling::prepare_points,
          py::arg("calc"), py::arg("obs"), py::arg("mask")=static_cast<FPhiData*>(nullptr))
     .def("fit_isotropic_b_approximately", &Scaling::fit_isotropic_b_approximately)
+    .def("fit_b_star_approximately", &Scaling::fit_b_star_approximately)
     .def("fit_parameters", &Scaling::fit_parameters)
     .def("get_overall_scale_factor", &Scaling::get_overall_scale_factor, py::arg("hkl"))
     .def("get_overall_scale_factor", [](const Scaling& self, py::array_t<int> hkl) {

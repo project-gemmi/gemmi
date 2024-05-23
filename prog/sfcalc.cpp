@@ -301,6 +301,7 @@ void process_with_fft(const gemmi::Structure& st,
       scaling.k_overall = scaling.lsq_k_overall();
       //fprintf(stderr, "initial k_ov=%g\n", scaling.k_overall);
     }
+    //scaling.fit_b_star_approximately();
     scaling.fit_parameters();
     if (scaling.use_solvent)
       fprintf(stderr, "Bulk solvent parameters: k_sol=%g B_sol=%g\n",

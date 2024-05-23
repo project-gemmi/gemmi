@@ -217,7 +217,7 @@ struct Scaling {
     return p.fcmol + (Real)get_solvent_scale(p.stol2) * p.fmask;
   }
 
-  // quick linear fit (ignoring sigma) to get initial parameters
+  // quick linear fit (ignoring sigma) to get initial k_overall and isotropic B
   void fit_isotropic_b_approximately() {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
     int n = 0;
@@ -242,6 +242,7 @@ struct Scaling {
     set_b_overall({b_iso, b_iso, b_iso, 0, 0, 0});
   }
 
+  // least-squares fitting of k_overall only
   double lsq_k_overall() const {
     double sxx = 0, sxy = 0;
     for (const Point& p : points) {
@@ -255,9 +256,43 @@ struct Scaling {
     return sxx != 0. ? sxy / sxx : 1.;
   }
 
-  void fit_parameters() {
+  // For testing only, don't use it.
+  // Estimates anisotropic b_star using other parameters (incl. isotropic B),
+  // following P. Afonine et al, doi:10.1107/S0907444913000462 sec. 2.1.
+  // The symmetry constraints are not implemented - don't use it!
+  void fit_b_star_approximately() {
+    double b_iso = 1/3. * get_b_overall().trace();
+    //size_t nc = constraint_matrix.size();
+    double M[36] = {};
+    double b[6] = {};
+    //std::vector<double> Vc(nc);
+    for (const Point& p : points) {
+      double fcalc = std::abs(get_fcalc(p));
+      // the factor 1 / 2 pi^2 will be taken into account later
+      double Z = std::log(p.fobs / (k_overall * fcalc)) + b_iso * p.stol2;
+      Vec3 h(p.hkl);
+      double V[6] = {h.x * h.x, h.y * h.y, h.z * h.z,
+                     2 * h.x * h.y, 2 * h.x * h.z, 2 * h.y * h.z};
+      //for (size_t i = 0; i < nc; ++i)
+      //  Vc[i] = vec6_dot(constraint_matrix[i], V);
+      for (size_t i = 0; i < 6; ++i) {
+        for (size_t j = 0; j < 6; ++j)
+          M[6*i+j] += V[i] * V[j];
+        b[i] -= Z * V[i];
+      }
+    }
+    jordan_solve(M, b, 6);
+    double b_star_iso = 1/3. * b_star.trace();
+    SMat33<double> u_star{b[0], b[1], b[2], b[3], b[4], b[5]};
+    // u_to_b() / (2 pi^2) = 8 pi^2 / 2 pi^2 = 4
+    b_star = u_star.scaled(4.0).added_kI(b_star_iso);
+    //auto e = get_b_overall().elements_pdb();
+    //printf("fitted B = {%g %g %g  %g %g %g}\n", e[0], e[1], e[2], e[3], e[4], e[5]);
+  }
+
+  double fit_parameters() {
     LevMar levmar;
-    levmar.fit(*this);
+    return levmar.fit(*this);
   }
 
 

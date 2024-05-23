@@ -25,9 +25,7 @@ namespace gemmi {
 /// a is n x n matrix (in vector)
 /// b is vector of length n,
 /// This function returns vector x[] in b[], and 1-matrix in a[].
-inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
-  assert(a.size() == b.size() * b.size());
-  int n = (int) b.size();
+inline void jordan_solve(double* a, double* b, int n) {
   for (int i = 0; i < n; i++) {
     // looking for a pivot element
     int maxnr = -1;
@@ -68,6 +66,11 @@ inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
         b[k] -= b[i] * d;
       }
   }
+}
+
+inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
+  assert(a.size() == b.size() * b.size());
+  jordan_solve(a.data(), b.data(), (int)b.size());
 }
 
 
