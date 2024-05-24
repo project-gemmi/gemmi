@@ -50,7 +50,10 @@ void add_meta(py::module& m) {
                 throw std::runtime_error("invalid tuple size");
             return SeqId(t[0].cast<int>(), t[1].cast<char>());
         }
-    ));
+    ))
+    .def("__hash__", [](const SeqId& self) {
+        return py::hash(py::make_tuple(self.num, self.icode));
+    });
 
   py::class_<ResidueId>(m, "ResidueId")
     .def(py::init<>())
