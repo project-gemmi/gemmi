@@ -92,12 +92,14 @@ struct DensityCalculator {
 
   double requested_grid_spacing() const { return d_min / (2 * rate); }
 
-  void set_refmac_compatible_blur(const Model& model) {
+  void set_refmac_compatible_blur(const Model& model, bool allow_negative=false) {
     double spacing = requested_grid_spacing();
     if (spacing <= 0)
       spacing = std::min(std::min(grid.spacing[0], grid.spacing[1]), grid.spacing[2]);
     double b_min = calculate_b_aniso_range(model).first;
-    blur = std::max(u_to_b() / 1.1 * sq(spacing) - b_min, 0.);
+    blur = u_to_b() / 1.1 * sq(spacing) - b_min;
+    if (!allow_negative && blur < 0)
+      blur = 0.;
   }
 
   // pre: check if Table::has(atom.element)
