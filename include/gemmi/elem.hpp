@@ -63,6 +63,12 @@ inline bool is_metal(El el) {
   return table[static_cast<int>(el)];
 }
 
+// Helper function, not public. Replaces =='s in static_assert comparisons
+// that were reported to fail on i386 / GCC 13: the numbers were compared
+// as 80-bit, the tabulated value was double-rounded, the literal was not.
+constexpr bool ce_almost_eq(double x, double y) {
+  return -1e-6 < x-y && x-y < 1e-6;
+}
 
 inline double molecular_weight(El el) {
   static constexpr double weights[] = {
@@ -97,7 +103,7 @@ inline double molecular_weight(El el) {
     /*Nh*/ 284, /*Fl*/ 289, /*Mc*/ 288, /*Lv*/ 293, /*Ts*/ 294, /*Og*/ 294,
     /*D*/ 2.0141, /*END*/ 0.0
   };
-  static_assert(weights[static_cast<int>(El::D)] == 2.0141, "Hmm");
+  static_assert(ce_almost_eq(weights[static_cast<int>(El::D)], 2.0141), "Hmm");
   static_assert(sizeof(weights) / sizeof(weights[0]) ==
                 static_cast<int>(El::END) + 1, "Hmm");
   return weights[static_cast<int>(el)];
@@ -138,7 +144,7 @@ inline float covalent_radius(El el) {
     /*Ts*/ 1.50f, /*Og*/ 1.50f,
     /*D*/ 0.31f, /*END*/ 0.0f
   };
-  static_assert(radii[static_cast<int>(El::D)] == 0.31f, "Hmm");
+  static_assert(ce_almost_eq(radii[static_cast<int>(El::D)], 0.31f), "Hmm");
   static_assert(sizeof(radii) / sizeof(radii[0]) ==
                 static_cast<int>(El::END) + 1, "Hmm");
   return radii[static_cast<int>(el)];
@@ -183,7 +189,7 @@ inline float vdw_radius(El el) {
     /*Ts*/ 1.00f, /*Og*/ 1.00f,
     /*D*/  1.20f, /*END*/0.f
   };
-  static_assert(radii[static_cast<int>(El::D)] == 1.2f, "Hmm");
+  static_assert(ce_almost_eq(radii[static_cast<int>(El::D)], 1.2f), "Hmm");
   static_assert(sizeof(radii) / sizeof(radii[0]) ==
                 static_cast<int>(El::END) + 1, "Hmm");
   return radii[static_cast<int>(el)];

@@ -46,7 +46,7 @@ inline float cctbx_vdw_radius(El el) {
     /*Ts*/ 1.00f, /*Og*/ 1.00f,
     /*D*/  1.20f, /*END*/0.f
   };
-  static_assert(radii[static_cast<int>(El::D)] == 1.2f, "Hmm");
+  static_assert(ce_almost_eq(radii[static_cast<int>(El::D)], 1.2f), "Hmm");
   static_assert(sizeof(radii) / sizeof(radii[0]) ==
                 static_cast<int>(El::END) + 1, "Hmm");
   return radii[static_cast<int>(el)];
@@ -87,7 +87,7 @@ inline float refmac_radius_for_bulk_solvent(El el) {
     /*Ts*/ 1.00f, /*Og*/ 1.00f,
     /*D*/  1.40f, /*END*/0.f
   };
-  static_assert(radii[static_cast<int>(El::D)] == 1.40f, "Hmm");
+  static_assert(ce_almost_eq(radii[static_cast<int>(El::D)], 1.40f), "Hmm");
   return radii[static_cast<int>(el)];
 #else
   // temporary solution used in Refmac
