@@ -1133,6 +1133,15 @@ If Table's data is in Loop, the Loop class can be accessed using::
   >>> table.loop     # None for tag-value pairs
   <gemmi.cif.Loop 18 x 4>
 
+Tag-value pairs can be converted to a loop using:
+
+.. doctest::
+
+  >>> table.ensure_loop()
+
+but make sure to call it only when the table represents the whole category
+(see example :ref:`below <append_row>`).
+
 If a prefix was specified when calling find, the prefix length is stored
 and the prefix can be retrieved::
 
@@ -1250,19 +1259,44 @@ and a property::
   >>> row.row_index
   9
 
-----
+Individual values in a row can be directly modified.
+This includes tags, which are accessible as a special row.
+As an example, let us swap two names
+(these two tend to have identical values, so no one will notice):
 
-We can append a row to Table (function `Table::append_row`):
+.. literalinclude:: code/cif_cc.cpp
+   :language: cpp
+   :lines: 32-34
 
 .. doctest::
 
+  >>> tags = block.find('_atom_site.', ['label_atom_id', 'auth_atom_id']).tags
+  >>> tags[0], tags[1] = tags[1], tags[0]
+
+----
+
+.. _append_row:
+
+Function `Table::append_row` appends a row.
+It won't work if the table is composed of tag-value pairs (which isn't
+the case here, but let's make this example as general as possible),
+so we call `Table::ensure_loop()` first.
+This function, in turn, won't work well if the table contains only a subset
+of the category, thus `find_mmcif_category()`:
+
+.. doctest::
+
+  >>> block.find_mmcif_category('_entity_poly_seq.').ensure_loop()
   >>> table.append_row(['3', '4', 'new'])
   >>> table[-1]
   <gemmi.cif.Table.Row: 3 4 new>
   >>> _.row_index
   18
 
-move a row to a different position:
+If new tags are added to this category in the future,
+the corresponding values in appended rows will be filled with `.`.
+
+We can also move a row to a different position:
 
 .. doctest::
 
@@ -1283,9 +1317,9 @@ C++ function `Table::remove_rows` or Python `__delitem__` with slice:
 
   >>> del table[12:15]
 
-As is usual with any containers (in both Python and C++)
+As is usual with any containers (in both Python and C++),
 if you want to remove items while iterating over them,
-it's better to iterate backward.
+the iteration must be done backward.
 Here is an example that removes atoms with zero occupancy:
 
 .. doctest::
@@ -1297,19 +1331,6 @@ Here is an example that removes atoms with zero occupancy:
   ...     del atom_table[i]
   ...
   >>> doc.write_file('out.cif')
-
-Individual tags and values can also be modified.
-As an example, let us swap two tag names
-(these two tend to have identical values, so no one will notice):
-
-.. literalinclude:: code/cif_cc.cpp
-   :language: cpp
-   :lines: 32-34
-
-.. doctest::
-
-  >>> tags = block.find('_atom_site.', ['label_atom_id', 'auth_atom_id']).tags
-  >>> tags[0], tags[1] = tags[1], tags[0]
 
 Column-wise access
 ------------------

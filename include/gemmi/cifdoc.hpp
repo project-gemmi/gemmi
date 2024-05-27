@@ -425,7 +425,8 @@ struct Table {
 
   void erase();
 
-  void convert_pair_to_loop();
+  /// if it's pairs, convert it to loop
+  void ensure_loop();
 
   // It is not a proper input iterator, but just enough for using range-for.
   struct iterator {
@@ -747,7 +748,7 @@ template <typename T> void Table::append_row(T new_values) {
   if (new_values.size() != width())
     fail("append_row(): wrong row length");
   if (!loop_item)
-    convert_pair_to_loop();
+    fail("append_row(): data is not in loop, call ensure_loop() first");
   Loop& loop = loop_item->loop;
   size_t cur_size = loop.values.size();
   loop.values.resize(cur_size + loop.width(), ".");
@@ -760,8 +761,7 @@ inline void Table::remove_rows(int start, int end) {
   if (!ok())
     // this function is used mostly through remove_row()
     fail("remove_row(): table not found");
-  if (!loop_item)
-    convert_pair_to_loop();
+  ensure_loop();  // should we fail instead if we have pairs?
   Loop& loop = loop_item->loop;
   size_t start_pos = start * loop.width();
   size_t end_pos = end * loop.width();
@@ -789,18 +789,20 @@ inline void Table::erase() {
   positions.clear();
 }
 
-inline void Table::convert_pair_to_loop() {
-  assert(loop_item == nullptr);
+inline void Table::ensure_loop() {
+  if (loop_item)
+    return;
   Item new_item(LoopArg{});
   new_item.loop.tags.resize(positions.size());
   new_item.loop.values.resize(positions.size());
+  loop_item = &bloc.items.at(positions[0]);
   for (size_t i = 0; i != positions.size(); ++i) {
     Item& item = bloc.items[positions[i]];
     new_item.loop.tags[i].swap(item.pair[0]);
     new_item.loop.values[i].swap(item.pair[1]);
     item.erase();
+    positions[i] = i;
   }
-  loop_item = &bloc.items.at(positions[0]);
   loop_item->set_value(std::move(new_item));
 }
 

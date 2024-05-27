@@ -19,8 +19,7 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
       for (char c = 'x'; c <= 'z'; ++c)
         tags.emplace_back(1, c);
     cif::Table tab = block.find_or_add("_chem_comp_atom.", tags);
-    if (!tab.loop_item)
-      tab.convert_pair_to_loop();
+    tab.ensure_loop();
     size_t pos = tab.length();
     cif::Loop& loop = tab.loop_item->loop;
     loop.values.resize(loop.values.size() + loop.width() * cc.atoms.size(), ".");

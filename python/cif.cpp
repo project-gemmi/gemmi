@@ -399,6 +399,7 @@ void add_cif(py::module& cif) {
     .def("find_column", &Table::find_column, py::arg("tag"),
          py::keep_alive<0, 1>())
     .def("erase", &Table::erase)
+    .def("ensure_loop", &Table::ensure_loop)
     .def("append_row", &Table::append_row<std::vector<std::string>>,
          py::arg("new_values"))
     .def("remove_row", &Table::remove_row, py::arg("row_index"))
