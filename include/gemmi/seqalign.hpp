@@ -13,6 +13,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "fail.hpp"  // for fail
 
 namespace gemmi {
 
