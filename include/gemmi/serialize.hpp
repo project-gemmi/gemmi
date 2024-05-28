@@ -61,7 +61,7 @@ SERIALIZE(AtomAddress, o.chain_name, o.res_id, o.atom_name, o.altloc)
 SERIALIZE(Metadata, o.authors, o.experiments, o.crystals, o.refinement,
           o.software, o.solved_by, o.starting_model, o.remark_300_detail)
 
-SERIALIZE(SoftwareItem, o.name, o.version, o.date, o.classification)
+SERIALIZE(SoftwareItem, o.name, o.version, o.date, o.description, o.classification)
 
 SERIALIZE(ReflectionsInfo, o.resolution_high, o.resolution_low, o.completeness,
           o.redundancy, o.r_merge, o.r_sym, o.mean_I_over_sigma)
@@ -94,7 +94,7 @@ SERIALIZE_P(RefinementInfo, BasicRefinementInfo, o.id,
 SERIALIZE(RefinementInfo::Restr, o.name, o.count, o.weight, o.function, o.dev_ideal)
 
 SERIALIZE(Entity, o.name, o.subchains, o.entity_type, o.polymer_type,
-          o.dbrefs, o.sifts_unp_acc, o.full_sequence)
+          o.reflects_microhetero, o.dbrefs, o.sifts_unp_acc, o.full_sequence)
 
 SERIALIZE(Entity::DbRef, o.db_name, o.accession_code, o.id_code,
           o.isoform, o.seq_begin, o.seq_end, o.db_begin, o.db_end,
