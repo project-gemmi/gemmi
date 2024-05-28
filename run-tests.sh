@@ -145,10 +145,9 @@ if [ $1 = c -o $1 = a ]; then
 fi
 
 if [ $1 = w -o $1 = a ]; then
-    echo "check if wasm/mtz and project-gemmi/wasm can be built"
+    echo "check if wasm and project-gemmi/wasm can be built"
     [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh
-    (cd wasm/mtz && ./compile.sh)
-    (cd ../wasm/convert && make clean && make)
+    (cd wasm && make clean && make -j4)
 fi
 
 if [ $1 = M -o $1 = a ]; then

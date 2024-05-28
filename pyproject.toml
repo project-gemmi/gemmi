@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core~=0.8.0", "pybind11>=2.6.2",
+requires = ["scikit-build-core~=0.9.0", "pybind11>=2.6.2",
             "pybind11-stubgen~=2.4.2", "numpy"]
 build-backend = "scikit_build_core.build"
 
@@ -78,7 +78,7 @@ addopts = ["-ra", "-q"]
 testpaths = ["tests"]
 
 [tool.codespell]
-skip = 'third_party,*.pdb,*.crd,*.cif,*.mmcif,*.ent,*.log*,*.dic,*.idx,tags,*.bak,docs/_build,tests/mmcif_pdbx_v50_frag.dic,docs/*-help.txt'
+skip = 'third_party,*.pdb,*.crd,*.cif,*.mmcif,*.ent,*.log*,*.dic,*.idx,tags,*.bak,docs/_build,tests/mmcif_pdbx_v50_frag.dic,docs/*-help.txt,wasm/node_modules'
 ignore-words-list = 'inout,fo,fom,te,nd,ser,unx,ket,acn,readd,conect'
 
 [tool.cibuildwheel]

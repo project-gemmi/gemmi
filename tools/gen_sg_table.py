@@ -174,7 +174,7 @@ additional = [
     ('C -1', '-C 1'),
     ('F -1', '-F 1'),
     ('I -1', '-I 1'),
-    'monoclinic (qualifiers such as "b1" are assigned arbitrary unique numbers)',
+    'monoclinic (qualifiers such as "b1" are assigned arbitrary unique numbers)',  # noqa:E501
     ('B 1 2 1', 'B 2y'),  # 3
     ('C 1 1 2', 'C 2'),  # 3
     ('B 1 21 1', 'B 2yb'),  # 4
@@ -199,7 +199,7 @@ def has_symmorphic(hall):
     if gemmi.find_spacegroup_by_ops(symmor_ops):
         return True
     return any(gemmi.symops_from_hall(x[1]) == symmor_ops for x in additional
-               if type(x) == tuple)
+               if type(x) is tuple)
 
 def find_unique_axis(hm):
     s = hm.split()
@@ -214,7 +214,7 @@ def find_unique_axis(hm):
 
 system = None
 for item in additional:
-    if type(item) == str:
+    if type(item) is str:
         print('  // ' + item)
         system = item.split()[0]
         continue
