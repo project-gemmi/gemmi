@@ -277,7 +277,7 @@ void process_with_fft(const gemmi::Structure& st,
   }
   gemmi::StructureFactorCalculator<Table> calc(st.cell);
   calc.addends = dencalc.addends;
-  gemmi::fileptr_t cache(nullptr, gemmi::fileptr_close{false});
+  gemmi::fileptr_t cache(nullptr, gemmi::needs_fclose{false});
   gemmi::AsuData<std::complex<double>> compared_data;
   if (file.path) {
     if (file.mode == RefFile::Mode::Test) {

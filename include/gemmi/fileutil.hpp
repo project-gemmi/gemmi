@@ -33,16 +33,18 @@ inline std::string path_basename(const std::string& path,
   return basename;
 }
 
-struct fileptr_close {
-  bool needs_fclose;
-  void operator()(FILE* f) const noexcept {
-    if (needs_fclose)
+// file operations
+
+/// deleter for fileptr_t
+struct needs_fclose {
+  bool use_fclose;
+  void operator()(std::FILE* f) const noexcept {
+    if (use_fclose)
       std::fclose(f);
   }
 };
 
-// file operations
-typedef std::unique_ptr<std::FILE, fileptr_close> fileptr_t;
+typedef std::unique_ptr<std::FILE, needs_fclose> fileptr_t;
 
 inline fileptr_t file_open(const char* path, const char* mode) {
   std::FILE* file;
@@ -55,14 +57,14 @@ inline fileptr_t file_open(const char* path, const char* mode) {
 #endif
     sys_fail(std::string("Failed to open ") + path +
              (*mode == 'w' ? " for writing" : ""));
-  return fileptr_t(file, fileptr_close{true});
+  return fileptr_t(file, needs_fclose{true});
 }
 
 // helper function for treating "-" as stdin or stdout
 inline fileptr_t file_open_or(const char* path, const char* mode,
                               std::FILE* dash_stream) {
   if (path[0] == '-' && path[1] == '\0')
-    return fileptr_t(dash_stream, fileptr_close{false});
+    return fileptr_t(dash_stream, needs_fclose{false});
   return file_open(path, mode);
 }
 
