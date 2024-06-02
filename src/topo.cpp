@@ -640,8 +640,8 @@ Topo::Link* Topo::find_polymer_link(const AtomAddress& aa1, const AtomAddress& a
            a2.res_id.matches_noseg(*link.res2) &&
            a1.altloc == link.alt1 &&
            a2.altloc == link.alt2 &&
-           atom_name_id(a1.atom_name) == link.atom1_name_id &&
-           atom_name_id(a2.atom_name) == link.atom2_name_id;
+           (a1.atom_name.empty() || atom_name_id(a1.atom_name) == link.atom1_name_id) &&
+           (a2.atom_name.empty() || atom_name_id(a2.atom_name) == link.atom2_name_id);
   };
   if (aa1.chain_name != aa2.chain_name)
     return nullptr;
