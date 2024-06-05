@@ -23,7 +23,6 @@
 #include <gemmi/solmask.hpp>   // for SolventMasker
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
-#include <gemmi/nlfit.hpp>
 #include "timer.h"             // for Timer
 
 #define GEMMI_PROG sfcalc
