@@ -23,6 +23,7 @@
 #include <gemmi/solmask.hpp>   // for SolventMasker
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
+#include <gemmi/nlfit.hpp>
 #include "timer.h"             // for Timer
 
 #define GEMMI_PROG sfcalc
@@ -627,12 +628,10 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, flabel});
       for (auto& hkl_value : scale_to.v)
         hkl_value.value.sigma = std::sqrt(hkl_value.value.sigma);
-    } else {
+    } else if (sigma_cutoff >= 0) {
       scale_to.load_values<2>(gemmi::MtzDataProxy{mtz}, {flabel, siglabel});
       size_t size_before = scale_to.size();
-      vector_remove_if(scale_to.v, [=](const gemmi::HklValue<gemmi::ValueSigma<Real>>& x) {
-          return x.value.value <= sigma_cutoff * x.value.sigma;
-      });
+      discard_by_sigma_ratio(scale_to, sigma_cutoff);
       if (p.options[Verbose])
         fprintf(stderr, "Sigma cutoff (F/sigF > %g) excluded %zu out of %zu points.\n",
                 sigma_cutoff, size_before - scale_to.size(), size_before);

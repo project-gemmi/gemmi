@@ -53,6 +53,9 @@ template<> void add_to_asu_data(py::class_<AsuData<float>>& cl) {
       return calculate_hkl_value_correlation(self.v, other.v);
   });
 }
+template<> void add_to_asu_data(py::class_<AsuData<ValueSigma<float>>>& cl) {
+  cl.def("discard_by_sigma_ratio", &discard_by_sigma_ratio<float>);
+}
 
 template<typename T>
 void add_asudata(py::module& m, const std::string& prefix) {
@@ -136,6 +139,7 @@ void add_asudata_and_recgrid(py::module& m,
                              const std::string& prefix_asu,
                              const std::string& rgrid_name) {
   using RecGr = ReciprocalGrid<TG>;
+  // needed before add_asudata for ComplexAsuData.get_f_phi_on_grid
   py::class_<RecGr, GridBase<TG>> recgrid(m, rgrid_name.c_str());
 
   add_asudata<TA>(m, prefix_asu);
