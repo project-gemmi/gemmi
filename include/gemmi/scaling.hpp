@@ -148,7 +148,7 @@ struct Scaling {
   }
 
   /// set k_overall, k_sol, b_sol, b_star
-  void set_parameters(const std::vector<double>& p) {
+  void set_parameters(const double* p) {
     k_overall = p[0];
     int n = 0;
     if (use_solvent) {
@@ -167,6 +167,10 @@ struct Scaling {
       b_star.u13 += row[4] * d;
       b_star.u23 += row[5] * d;
     }
+  }
+
+  void set_parameters(const std::vector<double>& p) {
+    set_parameters(p.data());
   }
 
   void prepare_points(const AsuData<std::complex<Real>>& calc,

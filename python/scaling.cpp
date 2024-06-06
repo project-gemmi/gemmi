@@ -5,6 +5,9 @@
 #include <pybind11/complex.h>
 #include <pybind11/numpy.h>    // for vectorize
 #include "gemmi/scaling.hpp"
+#if WITH_NLOPT
+#  include "gemmi/nlfit.hpp"
+#endif
 
 namespace py = pybind11;
 
@@ -20,11 +23,16 @@ void add_scaling(py::module& m) {
     .def_readwrite("use_solvent", &Scaling::use_solvent)
     .def_readwrite("k_sol", &Scaling::k_sol)
     .def_readwrite("b_sol", &Scaling::b_sol)
+    .def_property("parameters", &Scaling::get_parameters,
+                  (void (Scaling::*)(const std::vector<double>&)) &Scaling::set_parameters)
     .def("prepare_points", &Scaling::prepare_points,
          py::arg("calc"), py::arg("obs"), py::arg("mask")=static_cast<FPhiData*>(nullptr))
     .def("fit_isotropic_b_approximately", &Scaling::fit_isotropic_b_approximately)
     .def("fit_b_star_approximately", &Scaling::fit_b_star_approximately)
     .def("fit_parameters", &Scaling::fit_parameters)
+#if WITH_NLOPT
+    .def("fit_parameters_with_nlopt", &gemmi::fit_parameters_with_nlopt<float>)
+#endif
     .def("get_overall_scale_factor", &Scaling::get_overall_scale_factor, py::arg("hkl"))
     .def("get_overall_scale_factor", [](const Scaling& self, py::array_t<int> hkl) {
         auto h = hkl.unchecked<2>();

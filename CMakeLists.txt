@@ -38,6 +38,7 @@ else()
       "Install path for gemmi CMake files")
 endif()
 option(STRIP_BINARY "Strip symbols from program" OFF)
+option(USE_NLOPT "Experimental, for testing only, don't use it" OFF)
 
 # uncomment to show compilation times for each compilation unit
 #set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
@@ -479,6 +480,13 @@ if (USE_PYTHON)
   set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi)
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
     target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
+  endif()
+
+  if (USE_NLOPT)
+    message(STATUS "Using NLopt.")
+    find_package(NLopt REQUIRED)
+    target_link_libraries(gemmi_py PRIVATE NLopt::nlopt)
+    target_compile_definitions(gemmi_py PRIVATE WITH_NLOPT=1)
   endif()
 
   if (GENERATE_STUBS AND CMAKE_CROSSCOMPILING)

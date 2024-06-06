@@ -206,6 +206,9 @@ gemmi/neutron92.hpp
     Neutron coherent scattering lengths of the elements,
     from Neutron News, Vol. 3, No. 3, 1992.
 
+gemmi/nlfit.hpp
+    testing Scaling with NLOpt
+
 gemmi/numb.hpp
     Utilities for parsing CIF numbers (the CIF spec calls it 'numb').
 
