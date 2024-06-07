@@ -86,8 +86,6 @@ double calculate_lsq(unsigned n, const double* x, double* grad, void* data) {
   return y;
 }
 
-
-
 inline const char* nlresult_to_string(nlopt_result r) {
   switch (r) {
     case NLOPT_FAILURE: return "failure";
@@ -112,7 +110,31 @@ template<typename Real>
 double fit_parameters_with_nlopt(Scaling<Real>& scaling, const char* optimizer) {
   std::vector<double> params = scaling.get_parameters();
   nlopt_opt opt = nlopt_create(nlopt_algorithm_from_string(optimizer), params.size());
-  //nlopt_opt opt = nlopt_create(NLOPT_LN_COBYLA, params.size());
+  {  // prepare bounds
+    std::vector<double> lb(params.size());
+    std::vector<double> ub(params.size());
+    lb[0] = 0.7 * params[0];  // k_ov
+    ub[0] = 1.2 * params[0];
+    size_t n = 1;
+    if (scaling.use_solvent) {
+      if (!scaling.fix_k_sol) {
+        lb[n] = 0.15;
+        ub[n] = 0.5;
+        ++n;
+      }
+      if (!scaling.fix_b_sol) {
+        lb[n] = 10;
+        ub[n] = 80;
+        ++n;
+      }
+    }
+    for (; n < params.size(); ++n) {
+      lb[n] = -0.01;
+      ub[n] = 0.01;
+    }
+    nlopt_set_lower_bounds(opt, lb.data());
+    nlopt_set_upper_bounds(opt, ub.data());
+  }
   nlopt_set_min_objective(opt, impl::calculate_lsq<Real>, &scaling);
   nlopt_set_maxeval(opt, 100);
   double minf = NAN;
@@ -122,6 +144,7 @@ double fit_parameters_with_nlopt(Scaling<Real>& scaling, const char* optimizer) 
   //  printf("NLopt result: %s\n", impl::nlresult_to_string(r));
   //else
   //  printf("NLopt minimum value: %g\n", minf);
+  nlopt_destroy(opt);
   scaling.set_parameters(params);
   return minf;
 }
