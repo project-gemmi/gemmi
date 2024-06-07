@@ -1,5 +1,6 @@
-import gemmi 
 import unittest
+import gemmi 
+
 
 class TestBool(unittest.TestCase):
 
