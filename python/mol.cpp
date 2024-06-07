@@ -137,6 +137,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", &remove_children<Structure>)
     .def("__delitem__", &Structure::remove_model, py::arg("name"))
     .def("__setitem__", &set_child<Structure, Model>)
+    .def("__bool__", [](Structure& self) {return !self.children().empty();})
     .def("find_connection_by_cra", [](Structure& st, CRA cra1, CRA cra2, bool ignore_segment) {
         return st.find_connection_by_cra(cra1, cra2, ignore_segment);
     }, py::arg("cra1"), py::arg("cra2"), py::arg("ignore_segment")=false,
@@ -255,6 +256,7 @@ void add_mol(py::module& m) {
     .def("__delitem__", &Model::remove_chain, py::arg("name"))
     .def("__delitem__", remove_child<Model>, py::arg("index"))
     .def("__delitem__", remove_children<Model>)
+    .def("__bool__", [](Model& self) {return !self.children().empty();})
     .def("remove_alternative_conformations", remove_alternative_conformations<Model>)
     .def("remove_hydrogens", remove_hydrogens<Model>)
     .def("remove_waters", remove_waters<Model>)
@@ -314,6 +316,7 @@ void add_mol(py::module& m) {
     }, py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Chain>, py::arg("index"))
     .def("__delitem__", remove_children<Chain>)
+    .def("__bool__", [](Chain& self) {return !self.children().empty();})
     .def("add_residue", add_child<Chain, Residue>,
          py::arg("residue"), py::arg("pos")=-1,
          py::return_value_policy::reference_internal)
@@ -457,6 +460,7 @@ void add_mol(py::module& m) {
          py::arg("name"), py::return_value_policy::reference_internal)
     .def("__delitem__", remove_child<Residue>, py::arg("index"))
     .def("__delitem__", remove_children<Residue>)
+    .def("__bool__", [](Residue& self) {return !self.children().empty();})
     .def("find_atom", [](Residue& self, const std::string& name, char altloc, Element el) {
            return self.find_atom(name, altloc, el);
          }, py::arg("name"), py::arg("altloc"), py::arg("el")=Element(El::X),
