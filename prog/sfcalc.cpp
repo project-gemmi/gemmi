@@ -311,10 +311,9 @@ void process_with_fft(const gemmi::Structure& st,
             scaling.k_overall, b_aniso.u11, b_aniso.u22, b_aniso.u33,
                                b_aniso.u12, b_aniso.u13, b_aniso.u23);
     if (verbose) {
-      std::vector<double> computed = scaling.compute_values();
       Comparator comparator;
-      for (size_t i = 0; i != scaling.points.size(); ++i)
-        comparator.add(computed[i], (double)scaling.points[i].fobs);
+      for (const auto& p : scaling.points)
+        comparator.add(scaling.compute_value(p), (double)p.fobs);
       fprintf(stderr, "After scaling: ");
       print_to_stderr(comparator);
       fprintf(stderr, "\n");

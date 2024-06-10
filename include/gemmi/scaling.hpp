@@ -301,62 +301,43 @@ struct Scaling {
 
 
   // interface for fitting
-  std::vector<double> compute_values() const {
-    std::vector<double> values;
-    values.reserve(points.size());
-    for (const Point& p : points) {
-      double fcalc = std::abs(get_fcalc(p));
-      values.push_back(fcalc * (Real) get_overall_scale_factor(p.hkl));
-    }
-    return values;
+  double compute_value(const Point& p) const {
+    return std::abs(get_fcalc(p)) * (Real) get_overall_scale_factor(p.hkl);
   }
 
-  // the tile_* parameters allow tiling: computing derivatives from a span
-  // of points at one time, which limits memory usage.
-  void compute_values_and_derivatives(size_t tile_start, size_t tile_size,
-                                      std::vector<double>& yy,
-                                      std::vector<double>& dy_da) const {
-    assert(tile_size == yy.size());
-    size_t npar = dy_da.size() / tile_size;
-    assert(dy_da.size() == npar * tile_size);
+  double compute_value_and_derivatives(const Point& p, std::vector<double>& dy_da) const {
+    Vec3 h(p.hkl);
+    double kaniso = std::exp(-0.25 * b_star.r_u_r(h));
+    double fcalc_abs;
     int n = 1;
-    if (use_solvent)
-      n += int(!fix_k_sol) + int(!fix_b_sol);
-    for (size_t i = 0; i != tile_size; ++i) {
-      const Point& pt = points[tile_start+i];
-      Vec3 h(pt.hkl);
-      double kaniso = std::exp(-0.25 * b_star.r_u_r(h));
-      double fcalc_abs;
-      if (use_solvent) {
-        double solv_b = std::exp(-b_sol * pt.stol2);
-        double solv_scale = k_sol * solv_b;
-        auto fcalc = pt.fcmol + (Real)solv_scale * pt.fmask;
-        fcalc_abs = std::abs(fcalc);
-        size_t offset = i * npar + 1;
-        double dy_dsol = (fcalc.real() * pt.fmask.real() +
-                          fcalc.imag() * pt.fmask.imag()) / fcalc_abs * k_overall * kaniso;
-        if (!fix_k_sol)
-          dy_da[offset++] = solv_b * dy_dsol;
-        if (!fix_b_sol)
-          dy_da[offset] = -pt.stol2 * solv_scale * dy_dsol;
-      } else {
-        fcalc_abs = std::abs(pt.fcmol);
-      }
-      double fe = fcalc_abs * kaniso;
-      yy[i] = k_overall * fe;
-      dy_da[i * npar + 0] = fe; // dy/d k_overall
-      SMat33<double> du = {
-        -0.25 * yy[i] * (h.x * h.x),
-        -0.25 * yy[i] * (h.y * h.y),
-        -0.25 * yy[i] * (h.z * h.z),
-        -0.5 * yy[i] * (h.x * h.y),
-        -0.5 * yy[i] * (h.x * h.z),
-        -0.5 * yy[i] * (h.y * h.z),
-      };
-      double* dy_db = &dy_da[i * npar + n];
-      for (size_t j = 0; j < constraint_matrix.size(); ++j)
-        dy_db[j] = vec6_dot(constraint_matrix[j], du);
+    if (use_solvent) {
+      double solv_b = std::exp(-b_sol * p.stol2);
+      double solv_scale = k_sol * solv_b;
+      auto fcalc = p.fcmol + (Real)solv_scale * p.fmask;
+      fcalc_abs = std::abs(fcalc);
+      double dy_dsol = (fcalc.real() * p.fmask.real() +
+                        fcalc.imag() * p.fmask.imag()) / fcalc_abs * k_overall * kaniso;
+      if (!fix_k_sol)
+        dy_da[n++] = solv_b * dy_dsol;
+      if (!fix_b_sol)
+        dy_da[n++] = -p.stol2 * solv_scale * dy_dsol;
+    } else {
+      fcalc_abs = std::abs(p.fcmol);
     }
+    double fe = fcalc_abs * kaniso;
+    double y = k_overall * fe;
+    dy_da[0] = fe; // dy/d k_overall
+    SMat33<double> du = {
+      -0.25 * y * (h.x * h.x),
+      -0.25 * y * (h.y * h.y),
+      -0.25 * y * (h.z * h.z),
+      -0.5 * y * (h.x * h.y),
+      -0.5 * y * (h.x * h.z),
+      -0.5 * y * (h.y * h.z),
+    };
+    for (size_t j = 0; j < constraint_matrix.size(); ++j)
+      dy_da[n+j] = vec6_dot(constraint_matrix[j], du);
+    return y;
   }
 };
 
