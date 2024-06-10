@@ -110,7 +110,6 @@ struct LevMar {
 #ifdef GEMMI_DEBUG_LEVMAR
     print_parameters("ini", initial_a);
 #endif
-    initial_wssr = this->compute_wssr(target);
     std::vector<double> best_a = initial_a;
     size_t na = initial_a.size();
 
@@ -118,11 +117,11 @@ struct LevMar {
     alpha.resize(na * na);
     beta.resize(na);
 
+    initial_wssr = this->compute_derivatives(target);
     double wssr = initial_wssr;
-    this->compute_derivatives(target);
 
     int small_change_counter = 0;
-    eval_count = 2;  // number of function evaluations so far
+    eval_count = 1;  // number of function evaluations so far
     for (int iter = 0; ; iter++) {
       if (eval_limit > 0 && eval_count >= eval_limit)
         break;
@@ -182,9 +181,10 @@ struct LevMar {
 
 private:
   template<typename Target>
-  void compute_derivatives(const Target& target) {
+  double compute_derivatives(const Target& target) {
     assert(!beta.empty());
     assert(alpha.size() == beta.size() * beta.size());
+    long double wssr = 0; // long double here notably increases the accuracy
     size_t na = beta.size();
     std::fill(alpha.begin(), alpha.end(), 0.0);
     std::fill(beta.begin(), beta.end(), 0.0);
@@ -201,12 +201,14 @@ private:
           beta[j] += dy_sig * dy_da[j];
         }
       }
+      wssr += sq(dy_sig);
     }
 
     // Only half of the alpha matrix was filled above. Fill the rest.
     for (size_t j = 1; j < na; j++)
       for (size_t k = 0; k < j; k++)
         alpha[na * k + j] = alpha[na * j + k];
+    return (double) wssr;
   }
 
   template<typename Target>
