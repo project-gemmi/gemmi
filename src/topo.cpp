@@ -247,7 +247,7 @@ static void add_polymer_links(PolymerType polymer_type,
               char alt = a1.altloc_or(a2.altloc_or('*'));
               const Atom* ca1_atom = ri1.res->find_atom(ca1, alt, El::C);
               const Atom* ca2_atom = ri2.res->find_atom(ca2, alt, El::C);
-              link.is_cis = is_peptide_bond_cis(ca1_atom, &a1, &a2, ca2_atom);
+              link.is_cis = is_peptide_bond_cis(ca1_atom, &a1, &a2, ca2_atom, 60.);
               if (n_terminus_group == ChemComp::Group::PPeptide)
                 link.link_id = link.is_cis ? "PCIS" : "PTRANS";
               else if (n_terminus_group == ChemComp::Group::MPeptide)

@@ -169,9 +169,10 @@ inline double calculate_omega(const Residue& res, const Residue& next) {
 }
 
 inline bool is_peptide_bond_cis(const Atom* ca1, const Atom* c,
-                                const Atom* n, const Atom* ca2) {
+                                const Atom* n, const Atom* ca2,
+                                double tolerance_deg) {
   double omega = calculate_dihedral_from_atoms(ca1, c, n, ca2);
-  return std::fabs(omega) < rad(30.);
+  return std::fabs(omega) < rad(tolerance_deg);
 }
 
 inline double calculate_chiral_volume(const Position& actr, const Position& a1,
