@@ -38,6 +38,8 @@ else()
       "Install path for gemmi CMake files")
 endif()
 option(STRIP_BINARY "Strip symbols from program" OFF)
+option(ADD_SOVERSION "For shared library (on Linux):\
+ set ABI version to 0, build versions to project version" OFF)
 option(USE_NLOPT "Experimental, for testing only, don't use it" OFF)
 
 # uncomment to show compilation times for each compilation unit
@@ -216,6 +218,10 @@ target_include_directories(gemmi_cpp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_
 
 if (BUILD_SHARED_LIBS)
   target_compile_definitions(gemmi_cpp PUBLIC GEMMI_SHARED)
+  if (ADD_SOVERSION)
+    set_target_properties(gemmi_cpp PROPERTIES VERSION ${PROJECT_VERSION}
+                                               SOVERSION "0")
+  endif()
 endif()
 target_link_libraries(gemmi_cpp PUBLIC gemmi_headers)
 
