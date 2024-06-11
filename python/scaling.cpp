@@ -5,9 +5,6 @@
 #include <pybind11/complex.h>
 #include <pybind11/numpy.h>    // for vectorize
 #include "gemmi/scaling.hpp"
-#if WITH_NLOPT
-#  include "gemmi/nlfit.hpp"
-#endif
 
 namespace py = pybind11;
 

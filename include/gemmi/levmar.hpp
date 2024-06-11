@@ -73,15 +73,91 @@ inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
   jordan_solve(a.data(), b.data(), (int)b.size());
 }
 
-
-#ifdef GEMMI_DEBUG_LEVMAR
 inline void print_parameters(const std::string& name, std::vector<double> &a) {
   fprintf(stderr, " %s:", name.c_str());
   for (double& x : a)
     fprintf(stderr, " %g", x);
   fprintf(stderr, "\n");
 }
+
+template<typename Target>
+double compute_wssr(const Target& target) {
+  long double wssr = 0; // long double here notably increases the accuracy
+  for (const auto& p : target.points)
+    wssr += sq(p.get_weight() * (p.get_y() - target.compute_value(p)));
+  return (double) wssr;
+}
+
+template<typename Target>
+double compute_gradients(const Target& target, unsigned n, double* grad) {
+  double wssr = 0;
+  for (unsigned i = 0; i < n; ++i)
+    grad[i] = 0;
+  std::vector<double> dy_da(n);
+  for (const auto& p : target.points) {
+    double y = target.compute_value_and_derivatives(p, dy_da);
+    double dy = p.get_weight() * (p.get_y() - y);
+    wssr += sq(dy);
+    for (unsigned i = 0; i < n; ++i)
+      grad[i] += -2 * dy * dy_da[i];
+  }
+#if 0
+  // calculate numerical derivatives to check analytical formulas
+  fprintf(stderr, ">>  y=%g\n", wssr);
+  std::vector<double> x = target.get_parameters();
+  assert(x.size() == n);
+  for (unsigned i = 0; i < n; ++i) {
+    double x_orig = x[i];
+    double h = std::max(std::fabs(x[i]), 1e-6) * 1e-3;
+    x[i] = x_orig - h;
+    const_cast<Target&>(target).set_parameters(x);
+    double y_left = compute_wssr(target);
+    x[i] = x_orig + h;
+    const_cast<Target&>(target).set_parameters(x);
+    double y_right = compute_wssr(target);
+    double numeric = (y_right - y_left) / (2 * h);
+    x[i] = x_orig;
+    double m = std::max(std::fabs(grad[i]), std::fabs(numeric));
+    if (m > 1e-3 && std::fabs(grad[i] - numeric) > 0.02 * m)
+      fprintf(stderr, "!! grad[%u]: %g vs %g  (value: %g)\n", i, grad[i], numeric, x[i]);
+  }
+  const_cast<Target&>(target).set_parameters(x);
 #endif
+  return wssr;
+}
+
+template<typename Target>
+double compute_hessian(const Target& target,
+                       std::vector<double>& alpha,
+                       std::vector<double>& beta) {
+  assert(!beta.empty());
+  assert(alpha.size() == beta.size() * beta.size());
+  long double wssr = 0; // long double here notably increases the accuracy
+  size_t na = beta.size();
+  std::fill(alpha.begin(), alpha.end(), 0.0);
+  std::fill(beta.begin(), beta.end(), 0.0);
+  std::vector<double> dy_da(na);
+  for (const auto& p : target.points) {
+    double y = target.compute_value_and_derivatives(p, dy_da);
+    double weight = p.get_weight();
+    double dy_sig = weight * (p.get_y() - y);
+    for (size_t j = 0; j != na; ++j) {
+      if (dy_da[j] != 0) {
+        dy_da[j] *= weight;
+        for (size_t k = j+1; k-- != 0;)
+          alpha[na * j + k] += dy_da[j] * dy_da[k];
+        beta[j] += dy_sig * dy_da[j];
+      }
+    }
+    wssr += sq(dy_sig);
+  }
+
+  // Only half of the alpha matrix was filled above. Fill the rest.
+  for (size_t j = 1; j < na; j++)
+    for (size_t k = 0; k < j; k++)
+      alpha[na * k + j] = alpha[na * j + k];
+  return (double) wssr;
+}
 
 struct LevMar {
   // termination criteria
@@ -117,7 +193,7 @@ struct LevMar {
     alpha.resize(na * na);
     beta.resize(na);
 
-    initial_wssr = this->compute_derivatives(target);
+    initial_wssr = compute_hessian(target, alpha, beta);
     double wssr = initial_wssr;
 
     int small_change_counter = 0;
@@ -140,7 +216,7 @@ struct LevMar {
         temp_beta[i] += best_a[i];
 
       target.set_parameters(temp_beta);
-      double new_wssr = this->compute_wssr(target);
+      double new_wssr = compute_wssr(target);
       ++eval_count;
 #ifdef GEMMI_DEBUG_LEVMAR
       fprintf(stderr, " #%d WSSR=%.8g %+g%% (%+.4g%%) lambda=%g\n",
@@ -165,7 +241,7 @@ struct LevMar {
         } else {
           small_change_counter = 0;
         }
-        this->compute_derivatives(target);
+        compute_hessian(target, alpha, beta);
         ++eval_count;
         lambda *= lambda_down_factor;
       } else { // worse fitting
@@ -177,46 +253,6 @@ struct LevMar {
 
     target.set_parameters(wssr < initial_wssr ? best_a : initial_a);
     return wssr;
-  }
-
-private:
-  template<typename Target>
-  double compute_derivatives(const Target& target) {
-    assert(!beta.empty());
-    assert(alpha.size() == beta.size() * beta.size());
-    long double wssr = 0; // long double here notably increases the accuracy
-    size_t na = beta.size();
-    std::fill(alpha.begin(), alpha.end(), 0.0);
-    std::fill(beta.begin(), beta.end(), 0.0);
-    std::vector<double> dy_da(na);
-    for (const auto& p : target.points) {
-      double y = target.compute_value_and_derivatives(p, dy_da);
-      double weight = p.get_weight();
-      double dy_sig = weight * (p.get_y() - y);
-      for (size_t j = 0; j != na; ++j) {
-        if (dy_da[j] != 0) {
-          dy_da[j] *= weight;
-          for (size_t k = j+1; k-- != 0;)
-            alpha[na * j + k] += dy_da[j] * dy_da[k];
-          beta[j] += dy_sig * dy_da[j];
-        }
-      }
-      wssr += sq(dy_sig);
-    }
-
-    // Only half of the alpha matrix was filled above. Fill the rest.
-    for (size_t j = 1; j < na; j++)
-      for (size_t k = 0; k < j; k++)
-        alpha[na * k + j] = alpha[na * j + k];
-    return (double) wssr;
-  }
-
-  template<typename Target>
-  double compute_wssr(const Target& target) {
-    long double wssr = 0; // long double here notably increases the accuracy
-    for (const auto& p : target.points)
-      wssr += sq(p.get_weight() * (p.get_y() - target.compute_value(p)));
-    return (double) wssr;
   }
 };
 
