@@ -267,6 +267,12 @@ Not distributed with Gemmi:
   in scripts that generated space group data and 2-fold twinning operations.
   License: 3-clause BSD.
 
+Mentions:
+
+* `NLOpt <https://github.com/stevengj/nlopt>`_
+  was used to try out various optimization methods for class Scaling.
+  License: MIT.
+
 Email me if I forgot about something.
 
 List of C++ headers

@@ -95,7 +95,6 @@ struct Scaling {
   double b_sol = 46.0;
   std::vector<Point> points;
 
-  // pre: calc and obs are sorted
   Scaling(const UnitCell& cell_, const SpaceGroup* sg)
       : cell(cell_), constraint_matrix(adp_symmetry_constraints(sg)) {}
 
@@ -176,6 +175,7 @@ struct Scaling {
     set_parameters(p.data());
   }
 
+  // pre: all AsuData args are sorted
   void prepare_points(const AsuData<std::complex<Real>>& calc,
                       const AsuData<ValueSigma<Real>>& obs,
                       const AsuData<std::complex<Real>>* mask_data) {
@@ -302,6 +302,15 @@ struct Scaling {
     return levmar.fit(*this);
   }
 
+  double calculate_r_factor() const {
+    double abs_diff_sum = 0;
+    double denom = 0;
+    for (const Point& p : points) {
+      abs_diff_sum += std::fabs(p.fobs - compute_value(p));
+      denom += p.fobs;
+    }
+    return abs_diff_sum / denom;
+  }
 
   // interface for fitting
   double compute_value(const Point& p) const {

@@ -30,6 +30,7 @@ void add_scaling(py::module& m) {
 #if WITH_NLOPT
     .def("fit_parameters_with_nlopt", &gemmi::fit_parameters_with_nlopt<float>)
 #endif
+    .def("calculate_r_factor", &Scaling::calculate_r_factor)
     .def("get_overall_scale_factor", &Scaling::get_overall_scale_factor, py::arg("hkl"))
     .def("get_overall_scale_factor", [](const Scaling& self, py::array_t<int> hkl) {
         auto h = hkl.unchecked<2>();

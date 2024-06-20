@@ -126,10 +126,14 @@ double compute_gradients(const Target& target, unsigned n, double* grad) {
   return wssr;
 }
 
+// alpha and beta are matrices outputted for the Levenberg-Marquardt algorithm.
+// Ignoring weights, alpha is a squared Jacobian J^T J (which approximates the
+// Hessian, as discussed in Numerical Recipes, chapter 15.5), not "damped" yet.
+// The return value is the same as from compute_wssr().
 template<typename Target>
-double compute_hessian(const Target& target,
-                       std::vector<double>& alpha,
-                       std::vector<double>& beta) {
+double compute_lm_matrices(const Target& target,
+                           std::vector<double>& alpha,
+                           std::vector<double>& beta) {
   assert(!beta.empty());
   assert(alpha.size() == beta.size() * beta.size());
   long double wssr = 0; // long double here notably increases the accuracy
@@ -193,7 +197,7 @@ struct LevMar {
     alpha.resize(na * na);
     beta.resize(na);
 
-    initial_wssr = compute_hessian(target, alpha, beta);
+    initial_wssr = compute_lm_matrices(target, alpha, beta);
     double wssr = initial_wssr;
 
     int small_change_counter = 0;
@@ -204,6 +208,8 @@ struct LevMar {
 
       // prepare next parameters -> temp_beta
       temp_alpha = alpha;
+      // Using '*=' not '+=' below applies the dampling factor as:
+      // J^T J + lambda * diag(J^T J); not ... + lambda * I.
       for (size_t j = 0; j < na; j++)
         temp_alpha[na * j + j] *= (1.0 + lambda);
       temp_beta = beta;
@@ -241,7 +247,7 @@ struct LevMar {
         } else {
           small_change_counter = 0;
         }
-        compute_hessian(target, alpha, beta);
+        compute_lm_matrices(target, alpha, beta);
         ++eval_count;
         lambda *= lambda_down_factor;
       } else { // worse fitting

@@ -2075,7 +2075,7 @@ density of the scatterer (usually electrons) on a grid. For this we use
 
 DensityCalculator contains a grid. The size of the grid is determined
 from two parameters that we need to set: `d_min` which corresponds to
-our resolution limit, and `rate` -- oversampling rate (1.5 by default).
+our resolution limit, and `rate` -- the oversampling rate (1.5 by default).
 
 .. doctest::
 
@@ -2083,8 +2083,8 @@ our resolution limit, and `rate` -- oversampling rate (1.5 by default).
   >>> dencalc.d_min = 2.5 # 2.5A
   >>> dencalc.rate = 1.5  # we could skip it, this is the default value
 
-All these two parameters mean is that the spacing between grid planes
-needs to be at least 2.5Å / (2 \* 1.5) = 0.67Å.
+These two parameters are only used to determine the spacing of the grid.
+In this case, about 2.5Å / (2 \* 1.5) = 0.83Å.
 
 As with StructureFactorCalculator, here we also have :ref:`addends <addends>`:
 
@@ -2109,17 +2109,19 @@ Calling `put_model_density_on_grid` is equivalent to these three functions:
   >>> dencalc.add_model_density_to_grid(st[0])
   >>> dencalc.grid.symmetrize_sum()
 
-Function initialize_grid(), in this case, uses `d_min` and `rate`
+`initialize_grid()`, in this case, uses `d_min` and `rate`
 to determine required grid spacing and uses this spacing to setup the grid.
-If `d_min` would not be set and the grid size would be set, initialize_grid()
-would only zero the grid values.
+If `d_min` is not set, but the grid size is already set,
+initialize_grid() only zeros all the grid values.
+
+At this point, we have a grid with density:
 
 .. doctest::
 
   >>> dencalc.grid
   <gemmi.FloatGrid(48, 48, 50)>
 
-which we can transform (as described :ref:`above <fft>`)
+which can be transformed (as described :ref:`above <fft>`)
 into a structure factor grid:
 
 .. doctest::
@@ -2131,13 +2133,13 @@ into a structure factor grid:
   (54.5276...+53.4189...j)
 
 In addition to `d_min` and `rate`, which govern the grid density,
-DensityCalculator has two more parameters that affect accuracy
+DensityCalculator has two more parameters that affect the accuracy
 of the calculated structure factors:
 
 * `cutoff` (default: 1e-5) -- density cut-off in the same unit as the map.
-  It is used to determine atomic radius in which the density is calculated
-  (density in the radius distance should be approximately `cutoff`).
-  Smaller cutoff means more accurate but slower calculations.
+  It is used to determine the atomic radius in which the density is calculated
+  (density at the radius distance should be approximately `cutoff`).
+  A smaller cutoff means more accurate but slower calculations.
 * `blur` (default: 0) -- Gaussian dampening (blurring) factor --
   artificial temperature factor *B*\ :sub:`extra` added to all atomic B-factors
   (the structure factors must be later corrected to cancel it out).
@@ -2156,7 +2158,7 @@ gives the most accurate results depends on the resolution, oversampling,
 atomic radius cut-off, and on the distribution of B-factors
 (in particular, on the minimal B-factor in the model).
 Additionally, increasing the dampening makes the computations slower
-(because it increases atomic radius).
+(because it increases the atomic radius).
 
 *B*\ :sub:`extra` can be set explicitly (it can be negative):
 
@@ -2165,11 +2167,13 @@ Additionally, increasing the dampening makes the computations slower
   >>> dencalc.blur = 10
 
 or using the formula from Refmac (which is a function of the grid spacing
-and *B*\ :sub:`min`):
+and *B*\ :sub:`min`). If the formula results in a negative number,
+Refmac sets *B*\ :sub:`extra`\ to 0, and Servalcat, which employs the same
+formula, uses the negative value:
 
 .. doctest::
 
-  >>> dencalc.set_refmac_compatible_blur(st[0])
+  >>> dencalc.set_refmac_compatible_blur(st[0], allow_negative=False)
   >>> dencalc.blur
   31.01648695048263
 
@@ -2188,6 +2192,8 @@ or multiplying individual structure factor by
 
 Mott-Bethe formula
 ~~~~~~~~~~~~~~~~~~
+
+(It's a niche topic that most of the readers should skip.)
 
 To calculate *f*\ :sub:`e` according to the Mott-Bethe formula
 we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
@@ -2231,7 +2237,7 @@ has positions for electrons, call `subtract_z()` as:
 
   >>> dc.addends.subtract_z(except_hydrogen=True)
 
-change hydrogen coordinates to proton positions
+change hydrogen coordinates to proton positions,
 and subtract Z=1 by adding c=-1:
 
 .. doctest::
@@ -2246,38 +2252,113 @@ and subtract Z=1 by adding c=-1:
 Scaling and bulk solvent correction
 -----------------------------------
 
-Anisotropic scaling and fitting of the bulk solvent parameters are usually
-performed together. Both are implemented in the same class (Scaling),
-but it doesn't prevent you from scaling *F*\ s without any bulk solvent,
-or from calculating the bulk solvent correction without anisotropic scaling.
+Anisotropic scaling of calculated structure factors **F** and bulk solvent
+correction are usually handled together because the bulk solvent parameters
+are optimized along with the scaling parameters.
+In Gemmi, both are implemented in one class: Scaling.
 
-The bulk solvent occupies significant volume of a macromolecular crystal;
-adding its contribution significantly changes structure factors.
-Usually, the bulk solvent is modelled as a flat scatterer.
-First, we create a mask of the bulk solvent, as described in
-a section about :ref:`solvent masking <solventmask>`.
-Then, we Fourier-transform the mask and obtain *F*\ :sub:`mask`.
-Usually, the solvent correction has two parameters:
+The bulk solvent correction is optional and used only with crystallographic
+data. The solvent (not modeled as individual atoms) occupies a significant
+volume of a macromolecular crystal, so accounting for it makes a difference.
+If we have a model with atomic coordinates, we can create a mask,
+as described in the section about :ref:`solvent masking <solventmask>`,
+to model bulk solvent as a flat scatterer.
+Then, we Fourier-transform the mask and obtain **F**\ :sub:`mask`.
 
-*F*\ :sub:`sol` = *k*\ :sub:`sol` exp(-\ *B*\ :sub:`sol` *s*\ :sup:`2`/4) *F*\ :sub:`mask`,
+The solvent correction is parametrized as:
 
-and we also have overall anisotropic scaling parameters
-(*k*\ :sub:`ov` and **B**\ :sub:`ov`).
-All the parameters, i.e. *k*\ :sub:`ov`, **B**\ :sub:`ov`,
-*k*\ :sub:`sol` and *B*\ :sub:`sol`, or only selected ones,
-are optimized to make the total calculated structure factors *F*\ :sub:`calc`
+  **F**\ :sub:`sol` = *k*\ :sub:`sol` exp(–\ *B*\ :sub:`sol` *s*\ :sup:`2`/4) **F**\ :sub:`mask`
+
+*k*\ :sub:`sol` and *B*\ :sub:`sol` are refined together with the overall
+anisotropic scaling parameters, *k*\ :sub:`ov` and **B**\ :sub:`ov`:
+
+  **F**\ :sub:`tot` = *k*\ :sub:`ov` exp(–\ **s**\ :sup:`T` **B**\ :sub:`ov` **s** / 4) (**F**\ :sub:`cryst` + **F**\ :sub:`sol`)
+
+**B**\ :sub:`ov` is a crystallographic anisotropic tensor that obeys
+the symmetry; effectively, from a single fittable parameter for a cubic
+crystal to 6 parameters for a primitive crystal.
+All the parameters (*k*\ :sub:`ov`, **B**\ :sub:`ov`,
+*k*\ :sub:`sol` and *B*\ :sub:`sol`), or only selected ones,
+are optimized to make the total calculated amplitude
+*F*\ :sub:`tot` = \|\ **F**\ :sub:`tot`\|
 match the diffraction data *F*\ :sub:`obs`.
+But according to what criterion?
 
-TBC
+First, there is least-squares scaling, which minimizes
+∑(*F*\ :sub:`tot` – *F*\ :sub:`obs`)\ :sup:`2`.
+While this target function has fallen out of favor in macromolecular
+crystallography (because the errors are not really Gaussian-distributed),
+it is still routinely used for the calculation of statistics such as R-factors.
 
-class Scaling
+The workhorse algorithm for non-linear least squares optimization
+is the Levenberg-Marquardt method. Unlike other popular algorithms,
+such as BFGS and conjugate gradient methods, L-M works only for least squares.
+This is because while the other methods estimate the Hessian from the result of
+the previous optimization step (BFGS) or ignore the second derivatives (CG),
+L-M approximates the Hessian as a squared Jacobian (**J**\ :sup:`T` **J**),
+which holds only for quadratic forms. However, for these forms L-M tends
+to converge faster than the other methods.
+
+Here is a full example. We read *F*\ :sub:`obs` from an mtz file,
+then we read a corresponding model and use it to calculate
+**F**\ :sub:`cryst` and **F**\ :sub:`mask`.
+These functions were described in the previous sections.
+Then we instantiate the Scaling class, pass the data points to it,
+and finally we perform the least squares scaling.
+
+**Note: functions in class Scaling are likely to change soon**.
 
 .. doctest::
 
-  >>> grid = gemmi.FloatGrid()
-  >>> grid.setup_from(st, spacing=1.0)
-  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Cctbx)
-  >>> masker.put_mask_on_float_grid(grid, st[0])
-  >>> gemmi.transform_map_to_f_phi(grid, half_l=False).prepare_asu_data(dmin=2.1)
-  <gemmi.ComplexAsuData with 1848 values>
+  >>> # read Fobs
+  >>> mtz = gemmi.read_mtz_file('../tests/5e5z.mtz')
+  >>> mtz.update_reso()
+  >>> f_obs = mtz.get_value_sigma('FP', 'SIGFP')
 
+  >>> # calculate Fcryst
+  >>> st = gemmi.read_structure('../tests/5e5z.pdb')
+  >>> d_min = mtz.resolution_high() - 1e-9
+  >>> dc = gemmi.DensityCalculatorX()
+  >>> dc.d_min = d_min
+  >>> dc.set_refmac_compatible_blur(st[0])
+  >>> dc.grid.setup_from(st)
+  >>> dc.put_model_density_on_grid(st[0])
+  >>> grid = gemmi.transform_map_to_f_phi(dc.grid, half_l=True)
+  >>> f_cryst = grid.prepare_asu_data(dmin=d_min, unblur=dc.blur)
+
+  >>> # calculate Fmask
+  >>> mask_grid = gemmi.FloatGrid()
+  >>> mask_grid.setup_from(st, spacing=min(0.6, d_min / 2 - 1e-9))
+  >>> masker = gemmi.SolventMasker(gemmi.AtomicRadiiSet.Refmac)
+  >>> masker.put_mask_on_float_grid(mask_grid, st[0])
+  >>> fmask_gr = gemmi.transform_map_to_f_phi(mask_grid, half_l=True)
+  >>> f_mask = fmask_gr.prepare_asu_data(dmin=d_min)
+
+  >>> # now we can start with Scaling
+  >>> scaling = gemmi.Scaling(st.cell, st.find_spacegroup())
+  >>> scaling.use_solvent = True
+  >>> scaling.prepare_points(f_cryst, f_obs, f_mask)
+  >>> scaling.fit_isotropic_b_approximately()
+  >>> wssr = scaling.fit_parameters()
+  >>> print(f'RMSE: {(wssr / len(f_obs)) ** 0.5:.4f}')
+  RMSE: 6.4176
+  >>> print(f'R-factor: {scaling.calculate_r_factor():.2%}')
+  R-factor: 17.73%
+
+  >>> # get scaled Ftotal
+  >>> f_tot = f_cryst.copy()
+  >>> scaling.scale_data(f_tot, f_mask)
+
+Least squares are sensitive to outliers. To make the scaling less sensitive,
+we must change the target function. The absolute differences in R-factor are
+less affected by outliers than the squared differences.
+If we choose a target that's more similar to the R-factor,
+we'll get more robust scaling, and also a lower R-factor.
+
+This requires a different optimization algorithm. Actually, it's also possible
+to *robustify* least squares and keep using (modified) Levenberg-Marquardt,
+as was `reviewed <https://link.springer.com/chapter/10.1007/978-3-319-10602-1_50>`_
+for the bundle adjustment procedure, but I haven't found any research indicating
+these methods are preferable to simply using another algorithm.
+
+TBC
