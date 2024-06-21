@@ -13,6 +13,7 @@
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/select.hpp"    // for Selection
 #include "gemmi/enumstr.hpp"   // for polymer_type_to_string
+#include "gemmi/calculate.hpp" // for parse_triplet_as_ftransform
 
 #include <cstring>
 #include <iostream>
@@ -142,7 +143,7 @@ const option::Descriptor Usage[] = {
   { Remove, 0, "", "remove", Arg::Required,
     "  --remove=SEL  \tRemove the selection." },
   { ApplySymop, 0, "", "apply-symop", Arg::Required,
-    "  --apply-symop=OP  \tApply symmetry operation (e.g. '-x,y+1/2,-z'." },
+    "  --apply-symop=OP  \tApply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'." },
   { Reframe, 0, "", "reframe", Arg::None,
     "  --reframe  \tStandardize the coordinate system (frame)." },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
@@ -303,9 +304,10 @@ void convert(gemmi::Structure& st,
   if (st.models.empty())
     gemmi::fail("all models got removed");
   if (options[ApplySymop]) {
-    gemmi::Op op = gemmi::parse_triplet(options[ApplySymop].arg);
-    transform_pos_and_adp(st, st.cell.op_as_transform(op));
+    gemmi::FTransform frac_tr = gemmi::parse_triplet_as_ftransform(options[ApplySymop].arg);
+    transform_pos_and_adp(st, st.cell.orthogonalize_transform(frac_tr));
   }
+
   if (options[Reframe])
     standardize_crystal_frame(st);
 

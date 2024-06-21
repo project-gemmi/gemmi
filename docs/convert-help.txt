@@ -51,7 +51,7 @@ Any output options:
 Macromolecular operations:
   --select=SEL            Output only the selection.
   --remove=SEL            Remove the selection.
-  --apply-symop=OP        Apply symmetry operation (e.g. '-x,y+1/2,-z'.
+  --apply-symop=OP        Apply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'.
   --reframe               Standardize the coordinate system (frame).
   --expand-ncs=dup|num|x  Expand strict NCS from in MTRIXn or _struct_ncs_oper.
                           New chain names are the same, have added numbers, or
