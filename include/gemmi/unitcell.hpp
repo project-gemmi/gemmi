@@ -407,9 +407,11 @@ struct UnitCell {
     return r;
   }
 
+  Transform orthogonalize_transform(const FTransform& ftr) const {
+    return orth.combine(ftr.combine(frac));
+  }
   Transform op_as_transform(const Op& op) const {
-    Transform frac_tr{rot_as_mat33(op), tran_as_vec3(op)};
-    return orth.combine(frac_tr.combine(frac));
+    return orthogonalize_transform(Transform{rot_as_mat33(op), tran_as_vec3(op)});
   }
 
   double distance_sq(const Fractional& pos1, const Fractional& pos2) const {
