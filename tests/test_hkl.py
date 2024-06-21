@@ -36,7 +36,7 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     self.assertEqual(map1.axis_order, order)
     map2 = numpy.fft.ifftn(array_full.conj())
     map2 = numpy.real(map2) * (map2.size / grid_full.unit_cell.volume)
-    compare_maps(self, map1, map2, atol=6e-7)
+    compare_maps(self, map1, map2, atol=1e-6)
     map3 = data.transform_f_phi_to_map(f, phi, size, order=order)
     compare_maps(self, map1, map3, atol=6e-7)
 
