@@ -255,7 +255,9 @@ inline int interpret_miller_character(char c, const std::string& s) {
   return values[idx] - 1;
 }
 
-inline std::array<int, 4> parse_triplet_part(const std::string& s) {
+// decimal_fract is useful only for non-crystallographic ops (such as x+0.12)
+inline std::array<int, 4> parse_triplet_part(const std::string& s,
+                                             double* decimal_fract=nullptr) {
   std::array<int, 4> r = { 0, 0, 0, 0 };
   int num = Op::DEN;
   const char* c = s.c_str();
@@ -268,6 +270,7 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       fail("wrong or unsupported triplet format: " + s);
     int r_idx;
     int den = 1;
+    double fract = 0;
     if ((*c >= '0' && *c <= '9') || *c == '.') {
       // syntax examples in this branch: "1", "-1/2", "+2*x", "1/2 * b"
       char* endptr;
@@ -275,13 +278,15 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       // some COD CIFs have decimal fractions ("-x+0.25", ".5+Y", "1.25000-y")
       if (*endptr == '.') {
         // avoiding strtod() etc which is locale-dependent
-        double fract = n;
+        fract = n;
         for (double denom = 0.1; *++endptr >= '0' && *endptr <= '9'; denom *= 0.1)
           fract += int(*endptr - '0') * denom;
         double rounded = std::round(fract * num);
-        if (std::fabs(rounded - fract * num) > 0.05)
-          fail("unexpected number in a symmetry triplet part: " + s);
-        num = int(rounded);
+        if (!decimal_fract) {
+          if (std::fabs(rounded - fract * num) > 0.05)
+            fail("unexpected number in a symmetry triplet part: " + s);
+          num = int(rounded);
+        }
       } else {
         num *= n;
       }
@@ -306,11 +311,13 @@ inline std::array<int, 4> parse_triplet_part(const std::string& s) {
       }
     }
     if (den != 1) {
-      if (den <= 0 || Op::DEN % den != 0)
+      if (den <= 0 || Op::DEN % den != 0 || fract != 0)
         fail("Wrong denominator " + std::to_string(den) + " in: " + s);
       num /= den;
     }
     r[r_idx] += num;
+    if (decimal_fract)
+      decimal_fract[r_idx] = num > 0 ? fract : -fract;
     num = 0;
   }
   if (num != 0)

@@ -79,7 +79,7 @@ void add_symmetry(py::module& m) {
 
   m.def("parse_triplet", &parse_triplet, py::arg("triplet"),
         "Parse coordinate triplet into gemmi.Op.");
-  m.def("parse_triplet_part", &parse_triplet_part, py::arg("s"),
+  m.def("parse_triplet_part", [](const std::string& s) { return parse_triplet_part(s); },
         "Parse one of the three parts of a triplet.");
   m.def("make_triplet_part", &make_triplet_part,
         py::arg("xyz"), py::arg("w"), py::arg("style")='x',

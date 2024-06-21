@@ -203,5 +203,7 @@ inline double get_distance_from_plane(const Position& pos,
   return coeff[0] * pos.x + coeff[1] * pos.y + coeff[2] * pos.z + coeff[3];
 }
 
+GEMMI_DLL FTransform parse_triplet_as_ftransform(const std::string& s);
+
 } // namespace gemmi
 #endif

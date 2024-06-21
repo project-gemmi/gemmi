@@ -528,14 +528,15 @@ void add_mol(py::module& m) {
         "Input: three points. Output: angle in radians.");
   m.def("calculate_dihedral", &calculate_dihedral,
         "Input: four points. Output: dihedral angle in radians.");
+  m.def("calculate_omega", &calculate_omega,
+        py::arg("residue"), py::arg("next_residue"));
   m.def("calculate_phi_psi", &calculate_phi_psi,
         py::arg("prev_residue"), py::arg("residue"), py::arg("next_residue"));
   m.def("find_best_plane", &find_best_plane,
         py::arg("atoms"));
   m.def("get_distance_from_plane", &get_distance_from_plane,
         py::arg("pos"), py::arg("coeff"));
-  m.def("calculate_omega", &calculate_omega,
-        py::arg("residue"), py::arg("next_residue"));
+  m.def("parse_triplet_as_ftransform", &parse_triplet_as_ftransform);
   m.def("make_assembly", [](const Assembly& assembly, const Model& model,
                             HowToNameCopiedChain how) {
         return make_assembly(assembly, model, how, nullptr);
