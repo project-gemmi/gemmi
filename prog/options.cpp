@@ -2,7 +2,7 @@
 
 #define GEMMI_PROG na
 #include "options.h"
-#include <cstdio>   // for fprintf, fopen
+#include <cstdio>   // for fprintf, stdin
 #include <cstdlib>  // for strtol, strtod, exit
 #include <cstring>  // for strcmp, strchr
 #include <gemmi/atox.hpp>      // for skip_blank
@@ -243,18 +243,14 @@ OptParser::paths_from_args_or_file(int opt, int other) {
   if (file_option) {
     if (nonOptionsCount() > other)
       print_try_help_and_exit("Error: File arguments together with option -f.");
-    std::FILE *f = std::fopen(file_option.arg, "r");
-    if (!f) {
-      std::perror(file_option.arg);
-      std::exit(2);
-    }
+
+    auto f = gemmi::file_open_or(file_option.arg, "r", stdin);
     char buf[512];
-    while (std::fgets(buf, 512, f)) {
+    while (std::fgets(buf, 512, f.get())) {
       std::string s = gemmi::trim_str(buf);
       if (!s.empty())
         paths.emplace_back(s);
     }
-    std::fclose(f);
   } else {
     require_input_files_as_args(other);
     for (int i = other; i < nonOptionsCount(); ++i)

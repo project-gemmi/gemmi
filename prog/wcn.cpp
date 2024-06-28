@@ -323,8 +323,6 @@ int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
 
-  std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0);
-
   int verbose = p.options[Verbose].count();
   Params params;
   if (p.options[MinDist])
@@ -348,11 +346,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   double sum_cc = 0;
   double sum_rmad = 0;
   double sum_rank_cc = 0;
-  printf("PDB\tChain\t");
-  if (p.options[PrintRes])
-    printf("Res[A]\tRFree\t");
-  printf("#res\tN\t<B>\tstd(B)\tCC\t1-RMAD\trankCC\n");
   try {
+    std::vector<std::string> paths = p.paths_from_args_or_file(FromFile, 0);
+    printf("PDB\tChain\t");
+    if (p.options[PrintRes])
+      printf("Res[A]\tRFree\t");
+    printf("#res\tN\t<B>\tstd(B)\tCC\t1-RMAD\trankCC\n");
     for (std::string& path : paths) {
       if (verbose > 0)
         fprintf(stderr, "File: %s\n", path.c_str());
