@@ -261,22 +261,24 @@ to `5moo.cif.gz`. And for convenience, using a PDB code implies
 option `-O`.
 
 The file paths or PDB codes can be read from a file.
-For example, if we want to analyse PDB data deposited in 2016
-we may first make a file that lists all such files::
+For example, if we want to analyze PDB data deposited in 2016,
+we may first create a file that lists all such files::
 
   $ gemmi grep -H -O _pdbx_database_status.recvd_initial_deposition_date $PDB_DIR/structures/divided/mmCIF | \
           grep 2016 >year2016.txt
 
-The 2016.txt file file has lines that start with the filename::
+The year2016.txt file has lines that start with the filename::
 
   /hdd/structures/divided/mmCIF/ww/5ww9.cif.gz:5WW9:2016-12-31
   /hdd/structures/divided/mmCIF/ww/5wwc.cif.gz:5WWC:2016-12-31
 
-and a command such as::
+If we make a list of filenames only::
 
-  $ gemmi grep -f year2016.out _diffrn.ambient_temp
+  $ awk -F: '{print $1}' year2016.txt > year2016_.txt
 
-will grep only the listed cif files.
+we can then use `-f` to grep files from this list::
+
+  $ gemmi grep -f year2016_.txt _diffrn.ambient_temp
 
 Exit status of gemmi-grep has the same meaning as in GNU grep:
 0 if a line is selected, 1 if no lines were selected,
