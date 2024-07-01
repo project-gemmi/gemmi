@@ -33,9 +33,9 @@ jobs:
           ./gemmi-*.whl
         retention-days: 14
 
-  macos11:
-    name: "macOS 11 (w/o python)"
-    runs-on: macos-11
+  macos12:
+    name: "macOS 12 (w/o python)"
+    runs-on: macos-12
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
         python3 tests/test_prog.py
     - uses: actions/upload-artifact@v4
       with:
-        name: gemmi-macos11
+        name: gemmi-macos12
         path: |
           ${{runner.workspace}}/build/gemmi
           ${{runner.workspace}}/build/libgemmi*
