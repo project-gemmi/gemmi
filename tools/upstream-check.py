@@ -8,8 +8,8 @@ import json
 from urllib.request import urlopen
 
 TAGGED_REPOS = {
-    'pybind/pybind11': 'v2.6.1',
-    'scikit-build/scikit-build-core': 'v0.9.4',
+    'wjakob/nanobind': 'v2.1.0',
+    'scikit-build/scikit-build-core': 'v0.10.5',
     'taocpp/PEGTL': '2.8.3',
     'cxong/tinydir': '1.2.6',
     'fastfloat/fast_float': 'v6.1.5',
@@ -29,11 +29,11 @@ def load_json(url):
 
 def check_tags():
     for repo, version in TAGGED_REPOS.items():
-        url = 'https://api.github.com/repos/%s/releases/latest' % repo
-        data = load_json(url)
-        if 'tag_name' in data:
+        try:
+            url = 'https://api.github.com/repos/%s/releases/latest' % repo
+            data = load_json(url)
             latest_tag = data['tag_name']
-        else:
+        except IOError:
             data = load_json('https://api.github.com/repos/%s/tags' % repo)
             latest_tag = data[0]['name']
         mark = ('   !!!' if version != latest_tag else '')

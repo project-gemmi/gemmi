@@ -1,29 +1,52 @@
 
 #pragma once
-#include <pybind11/pybind11.h>
 
-void add_elem(pybind11::module& m); // elem.cpp
-void add_symmetry(pybind11::module& m); // sym.cpp
-void add_ccp4(pybind11::module& m); // ccp4.cpp
-void add_grid(pybind11::module& m); // grid.cpp
-void add_recgrid(pybind11::module& m); // recgrid.cpp
-void add_unitcell(pybind11::module& m); // unitcell.cpp
-void add_hkl(pybind11::module& m); // hkl.cpp
-void add_meta(pybind11::module& m); // meta.cpp
-void add_mol(pybind11::module& m); // mol.cpp
-void add_mtz(pybind11::module& m); // mtz.cpp
-void add_cif(pybind11::module& cif); // cif.cpp
-void add_cif_read(pybind11::module& cif); // read.cpp
-void add_read_structure(pybind11::module& m); // read.cpp
-void add_small(pybind11::module& m); // read.cpp
-void add_chemcomp(pybind11::module& m); // chemcomp.cpp
-void add_monlib(pybind11::module& m); // monlib.cpp
-void add_topo(pybind11::module& m); // topo.cpp
-void add_alignment(pybind11::module& m); // align.cpp
-void add_scaling(pybind11::module& m); // scaling.cpp
-void add_search(pybind11::module& m); // search.cpp
-void add_sf(pybind11::module& m); // sf.cpp
-void add_custom(pybind11::module& m); // custom.cpp
+#if defined(__clang__)
+  #pragma clang diagnostic push
+#elif defined(__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
+#include <nanobind/nanobind.h>
+
+#if defined(__clang__)
+  #pragma clang diagnostic pop
+#elif defined(__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+#if NB_VERSION_MAJOR < 2
+  #error Required nanobind version >= 2
+#endif
+
+#include <vector>
+
+namespace nb = nanobind;
+constexpr auto rv_ri = nb::rv_policy::reference_internal;
+
+void add_elem(nb::module_& m); // elem.cpp
+void add_symmetry(nb::module_& m); // sym.cpp
+void add_ccp4(nb::module_& m); // ccp4.cpp
+void add_grid(nb::module_& m); // grid.cpp
+void add_recgrid(nb::module_& m); // recgrid.cpp
+void add_unitcell(nb::module_& m); // unitcell.cpp
+void add_hkl(nb::module_& m); // hkl.cpp
+void add_meta(nb::module_& m); // meta.cpp
+void add_mol(nb::module_& m); // mol.cpp
+void add_mtz(nb::module_& m); // mtz.cpp
+void add_cif(nb::module_& cif); // cif.cpp
+void add_cif_read(nb::module_& cif); // read.cpp
+void add_read_structure(nb::module_& m); // read.cpp
+void add_small(nb::module_& m); // read.cpp
+void add_chemcomp(nb::module_& m); // chemcomp.cpp
+void add_monlib(nb::module_& m); // monlib.cpp
+void add_topo(nb::module_& m); // topo.cpp
+void add_alignment(nb::module_& m); // align.cpp
+void add_scaling(nb::module_& m); // scaling.cpp
+void add_search(nb::module_& m); // search.cpp
+void add_sf(nb::module_& m); // sf.cpp
+void add_custom(nb::module_& m); // custom.cpp
 
 // defined in write.cpp
 namespace gemmi {
@@ -31,9 +54,9 @@ namespace gemmi {
   namespace cif { struct Document; }
 }
 
-void add_write(pybind11::module& m, pybind11::class_<gemmi::Structure>& structure);
+void add_write(nb::module_& m, nb::class_<gemmi::Structure>& structure);
 // defined in align.cpp
-void add_assign_label_seq_id(pybind11::class_<gemmi::Structure>& structure);
+void add_assign_label_seq_id(nb::class_<gemmi::Structure>& structure);
 
 // defined in read.cpp
 void cif_parse_string(gemmi::cif::Document& doc, const std::string& data);
@@ -44,7 +67,7 @@ inline int c_index(int index, size_t size) {
   if (index < 0)
     index += (int) size;
   if ((size_t) index >= size)
-    throw pybind11::index_error();
+    throw nb::index_error();
   return index;
 }
 
@@ -52,38 +75,34 @@ template<typename T> int normalize_index(int index, const T& container) {
   return c_index(index, container.size());
 }
 
+// overloaded in cif.cpp
 template<typename Item>
-void delitem_at_index(std::vector<Item>& items, pybind11::ssize_t idx) {
+void delitem_at_index(std::vector<Item>& items, size_t idx) {
   items.erase(items.begin() + idx);
 }
 
+// overloaded in cif.cpp
 template<typename Item>
-void delitem_range(std::vector<Item>& items, pybind11::ssize_t start, pybind11::ssize_t end) {
+void delitem_range(std::vector<Item>& items, size_t start, size_t end) {
   items.erase(items.begin() + start, items.begin() + end);
 }
 
 template<typename Items>
-void delitem_slice(Items& items, const pybind11::slice& slice) {
-  namespace py = pybind11;
-  py::ssize_t start, stop, step, slength;
-  if (!slice.compute((py::ssize_t)items.size(), &start, &stop, &step, &slength))
-    throw py::error_already_set();
+void delitem_slice(Items& items, const nb::slice& slice) {
+  auto [start, stop, step, length] = slice.compute(items.size());
   if (step == 1) {
-    delitem_range(items, start, start + slength);
+    delitem_range(items, start, start + length);
   } else {
-    for (int i = 0; i < slength; ++i)
-      delitem_at_index(items, start + (step > 0 ? slength - 1 - i : i) * step);
+    for (size_t i = 0; i < length; ++i)
+      delitem_at_index(items, start + (step > 0 ? length - 1 - i : i) * step);
   }
 }
 
 template<typename Items>
-pybind11::list getitem_slice(Items& items, const pybind11::slice& slice) {
-  namespace py = pybind11;
-  py::ssize_t start, stop, step, slength;
-  if (!slice.compute((py::ssize_t)items.size(), &start, &stop, &step, &slength))
-    throw py::error_already_set();
-  py::list l;
-  for (py::ssize_t i = 0; i < slength; ++i)
-    l.append(py::cast(&items[start + i * step]));
+nb::list getitem_slice(Items& items, const nb::slice& slice) {
+  auto [start, stop, step, length] = slice.compute(items.size());
+  nb::list l;
+  for (size_t i = 0; i < length; ++i)
+    l.append(nb::cast(&items[start + i * step]));
   return l;
 }

@@ -67,9 +67,8 @@ endif()
 set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
 
 # Unless it's explicitly specifed, we want LTO for non-debug builds only.
-# pybind11Common.cmake has its own logic to set LTO options.
-# Having different options in pybind11_add_module than for gemmi_cpp
-# may cause problems -- we may need to handle it at some point.
+# TODO: check that it's compatible with nanobind_add_module, which has
+# its own logic of setting LTO options.
 if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
   include(CheckIPOSupported)
   check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)
@@ -108,10 +107,9 @@ if (DEFINED ENV{CXXFLAGS})
 endif()
 
 # Set default build mode (based on CMake FAQ)
-if (NOT CMAKE_BUILD_TYPE AND NOT USING_ENV_CXXFLAGS)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING
-      "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-      FORCE)
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES AND NOT USING_ENV_CXXFLAGS)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
@@ -458,29 +456,28 @@ if (USE_PYTHON)
   else()
     find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development.Module)
   endif()
-  # pybind11 macros use PYTHON_EXECUTABLE
-  if (DEFINED Python_EXECUTABLE AND NOT DEFINED PYTHON_EXECUTABLE)
-    set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
-  endif()
-  if (EXISTS "${CMAKE_HOME_DIRECTORY}/pybind11")
-    message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/pybind11 (internal copy).")
-    add_subdirectory(pybind11)
+  if (EXISTS "${CMAKE_HOME_DIRECTORY}/nanobind")
+    message(STATUS "Using ${CMAKE_HOME_DIRECTORY}/nanobind (internal copy).")
+    add_subdirectory(nanobind)
   else()
-    # use pybind11-config (if available) to determine pybind11_DIR
-    execute_process(COMMAND pybind11-config --cmakedir OUTPUT_VARIABLE pybind11_DIR)
-    string(STRIP "${pybind11_DIR}" pybind11_DIR)
-    find_package(pybind11 2.6 CONFIG REQUIRED)
-    message(STATUS "Found pybind11 ${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
+    # Detect the installed nanobind package and import it into CMake
+    execute_process(
+      COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+      OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE NB_DIR)
+    list(APPEND CMAKE_PREFIX_PATH "${NB_DIR}")
+    find_package(nanobind 2.1.0 CONFIG REQUIRED)
+    message(STATUS "Found nanobind ${nanobind_VERSION}: ${NB_DIR}")
   endif()
-  pybind11_add_module(gemmi_py
-          python/mol.cpp python/gemmi.cpp python/align.cpp
+  nanobind_add_module(gemmi_py NOMINSIZE
+          python/gemmi.cpp python/align.cpp
           python/ccp4.cpp python/chemcomp.cpp python/cif.cpp python/custom.cpp
           python/elem.cpp python/grid.cpp python/hkl.cpp
-          python/meta.cpp python/monlib.cpp
+          python/meta.cpp python/mol.cpp python/monlib.cpp
           python/mtz.cpp python/read.cpp python/recgrid.cpp
           python/scaling.cpp python/search.cpp
           python/sf.cpp python/sym.cpp python/topo.cpp
           python/unitcell.cpp python/write.cpp)
+
   if (STANDALONE_PYTHON_MODULE)
     target_sources(gemmi_py PRIVATE $<TARGET_OBJECTS:gemmi_cpp>)
     get_target_property(_gemmi_cpp_libs gemmi_cpp LINK_LIBRARIES)
@@ -489,8 +486,24 @@ if (USE_PYTHON)
     target_link_libraries(gemmi_py PRIVATE gemmi_cpp)
   endif()
   set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi)
+
+  # nanobind gives warnings with -Wpedantic and -Wshadow
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
+    if (TARGET nanobind-static)
+      target_compile_options(nanobind-static PRIVATE "-Wno-shadow")
+    endif()
     target_compile_options(gemmi_py PRIVATE "-Wno-shadow")
+  endif()
+  if (CMAKE_CXX_FLAGS MATCHES "-Wpedantic")
+    if (TARGET nanobind-static)
+      target_compile_options(nanobind-static PRIVATE "-Wno-pedantic")
+    endif()
+    target_compile_options(gemmi_py PRIVATE "-Wno-pedantic")
+  endif()
+  if (CMAKE_CXX_FLAGS MATCHES "-Wredundant-decls")
+    if (TARGET nanobind-static)
+      target_compile_options(nanobind-static PRIVATE "-Wno-redundant-decls")
+    endif()
   endif()
 
   if (USE_NLOPT)
@@ -503,22 +516,14 @@ if (USE_PYTHON)
   if (GENERATE_STUBS AND CMAKE_CROSSCOMPILING)
     message(WARNING "Stubs cannot be generated when cross-compiling - skipping.")
   elseif (GENERATE_STUBS)
-    set(sep ":")
-    if (WIN32)
-      set(sep ";")
-    endif()
-    add_custom_command(TARGET gemmi_py POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E env
-         "PYTHONPATH=$<TARGET_FILE_DIR:gemmi_py>${sep}$ENV{PYTHONPATH}"
-       ${Python_EXECUTABLE} -m pybind11_stubgen gemmi
-         --enum-class-locations=Ignore:gemmi.ContactSearch
-         --enum-class-locations=.+:gemmi
-         --numpy-array-remove-parameters
-         --output-dir stubs
-     COMMAND ${CMAKE_COMMAND} -E touch stubs/gemmi/py.typed
-     COMMENT "Generate type stubs with pybind11-stubgen"
-     BYPRODUCTS stubs/gemmi/__init__.pyi stubs/gemmi/cif.pyi stubs/gemmi/py.typed
-     VERBATIM)
+    #nanobind_add_stub(
+    #  gemmi_py_stub
+    #  MODULE gemmi_py
+    #  OUTPUT stubs/gemmi/__init__.pyi
+    #  PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
+    #  DEPENDS gemmi_py
+    #  MARKER_FILE stubs/py.typed
+    #)
   endif()
 else()
   message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
@@ -579,8 +584,8 @@ if (USE_PYTHON)
   install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
           FILES_MATCHING PATTERN "*.py"
           PATTERN "[._]*" EXCLUDE)
-  if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
-    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
-            DESTINATION "${Python_SITEARCH}" COMPONENT py)
-  endif()
+  #if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
+  #  install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
+  #          DESTINATION "${Python_SITEARCH}" COMPONENT py)
+  #endif()
 endif()

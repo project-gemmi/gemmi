@@ -1,6 +1,5 @@
 [build-system]
-requires = ["scikit-build-core~=0.10.5", "pybind11>=2.6.2",
-            "pybind11-stubgen~=2.5.1", "numpy"]
+requires = ["scikit-build-core~=0.10.5", "nanobind>=2.1"]
 build-backend = "scikit_build_core.build"
 
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
@@ -87,6 +86,10 @@ build-verbosity = 1
 test-command = "python -m unittest discover -v -s {project}/tests/"
 [tool.cibuildwheel.environment]
 SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF;-DBUILD_SHARED_LIBS=OFF;-DFETCH_ZLIB_NG=ON'
+
+# Needed for full C++17 support on macOS
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.14"
 
 # https://cibuildwheel.readthedocs.io/en/stable/faq/#macos-building-cpython-38-wheels-on-arm64
 [[tool.cibuildwheel.overrides]]

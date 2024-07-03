@@ -70,11 +70,6 @@ if [ $1 = x -o $1 = a ]; then
     echo 'Run codespell'
     codespell include src prog python fortran tests examples docs wasm tools ||:
 
-    echo 'Run pybind11-stubgen'
-    pybind11-stubgen --dry-run --exit-code gemmi \
-        --enum-class-locations='Ignore:gemmi.ContactSearch' \
-        --enum-class-locations='.+:gemmi'
-
     echo 'Checking serialize.hpp...'
     $PYTHON tools/check_serialize.py
 fi

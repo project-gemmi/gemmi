@@ -90,8 +90,10 @@ To install the gemmi module do::
 We have binary wheels for several Python versions (for all supported CPython
 versions and one PyPy version), so the command usually downloads binaries.
 If a matching wheel is not available,
-the module is compiled from source -- it takes several minutes
-and requires a C++ compiler.
+the module is compiled from source -- it takes a few minutes
+and requires a C++ compiler that supports C++17.
+
+Gemmi 0.7+ supports only Python 3.8+.
 
 Other binaries
 ~~~~~~~~~~~~~~
@@ -136,10 +138,11 @@ for details.
 If gemmi is already installed, uninstall the old version first
 (`pip uninstall`) or add option `--upgrade`.
 
-Alternatively, you can build a cloned project directly with CMake::
+Alternatively, you can manually install nanobind and cmake (using pip)
+and build a cloned project directly with CMake::
 
     cmake -D USE_PYTHON=1 .
-    make -j4 py
+    make -j4 gemmi_py
 
 Fortran and C bindings
 ----------------------
@@ -246,6 +249,8 @@ Code derived from the following projects is used in the library:
 Projects included under `third_party/` that are not used in the library
 itself, but are used in command-line utilities, python bindings or tests:
 
+* `zpp serializer <https://github.com/eyalz800/serializer>`_ --
+  serialization framework. License: MIT.
 * `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
   command-line option parser. License: MIT.
 * `doctest <https://github.com/onqtam/doctest>`_ -- testing framework.
@@ -258,7 +263,7 @@ itself, but are used in command-line utilities, python bindings or tests:
 
 Not distributed with Gemmi:
 
-* `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
+* `nanobind <https://github.com/wjakob/nanobind>`_ -- used for creating
   Python bindings. License: 3-clause BSD.
 * `zlib-ng <https://github.com/zlib-ng/zlib-ng>`_ -- optional, can be used
   instead of zlib for faster reading of gzipped files.

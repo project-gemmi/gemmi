@@ -54,10 +54,9 @@ class TestExamples2(unittest.TestCase):
     def test_map2mtz(self):
         sys.argv = ['map2mtz.py', MAP_FILE, os.devnull]
         import map2mtz  # noqa: F401
-    @unittest.skipIf(sys.version_info[0] == 2, 'this example is Py3 only')
     def test_multiproc(self):
         sys.stdout = open(os.devnull, 'w')
-        import multiproc  # noqa: F401
+        import multiproc
         multiproc.main(PDB_FILE)
 
     # In this example we use file produced with two commands:
@@ -68,8 +67,7 @@ class TestExamples2(unittest.TestCase):
     # AXIS X Z Y
     # MODE mapin
     # eof
-    @unittest.skipIf(numpy is None or sys.version_info[0] == 2,
-                     'this example is Py3 only, requires NumPy')
+    @unittest.skipIf(numpy is None, 'requires NumPy')
     def test_maskcheck(self):
         import maskcheck
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):

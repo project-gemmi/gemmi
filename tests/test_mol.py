@@ -3,8 +3,9 @@
 import gzip
 from io import StringIO
 import os
-import sys
+import pickle
 import unittest
+
 import gemmi
 from common import full_path, get_path_for_tempfile
 try:
@@ -478,8 +479,7 @@ class TestMol(unittest.TestCase):
 
     def test_read_write_1lzh(self, via_cif=False):
         path = full_path('1lzh.pdb.gz')
-        mode = 'rt' if sys.version_info >= (3,) else 'r'
-        with gzip.open(path, mode=mode) as f:
+        with gzip.open(path, mode='rt') as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
         out_lines = self.write_and_read(gemmi.read_structure(path), via_cif)
         self.assertEqual(expected[0], out_lines[0])
@@ -869,6 +869,24 @@ class TestMol(unittest.TestCase):
         st.assign_serial_numbers(numbered_ter=True)
         self.assertEqual(write_and_read(preserve_serial=True),
                          [('B OXT', 1), ('B CU', 3), ('A CU', 4)])
+
+    def test_serialization(self):
+        st = gemmi.read_structure(full_path('5e5z.pdb'))
+        unpickled = pickle.loads(pickle.dumps(st))
+        self.assertEqual(st.make_pdb_string(), unpickled.make_pdb_string())
+        unpickled[0] = pickle.loads(pickle.dumps(st[0]))
+        self.assertEqual(st.make_pdb_string(), unpickled.make_pdb_string())
+        chain = st[0][0]
+        unpickled_chain = pickle.loads(pickle.dumps(chain))
+        self.assertEqual(chain.name, unpickled_chain.name)
+        self.assertEqual(len(chain), len(unpickled_chain))
+        res = chain[0]
+        unpickled_res = pickle.loads(pickle.dumps(res))
+        self.assertEqual(res.name, unpickled_res.name)
+        self.assertEqual(len(res), len(unpickled_res))
+        atom = res[1]
+        unpickled_atom = pickle.loads(pickle.dumps(atom))
+        self.assertEqual(atom.name, unpickled_atom.name)
 
 if __name__ == '__main__':
     unittest.main()

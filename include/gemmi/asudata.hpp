@@ -96,7 +96,7 @@ int count_equal_values(const std::vector<T>& a, const std::vector<T>& b) {
 
 template<typename T>
 struct HklValue {
-  Miller hkl;
+  alignas(8) Miller hkl;
   T value;
 
   bool operator<(const Miller& m) const { return hkl < m; }

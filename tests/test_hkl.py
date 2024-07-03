@@ -199,7 +199,7 @@ class TestSfMmcif(unittest.TestCase):
         rblock = gemmi.as_refln_blocks(doc)[0]
         fobs_data = rblock.get_value_sigma('F_meas_au', 'F_meas_sigma_au')
         if numpy:
-            self.assertEqual(fobs_data.value_array.shape, (367,))
+            self.assertEqual(fobs_data.value_array.shape, (367, 2))
 
         # without mask
         fc_data = rblock.get_f_phi('F_calc_au', 'phase_calc')
@@ -240,8 +240,11 @@ class TestBinner(unittest.TestCase):
         check_limits_17(binner.limits)
         hkls = [[0,0,1], [3,3,3], [10,10,10]]
         bins = [0,9,16]
-        self.assertEqual(list(binner.get_bins(hkls)), bins)
-        inv_d2 = [mtz.cell.calculate_1_d2(h) for h in hkls]
+        # TODO: remove explicit call to numpy.array after this is implemented:
+        # https://github.com/wjakob/nanobind/discussions/327
+        self.assertEqual(list(binner.get_bins(numpy.array(hkls))), bins)
+        # TODO: remove explicit call to numpy.array, as above
+        inv_d2 = numpy.array([mtz.cell.calculate_1_d2(h) for h in hkls])
         self.assertEqual(list(binner.get_bins_from_1_d2(inv_d2)), bins)
 
 class TestConversion(unittest.TestCase):

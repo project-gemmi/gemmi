@@ -4,7 +4,6 @@ import unittest
 from math import pi  # , isnan
 import pickle
 from random import random
-import sys
 import gemmi
 
 def assert_almost_equal_seq(self, a, b, delta=None):
@@ -77,9 +76,8 @@ class TestUnitCell(unittest.TestCase):
         tr_o_f = cell.orth @ cell.frac
         self.assertTrue(tr_o_f.approx(gemmi.Transform(), 1e-15))
         self.assertTrue(tr_o_f.approx(tr_o_f.inverse(), 1e-15))
-        if sys.version_info >= (3, 5):
-            mat = eval('cell.orth.mat @ cell.frac.mat')  # avoid SyntaxError
-            self.assertTrue(mat.approx(gemmi.Mat33(), 1e-15))
+        mat = cell.orth.mat @ cell.frac.mat
+        self.assertTrue(mat.approx(gemmi.Mat33(), 1e-15))
         pos = gemmi.Position(-15, -17, 190)
         frac = cell.fractionalize(pos)
         pos2 = cell.orthogonalize(frac)

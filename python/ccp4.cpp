@@ -4,23 +4,23 @@
 #include "gemmi/util.hpp"  // for cat
 #include "gemmi/read_map.hpp"  // for read_ccp4_map, read_ccp4_mask
 #include "common.h"
-#include <pybind11/stl.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/array.h>  // for Ccp4Base::axis_positions
 
-namespace py = pybind11;
 using namespace gemmi;
 
 template<typename T>
-py::class_<Ccp4<T>, Ccp4Base> add_ccp4_common(py::module& m, const char* name) {
+auto add_ccp4_common(nb::module_& m, const char* name) {
   using Map = Ccp4<T>;
-  return py::class_<Map, Ccp4Base>(m, name)
-    .def(py::init<>())
-    .def_readwrite("grid", &Map::grid)
+  return nb::class_<Map, Ccp4Base>(m, name)
+    .def(nb::init<>())
+    .def_rw("grid", &Map::grid)
     .def("setup", &Map::setup,
-         py::arg("default_value"), py::arg("mode")=MapSetup::Full)
+         nb::arg("default_value"), nb::arg("mode")=MapSetup::Full)
     .def("update_ccp4_header", &Map::update_ccp4_header,
-         py::arg("mode")=-1, py::arg("update_stats")=true)
+         nb::arg("mode")=-1, nb::arg("update_stats")=true)
     .def("full_cell", &Map::full_cell)
-    .def("write_ccp4_map", &Map::write_ccp4_map, py::arg("filename"))
+    .def("write_ccp4_map", &Map::write_ccp4_map, nb::arg("filename"))
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
@@ -30,16 +30,16 @@ py::class_<Ccp4<T>, Ccp4Base> add_ccp4_common(py::module& m, const char* name) {
     });
 }
 
-void add_ccp4(py::module& m) {
-  py::enum_<MapSetup>(m, "MapSetup")
+void add_ccp4(nb::module_& m) {
+  nb::enum_<MapSetup>(m, "MapSetup")
     .value("Full", MapSetup::Full)
     .value("NoSymmetry", MapSetup::NoSymmetry)
     .value("ReorderOnly", MapSetup::ReorderOnly);
 
-  py::class_<Ccp4Base>(m, "Ccp4Base")
+  nb::class_<Ccp4Base>(m, "Ccp4Base")
     .def("header_i32", &Ccp4Base::header_i32)
     .def("header_float", &Ccp4Base::header_float)
-    .def("header_str", &Ccp4Base::header_str, py::arg("w"), py::arg("len")=80)
+    .def("header_str", &Ccp4Base::header_str, nb::arg("w"), nb::arg("len")=80)
     .def("set_header_i32", &Ccp4Base::set_header_i32)
     .def("set_header_float", &Ccp4Base::set_header_float)
     .def("set_header_str", &Ccp4Base::set_header_str)
@@ -52,9 +52,9 @@ void add_ccp4(py::module& m) {
   add_ccp4_common<float>(m, "Ccp4Map");
   add_ccp4_common<int8_t>(m, "Ccp4Mask");
   m.def("read_ccp4_map", &read_ccp4_map,
-        py::arg("path"), py::arg("setup")=false, py::return_value_policy::move,
+        nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
         "Reads a CCP4 file, mode 2 (floating-point data).");
   m.def("read_ccp4_mask", &read_ccp4_mask,
-        py::arg("path"), py::arg("setup")=false, py::return_value_policy::move,
+        nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
 }

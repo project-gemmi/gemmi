@@ -22,10 +22,13 @@ jobs:
     - name: Python Tests
       run: |
         source pyenv/bin/activate
-        python3 -m unittest discover -v -s tests/
         python3 -m pip install sphinx
-        cd docs
-        sphinx-build -M doctest . _build -n -E
+        # run tests twice: without and with numpy
+        python3 -m unittest discover -s tests/
+        (cd docs && sphinx-build -M doctest . _build -n -E)
+        python3 -m pip install numpy
+        python3 -m unittest discover -v -s tests/
+        (cd docs && sphinx-build -M doctest . _build -n -E)
     - uses: actions/upload-artifact@v4
       with:
         name: gemmi-macos14
@@ -96,7 +99,7 @@ jobs:
     - name: apt-get
       run: |
         sudo apt-get update
-        sudo apt-get install python3-full g++ gfortran python3-numpy
+        sudo apt-get install python3-full g++ gfortran
     - name: build and test
       run: |
         g++ --version
@@ -104,6 +107,7 @@ jobs:
         source pyenv/bin/activate
         export SKBUILD_CMAKE_ARGS='-DFETCH_ZLIB_NG=ON;-DCMAKE_BUILD_TYPE=None'
         python3 -m pip install -v .
+        python3 -m pip install numpy
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       run: |
@@ -122,13 +126,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        git clone --depth=1 https://github.com/pybind/pybind11.git
-        #cd pybind11
-        #cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
-        #make
-        #sudo make install
+        git clone --recursive --depth=1 https://github.com/wjakob/nanobind.git
     - name: build and test
       run: |
         g++ --version
@@ -158,9 +158,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        python3 -m pip install pybind11
+        python3 -m pip install nanobind
     - name: build and test
       run: |
         g++ --version
@@ -181,21 +181,21 @@ jobs:
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
 
-  ubuntu2004_clang6:
-    name: "Ubuntu 20.04 with Clang 6.0"
+  ubuntu2004_clang9:
+    name: "Ubuntu 20.04 with Clang 9"
     runs-on: ubuntu-20.04
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     env:
-      CC: clang-6.0
-      CXX: clang++-6.0
+      CC: clang-9
+      CXX: clang++-9
       SKBUILD_CMAKE_ARGS: "-DCMAKE_CXX_STANDARD=11;-DEXTRA_WARNINGS=ON;-DSTANDALONE_PYTHON_MODULE=OFF"
       SKBUILD_CMAKE_TARGETS: "all;check"
     steps:
     - uses: actions/checkout@v4
-    - run: sudo apt-get install clang-6.0 libz-dev python3-pip python3-numpy
-    - name: install pybind11
+    - run: sudo apt-get install clang-9 libz-dev python3-pip python3-numpy
+    - name: install nanobind
       run: |
-        sudo /usr/bin/python3 -m pip install "pybind11[global]" build
+        sudo /usr/bin/python3 -m pip install nanobind build
     - name: build and test
       run: |
         $CXX --version
@@ -224,11 +224,11 @@ jobs:
         python3.8 --version
         cmake --version
         type python3.8
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        git clone --branch stable --depth=1 https://github.com/pybind/pybind11.git
-        cd pybind11
-        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.8 -DPYBIND11_TEST=OFF
+        git clone --recursive --depth=1 https://github.com/wjakob/nanobind.git
+        cd nanobind
+        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.8 -DNB_TEST=OFF
         make
         make install
     - name: build and test

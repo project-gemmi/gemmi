@@ -54,7 +54,6 @@ latex_documents = [
 doctest_global_setup = '''
 import os
 import sys
-assert sys.version_info[0] > 2, "Tests in docs are for Python 3 only"
 disabled_features = []
 try:
     import numpy

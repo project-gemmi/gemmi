@@ -114,7 +114,7 @@ Datasets are stored in the variable `datasets`::
 .. doctest::
 
   >>> mtz.datasets
-  MtzDatasets[<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5e5z/5e5z/1>]
+  gemmi.MtzDatasets([<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5e5z/5e5z/1>])
 
 In the MTZ file, each dataset is identified internally by an integer
 "dataset ID". To get dataset with the specified ID use function::
@@ -820,7 +820,7 @@ Blocks are moved from the Document to the new list:
   >>> doc
   <gemmi.cif.Document with 0 blocks ()>
   >>> rblocks
-  ReflnBlocks[<gemmi.ReflnBlock r5wkdsf with 17 x 406 loop>]
+  gemmi.ReflnBlocks([<gemmi.ReflnBlock r5wkdsf with 17 x 406 loop>])
 
 When ReflnBlock is created some of the mmCIF tags are interpreted
 to initialize the following properties:
@@ -1209,7 +1209,7 @@ The unit cell and the upper bin boundaries (in Å\ :sup:`--2`) are stored intern
   >>> binner.cell
   <gemmi.UnitCell(50.347, 4.777, 14.746, 90, 101.73, 90)>
   >>> binner.limits  # doctest: +ELLIPSIS
-  [0.12224713046942721, 0.19395414269012246, 0.254107666379415..., inf]
+  [0.122247130469427..., 0.193954142690122..., 0.254107666379415..., inf]
   >>> binner.size  # number of bins
   4
 

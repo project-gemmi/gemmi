@@ -1637,9 +1637,9 @@ Properties of the Entity class are shown in this example:
   >>> ent.subchains
   ['Axp']
   >>> ent.entity_type
-  <EntityType.Polymer: 1>
+  EntityType.Polymer
   >>> ent.polymer_type
-  <PolymerType.PeptideL: 1>
+  PolymerType.PeptideL
   >>> ent.full_sequence[:5]
   ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
 
@@ -1696,7 +1696,7 @@ Each connection stores:
   .. doctest::
 
     >>> st.connections[0].type
-    <ConnectionType.Disulf: 1>
+    ConnectionType.Disulf
 
 * name -- a unique name corresponding to _struct_conn.id in the mmCIF format;
   it is auto-generated the connections are read from the PDB format,
@@ -1727,9 +1727,9 @@ Each connection stores:
   .. doctest::
 
     >>> st.connections[2].asu
-    <Asu.Same: 0>
+    Asu.Same
     >>> st.connections[-1].asu
-    <Asu.Different: 1>
+    Asu.Different
 
 * and a distance read from the file.
 
@@ -2262,9 +2262,9 @@ ResidueKind can be obtained from PolymerType:
 .. doctest::
 
   >>> st.get_entity('2').polymer_type
-  <PolymerType.PeptideL: 1>
+  PolymerType.PeptideL
   >>> gemmi.sequence_kind(_)
-  <ResidueKind.AA: 1>
+  ResidueKind.AA
 
 In mmCIF `_entity_poly.pdbx_seq_one_letter_code` and in the OneDep interface,
 the PDB uses a hybrid sequence format: a single letter for standard
@@ -3043,7 +3043,7 @@ If it's a polymer, we can ask for polymer type and sequence:
 .. doctest::
 
   >>> polymer_b.check_polymer_type()
-  <PolymerType.PeptideL: 1>
+  PolymerType.PeptideL
   >>> polymer_b.make_one_letter_sequence()
   'sAXvsAXv'
 
@@ -3149,7 +3149,7 @@ Residue contains also a number of properties:
   >>> residue.label_seq
   2
   >>> residue.entity_type
-  <EntityType.Polymer: 1>
+  EntityType.Polymer
   >>> residue.het_flag
   'A'
   >>> residue.flag

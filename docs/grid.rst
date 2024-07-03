@@ -504,7 +504,7 @@ The parameters of SolventMasker can be inspected and changed:
 .. doctest::
 
   >>> masker.atomic_radii_set
-  <AtomicRadiiSet.Cctbx: 1>
+  AtomicRadiiSet.Cctbx
   >>> masker.rprobe
   1.1
   >>> masker.rshrink
