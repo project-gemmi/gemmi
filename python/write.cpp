@@ -1,29 +1,28 @@
 // Copyright 2018 Global Phasing Ltd.
 
+#include <cassert>
 #include <sstream>  // for ostringstream
 #include "gemmi/to_mmcif.hpp"
 #include "gemmi/to_pdb.hpp"
 #include "gemmi/fstream.hpp"
 
 #include "common.h"
+#include <nanobind/stl/string.h>
 
-namespace py = pybind11;
 using namespace gemmi;
 
-void add_write(py::module& m, py::class_<Structure>& structure) {
-  py::class_<MmcifOutputGroups>(m, "MmcifOutputGroups")
-    .def(py::init([](bool all, const py::kwargs& kwargs) {
-      MmcifOutputGroups g(all);
-      if (kwargs) {
-        py::object pyg = py::cast(&g);
-        for (auto kwarg : kwargs)
-          pyg.attr(kwarg.first) = kwarg.second.cast<bool>();
-      }
-      return g;
-    }), py::arg("all"))
+void add_write(nb::module_& m, nb::class_<Structure>& structure) {
+  nb::class_<MmcifOutputGroups>(m, "MmcifOutputGroups")
+    .def(nb::init<bool>())
+    .def("__init__", [](MmcifOutputGroups* p, bool all, nb::kwargs kwargs) {
+      nb::object obj = nb::type<MmcifOutputGroups>()(all);
+      for (auto [key, value] : kwargs)
+        obj.attr(key) = nb::cast<bool>(value);
+      new(p) MmcifOutputGroups(nb::cast<const MmcifOutputGroups&>(obj));
+    }, nb::arg("all"), nb::arg("kwargs"))
 #define DEF_BIT_PROPERTY(name) \
-  .def_property(#name, [](MmcifOutputGroups g) { return g.name; }, \
-                       [](MmcifOutputGroups& g, bool v) { g.name = v; })
+  .def_prop_rw(#name, [](MmcifOutputGroups g) { return g.name; }, \
+                      [](MmcifOutputGroups& g, bool v) { g.name = v; })
     DEF_BIT_PROPERTY(atoms)
     DEF_BIT_PROPERTY(block_name)
     DEF_BIT_PROPERTY(entry)
@@ -59,22 +58,23 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     ;
 #undef DEF_BIT_PROPERTY
 
-  py::class_<PdbWriteOptions>(m, "PdbWriteOptions")
-    .def(py::init([](bool minimal, bool headers_only, const py::kwargs& kwargs) {
-      PdbWriteOptions opt;
+  nb::class_<PdbWriteOptions>(m, "PdbWriteOptions")
+    .def("__init__", [](PdbWriteOptions* opt, bool minimal, bool headers_only) {
+      new(opt) PdbWriteOptions;
       if (minimal)
-        opt = PdbWriteOptions::minimal();
+        *opt = PdbWriteOptions::minimal();
       else if (headers_only)
-        opt = PdbWriteOptions::headers_only();
-      if (kwargs) {
-        py::object py_opt = py::cast(&opt);
-        for (auto kwarg : kwargs)
-          py_opt.attr(kwarg.first) = kwarg.second.cast<bool>();
-      }
-      return opt;
-    }), py::arg("minimal")=false, py::arg("headers_only")=false)
+        *opt = PdbWriteOptions::headers_only();
+    }, nb::arg("minimal")=false, nb::arg("headers_only")=false)
+    .def("__init__", [](PdbWriteOptions* p, bool minimal, bool headers_only,
+                        nb::kwargs kwargs) {
+      nb::object obj = nb::type<PdbWriteOptions>()(minimal, headers_only);
+      for (auto [key, value] : kwargs)
+        obj.attr(key) = nb::cast<bool>(value);
+      new(p) PdbWriteOptions(nb::cast<const PdbWriteOptions&>(obj));
+    }, nb::arg("minimal")=false, nb::arg("headers_only")=false, nb::arg("kwargs"))
 #define DEF_PROPERTY(name) \
-  .def_property(#name, [](PdbWriteOptions g) { return g.name; }, \
+  .def_prop_rw(#name, [](PdbWriteOptions g) { return g.name; }, \
                        [](PdbWriteOptions& g, bool v) { g.name = v; })
     DEF_PROPERTY(minimal_file)
     DEF_PROPERTY(atom_records)
@@ -95,7 +95,8 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
 
   structure
     .def("make_pdb_string", &make_pdb_string,
-         py::arg_v("options", PdbWriteOptions(), "PdbWriteOptions()"))
+         // TODO
+         nb::arg("options")=PdbWriteOptions() /*, "PdbWriteOptions()"*/)
     .def("write_pdb", [](const Structure& st, const std::string& path,
                          PdbWriteOptions options) {
         Ofstream f(path);
@@ -103,24 +104,18 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     })
 
     // deprecated - kept for compatibility
-    .def("write_pdb", [](const Structure& st, const std::string& path,
-                         const py::kwargs& kwargs) {
-        PdbWriteOptions opt;
-        if (kwargs) {
-          py::object py_opt = py::cast(&opt);
-          for (auto kwarg : kwargs)
-            py_opt.attr(kwarg.first) = kwarg.second.cast<bool>();
-        }
+    .def("write_pdb", [](const Structure& st, const std::string& path, nb::kwargs kwargs) {
         Ofstream f(path);
-        write_pdb(st, f.ref(), opt);
-    }, py::arg("path"))
+        nb::object options = nb::type<PdbWriteOptions>()(**kwargs);
+        write_pdb(st, f.ref(), nb::cast<const PdbWriteOptions&>(options));
+    }, nb::arg("path"), nb::arg("kwargs"))
     // deprecated
     .def("make_pdb_headers", &make_pdb_headers)
     // deprecated
     .def("write_minimal_pdb", [](const Structure& st, const std::string& path) {
        Ofstream f(path);
        write_minimal_pdb(st, f.ref());
-    }, py::arg("path"))
+    }, nb::arg("path"))
     // deprecated
     .def("make_minimal_pdb", [](const Structure& st) {
        std::ostringstream os;
@@ -129,11 +124,12 @@ void add_write(py::module& m, py::class_<Structure>& structure) {
     })
 
     .def("make_mmcif_document", &make_mmcif_document,
-         py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
+         // TODO
+         nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)"*/)
     .def("make_mmcif_block", &make_mmcif_block,
-         py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
-    .def("update_mmcif_block", &update_mmcif_block, py::arg("block"),
-         py::arg_v("groups", MmcifOutputGroups(true), "MmcifOutputGroups(True)"))
+         nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)")*/)
+    .def("update_mmcif_block", &update_mmcif_block, nb::arg("block"),
+         nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)")*/)
     .def("make_mmcif_headers", &make_mmcif_headers)
     ;
 }

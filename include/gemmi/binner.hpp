@@ -148,13 +148,17 @@ struct Binner {
     return nums;
   }
 
-  std::vector<int> get_bins_from_1_d2(const std::vector<double>& inv_d2) const {
+  std::vector<int> get_bins_from_1_d2(const double* inv_d2, size_t size) const {
     ensure_limits_are_set();
     int hint = 0;
-    std::vector<int> nums(inv_d2.size());
-    for (size_t i = 0; i < inv_d2.size(); ++i)
+    std::vector<int> nums(size);
+    for (size_t i = 0; i < size; ++i)
       nums[i] = get_bin_from_1_d2_hinted(inv_d2[i], hint);
     return nums;
+  }
+
+  std::vector<int> get_bins_from_1_d2(const std::vector<double>& inv_d2) const {
+    return get_bins_from_1_d2(inv_d2.data(), inv_d2.size());
   }
 
   double dmin_of_bin(int n) const {
@@ -198,7 +202,8 @@ struct HklMatch {
   std::vector<int> pos;
   size_t hkl_size;
 
-  HklMatch(const Miller* hkl, size_t hkl_size_, const Miller* ref, size_t ref_size)
+  HklMatch(const Miller* hkl, size_t hkl_size_,
+           const Miller* ref, size_t ref_size)
       : pos(ref_size, -1), hkl_size(hkl_size_) {
     // Usually, both datasets are sorted. This make things faster.
     if (std::is_sorted(hkl, hkl + hkl_size) &&
@@ -229,13 +234,16 @@ struct HklMatch {
   HklMatch(const std::vector<Miller>& hkl, const std::vector<Miller>& ref)
     : HklMatch(hkl.data(), hkl.size(), ref.data(), ref.size()) {}
 
-  template <typename T> std::vector<T> aligned(const std::vector<T>& v, T nan) {
-    if (v.size() != hkl_size)
+  template <typename T> std::vector<T> aligned_(const T* v, size_t size, T nan) {
+    if (size != hkl_size)
       fail("HklMatch.aligned(): wrong data, size differs");
     std::vector<T> result(pos.size());
     for (size_t i = 0; i != pos.size(); ++i)
       result[i] = pos[i] >= 0 ? v[pos[i]] : nan;
     return result;
+  }
+  template <typename T> std::vector<T> aligned(const std::vector<T>& v, T nan) {
+    return aligned_(v.data(), v.size(), nan);
   }
 };
 

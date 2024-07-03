@@ -211,6 +211,9 @@ struct GridMeta {
   size_t index_q(int u, int v, int w) const {
     return size_t(w * nv + v) * nu + u;
   }
+  size_t index_q(size_t u, size_t v, size_t w) const {
+    return (w * nv + v) * nu + u;
+  }
 
   /// Faster than index_s(), but works only if `-nu <= u < 2*nu`, etc.
   size_t index_n(int u, int v, int w) const { return index_n_ref(u, v, w); }
