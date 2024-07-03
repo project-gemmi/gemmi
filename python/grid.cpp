@@ -10,6 +10,14 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
     return std::norm(a) > std::norm(b);
 }
 
+#include "common.h"
+#include "make_iterator.h"
+#include <nanobind/ndarray.h>
+#include <nanobind/stl/array.h>
+#include <nanobind/stl/complex.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>  // for find_blobs_by_flood_fill, ...
+
 #include "gemmi/grid.hpp"
 #include "gemmi/floodfill.hpp"  // for flood_fill_above
 #include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
@@ -17,25 +25,19 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/asumask.hpp"  // for MaskedGrid
 #include "tostr.hpp"
 
-#include "common.h"
-#include <pybind11/complex.h>
-#include <pybind11/stl.h>
-#include <pybind11/numpy.h>
-
-namespace py = pybind11;
 using namespace gemmi;
 
 template<typename T>
-py::class_<GridBase<T>, GridMeta> add_grid_base(py::module& m, const char* name) {
+nb::class_<GridBase<T>, GridMeta> add_grid_base(nb::module_& m, const char* name) {
   using GrBase = GridBase<T>;
   using GrPoint = typename GridBase<T>::Point;
 
-  py::class_<GrBase, GridMeta> grid_base(m, name, py::buffer_protocol());
-  py::class_<GrPoint>(grid_base, "Point")
-    .def_readonly("u", &GrPoint::u)
-    .def_readonly("v", &GrPoint::v)
-    .def_readonly("w", &GrPoint::w)
-    .def_property("value",
+  nb::class_<GrBase, GridMeta> grid_base(m, name);
+  nb::class_<GrPoint>(grid_base, "Point")
+    .def_ro("u", &GrPoint::u)
+    .def_ro("v", &GrPoint::v)
+    .def_ro("w", &GrPoint::w)
+    .def_prop_rw("value",
                   [](const GrPoint& self) { return *self.value; },
                   [](GrPoint& self, T x) { *self.value = x; })
     .def("__repr__", [=](const GrPoint& self) {
@@ -43,120 +45,126 @@ py::class_<GridBase<T>, GridMeta> add_grid_base(py::module& m, const char* name)
                      self.w, ") -> ", +*self.value, '>');
     });
 
+  auto to_array = [](GrBase& g) {
+    // TODO: should we take AxisOrder into account
+    return nb::ndarray<nb::numpy, T>(g.data.data(),
+                                     {(size_t)g.nu, (size_t)g.nv, (size_t)g.nw},
+                                     nb::handle(),
+                                     {1, g.nu, g.nu * g.nv});
+  };
+
   grid_base
-    .def_buffer([](GrBase& g) {
-      return py::buffer_info(g.data.data(),
-                             {g.nu, g.nv, g.nw},       // dimensions
-                             {sizeof(T),               // strides
-                              sizeof(T) * g.nu,
-                              sizeof(T) * g.nu * g.nv});
-    })
-    .def_property_readonly("array", [](const GrBase& g) {
-      return py::array_t<T>({g.nu, g.nv, g.nw},
-                            {sizeof(T), sizeof(T) * g.nu, sizeof(T) * g.nu * g.nv},
-                            g.data.data(), py::cast(g));
-    }, py::return_value_policy::reference_internal)
+    .def_prop_ro("array", to_array, nb::rv_policy::reference_internal)
+    .def("__array__", to_array, nb::rv_policy::reference_internal)
     .def("point_to_index", &GrBase::point_to_index)
     .def("index_to_point", &GrBase::index_to_point)
-    .def("fill", &GrBase::fill, py::arg("value"))
+    .def("fill", &GrBase::fill, nb::arg("value"))
     .def("sum", &GrBase::sum)
-    .def("__iter__", [](GrBase& self) { return py::make_iterator(self); },
-         py::keep_alive<0, 1>())
+    .def("__iter__", [](GrBase& self) {
+        return usual_iterator(self, self);
+    }, nb::keep_alive<0, 1>())
     ;
   return grid_base;
 }
 
 template<typename T>
-py::class_<Grid<T>, GridBase<T>> add_grid_common(py::module& m, const std::string& name) {
+nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::string& name) {
   using Gr = Grid<T>;
   using GrPoint = typename GridBase<T>::Point;
   using Masked = MaskedGrid<T>;
-  py::class_<Gr, GridBase<T>> grid(m, name.c_str());
-  py::class_<Masked> masked_grid (m, ("Masked" + name).c_str());
+  nb::class_<Gr, GridBase<T>> grid(m, name.c_str());
+  nb::class_<Masked> masked_grid (m, ("Masked" + name).c_str());
 
   grid
-    .def(py::init<>())
-    .def(py::init([](int nx, int ny, int nz) {
-      Gr* grid = new Gr();
+    .def(nb::init<>())
+    .def("__init__", [](Gr* grid, int nx, int ny, int nz) {
+      new(grid) Gr();
       grid->set_size(nx, ny, nz);
-      return grid;
-    }), py::arg("nx"), py::arg("ny"), py::arg("nz"))
-    .def(py::init([](py::array_t<T> arr, const UnitCell *cell, const SpaceGroup* sg) {
-      auto r = arr.template unchecked<3>();
-      Gr* grid = new Gr();
+    }, nb::arg("nx"), nb::arg("ny"), nb::arg("nz"))
+    .def("__init__", [](Gr* grid, nb::ndarray<nb::numpy, T, nb::ndim<3>> arr,
+                        const UnitCell *cell, const SpaceGroup* sg) {
+      new(grid) Gr();
+      auto r = arr.view();
       grid->set_size((int)r.shape(0), (int)r.shape(1), (int)r.shape(2));
-      for (int k = 0; k < r.shape(2); ++k)
-        for (int j = 0; j < r.shape(1); ++j)
-          for (int i = 0; i < r.shape(0); ++i)
+      for (size_t k = 0; k < r.shape(2); ++k)
+        for (size_t j = 0; j < r.shape(1); ++j)
+          for (size_t i = 0; i < r.shape(0); ++i)
             grid->data[grid->index_q(i, j, k)] = r(i, j, k);
       if (cell)
         grid->set_unit_cell(*cell);
       if (sg)
         grid->spacegroup = sg;
-      return grid;
-    }), py::arg().noconvert(), py::arg("cell")=nullptr, py::arg("spacegroup")=nullptr)
-    .def_property_readonly("spacing", [](const Gr& self) {
-        return py::make_tuple(self.spacing[0], self.spacing[1], self.spacing[2]);
+    }, nb::arg().noconvert(), nb::arg("cell")=nb::none(), nb::arg("spacegroup")=nb::none())
+    .def_prop_ro("spacing", [](const Gr& self) {
+        return nb::make_tuple(self.spacing[0], self.spacing[1], self.spacing[2]);
     })
     .def("set_size", &Gr::set_size)
     .def("set_size_from_spacing", &Gr::set_size_from_spacing,
-         py::arg("spacing"), py::arg("rounding"))
+         nb::arg("spacing"), nb::arg("rounding"))
     .def("get_value", &Gr::get_value)
     .def("set_value", &Gr::set_value)
     .def("get_point", &Gr::get_point)
     .def("get_nearest_point", (GrPoint (Gr::*)(const Position&)) &Gr::get_nearest_point)
     .def("point_to_fractional", &Gr::point_to_fractional)
     .def("point_to_position", &Gr::point_to_position)
-    .def("change_values", &Gr::change_values, py::arg("old_value"), py::arg("new_value"))
+    .def("change_values", &Gr::change_values, nb::arg("old_value"), nb::arg("new_value"))
     .def("copy_metadata_from", &Gr::copy_metadata_from)
     .def("setup_from", &Gr::template setup_from<Structure>,
-         py::arg("st"), py::arg("spacing")=0.)
+         nb::arg("st"), nb::arg("spacing")=0.)
     .def("set_unit_cell", (void (Gr::*)(const UnitCell&)) &Gr::set_unit_cell)
     .def("set_points_around", &Gr::set_points_around,
-         py::arg("position"), py::arg("radius"), py::arg("value"), py::arg("use_pbc")=true)
+         nb::arg("position"), nb::arg("radius"), nb::arg("value"), nb::arg("use_pbc")=true)
     .def("symmetrize_min", &Gr::symmetrize_min)
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
     .def("symmetrize_sum", &Gr::symmetrize_sum)
-    .def("resample_to", &Gr::resample_to, py::arg("dest"), py::arg("order"))
-    .def("masked_asu", &masked_asu<T>, py::keep_alive<0, 1>())
+    .def("resample_to", &Gr::resample_to, nb::arg("dest"), nb::arg("order"))
+    .def("masked_asu", &masked_asu<T>, nb::keep_alive<0, 1>())
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
-         py::arg("model"), py::arg("radius"), py::arg("value"),
-         py::arg("ignore_hydrogen")=false, py::arg("ignore_zero_occupancy_atoms")=false)
+         nb::arg("model"), nb::arg("radius"), nb::arg("value"),
+         nb::arg("ignore_hydrogen")=false, nb::arg("ignore_zero_occupancy_atoms")=false)
     .def("get_subarray",
          [](const Gr& self, std::array<int,3> start, std::array<int,3> shape) {
-        py::array_t<T> arr({shape[0], shape[1], shape[2]},
-                           {sizeof(T), sizeof(T)*shape[0], sizeof(T)*shape[0]*shape[1]});
-        self.get_subarray((T*) arr.request().ptr, start, shape);
-        return arr;
-    }, py::arg("start"), py::arg("shape"))
+        T* data = new T[shape[0] * shape[1] * shape[2]];
+        nb::capsule owner(data, [](void *p) noexcept { delete[] (float*) p; });
+        // TODO: check if data is deleted when get_subarray throws 
+        self.get_subarray(data, start, shape);
+        const size_t ushape[3] = {(size_t)shape[0], (size_t)shape[1], (size_t)shape[2]};
+        const int64_t strides[3] = {1, int64_t(shape[0]), int64_t(shape[0]*shape[1])};
+        return nb::ndarray<nb::numpy, T>(data, 3, ushape, owner, strides);
+    }, nb::arg("start"), nb::arg("shape"))
     .def("set_subarray",
-         [](Gr& self, py::array_t<T, py::array::f_style | py::array::forcecast> arr,
+         [](Gr& self,
+            nb::ndarray<T, nb::ndim<3>, nb::f_contig, nb::device::cpu> arr,
             std::array<int,3> start) {
-        self.set_subarray((T*) arr.request().ptr, start,
+        self.set_subarray(arr.data(), start,
                           {(int)arr.shape(0), (int)arr.shape(1), (int)arr.shape(2)});
-    }, py::arg("arr"), py::arg("start"))
+    }, nb::arg("arr"), nb::arg("start"))
     .def("clone", [](const Gr& self) { return new Gr(self); })
     .def("__repr__", [=](const Gr& self) {
         return tostr("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
 
   masked_grid
-    .def_readonly("grid", &Masked::grid, py::return_value_policy::reference)
-    .def_property_readonly("mask_array", [](const Masked& self) {
+    .def_ro("grid", &Masked::grid, nb::rv_policy::reference)
+    .def_prop_ro("mask_array", [](Masked& self) {
       const Gr& gr = *self.grid;
-      py::array::ShapeContainer shape({gr.nu, gr.nv, gr.nw});
-      py::array::StridesContainer strides({gr.nv * gr.nw, gr.nw, 1});
-      return py::array_t<std::int8_t>(shape, strides, self.mask.data(), py::cast(self));
-    }, py::return_value_policy::reference_internal)
-    .def("__iter__", [](Masked& self) { return py::make_iterator(self); },
-         py::keep_alive<0, 1>())
+      // TODO: why it's different than grid_base.array?
+      return nb::ndarray<nb::numpy, std::int8_t>(
+          self.mask.data(),
+          {(size_t)gr.nu, (size_t)gr.nv, (size_t)gr.nw},
+          nb::handle(),
+          {int64_t(gr.nv * gr.nw), int64_t(gr.nw), 1});
+    }, nb::rv_policy::reference_internal)
+    .def("__iter__", [](Masked& self) {
+        return usual_iterator(self, self);
+    }, nb::keep_alive<0, 1>())
     ;
     return grid;
 }
 
 template<typename T>
-void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
+void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
   using Gr = Grid<T>;
   grid
     .def("interpolate_value",
@@ -165,16 +173,17 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
     // TODO: find a better name for this func, perhaps interpolate_array?
     .def("interpolate_values",
-         [](const Gr& self, py::array_t<T> arr, const Transform& tr, int order) {
-        auto r = arr.template mutable_unchecked<3>();
-        for (int i = 0; i < r.shape(0); ++i)
-          for (int j = 0; j < r.shape(1); ++j)
-            for (int k = 0; k < r.shape(2); ++k) {
+         [](const Gr& self, nb::ndarray<nb::numpy, T, nb::ndim<3>> arr,
+            const Transform& tr, int order) {
+        auto r = arr.view();
+        for (size_t i = 0; i < r.shape(0); ++i)
+          for (size_t j = 0; j < r.shape(1); ++j)
+            for (size_t k = 0; k < r.shape(2); ++k) {
               Position pos(tr.apply(Vec3(i, j, k)));
               Fractional fpos = self.unit_cell.fractionalize(pos);
               r(i, j, k) = self.interpolate(fpos, order);
             }
-    }, py::arg().noconvert(), py::arg(), py::arg("order")=2)
+    }, nb::arg().noconvert(), nb::arg(), nb::arg("order")=2)
     .def("tricubic_interpolation",
          (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
     .def("tricubic_interpolation",
@@ -185,29 +194,29 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
     ;
 }
 
-void add_grid(py::module& m) {
-  py::enum_<AxisOrder>(m, "AxisOrder")
+void add_grid(nb::module_& m) {
+  nb::enum_<AxisOrder>(m, "AxisOrder")
     .value("Unknown", AxisOrder::Unknown)
     .value("XYZ", AxisOrder::XYZ)
     .value("ZYX", AxisOrder::ZYX);
 
-  py::enum_<GridSizeRounding>(m, "GridSizeRounding")
+  nb::enum_<GridSizeRounding>(m, "GridSizeRounding")
     .value("Nearest", GridSizeRounding::Nearest)
     .value("Up", GridSizeRounding::Up)
     .value("Down", GridSizeRounding::Down);
 
-  py::class_<GridMeta>(m, "GridMeta")
-    .def_readwrite("spacegroup", &GridMeta::spacegroup)
-    .def_readwrite("unit_cell", &GridMeta::unit_cell)
-    .def_readonly("nu", &GridMeta::nu, "size in the first (fastest-changing) dim")
-    .def_readonly("nv", &GridMeta::nv, "size in the second dimension")
-    .def_readonly("nw", &GridMeta::nw, "size in the third (slowest-changing) dim")
-    .def_readonly("axis_order", &GridMeta::axis_order)
-    .def_property_readonly("point_count", &GridMeta::point_count)
+  nb::class_<GridMeta>(m, "GridMeta")
+    .def_rw("spacegroup", &GridMeta::spacegroup)
+    .def_rw("unit_cell", &GridMeta::unit_cell)
+    .def_ro("nu", &GridMeta::nu, "size in the first (fastest-changing) dim")
+    .def_ro("nv", &GridMeta::nv, "size in the second dimension")
+    .def_ro("nw", &GridMeta::nw, "size in the third (slowest-changing) dim")
+    .def_ro("axis_order", &GridMeta::axis_order)
+    .def_prop_ro("point_count", &GridMeta::point_count)
     .def("get_position", &GridMeta::get_position)
     .def("get_fractional", &GridMeta::get_fractional)
-    .def_property_readonly("shape", [](const GridMeta& self) {
-      return py::make_tuple(self.nu, self.nv, self.nw);
+    .def_prop_ro("shape", [](const GridMeta& self) {
+      return nb::make_tuple(self.nu, self.nv, self.nw);
     });
 
   add_grid_base<int8_t>(m, "Int8GridBase")
@@ -227,41 +236,41 @@ void add_grid(py::module& m) {
   add_grid_base<std::complex<float>>(m, "ComplexGridBase");
 
   // from solmask.hpp
-  py::enum_<AtomicRadiiSet>(m, "AtomicRadiiSet")
+  nb::enum_<AtomicRadiiSet>(m, "AtomicRadiiSet")
     .value("VanDerWaals", AtomicRadiiSet::VanDerWaals)
     .value("Cctbx", AtomicRadiiSet::Cctbx)
     .value("Refmac", AtomicRadiiSet::Refmac)
     .value("Constant", AtomicRadiiSet::Constant);
-  py::class_<SolventMasker>(m, "SolventMasker")
-    .def(py::init<AtomicRadiiSet, double>(),
-         py::arg("choice"), py::arg("constant_r")=0.)
-    .def_readwrite("atomic_radii_set", &SolventMasker::atomic_radii_set)
-    .def_readwrite("rprobe", &SolventMasker::rprobe)
-    .def_readwrite("rshrink", &SolventMasker::rshrink)
-    .def_readwrite("island_min_volume", &SolventMasker::island_min_volume)
-    .def_readwrite("constant_r", &SolventMasker::constant_r)
-    .def_readwrite("ignore_hydrogen", &SolventMasker::ignore_hydrogen)
-    .def_readwrite("ignore_zero_occupancy_atoms", &SolventMasker::ignore_zero_occupancy_atoms)
+  nb::class_<SolventMasker>(m, "SolventMasker")
+    .def(nb::init<AtomicRadiiSet, double>(),
+         nb::arg("choice"), nb::arg("constant_r")=0.)
+    .def_rw("atomic_radii_set", &SolventMasker::atomic_radii_set)
+    .def_rw("rprobe", &SolventMasker::rprobe)
+    .def_rw("rshrink", &SolventMasker::rshrink)
+    .def_rw("island_min_volume", &SolventMasker::island_min_volume)
+    .def_rw("constant_r", &SolventMasker::constant_r)
+    .def_rw("ignore_hydrogen", &SolventMasker::ignore_hydrogen)
+    .def_rw("ignore_zero_occupancy_atoms", &SolventMasker::ignore_zero_occupancy_atoms)
     .def("set_radii", &SolventMasker::set_radii,
-         py::arg("choice"), py::arg("constant_r")=0.)
+         nb::arg("choice"), nb::arg("constant_r")=0.)
     .def("put_mask_on_int8_grid", &SolventMasker::put_mask_on_grid<int8_t>)
     .def("put_mask_on_float_grid", &SolventMasker::put_mask_on_grid<float>)
     .def("set_to_zero", &SolventMasker::set_to_zero)
     ;
   m.def("interpolate_grid", &interpolate_grid<float>,
-        py::arg("dest"), py::arg("src"), py::arg("tr"), py::arg("order")=2);
+        nb::arg("dest"), nb::arg("src"), nb::arg("tr"), nb::arg("order")=2);
   m.def("interpolate_grid_of_aligned_model2", &interpolate_grid_of_aligned_model2<float>,
-        py::arg("dest"), py::arg("src"), py::arg("tr"),
-        py::arg("dest_model"), py::arg("radius"), py::arg("order")=2);
+        nb::arg("dest"), nb::arg("src"), nb::arg("tr"),
+        nb::arg("dest_model"), nb::arg("radius"), nb::arg("order")=2);
 
 
   // from blob.hpp
-  py::class_<Blob>(m, "Blob")
-    .def_readonly("volume", &Blob::volume)
-    .def_readonly("score", &Blob::score)
-    .def_readonly("peak_value", &Blob::peak_value)
-    .def_readonly("centroid", &Blob::centroid)
-    .def_readonly("peak_pos", &Blob::peak_pos)
+  nb::class_<Blob>(m, "Blob")
+    .def_ro("volume", &Blob::volume)
+    .def_ro("score", &Blob::score)
+    .def_ro("peak_value", &Blob::peak_value)
+    .def_ro("centroid", &Blob::centroid)
+    .def_ro("peak_pos", &Blob::peak_pos)
     ;
   m.def("find_blobs_by_flood_fill",
         [](const Grid<float>& grid, double cutoff, double min_volume,
@@ -272,17 +281,17 @@ void add_grid(py::module& m) {
        crit.min_score = min_score;
        crit.min_peak = min_peak;
        return find_blobs_by_flood_fill(grid, crit, negate);
-    }, py::arg("grid"), py::arg("cutoff"), py::arg("min_volume")=10.,
-       py::arg("min_score")=15., py::arg("min_peak")=0., py::arg("negate")=false);
+    }, nb::arg("grid"), nb::arg("cutoff"), nb::arg("min_volume")=10.,
+       nb::arg("min_score")=15., nb::arg("min_peak")=0., nb::arg("negate")=false);
 
   // from floodfill.hpp
   m.def("flood_fill_above", &flood_fill_above,
-        py::arg("grid"), py::arg("seeds"), py::arg("threshold"), py::arg("negate")=false);
+        nb::arg("grid"), nb::arg("seeds"), nb::arg("threshold"), nb::arg("negate")=false);
 
   // from asumask.hpp
-  py::class_<AsuBrick>(m, "AsuBrick")
-    .def_readonly("size", &AsuBrick::size)
-    .def_readonly("incl", &AsuBrick::incl)
+  nb::class_<AsuBrick>(m, "AsuBrick")
+    .def_ro("size", &AsuBrick::size)
+    .def_ro("incl", &AsuBrick::incl)
     .def("get_extent", &AsuBrick::get_extent)
     .def("str", &AsuBrick::str)
     ;

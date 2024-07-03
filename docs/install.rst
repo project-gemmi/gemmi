@@ -246,6 +246,8 @@ Code derived from the following projects is used in the library:
 Projects included under `third_party/` that are not used in the library
 itself, but are used in command-line utilities, python bindings or tests:
 
+* `zpp serializer <https://github.com/eyalz800/serializer>`_ --
+  serialization framework. License: MIT.
 * `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
   command-line option parser. License: MIT.
 * `doctest <https://github.com/onqtam/doctest>`_ -- testing framework.

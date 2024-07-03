@@ -4,86 +4,85 @@
 #include "gemmi/seqalign.hpp"  // for align_string_sequences
 
 #include "common.h"
-#include <pybind11/stl.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>
 
-namespace py = pybind11;
 using namespace gemmi;
 
-
-void add_alignment(py::module& m) {
+void add_alignment(nb::module_& m) {
 
   // sequence alignment
-  py::class_<AlignmentResult>(m, "AlignmentResult")
-    .def_readonly("score", &AlignmentResult::score)
-    .def_readonly("match_count", &AlignmentResult::match_count)
-    .def_readonly("match_string", &AlignmentResult::match_string)
+  nb::class_<AlignmentResult>(m, "AlignmentResult")
+    .def_ro("score", &AlignmentResult::score)
+    .def_ro("match_count", &AlignmentResult::match_count)
+    .def_ro("match_string", &AlignmentResult::match_string)
     .def("cigar_str", &AlignmentResult::cigar_str)
     .def("calculate_identity", &AlignmentResult::calculate_identity,
-         py::arg("which")=0)
-    .def("add_gaps", &AlignmentResult::add_gaps, py::arg("s"), py::arg("which"))
+         nb::arg("which")=0)
+    .def("add_gaps", &AlignmentResult::add_gaps, nb::arg("s"), nb::arg("which"))
     .def("formatted", &AlignmentResult::formatted)
     ;
 
-  py::class_<AlignmentScoring>(m, "AlignmentScoring")
-    .def(py::init([](char what) {
+  nb::class_<AlignmentScoring>(m, "AlignmentScoring")
+    .def("__init__", [](AlignmentScoring* t, char what) {
           const AlignmentScoring* s = AlignmentScoring::simple();
           if (what == 'p')
             s = AlignmentScoring::partial_model();
           else if (what == 'b')
             s = AlignmentScoring::blosum62();
-          return new AlignmentScoring(*s);
-    }), py::arg("what")='s')
-    .def_readwrite("match", &AlignmentScoring::match)
-    .def_readwrite("mismatch", &AlignmentScoring::mismatch)
-    .def_readwrite("gapo", &AlignmentScoring::gapo)
-    .def_readwrite("gape", &AlignmentScoring::gape)
-    .def_readwrite("good_gapo", &AlignmentScoring::good_gapo)
-    .def_readwrite("bad_gapo", &AlignmentScoring::bad_gapo)
+          new (t) AlignmentScoring(*s);
+    }, nb::arg("what")='s')
+    .def_rw("match", &AlignmentScoring::match)
+    .def_rw("mismatch", &AlignmentScoring::mismatch)
+    .def_rw("gapo", &AlignmentScoring::gapo)
+    .def_rw("gape", &AlignmentScoring::gape)
+    .def_rw("good_gapo", &AlignmentScoring::good_gapo)
+    .def_rw("bad_gapo", &AlignmentScoring::bad_gapo)
     ;
 
   m.def("align_string_sequences", &align_string_sequences,
-        py::arg("query"), py::arg("target"), py::arg("target_gapo"),
-        py::arg("scoring")=nullptr);
+        nb::arg("query"), nb::arg("target"), nb::arg("target_gapo"),
+        nb::arg("scoring")=nb::none());
   m.def("align_sequence_to_polymer",
         [](const std::vector<std::string>& full_seq, const ResidueSpan& polymer,
            PolymerType polymer_type, AlignmentScoring* scoring) {
       return align_sequence_to_polymer(full_seq, polymer, polymer_type, scoring);
-  }, py::arg("full_seq"), py::arg("polymer"),
-     py::arg("polymer_type"), py::arg("scoring")=nullptr);
+  }, nb::arg("full_seq"), nb::arg("polymer"),
+     nb::arg("polymer_type"), nb::arg("scoring")=nb::none());
 
   // structure superposition
-  py::enum_<SupSelect>(m, "SupSelect")
+  nb::enum_<SupSelect>(m, "SupSelect")
     .value("CaP", SupSelect::CaP)
     .value("MainChain", SupSelect::MainChain)
     .value("All", SupSelect::All);
 
-  py::class_<SupResult>(m, "SupResult")
-    .def_readonly("rmsd", &SupResult::rmsd)
-    .def_readonly("count", &SupResult::count)
-    .def_readonly("center1", &SupResult::center1)
-    .def_readonly("center2", &SupResult::center2)
-    .def_readonly("transform", &SupResult::transform)
+  nb::class_<SupResult>(m, "SupResult")
+    .def_ro("rmsd", &SupResult::rmsd)
+    .def_ro("count", &SupResult::count)
+    .def_ro("center1", &SupResult::center1)
+    .def_ro("center2", &SupResult::center2)
+    .def_ro("transform", &SupResult::transform)
     ;
 
   m.def("calculate_current_rmsd",
         [](const ResidueSpan& fixed, const ResidueSpan& movable, PolymerType ptype,
            SupSelect sel, char altloc) {
           return calculate_current_rmsd(fixed, movable, ptype, sel, altloc);
-        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
-           py::arg("altloc")='\0');
+        }, nb::arg("fixed"), nb::arg("movable"), nb::arg("ptype"), nb::arg("sel"),
+           nb::arg("altloc")='\0');
   m.def("calculate_superposition",
         [](const ResidueSpan& fixed, const ResidueSpan& movable, PolymerType ptype,
            SupSelect sel, int trim_cycles, double trim_cutoff, char altloc) {
           return calculate_superposition(fixed, movable, ptype, sel,
                                          trim_cycles, trim_cutoff, altloc);
-        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("sel"),
-           py::arg("trim_cycles")=0, py::arg("trim_cutoff")=2.0,
-           py::arg("altloc")='\0');
+        }, nb::arg("fixed"), nb::arg("movable"), nb::arg("ptype"), nb::arg("sel"),
+           nb::arg("trim_cycles")=0, nb::arg("trim_cutoff")=2.0,
+           nb::arg("altloc")='\0');
   m.def("calculate_superpositions_in_moving_window",
         [](const ResidueSpan& fixed, const ResidueSpan& movable, PolymerType ptype,
            double radius) {
           return calculate_superpositions_in_moving_window(fixed, movable, ptype, radius);
-        }, py::arg("fixed"), py::arg("movable"), py::arg("ptype"), py::arg("radius")=10.0);
+        }, nb::arg("fixed"), nb::arg("movable"), nb::arg("ptype"), nb::arg("radius")=10.0);
 
   m.def("superpose_positions",
         [](std::vector<Position> pos1, std::vector<Position> pos2,
@@ -94,13 +93,13 @@ void add_alignment(py::module& m) {
             fail("superpose_positions: weights must be empty or of the same length as pos1/pos2");
           return superpose_positions(pos1.data(), pos2.data(), pos1.size(),
                                      weight.empty() ? nullptr : weight.data());
-        }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{});
+        }, nb::arg("pos1"), nb::arg("pos2"), nb::arg("weight")=std::vector<int>{});
 }
 
-void add_assign_label_seq_id(py::class_<Structure>& structure) {
+void add_assign_label_seq_id(nb::class_<Structure>& structure) {
   structure
-    .def("assign_label_seq_id", &assign_label_seq_id, py::arg("force")=false)
+    .def("assign_label_seq_id", &assign_label_seq_id, nb::arg("force")=false)
     .def("clear_sequences", &clear_sequences)
-    .def("assign_best_sequences", &assign_best_sequences, py::arg("fasta_sequences"))
+    .def("assign_best_sequences", &assign_best_sequences, nb::arg("fasta_sequences"))
     ;
 }

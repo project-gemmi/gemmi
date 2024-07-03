@@ -11,76 +11,77 @@
 #include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error
 
 #include "common.h"
-#include <pybind11/stl.h>
-#include <pybind11/numpy.h>    // for vectorize
-
-namespace py = pybind11;
+//#include <nanobind/numpy.h>    // for vectorize
+#include <nanobind/make_iterator.h>
+#include <nanobind/stl/string.h>
+#include <nanobind/stl/vector.h>  // for calculate_sequence_weight
 
 namespace {
 template<typename T> int get_max_bin(const T& bins) {
   int max_bin = 0;
   for (int i = 0; i < bins.shape(0); ++i) {
     if (bins(i) < 0)
-      throw py::value_error("bins argument must have no negative elements");
+      throw nb::value_error("bins argument must have no negative elements");
     max_bin = std::max(max_bin, bins(i));
   }
   if (max_bin > 1000000)
-    throw py::value_error("bin numbers must be smaller than million");
+    throw nb::value_error("bin numbers must be smaller than million");
   return max_bin;
 }
 } // anonymous namespace
 
-void add_misc(py::module& m) {
-  py::class_<gemmi::CifWalk>(m, "CifWalk")
-    .def(py::init<const char*, char>(), py::arg("path"), py::arg("try_pdbid")='\0')
+void add_misc(nb::module_& m) {
+  nb::class_<gemmi::CifWalk>(m, "CifWalk")
+    .def(nb::init<const char*, char>(), nb::arg("path"), nb::arg("try_pdbid")='\0')
     .def("__iter__", [](gemmi::CifWalk& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
-  py::class_<gemmi::CoorFileWalk>(m, "CoorFileWalk")
-    .def(py::init<const char*, char>(), py::arg("path"), py::arg("try_pdbid")='\0')
+        return nb::make_iterator(nb::type<gemmi::CifWalk>(), "iterator", self);
+    }, nb::keep_alive<0, 1>());
+  nb::class_<gemmi::CoorFileWalk>(m, "CoorFileWalk")
+    .def(nb::init<const char*, char>(), nb::arg("path"), nb::arg("try_pdbid")='\0')
     .def("__iter__", [](gemmi::CoorFileWalk& self) {
-        return py::make_iterator(self);
-    }, py::keep_alive<0, 1>());
+        return nb::make_iterator(nb::type<gemmi::CoorFileWalk>(), "iterator", self);
+    }, nb::keep_alive<0, 1>());
   m.def("is_pdb_code", &gemmi::is_pdb_code);
   m.def("expand_pdb_code_to_path", &gemmi::expand_pdb_code_to_path,
-        py::arg("code"), py::arg("filetype"), py::arg("throw_if_unset")=false);
+        nb::arg("code"), nb::arg("filetype"), nb::arg("throw_if_unset")=false);
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
-        py::arg("code"), py::arg("filetype")='M');
-  m.attr("hc") = py::float_(gemmi::hc());
-  m.def("bessel_i1_over_i0", py::vectorize(gemmi::bessel_i1_over_i0));
-  m.def("log_bessel_i0", py::vectorize(gemmi::log_bessel_i0));
-  m.def("log_cosh", py::vectorize(gemmi::log_cosh));
+        nb::arg("code"), nb::arg("filetype")='M');
+  m.attr("hc") = nb::float_(gemmi::hc());
+  //m.def("bessel_i1_over_i0", nb::vectorize(gemmi::bessel_i1_over_i0));
+  //m.def("log_bessel_i0", nb::vectorize(gemmi::log_bessel_i0));
+  //m.def("log_cosh", nb::vectorize(gemmi::log_cosh));
 
   // pirfasta.hpp
-  py::class_<gemmi::FastaSeq>(m, "FastaSeq")
-    .def_readonly("header", &gemmi::FastaSeq::header)
-    .def_readonly("seq", &gemmi::FastaSeq::seq)
+  nb::class_<gemmi::FastaSeq>(m, "FastaSeq")
+    .def_ro("header", &gemmi::FastaSeq::header)
+    .def_ro("seq", &gemmi::FastaSeq::seq)
     ;
   m.def("read_pir_or_fasta", &gemmi::read_pir_or_fasta);
 
   // seqtools.hpp
   m.def("calculate_sequence_weight", &gemmi::calculate_sequence_weight,
-        py::arg("sequence"), py::arg("unknown")=0.);
+        nb::arg("sequence"), nb::arg("unknown")=0.);
   m.def("one_letter_code", &gemmi::one_letter_code);
   m.def("pdbx_one_letter_code", &gemmi::pdbx_one_letter_code);
   m.def("sequence_kind", &gemmi::sequence_kind);
 
   // stats.hpp
-  py::class_<gemmi::Correlation>(m, "Correlation")
-    .def_readonly("n", &gemmi::Correlation::n)
+  nb::class_<gemmi::Correlation>(m, "Correlation")
+    .def_ro("n", &gemmi::Correlation::n)
     .def("coefficient", &gemmi::Correlation::coefficient)
     .def("mean_ratio", &gemmi::Correlation::mean_ratio)
     ;
 
+  /*
   // utilities inspired by numpy.bincount()
-  m.def("binmean", [](py::array_t<int> bins, py::array_t<double> values) {
+  m.def("binmean", [](nb::array_t<int> bins, nb::array_t<double> values) {
       auto bins_ = bins.unchecked<1>();
       auto values_ = values.unchecked<1>();
       auto len = bins_.shape(0);
       if (len != values_.shape(0))
         throw std::domain_error("arrays have different lengths");
       int ret_size = get_max_bin(bins_) + 1;
-      py::array_t<double> ret(ret_size);
+      nb::array_t<double> ret(ret_size);
       double* retp = (double*) ret.request().ptr;
       for (int i = 0; i != ret_size; ++i)
         retp[i] = 0.;
@@ -94,10 +95,10 @@ void add_misc(py::module& m) {
       for (int i = 0; i != ret_size; ++i)
         retp[i] /= counts[i];
       return ret;
-  }, py::arg("nbins"), py::arg("values"));
+  }, nb::arg("nbins"), nb::arg("values"));
 
-  m.def("binrfactor", [](py::array_t<int> bins, py::array_t<double> obs,
-                         py::array_t<double> calc, bool riso) {
+  m.def("binrfactor", [](nb::array_t<int> bins, nb::array_t<double> obs,
+                         nb::array_t<double> calc, bool riso) {
       auto bins_ = bins.unchecked<1>();
       auto obs_ = obs.unchecked<1>();
       auto calc_ = calc.unchecked<1>();
@@ -105,7 +106,7 @@ void add_misc(py::module& m) {
       if (len != obs_.shape(0) || len != calc_.shape(0))
         throw std::domain_error("arrays have different lengths");
       int ret_size = get_max_bin(bins_) + 1;
-      py::array_t<double> ret(ret_size);
+      nb::array_t<double> ret(ret_size);
       double* retp = (double*) ret.request().ptr;
       for (int i = 0; i != ret_size; ++i)
         retp[i] = 0.;
@@ -119,10 +120,10 @@ void add_misc(py::module& m) {
       for (int i = 0; i != ret_size; ++i)
         retp[i] /= (riso ? 0.5 * sum_fobs[i] : sum_fobs[i]);
       return ret;
-  }, py::arg("nbins"), py::arg("obs"), py::arg("calc"), py::arg("riso")=false);
+  }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"), nb::arg("riso")=false);
 
-  m.def("bincorr", [](py::array_t<int> bins, py::array_t<double> obs,
-                                             py::array_t<double> calc) {
+  m.def("bincorr", [](nb::array_t<int> bins, nb::array_t<double> obs,
+                                             nb::array_t<double> calc) {
       auto bins_ = bins.unchecked<1>();
       auto obs_ = obs.unchecked<1>();
       auto calc_ = calc.unchecked<1>();
@@ -135,27 +136,28 @@ void add_misc(py::module& m) {
         if (!std::isnan(obs_(i)) && !std::isnan(calc_(i)))
           cor[bins_(i)].add_point(obs_(i), calc_(i));
       return cor;
-  }, py::arg("nbins"), py::arg("obs"), py::arg("calc"));
+  }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"));
+  */
 }
 
-PYBIND11_MODULE(gemmi, mg) {
+NB_MODULE(gemmi, mg) {
   mg.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
              "crystallography and related fields";
   mg.attr("__version__") = GEMMI_VERSION;
 
-  py::register_exception_translator([](std::exception_ptr p) {
+  nb::register_exception_translator([](const std::exception_ptr& p, void*) {
     try {
       if (p)
         std::rethrow_exception(p);
     } catch (const std::system_error &e) {
       const int errornum = e.code().value();
-      PyErr_SetObject(PyExc_IOError, py::make_tuple(errornum, e.what()).ptr());
+      PyErr_SetObject(PyExc_IOError, nb::make_tuple(errornum, e.what()).ptr());
     } catch (const tao::pegtl::parse_error &e) {
       PyErr_SetString(PyExc_ValueError, e.what());
     }
   });
 
-  py::module cif = mg.def_submodule("cif", "CIF file format");
+  nb::module_ cif = mg.def_submodule("cif", "CIF file format");
   add_cif(cif);
   add_symmetry(mg);
   add_unitcell(mg);

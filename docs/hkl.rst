@@ -114,7 +114,7 @@ Datasets are stored in the variable `datasets`::
 .. doctest::
 
   >>> mtz.datasets
-  MtzDatasets[<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5e5z/5e5z/1>]
+  gemmi.MtzDatasets([<gemmi.Mtz.Dataset 0 HKL_base/HKL_base/HKL_base>, <gemmi.Mtz.Dataset 1 5e5z/5e5z/1>])
 
 In the MTZ file, each dataset is identified internally by an integer
 "dataset ID". To get dataset with the specified ID use function::
@@ -827,7 +827,7 @@ Blocks are moved from the Document to the new list:
   >>> doc
   <gemmi.cif.Document with 0 blocks ()>
   >>> rblocks
-  ReflnBlocks[<gemmi.ReflnBlock r5wkdsf with 17 x 406 loop>]
+  gemmi.ReflnBlocks([<gemmi.ReflnBlock r5wkdsf with 17 x 406 loop>])
 
 When ReflnBlock is created some of the mmCIF tags are interpreted
 to initialize the following properties:
