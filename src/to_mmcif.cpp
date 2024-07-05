@@ -12,6 +12,7 @@
 #include <gemmi/sprintf.hpp>
 #include <gemmi/enumstr.hpp>    // for entity_type_to_string, ...
 #include <gemmi/seqtools.hpp>   // for pdbx_one_letter_code, ...
+#include <gemmi/to_pdb.hpp>     // for use_hetatm
 
 namespace gemmi {
 
@@ -114,6 +115,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
   for (const Model& model : st.models) {
     for (const Chain& chain : model.chains) {
       for (const Residue& res : chain.residues) {
+        bool as_het = use_hetatm(res);
         std::string label_seq_id = res.label_seq.str('.');
         std::string auth_seq_id = res.seqid.num.str();
         std::string entity_id;
@@ -123,7 +125,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
           entity_id = string_or_dot(res.entity_id);
         for (const Atom& atom : res.atoms) {
           if (use_group_pdb)
-            vv.emplace_back(res.het_flag != 'H' ? "ATOM" : "HETATM");
+            vv.emplace_back(as_het ? "HETATM" : "ATOM");
           vv.emplace_back(std::to_string(++serial));
           vv.emplace_back(atom.element.uname());
           vv.emplace_back(cif::quote(atom.name));

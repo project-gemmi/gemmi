@@ -45,6 +45,9 @@ struct PdbWriteOptions {
   }
 };
 
+/// record type ATOM/HETATM to use for writing given residue
+GEMMI_DLL bool use_hetatm(const Residue& res);
+
 GEMMI_DLL void write_pdb(const Structure& st, std::ostream& os,
                          PdbWriteOptions opt=PdbWriteOptions());
 GEMMI_DLL std::string make_pdb_string(const Structure& st,

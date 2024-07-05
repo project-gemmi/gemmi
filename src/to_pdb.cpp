@@ -11,7 +11,7 @@
 
 #include <gemmi/fail.hpp>       // for fail
 #include <gemmi/sprintf.hpp>
-#include <gemmi/resinfo.hpp>
+#include <gemmi/resinfo.hpp>    // for find_tabulated_residue
 #include <gemmi/util.hpp>
 
 namespace gemmi {
@@ -38,8 +38,6 @@ namespace gemmi {
     os.write(buf, 81); \
   } while(0)
 
-namespace {
-
 bool use_hetatm(const Residue& res) {
   if (res.het_flag == 'H')
     return true;
@@ -51,6 +49,8 @@ bool use_hetatm(const Residue& res) {
     return true;
   return !find_tabulated_residue(res.name).is_standard();
 }
+
+namespace {
 
 // works for non-negative values only
 void base36_encode(char* buffer, int width, int value) {
