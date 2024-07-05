@@ -155,7 +155,7 @@ template<> inline void assign_het_flags(Residue& res, char flag) {
   flag &= ~0x20; // uppercase letters, ' ' -> \0
   if (flag != 'R' && flag != '\0' && flag != 'A' && flag != 'H')
     fail("assign_het_flags(): the only allowed values are A, H, ' ' and R");
-  res.het_flag = flag == '?' ? recommended_het_flag(res) : flag;
+  res.het_flag = flag == 'R' ? recommended_het_flag(res) : flag;
 }
 
 // Remove waters. It may leave empty chains.
