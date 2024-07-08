@@ -43,11 +43,12 @@ class TestFloatGrid(unittest.TestCase):
         self.assertAlmostEqual(m.grid.interpolate_value(frac), pos_value)
 
         # test interpolation on a coordinate array
-        coords = [(19.4, 3., 21.), (19.4, 3., 21.1), (19.4, 3., 21.2)]
-        interp_values = m.grid.interpolate_values(coords)
-        self.assertEqual(len(interp_values), 3)
-        for value in interp_values:
-            self.assertAlmostEqual(value, pos_value)
+        if numpy:
+            coords = [(19.4, 3., 21.), (19.4, 3., 21.1), (19.4, 3., 21.2)]
+            interp_values = m.grid.interpolate_coordinate_array(coords)
+            self.assertEqual(len(interp_values), 3)
+            for value in interp_values:
+                self.assertAlmostEqual(value, pos_value)
 
         # this spacegroup has symop -x, y+1/2, -z
         m.grid.set_value(60 - 3, 24 // 2 + 4, 60 - 5,

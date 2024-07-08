@@ -183,8 +183,8 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
          (std::array<double,4> (Gr::*)(const Fractional&) const)
          &Gr::tricubic_interpolation_der)
     .def("interpolate_coordinate_array",
-         [](const Gr& self, py::array_t<double> coords) {
-        auto coords_unchecked = coords.template unchecked<2>();
+         [](const Gr& self, py::array_t<T> coords) {
+        auto coords_unchecked = coords.template mutable_unchecked<2>();
         py::array_t<T> result(coords.shape(0));
         auto result_unchecked = result.template mutable_unchecked<1>();
         for (ssize_t i = 0; i < coords_unchecked.shape(0); ++i) {
@@ -196,7 +196,7 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
           result_unchecked(i) = self.interpolate_value(fpos);
         }
         return result;
-    }, py::arg("coords"))
+    }, py::arg().noconvert())
     ;
 }
 
