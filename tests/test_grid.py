@@ -7,7 +7,9 @@ import zlib
 import gemmi
 from common import full_path, get_path_for_tempfile, assert_numpy_equal, numpy
 
+
 class TestFloatGrid(unittest.TestCase):
+
     def test_reading(self):
         m = gemmi.read_ccp4_map(full_path('5i55_tiny.ccp4'))
         self.assertEqual(m.grid.nu, 8)
@@ -30,7 +32,7 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.grid.spacegroup.ccp4, 4)  # P21
 
         extent = m.get_extent()
-        self.assertEqual(extent.minimum.tolist(), [-1e-9]*3)
+        self.assertEqual(extent.minimum.tolist(), [-1e-9] * 3)
         nu = m.grid.nu
         self.assertTrue((nu - 1.) / nu < extent.maximum.x < 1)
 
@@ -40,9 +42,17 @@ class TestFloatGrid(unittest.TestCase):
         self.assertAlmostEqual(m.grid.interpolate_value(pos), pos_value)
         self.assertAlmostEqual(m.grid.interpolate_value(frac), pos_value)
 
+        # test interpolation on a coordinate array
+        coords = [(19.4, 3., 21.), (19.4, 3., 21.1), (19.4, 3., 21.2)]
+        interp_values = m.grid.interpolate_values(coords)
+        self.assertEqual(len(interp_values), 3)
+        for value in interp_values:
+            self.assertAlmostEqual(value, pos_value)
+
         # this spacegroup has symop -x, y+1/2, -z
-        m.grid.set_value(60-3, 24//2+4, 60-5, 100)  # image of (3, 4, 5)
-        self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 100)
+        m.grid.set_value(60 - 3, 24 // 2 + 4, 60 - 5,
+                         100)  # image of (3, 4, 5)
+        self.assertEqual(m.grid.get_value(60 - 3, 24 // 2 + 4, 60 - 5), 100)
         self.assertTrue(math.isnan(m.grid.get_value(3, 4, 5)))
         m.grid.symmetrize_max()
         self.assertEqual(m.grid.get_value(3, 4, 5), 100)
@@ -50,19 +60,20 @@ class TestFloatGrid(unittest.TestCase):
         self.assertTrue(math.isnan(m.grid.get_value(3, 4, 5)))
         m.grid.symmetrize_min()
         self.assertEqual(m.grid.get_value(3, 4, 5), 100)
-        m.grid.set_value(60-3, 24//2+4, 60-5, 80)
+        m.grid.set_value(60 - 3, 24 // 2 + 4, 60 - 5, 80)
         m.grid.symmetrize_avg()
         self.assertEqual(m.grid.get_value(3, 4, 5), 90)
-        m.grid.set_value(60-3, 24//2+4, 60-5, float('nan'))
+        m.grid.set_value(60 - 3, 24 // 2 + 4, 60 - 5, float('nan'))
         m.grid.symmetrize_max()
-        self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 90)
+        self.assertEqual(m.grid.get_value(60 - 3, 24 // 2 + 4, 60 - 5), 90)
         if numpy:
             arr = numpy.array(m.grid, copy=False)
             self.assertEqual(arr.shape, (60, 24, 60))
             self.assertEqual(arr[3][4][5], 90)
             grid2 = gemmi.FloatGrid(arr)
-            self.assertTrue(numpy.allclose(m.grid, grid2, atol=0.0, rtol=0,
-                                           equal_nan=True))
+            self.assertTrue(
+                numpy.allclose(m.grid, grid2, atol=0.0, rtol=0,
+                               equal_nan=True))
 
     def test_new(self):
         N = 24
@@ -70,7 +81,7 @@ class TestFloatGrid(unittest.TestCase):
         self.assertEqual(m.nu, N)
         self.assertEqual(m.nv, N)
         self.assertEqual(m.nw, N)
-        m.set_value(1,2,3, 1.0)
+        m.set_value(1, 2, 3, 1.0)
         self.assertEqual(m.sum(), 1.0)
         m.spacegroup = gemmi.find_spacegroup_by_name('C2')
         self.assertEqual(m.spacegroup.number, 5)
@@ -108,10 +119,11 @@ class TestFloatGrid(unittest.TestCase):
 
 
 class TestCcp4Map(unittest.TestCase):
+
     @unittest.skipIf(numpy is None, "NumPy not installed.")
     def test_567_map(self):
         # make a small, contrived map
-        data = numpy.arange(5*6*7, dtype=numpy.float32).reshape((5,6,7))
+        data = numpy.arange(5 * 6 * 7, dtype=numpy.float32).reshape((5, 6, 7))
         cell = gemmi.UnitCell(150, 132, 140, 90, 90, 90)
         m = gemmi.Ccp4Map()
         m.grid = gemmi.FloatGrid(data, cell, gemmi.SpaceGroup('P 1'))
@@ -128,8 +140,8 @@ class TestCcp4Map(unittest.TestCase):
                 self.assertEqual(crc_mod_2_32, 372922578)
 
         box = gemmi.FractionalBox()
-        box.minimum = gemmi.Fractional(0.5/5, 1.5/6, 3.5/7)
-        box.maximum = gemmi.Fractional(4.5/5, 2.5/6, 5.5/7)
+        box.minimum = gemmi.Fractional(0.5 / 5, 1.5 / 6, 3.5 / 7)
+        box.maximum = gemmi.Fractional(4.5 / 5, 2.5 / 6, 5.5 / 7)
         m.set_extent(box)
         cut_data = data[1:5, 2:3, 4:6]
         self.assertEqual(cut_data.shape, (4, 1, 2))
@@ -178,14 +190,14 @@ class TestCcp4Map(unittest.TestCase):
 
     @unittest.skipIf(numpy is None, "NumPy not installed.")
     def test_get_subarray(self):
-        data = numpy.arange(5*6*7, dtype=numpy.float32).reshape((5,6,7))
+        data = numpy.arange(5 * 6 * 7, dtype=numpy.float32).reshape((5, 6, 7))
         grid = gemmi.FloatGrid(data)
-        sub = grid.get_subarray([4,-3,20], [5,10,4])
+        sub = grid.get_subarray([4, -3, 20], [5, 10, 4])
         self.assertEqual(sub[0][0][0], 195.)
         self.assertEqual(sub[1][2][3], 37.)
         self.assertEqual(sub[-1][-1][-1], 128.)
-        grid.set_subarray(-sub, [4,-3,20])
-        sub2 = grid.get_subarray([4,-3,20], [5,10,4])
+        grid.set_subarray(-sub, [4, -3, 20])
+        sub2 = grid.get_subarray([4, -3, 20], [5, 10, 4])
         assert_numpy_equal(self, -sub, sub2)
 
     @unittest.skipIf(numpy is None, "NumPy not installed.")
@@ -203,6 +215,7 @@ class TestCcp4Map(unittest.TestCase):
         span = nonzero_ext.maximum - nonzero_ext.minimum
         volume = span[0] * span[1] * span[2]
         self.assertAlmostEqual(orig_point_count / m.grid.point_count, volume)
+
 
 if __name__ == '__main__':
     unittest.main()

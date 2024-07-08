@@ -170,7 +170,7 @@ Similarly in Python:
 .. doctest::
 
   >>> grid.spacegroup = gemmi.find_spacegroup_by_name('P2')
-  
+
 Now let us use one of the symmetrizing functions:
 
 .. doctest::
@@ -439,6 +439,17 @@ to positions in the grid:
 
 (If your points are not on a regular grid -- get in touch -- there might be
 another way.)
+
+Alternatively, if you have an array of positions, you can use the function
+`interpolate_coordinate_array()`. This takes a NumPy array of 3D positions
+and returns a NumPy array of interpolated values.
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> coords = numpy.array([[1, 2, 3], [2, 3, 4]], dtype=numpy.float32)
+  >>> grid.interpolate_coordinate_array(coords)
+  array([2.0333264, 2.6075664])
 
 .. _masked_grid:
 
