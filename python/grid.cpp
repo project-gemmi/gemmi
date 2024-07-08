@@ -187,7 +187,7 @@ void add_grid_interpolation(py::class_<Grid<T>, GridBase<T>>& grid) {
         auto coords_unchecked = coords.template mutable_unchecked<2>();
         py::array_t<T> result(coords.shape(0));
         auto result_unchecked = result.template mutable_unchecked<1>();
-        for (ssize_t i = 0; i < coords_unchecked.shape(0); ++i) {
+        for (int i = 0; i < coords_unchecked.shape(0); ++i) {
           double x = coords_unchecked(i, 0);
           double y = coords_unchecked(i, 1);
           double z = coords_unchecked(i, 2);
