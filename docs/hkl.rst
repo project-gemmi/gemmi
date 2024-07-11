@@ -666,7 +666,8 @@ We can also start the file history:
 
 `mtz.history` in Python is a property that gets a copy of the C++ data.
 Changing it (for example, `mtz.history.append()`) won't affect the original data.
-Only assignment works: `mtz.history = ...` or `mtz.history += ...`.
+Only assignment works: `mtz.history = [line1, line2, ...]`
+or `mtz.history += ['appended item']`.
 
 To update properties `min_1_d2` and `max_1_d2` call `update_reso()`:
 
