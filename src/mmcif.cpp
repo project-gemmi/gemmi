@@ -629,7 +629,9 @@ Structure make_structure_from_block(const cif::Block& block_) {
                                             "?classification",
                                             "?version",
                                             "?date",
-                                            "?description"})) {
+                                            "?description",
+                                            "?contact_author",
+                                            "?contact_author_email"})) {
     st.meta.software.emplace_back();
     SoftwareItem& item = st.meta.software.back();
     item.name = row.str(0);
@@ -638,6 +640,8 @@ Structure make_structure_from_block(const cif::Block& block_) {
     copy_string(row, 2, item.version);
     copy_string(row, 3, item.date);
     copy_string(row, 4, item.description);
+    copy_string(row, 5, item.contact_author);
+    copy_string(row, 6, item.contact_author_email);
   }
 
   std::vector<std::string> ncs_oper_tags = transform_tags("matrix", "vector");

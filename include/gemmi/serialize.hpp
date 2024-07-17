@@ -61,7 +61,8 @@ SERIALIZE(AtomAddress, o.chain_name, o.res_id, o.atom_name, o.altloc)
 SERIALIZE(Metadata, o.authors, o.experiments, o.crystals, o.refinement,
           o.software, o.solved_by, o.starting_model, o.remark_300_detail)
 
-SERIALIZE(SoftwareItem, o.name, o.version, o.date, o.description, o.classification)
+SERIALIZE(SoftwareItem, o.name, o.version, o.date, o.description, o.classification,
+          o.contact_author, o.contact_author_email)
 
 SERIALIZE(ReflectionsInfo, o.resolution_high, o.resolution_low, o.completeness,
           o.redundancy, o.r_merge, o.r_sym, o.mean_I_over_sigma)

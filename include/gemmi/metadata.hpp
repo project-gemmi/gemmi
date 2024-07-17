@@ -25,6 +25,8 @@ struct SoftwareItem {
   std::string version;
   std::string date;
   std::string description;
+  std::string contact_author;
+  std::string contact_author_email;
   Classification classification = Unspecified;
 };
 

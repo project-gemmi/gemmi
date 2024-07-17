@@ -293,6 +293,8 @@ void add_meta(py::module& m) {
     .def_readwrite("version", &SoftwareItem::version)
     .def_readwrite("date", &SoftwareItem::date)
     .def_readwrite("classification", &SoftwareItem::classification)
+    .def_readwrite("contact_author", &SoftwareItem::contact_author)
+    .def_readwrite("contact_author_email", &SoftwareItem::contact_author_email)
     ;
   py::class_<ReflectionsInfo>(m, "ReflectionsInfo")
     .def(py::init<>())
