@@ -31,7 +31,7 @@ def fft_test(self, data, f, phi, size, order=gemmi.AxisOrder.XYZ):
     self.assertTrue(data.data_fits_into(size))
     grid_full = data.get_f_phi_on_grid(f, phi, size, half_l=False, order=order)
     self.assertEqual(grid_full.axis_order, order)
-    array_full = numpy.array(grid_full, copy=False)
+    array_full = grid_full.array
     map1 = gemmi.transform_f_phi_grid_to_map(grid_full)
     self.assertEqual(map1.axis_order, order)
     map2 = numpy.fft.ifftn(array_full.conj())
@@ -84,7 +84,6 @@ class TestMtz(unittest.TestCase):
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
         if numpy is not None:
-            assert_numpy_equal(self, numpy.array(mtz, copy=False), mtz.array)
             assert_numpy_equal(self, mtz.array, mtz2.array)
 
     def test_remove_and_add_column(self):
@@ -96,17 +95,16 @@ class TestMtz(unittest.TestCase):
         ncol = len(mtz.columns)
         if numpy is None:
             return
-        assert_numpy_equal(self, col.array, numpy.array(col, copy=False))
         arr = col.array.copy()
-        mtz_data = numpy.array(mtz, copy=True)
+        mtz_data = mtz.array.copy()
         self.assertEqual(mtz_data.shape, (mtz.nreflections, ncol))
         mtz.remove_column(col_idx)
         self.assertEqual(len(mtz.columns), ncol-1)
-        self.assertEqual(numpy.array(mtz, copy=False).shape,
+        self.assertEqual(mtz.array.shape,
                          (mtz.nreflections, ncol-1))
         col = mtz.add_column(col_name, 'I', dataset_id=0, pos=col_idx)
-        numpy.array(col, copy=False)[:] = arr
-        assert_numpy_equal(self, mtz_data, numpy.array(mtz, copy=False))
+        col.array[:] = arr
+        assert_numpy_equal(self, mtz_data, mtz.array)
 
     def asu_data_test(self, grid):
         asu = grid.prepare_asu_data()
@@ -130,8 +128,8 @@ class TestMtz(unittest.TestCase):
                                           order=gemmi.AxisOrder.ZYX)
             if numpy is None:
                 continue
-            array1 = numpy.array(grid1, copy=False)
-            array2 = numpy.array(grid2, copy=False)
+            array1 = grid1.array
+            array2 = grid2.array
             self.assertTrue((array2 == array1.transpose(2,1,0)).all())
             self.asu_data_test(grid1)
 
@@ -146,7 +144,7 @@ class TestMtz(unittest.TestCase):
         if numpy is None:
             return
         asu = gemmi.ReciprocalAsu(mtz.spacegroup)
-        mtz_data = numpy.array(mtz, copy=False)
+        mtz_data = mtz.array
         fp_idx = mtz.column_labels().index('FP')
         fp_map = {}
         for row in mtz_data:

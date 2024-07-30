@@ -392,15 +392,6 @@ It provides access to all the MTZ data as 2D NumPy array
   >>> mtz.array.shape
   (441, 8)
 
-Another way to access MTZ data in Python is through the
-`buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
-For example, here is equivalent of `mtz.array`:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> all_data = numpy.array(mtz, copy=False)
-
 It helps to have labels on the columns. A good data structure for this
 is Pandas DataFrame:
 
@@ -408,7 +399,7 @@ is Pandas DataFrame:
   :skipif: pandas is None
 
   >>> import pandas
-  >>> df = pandas.DataFrame(data=all_data, columns=mtz.column_labels())
+  >>> df = pandas.DataFrame(data=mtz.array, columns=mtz.column_labels())
   >>> # now we can handle columns using their labels:
   >>> I_over_sigma = df['I'] / df['SIGI']
 
@@ -965,7 +956,7 @@ into a single DataFrame:
 
 .. literalinclude:: ../examples/merge_mtz_mmcif.py
   :language: python
-  :lines: 4-28
+  :lines: 4-27
 
 We want to compare the FP column from the MTZ file and the F_meas_au column
 from mmCIF. We start with plotting one against the other:
@@ -976,7 +967,7 @@ from mmCIF. We start with plotting one against the other:
 
 .. literalinclude:: ../examples/merge_mtz_mmcif.py
   :language: python
-  :lines: 31-38
+  :lines: 30-37
 
 The numbers are similar, but not exactly equal.
 Let us check how the difference between the two values depends on the
@@ -990,7 +981,7 @@ so we can use it for coloring.
 
 .. literalinclude:: ../examples/merge_mtz_mmcif.py
   :language: python
-  :lines: 41-
+  :lines: 40-
 
 Apparently, some scaling has been applied. The scaling is anisotropic
 and is the strongest along the *k* axis.
@@ -1457,8 +1448,7 @@ To check if the size is big enough you can call:
   >>> rblock.data_fits_into([52,6,18])
   False
 
-To access the data you can use either the buffer protocol
-(:ref:`in the same way <buffer_protocol>` as in the Grid class),
+To access the data you can use either the NumPy interface (`grid.array`),
 or getter and setter:
 
 .. doctest::
@@ -1572,8 +1562,7 @@ tool.
 
   >>> size = rblock.get_size_for_hkl(sample_rate=2.6)
   >>> full = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', size)
-  >>> array = numpy.array(full, copy=False)
-  >>> complex_map = numpy.fft.ifftn(array.conj())
+  >>> complex_map = numpy.fft.ifftn(full.array.conj())
   >>> scale_factor = complex_map.size / full.unit_cell.volume
   >>> real_map = numpy.real(complex_map) * scale_factor
   >>> round(real_map[1][2][3], 5)
@@ -1591,8 +1580,7 @@ using complex-to-real FFT on a half of the data:
   :skipif: numpy is None
 
   >>> half = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', size, half_l=True)
-  >>> array = numpy.array(half, copy=False)
-  >>> real_map = numpy.fft.irfftn(array.conj()) * scale_factor
+  >>> real_map = numpy.fft.irfftn(half.array.conj()) * scale_factor
   >>> round(real_map[1][2][3], 5)
   -0.40554
   >>> round(real_map.std(), 5)
@@ -1646,8 +1634,7 @@ The grid can be accessed as NumPy 3D array:
 .. doctest::
   :skipif: numpy is None
 
-  >>> array = numpy.array(_, copy=False)
-  >>> round(array.std(), 5)
+  >>> round(_.array.std(), 5)
   0.66338
 
 .. _map_from_rblock:

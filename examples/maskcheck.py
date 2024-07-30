@@ -51,8 +51,8 @@ def maskcheck(mask_path, coor_path, output_diff_map=None, verbose=False):
 
 
 def compare_mask_arrays(grid1, grid2, verbose):
-    arr1 = numpy.array(grid1, copy=False)
-    arr2 = numpy.array(grid2, copy=False)
+    arr1 = grid1.array
+    arr2 = grid2.array
     if arr1.shape != arr2.shape:
         sys.exit('Different grid sizes %s and %s. Exiting.' %
                  (arr1.shape, arr2.shape))

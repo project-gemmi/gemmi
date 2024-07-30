@@ -57,7 +57,7 @@ class TestFloatGrid(unittest.TestCase):
         m.grid.symmetrize_max()
         self.assertEqual(m.grid.get_value(60-3, 24//2+4, 60-5), 90)
         if numpy:
-            arr = numpy.array(m.grid, copy=False)
+            arr = m.grid.array
             self.assertEqual(arr.shape, (60, 24, 60))
             self.assertEqual(arr[3][4][5], 90)
             grid2 = gemmi.FloatGrid(arr)

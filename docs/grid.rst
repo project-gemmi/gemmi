@@ -121,18 +121,14 @@ Values are accessed with functions get_value() and set_value():
   >>> grid.get_value(-11, 13, 25)
   7.0
 
-.. _buffer_protocol:
-
-The data can be also accessed through the
-`buffer protocol <https://docs.python.org/3/c-api/buffer.html>`_.
-It means that you can use it as a NumPy array (Fortran-style contiguous)
-without copying the data:
+The data can be also accessed as a NumPy array (Fortran-style contiguous),
+without copying the data, through the `array` property:
 
 .. doctest::
   :skipif: numpy is None or sys.platform == 'win32'
 
   >>> import numpy
-  >>> array = numpy.array(grid, copy=False)
+  >>> array = grid.array
   >>> array.dtype
   dtype('float32')
   >>> array.shape
@@ -140,16 +136,6 @@ without copying the data:
   >>> numpy.argwhere(array == 7.0)
   array([[1, 1, 1]])
 
-The buffer protocol is not specific to NumPy -- any other Python library
-that supports this protocol can directly access the grid data.
-Alternatively, the grid can be viewed as a NumPy array through
-the `array` property:
-
-.. doctest::
-  :skipif: numpy is None or sys.platform == 'win32'
-
-  >>> grid.array.shape
-  (12, 12, 12)
 
 Symmetry
 --------
