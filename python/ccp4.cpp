@@ -11,7 +11,7 @@ namespace py = pybind11;
 using namespace gemmi;
 
 template<typename T>
-py::class_<T> add_ccp4_common(py::module& m, const char* name) {
+py::class_<Ccp4<T>, Ccp4Base> add_ccp4_common(py::module& m, const char* name) {
   using Map = Ccp4<T>;
   return py::class_<Map, Ccp4Base>(m, name)
     .def(py::init<>())

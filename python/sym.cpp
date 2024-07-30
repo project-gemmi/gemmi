@@ -185,8 +185,7 @@ void add_symmetry(py::module& m) {
             h(i, j) = hkl[j];
         }
     }, py::arg("miller_array").noconvert())
-    // In Python SpaceGroup class can't be created, we only use references to
-    // elements in spacegroup_tables::main.
+    // In Python, SpaceGroup always points to an entry in spacegroup_tables::main.
     .def("__eq__", [](const SpaceGroup& a, const SpaceGroup& b) { return &a == &b; },
          py::is_operator())
     .def("__repr__", [](const SpaceGroup &self) {

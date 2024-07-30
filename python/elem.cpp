@@ -89,10 +89,10 @@ void add_elem(py::module& m) {
     .def_property_readonly("is_metal", &Element::is_metal)
     .def_property_readonly("it92", [](const Element& self) {
         return IT92::has(self.elem) ? &IT92::get(self.elem, 0) : nullptr;
-    }, py::return_value_policy::reference_internal)
+    }, py::return_value_policy::reference)
     .def_property_readonly("c4322", [](const Element& self) {
         return C4322::has(self.elem) ? &C4322::get(self.elem) : nullptr;
-    }, py::return_value_policy::reference_internal)
+    }, py::return_value_policy::reference)
     .def_property_readonly("neutron92", [](const Element& self) {
         return Neutron92::get(self.elem);  // a copy is created
     })
@@ -103,7 +103,7 @@ void add_elem(py::module& m) {
 
   m.def("IT92_get_exact", [](gemmi::Element el, signed char charge) {
       return IT92::get_exact(el.elem, charge);
-  }, py::return_value_policy::reference_internal);
+  }, py::return_value_policy::reference);
 
   // resinfo.hpp
   py::enum_<ResidueKind>(m, "ResidueKind")
