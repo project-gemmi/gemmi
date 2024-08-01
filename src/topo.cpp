@@ -423,7 +423,7 @@ std::vector<Topo::Rule> Topo::apply_restraints(const Restraints& rt,
 }
 
 void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
-  if (link.link_id.empty())
+  if (link.link_id.empty() || link.link_id == "gap")
     return;
   const ChemLink* chem_link = monlib.get_link(link.link_id);
   if (!chem_link) {
