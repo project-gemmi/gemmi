@@ -18,7 +18,7 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
   // add atoms
   cc->atoms.reserve(res.atoms.size());
   for (const Atom& a : res.atoms) {
-    if (!a.same_conformer(res.atoms[0]))
+    if (a.altloc != '\0' && cc->has_atom(a.name))
       continue;
     Element el = a.element;
     if (el == El::X)
@@ -37,12 +37,12 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
   // first heavy atoms only
   for (size_t i = 0; i != res.atoms.size(); ++i) {
     const Atom& at1 = res.atoms[i];
-    if (at1.is_hydrogen() || !at1.same_conformer(res.atoms[0]))
+    if (at1.is_hydrogen())
       continue;
     float r1 = at1.element.covalent_r();
     for (size_t j = i+1; j != res.atoms.size(); ++j) {
       const Atom& at2 = res.atoms[j];
-      if (at2.is_hydrogen() || !at2.same_conformer(res.atoms[0]))
+      if (at2.is_hydrogen() || !at2.same_conformer(at1))
         continue;
       double d2 = at1.pos.dist_sq(at2.pos);
       float r2 = at2.element.covalent_r();
@@ -54,7 +54,7 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
   // now each hydrogen with the nearest heavy atom
   for (size_t i = 0; i != res.atoms.size(); ++i) {
     const Atom& at1 = res.atoms[i];
-    if (at1.is_hydrogen() && at1.same_conformer(res.atoms[0])) {
+    if (at1.is_hydrogen()) {
       size_t nearest = (size_t)-1;
       double min_d2 = sq(2.5);
       for (size_t j = 0; j != res.atoms.size(); ++j) {
@@ -74,6 +74,7 @@ std::unique_ptr<ChemComp> make_chemcomp_with_restraints(const Residue& res) {
   }
 
   // add bonds
+  // note: duplicated bonds (from different conformations) are not a problem
   for (const Pair& p : pairs) {
     Restraints::Bond bond;
     bond.id1 = Restraints::AtomId{1, res.atoms[p.n1].name};
