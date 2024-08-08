@@ -186,7 +186,7 @@ class TestBlock(unittest.TestCase):
         doc = cif.Document()
         block = doc.add_new_block('b')
         block.set_mmcif_category('_c', {
-            'one': ('?', 'ab', ';text field\n;'),
+            'one': ['?', 'ab', ';text field\n;'],
             'two': [-1, 4./3, '"double quoted"']}, raw=True)
         self.assertEqual(block.find_values('_c.one')[0], '?')
         self.assertEqual(block.find_values('_c.one').str(1), 'ab')
@@ -194,7 +194,7 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(block.find_values('_c.two').str(0), '-1')
         self.assertEqual(block.find_values('_c.two').str(2), 'double quoted')
         block.set_mmcif_category('_d', {
-            'one': (None, 'a b', 'text\nfield'),
+            'one': [None, 'a b', 'text\nfield'],
             'two': [-1, '?', False]})
         def check_d():
             self.assertEqual(block.find_values('_d.one')[0], '?')
@@ -206,14 +206,14 @@ class TestBlock(unittest.TestCase):
             self.assertEqual(block.find_values('_d.two')[2], '.')
         check_d()
         block.set_mmcif_category('_D', {
-            'one': ('?', "'a b'", ';text\nfield\n;'),
+            'one': ['?', "'a b'", ';text\nfield\n;'],
             'two': ['-1', "'?'", '.']},
             raw=True)
         self.assertEqual(set(block.find_mmcif_category('_d').tags),
                          {'_D.one', '_D.two'})
         check_d()
         block.set_mmcif_category('_d', {
-            'one': (None, "'a b'", ';text\nfield\n;'),
+            'one': [None, "'a b'", ';text\nfield\n;'],
             'two': [-1, "'?'", False]},
             raw=True)
         check_d()
@@ -370,7 +370,7 @@ class TestQuote(unittest.TestCase):
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
-class TestDictinary(unittest.TestCase):
+class TestDictionary(unittest.TestCase):
     def test_frame_reading(self):
         block = cif.read(full_path('mmcif_pdbx_v50_frag.dic')).sole_block()
         self.assertIsNone(block.find_frame('heyho'))
