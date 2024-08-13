@@ -257,7 +257,6 @@ void read_prot_cis(cif::Block& block, Structure& st) {
       cispep.partner_n.chain_name = row.str(kAuthAsymId2);
     if (row.has(kAuthSeqId2))
       cispep.partner_n.res_id.seqid = make_seqid(row.str(kAuthSeqId2), row.ptr_at(kInsCode2));
-    if (row.has(kLabelCompId2))
     cispep.partner_n.res_id.name = cif::as_string(row.one_of(kAuthCompId2, kLabelCompId2));
     if (row.has(kAltId))
       cispep.only_altloc = cif::as_char(row[kAltId], '\0');
