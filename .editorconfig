@@ -10,5 +10,5 @@ indent_size = 2
 [{include/gemmi/*.hpp,include/gemmi/refine/*.hpp,src/*,prog/*.cpp,prog/*.h,examples/*.cpp}]
 trim_trailing_whitespace = true
 # 80 characters is preferred, but if slightly longer line improves
-# readability, up to 94 is ok.
-max_line_length=94
+# readability, up to 100 is ok.
+max_line_length=100
