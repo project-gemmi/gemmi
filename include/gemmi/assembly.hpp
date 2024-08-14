@@ -16,24 +16,21 @@ namespace gemmi {
 enum class HowToNameCopiedChain { Short, AddNumber, Dup };
 
 struct ChainNameGenerator {
-  using How = HowToNameCopiedChain;
-  How how;
+  HowToNameCopiedChain how;
   std::vector<std::string> used_names;
 
-  ChainNameGenerator(How how_) : how(how_) {}
-  ChainNameGenerator(const Model& model, How how_) : how(how_) {
-    if (how != How::Dup)
+  ChainNameGenerator(HowToNameCopiedChain how_) : how(how_) {}
+  ChainNameGenerator(const Model& model, HowToNameCopiedChain how_) : how(how_) {
+    if (how != HowToNameCopiedChain::Dup)
       for (const Chain& chain : model.chains)
         used_names.push_back(chain.name);
   }
-  bool has(const std::string& name) const {
-    return in_vector(name, used_names);
-  }
-  const std::string& added(const std::string& name) {
+  bool try_add(const std::string& name) {
+    if (in_vector(name, used_names))
+      return false;
     used_names.push_back(name);
-    return name;
+    return true;
   }
-
   std::string make_short_name(const std::string& preferred) {
     static const char symbols[] = {
       'A','B','C','D','E','F','G','H','I','J','K','L','M',
@@ -42,21 +39,21 @@ struct ChainNameGenerator {
       'n','o','p','q','r','s','t','u','v','w','x','y','z',
       '0','1','2','3','4','5','6','7','8','9'
     };
-    if (!has(preferred))
-      return added(preferred);
+    if (try_add(preferred))
+      return preferred;
     std::string name(1, 'A');
     for (char symbol : symbols) {
       name[0] = symbol;
-      if (!has(name))
-        return added(name);
+      if (try_add(name))
+        return name;
     }
     name += 'A';
     for (char symbol1 : symbols) {
       name[0] = symbol1;
       for (char symbol2 : symbols) {
         name[1] = symbol2;
-        if (!has(name))
-          return added(name);
+        if (try_add(name))
+          return name;
       }
     }
     fail("run out of 1- and 2-letter chain names");
@@ -65,18 +62,18 @@ struct ChainNameGenerator {
   std::string make_name_with_numeric_postfix(const std::string& base, int n) {
     std::string name = base;
     name += std::to_string(n);
-    while (has(name)) {
+    while (!try_add(name)) {
       name.resize(base.size());
       name += std::to_string(++n);
     }
-    return added(name);
+    return name;
   }
 
   std::string make_new_name(const std::string& old, int n) {
     switch (how) {
-      case How::Short: return make_short_name(old);
-      case How::AddNumber: return make_name_with_numeric_postfix(old, n);
-      case How::Dup: return old;
+      case HowToNameCopiedChain::Short: return make_short_name(old);
+      case HowToNameCopiedChain::AddNumber: return make_name_with_numeric_postfix(old, n);
+      case HowToNameCopiedChain::Dup: return old;
     }
     unreachable();
   }
@@ -85,8 +82,8 @@ struct ChainNameGenerator {
 inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
   ChainNameGenerator namegen(HowToNameCopiedChain::Short);
   for (const Chain& ch : model.chains)
-    if (&ch != &chain && !namegen.has(ch.name))
-      namegen.added(ch.name);
+    if (&ch != &chain)
+      namegen.try_add(ch.name);
   chain.name = namegen.make_short_name(chain.name);
 }
 
