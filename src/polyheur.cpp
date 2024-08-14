@@ -198,7 +198,7 @@ void assign_subchain_names(Chain& chain, int& nonpolymer_counter) {
         // to keep the name short use base36 for 2+ digit numbers:
         // 1, 2, ..., 9, 00, 01, ..., 09, 0A, 0B, ..., 0Z, 10, ...
         if (nonpolymer_counter < 10) {
-          res.subchain += ('0' + nonpolymer_counter);
+          res.subchain += char('0' + nonpolymer_counter);
         } else {
           const char base36[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
           int n = nonpolymer_counter - 10;
@@ -330,7 +330,7 @@ bool trim_to_alanine(Residue& res) {
 }
 
 template <size_t I, typename T1, typename T2>
-bool in_vector_at(T1& x, std::vector<T2>& v) {
+static bool in_vector_at(T1& x, std::vector<T2>& v) {
   for (const auto& el : v)
     if (std::get<I>(el) == x)
       return true;
@@ -389,7 +389,7 @@ void restore_full_ccd_codes(Structure& st) {
 
 // Unlike _entity_poly_seq, SEQRES doesn't contain alternative residue names.
 // This function adds the alternative names to full_sequence.
-void add_microhetero_to_sequence(Entity& ent, ConstResidueSpan polymer) {
+static void add_microhetero_to_sequence(Entity& ent, ConstResidueSpan polymer) {
   ent.reflects_microhetero = false;
   int max_n = -1;  // max label_seq seen so far
   for (const Residue& res : polymer) {

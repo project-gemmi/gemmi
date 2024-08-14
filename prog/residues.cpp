@@ -48,14 +48,14 @@ const option::Descriptor Usage[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
-static char get_primary_altloc(const gemmi::Residue& res) {
+char get_primary_altloc(const gemmi::Residue& res) {
   for (const gemmi::Atom& atom : res.atoms)
     if (atom.altloc == '\0')
       return ' ';
   return res.atoms.at(0).altloc;
 }
 
-static bool check_if_atoms_are_unique(const gemmi::Residue& res) {
+bool check_if_atoms_are_unique(const gemmi::Residue& res) {
   // Unoptimized - O(N^2).
   for (const gemmi::Atom& atom : res.atoms)
     for (const gemmi::Atom* a = res.atoms.data(); a < &atom; ++a)
@@ -64,7 +64,7 @@ static bool check_if_atoms_are_unique(const gemmi::Residue& res) {
   return true;
 }
 
-static bool check_sequence_id(const gemmi::Structure& st) {
+bool check_sequence_id(const gemmi::Structure& st) {
   bool error = false;
   std::string model_num;
   for (const gemmi::Model& model : st.models) {

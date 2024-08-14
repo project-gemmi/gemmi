@@ -153,7 +153,7 @@ struct GEMMI_DLL MonLib {
     const ChemComp::Aliasing* aliasing1_final = nullptr;
     const ChemComp::Aliasing* aliasing2_final = nullptr;
     int best_score = -1000;
-    for (auto& ml : links) {
+    for (const auto& ml : links) {
       const ChemLink& link = ml.second;
       if (link.rt.bonds.empty() || starts_with(link.name, "auto-"))
         continue;
@@ -178,6 +178,7 @@ struct GEMMI_DLL MonLib {
           link_side_matches_residue(link.side2, res1.name, &aliasing1) &&
           atom_match_with_alias(bond.id1.atom, atom2, aliasing2) &&
           atom_match_with_alias(bond.id2.atom, atom1, aliasing1)) {
+        // NOLINTNEXTLINE(readability-suspicious-call-argument)
         int score = link.calculate_score(res2, &res1, alt2, alt1, aliasing2, aliasing1);
         if (score > best_score) {
           best_link = &link;
@@ -225,7 +226,7 @@ struct GEMMI_DLL MonLib {
   }
 
   /// Returns path to the monomer cif file (the file may not exist).
-  std::string path(const std::string& code) {
+  std::string path(const std::string& code) const {
       return monomer_dir + relative_monomer_path(code);
   }
 

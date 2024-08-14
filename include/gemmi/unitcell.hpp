@@ -130,7 +130,7 @@ using Miller = std::array<int, 3>;
 
 struct MillerHash {
   std::size_t operator()(const Miller& hkl) const noexcept {
-    return std::size_t((hkl[0] * 1024 + hkl[1]) * 1024 + hkl[2]);
+    return std::size_t((hkl[0] * 1024 + hkl[1]) * 1024 + hkl[2]);  // NOLINT misplaced cast
   }
 };
 
@@ -316,7 +316,7 @@ struct UnitCell {
     return changed_basis_backward(op.inverse(), set_images);
   }
 
-  bool is_compatible_with_groupops(const GroupOps& gops, double eps=1e-3) {
+  bool is_compatible_with_groupops(const GroupOps& gops, double eps=1e-3) const {
     std::array<double,6> metric = metric_tensor().elements_voigt();
     for (const Op& op : gops.sym_ops) {
       Mat33 m = orth.mat.multiply(rot_as_mat33(op));
@@ -331,7 +331,7 @@ struct UnitCell {
     return true;
   }
 
-  bool is_compatible_with_spacegroup(const SpaceGroup* sg, double eps=1e-3) {
+  bool is_compatible_with_spacegroup(const SpaceGroup* sg, double eps=1e-3) const {
     return sg ? is_compatible_with_groupops(sg->operations(), eps) : false;
   }
 

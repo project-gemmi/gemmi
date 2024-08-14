@@ -518,7 +518,6 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
     cif::Table tab = block.find("_pdbx_item_linked_group_list.",
                                 {"child_category_id", "link_group_id",
                                  "child_name", "parent_name"});
-    std::string prev_group;
     ParentLink* it = nullptr;
     for (cif::Table::Row row : tab) {
       std::string group = row.str(0);
@@ -624,7 +623,7 @@ bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
               err(b, item, tag + " in list");
             for (size_t j = i; j < item.loop.values.size(); j += ncol)
               if (!tc.validate_value(item.loop.values[j], &msg)) {
-                err(b, item, tag + ": " + msg);
+                err(b, item, cat(tag, ": ", msg));
                 break; // stop after first error to avoid clutter
               }
           } else {
@@ -633,7 +632,7 @@ bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
               err(b, item, tag + msg);
             for (size_t j = i; j < item.loop.values.size(); j += ncol)
               if (!tc.validate_value(item.loop.values[j], &msg)) {
-                err(b, item, tag + ": " + msg);
+                err(b, item, cat(tag, ": ", msg));
                 break; // stop after first error to avoid clutter
               }
           }

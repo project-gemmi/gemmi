@@ -204,8 +204,8 @@ struct HklMatch {
     if (std::is_sorted(hkl, hkl + hkl_size) &&
         std::is_sorted(ref, ref + ref_size)) {
       // cf. for_matching_reflections()
-      auto a = hkl;
-      auto b = ref;
+      const Miller* a = hkl;
+      const Miller* b = ref;
       while (a != hkl + hkl_size && b != ref + ref_size) {
         if (*a == *b)
           pos[b++ - ref] = static_cast<int>(a++ - hkl);

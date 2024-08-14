@@ -166,7 +166,7 @@ struct Loop {
       fail("add_comment_and_row(): wrong row length.");
     std::vector<std::string> vec(ss.begin() + 1, ss.end());
     vec[0] = cat('#', *ss.begin(), '\n', vec[0]);
-    return add_row(vec);
+    add_row(vec);
   }
   void pop_row() {
     if (values.size() < tags.size())
@@ -358,7 +358,7 @@ struct Table {
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
 
-  void at_check(int& n) {
+  void at_check(int& n) const {
     if (n < 0)
       n += length();
     if (n < 0 || static_cast<size_t>(n) >= length())
@@ -450,7 +450,7 @@ struct Block {
   explicit Block(const std::string& name_);
   Block();
 
-  void swap(Block& o) { name.swap(o.name); items.swap(o.items); }
+  void swap(Block& o) noexcept { name.swap(o.name); items.swap(o.items); }
   // access functions
   const Item* find_pair_item(const std::string& tag) const;
   const Pair* find_pair(const std::string& tag) const;
@@ -722,7 +722,7 @@ inline std::string& Table::Row::value_at_unsafe(int pos) {
   return tab.bloc.items[pos].pair[1];
 }
 
-inline Loop* Table::get_loop() {
+inline Loop* Table::get_loop() {  // NOLINT(readability-make-member-function-const)
   return loop_item ? &loop_item->loop : nullptr;
 }
 
@@ -828,7 +828,6 @@ inline Column Block::find_loop(const std::string& tag) {
 }
 
 inline const Item* Block::find_loop_item(const std::string& tag) const {
-  std::string lctag = gemmi::to_lower(tag);
   for (const Item& i : items)
     if (i.type == ItemType::Loop && i.loop.find_tag_lc(tag) != -1)
       return &i;
@@ -1014,13 +1013,12 @@ inline Table Block::find_any(const std::string& prefix,
             indices.push_back(idx);
         }
         return Table{item, *this, indices, prefix.length()};
-      } else {
-        indices.push_back(item - items.data());
-        while (++tag != tags.end())
-          if (const Item* p = find_pair_item(prefix + *tag))
-            indices.push_back(p - items.data());
-        return Table{nullptr, *this, indices, prefix.length()};
       }
+      indices.push_back(item - items.data());
+      while (++tag != tags.end())
+        if (const Item* p = find_pair_item(prefix + *tag))
+          indices.push_back(p - items.data());
+      break;
     }
   }
   return Table{nullptr, *this, indices, prefix.length()};
@@ -1041,9 +1039,8 @@ inline Table Block::find_mmcif_category(std::string cat) {
             fail("Tag ", tag, " in loop with ", cat);
         }
         return Table{&i, *this, indices, cat.length()};
-      } else {
-        indices.push_back(&i - items.data());
       }
+      indices.push_back(&i - items.data());
     }
   return Table{nullptr, *this, indices, cat.length()};
 }

@@ -113,6 +113,15 @@ struct BondedAtom {
   double dist;
 };
 
+[[noreturn]]
+void giveup(const std::string& message, const std::vector<BondedAtom>& hs) {
+  for (const BondedAtom& bonded_h : hs) {
+    bonded_h.ptr->occ = 0;
+    bonded_h.ptr->calc_flag = CalcFlag::Dummy;
+  }
+  fail(message);
+}
+
 // known and hs are lists of heavy atoms and hydrogens bonded to atom.
 // hs is const, but nevertheless atoms it points to are modified.
 void place_hydrogens(const Topo& topo, const Atom& atom,
@@ -120,14 +129,6 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
                      const std::vector<BondedAtom>& hs) {
   using Angle = Restraints::Angle;
   assert(!hs.empty());
-
-  auto giveup = [&](const std::string& message) {
-    for (const BondedAtom& bonded_h : hs) {
-      bonded_h.ptr->occ = 0;
-      bonded_h.ptr->calc_flag = CalcFlag::Dummy;
-    }
-    fail(message);
-  };
 
   for (const BondedAtom& bonded_h : hs)
     bonded_h.ptr->calc_flag = CalcFlag::Calculated;
@@ -165,12 +166,12 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     const BondedAtom& heavy = known[0];
     const Restraints::Angle* angle = topo.take_angle(h.ptr, &atom, heavy.ptr);
     if (!angle)
-      giveup("No angle restraint for " + h.ptr->name + ".\n");
+      giveup("No angle restraint for " + h.ptr->name + ".\n", hs);
     if (std::abs(angle->value - 180.0) < 0.5) {
       Vec3 u = atom.pos - h.pos;
       h.pos = atom.pos + Position(u * (h.dist / u.length()));
       if (hs.size() > 1)
-        giveup("Unusual: one of two H atoms has angle restraint 180 deg.");
+        giveup("Unusual: one of two H atoms has angle restraint 180 deg.", hs);
       return;
     }
     double theta = angle->radians();
@@ -207,8 +208,9 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
           tau_end = tor.atoms[3];
           period = tor.restr->period;
           break;
-        } else if (tor.atoms[2] == &atom && tor.atoms[1] == heavy.ptr &&
-                   tor.atoms[3]->is_hydrogen() && !tor.atoms[0]->is_hydrogen()) {
+        }
+        if (tor.atoms[2] == &atom && tor.atoms[1] == heavy.ptr &&
+            tor.atoms[3]->is_hydrogen() && !tor.atoms[0]->is_hydrogen()) {
           tau = rad(tor.restr->value);
           torsion_h = tor.atoms[3];
           tau_end = tor.atoms[0];
@@ -225,7 +227,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
       h.pos = arbitrary_position_from_angle(heavy.pos, atom.pos, h.dist, theta);
     if (std::isnan(h.pos.x)) {
       h.pos = Position(0, 0, 0);
-      giveup("bonded atoms are exactly overlapping (case 1).");
+      giveup("bonded atoms are exactly overlapping (case 1).", hs);
     }
     if (hs.size() == 2) {
       // I think we can assume the two hydrogens are symmetric.
@@ -250,7 +252,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
       hs[(idx+1) % 3].pos = atom.pos + Position(v2);
       hs[(idx+2) % 3].pos = atom.pos + Position(v3);
     } else if (hs.size() >= 4) {
-      giveup("Unusual: atom bonded to one heavy atoms and 4+ hydrogens.");
+      giveup("Unusual: atom bonded to one heavy atoms and 4+ hydrogens.", hs);
     }
     if (!tau_end || period > (int)hs.size())
       for (const BondedAtom& bonded_h : hs)
@@ -258,7 +260,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
   // ==== two heavy atoms and hydrogens ====
   } else if (known.size() == 2) {
     if (hs.size() >= 3)
-      giveup("Unusual: atom bonded to 2+ heavy atoms and 3+ hydrogens.");
+      giveup("Unusual: atom bonded to 2+ heavy atoms and 3+ hydrogens.", hs);
     const Angle* ang1 = topo.take_angle(hs[0].ptr, &atom, known[0].ptr);
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
@@ -267,7 +269,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
       const Atom* ptr1 = (!ang1 || !ang2 ? hs[0].ptr : known[0].ptr);
       const Atom* ptr2 = (!ang1 ? known[0].ptr : known[1].ptr);
       giveup(cat("Missing angle restraint ", ptr1->name, '-', atom.name,
-                 '-', ptr2->name, ".\n"));
+                 '-', ptr2->name, ".\n"), hs);
     }
     double theta1 = ang1->radians();
     double theta2 = ang2->radians();
@@ -317,7 +319,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     Vec3 u20 = (known[1].pos - atom.pos).normalized();
     Vec3 v = u10.cross(u20);
     if (std::isnan(v.x))
-      giveup("bonded atoms are exactly overlapping (case 2).");
+      giveup("bonded atoms are exactly overlapping (case 2).", hs);
     Vec3 d = a * u10 + b * u20;
     double dist_sin = hs[0].dist * std::sin(hh_half);
     double dist_cos = hs[0].dist * std::cos(hh_half);
@@ -340,7 +342,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
 
   } else {  // known.size() >= 3
     if (hs.size() > 1)
-      giveup("Unusual: atom bonded to 3+ heavy atoms and 2+ hydrogens.");
+      giveup("Unusual: atom bonded to 3+ heavy atoms and 2+ hydrogens.", hs);
     // Based on Liebschner et al (2020) doi:10.1016/bs.mie.2020.01.007
     // sec. 2.4. 1H-tetrahedral configuration
     Vec3 u10 = (known[0].pos - atom.pos).normalized();
@@ -354,7 +356,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     Vec3 rhs(cos_tetrahedral(0), cos_tetrahedral(1), cos_tetrahedral(2));
     double det = m.determinant();
     if (std::fabs(det) < 1e-12)
-      giveup("tetrahedral configuration with four co-planar atoms.");
+      giveup("tetrahedral configuration with four co-planar atoms.", hs);
     Vec3 abc = m.inverse_(det).multiply(rhs);
     Vec3 h_dir = abc.x * u10 + abc.y * u20 + abc.z * u30;
     hs[0].pos = atom.pos + Position(h_dir.changed_magnitude(hs[0].dist));

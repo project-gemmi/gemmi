@@ -12,7 +12,7 @@ namespace gemmi {
 // elements
 enum class El : unsigned char {
   X=0,  // unknown element is marked as X in PDB entries
-  H=1, He, Li, Be, B, C, N, O, F, Ne, Na, Mg, Al, Si, P, S, Cl, Ar,  // 1-3
+  H, He, Li, Be, B, C, N, O, F, Ne, Na, Mg, Al, Si, P, S, Cl, Ar,  // 1-3
   K, Ca, Sc, Ti, V, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ga, Ge, As, Se, Br, Kr,  // 4
   Rb, Sr, Y, Zr, Nb, Mo, Tc, Ru, Rh, Pd, Ag, Cd, In, Sn, Sb, Te, I, Xe,  // 5
   Cs, Ba, La, Ce, Pr, Nd, Pm, Sm, Eu, Gd, Tb, Dy, Ho, Er, Tm, Yb, Lu,  // 6..
@@ -57,7 +57,7 @@ inline bool is_metal(El el) {
     // D    END
     false, false
   };
-  static_assert(table[static_cast<int>(El::D)] == false, "Hmm");
+  static_assert(!table[static_cast<int>(El::D)], "Hmm");
   static_assert(sizeof(table) / sizeof(table[0]) ==
                 static_cast<int>(El::END) + 1, "Hmm");
   return table[static_cast<int>(el)];

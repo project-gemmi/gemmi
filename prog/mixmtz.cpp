@@ -29,8 +29,8 @@ const option::Descriptor Usage[] = {
 };
 
 struct InputSpec {
-  InputSpec(Mtz&& mtz_) : mtz(std::move(mtz_)) {}
   Mtz mtz;
+  // ...
 };
 
 Mtz merge(const std::vector<InputSpec>& input_list) {
@@ -69,7 +69,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (verbose)
         fprintf(stderr, "Reading %s ...\n", path);
       input_list.emplace_back();
-      input_list.back().read_file_gz(path);
+      input_list.back().mtz.read_file_gz(path);
       if (p.options[Asu]) {
         // TODO
       }

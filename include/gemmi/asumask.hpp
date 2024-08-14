@@ -19,8 +19,6 @@ struct AsuBrick {
   int volume;
 
   AsuBrick(int a, int b, int c)
-    // For now we don't check which boundaries are included in the asymmetric unit,
-    // we assume inequalities are not strict (e.g. 0<=x<=1/2) except '<1'.
     : size({a,b,c}), incl({a < denom, b < denom, c < denom}), volume(a*b*c) {}
 
   std::string str() const {
@@ -62,7 +60,6 @@ struct AsuBrick {
 };
 
 // Returns asu brick upper bound. Lower bound is always (0,0,0).
-// Currently we do not check if the boundaries are includedFor now bounds are assumed
 // Brute force method that considers 8^3 sizes.
 inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
   if (sg == nullptr)
@@ -191,7 +188,7 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
     for (int b : allowed_sizes)
       for (int c : allowed_sizes) {
         AsuBrick brick(a, b, c);
-        if (brick.volume * n_ops >= brick.denom * brick.denom * brick.denom)
+        if (brick.volume * n_ops >= AsuBrick::denom * AsuBrick::denom * AsuBrick::denom)
           possible_bricks.push_back(brick);
       }
   // the last item is the full unit cell, no need to check it

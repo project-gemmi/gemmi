@@ -205,7 +205,7 @@ void print_value_count_for_tsv(const char* item, const TagStats::CountAndExample
 
 void print_data_for_html(const Context& ctx) {
   //std::printf("tag\tfiles\tnmin\tnavg\tnmax\n");
-  for (auto& item : ctx.stats) {
+  for (const auto& item : ctx.stats) {
     const TagStats& st = item.second;
     if (st.block_count == 0)
       continue;
@@ -249,7 +249,7 @@ void print_data_for_html(const Context& ctx) {
 
 void print_tag_list(const Context& ctx) {
   std::printf("tag\t%s-count\tvalue-count\n", ctx.per_block ? "block" : "file");
-  for (auto& item : ctx.stats) {
+  for (const auto& item : ctx.stats) {
     const TagStats& st = item.second;
     if (st.block_count == 0)
       continue;

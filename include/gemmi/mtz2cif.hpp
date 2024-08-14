@@ -90,7 +90,7 @@ public:
 
   void write_cif(const Mtz& mtz, const Mtz* mtz2,
                  SMat33<double>* staraniso_b, std::ostream& os);
-  void write_cif_from_xds(const XdsAscii& xds, std::ostream& os);
+  void write_cif_from_xds(const XdsAscii& xds, std::ostream& os) const;
 };
 
 GEMMI_DLL void write_staraniso_b_in_mmcif(const SMat33<double>& b,

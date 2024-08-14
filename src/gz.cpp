@@ -53,7 +53,7 @@ size_t estimate_uncompressed_size(const std::string& path) {
   return orig_size;
 }
 
-size_t big_gzread(gzFile file, void* buf, size_t len) {
+static size_t big_gzread(gzFile file, void* buf, size_t len) {
 #if USE_ZLIB_NG
   return GG(gzfread)(buf, 1, len, file);
 #else

@@ -517,7 +517,7 @@ struct Grid : GridBase<T> {
     this->check_not_empty();
     auto prepare_indices = [this](double& r, int nt, int (&indices)[4]) {
       int t;
-      r = this->grid_modulo(r, nt, &t);
+      r = grid_modulo(r, nt, &t);
       indices[0] = (t != 0 ? t : nt) - 1;
       indices[1] = t;
       if (t + 2 < nt) {

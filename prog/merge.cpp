@@ -129,7 +129,7 @@ Intensities read_intensities(DataType data_type, const char* input_path,
   }
 }
 
-void write_merged_intensities(const gemmi::Mtz& mtz, const char* output_path) {
+void write_merged_intensities(const gemmi::Mtz& mtz, const std::string& output_path) {
   try {
     if (gemmi::giends_with(output_path, ".mtz")) {
       mtz.write_to_file(output_path);
@@ -141,7 +141,7 @@ void write_merged_intensities(const gemmi::Mtz& mtz, const char* output_path) {
       mtz_to_cif.write_cif(mtz, nullptr, nullptr, os.ref());
     }
   } catch (std::exception& e) {
-    std::fprintf(stderr, "ERROR while writing %s: %s\n", output_path, e.what());
+    std::fprintf(stderr, "ERROR while writing %s: %s\n", output_path.c_str(), e.what());
     std::exit(1);
   }
 }
@@ -302,6 +302,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         intensities.merge_in_place(ref.type);
       compare_intensities(intensities, ref, p.options[PrintAll]);
     } else {
+      assert(output_path);
       intensities.merge_in_place(otype);
       if (p.options[NoSysAbs])
         intensities.remove_systematic_absences();
@@ -309,8 +310,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
                      intensities.data.size(), output_path);
       bool with_nobs = p.options[NumObs];
-      write_merged_intensities(intensities.prepare_merged_mtz(with_nobs),
-                               output_path);
+      write_merged_intensities(intensities.prepare_merged_mtz(with_nobs), output_path);
     }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

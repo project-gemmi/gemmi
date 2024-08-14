@@ -49,7 +49,7 @@ struct SubCmd {
 };
 
 #define CMD(s, desc) { #s, &s##_main, desc }
-static SubCmd subcommands[] = {
+SubCmd subcommands[] = {
   CMD(align, "sequence alignment (global, pairwise, affine gap penalty)"),
   CMD(blobs, "list unmodelled electron density blobs"),
   CMD(cif2mtz, "convert structure factor mmCIF to MTZ"),

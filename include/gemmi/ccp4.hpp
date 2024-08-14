@@ -286,8 +286,7 @@ struct Ccp4 : public Ccp4Base {
     read_ccp4_stream(FileStream{f.get()}, path);
   }
 
-  inline void read_ccp4_from_memory(const char* data, size_t size,
-                                    const std::string& name) {
+  void read_ccp4_from_memory(const char* data, size_t size, const std::string& name) {
     read_ccp4_stream(MemoryStream(data, size), name);
   }
 

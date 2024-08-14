@@ -2015,9 +2015,9 @@ inline const SpaceGroup* find_spacegroup_by_name(std::string name,
             if (sg.ext == '1' && prefer_2)
               return &sg + 1;
             return &sg;
-          } else if (*a == ':' && *impl::skip_blank(a+1) == sg.ext) {
-            return &sg;
           }
+          if (*a == ':' && *impl::skip_blank(a+1) == sg.ext)
+            return &sg;
         }
       } else if (sg.hm[2] == '1' && sg.hm[3] == ' ') {
         // check monoclinic short names, matching P2 to "P 1 2 1";

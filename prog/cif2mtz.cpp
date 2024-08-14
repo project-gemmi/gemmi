@@ -15,8 +15,6 @@
 
 namespace {
 
-using std::fprintf;
-
 struct Cif2MtzArg: public Arg {
   static option::ArgStatus ModeChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"normal", "friedel", "unmerged", "auto"});
@@ -176,6 +174,7 @@ void add_columns_from_other_mtz(gemmi::Mtz& mtz, const gemmi::Mtz& mtz2) {
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
+  using std::fprintf;
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
   p.check_exclusive_pair(BlockName, BlockNumber);

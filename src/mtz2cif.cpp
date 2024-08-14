@@ -442,7 +442,7 @@ void write_main_loop(const MtzToCif& m2c, const SweepInfo& sweep_info,
   auto write_int = [](char* p, int num) {
     //return snprintf_z(p, 32, "%d", num);
     std::string s = std::to_string(num);
-    std::memcpy(p, s.data(), s.size());
+    std::memcpy(p, s.data(), s.size());  // NOLINT(bugprone-not-null-terminated-result)
     return s.size();
   };
 
@@ -706,7 +706,7 @@ void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
   }
 }
 
-void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) {
+void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) const {
   char buf[256];
   if (with_comments) {
     os << "# Converted by gemmi-mtz2cif " GEMMI_VERSION "\n";

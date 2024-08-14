@@ -6,6 +6,8 @@
 
 namespace gemmi {
 
+namespace {
+
 double wrap_degrees(double phi) {
   if (phi >= 0 && phi < 360.)
     return phi;
@@ -35,6 +37,8 @@ void shift_hl_coefficients(float& a, float& b, float& c, float& d,
   c = c_;                 // cos(2 phi)
   d = negate ? -d_ : d_;  // sin(2 phi)
 }
+
+} // anonymous namespace
 
 // for probing/testing individual reflections, no need to optimize it
 size_t Mtz::find_offset_of_hkl(const Miller& hkl, size_t start) const {
@@ -123,7 +127,7 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
   // remove reflections marked for removal
   if (row_removal) {
     int n_before = nreflections;
-    remove_rows_if([](float* h) { return std::isnan(*h); });
+    remove_rows_if([](const float* h) { return std::isnan(*h); });
     if (out)
       *out << "Reflections removed (because of fractional indices): "
            << (n_before - nreflections) << '\n';
@@ -349,7 +353,7 @@ void Mtz::write_to_stream(Write write) const {
           ds.id, uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
     WRITE("DWAVEL %8d %10.5f", ds.id, ds.wavelength);
     for (size_t i = 0; i < batches.size(); i += 12) {
-      std::memcpy(buf, "BATCH ", 6);
+      std::memcpy(buf, "BATCH ", 6);  // NOLINT(bugprone-not-null-terminated-result)
       int pos = 6;
       for (size_t j = i; j < std::min(batches.size(), i + 12); ++j, pos += 6)
         snprintf_z(buf + pos, 7, "%6zu", j + 1);
@@ -409,7 +413,7 @@ void Mtz::write_to_string(std::string& str) const {
 void Mtz::write_to_file(const std::string& path) const {
   fileptr_t f = file_open(path.c_str(), "wb");
   try {
-    return write_to_cstream(f.get());
+    write_to_cstream(f.get());
   } catch (std::runtime_error& e) {
     fail(std::string(e.what()) + ": " + path);
   }

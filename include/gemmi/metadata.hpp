@@ -245,7 +245,7 @@ struct Entity {
   std::vector<std::string> full_sequence;
 
   Entity() = default;
-  explicit Entity(std::string name_) noexcept : name(name_) {}
+  explicit Entity(const std::string& name_) noexcept : name(name_) {}
   static std::string first_mon(const std::string& mon_list) {
     return mon_list.substr(0, mon_list.find(','));
   }
@@ -264,7 +264,7 @@ struct SiftsUnpResidue {
 // We assume that the nearest symmetry mate is connected.
 struct Connection {
   // in write_struct_conn() we assume that Unknown is at the end
-  enum Type { Covale=0, Disulf, Hydrog, MetalC, Unknown };
+  enum Type : unsigned char { Covale=0, Disulf, Hydrog, MetalC, Unknown };
   std::string name;
   std::string link_id;  // _struct_conn.ccp4_link_id (== _chem_link.id)
   Type type = Unknown;
@@ -335,7 +335,7 @@ struct Sheet {
   std::vector<Strand> strands;
 
   Sheet() = default;
-  explicit Sheet(std::string sheet_id) noexcept : name(sheet_id) {}
+  explicit Sheet(const std::string& sheet_id) noexcept : name(sheet_id) {}
 };
 
 
@@ -351,7 +351,7 @@ struct Assembly {
     std::vector<std::string> subchains;
     std::vector<Operator> operators;
   };
-  enum class SpecialKind {
+  enum class SpecialKind : unsigned char {
     NA, CompleteIcosahedral, RepresentativeHelical, CompletePoint
   };
   std::string name;

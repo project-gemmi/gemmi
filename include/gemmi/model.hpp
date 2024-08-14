@@ -46,15 +46,14 @@ T& find_or_add(std::vector<T>& vec, const std::string& name) {
 
 template<typename Span, typename T = typename Span::value_type>
 typename Span::iterator find_iter(Span& span, const std::string& name) {
-  auto i = std::find_if(span.begin(), span.end(),
-                        [&](const T& x) { return x.name == name; });
-  if (i == span.end())
-    throw std::invalid_argument(
-        T::what() + (" " + name) + " not found (only [" +
-        join_str(span.begin(), span.end(), ' ',
-                 [](const T& x) { return x.name; }) +
-        "])");
-  return i;
+  typename Span::iterator it = std::find_if(span.begin(), span.end(),
+                                            [&](const T& x) { return x.name == name; });
+  if (it == span.end())
+    throw std::invalid_argument(cat(
+        T::what(), ' ', name, " not found (only [",
+        join_str(span.begin(), span.end(), ' ', [](const T& x) { return x.name; }),
+        "])"));
+  return it;
 }
 
 template<typename Group>
@@ -77,7 +76,9 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 /// File format of a macromolecular model. When passed to read_structure():
 /// Unknown = guess format from the extension,
 /// Detect = guess format from the content.
-enum class CoorFormat { Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp };
+enum class CoorFormat : std::uint8_t {
+  Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp
+};
 
 /// corresponds to _atom_site.calc_flag in mmCIF
 enum class CalcFlag : signed char {
@@ -330,9 +331,9 @@ struct ConstResidueSpan : Span<const Residue> {
   // We assume residues are ordered. It works (approximately) also with
   // missing numbers which can be present in DBREF.
   SeqId label_seq_id_to_auth(SeqId::OptionalNum label_seq_id) const {
-    if (size() == 0)
+    if (empty())
       throw std::out_of_range("label_seq_id_to_auth(): empty span");
-    auto it = std::lower_bound(begin(), end(), label_seq_id,
+    const auto* it = std::lower_bound(begin(), end(), label_seq_id,
         [](const Residue& r, SeqId::OptionalNum v){ return r.label_seq < v; });
     if (it == end())
       --it;
@@ -346,7 +347,7 @@ struct ConstResidueSpan : Span<const Residue> {
   // The residue numbers (auth) are sometimes not ordered.
   // That is why we use this multi-step heuristic.
   SeqId::OptionalNum auth_seq_id_to_label(SeqId auth_seq_id) const {
-    if (size() == 0)
+    if (empty())
       throw std::out_of_range("auth_seq_id_to_label(): empty span");
     for (const Residue& r : *this)
       if (r.seqid == auth_seq_id)
@@ -469,7 +470,7 @@ struct Chain {
   std::vector<Residue> residues;
 
   Chain() = default;
-  explicit Chain(std::string cname) noexcept : name(cname) {}
+  explicit Chain(const std::string& name_) noexcept : name(name_) {}
 
   ResidueSpan whole() {
     Residue* begin = residues.empty() ? nullptr : &residues[0];
@@ -704,7 +705,7 @@ struct Model {
   std::string name;  // actually an integer number
   std::vector<Chain> chains;
   Model() = default;
-  explicit Model(std::string mname) noexcept : name(mname) {}
+  explicit Model(const std::string& name_) noexcept : name(name_) {}
 
   // Returns the first chain with given name, or nullptr.
   Chain* find_chain(const std::string& chain_name) {
@@ -1052,10 +1053,10 @@ struct Structure {
     return std::any_of(ncs.begin(), ncs.end(), [](const NcsOp& o) { return !o.given; });
   }
 
-  void add_conect_one_way(int serial1, int serial2, int order) {
-    auto& vec = conect_map[serial1];
+  void add_conect_one_way(int serial_a, int serial_b, int order) {
+    auto& vec = conect_map[serial_a];
     for (int i = 0; i < order; ++i)
-      vec.insert(std::upper_bound(vec.begin(), vec.end(), serial2), serial2);
+      vec.insert(std::upper_bound(vec.begin(), vec.end(), serial_b), serial_b);
   }
   void add_conect(int serial1, int serial2, int order) {
     add_conect_one_way(serial1, serial2, order);

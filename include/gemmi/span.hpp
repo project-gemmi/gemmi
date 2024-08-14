@@ -72,8 +72,8 @@ template<typename Item> struct Span {
   }
 
   template<typename F, typename V=Item> Span<V> subspan(F&& func) {
-    auto group_begin = std::find_if(this->begin(), this->end(), func);
-    auto group_end = std::find_if_not(group_begin, this->end(), func);
+    iterator group_begin = std::find_if(this->begin(), this->end(), func);
+    iterator group_end = std::find_if_not(group_begin, this->end(), func);
     return Span<V>(&*group_begin, group_end - group_begin);
   }
   template<typename F> Span<const value_type> subspan(F&& func) const {

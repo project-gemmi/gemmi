@@ -271,7 +271,7 @@ void vector_remove_if(std::vector<T>& v, F&& condition) {
 /// Insert \par n new columns at position pos.
 template <class T>
 void vector_insert_columns(std::vector<T>& data, size_t old_width,
-                           size_t length, size_t n, size_t pos, T new_value) {
+                           size_t length, size_t n, size_t pos, const T& new_value) {
   assert(data.size() == old_width * length);
   assert(pos <= old_width);
   data.resize(data.size() + n * length);

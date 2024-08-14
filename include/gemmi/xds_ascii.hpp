@@ -88,7 +88,7 @@ struct GEMMI_DLL XdsAscii {
   void read_stream(Stream&& stream, const std::string& source);
 
   template<typename T>
-  inline void read_input(T&& input) {
+  void read_input(T&& input) {
     if (input.is_stdin()) {
       read_stream(FileStream{stdin}, "stdin");
     } else if (input.is_compressed()) {

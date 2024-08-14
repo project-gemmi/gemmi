@@ -1089,7 +1089,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       span.set_pair(matrix_idx + "[1]", to_str(frac.mat[i][0]));
       span.set_pair(matrix_idx + "[2]", to_str(frac.mat[i][1]));
       span.set_pair(matrix_idx + "[3]", to_str(frac.mat[i][2]));
-      span.set_pair(prefix + "vector" + idx, to_str(frac.vec.at(i)));
+      span.set_pair(cat(prefix, "vector", idx), to_str(frac.vec.at(i)));
     }
   }
 

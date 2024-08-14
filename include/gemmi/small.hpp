@@ -130,7 +130,7 @@ struct SmallStructure {
     }
   }
 
-  std::string check_spacegroup() {
+  std::string check_spacegroup() const {
     std::string err;
     if (!symops.empty())
       try {
@@ -143,7 +143,7 @@ struct SmallStructure {
           cat_to(err, "symops list is incomplete or incorrect\n");
         else if (gops.all_ops_sorted() != ops)
           cat_to(err, "symops list is incorrect or incomplete or redundant\n");
-        auto sg = find_spacegroup_by_ops(gops);
+        const SpaceGroup* sg = find_spacegroup_by_ops(gops);
         if (!sg)
           cat_to(err, "space group from symops not found in the table\n");
         else if (sg != spacegroup)
@@ -153,7 +153,7 @@ struct SmallStructure {
       }
     if (!spacegroup_hall.empty())
       try {
-        auto sg = find_spacegroup_by_ops(symops_from_hall(spacegroup_hall.c_str()));
+        const SpaceGroup* sg = find_spacegroup_by_ops(symops_from_hall(spacegroup_hall.c_str()));
         if (!sg)
           cat_to(err, "space group from Hall symbol (", spacegroup_hall,
                  ") not found in the table\n");
@@ -164,7 +164,7 @@ struct SmallStructure {
         cat_to(err, "error while processing Hall symbol: ", e.what(), '\n');
       }
     if (!spacegroup_hm.empty()) {
-      auto sg = find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma, "2");
+      const SpaceGroup* sg = find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma, "2");
       if (!sg)
         cat_to(err, "H-M symbol (", spacegroup_hm, ") not found in the table\n");
       else if (!spacegroup || strcmp(spacegroup->hm, sg->hm) != 0)

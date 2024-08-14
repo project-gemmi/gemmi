@@ -62,7 +62,8 @@ inline bool glob_match(const std::string& pattern, const std::string& str) {
         str_next = str_pos + 1;
         pat_pos++;
         continue;
-      } else if (str_pos < str.size() && (c == '?' || c == str[str_pos])) {
+      }
+      if (str_pos < str.size() && (c == '?' || c == str[str_pos])) {
         pat_pos++;
         str_pos++;
         continue;

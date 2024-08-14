@@ -51,7 +51,9 @@ const option::Descriptor MapUsage[] = {
 };
 
 
-static std::array<const Mtz::Column*, 2>
+namespace {
+
+std::array<const Mtz::Column*, 2>
 get_mtz_map_columns(const Mtz& mtz, const char* section, bool diff_map,
                     const char* f_label, const char* phi_label) {
   const Mtz::Column* f_col = nullptr;
@@ -90,7 +92,7 @@ get_mtz_map_columns(const Mtz& mtz, const char* section, bool diff_map,
   return {{f_col, phi_col}};
 }
 
-static const Mtz::Column&
+const Mtz::Column&
 get_mtz_column(const Mtz& mtz, const char* section, const char* label) {
   const Mtz::Dataset* ds = nullptr;
   if (section)
@@ -116,6 +118,8 @@ void adjust_size(const DataProxy& data, std::array<int, 3>& size,
     std::exit(0);
   }
 }
+
+} // anonymous namespace
 
 gemmi::Grid<float>
 read_sf_and_fft_to_map(const char* input_path,

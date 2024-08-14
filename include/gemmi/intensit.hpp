@@ -112,9 +112,9 @@ struct GEMMI_DLL Intensities {
 
   void read_mtz(const Mtz& mtz, DataType data_type) {
     switch (data_type) {
-      case DataType::Unmerged:  return read_unmerged_intensities_from_mtz(mtz);
-      case DataType::Mean:      return read_mean_intensities_from_mtz(mtz);
-      case DataType::Anomalous: return read_anomalous_intensities_from_mtz(mtz);
+      case DataType::Unmerged:  read_unmerged_intensities_from_mtz(mtz); break;
+      case DataType::Mean:      read_mean_intensities_from_mtz(mtz); break;
+      case DataType::Anomalous: read_anomalous_intensities_from_mtz(mtz); break;
       case DataType::Unknown: assert(0);
     }
   }
@@ -137,10 +137,10 @@ struct GEMMI_DLL Intensities {
 
   void read_mmcif(const ReflnBlock& rb, DataType data_type) {
     switch (data_type) {
-      case DataType::Unmerged:  return read_unmerged_intensities_from_mmcif(rb);
-      case DataType::Mean:      return read_mean_intensities_from_mmcif(rb);
-      case DataType::Anomalous: return read_anomalous_intensities_from_mmcif(rb);
-      case DataType::Unknown:   return;
+      case DataType::Unmerged:  read_unmerged_intensities_from_mmcif(rb); break;
+      case DataType::Mean:      read_mean_intensities_from_mmcif(rb); break;
+      case DataType::Anomalous: read_anomalous_intensities_from_mmcif(rb); break;
+      case DataType::Unknown:   break;
     }
   }
 

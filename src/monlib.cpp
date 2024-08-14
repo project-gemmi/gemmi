@@ -13,7 +13,7 @@ int ChemLink::calculate_score(const Residue& res1, const Residue* res2,
   int link_score = side1.specificity() + side2.specificity();
 
   auto get_from = [&](const Restraints::AtomId& atomid) {
-    auto aliasing = (atomid.comp != 2 || res2 == nullptr) ? aliasing1 : aliasing2;
+    const auto* aliasing = (atomid.comp != 2 || res2 == nullptr) ? aliasing1 : aliasing2;
     if (aliasing)
       if (const std::string* real_id = aliasing->name_from_alias(atomid.atom))
         return Restraints::AtomId{atomid.comp, *real_id}.get_from(res1, res2, alt, alt2);
@@ -248,7 +248,7 @@ void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
       if (const std::string* real_id = aliasing.name_from_alias(atom_id))
         return *real_id;
     }
-    return atom_id;
+    return atom_id;  // NOLINT(bugprone-return-const-ref-from-parameter)
   };
   cat_to(chemcomp.name, '+', id);
   // _chem_mod_atom

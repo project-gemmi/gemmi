@@ -146,11 +146,11 @@ void process_match(const Input& in, GrepParams& par, int n) {
       else
         par.multi_match_columns[n] = -1;
       return;
-    } else if (par.delim.empty()) {
-      printf("[%s] ", tag.c_str());
-    } else {
-      printf("%s%s", tag.c_str(), sep);
     }
+    if (par.delim.empty())
+      printf("[%s] ", tag.c_str());
+    else
+      printf("%s%s", tag.c_str(), sep);
   }
   std::string value = par.raw ? in.string() : cif::as_string(in.string());
   printf("%s\n", value.c_str());
