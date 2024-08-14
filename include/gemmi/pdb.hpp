@@ -131,7 +131,7 @@ inline Asu compare_link_symops(const std::string& record) {
 // Atom name and altloc are not provided in the SSBOND record.
 // Usually it is SG (cysteine), but other disulfide bonds are also possible.
 // If it's not SG, we pick the first sulfur atom in the residue.
-inline void complete_ssbond_atom(AtomAddress& ad, const Model& mdl) {
+inline const Residue* complete_ssbond_atom(AtomAddress& ad, const Model& mdl) {
   ad.atom_name = "SG";
   const_CRA cra = mdl.find_cra(ad);
   if (cra.residue && (!cra.atom || cra.atom->element != El::S))
@@ -139,6 +139,25 @@ inline void complete_ssbond_atom(AtomAddress& ad, const Model& mdl) {
       ad.atom_name = a->name;
       ad.altloc = a->altloc;
     }
+  return cra.residue;
+}
+inline void complete_ssbond(Connection& con, const Model& mdl, const UnitCell& cell) {
+  const Residue* res1 = complete_ssbond_atom(con.partner1, mdl);
+  const Residue* res2 = complete_ssbond_atom(con.partner2, mdl);
+  if (res1 && res2 && (con.partner1.altloc != '\0' || con.partner2.altloc != '\0')) {
+    // pick a pair of atoms in the shortest distance
+    double min_dist_sq = INFINITY;
+    for (const Atom& a1 : const_cast<Residue*>(res1)->get(con.partner1.atom_name))
+      for (const Atom& a2 : const_cast<Residue*>(res2)->get(con.partner2.atom_name))
+        if (a2.same_conformer(a1)) {
+          double dist_sq = cell.find_nearest_image(a1.pos, a2.pos, con.asu).dist_sq;
+          if (dist_sq < min_dist_sq) {
+            con.partner1.altloc = a1.altloc;
+            con.partner2.altloc = a2.altloc;
+            min_dist_sq = dist_sq;
+          }
+        }
+  }
 }
 
 inline
@@ -163,8 +182,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       c.asu = compare_link_symops(record);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);
-      complete_ssbond_atom(c.partner1, st.first_model());
-      complete_ssbond_atom(c.partner2, st.models[0]);
+      complete_ssbond(c, st.first_model(), st.cell);
       st.connections.emplace_back(c);
     } else if (record[0] == 'L' || record[0] == 'l') { // LINK
       if (record.length() < 57)
