@@ -87,6 +87,28 @@ jobs:
         python -m pip install sphinx
         sphinx-build -M doctest . _build -n -E
 
+  ubuntu2404:
+    name: "Ubuntu 24.04"
+    runs-on: ubuntu-24.04
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+    - uses: actions/checkout@v4
+    - name: apt-get
+      run: |
+        sudo apt-get update
+        sudo apt-get install python3-pip g++ gfortran python3-numpy
+    - name: build and test
+      run: |
+        g++ --version
+        export SKBUILD_CMAKE_ARGS='-DFETCH_ZLIB_NG=ON;-DCMAKE_BUILD_TYPE=None'
+        python3 -m pip install -v .
+        python3 -m unittest discover -v -s tests/
+    - name: run doctest
+      run: |
+        python3 -m pip install -U sphinx
+        cd docs
+        sphinx-build -M doctest . _build -n -E
+
   ubuntu2204:
     name: "Ubuntu 22.04"
     runs-on: ubuntu-22.04
