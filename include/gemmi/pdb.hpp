@@ -20,15 +20,53 @@
 #include <cstring>    // for memcpy, strstr, strchr
 #include <unordered_map>
 
+#include "atof.hpp"     // for fast_from_chars
+#include "atox.hpp"     // for is_space, is_digit
 #include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
 #include "model.hpp"    // for Atom, Structure, ...
-#include "polyheur.hpp" // for assign_subchains
-#include "remarks.hpp"  // for read_metadata_from_remarks, read_int, ...
 
 namespace gemmi {
 
+GEMMI_DLL void finalize_structure_after_reading_pdb(Structure& st, const PdbReadOptions& options,
+                                                    const std::vector<std::string>& conn_records);
+
+/// interprets REMARK 3, 200/230/240 and partly 300 from raw_remarks, filling in Metadata.
+GEMMI_DLL void read_metadata_from_remarks(Structure& st);
+
+/// Returns operations corresponding to 1555, 2555, ... N555
+GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks);
+
 namespace pdb_impl {
+
+inline int read_int(const char* p, int field_length) {
+  return string_to_int(p, false, field_length);
+}
+
+inline double read_double(const char* p, int field_length) {
+  double d = 0.;
+  // we don't check for errors here
+  fast_from_chars(p, p + field_length, d);
+  return d;
+}
+
+inline std::string read_string(const char* p, int field_length) {
+  // left trim
+  while (field_length != 0 && is_space(*p)) {
+    ++p;
+    --field_length;
+  }
+  // EOL/EOF ends the string
+  for (int i = 0; i < field_length; ++i)
+    if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
+      field_length = i;
+      break;
+    }
+  // right trim
+  while (field_length != 0 && is_space(p[field_length-1]))
+    --field_length;
+  return std::string(p, field_length);
+}
 
 template<int N> int read_base36(const char* p) {
   char zstr[N+1] = {0};
@@ -104,132 +142,31 @@ inline int read_serial(const char* ptr) {
                       : read_base36<5>(ptr) - 16796160 + 100000;
 }
 
-// move initials after comma, as in mmCIF (A.-B.DOE -> DOE, A.-B.), see
-// https://www.wwpdb.org/documentation/file-format-content/format33/sect2.html#AUTHOR
-inline void change_author_name_format_to_mmcif(std::string& name) {
-  // If the AUTHOR record has comma followed by space we get leading space here
-  while (name[0] == ' ')
-    name.erase(name.begin());
-  size_t pos = 0;
-  // Initials may have multiple letters (e.g. JU. or PON.)
-  // but should not have space after dot.
-  for (size_t i = 1; i < pos+4 && i+1 < name.size(); ++i)
-    if (name[i] == '.' && name[i+1] != ' ')
-      pos = i+1;
-  if (pos > 0)
-    name = name.substr(pos) + ", " + name.substr(0, pos);
-}
-
-inline Asu compare_link_symops(const std::string& record) {
-  if (record.size() < 72)
-    return Asu::Any;  // it could be interpreted as Same
-  if (read_string(&record[59], 6) == read_string(&record[66], 6))
-    return Asu::Same;
-  return Asu::Different;
-}
-
-// Atom name and altloc are not provided in the SSBOND record.
-// Usually it is SG (cysteine), but other disulfide bonds are also possible.
-// If it's not SG, we pick the first sulfur atom in the residue.
-inline const Residue* complete_ssbond_atom(AtomAddress& ad, const Model& mdl) {
-  ad.atom_name = "SG";
-  const_CRA cra = mdl.find_cra(ad);
-  if (cra.residue && (!cra.atom || cra.atom->element != El::S))
-    if (const Atom* a = cra.residue->find_by_element(El::S)) {
-      ad.atom_name = a->name;
-      ad.altloc = a->altloc;
-    }
-  return cra.residue;
-}
-inline void complete_ssbond(Connection& con, const Model& mdl, const UnitCell& cell) {
-  const Residue* res1 = complete_ssbond_atom(con.partner1, mdl);
-  const Residue* res2 = complete_ssbond_atom(con.partner2, mdl);
-  if (res1 && res2 && (con.partner1.altloc != '\0' || con.partner2.altloc != '\0')) {
-    // pick a pair of atoms in the shortest distance
-    double min_dist_sq = INFINITY;
-    for (const Atom& a1 : const_cast<Residue*>(res1)->get(con.partner1.atom_name))
-      for (const Atom& a2 : const_cast<Residue*>(res2)->get(con.partner2.atom_name))
-        if (a2.same_conformer(a1)) {
-          double dist_sq = cell.find_nearest_image(a1.pos, a2.pos, con.asu).dist_sq;
-          if (dist_sq < min_dist_sq) {
-            con.partner1.altloc = a1.altloc;
-            con.partner2.altloc = a2.altloc;
-            min_dist_sq = dist_sq;
-          }
-        }
+// "28-MAR-07" -> "2007-03-28"
+// (we also accept less standard format "28-Mar-2007" as used by BUSTER)
+// We do not check if the date is correct.
+// The returned value is one of:
+//   DDDD-DD-DD - possibly correct date,
+//   DDDD-xx-DD - unrecognized month,
+//   empty string - the digits were not there.
+inline std::string pdb_date_format_to_iso(const std::string& date) {
+  const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
+                        "JUL07AUG08SEP09OCT10NOV11DEC122222";
+  if (date.size() < 9 || !is_digit(date[0]) || !is_digit(date[1]) ||
+                         !is_digit(date[7]) || !is_digit(date[8]))
+    return std::string();
+  std::string iso = "xxxx-xx-xx";
+  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
+    std::memcpy(&iso[0], &date[7], 4);
+  } else {
+    std::memcpy(&iso[0], (date[7] > '6' ? "19" : "20"), 2);
+    std::memcpy(&iso[2], &date[7], 2);
   }
-}
-
-inline
-void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
-  int disulf_count = 0;
-  int covale_count = 0;
-  int metalc_count = 0;
-  for (const std::string& record : conn_records) {
-    if (record[0] == 'S' || record[0] == 's') { // SSBOND
-      if (record.length() < 32)
-        continue;
-      Connection c;
-      c.name = "disulf" + std::to_string(++disulf_count);
-      c.type = Connection::Disulf;
-      const char* r = record.c_str();
-      c.partner1.chain_name = read_string(r + 14, 2);
-      c.partner1.res_id = read_res_id(r + 17, r + 11);
-      c.partner2.chain_name = read_string(r + 28, 2);
-      char res_id2[5] = {' ', ' ', ' ', ' ', ' '};
-      std::memcpy(res_id2, r + 31, std::min((size_t)5, record.length() - 31));
-      c.partner2.res_id = read_res_id(res_id2, r + 25);
-      c.asu = compare_link_symops(record);
-      if (record.length() > 73)
-        c.reported_distance = read_double(r + 73, 5);
-      complete_ssbond(c, st.first_model(), st.cell);
-      st.connections.emplace_back(c);
-    } else if (record[0] == 'L' || record[0] == 'l') { // LINK
-      if (record.length() < 57)
-        continue;
-      Connection c;
-      // emulating names used in wwPDB mmCIFs (covaleN and metalcN)
-      if (is_metal(find_element(&record[12])) ||
-          is_metal(find_element(&record[42]))) {
-        c.name = "metalc" + std::to_string(++metalc_count);
-        c.type = Connection::MetalC;
-      } else {
-        c.name = "covale" + std::to_string(++covale_count);
-        c.type = Connection::Covale;
-      }
-      for (int i : {0, 1}) {
-        const char* t = record.c_str() + 30 * i;
-        AtomAddress& ad = (i == 0 ? c.partner1 : c.partner2);
-        ad.chain_name = read_string(t + 20, 2);
-        ad.res_id = read_res_id(t + 22, t + 17);
-        ad.atom_name = read_string(t + 12, 4);
-        ad.altloc = read_altloc(t[16]);
-      }
-      c.asu = compare_link_symops(record);
-      if (record.length() > 73) {
-        if (record[4] == 'R')
-          c.link_id = read_string(&record[72], 8);
-        else
-          c.reported_distance = read_double(&record[73], 5);
-      }
-      st.connections.emplace_back(c);
-    } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
-      if (record.length() < 22)
-        continue;
-      const char* r = record.c_str();
-      CisPep cispep;
-      cispep.partner_c.chain_name = read_string(r + 14, 2);
-      cispep.partner_c.res_id = read_res_id(r + 17, r + 11);
-      cispep.partner_n.chain_name = read_string(r + 28, 2);
-      cispep.partner_n.res_id = read_res_id(r + 31, r + 25);
-      // In files with a single model in the PDB CISPEP modNum is 0,
-      // but _struct_mon_prot_cis.pdbx_PDB_model_num is 1.
-      cispep.model_str = st.models.size() == 1 ? st.models[0].name
-                                               : read_string(r + 43, 3);
-      cispep.reported_angle = read_double(r + 53, 6);
-      st.cispeps.push_back(cispep);
-    }
-  }
+  char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
+  if (const char* m = std::strstr(months, month))
+    std::memcpy(&iso[5], m + 3, 2);
+  std::memcpy(&iso[8], &date[0], 2);
+  return iso;
 }
 
 template<typename Stream>
@@ -654,35 +591,7 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
     }
   }
 
-  // If we read a PDB header (they can be downloaded from RSCB) we have no
-  // models. User's code may not expect this. Usually, empty model will be
-  // handled more gracefully than no models.
-  if (st.models.empty())
-    st.models.emplace_back("1");
-
-  if (st.ter_status == 'e')
-    remove_entity_types(st);
-
-  // Here we assign Residue::subchain, but only for chains with all
-  // Residue::entity_type assigned, i.e. for chains with TER.
-  assign_subchains(st, /*force=*/false, /*fail_if_unknown=*/false);
-
-  for (Chain& ch : st.models[0].chains)
-    if (Entity* entity = st.get_entity(ch.name))
-      if (auto polymer = ch.get_polymer())
-        entity->subchains.emplace_back(polymer.subchain_id());
-
-  st.setup_cell_images();
-
-  process_conn(st, conn_records);
-
-  for (std::string& name : st.meta.authors)
-    change_author_name_format_to_mmcif(name);
-
-  if (!options.skip_remarks)
-    read_metadata_from_remarks(st);
-
-  restore_full_ccd_codes(st);
+  finalize_structure_after_reading_pdb(st, options, conn_records);
 
   return st;
 }

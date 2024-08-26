@@ -4,8 +4,7 @@
 #include <cstdio>
 #include <gemmi/dirwalk.hpp> // for PdbWalk
 #include <gemmi/gz.hpp>      // for MaybeGzipped
-#include <gemmi/pdb.hpp>     // for read_pdb
-#include <gemmi/remarks.hpp> // for read_remark_290
+#include <gemmi/pdb.hpp>     // for read_pdb, read_remark_290
 
 void check_remark290(const std::string& path) {
   using namespace gemmi;

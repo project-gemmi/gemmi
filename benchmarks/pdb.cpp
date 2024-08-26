@@ -7,7 +7,6 @@
 #include "gemmi/calculate.hpp"
 #include "gemmi/neighbor.hpp"
 #include "gemmi/select.hpp"  // count_atom_sites
-#include "gemmi/remarks.hpp"  // read_metadata_from_remarks
 #include <benchmark/benchmark.h>
 
 static const char* path;

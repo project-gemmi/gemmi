@@ -1,97 +1,38 @@
 // Copyright 2019 Global Phasing Ltd.
-//
-// Function read_metadata_from_remarks() that interprets REMARK 3
-// and REMARK 200/230/240 filling in Metadata.
 
-#ifndef GEMMI_REMARKS_HPP_
-#define GEMMI_REMARKS_HPP_
-
-#include <cctype>       // for isspace
-#include <cstdlib>      // for atoi
-#include <cstring>      // for memcpy, strstr, strchr, strcmp
-#include <stdexcept>    // for invalid_argument
-#include "atof.hpp"     // for fast_from_chars
-#include "atox.hpp"     // for string_to_int
-#include "fail.hpp"     // for fail
-#include "metadata.hpp" // for Metadata
-#include "model.hpp"    // for Structure, impl::find_or_add
-#include "util.hpp"     // for trim_str, alpha_up, istarts_with
+#include "gemmi/pdb.hpp"
+#include <cstdlib>            // for atoi
+#include <cstring>            // for memcpy, strstr, strchr, strcmp
+#include <stdexcept>          // for invalid_argument
+#include "gemmi/metadata.hpp" // for Metadata
+#include "gemmi/model.hpp"    // for Structure, impl::find_or_add
+#include "gemmi/polyheur.hpp" // for assign_subchains
+#include "gemmi/util.hpp"     // for trim_str, alpha_up, istarts_with
 
 namespace gemmi {
 
-namespace pdb_impl {
+namespace {
 
-inline int read_int(const char* p, int field_length) {
-  return string_to_int(p, false, field_length);
-}
-
-inline double read_double(const char* p, int field_length) {
-  double d = 0.;
-  // we don't check for errors here
-  fast_from_chars(p, p + field_length, d);
-  return d;
-}
-
-inline std::string read_string(const char* p, int field_length) {
-  // left trim
-  while (field_length != 0 && is_space(*p)) {
-    ++p;
-    --field_length;
-  }
-  // EOL/EOF ends the string
-  for (int i = 0; i < field_length; ++i)
-    if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
-      field_length = i;
-      break;
-    }
-  // right trim
-  while (field_length != 0 && is_space(p[field_length-1]))
-    --field_length;
-  return std::string(p, field_length);
-}
-
-template<size_t N>
-inline bool same_str(const std::string& s, const char (&literal)[N]) {
-  return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
-}
-
-// "28-MAR-07" -> "2007-03-28"
-// (we also accept less standard format "28-Mar-2007" as used by BUSTER)
-// We do not check if the date is correct.
-// The returned value is one of:
-//   DDDD-DD-DD - possibly correct date,
-//   DDDD-xx-DD - unrecognized month,
-//   empty string - the digits were not there.
-inline std::string pdb_date_format_to_iso(const std::string& date) {
-  const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
-                        "JUL07AUG08SEP09OCT10NOV11DEC122222";
-  if (date.size() < 9 || !is_digit(date[0]) || !is_digit(date[1]) ||
-                         !is_digit(date[7]) || !is_digit(date[8]))
-    return std::string();
-  std::string iso = "xxxx-xx-xx";
-  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
-    std::memcpy(&iso[0], &date[7], 4);
-  } else {
-    std::memcpy(&iso[0], (date[7] > '6' ? "19" : "20"), 2);
-    std::memcpy(&iso[2], &date[7], 2);
-  }
-  char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
-  if (const char* m = std::strstr(months, month))
-    std::memcpy(&iso[5], m + 3, 2);
-  std::memcpy(&iso[8], &date[0], 2);
-  return iso;
-}
+using pdb_impl::read_int;
+using pdb_impl::read_double;
+using pdb_impl::read_string;
+using pdb_impl::read_res_id;
 
 inline bool is_double(const char* p) {
-  while (std::isspace(*p)) ++p;
+  while (is_space(*p)) ++p;
   if (*p == '-' || *p == '+') ++p;
   while (is_digit(*p)) ++p;
   if (*p == '.') {
     ++p;
     while (is_digit(*++p)) ++p;
   }
-  while (std::isspace(*p)) ++p;
+  while (is_space(*p)) ++p;
   return *p == '\0';
+}
+
+template<size_t N>
+inline bool same_str(const std::string& s, const char (&literal)[N]) {
+  return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
 }
 
 inline bool is_tls_item(const std::string& key) {
@@ -137,7 +78,7 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
           item.version.pop_back();
         } else if (open_br + 11 == item.version.size() ||
                    open_br + 13 == item.version.size()) {
-          item.date = pdb_date_format_to_iso(item.version.substr(open_br + 1));
+          item.date = pdb_impl::pdb_date_format_to_iso(item.version.substr(open_br + 1));
           if (item.date.size() == 10 && item.date[5] != 'x') {
             size_t last = item.version.find_last_not_of(' ', open_br - 1);
             item.version.resize(last + 1);
@@ -431,7 +372,7 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta,
         else
           meta.crystals.back().ph_range = std::string(value, end);
       } else if (same_str(key, "DATE OF DATA COLLECTION")) {
-        diffr.collection_date = pdb_date_format_to_iso(std::string(value, end));
+        diffr.collection_date = pdb_impl::pdb_date_format_to_iso(std::string(value, end));
       } else if (same_str(key, "TEMPERATURE           (KELVIN)")) {
         diffr.temperature = fast_atof(value);
       } else if (same_str(key, "SYNCHROTRON              (Y/N)")) {
@@ -522,27 +463,153 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta,
   }
 }
 
-} // namespace pdb_impl
-
-inline int remark_number(const std::string& remark) {
+int remark_number(const std::string& remark) {
   if (remark.size() > 11)
-    return pdb_impl::read_int(remark.c_str() + 7, 3);
+    return read_int(remark.c_str() + 7, 3);
   return 0;
 }
 
-inline void read_metadata_from_remarks(Structure& st) {
+// Atom name and altloc are not provided in the SSBOND record.
+// Usually it is SG (cysteine), but other disulfide bonds are also possible.
+// If it's not SG, we pick the first sulfur atom in the residue.
+const Residue* complete_ssbond_atom(AtomAddress& ad, const Model& mdl) {
+  ad.atom_name = "SG";
+  const_CRA cra = mdl.find_cra(ad);
+  if (cra.residue && (!cra.atom || cra.atom->element != El::S))
+    if (const Atom* a = cra.residue->find_by_element(El::S)) {
+      ad.atom_name = a->name;
+      ad.altloc = a->altloc;
+    }
+  return cra.residue;
+}
+void complete_ssbond(Connection& con, const Model& mdl, const UnitCell& cell) {
+  const Residue* res1 = complete_ssbond_atom(con.partner1, mdl);
+  const Residue* res2 = complete_ssbond_atom(con.partner2, mdl);
+  if (res1 && res2 && (con.partner1.altloc != '\0' || con.partner2.altloc != '\0')) {
+    // pick a pair of atoms in the shortest distance
+    double min_dist_sq = INFINITY;
+    for (const Atom& a1 : const_cast<Residue*>(res1)->get(con.partner1.atom_name))
+      for (const Atom& a2 : const_cast<Residue*>(res2)->get(con.partner2.atom_name))
+        if (a2.same_conformer(a1)) {
+          double dist_sq = cell.find_nearest_image(a1.pos, a2.pos, con.asu).dist_sq;
+          if (dist_sq < min_dist_sq) {
+            con.partner1.altloc = a1.altloc;
+            con.partner2.altloc = a2.altloc;
+            min_dist_sq = dist_sq;
+          }
+        }
+  }
+}
+
+Asu compare_link_symops(const std::string& record) {
+  if (record.size() < 72)
+    return Asu::Any;  // it could be interpreted as Same
+  if (read_string(&record[59], 6) == read_string(&record[66], 6))
+    return Asu::Same;
+  return Asu::Different;
+}
+
+void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
+  int disulf_count = 0;
+  int covale_count = 0;
+  int metalc_count = 0;
+  for (const std::string& record : conn_records) {
+    if (record[0] == 'S' || record[0] == 's') { // SSBOND
+      if (record.length() < 32)
+        continue;
+      Connection c;
+      c.name = "disulf" + std::to_string(++disulf_count);
+      c.type = Connection::Disulf;
+      const char* r = record.c_str();
+      c.partner1.chain_name = read_string(r + 14, 2);
+      c.partner1.res_id = read_res_id(r + 17, r + 11);
+      c.partner2.chain_name = read_string(r + 28, 2);
+      char res_id2[5] = {' ', ' ', ' ', ' ', ' '};
+      std::memcpy(res_id2, r + 31, std::min((size_t)5, record.length() - 31));
+      c.partner2.res_id = read_res_id(res_id2, r + 25);
+      c.asu = compare_link_symops(record);
+      if (record.length() > 73)
+        c.reported_distance = read_double(r + 73, 5);
+      complete_ssbond(c, st.first_model(), st.cell);
+      st.connections.emplace_back(c);
+    } else if (record[0] == 'L' || record[0] == 'l') { // LINK
+      if (record.length() < 57)
+        continue;
+      Connection c;
+      // emulating names used in wwPDB mmCIFs (covaleN and metalcN)
+      if (is_metal(find_element(&record[12])) ||
+          is_metal(find_element(&record[42]))) {
+        c.name = "metalc" + std::to_string(++metalc_count);
+        c.type = Connection::MetalC;
+      } else {
+        c.name = "covale" + std::to_string(++covale_count);
+        c.type = Connection::Covale;
+      }
+      for (int i : {0, 1}) {
+        const char* t = record.c_str() + 30 * i;
+        AtomAddress& ad = (i == 0 ? c.partner1 : c.partner2);
+        ad.chain_name = read_string(t + 20, 2);
+        ad.res_id = read_res_id(t + 22, t + 17);
+        ad.atom_name = read_string(t + 12, 4);
+        ad.altloc = pdb_impl::read_altloc(t[16]);
+      }
+      c.asu = compare_link_symops(record);
+      if (record.length() > 73) {
+        if (record[4] == 'R')
+          c.link_id = read_string(&record[72], 8);
+        else
+          c.reported_distance = read_double(&record[73], 5);
+      }
+      st.connections.emplace_back(c);
+    } else if (record[0] == 'C' || record[0] == 'c') { // CISPEP
+      if (record.length() < 22)
+        continue;
+      const char* r = record.c_str();
+      CisPep cispep;
+      cispep.partner_c.chain_name = read_string(r + 14, 2);
+      cispep.partner_c.res_id = read_res_id(r + 17, r + 11);
+      cispep.partner_n.chain_name = read_string(r + 28, 2);
+      cispep.partner_n.res_id = read_res_id(r + 31, r + 25);
+      // In files with a single model in the PDB CISPEP modNum is 0,
+      // but _struct_mon_prot_cis.pdbx_PDB_model_num is 1.
+      cispep.model_str = st.models.size() == 1 ? st.models[0].name
+                                               : read_string(r + 43, 3);
+      cispep.reported_angle = read_double(r + 53, 6);
+      st.cispeps.push_back(cispep);
+    }
+  }
+}
+
+// move initials after comma, as in mmCIF (A.-B.DOE -> DOE, A.-B.), see
+// https://www.wwpdb.org/documentation/file-format-content/format33/sect2.html#AUTHOR
+void change_author_name_format_to_mmcif(std::string& name) {
+  // If the AUTHOR record has comma followed by space we get leading space here
+  while (name[0] == ' ')
+    name.erase(name.begin());
+  size_t pos = 0;
+  // Initials may have multiple letters (e.g. JU. or PON.)
+  // but should not have space after dot.
+  for (size_t i = 1; i < pos+4 && i+1 < name.size(); ++i)
+    if (name[i] == '.' && name[i+1] != ' ')
+      pos = i+1;
+  if (pos > 0)
+    name = name.substr(pos) + ", " + name.substr(0, pos);
+}
+
+} // anonymous namespace
+
+void read_metadata_from_remarks(Structure& st) {
   std::string* possibly_unfinished_remark3 = nullptr;
   std::string* cr_desc = nullptr;
   for (const std::string& remark : st.raw_remarks)
     switch (remark_number(remark)) {
       case 3:
-        pdb_impl::read_remark3_line(remark.c_str(), st.meta,
-                                    possibly_unfinished_remark3);
+        read_remark3_line(remark.c_str(), st.meta, possibly_unfinished_remark3);
         break;
       case 200:
       case 230:
       case 240:
-        pdb_impl::read_remark_200_230_240(remark.c_str(), st.meta, cr_desc);
+        read_remark_200_230_240(remark.c_str(), st.meta, cr_desc);
         break;
       case 300:
         if (!st.meta.remark_300_detail.empty()) {
@@ -555,8 +622,6 @@ inline void read_metadata_from_remarks(Structure& st) {
     }
 }
 
-// Returns operations corresponding to 1555, 2555, ... N555
-inline
 std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {
   std::vector<Op> ops;
   // we only check triplet notation:
@@ -566,13 +631,45 @@ std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {
     if (remark_number(remark) == 290 && remark.size() > 25 &&
         std::memcmp(&remark[10], "     ", 5) == 0 &&
         std::memcmp(&remark[18], "555   ", 6) == 0) {
-      if (pdb_impl::read_int(remark.c_str() + 15, 3) != (int)ops.size() + 1)
+      if (read_int(remark.c_str() + 15, 3) != (int)ops.size() + 1)
         fail("Symmetry operators not in order?: " + remark);
-      Op op = parse_triplet(pdb_impl::read_string(remark.c_str() + 24, 56));
+      Op op = parse_triplet(read_string(remark.c_str() + 24, 56));
       ops.push_back(op);
     }
   return ops;
 }
 
+void finalize_structure_after_reading_pdb(Structure& st, const PdbReadOptions& options,
+                                          const std::vector<std::string>& conn_records) {
+  // If we read a PDB header (they can be downloaded from RSCB) we have no
+  // models. User's code may not expect this. Usually, empty model will be
+  // handled more gracefully than no models.
+  if (st.models.empty())
+    st.models.emplace_back("1");
+
+  if (st.ter_status == 'e')
+    remove_entity_types(st);
+
+  // Here we assign Residue::subchain, but only for chains with all
+  // Residue::entity_type assigned, i.e. for chains with TER.
+  assign_subchains(st, /*force=*/false, /*fail_if_unknown=*/false);
+
+  for (Chain& ch : st.models[0].chains)
+    if (Entity* entity = st.get_entity(ch.name))
+      if (auto polymer = ch.get_polymer())
+        entity->subchains.emplace_back(polymer.subchain_id());
+
+  st.setup_cell_images();
+
+  process_conn(st, conn_records);
+
+  for (std::string& name : st.meta.authors)
+    change_author_name_format_to_mmcif(name);
+
+  if (!options.skip_remarks)
+    read_metadata_from_remarks(st);
+
+  restore_full_ccd_codes(st);
+}
+
 } // namespace gemmi
-#endif

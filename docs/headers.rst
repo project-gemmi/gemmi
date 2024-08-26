@@ -243,10 +243,6 @@ gemmi/reciproc.hpp
 gemmi/refln.hpp
     Reads reflection data from the mmCIF format.
 
-gemmi/remarks.hpp
-    Function read_metadata_from_remarks() that interprets REMARK 3
-    and REMARK 200/230/240 filling in Metadata.
-
 gemmi/resinfo.hpp
     List of common residues with basic data.
 

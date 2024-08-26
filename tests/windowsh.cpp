@@ -84,7 +84,6 @@
 #include <gemmi/recgrid.hpp>
 #include <gemmi/reciproc.hpp>
 #include <gemmi/refln.hpp>
-#include <gemmi/remarks.hpp>
 #include <gemmi/resinfo.hpp>
 #include <gemmi/riding_h.hpp>
 #include <gemmi/scaling.hpp>
