@@ -118,6 +118,9 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 if (FETCH_ZLIB_NG)
   message(STATUS " =============== fetching and building zlib-ng ===============")
   include(FetchContent)
+  # FetchContent_Declare can take EXCLUDE_FROM_ALL only since CMake 3.28;
+  # for now use FetchContent_Populate instead of FetchContent_MakeAvailable.
+  cmake_policy(SET CMP0169 OLD)
   FetchContent_Declare(zlib-ng GIT_REPOSITORY https://github.com/zlib-ng/zlib-ng.git
                                GIT_TAG        2.1.x
                                GIT_SHALLOW TRUE)
