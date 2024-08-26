@@ -96,15 +96,18 @@ jobs:
     - name: apt-get
       run: |
         sudo apt-get update
-        sudo apt-get install python3-pip g++ gfortran python3-numpy
+        sudo apt-get install python3-full g++ gfortran python3-numpy
     - name: build and test
       run: |
         g++ --version
+        python3 -m venv pyenv
+        source pyenv/bin/activate
         export SKBUILD_CMAKE_ARGS='-DFETCH_ZLIB_NG=ON;-DCMAKE_BUILD_TYPE=None'
         python3 -m pip install -v .
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       run: |
+        source pyenv/bin/activate
         python3 -m pip install -U sphinx
         cd docs
         sphinx-build -M doctest . _build -n -E
