@@ -463,12 +463,6 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta,
   }
 }
 
-int remark_number(const std::string& remark) {
-  if (remark.size() > 11)
-    return read_int(remark.c_str() + 7, 3);
-  return 0;
-}
-
 // Atom name and altloc are not provided in the SSBOND record.
 // Usually it is SG (cysteine), but other disulfide bonds are also possible.
 // If it's not SG, we pick the first sulfur atom in the residue.
@@ -601,15 +595,24 @@ void change_author_name_format_to_mmcif(std::string& name) {
 void read_metadata_from_remarks(Structure& st) {
   std::string* possibly_unfinished_remark3 = nullptr;
   std::string* cr_desc = nullptr;
-  for (const std::string& remark : st.raw_remarks)
-    switch (remark_number(remark)) {
+  Transform matrix;
+  for (const std::string& remark : st.raw_remarks) {
+    if (remark.size() <= 11)
+      continue;
+    const char* line = remark.c_str();
+    int num = read_int(line + 7, 3);
+    switch (num) {
+      case 2:
+        if (st.resolution == 0.0 && std::strstr(line, "ANGSTROM"))
+          st.resolution = read_double(line + 23, 7);
+        break;
       case 3:
-        read_remark3_line(remark.c_str(), st.meta, possibly_unfinished_remark3);
+        read_remark3_line(line, st.meta, possibly_unfinished_remark3);
         break;
       case 200:
       case 230:
       case 240:
-        read_remark_200_230_240(remark.c_str(), st.meta, cr_desc);
+        read_remark_200_230_240(line, st.meta, cr_desc);
         break;
       case 300:
         if (!st.meta.remark_300_detail.empty()) {
@@ -619,7 +622,61 @@ void read_metadata_from_remarks(Structure& st) {
           st.meta.remark_300_detail = trim_str(remark.substr(18));
         }
         break;
+      case 350: {
+        const char* colon = std::strchr(line+11, ':');
+        if (colon == line+22 && starts_with(line+11, "BIOMOLECULE")) {
+          st.assemblies.emplace_back(read_string(line+23, 20));
+          continue;
+        }
+        if (st.assemblies.empty())
+          continue;
+        Assembly& assembly = st.assemblies.back();
+        auto r350_key = [&](int cpos, const char* text) {
+          return colon == line + cpos && starts_with(line+11, text);
+        };
+        if (starts_with(line+11, "  BIOMT")) {
+          if (pdb_impl::read_matrix(matrix, line+13, remark.size()-13) == 3)
+            if (!assembly.generators.empty()) {
+              auto& opers = assembly.generators.back().operators;
+              opers.emplace_back();
+              opers.back().name = read_string(line+20, 3);
+              opers.back().transform = matrix;
+              matrix.set_identity();
+            }
+        } else if (r350_key(44, "AUTHOR DETERMINED")) {
+          assembly.author_determined = true;
+          assembly.oligomeric_details = read_string(line+45, 35);
+        } else if (r350_key(51, "SOFTWARE DETERMINED")) {
+          assembly.software_determined = true;
+          assembly.oligomeric_details = read_string(line+52, 28);
+        } else if (r350_key(24, "SOFTWARE USED")) {
+          assembly.software_name = read_string(line+25, 55);
+        } else if (r350_key(36, "TOTAL BURIED SURFACE AREA")) {
+          assembly.absa = read_double(line+37, 12);
+        } else if (r350_key(38, "SURFACE AREA OF THE COMPLEX")) {
+          assembly.ssa = read_double(line+39, 12);
+        } else if (r350_key(40, "CHANGE IN SOLVENT FREE ENERGY")) {
+          assembly.more = read_double(line+41, 12);
+        } else if (r350_key(40, "APPLY THE FOLLOWING TO CHAINS") ||
+                   r350_key(40, "                   AND CHAINS")) {
+          if (line[11] == 'A') // first line - APPLY ...
+            assembly.generators.emplace_back();
+          else if (assembly.generators.empty())
+            continue;
+          split_str_into_multi(read_string(line+41, 39), ", ",
+                               assembly.generators.back().chains);
+        }
+      }
     }
+    // if REMARK 2 was missing, try resolution from REMARK 3
+    if (st.resolution == 0.0) {
+      for (const RefinementInfo& ref_info : st.meta.refinement)
+        if (!std::isnan(ref_info.resolution_high) && ref_info.resolution_high != 0.) {
+          st.resolution = ref_info.resolution_high;
+          break;
+        }
+    }
+  }
 }
 
 std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {
@@ -628,7 +685,7 @@ std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {
   // REMARK 290     NNNMMM   OPERATOR
   // REMARK 290       1555   X,Y,Z
   for (const std::string& remark : raw_remarks)
-    if (remark_number(remark) == 290 && remark.size() > 25 &&
+    if (remark.size() > 25 && std::memcmp(&remark[7], "290", 3) == 0 &&
         std::memcmp(&remark[10], "     ", 5) == 0 &&
         std::memcmp(&remark[18], "555   ", 6) == 0) {
       if (read_int(remark.c_str() + 15, 3) != (int)ops.size() + 1)

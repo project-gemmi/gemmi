@@ -100,7 +100,7 @@ inline signed char read_charge(char digit, char sign) {
   return 0;
 }
 
-inline int read_matrix(Transform& t, char* line, size_t len) {
+inline int read_matrix(Transform& t, const char* line, size_t len) {
   if (len < 46)
     return 0;
   char n = line[5] - '0';
@@ -295,64 +295,6 @@ Structure read_pdb_from_stream(Stream&& stream, const std::string& source,
       if (line[len-1] == '\r')
         --len;
       st.raw_remarks.emplace_back(line, line+len);
-      if (len <= 11)
-        continue;
-      int num = read_int(line + 7, 3);
-      // By default, we only look for resolution and REMARK 350.
-      // Other remarks are parsed in read_metadata_from_remarks()
-      if (num == 2) {
-        if (st.resolution == 0.0 && std::strstr(line, "ANGSTROM"))
-          st.resolution = read_double(line + 23, 7);
-      } else if (num == 3) {
-        if (st.resolution == 0.0 &&
-            std::strstr(line, "RESOLUTION RANGE HIGH (ANGSTROMS)"))
-          if (const char* colon = std::strchr(line + 44, ':'))
-            st.resolution = fast_atof(colon + 1);
-      } else if (num == 350) {
-        const char* colon = std::strchr(line+11, ':');
-        if (colon == line+22 && starts_with(line+11, "BIOMOLECULE")) {
-          st.assemblies.emplace_back(read_string(line+23, 20));
-          continue;
-        }
-        if (st.assemblies.empty())
-          continue;
-        Assembly& assembly = st.assemblies.back();
-        auto r350_key = [&](int cpos, const char* text) {
-          return colon == line + cpos && starts_with(line+11, text);
-        };
-        if (starts_with(line+11, "  BIOMT")) {
-          if (read_matrix(matrix, line+13, len-13) == 3)
-            if (!assembly.generators.empty()) {
-              auto& opers = assembly.generators.back().operators;
-              opers.emplace_back();
-              opers.back().name = read_string(line+20, 3);
-              opers.back().transform = matrix;
-              matrix.set_identity();
-            }
-        } else if (r350_key(44, "AUTHOR DETERMINED")) {
-          assembly.author_determined = true;
-          assembly.oligomeric_details = read_string(line+45, 35);
-        } else if (r350_key(51, "SOFTWARE DETERMINED")) {
-          assembly.software_determined = true;
-          assembly.oligomeric_details = read_string(line+52, 28);
-        } else if (r350_key(24, "SOFTWARE USED")) {
-          assembly.software_name = read_string(line+25, 55);
-        } else if (r350_key(36, "TOTAL BURIED SURFACE AREA")) {
-          assembly.absa = read_double(line+37, 12);
-        } else if (r350_key(38, "SURFACE AREA OF THE COMPLEX")) {
-          assembly.ssa = read_double(line+39, 12);
-        } else if (r350_key(40, "CHANGE IN SOLVENT FREE ENERGY")) {
-          assembly.more = read_double(line+41, 12);
-        } else if (r350_key(40, "APPLY THE FOLLOWING TO CHAINS") ||
-                   r350_key(40, "                   AND CHAINS")) {
-          if (line[11] == 'A') // first line - APPLY ...
-            assembly.generators.emplace_back();
-          else if (assembly.generators.empty())
-            continue;
-          split_str_into_multi(read_string(line+41, 39), ", ",
-                               assembly.generators.back().chains);
-        }
-      }
 
     } else if (is_record_type(line, "CONECT")) {
       int serial = read_serial(line+6);
