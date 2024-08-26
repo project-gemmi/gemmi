@@ -90,7 +90,7 @@ struct OptParser : option::Parser {
   int integer_or(int opt, int default_) const;
 };
 
-namespace gemmi { enum class CoorFormat : std::uint8_t; }
+namespace gemmi { enum class CoorFormat : unsigned char; }
 namespace gemmi { namespace cif { struct WriteOptions; } }
 
 // to be used with Arg::CoorFormat

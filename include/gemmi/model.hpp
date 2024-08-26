@@ -76,7 +76,7 @@ template<typename T, typename M> std::vector<T> model_subchains(M* model) {
 /// File format of a macromolecular model. When passed to read_structure():
 /// Unknown = guess format from the extension,
 /// Detect = guess format from the content.
-enum class CoorFormat : std::uint8_t {
+enum class CoorFormat : unsigned char {
   Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp
 };
 
