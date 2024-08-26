@@ -354,7 +354,8 @@ Data in NumPy and pandas
   :skipif: numpy is None
   :hide:
 
-  >>> numpy.set_printoptions(threshold=5)
+  >>> # 'and None' because https://github.com/numpy/numpy/pull/27259
+  >>> numpy.set_printoptions(threshold=5) and None
 
 In Python Column has a read-only `array` property that provides
 a view of the data compatible with NumPy. It does not copy the data,
