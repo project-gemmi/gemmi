@@ -13,7 +13,6 @@ splicer_code:
   c:
     CXX_definitions: |
       // for read_ccp4_map() and read_ccp4_mask()
-      #define GEMMI_READ_MAP_IMPLEMENTATION
       #include "gemmi/read_map.hpp"
 
 declarations:

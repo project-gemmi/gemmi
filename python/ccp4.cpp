@@ -1,11 +1,10 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
+#include "gemmi/util.hpp"  // for cat
+#include "gemmi/read_map.hpp"  // for read_ccp4_map, read_ccp4_mask
 #include "common.h"
 #include <pybind11/stl.h>
-
-#define GEMMI_READ_MAP_IMPLEMENTATION
-#include "gemmi/read_map.hpp"  // defines read_ccp4_map, read_ccp4_mask
 
 namespace py = pybind11;
 using namespace gemmi;
