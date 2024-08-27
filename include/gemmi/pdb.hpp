@@ -14,7 +14,6 @@
 #define GEMMI_PDB_HPP_
 
 #include <cstdio>     // for stdin, size_t
-#include <cstring>    // for memcpy, strstr, strchr
 #include <unordered_map>
 #include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
