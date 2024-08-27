@@ -1,9 +1,13 @@
 // Copyright 2019 Global Phasing Ltd.
 
 #include "gemmi/pdb.hpp"
-#include <cstdlib>            // for atoi
+#include <cctype>             // for isalpha
+#include <cstdlib>            // for atoi, strtol
 #include <cstring>            // for memcpy, strstr, strchr, strcmp
+#include <algorithm>          // for min, swap
 #include <stdexcept>          // for invalid_argument
+#include "gemmi/atof.hpp"     // for fast_from_chars
+#include "gemmi/atox.hpp"     // for is_space, is_digit
 #include "gemmi/metadata.hpp" // for Metadata
 #include "gemmi/model.hpp"    // for Structure, impl::find_or_add
 #include "gemmi/polyheur.hpp" // for assign_subchains
@@ -13,12 +17,138 @@ namespace gemmi {
 
 namespace {
 
-using pdb_impl::read_int;
-using pdb_impl::read_double;
-using pdb_impl::read_string;
-using pdb_impl::read_res_id;
+int read_int(const char* p, int field_length) {
+  return string_to_int(p, false, field_length);
+}
 
-inline bool is_double(const char* p) {
+double read_double(const char* p, int field_length) {
+  double d = 0.;
+  // we don't check for errors here
+  fast_from_chars(p, p + field_length, d);
+  return d;
+}
+
+std::string read_string(const char* p, int field_length) {
+  // left trim
+  while (field_length != 0 && is_space(*p)) {
+    ++p;
+    --field_length;
+  }
+  // EOL/EOF ends the string
+  for (int i = 0; i < field_length; ++i)
+    if (p[i] == '\n' || p[i] == '\r' || p[i] == '\0') {
+      field_length = i;
+      break;
+    }
+  // right trim
+  while (field_length != 0 && is_space(p[field_length-1]))
+    --field_length;
+  return std::string(p, field_length);
+}
+
+template<int N> int read_base36(const char* p) {
+  char zstr[N+1] = {0};
+  std::memcpy(zstr, p, N);
+  return std::strtol(zstr, nullptr, 36);
+}
+
+// Compare the first 4 letters of s, ignoring case, with uppercase record.
+// Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
+bool is_record_type(const char* s, const char* record) {
+  return ialpha4_id(s) == ialpha4_id(record);
+}
+// for record "TER": "TER ", TER\n, TER\r, TER\t match, TERE, TER1 don't
+bool is_record_type3(const char* s, const char* record) {
+  return (ialpha4_id(s) & ~0xf) == ialpha4_id(record);
+}
+
+// The standard charge format is 2+, but some files have +2.
+signed char read_charge(char digit, char sign) {
+  if (sign == ' ' && digit == ' ')  // by far the most common case
+    return 0;
+  if (sign >= '0' && sign <= '9')
+    std::swap(digit, sign);
+  if (digit >= '0' && digit <= '9') {
+    if (sign != '+' && sign != '-' && sign != '\0' && !is_space(sign))
+      fail("Wrong format for charge: " +
+           std::string(1, digit) + std::string(1, sign));
+    return (digit - '0') * (sign == '-' ? -1 : 1);
+  }
+  // if we are here the field should be blank, but maybe better not to check
+  return 0;
+}
+
+int read_matrix(Transform& t, const char* line, size_t len) {
+  if (len < 46)
+    return 0;
+  char n = line[5] - '0';
+  if (n >= 1 && n <= 3) {
+    t.mat[n-1][0] = read_double(line+10, 10);
+    t.mat[n-1][1] = read_double(line+20, 10);
+    t.mat[n-1][2] = read_double(line+30, 10);
+    t.vec.at(n-1) = read_double(line+45, 10);
+  }
+  return n;
+}
+
+SeqId read_seq_id(const char* str) {
+  SeqId seqid;
+  if (str[4] != '\r' && str[4] != '\n')
+    seqid.icode = str[4];
+  // We support hybrid-36 extension, although it is never used in practice
+  // as 9999 residues per chain are enough.
+  if (str[0] < 'A') {
+    for (int i = 4; i != 0; --i, ++str)
+      if (!is_space(*str)) {
+        seqid.num = read_int(str, i);
+        break;
+      }
+  } else {
+    seqid.num = read_base36<4>(str) - 466560 + 10000;
+  }
+  return seqid;
+}
+
+ResidueId read_res_id(const char* seq_id, const char* name) {
+  return {read_seq_id(seq_id), {}, read_string(name, 3)};
+}
+
+char read_altloc(char c) { return c == ' ' ? '\0' : c; }
+
+int read_serial(const char* ptr) {
+  return ptr[0] < 'A' ? read_int(ptr, 5)
+                      : read_base36<5>(ptr) - 16796160 + 100000;
+}
+
+// "28-MAR-07" -> "2007-03-28"
+// (we also accept less standard format "28-Mar-2007" as used by BUSTER)
+// We do not check if the date is correct.
+// The returned value is one of:
+//   DDDD-DD-DD - possibly correct date,
+//   DDDD-xx-DD - unrecognized month,
+//   empty string - the digits were not there.
+std::string pdb_date_format_to_iso(const std::string& date) {
+  const char months[] = "JAN01FEB02MAR03APR04MAY05JUN06"
+                        "JUL07AUG08SEP09OCT10NOV11DEC122222";
+  if (date.size() < 9 || !is_digit(date[0]) || !is_digit(date[1]) ||
+                         !is_digit(date[7]) || !is_digit(date[8]))
+    return std::string();
+  std::string iso = "xxxx-xx-xx";
+  if (date.size() >= 11 && is_digit(date[9]) && is_digit(date[10])) {
+    std::memcpy(&iso[0], &date[7], 4);
+  } else {
+    std::memcpy(&iso[0], (date[7] > '6' ? "19" : "20"), 2);
+    std::memcpy(&iso[2], &date[7], 2);
+  }
+  char month[4] = {alpha_up(date[3]), alpha_up(date[4]), alpha_up(date[5]), '\0'};
+  if (const char* m = std::strstr(months, month))
+    std::memcpy(&iso[5], m + 3, 2);
+  std::memcpy(&iso[8], &date[0], 2);
+  return iso;
+}
+
+
+bool is_double(const char* p) {
   while (is_space(*p)) ++p;
   if (*p == '-' || *p == '+') ++p;
   while (is_digit(*p)) ++p;
@@ -31,11 +161,11 @@ inline bool is_double(const char* p) {
 }
 
 template<size_t N>
-inline bool same_str(const std::string& s, const char (&literal)[N]) {
+bool same_str(const std::string& s, const char (&literal)[N]) {
   return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
 }
 
-inline bool is_tls_item(const std::string& key) {
+bool is_tls_item(const std::string& key) {
   return key.size() == 3 &&
     (key[0] == 'T' || key[0] == 'L' || key[0] == 'S') &&
     (key[1] == '1' || key[1] == '2' || key[1] == '3') &&
@@ -57,8 +187,7 @@ inline bool is_tls_item(const std::string& key) {
 // Additionally, if version has format: "something (DATE)" where
 // the DATE format is either 28-MAR-07 or 28-Mar-2007, then DATE
 // is put into _software.date.
-inline void add_software(Metadata& meta, SoftwareItem::Classification type,
-                         const std::string& name) {
+void add_software(Metadata& meta, SoftwareItem::Classification type, const std::string& name) {
   for (size_t start = 0, end = 0; end != std::string::npos; start = end + 1) {
     end = name.find(',', start);
     while (end != std::string::npos &&
@@ -78,7 +207,7 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
           item.version.pop_back();
         } else if (open_br + 11 == item.version.size() ||
                    open_br + 13 == item.version.size()) {
-          item.date = pdb_impl::pdb_date_format_to_iso(item.version.substr(open_br + 1));
+          item.date = pdb_date_format_to_iso(item.version.substr(open_br + 1));
           if (item.date.size() == 10 && item.date[5] != 'x') {
             size_t last = item.version.find_last_not_of(' ', open_br - 1);
             item.version.resize(last + 1);
@@ -96,8 +225,7 @@ inline void add_software(Metadata& meta, SoftwareItem::Classification type,
 
 // REMARK   3   TERM                          COUNT    WEIGHT   FUNCTION.
 // REMARK   3    BOND LENGTHS              : 5760   ; 2.000  ; HARMONIC
-inline void add_restraint_count_weight(RefinementInfo& ref_info,
-                                       const char* key, const char* value) {
+void add_restraint_count_weight(RefinementInfo& ref_info, const char* key, const char* value) {
   if (*value == 'N') // NULL instead of number
     return;
   ref_info.restr_stats.emplace_back(key);
@@ -110,8 +238,8 @@ inline void add_restraint_count_weight(RefinementInfo& ref_info,
     restr.function = read_string(sep+1, 50);
 }
 
-inline void read_remark3_line(const char* line, Metadata& meta,
-                              std::string*& possibly_unfinished_remark3) {
+void read_remark3_line(const char* line, Metadata& meta,
+                       std::string*& possibly_unfinished_remark3) {
   // Based on:
   // www.wwpdb.org/documentation/file-format-content/format23/remark3.html
   // and analysis of PDB files.
@@ -328,8 +456,7 @@ inline void read_remark3_line(const char* line, Metadata& meta,
   }
 }
 
-inline void read_remark_200_230_240(const char* line, Metadata& meta,
-                                    std::string*& cryst_desc) {
+void read_remark_200_230_240(const char* line, Metadata& meta, std::string*& cryst_desc) {
   // multi-line continuation requires special handling
   if (cryst_desc) {
     if (line[10] == ' ' && line[11] == ' ') {
@@ -372,7 +499,7 @@ inline void read_remark_200_230_240(const char* line, Metadata& meta,
         else
           meta.crystals.back().ph_range = std::string(value, end);
       } else if (same_str(key, "DATE OF DATA COLLECTION")) {
-        diffr.collection_date = pdb_impl::pdb_date_format_to_iso(std::string(value, end));
+        diffr.collection_date = pdb_date_format_to_iso(std::string(value, end));
       } else if (same_str(key, "TEMPERATURE           (KELVIN)")) {
         diffr.temperature = fast_atof(value);
       } else if (same_str(key, "SYNCHROTRON              (Y/N)")) {
@@ -545,7 +672,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         ad.chain_name = read_string(t + 20, 2);
         ad.res_id = read_res_id(t + 22, t + 17);
         ad.atom_name = read_string(t + 12, 4);
-        ad.altloc = pdb_impl::read_altloc(t[16]);
+        ad.altloc = read_altloc(t[16]);
       }
       c.asu = compare_link_symops(record);
       if (record.length() > 73) {
@@ -590,8 +717,7 @@ void change_author_name_format_to_mmcif(std::string& name) {
     name = name.substr(pos) + ", " + name.substr(0, pos);
 }
 
-} // anonymous namespace
-
+// interprets subset of REMARKs from raw_remarks, filling in Metadata.
 void read_metadata_from_remarks(Structure& st) {
   std::string* possibly_unfinished_remark3 = nullptr;
   std::string* cr_desc = nullptr;
@@ -635,7 +761,7 @@ void read_metadata_from_remarks(Structure& st) {
           return colon == line + cpos && starts_with(line+11, text);
         };
         if (starts_with(line+11, "  BIOMT")) {
-          if (pdb_impl::read_matrix(matrix, line+13, remark.size()-13) == 3)
+          if (read_matrix(matrix, line+13, remark.size()-13) == 3)
             if (!assembly.generators.empty()) {
               auto& opers = assembly.generators.back().operators;
               opers.emplace_back();
@@ -679,6 +805,8 @@ void read_metadata_from_remarks(Structure& st) {
   }
 }
 
+} // anonymous namespace
+
 std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {
   std::vector<Op> ops;
   // we only check triplet notation:
@@ -696,8 +824,357 @@ std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {
   return ops;
 }
 
-void finalize_structure_after_reading_pdb(Structure& st, const PdbReadOptions& options,
-                                          const std::vector<std::string>& conn_records) {
+namespace impl {
+
+void PdbReader::read_pdb_line(const char* line, size_t len, Structure& st,
+                              const std::string& source) {
+  if (is_record_type(line, "ATOM") || is_record_type(line, "HETATM")) {
+    if (len < 55)
+      wrong("The line is too short to be correct:\n" + std::string(line));
+    std::string chain_name = read_string(line+20, 2);
+    ResidueId rid = read_res_id(line+22, line+17);
+
+    if (!chain || chain_name != chain->name) {
+      if (!model) {
+        // A single model usually doesn't have the MODEL record. Also,
+        // MD trajectories may have frames separated by ENDMDL without MODEL.
+        std::string name = std::to_string(st.models.size() + 1);
+        if (st.find_model(name))
+          wrong("ATOM/HETATM between models");
+        st.models.emplace_back(name);
+        model = &st.models.back();
+      }
+      const Chain* prev_part = model->find_chain(chain_name);
+      after_ter = prev_part &&
+                  prev_part->residues[0].entity_type == EntityType::Polymer;
+      model->chains.emplace_back(chain_name);
+      chain = &model->chains.back();
+      resmap.clear();
+      resi = nullptr;
+    }
+    // Non-standard but widely used 4-character segment identifier.
+    // Left-justified, and may include a space in the middle.
+    // The segment may be a portion of a chain or a complete chain.
+    if (len > 72)
+      rid.segment = read_string(line+72, 4);
+    if (!resi || !resi->matches(rid)) {
+      auto it = resmap.find(rid);
+      // In normal PDB files it is fast enough to use
+      // resi = chain->find_residue(rid);
+      // but in pseudo-PDB files (such as MD files where millions
+      // of residues are in the same "chain") it is too slow.
+      if (it == resmap.end()) {
+        resmap.emplace(rid, (int) chain->residues.size());
+        chain->residues.emplace_back(rid);
+        resi = &chain->residues.back();
+
+        resi->het_flag = line[0] & ~0x20;
+        if (after_ter)
+          resi->entity_type = resi->is_water() ? EntityType::Water
+                                               : EntityType::NonPolymer;
+      } else {
+        resi = &chain->residues[it->second];
+      }
+    }
+
+    Atom atom;
+    atom.serial = read_serial(line+6);
+    atom.name = read_string(line+12, 4);
+    atom.altloc = read_altloc(line[16]);
+    atom.pos.x = read_double(line+30, 8);
+    atom.pos.y = read_double(line+38, 8);
+    atom.pos.z = read_double(line+46, 8);
+    if (len > 58)
+      atom.occ = (float) read_double(line+54, 6);
+    if (len > 64)
+      atom.b_iso = (float) read_double(line+60, 6);
+    if (len > 76 && (std::isalpha(line[76]) || std::isalpha(line[77])))
+      atom.element = Element(line + 76);
+    // Atom names HXXX are ambiguous, but Hg, He, Hf, Ho and Hs (almost)
+    // never have 4-character names, so H is assumed.
+    else if (alpha_up(line[12]) == 'H' && line[15] != ' ')
+      atom.element = El::H;
+    // Similarly Deuterium (DXXX), but here alternatives are Dy, Db and Ds.
+    // Only Dysprosium is present in the PDB - in a single entry as of 2022.
+    else if (alpha_up(line[12]) == 'D' && line[15] != ' ')
+      atom.element = El::D;
+    // Old versions of the PDB format had hydrogen names such as "1HB ".
+    // Some MD files use similar names for other elements ("1C4A" -> C).
+    else if (is_digit(line[12]))
+      atom.element = impl::find_single_letter_element(line[13]);
+    // ... or it can be "C210"
+    else if (is_digit(line[13]))
+      atom.element = impl::find_single_letter_element(line[12]);
+    else
+      atom.element = Element(line + 12);
+    atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
+    resi->atoms.emplace_back(atom);
+
+  } else if (is_record_type(line, "ANISOU")) {
+    if (!model || !chain || !resi || resi->atoms.empty())
+      wrong("ANISOU record not directly after ATOM/HETATM.");
+    // We assume that ANISOU refers to the last atom.
+    // Can it not be the case?
+    Atom &atom = resi->atoms.back();
+    if (atom.aniso.u11 != 0.)
+      wrong("Duplicated ANISOU record or not directly after ATOM/HETATM.");
+    atom.aniso.u11 = read_int(line+28, 7) * 1e-4f;
+    atom.aniso.u22 = read_int(line+35, 7) * 1e-4f;
+    atom.aniso.u33 = read_int(line+42, 7) * 1e-4f;
+    atom.aniso.u12 = read_int(line+49, 7) * 1e-4f;
+    atom.aniso.u13 = read_int(line+56, 7) * 1e-4f;
+    atom.aniso.u23 = read_int(line+63, 7) * 1e-4f;
+
+  } else if (is_record_type(line, "REMARK")) {
+    if (line[len-1] == '\n')
+      --len;
+    if (line[len-1] == '\r')
+      --len;
+    st.raw_remarks.emplace_back(line, line+len);
+
+  } else if (is_record_type(line, "CONECT")) {
+    int serial = read_serial(line+6);
+    if (len >= 11 && serial != 0) {
+      std::vector<int>& bonded_atoms = st.conect_map[serial];
+      int limit = std::min(27, (int)len - 1);
+      for (int offset = 11; offset <= limit; offset += 5) {
+        int n = read_serial(line+offset);
+        if (n != 0)
+          bonded_atoms.push_back(n);
+      }
+    }
+
+  } else if (is_record_type(line, "SEQRES")) {
+    std::string chain_name = read_string(line+10, 2);
+    Entity& ent = impl::find_or_add(st.entities, chain_name);
+    ent.entity_type = EntityType::Polymer;
+    for (int i = 19; i < 68; i += 4) {
+      std::string res_name = read_string(line+i, 3);
+      if (!res_name.empty())
+        ent.full_sequence.emplace_back(res_name);
+    }
+
+  } else if (is_record_type(line, "HELIX")) {
+    if (len < 40)
+      return;
+    Helix helix;
+    helix.start.chain_name = read_string(line+18, 2);
+    helix.start.res_id = read_res_id(line+21, line+15);
+    helix.end.chain_name = read_string(line+30, 2);
+    helix.end.res_id = read_res_id(line+33, line+27);
+    helix.set_helix_class_as_int(read_int(line+38, 2));
+    if (len > 72)
+      helix.length = read_int(line+72, 5);
+    st.helices.emplace_back(helix);
+
+  } else if (is_record_type(line, "SHEET")) {
+    if (len < 40)
+      return;
+    std::string sheet_id = read_string(line+11, 3);
+    Sheet& sheet = impl::find_or_add(st.sheets, sheet_id);
+    sheet.strands.emplace_back();
+    Sheet::Strand& strand = sheet.strands.back();
+    strand.start.chain_name = read_string(line+20, 2);
+    strand.start.res_id = read_res_id(line+22, line+17);
+    strand.end.chain_name = read_string(line+31, 2);
+    strand.end.res_id = read_res_id(line+33, line+28);
+    strand.sense = read_int(line+38, 2);
+    if (len > 67) {
+      // the SHEET record has no altloc for atoms of hydrogen bond
+      strand.hbond_atom2.atom_name = read_string(line+41, 4);
+      strand.hbond_atom2.chain_name = read_string(line+48, 2);
+      strand.hbond_atom2.res_id = read_res_id(line+50, line+45);
+      strand.hbond_atom1.atom_name = read_string(line+56, 4);
+      strand.hbond_atom1.chain_name = read_string(line+63, 2);
+      strand.hbond_atom1.res_id = read_res_id(line+65, line+60);
+    }
+
+  } else if (is_record_type(line, "SSBOND") ||
+             is_record_type(line, "LINK") ||
+             is_record_type(line, "CISPEP")) {
+    conn_records.emplace_back(line);
+
+  } else if (is_record_type3(line, "TER")) { // finishes polymer chains
+    if (!chain || st.ter_status == 'e')
+      return;
+    st.ter_status = 'y';
+    if (options.split_chain_on_ter) {
+      chain = nullptr;
+      // split_chain_on_ter is used for AMBER files that can have TER records
+      // in various places. So in such case TER doesn't imply entity_type.
+      return;
+    }
+    // If we have 2+ TER records in one chain, they are used in non-standard
+    // way and should be better ignored (in all the chains).
+    if (after_ter) {
+      st.ter_status = 'e';  // all entity_types will be later set to Unknown
+      return;
+    }
+    for (Residue& res : chain->residues) {
+      res.entity_type = EntityType::Polymer;
+      // Sanity check: water should not be marked as a polymer.
+      if GEMMI_UNLIKELY(res.is_water())
+        st.ter_status = 'e';  // all entity_types will be later set to Unknown
+    }
+    after_ter = true;
+
+  } else if (is_record_type(line, "MODRES")) {
+    ModRes modres;
+    modres.chain_name = read_string(line + 15, 2);
+    modres.res_id = read_res_id(line + 18, line + 12);
+    modres.parent_comp_id = read_string(line + 24, 3);
+    if (len >= 30)
+      // this field is named comment in PDB spec, but details in mmCIF
+      modres.details = read_string(line + 29, 41);
+    // Refmac's extension: 73-80 mod_id
+    // Check for spaces to make sure it's not an overflowed comment
+    if (len >= 73 && line[70] == ' ' && line[71] == ' ')
+      modres.mod_id = read_string(line + 72, 8);
+    st.mod_residues.push_back(modres);
+
+  } else if (is_record_type(line, "HETNAM")) {
+    if (len > 71 && line[70] == ' ') {
+      std::string full_code = read_string(line + 71, 8);
+      if (!full_code.empty())
+        st.shortened_ccd_codes.emplace_back(full_code, read_string(line + 11, 3));
+    }
+
+  } else if (is_record_type(line, "DBREF")) { // DBREF or DBREF1 or DBREF2
+    std::string chain_name = read_string(line+11, 2);
+    Entity& ent = impl::find_or_add(st.entities, chain_name);
+    ent.entity_type = EntityType::Polymer;
+    if (line[5] == ' ' || line[5] == '1')
+      ent.dbrefs.emplace_back();
+    else if (ent.dbrefs.empty()) // DBREF2 without DBREF1?
+      return;
+    Entity::DbRef& dbref = ent.dbrefs.back();
+    if (line[5] == ' ' || line[5] == '1') {
+      dbref.seq_begin = read_seq_id(line+14);
+      dbref.seq_end = read_seq_id(line+20);
+      dbref.db_name = read_string(line+26, 6);
+      if (line[5] == ' ') {
+        dbref.accession_code = read_string(line+33, 8);
+        dbref.id_code = read_string(line+42, 12);
+        dbref.db_begin.num = read_int(line+55, 5);
+        dbref.db_begin.icode = line[60];
+        dbref.db_end.num = read_int(line+62, 5);
+        dbref.db_end.icode = line[67];
+      } else {  // line[5] == '1'
+        dbref.id_code = read_string(line+47, 20);
+      }
+    } else if (line[5] == '2') {
+      dbref.accession_code = read_string(line+18, 22);
+      dbref.db_begin.num = read_int(line+45, 10);
+      dbref.db_end.num = read_int(line+57, 10);
+    }
+
+  } else if (is_record_type(line, "HEADER")) {
+    if (len > 50)
+      st.info["_struct_keywords.pdbx_keywords"] = rtrim_str(std::string(line+10, 40));
+    if (len > 59) { // date in PDB has format 28-MAR-07
+      std::string date = pdb_date_format_to_iso(std::string(line+50, 9));
+      if (!date.empty())
+        st.info["_pdbx_database_status.recvd_initial_deposition_date"] = date;
+    }
+    if (len > 66) {
+      std::string entry_id = rtrim_str(std::string(line+62, 4));
+      if (!entry_id.empty())
+        st.info["_entry.id"] = entry_id;
+    }
+
+  } else if (is_record_type(line, "TITLE")) {
+    if (len > 10)
+      st.info["_struct.title"] += rtrim_str(std::string(line+10, len-10-1));
+
+  } else if (is_record_type(line, "KEYWDS")) {
+    if (len > 10)
+      st.info["_struct_keywords.text"] += rtrim_str(std::string(line+10, len-10-1));
+
+  } else if (is_record_type(line, "EXPDTA")) {
+    if (len > 10)
+      st.info["_exptl.method"] += trim_str(std::string(line+10, len-10-1));
+
+  } else if (is_record_type(line, "AUTHOR") && len > 10) {
+    std::string last;
+    if (!st.meta.authors.empty()) {
+      last = st.meta.authors.back();
+      st.meta.authors.pop_back();
+    }
+    size_t prev_size = st.meta.authors.size();
+    const char* start = skip_blank(line+10);
+    const char* end = rtrim_cstr(start, line+len);
+    split_str_into(std::string(start, end), ',', st.meta.authors);
+    if (!last.empty() && st.meta.authors.size() > prev_size) {
+      // the spaces were trimmed, we may need a space between words
+      if (last.back() != '-' && last.back() != '.')
+        last += ' ';
+      st.meta.authors[prev_size].insert(0, last);
+    }
+
+  } else if (is_record_type(line, "SCALEn")) {
+    if (read_matrix(matrix, line, len) == 3) {
+      st.cell.set_matrices_from_fract(matrix);
+      matrix.set_identity();
+    }
+
+  } else if (is_record_type(line, "ORIGX")) {
+    st.has_origx = true;
+    read_matrix(st.origx, line, len);
+
+  } else if (is_record_type(line, "CRYST1")) {
+    if (len > 54)
+      st.cell.set(read_double(line+6, 9),
+                  read_double(line+15, 9),
+                  read_double(line+24, 9),
+                  read_double(line+33, 7),
+                  read_double(line+40, 7),
+                  read_double(line+47, 7));
+    if (len > 56)
+      st.spacegroup_hm = read_string(line+55, 11);
+    if (len > 67) {
+      std::string z = read_string(line+66, 4);
+      if (!z.empty())
+        st.info["_cell.Z_PDB"] = z;
+    }
+
+  } else if (is_record_type(line, "MTRIXn")) {
+    if (read_matrix(matrix, line, len) == 3) {
+      std::string id = read_string(line+7, 3);
+      if (matrix.is_identity()) {
+        // store only ID that will be used when writing to file
+        st.info["_struct_ncs_oper.id"] = id;
+      } else {
+        bool given = len > 59 && line[59] == '1';
+        st.ncs.push_back({id, given, matrix});
+        matrix.set_identity();
+      }
+    }
+  } else if (is_record_type(line, "MODEL")) {
+    if (model && chain)
+      wrong("MODEL without ENDMDL?");
+    std::string name = std::to_string(read_int(line+10, 4));
+    model = &st.find_or_add_model(name);
+    if (!model->chains.empty())
+      wrong("duplicate MODEL number: " + name);
+    chain = nullptr;
+
+  } else if (is_record_type(line, "ENDMDL")) {
+    model = nullptr;
+    chain = nullptr;
+
+  } else if (is_record_type3(line, "END")) {
+    is_end = true;
+    return;
+  } else if (is_record_type(line, "data")) {
+    if (line[4] == '_' && !model)
+      fail("Incorrect file format (perhaps it is cif not pdb?): " + source);
+  } else if (is_record_type(line, "{\"da")) {
+    if (ialpha3_id(line+4) == ialpha3_id("ta_") && !model)
+      fail("Incorrect file format (perhaps it is mmJSON not pdb?): " + source);
+  }
+}
+
+void PdbReader::finalize_structure_after_reading_pdb(Structure& st) const {
   // If we read a PDB header (they can be downloaded from RSCB) we have no
   // models. User's code may not expect this. Usually, empty model will be
   // handled more gracefully than no models.
@@ -728,5 +1205,7 @@ void finalize_structure_after_reading_pdb(Structure& st, const PdbReadOptions& o
 
   restore_full_ccd_codes(st);
 }
+
+} // namespace impl
 
 } // namespace gemmi

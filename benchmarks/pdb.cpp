@@ -18,16 +18,6 @@ static void read_pdb_file(benchmark::State& state) {
   }
 }
 
-static void read_pdb_remarks(benchmark::State& state) {
-  using namespace gemmi;
-  Structure st = read_pdb_file(path);
-  for (auto _ : state) {
-    st.meta = gemmi::Metadata();
-    read_metadata_from_remarks(st);
-    benchmark::DoNotOptimize(st.meta);
-  }
-}
-
 static void find_atom_image(benchmark::State& state) {
   using namespace gemmi;
   Structure st = read_pdb_file(path);
@@ -149,18 +139,7 @@ static void has_hydrogen3(benchmark::State& state) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 2) {
-    printf("Call it with path to a pdb file as an argument.\n");
-    return 1;
-  }
-  path = argv[argc-1];
-  {
-    gemmi::Structure st = gemmi::read_pdb_file(path);
-    printf("PDB file: %s with %zu atom sites.\n",
-           st.name.c_str(), count_atom_sites(st.models.at(0)));
-  }
   benchmark::RegisterBenchmark("read_pdb_file", read_pdb_file);
-  benchmark::RegisterBenchmark("read_pdb_remarks", read_pdb_remarks);
   benchmark::RegisterBenchmark("find_atom_image", find_atom_image);
   benchmark::RegisterBenchmark("neighbor_search_ctor", neighbor_search_ctor);
   benchmark::RegisterBenchmark("neighbor_search_find", neighbor_search_find);
@@ -172,7 +151,18 @@ int main(int argc, char** argv) {
   benchmark::RegisterBenchmark("has_hydrogen2", has_hydrogen2);
   benchmark::RegisterBenchmark("has_hydrogen3", has_hydrogen3);
   benchmark::Initialize(&argc, argv);
+  if (argc < 2) {
+    printf("Call it with path to a pdb file as an argument.\n");
+    return 1;
+  }
+  path = argv[argc-1];
+  {
+    gemmi::Structure st = gemmi::read_pdb_file(path);
+    printf("PDB file: %s with %zu atom sites.\n",
+           st.name.c_str(), count_atom_sites(st.models.at(0)));
+  }
   benchmark::RunSpecifiedBenchmarks();
+  benchmark::Shutdown();
 }
 
 /* Output from my desktop:
