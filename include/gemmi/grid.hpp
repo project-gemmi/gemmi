@@ -515,7 +515,7 @@ struct Grid : GridBase<T> {
   void copy_4x4x4(double& x, double& y, double& z,
                   std::array<std::array<std::array<T,4>,4>,4>& copy) const {
     this->check_not_empty();
-    auto prepare_indices = [this](double& r, int nt, int (&indices)[4]) {
+    auto prepare_indices = [](double& r, int nt, int (&indices)[4]) {
       int t;
       r = grid_modulo(r, nt, &t);
       indices[0] = (t != 0 ? t : nt) - 1;
