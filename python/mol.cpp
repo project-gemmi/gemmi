@@ -181,6 +181,8 @@ void add_mol(py::module& m) {
     .def("standardize_crystal_frame", &standardize_crystal_frame)
     .def("assign_serial_numbers", (void (*)(Structure&, bool)) &assign_serial_numbers,
          py::arg("numbered_ter")=false)
+    .def("rename_chain", &rename_chain)
+    .def("rename_residues", &rename_residues)
     // assembly.hpp
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, py::arg("how"), py::arg("merge_dist")=0.2)
