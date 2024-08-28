@@ -185,9 +185,13 @@ void add_symmetry(py::module& m) {
             h(i, j) = hkl[j];
         }
     }, py::arg("miller_array").noconvert())
-    // In Python, SpaceGroup always points to an entry in spacegroup_tables::main.
-    .def("__eq__", [](const SpaceGroup& a, const SpaceGroup& b) { return &a == &b; },
-         py::is_operator())
+    // Check equality by comparing Hall symbol strings.
+    // In Python, SpaceGroup always points to an entry in spacegroup_tables::main,
+    // so Hall symbols are consistent. The same settings with different H-M names
+    // (see space group 65 in the ITB list) are considered equal.
+    .def("__eq__", [](const SpaceGroup& a, const SpaceGroup& b) {
+        return strcmp(a.hall, b.hall) == 0;
+    }, py::is_operator())
     .def("__repr__", [](const SpaceGroup &self) {
         return "<gemmi.SpaceGroup(\"" + self.xhm() + "\")>";
     })

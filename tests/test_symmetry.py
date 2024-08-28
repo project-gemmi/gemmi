@@ -326,17 +326,21 @@ class TestSymmetry(unittest.TestCase):
         self.assertEqual(gemmi.SpaceGroup(4005).hm, 'I 1 2 1')
         self.assertIsNone(gemmi.find_spacegroup_by_name('abc'))
 
-    def test_equality(self):
-        # Tests if all functions return a reference, because __eq__ compares
-        # pointers to C++ objects.
+    def test_identity(self):
+        # Checks that all functions return a reference, not a copy
         p1 = gemmi.find_spacegroup_by_number(1)
-        self.assertEqual(gemmi.find_spacegroup_by_name('P1'), p1)
-        self.assertEqual(gemmi.SpaceGroup(1), p1)
-        self.assertEqual(gemmi.SpaceGroup('P 1'), p1)
+        self.assertTrue(gemmi.find_spacegroup_by_name('P1') is p1)
+        #self.assertTrue(gemmi.SpaceGroup(1) is p1)
+        #self.assertTrue(gemmi.SpaceGroup('P 1') is p1)
         gops = gemmi.GroupOps([gemmi.Op()])
-        self.assertEqual(gemmi.find_spacegroup_by_ops(gops), p1)
-        self.assertEqual(next(gemmi.spacegroup_table()), p1)
-        self.assertEqual(next(gemmi.spacegroup_table_itb()), p1)
+        self.assertTrue(gemmi.find_spacegroup_by_ops(gops) is p1)
+        self.assertTrue(next(gemmi.spacegroup_table()) is p1)
+        self.assertTrue(next(gemmi.spacegroup_table_itb()) is p1)
+
+        a = gemmi.SpaceGroup("C c c a:1")
+        b = gemmi.SpaceGroup("C c c b:1")
+        self.assertTrue(a == b)
+        self.assertTrue(a is not b)
 
     def test_groupops(self):
         gops = gemmi.GroupOps([gemmi.Op(t) for t in ['x, y, z',
