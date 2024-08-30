@@ -213,6 +213,7 @@ std::uint8_t select_acc_index(const std::vector<std::string>& acc, // Entity::si
 void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferred_acs) {
   using Key = std::pair<std::string, gemmi::SeqId>;
   std::map<Key, gemmi::SeqId> seqid_map;
+  std::map<std::string, uint16_t> chain_offsets;
   bool first_model = true;
   for (gemmi::Model& model: st.models) {
     for (gemmi::Chain& chain : model.chains) {
@@ -232,7 +233,13 @@ void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferre
           offset = std::max(offset, res.sifts_unp.num);
         }
       }
-      offset = (offset + 50) / 1000 * 1000;  // always >= 5000
+      offset = (offset + 1049) / 1000 * 1000;  // always >= 5000
+      auto result = chain_offsets.emplace(chain.name, offset);
+      if (!result.second) {
+        auto it = result.first;
+        offset = std::max(offset, it->second);
+        it->second = offset;
+      }
       for (gemmi::Residue& res : chain.residues)
         if (!res.sifts_unp.res || res.sifts_unp.acc_index != acc_index) {
           gemmi::SeqId orig_seqid = res.seqid;
