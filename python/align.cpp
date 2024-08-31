@@ -88,6 +88,10 @@ void add_alignment(py::module& m) {
   m.def("superpose_positions",
         [](std::vector<Position> pos1, std::vector<Position> pos2,
            const std::vector<double>& weight) {
+          if (pos1.size() != pos2.size())
+            fail("superpose_positions: pos1 and pos2 must have equal lengths");
+          if (!weight.empty() && weight.size() != pos1.size())
+            fail("superpose_positions: weights must be empty or of the same length as pos1/pos2");
           return superpose_positions(pos1.data(), pos2.data(), pos1.size(),
                                      weight.empty() ? nullptr : weight.data());
         }, py::arg("pos1"), py::arg("pos2"), py::arg("weight")=std::vector<int>{});
