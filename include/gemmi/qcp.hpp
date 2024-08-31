@@ -303,6 +303,11 @@ inline SupResult superpose_positions(const Position* pos1, const Position* pos2,
   result.center1 = qcp_calculate_center(pos1, len, weight);
   result.center2 = qcp_calculate_center(pos2, len, weight);
 
+  if (len == 0) {
+    result.rmsd = NAN;
+    return result;
+  }
+
   double wsum = 0.0;
   if (weight == nullptr)
     wsum = (double) len;

@@ -35,12 +35,13 @@ inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
   return gaps;
 }
 
-// pre: !!polymer
 inline AlignmentResult align_sequence_to_polymer(
                                      const std::vector<std::string>& full_seq,
                                      const ConstResidueSpan& polymer,
                                      PolymerType polymer_type,
                                      const AlignmentScoring* scoring=nullptr) {
+  if (!polymer)
+    return AlignmentResult();
   std::map<std::string, std::uint8_t> encoding;
   if (!scoring)
     scoring = AlignmentScoring::partial_model();
