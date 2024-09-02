@@ -48,6 +48,25 @@ std::vector<double> parse_blank_separated_numbers(const char* arg) {
   return results;
 }
 
+template<typename T, typename Func>
+bool parse_number_or_range_(const Func& strto, const char* start, T* value1, T* value2) {
+  char* endptr = nullptr;
+  *value1 = strto(start, &endptr);
+  *value2 = *value1;
+  if (endptr != start && *endptr == ':') {
+    start = endptr + 1;
+    *value2 = strto(start, &endptr);
+  }
+  return endptr != start && *endptr == '\0';
+}
+
+bool parse_number_or_range(const char* start, float* value1, float* value2) {
+  return parse_number_or_range_(&std::strtof, start, value1, value2);
+}
+bool parse_number_or_range(const char* start, double* value1, double* value2) {
+  return parse_number_or_range_(&std::strtod, start, value1, value2);
+}
+
 option::ArgStatus Arg::Required(const option::Option& option, bool msg) {
   if (option.arg != nullptr)
     return option::ARG_OK;

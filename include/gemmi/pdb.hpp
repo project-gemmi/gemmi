@@ -26,6 +26,16 @@ GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_re
 
 namespace impl {
 
+// Compare the first 4 letters of s, ignoring case, with uppercase record.
+// Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
+inline bool is_record_type(const char* s, const char* record) {
+  return ialpha4_id(s) == ialpha4_id(record);
+}
+// for record "TER": "TER ", TER\n, TER\r, TER\t match, TERE, TER1 don't
+inline bool is_record_type3(const char* s, const char* record) {
+  return (ialpha4_id(s) & ~0xf) == ialpha4_id(record);
+}
+
 struct GEMMI_DLL PdbReader {
   PdbReader(const PdbReadOptions& options_) : options(options_) {
     if (options.max_line_length <= 0 || options.max_line_length > 120)

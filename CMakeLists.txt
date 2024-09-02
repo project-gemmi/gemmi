@@ -328,7 +328,7 @@ add_executable(gemmi_prog
                prog/main.cpp prog/map.cpp prog/map2sf.cpp
                prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp
                prog/mondiff.cpp prog/monlib_opt.cpp prog/mtz.cpp prog/mtz2cif.cpp
-               prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp
+               prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp prog/set.cpp
                prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
                prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
                prog/xds2mtz.cpp

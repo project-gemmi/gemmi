@@ -35,6 +35,8 @@ extern const option::Descriptor CommonUsage[];
 
 std::vector<int> parse_comma_separated_ints(const char* arg);
 std::vector<double> parse_blank_separated_numbers(const char* arg);
+bool parse_number_or_range(const char* start, float* value1, float* value2);
+bool parse_number_or_range(const char* start, double* value1, double* value2);
 
 struct Arg: public option::Arg {
   static option::ArgStatus Required(const option::Option& option, bool msg);

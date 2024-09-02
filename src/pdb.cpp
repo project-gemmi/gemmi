@@ -52,16 +52,6 @@ template<int N> int read_base36(const char* p) {
   return std::strtol(zstr, nullptr, 36);
 }
 
-// Compare the first 4 letters of s, ignoring case, with uppercase record.
-// Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
-bool is_record_type(const char* s, const char* record) {
-  return ialpha4_id(s) == ialpha4_id(record);
-}
-// for record "TER": "TER ", TER\n, TER\r, TER\t match, TERE, TER1 don't
-bool is_record_type3(const char* s, const char* record) {
-  return (ialpha4_id(s) & ~0xf) == ialpha4_id(record);
-}
-
 // The standard charge format is 2+, but some files have +2.
 signed char read_charge(char digit, char sign) {
   if (sign == ' ' && digit == ' ')  // by far the most common case

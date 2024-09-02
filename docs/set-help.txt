@@ -1,0 +1,13 @@
+$ gemmi set -h
+Usage:
+ gemmi set [options] INPUT_FILE OUTPUT_FILE
+
+Modify atom attributes in a coordinate file.
+
+Options:
+  -h, --help     Print usage and exit.
+  -V, --version  Print version and exit.
+  -v, --verbose  Verbose output.
+  -B MIN[:MAX]   Set isotropic B-factors to a single value or clamp it to
+                 MIN:MAX
+  -O MIN[:MAX]   Set occupancy to a single value or clamp it to MIN:MAX

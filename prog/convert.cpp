@@ -319,18 +319,11 @@ void convert(gemmi::Structure& st,
     standardize_crystal_frame(st);
 
   if (options[Biso]) {
-    const char* start = options[Biso].arg;
-    char* endptr = nullptr;
-    float value1 = std::strtof(start, &endptr);
-    float value2 = value1;
-    if (endptr != start && *endptr == ':') {
-      start = endptr + 1;
-      value2 = std::strtof(start, &endptr);
-    }
-    if (endptr != start && *endptr == '\0')
-      assign_b_iso(st, value1, value2);
-    else
+    float value1, value2;
+    bool ok = parse_number_or_range(options[Biso].arg, &value1, &value2);
+    if (!ok)
       gemmi::fail("argument for -B should be a number or number:number");
+    assign_b_iso(st, value1, value2);
   }
 
   for (const option::Option* opt = options[Anisou]; opt; opt = opt->next()) {
