@@ -58,7 +58,12 @@ struct Arg: public option::Arg {
   static option::ArgStatus AsuChoice(const option::Option& option, bool msg) {
     return Arg::Choice(option, msg, {"ccp4", "tnt"});
   }
+  static option::ArgStatus NumberOrRange(const option::Option& option, bool msg);
 };
+
+inline const char* given_name(const option::Option& opt) {  // sans one dash
+  return opt.namelen > 1 ? opt.name + 1 : opt.desc->shortopt;
+}
 
 struct OptParser : option::Parser {
   const char* program_name;
@@ -80,8 +85,7 @@ struct OptParser : option::Parser {
   }
   void check_exclusive_group(const std::vector<int>& group);
   const char* given_name(int opt) const {  // sans one dash
-    return options[opt].namelen > 1 ? options[opt].name + 1
-                                    : options[opt].desc->shortopt;
+    return ::given_name(options[opt]);
   }
   // for Arg::YesNo
   bool is_yes(int opt, bool default_) const {

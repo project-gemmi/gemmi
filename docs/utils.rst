@@ -450,7 +450,7 @@ or bigger if necessary (when UniProt positions are that large).
 set
 ===
 
-Modifies atom positions, isotropic B-factors and/or occupancies
+Modifies atom positions, isotropic B-factors, and/or occupancies
 in a PDB or mmCIF file. It serves as a partial replacement for CCP4 PDBSET.
 
 Unlike most other gemmi tools, it doesn't parse the entire input file.

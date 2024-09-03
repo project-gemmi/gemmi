@@ -171,6 +171,16 @@ option::ArgStatus Arg::Float3(const option::Option& option, bool msg) {
   return option::ARG_ILLEGAL;
 }
 
+option::ArgStatus Arg::NumberOrRange(const option::Option& option, bool msg) {
+  double tmp;
+  if (option.arg && parse_number_or_range(option.arg, &tmp, &tmp))
+    return option::ARG_OK;
+  if (msg)
+    fprintf(stderr, "Option -%s requires a single number or a range denoted as number:number\n",
+                    given_name(option));
+  return option::ARG_ILLEGAL;
+}
+
 // we wrap fwrite because passing it directly may cause warning
 // "ignoring attributes on template argument" [-Wignored-attributes]
 static

@@ -4,6 +4,8 @@
 #include <cstring>    // for memchr, memcpy
 #include <algorithm>  // for min, max
 #include <exception>
+#include <functional> // for function
+#include <random>
 #include "gemmi/atof.hpp"      // for fast_from_chars
 //#include "gemmi/calculate.hpp" // for calculate_center_of_mass
 #include "gemmi/pdb.hpp"       // for impl::is_record_type
@@ -16,7 +18,7 @@
 
 namespace {
 
-enum OptionIndex { Bfactor=4, Occupancy, Noise, };
+enum OptionIndex { Bfactor=4, Occupancy, Noise, Shift };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -27,10 +29,14 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { Bfactor, 0, "B", "bfactor", Arg::Required,
-    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or clamp it to MIN:MAX" },
-  { Occupancy, 0, "O", "occ", Arg::Required,
-    "  -O MIN[:MAX]  \tSet occupancy to a single value or clamp it to MIN:MAX" },
+  { Bfactor, 0, "B", "bfactor", Arg::NumberOrRange,
+    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or clamp them to MIN:MAX." },
+  { Occupancy, 0, "O", "occ", Arg::NumberOrRange,
+    "  -O MIN[:MAX]  \tSet occupancies to a single value or clamp them to MIN:MAX." },
+  { Noise, 0, "", "noise", Arg::Float,
+    "  --noise M  \tAdd random shifts to x,y,z from a uniform distribution in (-M,M)." },
+  { Shift, 0, "", "shift", Arg::Float3,
+    "  --shift='DX DY DZ'  \tTranslate the model coordinates (units: Angstroms)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -41,12 +47,16 @@ struct Context {
   int target_column = -1;
   int current_column = -1;
   int loop_width = -1;
+  int nvalues = 0;
   std::string target_tag;
-  std::size_t copy_pos = 0;
+  std::size_t copied_until_byte = 0;
   const gemmi::CharArray* arr;
   std::vector<char> output;
+  std::function<void(double*)> func;
+  double values[3];
 
   void append(const char* a, const char* b) { output.insert(output.end(), a, b); }
+  int get_n() const { return current_column - target_column; }
 };
 
 template<typename Rule> struct Search : pegtl::nothing<Rule> {};
@@ -59,32 +69,88 @@ template<> struct Search<rules::str_loop> {
 };
 template<> struct Search<rules::loop_tag> {
   template<typename Input> static void apply(const Input& in, Context& ctx) {
-    if (in.string() == ctx.target_tag)
+    if (ctx.target_column >= 0 && ctx.get_n() < ctx.nvalues) {
+      std::string tag = ctx.target_tag;
+      tag.back() += ctx.get_n();  // 'x' -> 'y'/'z'
+      if (in.string() != tag)
+        gemmi::fail(tag + " not found where expected");
+    } else if (in.string() == ctx.target_tag) {
       ctx.target_column = ctx.current_column;
+    }
     ++ctx.current_column;
   }
 };
 template<> struct Search<rules::loop_value> {
   template<typename Input> static void apply(const Input& in, Context& ctx) {
-    if (ctx.target_column >= 0) {
-      if (ctx.loop_width < 0) {
-        ctx.loop_width = ctx.current_column;
+    if (ctx.target_column < 0)
+      return;
+    if (ctx.loop_width < 0) {  // first value in the loop
+      ctx.loop_width = ctx.current_column;
+      ctx.current_column = 0;
+    } else {
+      ++ctx.current_column;
+      if (ctx.current_column == ctx.loop_width)
         ctx.current_column = 0;
-      } else {
-        ++ctx.current_column;
-        if (ctx.current_column == ctx.loop_width)
-          ctx.current_column = 0;
+    }
+    int n = ctx.get_n();
+    if (n >= 0 && n < ctx.nvalues) {
+      auto pos = in.iterator().byte;
+      if (n == 0) {
+        ctx.append(ctx.arr->data() + ctx.copied_until_byte, ctx.arr->data() + pos);
+        ctx.copied_until_byte = pos;
       }
-      if (ctx.current_column == ctx.target_column) {
-        auto pos = in.iterator().byte;
-        ctx.append(ctx.arr->data() + ctx.copy_pos, ctx.arr->data() + pos);
-        std::string s = "{" + in.string() + "}"; // TODO
-        ctx.append(s.data(), s.data() + s.size());
-        ctx.copy_pos = pos + in.size();
+      auto result = gemmi::fast_from_chars(in.begin(), in.end(), ctx.values[n]);
+      if (result.ec != std::errc() && result.ec != std::errc::result_out_of_range)
+        gemmi::fail("line ", std::to_string(in.iterator().line),
+                    ": not a number:" + in.string());
+      if (n + 1 == ctx.nvalues) {
+        ctx.func(ctx.values);
+        size_t old_width = in.size() + pos - ctx.copied_until_byte;
+        size_t new_width = n;
+        char tmp[16] = {};
+        tmp[0] = ' ';
+        for (int i = 0; i <= n; ++i) {
+          auto len = gemmi::snprintf_z(tmp+1, 15, "%.3f", ctx.values[i]);
+          ctx.append(tmp + (i == 0 ? 1 : 0), tmp + 1 + len);
+          new_width += len;
+        }
+        if (old_width > new_width)
+          ctx.output.insert(ctx.output.end(), old_width - new_width, ' ');
       }
+      ctx.copied_until_byte = pos + in.size();
     }
   }
 };
+
+// modify occupancy or tempFactor, Real(6.2)
+template<typename Func> void modify_line_6_2(char* line, int column, Func& func) {
+  double d = 0.;
+  char* start = line + column - 1;
+  auto result = gemmi::fast_from_chars(start, start + 6, d);
+  if (result.ec != std::errc() && result.ec != std::errc::result_out_of_range)
+    gemmi::fail("failed to parse a number in line:\n", line);
+  func(&d);
+  char tmp[7] = {};
+  gemmi::snprintf_z(tmp, 7, "%6.2f", d);
+  std::memcpy(start, tmp, 6);
+}
+
+template<typename Func> void modify_line_xyz(char* line, int column, Func& func) {
+  double xyz[3];
+  char* start = line + column - 1;
+  for (int i = 0; i < 3; ++i, start += 8) {
+    auto result = gemmi::fast_from_chars(start, start + 8, xyz[i]);
+    if (result.ec != std::errc() && result.ec != std::errc::result_out_of_range)
+      gemmi::fail("failed to parse a number in line:\n", line);
+  }
+  func(xyz);
+  start -= 3 * 8;
+  char tmp[9] = {};
+  for (int i = 0; i < 3; ++i, start += 8) {
+    gemmi::snprintf_z(tmp, 9, "%8.3f", xyz[i]);
+    std::memcpy(start, tmp, 8);
+  }
+}
 
 struct EditBuffer {
   gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
@@ -92,33 +158,15 @@ struct EditBuffer {
   gemmi::CharArray arr;
 
   template<typename Func>
-  void modify_values(std::pair<int,int> pdb_columns, const std::string& tag, const Func& func) {
-    if (format == gemmi::CoorFormat::Pdb)
-      modify_values_in_pdb(pdb_columns, func);
-    else
-      modify_values_in_mmcif(tag, func);
-  }
-
-  template<typename Func>
-  void modify_values_in_pdb(std::pair<int,int> cols, const Func& func) {
+  void modify_pdb(int min_length, const Func& modify_line) {
     char* line = arr.data();
     const char* buf_end = arr.data() + arr.size();
     for (;;) {
       char* eol = (char*) std::memchr(line, '\n', size_t(buf_end - line));
       auto len = (eol ? eol : buf_end) - line;
-      if (len >= cols.second &&
-          (gemmi::impl::is_record_type(line, "ATOM") ||
-           gemmi::impl::is_record_type(line, "HETATM"))) {
-        double d = 0.;
-        char* start = line + cols.first - 1;
-        auto result = gemmi::fast_from_chars(start, line + cols.second, d);
-        if (result.ec != std::errc())
-          gemmi::fail("failed to parse a number in line:\n", line);
-        d = func(d);
-        char tmp[7] = {};
-        gemmi::snprintf_z(tmp, 7, "%6.2f", d);
-        std::memcpy(start, tmp, 6);
-      }
+      if (len >= min_length && (gemmi::impl::is_record_type(line, "ATOM") ||
+                                gemmi::impl::is_record_type(line, "HETATM")))
+        modify_line(line);
       if (!eol)
         break;
       line = eol + 1;
@@ -126,22 +174,54 @@ struct EditBuffer {
   }
 
   template<typename Func>
-  void modify_values_in_mmcif(const std::string& tag, const Func& func) {
-    (void) func;  // TODO
+  void modify_mmcif(int nvalues, const std::string& tag, const Func& func) {
     Context ctx;
     ctx.target_tag = tag;
+    ctx.nvalues = nvalues;
     ctx.arr = &arr;
     ctx.output.reserve(arr.size() * 11 / 10);
+    ctx.func = func;
     pegtl::memory_input<> in(arr.data(), arr.size(), path);
+    // parse and copy (Search<>::apply() does copying) modified input to ctx.output
     pegtl::parse<rules::file, Search, gemmi::cif::Errors>(in, ctx);
-    ctx.append(arr.data() + ctx.copy_pos, arr.data() + arr.size());
+    // copy the rest of input, unchanged, to ctx.output
+    ctx.append(arr.data() + ctx.copied_until_byte, arr.data() + arr.size());
+    // copy back: ctx.output to arr
     arr.resize(ctx.output.size());
     std::memcpy(arr.data(), ctx.output.data(), ctx.output.size());
     ctx.output.clear();
   }
+
+  template<typename Func> void modify_xyz(Func& func) {
+    if (format == gemmi::CoorFormat::Pdb)
+      modify_pdb(54, [&](char* line) { modify_line_xyz(line, 31, func); });
+    else
+      modify_mmcif(3, "_atom_site.Cartn_x", func);
+  }
 };
 
 } // anonymous namespace
+
+struct Clamp {
+  double xmin, xmax;
+  void operator()(double* x) const {
+    if (xmin == xmax)
+      *x = xmin;
+    else
+      *x = std::min(std::max(*x, xmin), xmax);
+  }
+};
+
+struct NoiseAdder {
+  NoiseAdder(std::random_device::result_type seed, double m) : e1(seed), dist(-m, m) {}
+  void operator()(double* xyz) {
+    for (int i = 0; i < 3; ++i)
+      xyz[i] += dist(e1);
+  }
+private:
+  std::default_random_engine e1;
+  std::uniform_real_distribution<double> dist;
+};
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
@@ -156,21 +236,35 @@ int GEMMI_MAIN(int argc, char **argv) {
     eb.format = gemmi::coor_format_from_content(eb.arr.data(), eb.arr.data() + eb.arr.size());
     if (p.options[Bfactor]) {
       double b_min, b_max;
-      bool ok = parse_number_or_range(p.options[Bfactor].arg, &b_min, &b_max);
-      if (!ok)
-        gemmi::fail("argument for -B should be a number or number:number");
-      eb.modify_values({61, 66}, "_atom_site.B_iso_or_equiv", [b_min, b_max](double x) {
-        return std::min(std::max(x, b_min), b_max);
-      });
+      parse_number_or_range(p.options[Bfactor].arg, &b_min, &b_max);
+      Clamp clamp{b_min, b_max};
+      if (eb.format == gemmi::CoorFormat::Pdb)
+        eb.modify_pdb(66, [&](char* line) { modify_line_6_2(line, 61, clamp); });
+      else
+        eb.modify_mmcif(1, "_atom_site.B_iso_or_equiv", clamp);
     }
     if (p.options[Occupancy]) {
       double occ_min, occ_max;
-      bool ok = parse_number_or_range(p.options[Occupancy].arg, &occ_min, &occ_max);
-      if (!ok)
-        gemmi::fail("argument for -O should be a number or number:number");
-      eb.modify_values({55, 60}, "_atom_site.occupancy", [occ_min, occ_max](double x) {
-        return std::min(std::max(x, occ_min), occ_max);
-      });
+      parse_number_or_range(p.options[Occupancy].arg, &occ_min, &occ_max);
+      Clamp clamp{occ_min, occ_max};
+      if (eb.format == gemmi::CoorFormat::Pdb)
+        eb.modify_pdb(60, [&](char* line) { modify_line_6_2(line, 55, clamp); });
+      else
+        eb.modify_mmcif(1, "_atom_site.occupancy", clamp);
+    }
+    if (p.options[Noise]) {
+      double m = std::atof(p.options[Noise].arg);
+      std::random_device r;
+      NoiseAdder func(r(), m);
+      eb.modify_xyz(func);
+    }
+    if (p.options[Shift]) {
+      auto v = parse_blank_separated_numbers(p.options[Shift].arg);
+      auto func = [v](double *xyz) {
+        for (int i = 0; i < 3; ++i)
+          xyz[i] += v[i];
+      };
+      eb.modify_xyz(func);
     }
     gemmi::fileptr_t f = gemmi::file_open(output, "wb");
     if (std::fwrite(eb.arr.data(), eb.arr.size(), 1, f.get()) != 1) {
