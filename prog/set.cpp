@@ -11,6 +11,7 @@
 #include "gemmi/pdb.hpp"       // for impl::is_record_type
 #include "gemmi/read_cif.hpp"  // for read_into_buffer_gz
 #include <gemmi/mmread.hpp>    // for coor_format_from_content
+#include <gemmi/select.hpp>    // for Selection
 #include <gemmi/sprintf.hpp>   // for snprintf_z
 
 #define GEMMI_PROG set
@@ -18,7 +19,7 @@
 
 namespace {
 
-enum OptionIndex { Bfactor=4, Occupancy, Noise, Shift };
+enum OptionIndex { Bfactor=4, Occupancy, Noise, Shift, Select };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -38,6 +39,8 @@ const option::Descriptor Usage[] = {
     "  --noise M  \tAdd random shifts, uniform in (-M,M), to x,y,z." },
   { Shift, 0, "", "shift", Arg::Float3,
     "  --shift='DX DY DZ' \tTranslate the model coordinates (units: Angstroms)." },
+  { Select, 0, "", "select", Arg::Required,
+    "  --select=SEL \tApply transformations only to selected atoms (MMDB syntax)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -49,8 +52,10 @@ struct Context {
   int current_column = -1;
   int loop_width = -1;
   int nvalues = 0;
+  size_t atom_index = 0;
   std::string target_tag;
   std::size_t copied_until_byte = 0;
+  std::vector<bool>* picked_ptr = nullptr;
   const gemmi::CharArray* arr;
   std::vector<char> output;
   std::function<void(double*)> func;
@@ -88,13 +93,18 @@ template<> struct Search<rules::loop_value> {
     if (ctx.loop_width < 0) {  // first value in the loop
       ctx.loop_width = ctx.current_column;
       ctx.current_column = 0;
+      ctx.atom_index = 0;
     } else {
       ++ctx.current_column;
-      if (ctx.current_column == ctx.loop_width)
+      if (ctx.current_column == ctx.loop_width) {
         ctx.current_column = 0;
+        ctx.atom_index++;
+      }
     }
     int n = ctx.get_n();
     if (n >= 0 && n < ctx.nvalues) {
+      if (ctx.picked_ptr && !ctx.picked_ptr->at(ctx.atom_index))
+        return;
       auto pos = in.iterator().byte;
       if (n == 0) {
         ctx.append(ctx.arr->data() + ctx.copied_until_byte, ctx.arr->data() + pos);
@@ -157,17 +167,22 @@ struct EditBuffer {
   gemmi::CoorFormat format = gemmi::CoorFormat::Unknown;
   std::string path;  // for error messages
   gemmi::CharArray arr;
+  std::vector<bool> picked;
 
   template<typename Func>
   void modify_pdb(int min_length, const Func& modify_line) {
     char* line = arr.data();
     const char* buf_end = arr.data() + arr.size();
+    size_t line_counter = 0;
     for (;;) {
       char* eol = (char*) std::memchr(line, '\n', size_t(buf_end - line));
       auto len = (eol ? eol : buf_end) - line;
-      if (len >= min_length && (gemmi::impl::is_record_type(line, "ATOM") ||
-                                gemmi::impl::is_record_type(line, "HETATM")))
-        modify_line(line);
+      if (len > 4 && (gemmi::impl::is_record_type(line, "ATOM") ||
+                      gemmi::impl::is_record_type(line, "HETATM"))) {
+        if (picked.size() <= line_counter || picked[line_counter++])
+          if (len >= min_length)
+            modify_line(line);
+      }
       if (!eol)
         break;
       line = eol + 1;
@@ -182,6 +197,8 @@ struct EditBuffer {
     ctx.arr = &arr;
     ctx.output.reserve(arr.size() * 11 / 10);
     ctx.func = func;
+    if (!picked.empty())
+      ctx.picked_ptr = &picked;
     pegtl::memory_input<> in(arr.data(), arr.size(), path);
     // parse and copy (Search<>::apply() does copying) modified input to ctx.output
     pegtl::parse<rules::file, Search, gemmi::cif::Errors>(in, ctx);
@@ -235,6 +252,26 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     eb.arr = gemmi::read_into_buffer_gz(eb.path);
     eb.format = gemmi::coor_format_from_content(eb.arr.data(), eb.arr.data() + eb.arr.size());
+    if (p.options[Select]) {
+      gemmi::Selection sel(p.options[Select].arg);
+      gemmi::Structure st = gemmi::read_structure_from_memory(eb.arr.data(), eb.arr.size(),
+                                                              eb.path, eb.format);
+      // Here we assume that the order of atoms in the structure is the same
+      // as the order of lines in the file. This is true unless the file has
+      // atoms from the same residue in non-consecutive order, or atoms from the
+      // same model are non-consecutive (not possible in the PDB format).
+      for (const gemmi::Model& model : st.models) {
+        bool model_matches = sel.matches(model);
+        for (const gemmi::Chain& chain : model.chains) {
+          bool chain_matches = model_matches && sel.matches(chain);
+          for (const gemmi::Residue& res : chain.residues) {
+            bool res_matches = chain_matches && sel.matches(res);
+            for (const gemmi::Atom& atom : res.atoms)
+              eb.picked.push_back(res_matches && sel.matches(atom));
+          }
+        }
+      }
+    }
     if (p.options[Bfactor]) {
       double b_min, b_max;
       parse_number_or_range(p.options[Bfactor].arg, &b_min, &b_max);

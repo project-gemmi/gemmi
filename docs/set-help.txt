@@ -13,3 +13,4 @@ Options:
   -O MIN[:MAX]       Set occupancies to a single value or clamp them to MIN:MAX.
   --noise M          Add random shifts, uniform in (-M,M), to x,y,z.
   --shift='DX DY DZ' Translate the model coordinates (units: Angstroms).
+  --select=SEL       Apply transformations only to selected atoms (MMDB syntax).
