@@ -30,13 +30,14 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
   CommonUsage[Verbose],
   { Bfactor, 0, "B", "bfactor", Arg::NumberOrRange,
-    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or clamp them to MIN:MAX." },
+    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value MIN"
+    "\n\tor clamp them to MIN:MAX." },
   { Occupancy, 0, "O", "occ", Arg::NumberOrRange,
     "  -O MIN[:MAX]  \tSet occupancies to a single value or clamp them to MIN:MAX." },
   { Noise, 0, "", "noise", Arg::Float,
-    "  --noise M  \tAdd random shifts to x,y,z from a uniform distribution in (-M,M)." },
+    "  --noise M  \tAdd random shifts, uniform in (-M,M), to x,y,z." },
   { Shift, 0, "", "shift", Arg::Float3,
-    "  --shift='DX DY DZ'  \tTranslate the model coordinates (units: Angstroms)." },
+    "  --shift='DX DY DZ' \tTranslate the model coordinates (units: Angstroms)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
