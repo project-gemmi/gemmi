@@ -413,7 +413,7 @@ add_custom_target(print-version
   COMMENT "gemmi --version"
 )
 
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION>)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C \"$<CONFIG>\")
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
