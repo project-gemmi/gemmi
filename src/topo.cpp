@@ -606,6 +606,8 @@ void Topo::apply_all_restraints(const MonLib& monlib) {
       while (++it != ri.chemcomps.end()) {
         auto rules = apply_restraints(it->cc->rt, *ri.res, nullptr, Asu::Same,
                                       it->altloc, '\0', /*require_alt=*/true);
+        // calling reserve avoids bogus GCC warning -Wstringop-overflow
+        ri.monomer_rules.reserve(ri.monomer_rules.size() + rules.size());
         vector_move_extend(ri.monomer_rules, std::move(rules));
       }
     }
