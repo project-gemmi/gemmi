@@ -808,15 +808,15 @@ nauty
 ~~~~~
 
 The median number of automorphisms of molecules in the CCD is only 4.
-However, the highest number of isomorphisms as of 2023 (ignoring hydrogens,
+However, the highest number of automorphisms as of 2023 (ignoring hydrogens,
 bond orders, chiralities) is a staggering 6879707136
 for `T8W <https://www.rcsb.org/ligand/T8W>`_.
 This value can be calculated almost instantly with nauty, which
 returns a set of *generators* of the automorphism group
 and the sets of equivalent vertices called *orbits*,
 rather than listing all automorphisms.
-Nauty is a software for "determining the automorphism group
-of a vertex-coloured graph, and for testing graphs for isomorphism".
+Nauty is software for "determining the automorphism group
+of a vertex-colored graph, and for testing graphs for isomorphism".
 We can use it in Python through the pynauty module.
 
 Here we set up a `pynauty <https://github.com/pdobsan/pynauty>`_
@@ -849,12 +849,13 @@ without knowing which color corresponds to which element.
 We sorted the elements to ensure that two graphs with the same atoms
 have the same coloring. However, SO3 and PO3 graphs would also have
 the same coloring and would be reported as isomorphic.
-So it is necessary to check if the elements in molecules are the same.
+Thus, it is necessary to check if the elements in the molecules are the same.
 
 You may also want to encode other properties in the graph, such as bond orders,
 atom charges and chiralities, as described in
 `this paper <https://jcheminf.biomedcentral.com/articles/10.1186/s13321-023-00692-1>`_.
-Here, we only present a simplified, minimal example.
+Here, we present a simplified, minimal example (and a contrived one -- we don't have
+a real need to use nauty).
 Now, to finish this example, let's get the order of the isomorphism group
 (which should be the same as in the NetworkX example, i.e. 6):
 
