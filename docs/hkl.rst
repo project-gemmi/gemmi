@@ -957,7 +957,7 @@ into a single DataFrame:
 
 .. literalinclude:: ../examples/merge_mtz_mmcif.py
   :language: python
-  :lines: 4-27
+  :lines: 4-26
 
 We want to compare the FP column from the MTZ file and the F_meas_au column
 from mmCIF. We start with plotting one against the other:
@@ -968,7 +968,7 @@ from mmCIF. We start with plotting one against the other:
 
 .. literalinclude:: ../examples/merge_mtz_mmcif.py
   :language: python
-  :lines: 30-37
+  :lines: 29-36
 
 The numbers are similar, but not exactly equal.
 Let us check how the difference between the two values depends on the
@@ -982,7 +982,7 @@ so we can use it for coloring.
 
 .. literalinclude:: ../examples/merge_mtz_mmcif.py
   :language: python
-  :lines: 40-
+  :lines: 39-
 
 Apparently, some scaling has been applied. The scaling is anisotropic
 and is the strongest along the *k* axis.

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # IF YOU ADD OR REMOVE LINES, ADJUST :lines: in docs/hkl.rst
 
-import numpy
 import pandas
 from matplotlib import pyplot
 import gemmi

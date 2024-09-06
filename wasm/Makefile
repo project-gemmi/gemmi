@@ -28,7 +28,7 @@ debug: FLAGS = -g -O0 $(COMMON_FLAGS)
 debug: LINK_FLAGS += -s SAFE_HEAP=1 --embind-emit-tsd gemmi.d.ts
 debug: gemmi.js
 
-GEMMI_OBJS = mmcif.o polyheur.o resinfo.o sprintf.o json.o
+GEMMI_OBJS = mmcif.o pdb.o polyheur.o resinfo.o sprintf.o json.o
 
 BINDING_OBJS = gemmi.o cell.o mol.o mtz_fft.o
 

@@ -12,6 +12,7 @@
 #include <algorithm>  // for min
 #include <vector>
 #include "fail.hpp"   // for fail
+#include "math.hpp"   // for sq
 
 //#define GEMMI_DEBUG_LEVMAR
 
