@@ -5,6 +5,6 @@
 #ifndef GEMMI_VERSION_HPP_
 #define GEMMI_VERSION_HPP_
 
-#define GEMMI_VERSION "0.6.7-dev"
+#define GEMMI_VERSION "0.6.7"
 
 #endif

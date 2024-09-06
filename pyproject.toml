@@ -1,6 +1,6 @@
 [build-system]
-requires = ["scikit-build-core~=0.9.0", "pybind11>=2.6.2",
-            "pybind11-stubgen~=2.4.2", "numpy"]
+requires = ["scikit-build-core~=0.10.5", "pybind11>=2.6.2",
+            "pybind11-stubgen~=2.5.1", "numpy"]
 build-backend = "scikit_build_core.build"
 
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
@@ -62,7 +62,7 @@ sdist.include = [
   "!*.pyc"
 ]
 cmake.build-type = "Release"
-cmake.verbose = true
+build.verbose = true
 [tool.scikit-build.cmake.define]
 USE_PYTHON = "ON"
 GENERATE_STUBS = "ON"
