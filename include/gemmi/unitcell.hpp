@@ -478,7 +478,7 @@ struct UnitCell {
   }
 
   NearestImage find_nearest_pbc_image(const Fractional& fref, Fractional fpos,
-                                      int image_idx) const {
+                                      int image_idx=0) const {
     NearestImage sym_image;
     sym_image.dist_sq = INFINITY;
     sym_image.sym_idx = image_idx;
@@ -487,7 +487,7 @@ struct UnitCell {
     return sym_image;
   }
   NearestImage find_nearest_pbc_image(const Position& ref, const Position& pos,
-                                      int image_idx) const {
+                                      int image_idx=0) const {
     return find_nearest_pbc_image(fractionalize(ref), fractionalize(pos), image_idx);
   }
 

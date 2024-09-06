@@ -51,6 +51,9 @@ void add_search(py::module& m) {
     .def("add_atom", &NeighborSearch::add_atom,
          py::arg("atom"), py::arg("n_ch"), py::arg("n_res"), py::arg("n_atom"),
          "Lower-level alternative to populate()")
+    .def("add_site", &NeighborSearch::add_site,
+         py::arg("site"), py::arg("n"),
+         "Lower-level alternative to populate() for SmallStructure")
     .def("find_atoms", &NeighborSearch::find_atoms,
          py::arg("pos"), py::arg("alt")='\0',
          py::kw_only(), py::arg("min_dist")=0, py::arg("radius")=0,

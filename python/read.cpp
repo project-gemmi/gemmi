@@ -111,6 +111,7 @@ void add_small(py::module& m) {
     .def_readwrite("disorder_group", &SmallStructure::Site::disorder_group)
     .def_readwrite("aniso", &SmallStructure::Site::aniso)
     .def("orth", &SmallStructure::Site::orth)
+    .def("clone", [](const SmallStructure::Site& self) { return new SmallStructure::Site(self); })
     .def("__repr__", [](const SmallStructure::Site& self) {
         return "<gemmi.SmallStructure.Site " + self.label + ">";
     });
@@ -136,7 +137,7 @@ void add_small(py::module& m) {
     .def_readwrite("spacegroup_hall", &SmallStructure::spacegroup_hall)
     .def_readwrite("spacegroup_number", &SmallStructure::spacegroup_number)
     .def_readwrite("symops", &SmallStructure::symops)
-    .def_readonly("sites", &SmallStructure::sites)
+    .def_readwrite("sites", &SmallStructure::sites)
     .def_readonly("atom_types", &SmallStructure::atom_types)
     .def_readwrite("wavelength", &SmallStructure::wavelength)
     .def("add_site", [](SmallStructure& self, const SmallStructure::Site& site) {

@@ -231,6 +231,7 @@ void add_unitcell(py::module& m) {
   add_box<Fractional>(m, "FractionalBox");
 
   py::class_<FTransform, Transform>(m, "FTransform")
+    .def(py::init<>())
     .def("apply", &FTransform::apply);
 
 
@@ -299,11 +300,11 @@ void add_unitcell(py::module& m) {
     .def("find_nearest_pbc_image",
          (NearestImage (UnitCell::*)(const Fractional&, Fractional, int) const)
          &UnitCell::find_nearest_pbc_image,
-         py::arg("fref"), py::arg("fpos"), py::arg("image_idx"))
+         py::arg("fref"), py::arg("fpos"), py::arg("image_idx")=0)
     .def("find_nearest_pbc_image",
          (NearestImage (UnitCell::*)(const Position&, const Position&, int) const)
          &UnitCell::find_nearest_pbc_image,
-         py::arg("ref"), py::arg("pos"), py::arg("image_idx"))
+         py::arg("ref"), py::arg("pos"), py::arg("image_idx")=0)
     .def("find_nearest_pbc_position", &UnitCell::find_nearest_pbc_position,
          py::arg("ref"), py::arg("pos"), py::arg("image_idx"), py::arg("inverse")=false)
     .def("is_special_position",
