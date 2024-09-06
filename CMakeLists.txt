@@ -124,7 +124,7 @@ if (FETCH_ZLIB_NG)
     cmake_policy(SET CMP0169 OLD)
   endif()
   FetchContent_Declare(zlib-ng GIT_REPOSITORY https://github.com/zlib-ng/zlib-ng.git
-                               GIT_TAG        2.1.x
+                               GIT_TAG        2.2.x
                                GIT_SHALLOW TRUE)
   FetchContent_GetProperties(zlib-ng)
   if (NOT zlib-ng_POPULATED)
