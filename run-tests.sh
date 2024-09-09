@@ -14,7 +14,7 @@ cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 if [ -z "${PYTHON-}" ]; then
-    PYTHON=`grep ^PYBIND11_PYTHON_EXECUTABLE_LAST: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+    PYTHON=`grep ^_Python_EXECUTABLE: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 fi
 
 # Build all, except when we called with an option to avoid full compilation:
@@ -69,11 +69,6 @@ fi
 if [ $1 = x -o $1 = a ]; then
     echo 'Run codespell'
     codespell include src prog python fortran tests examples docs wasm tools ||:
-
-    echo 'Run pybind11-stubgen'
-    pybind11-stubgen --dry-run --exit-code gemmi \
-        --enum-class-locations='Ignore:gemmi.ContactSearch' \
-        --enum-class-locations='.+:gemmi'
 
     echo 'Checking serialize.hpp...'
     $PYTHON tools/check_serialize.py

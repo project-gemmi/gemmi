@@ -225,9 +225,6 @@ element found in mmCIF:
 
 More complex examples are shown in the :ref:`cif_examples` section.
 
-Internally, Python bindings use
-`pybind11 <https://github.com/pybind/pybind11>`_.
-
 
 DOM and SAX
 ===========

@@ -260,7 +260,7 @@ itself, but are used in command-line utilities, python bindings or tests:
 
 Not distributed with Gemmi:
 
-* `pybind11 <https://github.com/pybind/pybind11>`_ -- used for creating
+* `nanobind <https://github.com/wjakob/nanobind>`_ -- used for creating
   Python bindings. License: 3-clause BSD.
 * `zlib-ng <https://github.com/zlib-ng/zlib-ng>`_ -- optional, can be used
   instead of zlib for faster reading of gzipped files.

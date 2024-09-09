@@ -67,9 +67,8 @@ endif()
 set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
 
 # Unless it's explicitly specifed, we want LTO for non-debug builds only.
-# pybind11Common.cmake has its own logic to set LTO options.
-# Having different options in pybind11_add_module than for gemmi_cpp
-# may cause problems -- we may need to handle it at some point.
+# TODO: check that it's compatible with nanobind_add_module, which has
+# its own logic of setting LTO options.
 if (NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
   include(CheckIPOSupported)
   check_ipo_supported(RESULT is_ipo_supported OUTPUT ipo_error)

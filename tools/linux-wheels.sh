@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# NOTE: this script is not used anymore. We use cibuildwheel now.
+#
 # based on
 # https://github.com/pypa/python-manylinux-demo/blob/master/travis/build-wheels.sh
 set -e -u -x
@@ -18,7 +21,6 @@ function repair_wheel {
 # Compile wheels
 #for PYBIN in /opt/python/cp38*/bin; do
 for PYBIN in /opt/python/*/bin; do
-    "${PYBIN}/pip" install pybind11
     "${PYBIN}/pip" wheel -v /io/ --no-deps -w wheelhouse/
 done
 
