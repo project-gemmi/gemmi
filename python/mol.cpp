@@ -6,6 +6,7 @@
 #include "gemmi/polyheur.hpp"   // for one_letter_code, trim_to_alanine
 #include "gemmi/assembly.hpp"   // for expand_ncs, HowToNameCopiedChain
 #include "gemmi/select.hpp"     // for Selection
+#include "gemmi/sprintf.hpp"    // for snprintf_z
 
 #include "common.h"
 #include <pybind11/stl.h>
@@ -518,10 +519,9 @@ void add_mol(py::module& m) {
             r += '.';
             r += self.altloc;
         }
-        using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[128];
-        snprintf(buf, 128, " at (%.1f, %.1f, %.1f)>",
-                 self.pos.x, self.pos.y, self.pos.z);
+        snprintf_z(buf, 128, " at (%.1f, %.1f, %.1f)>",
+                   self.pos.x, self.pos.y, self.pos.z);
         return r + buf;
     });
 
