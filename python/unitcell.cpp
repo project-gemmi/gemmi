@@ -4,8 +4,8 @@
 #include "tostr.hpp"  // tostr
 #include "gemmi/cellred.hpp"  // GruberVector
 #include "gemmi/twin.hpp"  // find_lattice_2fold_ops
+#include "gemmi/sprintf.hpp"  // snprintf_z
 
-#include <cstdio>  // for snprintf
 #include <array>
 #include "common.h"
 #include "array.h"  // py_array_from_vector, miller_function
@@ -19,10 +19,9 @@
 using namespace gemmi;
 
 static std::string triple(double x, double y, double z) {
-  using namespace std;  // VS2015/17 doesn't like std::snprintf
   char buf[128];
   auto r = [](double d) { return std::fabs(d) < 1e-15 ? 0 : d; };
-  snprintf(buf, 128, "%g, %g, %g", r(x), r(y), r(z));
+  snprintf_z(buf, 128, "%g, %g, %g", r(x), r(y), r(z));
   return std::string(buf);
 }
 
@@ -238,10 +237,9 @@ void add_unitcell(nb::module_& m) {
         return nb::make_tuple(self.pbc_shift[0], self.pbc_shift[1], self.pbc_shift[2]);
     })
     .def("__repr__", [](const NearestImage& self) {
-        using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[64];
-        snprintf(buf, 64, "<gemmi.NearestImage %s in distance %.2f>",
-                 self.symmetry_code(true).c_str(), self.dist());
+        snprintf_z(buf, 64, "<gemmi.NearestImage %s in distance %.2f>",
+                   self.symmetry_code(true).c_str(), self.dist());
         return std::string(buf);
     });
 
@@ -362,10 +360,9 @@ void add_unitcell(nb::module_& m) {
          nb::arg("epsilon")=1e-9, nb::arg("iteration_limit")=100)
     .def("is_niggli", &GruberVector::is_niggli, nb::arg("epsilon")=1e-9)
     .def("__repr__", [](const GruberVector& self) {
-        using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[256];
-        snprintf(buf, 256, "<gemmi.GruberVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
-                 self.A, self.B, self.C, self.xi, self.eta, self.zeta);
+        snprintf_z(buf, 256, "<gemmi.GruberVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
+                   self.A, self.B, self.C, self.xi, self.eta, self.zeta);
         return std::string(buf);
     });
 
@@ -388,10 +385,9 @@ void add_unitcell(nb::module_& m) {
          nb::arg("epsilon")=1e-9, nb::arg("iteration_limit")=100)
     .def("sort", &SellingVector::sort, nb::arg("epsilon")=1e-9)
     .def("__repr__", [](const SellingVector& self) {
-        using namespace std;  // VS2015/17 doesn't like std::snprintf
         char buf[256];
-        snprintf(buf, 256, "<gemmi.SellingVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
-                 self.s[0], self.s[1], self.s[2], self.s[3], self.s[4], self.s[5]);
+        snprintf_z(buf, 256, "<gemmi.SellingVector((%.2f, %.2f, %.2f, %.2f, %.2f, %.2f))>",
+                   self.s[0], self.s[1], self.s[2], self.s[3], self.s[4], self.s[5]);
         return std::string(buf);
     });
 
