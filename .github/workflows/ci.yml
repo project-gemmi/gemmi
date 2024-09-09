@@ -122,13 +122,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        git clone --depth=1 https://github.com/pybind/pybind11.git
-        #cd pybind11
-        #cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYBIND11_TEST=OFF
-        #make
-        #sudo make install
+        git clone --depth=1 https://github.com/wjakob/nanobind.git
     - name: build and test
       run: |
         g++ --version
@@ -158,9 +154,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        python3 -m pip install pybind11
+        python3 -m pip install nanobind
     - name: build and test
       run: |
         g++ --version
@@ -193,9 +189,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - run: sudo apt-get install clang-6.0 libz-dev python3-pip python3-numpy
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        sudo /usr/bin/python3 -m pip install "pybind11[global]" build
+        sudo /usr/bin/python3 -m pip install nanobind build
     - name: build and test
       run: |
         $CXX --version
@@ -224,11 +220,11 @@ jobs:
         python3.8 --version
         cmake --version
         type python3.8
-    - name: install pybind11
+    - name: install nanobind
       run: |
-        git clone --branch stable --depth=1 https://github.com/pybind/pybind11.git
-        cd pybind11
-        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.8 -DPYBIND11_TEST=OFF
+        git clone --depth=1 https://github.com/wjakob/nanobind.git
+        cd nanobind
+        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.8 -DNB_TEST=OFF
         make
         make install
     - name: build and test
