@@ -31,7 +31,9 @@ auto py_array2d_from_vector(std::vector<std::array<T,N>>&& original_vec) {
 // to be used with rv_policy::reference_internal
 template<typename T, typename S>
 auto vector_member_array(std::vector<S>& vec, T S::*ptr) {
-  int64_t stride = static_cast<int64_t>(sizeof(S) / sizeof(T));
+  constexpr int64_t stride = static_cast<int64_t>(sizeof(S) / sizeof(T));
+  static_assert(stride * sizeof(T) == sizeof(S),
+                "vector_member_array(): problem with stride");
   return nb::ndarray<nb::numpy, T, nb::shape<-1>>(
           &(vec.data()->*ptr),
           {vec.size()},
