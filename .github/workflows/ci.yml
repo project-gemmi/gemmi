@@ -22,10 +22,13 @@ jobs:
     - name: Python Tests
       run: |
         source pyenv/bin/activate
-        python3 -m unittest discover -v -s tests/
         python3 -m pip install sphinx
-        cd docs
-        sphinx-build -M doctest . _build -n -E
+        # run tests twice: without and with numpy
+        python3 -m unittest discover -s tests/
+        (cd docs && sphinx-build -M doctest . _build -n -E)
+        python3 -m pip install numpy
+        python3 -m unittest discover -v -s tests/
+        (cd docs && sphinx-build -M doctest . _build -n -E)
     - uses: actions/upload-artifact@v4
       with:
         name: gemmi-macos14
@@ -96,7 +99,7 @@ jobs:
     - name: apt-get
       run: |
         sudo apt-get update
-        sudo apt-get install python3-full g++ gfortran python3-numpy
+        sudo apt-get install python3-full g++ gfortran
     - name: build and test
       run: |
         g++ --version
@@ -104,6 +107,7 @@ jobs:
         source pyenv/bin/activate
         export SKBUILD_CMAKE_ARGS='-DFETCH_ZLIB_NG=ON;-DCMAKE_BUILD_TYPE=None'
         python3 -m pip install -v .
+        python3 -m pip install numpy
         python3 -m unittest discover -v -s tests/
     - name: run doctest
       run: |

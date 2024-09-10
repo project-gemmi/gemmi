@@ -21,9 +21,9 @@ environment:
     - arch: x86
       CMAKE_GENERATOR: Visual Studio 16 2019
       CMAKE_CONFIG: MinSizeRel
-      CMAKE_ARGS: -DPython_EXECUTABLE="C:\\Python38\\python.exe"
+      CMAKE_ARGS: -DPython_EXECUTABLE="C:\\Python39\\python.exe"
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      PY_PYTHON: 3.8-32
+      PY_PYTHON: 3.9-32
 
     - arch: x64
       CMAKE_GENERATOR: MSYS Makefiles
