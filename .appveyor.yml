@@ -19,10 +19,10 @@ environment:
       PY_PYTHON: 3.10
 
     - arch: x86
-      CMAKE_GENERATOR: Visual Studio 16 2019
+      CMAKE_GENERATOR: Visual Studio 17 2022
       CMAKE_CONFIG: MinSizeRel
       CMAKE_ARGS: -DPython_EXECUTABLE="C:\\Python39\\python.exe"
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
       PY_PYTHON: 3.9-32
 
     - arch: x64
