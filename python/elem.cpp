@@ -37,13 +37,9 @@ void add_elem(nb::module_& m) {
     .def_prop_ro("c", [](IT92::Coef& c) { return roc(c.c()); })
     .def("get_coefs", [](const IT92::Coef &self) { return self.coefs; })
     .def("set_coefs", &IT92::Coef::set_coefs)
-    //.def("calculate_sf", nb::vectorize(&IT92::Coef::calculate_sf), nb::arg("stol2"))
-    //.def("calculate_density_iso",
-    //     [](const IT92::Coef &self, nb::array_t<float> r2, float B) {
-    //         return nb::vectorize([&self,B](float r2) {
-    //             return self.calculate_density_iso(r2, B);
-    //         })(r2);
-    //}, nb::arg("r2"), nb::arg("B"))
+    .def("calculate_sf", &IT92::Coef::calculate_sf, nb::arg("stol2"))
+    .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
+         nb::arg("r2"), nb::arg("B"))
     ;
   m.def("IT92_normalize", &IT92::normalize);
   // can't define property for nb::module_, and we don't expose IT92 as class

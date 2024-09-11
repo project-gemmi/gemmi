@@ -11,22 +11,23 @@
 #include "gemmi/third_party/tao/pegtl/parse_error.hpp" // for parse_error
 
 #include "common.h"
-//#include <nanobind/numpy.h>    // for vectorize
+#include "array.h"
 #include <nanobind/make_iterator.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>  // for calculate_sequence_weight
 
 namespace {
-template<typename T> int get_max_bin(const T& bins) {
+// returns max value in the array bin indices (which are of type int)
+template<typename T> size_t get_max_bin(const T& bins) {
   int max_bin = 0;
-  for (int i = 0; i < bins.shape(0); ++i) {
+  for (size_t i = 0; i < bins.shape(0); ++i) {
     if (bins(i) < 0)
       throw nb::value_error("bins argument must have no negative elements");
     max_bin = std::max(max_bin, bins(i));
   }
   if (max_bin > 1000000)
     throw nb::value_error("bin numbers must be smaller than million");
-  return max_bin;
+  return (size_t) max_bin;
 }
 } // anonymous namespace
 
@@ -72,72 +73,69 @@ void add_misc(nb::module_& m) {
     .def("mean_ratio", &gemmi::Correlation::mean_ratio)
     ;
 
-  /*
   // utilities inspired by numpy.bincount()
-  m.def("binmean", [](nb::array_t<int> bins, nb::array_t<double> values) {
-      auto bins_ = bins.unchecked<1>();
-      auto values_ = values.unchecked<1>();
+  m.def("binmean", [](cpu_array<int> bins, cpu_array<double> values) {
+      auto bins_ = bins.view();
+      auto values_ = values.view();
       auto len = bins_.shape(0);
       if (len != values_.shape(0))
         throw std::domain_error("arrays have different lengths");
-      int ret_size = get_max_bin(bins_) + 1;
-      nb::array_t<double> ret(ret_size);
-      double* retp = (double*) ret.request().ptr;
-      for (int i = 0; i != ret_size; ++i)
+      size_t ret_size = get_max_bin(bins_) + 1;
+      auto ret = make_numpy_array<double>({ret_size});
+      double* retp = ret.data();
+      for (size_t i = 0; i != ret_size; ++i)
         retp[i] = 0.;
       std::vector<int> counts(ret_size);
-      for (int i = 0; i != len; ++i)
+      for (size_t i = 0; i != len; ++i)
         if (!std::isnan(values_(i))) {
           int n = bins_(i);
           counts[n]++;
           retp[n] += values_(i);
         }
-      for (int i = 0; i != ret_size; ++i)
+      for (size_t i = 0; i != ret_size; ++i)
         retp[i] /= counts[i];
       return ret;
   }, nb::arg("nbins"), nb::arg("values"));
 
-  m.def("binrfactor", [](nb::array_t<int> bins, nb::array_t<double> obs,
-                         nb::array_t<double> calc, bool riso) {
-      auto bins_ = bins.unchecked<1>();
-      auto obs_ = obs.unchecked<1>();
-      auto calc_ = calc.unchecked<1>();
+  m.def("binrfactor", [](cpu_array<int> bins, cpu_array<double> obs,
+                         cpu_array<double> calc, bool riso) {
+      auto bins_ = bins.view();
+      auto obs_ = obs.view();
+      auto calc_ = calc.view();
       auto len = bins_.shape(0);
       if (len != obs_.shape(0) || len != calc_.shape(0))
         throw std::domain_error("arrays have different lengths");
-      int ret_size = get_max_bin(bins_) + 1;
-      nb::array_t<double> ret(ret_size);
-      double* retp = (double*) ret.request().ptr;
-      for (int i = 0; i != ret_size; ++i)
+      size_t ret_size = get_max_bin(bins_) + 1;
+      auto ret = make_numpy_array<double>({ret_size});
+      double* retp = ret.data();
+      for (size_t i = 0; i != ret_size; ++i)
         retp[i] = 0.;
       std::vector<double> sum_fobs(ret_size);
-      for (int i = 0; i != len; ++i)
+      for (size_t i = 0; i != len; ++i)
         if (!std::isnan(obs_(i)) && !std::isnan(calc_(i))) {
           int n = bins_(i);
           retp[n] += std::fabs(obs_(i) - calc_(i));
           sum_fobs[n] += riso ? (obs_(i) + calc_(i)) : obs_(i);
         }
-      for (int i = 0; i != ret_size; ++i)
+      for (size_t i = 0; i != ret_size; ++i)
         retp[i] /= (riso ? 0.5 * sum_fobs[i] : sum_fobs[i]);
       return ret;
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"), nb::arg("riso")=false);
 
-  m.def("bincorr", [](nb::array_t<int> bins, nb::array_t<double> obs,
-                                             nb::array_t<double> calc) {
-      auto bins_ = bins.unchecked<1>();
-      auto obs_ = obs.unchecked<1>();
-      auto calc_ = calc.unchecked<1>();
+  m.def("bincorr", [](cpu_array<int> bins, cpu_array<double> obs, cpu_array<double> calc) {
+      auto bins_ = bins.view();
+      auto obs_ = obs.view();
+      auto calc_ = calc.view();
       auto len = bins_.shape(0);
       if (len != obs_.shape(0) || len != calc_.shape(0))
         throw std::domain_error("arrays have different lengths");
-      int ret_size = get_max_bin(bins_) + 1;
+      size_t ret_size = get_max_bin(bins_) + 1;
       std::vector<gemmi::Correlation> cor(ret_size);
-      for (int i = 0; i != len; ++i)
+      for (size_t i = 0; i != len; ++i)
         if (!std::isnan(obs_(i)) && !std::isnan(calc_(i)))
           cor[bins_(i)].add_point(obs_(i), calc_(i));
       return cor;
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"));
-  */
 }
 
 NB_MODULE(gemmi, mg) {

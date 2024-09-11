@@ -34,7 +34,7 @@ void add_scaling(nb::module_& m) {
     .def("get_overall_scale_factor", [](const Scaling& self, nb_miller_array hkl) {
         return miller_function<double>(self, &Scaling::get_overall_scale_factor, hkl);
     })
-    //.def("get_solvent_scale", nb::vectorize(&Scaling::get_solvent_scale), nb::arg("stol2"))
+    .def("get_solvent_scale", &Scaling::get_solvent_scale, nb::arg("stol2"))
     .def("scale_data", &Scaling::scale_data,
          nb::arg("asu_data"), nb::arg("mask_data")=static_cast<FPhiData*>(nullptr))
     .def("scale_value", &Scaling::scale_value,
