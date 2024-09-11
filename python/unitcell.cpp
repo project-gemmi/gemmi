@@ -8,7 +8,7 @@
 
 #include <array>
 #include "common.h"
-#include "array.h"  // py_array_from_vector, miller_function
+#include "array.h"  // numpy_array_from_vector, miller_function
 #include "serial.h"  // for getstate, setstate
 #include <nanobind/operators.h>
 #include <nanobind/stl/array.h>
@@ -69,7 +69,7 @@ template<typename T> void add_smat33(nb::module_& m, const char* name) {
     //    auto r = arr.unchecked<2>();
     //    for (nb::ssize_t row = 0; row < nrow; ++row)
     //       v.push_back((T)self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
-    //    return py_array_from_vector(std::move(v));
+    //    return numpy_array_from_vector(std::move(v));
     //}, nb::arg().noconvert())
     .def("multiply", &M::multiply)
     .def(nb::self + nb::self)

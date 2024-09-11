@@ -11,9 +11,8 @@ using nb_f64_array = cpu_array<double>;
 using nb_f64_c_array = cpu_c_array<double>;
 using nb_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu>;
 
-// TODO: rename to numpy_from_....
 template<typename T>
-auto py_array_from_vector(std::vector<T>&& original_vec) {
+auto numpy_array_from_vector(std::vector<T>&& original_vec) {
   using V = std::vector<T>;
   auto v = new V(std::move(original_vec));
   nb::capsule owner(v, [](void* p) noexcept { delete static_cast<V*>(p); });

@@ -1,7 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 
 #include "common.h"
-#include "array.h"  // py_array_from_vector
+#include "array.h"  // numpy_array_from_vector
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/bind_vector.h>
 #include <nanobind/stl/string.h>
@@ -50,20 +50,20 @@ void add_hkl(nb::module_& m) {
     .def("column_labels", &ReflnBlock::column_labels)
     .def("make_int_array",
          [](ReflnBlock& self, const std::string& tag, int null) {
-           return py_array_from_vector(self.make_vector(tag, null));
+           return numpy_array_from_vector(self.make_vector(tag, null));
     }, nb::arg("tag"), nb::arg("null"))
     .def("make_float_array",
          [](ReflnBlock& self, const std::string& tag, double null) {
-           return py_array_from_vector(self.make_vector(tag, null));
+           return numpy_array_from_vector(self.make_vector(tag, null));
     }, nb::arg("tag"), nb::arg("null")=NAN)
     .def("make_miller_array", [](ReflnBlock& self) {
         return py_array2d_from_vector(self.make_miller_vector());
     })
     .def("make_1_d2_array", [](ReflnBlock& self) {
-        return py_array_from_vector(self.make_1_d2_vector());
+        return numpy_array_from_vector(self.make_1_d2_vector());
     })
     .def("make_d_array", [](ReflnBlock& self) {
-        return py_array_from_vector(self.make_d_vector());
+        return numpy_array_from_vector(self.make_d_vector());
     })
     .def("get_size_for_hkl",
          [](const ReflnBlock& self,
@@ -284,10 +284,10 @@ void add_hkl(nb::module_& m) {
     }, nb::arg("nbins"), nb::arg("method"), nb::arg("inv_d2"), nb::arg("cell"))
     .def("get_bin", &Binner::get_bin)
     .def("get_bins", [](Binner& self, const Mtz& mtz) {
-        return py_array_from_vector(self.get_bins(MtzDataProxy{mtz}));
+        return numpy_array_from_vector(self.get_bins(MtzDataProxy{mtz}));
     })
     .def("get_bins", [](Binner& self, const ReflnBlock& r) {
-        return py_array_from_vector(self.get_bins(ReflnDataProxy(r)));
+        return numpy_array_from_vector(self.get_bins(ReflnDataProxy(r)));
     })
     .def("get_bins", [](Binner& self, nb_miller_array hkl) {
         if (hkl.stride(1) != 1 || hkl.stride(0) < 3)
@@ -302,10 +302,10 @@ void add_hkl(nb::module_& m) {
             return {data_[offset], data_[offset+1], data_[offset+2]};
           }
         } proxy{hkl.size(), (size_t) hkl.stride(0), hkl.data()};
-        return py_array_from_vector(self.get_bins(proxy));
+        return numpy_array_from_vector(self.get_bins(proxy));
     })
     .def("get_bins_from_1_d2", [](Binner& self, nb_f64_c_array inv_d2) {
-        return py_array_from_vector(self.get_bins_from_1_d2(inv_d2.data(), inv_d2.shape(0)));
+        return numpy_array_from_vector(self.get_bins_from_1_d2(inv_d2.data(), inv_d2.shape(0)));
     })
     .def("dmin_of_bin", &Binner::dmin_of_bin)
     .def("dmax_of_bin", &Binner::dmax_of_bin)
@@ -321,7 +321,7 @@ void add_hkl(nb::module_& m) {
   m.def("calculate_amplitude_normalizers",
         [](const Mtz& mtz, const std::string& f_col, const Binner& binner) {
       const Mtz::Column& f = mtz.get_column_with_label(f_col);
-      return py_array_from_vector(
+      return numpy_array_from_vector(
           calculate_amplitude_normalizers(MtzDataProxy{mtz}, f.idx, binner));
   });
 
@@ -332,7 +332,7 @@ void add_hkl(nb::module_& m) {
                         static_cast<Miller*>((void*)ref.data()), ref.shape(0));
     }, nb::arg("hkl"), nb::arg("ref"))
     .def("aligned", [](HklMatch& self, nb_f64_c_array vec) {
-        return py_array_from_vector(self.aligned_(vec.data(), vec.size(), (double)NAN));
+        return numpy_array_from_vector(self.aligned_(vec.data(), vec.size(), (double)NAN));
     })
     .def_ro("pos", &HklMatch::pos)
     ;
