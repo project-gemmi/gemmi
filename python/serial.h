@@ -6,7 +6,7 @@
 #include "../third_party/serializer.h"
 
 template<typename T>
-auto getstate(const T& self) {
+nb::bytes getstate(const T& self) {
   std::vector<unsigned char> data;
   zpp::serializer::memory_output_archive out(data);
   // awkward zpp design: calling zpp::serializer::*_archive::operator()()
