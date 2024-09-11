@@ -14,7 +14,7 @@ cd "$(dirname "$0")"
 BUILD_DIR="$(pwd)"
 [ -e build ] && BUILD_DIR="$(pwd)/build"
 if [ -z "${PYTHON-}" ]; then
-    PYTHON=`grep ^PYBIND11_PYTHON_EXECUTABLE_LAST: $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+    PYTHON=`grep '^_\?Python_EXECUTABLE:' $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 fi
 
 # Build all, except when we called with an option to avoid full compilation:
@@ -36,6 +36,7 @@ else
     ./tools/cmp-size.py build/gemmi build/*gemmi*.so
     ./tools/docs-help.sh
 fi
+./tools/header-list.py >docs/headers.rst
 (cd docs && make -j4 html SPHINXOPTS="-q -n")
 
 # Run tests and checks.
@@ -44,11 +45,10 @@ if [ $# = 0 ] || [ $1 != i ]; then
     export PATH="$BUILD_DIR:$PATH"
 fi
 $PYTHON -m unittest discover -s tests
-./tools/header-list.py >docs/headers.rst
 
 if [ -z "${NO_DOCTEST-}" ]; then
     # 'make doctest' works only if sphinx-build was installed for python3.
-    (cd docs && make doctest SPHINXOPTS="-q -n -E")
+    (cd docs && make doctest SPHINXOPTS="-q -n")
 fi
 
 # Usually, we stop here. Below are more extensive checks below that are run
