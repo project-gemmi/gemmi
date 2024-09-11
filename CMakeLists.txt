@@ -465,7 +465,7 @@ if (USE_PYTHON)
       COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
       OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE NB_DIR)
     list(APPEND CMAKE_PREFIX_PATH "${NB_DIR}")
-    find_package(nanobind 2.0.1 CONFIG REQUIRED)
+    find_package(nanobind 2.1.0 CONFIG REQUIRED)
     message(STATUS "Found nanobind ${nanobind_VERSION}: ${NB_DIR}")
   endif()
   nanobind_add_module(gemmi_py NOMINSIZE

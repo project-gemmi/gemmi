@@ -20,8 +20,8 @@ environment:
 
     - arch: x86
       CMAKE_GENERATOR: Visual Studio 17 2022
-      CMAKE_CONFIG: MinSizeRel
-      CMAKE_ARGS: -DPython_EXECUTABLE="C:\\Python39\\python.exe"
+      CMAKE_CONFIG: Release
+      CMAKE_ARGS: -DCMAKE_CXX_STANDARD=17 -DPython_EXECUTABLE="C:\\Python39\\python.exe" -DBUILD_SHARED_LIBS=OFF
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
       PY_PYTHON: 3.9-32
 
