@@ -243,8 +243,8 @@ In both C++ and Python `Column` supports the iteration protocol:
 
   >>> [x for x in intensity if x > 100]
   [124.25700378417969, 100.08699798583984, 216.60499572753906]
-  >>> numpy.nanmean(intensity)
-  11.505858
+  >>> numpy.nanmean(intensity)  # doctest: +ELLIPSIS
+  11.505858...
 
 
 Data
@@ -349,13 +349,6 @@ to a file.
 
 Data in NumPy and pandas
 ------------------------
-
-.. doctest::
-  :skipif: numpy is None
-  :hide:
-
-  >>> # 'and None' because https://github.com/numpy/numpy/pull/27259
-  >>> numpy.set_printoptions(threshold=5) and None
 
 In Python Column has a read-only `array` property that provides
 a view of the data compatible with NumPy. It does not copy the data,

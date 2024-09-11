@@ -60,6 +60,7 @@ try:
     import numpy
     if numpy.__version__ >= '2':
         numpy.set_printoptions(legacy='1.25')
+    numpy.set_printoptions(threshold=5)
 except ImportError:
     disabled_features.append('NumPy')
     numpy = None
