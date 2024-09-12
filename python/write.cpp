@@ -95,8 +95,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
 
   structure
     .def("make_pdb_string", &make_pdb_string,
-         // TODO
-         nb::arg("options")=PdbWriteOptions() /*, "PdbWriteOptions()"*/)
+         nb::arg("options")=PdbWriteOptions() /*TODO, "PdbWriteOptions()"*/)
     .def("write_pdb", [](const Structure& st, const std::string& path,
                          PdbWriteOptions options) {
         Ofstream f(path);
@@ -124,7 +123,8 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     })
 
     .def("make_mmcif_document", &make_mmcif_document,
-         // TODO
+         // TODO: better help message,
+         // currently it's ... = <gemmi.PdbWriteOptions object at 0x747d009d3840>
          nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)"*/)
     .def("make_mmcif_block", &make_mmcif_block,
          nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)")*/)

@@ -167,7 +167,7 @@ void add_topo(nb::module_& m) {
        HydrogenChange h_change, bool reorder,
        const nb::object& pywarnings, bool ignore_unknown_links, bool use_cispeps) {
       std::ostream* warnings = nullptr;
-      // TODO
+      // TODO: new way of passing warnings
       //std::ostream os(nullptr);
       //std::unique_ptr<nb::detail::pythonbuf> buffer;
       //if (!pywarnings.is_none()) {

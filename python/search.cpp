@@ -39,7 +39,7 @@ void add_search(nb::module_& m) {
          nb::keep_alive<1, 2>()*/)
     .def("__init__", [](NeighborSearch* ns, Structure& st,
                         double max_radius, int model_index) {
-      new (ns) NeighborSearch(st.models.at(model_index), st.cell, max_radius);
+      new(ns) NeighborSearch(st.models.at(model_index), st.cell, max_radius);
     }, nb::arg("st"), nb::arg("max_radius"), nb::arg("model_index")=0,
         nb::keep_alive<1, 2>())
     .def(nb::init<SmallStructure&, double>(),

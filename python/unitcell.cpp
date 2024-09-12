@@ -58,19 +58,15 @@ template<typename T> void add_smat33(nb::module_& m, const char* name) {
     .def("scaled", &M::template scaled<T>)
     .def("added_kI", &M::added_kI)
     .def("r_u_r", (double (M::*)(const Vec3&) const) &M::r_u_r)
-    // TODO
-    //.def("r_u_r", [](const M& self, nb::array_t<int> arr) {
-    //    int nrow = (int) arr.shape(0);
-    //    int ncol = (int) arr.shape(1);
-    //    if (ncol != 3)
-    //       fail("SMat33::r_u_r(): expected 3 columns.");
-    //    std::vector<T> v;
-    //    v.reserve(nrow);
-    //    auto r = arr.unchecked<2>();
-    //    for (nb::ssize_t row = 0; row < nrow; ++row)
-    //       v.push_back((T)self.r_u_r(Vec3(r(row, 0), r(row, 1), r(row, 2))));
-    //    return numpy_array_from_vector(std::move(v));
-    //}, nb::arg().noconvert())
+    .def("r_u_r", [](const M& self, nb_miller_array arr) {
+        std::vector<T> v;
+        size_t len = arr.shape(0);
+        v.reserve(len);
+        auto r = arr.view();
+        for (size_t row = 0; row < len; ++row)
+           v.push_back((T)self.r_u_r({r(row, 0), r(row, 1), r(row, 2)}));
+        return numpy_array_from_vector(std::move(v));
+    }, nb::arg().noconvert())
     .def("multiply", &M::multiply)
     .def(nb::self + nb::self)
     .def(nb::self - nb::self)

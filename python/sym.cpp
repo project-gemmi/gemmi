@@ -195,7 +195,7 @@ void add_symmetry(nb::module_& m) {
           for (size_t j = 0; j != 3; ++j)
             h(i, j) = hkl[j];
         }
-    }, nb::arg("miller_array").noconvert())  // TODO
+    }, nb::arg("miller_array").noconvert())
     // Check equality by comparing Hall symbol strings.
     // In Python, SpaceGroup always points to an entry in spacegroup_tables::main,
     // so Hall symbols are consistent. The same settings with different H-M names

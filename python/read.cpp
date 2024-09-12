@@ -102,10 +102,7 @@ void add_small(nb::module_& m) {
   nb::class_<SmallStructure::Site>(small_structure, "Site")
     .def(nb::init<>())
     .def("__init__", [](SmallStructure::Site* site, const Atom& atom, const UnitCell& cell) {
-        new(site) SmallStructure::Site;
-        *site = gemmi::atom_to_site(atom, cell);
-        // TODO: compare the assembly / benchmark against:
-        //new(site) SmallStructure::Site(gemmi::atom_to_site(atom, cell));
+        new(site) SmallStructure::Site(gemmi::atom_to_site(atom, cell));
     })
     .def_rw("label", &SmallStructure::Site::label)
     .def_rw("type_symbol", &SmallStructure::Site::type_symbol)

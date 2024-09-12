@@ -30,7 +30,7 @@ void add_alignment(nb::module_& m) {
             s = AlignmentScoring::partial_model();
           else if (what == 'b')
             s = AlignmentScoring::blosum62();
-          new (t) AlignmentScoring(*s);
+          new(t) AlignmentScoring(*s);
     }, nb::arg("what")='s')
     .def_rw("match", &AlignmentScoring::match)
     .def_rw("mismatch", &AlignmentScoring::mismatch)

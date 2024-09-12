@@ -16,7 +16,7 @@ nb::bytes getstate(const T& self) {
 
 template<typename T>
 void setstate(T& self, const nb::bytes& state) {
-  new (&self) T();  // probably not needed
+  new(&self) T();  // probably not needed
   const unsigned char* ptr = (unsigned char*) state.data();
   zpp::serializer::memory_view_input_archive(ptr, state.size())(self);
 }

@@ -29,6 +29,20 @@ template<typename T> size_t get_max_bin(const T& bins) {
     throw nb::value_error("bin numbers must be smaller than million");
   return (size_t) max_bin;
 }
+
+struct VectorizeFunc {
+  typedef double (*Func)(double);
+  Func func;
+  auto operator()(cpu_array<double> x) const {
+    auto x_ = x.view();
+    size_t len = x_.shape(0);
+    auto ret = make_numpy_array<double>({len});
+    double* retp = ret.data();
+    for (size_t i = 0; i < len; ++i)
+      retp[i] = func(x_(i));
+    return ret;
+  }
+};
 } // anonymous namespace
 
 void add_misc(nb::module_& m) {
@@ -48,9 +62,10 @@ void add_misc(nb::module_& m) {
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
         nb::arg("code"), nb::arg("filetype")='M');
   m.attr("hc") = nb::float_(gemmi::hc());
-  //m.def("bessel_i1_over_i0", nb::vectorize(gemmi::bessel_i1_over_i0));
-  //m.def("log_bessel_i0", nb::vectorize(gemmi::log_bessel_i0));
-  //m.def("log_cosh", nb::vectorize(gemmi::log_cosh));
+
+  m.def("bessel_i1_over_i0", VectorizeFunc{gemmi::bessel_i1_over_i0});
+  m.def("log_bessel_i0", VectorizeFunc{gemmi::log_bessel_i0});
+  m.def("log_cosh", VectorizeFunc{gemmi::log_cosh});
 
   // pirfasta.hpp
   nb::class_<gemmi::FastaSeq>(m, "FastaSeq")
