@@ -1209,7 +1209,7 @@ The unit cell and the upper bin boundaries (in Å\ :sup:`--2`) are stored intern
   >>> binner.cell
   <gemmi.UnitCell(50.347, 4.777, 14.746, 90, 101.73, 90)>
   >>> binner.limits  # doctest: +ELLIPSIS
-  [0.12224713046942721, 0.19395414269012246, 0.254107666379415..., inf]
+  [0.122247130469427..., 0.193954142690122..., 0.254107666379415..., inf]
   >>> binner.size  # number of bins
   4
 
