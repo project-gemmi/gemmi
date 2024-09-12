@@ -162,10 +162,10 @@ void add_chemcomp(py::module& m) {
       .value("NonPolymer", ChemComp::Group::NonPolymer)
       .value("Null",       ChemComp::Group::Null);
   chemcompatom
-    .def_readonly("id", &ChemComp::Atom::id)
-    .def_readonly("el", &ChemComp::Atom::el)
-    .def_readonly("charge", &ChemComp::Atom::charge)
-    .def_readonly("chem_type", &ChemComp::Atom::chem_type)
+    .def_readwrite("id", &ChemComp::Atom::id)
+    .def_readwrite("el", &ChemComp::Atom::el)
+    .def_readwrite("charge", &ChemComp::Atom::charge)
+    .def_readwrite("chem_type", &ChemComp::Atom::chem_type)
     .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
     ;
   py::class_<ChemComp::Aliasing>(chemcomp, "Aliasing")
