@@ -90,8 +90,10 @@ To install the gemmi module do::
 We have binary wheels for several Python versions (for all supported CPython
 versions and one PyPy version), so the command usually downloads binaries.
 If a matching wheel is not available,
-the module is compiled from source -- it takes several minutes
-and requires a C++ compiler.
+the module is compiled from source -- it takes a few minutes
+and requires a C++ compiler that supports C++17.
+
+Gemmi 0.7+ supports only Python 3.8+.
 
 Other binaries
 ~~~~~~~~~~~~~~
@@ -136,10 +138,11 @@ for details.
 If gemmi is already installed, uninstall the old version first
 (`pip uninstall`) or add option `--upgrade`.
 
-Alternatively, you can build a cloned project directly with CMake::
+Alternatively, you can manually install nanobind and cmake (using pip)
+and build a cloned project directly with CMake::
 
     cmake -D USE_PYTHON=1 .
-    make -j4 py
+    make -j4 gemmi_py
 
 Fortran and C bindings
 ----------------------
