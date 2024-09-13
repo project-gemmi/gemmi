@@ -4,7 +4,6 @@ import gzip
 from io import StringIO
 import os
 import pickle
-import sys
 import unittest
 
 import gemmi
@@ -480,8 +479,7 @@ class TestMol(unittest.TestCase):
 
     def test_read_write_1lzh(self, via_cif=False):
         path = full_path('1lzh.pdb.gz')
-        mode = 'rt' if sys.version_info >= (3,) else 'r'
-        with gzip.open(path, mode=mode) as f:
+        with gzip.open(path, mode='rt') as f:
             expected = [line for line in f if is_written_to_pdb(line, via_cif)]
         out_lines = self.write_and_read(gemmi.read_structure(path), via_cif)
         self.assertEqual(expected[0], out_lines[0])
