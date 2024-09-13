@@ -11,6 +11,7 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 }
 
 #include "common.h"
+#include "array.h"
 #include "make_iterator.h"
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/array.h>
@@ -46,7 +47,7 @@ nb::class_<GridBase<T>, GridMeta> add_grid_base(nb::module_& m, const char* name
     });
 
   auto to_array = [](GrBase& g) {
-    // TODO: should we take AxisOrder into account
+    // should we take AxisOrder into account here?
     return nb::ndarray<nb::numpy, T>(g.data.data(),
                                      {(size_t)g.nu, (size_t)g.nv, (size_t)g.nw},
                                      nb::handle(),
@@ -125,13 +126,11 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
          nb::arg("ignore_hydrogen")=false, nb::arg("ignore_zero_occupancy_atoms")=false)
     .def("get_subarray",
          [](const Gr& self, std::array<int,3> start, std::array<int,3> shape) {
-        T* data = new T[shape[0] * shape[1] * shape[2]];
-        nb::capsule owner(data, [](void *p) noexcept { delete[] (float*) p; });
-        // TODO: check if data is deleted when get_subarray throws 
-        self.get_subarray(data, start, shape);
-        const size_t ushape[3] = {(size_t)shape[0], (size_t)shape[1], (size_t)shape[2]};
-        const int64_t strides[3] = {1, int64_t(shape[0]), int64_t(shape[0]*shape[1])};
-        return nb::ndarray<nb::numpy, T>(data, 3, ushape, owner, strides);
+        auto arr = make_numpy_array<T>(
+            {(size_t)shape[0], (size_t)shape[1], (size_t)shape[2]},
+            {1, int64_t(shape[0]), int64_t(shape[0]*shape[1])});
+        self.get_subarray(arr.data(), start, shape);
+        return arr;
     }, nb::arg("start"), nb::arg("shape"))
     .def("set_subarray",
          [](Gr& self,
@@ -149,7 +148,7 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
     .def_ro("grid", &Masked::grid, nb::rv_policy::reference)
     .def_prop_ro("mask_array", [](Masked& self) {
       const Gr& gr = *self.grid;
-      // TODO: why it's different than grid_base.array?
+      // cf. to_array() above
       return nb::ndarray<nb::numpy, std::int8_t>(
           self.mask.data(),
           {(size_t)gr.nu, (size_t)gr.nv, (size_t)gr.nw},

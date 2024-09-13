@@ -228,9 +228,9 @@ void add_hkl(nb::module_& m) {
     .def("set_data", [](Intensities& self,
                         const UnitCell& unit_cell,
                         const SpaceGroup* sg,
-                        nb_miller_array hkl,
-                        nb_f64_array values,
-                        nb_f64_array sigmas) {
+                        cpu_miller_array hkl,
+                        cpu_array<double> values,
+                        cpu_array<double> sigmas) {
       auto h = hkl.view();
       auto v = values.view();
       auto s = sigmas.view();
@@ -268,7 +268,7 @@ void add_hkl(nb::module_& m) {
         self.setup(nbins, method, ReflnDataProxy(r), cell);
     }, nb::arg("nbins"), nb::arg("method"), nb::arg("r"), nb::arg("cell")=nb::none())
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
-                     nb_miller_array hkl, const UnitCell* cell) {
+                     cpu_miller_array hkl, const UnitCell* cell) {
         auto h = hkl.view();
         std::vector<double> inv_d2(h.shape(0));
         if (cell)
@@ -277,7 +277,7 @@ void add_hkl(nb::module_& m) {
         self.setup_from_1_d2(nbins, method, std::move(inv_d2), cell);
     }, nb::arg("nbins"), nb::arg("method"), nb::arg("hkl"), nb::arg("cell"))
     .def("setup_from_1_d2", [](Binner& self, int nbins, Binner::Method method,
-                               nb_f64_c_array inv_d2, const UnitCell* cell) {
+                               cpu_c_array<double> inv_d2, const UnitCell* cell) {
         double* ptr = inv_d2.data();
         auto len = inv_d2.shape(0);
         self.setup_from_1_d2(nbins, method, std::vector<double>(ptr, ptr+len), cell);
@@ -289,7 +289,7 @@ void add_hkl(nb::module_& m) {
     .def("get_bins", [](Binner& self, const ReflnBlock& r) {
         return numpy_array_from_vector(self.get_bins(ReflnDataProxy(r)));
     })
-    .def("get_bins", [](Binner& self, nb_miller_array hkl) {
+    .def("get_bins", [](Binner& self, cpu_miller_array hkl) {
         if (hkl.stride(1) != 1 || hkl.stride(0) < 3)
           throw std::domain_error("hkl array must be contiguous");
         struct {  // cf. MtzDataProxy
@@ -304,7 +304,7 @@ void add_hkl(nb::module_& m) {
         } proxy{hkl.size(), (size_t) hkl.stride(0), hkl.data()};
         return numpy_array_from_vector(self.get_bins(proxy));
     })
-    .def("get_bins_from_1_d2", [](Binner& self, nb_f64_c_array inv_d2) {
+    .def("get_bins_from_1_d2", [](Binner& self, cpu_c_array<double> inv_d2) {
         return numpy_array_from_vector(self.get_bins_from_1_d2(inv_d2.data(), inv_d2.shape(0)));
     })
     .def("dmin_of_bin", &Binner::dmin_of_bin)
@@ -326,12 +326,12 @@ void add_hkl(nb::module_& m) {
   });
 
   nb::class_<HklMatch>(m, "HklMatch")
-    .def("__init__", [](HklMatch* p, nb_miller_array hkl, nb_miller_array ref) {
+    .def("__init__", [](HklMatch* p, cpu_miller_array hkl, cpu_miller_array ref) {
         static_assert(sizeof(Miller) == 3 * sizeof(int), "sizeof(Miller) problem");
         new(p) HklMatch(static_cast<Miller*>((void*)hkl.data()), hkl.shape(0),
                         static_cast<Miller*>((void*)ref.data()), ref.shape(0));
     }, nb::arg("hkl"), nb::arg("ref"))
-    .def("aligned", [](HklMatch& self, nb_f64_c_array vec) {
+    .def("aligned", [](HklMatch& self, cpu_c_array<double> vec) {
         return numpy_array_from_vector(self.aligned_(vec.data(), vec.size(), (double)NAN));
     })
     .def_ro("pos", &HklMatch::pos)

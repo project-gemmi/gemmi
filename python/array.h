@@ -7,9 +7,7 @@ template<typename T>
 using cpu_array = nb::ndarray<T, nb::shape<-1>, nb::device::cpu>;
 template<typename T>
 using cpu_c_array = nb::ndarray<T, nb::shape<-1>, nb::device::cpu, nb::c_contig>;
-using nb_f64_array = cpu_array<double>;
-using nb_f64_c_array = cpu_c_array<double>;
-using nb_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu>;
+using cpu_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu>;
 
 template<typename T>
 auto numpy_array_from_vector(std::vector<T>&& original_vec) {
@@ -41,17 +39,18 @@ auto vector_member_array(std::vector<S>& vec, T S::*ptr) {
 }
 
 template<typename T>
-auto make_numpy_array(std::initializer_list<size_t> size) {
+auto make_numpy_array(std::initializer_list<size_t> size,
+                      std::initializer_list<int64_t> strides={}) {
   size_t total_size = 1;
   for (size_t i : size)
     total_size *= i;
   T* c_array = new T[total_size];
   nb::capsule owner(c_array, [](void* p) noexcept { delete [] static_cast<T*>(p); });
-  return nb::ndarray<nb::numpy, T>(c_array, size, owner);
+  return nb::ndarray<nb::numpy, T>(c_array, size, owner, strides);
 }
 
 template<typename Ret, typename Obj, typename Func>
-auto miller_function(const Obj& obj, Func func, nb_miller_array hkl) {
+auto miller_function(const Obj& obj, Func func, cpu_miller_array hkl) {
   auto h = hkl.view();
   size_t n = h.shape(0);
   auto result = make_numpy_array<Ret>({n});

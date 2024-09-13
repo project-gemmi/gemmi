@@ -111,20 +111,19 @@ void add_symmetry(nb::module_& m) {
     .def("has_same_rotations", &GroupOps::has_same_rotations)
     .def("is_centrosymmetric", &GroupOps::is_centrosymmetric)
     .def("is_reflection_centric", &GroupOps::is_reflection_centric)
-    .def("centric_flag_array", [](const GroupOps& g, nb_miller_array hkl) {
+    .def("centric_flag_array", [](const GroupOps& g, cpu_miller_array hkl) {
         return miller_function<bool>(g, &GroupOps::is_reflection_centric, hkl);
     })
     .def("epsilon_factor_without_centering", &GroupOps::epsilon_factor_without_centering)
     .def("epsilon_factor", &GroupOps::epsilon_factor)
-    .def("epsilon_factor_array", [](const GroupOps& g, nb_miller_array hkl) {
+    .def("epsilon_factor_array", [](const GroupOps& g, cpu_miller_array hkl) {
         return miller_function<int>(g, &GroupOps::epsilon_factor, hkl);
     })
-    .def("epsilon_factor_without_centering_array", [](const GroupOps& g,
-                                                      nb_miller_array hkl) {
+    .def("epsilon_factor_without_centering_array", [](const GroupOps& g, cpu_miller_array hkl) {
         return miller_function<int>(g, &GroupOps::epsilon_factor_without_centering, hkl);
     })
     .def("is_systematically_absent", &GroupOps::is_systematically_absent)
-    .def("systematic_absences", [](const GroupOps& g, nb_miller_array hkl) {
+    .def("systematic_absences", [](const GroupOps& g, cpu_miller_array hkl) {
         return miller_function<bool>(g, &GroupOps::is_systematically_absent, hkl);
     })
     .def("find_grid_factors", &GroupOps::find_grid_factors,
