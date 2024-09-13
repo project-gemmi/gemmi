@@ -235,7 +235,7 @@ class TestSymmetry(unittest.TestCase):
         if sgtbx is None:
             return
         for s in gemmi.spacegroup_table():
-            self.compare_hall_symops_with_sgtbx(s.hall.encode())
+            self.compare_hall_symops_with_sgtbx(s.hall)
         self.compare_hall_symops_with_sgtbx('C -4 -2b', existing_group=False)
 
     def test_table(self):
