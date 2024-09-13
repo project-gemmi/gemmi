@@ -136,10 +136,9 @@ void add_symmetry(nb::module_& m) {
     .def("add_inversion", &GroupOps::add_inversion)
     ;
 
-  constexpr int main_table_length = int(sizeof(spacegroup_tables::main) / sizeof(SpaceGroup));
-
   nb::class_<SpaceGroup>(m, "SpaceGroup")
     .def(nb::new_([](int n) {
+          int main_table_length = int(sizeof(spacegroup_tables::main) / sizeof(SpaceGroup));
           // a second meaning of SpaceGroup(n), for internal use in __reduce__
           if (n < INT_MIN + main_table_length)
             return &spacegroup_tables::main[n - INT_MIN];
@@ -207,6 +206,7 @@ void add_symmetry(nb::module_& m) {
     .def("__reduce__", [](const SpaceGroup& self) {
         // faster than just serializing self.xhm(), but also more tricky
         std::ptrdiff_t pos = &self - spacegroup_tables::main;
+        int main_table_length = int(sizeof(spacegroup_tables::main) / sizeof(SpaceGroup));
         if (pos < 0 || pos >= main_table_length) { // multi-library problem
           const SpaceGroup* p = &self;
           while (p->ccp4 != 1)
