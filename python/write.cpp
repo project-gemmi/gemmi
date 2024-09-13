@@ -95,13 +95,11 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
 
   structure
     .def("make_pdb_string", &make_pdb_string,
-         nb::arg("options")=PdbWriteOptions() /*TODO, "PdbWriteOptions()"*/)
-    .def("write_pdb", [](const Structure& st, const std::string& path,
-                         PdbWriteOptions options) {
+         nb::arg("options").sig("PdbWriteOptions()")=PdbWriteOptions())
+    .def("write_pdb", [](const Structure& st, const std::string& path, PdbWriteOptions options) {
         Ofstream f(path);
         write_pdb(st, f.ref(), options);
     })
-
     // deprecated - kept for compatibility
     .def("write_pdb", [](const Structure& st, const std::string& path, nb::kwargs kwargs) {
         Ofstream f(path);
@@ -121,15 +119,12 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
        write_minimal_pdb(st, os);
        return os.str();
     })
-
     .def("make_mmcif_document", &make_mmcif_document,
-         // TODO: better help message,
-         // currently it's ... = <gemmi.PdbWriteOptions object at 0x747d009d3840>
-         nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)"*/)
+         nb::arg("groups").sig("MmcifOutputGroups(True)")=MmcifOutputGroups(true))
     .def("make_mmcif_block", &make_mmcif_block,
-         nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)")*/)
+         nb::arg("groups").sig("MmcifOutputGroups(True)")=MmcifOutputGroups(true))
     .def("update_mmcif_block", &update_mmcif_block, nb::arg("block"),
-         nb::arg("groups")=MmcifOutputGroups(true)/*, "MmcifOutputGroups(True)")*/)
+         nb::arg("groups").sig("MmcifOutputGroups(True)")=MmcifOutputGroups(true))
     .def("make_mmcif_headers", &make_mmcif_headers)
     ;
 }
