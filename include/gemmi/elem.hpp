@@ -25,9 +25,9 @@ enum class El : unsigned char {
 
 inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
 
-// somewhat arbitrary division into metals and non-metals
-inline bool is_metal(El el) {
-  static constexpr bool table[] = {
+// arbitrary division into metals and non-metals (Ge and Sb are metals here)
+inline bool& is_metal_value(El el) {
+  static bool table[] = {
     // X     H     He
     false, false, false,
     // Li  Be     B      C      N      O      F     Ne
@@ -57,11 +57,12 @@ inline bool is_metal(El el) {
     // D    END
     false, false
   };
-  static_assert(!table[static_cast<int>(El::D)], "Hmm");
-  static_assert(sizeof(table) / sizeof(table[0]) ==
-                static_cast<int>(El::END) + 1, "Hmm");
+  static_assert(sizeof(table) / sizeof(table[0]) == static_cast<int>(El::END) + 1, "Hmm");
   return table[static_cast<int>(el)];
 }
+
+inline bool is_metal(El el) { return is_metal_value(el); }
+inline void set_is_metal(El el, bool v) { is_metal_value(el) = v; }
 
 // Helper function, not public. Replaces =='s in static_assert comparisons
 // that were reported to fail on i386 / GCC 13: the numbers were compared

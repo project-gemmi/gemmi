@@ -67,13 +67,24 @@ van der Waals radii taken from Wikipedia and cctbx:
     >>> gemmi.Element('K').vdw_r
     2.75
 
-and a flag for metals (the classification is somewhat arbitrary):
+and a flag for metals:
 
 .. doctest::
 
     >>> gemmi.Element('Mg').is_metal
     True
     >>> gemmi.Element('C').is_metal
+    False
+
+The classification into metals and non-metals is somewhat arbitrary.
+It can be adjusted using function `set_is_metal`:
+
+.. doctest::
+
+    >>> gemmi.Element('Sb').is_metal
+    True
+    >>> gemmi.set_is_metal('Sb', False)
+    >>> gemmi.Element('Sb').is_metal
     False
 
 Small Molecules

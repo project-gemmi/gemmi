@@ -102,6 +102,10 @@ void add_elem(nb::module_& m) {
       return IT92::get_exact(el.elem, charge);
   }, nb::rv_policy::reference);
 
+  m.def("set_is_metal", [](const char* el, bool value) {
+      set_is_metal(find_element(el), value);
+  });
+
   // resinfo.hpp
   nb::enum_<ResidueKind>(m, "ResidueKind")
     .value("UNKNOWN", ResidueKind::UNKNOWN)
