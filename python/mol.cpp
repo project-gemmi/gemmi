@@ -15,6 +15,7 @@
 #include <nanobind/stl/array.h>  // for calculate_phi_psi, find_best_plane, ...
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
+#include <nanobind/stl/variant.h>
 #include "meta.h"
 
 using namespace gemmi;
@@ -507,7 +508,18 @@ void add_mol(nb::module_& m) {
     .def_rw("altloc", &Atom::altloc)
     .def_rw("charge", &Atom::charge)
     .def_rw("element", &Atom::element)
-    .def_rw("pos", &Atom::pos)
+    .def_prop_rw("pos",
+        [](const Atom& self) { return self.pos; },
+        [](Atom& self, const std::variant<Position, std::array<double,3>>& v) {
+          if (const Position* p = std::get_if<0>(&v)) {
+            self.pos = *p;
+          } else {
+            const std::array<double,3>& t = *std::get_if<1>(&v);
+            self.pos.x = t[0];
+            self.pos.y = t[1];
+            self.pos.z = t[2];
+          }
+        })
     .def_rw("occ", &Atom::occ)
     .def_rw("b_iso", &Atom::b_iso)
     .def_rw("aniso", &Atom::aniso)

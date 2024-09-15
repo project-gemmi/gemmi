@@ -145,6 +145,19 @@ def read_lines_and_remove(path):
 
 
 class TestMol(unittest.TestCase):
+    def test_atom(self):
+        atom = gemmi.Atom()
+        atom.occ = 0.5
+        atom.element = gemmi.Element('C')
+        atom.name = "CA"
+        atom.pos = (-3, 4.5, 0)
+        self.assertEqual(atom.occ, 0.5)
+        self.assertEqual(atom.element.name, 'C')
+        self.assertEqual(atom.name, 'CA')
+        self.assertEqual(atom.pos.tolist(), [-3, 4.5, 0])
+        atom.pos = gemmi.Position(0, -2, 2.5)
+        self.assertEqual(atom.pos.tolist(), [0, -2, 2.5])
+
     def test_residue(self):
         res = gemmi.Residue()
         self.assertEqual(res.label_seq, None)
