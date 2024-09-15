@@ -1,10 +1,5 @@
 .. highlight:: cpp
 
-.. doctest::
-  :hide:
-
-  >>> import gemmi
-
 Structure analysis
 ##################
 

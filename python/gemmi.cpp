@@ -194,4 +194,6 @@ NB_MODULE(gemmi, mg) {
   add_read_structure(mg);
   add_scaling(mg);
   add_custom(mg);
+
+  mg.def("set_leak_warnings", nb::set_leak_warnings);
 }

@@ -86,6 +86,9 @@ if mdm2_unmerged_mtz_path:
         mdm2_unmerged_mtz_path = None
 if mdm2_unmerged_mtz_path is None:
     disabled_features.append('$CCP4')
+
+import gemmi
+gemmi.set_leak_warnings(False)
 '''
 
 def setup(app):
