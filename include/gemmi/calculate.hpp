@@ -22,17 +22,6 @@ template<> inline bool has_hydrogen(const Atom& atom) {
   return atom.is_hydrogen();
 }
 
-/// deprecated, use has_hydrogen() or count_atom_sites(..., Selection("[H,D]")
-template<class T> size_t count_hydrogen_sites(const T& obj) {
-  size_t sum = 0;
-  for (const auto& child : obj.children())
-    sum += count_hydrogen_sites(child);
-  return sum;
-}
-template<> inline size_t count_hydrogen_sites(const Atom& atom) {
-  return (size_t) atom.is_hydrogen();
-}
-
 template<class T> size_t count_atom_sites(const T& obj, const Selection* sel=nullptr) {
   size_t sum = 0;
   if (!sel || sel->matches(obj))

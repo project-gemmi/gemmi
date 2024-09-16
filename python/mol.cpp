@@ -268,8 +268,6 @@ void add_mol(nb::module_& m) {
     .def("remove_ligands_and_waters", remove_ligands_and_waters<Model>)
     .def("has_hydrogen", &has_hydrogen<Model>)
     .def("count_atom_sites", &count_atom_sites<Model>, nb::arg("sel")=nb::none())
-    // deprecated, use has_hydrogen() or count_atom_sites(Selection('[H,D]'))
-    .def("count_hydrogen_sites", &count_hydrogen_sites<Model>)
     .def("count_occupancies", &count_occupancies<Model>, nb::arg("sel")=nb::none())
     .def("calculate_mass", &calculate_mass<Model>)
     .def("calculate_center_of_mass", [](const Model& self) {
