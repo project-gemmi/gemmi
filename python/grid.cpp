@@ -29,6 +29,15 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 using namespace gemmi;
 
 template<typename T>
+auto grid_to_array(GridMeta& g, std::vector<T>& data) {
+  // should we take AxisOrder into account here?
+  return nb::ndarray<nb::numpy, T>(data.data(),
+                                   {(size_t)g.nu, (size_t)g.nv, (size_t)g.nw},
+                                   nb::handle(),
+                                   {1, g.nu, g.nu * g.nv});
+}
+
+template<typename T>
 nb::class_<GridBase<T>, GridMeta> add_grid_base(nb::module_& m, const char* name) {
   using GrBase = GridBase<T>;
   using GrPoint = typename GridBase<T>::Point;
@@ -46,14 +55,7 @@ nb::class_<GridBase<T>, GridMeta> add_grid_base(nb::module_& m, const char* name
                      self.w, ") -> ", +*self.value, '>');
     });
 
-  auto to_array = [](GrBase& g) {
-    // should we take AxisOrder into account here?
-    return nb::ndarray<nb::numpy, T>(g.data.data(),
-                                     {(size_t)g.nu, (size_t)g.nv, (size_t)g.nw},
-                                     nb::handle(),
-                                     {1, g.nu, g.nu * g.nv});
-  };
-
+  auto to_array = [](GrBase& gr) { return grid_to_array(gr, gr.data); };
   grid_base
     .def_prop_ro("array", to_array, nb::rv_policy::reference_internal)
     .def("__array__", to_array, nb::rv_policy::reference_internal)
@@ -147,13 +149,7 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
   masked_grid
     .def_ro("grid", &Masked::grid, nb::rv_policy::reference)
     .def_prop_ro("mask_array", [](Masked& self) {
-      const Gr& gr = *self.grid;
-      // cf. to_array() above
-      return nb::ndarray<nb::numpy, std::int8_t>(
-          self.mask.data(),
-          {(size_t)gr.nu, (size_t)gr.nv, (size_t)gr.nw},
-          nb::handle(),
-          {int64_t(gr.nv * gr.nw), int64_t(gr.nw), 1});
+        return grid_to_array(*self.grid, self.mask);
     }, nb::rv_policy::reference_internal)
     .def("__iter__", [](Masked& self) {
         return usual_iterator(self, self);

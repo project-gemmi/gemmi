@@ -452,7 +452,7 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   >>> asu.mask_array  # doctest: +ELLIPSIS
   array([[[0, 0, 0, ..., 1, 1, 1],
          ...
-          [1, 0, 0, ..., 1, 1, 1]]], dtype=int8)
+          [1, 1, 1, ..., 1, 1, 1]]], dtype=int8)
   >>> sum(point.value for point in asu)
   7.125
   >>> for point in asu:

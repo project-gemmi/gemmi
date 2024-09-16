@@ -220,32 +220,22 @@ template<typename T, typename V=std::int8_t> struct MaskedGrid {
   Grid<T>* grid;
 
   struct iterator {
-    MaskedGrid& parent;
-    size_t index;
-    int u = 0, v = 0, w = 0;
-    iterator(MaskedGrid& parent_, size_t index_)
-      : parent(parent_), index(index_) {}
+    typename GridBase<T>::iterator grid_iterator;
+    const std::vector<V>& mask_ref;
+    iterator(typename GridBase<T>::iterator it, const std::vector<V>& mask)
+      : grid_iterator(it), mask_ref(mask) {}
     iterator& operator++() {
       do {
-        ++index;
-        if (++u == parent.grid->nu) {
-          u = 0;
-          if (++v == parent.grid->nv) {
-            v = 0;
-            ++w;
-          }
-        }
-      } while (index != parent.mask.size() && parent.mask[index] != 0);
+        ++grid_iterator;
+      } while (grid_iterator.index != mask_ref.size() && mask_ref[grid_iterator.index] != 0);
       return *this;
     }
-    typename GridBase<T>::Point operator*() {
-      return {u, v, w, &parent.grid->data[index]};
-    }
-    bool operator==(const iterator &o) const { return index == o.index; }
-    bool operator!=(const iterator &o) const { return index != o.index; }
+    typename GridBase<T>::Point operator*() { return *grid_iterator; }
+    bool operator==(const iterator &o) const { return grid_iterator == o.grid_iterator; }
+    bool operator!=(const iterator &o) const { return grid_iterator != o.grid_iterator; }
   };
-  iterator begin() { return {*this, 0}; }
-  iterator end() { return {*this, mask.size()}; }
+  iterator begin() { return {grid->begin(), mask}; }
+  iterator end() { return {grid->end(), mask}; }
 };
 
 template<typename V=std::int8_t>
