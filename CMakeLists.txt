@@ -209,10 +209,11 @@ set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 add_library(gemmi_cpp
             src/align.cpp src/assembly.cpp src/calculate.cpp src/crd.cpp
             src/ddl.cpp src/eig3.cpp src/gz.cpp src/intensit.cpp src/json.cpp
-            src/mmcif.cpp src/mmread_gz.cpp src/mtz.cpp src/mtz2cif.cpp
+            src/mmcif.cpp src/mmread_gz.cpp src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp src/read_map.cpp
-            src/resinfo.cpp src/riding_h.cpp src/sprintf.cpp src/to_mmcif.cpp
-            src/to_pdb.cpp src/monlib.cpp src/topo.cpp src/xds_ascii.cpp)
+            src/resinfo.cpp src/riding_h.cpp src/select.cpp src/sprintf.cpp
+            src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
+            src/xds_ascii.cpp)
 add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
 set_property(TARGET gemmi_cpp PROPERTY POSITION_INDEPENDENT_CODE ON)
 #set_property(TARGET gemmi_cpp PROPERTY CXX_VISIBILITY_PRESET hidden)

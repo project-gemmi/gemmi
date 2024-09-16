@@ -6,8 +6,7 @@
 #include "gemmi/enumstr.hpp"   // for entity_type_to_string
 #include "gemmi/to_mmcif.hpp"  // for write_struct_conn
 #include "gemmi/sprintf.hpp"   // for to_str, to_str_prec
-#include "gemmi/calculate.hpp" // for find_best_plane
-#include "gemmi/select.hpp"    // for count_atom_sites
+#include "gemmi/calculate.hpp" // for count_atom_sites, find_best_plane
 #include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
 #include "gemmi/contact.hpp"   // for ContactSearch
 #include "gemmi/version.hpp"   // for GEMMI_VERSION

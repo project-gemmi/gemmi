@@ -8,6 +8,7 @@
 #include <array>
 #include <algorithm>  // for std::min, std::minmax
 #include "model.hpp"
+#include "select.hpp"
 
 namespace gemmi {
 
@@ -31,6 +32,29 @@ template<class T> size_t count_hydrogen_sites(const T& obj) {
 template<> inline size_t count_hydrogen_sites(const Atom& atom) {
   return (size_t) atom.is_hydrogen();
 }
+
+template<class T> size_t count_atom_sites(const T& obj, const Selection* sel=nullptr) {
+  size_t sum = 0;
+  if (!sel || sel->matches(obj))
+    for (const auto& child : obj.children())
+      sum += count_atom_sites(child, sel);
+  return sum;
+}
+template<> inline size_t count_atom_sites(const Atom& atom, const Selection* sel) {
+  return (!sel || sel->matches(atom)) ? 1 : 0;
+}
+
+template<class T> double count_occupancies(const T& obj, const Selection* sel=nullptr) {
+  double sum = 0;
+  if (!sel || sel->matches(obj))
+    for (const auto& child : obj.children())
+        sum += count_occupancies(child, sel);
+  return sum;
+}
+template<> inline double count_occupancies(const Atom& atom, const Selection* sel) {
+  return (!sel || sel->matches(atom)) ? atom.occ : 0;
+}
+
 
 template<class T> double calculate_mass(const T& obj) {
   double sum = 0;
