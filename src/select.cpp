@@ -63,16 +63,28 @@ inline void parse_cid_elements(const std::string& cid, size_t pos,
   elements.resize((size_t)El::END, char(inverted));
   for (;;) {
     size_t sep = cid.find_first_of(",]", pos);
-    if (sep == pos || sep > pos + 2)
-      wrong_syntax(cid, 0, "in [...]");
-    char elem_str[2] = {cid[pos], sep > pos+1 ? cid[pos+1] : '\0'};
-    Element el = find_element(elem_str);
-    if (el == El::X && (alpha_up(elem_str[0]) != 'X' || elem_str[1] != '\0'))
-      wrong_syntax(cid, 0, " (invalid element in [...])");
-    elements[el.ordinal()] = char(!inverted);
-    pos = sep + 1;
+    if (sep == pos || sep > pos + 2) {
+      if (sep == pos + 6 && cid.compare(pos, 6, "metals", 6) == 0) {
+        for (size_t i = 0; i < elements.size(); ++i)
+          if (is_metal(static_cast<El>(i)))
+            elements[i] = char(!inverted);
+      } else if (sep == pos + 9 && cid.compare(pos, 9, "nonmetals", 9) == 0) {
+        for (size_t i = 0; i < elements.size(); ++i)
+          if (!is_metal(static_cast<El>(i)))
+            elements[i] = char(!inverted);
+      } else {
+        wrong_syntax(cid, 0, "in [...]");
+      }
+    } else {
+      char elem_str[2] = {cid[pos], sep > pos+1 ? cid[pos+1] : '\0'};
+      Element el = find_element(elem_str);
+      if (el == El::X && (alpha_up(elem_str[0]) != 'X' || elem_str[1] != '\0'))
+        wrong_syntax(cid, 0, " (invalid element in [...])");
+      elements[el.ordinal()] = char(!inverted);
+    }
     if (cid[sep] == ']')
       break;
+    pos = sep + 1;
   }
 }
 

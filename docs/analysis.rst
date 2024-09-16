@@ -575,6 +575,7 @@ Let us go through the individual filters first:
 * `//*/(ALA)` (or `(ALA)`) -- selects residues with a given name.
 * `//*//CB` (or `CB:*` or `CB[*]`) -- selects atoms with a given name.
 * `//*//[P]` (or just `[P]`) -- selects phosphorus atoms.
+* `[metals]`, `[nonmetals]` -- selects metal or non-metal atoms.
 * `//*//:B` (or `:B`) -- selects atoms with altloc B.
 * `//*//:` (or `:`) -- selects atoms without altloc.
 * `//*//;q<0.5` (or `;q<0.5`) -- selects atoms with occupancy below 0.5
@@ -590,6 +591,7 @@ The syntax supports also comma-separated lists and negations with `!`:
 * `(!ALA)` -- all residues but alanine,
 * `[C,N,O]` -- all C, N and O atoms,
 * `[!C,N,O]` -- all atoms except C, N and O,
+* `[metals,Si]` -- all metal and Si atoms,
 * `:,A` -- altloc either empty or A (which makes one conformation),
 * `/1/A,B/20-40/CA[C]:,A` -- multiple selection criteria, all of them
   must be fulfilled.

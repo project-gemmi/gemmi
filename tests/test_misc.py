@@ -54,6 +54,10 @@ class TestMisc(unittest.TestCase):
         self.assertEqual(selstr('/1/C/-72(DA)'), '/1/C/-72.(DA)/')
         self.assertEqual(selstr('C/-72--30'), '//C/-72.--30./')
         self.assertEqual(selstr('C/-72-2'), '//C/-72.-2./')
+        self.assertEqual(selstr('[metals]'), selstr('[!nonmetals]'))
+        self.assertEqual(selstr('[!metals]'), selstr('[nonmetals]'))
+        self.assertTrue('[X,H,B' in selstr('[!metals,He]'))
+        self.assertTrue('[!X,H,B' in selstr('[metals,He]'))
 
 if __name__ == '__main__':
     unittest.main()
