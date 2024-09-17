@@ -26,7 +26,7 @@ option(USE_PYTHON "Build Python bindings" OFF)
 option(USE_ZLIB_NG "Use zlib-ng instead of zlib" OFF)
 option(FETCH_ZLIB_NG "Download, build (statically) and use zlib-ng" OFF)
 option(INTERNAL_ZLIB "Use subset of zlib distributed with gemmi" OFF)
-option(GENERATE_STUBS "Generate Python type stubs" OFF)
+option(GENERATE_STUBS "Generate Python type stubs" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 option(STANDALONE_PYTHON_MODULE "Avoid linking Python module to libgemmi_cpp DLL" ON)
@@ -517,14 +517,21 @@ if (USE_PYTHON)
   if (GENERATE_STUBS AND CMAKE_CROSSCOMPILING)
     message(WARNING "Stubs cannot be generated when cross-compiling - skipping.")
   elseif (GENERATE_STUBS)
-    #nanobind_add_stub(
-    #  gemmi_py_stub
-    #  MODULE gemmi_py
-    #  OUTPUT stubs/gemmi/__init__.pyi
-    #  PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
-    #  DEPENDS gemmi_py
-    #  MARKER_FILE stubs/py.typed
-    #)
+    nanobind_add_stub(
+      gemmi_stub
+      MODULE gemmi
+      OUTPUT stubs/gemmi/__init__.pyi
+      PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
+      DEPENDS gemmi_py
+      MARKER_FILE stubs/gemmi/py.typed
+    )
+    nanobind_add_stub(
+      gemmi_cif_stub
+      MODULE gemmi.cif
+      OUTPUT stubs/gemmi/cif.pyi
+      PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
+      DEPENDS gemmi_py
+    )
   endif()
 else()
   message(STATUS "Skipping Python module. Add -D USE_PYTHON=1 to build it.")
@@ -585,8 +592,8 @@ if (USE_PYTHON)
   install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
           FILES_MATCHING PATTERN "*.py"
           PATTERN "[._]*" EXCLUDE)
-  #if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
-  #  install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
-  #          DESTINATION "${Python_SITEARCH}" COMPONENT py)
-  #endif()
+  if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
+    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/stubs/gemmi"
+            DESTINATION "${Python_SITEARCH}" COMPONENT py)
+  endif()
 endif()

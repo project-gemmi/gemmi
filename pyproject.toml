@@ -6,7 +6,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "gemmi"
 dynamic = ["version"]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 description="library for structural biology"
 readme = "README.md"
 authors = [
