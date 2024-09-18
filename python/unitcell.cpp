@@ -144,6 +144,8 @@ void add_unitcell(nb::module_& m) {
     .def(nb::self - nb::self)
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
+    .def("__matmul__", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply, nb::is_operator())
+    .def("__matmul__", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply, nb::is_operator())
     .def("left_multiply", &Mat33::left_multiply)
     .def("multiply_by_diagonal", &Mat33::multiply_by_diagonal)
     .def("transpose", &Mat33::transpose)
@@ -164,7 +166,6 @@ void add_unitcell(nb::module_& m) {
                "             [" + triple(a[1][0], a[1][1], a[1][2]) + "]\n"
                "             [" + triple(a[2][0], a[2][1], a[2][2]) + "]>";
     });
-  mat33.attr("__matmul__") = mat33.attr("multiply");
 
   add_smat33<double>(m, "SMat33d");
   add_smat33<float>(m, "SMat33f");
@@ -182,9 +183,9 @@ void add_unitcell(nb::module_& m) {
     .def("inverse", &Transform::inverse)
     .def("apply", &Transform::apply)
     .def("combine", &Transform::combine)
+    .def("__matmul__", &Transform::combine, nb::is_operator())
     .def("is_identity", &Transform::is_identity)
     .def("approx", &Transform::approx, nb::arg("other"), nb::arg("epsilon"));
-  transform.attr("__matmul__") = transform.attr("combine");
 
   nb::class_<Position, Vec3>(m, "Position")
     .def(nb::init<double,double,double>())
@@ -319,7 +320,7 @@ void add_unitcell(nb::module_& m) {
     .def("reciprocal", &UnitCell::reciprocal)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, nb::arg("dmin"))
     .def("primitive_orth_matrix", &UnitCell::primitive_orth_matrix, nb::arg("centring_type"))
-    .def(nb::self == nb::self)
+    .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__getstate__", &getstate<UnitCell>)
     .def("__setstate__", &setstate<UnitCell>)
     .def("__repr__", [](const UnitCell& self) {

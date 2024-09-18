@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include <nanobind/stl/bind_vector.h>
+#include <nanobind/stl/array.h>   // for Topo::Bond::atoms
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>  // for find_missing_atoms
 #include <nanobind/stl/unique_ptr.h>  // for prepare_topology

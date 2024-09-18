@@ -45,6 +45,7 @@ if [ $# = 0 ] || [ $1 != i ]; then
     export PATH="$BUILD_DIR:$PATH"
 fi
 $PYTHON -m unittest discover -s tests
+grep :: $BUILD_DIR/*.pyi ||:
 
 if [ -z "${NO_DOCTEST-}" ]; then
     # 'make doctest' works only if sphinx-build was installed for python3.

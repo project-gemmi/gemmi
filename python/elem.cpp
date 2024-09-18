@@ -76,7 +76,7 @@ void add_elem(nb::module_& m) {
   nb::class_<Element>(m, "Element")
     .def(nb::init<const std::string &>())
     .def(nb::init<int>())
-    .def(nb::self == nb::self)
+    .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def_prop_ro("name", &Element::name)
     .def_prop_ro("weight", &Element::weight)
     .def_prop_ro("covalent_r", &Element::covalent_r)

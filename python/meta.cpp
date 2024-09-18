@@ -40,7 +40,7 @@ void add_meta(nb::module_& m) {
     .def("__repr__", [](const SeqId& self) {
         return "<gemmi.SeqId " + self.str() + ">";
     })
-    .def(nb::self == nb::self)
+    .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def(nb::self < nb::self)
     .def("__hash__", [](const SeqId& self) {
         // TODO: implement in hash<gemmi::SeqId> in seqid.hpp?
@@ -57,7 +57,7 @@ void add_meta(nb::module_& m) {
     .def("__repr__", [](const ResidueId& self) {
         return "<gemmi.ResidueId " + self.str() + ">";
     })
-    .def(nb::self == nb::self)
+    .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     ;
 
   nb::class_<AtomAddress>(m, "AtomAddress")
@@ -74,7 +74,7 @@ void add_meta(nb::module_& m) {
     .def("__repr__", [](const AtomAddress& self) {
         return cat("<gemmi.AtomAddress ", self.str(), '>');
     })
-    .def(nb::self == nb::self)
+    .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     ;
 
   // metadata.hpp

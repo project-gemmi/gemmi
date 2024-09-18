@@ -74,7 +74,7 @@ void add_symmetry(nb::module_& m) {
          nb::is_operator())
     .def(nb::self == nb::self)
     .def("__eq__", [](const Op& a, const std::string& b) { return a == parse_triplet(b); },
-         nb::is_operator())
+         nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__copy__", [](const Op& self) { return Op(self); })
     .def("__deepcopy__", [](const Op& self, nb::dict) { return Op(self); }, nb::arg("memo"))
     .def("__hash__", [](const Op& self) { return std::hash<Op>()(self); })
@@ -98,7 +98,7 @@ void add_symmetry(nb::module_& m) {
         return nb::make_iterator(nb::type<GroupOps>(), "iterator", self);
     }, nb::keep_alive<0, 1>())
     .def("__eq__", [](const GroupOps &a, const GroupOps &b) { return a.is_same_as(b); },
-         nb::is_operator())
+         nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__len__", [](const GroupOps& g) { return g.order(); })
     .def("__deepcopy__", [](const GroupOps& g, nb::dict) { return GroupOps(g); },
          nb::arg("memo"))
@@ -202,7 +202,7 @@ void add_symmetry(nb::module_& m) {
     // (see space group 65 in the ITB list) are considered equal.
     .def("__eq__", [](const SpaceGroup& a, const SpaceGroup& b) {
         return strcmp(a.hall, b.hall) == 0;
-    }, nb::is_operator())
+    }, nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__reduce__", [](const SpaceGroup& self) {
         // faster than just serializing self.xhm(), but also more tricky
         std::ptrdiff_t pos = &self - spacegroup_tables::main;

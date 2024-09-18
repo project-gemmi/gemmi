@@ -382,7 +382,6 @@ void add_cif(nb::module_& cif) {
     .def("__setitem__", [](Column &self, int idx, std::string value) {
         self.at(idx) = value;
     })
-    .def("str", &Column::str, nb::arg("index"))
     .def("erase", &Column::erase)
     .def("__repr__", [](const Column &self) {
         std::string s = "<gemmi.cif.Column ";
@@ -391,7 +390,8 @@ void add_cif(nb::module_& cif) {
         else
           s += "nil>";
         return s;
-    });
+    })
+    .def("str", &Column::str, nb::arg("index"));
 
   cif_table
     .def("width", &Table::width)
@@ -431,7 +431,6 @@ void add_cif(nb::module_& cif) {
 
   cif_table_row
     .def_ro("row_index", &Table::Row::row_index)
-    .def("str", &Table::Row::str)
     .def("__len__", &Table::Row::size)
     .def("__getitem__", (std::string& (Table::Row::*)(int)) &Table::Row::at)
     .def("__getitem__", [](Table::Row &self, const std::string& tag) {
@@ -455,7 +454,8 @@ void add_cif(nb::module_& cif) {
         for (int i = 0; (size_t)i != self.size(); ++i)
           items += " " + (self.has(i) ? self[i] : "None");
         return "<gemmi.cif.Table.Row:" + items + ">";
-    });
+    })
+    .def("str", &Table::Row::str);
 
   cif.def("quote", &quote, nb::arg("string"));
   cif.def("quote_list", &quote_list);

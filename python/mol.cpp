@@ -585,7 +585,6 @@ void add_mol(nb::module_& m) {
          nb::keep_alive<1, 2>())
     .def("first", &Selection::first, nb::rv_policy::reference,
          nb::keep_alive<1, 2>())
-    .def("str", &Selection::str)
     .def("set_residue_flags", &Selection::set_residue_flags)
     .def("set_atom_flags", &Selection::set_atom_flags)
     .def("copy_model_selection", &Selection::copy_selection<Model>)
@@ -596,7 +595,8 @@ void add_mol(nb::module_& m) {
     .def("remove_not_selected", &Selection::remove_not_selected<Model>)
     .def("__repr__", [](const Selection& self) {
         return "<gemmi.Selection CID: " + self.str() + ">";
-    });
+    })
+    .def("str", &Selection::str);
 
   pySelectionModelsProxy
     .def("__iter__", [](FilterProxy<Selection, Model>& self) {
