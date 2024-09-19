@@ -98,7 +98,7 @@ static void fill_document_from_sajson(Document& d, const sajson::document& s) {
              std::to_string(arr.get_length()));
       if (cif_rows == 1) {
         items.emplace_back(tag, as_cif_value(arr.get_array_element(0)));
-      } else {
+      } else if (cif_rows != 0) {
         Loop& loop = items.back().loop;
         loop.tags.emplace_back(std::move(tag));
         for (size_t k = 0; k != cif_rows; ++k)

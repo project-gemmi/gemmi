@@ -427,13 +427,20 @@ class TestMol(unittest.TestCase):
     def test_read_1pfe_cif(self):
         st = gemmi.read_structure(full_path('1pfe.cif.gz'))
         self.check_1pfe(st)
+        mmcif_doc = st.make_mmcif_document()
 
-        # write structure to cif and read it back
+        # write structure to cif file and read it back
         out_name = get_path_for_tempfile(suffix='.cif')
-        st.make_mmcif_document().write_file(out_name)
+        mmcif_doc.write_file(out_name)
         st2 = gemmi.read_structure(out_name)
         os.remove(out_name)
         self.check_1pfe(st2)
+
+        # write structure to mmJSON string and read it back
+        json_str = mmcif_doc.as_json(mmjson=True)
+        doc = gemmi.cif.read_mmjson_string(json_str)
+        st3 = gemmi.make_structure_from_block(doc[0])
+        self.check_1pfe(st3)
 
     def test_read_1pfe_json(self):
         st = gemmi.read_structure(full_path('1pfe.json'))
