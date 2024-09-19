@@ -17,6 +17,7 @@
 #include "gemmi/chemcomp_xyz.hpp"  // for make_structure_from_chemcomp_block
 #include "gemmi/read_cif.hpp"      // for read_cif_gz, read_mmjson_gz
 #include "gemmi/mmread_gz.hpp"     // for read_structure_gz
+#include "gemmi/json.hpp"          // for read_mmjson_gz
 
 
 using namespace gemmi;
@@ -28,10 +29,13 @@ void add_cif_read(nb::module_& cif) {
           "Reads a CIF file copying data into Document.");
   cif.def("read", &read_cif_or_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped CIF file.");
-  cif.def("read_mmjson", &read_mmjson_gz,
-          nb::arg("filename"), "Reads normal or gzipped mmJSON file.");
   cif.def("read_string", &cif::read_string, nb::arg("data"),
           "Reads a string as a CIF file.");
+  cif.def("read_mmjson", &read_mmjson_gz,
+          nb::arg("filename"), "Reads normal or gzipped mmJSON file.");
+  cif.def("read_mmjson_string", [](std::string data) {
+      return cif::read_mmjson_insitu(data.data(), data.size());
+  });
 
   cif.def("as_string", (std::string (*)(const std::string&)) &cif::as_string,
           nb::arg("value"), "Get string content (no quotes) from raw string.");

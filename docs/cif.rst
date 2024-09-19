@@ -1510,7 +1510,9 @@ Python
 `Document.as_json()` returns the document serialized in JSON string.
 To output mmJSON add argument `mmjson=True`.
 
-mmJSON (possibly gzipped) can be read using function `cif.read_mmjson()`.
+`cif.read_mmjson_string()` reads mmJSON from a string.
+
+mmJSON file (possibly gzipped) can be read using function `cif.read_mmjson()`.
 In addition, the function `cif.read()` will also read mmJSON format
 if the file name ends with `.json` or `.json.gz`.
 
