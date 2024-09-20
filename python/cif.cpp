@@ -167,14 +167,14 @@ void add_cif(nb::module_& cif) {
     }, nb::arg("style"))
     .def("as_json", [](const Document& d, bool mmjson, bool lowercase_names) {
         std::ostringstream os;
-        JsonWriter writer(os);
+        JsonWriteOptions options;
         if (mmjson) {
-          writer.set_mmjson();
+          options = JsonWriteOptions::mmjson();
         } else {
           // in C++17 std::optional<bool> would be used
-          writer.lowercase_names = lowercase_names;
+          options.lowercase_names = lowercase_names;
         }
-        writer.write_json(d);
+        write_json_to_stream(os, d, options);
         return os.str();
     }, nb::arg("mmjson")=false, nb::arg("lowercase_names")=true,
     "Returns JSON representation in a string.")

@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include "gemmi/cifdoc.hpp"    // for Document
-#include "gemmi/to_json.hpp"   // for JsonWriter
+#include "gemmi/to_json.hpp"   // for write_json_to_stream
 #include "gemmi/fstream.hpp"   // for Ofstream
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 #define GEMMI_PROG cif2json
@@ -62,23 +62,23 @@ void convert(const std::string& input, const std::string& output,
   cif::Document doc = gemmi::read_cif_gz(input);
   apply_cif_doc_modifications(doc, options);
   gemmi::Ofstream os(output, &std::cout);
-  cif::JsonWriter writer(os.ref());
+  cif::JsonWriteOptions json_options;
   if (options[Comcifs])
-    writer.set_comcifs();
+    json_options = cif::JsonWriteOptions::comcifs();
   if (options[Mmjson])
-    writer.set_mmjson();
+    json_options = cif::JsonWriteOptions::mmjson();
   if (options[Bare])
-    writer.bare_tags = true;
+    json_options.bare_tags = true;
   if (options[Numb]) {
     char first_letter = options[Numb].arg[0];
     if (first_letter == 'q')
-      writer.quote_numbers = 2;
+      json_options.quote_numbers = 2;
     else if (first_letter == 'n')
-      writer.quote_numbers = 0;
+      json_options.quote_numbers = 0;
   }
   if (options[CifDot])
-    writer.cif_dot = options[CifDot].arg;
-  writer.write_json(doc);
+    json_options.cif_dot = options[CifDot].arg;
+  cif::write_json_to_stream(os.ref(), doc, json_options);
 }
 
 } // anonymous namespace

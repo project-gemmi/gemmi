@@ -212,7 +212,7 @@ add_library(gemmi_cpp
             src/mmcif.cpp src/mmread_gz.cpp src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp src/read_map.cpp
             src/resinfo.cpp src/riding_h.cpp src/select.cpp src/sprintf.cpp
-            src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
+            src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
             src/xds_ascii.cpp)
 add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
 set_property(TARGET gemmi_cpp PROPERTY POSITION_INDEPENDENT_CODE ON)

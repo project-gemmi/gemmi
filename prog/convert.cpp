@@ -1,7 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/to_cif.hpp"
-#include "gemmi/to_json.hpp"
+#include "gemmi/to_json.hpp"   // for write_json_to_stream
 #include "gemmi/polyheur.hpp"  // for setup_entities, remove_waters, ...
 #include "gemmi/modify.hpp"    // for remove_hydrogens, remove_anisou
 #include "gemmi/align.hpp"     // for assign_label_seq_id
@@ -465,9 +465,7 @@ void convert(gemmi::Structure& st,
     if (output_type == CoorFormat::Mmcif) {
       write_cif_to_stream(os.ref(), doc, cif_write_options(options[CifStyle]));
     } else /*output_type == CoorFormat::Mmjson*/ {
-      cif::JsonWriter writer(os.ref());
-      writer.set_mmjson();
-      writer.write_json(doc);
+      cif::write_mmjson_to_stream(os.ref(), doc);
     }
   } else if (output_type == CoorFormat::Pdb) {
     gemmi::PdbWriteOptions opt;
