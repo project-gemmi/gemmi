@@ -231,10 +231,12 @@ private:
           first = ',';
           break;
         case ItemType::Loop:
-          close_cat(cat, &tag_pos);
-          os_ << first << linesep_;
-          write_loop(item.loop);
-          first = ',';
+          if (!item.loop.values.empty()) {
+            close_cat(cat, &tag_pos);
+            os_ << first << linesep_;
+            write_loop(item.loop);
+            first = ',';
+          }
           break;
         case ItemType::Frame:
           has_frames = true;
