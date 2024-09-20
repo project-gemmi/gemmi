@@ -84,6 +84,7 @@ void add_cif(nb::module_& cif) {
     ;
   nb::class_<WriteOptions>(cif, "WriteOptions")
     .def(nb::init<>())
+    .def(nb::init_implicit<Style>())
     .def_rw("prefer_pairs", &WriteOptions::prefer_pairs)
     .def_rw("compact", &WriteOptions::compact)
     .def_rw("misuse_hash", &WriteOptions::misuse_hash)
@@ -149,22 +150,11 @@ void add_cif(nb::module_& cif) {
         write_cif_to_stream(os.ref(), doc, opt);
     }, nb::arg("filename"), nb::arg("options")=WriteOptions(),
     "Write data to a CIF file.")
-    // deprecated
-    .def("write_file", [](const Document& doc, const std::string& filename, Style s) {
-        gemmi::Ofstream os(filename);
-        write_cif_to_stream(os.ref(), doc, s);
-    }, nb::arg("filename"), nb::arg("style"))
     .def("as_string", [](const Document& d, WriteOptions opt) {
         std::ostringstream os;
         write_cif_to_stream(os, d, opt);
         return os.str();
     }, nb::arg("options")=WriteOptions(), "Returns a string in CIF format.")
-    // deprecated
-    .def("as_string", [](const Document& d, Style s) {
-        std::ostringstream os;
-        write_cif_to_stream(os, d, s);
-        return os.str();
-    }, nb::arg("style"))
     .def("as_json", [](const Document& d, bool mmjson, bool lowercase_names) {
         std::ostringstream os;
         JsonWriteOptions options;
@@ -302,22 +292,11 @@ void add_cif(nb::module_& cif) {
         write_cif_block_to_stream(os.ref(), self, opt);
     }, nb::arg("filename"), nb::arg("options")=WriteOptions(),
     "Write data to a CIF file.")
-    // deprecated
-    .def("write_file", [](const Block& self, const std::string& filename, Style s) {
-        gemmi::Ofstream os(filename);
-        write_cif_block_to_stream(os.ref(), self, s);
-    }, nb::arg("filename"), nb::arg("style"))
     .def("as_string", [](const Block& self, WriteOptions opt) {
         std::ostringstream os;
         write_cif_block_to_stream(os, self, opt);
         return os.str();
     }, nb::arg("options")=WriteOptions(), "Returns a string in CIF format.")
-    // deprecated
-    .def("as_string", [](const Block& self, Style s) {
-        std::ostringstream os;
-        write_cif_block_to_stream(os, self, s);
-        return os.str();
-    }, nb::arg("style"))
     .def("__repr__", [](const Block &self) {
         return gemmi::cat("<gemmi.cif.Block ", self.name, '>');
     });

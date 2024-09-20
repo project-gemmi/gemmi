@@ -11,6 +11,7 @@
 namespace gemmi {
 namespace cif {
 
+/// deprecated, use cif::WriteOptions instead
 enum class Style {
   Simple,
   NoBlankLines,
