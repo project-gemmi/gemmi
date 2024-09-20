@@ -397,14 +397,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
 }
 
 void write_cispeps(const Structure& st, cif::Block& block) {
-  cif::Loop& prot_cis_loop = block.init_mmcif_loop("_struct_mon_prot_cis.",
-      {"pdbx_id", "pdbx_PDB_model_num",
-       "label_asym_id", "label_seq_id", "label_comp_id",
-       "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
-       "pdbx_label_asym_id_2", "pdbx_label_seq_id_2", "pdbx_label_comp_id_2",
-       "pdbx_auth_asym_id_2", "pdbx_auth_seq_id_2", "pdbx_PDB_ins_code_2",
-       "label_alt_id", "pdbx_omega_angle"});
-  auto& v = prot_cis_loop.values;
+  cif::Loop* prot_cis_loop = nullptr;
   int pdbx_id = 0;
   for (const CisPep& cispep : st.cispeps) {
     const Model* model = &st.models[0];
@@ -417,6 +410,15 @@ void write_cispeps(const Structure& st, cif::Block& block) {
     const_CRA cra2 = model->find_cra(cispep.partner_n, true);
     if (!cra1.residue || !cra2.residue)
       continue;
+    if (!prot_cis_loop)
+      prot_cis_loop = &block.init_mmcif_loop("_struct_mon_prot_cis.",
+          {"pdbx_id", "pdbx_PDB_model_num",
+           "label_asym_id", "label_seq_id", "label_comp_id",
+           "auth_asym_id", "auth_seq_id", "pdbx_PDB_ins_code",
+           "pdbx_label_asym_id_2", "pdbx_label_seq_id_2", "pdbx_label_comp_id_2",
+           "pdbx_auth_asym_id_2", "pdbx_auth_seq_id_2", "pdbx_PDB_ins_code_2",
+           "label_alt_id", "pdbx_omega_angle"});
+    auto& v = prot_cis_loop->values;
     v.emplace_back(std::to_string(++pdbx_id));            // pdbx_id
     v.emplace_back(cispep.model_str);                     // pdbx_PDB_model_num
     v.emplace_back(subchain_or_dot(*cra1.residue));       // label_asym_id
@@ -719,30 +721,34 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                     number_or_qmark(exper.reflections.mean_I_over_sigma),
                     /*number_or_qmark(exper.b_wilson)*/});
     // _reflns_shell
-    cif::Loop& shell_loop = block.init_mmcif_loop("_reflns_shell.", {
-        "pdbx_ordinal",
-        "pdbx_diffrn_id",
-        "d_res_high",
-        "d_res_low",
-        "percent_possible_all",
-        "pdbx_redundancy",
-        "Rmerge_I_obs",
-        "pdbx_Rsym_value",
-        "meanI_over_sigI_obs"});
+    cif::Loop* shell_loop = nullptr;
     n = 0;
     for (const ExperimentInfo& exper : st.meta.experiments) {
       std::string diffrn_id =
         string_or_dot(join_str(exper.diffraction_ids, ","));
-      for (const ReflectionsInfo& shell : exper.shells)
-        shell_loop.add_row({std::to_string(++n),
-                            diffrn_id,
-                            number_or_qmark(shell.resolution_high),
-                            number_or_qmark(shell.resolution_low),
-                            number_or_qmark(shell.completeness),
-                            number_or_qmark(shell.redundancy),
-                            number_or_qmark(shell.r_merge),
-                            number_or_qmark(shell.r_sym),
-                            number_or_qmark(shell.mean_I_over_sigma)});
+      for (const ReflectionsInfo& shell : exper.shells) {
+        if (!shell_loop)
+          shell_loop = &block.init_mmcif_loop("_reflns_shell.", {
+              "pdbx_ordinal",
+              "pdbx_diffrn_id",
+              "d_res_high",
+              "d_res_low",
+              "percent_possible_all",
+              "pdbx_redundancy",
+              "Rmerge_I_obs",
+              "pdbx_Rsym_value",
+              "meanI_over_sigI_obs"});
+
+        shell_loop->add_row({std::to_string(++n),
+                             diffrn_id,
+                             number_or_qmark(shell.resolution_high),
+                             number_or_qmark(shell.resolution_low),
+                             number_or_qmark(shell.completeness),
+                             number_or_qmark(shell.redundancy),
+                             number_or_qmark(shell.r_merge),
+                             number_or_qmark(shell.r_sym),
+                             number_or_qmark(shell.mean_I_over_sigma)});
+      }
     }
   }
 
