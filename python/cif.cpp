@@ -9,6 +9,7 @@
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 
 #include "common.h"
+#include "serial.h"  // for getstate, setstate
 #include "make_iterator.h"
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
@@ -168,6 +169,8 @@ void add_cif(nb::module_& cif) {
         return os.str();
     }, nb::arg("mmjson")=false, nb::arg("lowercase_names")=true,
     "Returns JSON representation in a string.")
+    .def("__getstate__", &getstate<Document>)
+    .def("__setstate__", &setstate<Document>)
     .def("__repr__", [](const Document &d) {
         std::string s = "<gemmi.cif.Document with ";
         s += std::to_string(d.blocks.size());
@@ -297,6 +300,8 @@ void add_cif(nb::module_& cif) {
         write_cif_block_to_stream(os, self, opt);
         return os.str();
     }, nb::arg("options")=WriteOptions(), "Returns a string in CIF format.")
+    .def("__getstate__", &getstate<Block>)
+    .def("__setstate__", &setstate<Block>)
     .def("__repr__", [](const Block &self) {
         return gemmi::cat("<gemmi.cif.Block ", self.name, '>');
     });

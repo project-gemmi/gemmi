@@ -8,6 +8,7 @@
 #define GEMMI_SERIALIZE_HPP_
 
 #include "model.hpp"
+#include "cifdoc.hpp"
 
 #define SERIALIZE(Struct, ...) \
 template <typename Archive> \
@@ -144,6 +145,38 @@ SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.input_format, o.has_d_fraction, o.ter_status,
           o.has_origx, o.origx, o.info, o.shortened_ccd_codes,
           o.raw_remarks, o.resolution)
+
+
+namespace cif {
+
+SERIALIZE(Loop, o.tags, o.values)
+SERIALIZE(Block, o.name, o.items)
+SERIALIZE(Document, o.source, o.blocks)
+
+template <typename Archive>
+void serialize(Archive& archive, Item& o) {
+  archive(o.type, o.line_number);
+  switch (o.type) {
+    case ItemType::Pair:
+    case ItemType::Comment: new(&o.pair) cif::Pair; archive(o.pair); break;
+    case ItemType::Loop: new(&o.loop) cif::Loop; archive(o.loop); break;
+    case ItemType::Frame: new(&o.frame) cif::Block; archive(o.frame); break;
+    case ItemType::Erased: break;
+  }
+}
+template <typename Archive>
+void serialize(Archive& archive, const Item& o) {
+  archive(o.type, o.line_number);
+  switch (o.type) {
+    case ItemType::Pair:
+    case ItemType::Comment: archive(o.pair); break;
+    case ItemType::Loop: archive(o.loop); break;
+    case ItemType::Frame: archive(o.frame); break;
+    case ItemType::Erased: break;
+  }
+}
+
+} // namespace cif
 } // namespace gemmi
 
 #undef SERIALIZE

@@ -522,6 +522,7 @@ struct Item {
     Block frame;
   };
 
+  Item() : type(ItemType::Erased) {}
   explicit Item(LoopArg)
     : type{ItemType::Loop}, loop{} {}
   explicit Item(std::string&& t)

@@ -2,11 +2,12 @@
 
 import gc
 import os
+import pickle
 import unittest
 from gemmi import cif
 
 class TestDoc(unittest.TestCase):
-    def test_slice(self):
+    def test_slicing_and_pickling(self):
         doc = cif.read_string("""
             data_a
             _one 1 _two 2 _three 3
@@ -15,23 +16,16 @@ class TestDoc(unittest.TestCase):
             data_c
             _two 2 _four 4 _six 6
         """)
+        self.assertTrue('a' in doc)
+        self.assertFalse('d' in doc)
         self.assertEqual([b.name for b in doc[:1]], ['a'])
         self.assertEqual([b.name for b in doc[1:]], ['b', 'c'])
         self.assertEqual([b.name for b in doc[:]], ['a', 'b', 'c'])
         self.assertEqual([b.name for b in doc[1:-1]], ['b'])
         self.assertEqual([b.name for b in doc[1:1]], [])
 
-    def test_contains(self):
-        doc = cif.read_string("""
-            data_a
-            _one 1 _two 2 _three 3
-            data_b
-            _four 4
-            data_c
-            _two 2 _four 4 _six 6
-        """)
-        self.assertEqual('a' in doc, True)
-        self.assertEqual('d' in doc, False)
+        unpickled = pickle.loads(pickle.dumps(doc))
+        self.assertEqual(unpickled.as_string(), doc.as_string())
 
 class TestBlock(unittest.TestCase):
     def test_find(self):
@@ -358,7 +352,11 @@ class TestBlock(unittest.TestCase):
             _One 1 _thrEE 3
             _NonLoop_a alpha
             loop_ _lbBb _ln  B 1  D 2"""
-        self.assertEqual(block.as_string().split(), expected.split())
+        block_str = block.as_string()
+        self.assertEqual(block_str.split(), expected.split())
+
+        unpickled = pickle.loads(pickle.dumps(block))
+        self.assertEqual(unpickled.as_string(), block_str)
 
 class TestQuote(unittest.TestCase):
     def test_quote(self):
