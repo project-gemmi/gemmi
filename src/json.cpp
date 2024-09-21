@@ -62,47 +62,49 @@ static std::string as_cif_value(const sajson::value& val) {
 static void fill_document_from_sajson(Document& d, const sajson::document& s) {
   // assuming mmJSON here, we'll add handling of CIF-JSON later on
   sajson::value root = s.get_root();
-  if (root.get_type() != sajson::TYPE_OBJECT || root.get_length() != 1)
-    fail("not mmJSON");
-  std::string block_name = root.get_object_key(0).as_string();
-  if (!starts_with(block_name, "data_"))
-    fail("not mmJSON - top level key should start with data_\n"
-         "(if you use gemmi-cif2json to write JSON, use -m for mmJSON)");
-  d.blocks.emplace_back(block_name.substr(5));
-  std::vector<Item>& items = d.blocks[0].items;
-  sajson::value top = root.get_object_value(0);
-  if (top.get_type() != sajson::TYPE_OBJECT)
-    fail("");
-  for (size_t i = 0; i != top.get_length(); ++i) {
-    std::string category_name = "_" + top.get_object_key(i).as_string() + ".";
-    sajson::value category = top.get_object_value(i);
-    if (category.get_type() != sajson::TYPE_OBJECT ||
-        category.get_length() == 0 ||
-        category.get_object_value(0).get_type() != sajson::TYPE_ARRAY)
+  if (root.get_type() != sajson::TYPE_OBJECT)
+    fail("not mmJSON - the root is not of type object");
+  for (size_t block_index = 0; block_index < root.get_length(); ++block_index) {
+    std::string block_name = root.get_object_key(block_index).as_string();
+    if (!starts_with(block_name, "data_"))
+      fail("not mmJSON - top level key should start with data_\n"
+           "(if you use gemmi-cif2json to write JSON, use -m for mmJSON)");
+    d.blocks.emplace_back(block_name.substr(5));
+    std::vector<Item>& items = d.blocks[block_index].items;
+    sajson::value top = root.get_object_value(block_index);
+    if (top.get_type() != sajson::TYPE_OBJECT)
       fail("");
-    size_t cif_cols = category.get_length();
-    size_t cif_rows = category.get_object_value(0).get_length();
-    if (cif_rows > 1) {
-      items.emplace_back(LoopArg{});
-      Loop& loop = items.back().loop;
-      loop.tags.reserve(cif_cols);
-      loop.values.resize(cif_cols * cif_rows);
-    }
-    for (size_t j = 0; j != cif_cols; ++j) {
-      std::string tag = category_name + category.get_object_key(j).as_string();
-      sajson::value arr = category.get_object_value(j);
-      if (arr.get_type() != sajson::TYPE_ARRAY)
-        fail("Expected array, got " + json_type_as_string(arr.get_type()));
-      if (arr.get_length() != cif_rows)
-        fail("Expected array of length ", std::to_string(cif_rows), " not ",
-             std::to_string(arr.get_length()));
-      if (cif_rows == 1) {
-        items.emplace_back(tag, as_cif_value(arr.get_array_element(0)));
-      } else if (cif_rows != 0) {
+    for (size_t i = 0; i != top.get_length(); ++i) {
+      std::string category_name = "_" + top.get_object_key(i).as_string() + ".";
+      sajson::value category = top.get_object_value(i);
+      if (category.get_type() != sajson::TYPE_OBJECT ||
+          category.get_length() == 0 ||
+          category.get_object_value(0).get_type() != sajson::TYPE_ARRAY)
+        fail("");
+      size_t cif_cols = category.get_length();
+      size_t cif_rows = category.get_object_value(0).get_length();
+      if (cif_rows > 1) {
+        items.emplace_back(LoopArg{});
         Loop& loop = items.back().loop;
-        loop.tags.emplace_back(std::move(tag));
-        for (size_t k = 0; k != cif_rows; ++k)
-          loop.values[j + k*cif_cols] = as_cif_value(arr.get_array_element(k));
+        loop.tags.reserve(cif_cols);
+        loop.values.resize(cif_cols * cif_rows);
+      }
+      for (size_t j = 0; j != cif_cols; ++j) {
+        std::string tag = category_name + category.get_object_key(j).as_string();
+        sajson::value arr = category.get_object_value(j);
+        if (arr.get_type() != sajson::TYPE_ARRAY)
+          fail("Expected array, got " + json_type_as_string(arr.get_type()));
+        if (arr.get_length() != cif_rows)
+          fail("Expected array of length ", std::to_string(cif_rows), " not ",
+               std::to_string(arr.get_length()));
+        if (cif_rows == 1) {
+          items.emplace_back(tag, as_cif_value(arr.get_array_element(0)));
+        } else if (cif_rows != 0) {
+          Loop& loop = items.back().loop;
+          loop.tags.emplace_back(std::move(tag));
+          for (size_t k = 0; k != cif_rows; ++k)
+            loop.values[j + k*cif_cols] = as_cif_value(arr.get_array_element(k));
+        }
       }
     }
   }
