@@ -81,9 +81,12 @@ struct NeighborSearch {
 
   // assumes data in [0, 1), but uses index_n to account for numerical errors
   std::vector<Mark>& get_subcell(const Fractional& fr) {
-    return grid.data[grid.index_n(int(fr.x * grid.nu),
-                                  int(fr.y * grid.nv),
-                                  int(fr.z * grid.nw))];
+    size_t idx = grid.index_n(int(fr.x * grid.nu),
+                              int(fr.y * grid.nv),
+                              int(fr.z * grid.nw));
+    if (idx >= grid.data.size())
+      fail("NeighborSearch error, probably due to NaN in coordinates");
+    return grid.data[idx];
   }
 
   template<typename Func>
