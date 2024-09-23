@@ -745,7 +745,7 @@ Structure make_structure_from_block(const cif::Block& block_) {
         chain = &model->chains.back();
         resi = nullptr;
       }
-      ResidueId rid = make_resid(cif::as_string(row[kCompId]),
+      ResidueId rid = make_resid(cif::as_string(row.one_of(kCompId, kLabelCompId)),
                                  cif::as_string(row[kSeqId]),
                                  row.has(kInsCode) ? &row[kInsCode] : nullptr);
       if (!resi || !resi->matches(rid)) {
