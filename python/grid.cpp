@@ -166,6 +166,19 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
          (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
     .def("interpolate_value",
          (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
+    .def("interpolate_position_array",
+         [](const Gr& self, nb::ndarray<T, nb::shape<-1,3>, nb::device::cpu> xyz, int order) {
+        auto xyz_view = xyz.view();
+        size_t len = xyz_view.shape(0);
+        auto values = make_numpy_array<T>({len});
+        T* data = values.data();
+        for (size_t i = 0; i < len; ++i) {
+          Position pos(xyz_view(i, 0), xyz_view(i, 1), xyz_view(i, 2));
+          Fractional fpos = self.unit_cell.fractionalize(pos);
+          data[i] = self.interpolate(fpos, order);
+        }
+        return values;
+    }, nb::arg(), nb::arg("order")=2)
     // TODO: find a better name for this func, perhaps interpolate_array?
     .def("interpolate_values",
          [](const Gr& self, nb::ndarray<nb::numpy, T, nb::ndim<3>> arr,
