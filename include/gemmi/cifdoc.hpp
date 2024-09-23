@@ -326,9 +326,9 @@ struct Table {
     const std::string& one_of(size_t n1, size_t n2) const {
       static const std::string nul(1, '.');
       if (has2(n1))
-       return operator[](n1);
+        return operator[](n1);
       if (has(n2))
-       return operator[](n2);
+        return operator[](n2);
       return nul;
     }
 
@@ -354,7 +354,6 @@ struct Table {
   size_t length() const;
   size_t size() const { return length(); }
   bool has_column(int n) const { return ok() && positions.at(n) >= 0; }
-  int first_of(int n1, int n2) const { return positions.at(n1) >= 0 ? n1 : n2; }
   Row tags() { return Row{*this, -1}; }
   Row operator[](int n) { return Row{*this, n}; }
 
@@ -441,7 +440,6 @@ struct Table {
   iterator begin() { return iterator{*this, 0}; }
   iterator end() { return iterator{*this, (int)length()}; }
 };
-
 
 struct Block {
   std::string name;

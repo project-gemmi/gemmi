@@ -478,6 +478,33 @@ DiffractionInfo* find_diffrn(Metadata& meta, const std::string& diffrn_id) {
   return nullptr;
 }
 
+// optimized Row::one_of(), use with care or it will crash a program
+struct RowAccess {
+  const std::string *val = nullptr;
+  const std::string *fallback = nullptr;
+  RowAccess(const cif::Table& tab, int n1, int n2) {
+    int pos1 = tab.positions.at(n1);
+    int pos2 = tab.positions.at(n2);
+    if (pos1 < 0) {
+      pos1 = pos2;
+      pos2 = -1;
+    }
+    const cif::Loop* loop = const_cast<cif::Table&>(tab).get_loop();
+    if (pos1 >= 0)
+      val = loop ? &loop->values[pos1] : &tab.bloc.items[pos1].pair[1];
+    if (pos2 >= 0)
+      fallback = loop ? &loop->values[pos2] : &tab.bloc.items[pos2].pair[1];
+  }
+  bool ok() const { return val != nullptr; }
+  const std::string& get(size_t gap) const {
+    const std::string& r = val[gap];
+    if (!cif::is_null(r) || fallback == nullptr)
+      return r;
+    else
+      return fallback[gap];
+  }
+};
+
 } // anonymous namespace
 
 Structure make_structure_from_block(const cif::Block& block_) {
@@ -714,17 +741,22 @@ Structure make_structure_from_block(const cif::Block& block_) {
                                       "?ccp4_deuterium_fraction",
                                      });
   if (atom_table.length() != 0) {
-    const int kAsymId = atom_table.first_of(kAuthAsymId, kLabelAsymId);
+    RowAccess asym_id(atom_table, kAuthAsymId, kLabelAsymId);
     // we use only one comp (residue) and one atom name
-    const int kCompId = atom_table.first_of(kAuthCompId, kLabelCompId);
-    const int kAtomId = atom_table.first_of(kAuthAtomId, kLabelAtomId);
-    const int kSeqId = atom_table.first_of(kAuthSeqId, kLabelSeqId);
-    if (!atom_table.has_column(kCompId))
+    RowAccess comp_id(atom_table, kAuthCompId, kLabelCompId);
+    RowAccess atom_id(atom_table, kAuthAtomId, kLabelAtomId);
+    RowAccess seq_id(atom_table, kAuthSeqId, kLabelSeqId);
+    if (!asym_id.ok())
+      fail("Neither _atom_site.label_asym_id nor auth_asym_id found");
+    if (!comp_id.ok())
       fail("Neither _atom_site.label_comp_id nor auth_comp_id found");
-    if (!atom_table.has_column(kAtomId))
+    if (!atom_id.ok())
       fail("Neither _atom_site.label_atom_id nor auth_atom_id found");
-    if (!atom_table.has_column(kSeqId))
+    if (!seq_id.ok())
       fail("Neither _atom_site.label_seq_id nor auth_seq_id found");
+    size_t loop_width = 0;
+    if (const cif::Loop* loop = atom_table.get_loop())
+      loop_width = loop->width();
 
     st.has_d_fraction = atom_table.has_column(kDeuterium);
 
@@ -736,17 +768,18 @@ Structure make_structure_from_block(const cif::Block& block_) {
     else
       model = &st.find_or_add_model("1");
     for (auto row : atom_table) {
+      size_t gap = row.row_index * loop_width;
       if (row.has(kModelNum) && row[kModelNum] != model->name) {
         model = &st.find_or_add_model(row.str(kModelNum));
         chain = nullptr;
       }
-      if (!chain || cif::as_string(row[kAsymId]) != chain->name) {
-        model->chains.emplace_back(cif::as_string(row[kAsymId]));
+      if (!chain || cif::as_string(asym_id.get(gap)) != chain->name) {
+        model->chains.emplace_back(cif::as_string(asym_id.get(gap)));
         chain = &model->chains.back();
         resi = nullptr;
       }
-      ResidueId rid = make_resid(cif::as_string(row.one_of(kCompId, kLabelCompId)),
-                                 cif::as_string(row[kSeqId]),
+      ResidueId rid = make_resid(cif::as_string(comp_id.get(gap)),
+                                 cif::as_string(seq_id.get(gap)),
                                  row.has(kInsCode) ? &row[kInsCode] : nullptr);
       if (!resi || !resi->matches(rid)) {
         resi = chain->find_or_add_residue(rid);
@@ -768,7 +801,7 @@ Structure make_structure_from_block(const cif::Block& block_) {
         fail("Inconsistent sequence ID: " + resi->str() + " / " + rid.str());
       }
       Atom atom;
-      atom.name = cif::as_string(row[kAtomId]);
+      atom.name = cif::as_string(atom_id.get(gap));
       // altloc is always a single letter (not guaranteed by the mmCIF spec)
       atom.altloc = cif::as_char(row[kAltId], '\0');
       atom.charge = row.has2(kCharge) ? cif::as_int(row[kCharge]) : 0;
