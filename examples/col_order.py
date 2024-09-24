@@ -4,6 +4,7 @@
 
 import sys
 from gemmi import cif, CifWalk
+from typing import Dict
 
 #ESD = 'Cartn_x_esd Cartn_y_esd Cartn_z_esd occupancy_esd B_iso_or_equiv_esd '
 ESD = ''
@@ -13,7 +14,7 @@ USUAL_ORDER = ('group_PDB id type_symbol label_atom_id label_alt_id '
                'B_iso_or_equiv ' + ESD + 'pdbx_formal_charge '
                'auth_seq_id auth_comp_id auth_asym_id auth_atom_id '
                'pdbx_PDB_model_num')
-counts = {}
+counts : Dict[str, int] = {}
 for arg in sys.argv[1:]:
     for path in CifWalk(arg):
         block = cif.read(path).sole_block()
