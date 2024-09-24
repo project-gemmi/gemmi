@@ -523,6 +523,7 @@ if (USE_PYTHON)
       OUTPUT __init__.pyi
       PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
       DEPENDS gemmi_py
+      PATTERN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/python/stubs.pat"
       MARKER_FILE py.typed
     )
     nanobind_add_stub(
