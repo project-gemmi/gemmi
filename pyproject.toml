@@ -52,6 +52,7 @@ sdist.include = [
   "prog/*.h*",
   "python/*.cpp",
   "python/*.h*",
+  "python/stubs.pat",
   "third_party/README",
   "third_party/*.h",
   "third_party/zlib/*",
