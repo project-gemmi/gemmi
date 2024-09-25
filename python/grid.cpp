@@ -162,23 +162,38 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
   using Gr = Grid<T>;
   grid
     .def("interpolate_value",
-         (T (Gr::*)(const Fractional&) const) &Gr::interpolate_value)
+         (T (Gr::*)(const Fractional&, int) const) &Gr::interpolate_value,
+         nb::arg(), nb::arg("order")=1)
     .def("interpolate_value",
-         (T (Gr::*)(const Position&) const) &Gr::interpolate_value)
+         (T (Gr::*)(const Position&, int) const) &Gr::interpolate_value,
+         nb::arg(), nb::arg("order")=1)
+    // deprecated, use interpolate_value(..., order=3)
+    .def("tricubic_interpolation",
+         (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
+    // deprecated, use interpolate_value(..., order=3)
+    .def("tricubic_interpolation",
+         (double (Gr::*)(const Position&) const) &Gr::tricubic_interpolation)
+    .def("tricubic_interpolation_der",
+         (std::array<double,4> (Gr::*)(const Fractional&) const)
+         &Gr::tricubic_interpolation_der)
     .def("interpolate_position_array",
-         [](const Gr& self, nb::ndarray<T, nb::shape<-1,3>, nb::device::cpu> xyz, int order) {
+         [](const Gr& self, nb::ndarray<double, nb::shape<-1,3>, nb::device::cpu> xyz,
+            int order, const Transform* to_frac) {
         auto xyz_view = xyz.view();
         size_t len = xyz_view.shape(0);
         auto values = make_numpy_array<T>({len});
         T* data = values.data();
+        const Transform& frac = to_frac ? *to_frac : self.unit_cell.frac;
         for (size_t i = 0; i < len; ++i) {
           Position pos(xyz_view(i, 0), xyz_view(i, 1), xyz_view(i, 2));
-          Fractional fpos = self.unit_cell.fractionalize(pos);
-          data[i] = self.interpolate(fpos, order);
+          Fractional fpos = Fractional(frac.apply(pos));
+          data[i] = self.interpolate_value(fpos, order);
         }
         return values;
-    }, nb::arg(), nb::arg("order")=2)
-    // TODO: find a better name for this func, perhaps interpolate_array?
+    }, nb::arg("xyz"), nb::arg("order")=1, nb::arg("to_frac")=nb::none())
+    // The name of this function is not very descriptive, but since it's used
+    // in a few external projects, renaming it isn't worth the hassle.
+    // cf. interpolate_grid
     .def("interpolate_values",
          [](const Gr& self, nb::ndarray<nb::numpy, T, nb::ndim<3>> arr,
             const Transform& tr, int order) {
@@ -188,16 +203,9 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
             for (size_t k = 0; k < r.shape(2); ++k) {
               Position pos(tr.apply(Vec3(i, j, k)));
               Fractional fpos = self.unit_cell.fractionalize(pos);
-              r(i, j, k) = self.interpolate(fpos, order);
+              r(i, j, k) = self.interpolate_value(fpos, order);
             }
-    }, nb::arg().noconvert(), nb::arg(), nb::arg("order")=2)
-    .def("tricubic_interpolation",
-         (double (Gr::*)(const Fractional&) const) &Gr::tricubic_interpolation)
-    .def("tricubic_interpolation",
-         (double (Gr::*)(const Position&) const) &Gr::tricubic_interpolation)
-    .def("tricubic_interpolation_der",
-         (std::array<double,4> (Gr::*)(const Fractional&) const)
-         &Gr::tricubic_interpolation_der)
+    }, nb::arg().noconvert(), nb::arg(), nb::arg("order")=1)
     ;
 }
 
@@ -265,10 +273,10 @@ void add_grid(nb::module_& m) {
     .def("set_to_zero", &SolventMasker::set_to_zero)
     ;
   m.def("interpolate_grid", &interpolate_grid<float>,
-        nb::arg("dest"), nb::arg("src"), nb::arg("tr"), nb::arg("order")=2);
+        nb::arg("dest"), nb::arg("src"), nb::arg("tr"), nb::arg("order")=1);
   m.def("interpolate_grid_of_aligned_model2", &interpolate_grid_of_aligned_model2<float>,
         nb::arg("dest"), nb::arg("src"), nb::arg("tr"),
-        nb::arg("dest_model"), nb::arg("radius"), nb::arg("order")=2);
+        nb::arg("dest_model"), nb::arg("radius"), nb::arg("order")=1);
 
 
   // from blob.hpp

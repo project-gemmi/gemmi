@@ -342,72 +342,100 @@ a bulk :ref:`solvent mask <solventmask>`.
 Interpolation
 -------------
 
-To get a value corresponding to an arbitrary position,
-you may use trilinear interpolation of the 8 nearest nodes,
-or tricubic interpolation that uses 64 nodes.
+Interpolation is used to obtain a value corresponding to an arbitrary position.
+The most common interpolation methods are:
+
+* trilinear interpolation of the 8 nearest nodes,
+* tricubic interpolation that uses 64 nodes.
+
+Cubic interpolation is smoother than linear but may amplify noise.
+This is illustrated in the plots below, which show density along two lines
+in a grid filled with random numbers from [0, 1).
+Trilinear interpolation is shown in blue, and tricubic -- in red.
+The left plot shows density along a line in a random direction,
+while the right plot shows density along a line parallel to one of the axes.
+
+.. image:: img/trilinear-tricubic.png
+    :align: center
+    :scale: 100
+
+In the functions below, the choice of interpolation is specified
+using the `order` argument:
+
+* order=0 -- the nearest grid point value,
+* order=1 -- trilinear interpolation (default),
+* order=3 -- tricubic interpolation.
 
 **C++**
 
 ::
 
-  T Grid<T>::interpolate_value(const Fractional& fctr) const
-  T Grid<T>::interpolate_value(const Position& ctr) const
-
-  double Grid<T>::tricubic_interpolation(const Fractional& fctr) const
-  double Grid<T>::tricubic_interpolation(const Position& ctr) const
-
-  // calculates also derivatives
+  T Grid<T>::interpolate_value(const Fractional& fctr, int order=1) const
+  T Grid<T>::interpolate_value(const Position& ctr, int order=1) const
+  // You can also directly call the underlying functions
+  // trilinear_interpolation() and tricubic_interpolation().
+  // There is also a function that calculates derivatives:
   std::array<double,4> Grid<T>::tricubic_interpolation_der(double x, double y, double z) const
 
 **Python**
 
 .. doctest::
 
+  >>> # trilinear interpolation
   >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24))
   0.890625
   >>> grid.interpolate_value(gemmi.Position(2, 3, 4))
   2.0333263874053955
-  >>> grid.tricubic_interpolation(gemmi.Fractional(1/24, 1/24, 1/24))
+  >>> # nearest value
+  >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24), order=0)
+  7.0
+  >>> grid.interpolate_value(gemmi.Position(2, 3, 4), order=0)  # doctest: +ELLIPSIS
+  0.0
+  >>> # tricubic interpolation
+  >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24), order=3)
   1.283477783203125
-  >>> grid.tricubic_interpolation(gemmi.Position(2, 3, 4))  # doctest: +ELLIPSIS
-  2.6075661737715...
-  >>> # calculate also derivatives in directions of unit cell axes
+  >>> grid.interpolate_value(gemmi.Position(2, 3, 4), order=3)  # doctest: +ELLIPSIS
+  2.607566...
+  >>> # calculate value and derivatives in the directions of unit cell axes
   >>> grid.tricubic_interpolation_der(gemmi.Fractional(1/24, 1/24, 1/24))
   [1.283477783203125, 35.523193359375, 36.343505859375, 35.523193359375]
 
-The cubic interpolation is smoother than linear, but may amplify the noise.
-This is illustrated on the plots below, which shows density along two lines
-in a grid that was filled with random numbers from [0, 1).
-Trilinear interpolation is blue, tricubic -- red.
-The left plot shows density along a line in a random direction,
-the right plot -- along a line parallel to one of the axes.
 
-.. image:: img/trilinear-tricubic.png
-    :align: center
-    :scale: 100
+*NumPy arrays*
 
-*Implementation notes*
+To interpolate the grid at positions listed as a NumPy array,
+use `interpolate_position_array()`, which takes a NumPy array of positions
+and returns a NumPy array of interpolated values:
 
-Tricubic interpolation, as described
-on `Wikipedia page <https://en.wikipedia.org/wiki/Tricubic_interpolation>`_ and in
-`Appendix B of a PHENIX paper <https://journals.iucr.org/d/issues/2018/06/00/ic5103/#APPB>`_,
-can be implemented either as 21 cubic interpolations, or using method
-introduced by `Lekien & Marsen <https://doi.org/10.1002/nme.1296>`_ in 2005,
-which involves 64x64 matrix of integral coefficients
-(see also this `blog post <http://ianfaust.com/2016/03/20/Tricubic/>`_).
-The latter method should be more efficient, but gemmi uses the former,
-which takes ~100 ns. If you'd like to speed it up or to get derivatives,
-contact developers.
+.. doctest::
+  :skipif: numpy is None
 
-*Optimization for Python*
+  >>> coords = numpy.array([[1, 2, 3], [2, 3, 4]], dtype=numpy.float32)
+  >>> grid.interpolate_position_array(coords)
+  array([0.4954875, 2.0333264], dtype=float32)
 
-If you have a large number of points, making a Python function call
-each time would be slow.
-If these points are on a regular 3D grid (which may not be aligned
+By default, it expects Cartesian coordinates and uses linear interpolation.
+This can be changed by providing optional arguments `to_frac: Transform`
+and `order: int`.
+
+`to_frac` transforms input coordinates to fractional coordinates.
+By default, it is a fractionalization matrix from the grid's unit cell.
+If your coordinates are already fractional, pass the identity matrix:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> frac = numpy.array([[1/24, 1/24, 1/24]])
+  >>> grid.interpolate_position_array(frac, to_frac=gemmi.Transform())
+  array([0.890625], dtype=float32)
+
+----
+
+If the positions of interest are on a regular 3D grid (which may not be aligned
 with our grid) call `interpolate_values()` (with s at the end)
 with two arguments: a 3D NumPy array (for storing the results)
-and a :ref:`Transform <transform>` that relates indices of the array
-to positions in the grid:
+and a :ref:`Transform <transform>` that relates the array's indices
+to positions (in Angstroms) in the grid:
 
 .. doctest::
   :skipif: numpy is None
@@ -423,8 +451,26 @@ to positions in the grid:
   >>> arr[10, 10, 10]  # -> corresponds to Position(2, 3, 4)
   2.0333264
 
-(If your points are not on a regular grid -- get in touch -- there might be
-another way.)
+*One Grid to another*
+
+For rescaling, rotating and translating maps, we have functions that use values
+from one Grid to set values in another Grid.
+Currently, the API is not ideal and should be revisited.
+Therefore, for now we leave them undocumented:
+
+    gemmi::interpolate_grid()
+    gemmi::interpolate_grid_of_aligned_model2()
+
+*Implementation note*
+
+Tricubic interpolation, as described on the
+`Wikipedia page <https://en.wikipedia.org/wiki/Tricubic_interpolation>`_ and in
+`Appendix B of a PHENIX paper <https://journals.iucr.org/d/issues/2018/06/00/ic5103/#APPB>`_,
+can be implemented either as 21 cubic interpolations or using a method
+introduced by `Lekien & Marsden <https://doi.org/10.1002/nme.1296>`_ in 2005,
+which involves 64x64 matrix of integral coefficients
+(see also this `blog post <http://ianfaust.com/2016/03/20/Tricubic/>`_).
+Gemmi uses the former method. It takes ~100 ns.
 
 .. _masked_grid:
 

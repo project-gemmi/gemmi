@@ -396,7 +396,7 @@ template<typename T>
 void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
                                         const Transform& tr,
                                         const Model& dest_model, double radius,
-                                        int order=2) {
+                                        int order=1) {
   Grid<NodeInfo> mask;
   mask.copy_metadata_from(dest);
   mask_with_node_info(mask, dest_model, radius);
@@ -408,7 +408,7 @@ void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
     if (ni.found) {
       Fractional dest_fr = dest.get_fractional(ni.u, ni.v, ni.w);
       Fractional src_fr = frac_tr.apply(dest_fr);
-      dest.data[idx] = src.interpolate(src_fr, order);
+      dest.data[idx] = src.interpolate_value(src_fr, order);
     }
   }
 }
