@@ -783,20 +783,21 @@ struct Grid : GridBase<T> {
     for (T& x : data)
       x = static_cast<T>((x - stats.dmean) / stats.rms);
   }
-
-  // TODO: can it be replaced with interpolate_grid(dest, src, Transform(), order)?
-  void resample_to(Grid<T>& dest, int order) const {
-    dest.check_not_empty();
-    int idx = 0;
-    for (int w = 0; w < dest.nw; ++w)
-      for (int v = 0; v < dest.nv; ++v)
-        for (int u = 0; u < dest.nu; ++u, ++idx) {
-          const Fractional f = dest.get_fractional(u, v, w);
-          dest.data[idx] = interpolate(f, order);
-        }
-  }
 };
 
+// TODO: add argument Box<Fractional> src_extent
+template<typename T>
+void interpolate_grid(Grid<T>& dest, const Grid<T>& src, const Transform& tr, int order=2) {
+  FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
+  size_t idx = 0;
+  for (int w = 0; w != dest.nw; ++w)
+    for (int v = 0; v != dest.nv; ++v)
+      for (int u = 0; u != dest.nu; ++u, ++idx) {
+        Fractional dest_fr = dest.get_fractional(u, v, w);
+        Fractional src_fr = frac_tr.apply(dest_fr);
+        dest.data[idx] = src.interpolate(src_fr, order);
+      }
+}
 
 template<typename T>
 Correlation calculate_correlation(const GridBase<T>& a, const GridBase<T>& b) {

@@ -332,20 +332,6 @@ struct SolventMasker {
 #endif
 };
 
-// TODO: add argument Box<Fractional> src_extent
-template<typename T>
-void interpolate_grid(Grid<T>& dest, const Grid<T>& src, const Transform& tr, int order=2) {
-  FTransform frac_tr = src.unit_cell.frac.combine(tr).combine(dest.unit_cell.orth);
-  size_t idx = 0;
-  for (int w = 0; w != dest.nw; ++w)
-    for (int v = 0; v != dest.nv; ++v)
-      for (int u = 0; u != dest.nu; ++u, ++idx) {
-        Fractional dest_fr = dest.get_fractional(u, v, w);
-        Fractional src_fr = frac_tr.apply(dest_fr);
-        dest.data[idx] = src.interpolate(src_fr, order);
-      }
-}
-
 struct NodeInfo {
   double dist_sq;  // distance from the nearest atom
   bool found = false;  // the mask flag

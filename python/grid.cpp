@@ -121,7 +121,6 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
     .def("symmetrize_max", &Gr::symmetrize_max)
     .def("symmetrize_abs_max", &Gr::symmetrize_abs_max)
     .def("symmetrize_sum", &Gr::symmetrize_sum)
-    .def("resample_to", &Gr::resample_to, nb::arg("dest"), nb::arg("order"))
     .def("masked_asu", &masked_asu<T>, nb::keep_alive<0, 1>())
     .def("mask_points_in_constant_radius", &mask_points_in_constant_radius<T>,
          nb::arg("model"), nb::arg("radius"), nb::arg("value"),
