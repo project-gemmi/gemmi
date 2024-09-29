@@ -205,6 +205,12 @@ installed (on Ubuntu: `sudo apt install git cmake make g++`), then::
     cmake .
     make
 
+Alternatively, you can use `pip install git+https://...`, which installs
+both Python module and the program. If you are not using the Python module,
+you can use pip to build only the program::
+
+    pip install git+https://github.com/project-gemmi/gemmi.git --config-settings=cmake.args=-DONLY_PROGRAM=ON
+
 Testing
 -------
 

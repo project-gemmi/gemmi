@@ -45,12 +45,17 @@ option(USE_NLOPT "Experimental, for testing only, don't use it" OFF)
 # uncomment to show compilation times for each compilation unit
 #set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "\"${CMAKE_COMMAND}\" -E time")
 
-if ((DEFINED ENV{FC} AND NOT "$ENV{FC}" STREQUAL "") OR CMAKE_Fortran_COMPILER)
-  set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
-endif()
-
-if (DEFINED Python_EXECUTABLE)
-  set(USE_PYTHON ON CACHE BOOL "Build Python bindings" FORCE)
+if (ONLY_PROGRAM)
+  set(USE_PYTHON OFF CACHE BOOL "" FORCE) # it's set to ON in pyproject.toml
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  set(INSTALL_DEV_FILES OFF CACHE BOOL "" FORCE)
+else()
+  if ((DEFINED ENV{FC} AND NOT "$ENV{FC}" STREQUAL "") OR CMAKE_Fortran_COMPILER)
+    set(USE_FORTRAN ON CACHE BOOL "Build Fortran bindings" FORCE)
+  endif()
+  if (DEFINED Python_EXECUTABLE AND NOT DEFINED SKBUILD)
+    set(USE_PYTHON ON CACHE BOOL "Build Python bindings" FORCE)
+  endif()
 endif()
 
 if (NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
