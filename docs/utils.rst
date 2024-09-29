@@ -425,27 +425,48 @@ This makes possible to use `diff` to compare a PDB file from wwPDB
 and a file converted by Gemmi from mmCIF. The file from wwPDB will have
 more records, but the diff should still be readable.
 
-The option `--expand-ncs` expands strict NCS, defined in
+`--expand-ncs`
+--------------
+
+This option expands strict NCS, defined in
 the `MTRIX` record (PDB) or in the `_struct_ncs_oper` table (mmCIF).
 It is not obvious how to name the new chains that are added.
 We have two options: either new names are generated (`=new`) or
 the chain names are not changed but distinct segment IDs are added (`=dup`).
 
-The `--sifts-num` option changes sequence IDs to the corresponding sequence
-positions from UniProt. The mapping between PDB and UniProt is based on
+`--sifts-num`
+-------------
+
+This option changes sequence IDs to the corresponding sequence
+positions from UniProt. Residues that don't have UniProt correspondence
+have their sequence numbers increased by an offset of 5000 (like in PDBrenum).
+In rare cases where UniProt positions are around 5000 or higher,
+the offset is increased to 6000 or a larger round number.
+
+Note that the mapping between PDB and UniProt is based on
 SIFTS (not DBREF) :ref:`annotations in mmCIF files <dbref>`.
 Currently, these annotations are present only in the PDB NextGen Archive
-and in PDBe "updated" files.
-Most PDB chains are mapped to a single UniProt entry.
+and in PDBe "updated" files -- `--sifts-num`  works only with these files!
+
+If accession codes (ACs) are specified in this option, only the matching
+UniProt ACs are used, and non-matching chains have their sequence numbers
+increased by an offset.
+
 For chimeric chains that correspond to 2+ UniProt sequences,
-we default to selecting the sequence with more corresponding residues.
-This default can be overridden by explicitly specifying the preferred
+we use the sequence with the most corresponding residues.
+This choice can be overridden by explicitly specifying the preferred
 UniProtKB identifiers (usually just one AC, but it's possible to specify
 multiple comma-separated ACs, in the order of preference).
-To avoid clashes in sequence IDs, and also to indicate which IDs are based
-on UniProt mapping, the non-mapped sequence numbers are increased by
-an offset of 5000 (this default value is inspired by PDBrenum)
-or bigger if necessary (when UniProt positions are that large).
+
+`*` in the argument list (e.g. `--sifts-num=P01234,*`)
+means that all chains with corresponding UniProt entries are renumbered
+to match UniProt positions (but P01234 is preferred for chimeric chains).
+An absent argument (`--sifts-num`) is equivalent to `*` (`--sifts-num=*`).
+
+Chains that don't match the UniProt ACs have their sequence numbers
+bumped by 5000+, similarly to ligands and waters in matching chains.
+To leave the non-matching chains unchanged, add `=` at the end,
+e.g. `--sifts-num=*,=`.
 
 set
 ===

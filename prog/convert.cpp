@@ -123,8 +123,8 @@ const option::Descriptor Usage[] = {
     "  -s FILE  \tUse sequence(s) from FILE in PIR or FASTA format. Each chain"
     " is assigned the best matching sequence, if any." },
   { SiftsNum, 0, "", "sifts-num", Arg::Optional,
-    "  --sifts-num[=AC]  \tSet sequence ID to SIFTS-mapped UniProt positions."
-    " In chimeric chains use AC. Adds 5000 to other seqnums." },
+    "  --sifts-num[=AC,...]  \tSet sequence ID to SIFTS-mapped UniProt positions,"
+    " add 5000+ to non-mapped seqnums. See the docs for details." },
   { Biso, 0, "B", "", Arg::Required,
     "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or change values "
       "out of given range to MIN/MAX." },
@@ -189,23 +189,30 @@ std::string read_whole_file(std::istream& stream) {
   return out;
 }
 
-std::uint8_t select_acc_index(const std::vector<std::string>& acc, // Entity::sifts_unp_acc
-                              const gemmi::ConstResidueSpan& polymer,
-                              const std::vector<std::string>& preferred_acs) {
-  if (acc.size() < 2)
-    return 0;
+int select_ac_index(const std::vector<std::string>& acs, // Entity::sifts_unp_acc
+                    const gemmi::ConstResidueSpan& polymer,
+                    const std::vector<std::string>& preferred_acs) {
   for (const std::string& pa : preferred_acs) {
-    auto it = std::find(acc.begin(), acc.end(), pa);
-    if (it != acc.end())
-      return std::uint8_t(it - acc.begin());
+    if (pa == "=")
+      return -2;
+    if (acs.empty())
+      continue;
+    if (pa == "*") {
+      // return SIFTS mapping with most residues
+      std::vector<int> counts(acs.size(), 0);
+      for (const gemmi::Residue& res : polymer)
+        if (res.sifts_unp.res && res.sifts_unp.acc_index < acs.size())
+          ++counts[res.sifts_unp.acc_index];
+      auto max_el = std::max_element(counts.begin(), counts.end());
+      if (*max_el > 0)
+        return int(max_el - counts.begin());
+    } else {
+      auto it = std::find(acs.begin(), acs.end(), pa);
+      if (it != acs.end())
+        return int(it - acs.begin());
+    }
   }
-  // return SIFTS mapping with most residues
-  std::vector<int> counts(acc.size(), 0);
-  for (const gemmi::Residue& res : polymer)
-    if (res.sifts_unp.res && res.sifts_unp.acc_index < acc.size())
-      ++counts[res.sifts_unp.acc_index];
-  auto max_el = std::max_element(counts.begin(), counts.end());
-  return std::uint8_t(max_el - counts.begin());
+  return -1;
 }
 
 // Set seqid corresponding to one UniProt sequence.
@@ -213,42 +220,45 @@ std::uint8_t select_acc_index(const std::vector<std::string>& acc, // Entity::si
 void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferred_acs) {
   using Key = std::pair<std::string, gemmi::SeqId>;
   std::map<Key, gemmi::SeqId> seqid_map;
+
+  // find new sequence IDs and store them in seqid_map
   std::map<std::string, uint16_t> chain_offsets;
-  bool first_model = true;
   for (gemmi::Model& model: st.models) {
     for (gemmi::Chain& chain : model.chains) {
       auto polymer = chain.get_polymer();
       gemmi::Entity* ent = st.get_entity_of(polymer);
-      std::uint8_t acc_index = 0;
+      int ac_index = -1;
       if (ent)
-        acc_index = select_acc_index(ent->sifts_unp_acc, polymer, preferred_acs);
-      std::uint16_t offset = 4950;
-      for (gemmi::Residue& res : chain.residues) {
-        if (res.sifts_unp.res && res.sifts_unp.acc_index == acc_index) {
-          // assert(ent && res.entity_id == ent->name);
-          gemmi::SeqId new_seqid(res.sifts_unp.num, ' ');
-          if (first_model)
+        ac_index = select_ac_index(ent->sifts_unp_acc, polymer, preferred_acs);
+      std::uint16_t max_unp_num = 0;
+      // first pass - set seqid_map for AC-corresponding residues
+      if (ac_index >= 0)
+        for (gemmi::Residue& res : chain.residues) {
+          if (res.sifts_unp.res && (int) res.sifts_unp.acc_index == ac_index) {
+            // assert(ent && res.entity_id == ent->name);
+            gemmi::SeqId new_seqid(res.sifts_unp.num, ' ');
             seqid_map.emplace(std::make_pair(chain.name, res.seqid), new_seqid);
-          res.seqid = new_seqid;
-          offset = std::max(offset, res.sifts_unp.num);
+            res.seqid = new_seqid;
+            max_unp_num = std::max(max_unp_num, res.sifts_unp.num);
+          }
         }
+      // retrieve or (for a new chain) store the offset for non-AC residues
+      auto result = chain_offsets.emplace(chain.name, 0);
+      std::uint16_t& offset = result.first->second;
+      if (result.second && ac_index != -2) {
+        if (max_unp_num <= 4950)
+          offset = 5000;
+        else
+          offset = (max_unp_num + 1049) / 1000 * 1000;  // N * 1000, N > 5
       }
-      offset = (offset + 1049) / 1000 * 1000;  // always >= 5000
-      auto result = chain_offsets.emplace(chain.name, offset);
-      if (!result.second) {
-        auto it = result.first;
-        offset = std::max(offset, it->second);
-        it->second = offset;
-      }
+      // second pass - set seqid_map for non-AC residues
       for (gemmi::Residue& res : chain.residues)
-        if (!res.sifts_unp.res || res.sifts_unp.acc_index != acc_index) {
+        if (!res.sifts_unp.res || res.sifts_unp.acc_index != ac_index) {
           gemmi::SeqId orig_seqid = res.seqid;
           res.seqid.num += offset;
-          if (first_model)
-            seqid_map.emplace(std::make_pair(chain.name, orig_seqid), res.seqid);
+          seqid_map.emplace(std::make_pair(chain.name, orig_seqid), res.seqid);
         }
     }
-    first_model = false;
   }
 
   auto update_seqid = [&](const std::string& chain_name, gemmi::SeqId& seqid) {
@@ -264,6 +274,11 @@ void to_sifts_num(gemmi::Structure& st, const std::vector<std::string>& preferre
   for (gemmi::Entity& ent : st.entities)
     for (gemmi::Entity::DbRef& dbref : ent.dbrefs)
       dbref.seq_begin = dbref.seq_end = gemmi::SeqId();
+}
+
+// simplified check, can return false positives
+bool is_uniprot_ac_format(const std::string& ac) {
+  return ac.size() >= 6 && ac[0] >= 'A' && ac[0] <= 'Z' && ac[1] >= '0' && ac[1] <= '9';
 }
 
 void convert(gemmi::Structure& st,
@@ -394,8 +409,10 @@ void convert(gemmi::Structure& st,
     if (opt->arg) {
       gemmi::split_str_into(opt->arg, ',', preferred_acs);
       for (const std::string& ac : preferred_acs)
-        if (ac.size() < 6 || ac[0] < 'A' || ac[0] > 'Z' || ac[1] < '0' || ac[1] > '9')
+        if (ac != "*" && ac != "=" && !is_uniprot_ac_format(ac))
           gemmi::fail(ac + " is not in UniProtKB AC format, from: " + opt->name);
+    } else {
+      preferred_acs.emplace_back("*");
     }
     to_sifts_num(st, preferred_acs);
   }

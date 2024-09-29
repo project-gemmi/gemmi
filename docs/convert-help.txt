@@ -41,8 +41,8 @@ Any output options:
   --monomer=OLD:NEW       Change monomer name (CCD code) OLD to NEW.
   -s FILE                 Use sequence(s) from FILE in PIR or FASTA format. Each
                           chain is assigned the best matching sequence, if any.
-  --sifts-num[=AC]        Set sequence ID to SIFTS-mapped UniProt positions. In
-                          chimeric chains use AC. Adds 5000 to other seqnums.
+  --sifts-num[=AC,...]    Set sequence ID to SIFTS-mapped UniProt positions, add
+                          5000+ to non-mapped seqnums. See the docs for details.
   -B MIN[:MAX]            Set isotropic B-factors to a single value or change
                           values out of given range to MIN/MAX.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
