@@ -8,7 +8,7 @@
 #include "gemmi/neutron92.hpp"
 #include "gemmi/sfcalc.hpp"   // for StructureFactorCalculator
 #include "gemmi/dencalc.hpp"  // for DensityCalculator
-#include "gemmi/fprime.hpp"   // for add_cl_fprime_for_all_elements
+#include "gemmi/fprime.hpp"   // for cromer_liberman
 
 template<typename Table>
 void add_sfcalc(nb::module_& m, const char* name, bool with_mb) {
@@ -68,7 +68,9 @@ void add_sf(nb::module_& m) {
     .def("get", &gemmi::Addends::get)
     .def("clear", &gemmi::Addends::clear)
     .def("add_cl_fprime", [](gemmi::Addends& self, double energy) {
-        gemmi::add_cl_fprime_for_all_elements(&self.values[1], energy);
+        float* out = self.values.data();
+        for (int z = 1; z <= 92; ++z)
+          *++out += (float) gemmi::cromer_liberman(z, energy, nullptr);
     }, nb::arg("energy"))
     .def("subtract_z", &gemmi::Addends::subtract_z,
          nb::arg("except_hydrogen")=false)

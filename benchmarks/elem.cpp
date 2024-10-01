@@ -62,4 +62,5 @@ pyridoxine_elements         11 ns         11 ns   64656977
 common_elements             16 ns         16 ns   43586668
 various_elements            86 ns         86 ns    8055870
 heavy_elements             332 ns        332 ns    2142365
+run_fprime               80884 ns        80866 ns     8522
 */

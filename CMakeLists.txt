@@ -213,8 +213,9 @@ set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
             src/align.cpp src/assembly.cpp src/calculate.cpp src/crd.cpp
-            src/ddl.cpp src/eig3.cpp src/gz.cpp src/intensit.cpp src/json.cpp
-            src/mmcif.cpp src/mmread_gz.cpp src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
+            src/ddl.cpp src/eig3.cpp src/fprime.cpp src/gz.cpp
+            src/intensit.cpp src/json.cpp src/mmcif.cpp src/mmread_gz.cpp
+            src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp src/read_map.cpp
             src/resinfo.cpp src/riding_h.cpp src/select.cpp src/sprintf.cpp
             src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
@@ -299,7 +300,7 @@ add_single_prog(contents)
 add_single_prog(convert)
 add_single_prog(crd ADD_SRC prog/monlib_opt.cpp)
 add_single_prog(ecalc)
-add_single_prog(fprime NOLIB)
+add_single_prog(fprime)
 add_single_prog(grep)
 add_single_prog(h)
 add_single_prog(json2cif)
@@ -443,7 +444,7 @@ endif()
 if (benchmark_FOUND)
   foreach(b stoi elem mod niggli pdb resinfo round sym writecif)
     add_executable(${b}-bm EXCLUDE_FROM_ALL benchmarks/${b}.cpp)
-    if (b MATCHES "resinfo|pdb|writecif")
+    if (b MATCHES "elem|resinfo|pdb|writecif")
       target_link_libraries(${b}-bm PRIVATE gemmi_cpp)
     endif()
     target_link_libraries(${b}-bm PRIVATE gemmi_headers benchmark::benchmark)
