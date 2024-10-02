@@ -492,7 +492,9 @@ if (USE_PYTHON)
   else()
     target_link_libraries(gemmi_py PRIVATE gemmi_cpp)
   endif()
-  set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi)
+  set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME _gemmi)
+  set_property(TARGET gemmi_py PROPERTY LIBRARY_OUTPUT_DIRECTORY py/gemmi)
+  configure_file(python/gemmi/__init__.py py/gemmi/__init__.py COPYONLY)
 
   # nanobind gives warnings with -Wpedantic and -Wshadow
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
@@ -526,7 +528,7 @@ if (USE_PYTHON)
     nanobind_add_stub(
       gemmi_stub
       MODULE gemmi
-      OUTPUT __init__.pyi
+      OUTPUT py/gemmi/__init__.pyi
       PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
       DEPENDS gemmi_py
       PATTERN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/python/stubs.pat"
@@ -535,7 +537,7 @@ if (USE_PYTHON)
     nanobind_add_stub(
       gemmi_cif_stub
       MODULE gemmi.cif
-      OUTPUT cif.pyi
+      OUTPUT py/gemmi/cif.pyi
       PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
       DEPENDS gemmi_py
     )
@@ -588,22 +590,22 @@ if (USE_PYTHON)
     if (DEFINED SKBUILD)
       # When building via pip, Python_SITEARCH is /tmp.../wheel/platlib,
       # different from the actual install path. Best guess:
-      set(rpath_rel "../../../${CMAKE_INSTALL_LIBDIR}")
+      set(rpath_rel "../../../../${CMAKE_INSTALL_LIBDIR}")
     else()
       file(RELATIVE_PATH rpath_rel
-           "${Python_SITEARCH}" "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+           "${Python_SITEARCH}/gemmi" "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
     endif()
     set_target_properties(gemmi_py PROPERTIES INSTALL_RPATH "${origin}/${rpath_rel}")
   endif()
-  install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}" COMPONENT py)
+  install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
   install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
           FILES_MATCHING PATTERN "*.py"
           PATTERN "[._]*" EXCLUDE)
   if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
     install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/py.typed"
-            "${CMAKE_CURRENT_BINARY_DIR}/__init__.pyi"
-            "${CMAKE_CURRENT_BINARY_DIR}/cif.pyi"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/py.typed"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/__init__.pyi"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/cif.pyi"
             DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
   endif()
 endif()

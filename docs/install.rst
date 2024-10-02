@@ -249,7 +249,7 @@ Code derived from the following projects is used in the library:
 * `QCProt <https://theobald.brandeis.edu/qcp/>`_ -- superposition method
   in `qcp.hpp` is taken from QCProt and adapted to our project. License: BSD.
 * `Larch <https://github.com/xraypy/xraylarch>`_ -- calculation of f' and f"
-  in `fprime.hpp` is based on CromerLiberman code from Larch.
+  in `fprime.cpp` is based on CromerLiberman code from Larch.
   License: 2-clause BSD.
 
 Projects included under `third_party/` that are not used in the library

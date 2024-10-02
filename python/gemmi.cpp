@@ -153,7 +153,8 @@ void add_misc(nb::module_& m) {
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"));
 }
 
-NB_MODULE(gemmi, mg) {
+NB_MODULE(_gemmi, mg_) {
+  nb::module_ mg = nb::module_::import_("gemmi");
   mg.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
              "crystallography and related fields";
   mg.attr("__version__") = GEMMI_VERSION;

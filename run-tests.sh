@@ -6,7 +6,7 @@
 # PYTHONPATH. Locally, I'm using bash function "gpy" that starts python with
 # gemmi imported ("gpy" for interactive mode, "gpy file.py" for script):
 #   echo "import gemmi" > $HOME/.import-gemmi.py
-#   gpy() { PYTHONPATH=$HOME/gemmi/gemmi/build PYTHONSTARTUP=$HOME/.import-gemmi.py python3 -q "$@"; }
+#   gpy() { PYTHONPATH=$HOME/gemmi/gemmi/build/py PYTHONSTARTUP=$HOME/.import-gemmi.py python3 -q "$@"; }
 
 # set up variables
 set -eu
@@ -33,7 +33,7 @@ if [ $# != 0 ] && [ $1 = n ]; then
     shift
 else
     (cd $BUILD_DIR && make -j4 all check)
-    ./tools/cmp-size.py build/gemmi build/*gemmi*.so
+    ./tools/cmp-size.py build/gemmi build/libgemmi_cpp.so build/py/gemmi/_gemmi*
     ./tools/docs-help.sh
 fi
 ./tools/header-list.py >docs/headers.rst
@@ -41,11 +41,11 @@ fi
 
 # Run tests and checks.
 if [ $# = 0 ] || [ $1 != i ]; then
-    export PYTHONPATH=$BUILD_DIR
+    export PYTHONPATH=$BUILD_DIR/py
     export PATH="$BUILD_DIR:$PATH"
 fi
 $PYTHON -m unittest discover -s tests
-grep :: $BUILD_DIR/*.pyi ||:
+grep :: $BUILD_DIR/py/gemmi/*.pyi ||:
 
 if [ -z "${NO_DOCTEST-}" ]; then
     # 'make doctest' works only if sphinx-build was installed for python3.
