@@ -142,7 +142,7 @@ jobs:
         make -j2 check
         sudo make install
         python3 -m unittest discover -v -s ../tests/
-        strip --strip-unneeded ./gemmi ./gemmi.cpython*.so
+        strip --strip-unneeded ./gemmi ./py/gemmi/gemmi_ext.cpython*.so
     - name: run doctest
       run: |
         export PYTHONPATH=$PWD/build
@@ -239,7 +239,7 @@ jobs:
         make -j2 check
         make install
         python3.8 -m unittest discover -v -s ./tests/
-        strip --strip-unneeded ./gemmi ./gemmi.cpython*.so
+        strip --strip-unneeded ./gemmi ./py/gemmi/gemmi_ext.cpython*.so
     - name: run doctest
       run: |
         cd docs
@@ -250,5 +250,5 @@ jobs:
         path: |
           ./gemmi
           ./libgemmi_cpp.so
-          ./gemmi.cpython*.so
+          ./py
         retention-days: 14

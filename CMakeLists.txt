@@ -492,7 +492,7 @@ if (USE_PYTHON)
   else()
     target_link_libraries(gemmi_py PRIVATE gemmi_cpp)
   endif()
-  set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME _gemmi)
+  set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi_ext)
   set_property(TARGET gemmi_py PROPERTY LIBRARY_OUTPUT_DIRECTORY py/gemmi)
   configure_file(python/gemmi/__init__.py py/gemmi/__init__.py COPYONLY)
 

@@ -153,8 +153,8 @@ void add_misc(nb::module_& m) {
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"));
 }
 
-NB_MODULE(_gemmi, m_) {
-  // unusual setup: importing gemmi._gemmi adds classes and functions to gemmi
+NB_MODULE(gemmi_ext, m_) {
+  // unusual setup: importing gemmi_ext adds classes and functions to gemmi
   (void) m_;
   nb::module_ m = nb::module_::import_("gemmi");
   m.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"

@@ -44,7 +44,7 @@ for:
   - cmake --install . --config %CMAKE_CONFIG%
   - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
   - if exist "%CMAKE_CONFIG%\gemmi_cpp.dll" (copy "%CMAKE_CONFIG%\gemmi_cpp.dll" . /y)
-  - if exist "%CMAKE_CONFIG%\gemmi*.pyd" (copy "%CMAKE_CONFIG%\gemmi*.pyd" . /y)
+  - if exist "%CMAKE_CONFIG%\py\gemmi\gemmi*.pyd" (xcopy "%CMAKE_CONFIG%\py" py /E /Y)
   - dir gemmi*.*
   - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
@@ -61,8 +61,8 @@ for:
 
   artifacts:
     - path: gemmi.exe
-    - path: gemmi*.pyd
     - path: gemmi*.dll
+    - path: py
   cache:
     - c:\tools\vcpkg\installed\
 

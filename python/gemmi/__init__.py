@@ -1,2 +1,2 @@
 # Importing C++ extension populates this module.
-from . import _gemmi
+from . import gemmi_ext
