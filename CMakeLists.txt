@@ -532,7 +532,7 @@ if (USE_PYTHON)
       PYTHON_PATH py
       DEPENDS gemmi_py
       PATTERN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/python/stubs.pat"
-      MARKER_FILE py.typed
+      MARKER_FILE py/gemmi/py.typed
     )
     nanobind_add_stub(
       gemmi_cif_stub
@@ -603,9 +603,10 @@ if (USE_PYTHON)
           PATTERN "[._]*" EXCLUDE)
   if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
     install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/py/py.typed"
-            "${CMAKE_CURRENT_BINARY_DIR}/py/__init__.pyi"
-            "${CMAKE_CURRENT_BINARY_DIR}/py/cif.pyi"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/__init__.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/py.typed"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/__init__.pyi"
+            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/cif.pyi"
             DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
   endif()
 endif()

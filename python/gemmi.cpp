@@ -153,11 +153,13 @@ void add_misc(nb::module_& m) {
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"));
 }
 
-NB_MODULE(_gemmi, mg_) {
-  nb::module_ mg = nb::module_::import_("gemmi");
-  mg.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
+NB_MODULE(_gemmi, m_) {
+  // unusual setup: importing gemmi._gemmi adds classes and functions to gemmi
+  (void) m_;
+  nb::module_ m = nb::module_::import_("gemmi");
+  m.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
              "crystallography and related fields";
-  mg.attr("__version__") = GEMMI_VERSION;
+  m.attr("__version__") = GEMMI_VERSION;
 
   nb::register_exception_translator([](const std::exception_ptr& p, void*) {
     try {
@@ -171,30 +173,30 @@ NB_MODULE(_gemmi, mg_) {
     }
   });
 
-  nb::module_ cif = mg.def_submodule("cif", "CIF file format");
-  add_cif(cif);
-  add_symmetry(mg);
-  add_unitcell(mg);
-  add_elem(mg);
-  add_meta(mg);
-  add_mol(mg);
-  add_small(mg);
-  add_misc(mg);
-  add_grid(mg);
-  add_recgrid(mg);
-  add_ccp4(mg);
-  add_sf(mg);
-  add_cif_read(cif);
-  add_mtz(mg);
-  add_hkl(mg);
-  add_chemcomp(mg);
-  add_monlib(mg);
-  add_topo(mg);
-  add_alignment(mg);
-  add_search(mg);
-  add_read_structure(mg);
-  add_scaling(mg);
-  add_custom(mg);
+  nb::module_ mcif = m.def_submodule("cif", "CIF file format");
+  add_cif(mcif);
+  add_symmetry(m);
+  add_unitcell(m);
+  add_elem(m);
+  add_meta(m);
+  add_mol(m);
+  add_small(m);
+  add_misc(m);
+  add_grid(m);
+  add_recgrid(m);
+  add_ccp4(m);
+  add_sf(m);
+  add_cif_read(mcif);
+  add_mtz(m);
+  add_hkl(m);
+  add_chemcomp(m);
+  add_monlib(m);
+  add_topo(m);
+  add_alignment(m);
+  add_search(m);
+  add_read_structure(m);
+  add_scaling(m);
+  add_custom(m);
 
-  mg.def("set_leak_warnings", nb::set_leak_warnings);
+  m.def("set_leak_warnings", nb::set_leak_warnings);
 }

@@ -57,6 +57,7 @@ sdist.include = [
   "python/*.cpp",
   "python/*.h*",
   "python/stubs.pat",
+  "python/gemmi/__init__.py",
   "third_party/README",
   "third_party/*.h",
   "third_party/zlib/*",
