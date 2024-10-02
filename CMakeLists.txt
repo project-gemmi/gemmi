@@ -529,7 +529,7 @@ if (USE_PYTHON)
       gemmi_stub
       MODULE gemmi
       OUTPUT py/gemmi/__init__.pyi
-      PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
+      PYTHON_PATH py
       DEPENDS gemmi_py
       PATTERN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/python/stubs.pat"
       MARKER_FILE py.typed
@@ -538,7 +538,7 @@ if (USE_PYTHON)
       gemmi_cif_stub
       MODULE gemmi.cif
       OUTPUT py/gemmi/cif.pyi
-      PYTHON_PATH $<TARGET_FILE_DIR:gemmi_py>
+      PYTHON_PATH py
       DEPENDS gemmi_py
     )
   endif()
