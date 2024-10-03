@@ -493,8 +493,9 @@ if (USE_PYTHON)
     target_link_libraries(gemmi_py PRIVATE gemmi_cpp)
   endif()
   set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi_ext)
-  set_property(TARGET gemmi_py PROPERTY LIBRARY_OUTPUT_DIRECTORY py/gemmi)
-  configure_file(python/gemmi/__init__.py py/gemmi/__init__.py COPYONLY)
+  set(py_dir $<IF:$<STREQUAL:$<CONFIG>,>,py,$<CONFIG>/py>)
+  set_property(TARGET gemmi_py PROPERTY LIBRARY_OUTPUT_DIRECTORY ${py_dir}/gemmi)
+  file(GENERATE OUTPUT ${py_dir}/gemmi/__init__.py INPUT python/gemmi/__init__.py)
 
   # nanobind gives warnings with -Wpedantic and -Wshadow
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
@@ -528,17 +529,17 @@ if (USE_PYTHON)
     nanobind_add_stub(
       gemmi_stub
       MODULE gemmi
-      OUTPUT py/gemmi/__init__.pyi
-      PYTHON_PATH py
+      OUTPUT ${py_dir}/gemmi/__init__.pyi
+      PYTHON_PATH ${py_dir}
       DEPENDS gemmi_py
       PATTERN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/python/stubs.pat"
-      MARKER_FILE py/gemmi/py.typed
+      MARKER_FILE ${py_dir}/gemmi/py.typed
     )
     nanobind_add_stub(
       gemmi_cif_stub
       MODULE gemmi.cif
-      OUTPUT py/gemmi/cif.pyi
-      PYTHON_PATH py
+      OUTPUT ${py_dir}/gemmi/cif.pyi
+      PYTHON_PATH ${py_dir}
       DEPENDS gemmi_py
     )
   endif()
@@ -603,10 +604,10 @@ if (USE_PYTHON)
           PATTERN "[._]*" EXCLUDE)
   if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
     install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/__init__.py"
-            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/py.typed"
-            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/__init__.pyi"
-            "${CMAKE_CURRENT_BINARY_DIR}/py/gemmi/cif.pyi"
+            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/py.typed"
+            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.pyi"
+            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/cif.pyi"
             DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
   endif()
 endif()

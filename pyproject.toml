@@ -34,7 +34,7 @@ classifiers = [
 
 [tool.scikit-build]
 #build-dir = "/tmp/gemmi_build2/{wheel_tag}"
-experimental = true  # needed for install-dir
+experimental = true  # needed for install-dir starting with '/'
 wheel.install-dir = "/data"
 wheel.expand-macos-universal-tags = true  # not sure if this is useful
 wheel.packages = []
