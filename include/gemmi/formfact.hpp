@@ -7,6 +7,7 @@
 #define GEMMI_FORMFACT_HPP_
 
 #include <cmath>     // for exp, sqrt
+#include <cstdint>   // for int32_t
 #include <cstring>   // for memcpy
 #include <limits>    // for numeric_limits
 #include <utility>   // for pair

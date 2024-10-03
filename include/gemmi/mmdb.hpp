@@ -7,8 +7,8 @@
 
 #include <cstdlib>           // for atoi
 #include <cstring>           // for memcpy
-#include <gemmi/model.hpp>
-#include <gemmi/util.hpp>    // for rtrim_str
+#include "model.hpp"
+#include "util.hpp"          // for rtrim_str
 #include <mmdb2/mmdb_manager.h>
 
 namespace gemmi {
