@@ -15,7 +15,7 @@ HETATM    4  O3  SO3     1      -5.199  -0.407  16.748  1.00 20.00           O1-
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
-# tests for gemmi/chemcomp_xyz.hpp
+# tests for make_structure_from_chemcomp_block()
 class TestChemCompXyz(unittest.TestCase):
     def test_reading_monomer_SO3_coordinates(self):
         path = full_path('SO3.cif')

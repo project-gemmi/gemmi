@@ -54,9 +54,6 @@ gemmi/chemcomp.hpp
     ChemComp - chemical component that represents a monomer from Refmac
     monomer library, or from PDB CCD.
 
-gemmi/chemcomp_xyz.hpp
-    Reading coordinates from chemical component or Refmac monomer library files.
-
 gemmi/cif.hpp
     CIF parser (based on PEGTL) with pluggable actions,
     and a set of actions that prepare Document.

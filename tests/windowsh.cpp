@@ -29,7 +29,6 @@
 #include <gemmi/ccp4.hpp>
 #include <gemmi/cellred.hpp>
 #include <gemmi/chemcomp.hpp>
-#include <gemmi/chemcomp_xyz.hpp>
 #include <gemmi/cif.hpp>
 #include <gemmi/cif2mtz.hpp>
 #include <gemmi/cifdoc.hpp>

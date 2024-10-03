@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <exception>
 #include "gemmi/chemcomp.hpp"     // for ChemComp
-#include "gemmi/chemcomp_xyz.hpp" // for make_residue_from_chemcomp_block
+#include "gemmi/mmcif.hpp"        // for make_residue_from_chemcomp_block
 #include "gemmi/topo.hpp"         // for Topo
 #include "gemmi/calculate.hpp"    // for find_best_plane
 
@@ -284,8 +284,7 @@ void check_monomer(const cif::Block& block, double z_score) {
   check_bond_angle_consistency(cc);
   if (z_score != +INFINITY) {
     // check consistency of _chem_comp_atom.x/y/z with restraints
-    gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block,
-                                                gemmi::ChemCompModel::Xyz);
+    gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block, gemmi::ChemCompModel::Xyz);
     Topo topo;
     topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
     print_outliers(topo, cc.name, z_score);

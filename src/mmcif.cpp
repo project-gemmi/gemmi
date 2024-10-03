@@ -1,10 +1,12 @@
 // Copyright 2017-2023 Global Phasing Ltd.
 
 #include <gemmi/mmcif.hpp>   // for string_to_int
+#include <array>
 #include <unordered_map>
 #include <gemmi/mmcif_impl.hpp> // for set_cell_from_mmcif
 #include <gemmi/atox.hpp>    // for string_to_int
 #include <gemmi/enumstr.hpp> // for entity_type_from_string, polymer_type_from_string
+#include <gemmi/numb.hpp>    // for as_number
 #include <gemmi/polyheur.hpp>  // for restore_full_ccd_codes
 
 namespace gemmi {
@@ -951,6 +953,50 @@ Structure make_structure_from_block(const cif::Block& block_) {
   }
 
   return st;
+}
+
+
+Residue make_residue_from_chemcomp_block(const cif::Block& block, ChemCompModel kind) {
+  std::array<std::string, 3> xyz_tags;
+  switch (kind) {
+    case ChemCompModel::Xyz:
+      xyz_tags = {{"x", "y", "z"}};
+      break;
+    case ChemCompModel::Example:
+      xyz_tags = {{"model_Cartn_x", "model_Cartn_y", "model_Cartn_z"}};
+      break;
+    case ChemCompModel::Ideal:
+      xyz_tags = {{"pdbx_model_Cartn_x_ideal",
+                   "pdbx_model_Cartn_y_ideal",
+                   "pdbx_model_Cartn_z_ideal"}};
+      break;
+  }
+  Residue res;
+  res.seqid.num = 1;
+  cif::Column col =
+    const_cast<cif::Block&>(block).find_values("_chem_comp_atom.comp_id");
+  if (col && col.length() > 0)
+    res.name = col[0];
+  else
+    res.name = block.name.substr(starts_with(block.name, "comp_") ? 5 : 0);
+  cif::Table table = const_cast<cif::Block&>(block).find("_chem_comp_atom.",
+          {"atom_id", "type_symbol", "?charge",
+           xyz_tags[0], xyz_tags[1], xyz_tags[2]});
+  res.atoms.resize(table.length());
+  int n = 0;
+  for (auto row : table) {
+    Atom& atom = res.atoms[n++];
+    atom.name = row.str(0);
+    atom.element = Element(row.str(1));
+    if (row.has2(2))
+      // Charge is defined as integer, but some cif files in the wild have
+      // trailing '.000', so we read it as floating-point number.
+      atom.charge = (signed char) std::round(cif::as_number(row[2]));
+    atom.pos = Position(cif::as_number(row[3]),
+                        cif::as_number(row[4]),
+                        cif::as_number(row[5]));
+  }
+  return res;
 }
 
 } // namespace gemmi

@@ -8,13 +8,12 @@
 #include "gemmi/numb.hpp"
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/cif.hpp"
-#include "gemmi/mmcif.hpp"         // for make_structure_from_block
+#include "gemmi/mmcif.hpp"         // for make_structure_from_block, ...
 #include "gemmi/pdb.hpp"           // for read_pdb_string
 #include "gemmi/gz.hpp"            // for estimate_uncompressed_size
 #include "gemmi/smcif.hpp"         // for make_small_structure_from_block
 #include "gemmi/small.hpp"         // for SmallStructure
 #include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
-#include "gemmi/chemcomp_xyz.hpp"  // for make_structure_from_chemcomp_block
 #include "gemmi/read_cif.hpp"      // for read_cif_gz, read_mmjson_gz
 #include "gemmi/mmread_gz.hpp"     // for read_structure_gz
 #include "gemmi/json.hpp"          // for read_mmjson_gz
@@ -63,6 +62,9 @@ void add_read_structure(nb::module_& m) {
         "Reads a coordinate file into Structure.");
   m.def("make_structure_from_block", &make_structure_from_block,
         nb::arg("block"), "Takes mmCIF block and returns Structure.");
+  m.def("make_structure_from_chemcomp_block", &make_structure_from_chemcomp_block,
+        nb::arg("block"), "CIF block from CCD or monomer library -> single-residue Model(s).");
+
   m.def("read_pdb_string", [](const std::string& s, int max_line_length,
                               bool split_chain_on_ter) {
           PdbReadOptions options;
@@ -87,12 +89,6 @@ void add_read_structure(nb::module_& m) {
         }, nb::arg("path"), "Reads a small molecule CIF file.");
   m.def("make_small_structure_from_block", &make_small_structure_from_block,
         nb::arg("block"), "Takes CIF block and returns SmallStructure.");
-
-  // from chemcomp_xyz.hpp
-  m.def("make_structure_from_chemcomp_block",
-        &make_structure_from_chemcomp_block, nb::arg("block"),
-        "CIF block from CCD or monomer library -> single-residue Structure.");
-
 
   // and an unrelated function from gz.hpp
   m.def("estimate_uncompressed_size", &estimate_uncompressed_size,
