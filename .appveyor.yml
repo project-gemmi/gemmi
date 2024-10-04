@@ -42,14 +42,11 @@ for:
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
   - cmake --install . --config %CMAKE_CONFIG%
-  - if exist "%CMAKE_CONFIG%\gemmi.exe" copy "%CMAKE_CONFIG%\gemmi.exe" . /y
-  - if exist "%CMAKE_CONFIG%\gemmi_cpp.dll" (copy "%CMAKE_CONFIG%\gemmi_cpp.dll" . /y)
-  - if exist "%CMAKE_CONFIG%\py\gemmi\gemmi*.pyd" (xcopy "%CMAKE_CONFIG%\py" py /E /Y)
-  - dir gemmi*.*
-  - py -c "import sys; print(sys.version+'\n'+sys.executable)"
-  - cmd: '"%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" %ARCH%'
+  - dir
+  - dir "%CMAKE_CONFIG%"
 
   test_script:
+  - py -c "import sys; print(sys.version+'\n'+sys.executable)"
   - ctest -C "%CMAKE_CONFIG%" --output-on-failure
   - py -m pip install numpy pandas
   - set PYTHONPATH=.
@@ -60,9 +57,8 @@ for:
   - py -m sphinx -M doctest . _build -n -E
 
   artifacts:
-    - path: gemmi.exe
-    - path: gemmi*.dll
-    - path: py
+    - path: '\$(CMAKE_CONFIG)\gemmi*.*'
+    - path: '\$(CMAKE_CONFIG)\py\gemmi'
   cache:
     - c:\tools\vcpkg\installed\
 
