@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Read any supported coordinate file.
+// Read any supported coordinate file. Usually, mmread_gz.hpp is preferred.
 
 #ifndef GEMMI_MMREAD_HPP_
 #define GEMMI_MMREAD_HPP_

@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Utilities for parsing CIF numbers (the CIF spec calls it 'numb').
+// Utilities for parsing CIF numbers (the CIF spec calls them 'numb').
 //
 // Numb - the numeric type in CIF - is a number with optional
 // standard uncertainty (s.u.) in brackets: 1.23(8).

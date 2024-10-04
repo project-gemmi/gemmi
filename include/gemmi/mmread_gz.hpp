@@ -1,8 +1,6 @@
 // Copyright 2021 Global Phasing Ltd.
 //
 // Functions for reading possibly gzipped coordinate files.
-// Trivial wrappers that can make compilation faster
-// by having a separate implementation file src/mmread_gz.cpp.
 
 #ifndef GEMMI_MMREAD_GZ_HPP_
 #define GEMMI_MMREAD_GZ_HPP_

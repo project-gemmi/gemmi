@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Read PDB file format and store it in Structure.
+// Read the PDB file format and store it in Structure.
 //
 // Based on the format spec:
 // https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html

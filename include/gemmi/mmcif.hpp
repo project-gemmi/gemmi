@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Read mmcif (PDBx/mmCIF) file into a Structure from model.hpp.
+// Read mmCIF (PDBx/mmCIF) file into a Structure from model.hpp.
 
 #ifndef GEMMI_MMCIF_HPP_
 #define GEMMI_MMCIF_HPP_

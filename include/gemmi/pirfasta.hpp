@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Read sequence from PIR or (multi-)FASTA format.
+// Read sequences from PIR or (multi-)FASTA formats.
 
 #ifndef GEMMI_PIRFASTA_HPP_
 #define GEMMI_PIRFASTA_HPP_

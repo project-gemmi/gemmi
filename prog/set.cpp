@@ -8,9 +8,10 @@
 #include <random>
 #include "gemmi/atof.hpp"      // for fast_from_chars
 //#include "gemmi/calculate.hpp" // for calculate_center_of_mass
+#include "gemmi/cif.hpp"       // for cif::rules
 #include "gemmi/pdb.hpp"       // for impl::is_record_type
 #include "gemmi/read_cif.hpp"  // for read_into_buffer_gz
-#include <gemmi/mmread.hpp>    // for coor_format_from_content
+#include <gemmi/mmread.hpp>    // for read_structure_from_memory, coor_format_from_content
 #include <gemmi/select.hpp>    // for Selection
 #include <gemmi/sprintf.hpp>   // for snprintf_z
 

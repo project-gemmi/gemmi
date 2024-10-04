@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Functions that convert string to floating-point number ignoring locale.
+// Functions that convert strings to floating-point numbers ignoring locale.
 // Simple wrappers around fastfloat::from_chars().
 
 #ifndef GEMMI_ATOF_HPP_

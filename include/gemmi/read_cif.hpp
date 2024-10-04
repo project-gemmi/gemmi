@@ -1,8 +1,6 @@
 // Copyright 2021 Global Phasing Ltd.
 //
 // Functions for reading possibly gzipped CIF files.
-// Trivial wrappers that can make compilation faster
-// by having a separate implementation file src/read_cif.cpp.
 
 #ifndef GEMMI_READ_CIF_HPP_
 #define GEMMI_READ_CIF_HPP_

@@ -1,6 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Locale-independent functions that convert string to integer,
+// Locale-independent functions that convert strings to integers,
 // equivalents of standard isspace and isdigit, and a few helper functions.
 //
 // This file is named similarly to the standard functions atoi() and atof().

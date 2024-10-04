@@ -2,6 +2,7 @@
 //
 // CIF parser (based on PEGTL) with pluggable actions,
 // and a set of actions that prepare Document.
+// To just read the CIF format, include read_cif.hpp instead.
 
 #ifndef GEMMI_CIF_HPP_
 #define GEMMI_CIF_HPP_

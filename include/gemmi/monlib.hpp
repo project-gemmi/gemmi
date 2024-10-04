@@ -1,7 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
 // Monomer library - (Refmac) restraints dictionary,
-// which is made of monomers (chemical components), links and modifications.
+// which consists of monomers (chemical components), links, and modifications.
 
 #ifndef GEMMI_MONLIB_HPP_
 #define GEMMI_MONLIB_HPP_

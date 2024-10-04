@@ -1,6 +1,6 @@
 // Copyright Global Phasing Ltd.
 //
-// Binary serialization for Structure (as well as Model, UnitCell, etc)
+// Binary serialization for Structure (as well as Model, UnitCell, etc).
 //
 // Based on zpp::serializer, include third_party/serializer.h first.
 

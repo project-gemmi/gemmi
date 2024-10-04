@@ -1,7 +1,7 @@
 // Copyright 2017-2018 Global Phasing Ltd.
 //
 // Heuristic methods for working with chains and polymers.
-// Includes also a few well-defined functions, such as removal of waters.
+// Also includes a few well-defined functions, such as removal of waters.
 
 #ifndef GEMMI_POLYHEUR_HPP_
 #define GEMMI_POLYHEUR_HPP_

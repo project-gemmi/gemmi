@@ -1,6 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 //
-// Data structures to keep macromolecular structure model.
+// Data structures to store macromolecular structure models.
 
 #ifndef GEMMI_MODEL_HPP_
 #define GEMMI_MODEL_HPP_

@@ -1,6 +1,6 @@
 // Copyright 2019 Global Phasing Ltd.
 //
-// Function used in both mmcif.hpp and refln.hpp (for coordinate and
+// Functions used in both mmcif.hpp and refln.hpp (for coordinate and
 // reflection mmCIF files).
 
 #ifndef GEMMI_MMCIF_IMPL_HPP_

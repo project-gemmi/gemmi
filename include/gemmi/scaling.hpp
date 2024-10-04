@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Anisotropic scaling of data (includes scaling of bulk solvent parameters)
+// Anisotropic scaling of data (includes scaling of bulk solvent parameters).
 
 #ifndef GEMMI_SCALING_HPP_
 #define GEMMI_SCALING_HPP_

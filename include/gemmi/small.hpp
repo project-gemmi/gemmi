@@ -1,6 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Representation of small molecule or inorganic crystal.
+// Representation of a small molecule or inorganic crystal.
 // Flat list of atom sites. Minimal functionality.
 
 #ifndef GEMMI_SMALL_HPP_

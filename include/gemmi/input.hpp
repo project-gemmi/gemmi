@@ -1,7 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
 // Input abstraction.
-// Used to decouple file reading and uncompression.
+// Used to decouple file reading and decompression.
 
 #ifndef GEMMI_INPUT_HPP_
 #define GEMMI_INPUT_HPP_

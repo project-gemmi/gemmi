@@ -1,7 +1,6 @@
 // Copyright 2021 Global Phasing Ltd.
 //
 // Functions for reading possibly gzipped CCP4 map files.
-// Trivial wrappers that can make compilation faster.
 
 #ifndef GEMMI_READ_MAP_HPP_
 #define GEMMI_READ_MAP_HPP_

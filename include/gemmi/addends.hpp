@@ -1,7 +1,7 @@
 // Copyright 2020 Global Phasing Ltd.
 //
 // Addends to scattering form factors used in DensityCalculator
-// and in StructureFactorCalculator.
+// and StructureFactorCalculator.
 
 #ifndef GEMMI_ADDENDS_HPP_
 #define GEMMI_ADDENDS_HPP_

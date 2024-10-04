@@ -1,8 +1,8 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// Classes for iterating files in a directory tree, top-down,
-// in an alphabetical order.  It wraps the tinydir library (as we cannot
-// depend on C++17 <filesystem> yet).
+// Classes for iterating over files in a directory tree, top-down,
+// in alphabetical order. Wraps the tinydir library (as we cannot yet
+// depend on C++17 <filesystem>).
 
 // DirWalk<> iterates through all files and directories.
 // CifWalk yields only cif files (either files that end with .cif or .cif.gz,

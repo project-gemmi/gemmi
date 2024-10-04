@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 //
 // CCP4 format for maps and masks.
+// See also read_map.hpp.
 
 #ifndef GEMMI_CCP4_HPP_
 #define GEMMI_CCP4_HPP_

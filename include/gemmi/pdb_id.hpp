@@ -1,6 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 //
-// handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path()
+// Handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path(), ...
 
 #ifndef GEMMI_PDB_ID_HPP_
 #define GEMMI_PDB_ID_HPP_
