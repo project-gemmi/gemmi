@@ -494,12 +494,17 @@ if (USE_PYTHON)
   endif()
   set_property(TARGET gemmi_py PROPERTY OUTPUT_NAME gemmi_ext)
   if (CMAKE_CONFIGURATION_TYPES)
-    set(py_dir $<CONFIG>/py>)
+    set(py_dir $<CONFIG>/py)
   else()
     set(py_dir py)
   endif()
   set_property(TARGET gemmi_py PROPERTY LIBRARY_OUTPUT_DIRECTORY ${py_dir}/gemmi)
-  file(GENERATE OUTPUT ${py_dir}/gemmi/__init__.py INPUT python/gemmi/__init__.py)
+  add_custom_command(TARGET gemmi_py PRE_BUILD
+    COMMENT "Copying gemmi/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/python/gemmi/__init__.py"
+            ${py_dir}/gemmi/__init__.py
+    BYPRODUCTS ${py_dir}/gemmi/__init__.py)
 
   # nanobind gives warnings with -Wpedantic and -Wshadow
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
