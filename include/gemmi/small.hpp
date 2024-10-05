@@ -82,13 +82,13 @@ struct SmallStructure {
 
   std::vector<Site> get_all_unit_cell_sites() const;
 
-  void set_spacegroup(const char* order) {
+  void determine_and_set_spacegroup(const char* order) {
     spacegroup = nullptr;
     if (order)
       for (const char* c = order; *c != '\0' && spacegroup == nullptr; ++c) {
         try {
           GroupOps gops;
-          spacegroup = get_spacegroup_from(*c, gops);
+          spacegroup = determine_spacegroup_from(*c, gops);
           if (!spacegroup && *(c+1) == '.') {
             // If symops don't correspond to tabulated settings,
             // we can't set spacegroup, but we can set UnitCell::images.
@@ -103,7 +103,7 @@ struct SmallStructure {
     setup_cell_images();
   }
 
-  const SpaceGroup* get_spacegroup_from(char c, GroupOps& gops) const {
+  const SpaceGroup* determine_spacegroup_from(char c, GroupOps& gops) const {
     switch (lower(c)) {
       case 's':
         if (symops.empty())
@@ -126,7 +126,7 @@ struct SmallStructure {
           return nullptr;
         return find_spacegroup_by_number(spacegroup_number);
       default:
-        throw std::invalid_argument("set_spacegroup(): wrong character in 'order'");
+        throw std::invalid_argument("determine_and_set_spacegroup(): wrong character in 'order'");
     }
   }
 

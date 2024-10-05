@@ -2,8 +2,7 @@
 *.so
 *.py[co]
 a.out
-/build
-/build-*/
+/build*/
 /dist
 /gemmi.egg-info
 tags

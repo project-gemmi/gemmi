@@ -146,7 +146,8 @@ void add_small(nb::module_& m) {
     .def("add_site", [](SmallStructure& self, const SmallStructure::Site& site) {
         self.sites.push_back(site);
     })
-    .def("set_spacegroup", &SmallStructure::set_spacegroup, nb::arg("order"))
+    .def("determine_and_set_spacegroup", &SmallStructure::determine_and_set_spacegroup,
+         nb::arg("order"))
     .def("check_spacegroup", &SmallStructure::check_spacegroup)
     .def("get_atom_type", &SmallStructure::get_atom_type)
     .def("get_all_unit_cell_sites", &SmallStructure::get_all_unit_cell_sites)

@@ -203,7 +203,7 @@ the space group are read and stored in member variables:
     >>> st.spacegroup_number
     164
 
-and the function `set_spacegroup("S.H2")` is automatically
+and the function `determine_and_set_spacegroup("S.H2")` is automatically
 run to set `spacegroup`:
 
 .. doctest::
@@ -211,7 +211,7 @@ run to set `spacegroup`:
     >>> st.spacegroup
     <gemmi.SpaceGroup("P -3 m 1")>
 
-`set_spacegroup()` takes one argument, a string in which characters
+`determine_and_set_spacegroup()` takes one argument, a string in which characters
 specify what to use, and in what order, for space group determination:
 
 * `S` = symmetry operations stored in `symops`,
@@ -234,11 +234,12 @@ About 350 (out of 500,000+) entries in the COD use such settings.
 Most of them have an unconventional choice of the origin
 (e.g. "P 1 21 1 (a,b,c-1/4)").
 
-To use a different order of items than "S.H2", call set_spacegroup() again:
+To use a different order of items than "S.H2",
+call determine_and_set_spacegroup() again:
 
 .. doctest::
 
-    >>> st.set_spacegroup('H.1')
+    >>> st.determine_and_set_spacegroup('H.1')
 
 Errors such as an incorrect format of the symop triplets or of the Hall
 symbol are silently ignored, and the consistency between different items
@@ -288,7 +289,7 @@ You could also create SmallStructure from scratch:
     >>> small = gemmi.SmallStructure()
     >>> small.spacegroup_hm = 'F -4 3 m'
     >>> small.cell = gemmi.UnitCell(4.358, 4.358, 4.358, 90, 90, 90)
-    >>> small.set_spacegroup("2")
+    >>> small.determine_and_set_spacegroup("2")
     >>> # add a single atom
     >>> site = gemmi.SmallStructure.Site()
     >>> site.label = 'C1'
