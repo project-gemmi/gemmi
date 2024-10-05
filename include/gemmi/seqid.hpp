@@ -47,6 +47,7 @@ template<int N> struct OptionalInt {
   int& operator*() { return value; }
   const int& operator*() const { return value; }
   int& emplace(int n) { value = n; return value; }
+  void reset() noexcept { value = None; }
 };
 
 struct SeqId {
