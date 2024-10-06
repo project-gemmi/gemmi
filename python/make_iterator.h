@@ -1,3 +1,4 @@
+#include "common.h"
 #include <nanobind/make_iterator.h>
 
 // This wrapper simplifies the call to nb::make_iterator (by assuming

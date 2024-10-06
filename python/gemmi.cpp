@@ -43,7 +43,6 @@ struct VectorizeFunc {
     return ret;
   }
 };
-} // anonymous namespace
 
 void add_misc(nb::module_& m) {
   nb::class_<gemmi::CifWalk>(m, "CifWalk")
@@ -152,6 +151,8 @@ void add_misc(nb::module_& m) {
       return cor;
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"));
 }
+
+} // anonymous namespace
 
 NB_MODULE(gemmi_ext, m_) {
   // unusual setup: importing gemmi_ext adds classes and functions to gemmi

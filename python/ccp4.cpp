@@ -9,6 +9,8 @@
 
 using namespace gemmi;
 
+namespace {
+
 template<typename T>
 auto add_ccp4_common(nb::module_& m, const char* name) {
   using Map = Ccp4<T>;
@@ -29,6 +31,8 @@ auto add_ccp4_common(nb::module_& m, const char* name) {
                    " in SG #", sg ? std::to_string(sg->ccp4) : "?", '>');
     });
 }
+
+}  // anonymous namespace
 
 void add_ccp4(nb::module_& m) {
   nb::enum_<MapSetup>(m, "MapSetup")

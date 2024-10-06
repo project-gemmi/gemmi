@@ -28,6 +28,7 @@ bugprone-*,
 -bugprone-narrowing-conversions,
 -bugprone-switch-missing-default-case,
 misc-*,
+-misc-confusable-identifiers,
 -misc-const-correctness,
 -misc-include-cleaner,
 -misc-no-recursion,
@@ -49,3 +50,4 @@ HeaderFilterRegex: '(include/gemmi/[a-z0-9_]*\.hpp)|(prog/[a-z0-9_]*\.h)'
 
 CheckOptions:
   bugprone-signed-char-misuse.CharTypdefsToIgnore: 'int8_t'
+  performance-unnecessary-value-param.AllowedTypes: 'cpu_array;cpu_miller_array'

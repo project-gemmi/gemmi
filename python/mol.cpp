@@ -23,6 +23,8 @@ using namespace gemmi;
 using info_map_type = std::map<std::string, std::string>;
 NB_MAKE_OPAQUE(info_map_type)
 
+namespace {
+
 template<typename T, typename C>
 C& add_item(T& container, C child, int pos) {
   if ((size_t) pos > container.size()) // true also for negative pos
@@ -50,9 +52,11 @@ template<typename P> void remove_child(P& parent, int index) {
   children.erase(children.begin() + normalize_index(index, children));
 }
 
-template<typename P> void remove_children(P& parent, nb::slice slice) {
+template<typename P> void remove_children(P& parent, const nb::slice& slice) {
   delitem_slice(parent.children(), slice);
 }
+
+}  // anonymous namespace
 
 void add_mol(nb::module_& m) {
 
@@ -193,8 +197,8 @@ void add_mol(nb::module_& m) {
     .def("transform_to_assembly",
          [](Structure& st, const std::string& assembly_name, HowToNameCopiedChain how,
             bool keep_spacegroup, double merge_dist) {
-        return transform_to_assembly(st, assembly_name, how, nullptr,
-                                     keep_spacegroup, merge_dist);
+        transform_to_assembly(st, assembly_name, how, nullptr,
+                              keep_spacegroup, merge_dist);
     }, nb::arg("assembly_name"), nb::arg("how"), nb::arg("keep_spacegroup")=false,
        nb::arg("merge_dist")=0.2)
     // calculate.hpp
@@ -315,7 +319,7 @@ void add_mol(nb::module_& m) {
     }, nb::arg("pdb_seqid"), nb::keep_alive<0, 1>())
     .def("__getitem__", &get_child<Chain, Residue>, nb::arg("index"),
          nb::rv_policy::reference_internal)
-    .def("__getitem__", [](Chain &ch, nb::slice slice) -> nb::list {
+    .def("__getitem__", [](Chain &ch, const nb::slice& slice) -> nb::list {
         return getitem_slice(ch.residues, slice);
     }, nb::rv_policy::reference_internal)
     .def("__delitem__", remove_child<Chain>, nb::arg("index"))

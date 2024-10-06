@@ -17,19 +17,19 @@
 
 using namespace gemmi::cif;
 
+namespace {
+
 std::string pyobject_to_string(nb::handle handle, bool raw) {
   PyObject* ptr = handle.ptr();
-  if (ptr == Py_None) {
+  if (ptr == Py_None)
     return "?";
-  } else if (ptr == Py_False) {
+  if (ptr == Py_False)
     return ".";
-  } else if (ptr == Py_True) {
+  if (ptr == Py_True)
     throw nb::value_error("unexpected value True");
-  } else if (raw || PyFloat_Check(ptr) || PyLong_Check(ptr)) {
+  if (raw || PyFloat_Check(ptr) || PyLong_Check(ptr))
     return nb::str(handle).c_str();
-  } else {
-    return gemmi::cif::quote(nb::str(handle).c_str());
-  }
+  return gemmi::cif::quote(nb::str(handle).c_str());
 }
 
 nb::object string_to_pyobject(const std::string& s, bool raw) {
@@ -40,7 +40,7 @@ nb::object string_to_pyobject(const std::string& s, bool raw) {
   return nb::cast(as_string(s));
 }
 
-std::vector<std::string> quote_list(nb::list items) {
+std::vector<std::string> quote_list(const nb::list& items) {
   size_t size = items.size();
   std::vector<std::string> ret;
   ret.reserve(size);
@@ -58,6 +58,8 @@ T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
   vec.insert(vec.begin() + pos, new_item);
   return vec[pos];
 }
+
+}  // anonymous namespace
 
 // for delitem_slice
 namespace gemmi { namespace cif {
@@ -112,7 +114,7 @@ void add_cif(nb::module_& cif) {
     .def("__getitem__", [](Document& d, int index) -> Block& {
         return d.blocks[normalize_index(index, d.blocks)];
     }, nb::arg("index"), nb::rv_policy::reference_internal)
-    .def("__getitem__", [](Document &d, nb::slice slice) -> nb::list {
+    .def("__getitem__", [](Document &d, const nb::slice& slice) -> nb::list {
         return getitem_slice(d.blocks, slice);
     }, nb::rv_policy::reference_internal)
     .def("__contains__", [](Document& d, const std::string& name) -> bool {
@@ -225,9 +227,9 @@ void add_cif(nb::module_& cif) {
     .def("get_index", &Block::get_index, nb::arg("tag"))
     .def("set_pair", &Block::set_pair, nb::arg("tag"), nb::arg("value"))
     .def("set_pairs",
-         [](Block &self, std::string prefix, nb::dict data, bool raw) {
+         [](Block &self, const std::string& prefix, const nb::dict& data, bool raw) {
            ItemSpan span(self.items, prefix);
-           for (auto item : data) {
+           for (const auto& item : data) {
              std::string key = nb::str(item.first).c_str();
              std::string value = pyobject_to_string(item.second, raw);
              span.set_pair(prefix + key, value);
@@ -245,13 +247,13 @@ void add_cif(nb::module_& cif) {
          nb::arg("cat"), nb::arg("tags"),
          nb::rv_policy::reference_internal)
     .def("set_mmcif_category",
-         [](Block &self, std::string name, nb::dict data, bool raw) {
+         [](Block &self, std::string name, const nb::dict& data, bool raw) {
            size_t w = data.size();
            std::vector<std::string> tags;
            tags.reserve(w);
            std::vector<nb::list> values;
            values.reserve(w);
-           for (auto item : data) {
+           for (const auto& item : data) {
              tags.emplace_back(nb::str(item.first).c_str());
              // We could support all iterables as values, but it'd be confusing
              // if strings/bytes were converted to sequences of letters.
@@ -333,7 +335,7 @@ void add_cif(nb::module_& cif) {
         return self.val(c_index(idx.first, self.length()),
                         c_index(idx.second, self.width()));
     })
-    .def("__setitem__", [](Loop &self, std::pair<int,int> idx, std::string value) {
+    .def("__setitem__", [](Loop &self, std::pair<int,int> idx, const std::string& value) {
         self.val(c_index(idx.first, self.length()),
                  c_index(idx.second, self.width())) = value;
     })
@@ -363,7 +365,7 @@ void add_cif(nb::module_& cif) {
     .def("__bool__", [](const Column &self) { return self.item() != nullptr; })
     .def("__len__", [](const Column &self) { return self.length(); })
     .def("__getitem__", (std::string& (Column::*)(int)) &Column::at)
-    .def("__setitem__", [](Column &self, int idx, std::string value) {
+    .def("__setitem__", [](Column &self, int idx, const std::string& value) {
         self.at(idx) = value;
     })
     .def("erase", &Column::erase)
@@ -420,11 +422,11 @@ void add_cif(nb::module_& cif) {
     .def("__getitem__", [](Table::Row &self, const std::string& tag) {
         return self.value_at_unsafe(self.tab.find_column_position(tag));
     })
-    .def("__setitem__", [](Table::Row &self, int idx, std::string value) {
+    .def("__setitem__", [](Table::Row &self, int idx, const std::string& value) {
         self.at(idx) = value;
     })
     .def("__setitem__", [](Table::Row &self, const std::string& tag,
-                           std::string value) {
+                           const std::string& value) {
         self.value_at_unsafe(self.tab.find_column_position(tag)) = value;
     })
     .def("get", (std::string* (Table::Row::*)(int)) &Table::Row::ptr_at,

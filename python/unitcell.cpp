@@ -69,7 +69,7 @@ template<typename T> void add_smat33(nb::module_& m, const char* name) {
     }, nb::arg().noconvert())
     .def("multiply", &M::multiply)
     .def(nb::self + nb::self)
-    .def(nb::self - nb::self)
+    .def(nb::self - nb::self)  // NOLINT(misc-redundant-expression)
     .def("transformed_by", &M::template transformed_by<T>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     .def("__repr__", [name](const M& m) {
@@ -110,7 +110,7 @@ void add_unitcell(nb::module_& m) {
         self.z = v[2];
     })
     .def(nb::self + nb::self)
-    .def(nb::self - nb::self)
+    .def(nb::self - nb::self)  // NOLINT(misc-redundant-expression)
     .def(nb::self += nb::self, nb::rv_policy::none)
     //.def(nb::self -= nb::self)  // Clang warning -Wself-assign-overloaded
     .def(operator-=(nb::self, nb::self), nb::rv_policy::none)
@@ -141,7 +141,7 @@ void add_unitcell(nb::module_& m) {
     .def("row_copy", &Mat33::row_copy)
     .def("column_copy", &Mat33::column_copy)
     .def(nb::self + nb::self)
-    .def(nb::self - nb::self)
+    .def(nb::self - nb::self)  // NOLINT(misc-redundant-expression)
     .def("multiply", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply)
     .def("multiply", (Vec3 (Mat33::*)(const Vec3&) const) &Mat33::multiply)
     .def("__matmul__", (Mat33 (Mat33::*)(const Mat33&) const) &Mat33::multiply, nb::is_operator())
@@ -194,7 +194,7 @@ void add_unitcell(nb::module_& m) {
         return self.dist(other);
     })
     .def(nb::self + nb::self)
-    .def(nb::self - nb::self)
+    .def(nb::self - nb::self)  // NOLINT(misc-redundant-expression)
     .def(nb::self += nb::self, nb::rv_policy::none)
     .def(operator-=(nb::self, nb::self), nb::rv_policy::none)
     .def(nb::self * float())
@@ -213,7 +213,7 @@ void add_unitcell(nb::module_& m) {
     .def("wrap_to_zero", &Fractional::wrap_to_zero)
     .def("__getitem__", (double (Fractional::*)(int) const) &Fractional::at)
     .def(nb::self + nb::self)
-    .def(nb::self - nb::self)
+    .def(nb::self - nb::self)  // NOLINT(misc-redundant-expression)
     .def("__repr__", [](const Fractional& self) {
         return "<gemmi.Fractional(" + triple(self.x, self.y, self.z) + ")>";
     });
@@ -320,6 +320,7 @@ void add_unitcell(nb::module_& m) {
     .def("reciprocal", &UnitCell::reciprocal)
     .def("get_hkl_limits", &UnitCell::get_hkl_limits, nb::arg("dmin"))
     .def("primitive_orth_matrix", &UnitCell::primitive_orth_matrix, nb::arg("centring_type"))
+    // NOLINTNEXTLINE(misc-redundant-expression)
     .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__getstate__", &getstate<UnitCell>)
     .def("__setstate__", &setstate<UnitCell>)

@@ -1,8 +1,7 @@
+#pragma once
+#include "common.h"
 #include <nanobind/stl/detail/nb_optional.h>
-
-namespace gemmi {
-  std::ostream& operator<< (std::ostream& os, const Entity& ent);
-}
+#include "gemmi/metadata.hpp"
 
 namespace nanobind { namespace detail {
   template<> struct type_caster<gemmi::SeqId::OptionalNum>

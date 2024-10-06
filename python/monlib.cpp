@@ -101,7 +101,7 @@ void add_monlib(nb::module_& m) {
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("read_monomer_doc", &MonLib::read_monomer_doc)
     .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
-      return self.read_monomer_cif(path, gemmi::read_cif_gz);
+      self.read_monomer_cif(path, gemmi::read_cif_gz);
     })
     .def("read_monomer_lib", [](MonLib& self, const std::string& monomer_dir,
                                 const std::vector<std::string>& resnames) {

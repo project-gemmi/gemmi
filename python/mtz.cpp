@@ -10,7 +10,6 @@
 
 #include "gemmi/mtz.hpp"
 #include "gemmi/fourier.hpp"
-#include "tostr.hpp"
 
 using namespace gemmi;
 
@@ -18,15 +17,7 @@ NB_MAKE_OPAQUE(std::vector<Mtz::Dataset>)
 NB_MAKE_OPAQUE(std::vector<Mtz::Column>)
 NB_MAKE_OPAQUE(std::vector<Mtz::Batch>)
 
-namespace gemmi {
-  // operator<< is used by stl_bind for vector's __repr__
-  inline std::ostream& operator<< (std::ostream& os, const Mtz::Dataset& ds) {
-    os << "<gemmi.Mtz.Dataset " << ds.id << ' ' << ds.project_name
-       << '/' << ds.crystal_name << '/' << ds.dataset_name << '>';
-    return os;
-  }
-}
-
+namespace {
 
 template<typename T>
 struct VectorRef {
@@ -71,6 +62,7 @@ auto make_new_column(const Mtz& mtz, int dataset, Func func) {
   return numpy_arr;
 }
 
+}  // anonymous namespace
 
 void add_mtz(nb::module_& m) {
   nb::class_<Mtz> mtz(m, "Mtz");
@@ -248,7 +240,7 @@ void add_mtz(nb::module_& m) {
            self.data.push_back(item.value);
          }
     }, nb::arg("asu_data"))
-    .def("set_data", [](Mtz& self, nb::ndarray<float, nb::ndim<2>> arr) {
+    .def("set_data", [](Mtz& self, const nb::ndarray<float, nb::ndim<2>>& arr) {
          size_t nrow = arr.shape(0);
          size_t ncol = arr.shape(1);
          if (ncol != self.columns.size())
@@ -283,8 +275,8 @@ void add_mtz(nb::module_& m) {
         return data;
     }, nb::arg("hkl"))
     .def("__repr__", [](const Mtz& self) {
-        return tostr("<gemmi.Mtz with ", self.columns.size(), " columns, ",
-                     self.nreflections, " reflections>");
+        return cat("<gemmi.Mtz with ", self.columns.size(), " columns, ",
+                   self.nreflections, " reflections>");
     });
 
   pyMtzDataset
@@ -294,7 +286,10 @@ void add_mtz(nb::module_& m) {
     .def_rw("dataset_name", &Mtz::Dataset::dataset_name)
     .def_rw("cell", &Mtz::Dataset::cell)
     .def_rw("wavelength", &Mtz::Dataset::wavelength)
-    .def("__repr__", [](const Mtz::Dataset& self) { return tostr(self); })
+    .def("__repr__", [](const Mtz::Dataset& self) {
+      return cat("<gemmi.Mtz.Dataset ", self.id, ' ', self.project_name,
+                 '/', self.crystal_name, '/', self.dataset_name, '>');
+    })
     ;
   pyMtzColumn
     .def_prop_ro("array", [](const Mtz::Column& self) {

@@ -8,7 +8,7 @@
   #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 
-#include <nanobind/nanobind.h>
+#include <nanobind/nanobind.h>  // IWYU pragma: export
 
 #if defined(__clang__)
   #pragma clang diagnostic pop

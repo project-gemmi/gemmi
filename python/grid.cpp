@@ -28,6 +28,8 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 
 using namespace gemmi;
 
+namespace {
+
 template<typename T>
 auto grid_to_array(GridMeta& g, std::vector<T>& data) {
   // should we take AxisOrder into account here?
@@ -84,7 +86,7 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
       new(grid) Gr();
       grid->set_size(nx, ny, nz);
     }, nb::arg("nx"), nb::arg("ny"), nb::arg("nz"))
-    .def("__init__", [](Gr* grid, nb::ndarray<nb::numpy, T, nb::ndim<3>> arr,
+    .def("__init__", [](Gr* grid, const nb::ndarray<nb::numpy, T, nb::ndim<3>>& arr,
                         const UnitCell *cell, const SpaceGroup* sg) {
       new(grid) Gr();
       auto r = arr.view();
@@ -135,14 +137,14 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
     }, nb::arg("start"), nb::arg("shape"))
     .def("set_subarray",
          [](Gr& self,
-            nb::ndarray<T, nb::ndim<3>, nb::f_contig, nb::device::cpu> arr,
+            const nb::ndarray<T, nb::ndim<3>, nb::f_contig, nb::device::cpu>& arr,
             std::array<int,3> start) {
         self.set_subarray(arr.data(), start,
                           {(int)arr.shape(0), (int)arr.shape(1), (int)arr.shape(2)});
     }, nb::arg("arr"), nb::arg("start"))
     .def("clone", [](const Gr& self) { return new Gr(self); })
     .def("__repr__", [=](const Gr& self) {
-        return tostr("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
+        return cat("<gemmi.", name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
 
   masked_grid
@@ -177,7 +179,7 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
          (std::array<double,4> (Gr::*)(const Fractional&) const)
          &Gr::tricubic_interpolation_der)
     .def("interpolate_position_array",
-         [](const Gr& self, nb::ndarray<double, nb::shape<-1,3>, nb::device::cpu> xyz,
+         [](const Gr& self, const nb::ndarray<double, nb::shape<-1,3>, nb::device::cpu>& xyz,
             int order, const Transform* to_frac) {
         auto xyz_view = xyz.view();
         size_t len = xyz_view.shape(0);
@@ -208,6 +210,8 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
     }, nb::arg().noconvert(), nb::arg(), nb::arg("order")=1)
     ;
 }
+
+}  // anonymous namespace
 
 void add_grid(nb::module_& m) {
   nb::enum_<AxisOrder>(m, "AxisOrder")

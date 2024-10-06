@@ -5,26 +5,19 @@
 #include <nanobind/stl/bind_vector.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
-#include <ostream>
 
 #include "gemmi/seqid.hpp"
 #include "gemmi/metadata.hpp"
 #include "gemmi/enumstr.hpp"
-#include "tostr.hpp"
+#include "gemmi/sprintf.hpp"
 #include "meta.h"
 
 using namespace gemmi;
 
-namespace gemmi {
-  // not inline
-  std::ostream& operator<< (std::ostream& os, const Entity& ent) {
-    os << "<gemmi.Entity '" << ent.name << "' "
-       << entity_type_to_string(ent.entity_type);
-    if (ent.polymer_type != PolymerType::Unknown)
-      os << ' ' << polymer_type_to_string(ent.polymer_type);
-    os << " object at 0x" << std::hex << (size_t)&ent << std::dec << '>';
-    return os;
-  }
+static std::string repr_end(const void* ptr) {
+  char buf[32];
+  snprintf_z(buf, 32, " object at %#lx>", (unsigned long)ptr);
+  return buf;
 }
 
 void add_meta(nb::module_& m) {
@@ -40,6 +33,7 @@ void add_meta(nb::module_& m) {
     .def("__repr__", [](const SeqId& self) {
         return "<gemmi.SeqId " + self.str() + ">";
     })
+    // NOLINTBEGIN(misc-redundant-expression)
     .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def(nb::self < nb::self)
     .def("__hash__", [](const SeqId& self) {
@@ -75,6 +69,7 @@ void add_meta(nb::module_& m) {
         return cat("<gemmi.AtomAddress ", self.str(), '>');
     })
     .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
+    // NOLINTEND(misc-redundant-expression)
     ;
 
   // metadata.hpp
@@ -92,9 +87,8 @@ void add_meta(nb::module_& m) {
     .def_ro("tr", &NcsOp::tr)
     .def("apply", &NcsOp::apply)
     .def("__repr__", [](const NcsOp& self) {
-        return tostr("<gemmi.NcsOp ", self.id,
-                     " |shift|=", self.tr.vec.length(),
-                     (self.given ? " (" : " (not "), "given)>");
+        return cat("<gemmi.NcsOp ", self.id, " |shift|=", std::to_string(self.tr.vec.length()),
+                   "( ", (self.given ? "" : "not "), "given)>");
     });
   nb::bind_vector<std::vector<NcsOp>, rv_ri>(m, "NcsOpList");
 
@@ -127,7 +121,13 @@ void add_meta(nb::module_& m) {
     .def_rw("sifts_unp_acc", &Entity::sifts_unp_acc)
     .def_rw("full_sequence", &Entity::full_sequence)
     .def_static("first_mon", &Entity::first_mon)
-    .def("__repr__", [](const Entity& self) { return tostr(self); });
+    .def("__repr__", [](const Entity& self) {
+      std::string s = cat("<gemmi.Entity '", self.name, "' ");
+      s += entity_type_to_string(self.entity_type);
+      if (self.polymer_type != PolymerType::Unknown)
+        cat_to(s, ' ', polymer_type_to_string(self.polymer_type));
+      return s + repr_end(&self);
+    });
   nb::bind_vector<std::vector<Entity>, rv_ri>(m, "EntityList");
 
   nb::enum_<Connection::Type>(m, "ConnectionType")

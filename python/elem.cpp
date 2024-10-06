@@ -18,7 +18,7 @@ using namespace gemmi;
 // Round coefficients.
 // Decimal number from tables, such as 11.7695, after -> 32-bit float -> double
 // becomes 11.769499778747559. Let's round it, it's for printing only anyway.
-double roc(float x) {
+static double roc(float x) {
   float ax = std::abs(x);
   double n = ax < 16.f ? 1e6 : ax < 128.f ? 1e5 : 1e4;
   return std::round(x * n) / n;

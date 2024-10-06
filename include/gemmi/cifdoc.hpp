@@ -384,7 +384,7 @@ struct Table {
 
   Row find_row(const std::string& s);
 
-  template <typename T> void append_row(T new_values);
+  template <typename T> void append_row(const T& new_values);
   void append_row(std::initializer_list<std::string> new_values) {
     append_row<std::initializer_list<std::string>>(new_values);
   }
@@ -741,7 +741,7 @@ inline Table::Row Table::find_row(const std::string& s) {
   fail("Not found in " + *column_at_pos(pos).get_tag() + ": " + s);
 }
 
-template <typename T> void Table::append_row(T new_values) {
+template <typename T> void Table::append_row(const T& new_values) {
   if (!ok())
     fail("append_row(): table not found");
   if (new_values.size() != width())

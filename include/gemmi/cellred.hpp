@@ -395,7 +395,7 @@ struct SellingVector {
   UnitCell get_cell() const { return UnitCell(cell_parameters()); }
 };
 
-SellingVector GruberVector::selling() const {
+inline SellingVector GruberVector::selling() const {
   double s0 = 0.5 * xi;
   double s1 = 0.5 * eta;
   double s2 = 0.5 * zeta;
