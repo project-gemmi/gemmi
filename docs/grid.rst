@@ -236,8 +236,8 @@ or when iterating the grid:
   >>> for point in grid:
   ...   if point.value != 0.: print(point)
   <gemmi.FloatGridBase.Point (0, 0, 0) -> 0.125>
-  <gemmi.FloatGridBase.Point (1, 1, 1) -> 7>
-  <gemmi.FloatGridBase.Point (11, 1, 11) -> 7>
+  <gemmi.FloatGridBase.Point (1, 1, 1) -> 7.0>
+  <gemmi.FloatGridBase.Point (11, 1, 11) -> 7.0>
 
 The point can be converted to its index (position in the array):
 
@@ -266,7 +266,7 @@ The other way around, we can find the grid point nearest to a position:
 .. doctest::
 
   >>> grid.get_nearest_point(_)
-  <gemmi.FloatGridBase.Point (6, 6, 6) -> 0>
+  <gemmi.FloatGridBase.Point (6, 6, 6) -> 0.0>
 
 
 Common operations
@@ -504,7 +504,7 @@ The primary use for MaskedGrid is working with asymmetric unit (asu) only:
   >>> for point in asu:
   ...   if point.value != 0: print(point)
   <gemmi.FloatGridBase.Point (0, 0, 0) -> 0.125>
-  <gemmi.FloatGridBase.Point (1, 1, 1) -> 7>
+  <gemmi.FloatGridBase.Point (1, 1, 1) -> 7.0>
 
 
 .. _solventmask:

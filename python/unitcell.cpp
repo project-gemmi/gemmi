@@ -1,7 +1,6 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "gemmi/unitcell.hpp"
-#include "tostr.hpp"  // tostr
 #include "gemmi/cellred.hpp"  // GruberVector
 #include "gemmi/twin.hpp"  // find_lattice_2fold_ops
 #include "gemmi/sprintf.hpp"  // snprintf_z
@@ -73,8 +72,10 @@ template<typename T> void add_smat33(nb::module_& m, const char* name) {
     .def("transformed_by", &M::template transformed_by<T>)
     .def("calculate_eigenvalues", &M::calculate_eigenvalues)
     .def("__repr__", [name](const M& m) {
-        return tostr("<gemmi.", name, '(', m.u11, ", ", m.u22, ", ", m.u33, ", ",
-                     m.u12, ", ", m.u13, ", ", m.u23, + ")>");
+        char buf[128];
+        snprintf_z(buf, 128, "<gemmi.%s(%g, %g, %g, %g, %g, %g)>",
+                   name, m.u11, m.u22, m.u33, m.u12, m.u13, m.u23);
+        return std::string(buf);
     });
 }
 

@@ -9,17 +9,11 @@
 
 #include "gemmi/recgrid.hpp"
 #include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid
-#include "tostr.hpp"
+#include "gemmi/sprintf.hpp"
 
 using namespace gemmi;
 
-namespace gemmi {
-  std::ostream& operator<< (std::ostream& os, const ValueSigma<float>& vs) {
-    os << vs.value << " +/- " << vs.sigma;
-    return os;
-  }
-}
-
+namespace {
 template<typename T, typename Func>
 auto make_new_column(const AsuData<T>& asu_data, Func f) {
   if (!asu_data.unit_cell().is_crystal())
@@ -71,9 +65,8 @@ void add_asudata(nb::module_& m, const std::string& prefix) {
     .def_ro("hkl", &HklValue<T>::hkl)
     .def_rw("value", &HklValue<T>::value)
     .def("__repr__", [prefix](const HklValue<T>& self) {
-        return tostr("<gemmi.", prefix, "HklValue (",
-                     self.hkl[0], ',', self.hkl[1], ',', self.hkl[2], ") ",
-                     self.value, '>');
+        return nb::str("<gemmi.{}HklValue ({},{},{}) {}>")
+                .format(prefix, self.hkl[0], self.hkl[1], self.hkl[2], self.value);
     });
 
   using AsuData = AsuData<T>;
@@ -145,7 +138,7 @@ void add_asudata(nb::module_& m, const std::string& prefix) {
       return new AsuData(self);
     })
     .def("__repr__", [prefix](const AsuData& self) {
-        return tostr("<gemmi.", prefix, "AsuData with ", self.v.size(), " values>");
+        return cat("<gemmi.", prefix, "AsuData with ", self.v.size(), " values>");
     });
     add_to_asu_data(asu_data);
 }
@@ -211,9 +204,11 @@ void add_asudata_and_recgrid(nb::module_& m,
          nb::arg("with_000")=false, nb::arg("with_sys_abs")=false,
          nb::arg("mott_bethe")=false)
     .def("__repr__", [=](const RecGr& self) {
-        return tostr("<gemmi.", rgrid_name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
+        return cat("<gemmi.", rgrid_name, '(', self.nu, ", ", self.nv, ", ", self.nw, ")>");
     });
 }
+
+}  // anonymous namespace
 
 void add_recgrid(nb::module_& m) {
   using VS = ValueSigma<float>;
@@ -221,7 +216,9 @@ void add_recgrid(nb::module_& m) {
     .def_rw("value", &VS::value)
     .def_rw("sigma", &VS::sigma)
     .def("__repr__", [](const VS& self) {
-        return tostr("<gemmi.ValueSigma(", self.value, ", ", self.sigma, ")>");
+        char buf[64];
+        snprintf_z(buf, 64, "<gemmi.ValueSigma(%g, %g)>", self.value, self.sigma);
+        return std::string(buf);
     });
   nb::class_<ComplexCorrelation>(m, "ComplexCorrelation")
     .def_ro("n", &ComplexCorrelation::n)

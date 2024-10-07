@@ -11,7 +11,6 @@
 #include "gemmi/unitcell.hpp"
 #include "gemmi/refln.hpp"
 #include "gemmi/fourier.hpp"  // for get_size_for_hkl, get_f_phi_on_grid, ...
-#include "tostr.hpp"
 #include "gemmi/fprime.hpp"   // for cromer_liberman
 #include "gemmi/reciproc.hpp" // for count_reflections, make_miller_vector
 #include "gemmi/cif2mtz.hpp"  // for CifToMtz
@@ -23,19 +22,6 @@
 using namespace gemmi;
 
 NB_MAKE_OPAQUE(std::vector<ReflnBlock>)
-
-namespace gemmi {
-  // operator<< is used by stl_bind for vector's __repr__
-  inline std::ostream& operator<< (std::ostream& os, const ReflnBlock& rb) {
-    os << "<gemmi.ReflnBlock " << rb.block.name << " with ";
-    if (rb.default_loop)
-      os << rb.default_loop->width() << " x " << rb.default_loop->length();
-    else
-      os << " no ";
-    os << " loop>";
-    return os;
-  }
-}
 
 void add_hkl(nb::module_& m) {
   nb::class_<ReflnBlock> pyReflnBlock(m, "ReflnBlock");
@@ -128,8 +114,15 @@ void add_hkl(nb::module_& m) {
     .def("is_unmerged", &ReflnBlock::is_unmerged)
     .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })
-    .def("__repr__", [](const ReflnBlock& self) { return tostr(self); })
-    ;
+    .def("__repr__", [](const ReflnBlock& self) {
+        std::string s = cat("<gemmi.ReflnBlock ", self.block.name, " with ");
+        if (self.default_loop)
+          cat_to(s, self.default_loop->width(), " x ", self.default_loop->length());
+        else
+          s += " no ";
+        s += " loop>";
+        return s;
+    });
   m.def("as_refln_blocks",
         [](cif::Document& d) { return as_refln_blocks(std::move(d.blocks)); });
   m.def("hkl_cif_as_refln_block", &hkl_cif_as_refln_block, nb::arg("block"));

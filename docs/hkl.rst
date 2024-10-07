@@ -1108,7 +1108,7 @@ Each item in AsuData has two properties, hkl and value:
 .. doctest::
 
   >>> asu_data[158]
-  <gemmi.ComplexHklValue (-6,2,5) (-1.37694,-0.190087)>
+  <gemmi.ComplexHklValue (-6,2,5) (-1.376941204071045-0.19008657336235046j)>
   >>> _.hkl, _.value
   ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
 

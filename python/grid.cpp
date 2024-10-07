@@ -24,7 +24,6 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
 #include "gemmi/blob.hpp"     // for Blob, find_blobs_by_flood_fill
 #include "gemmi/asumask.hpp"  // for MaskedGrid
-#include "tostr.hpp"
 
 using namespace gemmi;
 
@@ -53,8 +52,8 @@ nb::class_<GridBase<T>, GridMeta> add_grid_base(nb::module_& m, const char* name
                   [](const GrPoint& self) { return *self.value; },
                   [](GrPoint& self, T x) { *self.value = x; })
     .def("__repr__", [=](const GrPoint& self) {
-        return tostr("<gemmi.", name, ".Point (", self.u, ", ", self.v, ", ",
-                     self.w, ") -> ", +*self.value, '>');
+        return nb::str("<gemmi.{}.Point ({}, {}, {}) -> {}>")
+            .format(name, self.u, self.v, self.w, self.value);
     });
 
   auto to_array = [](GrBase& gr) { return grid_to_array(gr, gr.data); };
