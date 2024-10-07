@@ -62,6 +62,19 @@ auto make_new_column(const Mtz& mtz, int dataset, Func func) {
   return numpy_arr;
 }
 
+auto mtz_to_array(Mtz& self) {
+  size_t nrow = self.has_data() ? (size_t) self.nreflections : 0;
+  size_t ncol = self.columns.size();
+  return nb::ndarray<nb::numpy, float, nb::ndim<2>>(self.data.data(), {nrow, ncol}, nb::handle());
+}
+
+auto column_to_array(Mtz::Column& self) {
+  return nb::ndarray<nb::numpy, float, nb::ndim<1>>(self.parent->data.data() + self.idx,
+                                                    {(size_t)self.size()},
+                                                    nb::handle(),
+                                                    {(int64_t) self.stride()});
+}
+
 }  // anonymous namespace
 
 void add_mtz(nb::module_& m) {
@@ -78,12 +91,8 @@ void add_mtz(nb::module_& m) {
 
   mtz
     .def(nb::init<bool>(), nb::arg("with_base")=false)
-    .def_prop_ro("array", [](Mtz& self) {
-      size_t nrow = self.has_data() ? (size_t) self.nreflections : 0;
-      size_t ncol = self.columns.size();
-      return nb::ndarray<nb::numpy, float, nb::ndim<2>>(
-          self.data.data(), {nrow, ncol}, nb::handle());
-    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("array", &mtz_to_array, nb::rv_policy::reference_internal)
+    .def("__array__", &mtz_to_array, nb::rv_policy::reference_internal)
     .def_rw("title", &Mtz::title)
     .def_rw("nreflections", &Mtz::nreflections)
     .def_rw("sort_order", &Mtz::sort_order)
@@ -292,13 +301,8 @@ void add_mtz(nb::module_& m) {
     })
     ;
   pyMtzColumn
-    .def_prop_ro("array", [](const Mtz::Column& self) {
-      return nb::ndarray<nb::numpy, float, nb::ndim<1>>(
-          self.parent->data.data() + self.idx,
-          {(size_t)self.size()},
-          nb::handle(),
-          {(int64_t) self.stride()});
-    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("array", &column_to_array, nb::rv_policy::reference_internal)
+    .def("__array__", &column_to_array, nb::rv_policy::reference_internal)
     .def_prop_ro("dataset",
             (Mtz::Dataset& (Mtz::Column::*)()) &Mtz::Column::dataset)
     .def_rw("dataset_id", &Mtz::Column::dataset_id)

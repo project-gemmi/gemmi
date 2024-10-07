@@ -17,22 +17,31 @@
 
 using namespace gemmi;
 
-static std::string triple(double x, double y, double z) {
+namespace {
+
+std::string triple(double x, double y, double z) {
   char buf[128];
   auto r = [](double d) { return std::fabs(d) < 1e-15 ? 0 : d; };
   snprintf_z(buf, 128, "%g, %g, %g", r(x), r(y), r(z));
   return std::string(buf);
 }
 
-static void mat33_from_list(Mat33& self, std::array<std::array<double,3>,3>& m) {
+void mat33_from_list(Mat33& self, std::array<std::array<double,3>,3>& m) {
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
       self.a[i][j] = m[i][j];
 }
 
-static nb::tuple make_six_tuple(const std::array<double,6>& v) {
+nb::tuple make_six_tuple(const std::array<double,6>& v) {
   return nb::make_tuple(v[0], v[1], v[2], v[3], v[4], v[5]);
 }
+
+auto mat33_to_array(Mat33& self) {
+  return nb::ndarray<nb::numpy, double, nb::shape<3,3>, nb::c_contig>(
+          &self.a[0][0], {3, 3}, nb::handle());
+}
+
+}  // anonymous namespace
 
 template<typename T> void add_smat33(nb::module_& m, const char* name) {
   using M = SMat33<T>;
@@ -135,10 +144,8 @@ void add_unitcell(nb::module_& m) {
        new(mat) Mat33();
        mat33_from_list(*mat, arr);
      })
-    .def_prop_ro("array", [](Mat33& self) {
-      return nb::ndarray<nb::numpy, double, nb::shape<3,3>, nb::c_contig>(
-          &self.a[0][0], {3, 3}, nb::handle());
-    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("array", &mat33_to_array, nb::rv_policy::reference_internal)
+    .def("__array__", &mat33_to_array, nb::rv_policy::reference_internal)
     .def("row_copy", &Mat33::row_copy)
     .def("column_copy", &Mat33::column_copy)
     .def(nb::self + nb::self)
