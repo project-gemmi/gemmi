@@ -456,8 +456,8 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
       }
   }
 
-  // MODRES
-  if (!opt.minimal_file)
+  if (!opt.minimal_file) {
+    // MODRES
     for (const ModRes& modres : st.mod_residues) {
       WRITEU("MODRES %4s %3.3s%2s %5s %3s  %-41.41s  %-8.8s\n",
             entry_id_4,
@@ -468,6 +468,27 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
             modres.details.c_str(),
             modres.mod_id.c_str());
     }
+
+    // HET
+    if (!st.models.empty()) {
+      auto full_ccd_code = [&](const std::string& name) -> std::string {
+        for (const auto& mapping : st.shortened_ccd_codes)
+          if (mapping.second == name)
+            return "real CCD code: " + mapping.first;
+        return "";
+      };
+      for (const Chain& chain : st.models[0].chains)
+        for (const Residue& res : chain.residues)
+          if (use_hetatm(res) && !find_tabulated_residue(res.name).is_water()) {
+            WRITE("HET    %3s %2s%5s %6zu     %-51s\n",
+                  res.name.c_str(),
+                  chain.name.c_str(),
+                  write_seq_id(res.seqid).data(),
+                  res.atoms.size(),
+                  res.name[0] == '~' ? full_ccd_code(res.name).c_str() : "");
+          }
+    }
+  }
 
   // HETNAM - but it's used only for tilde-hetnam extension
   for (const auto& mapping : st.shortened_ccd_codes)

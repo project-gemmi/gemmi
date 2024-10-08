@@ -15,7 +15,7 @@ except ImportError:
 
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
-                    'SEQADV', 'HET   ', 'HETNAM', 'FORMUL',
+                    'SEQADV', 'HETNAM', 'FORMUL',
                     'SITE  ', 'MASTER', 'CONECT']:
         return False
     # ORIGX is written only if it is a non-identity matrix

@@ -72,7 +72,6 @@ absent="\
 ^COMPND|\
 ^CONECT|\
 ^FORMUL|\
-^HET   |\
 ^HETNAM|\
 ^HETSYN|\
 ^JRNL  |\

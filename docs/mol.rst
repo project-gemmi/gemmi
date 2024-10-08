@@ -596,6 +596,7 @@ The records that are interpreted can be converted from/to mmCIF:
 - DBREF/DBREF1/DBREF2
 - SEQRES
 - MODRES
+- HET        (write-only)
 - HELIX
 - SHEET
 - SSBOND
