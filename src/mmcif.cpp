@@ -502,8 +502,7 @@ struct RowAccess {
     const std::string& r = val[gap];
     if (!cif::is_null(r) || fallback == nullptr)
       return r;
-    else
-      return fallback[gap];
+    return fallback[gap];
   }
 };
 

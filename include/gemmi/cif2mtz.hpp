@@ -312,6 +312,8 @@ struct CifToMtz {
     std::vector<const Entry*> entries;  // used for code_to_number only
     std::string tag = loop->tags[0];
     const size_t tag_offset = rb.tag_offset();
+    // NOLINTNEXTLINE(readability-suspicious-call-argument): clang-tidy finds npos suspicious
+    auto set_tag = [&](const std::string& t) { tag.replace(tag_offset, std::string::npos, t); };
 
     std::vector<Entry> spec_entries;
     if (!spec_lines.empty()) {
@@ -325,7 +327,7 @@ struct CifToMtz {
     }
 
     // always start with H, K, L
-    tag.replace(tag_offset, std::string::npos, "index_h");
+    set_tag("index_h");
     for (char c : {'h', 'k', 'l'}) {
       tag.back() = c;
       int index = loop->find_tag(tag);
@@ -355,7 +357,7 @@ struct CifToMtz {
     // other columns according to the spec
     bool column_added = false;
     for (const Entry& entry : spec_entries) {
-      tag.replace(tag_offset, std::string::npos, entry.refln_tag);
+      set_tag(entry.refln_tag);
       int index = loop->find_tag(tag);
       if (index == -1)
         continue;
@@ -389,11 +391,11 @@ struct CifToMtz {
     std::vector<BatchInfo> batch_nums;
     if (unmerged) {
       hkl_mover.reset(new UnmergedHklMover(mtz.spacegroup));
-      tag.replace(tag_offset, std::string::npos, "diffrn_id");
+      set_tag("diffrn_id");
       int sweep_id_index = loop->find_tag(tag);
       if (sweep_id_index == -1 && verbose)
         out << "No diffrn_id. Assuming a single sweep.\n";
-      tag.replace(tag_offset, std::string::npos, "pdbx_image_id");
+      set_tag("pdbx_image_id");
       int image_id_index = loop->find_tag(tag);
       if (verbose) {
         if (image_id_index == -1)

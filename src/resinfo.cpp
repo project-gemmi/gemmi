@@ -9,7 +9,7 @@ namespace gemmi {
 ResidueInfo find_tabulated_residue(const std::string& name) {
   using RI = ResidueKind;
   if (name.size() == 3) {
-#define ID(s) (s[0] << 16 | s[1] << 8 | s[2])
+#define ID(s) ((s)[0] << 16 | (s)[1] << 8 | (s)[2])
     switch (ID(name.c_str())) {
       case ID("ALA"): return { RI::AA,  1, 'A',   7, 89.0932f };
       case ID("ARG"): return { RI::AA,  1, 'R',  15, 175.209f };
@@ -367,7 +367,7 @@ ResidueInfo find_tabulated_residue(const std::string& name) {
         case 'N': return { RI::DNA, 2, 'N',  14, 198.111f };  // unknown DNA
       }
     else
-#define ID(s) (s[0] << 8 | s[1])
+#define ID(s) ((s)[0] << 8 | (s)[1])
       switch (ID(name.c_str())) {
         case ID("AG"): return { RI::BUF, 0, ' ',   0, 107.868f };
         case ID("AL"): return { RI::BUF, 0, ' ',   0, 26.9815f };

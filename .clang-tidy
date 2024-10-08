@@ -26,6 +26,7 @@ bugprone-*,
 -bugprone-implicit-widening-of-multiplication-result,
 -bugprone-inc-dec-in-conditions,
 -bugprone-narrowing-conversions,
+-bugprone-signed-char-misuse,
 -bugprone-switch-missing-default-case,
 misc-*,
 -misc-confusable-identifiers,
@@ -49,5 +50,5 @@ FormatStyle: none
 HeaderFilterRegex: '(include/gemmi/[a-z0-9_]*\.hpp)|(prog/[a-z0-9_]*\.h)'
 
 CheckOptions:
+  # this option doesn't always work, so bugprone-signed-char-misuse is off
   bugprone-signed-char-misuse.CharTypdefsToIgnore: 'int8_t'
-  performance-unnecessary-value-param.AllowedTypes: 'cpu_array;cpu_miller_array'

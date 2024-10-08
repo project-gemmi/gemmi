@@ -41,8 +41,6 @@ auto mat33_to_array(Mat33& self) {
           &self.a[0][0], {3, 3}, nb::handle());
 }
 
-}  // anonymous namespace
-
 template<typename T> void add_smat33(nb::module_& m, const char* name) {
   using M = SMat33<T>;
   nb::class_<M>(m, name)
@@ -66,7 +64,7 @@ template<typename T> void add_smat33(nb::module_& m, const char* name) {
     .def("scaled", &M::template scaled<T>)
     .def("added_kI", &M::added_kI)
     .def("r_u_r", (double (M::*)(const Vec3&) const) &M::r_u_r)
-    .def("r_u_r", [](const M& self, cpu_miller_array arr) {
+    .def("r_u_r", [](const M& self, const cpu_miller_array& arr) {
         std::vector<T> v;
         size_t len = arr.shape(0);
         v.reserve(len);
@@ -99,6 +97,8 @@ template<typename T> void add_box(nb::module_& m, const char* name) {
     .def("add_margin", &M::add_margin)
     ;
 }
+
+}  // anonymous namespace
 
 void add_unitcell(nb::module_& m) {
   nb::class_<Vec3>(m, "Vec3")
@@ -316,11 +316,11 @@ void add_unitcell(nb::module_& m) {
            &UnitCell::is_special_position,
          nb::arg("fpos"), nb::arg("max_dist"))
     .def("calculate_1_d2", &UnitCell::calculate_1_d2, nb::arg("hkl"))
-    .def("calculate_1_d2_array", [](const UnitCell& u, cpu_miller_array hkl) {
+    .def("calculate_1_d2_array", [](const UnitCell& u, const cpu_miller_array& hkl) {
         return miller_function<double>(u, &UnitCell::calculate_1_d2, hkl);
     })
     .def("calculate_d", &UnitCell::calculate_d, nb::arg("hkl"))
-    .def("calculate_d_array", [](const UnitCell& u, cpu_miller_array hkl) {
+    .def("calculate_d_array", [](const UnitCell& u, const cpu_miller_array& hkl) {
         return miller_function<double>(u, &UnitCell::calculate_d, hkl);
     })
     .def("metric_tensor", &UnitCell::metric_tensor)

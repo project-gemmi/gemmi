@@ -67,7 +67,7 @@ void add_monlib(nb::module_& m) {
         return "<gemmi.ChemMod " + self.id + ">";
     });
 
-  nb::class_<EnerLib>(m, "EnerLib");
+  nb::class_<EnerLib>(m, "EnerLib");  // NOLINT(bugprone-unused-raii)
   nb::class_<MonLib>(m, "MonLib")
     .def(nb::init<>())
     .def_prop_rw("monomer_dir",

@@ -33,7 +33,7 @@ template<typename T> size_t get_max_bin(const T& bins) {
 struct VectorizeFunc {
   typedef double (*Func)(double);
   Func func;
-  auto operator()(cpu_array<double> x) const {
+  auto operator()(const cpu_array<double>& x) const {
     auto x_ = x.view();
     size_t len = x_.shape(0);
     auto ret = make_numpy_array<double>({len});
@@ -88,7 +88,7 @@ void add_misc(nb::module_& m) {
     ;
 
   // utilities inspired by numpy.bincount()
-  m.def("binmean", [](cpu_array<int> bins, cpu_array<double> values) {
+  m.def("binmean", [](const cpu_array<int>& bins, const cpu_array<double>& values) {
       auto bins_ = bins.view();
       auto values_ = values.view();
       auto len = bins_.shape(0);
@@ -111,8 +111,8 @@ void add_misc(nb::module_& m) {
       return ret;
   }, nb::arg("nbins"), nb::arg("values"));
 
-  m.def("binrfactor", [](cpu_array<int> bins, cpu_array<double> obs,
-                         cpu_array<double> calc, bool riso) {
+  m.def("binrfactor", [](const cpu_array<int>& bins, const cpu_array<double>& obs,
+                         const cpu_array<double>& calc, bool riso) {
       auto bins_ = bins.view();
       auto obs_ = obs.view();
       auto calc_ = calc.view();
@@ -136,7 +136,8 @@ void add_misc(nb::module_& m) {
       return ret;
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"), nb::arg("riso")=false);
 
-  m.def("bincorr", [](cpu_array<int> bins, cpu_array<double> obs, cpu_array<double> calc) {
+  m.def("bincorr", [](const cpu_array<int>& bins, const cpu_array<double>& obs,
+                      const cpu_array<double>& calc) {
       auto bins_ = bins.view();
       auto obs_ = obs.view();
       auto calc_ = calc.view();

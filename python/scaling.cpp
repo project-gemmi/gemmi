@@ -31,7 +31,7 @@ void add_scaling(nb::module_& m) {
 #endif
     .def("calculate_r_factor", &Scaling::calculate_r_factor)
     .def("get_overall_scale_factor", &Scaling::get_overall_scale_factor, nb::arg("hkl"))
-    .def("get_overall_scale_factor", [](const Scaling& self, cpu_miller_array hkl) {
+    .def("get_overall_scale_factor", [](const Scaling& self, const cpu_miller_array& hkl) {
         return miller_function<double>(self, &Scaling::get_overall_scale_factor, hkl);
     })
     .def("get_solvent_scale", &Scaling::get_solvent_scale, nb::arg("stol2"))

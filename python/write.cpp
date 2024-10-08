@@ -14,7 +14,7 @@ using namespace gemmi;
 void add_write(nb::module_& m, nb::class_<Structure>& structure) {
   nb::class_<MmcifOutputGroups>(m, "MmcifOutputGroups")
     .def(nb::init<bool>())
-    .def("__init__", [](MmcifOutputGroups* p, bool all, nb::kwargs kwargs) {
+    .def("__init__", [](MmcifOutputGroups* p, bool all, const nb::kwargs& kwargs) {
       nb::object obj = nb::type<MmcifOutputGroups>()(all);
       for (auto [key, value] : kwargs)
         obj.attr(key) = nb::cast<bool>(value);
@@ -67,7 +67,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
         *opt = PdbWriteOptions::headers_only();
     }, nb::arg("minimal")=false, nb::arg("headers_only")=false)
     .def("__init__", [](PdbWriteOptions* p, bool minimal, bool headers_only,
-                        nb::kwargs kwargs) {
+                        const nb::kwargs& kwargs) {
       nb::object obj = nb::type<PdbWriteOptions>()(minimal, headers_only);
       for (auto [key, value] : kwargs)
         obj.attr(key) = nb::cast<bool>(value);
@@ -101,7 +101,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
         write_pdb(st, f.ref(), options);
     })
     // deprecated - kept for compatibility
-    .def("write_pdb", [](const Structure& st, const std::string& path, nb::kwargs kwargs) {
+    .def("write_pdb", [](const Structure& st, const std::string& path, const nb::kwargs& kwargs) {
         Ofstream f(path);
         nb::object options = nb::type<PdbWriteOptions>()(**kwargs);
         write_pdb(st, f.ref(), nb::cast<const PdbWriteOptions&>(options));

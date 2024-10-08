@@ -7,6 +7,7 @@
 
 #include <cstdint>
 
+#include "gemmi/util.hpp"
 #include "grid.hpp"
 
 namespace gemmi {
@@ -177,10 +178,7 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
     if (found)
       printf("[debug2] checkpoints failed\n");
 #endif
-    if (std::find(grid.data.begin(), grid.data.end(), 0) != grid.data.end())
-      return false;
-
-    return true;
+    return !in_vector(std::int8_t(0), grid.data);
   };
 
   std::vector<AsuBrick> possible_bricks;

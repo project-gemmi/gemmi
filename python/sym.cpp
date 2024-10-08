@@ -2,7 +2,6 @@
 
 #include "gemmi/symmetry.hpp"
 
-#include <memory>  // for unique_ptr
 #include "common.h"
 #include "array.h"  // for miller_function
 #include <nanobind/make_iterator.h>
@@ -30,7 +29,7 @@ void add_symmetry(nb::module_& m) {
     .def("__init__", [](Op* op, const std::string& s) {
         new(op) Op(parse_triplet(s));
     })
-    .def_prop_ro_static("DEN", [](nb::object) { return Op::DEN; },
+    .def_prop_ro_static("DEN", [](const nb::object&) { return Op::DEN; },
                            "Denominator (integer) for the translation vector.")
     .def_rw("rot", &Op::rot, "3x3 integer matrix.")
     .def_rw("tran", &Op::tran,
@@ -72,11 +71,11 @@ void add_symmetry(nb::module_& m) {
          nb::is_operator())
     .def("__rmul__", [](const Op& a, const std::string& b) { return parse_triplet(b) * a; },
          nb::is_operator())
-    .def(nb::self == nb::self)
+    .def(nb::self == nb::self)  // NOLINT(misc-redundant-expression)
     .def("__eq__", [](const Op& a, const std::string& b) { return a == parse_triplet(b); },
          nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__copy__", [](const Op& self) { return Op(self); })
-    .def("__deepcopy__", [](const Op& self, nb::dict) { return Op(self); }, nb::arg("memo"))
+    .def("__deepcopy__", [](const Op& self, const nb::dict&) { return Op(self); }, nb::arg("memo"))
     .def("__hash__", [](const Op& self) { return std::hash<Op>()(self); })
     .def("__repr__", [](const Op& self) {
         return "<gemmi.Op(\"" + self.triplet() + "\")>";
@@ -100,7 +99,7 @@ void add_symmetry(nb::module_& m) {
     .def("__eq__", [](const GroupOps &a, const GroupOps &b) { return a.is_same_as(b); },
          nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__len__", [](const GroupOps& g) { return g.order(); })
-    .def("__deepcopy__", [](const GroupOps& g, nb::dict) { return GroupOps(g); },
+    .def("__deepcopy__", [](const GroupOps& g, const nb::dict&) { return GroupOps(g); },
          nb::arg("memo"))
     .def_rw("sym_ops", &GroupOps::sym_ops,
                "Symmetry operations (to be combined with centering vectors).")
@@ -111,19 +110,20 @@ void add_symmetry(nb::module_& m) {
     .def("has_same_rotations", &GroupOps::has_same_rotations)
     .def("is_centrosymmetric", &GroupOps::is_centrosymmetric)
     .def("is_reflection_centric", &GroupOps::is_reflection_centric)
-    .def("centric_flag_array", [](const GroupOps& g, cpu_miller_array hkl) {
+    .def("centric_flag_array", [](const GroupOps& g, const cpu_miller_array& hkl) {
         return miller_function<bool>(g, &GroupOps::is_reflection_centric, hkl);
     })
     .def("epsilon_factor_without_centering", &GroupOps::epsilon_factor_without_centering)
     .def("epsilon_factor", &GroupOps::epsilon_factor)
-    .def("epsilon_factor_array", [](const GroupOps& g, cpu_miller_array hkl) {
+    .def("epsilon_factor_array", [](const GroupOps& g, const cpu_miller_array& hkl) {
         return miller_function<int>(g, &GroupOps::epsilon_factor, hkl);
     })
-    .def("epsilon_factor_without_centering_array", [](const GroupOps& g, cpu_miller_array hkl) {
+    .def("epsilon_factor_without_centering_array", [](const GroupOps& g,
+                                                      const cpu_miller_array& hkl) {
         return miller_function<int>(g, &GroupOps::epsilon_factor_without_centering, hkl);
     })
     .def("is_systematically_absent", &GroupOps::is_systematically_absent)
-    .def("systematic_absences", [](const GroupOps& g, cpu_miller_array hkl) {
+    .def("systematic_absences", [](const GroupOps& g, const cpu_miller_array& hkl) {
         return miller_function<bool>(g, &GroupOps::is_systematically_absent, hkl);
     })
     .def("find_grid_factors", &GroupOps::find_grid_factors,
@@ -184,7 +184,7 @@ void add_symmetry(nb::module_& m) {
     .def("change_of_hand_op", &SpaceGroup::change_of_hand_op)
     .def("operations", &SpaceGroup::operations, "Group of operations")
     .def("switch_to_asu", [](const SpaceGroup& sg,
-                             nb::ndarray<int, nb::shape<-1,-1>, nb::device::cpu> hkl) {
+                             const nb::ndarray<int, nb::shape<-1,-1>, nb::device::cpu>& hkl) {
         auto h = hkl.view();
         if (h.shape(1) < 3)
           throw std::domain_error("error: the size of the second dimension < 3");

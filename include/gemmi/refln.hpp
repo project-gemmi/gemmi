@@ -47,6 +47,8 @@ struct ReflnBlock {
   }
   ReflnBlock& operator=(ReflnBlock&&) = default;
   ReflnBlock& operator=(const ReflnBlock& o) {
+    if (this == &o)
+      return *this;
     block = o.block;
     entry_id = o.entry_id;
     cell = o.cell;

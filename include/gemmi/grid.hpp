@@ -9,7 +9,6 @@
 #include <cstddef>    // for ptrdiff_t
 #include <complex>
 #include <algorithm>  // for fill
-#include <memory>     // for unique_ptr
 #include <numeric>    // for accumulate
 #include <type_traits>
 #include <vector>

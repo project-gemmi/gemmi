@@ -62,12 +62,10 @@ T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
 }  // anonymous namespace
 
 // for delitem_slice
-namespace gemmi { namespace cif {
+template<>
 void delitem_at_index(Table& t, size_t idx) { t.remove_row((int)idx); }
-void delitem_range(Table& t, size_t start, size_t end) {
-  t.remove_rows((int)start, (int)end);
-}
-} } // namespace gemmi::cif
+template<>
+void delitem_range(Table& t, size_t start, size_t end) { t.remove_rows((int)start, (int)end); }
 
 void add_cif(nb::module_& cif) {
   nb::class_<Block> cif_block(cif, "Block");

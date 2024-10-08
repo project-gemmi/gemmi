@@ -1,7 +1,7 @@
 // Copyright Global Phasing Ltd.
 
 #include <gemmi/json.hpp>
-#include <algorithm>  // for move
+#include <utility>  // for move
 
 #define SAJSON_UNSORTED_OBJECT_KEYS
 #define SAJSON_NUMBERS_AS_STRINGS

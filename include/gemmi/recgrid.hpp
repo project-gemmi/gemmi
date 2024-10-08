@@ -5,15 +5,13 @@
 #ifndef GEMMI_RECGRID_HPP_
 #define GEMMI_RECGRID_HPP_
 
+#include <memory>  // for unique_ptr
 #include "asudata.hpp"
 #include "grid.hpp"
 
 namespace gemmi {
 
-inline signed char friedel_mate_value(signed char v) { return v; }
-inline float friedel_mate_value(float v) { return v; }
-inline double friedel_mate_value(double v) { return v; }
-
+template<typename T> T friedel_mate_value(T v) { return v; }
 template<typename T>
 std::complex<T> friedel_mate_value(const std::complex<T>& v) {
   return std::conj(v);

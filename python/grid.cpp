@@ -196,7 +196,7 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
     // in a few external projects, renaming it isn't worth the hassle.
     // cf. interpolate_grid
     .def("interpolate_values",
-         [](const Gr& self, nb::ndarray<nb::numpy, T, nb::ndim<3>> arr,
+         [](const Gr& self, nb::ndarray<nb::numpy, T, nb::ndim<3>>& arr,
             const Transform& tr, int order) {
         auto r = arr.view();
         for (size_t i = 0; i < r.shape(0); ++i)

@@ -76,6 +76,7 @@ void add_elem(nb::module_& m) {
   nb::class_<Element>(m, "Element")
     .def(nb::init<const std::string &>())
     .def(nb::init<int>())
+    // NOLINTNEXTLINE(misc-redundant-expression)
     .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def_prop_ro("name", &Element::name)
     .def_prop_ro("weight", &Element::weight)

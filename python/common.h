@@ -75,15 +75,15 @@ template<typename T> int normalize_index(int index, const T& container) {
   return c_index(index, container.size());
 }
 
-// overloaded in cif.cpp
-template<typename Item>
-void delitem_at_index(std::vector<Item>& items, size_t idx) {
+// specialized for cif::Table in cif.cpp
+template<typename Vec>
+void delitem_at_index(Vec& items, size_t idx) {
   items.erase(items.begin() + idx);
 }
 
-// overloaded in cif.cpp
-template<typename Item>
-void delitem_range(std::vector<Item>& items, size_t start, size_t end) {
+// specialized for cif::Table in cif.cpp
+template<typename Vec>
+void delitem_range(Vec& items, size_t start, size_t end) {
   items.erase(items.begin() + start, items.begin() + end);
 }
 

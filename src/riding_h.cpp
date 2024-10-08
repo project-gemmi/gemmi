@@ -147,12 +147,12 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
                                       hs[1].dist * sin(theta), 0);
     }
     if (hs.size() > 2) {
-      const Angle* ang1 = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr);
-      const Angle* ang2 = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr);
+      const Angle* ang0 = topo.take_angle(hs[2].ptr, &atom, hs[0].ptr);
+      const Angle* ang1 = topo.take_angle(hs[2].ptr, &atom, hs[1].ptr);
+      double theta0 = rad(ang0 ? ang0->value : 109.47122);
       double theta1 = rad(ang1 ? ang1->value : 109.47122);
-      double theta2 = rad(ang2 ? ang2->value : 109.47122);
       auto pos = position_from_two_angles(atom.pos, hs[0].pos, hs[1].pos,
-                                          hs[2].dist, theta1, theta2);
+                                          hs[2].dist, theta0, theta1);
       hs[2].pos = pos.first;
       // 3 hydrogens: for now happens only NH3 (NH2.cif and NH3.cif)
       // 4 hydrogens: CH4 (CH2.cif) and NH4 (NH4.cif)

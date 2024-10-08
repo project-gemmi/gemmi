@@ -319,10 +319,13 @@ void add_hkl(nb::module_& m) {
   });
 
   nb::class_<HklMatch>(m, "HklMatch")
-    .def("__init__", [](HklMatch* p, const cpu_miller_array& hkl, const cpu_miller_array& ref) {
+    .def("__init__", [](HklMatch* p, const cpu_c_miller_array& hkl,
+                                     const cpu_c_miller_array& ref) {
         static_assert(sizeof(Miller) == 3 * sizeof(int), "sizeof(Miller) problem");
+        // NOLINTBEGIN(bugprone-casting-through-void)
         new(p) HklMatch(static_cast<Miller*>((void*)hkl.data()), hkl.shape(0),
                         static_cast<Miller*>((void*)ref.data()), ref.shape(0));
+        // NOLINTEND(bugprone-casting-through-void)
     }, nb::arg("hkl"), nb::arg("ref"))
     .def("aligned", [](HklMatch& self, const cpu_c_array<double>& vec) {
         return numpy_array_from_vector(self.aligned_(vec.data(), vec.size(), (double)NAN));

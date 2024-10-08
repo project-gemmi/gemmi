@@ -10,6 +10,8 @@
 #include "gemmi/dencalc.hpp"  // for DensityCalculator
 #include "gemmi/fprime.hpp"   // for cromer_liberman
 
+namespace {
+
 template<typename Table>
 void add_sfcalc(nb::module_& m, const char* name, bool with_mb) {
   using SFC = gemmi::StructureFactorCalculator<Table>;
@@ -61,6 +63,8 @@ void add_dencalc(nb::module_& m, const char* name) {
     })
     ;
 }
+
+}  // anonymous namespace
 
 void add_sf(nb::module_& m) {
   nb::class_<gemmi::Addends>(m, "Addends")

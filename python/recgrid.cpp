@@ -73,7 +73,7 @@ void add_asudata(nb::module_& m, const std::string& prefix) {
   nb::class_<AsuData> asu_data(m, (prefix + "AsuData").c_str());
   asu_data
     .def("__init__", [](AsuData* p, const UnitCell& unit_cell, const SpaceGroup* sg,
-                        cpu_miller_array hkl, typename array_for<T>::type values) {
+                        const cpu_miller_array& hkl, const typename array_for<T>::type& values) {
       new(p) AsuData;
       auto h = hkl.view();
       auto v = values.view();
@@ -162,7 +162,7 @@ void add_asudata_and_recgrid(nb::module_& m,
       grid->axis_order = AxisOrder::XYZ;
     }, nb::arg("nx"), nb::arg("ny"), nb::arg("nz"))
     .def("__init__", [](RecGr* grid,
-                        nb::ndarray<TG, nb::ndim<3>, nb::device::cpu> arr,
+                        const nb::ndarray<TG, nb::ndim<3>, nb::device::cpu>& arr,
                         const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.view();
       new(grid) RecGr();
@@ -183,7 +183,7 @@ void add_asudata_and_recgrid(nb::module_& m,
     .def("to_hkl", &RecGr::to_hkl)
     .def("calculate_1_d2", &RecGr::calculate_1_d2)
     .def("calculate_d", &RecGr::calculate_d)
-    .def("get_value_by_hkl", [](RecGr &self, cpu_miller_array hkl, double unblur,
+    .def("get_value_by_hkl", [](RecGr &self, const cpu_miller_array& hkl, double unblur,
                                 bool mott_bethe, TA mott_bethe_000) {
       auto h = hkl.view();
       auto vals = make_numpy_array<TA>({h.shape(0)});

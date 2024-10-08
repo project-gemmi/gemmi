@@ -8,6 +8,7 @@ using cpu_array = nb::ndarray<T, nb::shape<-1>, nb::device::cpu>;
 template<typename T>
 using cpu_c_array = nb::ndarray<T, nb::shape<-1>, nb::device::cpu, nb::c_contig>;
 using cpu_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu>;
+using cpu_c_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu, nb::c_contig>;
 
 template<typename T>
 auto numpy_array_from_vector(std::vector<T>&& original_vec) {
@@ -50,12 +51,12 @@ auto make_numpy_array(std::initializer_list<size_t> size,
 }
 
 template<typename Ret, typename Obj, typename Func>
-auto miller_function(const Obj& obj, Func func, cpu_miller_array hkl) {
+auto miller_function(const Obj& obj, Func func, const cpu_miller_array& hkl) {
   auto h = hkl.view();
   size_t n = h.shape(0);
   auto result = make_numpy_array<Ret>({n});
   Ret* rptr = result.data();
-  for (size_t i = 0; i < h.shape(0); ++i)
+  for (size_t i = 0; i < n; ++i)
     rptr[i] = (obj.*func)({h(i, 0), h(i, 1), h(i, 2)});
   return result;
 }
