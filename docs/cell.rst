@@ -78,7 +78,7 @@ others are not overridden and return the base class:
     >>> 2 * frac
     <gemmi.Vec3(1, 1, 1)>
 
-Additionally, derived classes have own methods:
+Additionally, derived classes have their own methods:
 
 .. doctest::
 
@@ -114,7 +114,7 @@ Gemmi has only 3x3 matrices.
 and `SMat33` is a symmetric matrix (6 elements) that can represent
 anisotropic ADP tensor. Let us start with the former.
 
-Similarly to vectors, Mat33 can be converted to and from a Python's list:
+Similarly to vectors, Mat33 can be converted to and from a Python list:
 
 .. doctest::
 
@@ -129,7 +129,7 @@ Similarly to vectors, Mat33 can be converted to and from a Python's list:
                [0, 1, -5]
                [0, 0, 1]>
 
-We have usual methods expected in a matrix class:
+We have the usual methods expected in a matrix class:
 
 .. doctest::
 
@@ -160,8 +160,8 @@ We have usual methods expected in a matrix class:
 
 ----
 
-Symmetric matrix SMat33 is implemented as a C++ template
-that can work with either 32- or 64-bit floating point numbers.
+The symmetric matrix SMat33 is implemented as a C++ template
+that can work with either 32- or 64-bit floating-point numbers.
 In Python we have two corresponding classes: SMat33f (32-bit)
 and SMat33d (64-bit).
 These classes are used primarily for anisotropic ADP tensors;
@@ -178,9 +178,9 @@ their member variables are named `u11`, `u22`, `u33`,
   >>> aniso.elements_voigt()  # (u11, u22, u33, u23, u13, u12)
   [0.103, 0.156, 0.156, 0.0, 0.0, 0.0]
 
-SMat33 provides about a dozen of methods,
+SMat33 provides about a dozen methods,
 including calculations of eigenvalues and eigenvectors.
-(This documentation is not complete yet).
+(This documentation is not complete yet.)
 
 .. doctest::
 
@@ -202,9 +202,9 @@ such as crystallographic and non-crystallographic symmetry operations,
 and fractionalization and orthogonalization of coordinates.
 
 3D transformations tend to be represented either by a 4x4 matrix,
-or by a dual quaternion, or by a 3x3 matrix and a translation vector.
+a dual quaternion, or a 3x3 matrix and a translation vector.
 Gemmi uses the latter. Transformations are represented by
-the `Transform` class that has two member variables:
+the `Transform` class, which has two member variables:
 `mat` (of type `Mat33`) and `vec` (of type `Vec3`).
 
 .. doctest::
@@ -255,7 +255,7 @@ Here is an example that shows a transformation read from a PDB file:
   >>> ncs_op.inverse().apply(_)
   <gemmi.Vec3(20, 30, 40)>
 
-To avoid mixing of orthogonal and fractional coordinates
+To avoid mixing orthogonal and fractional coordinates
 Gemmi also has `FTransform`, which is like `Transform`,
 but can be applied only to `Fractional` coordinates.
 
@@ -264,7 +264,7 @@ but can be applied only to `Fractional` coordinates.
 Box
 ===
 
-`Box` is a small utility for calculation of bounding boxes.
+`Box` is a small utility for calculating bounding boxes.
 It comes in two variants: for `Position` and `Fractional`:
 
 .. doctest::
@@ -401,8 +401,8 @@ in the direct and reciprocal space:
 
 If the lattice is centered, we can obtain a primitive cell.
 We have a function that takes centring type (return value of
-`SpaceGroup.centring_type()`), uses matrix from `centred_to_primitive()`
-and returns orthogonalization matrix of a primitive cell:
+`SpaceGroup.centring_type()`), uses the matrix from `centred_to_primitive()`
+and returns the orthogonalization matrix of a primitive cell:
 of the primitive cell:
 
 .. doctest::
@@ -416,7 +416,7 @@ of the primitive cell:
 This matrix can be used to obtain the G\ :sup:`6` and S\ :sup:`6` vectors,
 which are used in Niggli and Selling-Delaunay :ref:`cell reduction <niggli>`.
 
-Function `is_compatible_with_spacegroup` checks if the space group
+The function `is_compatible_with_spacegroup` checks if the space group
 operations don't change the metric tensor elements by more than *ε*
 (*ε*\ =0.001 by default):
 
@@ -429,14 +429,14 @@ operations don't change the metric tensor elements by more than *ε*
 
 
 The UnitCell object stores internally (in `UnitCell.images`) a list of
-symmetry transformations -- crystallographic symmetry and, in case of
-macromolecules, also NCS -- that transform asymmetric unit (ASU) into
+symmetry transformations -- crystallographic symmetry and, in the case of
+macromolecules, also NCS -- that transform the asymmetric unit (ASU) into
 the complete unit cell. This list is populated by the class that contains
 the UnitCell. It is done automatically when reading a coordinate file.
 If you set the unit cell, space group or NCS manually,
 call Structure.setup_cell_images() or SmallStructure.setup_cell_images()
 to update `images`.
-(The NCS operarations in this list are only those marked as not "given"
+(The NCS operations in this list are only those marked as not "given"
 in the MTRIX record in the PDB format or in _struct_ncs_oper in mmCIF).
 
 UnitCell.images are used for searching neighbors,
@@ -444,7 +444,7 @@ calculating structure factors, and a few other things.
 The following functions also rely on it:
 
 * `UnitCell::volume_per_image() -> double` -- returns `UnitCell::volume`
-  divided by the number of the molecule images in the unit cell,
+  divided by the number of the molecule images in the unit cell.
 
   .. doctest::
 
@@ -457,7 +457,7 @@ The following functions also rely on it:
 * `UnitCell::is_special_position(const Position& pos, double max_dist=0.8) -> int` --
   returns the number of nearby symmetry mates of an atom.
   Non-zero only for atoms on special positions.
-  For example, returns 3 for an atom on 4-fold symmetry axis.
+  For example, it returns 3 for an atom on a 4-fold symmetry axis.
 
   .. doctest::
 
@@ -501,7 +501,7 @@ need the latter you can calculate it directly:
     0.20256818878283983
 
 When changing a symmetry setting of coordinates or reindexing reflections
-we need a new unit cell, which can be obtained with one of functions
+we need a new unit cell, which can be obtained with one of the functions
 `changed_basis_forward()` and `changed_basis_backward()`:
 
 .. doctest::
@@ -510,7 +510,7 @@ we need a new unit cell, which can be obtained with one of functions
     <gemmi.UnitCell(45.07, 25.12, 39.5, 90, 90, 90)>
 
 With `set_images=False` the `images` list in the new unit cell is empty.
-With `True` -- it contains transformed original list
+With `True` -- it contains the transformed original list
 (but it doesn't work correctly when the cell volume changes).
 
 
@@ -519,7 +519,9 @@ With `True` -- it contains transformed original list
 Unit cell reduction
 ===================
 
-Note: it is about a specialized functionality that few people will ever need.
+.. note::
+
+    This is about a specialized functionality that few people will ever need.
 
 The reduction finds special bases of lattices. In practice, these bases are
 found by removing lattice centering (i.e. obtaining a primitive cell)
@@ -531,7 +533,7 @@ of basis transformations which lead to a *reduced basis* and *reduced cell*".
 There are three popular unit cell reductions:
 
 - the Minkowski-Buerger reduction, which minimizes *a*\ +\ *b*\ +\ *c*
-  (in special cases multiple, up to 6 different bases have the same
+  (in special, cases multiple, up to 6 different bases have the same
   minimal sum *a*\ +\ *b*\ +\ *c*),
 - the Eisenstein-Niggli reduction, which adds extra conditions
   to the previous one and makes the result unique,
@@ -539,35 +541,35 @@ There are three popular unit cell reductions:
   transliterated as Delone), which minimizes
   *a*:sup:`2`\ +\ *b*:sup:`2`\ +\ *c*:sup:`2`\ +\ (*a*\ +\ *b*\ +\ *c*)\ :sup:`2`.
 
-First names here (Minkowski, Eisenstein, Selling) belong to mathematicians
+The first names here (Minkowski, Eisenstein, Selling) belong to mathematicians
 working on the reduction of quadratic forms.
 The second names -- to people applying this math to crystallography.
-Usually, we use only the second name. The Niggli reduction is the most
+Usually, only the second name is used. The Niggli reduction is the most
 popular of the three.
 
 Niggli and Buerger reductions
 -----------------------------
 
-Gemmi implements separately the Niggli and Buerger reductions.
+Gemmi implements the Niggli and Buerger reductions separately.
 The procedures are iterative. Most of the unit cells from the PDB
 need only 1-2 iterations to get reduced (1.3 on average, not counting
 the *normalization* steps as separate iterations).
 On the other hand, one can always construct a primitive cell with extremely
 long basis vectors that would require hundreds of iterations.
-The Buerger reduction is simpler and faster than Niggli,
-but Niggli is also fast -- one iteration takes less than 1μs.
+The Buerger reduction is simpler and faster than the Niggli,
+but the Niggli reduction is also fast -- one iteration takes less than 1μs.
 
-Gemmi implementation is based on the algorithms published by B. Gruber
-in the 1970's: Gruber,
+Gemmi's implementation is based on the algorithms published by B. Gruber
+in the 1970s: Gruber,
 `Acta Cryst. A29, 433 <https://doi.org/10.1107/S0567739473001063>`_ (1973)
 for the Buerger reduction, and Křivý & Gruber,
 `Acta Cryst. A32, 297 <https://doi.org/10.1107/S0567739476000636>`_ (1976)
 for the Niggli reduction.
-Additionally, the Niggli reduction is using ε to compare numbers, as proposed
+Additionally, the Niggli reduction is uses ε to compare numbers, as proposed
 by Grosse-Kunstleve *et al*,
 `Acta Cryst. A60, 1 <https://doi.org/10.1107/S010876730302186X>`_ (2004).
 
-Gruber's algorithms use vector named G\ :sup:`6`, which is
+Gruber's algorithms use a vector named G\ :sup:`6`, which is
 `somewhat similar <https://dictionary.iucr.org/Metric_tensor>`_
 to the metric tensor. G\ :sup:`6` has six elements named:
 A, B, C, ξ (xi), η (eta) and ζ (zeta), which correspond to:
@@ -575,8 +577,8 @@ A, B, C, ξ (xi), η (eta) and ζ (zeta), which correspond to:
     (**a**:sup:`2`, **b**:sup:`2`, **c**:sup:`2`, 2\ **b**\ ⋅\ **c**, 2\ **a**\ ⋅\ **c**, 2\ **a**\ ⋅\ **b**)
 
 Gemmi has a class named GruberVector that contains these six numbers
-and reduction algorithms implemented as methods.
-This class can be initialized with UnitCell and SpaceGroup:
+and the reduction algorithms implemented as methods.
+This class can be initialized with a UnitCell and SpaceGroup:
 
 .. doctest::
 
@@ -584,7 +586,7 @@ This class can be initialized with UnitCell and SpaceGroup:
   >>> sg = gemmi.SpaceGroup('I 2 2 2')
   >>> gv = gemmi.GruberVector(cell, sg)
 
-or with 6-tuple corresponding to G\ :sup:`6` of a primitive cell:
+or with a 6-tuple corresponding to G\ :sup:`6` of a primitive cell:
 
 .. doctest::
 
@@ -662,7 +664,7 @@ In this case both functions gave the same result.
   >>> gv.get_cell()
   <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
-Functions `niggli_reduce`, `is_niggli` and `is_buerger` can take optional
+The functions `niggli_reduce`, `is_niggli` and `is_buerger` can take an optional
 parameter `epsilon` (default: 1e-9) that is used for comparing numbers.
 Additionally, `niggli_reduce` can take `iteration_limit` (default: 100).
 To check how the computations would work without ε we can set it to 0:
@@ -678,18 +680,18 @@ To check how the computations would work without ε we can set it to 0:
   >>> gv.get_cell()
   <gemmi.UnitCell(63.78, 63.86, 76.8543, 114.548, 114.516, 90)>
 
-Here, the Niggli conditions were initially found not fulfilled, because
+Here, the Niggli conditions were initially found not fulfilled because
 one expression that should be non-negative was about -5e-13.
 A few extra iterations sorted it out (without any real changes),
 but it's not always the case -- that's why we have `iteration_limit`
-to prevent infinite loop.
+to prevent an infinite loop.
 
 The original Křivý-Gruber algorithm doesn't calculate the change-of-basis
 transformation that leads to the reduced cell. In gemmi,
 this transformation can be obtained as proposed in the 2004 paper
 of Grosse-Kunstleve *et al*: the change-of-basis matrix is updated
 in each step together with the Gruber vector.
-Updating this matrix makes the reduction twice slower
+Updating this matrix makes the reduction twice as slow
 (but it's still in tens of ns, so it's fast enough for any purpose).
 To track the change of basis, pass the following option:
 
@@ -708,7 +710,7 @@ in the `change_of_basis` property:
   >>> cob
   <gemmi.Op("x-z/2,y-z/2,z/2")>
 
-This operator transforms Niggli cell to the original cell
+This operator transforms the Niggli cell to the original cell
 (so it's actually *the inverse* of the reduction change-of-basis):
 
 .. doctest::
@@ -729,7 +731,7 @@ not for the Buerger reduction.
 Selling-Delaunay reduction
 --------------------------
 
-Gemmi implementation is based on
+Gemmi's implementation is based on
 
 - section `3.1.2.3 <https://onlinelibrary.wiley.com/iucr/itc/Ac/ch3o1v0001/>`_
   "Delaunay reduction and standardization" in the Tables vol. A (2016),
@@ -751,7 +753,7 @@ and **d**\ =–(\ **a**\ +\ **b**\ +\ **c**\ ):
     *s*\ :sub:`24`\ =\ **b**\ ⋅\ **d**,
     *s*\ :sub:`34`\ =\ **c**\ ⋅\ **d**.
 
-SellingVector can be initialized with UnitCell and SpaceGroup:
+SellingVector can be initialized with a UnitCell and SpaceGroup:
 
 .. doctest::
 
@@ -766,8 +768,7 @@ or with a tuple of six numbers S\ :sup:`6`:
   >>> gemmi.SellingVector(_)
   <gemmi.SellingVector((-3872.64, -3867.53, 1833.59, -3872.64, -3867.53, 1833.59))>
 
-Similarly as in the previous section, we can check if S\ :sup:`6`
-already corresponds to a Delaunay cell:
+We can check if S\ :sup:`6` already corresponds to a Delaunay cell:
 
 .. doctest::
 
@@ -785,7 +786,7 @@ The sum Σ\ **b**\ :sub:`i`:sup:`2` can be calculated with:
   23626.3244
 
 Similarly to `niggli_reduce()`, the Selling reduction procedure takes
-optional arguments `epsilon` and `iteration_limit`
+optional arguments `epsilon` and `iteration_limit`,
 and returns the iteration count:
 
 .. doctest::

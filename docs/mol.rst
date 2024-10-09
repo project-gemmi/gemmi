@@ -395,7 +395,7 @@ Therefore, they have own dictionaries of monomers (a.k.a monomer libraries),
 such as the Refmac dictionary, where each monomer is described by one cif file.
 These libraries are often complemented by user's own cif files.
 
-Gemmi has class `ChemComp` that corresponds to the data about a monomer
+Gemmi provides a `ChemComp` class that corresponds to the data about a monomer
 from either the CCD or a cif file.
 
 .. literalinclude:: ../examples/with_bgl.cpp
@@ -407,7 +407,7 @@ from either the CCD or a cif file.
     >>> block = gemmi.cif.read('../tests/SO3.cif')[-1]
     >>> so3 = gemmi.make_chemcomp_from_block(block)
 
-It also has class `MonLib` that corresponds to a monomer library.
+It also provides a `MonLib` class that corresponds to a monomer library.
 In addition to storing a mapping between residue names and `ChemComp`\ s,
 it also stores information that in the CCP4 monomer library is kept in
 :file:`mon_lib_list.cif`: description of chemical links and modifications,
@@ -2865,7 +2865,7 @@ for example,
 
 In the literature, residues are referred to by sequence ID (number and,
 optionally, insertion code) and residue name. To get residues with
-with the specified sequence ID use indexing with a string as an argument:
+the specified sequence ID use indexing with a string as an argument:
 
 .. doctest::
 

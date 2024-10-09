@@ -175,7 +175,7 @@ the following rules to relax the syntax:
 * missing value in a key-value pair is optionally allowed
   if whitespace after the tag ends with a new-line character.
   More specifically, the parsing step allows for missing value in such case,
-  but the next validation step (which can be skipped when using using
+  but the next validation step (which can be skipped when using
   low-level functions, such as `parse_file()`) throws an error.
 
 
@@ -866,7 +866,7 @@ a list of lists of string. The lists of strings correspond to columns.
   ['primary', "'Alice A.'", '1']
   ['primary', "'Bob B.'", '2']
 
-Individual values can be be accessed with (row,column) tuples:
+Individual values can be accessed with (row,column) tuples:
 
 .. doctest::
 
@@ -1636,7 +1636,7 @@ Examples
 ========
 
 The examples here use C++11 or Python.
-Full working code code can be found in the examples__ directory.
+Full working code can be found in the examples__ directory.
 
 The examples below can be run on one or more PDBx/mmCIF files.
 The ones that perform PDB-wide analysis are meant to be run on a

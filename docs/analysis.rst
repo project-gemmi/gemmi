@@ -570,7 +570,7 @@ Let us go through the individual filters first:
 * `//*/10-30` (or `10-30`) -- residues with sequence IDs from 10 to 30.
 * `//*/10A-30A` (or `10A-30A` or `///10.A-30.A` or `10.A-30.A`) --
   sequence ID can include insertion code. The MMDB syntax has a dot between
-  the sequence sequence number and the insertion code.
+  the sequence number and the insertion code.
   In Gemmi, the dot is optional.
 * `//*/(ALA)` (or `(ALA)`) -- selects residues with a given name.
 * `//*//CB` (or `CB:*` or `CB[*]`) -- selects atoms with a given name.
