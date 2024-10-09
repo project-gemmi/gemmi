@@ -2865,7 +2865,7 @@ for example,
 
 In the literature, residues are referred to by sequence ID (number and,
 optionally, insertion code) and residue name. To get residues with
-with the specified sequence ID use indexing with a string as an argument:
+the specified sequence ID use indexing with a string as an argument:
 
 .. doctest::
 
@@ -3417,6 +3417,13 @@ Now, as an exercise, we will delete and re-create a disulfide bond:
   >>> st.connections.append(con)
   >>> st.connections[-1]
   <gemmi.Connection new_disulf  A/CYS 4/SG - A/CYS 10/SG>
+
+It is also possible to get CRA using an Atom object:
+
+.. doctest::
+
+  >>> polymer_b.get_cra(atom)
+  <gemmi.CRA B/ALA 2/CA>
 
 
 Examples
