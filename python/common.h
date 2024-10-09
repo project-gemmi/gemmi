@@ -20,8 +20,6 @@
   #error Required nanobind version >= 2
 #endif
 
-#include <vector>
-
 namespace nb = nanobind;
 constexpr auto rv_ri = nb::rv_policy::reference_internal;
 
