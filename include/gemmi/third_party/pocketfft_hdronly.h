@@ -1,12 +1,18 @@
 /*
 This file is part of pocketfft.
 
-Copyright (C) 2010-2019 Max-Planck-Society
-Copyright (C) 2019 Peter Bell
+Copyright (C) 2010-2024 Max-Planck-Society
+Copyright (C) 2019-2020 Peter Bell
 
 For the odd-sized DCT-IV transforms:
   Copyright (C) 2003, 2007-14 Matteo Frigo
   Copyright (C) 2003, 2007-14 Massachusetts Institute of Technology
+  
+For the prev_good_size search:
+  Copyright (C) 2024 Tan Ping Liang, Peter Bell
+
+For the safeguards against integer overflow in good_size search:
+  Copyright (C) 2024 Cris Luengo
 
 Authors: Martin Reinecke, Peter Bell
 
@@ -43,21 +49,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #error This file is C++ and requires a C++ compiler.
 #endif
 
-#if !(__cplusplus >= 201103L || _MSVC_LANG+0L >= 201103L)
+#if !(__cplusplus >= 201103L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L))
 #error This file requires at least C++11 support.
 #endif
 
 #ifndef POCKETFFT_CACHE_SIZE
-#define POCKETFFT_CACHE_SIZE 16
+#define POCKETFFT_CACHE_SIZE 0
 #endif
 
 #include <cmath>
-#include <cstring>
 #include <cstdlib>
+#include <cstddef>
+#include <exception>
 #include <stdexcept>
 #include <memory>
 #include <vector>
 #include <complex>
+#include <algorithm>
+#include <limits>
 #if POCKETFFT_CACHE_SIZE!=0
 #include <array>
 #include <mutex>
@@ -70,6 +79,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <queue>
 #include <atomic>
 #include <functional>
+#include <new>
 
 #ifdef POCKETFFT_PTHREADS
 #  include <pthread.h>
@@ -92,6 +102,11 @@ namespace pocketfft {
 namespace detail {
 using std::size_t;
 using std::ptrdiff_t;
+
+// Always use std:: for <cmath> functions
+template <typename T> T cos(T) = delete;
+template <typename T> T sin(T) = delete;
+template <typename T> T sqrt(T) = delete;
 
 using shape_t = std::vector<size_t>;
 using stride_t = std::vector<ptrdiff_t>;
@@ -135,9 +150,41 @@ template<> struct VLEN<double> { static constexpr size_t val=2; };
 #elif (defined(__VSX__))
 template<> struct VLEN<float> { static constexpr size_t val=4; };
 template<> struct VLEN<double> { static constexpr size_t val=2; };
+#elif (defined(__ARM_NEON__) || defined(__ARM_NEON))
+template<> struct VLEN<float> { static constexpr size_t val=4; };
+template<> struct VLEN<double> { static constexpr size_t val=2; };
 #else
 #define POCKETFFT_NO_VECTORS
 #endif
+#endif
+
+// std::aligned_alloc is a bit cursed ... it doesn't exist on MacOS < 10.15
+// and in musl, and other OSes seem to have even more peculiarities.
+// Let's unconditionally work around it for now.
+# if 0
+//#if (__cplusplus >= 201703L) && (!defined(__MINGW32__)) && (!defined(_MSC_VER)) && (__MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_15)
+inline void *aligned_alloc(size_t align, size_t size)
+  {
+  // aligned_alloc() requires that the requested size is a multiple of "align"
+  void *ptr = ::aligned_alloc(align,(size+align-1)&(~(align-1)));
+  if (!ptr) throw std::bad_alloc();
+  return ptr;
+  }
+inline void aligned_dealloc(void *ptr)
+    { free(ptr); }
+#else // portable emulation
+inline void *aligned_alloc(size_t align, size_t size)
+  {
+  align = std::max(align, alignof(max_align_t));
+  void *ptr = malloc(size+align);
+  if (!ptr) throw std::bad_alloc();
+  void *res = reinterpret_cast<void *>
+    ((reinterpret_cast<uintptr_t>(ptr) & ~(uintptr_t(align-1))) + uintptr_t(align));
+  (reinterpret_cast<void**>(res))[-1] = ptr;
+  return res;
+  }
+inline void aligned_dealloc(void *ptr)
+  { if (ptr) free((reinterpret_cast<void**>(ptr))[-1]); }
 #endif
 
 template<typename T> class arr
@@ -156,33 +203,15 @@ template<typename T> class arr
       }
     static void dealloc(T *ptr)
       { free(ptr); }
-  // aligned_alloc is missing in many C++17 compilers
-#elif __cplusplus >= 201703L && !defined(_LIBCPP_HAS_NO_ALIGNED_ALLOCATION) && \
-  !defined(__APPLE__) && \
-  (!defined(__GLIBC_MINOR__) || __GLIBC__-0 != 2 || __GLIBC_MINOR__ >= 16) && \
-  (!defined(__MINGW32__) || defined(_GLIBCXX_HAVE_ALIGNED_ALLOC))
+#else
     static T *ralloc(size_t num)
       {
       if (num==0) return nullptr;
-      void *res = aligned_alloc(64,num*sizeof(T));
-      if (!res) throw std::bad_alloc();
-      return reinterpret_cast<T *>(res);
+      void *ptr = aligned_alloc(64, num*sizeof(T));
+      return static_cast<T*>(ptr);
       }
     static void dealloc(T *ptr)
-      { free(ptr); }
-#else // portable emulation
-    static T *ralloc(size_t num)
-      {
-      if (num==0) return nullptr;
-      void *ptr = malloc(num*sizeof(T)+64);
-      if (!ptr) throw std::bad_alloc();
-      T *res = reinterpret_cast<T *>
-        ((reinterpret_cast<size_t>(ptr) & ~(size_t(63))) + 64);
-      (reinterpret_cast<void**>(res))[-1] = ptr;
-      return res;
-      }
-    static void dealloc(T *ptr)
-      { if (ptr) free((reinterpret_cast<void**>(ptr))[-1]); }
+      { aligned_dealloc(ptr); }
 #endif
 
   public:
@@ -378,17 +407,33 @@ struct util // hack to avoid duplicate symbols
     return result*double(ni);
     }
 
-  /* returns the smallest composite of 2, 3, 5, 7 and 11 which is >= n */
-  static POCKETFFT_NOINLINE size_t good_size_cmplx(size_t n)
+  /* inner workings of good_size_cmplx() */
+  template<typename UIntT>
+  static POCKETFFT_NOINLINE UIntT good_size_cmplx_typed(UIntT n)
     {
+    static_assert(std::numeric_limits<UIntT>::is_integer && (!std::numeric_limits<UIntT>::is_signed),
+      "type must be unsigned integer");
     if (n<=12) return n;
+    if (n>std::numeric_limits<UIntT>::max()/11/2)
+      {
+      // The algorithm below doesn't work for this value, the multiplication can overflow.
+      if (sizeof(UIntT)<sizeof(std::uint64_t))
+        {
+        // We can try using this algorithm with 64-bit integers:
+        std::uint64_t res = good_size_cmplx_typed<std::uint64_t>(n);
+        if (res<=std::numeric_limits<UIntT>::max())
+          return static_cast<UIntT>(res);
+        }
+      // Otherwise, this size is ridiculously large, people shouldn't be computing FFTs this large.
+      throw std::runtime_error("FFT size is too large.");
+      }
 
-    size_t bestfac=2*n;
-    for (size_t f11=1; f11<bestfac; f11*=11)
-      for (size_t f117=f11; f117<bestfac; f117*=7)
-        for (size_t f1175=f117; f1175<bestfac; f1175*=5)
+    UIntT bestfac=2*n;
+    for (UIntT f11=1; f11<bestfac; f11*=11)
+      for (UIntT f117=f11; f117<bestfac; f117*=7)
+        for (UIntT f1175=f117; f1175<bestfac; f1175*=5)
           {
-          size_t x=f1175;
+          UIntT x=f1175;
           while (x<n) x*=2;
           for (;;)
             {
@@ -406,16 +451,46 @@ struct util // hack to avoid duplicate symbols
           }
     return bestfac;
     }
-
-  /* returns the smallest composite of 2, 3, 5 which is >= n */
-  static POCKETFFT_NOINLINE size_t good_size_real(size_t n)
+  /* returns the smallest composite of 2, 3, 5, 7 and 11 which is >= n */
+  static POCKETFFT_NOINLINE size_t good_size_cmplx(size_t n)
     {
-    if (n<=6) return n;
+    return good_size_cmplx_typed(n);
+    }
+  /* returns the smallest composite of 2, 3, 5, 7 and 11 which is >= n
+     and a multiple of required_factor. */
+  static POCKETFFT_NOINLINE size_t good_size_cmplx(size_t n,
+    size_t required_factor)
+    {
+    if (required_factor<1)
+      throw std::runtime_error("required factor must not be 0");
+    return good_size_cmplx((n+required_factor-1)/required_factor) * required_factor;
+    }
 
-    size_t bestfac=2*n;
-    for (size_t f5=1; f5<bestfac; f5*=5)
+  /* inner workings of good_size_real() */
+  template<typename UIntT>
+  static POCKETFFT_NOINLINE UIntT good_size_real_typed(UIntT n)
+    {
+    static_assert(std::numeric_limits<UIntT>::is_integer && (!std::numeric_limits<UIntT>::is_signed),
+      "type must be unsigned integer");
+    if (n<=6) return n;
+    if (n>std::numeric_limits<UIntT>::max()/5/2)
+    {
+      // The algorithm below doesn't work for this value, the multiplication can overflow.
+      if (sizeof(UIntT)<sizeof(std::uint64_t))
+        {
+        // We can try using this algorithm with 64-bit integers:
+        std::uint64_t res = good_size_real_typed<std::uint64_t>(n);
+        if (res<=std::numeric_limits<UIntT>::max())
+          return static_cast<UIntT>(res);
+        }
+      // Otherwise, this size is ridiculously large, people shouldn't be computing FFTs this large.
+      throw std::runtime_error("FFT size is too large.");
+    }
+
+    UIntT bestfac=2*n;
+    for (UIntT f5=1; f5<bestfac; f5*=5)
       {
-      size_t x = f5;
+      UIntT x = f5;
       while (x<n) x *= 2;
       for (;;)
         {
@@ -432,6 +507,110 @@ struct util // hack to avoid duplicate symbols
         }
       }
     return bestfac;
+    }
+  /* returns the smallest composite of 2, 3, 5 which is >= n */
+  static POCKETFFT_NOINLINE size_t good_size_real(size_t n)
+    {
+    return good_size_real_typed(n);
+    }
+  /* returns the smallest composite of 2, 3, 5 which is >= n
+     and a multiple of required_factor. */
+  static POCKETFFT_NOINLINE size_t good_size_real(size_t n,
+    size_t required_factor)
+    {
+    if (required_factor<1)
+      throw std::runtime_error("required factor must not be 0");
+    return good_size_real((n+required_factor-1)/required_factor) * required_factor;
+    }
+
+  /* inner workings of prev_good_size_cmplx() */
+  template<typename UIntT>
+  static POCKETFFT_NOINLINE UIntT prev_good_size_cmplx_typed(UIntT n)
+    {
+    static_assert(std::numeric_limits<UIntT>::is_integer && (!std::numeric_limits<UIntT>::is_signed),
+      "type must be unsigned integer");
+    if (n<=12) return n;
+    if (n>std::numeric_limits<UIntT>::max()/11)
+    {
+      // The algorithm below doesn't work for this value, the multiplication can overflow.
+      if (sizeof(UIntT)<sizeof(std::uint64_t))
+      {
+        // We can try using this algorithm with 64-bit integers:
+        std::uint64_t res = prev_good_size_cmplx_typed<std::uint64_t>(n);
+        if (res<=std::numeric_limits<UIntT>::max())
+          return static_cast<UIntT>(res);
+      }
+      // Otherwise, this size is ridiculously large, people shouldn't be computing FFTs this large.
+      throw std::runtime_error("FFT size is too large.");
+    }
+
+    UIntT bestfound = 1;
+    for (UIntT f11 = 1;f11 <= n; f11 *= 11)
+      for (UIntT f117 = f11; f117 <= n; f117 *= 7)
+        for (UIntT f1175 = f117; f1175 <= n; f1175 *= 5)
+          {
+          UIntT x = f1175;
+          while (x*2 <= n) x *= 2;
+          if (x > bestfound) bestfound = x;
+          while (true) 
+            {
+            if (x * 3 <= n) x *= 3;
+            else if (x % 2 == 0) x /= 2;
+            else break;
+              
+            if (x > bestfound) bestfound = x;
+            }
+          }
+    return bestfound;
+    }
+  /* returns the largest composite of 2, 3, 5, 7 and 11 which is <= n */
+  static POCKETFFT_NOINLINE size_t prev_good_size_cmplx(size_t n)
+    {
+    return prev_good_size_cmplx_typed(n);
+    }
+
+  /* inner workings of prev_good_size_real() */
+  template<typename UIntT>
+  static POCKETFFT_NOINLINE UIntT prev_good_size_real_typed(UIntT n)
+    {
+    static_assert(std::numeric_limits<UIntT>::is_integer && (!std::numeric_limits<UIntT>::is_signed),
+      "type must be unsigned integer");
+    if (n<=6) return n;
+    if (n>std::numeric_limits<UIntT>::max()/5)
+    {
+      // The algorithm below doesn't work for this value, the multiplication can overflow.
+      if (sizeof(UIntT)<sizeof(std::uint64_t))
+      {
+        // We can try using this algorithm with 64-bit integers:
+        std::uint64_t res = prev_good_size_real_typed<std::uint64_t>(n);
+        if (res<=std::numeric_limits<UIntT>::max())
+          return static_cast<UIntT>(res);
+      }
+      // Otherwise, this size is ridiculously large, people shouldn't be computing FFTs this large.
+      throw std::runtime_error("FFT size is too large.");
+    }
+
+    UIntT bestfound = 1;
+    for (UIntT f5 = 1; f5 <= n; f5 *= 5)
+      {
+      UIntT x = f5;
+      while (x*2 <= n) x *= 2;
+      if (x > bestfound) bestfound = x;
+      while (true) 
+        {
+        if (x * 3 <= n) x *= 3;
+        else if (x % 2 == 0) x /= 2;
+        else break;
+      
+        if (x > bestfound) bestfound = x;
+        }
+      }
+    return bestfound;
+    }
+  /* returns the largest composite of 2, 3, 5 which is <= n */
+  static POCKETFFT_NOINLINE size_t prev_good_size_real(size_t n)
+    {
+    return prev_good_size_real_typed(n);
     }
 
   static size_t prod(const shape_t &shape)
@@ -550,77 +729,156 @@ template <typename T> class concurrent_queue
   {
     std::queue<T> q_;
     std::mutex mut_;
-    std::condition_variable item_added_;
-    bool shutdown_;
-    using lock_t = std::unique_lock<std::mutex>;
+    std::atomic<size_t> size_;
+    using lock_t = std::lock_guard<std::mutex>;
 
   public:
-    concurrent_queue(): shutdown_(false) {}
 
     void push(T val)
       {
-      {
       lock_t lock(mut_);
-      if (shutdown_)
-        throw std::runtime_error("Item added to queue after shutdown");
-      q_.push(move(val));
-      }
-      item_added_.notify_one();
+      ++size_;
+      q_.push(std::move(val));
       }
 
-    bool pop(T & val)
+    bool try_pop(T &val)
       {
+      if (size_ == 0) return false;
       lock_t lock(mut_);
-      item_added_.wait(lock, [this] { return (!q_.empty() || shutdown_); });
-      if (q_.empty())
-        return false;  // We are shutting down
+      // Queue might have been emptied while we acquired the lock
+      if (q_.empty()) return false;
 
       val = std::move(q_.front());
+      --size_;
       q_.pop();
       return true;
       }
 
-    void shutdown()
-      {
-      {
-      lock_t lock(mut_);
-      shutdown_ = true;
-      }
-      item_added_.notify_all();
-      }
+    bool empty() const { return size_==0; }
+  };
 
-    void restart() { shutdown_ = false; }
+// C++ allocator with support for over-aligned types
+template <typename T> struct aligned_allocator
+  {
+  using value_type = T;
+  template <class U>
+  aligned_allocator(const aligned_allocator<U>&) {}
+  aligned_allocator() = default;
+
+  T *allocate(size_t n)
+    {
+    void* mem = aligned_alloc(alignof(T), n*sizeof(T));
+    return static_cast<T*>(mem);
+    }
+
+  void deallocate(T *p, size_t /*n*/)
+    { aligned_dealloc(p); }
   };
 
 class thread_pool
   {
-    concurrent_queue<std::function<void()>> work_queue_;
-    std::vector<std::thread> threads_;
-
-    void worker_main()
+    // A reasonable guess, probably close enough for most hardware
+    static constexpr size_t cache_line_size = 64;
+    struct alignas(cache_line_size) worker
       {
+      std::thread thread;
+      std::condition_variable work_ready;
+      std::mutex mut;
+      std::atomic_flag busy_flag = ATOMIC_FLAG_INIT;
       std::function<void()> work;
-      while (work_queue_.pop(work))
-        work();
-      }
+
+      void worker_main(
+        std::atomic<bool> &shutdown_flag,
+        std::atomic<size_t> &unscheduled_tasks,
+        concurrent_queue<std::function<void()>> &overflow_work)
+        {
+        using lock_t = std::unique_lock<std::mutex>;
+        bool expect_work = true;
+        while (!shutdown_flag || expect_work)
+          {
+          std::function<void()> local_work;
+          if (expect_work || unscheduled_tasks == 0)
+            {
+            lock_t lock(mut);
+            // Wait until there is work to be executed
+            work_ready.wait(lock, [&]{ return (work || shutdown_flag); });
+            local_work.swap(work);
+            expect_work = false;
+            }
+
+          bool marked_busy = false;
+          if (local_work)
+            {
+            marked_busy = true;
+            local_work();
+            }
+
+          if (!overflow_work.empty())
+            {
+            if (!marked_busy && busy_flag.test_and_set())
+              {
+              expect_work = true;
+              continue;
+              }
+            marked_busy = true;
+
+            while (overflow_work.try_pop(local_work))
+              {
+              --unscheduled_tasks;
+              local_work();
+              }
+            }
+
+          if (marked_busy) busy_flag.clear();
+          }
+        }
+      };
+
+    concurrent_queue<std::function<void()>> overflow_work_;
+    std::mutex mut_;
+    std::vector<worker, aligned_allocator<worker>> workers_;
+    std::atomic<bool> shutdown_;
+    std::atomic<size_t> unscheduled_tasks_;
+    using lock_t = std::lock_guard<std::mutex>;
 
     void create_threads()
       {
-      size_t nthreads = threads_.size();
+      lock_t lock(mut_);
+      size_t nthreads=workers_.size();
       for (size_t i=0; i<nthreads; ++i)
         {
-        try { threads_[i] = std::thread([this]{ worker_main(); }); }
+        try
+          {
+          auto *worker = &workers_[i];
+          worker->busy_flag.clear();
+          worker->work = nullptr;
+          worker->thread = std::thread([worker, this]
+            {
+            worker->worker_main(shutdown_, unscheduled_tasks_, overflow_work_);
+            });
+          }
         catch (...)
           {
-          shutdown();
+          shutdown_locked();
           throw;
           }
         }
       }
 
+    void shutdown_locked()
+      {
+      shutdown_ = true;
+      for (auto &worker : workers_)
+        worker.work_ready.notify_all();
+
+      for (auto &worker : workers_)
+        if (worker.thread.joinable())
+          worker.thread.join();
+      }
+
   public:
     explicit thread_pool(size_t nthreads):
-      threads_(nthreads)
+      workers_(nthreads)
       { create_threads(); }
 
     thread_pool(): thread_pool(max_threads) {}
@@ -629,20 +887,38 @@ class thread_pool
 
     void submit(std::function<void()> work)
       {
-      work_queue_.push(move(work));
+      lock_t lock(mut_);
+      if (shutdown_)
+        throw std::runtime_error("Work item submitted after shutdown");
+
+      ++unscheduled_tasks_;
+
+      // First check for any idle workers and wake those
+      for (auto &worker : workers_)
+        if (!worker.busy_flag.test_and_set())
+          {
+          --unscheduled_tasks_;
+          {
+          lock_t lock(worker.mut);
+          worker.work = std::move(work);
+          }
+          worker.work_ready.notify_one();
+          return;
+          }
+
+      // If no workers were idle, push onto the overflow queue for later
+      overflow_work_.push(std::move(work));
       }
 
     void shutdown()
       {
-      work_queue_.shutdown();
-      for (auto &thread : threads_)
-        if (thread.joinable())
-          thread.join();
+      lock_t lock(mut_);
+      shutdown_locked();
       }
 
     void restart()
       {
-      work_queue_.restart();
+      shutdown_ = false;
       create_threads();
       }
   };
@@ -1189,9 +1465,9 @@ template<bool fwd, typename T> void pass11 (size_t ido, size_t l1,
       }
   }
 
-#undef PARTSTEP11
-#undef PARTSTEP11a0
-#undef PARTSTEP11a
+#undef POCKETFFT_PARTSTEP11
+#undef POCKETFFT_PARTSTEP11a0
+#undef POCKETFFT_PARTSTEP11a
 #undef POCKETFFT_PREP11
 
 template<bool fwd, typename T> void passg (size_t ido, size_t ip,
@@ -1343,7 +1619,7 @@ template<bool fwd, typename T> void pass_all(T c[], T0 fct) const
       for (size_t i=0; i<length; ++i)
         c[i] = ch[i]*fct;
     else
-      memcpy (c,p1,length*sizeof(T));
+      std::copy_n (p1, length, c);
     }
   else
     if (fct!=1.)
@@ -2091,19 +2367,19 @@ template<typename T> void radbg(size_t ido, size_t ip, size_t l1,
     }
   }
 
-    template<typename T> void copy_and_norm(T *c, T *p1, size_t n, T0 fct) const
+    template<typename T> void copy_and_norm(T *c, T *p1, T0 fct) const
       {
       if (p1!=c)
         {
         if (fct!=1.)
-          for (size_t i=0; i<n; ++i)
+          for (size_t i=0; i<length; ++i)
             c[i] = fct*p1[i];
         else
-          memcpy (c,p1,n*sizeof(T));
+          std::copy_n (p1, length, c);
         }
       else
         if (fct!=1.)
-          for (size_t i=0; i<n; ++i)
+          for (size_t i=0; i<length; ++i)
             c[i] *= fct;
       }
 
@@ -2111,16 +2387,16 @@ template<typename T> void radbg(size_t ido, size_t ip, size_t l1,
     template<typename T> void exec(T c[], T0 fct, bool r2hc) const
       {
       if (length==1) { c[0]*=fct; return; }
-      size_t n=length, nf=fact.size();
-      arr<T> ch(n);
+      size_t nf=fact.size();
+      arr<T> ch(length);
       T *p1=c, *p2=ch.data();
 
       if (r2hc)
-        for(size_t k1=0, l1=n; k1<nf;++k1)
+        for(size_t k1=0, l1=length; k1<nf;++k1)
           {
           size_t k=nf-k1-1;
           size_t ip=fact[k].fct;
-          size_t ido=n / l1;
+          size_t ido=length / l1;
           l1 /= ip;
           if(ip==4)
             radf4(ido, l1, p1, p2, fact[k].tw);
@@ -2138,7 +2414,7 @@ template<typename T> void radbg(size_t ido, size_t ip, size_t l1,
         for(size_t k=0, l1=1; k<nf; k++)
           {
           size_t ip = fact[k].fct,
-                 ido= n/(ip*l1);
+                 ido= length/(ip*l1);
           if(ip==4)
             radb4(ido, l1, p1, p2, fact[k].tw);
           else if(ip==2)
@@ -2153,7 +2429,7 @@ template<typename T> void radbg(size_t ido, size_t ip, size_t l1,
           l1*=ip;
           }
 
-      copy_and_norm(c,p1,n,fct);
+      copy_and_norm(c,p1,fct);
       }
 
   private:
@@ -2324,13 +2600,12 @@ template<typename T0> class fftblue
           tmp[m].Set(c[m], zero);
         fft<true>(tmp.data(),fct);
         c[0] = tmp[0].r;
-        memcpy (c+1, tmp.data()+1, (n-1)*sizeof(T));
+        std::copy_n (&tmp[1].r, n-1, &c[1]);
         }
       else
         {
         tmp[0].Set(c[0],c[0]*0);
-        memcpy (reinterpret_cast<void *>(tmp.data()+1),
-                reinterpret_cast<void *>(c+1), (n-1)*sizeof(T));
+        std::copy_n (c+1, n-1, &tmp[1].r);
         if ((n&1)==0) tmp[n/2].i=T0(0)*c[0];
         for (size_t m=1; 2*m<n; ++m)
           tmp[n-m].Set(tmp[m].r, -tmp[m].i);
@@ -2518,11 +2793,13 @@ template<typename T0> class T_dcst23
         if (!cosine)
           for (size_t k=0, kc=N-1; k<kc; ++k, --kc)
             std::swap(c[k], c[kc]);
-        if (ortho) c[0]*=sqrt2*T0(0.5);
+        if (ortho)
+          cosine ? c[0]*=sqrt2*T0(0.5) : c[N-1]*=sqrt2*T0(0.5);
         }
       else
         {
-        if (ortho) c[0]*=sqrt2;
+        if (ortho)
+          cosine ? c[0]*=sqrt2 : c[N-1]*=sqrt2;
         if (!cosine)
           for (size_t k=0, kc=N-1; k<NS2; ++k, --kc)
             std::swap(c[k], c[kc]);
@@ -3250,18 +3527,18 @@ template<typename T> POCKETFFT_NOINLINE void general_c2r(
 
 struct ExecR2R
   {
-  bool r2c, forward;
+  bool r2h, forward;
 
   template <typename T0, typename T, size_t vlen> void operator () (
     const multi_iter<vlen> &it, const cndarr<T0> &in, ndarr<T0> &out, T * buf,
     const pocketfft_r<T0> &plan, T0 fct) const
     {
     copy_input(it, in, buf);
-    if ((!r2c) && forward)
+    if ((!r2h) && forward)
       for (size_t i=2; i<it.length_out(); i+=2)
         buf[i] = -buf[i];
-    plan.exec(buf, fct, forward);
-    if (r2c && (!forward))
+    plan.exec(buf, fct, r2h);
+    if (r2h && (!forward))
       for (size_t i=2; i<it.length_out(); i+=2)
         buf[i] = -buf[i];
     copy_output(it, buf, out);
