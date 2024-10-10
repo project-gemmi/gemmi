@@ -66,6 +66,47 @@ inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, const std::string& model_s
   return g;
 }
 
+void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
+  // code from Paul Emsley, reformatted
+  std::vector<mmdb::Link> mmdb_links;
+  for (const gemmi::Connection& con : st.connections) {
+    mmdb::Link l;
+    strcpy(l.atName1, con.partner1.atom_name.c_str());
+    l.aloc1[0] = con.partner1.altloc;
+    l.aloc1[1] = 0;
+    strcpy(l.resName1, con.partner1.res_id.name.c_str());
+    strcpy(l.chainID1, con.partner1.chain_name.c_str());
+    l.insCode1[0] = con.partner1.res_id.seqid.icode;
+    l.insCode1[1] = 0;
+    strcpy(l.atName2, con.partner2.atom_name.c_str());
+    l.aloc2[0] = con.partner2.altloc;
+    l.aloc2[1] = 0;
+    strcpy(l.resName2, con.partner2.res_id.name.c_str());
+    strcpy(l.chainID2, con.partner2.chain_name.c_str());
+    l.insCode2[0] = con.partner2.res_id.seqid.icode;
+    l.insCode2[1] = 0;
+    if (con.partner1.res_id.seqid.num.has_value()) {
+      if (con.partner2.res_id.seqid.num.has_value()) {
+        l.seqNum1 = con.partner1.res_id.seqid.num.value;
+        l.seqNum2 = con.partner2.res_id.seqid.num.value;
+        mmdb_links.push_back(l);
+      }
+    }
+  }
+  // add links to models
+  for (int imod = 1; imod <= mol->GetNumberOfModels(); imod++) {
+    mmdb::Model* model_p = mol->GetModel(imod);
+    if (model_p) {
+      for (const auto& ml : mmdb_links) {
+        mmdb::Link* l = new mmdb::Link(ml);
+        model_p->AddLink(l);
+      }
+    }
+  }
+  if (!mmdb_links.empty())
+    mol->FinishStructEdit();
+}
+
 inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   for (const std::string& s : st.raw_remarks) {
     std::string line = rtrim_str(s);
@@ -160,6 +201,7 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
         m_model->AddCisPep(cispep_to_mmdb(cispep, ++ser_num, modnum));
     }
   }
+  transfer_links_to_mmdb(st, manager);
   return manager;
 }
 
@@ -267,7 +309,7 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
 // Example 1.
 // Read a coordinate file using gemmi and write it to pdb using mmdb.
 
-#include <gemmi/mmread.hpp>
+#include <gemmi/mmread_gz.hpp>
 #include <gemmi/mmdb.hpp>
 
 // two arguments expected: input and output paths.
@@ -278,7 +320,7 @@ int main (int argc, char** argv) {
   mmdb::InitMatType();
   mmdb::Manager* manager = new mmdb::Manager();
   try {
-    gemmi::Structure st = gemmi::read_structure_file(argv[1]);
+    gemmi::Structure st = gemmi::read_structure_gz(argv[1]);
     st.merge_chain_parts();
     gemmi::copy_to_mmdb(st, manager);
   } catch(std::runtime_error& e) {
