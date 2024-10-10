@@ -188,7 +188,7 @@ jobs:
     env:
       CC: clang-8
       CXX: clang++-8
-      SKBUILD_CMAKE_ARGS: "-DCMAKE_CXX_STANDARD=11;-DEXTRA_WARNINGS=ON;-DSTANDALONE_PYTHON_MODULE=OFF"
+      SKBUILD_CMAKE_ARGS: "-DEXTRA_WARNINGS=ON;-DSTANDALONE_PYTHON_MODULE=OFF"
       SKBUILD_CMAKE_TARGETS: "all;check"
     steps:
     - uses: actions/checkout@v4

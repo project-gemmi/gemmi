@@ -208,7 +208,7 @@ add_library(gemmi::headers ALIAS gemmi_headers)
 target_include_directories(gemmi_headers INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_compile_features(gemmi_headers INTERFACE cxx_std_11)
+target_compile_features(gemmi_headers INTERFACE cxx_std_14)
 set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp

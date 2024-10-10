@@ -18,18 +18,18 @@
 namespace gemmi {
 
 struct AlignmentScoring {
-  int match;
-  int mismatch;
-  int gapo;  // gap opening penalty
-  int gape;  // gap extension penalty
+  int match = 1;
+  int mismatch = -1;
+  int gapo = -1;  // gap opening penalty
+  int gape = -1;  // gap extension penalty
   // In a polymer in model, coordinates are used to determine expected gaps.
-  int good_gapo;  // gap opening in expected place in a polymer
-  int bad_gapo;  // gap opening that was not predicted
+  int good_gapo = 0;  // gap opening in expected place in a polymer
+  int bad_gapo = -2;  // gap opening that was not predicted
   std::vector<std::int8_t> score_matrix;
   std::vector<std::string> matrix_encoding;
 
   static const AlignmentScoring* simple() {
-    static const AlignmentScoring s = { 1, -1, -1, -1, 0, -2, {}, {} };
+    static const AlignmentScoring s;
     return &s;
   }
   // Scoring for alignment of partially-modelled polymer to its full sequence
