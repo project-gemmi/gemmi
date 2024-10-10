@@ -16,7 +16,8 @@ using namespace gemmi;
 
 static std::string repr_end(const void* ptr) {
   char buf[32];
-  snprintf_z(buf, 32, " object at %#lx>", (unsigned long)ptr);
+  // avoiding %p, because stb_sprintf formats it without 0x
+  snprintf_z(buf, 32, " object at %#zx>", (size_t)ptr);
   return buf;
 }
 

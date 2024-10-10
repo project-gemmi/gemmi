@@ -29,7 +29,7 @@ struct AlignmentScoring {
   std::vector<std::string> matrix_encoding;
 
   static const AlignmentScoring* simple() {
-    static const AlignmentScoring s;
+    static const AlignmentScoring s{};
     return &s;
   }
   // Scoring for alignment of partially-modelled polymer to its full sequence
