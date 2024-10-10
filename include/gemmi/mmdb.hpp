@@ -31,8 +31,9 @@ void strcpy_to_mmdb(char (&dest)[N], const std::string& src) {
 
 inline void set_seqid_in_mmdb(int* seqnum, mmdb::InsCode& icode, SeqId seqid) {
   *seqnum = *seqid.num;
-  icode[0] = seqid.icode;
-  icode[1] = '\0';
+  icode[0] = icode[1] = '\0';
+  if (seqid.has_icode())
+    icode[0] = seqid.icode;
 }
 
 inline SeqId seqid_from_mmdb(int seqnum, const mmdb::InsCode& inscode) {
@@ -67,44 +68,32 @@ inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, const std::string& model_s
 }
 
 void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
-  // code from Paul Emsley, reformatted
-  std::vector<mmdb::Link> mmdb_links;
-  for (const gemmi::Connection& con : st.connections) {
-    mmdb::Link l;
-    strcpy(l.atName1, con.partner1.atom_name.c_str());
-    l.aloc1[0] = con.partner1.altloc;
-    l.aloc1[1] = 0;
-    strcpy(l.resName1, con.partner1.res_id.name.c_str());
-    strcpy(l.chainID1, con.partner1.chain_name.c_str());
-    l.insCode1[0] = con.partner1.res_id.seqid.icode;
-    l.insCode1[1] = 0;
-    strcpy(l.atName2, con.partner2.atom_name.c_str());
-    l.aloc2[0] = con.partner2.altloc;
-    l.aloc2[1] = 0;
-    strcpy(l.resName2, con.partner2.res_id.name.c_str());
-    strcpy(l.chainID2, con.partner2.chain_name.c_str());
-    l.insCode2[0] = con.partner2.res_id.seqid.icode;
-    l.insCode2[1] = 0;
-    if (con.partner1.res_id.seqid.num.has_value()) {
-      if (con.partner2.res_id.seqid.num.has_value()) {
-        l.seqNum1 = con.partner1.res_id.seqid.num.value;
-        l.seqNum2 = con.partner2.res_id.seqid.num.value;
-        mmdb_links.push_back(l);
-      }
-    }
+  // based on code provided by Paul Emsley
+  for (const Connection& con : st.connections) {
+    if (!con.partner1.res_id.seqid.num || !con.partner2.res_id.seqid.num)
+      continue;
+    if (con.asu == Asu::Different)
+      continue;
+    mmdb::Link link{};
+    // partner1
+    strcpy_to_mmdb(link.atName1, con.partner1.atom_name);
+    link.aloc1[0] = con.partner1.altloc;
+    set_seqid_in_mmdb(&link.seqNum1, link.insCode1, con.partner1.res_id.seqid);
+    strcpy_to_mmdb(link.resName1, con.partner1.res_id.name);
+    strcpy_to_mmdb(link.chainID1, con.partner1.chain_name);
+    // partner2
+    strcpy_to_mmdb(link.atName2, con.partner2.atom_name);
+    link.aloc2[0] = con.partner2.altloc;
+    set_seqid_in_mmdb(&link.seqNum2, link.insCode2, con.partner2.res_id.seqid);
+    strcpy_to_mmdb(link.resName2, con.partner2.res_id.name);
+    strcpy_to_mmdb(link.chainID2, con.partner2.chain_name);
+    if (con.reported_distance > 0)
+      link.dist = con.reported_distance;
+    // add links to models
+    for (int imod = 1; imod <= mol->GetNumberOfModels(); imod++)
+      if (mmdb::Model* model_p = mol->GetModel(imod))
+        model_p->AddLink(new mmdb::Link(link));
   }
-  // add links to models
-  for (int imod = 1; imod <= mol->GetNumberOfModels(); imod++) {
-    mmdb::Model* model_p = mol->GetModel(imod);
-    if (model_p) {
-      for (const auto& ml : mmdb_links) {
-        mmdb::Link* l = new mmdb::Link(ml);
-        model_p->AddLink(l);
-      }
-    }
-  }
-  if (!mmdb_links.empty())
-    mol->FinishStructEdit();
 }
 
 inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
@@ -121,7 +110,9 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
     for (const Chain& chain : model.chains) {
       mmdb::Chain* chain2 = model2->CreateChain(chain.name.c_str());
       for (const Residue& res : chain.residues) {
-        const char icode[2] = {res.seqid.icode, '\0'};
+        char icode[2] = {};
+        if (res.seqid.has_icode())
+          icode[0] = res.seqid.icode;
         mmdb::Residue* res2 = chain2->GetResidueCreate(res.name.c_str(),
                                                        *res.seqid.num,
                                                        icode,
