@@ -206,7 +206,24 @@ void read_connectivity(cif::Block& block, Structure& st) {
     copy_string(row, kLinkId, c.link_id);
     c.type = connection_type_from_string(row.str(kConnTypeId));
     if (row.has2(kSym1) && row.has2(kSym2)) {
-      c.asu = (row.str(kSym1) == row.str(kSym2) ? Asu::Same : Asu::Different);
+      std::string s1 = row.str(kSym1);
+      std::string s2 = row.str(kSym2);
+      if (s1 == s2) {
+        c.asu = Asu::Same;
+      } else {
+        c.asu = Asu::Different;
+        size_t sep1 = s2.find('_');
+        size_t sep2 = s2.find('_');
+        if (sep1 != std::string::npos && sep1 + 4 == s1.size() &&
+            sep2 != std::string::npos && sep2 + 4 == s2.size()) {
+          if (s1[0] == '1' && s1[1] == '_')  // symop1 is usually 1_555
+            c.reported_sym[0] = no_sign_atoi(s2.c_str());
+          else
+            c.reported_sym[0] = 99;
+          for (size_t i = 1; i <= 3; ++i)
+            c.reported_sym[i] = s2[sep2 + i] - s1[sep1 + i];
+        }
+      }
     }
     copy_double(row, kDistValue, c.reported_distance);
     for (int i = 0; i < 2; ++i) {

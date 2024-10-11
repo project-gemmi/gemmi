@@ -612,11 +612,24 @@ void complete_ssbond(Connection& con, const Model& mdl, const UnitCell& cell) {
   }
 }
 
-Asu compare_link_symops(const std::string& record) {
+Asu compare_link_symops(const std::string& record, short* reported_sym) {
   if (record.size() < 72)
     return Asu::Any;  // it could be interpreted as Same
-  if (read_string(&record[59], 6) == read_string(&record[66], 6))
+  std::string s1 = read_string(&record[59], 6);
+  std::string s2 = read_string(&record[66], 6);
+  if (s1 == s2)
     return Asu::Same;
+  size_t len1 = s1.length();
+  size_t len2 = s2.length();
+  if (len1 >= 4 && len1 < 6 && len2 >= 4 && len2 < 6) {
+    // for 5 digits, we assume here that two digits are for sym_idx
+    if (s1[0] == '1' && len1 == 4)  // symop1 is usually 1555
+      reported_sym[0] = (short) read_int(s2.c_str(), len2 - 3);
+    else
+      reported_sym[0] = 99;
+    for (size_t i = 1; i <= 3; ++i)
+      reported_sym[i] = s2[len2 - 4 + i] - s1[len1 - 4 + i];
+  }
   return Asu::Different;
 }
 
@@ -638,7 +651,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       char res_id2[5] = {' ', ' ', ' ', ' ', ' '};
       std::memcpy(res_id2, r + 31, std::min((size_t)5, record.length() - 31));
       c.partner2.res_id = read_res_id(res_id2, r + 25);
-      c.asu = compare_link_symops(record);
+      c.asu = compare_link_symops(record, c.reported_sym);
       if (record.length() > 73)
         c.reported_distance = read_double(r + 73, 5);
       complete_ssbond(c, st.first_model(), st.cell);
@@ -664,7 +677,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         ad.atom_name = read_string(t + 12, 4);
         ad.altloc = read_altloc(t[16]);
       }
-      c.asu = compare_link_symops(record);
+      c.asu = compare_link_symops(record, c.reported_sym);
       if (record.length() > 73) {
         if (record[4] == 'R')
           c.link_id = read_string(&record[72], 8);

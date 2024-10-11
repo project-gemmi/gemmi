@@ -72,8 +72,6 @@ void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
   for (const Connection& con : st.connections) {
     if (!con.partner1.res_id.seqid.num || !con.partner2.res_id.seqid.num)
       continue;
-    if (con.asu == Asu::Different)
-      continue;
     mmdb::Link link{};
     // partner1
     strcpy_to_mmdb(link.atName1, con.partner1.atom_name);
@@ -89,6 +87,12 @@ void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
     strcpy_to_mmdb(link.chainID2, con.partner2.chain_name);
     if (con.reported_distance > 0)
       link.dist = con.reported_distance;
+    if (con.asu == Asu::Different) {
+      link.s2 = con.reported_sym[0];
+      link.i2 = 5 + con.reported_sym[1];
+      link.j2 = 5 + con.reported_sym[2];
+      link.k2 = 5 + con.reported_sym[3];
+    }
     // add links to models
     for (int imod = 1; imod <= mol->GetNumberOfModels(); imod++)
       if (mmdb::Model* model_p = mol->GetModel(imod))

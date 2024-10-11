@@ -105,7 +105,7 @@ SERIALIZE(Entity::DbRef, o.db_name, o.accession_code, o.id_code,
 SERIALIZE(SiftsUnpResidue, o.res, o.acc_index, o.num)
 
 SERIALIZE(Connection, o.name, o.link_id, o.type, o.asu,
-          o.partner1, o.partner2, o.reported_distance)
+          o.partner1, o.partner2, o.reported_distance, o.reported_sym)
 
 SERIALIZE(CisPep, o.partner_c, o.partner_n, o.model_str, o.only_altloc, o.reported_angle)
 
