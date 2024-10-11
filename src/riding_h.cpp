@@ -287,8 +287,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
       Vec3 v14 = rotate_about_axis(v12, axis, theta1 * ratio);
       hs[0].pos = atom.pos + Position(hs[0].dist / v14.length() * v14);
       if (hs.size() > 1) {
-        topo.err("Unhandled topology of " + std::to_string(hs.size()) +
-                 " hydrogens bonded to " + atom.name);
+        topo.logger.err("Unhandled topology of ", hs.size(), " hydrogens bonded to ", atom.name);
         for (size_t i = 1; i < hs.size(); ++i) {
           hs[i].ptr->occ = 0;
           hs[i].ptr->calc_flag = CalcFlag::Dummy;
@@ -424,9 +423,9 @@ void place_hydrogens_on_all_atoms(Topo& topo) {
           if (altlocs.empty())
             place_hydrogens(topo, atom, known, hs);
         } catch (const std::runtime_error& e) {
-          topo.err("Placing of hydrogen bonded to "
-                   + atom_str(chain_info.chain_ref, *ri.res, atom)
-                   + " failed:\n  " + e.what());
+          topo.logger.err("Placing of hydrogen bonded to ",
+                          atom_str(chain_info.chain_ref, *ri.res, atom),
+                          " failed:\n  ", e.what());
         }
       }
     }

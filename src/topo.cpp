@@ -428,13 +428,13 @@ void Topo::apply_restraints_from_link(Link& link, const MonLib& monlib) {
     return;
   const ChemLink* chem_link = monlib.get_link(link.link_id);
   if (!chem_link) {
-    err("ignoring link '" + link.link_id + "' as it is not in the monomer library");
+    logger.err("ignoring link '", link.link_id, "' as it is not in the monomer library");
     return;
   }
   const Restraints* rt = &chem_link->rt;
   if (link.alt1 && link.alt2 && link.alt1 != link.alt2)
-    err(cat("LINK between different conformers: ", link.alt1, " (in ",
-            link.res1->name, ") and ", link.alt2, " (in " + link.res2->name, ")."));
+    logger.err("LINK between different conformers: ", link.alt1, " (in ",
+               link.res1->name, ") and ", link.alt2, " (in ", link.res2->name, ").");
   // aliases are a new feature - introduced in 2022
   if (link.aliasing1 || link.aliasing2) {
     std::unique_ptr<Restraints> rt_copy(new Restraints(*rt));
@@ -559,11 +559,11 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
                   try {
                     chem_mod->apply_to(*cc_copy, mod.alias);
                   } catch(std::runtime_error& e) {
-                    err(cat("failed to apply modification ", chem_mod->id,
-                            " to ", ri.res->name, ": ", e.what()));
+                    logger.err("failed to apply modification ", chem_mod->id,
+                               " to ", ri.res->name, ": ", e.what());
                   }
                 } else {
-                  err("modification not found: " + mod.id);
+                  logger.err("modification not found: ", mod.id);
                 }
               }
             }
@@ -687,7 +687,7 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
   if (!conn.link_id.empty()) {
     match = monlib.get_link(conn.link_id);
     if (!match) {
-      err("link not found in monomer library: " + conn.link_id);
+      logger.err("link not found in monomer library: ", conn.link_id);
       return;
     }
     if (match->rt.bonds.empty() ||
@@ -697,7 +697,7 @@ void Topo::setup_connection(Connection& conn, Model& model0, MonLib& monlib,
                                conn.partner1.atom_name, extra.aliasing1) ||
         !atom_match_with_alias(match->rt.bonds[0].id2.atom,
                                conn.partner2.atom_name, extra.aliasing2)) {
-      err("link from the monomer library does not match: " + conn.link_id);
+      logger.err("link from the monomer library does not match: ", conn.link_id);
       return;
     }
   } else {
@@ -801,8 +801,7 @@ void set_cis_in_link(Topo::Link& link, bool is_cis) {
 }
 
 void force_cispeps(Topo& topo, bool single_model, const Model& model,
-                          const std::vector<CisPep>& cispeps,
-                          std::ostream* warnings) {
+                          const std::vector<CisPep>& cispeps) {
   std::multimap<const Residue*, const CisPep*> cispep_index;
   for (const CisPep& cp : cispeps) {
     if (single_model || model.name == cp.model_str)
@@ -823,12 +822,10 @@ void force_cispeps(Topo& topo, bool single_model, const Model& model,
         }
         if (is_cis != link.is_cis) {
           set_cis_in_link(link, is_cis);
-          if (warnings)
-            *warnings << "Link between "
-                      << atom_str(chain_info.chain_ref.name, *link.res1, "", link.alt1)
-                      << " and "
-                      << atom_str(chain_info.chain_ref.name, *link.res2, "", link.alt2)
-                      << " forced to " << link.link_id << std::endl;
+          const std::string& ch_name = chain_info.chain_ref.name;
+          topo.logger.mesg("Link between ", atom_str(ch_name, *link.res1, "", link.alt1),
+                           " and ", atom_str(ch_name, *link.res2, "", link.alt2),
+                           " forced to ", link.link_id);
         }
       }
     }
@@ -902,17 +899,13 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
 
 NeighMap prepare_neighbor_altlocs(Topo& topo, const MonLib& monlib) {
   // disable warnings here, so they are not printed twice
-  std::streambuf* warnings_orig = nullptr;
-  if (topo.warnings)
-    warnings_orig = topo.warnings->rdbuf(nullptr);
+  topo.logger.suspended = true;
   // Prepare bonds. Fills topo.bonds, monomer_rules/link_rules and rt_storage,
   // but they are all reset when apply_all_restraints() is called again.
   topo.only_bonds = true;
   topo.apply_all_restraints(monlib);
   topo.only_bonds = false;
-  // re-enable warnings
-  if (warnings_orig)
-    topo.warnings->rdbuf(warnings_orig);
+  topo.logger.suspended = false; // re-enable warnings
   NeighMap neighbors;
   for (const Topo::Bond& bond : topo.bonds) {
     const Atom* a1 = bond.atoms[0];
@@ -930,16 +923,16 @@ NeighMap prepare_neighbor_altlocs(Topo& topo, const MonLib& monlib) {
 std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings, bool ignore_unknown_links, bool use_cispeps) {
+                 const Logger::Callback& callback, bool ignore_unknown_links, bool use_cispeps) {
   std::unique_ptr<Topo> topo(new Topo);
-  topo->warnings = warnings;
+  topo->logger.callback = callback;
   if (model_index >= st.models.size())
     fail("no such model index: " + std::to_string(model_index));
   Model& model = st.models[model_index];
   topo->initialize_refmac_topology(st, model, monlib, ignore_unknown_links);
 
   if (use_cispeps)
-    force_cispeps(*topo, st.models.size() == 1, model, st.cispeps, warnings);
+    force_cispeps(*topo, st.models.size() == 1, model, st.cispeps);
 
   // remove hydrogens, or change deuterium to fraction, or nothing
   // and then check atom names
@@ -978,7 +971,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
             if (it != cc.atoms.end())
               cat_to(msg, " (replace ", atom.name, " with ", it->id, ')');
           }
-          topo->err(msg);
+          topo->logger.err(msg);
         }
       }
     }
@@ -1024,7 +1017,7 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
         // check for missing altloc
         for (auto atom = res.atoms.begin(); atom + 1 < res.atoms.end(); ++atom)
           if (atom->name == (atom + 1)->name && atom->altloc == '\0')
-            topo->err("missing altloc in " + atom_str(chain_info.chain_ref, *ri.res, *atom));
+            topo->logger.err("missing altloc in ", atom_str(chain_info.chain_ref, *ri.res, *atom));
       }
 
   // for atoms with ad-hoc links, for now we don't want hydrogens
@@ -1062,15 +1055,11 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
         vector_remove_if(res.atoms, [](Atom& a) { return a.is_hydrogen() && a.occ == 0; });
 
     // disable warnings here, so they are not printed twice
-    std::streambuf *warnings_orig = nullptr;
-    if (topo->warnings)
-      warnings_orig = topo->warnings->rdbuf(nullptr);
+    topo->logger.suspended = true;
     // re-set restraints and indices
     topo->apply_all_restraints(monlib);
     topo->create_indices();
-    // re-enable warnings
-    if (warnings_orig)
-      topo->warnings->rdbuf(warnings_orig);
+    topo->logger.suspended = false;
   }
 
   assign_serial_numbers(model);

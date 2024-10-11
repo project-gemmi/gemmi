@@ -132,7 +132,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       for (size_t i = 0; i != st.models.size(); ++i) {
         // preparing topology modifies hydrogens in the model
-        prepare_topology(st, monlib, i, h_change, p.options[Sort], &std::cerr);
+        prepare_topology(st, monlib, i, h_change, p.options[Sort], &gemmi::Logger::to_stderr);
       }
     }
     if (p.options[Verbose])

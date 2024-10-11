@@ -1,7 +1,7 @@
 // Copyright 2017-2022 Global Phasing Ltd.
 
 #include <stdio.h>             // for fprintf, stderr, putc
-#include <iostream>            // for cerr
+#include <iostream>            // for cout
 #include <exception>           // for exception
 #include "gemmi/crd.hpp"       // for prepare_refmac_crd
 #include "gemmi/to_cif.hpp"    // for write_cif_block_to_stream
@@ -122,7 +122,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     else
       h_change = HydrogenChange::ReAddButWater;
     auto topo = prepare_topology(st, monlib, 0, h_change, reorder,
-                                 &std::cerr, ignore_unknown_links, use_cispeps);
+                                 &Logger::to_stderr, ignore_unknown_links, use_cispeps);
     if (!use_cispeps)
       topo->set_cispeps_in_structure(st);
     if (verbose)

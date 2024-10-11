@@ -5,8 +5,8 @@
 #ifndef GEMMI_TOPO_HPP_
 #define GEMMI_TOPO_HPP_
 
+#include <functional>    // for function
 #include <map>           // for multimap
-#include <ostream>       // for ostream
 #include <memory>        // for unique_ptr
 #include <unordered_map> // for unordered_map
 #include "chemcomp.hpp"  // for ChemComp
@@ -19,6 +19,35 @@ namespace gemmi {
 enum class HydrogenChange {
   NoChange, Shift, Remove, ReAdd, ReAddButWater, ReAddKnown
 };
+
+
+struct Logger {
+  using Callback = std::function<void(const std::string&)>;
+  Callback callback;
+
+  // For internal use in functions that produce messages: suspending when
+  // the same function is called multiple times avoids duplicated messages.
+  bool suspended = false;
+
+  template<class... Args> GEMMI_COLD void err(Args const&... args) const {
+    if (!suspended) {
+      std::string msg = cat(args...);
+      if (callback == nullptr)
+        fail(msg);
+      callback("Warning: " + msg);
+    }
+  }
+
+  template<class... Args> void mesg(Args const&... args) const {
+    if (!suspended && callback)
+      callback(cat(args...));
+  }
+
+  static void to_stderr(const std::string& s) {
+    std::fprintf(stderr, "%s\n", s.c_str());
+  }
+};
+
 
 struct GEMMI_DLL Topo {
   // We have internal pointers in this class (pointers setup in
@@ -184,7 +213,7 @@ struct GEMMI_DLL Topo {
     return -1;
   }
 
-  std::ostream* warnings = nullptr;
+  Logger logger{};
   bool only_bonds = false;  // an internal flag for apply_restraints()
   std::vector<ChainInfo> chain_infos;
   std::vector<Link> extras;
@@ -274,12 +303,6 @@ struct GEMMI_DLL Topo {
 
   void set_cispeps_in_structure(Structure& st);
 
-  GEMMI_COLD void err(const std::string& msg) const {
-    if (warnings == nullptr)
-      fail(msg);
-    *warnings << "Warning: " << msg << std::endl;
-  }
-
 private:
   // storage for link restraints modified by aliases
   std::vector<std::unique_ptr<Restraints>> rt_storage;
@@ -295,7 +318,7 @@ private:
 GEMMI_DLL std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 std::ostream* warnings=nullptr, bool ignore_unknown_links=false,
+                 const Logger::Callback& callback={}, bool ignore_unknown_links=false,
                  bool use_cispeps=false);
 
 

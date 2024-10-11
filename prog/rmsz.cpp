@@ -2,7 +2,6 @@
 
 #include <stdio.h>   // for printf, fprintf, stderr
 #include <cmath>     // for sqrt
-#include <iostream>  // for cerr
 #include <exception>
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
 #include "gemmi/chemcomp.hpp"  // for ChemComp
@@ -239,7 +238,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (st.models.size() > 1)
           printf("### Model %s ###\n", model.name.c_str());
         Topo topo;
-        topo.warnings = &std::cerr;
+        topo.logger.callback = &gemmi::Logger::to_stderr;
         topo.initialize_refmac_topology(st, model, monlib);
         topo.apply_all_restraints(monlib);
 
