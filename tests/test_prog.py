@@ -24,7 +24,12 @@ def has_gemmi():
               '\n  returncode:', e.returncode)
         return False
     assert v.startswith(b'gemmi 0.')
-    return gemmi is None or v.split()[1].decode() == gemmi.__version__
+    prog_ver = v.split()[1].decode()
+    if gemmi and gemmi.__version__ != prog_ver:
+        print(f'NOTE: gemmi {prog_ver} in $PATH mismatches',
+              f'gemmi module {gemmi.__version__}. Skipping.')
+        return False
+    return True
 
 @unittest.skipIf(not has_gemmi(), "Program gemmi not found.")
 class TestProg(unittest.TestCase):
