@@ -7,22 +7,23 @@ Installation
 C++ library
 -----------
 
-Before version 0.6 gemmi was a header-only library.
-Some functions are still in headers. If you use only such function,
-you only need to ensure that the `include` directory is in your
-include path when compiling your program. For example::
+Gemmi used to be a header-only library (until ver. 0.6.0).
+Parts of the library (finding symmetry operations, parsing CIF grammar)
+are still header-only; if you happen to use only these parts,
+just ensure that Gemmi's `include` directory is in
+your project's include path. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
     c++ -Igemmi/include -O2 my_program.cpp
 
-Otherwise, you either need to build gemmi_cpp library,
-or add (selected) files from src/ to your project.
+However, in most cases, you need to build a library called gemmi_cpp
+and link your project against it.
 
-If you use **CMake**, you may
+If you use **CMake**, you may:
 
-* use find_package for installed gemmi::
+* first install gemmi and then use find_package::
 
-    find_package(gemmi 0.6.4 CONFIG REQUIRED)
+    find_package(gemmi 0.7.0 CONFIG REQUIRED)
 
 * or add gemmi as a git submodule and use add_subdirectory::
 
@@ -30,7 +31,6 @@ If you use **CMake**, you may
 
 * or use FetchContent::
 
-    add_subdirectory(gemmi EXCLUDE_FROM_ALL)
     include(FetchContent)
     FetchContent_Declare(
       gemmi
@@ -43,21 +43,21 @@ If you use **CMake**, you may
       add_subdirectory(${gemmi_SOURCE_DIR} ${gemmi_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
 
-Then, to find headers and link your target with the library, use::
+Then link your target with the library (this also takes care of includes)::
 
     target_link_libraries(example PRIVATE gemmi::gemmi_cpp)
 
-If only headers are needed, do::
+If a target only needs gemmi headers, do this instead::
 
     target_link_libraries(example PRIVATE gemmi::headers)
 
 The gemmi::headers interface, which is also included in gemmi::gemmi_cpp,
-adds two things: include dictory and *compile feature* cxx_std_11 (a minimal
-requirement for the compilation).
+adds two things: the include directory and the *compile feature* cxx_std_14
+(a minimal requirement for compilation).
 
 Gemmi can be compiled with either zlib or zlib-ng.
 The only difference is that zlib-ng is faster.
-Here are the relevant cmake options:
+Here are the relevant CMake options:
 
 * FETCH_ZLIB_NG -- download, build statically, and use zlib-ng.
 * USE_ZLIB_NG -- find zlib-ng installed on the system.
@@ -66,13 +66,13 @@ Here are the relevant cmake options:
 * None of the above -- find zlib installed on the system;
   if not found, use third_party/zlib.
 
-On Windows, when a program or library is linked with zlib(-ng) DLL,
+On Windows, when a program or library is linked with a zlib(-ng) DLL,
 it may require the DLL to be in the same directory.
 It is simpler to build zlib-ng statically or use `-D FETCH_ZLIB_NG=ON`.
 
 ----
 
-Note on Unicode: if a file name is passed to Gemmi (through `std::string`)
+Note on Unicode: if a file name is passed to Gemmi (through `std::string`),
 it is assumed to be in ASCII or UTF-8.
 
 .. _install_py:
@@ -83,7 +83,7 @@ Python module
 From PyPI
 ~~~~~~~~~
 
-To install the gemmi module do::
+To install the gemmi module, run::
 
     pip install gemmi
 
@@ -98,12 +98,15 @@ Gemmi 0.7+ supports only Python 3.8+.
 Other binaries
 ~~~~~~~~~~~~~~
 
+You can find gemmi:
+
 If you use the `CCP4 suite <https://www.ccp4.ac.uk/>`_,
 you can find gemmi there.
 
-If you use Anaconda Python, you can install
-`package conda <https://github.com/conda-forge/gemmi-feedstock>`_
-from conda-forge::
+If you use conda,
+the `gemmi package <https://github.com/conda-forge/gemmi-feedstock>`_,
+which includes also a command-line program and C++ dev files,
+can be installed from conda-forge::
 
     conda install -c conda-forge gemmi
 
@@ -118,25 +121,22 @@ Either use::
     pip install git+https://github.com/project-gemmi/gemmi.git
 
 or clone the `project <https://github.com/project-gemmi/gemmi/>`_
-(or download a zip file) and from the top-level directory do::
+(or download a zip file) and from the top-level directory run::
 
     pip install .
 
-On Windows, Python should automatically find an appropriate compiler (MSVC).
-If the compiler is not installed, pip shows a message with a download link.
-
 Building with pip uses scikit-build-core and CMake underneath.
-You might pass options to CMake either as the `--config-settings` option
-of pip (in recent pip versions only)::
+You can pass options to CMake either using the `--config-settings` option
+in recent pip versions::
 
   pip install . --config-settings="cmake.args=-DFETCH_ZLIB_NG=ON"
 
-or using environment variables such as `CMAKE_ARGS`. See
+or by using environment variables such as `CMAKE_ARGS`. See
 `scikit-build-core docs <https://scikit-build-core.readthedocs.io/en/latest/configuration.html#configuring-cmake-arguments-and-defines>`_
 for details.
 
 If gemmi is already installed, uninstall the old version first
-(`pip uninstall`) or add option `--upgrade`.
+(`pip uninstall`) or add the `--upgrade` option.
 
 Alternatively, you can manually install nanobind and cmake (using pip)
 and build a cloned project directly with CMake::
@@ -147,12 +147,12 @@ and build a cloned project directly with CMake::
 Fortran and C bindings
 ----------------------
 
-The Fortran bindings are in early stage and are not documented yet.
+The Fortran bindings are in an early stage and are not documented yet.
 They use the ISO_C_BINDING module introduced in Fortran 2003
 and `shroud <https://github.com/LLNL/shroud>`_.
-You may see the `fortran/` directory to know what to expect.
-This directory contains Makefile -- run make to built the bindings.
-(They are currently not integrated with the cmake build.)
+You can check the `fortran/` directory to see what to expect.
+This directory contains a Makefile -- run make to build the bindings.
+(They are currently not integrated with the CMake build.)
 
 ..
  The bindings and usage examples can be compiled with CMake::
@@ -178,21 +178,24 @@ Binaries
 
 Binaries are distributed with the CCP4 suite and with Global Phasing software.
 They are also in `PyPI <https://pypi.org/project/gemmi-program/>`_
-(`pip install gemmi-program`) and
-`conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_.
+(`pip install gemmi-program`),
+`conda-forge packages <https://anaconda.org/conda-forge/gemmi/files>`_,
+and a few Linux (and FreeBSD)
+`distros <https://repology.org/project/gemmi/versions>`_.
 
 The very latest builds (as well as a little older ones)
 can be downloaded from CI jobs:
 
-- for Windows --
+- For Windows --
   click the first (green) job in
   `AppVeyor CI <https://ci.appveyor.com/project/wojdyr/gemmi>`_
-  and find gemmi.exe in the Artifacts tab,
-- for Linux and Mac -- sign in to GitHub (no special permissions are needed,
-  but GitHub requires sign-in for artifacts),
-  click the first job (with ✅) in
-  `GitHub Actions <https://github.com/project-gemmi/gemmi/actions/workflows/ci.yml>`_
-  and download a zip file from the Artifacts section.
+  and find gemmi.exe in the Artifacts tab (if there is also a dll file there,
+  it's a dynamically linked build and both files are needed).
+- For Linux and Mac -- sign in to GitHub (no special permissions are needed,
+  but GitHub requires sign-in for artifacts), go to gemmi's
+  `gemmi's CI workflow <https://github.com/project-gemmi/gemmi/actions/workflows/ci.yml>`_,
+  click the latest job with ✅, scroll to the bottom of the page,
+  and download one of the zip files from the Artifacts section.
 
 From source
 ~~~~~~~~~~~
@@ -206,7 +209,7 @@ installed (on Ubuntu: `sudo apt install git cmake make g++`), then::
     make
 
 Alternatively, you can use `pip install git+https://...`, which installs
-both Python module and the program. If you are not using the Python module,
+both the Python module and the program. If you are not using the Python module,
 you can use pip to build only the program::
 
     pip install git+https://github.com/project-gemmi/gemmi.git --config-settings=cmake.args=-DONLY_PROGRAM=ON
@@ -218,8 +221,10 @@ The main automated tests are in Python::
 
     python3 -m unittest discover -v tests/
 
-We also have doctest tests in the documentation, and some others.
-All of them can be run from the `run-tests.sh` script in the repository.
+We also have *Python doctest* tests in the documentation,
+and a few other test routines.
+All the commands used for testing are listed in the `run-tests.sh`
+script in the repository.
 
 Credits
 -------
@@ -290,6 +295,6 @@ List of C++ headers
 -------------------
 
 Here is a list of C++ headers in `gemmi/include/`.
-This list also gives an overview of the library.
+This list also provides an overview of the library.
 
 .. include:: headers.rst
