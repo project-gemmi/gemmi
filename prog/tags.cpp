@@ -13,6 +13,7 @@
 #include <utility>            // for pair
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <vector>
 
 #define GEMMI_PROG tags
@@ -48,17 +49,18 @@ const option::Descriptor Usage[] = {
 };
 
 
-constexpr int ENUM_LIMIT = 20;
+constexpr int ENUM_GATHER_LIMIT = 1000;
+constexpr int ENUM_SHOW_LIMIT = 20;
 
 struct TagStats {
   int file_count = 0;
   int block_count = 0;
-  unsigned long total_count = 0;
+  size_t total_count = 0;
   int min_count = INT_MAX;
   int max_count = 1;
   bool in_this_file = false;
   struct CountAndExample {
-    int count = 0;
+    size_t count = 0;
     std::string example;
     void add(const std::string& block_name) {
       if (count == 0)
@@ -66,7 +68,7 @@ struct TagStats {
       ++count;
     }
   };
-  std::map<std::string, CountAndExample> values;
+  std::unordered_map<std::string, CountAndExample> values;
   CountAndExample text;
   CountAndExample multi_word;
   CountAndExample single_word;
@@ -96,7 +98,7 @@ struct TagStats {
           max_number = d;
       }
     }
-    if (values.size() <= ENUM_LIMIT)
+    if (values.size() <= ENUM_GATHER_LIMIT)
       values[cif::as_string(raw)].add(block_name);
   }
 };
@@ -200,7 +202,21 @@ template<> struct Counter<rules::loop_end> {
 };
 
 void print_value_count_for_tsv(const char* item, const TagStats::CountAndExample &val) {
-  std::printf("\t%d %s %s", val.count, val.example.c_str(), item);
+  std::printf("\t%zu %s %s", val.count, val.example.c_str(), item);
+}
+
+auto prepare_pairs(const TagStats& st) {
+  // sort by count
+  using Pair = std::pair<std::string, TagStats::CountAndExample>;
+  std::vector<Pair> pairs(st.values.begin(), st.values.end());
+  std::sort(pairs.begin(), pairs.end(), [](const Pair& a, const Pair& b) {
+      return a.second.count > b.second.count;
+  });
+  for (auto& pair : pairs) {
+    gemmi::replace_all(pair.first, "&", "&amp;");
+    gemmi::replace_all(pair.first, "<", "&lt;");
+  }
+  return pairs;
 }
 
 void print_data_for_html(const Context& ctx) {
@@ -217,16 +233,9 @@ void print_data_for_html(const Context& ctx) {
       pc = 100.0 * st.file_count / ctx.total_files;
     std::printf("%s\t%.3f\t%d\t%.2f\t%d",
                 item.first.c_str(), pc, st.min_count, navg, st.max_count);
-    if (st.values.size() <= ENUM_LIMIT && st.text.count == 0) {
-      // sort by count
-      using Pair = std::pair<std::string, TagStats::CountAndExample>;
-      std::vector<Pair> pairs(st.values.begin(), st.values.end());
-      std::sort(pairs.begin(), pairs.end(), [](const Pair& a, const Pair& b) {
-          return a.second.count > b.second.count;
-      });
+    if (st.values.size() <= ENUM_SHOW_LIMIT && st.text.count == 0) {
+      auto pairs = prepare_pairs(st);
       for (auto& pair : pairs) {
-        gemmi::replace_all(pair.first, "&", "&amp;");
-        gemmi::replace_all(pair.first, "<", "&lt;");
         print_value_count_for_tsv(pair.first.c_str(), pair.second);
       }
     } else {
@@ -241,6 +250,22 @@ void print_data_for_html(const Context& ctx) {
         char buf[64] = {0};
         snprintf(buf, 63, "{%g - %g}", st.min_number, st.max_number);
         print_value_count_for_tsv(buf, st.number);
+      }
+      if (st.values.size() <= ENUM_GATHER_LIMIT && st.text.count == 0) {
+        auto pairs = prepare_pairs(st);
+        // no point in showing distinct values like this:
+        //   2248x{-0.757 - 0.125} distinct values: 724 (0.58% -0.394, ...)
+        if (st.number.count != st.total_count ||
+            pairs[0].second.count > std::max(1.0, 0.02 * st.total_count)) {
+          std::printf("\t/%zu", st.values.size());  // tags.html checks for '/'
+          int n = 0;
+          for (auto& pair : pairs) {
+            const TagStats::CountAndExample& val = pair.second;
+            print_value_count_for_tsv(pair.first.c_str(), pair.second);
+            if (++n == 10 || val.count * 20 < st.total_count)
+              break;
+          }
+        }
       }
     }
     std::printf("\n");
