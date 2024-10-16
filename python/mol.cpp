@@ -16,7 +16,7 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/variant.h>
-#include "meta.h"
+#include "meta.h"  // IWYU pragma: export
 
 using namespace gemmi;
 
@@ -511,7 +511,7 @@ void add_mol(nb::module_& m) {
     .def_rw("charge", &Atom::charge)
     .def_rw("element", &Atom::element)
     .def_prop_rw("pos",
-        [](const Atom& self) { return self.pos; },
+        [](Atom& self) -> Position& { return self.pos; },
         [](Atom& self, const std::variant<Position, std::array<double,3>>& v) {
           if (const Position* p = std::get_if<0>(&v)) {
             self.pos = *p;
