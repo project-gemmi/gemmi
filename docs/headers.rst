@@ -156,6 +156,9 @@ gemmi/levmar.hpp
 gemmi/linkhunt.hpp
     Searching for links based on the _chem_link table from monomer dictionary.
 
+gemmi/logger.hpp
+    Logger - a tiny utility for passing messages through a callback.
+
 gemmi/math.hpp
     Math utilities. 3D linear algebra.
 

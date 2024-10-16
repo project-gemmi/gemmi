@@ -421,8 +421,9 @@ void convert(gemmi::Structure& st,
   if (output_type == CoorFormat::Pdb)
     how = HowToNameCopiedChain::Short;
   if (options[AsAssembly]) {
-    std::ostream* out = options[Verbose] ? &std::cerr : nullptr;
-    gemmi::transform_to_assembly(st, options[AsAssembly].arg, how, out);
+    gemmi::Logger::Callback callback = options[Verbose] ? &gemmi::Logger::to_stderr
+                                                        : &gemmi::Logger::nop;
+    gemmi::transform_to_assembly(st, options[AsAssembly].arg, how, callback);
   }
 
   if (options[ExpandNcs]) {

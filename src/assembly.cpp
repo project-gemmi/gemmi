@@ -64,27 +64,32 @@ void remove_cras(Model& model, std::vector<CRA>& vec) {
 }
 
 Model make_assembly_(const Assembly& assembly, const Model& model,
-                     HowToNameCopiedChain how, std::ostream* out,
+                     HowToNameCopiedChain how, const Logger& logger,
                      AssemblyMapping* mapping) {
   Model new_model(model.name);
   ChainNameGenerator namegen(how);
   std::map<std::string, std::string> subs = model.subchain_to_chain();
   int counter = 0;
-  for (const Assembly::Gen& gen : assembly.generators)
+  for (const Assembly::Gen& gen : assembly.generators) {
+    bool all_chains = (!gen.chains.empty() && gen.chains[0] == "(all)");
     for (const Assembly::Operator& oper : gen.operators) {
-      if (out) {
-        *out << "Applying " << oper.name << " to";
-        if (!gen.chains.empty())
-          *out << " chains: " << join_str(gen.chains, ',');
+      if (logger.callback) {
+        std::string note = cat("Applying ", oper.name, " to");
+        if (all_chains)
+          note += " all chains";
+        else if (!gen.chains.empty())
+          cat_to(note, " chains: ", join_str(gen.chains, ','));
         else if (!gen.subchains.empty())
-          *out << " subchains: " << join_str(gen.subchains, ',');
-        *out << std::endl;
+          cat_to(note, " subchains: ", join_str(gen.subchains, ','));
+        logger.note(note);
+      }
+      if (!all_chains) {
         for (const std::string& chain_name : gen.chains)
           if (!model.find_chain(chain_name))
-            *out << "Warning: no chain " << chain_name << std::endl;
+            logger.err("no chain ", chain_name);
         for (const std::string& subchain_name : gen.subchains)
           if (subs.find(subchain_name) == subs.end())
-            *out << "Warning: no subchain " << subchain_name << std::endl;
+            logger.err("no subchain ", subchain_name);
       }
       // chains are not merged here, multiple chains may have the same name
       ChainMap chain_map;
@@ -92,7 +97,6 @@ Model make_assembly_(const Assembly& assembly, const Model& model,
         chain_map.uses_segments = (how == HowToNameCopiedChain::Dup);
         chain_map.id = std::to_string(counter);
       }
-      bool all_chains = (!gen.chains.empty() && gen.chains[0] == "(all)");
       for (const Chain& chain : model.chains) {
         // PDB files specify bioassemblies in terms of chains,
         // mmCIF files in terms of subchains.
@@ -129,6 +133,7 @@ Model make_assembly_(const Assembly& assembly, const Model& model,
         mapping->chain_maps.push_back(std::move(chain_map));
       ++counter;
     }
+  }
   return new_model;
 }
 
@@ -281,12 +286,12 @@ void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
 } // anonymous namespace
 
 Model make_assembly(const Assembly& assembly, const Model& model,
-                    HowToNameCopiedChain how, std::ostream* out) {
-  return make_assembly_(assembly, model, how, out, nullptr);
+                    HowToNameCopiedChain how, const Logger::Callback& callback) {
+  return make_assembly_(assembly, model, how, Logger{callback}, nullptr);
 }
 
 void transform_to_assembly(Structure& st, const std::string& assembly_name,
-                           HowToNameCopiedChain how, std::ostream* out,
+                           HowToNameCopiedChain how, const Logger::Callback& callback,
                            bool keep_spacegroup, double merge_dist) {
   const Assembly* assembly = st.find_assembly(assembly_name);
   std::unique_ptr<Assembly> p1_assembly;
@@ -306,7 +311,7 @@ void transform_to_assembly(Structure& st, const std::string& assembly_name,
   mapping.how = how;
   AssemblyMapping* mapping_ptr = &mapping;
   for (Model& model : st.models) {
-    model = make_assembly_(*assembly, model, how, out, mapping_ptr);
+    model = make_assembly_(*assembly, model, how, Logger{callback}, mapping_ptr);
     mapping_ptr = nullptr;  // AssemblyMapping is based only on the first model
   }
   finalize_expansion(st, mapping, merge_dist, false);

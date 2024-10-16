@@ -823,7 +823,7 @@ void force_cispeps(Topo& topo, bool single_model, const Model& model,
         if (is_cis != link.is_cis) {
           set_cis_in_link(link, is_cis);
           const std::string& ch_name = chain_info.chain_ref.name;
-          topo.logger.mesg("Link between ", atom_str(ch_name, *link.res1, "", link.alt1),
+          topo.logger.note("link between ", atom_str(ch_name, *link.res1, "", link.alt1),
                            " and ", atom_str(ch_name, *link.res2, "", link.alt2),
                            " forced to ", link.link_id);
         }

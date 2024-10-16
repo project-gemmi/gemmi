@@ -279,7 +279,7 @@ void print_tag_list(const Context& ctx) {
     if (st.block_count == 0)
       continue;
     int groups = ctx.per_block ? st.block_count : st.file_count;
-    std::printf("%s\t%d\t%lu\n", item.first.c_str(), groups, st.total_count);
+    std::printf("%s\t%d\t%zu\n", item.first.c_str(), groups, st.total_count);
   }
 }
 

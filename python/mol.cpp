@@ -197,8 +197,7 @@ void add_mol(nb::module_& m) {
     .def("transform_to_assembly",
          [](Structure& st, const std::string& assembly_name, HowToNameCopiedChain how,
             bool keep_spacegroup, double merge_dist) {
-        transform_to_assembly(st, assembly_name, how, nullptr,
-                              keep_spacegroup, merge_dist);
+        transform_to_assembly(st, assembly_name, how, {}, keep_spacegroup, merge_dist);
     }, nb::arg("assembly_name"), nb::arg("how"), nb::arg("keep_spacegroup")=false,
        nb::arg("merge_dist")=0.2)
     // calculate.hpp

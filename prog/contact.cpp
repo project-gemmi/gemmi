@@ -202,7 +202,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         remove_ligands_and_waters(st);
       if (p.options[AsAssembly])
         transform_to_assembly(st, p.options[AsAssembly].arg,
-                              HowToNameCopiedChain::Short, nullptr);
+                              HowToNameCopiedChain::Short, {});
       if (params.no_symmetry || p.options[AsAssembly])
         st.cell = UnitCell();
       print_contacts(st, params);

@@ -7,9 +7,9 @@
 #ifndef GEMMI_ASSEMBLY_HPP_
 #define GEMMI_ASSEMBLY_HPP_
 
-#include <ostream>    // for ostream
 #include "model.hpp"  // for Model
 #include "util.hpp"   // for in_vector
+#include "logger.hpp" // for Logger
 
 namespace gemmi {
 
@@ -88,7 +88,7 @@ inline void ensure_unique_chain_name(const Model& model, Chain& chain) {
 }
 
 GEMMI_DLL Model make_assembly(const Assembly& assembly, const Model& model,
-                              HowToNameCopiedChain how, std::ostream* out);
+                              HowToNameCopiedChain how, const Logger::Callback& out);
 
 inline Assembly pseudo_assembly_for_unit_cell(const UnitCell& cell) {
   Assembly assembly("unit_cell");
@@ -105,7 +105,7 @@ inline Assembly pseudo_assembly_for_unit_cell(const UnitCell& cell) {
 /// If called with assembly_name="unit_cell" changes structure to unit cell (P1).
 /// \par keep_spacegroup preserves space group and unit cell - is it needed?
 GEMMI_DLL void transform_to_assembly(Structure& st, const std::string& assembly_name,
-                                     HowToNameCopiedChain how, std::ostream* out,
+                                     HowToNameCopiedChain how, const Logger::Callback& callback,
                                      bool keep_spacegroup=false, double merge_dist=0.2);
 
 

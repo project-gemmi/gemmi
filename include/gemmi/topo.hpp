@@ -5,7 +5,6 @@
 #ifndef GEMMI_TOPO_HPP_
 #define GEMMI_TOPO_HPP_
 
-#include <functional>    // for function
 #include <map>           // for multimap
 #include <memory>        // for unique_ptr
 #include <unordered_map> // for unordered_map
@@ -13,41 +12,13 @@
 #include "monlib.hpp"    // for MonLib
 #include "model.hpp"     // for Residue, Atom
 #include "calculate.hpp" // for calculate_angle, calculate_dihedral
+#include "logger.hpp"    // for Logger
 
 namespace gemmi {
 
 enum class HydrogenChange {
   NoChange, Shift, Remove, ReAdd, ReAddButWater, ReAddKnown
 };
-
-
-struct Logger {
-  using Callback = std::function<void(const std::string&)>;
-  Callback callback;
-
-  // For internal use in functions that produce messages: suspending when
-  // the same function is called multiple times avoids duplicated messages.
-  bool suspended = false;
-
-  template<class... Args> GEMMI_COLD void err(Args const&... args) const {
-    if (!suspended) {
-      std::string msg = cat(args...);
-      if (callback == nullptr)
-        fail(msg);
-      callback("Warning: " + msg);
-    }
-  }
-
-  template<class... Args> void mesg(Args const&... args) const {
-    if (!suspended && callback)
-      callback(cat(args...));
-  }
-
-  static void to_stderr(const std::string& s) {
-    std::fprintf(stderr, "%s\n", s.c_str());
-  }
-};
-
 
 struct GEMMI_DLL Topo {
   // We have internal pointers in this class (pointers setup in
