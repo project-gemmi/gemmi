@@ -104,3 +104,15 @@ nb::list getitem_slice(Items& items, const nb::slice& slice) {
     l.append(nb::cast(&items[start + i * step]));
   return l;
 }
+
+// for numpy __array__ method
+inline nb::object handle_numpy_array_args(const nb::object& o, nb::handle dtype, nb::handle copy) {
+  if (dtype.is_none() && copy.is_none())
+    return o;
+  if (copy.is_none())
+    return o.attr("astype")(dtype);
+  // astype() may copy even with copy=False, so we check first
+  if (copy.ptr() == Py_False && !dtype.is_none() && !dtype.is(o.attr("dtype")))
+    throw nb::value_error("Unable to avoid copy while creating an array as requested.");
+  return o.attr("astype")(dtype, nb::arg("copy")=copy);
+}

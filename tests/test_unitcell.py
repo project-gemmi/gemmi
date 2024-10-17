@@ -5,6 +5,7 @@ from math import pi  # , isnan
 import pickle
 from random import random
 import gemmi
+from common import numpy
 
 def assert_almost_equal_seq(self, a, b, delta=None):
     for x,y in zip(a, b):
@@ -38,6 +39,32 @@ class TestMath(unittest.TestCase):
             for j in range(3):
                 self.assertAlmostEqual(t1[i][j], t2[i][j])
 
+    @unittest.skipIf(numpy is None, 'requires NumPy')
+    def test_mat33_dunder_array(self):
+        m = gemmi.Mat33([[1,2,3],[4,5,6],[7,8,9]])
+        self.assertTrue((numpy.dot(m, m) == m @ m).all())
+        cn00 = numpy.array(m)
+        cn32 = numpy.array(m, dtype=numpy.float32)
+        cn64 = numpy.array(m, dtype=numpy.float64)
+        ct00 = numpy.array(m, copy=True)
+        ct32 = numpy.array(m, dtype=numpy.float32, copy=True)
+        ct64 = numpy.array(m, dtype=numpy.float64, copy=True)
+        cf00 = numpy.array(m, copy=False)
+        try:
+            cf32 = numpy.array(m, dtype=numpy.float32, copy=False)
+        except ValueError:
+            cf32 = None
+        cf64 = numpy.array(m, dtype=numpy.float64, copy=False)
+        m.fromlist([[50,50,50], [50,50,50], [50,50,50]])
+        for cx in [cn00, cn32, cn64, ct00, ct32, ct64]:
+            self.assertEqual(cx[0][0], 1)
+        self.assertEqual(cf00[0][0], 50)
+        if numpy.__version__ < '2.':
+            self.assertEqual(cf32[0][0], 1)
+            self.assertEqual(cf64[0][0], 1)
+        else:
+            self.assertIsNone(cf32)
+            self.assertEqual(cf64[0][0], 50)
 
 class TestUnitCell(unittest.TestCase):
     def test_dummy_cell(self):

@@ -92,7 +92,9 @@ void add_mtz(nb::module_& m) {
   mtz
     .def(nb::init<bool>(), nb::arg("with_base")=false)
     .def_prop_ro("array", &mtz_to_array, nb::rv_policy::reference_internal)
-    .def("__array__", &mtz_to_array, nb::rv_policy::reference_internal)
+    .def("__array__", [](nb::handle_t<Mtz>& h, nb::handle dtype, nb::handle copy) {
+        return handle_numpy_array_args(h.attr("array"), dtype, copy);
+    }, nb::arg("dtype")=nb::none(), nb::arg("copy")=nb::none())
     .def_rw("title", &Mtz::title)
     .def_rw("nreflections", &Mtz::nreflections)
     .def_rw("sort_order", &Mtz::sort_order)
@@ -302,7 +304,9 @@ void add_mtz(nb::module_& m) {
     ;
   pyMtzColumn
     .def_prop_ro("array", &column_to_array, nb::rv_policy::reference_internal)
-    .def("__array__", &column_to_array, nb::rv_policy::reference_internal)
+    .def("__array__", [](nb::handle_t<Mtz::Column>& h, nb::handle dtype, nb::handle copy) {
+        return handle_numpy_array_args(h.attr("array"), dtype, copy);
+    }, nb::arg("dtype")=nb::none(), nb::arg("copy")=nb::none())
     .def_prop_ro("dataset",
             (Mtz::Dataset& (Mtz::Column::*)()) &Mtz::Column::dataset)
     .def_rw("dataset_id", &Mtz::Column::dataset_id)

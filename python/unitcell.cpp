@@ -141,11 +141,14 @@ void add_unitcell(nb::module_& m) {
   mat33
     .def(nb::init<>())
     .def("__init__", [](Mat33* mat, std::array<std::array<double,3>,3>& arr) {
-       new(mat) Mat33();
-       mat33_from_list(*mat, arr);
-     })
+        new(mat) Mat33();
+        mat33_from_list(*mat, arr);
+    })
     .def_prop_ro("array", &mat33_to_array, nb::rv_policy::reference_internal)
-    .def("__array__", &mat33_to_array, nb::rv_policy::reference_internal)
+    .def("__array__", [](nb::handle_t<Mat33>& h, nb::handle dtype, nb::handle copy) {
+        return handle_numpy_array_args(h.attr("array"), dtype, copy);
+    }, nb::arg("dtype")=nb::none(), nb::arg("copy")=nb::none())
+
     .def("row_copy", &Mat33::row_copy)
     .def("column_copy", &Mat33::column_copy)
     .def(nb::self + nb::self)

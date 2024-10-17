@@ -59,7 +59,9 @@ nb::class_<GridBase<T>, GridMeta> add_grid_base(nb::module_& m, const char* name
   auto to_array = [](GrBase& gr) { return grid_to_array(gr, gr.data); };
   grid_base
     .def_prop_ro("array", to_array, nb::rv_policy::reference_internal)
-    .def("__array__", to_array, nb::rv_policy::reference_internal)
+    .def("__array__", [](nb::handle_t<GrBase>& h, nb::handle dtype, nb::handle copy) {
+        return handle_numpy_array_args(h.attr("array"), dtype, copy);
+    }, nb::arg("dtype")=nb::none(), nb::arg("copy")=nb::none())
     .def("point_to_index", &GrBase::point_to_index)
     .def("index_to_point", &GrBase::index_to_point)
     .def("fill", &GrBase::fill, nb::arg("value"))
