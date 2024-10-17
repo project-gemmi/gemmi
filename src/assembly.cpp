@@ -286,12 +286,12 @@ void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
 } // anonymous namespace
 
 Model make_assembly(const Assembly& assembly, const Model& model,
-                    HowToNameCopiedChain how, const Logger::Callback& callback) {
-  return make_assembly_(assembly, model, how, Logger{callback}, nullptr);
+                    HowToNameCopiedChain how, const Logger::Callback& logging) {
+  return make_assembly_(assembly, model, how, Logger{logging}, nullptr);
 }
 
 void transform_to_assembly(Structure& st, const std::string& assembly_name,
-                           HowToNameCopiedChain how, const Logger::Callback& callback,
+                           HowToNameCopiedChain how, const Logger::Callback& logging,
                            bool keep_spacegroup, double merge_dist) {
   const Assembly* assembly = st.find_assembly(assembly_name);
   std::unique_ptr<Assembly> p1_assembly;
@@ -311,7 +311,7 @@ void transform_to_assembly(Structure& st, const std::string& assembly_name,
   mapping.how = how;
   AssemblyMapping* mapping_ptr = &mapping;
   for (Model& model : st.models) {
-    model = make_assembly_(*assembly, model, how, Logger{callback}, mapping_ptr);
+    model = make_assembly_(*assembly, model, how, Logger{logging}, mapping_ptr);
     mapping_ptr = nullptr;  // AssemblyMapping is based only on the first model
   }
   finalize_expansion(st, mapping, merge_dist, false);

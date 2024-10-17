@@ -194,12 +194,9 @@ void add_mol(nb::module_& m) {
     // assembly.hpp
     .def("shorten_chain_names", &shorten_chain_names)
     .def("expand_ncs", &expand_ncs, nb::arg("how"), nb::arg("merge_dist")=0.2)
-    .def("transform_to_assembly",
-         [](Structure& st, const std::string& assembly_name, HowToNameCopiedChain how,
-            bool keep_spacegroup, double merge_dist) {
-        transform_to_assembly(st, assembly_name, how, {}, keep_spacegroup, merge_dist);
-    }, nb::arg("assembly_name"), nb::arg("how"), nb::arg("keep_spacegroup")=false,
-       nb::arg("merge_dist")=0.2)
+    .def("transform_to_assembly", &transform_to_assembly,
+       nb::arg("assembly_name"), nb::arg("how"), nb::arg("logging")=nb::none(),
+       nb::arg("keep_spacegroup")=false, nb::arg("merge_dist")=0.2)
     // calculate.hpp
     .def("calculate_box", &calculate_box, nb::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, nb::arg("margin")=0.)
@@ -562,10 +559,8 @@ void add_mol(nb::module_& m) {
   m.def("get_distance_from_plane", &get_distance_from_plane,
         nb::arg("pos"), nb::arg("coeff"));
   m.def("parse_triplet_as_ftransform", &parse_triplet_as_ftransform);
-  m.def("make_assembly", [](const Assembly& assembly, const Model& model,
-                            HowToNameCopiedChain how) {
-        return make_assembly(assembly, model, how, nullptr);
-  });
+  m.def("make_assembly", &make_assembly,
+        nb::arg("assembly"), nb::arg("model"), nb::arg("how"), nb::arg("logging")=nb::none());
   m.def("expand_ncs_model", &expand_ncs_model);
   m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
         nb::arg("model"), nb::arg("cell"), nb::arg("max_dist")=0.2,

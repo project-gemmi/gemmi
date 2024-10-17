@@ -9,6 +9,7 @@
 #endif
 
 #include <nanobind/nanobind.h>  // IWYU pragma: export
+#include <functional>  // for function
 
 #if defined(__clang__)
   #pragma clang diagnostic pop
@@ -116,3 +117,31 @@ inline nb::object handle_numpy_array_args(const nb::object& o, nb::handle dtype,
     throw nb::value_error("Unable to avoid copy while creating an array as requested.");
   return o.attr("astype")(dtype, nb::arg("copy")=copy);
 }
+
+namespace nanobind { namespace detail {
+// for Logger::Callback, without depending on logger.hpp
+using LoggerCallback = std::function<void(const std::string&)>;
+template <> struct type_caster<LoggerCallback> {
+  NB_TYPE_CASTER(LoggerCallback, const_name("object"))
+  bool from_python(handle src, uint8_t, cleanup_list *) noexcept {
+    if (src.is_none()) {
+      value = {};
+      return true;
+    }
+    if (nb::hasattr(src, "write") && nb::hasattr(src, "flush")) {
+      value = [&](const std::string& s) {
+        src.attr("write")(nb::str((s + "\n").c_str()));
+        src.attr("flush")();
+      };
+      return true;
+    }
+    if (nb::hasattr(src, "__call__")) {
+      value = [&](const std::string& s) {
+          src(nb::str(s.c_str()));
+      };
+      return true;
+    }
+    return false;
+  }
+};
+}} // namespace nanobind::detail

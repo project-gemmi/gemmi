@@ -25,19 +25,6 @@ NB_MAKE_OPAQUE(std::vector<Topo::Rule>)
 NB_MAKE_OPAQUE(std::vector<Topo::Mod>)
 NB_MAKE_OPAQUE(std::vector<Topo::FinalChemComp>)
 
-gemmi::Logger::Callback as_callback(const nb::object& warnings) {
-  if (warnings.is_none())
-    return {};
-  if (nb::hasattr(warnings, "write") && nb::hasattr(warnings, "flush"))
-    return [&](const std::string& s) {
-      warnings.attr("write")(nb::str((s + "\n").c_str()));
-      warnings.attr("flush")();
-    };
-  return [&](const std::string& s) {
-      warnings(nb::str(s.c_str()));
-  };
-}
-
 void add_topo(nb::module_& m) {
   nb::class_<Topo> topo(m, "Topo");
 
@@ -175,16 +162,11 @@ void add_topo(nb::module_& m) {
          nb::arg("including_hydrogen")=false)
     ;
 
-  m.def("prepare_topology",
-    [](Structure& st, MonLib& monlib, size_t model_index,
-       HydrogenChange h_change, bool reorder,
-       const nb::object& warnings, bool ignore_unknown_links, bool use_cispeps) {
-      return prepare_topology(st, monlib, model_index, h_change, reorder,
-                              as_callback(warnings), ignore_unknown_links, use_cispeps);
-    }, nb::arg("st"), nb::arg("monlib"), nb::arg("model_index")=0,
-       nb::arg("h_change")=HydrogenChange::NoChange, nb::arg("reorder")=false,
-       nb::arg("warnings")=nb::none(), nb::arg("ignore_unknown_links")=false,
-       nb::arg("use_cispeps")=false);
+  m.def("prepare_topology", &prepare_topology,
+        nb::arg("st"), nb::arg("monlib"), nb::arg("model_index")=0,
+        nb::arg("h_change")=HydrogenChange::NoChange, nb::arg("reorder")=false,
+        nb::arg("warnings")=nb::none(), nb::arg("ignore_unknown_links")=false,
+        nb::arg("use_cispeps")=false);
 
   // crd.hpp
   m.def("setup_for_crd", &setup_for_crd);
