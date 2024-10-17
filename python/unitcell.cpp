@@ -276,11 +276,6 @@ void add_unitcell(nb::module_& m) {
 
     .def_ro("frac", &UnitCell::frac)
     .def_ro("orth", &UnitCell::orth)
-    // These two functions are deprecated, use frac.mat and orth.mat.
-    .def_prop_ro("fractionalization_matrix",
-                           [](const UnitCell& self) { return self.frac.mat; })
-    .def_prop_ro("orthogonalization_matrix",
-                           [](const UnitCell& self) { return self.orth.mat; })
     .def("set", &UnitCell::set)
     .def("changed_basis_forward", &UnitCell::changed_basis_forward,
          nb::arg("op"), nb::arg("set_images"))
