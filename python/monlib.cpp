@@ -22,9 +22,9 @@ void add_monlib(nb::module_& m) {
   nb::class_<ChemMod> chemmod(m, "ChemMod");
   nb::class_<ChemLink> chemlink(m, "ChemLink");
 
-  nb::bind_map<monomers_type>(m, "ChemCompMap");
-  nb::bind_map<links_type>(m, "ChemLinkMap");
-  nb::bind_map<modifications_type>(m, "ChemModMap");
+  nb::bind_map<monomers_type, rv_ri>(m, "ChemCompMap");
+  nb::bind_map<links_type, rv_ri>(m, "ChemLinkMap");
+  nb::bind_map<modifications_type, rv_ri>(m, "ChemModMap");
 
   nb::class_<ChemLink::Side>(chemlink, "Side")
     .def(nb::init<>())

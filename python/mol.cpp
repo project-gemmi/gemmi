@@ -86,7 +86,7 @@ void add_mol(nb::module_& m) {
     .value("Mmjson", CoorFormat::Mmjson)
     .value("ChemComp", CoorFormat::ChemComp);
 
-  nb::bind_map<info_map_type>(m, "InfoMap");
+  nb::bind_map<info_map_type, rv_ri>(m, "InfoMap");
 
   nb::class_<CRA>(m, "CRA")
     .def_ro("chain", &CRA::chain)
