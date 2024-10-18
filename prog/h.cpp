@@ -127,8 +127,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (!wanted.empty())
         gemmi::fail("Please create definitions for missing monomers.");
       if (p.options[Update]) {
-        std::string msg = monlib.update_old_atom_names(st);
-        std::printf("%s", msg.c_str());
+        monlib.update_old_atom_names(st, gemmi::Logger::to_stdout);
       }
       for (size_t i = 0; i != st.models.size(); ++i) {
         // preparing topology modifies hydrogens in the model

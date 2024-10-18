@@ -15,6 +15,7 @@
 #include "fail.hpp"       // for fail, unreachable
 #include "model.hpp"      // for Residue, Atom
 #include "chemcomp.hpp"   // for ChemComp
+#include "logger.hpp"     // for Logger
 
 namespace gemmi {
 
@@ -309,7 +310,7 @@ struct GEMMI_DLL MonLib {
   }
 
   double find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2) const;
-  std::string update_old_atom_names(Structure& st) const;
+  void update_old_atom_names(Structure& st, const Logger::Callback& logging) const;
 };
 
 // to be deprecated

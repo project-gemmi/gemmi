@@ -129,14 +129,14 @@ template <> struct type_caster<LoggerCallback> {
       return true;
     }
     if (nb::hasattr(src, "write") && nb::hasattr(src, "flush")) {
-      value = [&](const std::string& s) {
+      value = [src](const std::string& s) {
         src.attr("write")(nb::str((s + "\n").c_str()));
         src.attr("flush")();
       };
       return true;
     }
-    if (nb::hasattr(src, "__call__")) {
-      value = [&](const std::string& s) {
+    if (PyCallable_Check(src.ptr())) {
+      value = [src](const std::string& s) {
           src(nb::str(s.c_str()));
       };
       return true;

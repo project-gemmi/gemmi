@@ -3,6 +3,7 @@
 #include <gemmi/monlib.hpp>
 #include <gemmi/calculate.hpp>  // for calculate_chiral_volume
 #include <gemmi/modify.hpp>     // for rename_atom_names
+#include <gemmi/logger.hpp>     // for Logger
 
 namespace gemmi {
 
@@ -516,10 +517,7 @@ double MonLib::find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2)
   return r[0] + r[1];
 }
 
-// Returns a multi-line message that can be shown to the user.
-// When we have a logging mechanism, the return type will be void.
-std::string MonLib::update_old_atom_names(Structure& st) const {
-  std::string msg;
+void MonLib::update_old_atom_names(Structure& st, const Logger::Callback& logging) const {
   for (const auto& it : monomers)
     // monomers should have only monomers needed for this structure.
     // Few of them (usually none or one) have old names defined.
@@ -539,18 +537,18 @@ std::string MonLib::update_old_atom_names(Structure& st) const {
               }
             }
       if (old_vs_new > 0) {
-        cat_to(msg, "Updating atom names in ", resname, ':');
+        Logger logger{logging};
+        std::string msg = cat("Updating atom names in ", resname, ':');
         std::map<std::string, std::string> mapping;
         for (const ChemComp::Atom& a : cc.atoms)
           if (!a.old_id.empty() && a.old_id != a.id) {
             mapping.emplace(a.old_id, a.id);
             cat_to(msg, ' ', a.old_id, "->", a.id);
           }
-        msg += '\n';
+        logger.mesg(msg);
         rename_atom_names(st, resname, mapping);
       }
     }
-  return msg;
 }
 
 } // namespace gemmi

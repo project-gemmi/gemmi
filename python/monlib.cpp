@@ -110,7 +110,8 @@ void add_monlib(nb::module_& m) {
     .def("find_ideal_distance", [](const MonLib& self, CRA &cra1, CRA cra2) {
       return self.find_ideal_distance(cra1, cra2);
     })
-    .def("update_old_atom_names", &MonLib::update_old_atom_names)
+    .def("update_old_atom_names", &MonLib::update_old_atom_names,
+         nb::arg("st"), nb::arg("logging")=nb::none())
     .def("path", &MonLib::path, nb::arg("code")=std::string())
     .def("__repr__", [](const MonLib& self) {
         return "<gemmi.MonLib with " +

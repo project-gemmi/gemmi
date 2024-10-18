@@ -49,6 +49,10 @@ struct Logger {
   static void to_stderr(const std::string& s) {
     std::fprintf(stderr, "%s\n", s.c_str());
   }
+  /// to be used as: logger.callback = Logger::to_stdout;
+  static void to_stdout(const std::string& s) {
+    std::fprintf(stdout, "%s\n", s.c_str());
+  }
   /// to be used as: logger.callback = Logger::nop;
   static void nop(const std::string&) {}
 };
