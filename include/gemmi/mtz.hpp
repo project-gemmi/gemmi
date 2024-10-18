@@ -6,21 +6,21 @@
 #define GEMMI_MTZ_HPP_
 
 #include <cassert>
+#include <cmath>         // for isnan
 #include <cstdint>       // for int32_t
 #include <cstring>       // for memcpy
-#include <cmath>         // for isnan
 #include <algorithm>     // for sort, any_of
 #include <array>
 #include <initializer_list>
-#include <ostream>
 #include <string>
 #include <vector>
-#include "atox.hpp"      // for simple_atoi, read_word
 #include "atof.hpp"      // for fast_atof
-#include "input.hpp"     // for FileStream, CharArray
-#include "iterator.hpp"  // for StrideIter
+#include "atox.hpp"      // for simple_atoi, read_word
 #include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
+#include "input.hpp"     // for FileStream, CharArray
+#include "iterator.hpp"  // for StrideIter
+#include "logger.hpp"    // for Logger
 #include "math.hpp"      // for rad, Mat33
 #include "symmetry.hpp"  // for find_spacegroup_by_name, SpaceGroup
 #include "unitcell.hpp"  // for UnitCell
@@ -191,8 +191,8 @@ struct GEMMI_DLL Mtz {
   std::string appended_text;
   std::vector<float> data;
 
-  // stream used for warnings when reading mtz file (and also in mtz2cif)
-  std::ostream* warnings = nullptr;
+  // used to report non-critical problems when reading a file (also used in mtz2cif)
+  Logger logger{};
 
   explicit Mtz(bool with_base=false) {
     if (with_base)
@@ -221,7 +221,7 @@ struct GEMMI_DLL Mtz {
     history = std::move(o.history);
     appended_text = std::move(o.appended_text);
     data = std::move(o.data);
-    warnings = o.warnings;
+    logger = std::move(o.logger);
     for (Mtz::Column& col : columns)
       col.parent = this;
     return *this;
@@ -536,11 +536,6 @@ struct GEMMI_DLL Mtz {
     return UnitCell(a, b, c, alpha, beta, gamma);
   }
 
-  template<typename T> void warn(const T& text) const {
-    if (warnings)
-      *warnings << text << std::endl;
-  }
-
   template<typename Stream>
   void seek_headers(Stream& stream) {
     std::ptrdiff_t pos = 4 * std::ptrdiff_t(header_offset - 1);
@@ -608,7 +603,7 @@ struct GEMMI_DLL Mtz {
             if (*endptr == '\0' || is_space(*endptr))
               valm = v;
             else
-              warn("Unexpected VALM value: " + rtrim_str(args));
+              logger.note("Unexpected VALM value: " + rtrim_str(args));
           }
           break;
         case ialpha4_id("COLU"): {
@@ -624,10 +619,13 @@ struct GEMMI_DLL Mtz {
           break;
         }
         case ialpha4_id("COLS"):
-          if (columns.empty())
-            fail("MTZ: COLSRC before COLUMN?");
-          args = skip_word(args);
-          columns.back().source = read_word(args);
+          // COLSRC is undocumented. CMTZ (libccp4) adds it after COLUMN:
+          // COLUMN IMEAN                          J       -300.600006              4619    1
+          // COLSRC IMEAN                          CREATED_07/08/2019_11:00:23              1
+          if (!columns.empty() && columns.back().label == read_word(args, &args))
+            columns.back().source = read_word(args);
+          else
+            logger.note("MTZ: COLSRC is not after matching COLUMN");
           break;
         case ialpha4_id("COLG"):
           // Column group - not used.
@@ -645,26 +643,26 @@ struct GEMMI_DLL Mtz {
           if (simple_atoi(args, &args) == last_dataset().id)
             datasets.back().crystal_name = read_word(args);
           else
-            warn("MTZ CRYSTAL line: unusual numbering.");
+            logger.note("MTZ CRYSTAL line: unusual numbering.");
           break;
         case ialpha4_id("DATA"):
           if (simple_atoi(args, &args) == last_dataset().id)
             datasets.back().dataset_name = read_word(args);
           else
-            warn("MTZ DATASET line: unusual numbering.");
+            logger.note("MTZ DATASET line: unusual numbering.");
           break;
         case ialpha4_id("DCEL"):
           if (simple_atoi(args, &args) == last_dataset().id)
             datasets.back().cell = read_cell_parameters(args);
           else
-            warn("MTZ DCELL line: unusual numbering.");
+            logger.note("MTZ DCELL line: unusual numbering.");
           break;
         // case("DRES"): not in use yet
         case ialpha4_id("DWAV"):
           if (simple_atoi(args, &args) == last_dataset().id)
             datasets.back().wavelength = fast_atof(args);
           else
-            warn("MTZ DWAV line: unusual numbering.");
+            logger.note("MTZ DWAV line: unusual numbering.");
           break;
         case ialpha4_id("BATCH"):
           // We take number of batches from the NCOL record and serial numbers
@@ -672,7 +670,7 @@ struct GEMMI_DLL Mtz {
           has_batch = true;
           break;
         default:
-          warn("Unknown header: " + rtrim_str(line));
+          logger.note("Unknown header: " + rtrim_str(line));
       }
     }
     if (ncol != (int) columns.size())
@@ -695,7 +693,7 @@ struct GEMMI_DLL Mtz {
       } else if (ialpha4_id(buf) == ialpha4_id("MTZH")) {
         n_headers = simple_atoi(skip_word(buf));
         if (n_headers < 0 || n_headers > 30) {
-          warn("Wrong MTZ: number of headers should be between 0 and 30");
+          logger.note("Wrong MTZ: number of headers should be between 0 and 30");
           return;
         }
         history.reserve(n_headers);
@@ -732,11 +730,11 @@ struct GEMMI_DLL Mtz {
     spacegroup = find_spacegroup_by_name(spacegroup_name,
                                          cell.alpha, cell.gamma);
     if (!spacegroup) {
-      warn("MTZ: unrecognized spacegroup name: " + spacegroup_name);
+      logger.note("MTZ: unrecognized spacegroup name: " + spacegroup_name);
       return;
     }
     if (spacegroup->ccp4 != spacegroup_number)
-      warn("MTZ: inconsistent spacegroup name and number");
+      logger.note("MTZ: inconsistent spacegroup name and number");
     cell.set_cell_images_from_spacegroup(spacegroup);
     for (Dataset& d : datasets)
       d.cell.set_cell_images_from_spacegroup(spacegroup);
@@ -846,8 +844,8 @@ struct GEMMI_DLL Mtz {
   /// (for merged MTZ only) change HKL to ASU equivalent, adjust phases, etc
   void ensure_asu(bool tnt_asu=false);
 
-  /// reindex data, usually followed by ensure_asu()
-  void reindex(const Op& op, std::ostream* out);
+  /// Reindex data, usually followed by ensure_asu(). Outputs messages through logger.
+  void reindex(const Op& op);
 
   /// Change symmetry to P1 and expand reflections. Does not sort.
   /// Similar to command EXPAND in SFTOOLS.

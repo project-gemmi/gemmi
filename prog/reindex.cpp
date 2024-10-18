@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <cstring>  // for strpbrk
 #include <algorithm>
-#include <iostream>  // for cerr
 #include <gemmi/mtz.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/version.hpp>  // for GEMMI_VERSION
@@ -65,14 +64,13 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
 
     gemmi::Mtz mtz;
-    if (verbose) {
+    if (verbose)
       fprintf(stderr, "Reading %s ...\n", input_path);
-      mtz.warnings = &std::cerr;
-    }
+    mtz.logger.callback = &gemmi::Logger::to_stderr;
     mtz.read_input(gemmi::MaybeGzipped(input_path), true);
 
     if (p.options[Hkl])
-      mtz.reindex(op, &std::cerr);
+      mtz.reindex(op);
 
     if (mtz.is_merged()) {
       bool tnt_asu = false;

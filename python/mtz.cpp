@@ -111,6 +111,9 @@ void add_mtz(nb::module_& m) {
     .def_rw("batches", &Mtz::batches)
     .def_rw("history", &Mtz::history)
     .def_rw("appended_text", &Mtz::appended_text)
+    .def("set_logging", [](Mtz& self, Logger::Callback&& logging) {
+        self.logger.callback = std::move(logging);
+    }, nb::arg().none())
     .def("resolution_high", &Mtz::resolution_high)
     .def("resolution_low", &Mtz::resolution_low)
     .def("dataset", (Mtz::Dataset& (Mtz::*)(int)) &Mtz::dataset,
@@ -270,11 +273,7 @@ void add_mtz(nb::module_& m) {
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)
     .def("write_to_file", &Mtz::write_to_file, nb::arg("path"))
-    .def("reindex", [](Mtz& self, const Op& op) {
-        std::ostringstream out;
-        self.reindex(op, &out);
-        return out.str();
-    }, nb::arg("op"))
+    .def("reindex", &Mtz::reindex, nb::arg("op"))
     .def("expand_to_p1", &Mtz::expand_to_p1)
     // handy for testing, but slow and can't handle duplicated column names
     .def("row_as_dict", [](const Mtz& self, const Miller& hkl) {
@@ -347,9 +346,10 @@ void add_mtz(nb::module_& m) {
     .def("clone", [](const Mtz::Batch& self) { return new Mtz::Batch(self); })
     ;
 
-  m.def("read_mtz_file", [](const std::string& path) {
+  m.def("read_mtz_file", [](const std::string& path, Logger::Callback&& logging) {
     std::unique_ptr<Mtz> mtz(new Mtz);
+    mtz->logger.callback = std::move(logging);
     mtz->read_file_gz(path, true);
     return mtz.release();
-  }, nb::arg("path"));
+  }, nb::arg("path"), nb::arg("logging")=nb::none());
 }

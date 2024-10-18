@@ -6,7 +6,7 @@
 #include <cmath>              // for sqrt
 #include <cstdio>             // for fprintf
 #include <algorithm>          // for sort
-#include <iostream>           // for cout, cerr
+#include <iostream>           // for cout
 #include <gemmi/asudata.hpp>  // for calculate_hkl_value_correlation
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
@@ -99,7 +99,7 @@ Intensities read_intensities(DataType data_type, const char* input_path,
     if (gemmi::giends_with(input_path, ".mtz")) {
       gemmi::Mtz mtz;
       if (verbose)
-        mtz.warnings = &std::cerr;
+        mtz.logger.callback = gemmi::Logger::to_stderr;
       mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
       if (data_type == DataType::Unknown)
         data_type = mtz.batches.empty() ? DataType::Mean : DataType::Unmerged;

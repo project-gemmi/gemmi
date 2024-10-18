@@ -124,24 +124,18 @@ using LoggerCallback = std::function<void(const std::string&)>;
 template <> struct type_caster<LoggerCallback> {
   NB_TYPE_CASTER(LoggerCallback, const_name("object"))
   bool from_python(handle src, uint8_t, cleanup_list *) noexcept {
-    if (src.is_none()) {
-      value = {};
-      return true;
-    }
-    if (nb::hasattr(src, "write") && nb::hasattr(src, "flush")) {
-      value = [src](const std::string& s) {
-        src.attr("write")(nb::str((s + "\n").c_str()));
-        src.attr("flush")();
+    if (src.is_none())
+      value = nullptr;
+    else if (nb::hasattr(src, "write") && nb::hasattr(src, "flush"))
+      value = [obj=nb::borrow(src)](const std::string& s) {
+        obj.attr("write")(s + "\n");
+        obj.attr("flush")();
       };
-      return true;
-    }
-    if (PyCallable_Check(src.ptr())) {
-      value = [src](const std::string& s) {
-          src(nb::str(s.c_str()));
-      };
-      return true;
-    }
-    return false;
+    else if (PyCallable_Check(src.ptr()))
+      value = [obj=nb::borrow(src)](const std::string& s) { obj(s); };
+    else
+      return false;
+    return true;
   }
 };
 }} // namespace nanobind::detail

@@ -3,7 +3,6 @@
 // MTZ info
 
 #include <cstdio>
-#include <iostream>  // for cerr
 #include <unordered_map>
 #include <gemmi/mtz.hpp>
 #include <gemmi/asudata.hpp>  // for AsuData
@@ -544,7 +543,7 @@ void print_mtz_info(Stream&& stream, const char* path,
     }
   }
   if (options[Verbose])
-    mtz.warnings = &std::cerr;
+    mtz.logger.callback = gemmi::Logger::to_stderr;
   mtz.read_main_headers(stream);
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();

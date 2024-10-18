@@ -685,8 +685,10 @@ to Miller indices. In Python, it returns a textual message for the user:
 
 .. doctest::
 
+  >>> mtz.set_logging(sys.stdout)
   >>> mtz.reindex(gemmi.Op('k,l,h'))
-  'Real space transformation: y,z,x\nSpace group changed from P 21 21 2 to P 21 2 21.\n'
+  Real space transformation: y,z,x
+  Space group changed from P 21 21 2 to P 21 2 21.
 
 If reindex() is called on merged data,
 it should be followed by a call to ensure_asu().

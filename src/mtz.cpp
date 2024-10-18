@@ -99,7 +99,7 @@ void Mtz::ensure_asu(bool tnt_asu) {
   }
 }
 
-void Mtz::reindex(const Op& op, std::ostream* out) {
+void Mtz::reindex(const Op& op) {
   if (op.tran != Op::Tran{0, 0, 0})
     gemmi::fail("reindexing operator must not have a translation");
   if (op.det_rot() < 0)
@@ -107,8 +107,7 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
   switch_to_original_hkl();  // changes hkl for unmerged data only
   Op transposed_op{op.transposed_rot(), {0, 0, 0}};
   Op real_space_op = transposed_op.inverse();
-  if (out)
-    *out << "Real space transformation: " << real_space_op.triplet() << '\n';
+  logger.mesg("Real space transformation: ", real_space_op.triplet());
   bool row_removal = false;
   // change Miller indices
   for (size_t n = 0; n < data.size(); n += columns.size()) {
@@ -128,9 +127,7 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
   if (row_removal) {
     int n_before = nreflections;
     remove_rows_if([](const float* h) { return std::isnan(*h); });
-    if (out)
-      *out << "Reflections removed (because of fractional indices): "
-           << (n_before - nreflections) << '\n';
+    logger.mesg("Reflections removed (because of fractional indices): ", n_before - nreflections);
   }
 
   switch_to_asu_hkl();  // revert switch_to_original_hkl() for unmerged data
@@ -143,13 +140,10 @@ void Mtz::reindex(const Op& op, std::ostream* out) {
     if (!new_sg)
       fail("reindexing: failed to determine new space group name");
     if (new_sg != spacegroup) {
-      if (out)
-        *out << "Space group changed from " << spacegroup->xhm() << " to "
-             << new_sg->xhm() << ".\n";
+      logger.mesg("Space group changed from ", spacegroup->xhm(), " to ", new_sg->xhm(), '.');
       set_spacegroup(new_sg);
     } else {
-      if (out)
-        *out << "Space group stays the same:" << spacegroup->xhm() << ".\n";
+      logger.mesg("Space group stays the same:", spacegroup->xhm(), '.');
     }
   }
 

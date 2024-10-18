@@ -25,7 +25,7 @@ int find_column_index(const std::string& column, const Mtz& mtz) {
         if (idx == -1)
           idx = (int) i;
         else
-          mtz.warn("Column label duplicated: " + label);
+          mtz.logger.note("Column label duplicated: " + label);
       }
     }
     if (idx != -1)
@@ -264,7 +264,7 @@ struct SweepInfo {
         } catch (std::runtime_error&) {
           sweep.dataset = nullptr;
           ok = false;
-          mtz.warn("Reference to absent dataset: " + std::to_string(dataset_id));
+          mtz.logger.note("Reference to absent dataset: " + std::to_string(dataset_id));
         }
       }
       sweep_indices.emplace(batch.number, sweep.id - 1);
