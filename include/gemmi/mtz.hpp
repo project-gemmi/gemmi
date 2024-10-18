@@ -9,7 +9,7 @@
 #include <cmath>         // for isnan
 #include <cstdint>       // for int32_t
 #include <cstring>       // for memcpy
-#include <algorithm>     // for sort, any_of
+#include <algorithm>     // for copy
 #include <array>
 #include <initializer_list>
 #include <string>
@@ -727,8 +727,7 @@ struct GEMMI_DLL Mtz {
   }
 
   void setup_spacegroup() {
-    spacegroup = find_spacegroup_by_name(spacegroup_name,
-                                         cell.alpha, cell.gamma);
+    spacegroup = find_spacegroup_by_name(spacegroup_name, cell.alpha, cell.gamma);
     if (!spacegroup) {
       logger.note("MTZ: unrecognized spacegroup name: " + spacegroup_name);
       return;
@@ -796,39 +795,8 @@ struct GEMMI_DLL Mtz {
   /// the same as read_input(MaybeGzipped(path), with_data)
   void read_file_gz(const std::string& path, bool with_data=true);
 
-  std::vector<int> sorted_row_indices(int use_first=3) const {
-    if (!has_data())
-      fail("No data.");
-    if (use_first <= 0 || use_first >= (int) columns.size())
-      fail("Wrong use_first arg in Mtz::sort.");
-    std::vector<int> indices(nreflections);
-    for (int i = 0; i != nreflections; ++i)
-      indices[i] = i;
-    std::stable_sort(indices.begin(), indices.end(), [&](int i, int j) {
-      int a = i * (int) columns.size();
-      int b = j * (int) columns.size();
-      for (int n = 0; n < use_first; ++n)
-        if (data[a+n] != data[b+n])
-          return data[a+n] < data[b+n];
-      return false;
-    });
-    return indices;
-  }
-
-  bool sort(int use_first=3) {
-    std::vector<int> indices = sorted_row_indices(use_first);
-    sort_order = {{0, 0, 0, 0, 0}};
-    for (int i = 0; i < use_first; ++i)
-      sort_order[i] = i + 1;
-    if (std::is_sorted(indices.begin(), indices.end()))
-      return false;
-    std::vector<float> new_data(data.size());
-    size_t w = columns.size();
-    for (size_t i = 0; i != indices.size(); ++i)
-      std::memcpy(&new_data[i * w], &data[indices[i] * w], w * sizeof(float));
-    data.swap(new_data);
-    return true;
-  }
+  std::vector<int> sorted_row_indices(int use_first=3) const;
+  bool sort(int use_first=3);
 
   Miller get_hkl(size_t offset) const {
     return {{(int)data[offset], (int)data[offset+1], (int)data[offset+2]}};
@@ -867,140 +835,18 @@ struct GEMMI_DLL Mtz {
   }
 
   Column& add_column(const std::string& label, char type,
-                     int dataset_id, int pos, bool expand_data) {
-    if (datasets.empty())
-      fail("No datasets.");
-    if (dataset_id < 0)
-      dataset_id = datasets.back().id;
-    else
-      dataset(dataset_id); // check if such dataset exist
-    if (pos > (int) columns.size())
-      fail("Requested column position after the end.");
-    if (pos < 0)
-      pos = (int) columns.size();
-    auto col = columns.emplace(columns.begin() + pos);
-    for (auto i = col + 1; i != columns.end(); ++i)
-      i->idx++;
-    col->dataset_id = dataset_id;
-    col->type = type;
-    col->label = label;
-    col->parent = this;
-    col->idx = pos;
-    if (expand_data)
-      expand_data_rows(1, pos);
-    return *col;
-  }
-
-  // helper_functions
-  void check_column(size_t idx, const char* msg) const {
-    if (!has_data())
-      fail(msg, ": data not read yet");
-    if (idx >= columns.size())
-      fail(msg, ": no column with 0-based index ", std::to_string(idx));
-  }
-  void check_trailing_cols(const Column& src_col,
-                           const std::vector<std::string>& trailing_cols) const {
-    assert(src_col.parent == this);
-    if (!has_data())
-      fail("data in source mtz not read yet");
-    if (src_col.idx + trailing_cols.size() >= columns.size())
-      fail("Not enough columns after " + src_col.label);
-    for (size_t i = 0; i < trailing_cols.size(); ++i)
-      if (!trailing_cols[i].empty() &&
-          trailing_cols[i] != columns[src_col.idx + i + 1].label)
-        fail("expected trailing column ", trailing_cols[i], ", found ", src_col.label);
-  }
-  void do_replace_column(size_t dest_idx, const Column& src_col,
-                         const std::vector<std::string>& trailing_cols) {
-    const Mtz* src_mtz = src_col.parent;
-    for (size_t i = 0; i <= trailing_cols.size(); ++i) {
-      Column& dst = columns[dest_idx + i];
-      const Column& src = src_mtz->columns[src_col.idx + i];
-      dst.type = src.type;
-      dst.label = src.label;
-      dst.min_value = src.min_value;
-      dst.max_value = src.max_value;
-      dst.source = src.source;
-      dst.dataset_id = src.dataset_id;
-    }
-    if (src_mtz == this) {
-      // internal copying
-      for (size_t n = 0; n < data.size(); n += columns.size())
-        for (size_t i = 0; i <= trailing_cols.size(); ++i)
-          data[n + dest_idx + i] = data[n + src_col.idx + i];
-    } else {
-      // external copying - need to match indices
-      std::vector<int> dst_indices = sorted_row_indices();
-      std::vector<int> src_indices = src_mtz->sorted_row_indices();
-      // cf. for_matching_reflections()
-      size_t dst_stride = columns.size();
-      size_t src_stride = src_mtz->columns.size();
-      auto dst = dst_indices.begin();
-      auto src = src_indices.begin();
-      while (dst != dst_indices.end() && src != src_indices.end()) {
-        Miller dst_hkl = get_hkl(*dst * dst_stride);
-        Miller src_hkl = src_mtz->get_hkl(*src * src_stride);
-        if (dst_hkl == src_hkl) {
-          // copy values
-          for (size_t i = 0; i <= trailing_cols.size(); ++i)
-            data[*dst * dst_stride + dest_idx + i] =
-              src_mtz->data[*src * src_stride + src_col.idx + i];
-          ++dst;
-          ++src;
-        } else if (dst_hkl < src_hkl) {
-          ++dst;
-        } else {
-          ++src;
-        }
-      }
-    }
-  }
+                     int dataset_id, int pos, bool expand_data);
 
   // extra_col are columns right after src_col that are also copied.
   Column& replace_column(size_t dest_idx, const Column& src_col,
-                         const std::vector<std::string>& trailing_cols={}) {
-    src_col.parent->check_trailing_cols(src_col, trailing_cols);
-    check_column(dest_idx + trailing_cols.size(), "replace_column()");
-    do_replace_column(dest_idx, src_col, trailing_cols);
-    return columns[dest_idx];
-  }
+                         const std::vector<std::string>& trailing_cols={});
 
   // If dest_idx < 0 - columns are appended at the end
   // append new column(s), otherwise overwrite existing ones.
   Column& copy_column(int dest_idx, const Column& src_col,
-                      const std::vector<std::string>& trailing_cols={}) {
-    // check input consistency
-    if (!has_data())
-      fail("copy_column(): data not read yet");
-    src_col.parent->check_trailing_cols(src_col, trailing_cols);
-    // add new columns
-    if (dest_idx < 0)
-      dest_idx = (int) columns.size();
-    // if src_col is from this Mtz it may get invalidated when adding columns
-    int col_idx = -1;
-    if (src_col.parent == this) {
-      col_idx = (int) src_col.idx;
-      if (col_idx >= dest_idx)
-        col_idx += 1 + (int)trailing_cols.size();
-    }
-    for (int i = 0; i <= (int) trailing_cols.size(); ++i)
-      add_column("", ' ', -1, dest_idx + i, false);
-    expand_data_rows(1 + trailing_cols.size(), dest_idx);
-    // copy the data
-    const Column& src_col_now = col_idx < 0 ? src_col : columns[col_idx];
-    // most of the work (hkl-based row matching and data copying) is done here:
-    do_replace_column(dest_idx, src_col_now, trailing_cols);
-    return columns[dest_idx];
-  }
+                      const std::vector<std::string>& trailing_cols={});
 
-  void remove_column(size_t idx) {
-    check_column(idx, "remove_column()");
-    columns.erase(columns.begin() + idx);
-    for (size_t i = idx; i < columns.size(); ++i)
-      --columns[i].idx;
-    vector_remove_column(data, columns.size(), idx);
-    assert(columns.size() * nreflections == data.size());
-  }
+  void remove_column(size_t idx);
 
   template <typename Func>
   void remove_rows_if(Func condition) {
