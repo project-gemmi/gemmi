@@ -4,7 +4,6 @@
 
 #include "monlib_opt.h"
 #include <cstdlib>  // for getenv, exit
-#include <gemmi/read_cif.hpp>  // for read_cif_gz
 
 #define GEMMI_PROG n/a
 #include "options.h"
@@ -51,7 +50,7 @@ void read_monomer_lib_and_user_files(gemmi::MonLib& monlib,
     } else {
       if (args.verbose)
         fprintf(stderr, "Reading user's library %s ...\n", path);
-      monlib.read_monomer_cif(path, gemmi::read_cif_gz);
+      monlib.read_monomer_cif(path);
     }
   };
 
@@ -72,7 +71,7 @@ void read_monomer_lib_and_user_files(gemmi::MonLib& monlib,
   if (args.verbose)
     fprintf(stderr, "Reading monomer library...\n");
   std::string error;
-  monlib.read_monomer_lib(args.monomer_dir, wanted, gemmi::read_cif_gz, &error);
+  monlib.read_monomer_lib(args.monomer_dir, wanted, &error);
   auto is_found = [&](const std::string& s) { return monlib.monomers.count(s); };
   gemmi::vector_remove_if(wanted, is_found);
   if (!error.empty())

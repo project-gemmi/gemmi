@@ -1,7 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/monlib.hpp"
-#include "gemmi/read_cif.hpp"  // for read_cif_gz
 
 #include "common.h"
 #include <nanobind/stl/bind_map.h>
@@ -100,13 +99,8 @@ void add_monlib(nb::module_& m) {
     }, nb::arg("link"), nb::arg("res1"), nb::arg("atom1"), nb::arg("res2"), nb::arg("atom2"))
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("read_monomer_doc", &MonLib::read_monomer_doc)
-    .def("read_monomer_cif", [](MonLib& self, const std::string& path) {
-      self.read_monomer_cif(path, gemmi::read_cif_gz);
-    })
-    .def("read_monomer_lib", [](MonLib& self, const std::string& monomer_dir,
-                                const std::vector<std::string>& resnames) {
-      return self.read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz);
-    })
+    .def("read_monomer_cif", &MonLib::read_monomer_cif)
+    .def("read_monomer_lib", &MonLib::read_monomer_lib)
     .def("find_ideal_distance", [](const MonLib& self, CRA &cra1, CRA cra2) {
       return self.find_ideal_distance(cra1, cra2);
     })
@@ -121,11 +115,7 @@ void add_monlib(nb::module_& m) {
     })
     .def("clone", [](const MonLib& self) { return new MonLib(self); });
 
-  m.def("read_monomer_lib", [](const std::string& monomer_dir,
-                               const std::vector<std::string>& resnames,
-                               const std::string& libin,
-                               bool ignore_missing) {
-    return read_monomer_lib(monomer_dir, resnames, gemmi::read_cif_gz, libin, ignore_missing);
-  }, nb::arg("monomer_dir"), nb::arg("resnames"), nb::arg("libin")=std::string(),
-     nb::arg("ignore_missing")=false);
+  m.def("read_monomer_lib", &read_monomer_lib,
+        nb::arg("monomer_dir"), nb::arg("resnames"),
+        nb::arg("libin")=std::string(), nb::arg("ignore_missing")=false);
 }

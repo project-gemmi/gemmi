@@ -11,15 +11,12 @@
 #include <vector>
 #include "cifdoc.hpp"
 #include "elem.hpp"       // for Element
-#include "numb.hpp"       // for as_number
 #include "fail.hpp"       // for fail, unreachable
 #include "model.hpp"      // for Residue, Atom
 #include "chemcomp.hpp"   // for ChemComp
 #include "logger.hpp"     // for Logger
 
 namespace gemmi {
-
-typedef cif::Document (*read_cif_func)(const std::string&);
 
 inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
   for (const Atom& atom : res.atoms)
@@ -107,19 +104,7 @@ struct EnerLib {
   };
 
   EnerLib() {}
-  void read(const cif::Document& doc) {
-    cif::Block& block = const_cast<cif::Block&>(doc.blocks[0]);
-    for (const auto& row : block.find("_lib_atom.",
-                    {"type", "hb_type", "vdw_radius", "vdwh_radius",
-                     "ion_radius", "element", "valency", "sp"}))
-      atoms.emplace(row[0], Atom{Element(row[5]), row[1][0], cif::as_number(row[2]),
-                                 cif::as_number(row[3]), cif::as_number(row[4]),
-                                 cif::as_int(row[6], -1), cif::as_int(row[7], -1)});
-    for (const auto& row : block.find("_lib_bond.",
-                    {"atom_type_1", "atom_type_2", "type", "length", "value_esd"}))
-      bonds.emplace(row.str(0), Bond{row.str(1), bond_type_from_string(row[2]),
-                                 cif::as_number(row[3]), cif::as_number(row[4])});
-  }
+  void read(const cif::Document& doc);
   std::map<std::string, Atom> atoms; // type->Atom
   std::multimap<std::string, Bond> bonds; // atom_type_1->Bond
 };
@@ -228,38 +213,14 @@ struct GEMMI_DLL MonLib {
 
   /// Returns path to the monomer cif file (the file may not exist).
   std::string path(const std::string& code) const {
-      return monomer_dir + relative_monomer_path(code);
+    return monomer_dir + relative_monomer_path(code);
   }
 
-  static std::string relative_monomer_path(const std::string& code) {
-    std::string path;
-    if (!code.empty()) {
-      path += lower(code[0]);
-      path += '/';  // works also on Windows
-      path += code;
-      // On Windows several names are reserved (CON, PRN, AUX, ...), see
-      // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-      // The workaround in CCP4 monomer library is to use CON_CON.cif, etc.
-      if (code.size() == 3)
-        switch (ialpha3_id(code.c_str())) {
-          case ialpha3_id("AUX"):
-          case ialpha3_id("COM"):
-          case ialpha3_id("CON"):
-          case ialpha3_id("LPT"):
-          case ialpha3_id("PRN"):
-            path += '_';
-            path += code;
-        }
-      path += ".cif";
-    }
-    return path;
-  }
+  static std::string relative_monomer_path(const std::string& code);
 
   void read_monomer_doc(const cif::Document& doc);
 
-  void read_monomer_cif(const std::string& path_, read_cif_func read_cif) {
-    read_monomer_doc((*read_cif)(path_));
-  }
+  void read_monomer_cif(const std::string& path_);
 
   void set_monomer_dir(const std::string& monomer_dir_) {
     monomer_dir = monomer_dir_;
@@ -271,43 +232,7 @@ struct GEMMI_DLL MonLib {
   /// Returns true if all requested monomers were added.
   bool read_monomer_lib(const std::string& monomer_dir_,
                         const std::vector<std::string>& resnames,
-                        read_cif_func read_cif,
-                        std::string* error=nullptr) {
-    if (monomer_dir_.empty())
-      fail("read_monomer_lib: monomer_dir not specified.");
-    set_monomer_dir(monomer_dir_);
-
-    // Only recent versions of CCP4 Monomer Library have links_and_mods.cif
-    try {
-      read_monomer_cif(monomer_dir + "links_and_mods.cif", read_cif);
-    } catch (std::system_error&) {
-      read_monomer_cif(monomer_dir + "list/mon_lib_list.cif", read_cif);
-    }
-    ener_lib.read((*read_cif)(monomer_dir + "ener_lib.cif"));
-
-    bool ok = true;
-    for (const std::string& name : resnames) {
-      if (monomers.find(name) != monomers.end())
-        continue;
-      try {
-        const cif::Document& doc = (*read_cif)(path(name));
-        read_monomer_doc(doc);
-      } catch (std::system_error& err) {
-        if (error) {
-          if (err.code().value() == ENOENT)
-            cat_to(*error, "Monomer not in the library: ", name, ".\n");
-          else
-            cat_to(*error, "Failed to read ", name, ": ", err.what(), ".\n");
-        }
-        ok = false;
-      } catch (std::runtime_error& err) {
-        if (error)
-          cat_to(*error, "Failed to read ", name, ": ", err.what(), ".\n");
-        ok = false;
-      }
-    }
-    return ok;
-  }
+                        std::string* error=nullptr);
 
   double find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2) const;
   void update_old_atom_names(Structure& st, const Logger::Callback& logging) const;
@@ -316,14 +241,13 @@ struct GEMMI_DLL MonLib {
 // to be deprecated
 inline MonLib read_monomer_lib(const std::string& monomer_dir,
                                const std::vector<std::string>& resnames,
-                               read_cif_func read_cif,
                                const std::string& libin="",
                                bool ignore_missing=false) {
   MonLib monlib;
   if (!libin.empty())
-    monlib.read_monomer_cif(libin, read_cif);
+    monlib.read_monomer_cif(libin);
   std::string error;
-  bool ok = monlib.read_monomer_lib(monomer_dir, resnames, read_cif, &error);
+  bool ok = monlib.read_monomer_lib(monomer_dir, resnames, &error);
   if (!ignore_missing && !ok)
     fail(error + "Please create definitions for missing monomers.");
   return monlib;
