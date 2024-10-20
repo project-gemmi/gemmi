@@ -3,7 +3,6 @@
 #include <gemmi/monlib.hpp>
 #include <gemmi/calculate.hpp>  // for calculate_chiral_volume
 #include <gemmi/modify.hpp>     // for rename_atom_names
-#include <gemmi/logger.hpp>     // for Logger
 #include <gemmi/read_cif.hpp>   // for read_cif_gz
 #include <gemmi/numb.hpp>       // for as_number
 
@@ -531,7 +530,7 @@ void MonLib::read_monomer_cif(const std::string& path_) {
 
 bool MonLib::read_monomer_lib(const std::string& monomer_dir_,
                               const std::vector<std::string>& resnames,
-                              std::string* error) {
+                              const Logger::Callback& logging) {
   if (monomer_dir_.empty())
     fail("read_monomer_lib: monomer_dir not specified.");
   set_monomer_dir(monomer_dir_);
@@ -545,6 +544,7 @@ bool MonLib::read_monomer_lib(const std::string& monomer_dir_,
   ener_lib.read(read_cif_gz(monomer_dir + "ener_lib.cif"));
 
   bool ok = true;
+  Logger logger{logging};
   for (const std::string& name : resnames) {
     if (monomers.find(name) != monomers.end())
       continue;
@@ -552,16 +552,13 @@ bool MonLib::read_monomer_lib(const std::string& monomer_dir_,
       const cif::Document& doc = read_cif_gz(path(name));
       read_monomer_doc(doc);
     } catch (std::system_error& err) {
-      if (error) {
-        if (err.code().value() == ENOENT)
-          cat_to(*error, "Monomer not in the library: ", name, ".\n");
-        else
-          cat_to(*error, "Failed to read ", name, ": ", err.what(), ".\n");
-      }
+      if (err.code().value() == ENOENT)
+        logger.mesg("Monomer not in the library: ", name, '.');
+      else
+        logger.mesg("Failed to read ", name, ": ", err.what(), '.');
       ok = false;
     } catch (std::runtime_error& err) {
-      if (error)
-        cat_to(*error, "Failed to read ", name, ": ", err.what(), ".\n");
+      logger.mesg("Failed to read ", name, ": ", err.what(), '.');
       ok = false;
     }
   }

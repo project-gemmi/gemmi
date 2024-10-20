@@ -232,7 +232,7 @@ struct GEMMI_DLL MonLib {
   /// Returns true if all requested monomers were added.
   bool read_monomer_lib(const std::string& monomer_dir_,
                         const std::vector<std::string>& resnames,
-                        std::string* error=nullptr);
+                        const Logger::Callback& logging);
 
   double find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2) const;
   void update_old_atom_names(Structure& st, const Logger::Callback& logging) const;
@@ -247,9 +247,14 @@ inline MonLib read_monomer_lib(const std::string& monomer_dir,
   if (!libin.empty())
     monlib.read_monomer_cif(libin);
   std::string error;
-  bool ok = monlib.read_monomer_lib(monomer_dir, resnames, &error);
-  if (!ignore_missing && !ok)
-    fail(error + "Please create definitions for missing monomers.");
+  Logger::Callback logging;
+  if (!ignore_missing)
+    logging = [&error](const std::string& s) { cat_to(error, s, '\n'); };
+  bool ok = monlib.read_monomer_lib(monomer_dir, resnames, logging);
+  if (!ignore_missing && !ok) {
+    error += "Please create definitions for missing monomers.";
+    fail(error);
+  }
   return monlib;
 }
 

@@ -100,7 +100,8 @@ void add_monlib(nb::module_& m) {
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("read_monomer_doc", &MonLib::read_monomer_doc)
     .def("read_monomer_cif", &MonLib::read_monomer_cif)
-    .def("read_monomer_lib", &MonLib::read_monomer_lib)
+    .def("read_monomer_lib", &MonLib::read_monomer_lib,
+         nb::arg("monomer_dir"), nb::arg("resnames"), nb::arg("logging")=nb::none())
     .def("find_ideal_distance", [](const MonLib& self, CRA &cra1, CRA cra2) {
       return self.find_ideal_distance(cra1, cra2);
     })
