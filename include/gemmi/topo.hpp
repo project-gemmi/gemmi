@@ -289,7 +289,7 @@ private:
 GEMMI_DLL std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 const Logger::Callback& callback={}, bool ignore_unknown_links=false,
+                 const Logger& logger={}, bool ignore_unknown_links=false,
                  bool use_cispeps=false);
 
 

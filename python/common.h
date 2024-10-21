@@ -9,7 +9,7 @@
 #endif
 
 #include <nanobind/nanobind.h>  // IWYU pragma: export
-#include <functional>  // for function
+#include <gemmi/logger.hpp>     // for Logger
 
 #if defined(__clang__)
   #pragma clang diagnostic pop
@@ -119,20 +119,18 @@ inline nb::object handle_numpy_array_args(const nb::object& o, nb::handle dtype,
 }
 
 namespace nanobind { namespace detail {
-// for Logger::Callback, without depending on logger.hpp
-using LoggerCallback = std::function<void(const std::string&)>;
-template <> struct type_caster<LoggerCallback> {
-  NB_TYPE_CASTER(LoggerCallback, const_name("object"))
+template <> struct type_caster<gemmi::Logger> {
+  NB_TYPE_CASTER(gemmi::Logger, const_name("object"))
   bool from_python(handle src, uint8_t, cleanup_list *) noexcept {
     if (src.is_none())
-      value = nullptr;
+      value = {nullptr};
     else if (nb::hasattr(src, "write") && nb::hasattr(src, "flush"))
-      value = [obj=nb::borrow(src)](const std::string& s) {
+      value = {[obj=nb::borrow(src)](const std::string& s) {
         obj.attr("write")(s + "\n");
         obj.attr("flush")();
-      };
+      }};
     else if (PyCallable_Check(src.ptr()))
-      value = [obj=nb::borrow(src)](const std::string& s) { obj(s); };
+      value = {[obj=nb::borrow(src)](const std::string& s) { obj(s); }};
     else
       return false;
     return true;

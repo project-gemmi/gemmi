@@ -111,8 +111,8 @@ void add_mtz(nb::module_& m) {
     .def_rw("batches", &Mtz::batches)
     .def_rw("history", &Mtz::history)
     .def_rw("appended_text", &Mtz::appended_text)
-    .def("set_logging", [](Mtz& self, Logger::Callback&& logging) {
-        self.logger.callback = std::move(logging);
+    .def("set_logging", [](Mtz& self, Logger&& logger) {
+        self.logger = std::move(logger);
     }, nb::arg().none())
     .def("resolution_high", &Mtz::resolution_high)
     .def("resolution_low", &Mtz::resolution_low)
@@ -346,9 +346,9 @@ void add_mtz(nb::module_& m) {
     .def("clone", [](const Mtz::Batch& self) { return new Mtz::Batch(self); })
     ;
 
-  m.def("read_mtz_file", [](const std::string& path, Logger::Callback&& logging) {
+  m.def("read_mtz_file", [](const std::string& path, Logger&& logging) {
     std::unique_ptr<Mtz> mtz(new Mtz);
-    mtz->logger.callback = std::move(logging);
+    mtz->logger = std::move(logging);
     mtz->read_file_gz(path, true);
     return mtz.release();
   }, nb::arg("path"), nb::arg("logging")=nb::none());

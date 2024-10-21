@@ -12,20 +12,49 @@
 
 namespace gemmi {
 
-/// Passes notes and warnings to a callback function.
-/// Note: if the callback is not set, notes are ignored but warnings
-/// are thrown as exceptions.
+/// Passes messages (including warnings/errors) to a callback function.
+/// Messages are passed as strings without a newline character.
+/// Messages have severity levels similar syslog:
+///  7=debug, 6=info (all but debug), 5=notice, 3=error
+/// A numeric threshold can be set to limit the messages (see below).
+/// Quirk: if a callback is not set, errors are thrown as exceptions.
 struct Logger {
-  using Callback = std::function<void(const std::string&)>;
-  Callback callback;
+  /// A function that handles messages.
+  std::function<void(const std::string&)> callback;
+  /// Pass messages of this level and all lower (more severe) levels:
+  /// 7=all messages, 6=all but debug, 0=none
+  int threshold = 6;
 
-  // For internal use in functions that produce messages: suspending when
-  // the same function is called multiple times avoids duplicated messages.
-  bool suspended = false;
+  /// suspend() and resume() are used internally to avoid duplicate messages
+  /// when the same function is called (internally) multiple times.
+  void suspend() { threshold -= 100; }
+  void resume()  { threshold += 100; }
 
-  // Send warning.
+  /// Send a debug message.
+  template<class... Args> void debug(Args const&... args) const {
+    if (threshold >= 7 && callback)
+      callback(cat("Debug: ", args...));
+  }
+
+  /// Send a message without any prefix.
+  template<class... Args> void mesg(Args const&... args) const {
+    if (threshold >= 6 && callback)
+      callback(cat(args...));
+  }
+
+  /// Send a note (a notice, a significant message).
+  template<class... Args> void note(Args const&... args) const {
+    if (threshold >= 5 && callback)
+      callback(cat("Note: ", args...));
+  }
+
+  /// Send a warning/error. Unrecoverable errors are thrown directly and
+  /// don't go through this class, so here we're left with errors that
+  /// can be downgraded to warnings. If a callback is set, the message is
+  /// passed as a warning; otherwise it's thrown as a std::runtime_error.
+  /// (Admittedly, it's a questionable design.)
   template<class... Args> GEMMI_COLD void err(Args const&... args) const {
-    if (!suspended) {
+    if (threshold >= 3) {
       std::string msg = cat(args...);
       if (callback == nullptr)
         fail(msg);
@@ -33,17 +62,7 @@ struct Logger {
     }
   }
 
-  // Send note.
-  template<class... Args> void note(Args const&... args) const {
-    if (!suspended && callback)
-      callback(cat("Note: ", args...));
-  }
-
-  // Send a message without any prefix
-  template<class... Args> void mesg(Args const&... args) const {
-    if (!suspended && callback)
-      callback(cat(args...));
-  }
+  // predefined callbacks
 
   /// to be used as: logger.callback = Logger::to_stderr;
   static void to_stderr(const std::string& s) {

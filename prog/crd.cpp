@@ -122,7 +122,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     else
       h_change = HydrogenChange::ReAddButWater;
     auto topo = prepare_topology(st, monlib, 0, h_change, reorder,
-                                 &Logger::to_stderr, ignore_unknown_links, use_cispeps);
+                                 {&Logger::to_stderr}, ignore_unknown_links, use_cispeps);
     if (!use_cispeps)
       topo->set_cispeps_in_structure(st);
     if (verbose)

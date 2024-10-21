@@ -899,13 +899,13 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
 
 NeighMap prepare_neighbor_altlocs(Topo& topo, const MonLib& monlib) {
   // disable warnings here, so they are not printed twice
-  topo.logger.suspended = true;
+  topo.logger.suspend();
   // Prepare bonds. Fills topo.bonds, monomer_rules/link_rules and rt_storage,
   // but they are all reset when apply_all_restraints() is called again.
   topo.only_bonds = true;
   topo.apply_all_restraints(monlib);
   topo.only_bonds = false;
-  topo.logger.suspended = false; // re-enable warnings
+  topo.logger.resume(); // re-enable warnings
   NeighMap neighbors;
   for (const Topo::Bond& bond : topo.bonds) {
     const Atom* a1 = bond.atoms[0];
@@ -923,9 +923,9 @@ NeighMap prepare_neighbor_altlocs(Topo& topo, const MonLib& monlib) {
 std::unique_ptr<Topo>
 prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
                  HydrogenChange h_change, bool reorder,
-                 const Logger::Callback& callback, bool ignore_unknown_links, bool use_cispeps) {
+                 const Logger& logger, bool ignore_unknown_links, bool use_cispeps) {
   std::unique_ptr<Topo> topo(new Topo);
-  topo->logger.callback = callback;
+  topo->logger = logger;
   if (model_index >= st.models.size())
     fail("no such model index: " + std::to_string(model_index));
   Model& model = st.models[model_index];
@@ -1055,11 +1055,11 @@ prepare_topology(Structure& st, MonLib& monlib, size_t model_index,
         vector_remove_if(res.atoms, [](Atom& a) { return a.is_hydrogen() && a.occ == 0; });
 
     // disable warnings here, so they are not printed twice
-    topo->logger.suspended = true;
+    topo->logger.suspend();
     // re-set restraints and indices
     topo->apply_all_restraints(monlib);
     topo->create_indices();
-    topo->logger.suspended = false;
+    topo->logger.resume();
   }
 
   assign_serial_numbers(model);

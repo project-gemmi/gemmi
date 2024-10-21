@@ -530,7 +530,7 @@ void MonLib::read_monomer_cif(const std::string& path_) {
 
 bool MonLib::read_monomer_lib(const std::string& monomer_dir_,
                               const std::vector<std::string>& resnames,
-                              const Logger::Callback& logging) {
+                              const Logger& logger) {
   if (monomer_dir_.empty())
     fail("read_monomer_lib: monomer_dir not specified.");
   set_monomer_dir(monomer_dir_);
@@ -544,7 +544,6 @@ bool MonLib::read_monomer_lib(const std::string& monomer_dir_,
   ener_lib.read(read_cif_gz(monomer_dir + "ener_lib.cif"));
 
   bool ok = true;
-  Logger logger{logging};
   for (const std::string& name : resnames) {
     if (monomers.find(name) != monomers.end())
       continue;
@@ -598,7 +597,7 @@ double MonLib::find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2)
   return r[0] + r[1];
 }
 
-void MonLib::update_old_atom_names(Structure& st, const Logger::Callback& logging) const {
+void MonLib::update_old_atom_names(Structure& st, const Logger& logger) const {
   for (const auto& it : monomers)
     // monomers should have only monomers needed for this structure.
     // Few of them (usually none or one) have old names defined.
@@ -618,7 +617,6 @@ void MonLib::update_old_atom_names(Structure& st, const Logger::Callback& loggin
               }
             }
       if (old_vs_new > 0) {
-        Logger logger{logging};
         std::string msg = cat("Updating atom names in ", resname, ':');
         std::map<std::string, std::string> mapping;
         for (const ChemComp::Atom& a : cc.atoms)

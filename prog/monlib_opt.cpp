@@ -70,7 +70,7 @@ void read_monomer_lib_and_user_files(gemmi::MonLib& monlib,
   }
   if (args.verbose)
     fprintf(stderr, "Reading monomer library...\n");
-  monlib.read_monomer_lib(args.monomer_dir, wanted, gemmi::Logger::to_stderr);
+  monlib.read_monomer_lib(args.monomer_dir, wanted, {&gemmi::Logger::to_stderr});
   auto is_found = [&](const std::string& s) { return monlib.monomers.count(s); };
   gemmi::vector_remove_if(wanted, is_found);
   if (libin) {
