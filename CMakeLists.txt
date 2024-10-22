@@ -611,9 +611,10 @@ if (USE_PYTHON)
   install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
           FILES_MATCHING PATTERN "*.py"
           PATTERN "[._]*" EXCLUDE)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.py"
+          DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
   if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
     install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.py"
             "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/py.typed"
             "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.pyi"
             "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/cif.pyi"

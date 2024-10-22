@@ -17,8 +17,8 @@
   #pragma GCC diagnostic pop
 #endif
 
-#if NB_VERSION_MAJOR < 2
-  #error Required nanobind version >= 2
+#if NB_VERSION_MAJOR < 2 || (NB_VERSION_MAJOR == 2 && NB_VERSION_MINOR < 2)
+  #error Required nanobind version >= 2.2
 #endif
 
 namespace nb = nanobind;

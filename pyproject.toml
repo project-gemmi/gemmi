@@ -16,6 +16,7 @@ readme = "README.md"
 authors = [
   { name = "Marcin Wojdyr", email = "wojdyr@gmail.com" },
 ]
+urls.homepage = "https://github.com/project-gemmi/gemmi"
 urls.repository = "https://github.com/project-gemmi/gemmi"
 license = {text = "MPL-2.0"}  # or, at your option, LGPL-3.0
 keywords = ["structural bioinformatics", "structural biology",
