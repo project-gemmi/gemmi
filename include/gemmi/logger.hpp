@@ -13,16 +13,18 @@
 namespace gemmi {
 
 /// Passes messages (including warnings/errors) to a callback function.
-/// Messages are passed as strings without a newline character.
-/// Messages have severity levels similar syslog:
-///  7=debug, 6=info (all but debug), 5=notice, 3=error
-/// A numeric threshold can be set to limit the messages (see below).
-/// Quirk: if a callback is not set, errors are thrown as exceptions.
+/// Messages are passed as strings without a trailing newline.
+/// They have syslog-like severity levels: 7=debug, 6=info, 5=notice, 3=error,
+/// allowing the use of a threshold to filter them.
+/// Quirk: Errors double as both errors and warnings. Unrecoverable errors
+///        don't go through this class; Logger only handles errors that can
+///        be downgraded to warnings. If a callback is set, the error is passed
+///        as a warning message. Otherwise, it's thrown as std::runtime_error.
 struct Logger {
   /// A function that handles messages.
   std::function<void(const std::string&)> callback;
   /// Pass messages of this level and all lower (more severe) levels:
-  /// 7=all messages, 6=all but debug, 0=none
+  /// 7=all, 6=all but debug, 5=notes and warnings, 3=warnings, 0=none
   int threshold = 6;
 
   /// suspend() and resume() are used internally to avoid duplicate messages
@@ -48,11 +50,7 @@ struct Logger {
       callback(cat("Note: ", args...));
   }
 
-  /// Send a warning/error. Unrecoverable errors are thrown directly and
-  /// don't go through this class, so here we're left with errors that
-  /// can be downgraded to warnings. If a callback is set, the message is
-  /// passed as a warning; otherwise it's thrown as a std::runtime_error.
-  /// (Admittedly, it's a questionable design.)
+  /// Send a warning/error (see Quirk above).
   template<class... Args> GEMMI_COLD void err(Args const&... args) const {
     if (threshold >= 3) {
       std::string msg = cat(args...);
@@ -72,8 +70,6 @@ struct Logger {
   static void to_stdout(const std::string& s) {
     std::fprintf(stdout, "%s\n", s.c_str());
   }
-  /// to be used as: logger.callback = Logger::nop;
-  static void nop(const std::string&) {}
 };
 
 } // namespace gemmi

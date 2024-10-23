@@ -421,8 +421,8 @@ void convert(gemmi::Structure& st,
   if (output_type == CoorFormat::Pdb)
     how = HowToNameCopiedChain::Short;
   if (options[AsAssembly]) {
-    auto callback = options[Verbose] ? &gemmi::Logger::to_stderr : &gemmi::Logger::nop;
-    gemmi::transform_to_assembly(st, options[AsAssembly].arg, how, {callback});
+    gemmi::Logger logger{&gemmi::Logger::to_stderr, options[Verbose] ? 6 : 3};
+    gemmi::transform_to_assembly(st, options[AsAssembly].arg, how, logger);
   }
 
   if (options[ExpandNcs]) {

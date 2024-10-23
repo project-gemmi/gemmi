@@ -122,17 +122,25 @@ namespace nanobind { namespace detail {
 template <> struct type_caster<gemmi::Logger> {
   NB_TYPE_CASTER(gemmi::Logger, const_name("object"))
   bool from_python(handle src, uint8_t, cleanup_list *) noexcept {
-    if (src.is_none())
-      value = {nullptr};
-    else if (nb::hasattr(src, "write") && nb::hasattr(src, "flush"))
-      value = {[obj=nb::borrow(src)](const std::string& s) {
+    value = {};
+    if (PyTuple_Check(src.ptr()) && PyTuple_Size(src.ptr()) == 2) {
+      value.threshold = (int) PyLong_AsLong(PyTuple_GetItem(src.ptr(), 1));
+      if (value.threshold == -1 && PyErr_Occurred())
+        return false;
+      src = PyTuple_GetItem(src.ptr(), 0);
+    }
+    if (src.is_none()) {
+      // nothing
+    } else if (nb::hasattr(src, "write") && nb::hasattr(src, "flush")) {
+      value.callback = {[obj=nb::borrow(src)](const std::string& s) {
         obj.attr("write")(s + "\n");
         obj.attr("flush")();
       }};
-    else if (PyCallable_Check(src.ptr()))
-      value = {[obj=nb::borrow(src)](const std::string& s) { obj(s); }};
-    else
+    } else if (PyCallable_Check(src.ptr())) {
+      value.callback = {[obj=nb::borrow(src)](const std::string& s) { obj(s); }};
+    } else {
       return false;
+    }
     return true;
   }
 };

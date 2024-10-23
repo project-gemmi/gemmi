@@ -1058,6 +1058,78 @@ Six of the resulting plots are shown here (click to enlarge):
     :align: center
     :scale: 60
 
+.. _logger:
+
+Logger
+======
+
+Gemmi Logger is a tiny helper class for passing messages from a gemmi function
+to the calling function. It's not specific to structure analysis
+and doesn't belong in this section, but it's documented here because
+it's used in the next subsection and I haven't found a better spot for it.
+
+The messages being passed are usually info or warnings that a command-line
+program would print to stdout or stderr.
+
+The Logger has two member variables:
+
+.. literalinclude:: ../include/gemmi/logger.hpp
+   :language: c++
+   :start-at: ///
+   :end-at: int threshold
+
+and a few member functions for sending messages.
+
+When a function takes a Logger argument, we can pass:
+
+**C++**
+
+* `{&Logger::to_stderr}` to redirect messages to stderr
+  (to_stderr() calls fprintf),
+* `{&Logger::to_stdout}` to redirect messages to stdout,
+* `{&Logger::to_stdout, 3}` to print only warnings (threshold=3),
+* `{nullptr, 0}` to disable all messages,
+* `{}` to throw errors and ignore other messages (the default, see Quirk above),
+* `{[](const std::string& s) { do_anything(s);}}` to do anything else.
+
+**Python**
+
+* `sys.stderr` or `sys.stdout` or any other stream (an object with `write`
+  and `flush` methods), to redirect messages to that stream,
+* `(sys.stdout, 3)` to print only warnings (threshold=3),
+* `(None, 0)` to disable all messages,
+* `None` to throw errors and ignore other messages (the default, see Quirk above),
+* a function that takes a message string as its only argument
+  (e.g. `lambda s: print(s.upper())`).
+
+.. _monlib:
+
+Monomer library
+===============
+
+Structural biologist routinely use prior knowledge about biomolecules
+to augment the data obtained in an experiment. In macromolecular
+crystallography and cryo-EM that prior knowledge is usually stored
+in a monomer library that describes monomers and links between them.
+In gemmi, such a library is represented by class MonLib.
+
+TBC
+
+For now, here is an example of how to read the CCP4 monomer library
+(Refmac dictionary):
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> monlib_path = os.environ['CCP4'] + '/lib/data/monomers'
+  >>> resnames = st[0].get_all_residue_names()
+  >>> monlib = gemmi.MonLib()
+  >>> monlib.read_monomer_lib(monlib_path, resnames, logging=sys.stderr)
+  True
+
+TBC
+
+
 .. _topology:
 
 Topology
@@ -1112,20 +1184,12 @@ And reorder atoms. In Python, we have one function that does it all:
                            model_index: int = 0,
                            h_change: gemmi.HydrogenChange = HydrogenChange.NoChange,
                            reorder: bool = False,
-                           warnings: object = None,
+                           logger: object = None,
                            ignore_unknown_links: bool = False) -> gemmi.Topo
 
 where
 
-* `monlib` is an instance of an undocumented MonLib class.
-  For now, here is an example of how to read the CCP4 monomer library
-  (Refmac dictionary):
-
-  .. code-block:: python
-
-    monlib_path = os.environ['CCP4'] + '/lib/data/monomers'
-    resnames = st[0].get_all_residue_names()
-    monlib = gemmi.read_monomer_lib(monlib_path, resnames)
+* `monlib` is an instance of the :ref:`MonLib <monlib>` class,
 
 * `h_change` can be one of the following:
 
@@ -1141,12 +1205,10 @@ where
 * `reorder` -- changes the order of atoms within each residue
   to match the order in the corresponding monomer cif file,
 
-* `warnings` --  by default, an exception is raised when a chemical component
-  is missing in the monomer library, or when a link is missing,
-  or when the hydrogen adding procedure encounters an unexpected configuration.
-  You can set warnings=sys.stderr to only print a warning to stderr
-  and continue. sys.stderr can be replaced with any object that has
-  the methods `write(str)` and `flush()`.
+* `logger` -- optional :ref:`Logger <logger>` configuration.
+  By default, an exception is raised when a chemical component
+  or a link is missing from the monomer library,
+  or when the hydrogen-adding procedure encounters an unexpected configuration.
 
 
 TBC

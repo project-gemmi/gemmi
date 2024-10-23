@@ -291,7 +291,7 @@ Unmerged (multi-record) MTZ files store a list of batches::
   std::vector<Mtz::Batch> Mtz::batches
 
 .. doctest::
-  :skipif: mdm2_unmerged_mtz_path is None
+  :skipif: ccp4_path is None
 
   >>> # here we use mdm2_unmerged.mtz file distributed with CCP4 7.1
   >>> mdm2 = gemmi.read_mtz_file(mdm2_unmerged_mtz_path)
@@ -301,7 +301,7 @@ Unmerged (multi-record) MTZ files store a list of batches::
 Each batch has a number of properties:
 
 .. doctest::
-  :skipif: mdm2_unmerged_mtz_path is None
+  :skipif: ccp4_path is None
 
   >>> batch = mdm2.batches[0]
   >>> batch.number
@@ -319,7 +319,7 @@ Most of the batch header properties are not decoded,
 but they can be accessed directly if needed:
 
 .. doctest::
-  :skipif: mdm2_unmerged_mtz_path is None
+  :skipif: ccp4_path is None
 
   >>> list(batch.ints)
   [185, 29, 156, 0, -1, 1, -1, 0, 0, 0, 0, 0, 1, 0, 2, 1, 0, 1, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -332,7 +332,7 @@ indices it stores indices of the equivalent reflection in the ASU
 It can be useful to switch between the two:
 
 .. doctest::
-  :skipif: mdm2_unmerged_mtz_path is None
+  :skipif: ccp4_path is None
 
   >>> mdm2.switch_to_original_hkl()
   True
@@ -676,12 +676,12 @@ Reindexing, ASU, sorting, ...
 The reindexing function changes:
 
 * Miller indices of reflections
-  (if new indices would be fractional the reflection is removed),
+  (if the new indices would be fractional, the reflection is removed),
 * space group,
 * unit cell parameters (in MTZ records CELL and DCELL, and in batch headers).
 
-Reindexing takes as an argument the operator that is to be applied
-to Miller indices. In Python, it returns a textual message for the user:
+Reindexing takes an operator that is applied to the Miller indices.
+Information about the operation is passed to a :ref:`Logger <logger>`.
 
 .. doctest::
 

@@ -78,13 +78,13 @@ try:
 except ImportError:
     disabled_features.append('pynauty')
     pynauty = None
-mdm2_unmerged_mtz_path = os.getenv('CCP4')
-if mdm2_unmerged_mtz_path:
-    mdm2_unmerged_mtz_path += ('/lib/python3.7/site-packages/' +
-                               'ccp4i2/demo_data/mdm2/mdm2_unmerged.mtz')
+ccp4_path = os.getenv('CCP4')
+if ccp4_path:
+    mdm2_unmerged_mtz_path = (ccp4_path + '/lib/python3.9/site-packages/'
+                              + 'ccp4i2/demo_data/mdm2/mdm2_unmerged.mtz')
     if not os.path.isfile(mdm2_unmerged_mtz_path):
-        mdm2_unmerged_mtz_path = None
-if mdm2_unmerged_mtz_path is None:
+        ccp4_path = None
+if ccp4_path is None:
     disabled_features.append('$CCP4')
 
 import gemmi
