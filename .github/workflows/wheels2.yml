@@ -13,7 +13,7 @@ on:
         description: 'CIBW_SKIP'
         # To limit the number of builds, skip most of musl-based versions,
         # PyPy, and 32-bit builds.
-        default: 'pp* cp{37,38,39}-musllinux* *_i686 *-win32'
+        default: 'pp* cp{38,39,310}-musllinux* *_i686 *-win32'
       cibw_config_settings:
         description: 'CIBW_CONFIG_SETTINGS'
         default: ''
@@ -30,7 +30,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.21.1
+      uses: pypa/cibuildwheel@v2.21.3
       env:
         CIBW_BUILD: ${{ github.event.inputs.cibw_build }}
         CIBW_SKIP: ${{ github.event.inputs.cibw_skip }}
