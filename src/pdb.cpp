@@ -696,8 +696,7 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       cispep.partner_n.res_id = read_res_id(r + 31, r + 25);
       // In files with a single model in the PDB CISPEP modNum is 0,
       // but _struct_mon_prot_cis.pdbx_PDB_model_num is 1.
-      cispep.model_str = st.models.size() == 1 ? st.models[0].name
-                                               : read_string(r + 43, 3);
+      cispep.model_num = st.models.size() == 1 ? st.models[0].num : read_int(r + 43, 3);
       cispep.reported_angle = read_double(r + 53, 6);
       st.cispeps.push_back(cispep);
     }
@@ -841,10 +840,10 @@ void PdbReader::read_pdb_line(const char* line, size_t len, Structure& st,
       if (!model) {
         // A single model usually doesn't have the MODEL record. Also,
         // MD trajectories may have frames separated by ENDMDL without MODEL.
-        std::string name = std::to_string(st.models.size() + 1);
-        if (st.find_model(name))
+        int num = (int) st.models.size() + 1;
+        if (st.find_model(num))
           wrong("ATOM/HETATM between models");
-        st.models.emplace_back(name);
+        st.models.emplace_back(num);
         model = &st.models.back();
       }
       const Chain* prev_part = model->find_chain(chain_name);
@@ -1155,10 +1154,10 @@ void PdbReader::read_pdb_line(const char* line, size_t len, Structure& st,
   } else if (is_record_type(line, "MODEL")) {
     if (model && chain)
       wrong("MODEL without ENDMDL?");
-    std::string name = std::to_string(read_int(line+10, 4));
-    model = &st.find_or_add_model(name);
+    int num = read_int(line+10, 4);
+    model = &st.find_or_add_model(num);
     if (!model->chains.empty())
-      wrong("duplicate MODEL number: " + name);
+      wrong("duplicate MODEL number: " + std::to_string(num));
     chain = nullptr;
 
   } else if (is_record_type(line, "ENDMDL")) {
@@ -1182,7 +1181,7 @@ void PdbReader::finalize_structure_after_reading_pdb(Structure& st) const {
   // models. User's code may not expect this. Usually, empty model will be
   // handled more gracefully than no models.
   if (st.models.empty())
-    st.models.emplace_back("1");
+    st.models.emplace_back(1);
 
   if (st.ter_status == 'e')
     remove_entity_types(st);

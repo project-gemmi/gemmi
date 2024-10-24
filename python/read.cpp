@@ -50,6 +50,11 @@ void add_cif_read(nb::module_& cif) {
 }
 
 void add_read_structure(nb::module_& m) {
+  nb::enum_<ChemCompModel>(m, "ChemCompModel", nb::is_flag(), nb::is_arithmetic())
+    .value("Xyz", ChemCompModel::Xyz)
+    .value("Example", ChemCompModel::Example)
+    .value("Ideal", ChemCompModel::Ideal);
+
   m.def("read_structure", [](const std::string& path, bool merge,
                              CoorFormat format, cif::Document* save_doc) {
           Structure* st = new Structure(read_structure_gz(path, format, save_doc));
@@ -63,7 +68,8 @@ void add_read_structure(nb::module_& m) {
   m.def("make_structure_from_block", &make_structure_from_block,
         nb::arg("block"), "Takes mmCIF block and returns Structure.");
   m.def("make_structure_from_chemcomp_block", &make_structure_from_chemcomp_block,
-        nb::arg("block"), "CIF block from CCD or monomer library -> single-residue Model(s).");
+        nb::arg("block"), nb::arg("which")=7,
+        "CIF block from CCD or monomer library -> single-residue Model(s).");
 
   m.def("read_pdb_string", [](const std::string& s, int max_line_length,
                               bool split_chain_on_ter) {

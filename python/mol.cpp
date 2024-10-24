@@ -138,12 +138,8 @@ void add_mol(nb::module_& m) {
          nb::keep_alive<0, 1>())
     .def("__getitem__", &get_child<Structure, Model>, nb::arg("index"),
          nb::rv_policy::reference_internal)
-    .def("__getitem__", [](Structure& st, const std::string& name) -> Model& {
-        return *impl::find_iter(st.models, name);
-    }, nb::arg("name"), nb::rv_policy::reference_internal)
     .def("__delitem__", &remove_child<Structure>, nb::arg("index"))
     .def("__delitem__", &remove_children<Structure>)
-    .def("__delitem__", &Structure::remove_model, nb::arg("name"))
     .def("__setitem__", &set_child<Structure, Model>)
     .def("find_connection_by_cra", [](Structure& st, CRA cra1, CRA cra2, bool ignore_segment) {
         return st.find_connection_by_cra(cra1, cra2, ignore_segment);
@@ -212,8 +208,8 @@ void add_mol(nb::module_& m) {
     add_write(m, structure);
 
   pyModel
-    .def(nb::init<std::string>())
-    .def_rw("name", &Model::name)
+    .def(nb::init<int>())
+    .def_rw("num", &Model::num)
     .def("__len__", [](const Model& self) { return self.chains.size(); })
     .def("__iter__", [](Model& self) { return usual_iterator(self, self.chains); },
          nb::keep_alive<0, 1>())
@@ -278,7 +274,7 @@ void add_mol(nb::module_& m) {
     .def("__getstate__", &getstate<Model>)
     .def("__setstate__", &setstate<Model>)
     .def("__repr__", [](const Model& self) {
-        return cat("<gemmi.Model ", self.name, " with ", self.chains.size(), " chain(s)>");
+        return cat("<gemmi.Model ", self.num, " with ", self.chains.size(), " chain(s)>");
     });
 
   nb::class_<UniqProxy<Residue>>(m, "FirstConformerRes")

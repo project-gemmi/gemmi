@@ -148,7 +148,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
           }
           vv.emplace_back(auth_seq_id);
           vv.emplace_back(qchain(chain.name));
-          vv.emplace_back(string_or_qmark(model.name));
+          vv.emplace_back(std::to_string(model.num));
           if (has_calc_flag)
             vv.emplace_back(&".\0.\0d\0c\0dum"[2 * (int) atom.calc_flag]);
           if (has_tls_group_id)
@@ -402,7 +402,7 @@ void write_cispeps(const Structure& st, cif::Block& block) {
   for (const CisPep& cispep : st.cispeps) {
     const Model* model = &st.models[0];
     if (st.models.size() > 1) {
-      model = st.find_model(cispep.model_str);
+      model = st.find_model(cispep.model_num);
       if (!model)
         continue;
     }
@@ -420,7 +420,7 @@ void write_cispeps(const Structure& st, cif::Block& block) {
            "label_alt_id", "pdbx_omega_angle"});
     auto& v = prot_cis_loop->values;
     v.emplace_back(std::to_string(++pdbx_id));            // pdbx_id
-    v.emplace_back(cispep.model_str);                     // pdbx_PDB_model_num
+    v.emplace_back(std::to_string(model->num));           // pdbx_PDB_model_num
     v.emplace_back(subchain_or_dot(*cra1.residue));       // label_asym_id
     v.emplace_back(cra1.residue->label_seq.str('.'));     // label_seq_id
     v.emplace_back(cra1.residue->name);                   // label_comp_id

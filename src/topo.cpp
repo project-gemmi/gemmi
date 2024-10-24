@@ -746,17 +746,17 @@ void Topo::set_cispeps_in_structure(Structure& st) {
   if (chain_infos.empty())
     return;
   // model is not stored in Topo, let's determine it from chain_infos[0]
-  std::string model_str;
+  int model_num = 0;
   for (const Model& model : st.models)
     if (!model.chains.empty() &&
         &model.chains[0] == &chain_infos[0].chain_ref)
-      model_str = model.name;
+      model_num = model.num;
   for (ChainInfo& chain_info : chain_infos)
     for (ResInfo& res_info : chain_info.res_infos)
       for (Link& link : res_info.prev)
         if (link.is_cis) {
           CisPep cp;
-          cp.model_str = model_str;
+          cp.model_num = model_num;
           cp.partner_c = AtomAddress(chain_info.chain_ref.name, *link.res1, "", link.alt1);
           cp.partner_n = AtomAddress(chain_info.chain_ref.name, *link.res2, "", link.alt2);
           cp.only_altloc = link.alt1 ? link.alt1 : link.alt2;
@@ -804,7 +804,7 @@ void force_cispeps(Topo& topo, bool single_model, const Model& model,
                           const std::vector<CisPep>& cispeps) {
   std::multimap<const Residue*, const CisPep*> cispep_index;
   for (const CisPep& cp : cispeps) {
-    if (single_model || model.name == cp.model_str)
+    if (single_model || model.num == cp.model_num)
       if (const Residue* res_n = model.find_cra(cp.partner_n).residue)
         cispep_index.emplace(res_n, &cp);
   }

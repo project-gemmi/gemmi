@@ -277,7 +277,7 @@ struct Connection {
 // Corresponds to CISPEP or _struct_mon_prot_cis
 struct CisPep {
   AtomAddress partner_c, partner_n;
-  std::string model_str;
+  int model_num = 0;
   // mmCIF has (unused by the PDB) tag _struct_mon_prot_cis.label_alt_id
   // that enables defining CIS link per conformation.
   char only_altloc = '\0';

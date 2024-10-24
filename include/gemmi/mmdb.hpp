@@ -54,7 +54,7 @@ inline mmdb::CisPep* cispep_to_mmdb(const CisPep& g, int ser_num, int model_num)
   return m;
 }
 
-inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, const std::string& model_str) {
+inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, int model_num) {
   CisPep g;
   g.partner_c.res_id.name = m.pep1;
   g.partner_c.res_id.seqid = seqid_from_mmdb(m.seqNum1, m.icode1);
@@ -62,7 +62,7 @@ inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, const std::string& model_s
   g.partner_n.res_id.name = m.pep2;
   g.partner_n.res_id.seqid = seqid_from_mmdb(m.seqNum2, m.icode2);
   g.partner_n.chain_name = m.chainID2;
-  g.model_str = model_str;
+  g.model_num = model_num;
   g.reported_angle = m.measure;
   return g;
 }
@@ -190,7 +190,7 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
     int ser_num = 0;
     for (const CisPep& cispep : st.cispeps) {
       // In the PDB, CISPEP records have modNum=0 if there is only one model
-      int modnum = st.models.size() > 1 ? std::stoi(cispep.model_str) : 0;
+      int modnum = st.models.size() > 1 ? cispep.model_num : 0;
       int model_no = std::max(1, modnum);  // GetModel() takes 1-based index
       if (mmdb::Model* m_model = manager->GetModel(model_no))
         m_model->AddCisPep(cispep_to_mmdb(cispep, ++ser_num, modnum));
@@ -267,7 +267,7 @@ inline Chain copy_chain_from_mmdb(mmdb::Chain& m_chain) {
 }
 
 inline Model copy_model_from_mmdb(mmdb::Model& m_model) {
-  Model model(std::to_string(m_model.GetSerNum()));
+  Model model(m_model.GetSerNum());
   int n = m_model.GetNumberOfChains();
   model.chains.reserve(n);
   for (int i = 0; i < n; ++i)
@@ -288,10 +288,10 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
   for (int i = 1; i <= n; ++i)
     if (mmdb::Model* m_model = manager->GetModel(i)) {
       st.models.push_back(copy_model_from_mmdb(*m_model));
-      const std::string& model_name = st.models.back().name;
+      int model_num = st.models.back().num;
       for (int j = 1; j <= m_model->GetNumberOfCisPeps(); ++j)
         if (const mmdb::CisPep* m_cispep = m_model->GetCisPep(j))
-          st.cispeps.push_back(cispep_from_mmdb(*m_cispep, model_name));
+          st.cispeps.push_back(cispep_from_mmdb(*m_cispep, model_num));
     }
   return st;
 }

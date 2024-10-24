@@ -236,7 +236,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
       for (gemmi::Model& model : st.models) {
         if (st.models.size() > 1)
-          printf("### Model %s ###\n", model.name.c_str());
+          printf("### Model %d ###\n", model.num);
         Topo topo;
         topo.logger.callback = &gemmi::Logger::to_stderr;
         topo.initialize_refmac_topology(st, model, monlib);

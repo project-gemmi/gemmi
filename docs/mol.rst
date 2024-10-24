@@ -1495,10 +1495,7 @@ In Python these functions are wrapped as `__getitem__` and `__delitem__`:
 
   >>> structure[0]        # by 0-based index
   <gemmi.Model 1 with 6 chain(s)>
-  >>> structure['1']      # by name, which is usually a 1-based index as string
-  <gemmi.Model 1 with 6 chain(s)>
   >>> del structure[1:]   # delete all models but the first one
-  >>> del structure['1']  # delete model "1" (normally, the first one)
 
 To add a model to the structure, in C++ use directly methods of::
 
@@ -1514,8 +1511,8 @@ for example,
 
 .. testcode::
 
-  structure.add_model(gemmi.Model('7'))  # add a new model
-  structure.add_model(structure[0])      # add a copy of model #0
+  structure.add_model(gemmi.Model(7))  # add a new model
+  structure.add_model(structure[0])    # add a copy of model #0
 
 .. warning::
 
@@ -2642,11 +2639,11 @@ Model
 =====
 
 Model contains chains (class `Chain`) that
-can be accessed by index or by name::
+can be accessed either by index or by name::
 
-  // to access or delete a chain by index use directly the chains vector:
+  // to access or delete a chain by index, use the chains vector directly:
   std::vector<Chain> Model::chains
-  // to access or delete a chain by name use functions:
+  // to access or delete a chain by name, use the following functions:
   Chain* Model::find_chain(const std::string& chain_name)
   void Model::remove_chain(const std::string& chain_name)
 
@@ -2661,12 +2658,12 @@ can be accessed by index or by name::
   <gemmi.Chain A with 121 res>
   >>> del model['A']  # deletes chain A
 
-As it was shown in the :ref:`MET to MSE example <met_mse_example>`,
+As shown in the :ref:`MET to MSE example <met_mse_example>`,
 you can iterate over chains in the model.
-You can also use function `all()` to iterate over all atoms in the model,
-getting objects of the :ref:`CRA <CRA>` class which holds three pointers --
-chain, residue and atom. The function mutating MET to MSE could be
-alternatively implemented as:
+Additionally, you can use the `all()` function to iterate over all atoms
+in the model, receiving objects of the :ref:`CRA <CRA>` class, which holds
+three pointers: to the chain, residue and atom.
+A function to mutate MET to MSE could alternatively be implemented as follows:
 
 .. testcode::
 
@@ -2690,14 +2687,14 @@ alternatively implemented as:
   >>> _.sole_atom('SE').element
   gemmi.Element('Se')
 
-To add a chain to the model, in C++ use directly methods of `Model::chains`
+To add a chain to the model, in C++ use `Model::chains` directly,
 and in Python use:
 
 .. code-block:: python
 
   Model.add_chain(chain, pos=-1, unique_name=False)
 
-for example,
+For example:
 
 .. testcode::
 
@@ -2709,15 +2706,15 @@ In the example with `unique_name=True`, if the model already has a chain
 with the same name, the added chain is assigned a new name
 (see :ref:`HowToNameCopiedChain.Short <how_to_name_copied_chain>`).
 
-Each `Model` in a Structure must have a unique name (`string name`).
-Normally, models are numbered and the name is a number.
-But according to the mmCIF spec the name does not need to be a number,
-so just in case we store it as a string.
+Models in both the PDB and mmCIF formats are assigned numbers.
+These numbers are normally consecutive, starting from 1,
+so they don't convey any specific information. Nevertheless,
+they are read and stored in a member variable `num`:
 
 .. doctest::
 
-  >>> model.name
-  '1'
+  >>> model.num
+  1
 
 Subchains
 ---------

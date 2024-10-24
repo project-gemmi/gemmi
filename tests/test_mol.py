@@ -691,20 +691,20 @@ class TestMol(unittest.TestCase):
         del st[0]['A'][3]
         self.assertEqual(len(st[0]['A']), 6)
         self.assertEqual(len(st), 2)
-        self.assertEqual(st[0].name, '1')
-        del st['1']
+        self.assertEqual(st[0].num, 1)
+        del st[0]
         self.assertEqual(len(st), 1)
-        self.assertEqual(st[0].name, '2')
+        self.assertEqual(st[0].num, 2)
         st.renumber_models()
-        self.assertEqual(st[0].name, '1')
+        self.assertEqual(st[0].num, 1)
         st.add_model(st[0])
         st.add_model(st[0])
         st.renumber_models()
-        self.assertEqual(st[0].name, '1')
-        self.assertEqual(st[-1].name, '3')
+        self.assertEqual(st[0].num, 1)
+        self.assertEqual(st[-1].num, 3)
         del st[:-1]
         self.assertEqual(len(st), 1)
-        self.assertEqual(st[0].name, '3')
+        self.assertEqual(st[0].num, 3)
         del st[0]
         self.assertEqual(len(st), 0)
 
@@ -779,7 +779,7 @@ class TestMol(unittest.TestCase):
                          [atom.name for atom in res1 if atom.altloc != 'B'])
 
     def test_model_all(self):
-        model = gemmi.Model('1')
+        model = gemmi.Model(1)
         for name in 'ABCDEFG':
             model.add_chain(gemmi.Chain(name))
         expected = []

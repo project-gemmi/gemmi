@@ -627,7 +627,7 @@ which can then be used to iterate over the selected items in the hierarchy:
 
   >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
   >>> for model in sel.models(st):
-  ...     print('Model', model.name)
+  ...     print('Model', model.num)
   ...     for chain in sel.chains(model):
   ...         print('-', chain.name)
   ...         for residue in sel.residues(chain):

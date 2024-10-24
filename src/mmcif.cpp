@@ -268,7 +268,7 @@ void read_prot_cis(cif::Block& block, Structure& st) {
                               "?pdbx_label_comp_id_2", "?pdbx_auth_comp_id_2", // 9-10
                               "?label_alt_id", "?pdbx_omega_angle"})) {        // 11-12
     CisPep cispep;
-    cispep.model_str = row.str(kModelNum);
+    cispep.model_num = cif::as_int(row[kModelNum], 0);
     cispep.partner_c.chain_name = row.str(kAuthAsymId);
     cispep.partner_c.res_id.seqid = make_seqid(row.str(kAuthSeqId), row.ptr_at(kInsCode));
     cispep.partner_c.res_id.name = cif::as_string(row.one_of(kAuthCompId, kLabelCompId));
@@ -781,14 +781,16 @@ Structure make_structure_from_block(const cif::Block& block_) {
     Model *model = nullptr;
     Chain *chain = nullptr;
     Residue *resi = nullptr;
-    if (atom_table.has_column(kModelNum))
-      model = &st.find_or_add_model(atom_table[0].str(kModelNum));
-    else
-      model = &st.find_or_add_model("1");
+    std::string model_num;
+    if (!atom_table.has_column(kModelNum)) {
+      st.models.emplace_back(1);
+      model = &st.models[0];
+    }
     for (auto row : atom_table) {
       size_t gap = row.row_index * loop_width;
-      if (row.has(kModelNum) && row[kModelNum] != model->name) {
-        model = &st.find_or_add_model(row.str(kModelNum));
+      if (row.has(kModelNum) && row[kModelNum] != model_num) {
+        model_num = row[kModelNum];
+        model = &st.find_or_add_model(cif::as_int(model_num, 0));
         chain = nullptr;
       }
       if (!chain || cif::as_string(asym_id.get(gap)) != chain->name) {

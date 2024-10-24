@@ -28,10 +28,18 @@ class TestChemCompXyz(unittest.TestCase):
     def test_reading_HEM(self):
         cif_path = full_path('HEM.cif')
         cif_block = gemmi.cif.read(cif_path).sole_block()
+
         cif_st = gemmi.make_structure_from_chemcomp_block(cif_block)
-        self.assertEqual(len(cif_st), 2)
-        # we compare not-ideal model only
-        del cif_st['example_xyz']
+        self.assertEqual(len(cif_st), 2)  # two models: Ideal and Example
+
+        which = gemmi.ChemCompModel.Xyz
+        cif_st = gemmi.make_structure_from_chemcomp_block(cif_block, which)
+        self.assertEqual(len(cif_st), 0)
+
+        which = gemmi.ChemCompModel.Xyz | gemmi.ChemCompModel.Ideal
+        cif_st = gemmi.make_structure_from_chemcomp_block(cif_block, which)
+        self.assertEqual(len(cif_st), 1)
+
         # PDBe files have residue number 0 and ATOM instead of HETATM
         residue = cif_st[0][0][0]
         residue.seqid.num = 0

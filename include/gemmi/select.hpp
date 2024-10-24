@@ -111,7 +111,7 @@ struct GEMMI_DLL Selection {
 
   bool matches(const Structure&) const { return true; }
   bool matches(const Model& model) const {
-    return mdl == 0 || std::to_string(mdl) == model.name;
+    return mdl == 0 || mdl == model.num;
   }
   bool matches(const Chain& chain) const {
     return chain_ids.has(chain.name);

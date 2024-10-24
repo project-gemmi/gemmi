@@ -29,28 +29,38 @@ namespace gemmi {
 namespace impl {
 
 template<typename T>
-T* find_or_null(std::vector<T>& vec, const std::string& name) {
-  auto it = std::find_if(vec.begin(), vec.end(),
-                         [&name](const T& m) { return m.name == name; });
+auto get_id(const T& m) -> decltype(m.name) { return m.name; }
+template<typename T>
+auto get_id(const T& m) -> decltype(m.num) { return m.num; }
+
+
+template<typename Vec, typename S>
+auto find_iter_(Vec& vec, const S& name) {
+  return std::find_if(vec.begin(), vec.end(), [&name](const auto& m) { return get_id(m) == name; });
+}
+
+template<typename T, typename S>
+T* find_or_null(std::vector<T>& vec, const S& name) {
+  auto it = find_iter_(vec, name);
   return it != vec.end() ? &*it : nullptr;
 }
 
-template<typename T>
-T& find_or_add(std::vector<T>& vec, const std::string& name) {
+template<typename T, typename S>
+T& find_or_add(std::vector<T>& vec, const S& name) {
   if (T* ret = find_or_null(vec, name))
     return *ret;
   vec.emplace_back(name);
   return vec.back();
 }
 
-template<typename Span, typename T = typename Span::value_type>
-typename Span::iterator find_iter(Span& span, const std::string& name) {
-  typename Span::iterator it = std::find_if(span.begin(), span.end(),
-                                            [&](const T& x) { return x.name == name; });
+template<typename Span, typename S>
+typename Span::iterator find_iter(Span& span, const S& name) {
+  using T = typename Span::value_type;
+  auto it = find_iter_(span, name);
   if (it == span.end())
     throw std::invalid_argument(cat(
         T::what(), ' ', name, " not found (only [",
-        join_str(span.begin(), span.end(), ' ', [](const T& x) { return x.name; }),
+        join_str(span.begin(), span.end(), ' ', [](const T& item) { return cat(get_id(item)); }),
         "])"));
   return it;
 }
@@ -701,10 +711,11 @@ using ConstCraProxy = CraProxy_<const_CRA, const std::vector<Chain>&>;
 
 struct Model {
   static const char* what() { return "Model"; }
-  std::string name;  // actually an integer number
+  int num = 0;
   std::vector<Chain> chains;
+
   Model() = default;
-  explicit Model(const std::string& name_) noexcept : name(name_) {}
+  explicit Model(int num_) noexcept : num(num_) {}
 
   // Returns the first chain with given name, or nullptr.
   Chain* find_chain(const std::string& chain_name) {
@@ -844,7 +855,7 @@ struct Model {
   }
 
   // methods present in Structure, Model, ... - used in templates
-  Model empty_copy() const { return Model(name); }
+  Model empty_copy() const { return Model(num); }
   using child_type = Chain;
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
@@ -917,23 +928,23 @@ struct Structure {
     return const_cast<Structure*>(this)->first_model();
   }
 
-  Model* find_model(const std::string& model_name) {
-    return impl::find_or_null(models, model_name);
+  Model* find_model(int model_num) {
+    return impl::find_or_null(models, model_num);
   }
-  const Model* find_model(const std::string& model_name) const {
-    return const_cast<Structure*>(this)->find_model(model_name);
+  const Model* find_model(int model_num) const {
+    return const_cast<Structure*>(this)->find_model(model_num);
   }
-  Model& find_or_add_model(const std::string& model_name) {
-    return impl::find_or_add(models, model_name);
+  Model& find_or_add_model(int model_num) {
+    return impl::find_or_add(models, model_num);
   }
 
-  void remove_model(const std::string& model_name) {
-    models.erase(impl::find_iter(models, model_name));
+  void remove_model(int model_num) {
+    models.erase(impl::find_iter(models, model_num));
   }
 
   void renumber_models() {
     for (size_t i = 0; i != models.size(); ++i)
-      models[i].name = std::to_string(i+1);
+      models[i].num = i + 1;
   }
 
   Entity* get_entity(const std::string& ent_id) {

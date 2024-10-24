@@ -157,7 +157,7 @@ void add_meta(nb::module_& m) {
     .def(nb::init<>())
     .def_rw("partner_c", &CisPep::partner_c)
     .def_rw("partner_n", &CisPep::partner_n)
-    .def_rw("model_str", &CisPep::model_str)
+    .def_rw("model_num", &CisPep::model_num)
     .def_rw("only_altloc", &CisPep::only_altloc)
     .def_rw("reported_angle", &CisPep::reported_angle)
     ;

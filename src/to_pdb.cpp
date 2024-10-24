@@ -618,7 +618,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
     if (opt.cispep_records) {
       int counter = 0;
       for (const CisPep& cispep : st.cispeps) {
-        WRITE("CISPEP%4d %3.3s%2s %5s   %3.3s%2s %5s %9s %12.2f %20s",
+        WRITE("CISPEP%4d %3.3s%2s %5s   %3.3s%2s %5s %9d %12.2f %20s",
               ++counter,
               cispep.partner_c.res_id.name.c_str(),
               cispep.partner_c.chain_name.c_str(),
@@ -626,7 +626,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
               cispep.partner_n.res_id.name.c_str(),
               cispep.partner_n.chain_name.c_str(),
               write_seq_id(cispep.partner_n.res_id.seqid).data(),
-              st.models.size() > 1 ? cispep.model_str.c_str() : "0",
+              st.models.size() > 1 ? cispep.model_num : 0,
               std::isnan(cispep.reported_angle) ? 0. : cispep.reported_angle,
               "");
         if (counter == 9999)
@@ -674,16 +674,8 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   if (opt.atom_records) {
     for (const Model& model : st.models) {
       int serial = 0;
-      if (st.models.size() > 1) {
-        // according to the spec model name in mmCIF may not be numeric
-        std::string name = model.name;
-        for (char c : name)
-          if (!std::isdigit(c)) {
-            name = std::to_string(&model - &st.models[0] + 1);
-            break;
-          }
-        WRITE("MODEL %8s %65s", name.c_str(), "");
-      }
+      if (st.models.size() > 1)
+        WRITE("MODEL %8d %65s", model.num, "");
       for (const Chain& chain : model.chains)
         write_chain_atoms(chain, os, serial, opt);
       if (st.models.size() > 1)

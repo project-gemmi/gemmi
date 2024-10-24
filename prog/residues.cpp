@@ -69,7 +69,7 @@ bool check_sequence_id(const gemmi::Structure& st) {
   std::string model_num;
   for (const gemmi::Model& model : st.models) {
     if (st.models.size() > 1)
-      model_num = " (model " + model.name + ")";
+      model_num = gemmi::cat(" (model ", model.num + ')');
     for (const gemmi::Chain& chain : model.chains) {
       const gemmi::Residue* prev_res = nullptr;
       for (const gemmi::Residue& res : chain.residues) {
@@ -355,7 +355,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         st.merge_chain_parts();
       for (gemmi::Model& model : st.models) {
         if (st.models.size() != 1)
-          printf("Model %s\n", model.name.c_str());
+          printf("Model %d\n", model.num);
         if (p.options[Chains])
           print_chain_info(model);
         else if (p.options[Short])

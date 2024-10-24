@@ -107,7 +107,7 @@ SERIALIZE(SiftsUnpResidue, o.res, o.acc_index, o.num)
 SERIALIZE(Connection, o.name, o.link_id, o.type, o.asu,
           o.partner1, o.partner2, o.reported_distance, o.reported_sym)
 
-SERIALIZE(CisPep, o.partner_c, o.partner_n, o.model_str, o.only_altloc, o.reported_angle)
+SERIALIZE(CisPep, o.partner_c, o.partner_n, o.model_num, o.only_altloc, o.reported_angle)
 
 SERIALIZE(ModRes, o.chain_name, o.res_id, o.parent_comp_id, o.mod_id, o.details)
 
@@ -137,7 +137,7 @@ SERIALIZE_P(Residue, ResidueId,
 
 SERIALIZE(Chain, o.name, o.residues)
 
-SERIALIZE(Model, o.name, o.chains) // skip parent_index
+SERIALIZE(Model, o.num, o.chains) // skip parent_index
 
 SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.ncs, o.entities, o.connections, o.cispeps, o.mod_residues,

@@ -31,25 +31,18 @@ inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nul
 
 // Reading chemical component as a coordinate file.
 enum class ChemCompModel {
-  Xyz,     // _chem_comp_atom.x, etc
-  Example, // _chem_comp_atom.model_Cartn_x
-  Ideal    // _chem_comp_atom.pdbx_model_Cartn_x_ideal
+  Xyz      = 1, // _chem_comp_atom.x, etc
+  Example  = 2, // _chem_comp_atom.model_Cartn_x
+  Ideal    = 4  // _chem_comp_atom.pdbx_model_Cartn_x_ideal
 };
+
+constexpr int operator|(ChemCompModel a, ChemCompModel b) { return (int)a | (int)b; }
 
 /// make_residue_from_chemcomp_block
 GEMMI_DLL Residue make_residue_from_chemcomp_block(const cif::Block& block, ChemCompModel kind);
 
-inline const char* chem_comp_model_to_name(ChemCompModel kind) {
-  switch (kind) {
-    case ChemCompModel::Xyz:     return "xyz";
-    case ChemCompModel::Example: return "example_xyz";
-    case ChemCompModel::Ideal:   return "ideal_xyz";
-  }
-  unreachable();
-}
-
 inline Model make_model_from_chemcomp_block(const cif::Block& block, ChemCompModel kind) {
-  Model model(chem_comp_model_to_name(kind));
+  Model model;
   model.chains.emplace_back("");
   model.chains[0].residues.push_back(make_residue_from_chemcomp_block(block, kind));
   return model;
@@ -59,17 +52,19 @@ inline Model make_model_from_chemcomp_block(const cif::Block& block, ChemCompMod
 // example (model_Cartn_x) and ideal (pdbx_model_Cartn_x_ideal).
 // For Refmac dictionary (monomer library) files returns structure with
 // a single model.
-inline Structure make_structure_from_chemcomp_block(const cif::Block& block) {
+inline Structure make_structure_from_chemcomp_block(const cif::Block& block, int which=7) {
   Structure st;
   st.input_format = CoorFormat::ChemComp;
   if (const std::string* name = block.find_value("_chem_comp.id"))
     st.name = *name;
-  if (block.has_any_value("_chem_comp_atom.x"))
+  auto ok = [which](ChemCompModel x) { return which & static_cast<int>(x); };
+  if (ok(ChemCompModel::Xyz) && block.has_any_value("_chem_comp_atom.x"))
     st.models.push_back(make_model_from_chemcomp_block(block, ChemCompModel::Xyz));
-  if (block.has_any_value("_chem_comp_atom.model_Cartn_x"))
+  if (ok(ChemCompModel::Example) && block.has_any_value("_chem_comp_atom.model_Cartn_x"))
     st.models.push_back(make_model_from_chemcomp_block(block, ChemCompModel::Example));
-  if (block.has_any_value("_chem_comp_atom.pdbx_model_Cartn_x_ideal"))
+  if (ok(ChemCompModel::Ideal) && block.has_any_value("_chem_comp_atom.pdbx_model_Cartn_x_ideal"))
     st.models.push_back(make_model_from_chemcomp_block(block, ChemCompModel::Ideal));
+  st.renumber_models();
   return st;
 }
 

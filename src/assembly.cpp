@@ -66,7 +66,7 @@ void remove_cras(Model& model, std::vector<CRA>& vec) {
 Model make_assembly_(const Assembly& assembly, const Model& model,
                      HowToNameCopiedChain how, const Logger& logger,
                      AssemblyMapping* mapping) {
-  Model new_model(model.name);
+  Model new_model(model.num);
   ChainNameGenerator namegen(how);
   std::map<std::string, std::string> subs = model.subchain_to_chain();
   int counter = 0;
