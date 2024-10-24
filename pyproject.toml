@@ -97,6 +97,12 @@ SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF;-DBUILD_
 # Needed for full C++17 support on macOS
 MACOSX_DEPLOYMENT_TARGET = "10.14"
 
+# https://cibuildwheel.readthedocs.io/en/stable/faq/#macos-building-cpython-38-wheels-on-arm64
+[[tool.cibuildwheel.overrides]]
+select = "cp38-macosx_arm64"
+inherit.environment = "append"  # inherit MACOSX_DEPLOYMENT_TARGET
+environment.SKBUILD_CMAKE_ARGS = '-DBUILD_GEMMI_PROGRAM=OFF;-DINSTALL_DEV_FILES=OFF;-DBUILD_SHARED_LIBS=OFF;-DFETCH_ZLIB_NG=ON;-DGENERATE_STUBS=OFF'
+
 [tool.pylint]
 basic.const-naming-style = "any"
 basic.variable-naming-style = "any"
