@@ -13,7 +13,6 @@
 #include <stdexcept>  // for out_of_range
 #include <string>
 #include <vector>
-#include <unordered_map>
 
 #include "elem.hpp"
 #include "fail.hpp"      // for fail
@@ -844,72 +843,11 @@ struct Model {
     return table;
   }
 
-  CRA get_cra(Atom* atom) { return parent_index.get_cra(*this, atom); }
-  Chain* get_parent_of(Residue* res) { return parent_index.get_parent_of(*this, res); }
-
   // methods present in Structure, Model, ... - used in templates
   Model empty_copy() const { return Model(name); }
   using child_type = Chain;
   std::vector<Chain>& children() { return chains; }
   const std::vector<Chain>& children() const { return chains; }
-
-private:
-  struct ParentIndex {
-    using index_type = std::uint32_t;
-    std::unordered_map<const Atom*, std::array<index_type, 3>> atom_parents;
-    std::unordered_map<const Residue*, std::array<index_type, 2>> residue_parents;
-    void update(const Model& model) {
-      clear();
-      for (index_type ic = 0; ic < model.chains.size(); ++ic) {
-        const Chain& chain = model.chains[ic];
-        for (index_type ir = 0; ir < chain.residues.size(); ++ir) {
-          const Residue& res = chain.residues[ir];
-          residue_parents.emplace(&res, std::array<index_type,2>{ic, ir});
-          for (index_type ia = 0; ia < res.atoms.size(); ++ia)
-            atom_parents.emplace(&res.atoms[ia], std::array<index_type,3>{ic, ir, ia});
-        }
-      }
-    }
-    void clear() {
-      atom_parents.clear();
-      residue_parents.clear();
-    }
-    CRA get_cra(Model& model, Atom* atom) {
-      for (;;) {
-        auto it = atom_parents.find(atom);
-        if (it != atom_parents.end()) {
-          auto ic = it->second[0];
-          auto ir = it->second[1];
-          auto ia = it->second[2];
-          if (ic < model.chains.size()) {
-            Chain& chain = model.chains[ic];
-            if (ir < chain.residues.size()) {
-              Residue& res = chain.residues[ir];
-              if (ia < res.atoms.size() && atom == &res.atoms[ia])
-                return {&chain, &res, atom};
-            }
-          }
-        }
-        update(model);
-      }
-    }
-    Chain* get_parent_of(Model& model, Residue* res) {
-      for (;;) {
-        auto it = residue_parents.find(res);
-        if (it != residue_parents.end()) {
-          auto ic = it->second[0];
-          auto ir = it->second[1];
-          if (ic < model.chains.size()) {
-            Chain& chain = model.chains[ic];
-            if (ir < chain.residues.size() && res == &chain.residues[ir])
-              return &chain;
-          }
-        }
-        update(model);
-      }
-    }
-  };
-  ParentIndex parent_index;
 };
 
 inline Entity* find_entity_of_subchain(const std::string& subchain_id,

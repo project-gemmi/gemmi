@@ -255,9 +255,6 @@ void add_mol(nb::module_& m) {
         self.chains.emplace_back(name);
         return self.chains.back();
      }, nb::arg("name"), nb::rv_policy::reference_internal)
-    .def("get_cra", &Model::get_cra)
-    .def("get_parent_of", &Model::get_parent_of,
-         nb::rv_policy::reference_internal)
     .def("remove_chain", &Model::remove_chain, nb::arg("name"))
     .def("__delitem__", &Model::remove_chain, nb::arg("name"))
     .def("__delitem__", remove_child<Model>, nb::arg("index"))
