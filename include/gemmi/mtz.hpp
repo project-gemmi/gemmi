@@ -297,6 +297,7 @@ struct GEMMI_DLL Mtz {
       fail("MTZ dataset not found (missing DATASET header line?).");
     return datasets.back();
   }
+
   Dataset& dataset(int id) {
     if ((size_t)id < datasets.size() && datasets[id].id == id)
       return datasets[id];
@@ -308,6 +309,7 @@ struct GEMMI_DLL Mtz {
   const Dataset& dataset(int id) const {
     return const_cast<Mtz*>(this)->dataset(id);
   }
+
   Dataset* dataset_with_name(const std::string& name) {
     for (Dataset& d : datasets)
       if (d.dataset_name == name)
@@ -317,6 +319,7 @@ struct GEMMI_DLL Mtz {
   const Dataset* dataset_with_name(const std::string& label) const {
     return const_cast<Mtz*>(this)->dataset_with_name(label);
   }
+
   int count(const std::string& label) const {
     int n = 0;
     for (const Column& col : columns)
@@ -324,6 +327,7 @@ struct GEMMI_DLL Mtz {
         ++n;
     return n;
   }
+
   int count_type(char type) const {
     int n = 0;
     for (const Column& col : columns)
@@ -331,23 +335,25 @@ struct GEMMI_DLL Mtz {
         ++n;
     return n;
   }
-  Column* column_with_label(const std::string& label,
-                            const Dataset* ds=nullptr) {
+
+  Column* column_with_label(const std::string& label, const Dataset* ds=nullptr, char type='*') {
     for (Column& col : columns)
-      if (col.label == label && (!ds || ds->id == col.dataset_id))
+      if (col.label == label && (!ds || ds->id == col.dataset_id)
+                             && (type == '*' || type == col.type))
         return &col;
     return nullptr;
   }
-  const Column* column_with_label(const std::string& label,
-                                  const Dataset* ds=nullptr) const {
-    return const_cast<Mtz*>(this)->column_with_label(label, ds);
+  const Column* column_with_label(const std::string& label, const Dataset* ds=nullptr,
+                                  char type='*') const {
+    return const_cast<Mtz*>(this)->column_with_label(label, ds, type);
   }
-  const Column& get_column_with_label(const std::string& label,
-                                      const Dataset* ds=nullptr) const {
+
+  const Column& get_column_with_label(const std::string& label, const Dataset* ds=nullptr) const {
     if (const Column* col = column_with_label(label, ds))
       return *col;
     fail("Column label not found: " + label);
   }
+
   std::vector<const Column*> columns_with_type(char type) const {
     std::vector<const Column*> cols;
     for (const Column& col : columns)
@@ -387,16 +393,17 @@ struct GEMMI_DLL Mtz {
     return r;
   }
 
-  const Column* column_with_one_of_labels(std::initializer_list<const char*> labels) const {
-    for (const char* label : labels) {
-      if (const Column* col = column_with_label(label))
+  /// the order of labels matters
+  const Column* column_with_one_of_labels(std::initializer_list<const char*> labels,
+                                          char type='*') const {
+    for (const char* label : labels)
+      if (const Column* col = column_with_label(label, nullptr, type))
         return col;
-    }
     return nullptr;
   }
 
-  Column* column_with_type_and_one_of_labels(char type,
-                                             std::initializer_list<const char*> labels) {
+  /// the order of labels doesn't matter
+  Column* column_with_type_and_any_of_labels(char type, std::initializer_list<const char*> labels) {
     for (Column& col : columns)
       if (col.type == type) {
         for (const char* label : labels)
@@ -408,7 +415,7 @@ struct GEMMI_DLL Mtz {
 
   Column* rfree_column() {
     // cf. MtzToCif::default_spec in mtz2cif.hpp
-    return column_with_type_and_one_of_labels('I',
+    return column_with_type_and_any_of_labels('I',
         {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags", "FreeRflag"});
   }
   const Column* rfree_column() const {
@@ -416,21 +423,21 @@ struct GEMMI_DLL Mtz {
   }
 
   Column* imean_column() {
-    return column_with_type_and_one_of_labels('J', {"IMEAN", "I", "IOBS", "I-obs"});
+    return column_with_type_and_any_of_labels('J', {"IMEAN", "I", "IOBS", "I-obs"});
   }
   const Column* imean_column() const {
     return const_cast<Mtz*>(this)->imean_column();
   }
 
   Column* iplus_column() {
-    return column_with_type_and_one_of_labels('K', {"I(+)", "IOBS(+)", "I-obs(+)", "Iplus"});
+    return column_with_type_and_any_of_labels('K', {"I(+)", "IOBS(+)", "I-obs(+)", "Iplus"});
   }
   const Column* iplus_column() const {
     return const_cast<Mtz*>(this)->iplus_column();
   }
 
   Column* iminus_column() {
-    return column_with_type_and_one_of_labels('K', {"I(-)", "IOBS(-)", "I-obs(-)", "Iminus"});
+    return column_with_type_and_any_of_labels('K', {"I(-)", "IOBS(-)", "I-obs(-)", "Iminus"});
   }
   const Column* iminus_column() const {
     return const_cast<Mtz*>(this)->iminus_column();

@@ -120,9 +120,9 @@ void add_mtz(nb::module_& m) {
          nb::arg("id"))
     .def("count", &Mtz::count, nb::arg("label"))
     .def("column_with_label",
-         (Mtz::Column* (Mtz::*)(const std::string&, const Mtz::Dataset*))
+         (Mtz::Column* (Mtz::*)(const std::string&, const Mtz::Dataset*, char))
                                                      &Mtz::column_with_label,
-         nb::arg("label"), nb::arg("dataset")=nb::none(),
+         nb::arg("label"), nb::arg("dataset")=nb::none(), nb::arg("type")='*',
          nb::rv_policy::reference_internal)
     .def("rfree_column", (Mtz::Column* (Mtz::*)()) &Mtz::rfree_column,
           nb::rv_policy::reference_internal)
