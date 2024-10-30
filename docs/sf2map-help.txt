@@ -1,6 +1,7 @@
 $ gemmi sf2map -h
 Usage:
   gemmi sf2map [options] INPUT_FILE MAP_FILE
+  gemmi sf2map --check INPUT_FILE
 
 INPUT_FILE must be either MTZ or mmCIF with map coefficients.
 
@@ -33,3 +34,4 @@ Options:
                        similarly to CCP4 MAPMASK with XYZIN.
   --margin=N           (w/ --mapmask) Border in Angstrom (default: 5).
   --select=SEL         (w/ --mapmask) Selection of atoms in FILE, MMDB syntax.
+  --check              Analyze map coefficients columns in MTZ file.
