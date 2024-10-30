@@ -3,6 +3,7 @@
 // Transform MTZ or SF-mmCIF map coefficients to CCP4 map.
 
 #include <stdio.h>
+#include <unordered_map>
 #include <gemmi/ccp4.hpp>      // for Ccp4
 #include <gemmi/calculate.hpp> // for calculate_fractional_box
 #include <gemmi/select.hpp>    // for Selection
