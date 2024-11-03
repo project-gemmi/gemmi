@@ -582,6 +582,62 @@ Transforms map coefficients from either MTZ or SF mmCIF to CCP4 map.
 The `--sample` option is named after the `GRID SAMPLE` keyword of
 the venerable CCP4 FFT program; its value has the same meaning.
 
+`--check`
+---------
+
+The `--check` option, inspired by the MTZFIX program by Ian Tickle,
+helps clarify the meaning of map coefficients.
+It identifies relationships between MTZ columns, separately for acentric,
+centric and missing reflections, and provides informative output
+for MTZ files from BUSTER, Refmac and Servalcat,
+which contain columns with scaled *Fobs*, *D.Fc* and the figure-of-merit *m*.
+For mtz files that lack these columns, the output is less informative.
+
+Typically, two sets of map coefficients are provided: for a "normal" map
+(2\ *mF*:sub:`o`–\ *DF*:sub:`c` , sometimes referred to simply as
+2\ *F*:sub:`o`–\ *F*:sub:`c` even if *m* and *D* are included)
+and a difference map (*mF*:sub:`o`–*DF*:sub:`c` ,
+sometimes referred to as *F*:sub:`o`–*F*:sub:`c`).
+The actual formulas vary slightly and are not consistent across implementations:
+
+* The difference map should include a factor of 2 for acentric reflections,
+  i.e., it should be 2(*mF*:sub:`o`–*DF*\ :sub:`c`), not what it's called.
+  In some files, however, it's not 2×.
+  This affects only the absolute values of the map, not the σ levels.
+* Coefficients for centric reflections can be calculated with the same formulas
+  as for acentric, although according to the literature they should be
+  different: *mF*:sub:`o` for the normal map and *mF*:sub:`o`–*DF*:sub:`c`
+  (without the factor 2) for the difference map.
+* For reflections without observed data (missing *F*\ :sub:`o`), the normal map
+  coefficients are either filled with *DF*:sub:`c` or not.
+* For reflections in a free set, *F*:sub:`o` is either used (to improve map
+  quality) or not (to ensure that the free set is used solely for validation).
+
+Here is an example output:
+
+.. code-block:: none
+
+  Columns used in checking map coefficients:
+      for FM (normal map):     FWT        PHWT
+      for FD (difference map): DELFWT     PHDELWT
+      for D.Fc:                FC_ALL     PHIC_ALL
+      for scaled Fo:                FP
+      for figure-of-merit m:        FOM
+      for free flags:               FREE
+  Is FD (DELFWT) set to 0 or NaN for any of 20 FREE flags ... yes, for 0
+   -> free reflections are NOT used for maps
+  Phases PHWT and PHDELWT ...   match (mod 180)
+  Phases PHIC_ALL and PHWT ...   match (mod 180)
+  For all 127888 acentric reflections (excl. missing/unused):
+      FM = 2m.Fo - D.Fc
+      FD = 2(m.Fo - D.Fc) = 2(FM - m.Fo) = FM - D.Fc
+  For all 2486 centric reflections (excl. missing/unused):
+      FM = 2m.Fo - D.Fc
+      FD = 2(m.Fo - D.Fc) = 2(FM - m.Fo) = FM - D.Fc
+  For all 16359 missing/unused reflections:
+      FM = D.Fc
+      FD = 0
+
 map2sf
 ======
 

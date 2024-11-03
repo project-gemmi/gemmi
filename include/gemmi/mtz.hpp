@@ -416,7 +416,7 @@ struct GEMMI_DLL Mtz {
   Column* rfree_column() {
     // cf. MtzToCif::default_spec in mtz2cif.hpp
     return column_with_type_and_any_of_labels('I',
-        {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags", "FreeRflag"});
+        {"FREE", "RFREE", "FREER", "FreeR_flag", "R-free-flags", "FreeRflag", "R_FREE_FLAGS"});
   }
   const Column* rfree_column() const {
     return const_cast<Mtz*>(this)->rfree_column();

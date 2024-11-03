@@ -25,12 +25,12 @@ Blob criteria:
 
 Options for map calculation:
   -d, --diff            Use difference map coefficients.
-  --section=NAME        MTZ dataset name or CIF block name
+  --section=NAME        MTZ dataset name or CIF block name.
   -f COLUMN             F column (MTZ label or mmCIF tag).
   -p COLUMN             Phase column (MTZ label or mmCIF tag).
   --weight=COLUMN       (normally not needed) weighting for F.
-  -g, --grid=NX,NY,NZ   Grid size (user-specified minimum).
-  --exact               Use the exact grid size specified by --grid.
-  -s, --sample=NUMBER   Set spacing to d_min/NUMBER (3 is usual).
+  -g, --grid=NX,NY,NZ   Minimum grid size.
+  --exact               Use the exact grid size specified with --grid.
+  -s, --sample=NUMBER   Set spacing to d_min/NUMBER (3 is common).
   -G                    Print size of the grid that would be used and exit.
   --timing              Print calculation times.

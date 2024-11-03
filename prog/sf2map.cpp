@@ -22,13 +22,16 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE MAP_FILE\n"
     "  " EXE_NAME " --check INPUT_FILE\n\n"
-    "INPUT_FILE must be either MTZ or mmCIF with map coefficients.\n\n"
+    "INPUT_FILE must be an MTZ or mmCIF file with map coefficients.\n\n"
     "By default, the program searches for 2mFo-DFc map coefficients in:\n"
     "  - MTZ columns FWT/PHWT or 2FOFCWT/PH2FOFCWT,\n"
     "  - mmCIF tags _refln.pdbx_FWT/pdbx_PHWT.\n"
     "If option \"-d\" is given, mFo-DFc map coefficients are searched in:\n"
     "  - MTZ columns DELFWT/PHDELWT or FOFCWT/PHFOFCWT,\n"
     "  - mmCIF tags _refln.pdbx_DELFWT/pdbx_DELPHWT.\n\n"
+    "Option --check can take column name mapping as arg, for example:\n"
+    "  --check=dfc:FCALC,fosc:FOBS  (typically, use --check without an arg).\n"
+    "Possible keys are fwt, phwt, delfwt, phdelwt, dfc, fosc, fom, free.\n"
     "\nOptions:"},
   CommonUsage[Help],
   CommonUsage[Version],
@@ -50,11 +53,11 @@ const option::Descriptor Usage[] = {
     "  --mapmask=FILE  \tOutput only map covering the structure from FILE,"
     " similarly to CCP4 MAPMASK with XYZIN." },
   { Margin, 0, "", "margin", Arg::Float,
-    "  --margin=N  \t(w/ --mapmask) Border in Angstrom (default: 5)." },
+    "  --margin=N  \t(w/ --mapmask) Border in Angstroms (default: 5)." },
   { Select, 0, "", "select", Arg::Required,
-    "  --select=SEL  \t(w/ --mapmask) Selection of atoms in FILE, MMDB syntax." },
-  { Check, 0, "", "check", Arg::None,
-    "  --check  \tAnalyze map coefficients columns in MTZ file." },
+    "  --select=SEL  \t(w/ --mapmask) Atom selection for mask, MMDB syntax." },
+  { Check, 0, "", "check", Arg::Optional,
+    "  --check[=cols]  \tAnalyze map coefficient columns in MTZ file." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -113,6 +116,7 @@ struct ReflData {
 struct DataForCheck {
   const gemmi::SpaceGroup* sg;
   bool has_free_flags;
+  bool has_fo;
   std::vector<ReflData> refl;
   std::array<std::string, 9> labels;  // corresponds to ReflData items, except hkl
 };
@@ -121,8 +125,42 @@ const char* label(const gemmi::Mtz::Column* col) {
   return col ? col->label.c_str() : "** N/A **";
 }
 
-DataForCheck read_refl_data(const char* input_path, bool verbose) {
+DataForCheck read_refl_data(const char* input_path, const char* mapping, bool verbose) {
   using gemmi::Mtz;
+
+  // parse mapping
+  std::string mapping_str;
+  const char* requested_cols[9] = {}; // fwt, phwt, delfwt, phdelwt, dfc, phdfc, fosc, fom, free
+  if (mapping) {
+    mapping_str = mapping;
+    for (size_t start = 0, end = 0; end != std::string::npos; start = end + 1) {
+      end = mapping_str.find(',', start);
+      size_t colon = mapping_str.find(':', start);
+      if (colon >= end)
+        gemmi::fail("wrong argument for --check, missing ':'");
+      mapping_str[colon] = '\0';
+      if (end != std::string::npos)
+        mapping_str[end] = '\0';
+      size_t req_idx = 0;
+      int key_id = 0;
+      if (colon - start >= 3)
+        key_id = gemmi::ialpha4_id(&mapping_str[start]);
+      switch (key_id) {
+        case gemmi::ialpha4_id("fwt"):  req_idx = 0; break;
+        case gemmi::ialpha4_id("phwt"): req_idx = 1; break;
+        case gemmi::ialpha4_id("delf"): req_idx = 2; break;
+        case gemmi::ialpha4_id("phde"): req_idx = 3; break;
+        case gemmi::ialpha4_id("dfc"):  req_idx = 4; break;
+        case gemmi::ialpha4_id("phdf"): req_idx = 5; break;
+        case gemmi::ialpha4_id("fosc"): req_idx = 6; break;
+        case gemmi::ialpha4_id("fom"):  req_idx = 7; break;
+        case gemmi::ialpha4_id("free"): req_idx = 8; break;
+        default: gemmi::fail("Arg for --check has unknown key: ", start);
+      }
+      requested_cols[req_idx] = &mapping_str[colon + 1];
+    }
+  }
+
   DataForCheck result;
   if (verbose)
     printf("Reading reflections from %s ...\n", input_path);
@@ -133,28 +171,38 @@ DataForCheck read_refl_data(const char* input_path, bool verbose) {
   if (!result.sg)
     gemmi::fail("unknown spacegroup in MTZ file");
 
+  auto get_requested = [&](int idx) -> const Mtz::Column* {
+    if (const char* name = requested_cols[idx])
+      return &mtz.get_column_with_label(name);
+    return nullptr;
+  };
+
   printf("Columns used in checking map coefficients:\n");
   using FCols = std::array<const Mtz::Column*, 2>;
-  auto get_columns = [&mtz](const char* name, std::initializer_list<const char*> labels) {
-    FCols fcols = {};
-    fcols[0] = mtz.column_with_one_of_labels(labels, 'F');
-    if (fcols[0])
+  auto get_columns = [&](const char* desc, int idx, std::initializer_list<const char*> labels) {
+    FCols fcols = {get_requested(idx), get_requested(idx+1)};
+    if (!fcols[0])
+      fcols[0] = mtz.column_with_one_of_labels(labels, 'F');
+    if (fcols[0] && !fcols[1])
       // Typically, the phase column follows directly the amplitude.
       // This assumption should be as robust as relying on column names.
       fcols[1] = fcols[0]->get_next_column_if_type('P');
-    printf("    for %-20s %-10s %s\n", name, label(fcols[0]), label(fcols[1]));
+    printf("    for %-20s %-10s %s\n", desc, label(fcols[0]), label(fcols[1]));
     return fcols;
   };
   // Using notation from Ian Tickle's mtzfix:
   // FM = 2-1 map coef,  FD = 1-1 map coef, FC = DFc
-  FCols FM = get_columns("FM (normal map):", {"FWT", "2FOFCWT"});
-  FCols FD = get_columns("FD (difference map):", {"DELFWT", "FOFCWT"});
-  FCols FC = get_columns("D.Fc:", {"DFC", "FC_ALL", "F-model", "FC"});
+  FCols FM = get_columns("FM (normal map):", 0, {"FWT", "2FOFCWT"});
+  FCols FD = get_columns("FD (difference map):", 2, {"DELFWT", "FOFCWT"});
+  FCols FC = get_columns("D.Fc:", 4, {"DFC", "FC_ALL", "FC"});
 
-  // Fobs is typically followed by sigma, not phase
-  const Mtz::Column* Fo = mtz.column_with_one_of_labels({"FOSC", "F-obs", "FP"}, 'F');
-  if (Fo && Fo->get_next_column_if_type('P'))
-    Fo = nullptr;
+  const Mtz::Column* Fo = get_requested(6);
+  if (!Fo) {
+    // Fobs is typically followed by sigma, not phase
+    Fo = mtz.column_with_one_of_labels({"FOSC", "FP"}, 'F');
+    if (Fo && Fo->get_next_column_if_type('P'))
+      Fo = nullptr;
+  }
   if (!Fo) {
     for (size_t i = 0; i < mtz.columns.size() - 1; ++i)
       if (mtz.columns[i].type == 'F' && mtz.columns[i+1].type == 'Q') {
@@ -166,12 +214,17 @@ DataForCheck read_refl_data(const char* input_path, bool verbose) {
         }
     }
   }
-  printf("    for Fo:                       %s\n", label(Fo));
+  printf("    for scaled Fo:                %s\n", label(Fo));
+  result.has_fo = Fo != nullptr;
 
-  const Mtz::Column* fom = mtz.column_with_one_of_labels({"FOM"}, 'W');
+  const Mtz::Column* fom = get_requested(7);
+  if (!fom)
+    fom = mtz.column_with_one_of_labels({"FOM"}, 'W');
   printf("    for figure-of-merit m:        %s\n", label(fom));
 
-  const Mtz::Column* free_flags = mtz.rfree_column();
+  const Mtz::Column* free_flags = get_requested(8);
+  if (!free_flags)
+    free_flags = mtz.rfree_column();
   printf("    for free flags:               %s\n", label(free_flags));
   result.has_free_flags = free_flags != nullptr;
 
@@ -202,7 +255,7 @@ DataForCheck read_refl_data(const char* input_path, bool verbose) {
   auto colval = [&](size_t offset, size_t n, float missing=NAN) {
     return col_indices[n] != 0 ? data_proxy.get_num(offset + col_indices[n]) : missing;
   };
-  for (size_t offset = 0; offset < data_proxy.size(); offset += data_proxy.stride())
+  for (size_t offset = 0; offset < data_proxy.size(); offset += data_proxy.stride()) {
     result.refl.push_back({
         data_proxy.get_hkl(offset),
         (int) colval(offset, 0, -1.f),
@@ -214,11 +267,13 @@ DataForCheck read_refl_data(const char* input_path, bool verbose) {
         colval(offset, 6),
         colval(offset, 7),
         colval(offset, 8)});
+  }
   return result;
 }
 
 void check_map_coef(DataForCheck& data) {
   gemmi::GroupOps gops = data.sg->operations();
+  std::vector<int> zeroed_flags;
 
   if (data.has_free_flags) {
     std::unordered_map<int, unsigned> non_zero_count;
@@ -229,14 +284,17 @@ void check_map_coef(DataForCheck& data) {
     }
     printf("Is FD (%s) set to 0 or NaN for any of %zu %s flags ...",
             data.labels[3].c_str(), non_zero_count.size(), data.labels[0].c_str());
-    bool found = false;
     for (auto it : non_zero_count)
-      if (it.second == 0) {
-        found = true;
-        printf(" yes (for %d)", it.first);
-      }
-    printf(found ? "\n -> free reflections unused for maps\n"
-                 : " no\n");
+      if (it.second == 0)
+        zeroed_flags.push_back(it.first);
+    if (zeroed_flags.empty()) {
+      printf(" no\n");
+    } else {
+      printf(" yes, for");
+      for (int n : zeroed_flags)
+        printf(" %d", n);
+      printf("\n -> free reflections are NOT used for maps\n");
+    }
   }
 
   // Check if phases of map coefficient and DFc are matching each other.
@@ -352,14 +410,15 @@ void check_map_coef(DataForCheck& data) {
 
   for (ReflData& r : data.refl) {
     int idx = 2;
-    if (std::isnan(r.fo) || r.m == 0)
+    if (r.m == 0 || (data.has_fo && std::isnan(r.fo)) ||
+        gemmi::in_vector(r.free_flag, zeroed_flags))
       idx = 0;
     else if (gops.is_reflection_centric(r.hkl))
       idx = 1;
     counters[idx].add_refl(r);
   }
   const char* desc[3] = {
-    "missing/unused",
+    "missing/unused reflections",
     "centric reflections (excl. missing/unused)",
     "acentric reflections (excl. missing/unused)"
   };
@@ -367,8 +426,12 @@ void check_map_coef(DataForCheck& data) {
   for (int i = 2; i >= 0; --i) {
     Counters& c = counters[i];
     printf("For all %zu %s:\n", c.count, desc[i]);
-    printf("    FM%s\n", c.get_fm().c_str());
-    printf("    FD%s\n", c.get_fd().c_str());
+    if (c.count == 0) {
+      printf("    n/a\n");
+    } else {
+      printf("    FM%s\n", c.get_fm().c_str());
+      printf("    FD%s\n", c.get_fd().c_str());
+    }
   }
 }
 
@@ -391,7 +454,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     if (p.options[Check]) {
       bool verbose = p.options[Verbose];
-      DataForCheck data = read_refl_data(p.nonOption(0), verbose);
+      DataForCheck data = read_refl_data(p.nonOption(0), p.options[Check].arg, verbose);
       if (data.sg)
         check_map_coef(data);
       // --check and -G could be combined
