@@ -191,6 +191,8 @@ struct CifToMtz {
       "F_calc FC F 1",
       "F_calc_au FC F 1",
       "phase_calc PHIC P 1",
+      "pdbx_F_calc_with_solvent F-model F 1",
+      "pdbx_phase_calc_with_solvent PHIF-model P 1",
       "fom FOM W 1",
       "weight FOM W 1",
       "pdbx_HL_A_iso HLA A 1",
