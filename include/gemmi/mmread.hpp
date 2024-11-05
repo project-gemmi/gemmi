@@ -98,8 +98,11 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown,
       return read_pdb(input);
     case CoorFormat::Mmcif:
       return make_structure(cif::read(input), save_doc);
-    case CoorFormat::Mmjson:
-      return make_structure(cif::read_mmjson(input), save_doc);
+    case CoorFormat::Mmjson: {
+      Structure st = make_structure(cif::read_mmjson(input), save_doc);
+      st.input_format = CoorFormat::Mmjson;
+      return st;
+    }
     case CoorFormat::ChemComp:
       return make_structure_from_chemcomp_doc(cif::read(input));
     case CoorFormat::Unknown:
