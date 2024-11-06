@@ -50,7 +50,7 @@ class TestProg(unittest.TestCase):
         self.assertEqual(expected_lines, output_lines)
 
     def test_fprime1(self):
-        # example from utils.rst
+        # example from program.rst
         self.do('''\
 $ gemmi fprime --wavelength=1.2 Se
 Element	 E[eV]	Wavelength[A]	   f'   	  f"
@@ -132,7 +132,7 @@ $ gemmi sfcalc --dmin=9 --rate=4 --blur=70 --rcut=1e-7 --test -v tests/1pfe.cif.
 ''')  # noqa: E501
 #RMSE=0.00054812  8.627e-05%  max|dF|=0.002943  R=0.000%  <dPhi>=3.569e-06
 
-    # example from utils.rst
+    # example from program.rst
     def test_align_text(self):
         self.do('''\
 $ gemmi align -p --match=0 --gapo=0 --text-align Saturday Sunday

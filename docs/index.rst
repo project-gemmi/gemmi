@@ -70,6 +70,6 @@ Contents
    analysis
    grid
    hkl
-   utils
+   program
    Python API reference <https://project-gemmi.github.io/python-api/>
    C++ API reference <https://project-gemmi.github.io/cxx-api/>
