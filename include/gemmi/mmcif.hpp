@@ -89,11 +89,11 @@ inline int check_chemcomp_block_number(const cif::Document& doc) {
   return -1;
 }
 
-inline Structure make_structure_from_chemcomp_doc(const cif::Document& doc) {
+inline Structure make_structure_from_chemcomp_doc(const cif::Document& doc, int which=7) {
   int n = check_chemcomp_block_number(doc);
   if (n == -1)
     fail("Not a chem_comp format.");
-  return make_structure_from_chemcomp_block(doc.blocks[n]);
+  return make_structure_from_chemcomp_block(doc.blocks[n], which);
 }
 
 } // namespace gemmi

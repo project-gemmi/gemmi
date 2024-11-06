@@ -18,6 +18,8 @@ GEMMI_DLL Structure read_structure_gz(const std::string& path,
 GEMMI_DLL Structure read_pdb_gz(const std::string& path,
                                 PdbReadOptions options=PdbReadOptions());
 
+GEMMI_DLL Structure read_structure_from_chemcomp_gz(const std::string& path, int which);
+
 GEMMI_DLL CoorFormat coor_format_from_ext_gz(const std::string& path);
 
 } // namespace gemmi

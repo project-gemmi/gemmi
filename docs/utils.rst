@@ -420,19 +420,26 @@ Conversion between macromolecular coordinate formats: PDB, mmCIF and mmJSON.
 .. literalinclude:: convert-help.txt
    :language: console
 
-The PDB records written by Gemmi are formatted in the same way as in the wwPDB.
-This makes possible to use `diff` to compare a PDB file from wwPDB
-and a file converted by Gemmi from mmCIF. The file from wwPDB will have
-more records, but the diff should still be readable.
+Gemmi formats PDB records in the same way as wwPDB (including
+trailing spaces) to enable file comparison using `diff`.
+
+CCD files include two sets of coordinates: example model and ideal.
+By default, when converting a CCD component to another format,
+both sets are written as separate models.
+To output only a single model, specify `--from=chemcomp:m` (for model)
+or `--from=chemcomp:i` (for ideal).
 
 `--expand-ncs`
 --------------
 
-This option expands strict NCS, defined in
-the `MTRIX` record (PDB) or in the `_struct_ncs_oper` table (mmCIF).
-It is not obvious how to name the new chains that are added.
-We have two options: either new names are generated (`=new`) or
-the chain names are not changed but distinct segment IDs are added (`=dup`).
+This option expands strict NCS, as defined in the `MTRIX` records (PDB)
+or the `_struct_ncs_oper` table (mmCIF).
+The difficult part is naming the added chains; three options are provided:
+
+* `=dup` -- the chain names remain unchanged, with distinct segment IDs added,
+* `=num` -- the names are appended with numbers to avoid duplication,
+* `=x` -- unused 1- or 2-character names are assigned, supporting
+  up to 62 + 62×62 = 3906 chains and allowing output in the PDB format.
 
 `--sifts-num`
 -------------

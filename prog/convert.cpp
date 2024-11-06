@@ -42,6 +42,11 @@ struct ConvArg: public Arg {
     return Arg::Choice(option, msg, {"dup", "num", "x"});
   }
 
+  static option::ArgStatus CoorFormatIn(const option::Option& option, bool msg) {
+    return Choice(option, msg, {"cif", "mmcif", "pdb", "json", "mmjson",
+                                "chemcomp", "chemcomp:m", "chemcomp:i"});
+  }
+
   static option::ArgStatus RecordChoice(const option::Option& option, bool msg) {
     auto status = Arg::Optional(option, msg);
     if (status == option::ARG_OK && option.arg[0] != 'A' && option.arg[0] != 'H') {
@@ -67,17 +72,15 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
-    "\n\nwith possible conversions between PDB, mmCIF and mmJSON."
-    "\nFORMAT can be specified as one of: mmcif, mmjson, pdb, chemcomp (read-only)."
-    "\nchemcomp = example coordinates of a component from CCD or monomer library."
+    "\n\nAllows conversion between PDB, mmCIF, and mmJSON formats."
     "\n\nGeneral options:" },
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { FormatIn, 0, "", "from", Arg::CoorFormat,
-    "  --from=FORMAT  \tInput format (default: from the file extension)." },
+  { FormatIn, 0, "", "from", ConvArg::CoorFormatIn,
+    "  --from=FORMAT  \tInput format (default: inferred from file extension)." },
   { FormatOut, 0, "", "to", Arg::CoorFormat,
-    "  --to=FORMAT  \tOutput format (default: from the file extension)." },
+    "  --to=FORMAT  \tOutput format (default: inferred from file extension)." },
 
   { NoOp, 0, "", "", Arg::None, "\nmmCIF output options:" },
   { CifStyle, 0, "", "style", Arg::CifStyle,
@@ -95,7 +98,7 @@ const option::Descriptor Usage[] = {
   { SegmentAsChain, 0, "", "segment-as-chain", Arg::None,
     "  --segment-as-chain \tAppend segment id to label_asym_id (chain name)." },
   { OldPdb, 0, "", "old-pdb", Arg::None,
-    "  --old-pdb \tRead only the first 72 characters in line." },
+    "  --old-pdb \tRead only the first 72 characters of each line." },
   { ForceLabel, 0, "L", "force-label", Arg::None,
     "  -L, --force-label  \tAdd label_seq_id even if SEQRES is missing" },
 
@@ -107,7 +110,7 @@ const option::Descriptor Usage[] = {
   { CopyRemarks, 0, "", "copy-remarks", Arg::None,
     "  --copy-remarks  \t(pdb->pdb only) Copy REMARK records." },
 
-  { NoOp, 0, "", "", Arg::None, "\nAny output options:" },
+  { NoOp, 0, "", "", Arg::None, "\nGeneral output options:" },
   { Minimal, 0, "", "minimal", Arg::None,
     "  --minimal  \tWrite only the most essential records." },
   { ShortenCN, 0, "", "shorten", Arg::None,
@@ -124,10 +127,9 @@ const option::Descriptor Usage[] = {
     " is assigned the best matching sequence, if any." },
   { SiftsNum, 0, "", "sifts-num", Arg::Optional,
     "  --sifts-num[=AC,...]  \tSet sequence ID to SIFTS-mapped UniProt positions,"
-    " add 5000+ to non-mapped seqnums. See the docs for details." },
+    " add 5000+ to non-mapped seqnums. See docs for details." },
   { Biso, 0, "B", "", Arg::Required,
-    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or change values "
-      "out of given range to MIN/MAX." },
+    "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or constrain them to a range." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
   { AssignRecords, 0, "", "assign-records", ConvArg::RecordChoice,
@@ -139,19 +141,18 @@ const option::Descriptor Usage[] = {
 
   { NoOp, 0, "", "", Arg::None, "\nMacromolecular operations:" },
   { Select, 0, "", "select", Arg::Required,
-    "  --select=SEL  \tOutput only the selection." },
+    "  --select=SEL  \tOutput only the specified selection." },
   { Remove, 0, "", "remove", Arg::Required,
-    "  --remove=SEL  \tRemove the selection." },
+    "  --remove=SEL  \tRemove the specified selection." },
   { ApplySymop, 0, "", "apply-symop", Arg::Required,
     "  --apply-symop=OP  \tApply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'." },
   { Reframe, 0, "", "reframe", Arg::None,
     "  --reframe  \tStandardize the coordinate system (frame)." },
   { ExpandNcs, 0, "", "expand-ncs", ConvArg::NcsChoice,
-    "  --expand-ncs=dup|num|x  \tExpand strict NCS from in MTRIXn or"
-    " _struct_ncs_oper. New chain names are the same, have added numbers,"
-    " or the shortest unused names are picked."},
+    "  --expand-ncs=dup|num|x  \tExpand strict NCS from MTRIXn or _struct_ncs_oper. "
+    "Argument controls naming of new chains; see docs." },
   { AsAssembly, 0, "", "assembly", Arg::Required,
-    "  --assembly=ID  \tOutput bioassembly with given ID (1, 2, ...)." },
+    "  --assembly=ID  \tOutput bioassembly with specified ID (1, 2, ...)." },
   { RemoveH, 0, "", "remove-h", Arg::None,
     "  --remove-h  \tRemove hydrogens." },
   { RemoveWaters, 0, "", "remove-waters", Arg::None,
@@ -161,6 +162,8 @@ const option::Descriptor Usage[] = {
   { TrimAla, 0, "", "trim-to-ala", Arg::None,
     "  --trim-to-ala  \tTrim aminoacids to alanine." },
   { NoOp, 0, "", "", Arg::None,
+    "\nFORMAT can be specified as one of: mmcif, mmjson, pdb. chemcomp (read-only)."
+    "\nchemcomp = coordinates of a component from CCD or monomer library (see docs)."
     "\nWhen output file is -, write to standard output (default format: pdb)." },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -285,7 +288,8 @@ void convert(gemmi::Structure& st,
              const std::string& output, CoorFormat output_type,
              const std::vector<option::Option>& options) {
   if (st.models.empty())
-    gemmi::fail("No atoms in the input file. Wrong file format?");
+    gemmi::fail("No atoms in the input (", format_as_string(st.input_format), ") file. "
+                "Wrong file format?");
   if (st.ter_status == 'e')
     std::cerr << "WARNING: TER records in the input PDB are clearly where they shouldn't be."
                  "\nWARNING: Ignoring all TER records." << std::endl;
@@ -537,7 +541,16 @@ int GEMMI_MAIN(int argc, char **argv) {
       options.max_line_length = 72;
       st = gemmi::read_pdb_gz(input, options);
     } else {
-      st = gemmi::read_structure_gz(input, in_type);
+      if (in_type == CoorFormat::ChemComp) {
+        int which = 7;
+        // chemcomp:m or chemcomp:i
+        if (p.options[FormatIn].arg && std::strlen(p.options[FormatIn].arg) > 9)
+          // cf. ChemCompModel
+          which = p.options[FormatIn].arg[9] == 'i' ? 4 : 2;
+        st = gemmi::read_structure_from_chemcomp_gz(input, which);
+      } else {
+        st = gemmi::read_structure_gz(input, in_type);
+      }
     }
     convert(st, output, out_type, p.options);
   } catch (std::runtime_error& e) {

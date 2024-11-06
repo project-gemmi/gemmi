@@ -2,16 +2,14 @@ $ gemmi convert -h
 Usage:
  gemmi convert [options] INPUT_FILE OUTPUT_FILE
 
-with possible conversions between PDB, mmCIF and mmJSON.
-FORMAT can be specified as one of: mmcif, mmjson, pdb, chemcomp (read-only).
-chemcomp = example coordinates of a component from CCD or monomer library.
+Allows conversion between PDB, mmCIF, and mmJSON formats.
 
 General options:
   -h, --help              Print usage and exit.
   -V, --version           Print version and exit.
   -v, --verbose           Verbose output.
-  --from=FORMAT           Input format (default: from the file extension).
-  --to=FORMAT             Output format (default: from the file extension).
+  --from=FORMAT           Input format (default: inferred from file extension).
+  --to=FORMAT             Output format (default: inferred from file extension).
 
 mmCIF output options:
   --style=STYLE           one of: default, pdbx (categories separated with #),
@@ -24,7 +22,7 @@ mmCIF output options:
 
 PDB input options:
   --segment-as-chain      Append segment id to label_asym_id (chain name).
-  --old-pdb               Read only the first 72 characters in line.
+  --old-pdb               Read only the first 72 characters of each line.
   -L, --force-label       Add label_seq_id even if SEQRES is missing
 
 PDB output options:
@@ -32,7 +30,7 @@ PDB output options:
   --linkr                 Write LINKR record (for Refmac) if link_id is known.
   --copy-remarks          (pdb->pdb only) Copy REMARK records.
 
-Any output options:
+General output options:
   --minimal               Write only the most essential records.
   --shorten               Shorten chain names to 1 (if # < 63) or 2 characters.
   --rename-chain=OLD:NEW  Rename chain OLD to NEW (--rename-chain=:A adds
@@ -42,24 +40,25 @@ Any output options:
   -s FILE                 Use sequence(s) from FILE in PIR or FASTA format. Each
                           chain is assigned the best matching sequence, if any.
   --sifts-num[=AC,...]    Set sequence ID to SIFTS-mapped UniProt positions, add
-                          5000+ to non-mapped seqnums. See the docs for details.
-  -B MIN[:MAX]            Set isotropic B-factors to a single value or change
-                          values out of given range to MIN/MAX.
+                          5000+ to non-mapped seqnums. See docs for details.
+  -B MIN[:MAX]            Set isotropic B-factors to a single value or constrain
+                          them to a range.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
   --assign-records[=A|H]  Re-assign ATOM/HETATM (w/o argument: auto).
 
 Macromolecular operations:
-  --select=SEL            Output only the selection.
-  --remove=SEL            Remove the selection.
+  --select=SEL            Output only the specified selection.
+  --remove=SEL            Remove the specified selection.
   --apply-symop=OP        Apply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'.
   --reframe               Standardize the coordinate system (frame).
-  --expand-ncs=dup|num|x  Expand strict NCS from in MTRIXn or _struct_ncs_oper.
-                          New chain names are the same, have added numbers, or
-                          the shortest unused names are picked.
-  --assembly=ID           Output bioassembly with given ID (1, 2, ...).
+  --expand-ncs=dup|num|x  Expand strict NCS from MTRIXn or _struct_ncs_oper.
+                          Argument controls naming of new chains; see docs.
+  --assembly=ID           Output bioassembly with specified ID (1, 2, ...).
   --remove-h              Remove hydrogens.
   --remove-waters         Remove waters.
   --remove-lig-wat        Remove ligands and waters.
   --trim-to-ala           Trim aminoacids to alanine.
 
+FORMAT can be specified as one of: mmcif, mmjson, pdb. chemcomp (read-only).
+chemcomp = coordinates of a component from CCD or monomer library (see docs).
 When output file is -, write to standard output (default format: pdb).

@@ -298,7 +298,8 @@ gemmi::CoorFormat coor_format_as_enum(const option::Option& format_in) {
       format = gemmi::CoorFormat::Pdb;
     else if (eq("json") || eq("mmjson"))
       format = gemmi::CoorFormat::Mmjson;
-    else if (eq("chemcomp"))
+    else if (std::strncmp(format_in.arg, "chemcomp", 8) == 0 &&
+             (format_in.arg[8] == '\0' || format_in.arg[8] == ':'))
       format = gemmi::CoorFormat::ChemComp;
   }
   return format;

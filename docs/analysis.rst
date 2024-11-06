@@ -30,10 +30,9 @@ The implementation works with both crystal and non-crystal systems and:
 * can find neighbors any number of unit cells apart; surprisingly,
   molecules from different and non-neighboring unit cells can be
   in contact, either because of the molecule's shape (a single chain can be
-  :ref:`longer than four unit cells <long_chain>`) or because of
-  the non-optimal choice of symmetric images in the model
-  (some PDB entries even have links between chains more than
-  10 unit cells away which cannot be expressed in the 1555 type of notation).
+  :ref:`longer than four unit cells <long_chain>`) or due to a poor choice
+  of origin (some PDB entries even have links between chains more than
+  10 unit cells away which cannot be expressed in the 1555 notation).
 
 Note that while an atom can be bonded with its own symmetric image,
 it sometimes happens that an atom meant to be on a special position
