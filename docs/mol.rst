@@ -1483,36 +1483,21 @@ Gemmi parses many more records from the PDB format, including
 REMARK 3 and 200/230. This information is stored in the `Metadata` structure
 defined in `gemmi/metadata.hpp`. Currently, it's not exposed to Python.
 
-`Structure` has also a number of methods.
-To access or delete a model with known name use::
+To access, remove or add a model, in C++ use directly methods of::
 
-  Model* Structure::find_model(const std::string& model_name)
-  void Structure::remove_model(const std::string& model_name)
+  std::vector<Model> Structure::models
 
-In Python these functions are wrapped as `__getitem__` and `__delitem__`:
+In Python, use `__getitem__`, `__delitem__` and `add_model(model, pos=-1)`:
 
 .. doctest::
 
   >>> structure[0]        # by 0-based index
   <gemmi.Model 1 with 6 chain(s)>
   >>> del structure[1:]   # delete all models but the first one
-
-To add a model to the structure, in C++ use directly methods of::
-
-  std::vector<Model> Structure::models
-
-and in Python use:
-
-.. code-block:: python
-
-  Structure.add_model(model, pos=-1)
-
-for example,
-
-.. testcode::
-
-  structure.add_model(gemmi.Model(7))  # add a new model
-  structure.add_model(structure[0])    # add a copy of model #0
+  >>> structure.add_model(gemmi.Model(7))  # add a new model
+  <gemmi.Model 7 with 0 chain(s)>
+  >>> structure.add_model(structure[0])    # add a copy of model #0
+  <gemmi.Model 1 with 6 chain(s)>
 
 .. warning::
 
@@ -1522,7 +1507,7 @@ for example,
 
    * `add_model` may cause memory re-allocation invalidating references
      to all other models,
-   * `remove_model` and `__delitem__` invalidate references only to
+   * `__delitem__` invalidate references only to
      models that are after the removed one.
 
    This means that you need to update a reference before using it:

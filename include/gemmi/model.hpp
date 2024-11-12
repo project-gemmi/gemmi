@@ -938,10 +938,6 @@ struct Structure {
     return impl::find_or_add(models, model_num);
   }
 
-  void remove_model(int model_num) {
-    models.erase(impl::find_iter(models, model_num));
-  }
-
   void renumber_models() {
     for (size_t i = 0; i != models.size(); ++i)
       models[i].num = i + 1;
