@@ -145,7 +145,17 @@ int GEMMI_MAIN(int argc, char **argv) {
       pxd[1] = opt->arg;
     if (const option::Option* opt = p.options[Dataset])
       pxd[2] = opt->arg;
-    mtz.datasets.push_back({1, pxd[0], pxd[1], pxd[2], mtz.cell, xds.wavelength});
+    if (xds.isets.empty()) {
+      mtz.datasets.push_back({1, pxd[0], pxd[1], pxd[2], mtz.cell, xds.wavelength});
+    } else {
+      for (gemmi::XdsAscii::Iset& iset : xds.isets) {
+        double wavelength = iset.wavelength != 0 ? iset.wavelength : xds.wavelength;
+        gemmi::UnitCell cell;
+        cell.set_from_array(iset.cell_constants[0] != 0 ? iset.cell_constants
+                                                        : xds.cell_constants);
+        mtz.datasets.push_back({iset.id, pxd[0], pxd[1], pxd[2], cell, wavelength});
+      }
+    }
     mtz.add_column("M/ISYM", 'Y', 0, -1, false);
     mtz.add_column("BATCH", 'B', 0, -1, false);
     mtz.add_column("I", 'J', 0, -1, false);
