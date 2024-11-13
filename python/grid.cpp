@@ -157,7 +157,7 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
         return usual_iterator(self, self);
     }, nb::keep_alive<0, 1>())
     ;
-    return grid;
+  return grid;
 }
 
 template<typename T>
