@@ -134,20 +134,30 @@ struct MillerHash {
   }
 };
 
+struct UnitCellParameters {
+  double a = 1.0, b = 1.0, c = 1.0;
+  double alpha = 90.0, beta = 90.0, gamma = 90.0;
+
+  UnitCellParameters() = default;
+  UnitCellParameters(const double (&par)[6]) {
+    a = par[0]; b = par[1]; c = par[2]; alpha = par[3]; beta = par[4]; gamma = par[5];
+  }
+  UnitCellParameters(const std::array<double,6>& par) {
+    a = par[0]; b = par[1]; c = par[2]; alpha = par[3]; beta = par[4]; gamma = par[5];
+  }
+};
+
 /// Unit cell. Contains cell parameters as well as pre-calculated
 /// orthogonalization and fractionalization matrices, volume, and more.
 /// Contains symmetry operations (incl. NCS) if they were set from outside.
-struct UnitCell {
+struct UnitCell : UnitCellParameters {
   UnitCell() = default;
   UnitCell(double a_, double b_, double c_,
            double alpha_, double beta_, double gamma_) {
     set(a_, b_, c_, alpha_, beta_, gamma_);
   }
-  UnitCell(const std::array<double, 6>& v) {
-    set(v[0], v[1], v[2], v[3], v[4], v[5]);
-  }
-  double a = 1.0, b = 1.0, c = 1.0;
-  double alpha = 90.0, beta = 90.0, gamma = 90.0;
+  UnitCell(const std::array<double, 6>& v) { set_from_array(v.data()); }
+
   Transform orth;
   Transform frac;
   double volume = 1.0;
@@ -290,6 +300,8 @@ struct UnitCell {
     gamma = gamma_;
     calculate_properties();
   }
+
+  void set_from_array(const double* v) { set(v[0], v[1], v[2], v[3], v[4], v[5]); }
 
   void set_from_vectors(const Vec3& va, const Vec3& vb, const Vec3& vc) {
     set(va.length(), vb.length(), vc.length(),
