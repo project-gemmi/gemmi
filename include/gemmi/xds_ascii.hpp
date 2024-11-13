@@ -56,7 +56,7 @@ struct GEMMI_DLL XdsAscii {
   std::string source_path;
   int read_columns = 0;  // doesn't include ITEM_ISET from XSCALE
   int spacegroup_number = 0;
-  UnitCell unit_cell;
+  double cell_constants[6] = {0., 0., 0., 0., 0., 0.};
   Mat33 cell_axes{0.};
   double wavelength = 0.;
   double incident_beam_dir[3] = {0., 0., 0.};
@@ -245,9 +245,7 @@ void XdsAscii::read_stream(Stream&& stream, const std::string& source) {
         spacegroup_number = simple_atoi(rhs);
       } else if (starts_with_ptr(line+1, "UNIT_CELL_", &rhs)) {
         if (starts_with_ptr(rhs, "CONSTANTS=", &rhs)) {  // UNIT_CELL_CONSTANTS=
-          double par[6];
-          parse_numbers_into_array(rhs, line+len, par, line);
-          unit_cell.set(par[0], par[1], par[2], par[3], par[4], par[5]);
+          parse_numbers_into_array(rhs, line+len, cell_constants, line);
         } else if (starts_with_ptr(rhs, "A-AXIS=", &rhs)) { // UNIT_CELL_A-AXIS=
           parse_numbers_into_array(rhs, line+len, cell_axes.a[0], line);
         } else if (starts_with_ptr(rhs, "B-AXIS=", &rhs)) { // UNIT_CELL_B-AXIS=

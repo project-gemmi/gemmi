@@ -330,7 +330,7 @@ void Intensities::read_f_squared_from_mmcif(const ReflnBlock& rb) {
 }
 
 void Intensities::read_unmerged_intensities_from_xds(const XdsAscii& xds) {
-  unit_cell = xds.unit_cell;
+  unit_cell.set_from_array(xds.cell_constants);
   spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
   wavelength = xds.wavelength;
   data.reserve(xds.data.size());

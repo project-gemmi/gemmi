@@ -65,7 +65,8 @@ int check_format(const std::string& fmt) {
 #define WRITE(...) os.write(buf, snprintf_z(buf, 255, __VA_ARGS__))
 
 void write_cell_and_symmetry(const std::string& entry_id,
-                             const UnitCell& cell, double* rmsds, const SpaceGroup* sg,
+                             const UnitCellParameters& cell, double* rmsds,
+                             const SpaceGroup* sg,
                              char* buf, std::ostream& os) {
   os << "_cell.entry_id " << entry_id << '\n';
   WRITE("_cell.length_a    %8.4f\n", cell.a);
@@ -791,18 +792,16 @@ void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) const {
   const SpaceGroup* sg = find_spacegroup_by_number(xds.spacegroup_number);
   double rmsds[6] = {0., 0., 0., 0., 0., 0.};
   if (xds.isets.size() > 1) {
-    double mean[6] = {xds.unit_cell.a, xds.unit_cell.b, xds.unit_cell.c,
-                      xds.unit_cell.alpha, xds.unit_cell.beta, xds.unit_cell.gamma};
     int n = 0;
     for (const XdsAscii::Iset& iset : xds.isets) {
       for (int i = 0; i < 6; ++i)
-        rmsds[i] += sq(mean[i] - iset.cell_constants[i]) * iset.frame_count;
+        rmsds[i] += sq(xds.cell_constants[i] - iset.cell_constants[i]) * iset.frame_count;
       n += iset.frame_count;
     }
     for (int i = 0; i < 6; ++i)
       rmsds[i] = std::sqrt(rmsds[i] / n);
   }
-  write_cell_and_symmetry(entry_id, xds.unit_cell, rmsds, sg, buf, os);
+  write_cell_and_symmetry(entry_id, xds.cell_constants, rmsds, sg, buf, os);
 
   os << "\nloop_"
         "\n_diffrn_refln.diffrn_id"

@@ -135,7 +135,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.history.emplace_back("From gemmi-xds2mtz " GEMMI_VERSION);
       mtz.history.push_back(gemmi::cat("From ", xds.generated_by, ' ', xds.version_str));
     }
-    mtz.cell = xds.unit_cell;
+    mtz.cell.set_from_array(xds.cell_constants);
     mtz.spacegroup = gemmi::find_spacegroup_by_number(xds.spacegroup_number);
     mtz.add_base();
     const char* pxd[3] = {"XDSproject", "XDScrystal", "XDSdataset"};
