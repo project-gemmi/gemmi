@@ -592,34 +592,12 @@ the venerable CCP4 FFT program; its value has the same meaning.
 `--check`
 ---------
 
-The `--check` option, inspired by the MTZFIX program by Ian Tickle,
-helps clarify the meaning of map coefficients.
-It identifies relationships between MTZ columns, separately for acentric,
-centric and missing reflections, and provides informative output
-for MTZ files from BUSTER, Refmac and Servalcat,
-which contain columns with scaled *Fobs*, *D.Fc* and the figure-of-merit *m*.
-For mtz files that lack these columns, the output is less informative.
-
-Typically, two sets of map coefficients are provided: for a "normal" map
-(2\ *mF*:sub:`o`–\ *DF*:sub:`c` , sometimes referred to simply as
-2\ *F*:sub:`o`–\ *F*:sub:`c` even if *m* and *D* are included)
-and a difference map (*mF*:sub:`o`–*DF*:sub:`c` ,
-sometimes referred to as *F*:sub:`o`–*F*:sub:`c`).
-The actual formulas vary slightly and are not consistent across implementations:
-
-* The difference map should include a factor of 2 for acentric reflections,
-  i.e., it should be 2(*mF*:sub:`o`–*DF*\ :sub:`c`), not what it's called.
-  In some files, however, it's not 2×.
-  This affects only the absolute values of the map, not the σ levels.
-* Coefficients for centric reflections can be calculated with the same formulas
-  as for acentric, although according to the literature they should be
-  different: *mF*:sub:`o` for the normal map and *mF*:sub:`o`–*DF*:sub:`c`
-  (without the factor 2) for the difference map.
-* For reflections without observed data (missing *F*\ :sub:`o`), the normal map
-  coefficients are either filled with *DF*:sub:`c` or not.
-* For reflections in a free set, *F*:sub:`o` is either used (to improve map
-  quality) or not (to ensure that the free set is used solely for validation).
-
+This option is inspired by Ian Tickle's MTZFIX program.
+It checks how the map coefficients were calculated
+by determining relationships between MTZ columns, separately for acentric,
+centric and missing reflections. It works well with MTZ files from BUSTER,
+Refmac and Servalcat, which include map coefficients along with
+scaled *Fobs*, *D.Fc* and the figure-of-merit *m*.
 Here is an example output:
 
 .. code-block:: none
@@ -644,6 +622,34 @@ Here is an example output:
   For all 16359 missing/unused reflections:
       FM = D.Fc
       FD = 0
+
+If the MTZ file lacks some of these columns (for instance, if only
+unscaled *Fobs* are present), the output is less informative.
+
+Why is this useful at all?
+
+Typically, an MTZ file from refinement has coefficients for two maps:
+
+* a density map, 2\ *mF*:sub:`o`–\ *DF*:sub:`c` , sometimes referred to as
+  2\ *F*:sub:`o`–\ *F*:sub:`c` even if *m* and *D* are used,
+* and a difference map, *mF*:sub:`o`–*DF*:sub:`c` ,
+  sometimes referred to as *F*:sub:`o`–*F*:sub:`c`.
+
+However, the exact formulas vary across implementations:
+
+* For acentric reflections, the difference map may or may not include a factor
+  of 2. In the literature, the formula is actually
+  2(*mF*:sub:`o`–*DF*\ :sub:`c`), not the one given above.
+  In an MTZ file it may not be 2×.
+  (This only affects the map's absolute values -- not that important.)
+* The formulas for centric reflections have been derived as:
+  *mF*:sub:`o` for the density map and *mF*:sub:`o`–*DF*:sub:`c`
+  (without 2×) for the difference map; however, not all programs
+  use these formulas.
+* For reflections without observed data (missing *F*\ :sub:`o`), the density map
+  coefficients are either filled with *DF*:sub:`c` or not.
+* For reflections in a free set, *F*:sub:`o` is either used (to improve map
+  quality) or not (to ensure that the free set is used solely for validation).
 
 map2sf
 ======
