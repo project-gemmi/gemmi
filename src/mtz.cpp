@@ -521,14 +521,18 @@ void Mtz::write_to_stream(Write write) const {
     WRITE("DCELL %9d %10.4f%10.4f%10.4f%10.4f%10.4f%10.4f",
           ds.id, uc.a, uc.b, uc.c, uc.alpha, uc.beta, uc.gamma);
     WRITE("DWAVEL %8d %10.5f", ds.id, ds.wavelength);
-    for (size_t i = 0; i < batches.size(); i += 12) {
+  }
+  int pos = 0;
+  for (const Batch& batch : batches) {
+    if (pos == 0)
       std::memcpy(buf, "BATCH ", 6);  // NOLINT(bugprone-not-null-terminated-result)
-      int pos = 6;
-      for (size_t j = i; j < std::min(batches.size(), i + 12); ++j, pos += 6)
-        snprintf_z(buf + pos, 7, "%6zu", j + 1);
+    pos += 6;
+    snprintf_z(buf + pos, 7, "%6d", batch.number);
+    if (pos > 72 || &batch == &batches.back()) {
       std::memset(buf + pos, ' ', 80 - pos);
       if (write(buf, 80, 1) != 1)
         fail("Writing MTZ file failed");
+      pos = 0;
     }
   }
   WRITE("END");
