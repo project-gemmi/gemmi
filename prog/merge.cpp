@@ -112,7 +112,7 @@ Intensities read_intensities(DataType data_type, const char* input_path,
       intensities.read_mtz(mtz, data_type);
       if (data_type != DataType::Unmerged)
         intensities.take_staraniso_b_from_mtz(mtz);
-    } else if (gemmi::giends_with(input_path, ".hkl")) {
+    } else if (gemmi::giends_with(input_path, "hkl")) {  // .hkl or .ahkl
       gemmi::XdsAscii xds_ascii;
       xds_ascii.read_input(gemmi::MaybeGzipped(input_path));
       intensities.read_unmerged_intensities_from_xds(xds_ascii);
@@ -286,7 +286,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       intensities = read_intensities(data_type, input_path, block_name, verbose);
     } else { // special case of --compare with one mmCIF file
       if (gemmi::giends_with(input_path, ".mtz") ||
-          gemmi::giends_with(input_path, ".hkl"))
+          gemmi::giends_with(input_path, "hkl"))
         gemmi::fail("`--compare ONE_FILE' make sense only with mmCIF.");
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
       read_intensities_from_rblocks(ref, otype, rblocks, nullptr, verbose);

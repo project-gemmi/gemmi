@@ -154,7 +154,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     std::swap(cif_input, mtz_paths[0]);
   }
-  if (mtz_paths[nargs-2] && gemmi::giends_with(mtz_paths[nargs-2], ".hkl"))
+  if (mtz_paths[nargs-2] && gemmi::giends_with(mtz_paths[nargs-2], "hkl" /*.hkl or .ahkl*/))
     std::swap(xds_path, mtz_paths[nargs-2]);
   if (gemmi::giends_with(cif_output, ".mtz")) {
     std::fprintf(stderr, "This must be a mistake, requested output cif file"
