@@ -265,7 +265,22 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
 
-    if (!ang1 || !ang2 || !ang3) {
+    double theta3 = 0;
+    if (ang3) {
+      theta3 = ang3->radians();
+    } else {
+      // if ang3 atoms form a bonded triangle (e.g. C11-C12-PT in DVW),
+      // we can calculate theta3 from the bond lengths
+      if (const Restraints::Bond* bptr = topo.take_bond(known[0].ptr, known[1].ptr))
+        if (const Restraints::Bond* cptr = topo.take_bond(known[0].ptr, &atom))
+          if (const Restraints::Bond* aptr = topo.take_bond(&atom, known[1].ptr)) {
+            double b = bptr->value;
+            double c = cptr->value;
+            double a = aptr->value;
+            theta3 = std::acos((a * a + c * c - b * b) / (2 * a * c));
+          }
+    }
+    if (!ang1 || !ang2 || theta3 == 0) {
       const Atom* ptr1 = (!ang1 || !ang2 ? hs[0].ptr : known[0].ptr);
       const Atom* ptr2 = (!ang1 ? known[0].ptr : known[1].ptr);
       giveup(cat("Missing angle restraint ", ptr1->name, '-', atom.name,
@@ -273,7 +288,6 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     }
     double theta1 = ang1->radians();
     double theta2 = ang2->radians();
-    double theta3 = ang3->radians();
 
     // Co-planar case. The sum of angles should be 360 degrees,
     // but in some cif files it differs slightly.
