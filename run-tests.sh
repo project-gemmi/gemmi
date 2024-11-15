@@ -78,15 +78,15 @@ fi
 if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb{1,2}.cpp'
     echo 'Example 1: gemmi -> mmdb'
-    cmd="c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb.cpp \
-        -lmmdb2 -Lbuild -lgemmi_cpp -lz -Wl,-rpath=build -o test_mmdb"
-    awk '/Example 1/,/^}/' include/gemmi/mmdb.hpp > test_mmdb.cpp
-    ${cmd}1
+    cmd="c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdbX.cpp \
+        -lmmdb2 -Lbuild -lgemmi_cpp -lz -Wl,-rpath=build -o test_mmdbX"
+    awk '/Example 1/,/^}/' include/gemmi/mmdb.hpp > test_mmdb1.cpp
+    ${cmd//X/1}
     echo "Converting tests/1orc.pdb to /tmp/example1.pdb"
     ./test_mmdb1 tests/1orc.pdb /tmp/example1.pdb
     echo 'Example 2: mmdb -> gemmi'
-    awk '/Example 2/,/^}/' include/gemmi/mmdb.hpp > test_mmdb.cpp
-    ${cmd}2
+    awk '/Example 2/,/^}/' include/gemmi/mmdb.hpp > test_mmdb2.cpp
+    ${cmd//X/2}
     echo "Converting tests/1orc.pdb to /tmp/example2.pdb"
     ./test_mmdb2 tests/1orc.pdb /tmp/example2.pdb
     rm -f test_mmdb1.cpp test_mmdb2.cpp test_mmdb1 test_mmdb2

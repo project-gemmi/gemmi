@@ -67,7 +67,7 @@ inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, int model_num) {
   return g;
 }
 
-void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
+inline void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
   // based on code provided by Paul Emsley
   for (const Connection& con : st.connections) {
     if (!con.partner1.res_id.seqid.num || !con.partner2.res_id.seqid.num)
@@ -89,9 +89,9 @@ void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
       link.dist = con.reported_distance;
     if (con.asu == Asu::Different) {
       link.s2 = con.reported_sym[0];
-      link.i2 = 5 + con.reported_sym[1];
-      link.j2 = 5 + con.reported_sym[2];
-      link.k2 = 5 + con.reported_sym[3];
+      link.i2 = link.i1 + con.reported_sym[1];
+      link.j2 = link.j1 + con.reported_sym[2];
+      link.k2 = link.k1 + con.reported_sym[3];
     }
     // add links to models
     for (int imod = 1; imod <= mol->GetNumberOfModels(); imod++)
@@ -100,7 +100,41 @@ void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
   }
 }
 
-inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
+// ignoring LinkR's here
+inline void transfer_links_from_mmdb(mmdb::LinkContainer& mmdb_links, Structure& st) {
+  for (int i = 0; i < mmdb_links.Length(); ++i) {
+    mmdb::Link& link = *static_cast<mmdb::Link*>(mmdb_links.GetContainerClass(i));
+    Connection con;
+    // partner1
+    con.partner1.atom_name = link.atName1;
+    con.partner1.altloc = link.aloc1[0];
+    con.partner1.res_id.seqid = seqid_from_mmdb(link.seqNum1, link.insCode1);
+    con.partner1.res_id.name = link.resName1;
+    con.partner1.chain_name = link.chainID1;
+    // partner2
+    con.partner2.atom_name = link.atName2;
+    con.partner2.altloc = link.aloc2[0];
+    con.partner2.res_id.seqid = seqid_from_mmdb(link.seqNum2, link.insCode2);
+    con.partner2.res_id.name = link.resName2;
+    con.partner2.chain_name = link.chainID2;
+    con.reported_distance = link.dist;
+    if (link.s1 == link.s2 && link.i1 == link.i2 && link.j1 == link.j2 && link.k1 == link.k2) {
+      con.asu = Asu::Same;
+    } else {
+      con.asu = Asu::Different;
+      if (link.s1 == 1)
+        con.reported_sym[0] = link.s2;
+      con.reported_sym[1] = link.i2 - link.i1;
+      con.reported_sym[2] = link.j2 - link.j1;
+      con.reported_sym[3] = link.k2 - link.k1;
+    }
+    // for LinkR we'd also have:
+    // con.link_id = link.linkRID;
+    st.connections.push_back(con);
+  }
+}
+
+inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   for (const std::string& s : st.raw_remarks) {
     std::string line = rtrim_str(s);
     manager->PutPDBString(line.c_str());
@@ -197,7 +231,6 @@ inline mmdb::Manager* copy_to_mmdb(const Structure& st, mmdb::Manager* manager) 
     }
   }
   transfer_links_to_mmdb(st, manager);
-  return manager;
 }
 
 
@@ -293,6 +326,10 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
         if (const mmdb::CisPep* m_cispep = m_model->GetCisPep(j))
           st.cispeps.push_back(cispep_from_mmdb(*m_cispep, model_num));
     }
+  if (n > 0) {
+    mmdb::Model* mmdb_model = manager->GetModel(1);
+    transfer_links_from_mmdb(*mmdb_model->GetLinks(), st);
+  }
   return st;
 }
 
