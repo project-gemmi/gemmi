@@ -1021,7 +1021,9 @@ shows how to calculate such a map and write it to a file.
 Examples
 --------
 
-**Example 1.**
+Example 1
+~~~~~~~~~
+
 A short code that draws a contour plot similar to mapslicer plots
 (see Fig. 3 in `this CCP4 paper <http://dx.doi.org/10.1107/S0907444902016116>`_
 if you wonder what is mapslicer).
@@ -1035,7 +1037,9 @@ To keep the example short we assume that the lattice vectors are orthogonal.
     :align: center
     :scale: 100
 
-**Example 2.**
+Example 2
+~~~~~~~~~
+
 A tiny utility that compares two masks (maps with 0/1 values)
 of the same size, printing a summary of matches and mismatches:
 
@@ -1055,3 +1059,24 @@ Here is the script:
    :language: python
    :lines: 3-
 
+Example 3
+~~~~~~~~~
+
+A script that generates a Q-Q difference plot, as described in the
+`2012 paper <https://journals.iucr.org/d/issues/2012/04/00/dz5235/index.html>`_
+by Ian Tickle, in section 5.2. This script aims to reproduce the QQDOUT output
+from `EDSTATS <https://www.ccp4.ac.uk/html/edstats.html>`_.
+
+As in the paper, we first downsample the data to have statistically
+independent points, and then we plot *Z*\ –⟨\ *Z*\ ⟩ on the *y* axis.
+To create a conventional Q-Q plot, with *Z* on the *y* axis,
+you can use `statsmodels.api.qqplot(map_values)`.
+
+.. literalinclude:: ../examples/qq-plot.py
+   :language: python
+   :lines: 3-
+
+To reproduce the plot from EDSTATS exactly,
+use EDSTATS's rescaled difference map (MAPOUT2) as the input,
+and call ProbPlot with `fit=False`.
+The density values in MAPOUT2 are normalized separately for each chain.
