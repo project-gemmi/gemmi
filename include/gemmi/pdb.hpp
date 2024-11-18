@@ -21,74 +21,33 @@
 
 namespace gemmi {
 
-/// Returns operations corresponding to 1555, 2555, ... N555
-GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks);
-
-namespace impl {
-
-// Compare the first 4 letters of s, ignoring case, with uppercase record.
-// Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
-inline bool is_record_type(const char* s, const char* record) {
+/// Compare the first 4 letters of s, ignoring case, with uppercase record.
+/// Both args must have at least 3+1 chars. ' ' and NUL are equivalent in s.
+inline bool is_record_type4(const char* s, const char* record) {
   return ialpha4_id(s) == ialpha4_id(record);
 }
-// for record "TER": "TER ", TER\n, TER\r, TER\t match, TERE, TER1 don't
+/// for record "TER": "TER ", TER\n, TER\r, TER\t match, TERE, TER1 don't
 inline bool is_record_type3(const char* s, const char* record) {
   return (ialpha4_id(s) & ~0xf) == ialpha4_id(record);
 }
 
-struct GEMMI_DLL PdbReader {
-  PdbReader(const PdbReadOptions& options_) : options(options_) {
-    if (options.max_line_length <= 0 || options.max_line_length > 120)
-      options.max_line_length = 120;
-  }
+/// Returns operations corresponding to 1555, 2555, ... N555
+GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks);
 
-  template<typename Stream>
-  Structure from_stream(Stream&& stream, const std::string& source) {
-    Structure st;
-    st.input_format = CoorFormat::Pdb;
-    st.name = path_basename(source, {".gz", ".pdb"});
-    char line[122] = {0};
-    while (size_t len = copy_line_from_stream(line, options.max_line_length+1, stream)) {
-      ++line_num;
-      read_pdb_line(line, len, st, source);
-      if (is_end)
-        break;
-    }
-    finalize_structure_after_reading_pdb(st);
-    return st;
-  }
-
-private:
-  int line_num = 0;
-  bool after_ter = false;
-  bool is_end = false;
-  PdbReadOptions options;
-  Model *model = nullptr;
-  Chain *chain = nullptr;
-  Residue *resi = nullptr;
-  Transform matrix;
-  std::vector<std::string> conn_records;
-  std::unordered_map<ResidueId, int> resmap;
-
-  [[noreturn]] void wrong(const std::string& msg) const {
-    fail("Problem in line ", std::to_string(line_num), ": " + msg);
-  }
-  void read_pdb_line(const char* line, size_t len, Structure& st, const std::string& source);
-  void finalize_structure_after_reading_pdb(Structure& st) const;
-};
-
-}  // namespace impl
+GEMMI_DLL Structure read_pdb_from_stream(LineReaderBase&& line_reader,
+                                         const std::string& source,
+                                         PdbReadOptions options);
 
 inline Structure read_pdb_file(const std::string& path,
                                PdbReadOptions options=PdbReadOptions()) {
   auto f = file_open(path.c_str(), "rb");
-  return impl::PdbReader(options).from_stream(FileStream{f.get()}, path);
+  return read_pdb_from_stream(LineReader<FileStream>{f.get()}, path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name,
                                       PdbReadOptions options=PdbReadOptions()) {
-  return impl::PdbReader(options).from_stream(MemoryStream(data, size), name);
+  return read_pdb_from_stream(LineReader<MemoryStream>{data, size}, name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,
@@ -100,10 +59,13 @@ inline Structure read_pdb_string(const std::string& str,
 // A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
 inline Structure read_pdb(T&& input, PdbReadOptions options=PdbReadOptions()) {
-  if (input.is_stdin())
-    return impl::PdbReader(options).from_stream(FileStream{stdin}, "stdin");
-  if (input.is_compressed())
-    return impl::PdbReader(options).from_stream(input.get_uncompressing_stream(), input.path());
+  if (input.is_stdin()) {
+    return read_pdb_from_stream(LineReader<FileStream>{stdin}, "stdin", options);
+  }
+  if (input.is_compressed()) {
+    using LR = LineReader<decltype(input.get_uncompressing_stream())>;
+    return read_pdb_from_stream(LR{input.get_uncompressing_stream()}, input.path(), options);
+  }
   return read_pdb_file(input.path(), options);
 }
 

@@ -9,7 +9,7 @@
 #include "gemmi/atof.hpp"      // for fast_from_chars
 //#include "gemmi/calculate.hpp" // for calculate_center_of_mass
 #include "gemmi/cif.hpp"       // for cif::rules
-#include "gemmi/pdb.hpp"       // for impl::is_record_type
+#include "gemmi/pdb.hpp"       // for is_record_type4
 #include "gemmi/read_cif.hpp"  // for read_into_buffer_gz
 #include <gemmi/mmread.hpp>    // for read_structure_from_memory, coor_format_from_content
 #include <gemmi/select.hpp>    // for Selection
@@ -178,8 +178,8 @@ struct EditBuffer {
     for (;;) {
       char* eol = (char*) std::memchr(line, '\n', size_t(buf_end - line));
       auto len = (eol ? eol : buf_end) - line;
-      if (len > 4 && (gemmi::impl::is_record_type(line, "ATOM") ||
-                      gemmi::impl::is_record_type(line, "HETATM"))) {
+      if (len > 4 && (gemmi::is_record_type4(line, "ATOM") ||
+                      gemmi::is_record_type4(line, "HETATM"))) {
         if (picked.size() <= line_counter || picked[line_counter++])
           if (len >= min_length)
             modify_line(line);

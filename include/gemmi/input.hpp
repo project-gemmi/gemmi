@@ -151,17 +151,32 @@ private:
   std::string path_;
 };
 
-template<typename Input>
-inline size_t copy_line_from_stream(char* line, int size, Input&& in) {
-  if (!in.gets(line, size))
-    return 0;
-  size_t len = std::strlen(line);
-  // If a line is longer than size we discard the rest of it.
-  if (len > 0 && line[len-1] != '\n')
-    for (int c = in.getc(); c > 0 /* not 0 nor EOF */ && c != '\n'; c = in.getc())
-      continue;
-  return len;
-}
+/// type-erased line-based reader
+class LineReaderBase {
+public:
+  virtual size_t copy_line(char* line, int size) = 0;
+};
+
+template<typename T>
+class LineReader final : public LineReaderBase {
+public:
+  template<typename... Args> LineReader(Args&& ...args)
+    : stream_{std::forward<Args>(args)...} {}
+
+  size_t copy_line(char* line, int size) {
+    if (!stream_.gets(line, size))
+      return 0;
+    size_t len = std::strlen(line);
+    // If a line is longer than size we discard the rest of it.
+    if (len > 0 && line[len-1] != '\n')
+      for (int c = stream_.getc(); c > 0 /* not 0 nor EOF */ && c != '\n'; c = stream_.getc())
+        continue;
+    return len;
+  };
+
+private:
+  T stream_;
+};
 
 } // namespace gemmi
 #endif
