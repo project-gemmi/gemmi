@@ -795,7 +795,7 @@ struct GEMMI_DLL Mtz {
       read_stream(mem.stream(), with_data);
     } else {
       fileptr_t f = file_open(input.path().c_str(), "rb");
-      read_stream(FileStream{f.get()}, true);
+      read_stream(FileStream{f.get()}, with_data);
     }
   }
 
