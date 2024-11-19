@@ -117,10 +117,15 @@ void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& sour
   read_columns = 12;
   char line[256];
   size_t len0 = line_reader.copy_line(line, 255);
+  if (len0 == 0)
+    fail("empty file");
   int iset_col = 0;
-  if (len0 == 0 || !(starts_with(line, "!FORMAT=XDS_ASCII    MERGE=FALSE") ||
-                    (starts_with(line, "!OUTPUT_FILE=INTEGRATE.HKL"))))
-    fail("not an unmerged XDS_ASCII nor INTEGRATE.HKL file: " + source_path);
+  const char xds_ascii_header[] = "!FORMAT=XDS_ASCII    MERGE=";
+  char xds_ascii_type = '\0';
+  if (starts_with(line, xds_ascii_header))
+    xds_ascii_type = line[sizeof(xds_ascii_header)-1];
+  if (!xds_ascii_type && !starts_with(line, "!OUTPUT_FILE=INTEGRATE.HKL"))
+    fail("not an XDS_ASCII nor INTEGRATE.HKL file: " + source_path);
   const char* rhs;
   while (size_t len = line_reader.copy_line(line, 255)) {
     if (line[0] == '!') {
@@ -195,7 +200,9 @@ void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& sour
       } else if (starts_with_ptr(line+1, "NUMBER_OF_ITEMS_IN_EACH_DATA_RECORD=", &rhs)) {
         int num = simple_atoi(rhs);
         // INTEGRATE.HKL has read_columns=12, as set above
-        if (generated_by == "XSCALE")
+        if (xds_ascii_type == 'T')  // merged file
+          read_columns = 5;
+        else if (generated_by == "XSCALE")
           read_columns = 8;
         else if (generated_by == "CORRECT")
           read_columns = 11;
@@ -239,20 +246,24 @@ void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& sour
         r.hkl[i] = simple_atoi(p, &p);
       auto result = fast_from_chars(p, line+len, r.iobs); // 4
       result = fast_from_chars(result.ptr, line+len, r.sigma); // 5
-      result = fast_from_chars(result.ptr, line+len, r.xd); // 6
-      result = fast_from_chars(result.ptr, line+len, r.yd); // 7
-      result = fast_from_chars(result.ptr, line+len, r.zd); // 8
-      if (read_columns >= 11) {
-        result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
-        result = fast_from_chars(result.ptr, line+len, r.peak); // 10
-        result = fast_from_chars(result.ptr, line+len, r.corr); // 11
-        if (read_columns > 11) {
-          result = fast_from_chars(result.ptr, line+len, r.maxc); // 12
+      if (read_columns >= 8) {
+        result = fast_from_chars(result.ptr, line+len, r.xd); // 6
+        result = fast_from_chars(result.ptr, line+len, r.yd); // 7
+        result = fast_from_chars(result.ptr, line+len, r.zd); // 8
+        if (read_columns >= 11) {
+          result = fast_from_chars(result.ptr, line+len, r.rlp); // 9
+          result = fast_from_chars(result.ptr, line+len, r.peak); // 10
+          result = fast_from_chars(result.ptr, line+len, r.corr); // 11
+          if (read_columns >= 12) {
+            result = fast_from_chars(result.ptr, line+len, r.maxc); // 12
+          } else {
+            r.maxc = 0;  // 12
+          }
         } else {
-          r.maxc = 0;
+          r.rlp = r.peak = r.corr = r.maxc = 0;  // 9-11
         }
       } else {
-        r.rlp = r.peak = r.corr = r.maxc = 0;
+        r.xd = r.yd = r.zd = 0;  // 6-8
       }
       if (result.ec != std::errc())
         fail("failed to parse data line:\n", line);

@@ -26,6 +26,7 @@ inline bool likely_in_house_source(double wavelength) {
 struct GEMMI_DLL XdsAscii {
   struct Refl {
     Miller hkl;
+    int iset = 1;
     double iobs;
     double sigma;
     double xd;
@@ -35,7 +36,6 @@ struct GEMMI_DLL XdsAscii {
     double peak;
     double corr;  // is it always integer?
     double maxc;
-    int iset = 1;
 
     // ZD can be negative for a few reflections
     int frame() const { return (int) std::floor(zd + 1); }
