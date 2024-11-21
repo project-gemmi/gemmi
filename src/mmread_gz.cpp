@@ -17,8 +17,9 @@ Structure read_pdb_gz(const std::string& path, PdbReadOptions options) {
   return read_pdb(MaybeGzipped(path), options);
 }
 
-Structure read_structure_from_chemcomp_gz(const std::string& path, int which) {
-  return make_structure_from_chemcomp_doc(read_cif_gz(path), which);
+Structure read_structure_from_chemcomp_gz(const std::string& path,
+                                          cif::Document* save_doc, int which) {
+  return make_structure_from_chemcomp_doc(read_cif_gz(path), save_doc, which);
 }
 
 CoorFormat coor_format_from_ext_gz(const std::string& path) {

@@ -547,7 +547,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (p.options[FormatIn].arg && std::strlen(p.options[FormatIn].arg) > 9)
           // cf. ChemCompModel
           which = p.options[FormatIn].arg[9] == 'i' ? 4 : 2;
-        st = gemmi::read_structure_from_chemcomp_gz(input, which);
+        st = gemmi::read_structure_from_chemcomp_gz(input, nullptr, which);
       } else {
         st = gemmi::read_structure_gz(input, in_type);
       }

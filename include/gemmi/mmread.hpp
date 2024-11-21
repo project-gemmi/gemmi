@@ -104,7 +104,7 @@ Structure read_structure(T&& input, CoorFormat format=CoorFormat::Unknown,
       return st;
     }
     case CoorFormat::ChemComp:
-      return make_structure_from_chemcomp_doc(cif::read(input));
+      return make_structure_from_chemcomp_doc(cif::read(input), save_doc);
     case CoorFormat::Unknown:
     case CoorFormat::Detect:
       fail("Unknown format of " +
