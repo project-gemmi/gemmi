@@ -22,13 +22,16 @@ const option::Descriptor MonLibUsage[] = {
     "\nExample 2:   -L@ -L file.cif    order: ML, file.cif" }
 };
 
-MonArguments get_monomer_args(const std::vector<option::Option>& options) {
+MonArguments get_monomer_args(const std::vector<option::Option>& options, bool needs_monlib) {
   MonArguments args;
   const option::Option* mon = options[Monomers];
   args.monomer_dir = mon ? mon->arg : std::getenv("CLIBD_MON");
   if (args.monomer_dir == nullptr || args.monomer_dir[0] == '\0') {
-    fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
-    std::exit(1);
+    if (needs_monlib) {
+      fprintf(stderr, "Set $CLIBD_MON or use option --monomers.\n");
+      std::exit(1);
+    }
+    args.monomer_dir = nullptr;
   }
   args.libin = options[Libin];
   args.verbose = options[Verbose].count();
@@ -68,9 +71,11 @@ void read_monomer_lib_and_user_files(gemmi::MonLib& monlib,
       putc('\n', stderr);
     }
   }
-  if (args.verbose)
-    fprintf(stderr, "Reading monomer library...\n");
-  monlib.read_monomer_lib(args.monomer_dir, wanted, {&gemmi::Logger::to_stderr});
+  if (args.monomer_dir) {
+    if (args.verbose)
+      fprintf(stderr, "Reading monomer library...\n");
+    monlib.read_monomer_lib(args.monomer_dir, wanted, {&gemmi::Logger::to_stderr});
+  }
   auto is_found = [&](const std::string& s) { return monlib.monomers.count(s); };
   gemmi::vector_remove_if(wanted, is_found);
   if (libin) {

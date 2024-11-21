@@ -925,6 +925,11 @@ that atom is assigned one of possible positions and its occupancy is zeroed.
 .. literalinclude:: h-help.txt
    :language: console
 
+To test the addition of hydrogen to a single chemical component
+from a monomer library, run::
+
+    gemmi h --format=chemcomp -L+ XYZ.cif output.pdb
+
 mondiff
 =======
 

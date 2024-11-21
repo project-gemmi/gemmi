@@ -92,22 +92,25 @@ int GEMMI_MAIN(int argc, char **argv) {
   else if (p.options[RemoveH])
     h_change = gemmi::HydrogenChange::Remove;
 
-  MonArguments mon_args;
-  if (h_change != gemmi::HydrogenChange::Remove)
-    mon_args = get_monomer_args(p.options);
-
-  if (p.options[Verbose])
-    std::printf("Reading coordinates from %s\n", input.c_str());
   gemmi::CoorFormat input_format = coor_format_as_enum(p.options[FormatIn]);
   if (input_format == gemmi::CoorFormat::Unknown)
     input_format = gemmi::coor_format_from_ext_gz(input);
   gemmi::CoorFormat output_format = gemmi::coor_format_from_ext_gz(output);
   bool preserve_doc = (input_format == gemmi::CoorFormat::Mmcif &&
                        output_format == gemmi::CoorFormat::Mmcif);
+
+  MonArguments mon_args;
+  if (h_change != gemmi::HydrogenChange::Remove) {
+    bool needs_monlib = input_format != gemmi::CoorFormat::ChemComp;
+    mon_args = get_monomer_args(p.options, needs_monlib);
+  }
+
+  if (p.options[Verbose])
+    std::printf("Reading coordinates from %s\n", input.c_str());
   try {
     gemmi::Structure st;
     std::unique_ptr<cif::Document> doc;
-    if (preserve_doc)
+    if (preserve_doc || mon_args.has_plus())
       doc.reset(new cif::Document);
     st = gemmi::read_structure_gz(input, input_format, doc.get());
     if (st.models.empty() || st.models[0].chains.empty()) {
@@ -139,7 +142,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Verbose])
       std::printf("Writing coordinates to %s\n", output.c_str());
     gemmi::Ofstream os(output, &std::cout);
-    if (gemmi::coor_format_from_ext_gz(output) == gemmi::CoorFormat::Pdb) {
+    if (output_format == gemmi::CoorFormat::Pdb) {
       shorten_ccd_codes(st);
       gemmi::write_pdb(st, os.ref());
     } else {

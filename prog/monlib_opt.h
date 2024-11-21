@@ -13,10 +13,18 @@ struct MonArguments {
   const char* monomer_dir;
   const option::Option* libin;
   int verbose;
+
+  bool has_plus() const {
+    for (auto it = libin; it; it = it->next())
+      if (it->arg[0] == '+' && it->arg[1] == '\0')
+        return true;
+    return false;
+  }
 };
 
+
 // Exits w/ error if monomer dir is not specified (--monomers or $CLIBD_MON)
-MonArguments get_monomer_args(const std::vector<option::Option>& options);
+MonArguments get_monomer_args(const std::vector<option::Option>& options, bool needs_monlib=true);
 
 // Read monomer library and user-provided cif files according to args.
 // st_doc is used if we read monomer blocks from coordinate mmCIF.
