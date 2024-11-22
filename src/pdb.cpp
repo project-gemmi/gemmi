@@ -1155,7 +1155,7 @@ Structure read_pdb_from_stream(LineReaderBase&& line_reader, const std::string& 
     } else if (is_record_type4(line, "MODEL")) {
       if (model && chain)
         wrong("MODEL without ENDMDL?");
-      int num = read_int(line+10, 4);
+      int num = read_int(line+6, 8);
       model = &st.find_or_add_model(num);
       if (!model->chains.empty())
         wrong("duplicate MODEL number: " + std::to_string(num));
