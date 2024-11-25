@@ -113,12 +113,18 @@ double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) 
   return std::asin(z);
 }
 
+double angle_in_triangle(double a, double b, double c) {
+  return std::acos((a * a + c * c - b * b) / (2 * a * c));
+}
+
 // Used in rare cases when one angle is missing in 2H-tetrahedral configuration.
 // Currently it can happen only with metal sites.
+//   b   c(metal)
+//    \ /
+//   atom -- h (possibly two H atoms, symmetric wrt plane abc)
 // Angle c-atom-h is missing, b-atom-h is equal alpha, b-atom-c is theta.
-// For two H atoms we need also h-atom-h.
+// For two H atoms we also need angle h-atom-h.
 double missing_angle_2H_tetrahedral(const Topo& topo, const Atom& atom,
-                                    const Position& b, const Position& c,
                                     const std::vector<BondedAtom>& hs,
                                     double alpha, double theta) {
   if (hs.size() == 1)
@@ -128,15 +134,10 @@ double missing_angle_2H_tetrahedral(const Topo& topo, const Atom& atom,
       double xh = std::cos(alpha);
       double zh = std::sin(0.5 * hh->radians());
       double yh = std::sqrt(1 - xh*xh - zh*zh);
-      Vec3 ab = b - atom.pos;
-      Vec3 ac = c - atom.pos;
-      Vec3 xunit = ab.normalized();
-      Vec3 zunit = xunit.cross(ac).normalized();
-      Vec3 yunit = zunit.cross(xunit);
-      if (yunit.dot(ac) > 0)
-        yh = -yh;
-      Vec3 ah = xh * xunit + zh * zunit + yh * yunit;
-      double angle = ac.angle(ah);
+      double st = std::sin(theta);
+      double ct = std::cos(theta);
+      Vec3 ah = Vec3(xh, -yh * st, zh * st);
+      double angle = std::acos((ct * ah.x + st * ah.y) / ah.length());
       //printf("missing_angle: %s %g\n", atom.name.c_str(), deg(angle));
       return angle;
     }
@@ -308,19 +309,14 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
       if (!aptr || !bptr || !cptr)
         giveup(cat("Missing angle restraint ", known[0].ptr->name, '-', atom.name,
                    '-', known[1].ptr->name, ".\n"), hs);
-      double a = aptr->value;
-      double b = bptr->value;
-      double c = cptr->value;
-      theta3 = std::acos((a * a + c * c - b * b) / (2 * a * c));
+      theta3 = angle_in_triangle(aptr->value, bptr->value, cptr->value);
     }
     // Some configurations with metals have only distance restraints.
     // In such cases, we assume that hydrogens are as far as possible from the metal.
     if (!ang1 && ang2 && known[0].ptr->element.is_metal())
-      theta1 = missing_angle_2H_tetrahedral(topo, atom, known[1].pos, known[0].pos,
-                                            hs, theta2, theta3);
+      theta1 = missing_angle_2H_tetrahedral(topo, atom, hs, theta2, theta3);
     if (!ang2 && ang1 && known[1].ptr->element.is_metal())
-      theta2 = missing_angle_2H_tetrahedral(topo, atom, known[0].pos, known[1].pos,
-                                            hs, theta1, theta3);
+      theta2 = missing_angle_2H_tetrahedral(topo, atom, hs, theta1, theta3);
     if (theta1 == 0 || theta2 == 0)
       giveup(cat("Missing angle restraint ", hs[0].ptr->name, '-', atom.name,
                  '-', known[theta1 == 0 ? 0 : 1].ptr->name, ".\n"), hs);
