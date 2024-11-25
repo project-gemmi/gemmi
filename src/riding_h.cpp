@@ -6,6 +6,12 @@ namespace gemmi {
 
 namespace {
 
+struct BondedAtom {
+  Atom* ptr;
+  Position& pos;  // == ptr->pos;
+  double dist;
+};
+
 // Calculate position using one angle (theta) and one dihedral angle (tau).
 // Returns position of x4 in x1-x2-x3-x4, where dist=|x3-x4| and
 // theta is angle(x2, x3, x4).
@@ -107,11 +113,36 @@ double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) 
   return std::asin(z);
 }
 
-struct BondedAtom {
-  Atom* ptr;
-  Position& pos; // == ptr->pos;
-  double dist;
-};
+// Used in rare cases when one angle is missing in 2H-tetrahedral configuration.
+// Currently it can happen only with metal sites.
+// Angle c-atom-h is missing, b-atom-h is equal alpha, b-atom-c is theta.
+// For two H atoms we need also h-atom-h.
+double missing_angle_2H_tetrahedral(const Topo& topo, const Atom& atom,
+                                    const Position& b, const Position& c,
+                                    const std::vector<BondedAtom>& hs,
+                                    double alpha, double theta) {
+  if (hs.size() == 1)
+    return 2 * pi() - alpha - theta;  // make it coplanar
+  if (hs.size() == 2) {
+    if (const Restraints::Angle* hh = topo.take_angle(hs[0].ptr, &atom, hs[1].ptr)) {
+      double xh = std::cos(alpha);
+      double zh = std::sin(0.5 * hh->radians());
+      double yh = std::sqrt(1 - xh*xh - zh*zh);
+      Vec3 ab = b - atom.pos;
+      Vec3 ac = c - atom.pos;
+      Vec3 xunit = ab.normalized();
+      Vec3 zunit = xunit.cross(ac).normalized();
+      Vec3 yunit = zunit.cross(xunit);
+      if (yunit.dot(ac) > 0)
+        yh = -yh;
+      Vec3 ah = xh * xunit + zh * zunit + yh * yunit;
+      double angle = ac.angle(ah);
+      //printf("missing_angle: %s %g\n", atom.name.c_str(), deg(angle));
+      return angle;
+    }
+  }
+  return 0;
+}
 
 [[noreturn]]
 void giveup(const std::string& message, const std::vector<BondedAtom>& hs) {
@@ -265,29 +296,34 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
     const Angle* ang2 = topo.take_angle(hs[0].ptr, &atom, known[1].ptr);
     const Angle* ang3 = topo.take_angle(known[0].ptr, &atom, known[1].ptr);
 
-    double theta3 = 0;
-    if (ang3) {
-      theta3 = ang3->radians();
-    } else {
-      // if ang3 atoms form a bonded triangle (e.g. C11-C12-PT in DVW),
-      // we can calculate theta3 from the bond lengths
-      if (const Restraints::Bond* bptr = topo.take_bond(known[0].ptr, known[1].ptr))
-        if (const Restraints::Bond* cptr = topo.take_bond(known[0].ptr, &atom))
-          if (const Restraints::Bond* aptr = topo.take_bond(&atom, known[1].ptr)) {
-            double b = bptr->value;
-            double c = cptr->value;
-            double a = aptr->value;
-            theta3 = std::acos((a * a + c * c - b * b) / (2 * a * c));
-          }
+    double theta1 = ang1 ? ang1->radians() : 0;
+    double theta2 = ang2 ? ang2->radians() : 0;
+    double theta3 = ang3 ? ang3->radians() : 0;
+    if (!ang3) {
+      // If ang3 atoms form a bonded triangle (e.g. C11-C12-PT in DVW),
+      // we can calculate theta3 from the bond lengths.
+      const Restraints::Bond* aptr = topo.take_bond(&atom, known[1].ptr);
+      const Restraints::Bond* bptr = topo.take_bond(known[0].ptr, known[1].ptr);
+      const Restraints::Bond* cptr = topo.take_bond(known[0].ptr, &atom);
+      if (!aptr || !bptr || !cptr)
+        giveup(cat("Missing angle restraint ", known[0].ptr->name, '-', atom.name,
+                   '-', known[1].ptr->name, ".\n"), hs);
+      double a = aptr->value;
+      double b = bptr->value;
+      double c = cptr->value;
+      theta3 = std::acos((a * a + c * c - b * b) / (2 * a * c));
     }
-    if (!ang1 || !ang2 || theta3 == 0) {
-      const Atom* ptr1 = (!ang1 || !ang2 ? hs[0].ptr : known[0].ptr);
-      const Atom* ptr2 = (!ang1 ? known[0].ptr : known[1].ptr);
-      giveup(cat("Missing angle restraint ", ptr1->name, '-', atom.name,
-                 '-', ptr2->name, ".\n"), hs);
-    }
-    double theta1 = ang1->radians();
-    double theta2 = ang2->radians();
+    // Some configurations with metals have only distance restraints.
+    // In such cases, we assume that hydrogens are as far as possible from the metal.
+    if (!ang1 && ang2 && known[0].ptr->element.is_metal())
+      theta1 = missing_angle_2H_tetrahedral(topo, atom, known[1].pos, known[0].pos,
+                                            hs, theta2, theta3);
+    if (!ang2 && ang1 && known[1].ptr->element.is_metal())
+      theta2 = missing_angle_2H_tetrahedral(topo, atom, known[0].pos, known[1].pos,
+                                            hs, theta1, theta3);
+    if (theta1 == 0 || theta2 == 0)
+      giveup(cat("Missing angle restraint ", hs[0].ptr->name, '-', atom.name,
+                 '-', known[theta1 == 0 ? 0 : 1].ptr->name, ".\n"), hs);
 
     // Co-planar case. The sum of angles should be 360 degrees,
     // but in some cif files it differs slightly.
@@ -376,7 +412,7 @@ void place_hydrogens(const Topo& topo, const Atom& atom,
   }
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 void place_hydrogens_on_all_atoms(Topo& topo) {
   std::vector<BondedAtom> known;
@@ -445,4 +481,4 @@ void place_hydrogens_on_all_atoms(Topo& topo) {
     }
 }
 
-}
+}  // namespace gemmi
