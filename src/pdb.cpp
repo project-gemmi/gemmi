@@ -316,17 +316,17 @@ void read_remark3_line(const char* line, Metadata& meta,
     } else if (same_str(key, "MEAN B VALUE      (OVERALL, A**2)")) {
       ref_info.mean_b = fast_atof(value);
     } else if (same_str(key, "B11 (A**2)")) {
-      ref_info.aniso_b[0][0] = fast_atof(value);
+      ref_info.aniso_b.u11 = fast_atof(value);
     } else if (same_str(key, "B22 (A**2)")) {
-      ref_info.aniso_b[1][1] = fast_atof(value);
+      ref_info.aniso_b.u22 = fast_atof(value);
     } else if (same_str(key, "B33 (A**2)")) {
-      ref_info.aniso_b[2][2] = fast_atof(value);
+      ref_info.aniso_b.u33 = fast_atof(value);
     } else if (same_str(key, "B12 (A**2)")) {
-      ref_info.aniso_b[0][1] = fast_atof(value);
+      ref_info.aniso_b.u12 = fast_atof(value);
     } else if (same_str(key, "B13 (A**2)")) {
-      ref_info.aniso_b[0][2] = fast_atof(value);
+      ref_info.aniso_b.u13 = fast_atof(value);
     } else if (same_str(key, "B23 (A**2)")) {
-      ref_info.aniso_b[1][2] = fast_atof(value);
+      ref_info.aniso_b.u23 = fast_atof(value);
     } else if (same_str(key, "ESD FROM LUZZATI PLOT                    (A)")) {
       ref_info.luzzati_error = fast_atof(value);
     } else if (same_str(key, "DPI (BLOW EQ-10) BASED ON R VALUE        (A)")) {

@@ -809,11 +809,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         add("B_iso_mean", number_or_qmark(ref.mean_b));
       if (st.meta.has(&RefinementInfo::aniso_b)) {
         if (i == 0)
-          for (const char* index : {"[1][1]", "[2][2]", "[3][3]",
-                                    "[1][2]", "[1][3]", "[2][3]"})
+          for (const char* index : {"[1][1]", "[2][2]", "[3][3]", "[1][2]", "[1][3]", "[2][3]"})
             loop.tags.push_back(std::string("_refine.aniso_B") + index);
-        const Mat33& t = ref.aniso_b;
-        for (double d : {t[0][0], t[1][1], t[2][2], t[0][1], t[0][2], t[1][2]})
+        for (double d : ref.aniso_b.elements_pdb())
           loop.values.push_back(number_or_qmark(d));
       }
       if (st.meta.has(&RefinementInfo::dpi_blow_r))

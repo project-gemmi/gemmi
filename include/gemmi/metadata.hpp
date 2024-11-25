@@ -134,7 +134,7 @@ struct RefinementInfo : BasicRefinementInfo {
   int bin_count = -1;        // _refine_ls_shell.pdbx_total_number_of_bins_used
   std::vector<BasicRefinementInfo> bins;
   double mean_b = NAN;                // _refine.B_iso_mean
-  Mat33 aniso_b{NAN};                 // _refine.aniso_B[][]
+  SMat33<double> aniso_b{NAN, NAN, NAN, NAN, NAN, NAN};  // _refine.aniso_B[][]
   double luzzati_error = NAN; // _refine_analyze.Luzzati_coordinate_error_obs
   double dpi_blow_r = NAN;            // _refine.pdbx_overall_SU_R_Blow_DPI
   double dpi_blow_rfree = NAN;        // _refine.pdbx_overall_SU_R_free_Blow_DPI
@@ -170,9 +170,9 @@ struct Metadata {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !(r.*field).empty(); });
   }
-  bool has(Mat33 RefinementInfo::*field) const {
+  bool has(SMat33<double> RefinementInfo::*field) const {
     return std::any_of(refinement.begin(), refinement.end(),
-        [&](const RefinementInfo& r) { return !std::isnan((r.*field)[0][0]); });
+        [&](const RefinementInfo& r) { return !std::isnan((r.*field).u11); });
   }
   bool has_restr() const {
     return std::any_of(refinement.begin(), refinement.end(),
