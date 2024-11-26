@@ -429,10 +429,15 @@ void read_remark3_line(const char* line, Metadata& meta,
         if (k.size() == 4 && k[3] == ':')
           k.resize(3);
         if (is_tls_item(k)) {
-          Mat33& m = k[0] == 'T' ? tls.T : k[0] == 'L' ? tls.L : tls.S;
           int x = k[1] - '1';
           int y = k[2] - '1';
-          m[x][y] = m[y][x] = fast_atof(tokens[i+1].c_str());
+          double v = fast_atof(tokens[i+1].c_str());
+          if (k[0] == 'S') {
+            tls.S[x][y] = v;
+          } else {
+            SMat33<double>& tensor = k[0] == 'T' ? tls.T : tls.L;
+            tensor.unchecked_ref(x, y) = v;
+          }
         }
       }
     }

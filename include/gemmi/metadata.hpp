@@ -95,12 +95,12 @@ struct TlsGroup {
     SeqId res_end;
     std::string details;  // _pdbx_refine_tls_group.selection_details
   };
-  std::string id;           // _pdbx_refine_tls.id
+  std::string id;         // _pdbx_refine_tls.id
   std::vector<Selection> selections;
-  Position origin;          // _pdbx_refine_tls.origin_x/y/z
-  Mat33 T;                  // _pdbx_refine_tls.T[][]
-  Mat33 L;                  // _pdbx_refine_tls.L[][]
-  Mat33 S;                  // _pdbx_refine_tls.S[][]
+  Position origin;        // _pdbx_refine_tls.origin_x/y/z
+  SMat33<double> T = {NAN, NAN, NAN, NAN, NAN, NAN};  // _pdbx_refine_tls.T[][]
+  SMat33<double> L = {NAN, NAN, NAN, NAN, NAN, NAN};  // _pdbx_refine_tls.L[][]
+  Mat33 S = Mat33{NAN};   // _pdbx_refine_tls.S[][]
 };
 
 // RefinementInfo corresponds to REMARK 3.

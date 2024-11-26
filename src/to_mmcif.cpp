@@ -1147,15 +1147,13 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "origin_x", "origin_y", "origin_z"});
     for (const RefinementInfo& ref : st.meta.refinement)
       for (const TlsGroup& tls : ref.tls_groups) {
-        const Mat33& T = tls.T;
-        const Mat33& L = tls.L;
+        const SMat33<double>& T = tls.T;
+        const SMat33<double>& L = tls.L;
         const Mat33& S = tls.S;
         auto q = number_or_qmark;
         loop.add_row({cif::quote(ref.id), string_or_dot(tls.id),
-                      q(T[0][0]), q(T[1][1]), q(T[2][2]),
-                      q(T[0][1]), q(T[0][2]), q(T[1][2]),
-                      q(L[0][0]), q(L[1][1]), q(L[2][2]),
-                      q(L[0][1]), q(L[0][2]), q(L[1][2]),
+                      q(T.u11), q(T.u22), q(T.u33), q(T.u12), q(T.u13), q(T.u23),
+                      q(L.u11), q(L.u22), q(L.u33), q(L.u12), q(L.u13), q(L.u23),
                       q(S[0][0]), q(S[0][1]), q(S[0][2]),
                       q(S[1][0]), q(S[1][1]), q(S[1][2]),
                       q(S[2][0]), q(S[2][1]), q(S[2][2]),
