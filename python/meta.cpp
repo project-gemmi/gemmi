@@ -338,6 +338,12 @@ void add_meta(nb::module_& m) {
     .def_rw("r_all", &BasicRefinementInfo::r_all)
     .def_rw("r_work", &BasicRefinementInfo::r_work)
     .def_rw("r_free", &BasicRefinementInfo::r_free)
+    .def_rw("cc_fo_fc_work", &RefinementInfo::cc_fo_fc_work)
+    .def_rw("cc_fo_fc_free", &RefinementInfo::cc_fo_fc_free)
+    .def_rw("fsc_work", &RefinementInfo::fsc_work)
+    .def_rw("fsc_free", &RefinementInfo::fsc_free)
+    .def_rw("cc_intensity_work", &RefinementInfo::cc_intensity_work)
+    .def_rw("cc_intensity_free", &RefinementInfo::cc_intensity_free)
     ;
   nb::class_<RefinementInfo, BasicRefinementInfo> refinfo(m, "RefinementInfo");
   nb::class_<RefinementInfo::Restr>(refinfo, "Restr")
@@ -362,8 +368,6 @@ void add_meta(nb::module_& m) {
     .def_rw("dpi_blow_rfree", &RefinementInfo::dpi_blow_rfree)
     .def_rw("dpi_cruickshank_r", &RefinementInfo::dpi_cruickshank_r)
     .def_rw("dpi_cruickshank_rfree", &RefinementInfo::dpi_cruickshank_rfree)
-    .def_rw("cc_fo_fc", &RefinementInfo::cc_fo_fc)
-    .def_rw("cc_fo_fc_free", &RefinementInfo::cc_fo_fc_free)
     .def_rw("restr_stats", &RefinementInfo::restr_stats)
     .def_rw("tls_groups", &RefinementInfo::tls_groups)
     .def_rw("remarks", &RefinementInfo::remarks)

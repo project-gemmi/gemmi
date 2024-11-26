@@ -107,14 +107,20 @@ struct TlsGroup {
 // BasicRefinementInfo is used for both total and per-bin statistics.
 // For per-bin data, each values corresponds to one _refine_ls_shell.* tag.
 struct BasicRefinementInfo {
-  double resolution_high = NAN;      // _refine.ls_d_res_high
-  double resolution_low = NAN;       // _refine.ls_d_res_low
-  double completeness = NAN;         // _refine.ls_percent_reflns_obs
-  int reflection_count = -1;         // _refine.ls_number_reflns_obs
-  int rfree_set_count = -1;          // _refine.ls_number_reflns_R_free
-  double r_all = NAN;                // _refine.ls_R_factor_obs
-  double r_work = NAN;               // _refine.ls_R_factor_R_work
-  double r_free = NAN;               // _refine.ls_R_factor_R_free
+  double resolution_high = NAN; // _refine.ls_d_res_high,         _refine_ls_shell.d_res_high
+  double resolution_low = NAN;  // _refine.ls_d_res_low,          _refine_ls_shell.d_res_low
+  double completeness = NAN;    // _refine.ls_percent_reflns_obs, _refine_ls_shell.percent...
+  int reflection_count = -1;    // _refine.ls_number_reflns_obs,  _refine_ls_shell.number...
+  int rfree_set_count = -1;     // _refine.ls_number_reflns_R_free, _refine_ls_shell.number...
+  double r_all = NAN;           // _refine.ls_R_factor_obs,       _refine_ls_shell.R_factor_obs
+  double r_work = NAN;          // _refine.ls_R_factor_R_work,    _refine_ls_shell.R_factor_R_work
+  double r_free = NAN;          // _refine.ls_R_factor_R_free,    _refine_ls_shell.R_factor_R_free
+  double cc_fo_fc_work = NAN;   // _refine.correlation_coeff_Fo_to_Fc
+  double cc_fo_fc_free = NAN;   // _refine.correlation_coeff_Fo_to_Fc_free
+  double fsc_work = NAN;        // _refine.pdbx_average_fsc_work, _refine_ls_shell.pdbx_fsc_work
+  double fsc_free = NAN;        // _refine.pdbx_average_fsc_free, _refine_ls_shell.pdbx_fsc_free
+  double cc_intensity_work = NAN;
+  double cc_intensity_free = NAN;
 };
 
 struct RefinementInfo : BasicRefinementInfo {
@@ -140,8 +146,6 @@ struct RefinementInfo : BasicRefinementInfo {
   double dpi_blow_rfree = NAN;        // _refine.pdbx_overall_SU_R_free_Blow_DPI
   double dpi_cruickshank_r = NAN;     // _refine.overall_SU_R_Cruickshank_DPI
   double dpi_cruickshank_rfree = NAN; // _refine.pdbx_overall_SU_R_free_Cruickshank_DPI
-  double cc_fo_fc = NAN;              // _refine.correlation_coeff_Fo_to_Fc
-  double cc_fo_fc_free = NAN;         // _refine.correlation_coeff_Fo_to_Fc_free
   std::vector<Restr> restr_stats;     // _refine_ls_restr
   std::vector<TlsGroup> tls_groups;   // _pdbx_refine_tls
   std::string remarks;

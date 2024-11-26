@@ -338,7 +338,7 @@ void read_remark3_line(const char* line, Metadata& meta,
     } else if (same_str(key, "DPI (CRUICKSHANK) BASED ON FREE R VALUE  (A)")) {
       ref_info.dpi_cruickshank_rfree = fast_atof(value);
     } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC")) {
-      ref_info.cc_fo_fc = fast_atof(value);
+      ref_info.cc_fo_fc_work = fast_atof(value);
     } else if (same_str(key, "CORRELATION COEFFICIENT FO-FC FREE")) {
       ref_info.cc_fo_fc_free = fast_atof(value);
     } else if (same_str(key, "BOND LENGTHS")) {

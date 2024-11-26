@@ -826,8 +826,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       if (st.meta.has(&RefinementInfo::dpi_cruickshank_rfree))
         add("pdbx_overall_SU_R_free_Cruickshank_DPI",
             number_or_qmark(ref.dpi_cruickshank_rfree));
-      if (st.meta.has(&RefinementInfo::cc_fo_fc))
-        add("correlation_coeff_Fo_to_Fc", number_or_qmark(ref.cc_fo_fc));
+      if (st.meta.has(&RefinementInfo::cc_fo_fc_work))
+        add("correlation_coeff_Fo_to_Fc", number_or_qmark(ref.cc_fo_fc_work));
       if (st.meta.has(&RefinementInfo::cc_fo_fc_free))
         add("correlation_coeff_Fo_to_Fc_free",
             number_or_qmark(ref.cc_fo_fc_free));

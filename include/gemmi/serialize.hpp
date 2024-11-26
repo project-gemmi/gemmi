@@ -50,7 +50,9 @@ SERIALIZE(Transform, o.mat, o.vec)
 
 SERIALIZE(NcsOp, o.id, o.given, o.tr)
 
-SERIALIZE(UnitCell, o.a, o.b, o.c, o.alpha, o.beta, o.gamma,
+SERIALIZE(UnitCellParameters, o.a, o.b, o.c, o.alpha, o.beta, o.gamma)
+
+SERIALIZE_P(UnitCell, UnitCellParameters,
           o.orth, o.frac, o.volume,
           o.ar, o.br, o.cr, o.cos_alphar, o.cos_betar, o.cos_gammar,
           o.explicit_matrices, o.cs_count, o.images)
@@ -84,14 +86,16 @@ SERIALIZE(TlsGroup::Selection, o.chain, o.res_begin, o.res_end, o.details)
 
 SERIALIZE(BasicRefinementInfo, o.resolution_high, o.resolution_low,
           o.completeness, o.reflection_count, o.rfree_set_count,
-          o.r_all, o.r_work, o.r_free)
+          o.r_all, o.r_work, o.r_free,
+          o.cc_fo_fc_work, o.cc_fo_fc_free, o.fsc_work, o.fsc_free,
+          o.cc_intensity_work, o.cc_intensity_free)
 
 SERIALIZE_P(RefinementInfo, BasicRefinementInfo, o.id,
             o.cross_validation_method, o.rfree_selection_method,
             o.bin_count, o.bins, o.mean_b, o.aniso_b,
             o.luzzati_error, o.dpi_blow_r, o.dpi_blow_rfree,
             o.dpi_cruickshank_r, o.dpi_cruickshank_rfree,
-            o.cc_fo_fc, o.cc_fo_fc_free, o.restr_stats, o.tls_groups, o.remarks)
+            o.restr_stats, o.tls_groups, o.remarks)
 
 SERIALIZE(RefinementInfo::Restr, o.name, o.count, o.weight, o.function, o.dev_ideal)
 
@@ -137,7 +141,7 @@ SERIALIZE_P(Residue, ResidueId,
 
 SERIALIZE(Chain, o.name, o.residues)
 
-SERIALIZE(Model, o.num, o.chains) // skip parent_index
+SERIALIZE(Model, o.num, o.chains)
 
 SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.ncs, o.entities, o.connections, o.cispeps, o.mod_residues,
