@@ -3,9 +3,9 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  macos14:
-    name: "macOS 14"
-    runs-on: macos-14
+  macos15:
+    name: "macOS 15"
+    runs-on: macos-15
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     env:
       SKBUILD_CMAKE_ARGS: "-DEXTRA_WARNINGS=ON;-DFETCH_ZLIB_NG=ON"
@@ -31,14 +31,14 @@ jobs:
         (cd docs && sphinx-build -M doctest . _build -n -E)
     - uses: actions/upload-artifact@v4
       with:
-        name: gemmi-macos14
+        name: gemmi-macos15
         path: |
           ./gemmi-*.whl
         retention-days: 14
 
-  macos12:
-    name: "macOS 12 (w/o python)"
-    runs-on: macos-12
+  macos13:
+    name: "macOS 13 (w/o python)"
+    runs-on: macos-13
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
         python3 tests/test_prog.py
     - uses: actions/upload-artifact@v4
       with:
-        name: gemmi-macos12
+        name: gemmi-macos13
         path: |
           ${{runner.workspace}}/build/gemmi
           ${{runner.workspace}}/build/libgemmi*
