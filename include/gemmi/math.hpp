@@ -277,6 +277,12 @@ template<typename T> struct SMat33 {
     return Mat33(u11, u12, u13, u12, u22, u23, u13, u23, u33);
   }
 
+  // the arguments i and j must be in [0,2], i.e. 0, 1 or 2.
+  T& unchecked_ref(int i, int j) {
+    T* ptrs[9] = {&u11, &u12, &u13, &u12, &u22, &u23, &u13, &u23, &u33};
+    return *ptrs[3 * i + j];
+  }
+
   T trace() const { return u11 + u22 + u33; }
   bool nonzero() const { return trace() != 0; }
 
