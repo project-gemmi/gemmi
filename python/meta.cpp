@@ -334,6 +334,7 @@ void add_meta(nb::module_& m) {
     .def_rw("resolution_low", &BasicRefinementInfo::resolution_low)
     .def_rw("completeness", &BasicRefinementInfo::completeness)
     .def_rw("reflection_count", &BasicRefinementInfo::reflection_count)
+    .def_rw("work_set_count", &BasicRefinementInfo::work_set_count)
     .def_rw("rfree_set_count", &BasicRefinementInfo::rfree_set_count)
     .def_rw("r_all", &BasicRefinementInfo::r_all)
     .def_rw("r_work", &BasicRefinementInfo::r_work)

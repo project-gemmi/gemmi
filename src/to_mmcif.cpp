@@ -302,6 +302,20 @@ bool is_valid_block_name(const std::string& name) {
          std::all_of(name.begin(), name.end(), [](char c){ return c >= '!' && c <= '~'; });
 }
 
+int get_number_obs(const BasicRefinementInfo& ref) {
+  int nobs = ref.reflection_count;
+  if (nobs == -1 && ref.rfree_set_count >= 0 && ref.work_set_count >= 0)
+    nobs = ref.work_set_count + ref.rfree_set_count;
+  return nobs;
+}
+
+int get_number_work(const BasicRefinementInfo& ref) {
+  int nwork = ref.work_set_count;
+  if (nwork == -1 && ref.rfree_set_count >= 0 && ref.reflection_count >= 0)
+    nwork = ref.reflection_count - ref.rfree_set_count;
+  return nwork;
+}
+
 } // anonymous namespace
 
 void write_ncs_oper(const Structure& st, cif::Block& block) {
@@ -760,7 +774,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "ls_d_res_high",
         "ls_d_res_low",
         "ls_percent_reflns_obs",
-        "ls_number_reflns_obs"});
+        "ls_number_reflns_obs",
+        "ls_number_reflns_R_work"});
     cif::Loop& analyze_loop = block.init_mmcif_loop("_refine_analyze.", {
         "entry_id",
         "pdbx_refine_id",
@@ -774,6 +789,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "d_res_low",
         "percent_reflns_obs",
         "number_reflns_obs",
+        "number_reflns_work",
         "number_reflns_R_free",
         "R_factor_obs",
         "R_factor_R_work",
@@ -785,7 +801,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       loop.values.push_back(number_or_dot(ref.resolution_high));
       loop.values.push_back(number_or_dot(ref.resolution_low));
       loop.values.push_back(number_or_dot(ref.completeness));
-      loop.values.push_back(int_or_dot(ref.reflection_count));
+      loop.values.push_back(int_or_dot(get_number_obs(ref)));
+      loop.values.push_back(int_or_qmark(get_number_work(ref)));
       auto add = [&](const std::string& tag, const std::string& val) {
         if (i == 0)
           loop.tags.push_back("_refine." + tag);
@@ -851,7 +868,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                             number_or_dot(bin.resolution_high),
                             number_or_qmark(bin.resolution_low),
                             number_or_qmark(bin.completeness),
-                            int_or_qmark(bin.reflection_count),
+                            int_or_qmark(get_number_obs(bin)),
+                            int_or_qmark(get_number_work(bin)),
                             int_or_qmark(bin.rfree_set_count),
                             number_or_qmark(bin.r_all),
                             number_or_qmark(bin.r_work),

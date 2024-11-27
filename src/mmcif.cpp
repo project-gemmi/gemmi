@@ -568,7 +568,12 @@ Structure make_structure_from_block(const cif::Block& block_) {
                                           "?ls_d_res_high",           // 1
                                           "?ls_d_res_low",            // 2
                                           "?ls_percent_reflns_obs",   // 3
-                                          "?ls_number_reflns_obs"})) {
+                                          "?ls_number_reflns_obs",    // 4
+                                          "?ls_number_reflns_R_work", // 5
+                                          "?ls_number_reflns_R_free", // 6
+                                          "?ls_R_factor_obs",         // 7
+                                          "?ls_R_factor_R_work",      // 8
+                                          "?ls_R_factor_R_free"})) {
     st.meta.refinement.emplace_back();
     RefinementInfo& ref = st.meta.refinement.back();
     ref.id = row.str(0);
@@ -581,6 +586,11 @@ Structure make_structure_from_block(const cif::Block& block_) {
     copy_double(row, 2, ref.resolution_low);
     copy_double(row, 3, ref.completeness);
     copy_int(row, 4, ref.reflection_count);
+    copy_int(row, 5, ref.work_set_count);
+    copy_int(row, 6, ref.rfree_set_count);
+    copy_double(row, 7, ref.r_all);
+    copy_double(row, 8, ref.r_work);
+    copy_double(row, 9, ref.r_free);
   }
 
   for (auto row : block.find("_exptl.", {"method", "?crystals_number"})) {

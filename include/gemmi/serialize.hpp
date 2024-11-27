@@ -85,7 +85,7 @@ SERIALIZE(TlsGroup, o.id, o.selections, o.origin, o.T, o.L, o.S)
 SERIALIZE(TlsGroup::Selection, o.chain, o.res_begin, o.res_end, o.details)
 
 SERIALIZE(BasicRefinementInfo, o.resolution_high, o.resolution_low,
-          o.completeness, o.reflection_count, o.rfree_set_count,
+          o.completeness, o.reflection_count, o.work_set_count, o.rfree_set_count,
           o.r_all, o.r_work, o.r_free,
           o.cc_fo_fc_work, o.cc_fo_fc_free, o.fsc_work, o.fsc_free,
           o.cc_intensity_work, o.cc_intensity_free)

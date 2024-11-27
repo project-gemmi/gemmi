@@ -301,6 +301,9 @@ void read_remark3_line(const char* line, Metadata& meta,
     } else if (same_str(key, "BIN R VALUE          (WORKING+TEST)")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().r_all = fast_atof(value);
+    } else if (same_str(key, "REFLECTIONS IN BIN    (WORKING SET)")) {
+      if (!ref_info.bins.empty())
+        ref_info.bins.back().work_set_count = std::atoi(value);
     } else if (same_str(key, "BIN R VALUE           (WORKING SET)")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().r_work = fast_atof(value);
