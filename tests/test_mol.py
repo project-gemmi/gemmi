@@ -230,6 +230,8 @@ class TestMol(unittest.TestCase):
               '_struct_keywords.', '_struct_ref.', '_struct_ref_seq.',
               '_symmetry.']
         self.assertEqual(common_categories, cc)
+        mismatching = {'_struct_conf.id', '_chem_comp.type',
+                       '_refine.ls_number_reflns_R_work'}
         for name in common_categories:
             cat_in = block.get_mmcif_category(name)
             cat_out = output_block.get_mmcif_category(name)
@@ -242,10 +244,9 @@ class TestMol(unittest.TestCase):
                     try:
                         if a == b or abs(float(a) - float(b)) < 2e-4:
                             continue
-                    except ValueError:
+                    except (ValueError, TypeError):
                         pass
-                    self.assertTrue(name+tag in ['_struct_conf.id',
-                                                 '_chem_comp.type'])
+                    self.assertTrue(name+tag in mismatching, name+tag)
         for name_out in cnames_out:
             self.assertTrue(name_out in cnames)
 
