@@ -29,7 +29,7 @@ class TestDoc(unittest.TestCase):
 
 class TestBlock(unittest.TestCase):
     def test_find(self):
-        block = cif.read_string("""
+        block = cif.read_string(b"""
             data_test
             _one 1 _two 2 _three 3
             _nonloop_a alpha

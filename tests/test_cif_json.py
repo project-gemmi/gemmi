@@ -69,5 +69,9 @@ class TestMmjson(unittest.TestCase):
         doc = cif.read_mmjson(path)
         self.assertEqual(doc[0].find_value('_entry.id'), '3WUP')
 
+    def test_read_bytes(self):
+        doc = cif.read_mmjson_string(b'{"data_1PFE":{"entry":{"id":["1ABC"]}}}')
+        self.assertEqual(doc[0].find_value('_entry.id'), '1ABC')
+
 if __name__ == '__main__':
     unittest.main()

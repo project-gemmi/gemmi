@@ -30,10 +30,17 @@ void add_cif_read(nb::module_& cif) {
           nb::arg("filename"), "Reads normal or gzipped CIF file.");
   cif.def("read_string", &cif::read_string, nb::arg("data"),
           "Reads a string as a CIF file.");
+  cif.def("read_string", [](const nb::bytes& data) {
+            return cif::read_memory(data.c_str(), data.size(), "string");
+          }, nb::arg("data"), "Reads bytes as a CIF file.");
   cif.def("read_mmjson", &read_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped mmJSON file.");
   cif.def("read_mmjson_string", [](std::string data) {
       return cif::read_mmjson_insitu(data.data(), data.size());
+  });
+  cif.def("read_mmjson_string", [](const nb::bytes& data) {
+      std::string str(data.c_str(), data.size());
+      return cif::read_mmjson_insitu(str.data(), str.size());
   });
 
   cif.def("as_string", (std::string (*)(const std::string&)) &cif::as_string,
@@ -47,6 +54,10 @@ void add_cif_read(nb::module_& cif) {
           nb::arg("value"), nb::arg("default"),
           "Returns int number from string value or the second arg if null.");
   cif.def("is_null", &cif::is_null, nb::arg("value"));
+}
+
+PdbReadOptions pdb_read_opts(int max_line_length, bool split_chain_on_ter) {
+  return PdbReadOptions{max_line_length, split_chain_on_ter, false};
 }
 
 void add_read_structure(nb::module_& m) {
@@ -73,17 +84,19 @@ void add_read_structure(nb::module_& m) {
 
   m.def("read_pdb_string", [](const std::string& s, int max_line_length,
                               bool split_chain_on_ter) {
-          PdbReadOptions options;
-          options.max_line_length = max_line_length;
-          options.split_chain_on_ter = split_chain_on_ter;
+          PdbReadOptions options{max_line_length, split_chain_on_ter, false};
           return new Structure(read_pdb_string(s, "string", options));
+        }, nb::arg("s"), nb::arg("max_line_length")=0,
+           nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
+  m.def("read_pdb_string", [](const nb::bytes& s, int max_line_length,
+                              bool split_chain_on_ter) {
+          PdbReadOptions options{max_line_length, split_chain_on_ter, false};
+          return new Structure(read_pdb_from_memory(s.c_str(), s.size(), "string", options));
         }, nb::arg("s"), nb::arg("max_line_length")=0,
            nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
   m.def("read_pdb", [](const std::string& path, int max_line_length,
                        bool split_chain_on_ter) {
-          PdbReadOptions options;
-          options.max_line_length = max_line_length;
-          options.split_chain_on_ter = split_chain_on_ter;
+          PdbReadOptions options{max_line_length, split_chain_on_ter, false};
           return new Structure(read_pdb_gz(path, options));
         }, nb::arg("filename"), nb::arg("max_line_length")=0,
            nb::arg("split_chain_on_ter")=false);

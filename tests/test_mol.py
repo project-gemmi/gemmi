@@ -122,7 +122,7 @@ ANISOU   67  N   VAL A  10     2079   1653   1371   -123    133   -148       N
 """  # noqa: W291 - trailing whitespace
 
 # from https://cci.lbl.gov/hybrid_36/
-HY36_EXAMPLE = """\
+HY36_EXAMPLE = b"""\
 ATOM  99998  SD  MET L9999      48.231 -64.383  -9.257  1.00 11.54           S
 ATOM  99999  CE  MET L9999      49.398 -63.242 -10.211  1.00 14.60           C
 ATOM  A0000  N   VAL LA000      52.228 -67.689 -12.196  1.00  8.76           N
