@@ -793,7 +793,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "number_reflns_R_free",
         "R_factor_obs",
         "R_factor_R_work",
-        "R_factor_R_free"});
+        "R_factor_R_free",
+        "pdbx_fsc_work",
+        "pdbx_fsc_free"});
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
       const RefinementInfo& ref = st.meta.refinement[i];
       loop.values.push_back(id);
@@ -848,6 +850,14 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       if (st.meta.has(&RefinementInfo::cc_fo_fc_free))
         add("correlation_coeff_Fo_to_Fc_free",
             number_or_qmark(ref.cc_fo_fc_free));
+      if (st.meta.has(&RefinementInfo::fsc_work))
+        add("pdbx_average_fsc_work", number_or_qmark(ref.fsc_work));
+      if (st.meta.has(&RefinementInfo::fsc_free))
+        add("pdbx_average_fsc_work", number_or_qmark(ref.fsc_free));
+      if (st.meta.has(&RefinementInfo::cc_intensity_work))
+        add("ccp4_correlation_coeff_I_to_Fcsq_work", number_or_qmark(ref.cc_intensity_work));
+      if (st.meta.has(&RefinementInfo::cc_intensity_free))
+        add("ccp4_correlation_coeff_I_to_Fcsq_free", number_or_qmark(ref.cc_intensity_free));
       if (!st.meta.solved_by.empty())
         add("pdbx_method_to_determine_struct", string_or_qmark(st.meta.solved_by));
       if (!st.meta.starting_model.empty())
@@ -873,7 +883,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                             int_or_qmark(bin.rfree_set_count),
                             number_or_qmark(bin.r_all),
                             number_or_qmark(bin.r_work),
-                            number_or_qmark(bin.r_free)});
+                            number_or_qmark(bin.r_free),
+                            number_or_qmark(bin.fsc_work),
+                            number_or_qmark(bin.fsc_free)});
     }
     assert(loop.values.size() % loop.tags.size() == 0);
   }
