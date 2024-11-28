@@ -25,7 +25,7 @@ Gemmi is open-source (MPL_) and portable -- it runs on Linux, Windows,
 MacOS and even inside a web browser if compiled to WebAssembly
 (`here <https://project-gemmi.github.io/wasm/>`__ and
 `here <https://www.npmjs.com/package/mtz>`__).
-It is written in C++11, with Python (2 and 3) bindings,
+It is written in C++14, with Python (3.8+) bindings,
 and with partial C and Fortran 2003 interface.
 
 .. _MPL: https://www.mozilla.org/en-US/MPL/2.0/
@@ -44,14 +44,10 @@ Source code repository: https://github.com/project-gemmi/gemmi
 
 .. note::
 
-    As of 2022 the library is under intensive development and not
-    everything is documented yet. Just ask questions.
-    You can ask in
+    You can ask questions in
     `Discussions <https://github.com/project-gemmi/gemmi/discussions>`_
     or `Issues <https://github.com/project-gemmi/gemmi/issues>`_ on GitHub.
-    Alternatively, send me_ an email asking how to implement this and that,
-    but add some context (is it for a student assignment, research project,
-    in-house software?).
+    Alternatively, send me_ an email.
 
 .. _me: wojdyr+gemmi@gmail.com
 
