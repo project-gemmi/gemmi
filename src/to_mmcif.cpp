@@ -853,7 +853,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       if (st.meta.has(&RefinementInfo::fsc_work))
         add("pdbx_average_fsc_work", number_or_qmark(ref.fsc_work));
       if (st.meta.has(&RefinementInfo::fsc_free))
-        add("pdbx_average_fsc_work", number_or_qmark(ref.fsc_free));
+        add("pdbx_average_fsc_free", number_or_qmark(ref.fsc_free));
       if (st.meta.has(&RefinementInfo::cc_intensity_work))
         add("ccp4_correlation_coeff_I_to_Fcsq_work", number_or_qmark(ref.cc_intensity_work));
       if (st.meta.has(&RefinementInfo::cc_intensity_free))
