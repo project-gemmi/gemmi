@@ -1173,7 +1173,7 @@ they haven't diverged too much and with a little work one could be
 substituted for the other.
 
 When preparing a topology, macromolecular programs (in particular, Refmac)
-may also add hydrogens or shift existing hydrogens to the riding positions.
+may also add hydrogens or shift existing hydrogens to riding positions.
 And reorder atoms. In Python, we have one function that does it all:
 
 .. code-block:: python
@@ -1183,7 +1183,7 @@ And reorder atoms. In Python, we have one function that does it all:
                            model_index: int = 0,
                            h_change: gemmi.HydrogenChange = HydrogenChange.NoChange,
                            reorder: bool = False,
-                           logger: object = None,
+                           warnings: object = None,
                            ignore_unknown_links: bool = False) -> gemmi.Topo
 
 where
@@ -1193,21 +1193,23 @@ where
 * `h_change` can be one of the following:
 
   * HydrogenChange.NoChange -- no change,
-  * HydrogenChange.Shift -- shift existing hydrogens to their ideal (riding) positions,
-  * HydrogenChange.Remove -- remove all H and D atoms,
-  * HydrogenChange.ReAdd -- discard and re-create hydrogens in ideal positions
-    (if the hydrogen position is not uniquely determined, its occupancy is set to zero),
-  * HydrogenChange.ReAddButWater -- the same as above, but doesn't add H in waters,
-  * HydrogenChange.ReAddKnown -- the same as above, but doesn't add any H atoms whose
+  * HydrogenChange.Shift -- shifts existing hydrogens to their ideal (riding) positions,
+  * HydrogenChange.Remove -- removes all H and D atoms,
+  * HydrogenChange.ReAdd -- discards and re-creates hydrogens in ideal positions
+    (if a hydrogen's position is not uniquely determined, its occupancy is set to zero),
+  * HydrogenChange.ReAddButWater -- the same as ReAdd, but doesn't add H in waters,
+  * HydrogenChange.ReAddKnown -- the same as ReAdd, but doesn't add any H atoms whose
     positions are not uniquely determined,
 
 * `reorder` -- changes the order of atoms within each residue
   to match the order in the corresponding monomer cif file,
 
-* `logger` -- optional :ref:`Logger <logger>` configuration.
+* `warnings` -- configures :ref:`Logger <logger>`.
   By default, an exception is raised when a chemical component
-  or a link is missing from the monomer library,
+  or link is missing from the monomer library,
   or when the hydrogen-adding procedure encounters an unexpected configuration.
+  You can set `warnings=sys.stderr` to print warnings instead,
+  or `warnings=(None, 0)` to suppress all warnings.
 
 
 TBC
