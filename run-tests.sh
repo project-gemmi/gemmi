@@ -143,7 +143,7 @@ fi
 if [ $1 = w -o $1 = a ]; then
     echo "check if wasm and project-gemmi/wasm can be built"
     [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh
-    (cd wasm && make clean && make -j4)
+    (cd wasm && make clean && make -j4 && npm run test)
 fi
 
 if [ $1 = M -o $1 = a ]; then

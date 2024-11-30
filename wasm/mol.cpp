@@ -6,6 +6,7 @@
 #include <gemmi/mmread.hpp>   // for read_structure_from_memory
 #include <gemmi/polyheur.hpp> // for setup_entities
 #include <gemmi/enumstr.hpp>  // for entity_type_to_string
+#include <gemmi/calculate.hpp> // for count_occupancies
 #include <emscripten/val.h>
 
 gemmi::CoorFormat format_to_enum(const std::string& format) {
@@ -70,7 +71,7 @@ void add_mol() {
     ;
 
   wrap_children<gemmi::Model>()
-    .property("name", &gemmi::Model::name)
+    .property("num", &gemmi::Model::num)
     .function("count_occupancies", &gemmi::count_occupancies<gemmi::Model>,
               em::allow_raw_pointers())
     ;
