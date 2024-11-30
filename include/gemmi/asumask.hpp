@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-#include "gemmi/util.hpp"
+#include "util.hpp"  // for in_vector
 #include "grid.hpp"
 
 namespace gemmi {
