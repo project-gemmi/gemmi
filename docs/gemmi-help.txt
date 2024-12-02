@@ -1,5 +1,5 @@
 $ gemmi -h
-gemmi 0.7.0
+gemmi 0.7.1-dev
 Command-line utility that accompanies the GEMMI library,
 which is a joint project of CCP4 and Global Phasing Ltd.
 Licence: Mozilla Public License 2.0. Copyright Global Phasing Ltd.

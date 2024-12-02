@@ -8,6 +8,8 @@
 - bash ./run-tests.sh a
 - VERSION=$(grep -Po '\d\.\d\.\d' include/gemmi/version.hpp)
 
+- git commit -a -m "change version number to $VERSION"
+
 - make and test source package for PyPI:
   git clone . /tmp/gemmi-copy
   python3 -m build --sdist --outdir=dist/ /tmp/gemmi-copy
@@ -17,8 +19,7 @@
   python3.11 -m pip install dist/gemmi-$VERSION.tar.gz
   PYTHON=python3.11 NO_DOCTEST=1 ./run-tests.sh n i
 
-- git commit -a -m "change version number to $VERSION"
-  git push
+- git push
 
 - run https://github.com/project-gemmi/gemmi/actions/workflows/wheels2.yml
 - download artifact with wheels and unpack to wheelhouse/
