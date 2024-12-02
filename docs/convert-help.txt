@@ -43,6 +43,7 @@ General output options:
                           5000+ to non-mapped seqnums. See docs for details.
   -B MIN[:MAX]            Set isotropic B-factors to a single value or constrain
                           them to a range.
+  --scale-biso=MULT       Multiply isotropic B-factors by MULT.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
   --assign-records[=A|H]  Re-assign ATOM/HETATM (w/o argument: auto).
 

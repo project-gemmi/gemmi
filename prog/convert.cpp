@@ -65,7 +65,7 @@ enum OptionIndex {
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   Reframe, ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
   ShortenTLC, ChangeCcdCode, SetSeq, SiftsNum,
-  Biso, Anisou, AssignRecords, SetCis, SegmentAsChain, OldPdb, ForceLabel
+  Biso, BisoScale, Anisou, AssignRecords, SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
 
 const option::Descriptor Usage[] = {
@@ -130,6 +130,8 @@ const option::Descriptor Usage[] = {
     " add 5000+ to non-mapped seqnums. See docs for details." },
   { Biso, 0, "B", "", Arg::Required,
     "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or constrain them to a range." },
+  { BisoScale, 0, "", "scale-biso", Arg::Float,
+    "  --scale-biso=MULT  \tMultiply isotropic B-factors by MULT." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
   { AssignRecords, 0, "", "assign-records", ConvArg::RecordChoice,
@@ -336,6 +338,15 @@ void convert(gemmi::Structure& st,
 
   if (options[Reframe])
     standardize_crystal_frame(st);
+
+  if (options[BisoScale]) {
+    double mult = std::atof(options[BisoScale].arg);
+    for (gemmi::Model& model: st.models)
+      for (gemmi::Chain& chain : model.chains)
+        for (gemmi::Residue& res : chain.residues)
+          for (gemmi::Atom& atom : res.atoms)
+            atom.b_iso = float(atom.b_iso * mult);
+  }
 
   if (options[Biso]) {
     float value1, value2;
