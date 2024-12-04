@@ -1,0 +1,10 @@
+{% extends "!page.html" %}
+
+{% block footer %}
+{# Copyright and (c) are redundant, leave only (c) #}
+{{ super() | replace('Copyright ', '')
+           | replace('Made with', 'Built with')
+           | replace('<a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>\'s',
+                     'customized theme')
+}}
+{% endblock %}

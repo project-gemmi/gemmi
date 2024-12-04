@@ -1068,26 +1068,26 @@ So once again, now in a color-coded version:
 
 .. raw:: html
 
- <div class="highlight"><pre style="color:#444">
- ATOM   <b>1032</b> O <span style="color:#d50">OE2 <span style="background-color:#ace">.</span> GLU B</span> 2  <span style="color:#d50">72</span>  <span style="background-color:#ace">?</span> -9.804  19.834  -55.805 1.00 25.54 ? <span style="background-color:#ace">77   GLU H OE2</span> 1
- ATOM   <b>1033</b> N <span style="color:#d50">N   <span style="background-color:#ace">A</span> ARG B</span> 2  <span style="color:#d50">73</span>  <span style="background-color:#ace">A</span> -4.657  24.646  -55.236 0.11 20.46 ? <span style="background-color:#ace">77   ARG H N  </span> 1
- ATOM   <b>1034</b> N <span style="color:#d50">N   <span style="background-color:#ace">B</span> ARG B</span> 2  <span style="color:#d50">73</span>  <span style="background-color:#ace">A</span> -4.641  24.646  -55.195 0.82 22.07 ? <span style="background-color:#ace">77   ARG H N  </span> 1
+ <div class="highlight raw"><pre>
+ ATOM   <b>1032</b> O <span class="orange-fg">OE2 <span class="blue-bg">.</span> GLU B</span> 2  <span class="orange-fg">72</span>  <span class="blue-bg">?</span> -9.804  19.834  -55.805 1.00 25.54 ? <span class="blue-bg">77   GLU H OE2</span> 1
+ ATOM   <b>1033</b> N <span class="orange-fg">N   <span class="blue-bg">A</span> ARG B</span> 2  <span class="orange-fg">73</span>  <span class="blue-bg">A</span> -4.657  24.646  -55.236 0.11 20.46 ? <span class="blue-bg">77   ARG H N  </span> 1
+ ATOM   <b>1034</b> N <span class="orange-fg">N   <span class="blue-bg">B</span> ARG B</span> 2  <span class="orange-fg">73</span>  <span class="blue-bg">A</span> -4.641  24.646  -55.195 0.82 22.07 ? <span class="blue-bg">77   ARG H N  </span> 1
  </pre></div>
 
 and a couple lines from another file (6any):
 
 .. raw:: html
 
- <div class="highlight"><pre style="color:#444">
- ATOM   <b>1   </b> N <span style="color:#d50">N   <span style="background-color:#ace">.</span> PHE A</span> 1 <span style="color:#d50">1  </span> <span style="background-color:#ace">?</span> 21.855 30.874 0.439  1.00 29.16 ? <span style="background-color:#ace">17  PHE A N  </span> 1 
- ATOM   <b>2   </b> C <span style="color:#d50">CA  <span style="background-color:#ace">.</span> PHE A</span> 1 <span style="color:#d50">1  </span> <span style="background-color:#ace">?</span> 20.634 31.728 0.668  1.00 26.60 ? <span style="background-color:#ace">17  PHE A CA </span> 1
+ <div class="highlight raw"><pre>
+ ATOM   <b>1   </b> N <span class="orange-fg">N   <span class="blue-bg">.</span> PHE A</span> 1 <span class="orange-fg">1  </span> <span class="blue-bg">?</span> 21.855 30.874 0.439  1.00 29.16 ? <span class="blue-bg">17  PHE A N  </span> 1 
+ ATOM   <b>2   </b> C <span class="orange-fg">CA  <span class="blue-bg">.</span> PHE A</span> 1 <span class="orange-fg">1  </span> <span class="blue-bg">?</span> 20.634 31.728 0.668  1.00 26.60 ? <span class="blue-bg">17  PHE A CA </span> 1
 
- ATOM   <b>1630</b> C <span style="color:#d50">CD2 <span style="background-color:#ace">.</span> LEU A</span> 1 <span style="color:#d50">206</span> <span style="background-color:#ace">?</span> 23.900 18.559 1.006  1.00 16.97 ? <span style="background-color:#ace">222 LEU A CD2</span> 1 
- HETATM <b>1631</b> C <span style="color:#d50">C1  <span style="background-color:#ace">.</span> NAG B</span> 2 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> 5.126  22.623 37.322 1.00 30.00 ? <span style="background-color:#ace">301 NAG A C1 </span> 1 
- HETATM <b>1632</b> C <span style="color:#d50">C2  <span style="background-color:#ace">.</span> NAG B</span> 2 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> 5.434  21.608 38.417 1.00 30.00 ? <span style="background-color:#ace">301 NAG A C2 </span> 1
+ ATOM   <b>1630</b> C <span class="orange-fg">CD2 <span class="blue-bg">.</span> LEU A</span> 1 <span class="orange-fg">206</span> <span class="blue-bg">?</span> 23.900 18.559 1.006  1.00 16.97 ? <span class="blue-bg">222 LEU A CD2</span> 1 
+ HETATM <b>1631</b> C <span class="orange-fg">C1  <span class="blue-bg">.</span> NAG B</span> 2 <span class="orange-fg">.  </span> <span class="blue-bg">?</span> 5.126  22.623 37.322 1.00 30.00 ? <span class="blue-bg">301 NAG A C1 </span> 1 
+ HETATM <b>1632</b> C <span class="orange-fg">C2  <span class="blue-bg">.</span> NAG B</span> 2 <span class="orange-fg">.  </span> <span class="blue-bg">?</span> 5.434  21.608 38.417 1.00 30.00 ? <span class="blue-bg">301 NAG A C2 </span> 1
 
- HETATM <b>1709</b> O <span style="color:#d50">O   <span style="background-color:#ace">.</span> HOH I</span> 6 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> -4.171 14.902 2.395  1.00 33.96 ? <span style="background-color:#ace">401 HOH A O  </span> 1 
- HETATM <b>1710</b> O <span style="color:#d50">O   <span style="background-color:#ace">.</span> HOH I</span> 6 <span style="color:#d50">.  </span> <span style="background-color:#ace">?</span> 9.162  43.925 8.545  1.00 21.30 ? <span style="background-color:#ace">402 HOH A O  </span> 1
+ HETATM <b>1709</b> O <span class="orange-fg">O   <span class="blue-bg">.</span> HOH I</span> 6 <span class="orange-fg">.  </span> <span class="blue-bg">?</span> -4.171 14.902 2.395  1.00 33.96 ? <span class="blue-bg">401 HOH A O  </span> 1 
+ HETATM <b>1710</b> O <span class="orange-fg">O   <span class="blue-bg">.</span> HOH I</span> 6 <span class="orange-fg">.  </span> <span class="blue-bg">?</span> 9.162  43.925 8.545  1.00 21.30 ? <span class="blue-bg">402 HOH A O  </span> 1
  </pre></div>
 
 .. role:: orange_fg

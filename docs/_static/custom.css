@@ -1,0 +1,69 @@
+
+/* Use different background color for C++ and Python code blocks. */
+.highlight-pycon .highlight, .highlight-python .highlight {
+ background: #fcfcce;
+}
+.highlight-cpp .highlight {
+ background: #e2ffef;
+}
+/* adjust highlighted lines */
+.highlight-python .highlight .hll {
+ background: #fff0aa; /* original #ffffcc */
+}
+.highlight-cpp .highlight .cpf { /* e.g. <cassert> */
+ color: #108080 /* original #408090 is too similar to our background */
+}
+.highlight-cpp .highlight .s { /* "strings" */
+ color: #107090 /* original #4070a0 */
+}
+.highlight-cpp .highlight .mi,
+.highlight-cpp .highlight .mf { /* integers and floats */
+ color: #008040 /* original #208050 */
+}
+
+/* In dark mode, instead of changing bg color we add Python logo */
+@media (prefers-color-scheme: dark) {
+ body:not([data-theme="light"]) .highlight-pycon,
+ body:not([data-theme="light"]) .highlight-python,
+ body:not([data-theme="light"]) .highlight-cpp {
+  position: relative;
+ }
+ body:not([data-theme="light"]) .highlight-pycon::after,
+ body:not([data-theme="light"]) .highlight-python::after,
+ body:not([data-theme="light"]) .highlight-cpp::after {
+  content: "";
+  background-size: contain;
+  background-repeat: no-repeat;
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  top: 5px; /* from the top edge */
+  right: 5px; /* from the right edge */
+  pointer-events: none; /* no interactions */
+ }
+ body:not([data-theme="light"]) .highlight-pycon::after,
+ body:not([data-theme="light"]) .highlight-python::after {
+  background-image: url("../_static/py.png");
+  opacity: 0.5;
+ }
+ body:not([data-theme="light"]) .highlight-cpp::after {
+  background-image: url("../_static/cpp.png");
+  opacity: 0.6;
+ }
+}
+
+/* roles used in mol.rst */
+.orange-fg { color:#d50; }
+.blue-bg { background-color:#ace; }
+/* roles used in cif.rst */
+.orange-bg { background-color:#fc8; }
+.yellow-bg { background-color:#ffa; }
+.cyan-bg { background-color:#aff; }
+.greenish-bg { background-color:#bd8; }
+@media (prefers-color-scheme: dark) {
+ body:not([data-theme="light"]) .blue-bg { background-color:#138; }
+ body:not([data-theme="light"]) .orange-bg { background-color:#950; }
+ body:not([data-theme="light"]) .yellow-bg { background-color:#660; }
+ body:not([data-theme="light"]) .cyan-bg { background-color:#055; }
+ body:not([data-theme="light"]) .greenish-bg { background-color:#350; }
+}

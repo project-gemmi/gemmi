@@ -403,7 +403,7 @@ endif()
 add_executable(test_disulf EXCLUDE_FROM_ALL tests/disulf.cpp)
 target_link_libraries(test_disulf PRIVATE gemmi_cpp)
 
-# auth_label requires <experimental/filesystem> and -lstdc++fs
+# auth_label requires C++17 for <filesystem>
 add_executable(auth_label EXCLUDE_FROM_ALL examples/auth_label.cpp)
 target_link_libraries(auth_label PRIVATE gemmi_cpp)
 

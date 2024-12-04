@@ -2,13 +2,12 @@
 
 # -- General configuration ------------------------------------------------
 
+# while we use Sphinx 8+, old version suffices to run doctests
 needs_sphinx = '5.3.0'
 
 extensions = ['sphinx.ext.doctest', 'sphinx.ext.githubpages']
 
-#templates_path = ['_templates']
-
-source_suffix = '.rst'
+templates_path = ['_templates']
 
 master_doc = 'index'
 
@@ -25,14 +24,24 @@ release = version
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 pygments_style = 'sphinx'
 todo_include_todos = False
-highlight_language = 'c++'
+highlight_language = 'cpp'
 default_role = 'literal'
 
 
 # -- Options for HTML output ----------------------------------------------
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['custom.css']
+html_theme = 'furo'
+html_theme_options = {
+    "source_repository": "https://github.com/project-gemmi/gemmi/",
+    "source_branch": "master",
+    "source_directory": "docs/",
+}
+html_static_path = ['_static']
+html_css_files = ['custom.css']
+
+# Edit link can be also used to see the source
+html_show_sourcelink = False
+html_copy_source = False
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -91,5 +100,3 @@ import gemmi
 gemmi.set_leak_warnings(False)
 '''
 
-def setup(app):
-    app.add_css_file('custom.css')

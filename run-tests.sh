@@ -49,7 +49,8 @@ grep :: $BUILD_DIR/py/gemmi/*.pyi ||:
 
 if [ -z "${NO_DOCTEST-}" ]; then
     # 'make doctest' works only if sphinx-build was installed for python3.
-    (cd docs && make doctest SPHINXOPTS="-q -n")
+    #(cd docs && make doctest SPHINXOPTS="-q -n")
+    (cd docs && $PYTHON -m sphinx -M doctest . _build -q -n)
 fi
 
 # Usually, we stop here. Below are more extensive checks below that are run

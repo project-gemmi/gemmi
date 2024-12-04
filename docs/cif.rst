@@ -1666,20 +1666,20 @@ some columns seem to be completely redundant. Are they?
 
 .. raw:: html
 
-    <table style="font-size:11px; border-spacing:5px 0; margin-top:60px; width:100%; border-collapse:separate;">
+    <table style="font-size:11px; border-spacing:5px 0; margin-top:60px; width:100%; border-collapse:separate; overflow-wrap: normal;">
     <colgroup>
     <col span="3">
-    <col style="background-color:#fc8">
+    <col class="orange-bg">
     <col>
-    <col style="background-color:#ffa">
-    <col style="background-color:#aff">
+    <col class="yellow-bg">
+    <col class="cyan-bg">
     <col>
-    <col style="background-color:#bd8">
+    <col class="greenish-bg">
     <col span="12">
-    <col style="background-color:#bd8">
-    <col style="background-color:#ffa">
-    <col style="background-color:#aff">
-    <col style="background-color:#fc8">
+    <col class="greenish-bg">
+    <col class="yellow-bg">
+    <col class="cyan-bg">
+    <col class="orange-bg">
     <col>
     </colgroup>
     <tr style="font-size:10px;">
@@ -1811,7 +1811,7 @@ We compile it, run it, and come back after an hour:
 
 .. code-block:: none
 
-    $ g++-6 -O2 -Iinclude examples/auth_label.cpp -lstdc++fs -lz
+    $ g++ -O2 -Iinclude examples/auth_label.cpp src/gz.cpp -lz
     $ ./a.out pdb_copy/mmCIF
     3D3W: atom_id  O1 -> OD
     1TNI: atom_id  HN2 -> HN3
@@ -1844,8 +1844,10 @@ We compile it, run it, and come back after an hour:
     1AGG: atom_id  H3 -> H
     1AGG: atom_id  H3 -> H
 
-So, as of April 2017, only a single author's residue name was changed,
-and atom names were changed in 7 PDB entries.
+Update: the result above is from 2017.
+In the meantime, the PDB removed the differences.
+Tags auth_atom_id and auth_comp_id are now completely redundant
+(they always have been, except for mistakes).
 
 Amino acid frequency
 --------------------
