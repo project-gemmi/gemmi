@@ -1,5 +1,3 @@
-.. highlight:: cpp
-
 Math and unit cell
 ##################
 

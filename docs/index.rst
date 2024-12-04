@@ -62,6 +62,7 @@ Contents
    cif
    symmetry
    cell
+   chemistry
    mol
    analysis
    grid

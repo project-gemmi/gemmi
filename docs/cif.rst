@@ -2235,7 +2235,7 @@ Or which one has the largest number of heavy atoms:
     '"C96 H153 N31 O25"'
 
 The :file:`components.cif` file is big, so we may want to split it into
-multiple file. As an example, here we create a new document with only
+multiple files. As an example, here we create a new document with only
 one block, and we write it to a file:
 
 .. doctest::
@@ -2246,11 +2246,13 @@ one block, and we write it to a file:
     <gemmi.cif.Block X12>
     >>> d.write_file('X12.cif')
 
-Alternatively, we could do:
+This example can be expanded to write multiple selected blocks
+to a file, as in `examples/sub_ccd.py`.
+To write a single block, we could simply call:
 
 .. doctest::
 
-    >>> block.write_file('X12.cif')
+    >>> ccd['X12'].write_file('X12.cif')
 
 In the next example we delete things we do not need.
 Let us write only components on letter A to a new file.

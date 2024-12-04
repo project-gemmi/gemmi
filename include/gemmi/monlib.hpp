@@ -111,11 +111,11 @@ struct EnerLib {
 
 struct GEMMI_DLL MonLib {
   std::string monomer_dir;
-  EnerLib ener_lib;
   std::map<std::string, ChemComp> monomers;
   std::map<std::string, ChemLink> links;
   std::map<std::string, ChemMod> modifications;
   std::map<std::string, ChemComp::Group> cc_groups;
+  EnerLib ener_lib;
 
   const ChemLink* get_link(const std::string& link_id) const {
     auto link = links.find(link_id);

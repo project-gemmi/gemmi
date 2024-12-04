@@ -1,5 +1,3 @@
-.. highlight:: cpp
-
 Structure analysis
 ##################
 
@@ -1057,77 +1055,6 @@ Six of the resulting plots are shown here (click to enlarge):
     :align: center
     :scale: 60
 
-.. _logger:
-
-Logger
-======
-
-Gemmi Logger is a tiny helper class for passing messages from a gemmi function
-to the calling function. It's not specific to structure analysis
-and doesn't belong in this section, but it's documented here because
-it's used in the next subsection and I haven't found a better spot for it.
-
-The messages being passed are usually info or warnings that a command-line
-program would print to stdout or stderr.
-
-The Logger has two member variables:
-
-.. literalinclude:: ../include/gemmi/logger.hpp
-   :language: c++
-   :start-at: ///
-   :end-at: int threshold
-
-and a few member functions for sending messages.
-
-When a function takes a Logger argument, we can pass:
-
-**C++**
-
-* `{&Logger::to_stderr}` to redirect messages to stderr
-  (to_stderr() calls fprintf),
-* `{&Logger::to_stdout}` to redirect messages to stdout,
-* `{&Logger::to_stdout, 3}` to print only warnings (threshold=3),
-* `{nullptr, 0}` to disable all messages,
-* `{}` to throw errors and ignore other messages (the default, see Quirk above),
-* `{[](const std::string& s) { do_anything(s);}}` to do anything else.
-
-**Python**
-
-* `sys.stderr` or `sys.stdout` or any other stream (an object with `write`
-  and `flush` methods), to redirect messages to that stream,
-* `(sys.stdout, 3)` to print only warnings (threshold=3),
-* `(None, 0)` to disable all messages,
-* `None` to throw errors and ignore other messages (the default, see Quirk above),
-* a function that takes a message string as its only argument
-  (e.g. `lambda s: print(s.upper())`).
-
-.. _monlib:
-
-Monomer library
-===============
-
-Structural biologist routinely use prior knowledge about biomolecules
-to augment the data obtained in an experiment. In macromolecular
-crystallography and cryo-EM that prior knowledge is usually stored
-in a monomer library that describes monomers and links between them.
-In gemmi, such a library is represented by class MonLib.
-
-TBC
-
-For now, here is an example of how to read the CCP4 monomer library
-(Refmac dictionary):
-
-.. doctest::
-  :skipif: ccp4_path is None
-
-  >>> monlib_path = os.environ['CCP4'] + '/lib/data/monomers'
-  >>> resnames = st[0].get_all_residue_names()
-  >>> monlib = gemmi.MonLib()
-  >>> monlib.read_monomer_lib(monlib_path, resnames, logging=sys.stderr)
-  True
-
-TBC
-
 
 .. _topology:
 
@@ -1136,8 +1063,8 @@ Topology
 
 In gemmi, topology contains restraints *applied* to a model,
 as well as information about the provenance of these restraints,
-and related utilities. (The restraints include bond-distance
-restraints and therefore also bonding information).
+and related utilities. (Since the restraints include bond-distance
+restraints, the topology includes bonding information).
 
 Applied restraints differ from *template* restraints in a monomer library,
 although both are referred to as restraints.
@@ -1151,30 +1078,21 @@ including those with unusual arrangements of alternative conformations,
 the process of determining the topology is quite convoluted.
 
 The typical macromolecular refinement workflow begins by reading
-a coordinate file and a monomer library. The template monomer restraints
+a coordinate file and a monomer library (represented by class
+:ref:`MonLib <monlib>` in gemmi). The template monomer restraints
 from the library (for bond distances, angles, etc.) are applied to monomers,
-and link definitions are matched to explicit and implicit links between
-monomers. Link definitions contain additional restraints and modifications
-to restraints within the linked monomers.
+and link definitions are matched and applied to explicit and implicit links
+between monomers. Link definitions contain additional restraints
+(for the linkages) as well as recipes how to modify the rules
+within the linked monomers.
+This is described in the `Monomer Library <monlib>` section.
 
-Currently, our topology works only with the monomer library from CCP4.
-This library was introduced in the
-`early 2000s <https://doi.org/10.1107/S0907444904023510>`_.
-Monomer libraries distributed with other popular macromolecular refinement
-programs, PHENIX and BUSTER, are organized somewhat differently
-(geostd from PHENIX is actually quite similar).
 
-The restraints that we use are also similar to what is used
-in molecular dynamics (bond, angle, dihedral and improper dihedral restraints).
-Although the MD potentials have been deemed inadequate for refinement,
-and the restraints in experimental structural biology have been
-improved independently of the restraints in MD,
-they haven't diverged too much and with a little work one could be
-substituted for the other.
 
 When preparing a topology, macromolecular programs (in particular, Refmac)
-may also add hydrogens or shift existing hydrogens to riding positions.
-And reorder atoms. In Python, we have one function that does it all:
+may also add hydrogens or shift existing hydrogens to riding positions
+(which are defined by the restraints from monomer library).
+And reorder atoms. Gemmi has a high-level function that does it all:
 
 .. code-block:: python
 
