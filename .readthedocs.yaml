@@ -9,18 +9,15 @@ version: 2
 build:
   os: ubuntu-lts-latest
   tools:
-    python: "3.12"
+    python: "3"
 
-#formats:
-#  - htmlzip
-# Format htmlzip produces single page, which is not ideal.
-# Instead, zip the usual html pages, as shown in:
-# https://github.com/readthedocs/readthedocs.org/issues/3242#issuecomment-1410321534
-jobs:
-  post_build:
-    - mkdir --parents _readthedocs/htmlzip
-    - cp -r _readthedocs/html _readthedocs/$READTHEDOCS_PROJECT
-    - cd _readthedocs; zip -r --symlinks htmlzip/$READTHEDOCS_PROJECT.zip $READTHEDOCS_PROJECT
+  # Format htmlzip produces a single page. Instead, use zip as shown in:
+  # https://github.com/readthedocs/readthedocs.org/issues/3242#issuecomment-1410321534
+  jobs:
+    post_build:
+      - mkdir --parents _readthedocs/htmlzip
+      - cp -r _readthedocs/html _readthedocs/$READTHEDOCS_PROJECT
+      - cd _readthedocs; zip -r --symlinks htmlzip/$READTHEDOCS_PROJECT.zip $READTHEDOCS_PROJECT
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
