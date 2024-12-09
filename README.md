@@ -4,19 +4,19 @@
 GEMMI can help if you work with:
 
 * macromolecular models (from mmCIF, PDB and mmJSON files),
-* refinement restraints (CIF files),
+* refinement restraints (CIF files) and small molecule models,
 * crystallographic reflections (from MTZ and SF-mmCIF files),
-* electron density maps (MRC/CCP4 files),
+* electron and other density maps (MRC/CCP4 files),
 * crystallographic symmetries,
 * or if you just read and write CIF/STAR files (where C=Crystallographic).
 
 GEMMI is a C++ library (currently, C++14) accompanied by:
 
 * command-line [tools](https://gemmi.readthedocs.io/en/latest/utils.html),
-* Python bindings (supporting CPython and PyPy),
+* Python bindings,
 * Fortran 2003+ interface (in progress),
-* WebAssembly ports (see [here](https://project-gemmi.github.io/wasm/) and
-  [here](https://www.npmjs.com/package/mtz)),
+* partial WebAssembly ports (see [here](https://project-gemmi.github.io/wasm/)
+  and [here](https://www.npmjs.com/package/mtz)),
 * and little data viz [projects](https://project-gemmi.github.io/pdb-stats/).
 
 Documentation: http://gemmi.readthedocs.io/en/latest/
