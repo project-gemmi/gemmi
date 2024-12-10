@@ -70,7 +70,7 @@ const option::Descriptor Usage[] = {
 };
 
 void print_cell_parameters(const char* prefix, const gemmi::UnitCell& cell) {
-  printf("%s %g %7g %7g  %6g %6g %6g\n", prefix,
+  printf("%s %7g %7g %7g  %6g %6g %6g\n", prefix,
          cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma);
 }
 
@@ -89,8 +89,18 @@ void dump(const Mtz& mtz) {
   printf("Number of Batches = %zu\n", mtz.batches.size());
   printf("Missing values marked as: %g\n", mtz.valm);
   print_cell_parameters("Global Cell (obsolete): ", mtz.cell);
-  printf("Resolution: %.2f - %.2f A\n",
-         mtz.resolution_high(), mtz.resolution_low());
+  if (mtz.resolution_high()<0.5) {
+    printf("Resolution: %.4f - %.2f A\n",
+           mtz.resolution_high(), mtz.resolution_low());
+  }
+  else if (mtz.resolution_high()<1.0) {
+    printf("Resolution: %.3f - %.2f A\n",
+           mtz.resolution_high(), mtz.resolution_low());
+  }
+  else {
+    printf("Resolution: %.2f - %.2f A\n",
+           mtz.resolution_high(), mtz.resolution_low());
+  }
   printf("Sort Order: %d %d %d %d %d\n",
          mtz.sort_order[0], mtz.sort_order[1], mtz.sort_order[2],
          mtz.sort_order[3], mtz.sort_order[4]);
@@ -112,9 +122,16 @@ void dump(const Mtz& mtz) {
     }
   }
   printf("\nHeader info (run with option -s for recalculated statistics):\n");
-  printf("Column    Type  Dataset    Min        Max\n");
+  // get maximum column size
+  int col_size = 12;
+  for (const Mtz::Column& col : mtz.columns) {
+    if (col.label.length()>col_size) {
+      col_size = col.label.length();
+    }
+  }
+  printf("\n %-*s  Type  Dataset          Min        Max\n",col_size,"Column");
   for (const Mtz::Column& col : mtz.columns)
-    printf("%-12s %c %2d %12.6g %10.6g\n",
+    printf(" %-*s    %c      %2d   %12.6g %10.6g\n",col_size,
            col.label.c_str(), col.type, col.dataset_id,
            col.min_value, col.max_value);
   if (mtz.history.empty()) {
@@ -122,7 +139,7 @@ void dump(const Mtz& mtz) {
   } else {
     printf("\nHistory (%zu lines):\n", mtz.history.size());
     for (const std::string& hline : mtz.history)
-      printf("%s\n", hline.c_str());
+      printf(" %s\n", hline.c_str());
   }
   if (!mtz.batches.empty()) {
     int prev_ds_id = -INT_MAX;
