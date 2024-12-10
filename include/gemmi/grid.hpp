@@ -698,6 +698,11 @@ struct Grid : GridBase<T> {
         radius);
   }
 
+  /// set grid points to a new value
+  /// @param ctr position
+  /// @param radius radius around position to consider (given in A)
+  /// @param value new value
+  /// @param use_pbc Be aware of periodic boundary conditions (PBC), i.e. be not limited by the unit cell boundaries (default)
   void set_points_around(const Position& ctr, double radius, T value, bool use_pbc=true) {
     Fractional fctr = unit_cell.fractionalize(ctr);
     if (use_pbc)
@@ -705,11 +710,60 @@ struct Grid : GridBase<T> {
     else
       use_points_around<false>(fctr, radius, [&](T& ref, double) { ref = value; }, false);
   }
+  /// set grid points to a new value if this is larger than existing value
+  /// @param ctr position
+  /// @param radius radius around position to consider (given in A)
+  /// @param value new value
+  /// @param use_pbc Be aware of periodic boundary conditions (PBC), i.e. be not limited by the unit cell boundaries (default)
+  void set_points_around_to_max(const Position& ctr, double radius, T value, bool use_pbc=true) {
+    Fractional fctr = unit_cell.fractionalize(ctr);
+    if (use_pbc)
+      use_points_around<true>(fctr, radius, [&](T& ref, double) { if(value>ref) {ref = value;} }, false);
+    else
+      use_points_around<false>(fctr, radius, [&](T& ref, double) { if(value>ref) {ref = value;} }, false);
+  }
+  /// set grid points to a new value if this is smaller than existing value
+  /// @param ctr position
+  /// @param radius radius around position to consider (given in A)
+  /// @param value new value
+  /// @param use_pbc Be aware of periodic boundary conditions (PBC), i.e. be not limited by the unit cell boundaries (default)
+  void set_points_around_to_min(const Position& ctr, double radius, T value, bool use_pbc=true) {
+    Fractional fctr = unit_cell.fractionalize(ctr);
+    if (use_pbc)
+      use_points_around<true>(fctr, radius, [&](T& ref, double) { if(value<ref) {ref = value;} }, false);
+    else
+      use_points_around<false>(fctr, radius, [&](T& ref, double) { if(value<ref) {ref = value;} }, false);
+  }
+  /// add value to current value of grid point
+  /// @param ctr position
+  /// @param radius radius around position to consider (given in A)
+  /// @param value new value
+  /// @param use_pbc Be aware of periodic boundary conditions (PBC), i.e. be not limited by the unit cell boundaries (default)
+  void set_points_around_to_sum(const Position& ctr, double radius, T value, bool use_pbc=true) {
+    Fractional fctr = unit_cell.fractionalize(ctr);
+    if (use_pbc)
+      use_points_around<true>(fctr, radius, [&](T& ref, double) { ref += value; }, false);
+    else
+      use_points_around<false>(fctr, radius, [&](T& ref, double) { ref += value; }, false);
+  }
 
+  /// Change all occurences of old_value to new_value
   void change_values(T old_value, T new_value) {
     for (auto& d : data)
       if (impl::is_same(d, old_value))
         d = new_value;
+  }
+
+  /// Limit range of values to be within min_value <= x <= max_value
+  void limit_values(T min_value, T max_value) {
+    for (auto& d : data) {
+      if (d<min_value) {
+        d = min_value;
+      }
+      else if (d>max_value) {
+        d = max_value;
+      }
+    }
   }
 
   /// Use \par func to reduce values of all symmetry mates of each

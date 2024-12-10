@@ -15,7 +15,8 @@ namespace {
 
 enum OptionIndex {
   Timing=4, GridSpac, GridDims, Radius, RProbe, RShrink,
-  IslandLimit, Hydrogens, AnyOccupancy, CctbxCompat, RefmacCompat, Invert
+  IslandLimit, Hydrogens, AnyOccupancy, CctbxCompat, RefmacCompat, Invert,
+  SetOccupancy, Verbosity
 };
 
 struct MaskArg {
@@ -32,6 +33,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
+  { Verbosity, 0, "", "verbosity", Arg::Int,
+    "  --verbosity=I  \tVerbosity setting." },
   { Timing, 0, "", "timing", Arg::None,
     "  --timing  \tPrint how long individual steps take." },
   { GridSpac, 0, "s", "spacing", Arg::Float,
@@ -50,6 +53,8 @@ const option::Descriptor Usage[] = {
     "  --hydrogens  \tDon't ignore hydrogens." },
   { AnyOccupancy, 0, "", "any-occupancy", Arg::None,
     "  --any-occupancy  \tDon't ignore zero-occupancy atoms." },
+  { SetOccupancy, 0, "", "set-occupancy", Arg::None,
+    "  --set-occupancy  \tSet values according to occupancy." },
   { CctbxCompat, 0, "", "cctbx-compat", Arg::None,
     "  --cctbx-compat  \tUse vdW, Rprobe, Rshrink radii from cctbx." },
   { RefmacCompat, 0, "", "refmac-compat", Arg::None,
@@ -78,10 +83,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     std::fprintf(stderr, "Converting %s ...\n", input);
 
   try {
-    using std::int8_t;
     Timer timer(p.options[Timing]);
     gemmi::Structure st = gemmi::read_structure_gz(input);
-    gemmi::Ccp4<int8_t> mask;
+    gemmi::Ccp4<float> mask;
+
     mask.grid.unit_cell = st.cell;
     mask.grid.spacegroup = st.find_spacegroup();
     if (p.options[GridDims]) {
@@ -132,10 +137,21 @@ int GEMMI_MAIN(int argc, char **argv) {
       masker.ignore_hydrogen = false;
     if (p.options[AnyOccupancy])
       masker.ignore_zero_occupancy_atoms = false;
+    if (p.options[SetOccupancy])
+      masker.use_atom_occupancy = true;
+
+    if (p.options[Verbose]) {
+      masker.verbosity++;
+    }
+    if (p.options[Verbosity]) {
+      masker.verbosity = std::atoi(p.options[Verbosity].arg);
+    }
 
     timer.start();
     masker.clear(mask.grid);
+
     masker.mask_points(mask.grid, st.models[0]);
+
     timer.print("Points masked in");
 
     timer.start();
@@ -152,7 +168,60 @@ int GEMMI_MAIN(int argc, char **argv) {
       masker.island_min_volume = std::atof(p.options[IslandLimit].arg);
     if (masker.island_min_volume > 0.) {
       timer.start();
-      int n = masker.remove_islands(mask.grid);
+      int n = 0;
+      if (p.options[SetOccupancy]) {
+        std::fprintf(stderr, "Creating intermediate grid for islands removal ... ");
+        gemmi::Grid<int> g;
+        g.unit_cell   = mask.grid.unit_cell;
+        g.spacegroup  = mask.grid.spacegroup;
+        g.nu          = mask.grid.nu;
+        g.nv          = mask.grid.nv;
+        g.nw          = mask.grid.nw;
+        g.axis_order  = mask.grid.axis_order;
+        g.spacing[0]  = mask.grid.spacing[0];
+        g.spacing[1]  = mask.grid.spacing[1];
+        g.spacing[2]  = mask.grid.spacing[2];
+        gemmi::Vec3 inv_n(1.0 / g.nu, 1.0 / g.nv, 1.0 / g.nw);
+        g.orth_n = g.unit_cell.orth.mat.multiply_by_diagonal(inv_n);
+        // do this as a loop:
+        for (int w = 0, idx = 0; w < g.nw; ++w) {
+          for (int v = 0; v < g.nv; ++v) {
+            for (int u = 0; u < g.nu; ++u, ++idx) {
+              // turns our 0.0 ... 1.0 mask into a 0/1 one:
+              g.data.push_back(std::round(mask.grid.data[idx]));
+            }
+          }
+        }
+        std::fprintf(stderr, "done\n");
+        n = masker.remove_islands(g);
+        int n1 = 0;
+        int n2 = 0;
+        for (int w = 0, idx = 0; w < g.nw; ++w) {
+          for (int v = 0; v < g.nv; ++v) {
+            for (int u = 0; u < g.nu; ++u, ++idx) {
+              if (mask.grid.data[idx]>=0.5&&g.data[idx]==0) {
+                // change from 1 -> 0
+                mask.grid.data[idx] = 0.0;
+                n1++;
+              }
+              else if (mask.grid.data[idx]<0.5&&g.data[idx]==1) {
+                // change from 0 -> 1
+                mask.grid.data[idx] = 1.0;
+                n2++;
+              }
+            }
+          }
+        }
+        if (n1>0) {
+          std::fprintf(stderr, " # of grid points >=0.5 reset = %d\n",n1);
+        }
+        if (n2>0) {
+          std::fprintf(stderr, " # of grid points < 0.5 reset = %d\n",n2);
+        }
+      }
+      else {
+        n = masker.remove_islands(mask.grid);
+      }
       timer.print("Islands removed in");
       if (p.options[Verbose])
         std::fprintf(stderr, "Islands removed: %d\n", n);
@@ -166,8 +235,14 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[Invert])
       masker.invert(mask.grid);
 
-    mask.update_ccp4_header(0);
-    mask.write_ccp4_map(output);
+    if (masker.use_atom_occupancy) {
+      mask.update_ccp4_header(2,true);
+      mask.write_ccp4_map(output);
+    }
+    else {
+      mask.update_ccp4_header(0);
+      mask.write_ccp4_map(output, 0);
+    }
   } catch (std::runtime_error& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
