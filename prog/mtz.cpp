@@ -124,14 +124,11 @@ void dump(const Mtz& mtz) {
   printf("\nHeader info (run with option -s for recalculated statistics):\n");
   // get maximum column size
   int col_size = 12;
-  for (const Mtz::Column& col : mtz.columns) {
-    if (col.label.length()>col_size) {
-      col_size = col.label.length();
-    }
-  }
-  printf("\n %-*s  Type  Dataset          Min        Max\n",col_size,"Column");
   for (const Mtz::Column& col : mtz.columns)
-    printf(" %-*s    %c      %2d   %12.6g %10.6g\n",col_size,
+    col_size = std::max(col_size, (int)col.label.length());
+  printf("\n %-*s  Type  Dataset          Min        Max\n", col_size, "Column");
+  for (const Mtz::Column& col : mtz.columns)
+    printf(" %-*s    %c      %2d   %12.6g %10.6g\n", col_size,
            col.label.c_str(), col.type, col.dataset_id,
            col.min_value, col.max_value);
   if (mtz.history.empty()) {
