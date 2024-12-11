@@ -149,13 +149,13 @@ template<> struct Counter<rules::item_tag> {
 template<> struct Counter<rules::item_value> {
   template<typename Input> static void apply(const Input& in, Context& ctx) {
     if (!cif::is_null(in.string())) {
-      TagStats& st = ctx.stats[ctx.tag];
-      st.block_count++;
-      st.total_count++;
-      st.min_count = 1;
-      st.in_this_file = true;
+      TagStats& ts = ctx.stats[ctx.tag];
+      ts.block_count++;
+      ts.total_count++;
+      ts.min_count = 1;
+      ts.in_this_file = true;
       if (ctx.full_output)
-        st.add_value(in.string(), ctx.block_name);
+        ts.add_value(in.string(), ctx.block_name);
     }
     ctx.tag.clear();
   }
@@ -186,14 +186,14 @@ template<> struct Counter<rules::loop_value> {
 template<> struct Counter<rules::loop_end> {
   template<typename Input> static void apply(const Input&, Context& ctx) {
     for (auto& info : ctx.loop_info) {
-      TagStats& st = ctx.stats[info.tag];
+      TagStats& ts = ctx.stats[info.tag];
       int n = info.counter;
       if (n != 0) {
-        st.block_count++;
-        st.total_count += n;
-        st.max_count = std::max(st.max_count, n);
-        st.min_count = std::min(st.min_count, n);
-        st.in_this_file = true;
+        ts.block_count++;
+        ts.total_count += n;
+        ts.max_count = std::max(ts.max_count, n);
+        ts.min_count = std::min(ts.min_count, n);
+        ts.in_this_file = true;
       }
     }
     ctx.column = 0;
@@ -205,16 +205,33 @@ void print_value_count_for_tsv(const char* item, const TagStats::CountAndExample
   std::printf("\t%zu %s %s", val.count, val.example.c_str(), item);
 }
 
-auto prepare_pairs(const TagStats& st) {
+auto prepare_pairs(const TagStats& ts) {
   // sort by count
   using Pair = std::pair<std::string, TagStats::CountAndExample>;
-  std::vector<Pair> pairs(st.values.begin(), st.values.end());
+  std::vector<Pair> pairs(ts.values.begin(), ts.values.end());
   std::sort(pairs.begin(), pairs.end(), [](const Pair& a, const Pair& b) {
       return a.second.count > b.second.count;
   });
   for (auto& pair : pairs) {
-    gemmi::replace_all(pair.first, "&", "&amp;");
-    gemmi::replace_all(pair.first, "<", "&lt;");
+    std::string& s = pair.first;
+    std::string::size_type pos = 0;
+    while ((pos = s.find_first_of("&<\"\t\r\n", pos)) != std::string::npos) {
+      std::string new_symbol;
+      if (s[pos] == '&')
+        new_symbol = "&amp;";
+      else if (s[pos] == '<')
+        new_symbol = "&lt;";
+      else if (s[pos] == '"')
+        new_symbol = "&quot;";
+      else if (s[pos] == '\t')
+        new_symbol = "&#11134;";  // ⭾
+      else if (s[pos] == '\r')
+        new_symbol = "&#9229;";  // ␍
+      else if (s[pos] == '\n')
+        new_symbol = "&#9166;";  // ⏎
+      s.replace(pos, 1, new_symbol);
+      pos += new_symbol.size();
+    }
   }
   return pairs;
 }
@@ -222,47 +239,47 @@ auto prepare_pairs(const TagStats& st) {
 void print_data_for_html(const Context& ctx) {
   //std::printf("tag\tfiles\tnmin\tnavg\tnmax\n");
   for (const auto& item : ctx.stats) {
-    const TagStats& st = item.second;
-    if (st.block_count == 0)
+    const TagStats& ts = item.second;
+    if (ts.block_count == 0)
       continue;
-    double navg = double(st.total_count) / st.block_count;
+    double navg = double(ts.total_count) / ts.block_count;
     double pc;
     if (ctx.per_block)
-      pc = 100.0 * st.block_count / ctx.total_blocks;
+      pc = 100.0 * ts.block_count / ctx.total_blocks;
     else
-      pc = 100.0 * st.file_count / ctx.total_files;
+      pc = 100.0 * ts.file_count / ctx.total_files;
     std::printf("%s\t%.3f\t%d\t%.2f\t%d",
-                item.first.c_str(), pc, st.min_count, navg, st.max_count);
-    if (st.values.size() <= ENUM_SHOW_LIMIT && st.text.count == 0) {
-      auto pairs = prepare_pairs(st);
+                item.first.c_str(), pc, ts.min_count, navg, ts.max_count);
+    if (ts.values.size() <= ENUM_SHOW_LIMIT) {
+      auto pairs = prepare_pairs(ts);
       for (auto& pair : pairs) {
         print_value_count_for_tsv(pair.first.c_str(), pair.second);
       }
     } else {
-      if (st.text.count != 0)
-        print_value_count_for_tsv("{text}", st.text);
-      if (st.multi_word.count != 0)
-        print_value_count_for_tsv("{line}", st.multi_word);
-      if (st.single_word.count != 0)
-        print_value_count_for_tsv("{word}", st.single_word);
-      if (st.number.count != 0) {
+      if (ts.text.count != 0)
+        print_value_count_for_tsv("{text}", ts.text);
+      if (ts.multi_word.count != 0)
+        print_value_count_for_tsv("{line}", ts.multi_word);
+      if (ts.single_word.count != 0)
+        print_value_count_for_tsv("{word}", ts.single_word);
+      if (ts.number.count != 0) {
         using namespace std;
         char buf[64] = {0};
-        snprintf(buf, 63, "{%g - %g}", st.min_number, st.max_number);
-        print_value_count_for_tsv(buf, st.number);
+        snprintf(buf, 63, "{%g - %g}", ts.min_number, ts.max_number);
+        print_value_count_for_tsv(buf, ts.number);
       }
-      if (st.values.size() <= ENUM_GATHER_LIMIT && st.text.count == 0) {
-        auto pairs = prepare_pairs(st);
+      if (ts.values.size() <= ENUM_GATHER_LIMIT) {
+        auto pairs = prepare_pairs(ts);
         // no point in showing distinct values like this:
         //   2248x{-0.757 - 0.125} distinct values: 724 (0.58% -0.394, ...)
-        if (st.number.count != st.total_count ||
-            pairs[0].second.count > std::max(1.0, 0.02 * st.total_count)) {
-          std::printf("\t/%zu", st.values.size());  // tags.html checks for '/'
+        if (ts.number.count != ts.total_count ||
+            pairs[0].second.count > std::max(1.0, 0.02 * ts.total_count)) {
+          std::printf("\t/%zu", ts.values.size());  // tags.html checks for '/'
           int n = 0;
           for (auto& pair : pairs) {
             const TagStats::CountAndExample& val = pair.second;
             print_value_count_for_tsv(pair.first.c_str(), pair.second);
-            if (++n == 10 || val.count * 20 < st.total_count)
+            if (++n == 10 || val.count * 20 < ts.total_count)
               break;
           }
         }
@@ -275,11 +292,11 @@ void print_data_for_html(const Context& ctx) {
 void print_tag_list(const Context& ctx) {
   std::printf("tag\t%s-count\tvalue-count\n", ctx.per_block ? "block" : "file");
   for (const auto& item : ctx.stats) {
-    const TagStats& st = item.second;
-    if (st.block_count == 0)
+    const TagStats& ts = item.second;
+    if (ts.block_count == 0)
       continue;
-    int groups = ctx.per_block ? st.block_count : st.file_count;
-    std::printf("%s\t%d\t%zu\n", item.first.c_str(), groups, st.total_count);
+    int groups = ctx.per_block ? ts.block_count : ts.file_count;
+    std::printf("%s\t%d\t%zu\n", item.first.c_str(), groups, ts.total_count);
   }
 }
 
