@@ -51,6 +51,7 @@ const option::Descriptor Usage[] = {
 
 constexpr int ENUM_GATHER_LIMIT = 1000;
 constexpr int ENUM_SHOW_LIMIT = 20;
+constexpr int VALUE_LENGTH_LIMIT = 128;
 
 struct TagStats {
   int file_count = 0;
@@ -214,6 +215,10 @@ auto prepare_pairs(const TagStats& ts) {
   });
   for (auto& pair : pairs) {
     std::string& s = pair.first;
+    if (s.size() > VALUE_LENGTH_LIMIT) {
+      s.resize(VALUE_LENGTH_LIMIT);
+      s += "[...]";
+    }
     std::string::size_type pos = 0;
     while ((pos = s.find_first_of("&<\"\t\r\n", pos)) != std::string::npos) {
       std::string new_symbol;
