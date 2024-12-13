@@ -36,8 +36,6 @@ else
     ./tools/cmp-size.py build/gemmi build/libgemmi_cpp.so build/py/gemmi/gemmi_ext*
     ./tools/docs-help.sh
 fi
-./tools/header-list.py >docs/headers.rst
-(cd docs && make -j4 html SPHINXOPTS="-q -n")
 
 # Run tests and checks.
 if [ $# = 0 ] || [ $1 != i ]; then
@@ -52,6 +50,10 @@ if [ -z "${NO_DOCTEST-}" ]; then
     #(cd docs && make doctest SPHINXOPTS="-q -n")
     (cd docs && $PYTHON -m sphinx -M doctest . _build -q -n)
 fi
+
+echo "Building docs (in background)..."
+./tools/header-list.py >docs/headers.rst
+(cd docs && make -j4 html SPHINXOPTS="-q -n")&
 
 # Usually, we stop here. Below are more extensive checks below that are run
 # before making a release. They are run when this script is called with 'a'

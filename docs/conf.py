@@ -99,4 +99,3 @@ if ccp4_path is None:
 import gemmi
 gemmi.set_leak_warnings(False)
 '''
-
