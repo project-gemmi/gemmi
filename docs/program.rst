@@ -1,5 +1,7 @@
 .. highlight:: console
 
+.. _program:
+
 Gemmi program
 #############
 

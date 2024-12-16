@@ -1001,6 +1001,11 @@ program documentation for details.
   >>> # and convert it back
   >>> cif_string = gemmi.MtzToCif().write_cif_to_string(_)
 
+XDS_ASCII
+=========
+
+TODO: document functions from `xds_ascii.hpp`
+
 
 SX hkl CIF
 ==========

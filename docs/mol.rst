@@ -24,9 +24,9 @@ Reading coordinate files
 
 Gemmi support the following coordinate file formats:
 
-    * mmCIF (PDBx/mmCIF),
-    * PDB (with popular extensions),
-    * mmJSON.
+* mmCIF (PDBx/mmCIF),
+* PDB (with popular extensions),
+* mmJSON.
 
 It can also read coordinates from the chemical components dictionary
 (CCD) and from Refmac monomer library -- these are not really coordinate
@@ -1885,95 +1885,6 @@ way around, if we know the kind of residues encoded with single letters:
   ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
 
 
-Molecular weight
-----------------
-
-Gemmi provides a simple function to calculate molecular weight
-from the sequence. It uses the same built-in table of popular residues.
-Since in this example we have two rare components that are not tabulated,
-we must specify the average weight of unknown residue:
-
-.. doctest::
-
-  >>> gemmi.calculate_sequence_weight(seq, unknown=130.0)
-  784.6114543066407
-
-In such case the result is not accurate, but this is not a typical case.
-
-Now we will take a PDB file with standard residues
-and calculate the Matthews coefficient:
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
-  >>> list(st[0])
-  [<gemmi.Chain A with 141 res>]
-  >>> # we have just a single chain, which makes this example simpler
-  >>> chain = st[0]['A']
-  >>> chain.get_polymer()
-  <gemmi.ResidueSpan of 0: []>
-  >>> # Not good. The chain parts where not assigned automatically,
-  >>> # because of the missing TER record in this file. We need to call:
-  >>> st.setup_entities()  # it should sort out chain parts
-  >>> chain.get_polymer()
-  <gemmi.ResidueSpan of 141: Axp [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
-  >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
-  <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
-  >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
-  >>> # Now we can calculate Matthews coefficient
-  >>> st.cell.volume_per_image() / weight
-  3.1983428753317003
-
-We could continue and calculate the solvent content, assuming the protein
-density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
-number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
-
-.. doctest::
-
-  >>> protein_fraction = 1. / (6.02214e23 * 1e-24 * 1.35 * _)
-  >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
-  Solvent content: 61.5%
-
-Gemmi also includes a program that calculates the solvent content:
-:ref:`gemmi-contents <gemmi-contents>`.
-
-FASTA and PIR
--------------
-
-The coordinate files can contain sequences internally.
-Nevertheless, we may need to use a sequence from UniProt or another source.
-Gemmi provides a function to parse two sequence file formats, FASTA and PIR.
-The function takes a string containing the file's content as an argument:
-
-.. doctest::
-
-  >>> with open('P0C805.fasta') as f:
-  ...     fasta_str = f.read()
-  >>> gemmi.read_pir_or_fasta(fasta_str)  #doctest: +ELLIPSIS
-  [<gemmi.FastaSeq object at 0x...>]
-
-The string must start with a header line that begins with `>`.
-In the case of PIR format, which starts with `>P1;` (or F1, DL, DC, RL, RC,
-or XX instead of P1), the next line is also part of the header.
-The sequence file may contain multiple sequences, each preceded by a header.
-Whitespace in a sequence is ignored, except for blank lines,
-which are only allowed between sequences.
-A sequence can contain letters, dashes, and residue names in parentheses.
-The latter is an extension inspired by the format used in mmCIF files,
-in which non-standard residues are given in parentheses, e.g., `MA(MSE)GVN`.
-The sequence may end with `*`.
-
-FastaSeq objects, returned from `read_pir_or_fasta()`,
-contain only two strings:
-
-.. doctest::
-
-  >>> (fasta_seq,) = _
-  >>> fasta_seq.header
-  'sp|P0C805|PSMA3_STAA8 Phenol-soluble modulin alpha 3 peptide OS=Staphylococcus aureus (strain NCTC 8325 / PS 47) OX=93061 GN=psmA3 PE=1 SV=1'
-  >>> fasta_seq.seq
-  'MEFVAKLFKFFKDLLGKFLGNN'
-
 .. _sequence-alignment:
 
 Sequence alignment
@@ -3072,3 +2983,15 @@ rainbow-colored chain:
     :scale: 100
     :target: https://www.rcsb.org/3d-view/5XG2/
 
+
+Multiprocessing
+---------------
+
+(Python-specific)
+
+The example script below traverses subdirectories and asynchronously
+analyzes coordinate files, using 4 worker processes in parallel.
+
+.. literalinclude:: ../examples/multiproc.py
+   :language: python
+   :lines: 4-
