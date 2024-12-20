@@ -53,7 +53,7 @@ for:
   - py -m unittest discover -v -s tests/
   - cd docs
   - set PYTHONPATH=..
-  - py -m pip install --no-warn-script-location sphinx
+  - py -m pip install --no-warn-script-location sphinx sphinx-inline-tabs
   - py -m sphinx -M doctest . _build -n -E
 
   artifacts:
