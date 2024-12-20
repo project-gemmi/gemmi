@@ -121,8 +121,8 @@ The parser supports CIF 1.1 spec and some extras.
 
 Currently, it is available as:
 
-* C++11 header-only library, and
-* Python (2 and 3) extension module.
+* C++14 header-only library, and
+* Python (3.8+) extension module.
 
 We use it to read:
 
@@ -190,7 +190,7 @@ so you do not need to compile Gemmi.
 It has a single dependency: PEGTL (also header-only),
 which is included under the `include/gemmi/third_party` directory.
 All you need is to make sure that Gemmi headers are in your
-project's include path, and compile your program as C++11 or later.
+project's include path, and compile your program as C++14 or later.
 
 Let us start with a simple example.
 This little program reads mmCIF file and shows weights of the chemical
@@ -428,8 +428,8 @@ C++
 The functions writing `cif::Document` and `cif::Block` to C++ stream
 is in a separate header `gemmi/to_cif.hpp`::
 
-  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOption options)
-  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOption options)
+  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOptions options)
+  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOptions options)
 
 Python
 ------
@@ -441,7 +441,7 @@ of the `Document` class:
 
   >>> doc.write_file('1pfe-modified.cif')
 
-It can take the style as optional, second argument:
+The output can be styled by passing `WriteOptions` as a second argument:
 
 .. doctest::
 
@@ -572,6 +572,8 @@ Document has also one property
        st.add_new_block(...)     # block gets invalidated
        block = st[0]             # block is valid again
 
+.. _cif_block:
+
 Block
 =====
 
@@ -597,7 +599,7 @@ Each block contains::
     std::string name;
     std::vector<Item> items;
 
-where `Item` is implemented as an unrestricted (C++11) union
+where `Item` is implemented as an unrestricted union
 that holds one of Pair, Loop or Block.
 
 Python
@@ -962,7 +964,7 @@ The C++ signature of `find_values` is::
   // Erases item for name-value pair; removes column for Loop
   void erase();
 
-`Column` also provides support for C++11 range-based `for`::
+`Column` also provides support for range-based `for`::
 
   // mmCIF _chem_comp_atom is usually a table, but not always
   for (const std::string &s : block.find_values("_chem_comp_atom.type_symbol"))
@@ -1635,7 +1637,7 @@ All these directory walking functions are powered by the
 Examples
 ========
 
-The examples here use C++11 or Python.
+The examples here use C++ or Python.
 Full working code can be found in the examples__ directory.
 
 The examples below can be run on one or more PDBx/mmCIF files.

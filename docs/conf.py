@@ -5,7 +5,7 @@
 # while we use Sphinx 8+, old version suffices to run doctests
 needs_sphinx = '5.3.0'
 
-extensions = ['sphinx.ext.doctest']
+extensions = ['sphinx.ext.doctest', 'sphinx_inline_tabs']
 
 templates_path = ['_templates']
 

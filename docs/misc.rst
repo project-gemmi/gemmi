@@ -2,7 +2,7 @@ Miscellaneous utils
 ###################
 
 FASTA and PIR reader
---------------------
+====================
 
 Gemmi provides a function to parse two sequence file formats, FASTA and PIR.
 The function takes a string containing the file's content as an argument:
@@ -41,11 +41,8 @@ contain only two strings:
 Logger
 ======
 
-Gemmi Logger is a tiny helper class for passing messages from a gemmi function
-to the calling function. It doesn't belong in this section, but it's
-documented here because it's used in the previous subsection and I haven't found
-a better spot for it.
-
+Logger is a tiny helper class for passing messages from a gemmi function
+to the calling function.
 The messages being passed are usually info or warnings that a command-line
 program would print to stdout or stderr.
 

@@ -1,149 +1,241 @@
 .. _molecular:
 
-Molecular models
-################
+Macromolecular models
+#####################
 
 In this section, we show how to handle structural models of biomolecules.
 
 Models from a single file (PDB, mmCIF, etc.) are stored in the `Structure`
-class, with the usual Model-Chain-Residue-Atom hierarchy.
-Gemmi provides basic functions to access and manipulate the structure,
-and on top of it more complex functions, such as
-neighbor search, calculation of dihedral angles, removal of ligands from
-a model, etc.
+class. Gemmi provides basic functions to access and manipulate the structure
+and its associated metadata.
+On top of this, it has more complex functions, such as neighbor search
+(taking into account crystallographic and non-crystallographic symmetry),
+calculation of dihedral angles, removal of ligands from a model, etc.
 
-Comparing with tools rooted in bioinformatics:
+`Structure` contains one or multiple alternative models (class `Model`),
+a model contains chains (class `Chain`), a chain contains residues (`Residue`),
+and a residue contains atoms (`Atom`).
 
-* Gemmi focuses more on working with incomplete models
-  (on all stages before they are published and submitted to the PDB),
-* and Gemmi is aware of the neighbouring molecules implied by
-  the crystallographic and non-crystallographic symmetry.
+.. admonition:: On naming
 
-Reading coordinate files
-========================
+    While *chain* and *residue* are not accurate terms when referring to ligands
+    and waters, this nomenclature is the most common.
+    An alternative nomenclature, polymer - monomer - atom, has the same problem.
+    PDBx/mmCIF uses more general but hard to decipher terms:
+    *entity* and *struct_asym* (structural component in the asymmetric unit)
+    instead of chain, and *chem_comp* (chemical component) for residue/monomer.
 
-Gemmi support the following coordinate file formats:
+.. _met_mse_example:
+
+Let's start with a simple example that illustrates the
+structure - model - chain - residue - atom hierarchy.
+The code below iterates over all models, chains, residues, and atoms,
+mutating methionine residues (MET) to selenomethionine (MSE).
+
+.. tab:: C++
+
+ .. literalinclude:: code/mutate.cpp
+
+.. tab:: Python
+
+ .. testcode::
+
+  import gemmi
+
+  def met_to_mse(st: gemmi.Structure) -> None:
+      for model in st:
+          for chain in model:
+              for residue in chain:
+                  if residue.name == 'MET':
+                      residue.name = 'MSE'
+                      for atom in residue:
+                          if atom.name == 'SD':
+                              atom.name = 'SE'
+                              atom.element = gemmi.Element('Se')
+
+.. doctest::
+  :hide:
+
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
+  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
+  <gemmi.Residue 12(MET) with 8 atoms>
+  >>> met_to_mse(st)
+  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
+  <gemmi.Residue 12(MSE) with 8 atoms>
+  >>> _.sole_atom('SE').element
+  gemmi.Element('Se')
+
+
+.. _altconf:
+
+.. rubric:: Alternative conformations
+
+The hierarchy above is oversimplified if we consider that models
+can have alternative locations for subsets of atoms and even
+microheterogeneities (point mutations -- alternative residues).
+
+What are reasonable ways of presenting alternative conformations? We can:
+
+* Group together atoms from the same conformer.
+  This is relatively simple and particularly convenient when a user wants
+  to see just one conformer and ignore the rest.
+  But not good for editing a model.
+
+* Group together alternative locations of the same atoms,
+  as well as alternative residues
+  (for instance, cctbx.iotbx has residue-groups and atom-groups).
+  This is rather complex. Reportedly,
+  "`about 90% <https://cci.lbl.gov/cctbx_docs/iotbx/iotbx.pdb.html>`_
+  of the development time invested into iotbx.pdb was in some form
+  related to alternative conformations".
+
+* Leave it to the user (e.g. mmdb and Clipper).
+
+In Gemmi we use a mix of these approaches (which for sure is also not ideal).
+The user can work with the basic (model-chain-residue-atom) hierarchy
+and handle the *altloc* field manually (like in mmdb). However, we also have
+functions that ignore all but the main conformation (inspired by BioPython)
+and lightweight proxy objects ResidueGroup and AtomGroup that group
+alternative conformers (inspired by iotbx).
+
+
+Coordinate files
+================
+
+Gemmi supports the following coordinate file formats:
 
 * mmCIF (PDBx/mmCIF),
 * PDB (with popular extensions),
 * mmJSON.
 
-It can also read coordinates from the chemical components dictionary
-(CCD) and from Refmac monomer library -- these are not really coordinate
-files, but they contain example coordinates of a single residue.
+It can also read coordinates from the Chemical Components Dictionary
+(CCD) and the Refmac monomer library. These are not coordinate
+files but usually contain example coordinates of a single residue.
 
-All the files can be compressed with gzip (with extension .gz).
-In Python, the reading function expects that a file can be gzipped.
-In C++, separate functions are used for reading possibly-gzipped files
-(to allow for a smaller program size if this feature is not needed).
-Uncompressing is performed using the zlib or zlib-ng library,
-depending on which one gemmi was built with.
+Reading any files
+-----------------
 
-To read a coordinate file without knowing the format of the file,
-call read_structure*() with format:
+In this section we show how to read a coordinate file in Gemmi,
+regardless of the format.
+In the next sections we will delve into the details of the individual formats.
+Then we will move on to working with structural models.
+(In this section we see objects of type `Structure`
+that will be documented :ref:`later on <structure>`.)
 
-* `CoorFormat.Unknown` -- to guess the format from the file extension,
-* `CoorFormat.Detect` -- to guess the format from the file content
-  (PDB is assumed if it's neither CIF nor JSON; it also
-  recognizes monomer (ligand/CCD) files).
+Let's read a coordinate file and print how many models it contains:
 
-Users of the MMDB2 library from the CCP4 suite can convert between
-`mmdb::Manager` and `gemmi::Structure` using functions  `copy_to_mmdb()`
-and `copy_from_mmdb()` from `<gemmi/mmdb.hpp>`.
+.. tab:: C++
 
-In this section we show how to read a coordinate file in Gemmi.
-In the next sections we will go into details of the individual formats.
-Further on, we will show what can be done with a structural model.
-
-C++
----
-
-All the macromolecular coordinate files supported by Gemmi can be opened
-using::
-
-  Structure read_structure_file(const std::string& path, CoorFormat format=CoorFormat::Unknown)
-
-  // where CoorFormat is defined as
-  enum class CoorFormat { Unknown, Detect, Pdb, Mmcif, Mmjson, ChemComp };
-
-For example::
+ ::
 
   #include <gemmi/mmread.hpp>
+
   // ...
   gemmi::Structure st = gemmi::read_structure_file(path);
-  std::cout << "This file has " << st.models.size() << " models.\n";
+  std::cout << "Model count: " << st.models.size() << std::endl;
 
-In this example the file format is not specified and is determined from
-the file extension.
+.. tab:: Python
 
-`gemmi::Structure` is defined in `gemmi/model.hpp` and
-it will be documented :ref:`later on <mcra>`.
-
-Gemmi also has a templated function `read_structure` that you can use
-to customize how you provide the data (bytes) to the parsers.
-This function is used to uncompress gzipped files on the fly:
-
-.. literalinclude:: code/maybegz.cpp
-
-If you include the :file:`gz.hpp` header (as in the example above)
-the resulting program must be linked with the zlib library.
-
-.. code-block:: console
-
-  $ c++ -std=c++11 -Iinclude example_above.cpp -lz
-  $ ./a.out 2cco.cif.gz
-  This file has 20 models.
-
-The :file:`gemmi/mmread.hpp` header includes many other headers
-and is relatively slow to compile. For this reason, consider including it in
-only one compilation unit (that does not change often).
-
-Alternatively, if you want to support gzipped files,
-use function `gemmi::read_structure_gz()` declared in the header
-`gemmi/mmread_gz.hpp` (requires linking with libgemmi).
-
-If you know the format of files that you will read, you may also
-use a function specific to this format. For example, the next section
-shows how to read just a PDB file (`read_pdb_file(path)`).
-
-Python
-------
-
-Any of the macromolecular coordinate files supported by Gemmi (possibly
-gzipped) can be opened using:
-
-.. doctest::
+ .. doctest::
   :hide:
 
   >>> path =  '../tests/1orc.pdb'
 
-
-.. doctest::
+ .. doctest::
 
   >>> gemmi.read_structure(path)  #doctest: +ELLIPSIS
   <gemmi.Structure ...>
+  >>> print('Model count:', len(st))
+  Model count: 1
 
-If the file format is not specified (example above) it is determined from
-the file extension. Alternatively, you can specify the format explicitly:
+Gemmi is built with either the zlib or zlib-ng library.
+If a file read by Gemmi is compressed with gzip (extension .gz),
+it can be uncompressed on the fly.
+All reading functions may throw exceptions, so in this example,
+we catch them:
 
-.. doctest::
+.. tab:: C++
 
-  >>> gemmi.read_structure(path, format=gemmi.CoorFormat.Pdb)  #doctest: +ELLIPSIS
-  <gemmi.Structure ...>
+ ::
 
-or detect it from the content of the file:
+  // prefer this function to the previous one, mmread.hpp takes longer to compile
+  #include <gemmi/mmread_gz.hpp>
+  // ...
+  try {
+    gemmi::Structure st = gemmi::read_structure_gz(path);
+  } catch (std::runtime_error& e) {
+    std::cout << "Oops. " << e.what() << std::endl;
+  }
 
-.. doctest::
+.. tab:: Python
 
-  >>> gemmi.read_structure(path, format=gemmi.CoorFormat.Detect)  #doctest: +ELLIPSIS
-  <gemmi.Structure ...>
+ .. doctest::
 
-The file form
-`gemmi.Structure` will be documented :ref:`later on <mcra>`.
+  >>> # It's the same function. To keep it simple, Python bindings have
+  >>> # only functions that handle gzipped files automatically.
+  >>> try:
+  ...     st = gemmi.read_structure(path)
+  ... except (RuntimeError, IOError) as e:
+  ...     print(f'Oops. {e}')
+
+Optionally, these functions can take the format as an argument. One of:
+
+* `CoorFormat.Unknown` -- guesses the format from the file extension (default),
+* `CoorFormat.Detect` -- guesses the format from the file content
+  (PDB is assumed if the content is neither CIF nor JSON; it also
+  recognizes monomer (ligand/CCD) files),
+* `CoorFormat.Pdb` -- PDB,
+* `CoorFormat.Mmcif` -- mmCIF,
+* `CoorFormat.Mmjson` -- mmJSON,
+* `CoorFormat.ChemComp` -- a CIF file with ligand description, from CCD
+  or a monomer library. This format has the same extension as mmCIF files,
+  so the format needs to be specified as either `Detect` or `ChemComp`.
+
+.. tab:: C++
+
+ ::
+
+  gemmi::Structure st = gemmi::read_structure_gz(path, gemmi::CoorFormat::Detect);
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> st = gemmi.read_structure(path, format=gemmi.CoorFormat.Detect)
+
+If you know the format of the files you will read, you can use a function
+specific to that format. For example, the next section
+shows how to read a PDB file using `read_pdb_file(path)`.
+
+Users of the MMDB2 library from the CCP4 suite can convert between
+`mmdb::Manager` and `gemmi::Structure` using the functions  `copy_to_mmdb()`
+and `copy_from_mmdb()` from `<gemmi/mmdb.hpp>`.
+
+
+Discontinuous chains
+~~~~~~~~~~~~~~~~~~~~
+
+The usual order of atoms in a file is
+
+* either by chain (A-polymer, A-ligands, A-waters, B-polymer,
+  B-ligands, B-waters)
+* or by chain parts (A-polymer, B-polymer, A-ligands, B-ligands,
+  A-waters, B-waters).
+
+In the latter case (example: 100D), chain parts with the same name
+are either merged automatically (MMDB, BioPython)
+or left as separate chains (iotbx).
+
+In Gemmi, we support both ways. The chains are first read separately
+and then can be merged by calling `Structure::merge_chain_parts()`.
+
+But in the Python interface `read_structure()` merges the chains by default
+(for backward compatibility). It can be disabled by adding
+the argument `merge_chain_parts=False`.
 
 
 PDB format
-==========
+----------
 
 The PDB format evolved from the 1970s to 2012. Nowadays the PDB organization
 uses PDBx/mmCIF as the primary format, and the legacy PDB format is frozen.
@@ -336,49 +428,72 @@ But in some PDB files we need to take into account two other records:
 .. _hybrid-36: http://cci.lbl.gov/hybrid_36/
 
 Reading
--------
+~~~~~~~
 
-**C++**
+In addition to generic functions common for all coordinate file formats,
+we have file-format specific functions. They are preferrable if you want
+to pass additional options or, in case of C++, to avoid linking with the
+code you don't use. Here is how to read a PDB file:
 
-As described in the previous section, all coordinate files can be read
-using the same function calls. Additionally, in C++, you may read a selected
-file format to avoid linking with the code you do not use::
+.. tab:: C++
 
-  #include <gemmi/pdb.hpp>     // to read
-  #include <gemmi/gz.hpp>      // to uncompress on the fly
+ ::
 
+  #include <gemmi/pdb.hpp>
   gemmi::Structure st1 = gemmi::read_pdb_file(path);
+
   // or
-  gemmi::Structure st2 = gemmi::read_pdb(gemmi::MaybeGzipped(path));
 
-These functions can take one more argument, an instance of:
+  #include <gemmi/mmread_gz.hpp>
+  gemmi::Structure st = gemmi::read_pdb_gz(path);
 
-.. literalinclude:: ../include/gemmi/model.hpp
-   :language: cpp
-   :start-at: struct PdbReadOptions
-   :end-before: // end of PdbReadOptions for mol.rst
+.. tab:: Python
 
-that controls how the file is interpreted. Usually, the defaults are fine.
-
-The content of the file can also be read from a string or from memory::
-
-    Structure read_pdb_string(const std::string& str, const std::string& name, PdbReadOptions& options=PdbReadOptions());
-    Structure read_pdb_from_memory(const char* data, size_t size, const std::string& name, PdbReadOptions options=PdbReadOptions());
-
-**Python**
-
-.. code-block:: python
+ .. code-block:: python
 
     import gemmi
 
-    # just use interface common for all file formats
+    # either use the interface common for all file formats
     structure = gemmi.read_structure(path)
 
     # or a function that reads only pdb files
     structure = gemmi.read_pdb(path)
 
+The pdb-specific functions can take the following options that control
+how the file is interpreted. (Usually, the defaults are fine.)
+
+.. tab:: C++
+
+ .. literalinclude:: ../include/gemmi/model.hpp
+   :language: cpp
+   :start-at: struct PdbReadOptions
+   :end-before: // end of PdbReadOptions for mol.rst
+
+.. tab:: Python
+
+ .. code-block:: python
+
+    structure = gemmi.read_structure(path,
+                                     max_line_length=0,
+                                     split_chain_on_ter=False,
+                                     #skip_remarks=False
+                                     )
+
+The content of the file can also be read from a string or a memory buffer::
+
+.. tab:: C++
+
+ ::
+
+    Structure read_pdb_string(const std::string& str, const std::string& name, PdbReadOptions& options={});
+    Structure read_pdb_from_memory(const char* data, size_t size, const std::string& name, PdbReadOptions options={});
+
+.. tab:: Python
+
     # if you have the content of the PDB file in a string:
     structure = gemmi.read_pdb_string(string)
+    # or in bytes (the same function name for backward compat)
+    structure = gemmi.read_pdb_string(bytes)
 
 Not all the metadata read from a PDB file is directly accessible from Python.
 Experimental details, refinement statistics, the secondary structure
@@ -396,19 +511,27 @@ by first putting it into a cif.Block:
 
 ----
 
-PDB files are expected to have 80 columns, although trailing spaces are
-often not included. Some programs in certain situations produce longer lines,
-so Gemmi reads lines up to 120 characters. In some old files from
-the `wwPDB snapshots <ftp://snapshots.rcsb.org/20050106/>`_
-columns 73-80 contain PDB ID and line number (such as "1ABC 205").
-It confuses the PDB parser and it is not handled automatically -- such
-files are not in use nowadays. Nevertheless, they can be read by manually
-limiting the line length:
+**max_line_length**
+
+PDB files are expected to have (up to) 80 columns.
+You may come across files with longer lines and Gemmi, by default,
+reads up to 120 columns. Using this option you can reduce the number
+of columns being read. It is useful when reading old files,
+from around 2004, which had somewhat different format::
+
+  ATOM      1  CA  MET     1     -19.201  51.101   6.138  1.00 35.00      1GDR 109
+  ATOM      2  CA  ARG     2     -17.008  48.871   4.008  1.00 35.00      1GDR 110
+
+Here, columns 73-80 contain PDB ID and line number.
+This confuses the parser and it is not handled automatically, but it will
+be read if you limit the line length to 72:
 
 .. doctest::
 
   >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
   <gemmi.Structure pdb1gdr.ent with 1 model(s)>
+
+**split_chain_on_ter**
 
 TER records in the PDB, according the specification, mark the end of polymer
 (terminal carboxyl end for proteins, 3' end for nucleic acids).
@@ -420,20 +543,8 @@ call read_pdb() with option `split_chain_on_ter=True`
 (and then, to write a file in the same way,
 use option `ter_ignores_type=True`).
 
-All remarks from the PDB file are stored in `raw_remarks`. Some of them
-(as listed :ref:`above <supported_records>`) are parsed and interpreted.
-When writing a structure from the PDB format back to the PDB format,
-by default, remarks are copied over from `raw_remarks`.
-To avoid it:
-
-.. doctest::
-
-  >>> st.raw_remarks = []
-
-Then, only these records that can be parsed and formatted are written.
-
 Writing
--------
+~~~~~~~
 
 Gemmi has several switches to customize the output PDB file,
 primarily for controlling what records are included.
@@ -509,6 +620,20 @@ that has properties listed in the C++ section above. Examples:
 
 ----
 
+**REMARK** records from a PDB file are stored in `raw_remarks`. Some of them
+(as listed :ref:`above <supported_records>`) are parsed and interpreted.
+When writing a structure from the PDB format back to the PDB format,
+by default, remarks are copied over from `raw_remarks`.
+To avoid it:
+
+.. doctest::
+
+  >>> st.raw_remarks = []
+
+Then, only these records that can be parsed and formatted are written.
+
+----
+
 **CONECT records** are not written unless explicitly requested.
 The data from and for these records is stored in C++ `Structure::conect_map`
 as a mapping between serial numbers (int -> list of ints).
@@ -537,7 +662,7 @@ to prepare and write CONECT records:
 
 
 PDBx/mmCIF format
-=================
+-----------------
 
 The mmCIF format (more formally: PDBx/mmCIF) became the primary format
 used by the wwPDB. The format uses the CIF 1.1 syntax with semantics
@@ -711,19 +836,17 @@ Some use both 2 and 3 (e.g. _struct_conn), some use only 2 (e.g. _struct_site),
 and _atom_site_anisotrop uses all 1, 2 and 3.
 
 Reading
--------
+~~~~~~~
 
 As a reminder, you may use the functions common for all file formats
 (such as `read_structure_gz()`) to read a structure.
 
-But you may also use two functions that give you more control.
-These functions correspond to two stages
-of reading mmCIF files in Gemmi:
+But you may also read in two stages, which gives you more control:
 file → `cif::Document` → `Structure`.
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
     #include <gemmi/cif.hpp>       // file -> cif::Document
     #include <gemmi/gz.hpp>        // uncompressing on the fly
@@ -734,33 +857,36 @@ file → `cif::Document` → `Structure`.
     cif::Document doc = cif::read(gemmi::MaybeGzipped(mmcif_file));
     gemmi::Structure structure = gemmi::make_structure(doc);
 
-`cif::Document` can be additionally used to access meta-data,
-such as the details of the experiment or software used for data processing.
-The examples are provided in the :ref:`CIF parser <cif_examples>` section.
+ `cif::Document` can be additionally used to access metadata.
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
   :hide:
 
   >>> mmcif_path =  '../tests/5i55.cif'
 
-.. doctest::
+ .. doctest::
 
   >>> cif_block = gemmi.cif.read(mmcif_path)[0]
   >>> structure = gemmi.make_structure_from_block(cif_block)
 
-`cif_block` can be additionally used to access meta-data.
+ `cif_block` can be additionally used to access metadata.
+
+Metadata includes details of the experiment, information about data
+processing and refinement and various annotations that are only partly
+captured inside `Structure`. It all can be read directly from
+:ref:`CIF Block <cif_block>`
 
 Writing
--------
+~~~~~~~
 
-Writing is also in two stages: first a `cif::Document` is created
+Writing is also in two stages: first a CIF `Document` is created
 and then it is written to disk.
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
   #include <gemmi/to_cif.hpp>    // cif::Document -> file
   #include <gemmi/to_mmcif.hpp>  // Structure -> cif::Document
@@ -768,9 +894,9 @@ and then it is written to disk.
   std::ofstream os("new.cif");
   gemmi::write_cif_to_file(os, gemmi::make_mmcif_document(structure));
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
 
   >>> structure.make_mmcif_document().write_file('new.cif')
 
@@ -825,7 +951,7 @@ These two calls are equivalent:
 
 
 mmJSON format
-=============
+-------------
 
 The mmJSON_ format is a JSON representation of the mmCIF data
 used by PDBj. This format can be easily parsed with any JSON parser.
@@ -857,11 +983,11 @@ Gemmi reads mmJSON files into `cif::Document`,
 as it does with mmCIF files.
 
 Reading
--------
+~~~~~~~
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
     #include <gemmi/json.hpp>     // JSON -> cif::Document
     #include <gemmi/mmcif.hpp>    // cif::Document -> Structure
@@ -875,14 +1001,14 @@ Reading
     // and then:
     gemmi::Structure structure =  gemmi::make_structure(doc);
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
   :hide:
 
   >>> mmjson_path =  '../tests/1pfe.json'
 
-.. doctest::
+ .. doctest::
 
   >>> # just use interface common for all file formats
   >>> structure = gemmi.read_structure(mmjson_path)
@@ -893,141 +1019,24 @@ Reading
 
 
 Writing
--------
+~~~~~~~
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
     #include <gemmi/to_json.hpp>  // for write_mmjson_to_stream
 
     // cif::Document doc = gemmi::make_mmcif_document(structure);
     gemmi::write_mmjson_to_stream(ostream, doc);
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
 
   >>> # Structure -> cif.Document -> mmJSON
   >>> json_str = structure.make_mmcif_document().as_json(mmjson=True)
 
-
-.. _mcra:
-
-Hierarchy
-=========
-
-The most useful representation for working with macromolecular models
-is a hierarchy of objects.
-To a first approximation all macromolecular libraries present the same
-hierarchy: model - chain - residue - atom.
-
-Naming
-------
-
-While *chain* and *residue* are not good names when referring to
-ligands and waters, we use this nomenclature as it is the most popular one.
-Some libraries (clipper) call it polymer - monomer - atom.
-PDBx/mmCIF uses more general (but not so obvious) terms:
-*entity* and *struct_asym* (structural component in asymmetric unit)
-instead of chain,
-and *chem_comp* (chemical component) for residue/monomer.
-
-.. _altconf:
-
-Alternative conformations
--------------------------
-
-Apart from the naming, the biggest difference between libraries is
-how the disorder is presented. The main options are:
-
-* group together atoms from the same conformer
-
-* group together alternative locations of the same atom
-  (cctbx.iotbx has residue-groups and atom-groups)
-
-* leave it to the user (e.g. mmdb and clipper).
-
-Handling alternative conformations adds significant complexity.
-`Reportedly <https://cci.lbl.gov/cctbx_docs/iotbx/iotbx.pdb.html>`_,
-"about 90% of the development time invested into iotbx.pdb was in some form
-related to alternative conformations".
-
-Gemmi exposes the *altloc* field to the user (like mmdb).
-On top of it it offers utilities that make working with conformers
-easier:
-
-- functions that ignore all but the main conformation (inspired by BioPython),
-- and lightweight proxy objects ResidueGroup and AtomGroup that group
-  alternative conformers (inspired by iotbx).
-
-Discontinuous chains
---------------------
-
-The usual order of atoms in a file is
-
-* either by chain (A-polymer, A-ligands, A-waters, B-polymer,
-  B-ligands, B-waters)
-* or by chain parts (A-polymer, B-polymer, A-ligands, B-ligands,
-  A-waters, B-waters).
-
-In the latter case (example: 100D), chain parts with the same name
-are either merged automatically (MMDB, BioPython)
-or left as separate chains (iotbx).
-
-In gemmi we support both ways. Since merging is easier than splitting,
-the chains are first read separately and after reading the file
-the user can call `Structure::merge_chain_parts()`.
-
-In the Python interface merging is also controlled
-by second argument to the `gemmi.read_structure()` function:
-
-.. code-block:: python
-
-  read_structure(path: str, merge_chain_parts: bool = True) -> gemmi.Structure
-
-.. _met_mse_example:
-
-Example
--------
-
-Next sections document each level of the hierarchy.
-But first a simple example.
-The code below iterates over all the hierarchy levels
-and mutates methionine residues (MET) to selenomethionine (MSE).
-
-**C++**
-
-.. literalinclude:: code/mutate.cpp
-
-**Python**
-
-.. testcode::
-
-  import gemmi
-
-  def met_to_mse(st: gemmi.Structure) -> None:
-      for model in st:
-          for chain in model:
-              for residue in chain:
-                  if residue.name == 'MET':
-                      residue.name = 'MSE'
-                      for atom in residue:
-                          if atom.name == 'SD':
-                              atom.name = 'SE'
-                              atom.element = gemmi.Element('Se')
-
-.. doctest::
-  :hide:
-
-  >>> st = gemmi.read_structure('../tests/1orc.pdb')
-  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
-  <gemmi.Residue 12(MET) with 8 atoms>
-  >>> met_to_mse(st)
-  >>> st[0].sole_residue('A', gemmi.SeqId('12'))
-  <gemmi.Residue 12(MSE) with 8 atoms>
-  >>> _.sole_atom('SE').element
-  gemmi.Element('Se')
 
 .. _structure:
 
@@ -1066,13 +1075,18 @@ the `Structure` has the following properties:
   in the absence of ORIGX it is set to the identity matrix,
 * `info` (C++ type: `map<string, string>`) --
   minimal metadata with keys being mmcif tags (_entry.id, _exptl.method, ...),
+* `meta` (`Metadata`) -- structured metadata, almost 100 properties
+  corresponding to different mmCIF tags. Used primarily for converting PDB
+  (mostly REMARK 3 and 200/230) to mmCIF. In other scenarios, such as
+  reading mmCIF or accessing from Python, only small part of it is supported.
 * `raw_remarks` (C++ type: `vector<string>`) -- REMARK records
   from a PDB file, empty if the input file has different format.
 
-In Python, the `info` member variable is a dictionary-like object:
+Here are items stored in `info` after reading an example file:
 
 .. doctest::
 
+  >>> st = gemmi.read_structure('../tests/1orc.pdb')
   >>> for key, value in st.info.items(): print(key, value)
   _cell.Z_PDB 4
   _entry.id 1ORC
@@ -1082,17 +1096,19 @@ In Python, the `info` member variable is a dictionary-like object:
   _struct_keywords.pdbx_keywords GENE REGULATING PROTEIN
   _struct_keywords.text GENE REGULATING PROTEIN
 
-Gemmi parses many more records from the PDB format, including
-REMARK 3 and 200/230. This information is stored in the `Metadata` structure
-defined in `gemmi/metadata.hpp`. Currently, it's not exposed to Python.
+To access, remove or add a model
 
-To access, remove or add a model, in C++ use directly methods of::
+.. tab:: C++
+
+ use directly methods of::
 
   std::vector<Model> Structure::models
 
-In Python, use `__getitem__`, `__delitem__` and `add_model(model, pos=-1)`:
+.. tab:: Python
 
-.. doctest::
+ use `__getitem__`, `__delitem__` and `add_model(model, pos=-1)`:
+
+ .. doctest::
 
   >>> structure[0]        # by 0-based index
   <gemmi.Model 1 with 6 chain(s)>
@@ -1164,7 +1180,7 @@ Internally, `setup_entities()` runs four functions (in this order):
 
 .. _add_entity_types:
 
-* `add_entity_types()` -- sets Residue.entity_type if it's not already set.
+* `add_entity_types()` -- sets `Residue.entity_type` if it's not already set.
 
   When reading a PDB file, entity_type is assigned automatically if the chains
   contains the TER record. TER marks the end of polymer, so residues before
@@ -1183,8 +1199,8 @@ Internally, `setup_entities()` runs four functions (in this order):
 
 * `assign_subchains()` -- assigns subchain names in each chain that doesn't
   have all the subchains assigned yet. Structural units in the chain are
-  implied by the previously assigned entity_type variables.
-  The name for each unit is set by setting Residue.subchain variables in all
+  implied by the previously assigned `entity_type` variables.
+  The name for each unit is set by setting `Residue.subchain` variables in all
   residues of the unit.
 
   In the mmCIF files generated by the PDB software, subchain names
@@ -1198,14 +1214,15 @@ Internally, `setup_entities()` runs four functions (in this order):
   requires that label_asym_id is alphanumeric only.
 
 * `ensure_entities()` -- makes sure that each subchain is linked to
-  one of Entity objects in Structure.entities. Creates Entity objects if needed.
+  one of Entity objects in `Structure.entities`.
+  Creates Entity objects if needed.
 
 * `deduplicate_entities()` -- polymers with identical sequence
   in the SEQRES record are mapped to the same entity and redundant Entity
   objects are deleted.
 
-If your programs reads PDB files, it is a good idea to call setup_entities()
-after read_structure() because many of the gemmi functions depend on it.
+If your programs reads PDB files, it is a good idea to call `setup_entities()`
+after `read_structure()` because many of the gemmi functions depend on it.
 
 Here is a snippet that converts PDB to mmCIF:
 
@@ -1243,10 +1260,10 @@ Properties of the Entity class are shown in this example:
 
 The last property is the sequence from the PDB SEQRES record
 (or its mmCIF equivalent).
-More details in the :ref:`section about sequence <sequence>`.
+More details in the :ref:`next section <sequence>`.
 
-Residue.entity_type can be used to determine what should Residue.het_flag be,
-based on the rules from the official PDB spec
+`Residue.entity_type` can be used to determine what should `Residue.het_flag`
+be, based on the rules from the official PDB spec
 (i.e. non-standard residues are marked as HETATM even in a polymer).
 We also have a function to re-assign all het_flag values:
 
@@ -1258,6 +1275,189 @@ We also have a function to re-assign all het_flag values:
   >>> st.assign_het_flags('H')  # set all values to H=HETATM
   >>> st.assign_het_flags('\0') # unset all values
   >>> st.assign_het_flags()     # set correct values
+
+.. _sequence:
+
+Sequence
+--------
+
+In the previous section we introduced sequence with the following example:
+
+.. doctest::
+
+  >>> ent.full_sequence[:5]
+  ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
+
+`Entity.full_sequence` is a list (in C++: `std::vector`) of residue names.
+It stores sequence from the SEQRES record (pdb) or
+from the _entity_poly_seq category (mmCIF).
+The latter can contain microheterogeneity (point mutation).
+In such case, the residue names at the same point
+in sequence are separated by commas:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
+  >>> seq = st.get_entity('2').full_sequence
+  >>> seq
+  ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
+  >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
+
+To ignore point mutations we can use a helper function `Entity::first_mon`:
+
+.. doctest::
+
+  >>> [gemmi.Entity.first_mon(item) for item in seq]
+  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+
+An example in the section about Chain shows how to
+:ref:`extract corresponding sequence from the model <polymer_b_sequence>`.
+In general, the sequence in SEQRES and the sequence in model differ, but
+in this file they are the same.
+
+To get a sequence as one-letter codes you can use
+the :ref:`built-in table <find_tabulated_residue>` of popular residues:
+
+.. doctest::
+
+  >>> [gemmi.find_tabulated_residue(resname).one_letter_code for resname in _]
+  ['s', 'A', ' ', 'v', 's', 'A', ' ', 'v']
+
+`one_letter_code` is lowercase for non-standard residues where it denotes
+the parent component. If the code is blank, either the parent component is
+not known, or the component is not tabulated in Gemmi (i.e. it's not in the
+top 300+ most popular components in the PDB).
+To get a FASTA-like string, you could continue the previous line with:
+
+.. doctest::
+
+  >>> ''.join((code if code.isupper() else 'X') for code in _)
+  'XAXXXAXX'
+
+or use:
+
+.. doctest::
+
+  >>> gemmi.one_letter_code(seq)
+  'XAXXXAXX'
+
+To go in the opposite direction, from one-letter code to the residue name,
+we need to know what kind of sequence it is: amino acids, DNA or RNA. This
+is specified as one of three values: AA, DNA or RNA of the ResidueKind enum.
+
+.. doctest::
+
+  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.AA)
+  'CYS'
+  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.DNA)
+  'DC'
+  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.RNA)
+  'C'
+  >>> gemmi.expand_one_letter_sequence('XAXXXAXX', gemmi.ResidueKind.AA)
+  ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
+
+ResidueKind can be obtained from PolymerType:
+
+.. doctest::
+
+  >>> st.get_entity('2').polymer_type
+  PolymerType.PeptideL
+  >>> gemmi.sequence_kind(_)
+  ResidueKind.AA
+
+In mmCIF `_entity_poly.pdbx_seq_one_letter_code` and in the OneDep interface,
+the PDB uses a hybrid sequence format: a single letter for standard
+residues and a parenthesized CCD code for non-standard ones.
+
+.. doctest::
+
+  >>> block = gemmi.cif.read('../tests/1pfe.cif.gz')[0]
+  >>> block.find_values('_entity_poly.pdbx_seq_one_letter_code').str(1)
+  '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
+
+Such a sequence can be unambiguously expanded to residue names, and the other
+way around, if we know the kind of residues encoded with single letters:
+
+.. doctest::
+
+  >>> gemmi.pdbx_one_letter_code(seq, gemmi.ResidueKind.AA)
+  '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
+  >>> gemmi.expand_one_letter_sequence(_, gemmi.ResidueKind.AA)
+  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+
+Assigning sequence
+~~~~~~~~~~~~~~~~~~
+
+Let's suppose we have a coordinate file and want to add
+SEQRES records (PDB) or _entity_poly_seq (mmCIF) to it.
+
+The sequences for these records are stored in Entity objects.
+We may need to first call setup_entities() to ensure that
+our Structure contains Entity objects corresponding to the chains.
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/rnase_frag.pdb')
+  >>> st.setup_entities()
+
+The sequences can be assigned manually to individual entities:
+
+.. doctest::
+
+  >>> seq1 = ['ASP', 'VAL', 'SER'] #...
+  >>> # or
+  >>> seq1 = gemmi.expand_one_letter_sequence('DVSGTVCLSALPPEATDTLNLI', gemmi.ResidueKind.AA)
+  >>> st.entities[0].full_sequence = seq1
+
+Alternatively, we can provide a list of sequences and have them automatically
+matched to polymers in the model:
+
+.. doctest::
+
+  >>> seqs = ['DVSGTVCLSALPPEATDTLNLIASDGPFPYSQDGVVFQNRESVLPTQSYGYYHEYTVITPGARTRGTRRIICGEATQEDYYTGDHYATFSLIDQTC',
+  ...         'MTTPSHLSDRYELGEILGFGGMSEVHLARDLRLHRDVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVY']
+  >>> st.clear_sequences()  # remove sequence info (SEQRES, DBREF)
+  >>> st.assign_best_sequences(seqs)
+
+The `assign_best_sequences()` function assigns sequences that are the best match
+for each chain. If none of the provided sequences match,
+the Entity.full_sequence is left unchanged. If you don't want to preserve
+old sequences in such a case, call `clear_sequences()` first.
+
+.. _dbref:
+
+DBREF and SIFTS
+---------------
+
+PDB files have DBREF records that provide "cross-reference links between
+PDB sequences (what appears in SEQRES record) and a corresponding database
+sequence". The database is usually UniProt or GenBank.
+In the mmCIF format the same information is provided in categories
+_struct_ref and _struct_ref_seq.
+
+Alternative cross-referencing is available from the SIFTS project,
+which has been run in the EBI (PDBe) since 2000. According to the
+`SIFTS description <https://www.ebi.ac.uk/pdbe/docs/sifts/methodology.html>`_,
+DBREF can be incorrect and the SIFTS data provides "cleaned-up
+taxonomic information for every macromolecular structure".
+This information is stored in CSV and XML files on the EBI FTP server.
+
+Additionally, SIFTS annotations are included in "updated" mmCIF files
+from PDBe -- in categories and items starting with _pdbx_sifts,
+which were introduced to the PDBx/mmCIF spec in 2021.
+Despite containing information similar to _struct_ref…,
+the SIFTS extension (_pdbx_sifts…) is organized quite differently,
+so it is read in a separate function.
+*(The SIFTS extension is also grossly redundant.
+The residue-level cross-referencing to UniProt is written for every residue
+and also for every atom in the structure. Gemmi ignores the redundant
+per-atom annotations, in hope that they will be abandoned.
+Update 2023: the redundant SIFTS annotations are also been present
+in the PDB NextGen Archive.)*
+
+Gemmi has limited support for both DBREF and SIFTS annotations.
+The API is undocumented yet and may change in the future.
+If you'd like to use it -- get in touch.
 
 Connection
 ----------
@@ -1735,8 +1935,8 @@ In C++ these are stand-alone functions in `gemmi/calculate.hpp`.
 
 .. _deuterium:
 
-Deuterium
-=========
+Fraction of deuterium
+~~~~~~~~~~~~~~~~~~~~~
 
 (Only relevant when working with models containing deuterium --
 about 0.1% of the PDB files.)
@@ -1774,364 +1974,6 @@ In gemmi, you can switch between the two representations
 
 When the fraction parameter is used,
 `Structure.has_d_fraction` is set to True.
-
-.. _sequence:
-
-Sequence
-========
-
-In the previous section we introduced sequence with the following example:
-
-.. doctest::
-
-  >>> ent.full_sequence[:5]
-  ['MET', 'GLU', 'GLN', 'ARG', 'ILE']
-
-`Entity.full_sequence` is a list (in C++: `std::vector`) of residue names.
-It stores sequence from the SEQRES record (pdb) or
-from the _entity_poly_seq category (mmCIF).
-The latter can contain microheterogeneity (point mutation).
-In such case, the residue names at the same point
-in sequence are separated by commas:
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/1pfe.cif.gz')
-  >>> seq = st.get_entity('2').full_sequence
-  >>> seq
-  ['DSN', 'ALA', 'N2C,NCY', 'MVA', 'DSN', 'ALA', 'NCY,N2C', 'MVA']
-  >>> #           ^^^^^^^  microheterogeneity     ^^^^^^^
-
-To ignore point mutations we can use a helper function `Entity::first_mon`:
-
-.. doctest::
-
-  >>> [gemmi.Entity.first_mon(item) for item in seq]
-  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
-
-An example in the section about Chain shows how to
-:ref:`extract corresponding sequence from the model <polymer_b_sequence>`.
-In general, the sequence in SEQRES and the sequence in model differ, but
-in this file they are the same.
-
-To get a sequence as one-letter codes you can use
-the :ref:`built-in table <find_tabulated_residue>` of popular residues:
-
-.. doctest::
-
-  >>> [gemmi.find_tabulated_residue(resname).one_letter_code for resname in _]
-  ['s', 'A', ' ', 'v', 's', 'A', ' ', 'v']
-
-`one_letter_code` is lowercase for non-standard residues where it denotes
-the parent component. If the code is blank, either the parent component is
-not known, or the component is not tabulated in Gemmi (i.e. it's not in the
-top 300+ most popular components in the PDB).
-To get a FASTA-like string, you could continue the previous line with:
-
-.. doctest::
-
-  >>> ''.join((code if code.isupper() else 'X') for code in _)
-  'XAXXXAXX'
-
-or use:
-
-.. doctest::
-
-  >>> gemmi.one_letter_code(seq)
-  'XAXXXAXX'
-
-To go in the opposite direction, from one-letter code to the residue name,
-we need to know what kind of sequence it is: amino acids, DNA or RNA. This
-is specified as one of three values: AA, DNA or RNA of the ResidueKind enum.
-
-.. doctest::
-
-  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.AA)
-  'CYS'
-  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.DNA)
-  'DC'
-  >>> gemmi.expand_one_letter('C', gemmi.ResidueKind.RNA)
-  'C'
-  >>> gemmi.expand_one_letter_sequence('XAXXXAXX', gemmi.ResidueKind.AA)
-  ['UNK', 'ALA', 'UNK', 'UNK', 'UNK', 'ALA', 'UNK', 'UNK']
-
-ResidueKind can be obtained from PolymerType:
-
-.. doctest::
-
-  >>> st.get_entity('2').polymer_type
-  PolymerType.PeptideL
-  >>> gemmi.sequence_kind(_)
-  ResidueKind.AA
-
-In mmCIF `_entity_poly.pdbx_seq_one_letter_code` and in the OneDep interface,
-the PDB uses a hybrid sequence format: a single letter for standard
-residues and a parenthesized CCD code for non-standard ones.
-
-.. doctest::
-
-  >>> block = gemmi.cif.read('../tests/1pfe.cif.gz')[0]
-  >>> block.find_values('_entity_poly.pdbx_seq_one_letter_code').str(1)
-  '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
-
-Such a sequence can be unambiguously expanded to residue names, and the other
-way around, if we know the kind of residues encoded with single letters:
-
-.. doctest::
-
-  >>> gemmi.pdbx_one_letter_code(seq, gemmi.ResidueKind.AA)
-  '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
-  >>> gemmi.expand_one_letter_sequence(_, gemmi.ResidueKind.AA)
-  ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
-
-
-.. _sequence-alignment:
-
-Sequence alignment
-------------------
-
-Gemmi includes a sequence alignment algorithm based on the simplest
-function (ksw_gg) from the `ksw2 project <https://github.com/lh3/ksw2>`_
-of `Heng Li <https://www.ncbi.nlm.nih.gov/pubmed/29750242>`_.
-
-It is a pairwise, global alignment with substitution matrix (or just
-match/mismatch values) and affine gap penalty.
-Additionally, in Gemmi the gap openings at selected positions can be made free.
-
-Let say that we want to align residues in the model to the full sequence.
-Sometimes, the alignment is ambiguous. If we'd align texts ABBC and ABC,
-both A-BC and AB-C would have the same score. In a 3D structure, the position
-of gap can be informed by inter-atomic distances.
-This information is used automatically in the `align_sequence_to_polymer`
-function. Gap positions, determined by a simple heuristic, are passed
-to the alignment algorithm as places where the gap opening penalty
-is not to be imposed.
-
-.. doctest::
-
-  >>> st = gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
-  >>> result = gemmi.align_sequence_to_polymer(st.entities[0].full_sequence,
-  ...                                          st[0][0].get_polymer(),
-  ...                                          gemmi.PolymerType.PeptideL,
-  ...                                          gemmi.AlignmentScoring())
-
-The arguments of this functions are: sequence (a list of residue names),
-:ref:`ResidueSpan <residuespan>` (a span of residues in a chain),
-and the type of chain, which is used to infer gaps.
-(The type can be taken from Entity.polymer_type, but in this example
-we wanted to keep things simple).
-
-The result provides statistics and methods of summarizing the alignment:
-
-.. doctest::
-
-  >>> result  #doctest: +ELLIPSIS
-  <gemmi.AlignmentResult object at 0x...>
-
-  >>> # score calculated according AlignmentScoring explained below
-  >>> result.score
-  70
-
-  >>> # number of matching (identical) residues
-  >>> result.match_count
-  105
-  >>> # identity = match count / length of the shorter sequence
-  >>> result.calculate_identity()
-  100.0
-  >>> # identity wrt. the 1st sequence ( = match count / 1st sequence length)
-  >>> result.calculate_identity(1)
-  75.0
-  >>> # identity wrt. the 2nd sequence
-  >>> result.calculate_identity(2)
-  100.0
-
-  >>> # CIGAR = Concise Idiosyncratic Gapped Alignment Report
-  >>> result.cigar_str()
-  '11M3I23M7I71M25I'
-
-To print out the alignment, we can combine function `add_gaps`
-and property `match_string`:
-
-.. doctest::
-
-  >>> result.add_gaps(gemmi.one_letter_code(st.entities[0].full_sequence), 1)[:70]
-  'MRLFGYARVSTSQQSLDIQVRALKDAGVKANRIFTDKASGSSSDRKGLDLLRMKVEEGDVILVKKLDRLG'
-  >>> result.match_string[:70]
-  '|||||||||||   |||||||||||||||||||||||       ||||||||||||||||||||||||||'
-  >>> result.add_gaps(gemmi.one_letter_code(st[0][0].get_polymer().extract_sequence()), 2)[:70]
-  'MRLFGYARVST---SLDIQVRALKDAGVKANRIFTDK-------RKGLDLLRMKVEEGDVILVKKLDRLG'
-
-or we can use function `AlignmentResult.formatted()`.
-
-We also have a function that aligns two sequences.
-We can exercise it by comparing two strings:
-
-.. doctest::
-
-  >>> result = gemmi.align_string_sequences(list('kitten'), list('sitting'), [])
-
-The third argument above is a list of free gap openings.
-Now we can visualize the match:
-
-.. doctest::
-
-  >>> print(result.formatted('kitten', 'sitting'), end='')  # doctest: +NORMALIZE_WHITESPACE
-  kitten-
-  .|||.| 
-  sitting
-  >>> result.score
-  0
-
-The alignment and the score is calculate according to AlignmentScoring,
-which can be passed as the last argument to both `align_string_sequences`
-and `align_sequence_to_polymer` functions.
-The default scoring is +1 for match, -1 for mismatch, -1 for gap opening,
-and -1 for each residue in the gap.
-If we would like to calculate the
-`Levenshtein distance <https://en.wikipedia.org/wiki/Levenshtein_distance>`_,
-we would use the following scoring:
-
-.. doctest::
-
-  >>> scoring = gemmi.AlignmentScoring()
-  >>> scoring.match = 0
-  >>> scoring.mismatch = -1
-  >>> scoring.gapo = 0
-  >>> scoring.gape = -1
-  >>> gemmi.align_string_sequences(list('kitten'), list('sitting'), [], scoring) # doctest: +ELLIPSIS
-  <gemmi.AlignmentResult object at 0x...>
-  >>> _.score
-  -3
-
-So the distance is 3, as expected.
-
-In addition to the scoring parameters above, we can define a substitution
-matrix. Gemmi includes ready-to-use BLOSUM62 matrix with the gap cost 10/1,
-like in `BLAST <https://www.ncbi.nlm.nih.gov/blast/html/sub_matrix.html>`_.
-
-.. doctest::
-
-  >>> blosum62 = gemmi.AlignmentScoring('b')
-  >>> blosum62.gapo, blosum62.gape
-  (-10, -1)
-
-Now we can test it on one of examples from the
-`BioPython tutorial <http://biopython.org/DIST/docs/tutorial/Tutorial.html>`_.
-First, we try global alignment:
-
-.. doctest::
-
-  >>> AA = gemmi.ResidueKind.AA
-  >>> result = gemmi.align_string_sequences(
-  ...         gemmi.expand_one_letter_sequence('LSPADKTNVKAA', AA),
-  ...         gemmi.expand_one_letter_sequence('PEEKSAV', AA),
-  ...         [], blosum62)
-  >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')
-  LSPADKTNVKAA
-    |..|.   |.
-  --PEEKS---AV
-  >>> result.score
-  -7
-
-We have only global alignment available, but we can use free-gaps to
-approximate a semi-global alignment (infix method) where gaps at the start
-and at the end of the second sequence are not penalized.
-Approximate -- because only gap openings are not penalized,
-residues in the gap still decrease the score:
-
-.. doctest::
-
-  >>> result = gemmi.align_string_sequences(
-  ...         gemmi.expand_one_letter_sequence('LSPADKTNVKAA', AA),
-  ...         gemmi.expand_one_letter_sequence('PEEKSAV', AA),
-  ...         # free gaps at 0 (start) and 7 (end):   01234567
-  ...         [0, -10, -10, -10, -10, -10, -10, 0],
-  ...         blosum62)
-  >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')  #doctest: +NORMALIZE_WHITESPACE
-  LSPADKTNVKAA
-    |..|..|   
-  --PEEKSAV---
-  >>> result.score
-  11
-
-The real infix method (or local alignment) would yield the score 16 (11+5),
-because we have 5 missing residues at the ends.
-
-See also the :ref:`gemmi-align <gemmi-align>` program.
-
-Assigning sequence
-------------------
-
-Let's suppose we have a coordinate file and want to add
-SEQRES records (PDB) or _entity_poly_seq (mmCIF) to it.
-
-The sequences for these records are stored in Entity objects.
-We may need to first call setup_entities() to ensure that
-our Structure contains Entity objects corresponding to the chains.
-
-.. doctest::
-
-  >>> st = gemmi.read_structure('../tests/rnase_frag.pdb')
-  >>> st.setup_entities()
-
-The sequences can be assigned manually to individual entities:
-
-.. doctest::
-
-  >>> seq1 = ['ASP', 'VAL', 'SER'] #...
-  >>> # or
-  >>> seq1 = gemmi.expand_one_letter_sequence('DVSGTVCLSALPPEATDTLNLI', gemmi.ResidueKind.AA)
-  >>> st.entities[0].full_sequence = seq1
-
-Alternatively, we can provide a list of sequences and have them automatically
-matched to polymers in the model:
-
-.. doctest::
-
-  >>> seqs = ['DVSGTVCLSALPPEATDTLNLIASDGPFPYSQDGVVFQNRESVLPTQSYGYYHEYTVITPGARTRGTRRIICGEATQEDYYTGDHYATFSLIDQTC',
-  ...         'MTTPSHLSDRYELGEILGFGGMSEVHLARDLRLHRDVAVKVLRADLARDPSFYLRFRREAQNAAALNHPAIVAVY']
-  >>> st.clear_sequences()  # remove sequence info (SEQRES, DBREF)
-  >>> st.assign_best_sequences(seqs)
-
-The assign_best_sequences() function assigns sequences that are the best match
-for each chain. If none of the provided sequences match,
-the Entity.full_sequence is left unchanged. If you don't want to preserve
-old sequences in such a case, call clear_sequences() first.
-
-.. _dbref:
-
-DBREF and SIFTS
----------------
-
-PDB files have DBREF records that provide "cross-reference links between
-PDB sequences (what appears in SEQRES record) and a corresponding database
-sequence". The database is usually UniProt or GenBank.
-In the mmCIF format the same information is provided in categories
-_struct_ref and _struct_ref_seq.
-
-Alternative cross-referencing is available from the SIFTS project,
-which has been run in the EBI (PDBe) since 2000. According to the
-`SIFTS description <https://www.ebi.ac.uk/pdbe/docs/sifts/methodology.html>`_,
-DBREF can be incorrect and the SIFTS data provides "cleaned-up
-taxonomic information for every macromolecular structure".
-This information is stored in CSV and XML files on the EBI FTP server.
-
-Additionally, SIFTS annotations are included in "updated" mmCIF files
-from PDBe -- in categories and items starting with _pdbx_sifts,
-which were introduced to the PDBx/mmCIF spec in 2021.
-Despite containing information similar to _struct_ref…,
-the SIFTS extension (_pdbx_sifts…) is organized quite differently,
-so it is read in a separate function.
-*(The SIFTS extension is also grossly redundant.
-The residue-level cross-referencing to UniProt is written for every residue
-and also for every atom in the structure. Gemmi ignores the redundant
-per-atom annotations, in hope that they will be abandoned.
-Update 2023: the redundant SIFTS annotations are also been present
-in the PDB NextGen Archive.)*
-
-Gemmi has limited support for both DBREF and SIFTS annotations.
-The API is undocumented yet and may change in the future.
-If you'd like to use it -- get in touch.
 
 
 Model
@@ -2490,7 +2332,7 @@ In C++ `trim_to_alanine()` is defined in `gemmi/polyheur.hpp`.
 .. _residuespan:
 
 ResidueSpan, ResidueGroup
-=========================
+-------------------------
 
 ResidueSpan is a lightweight objects that refers
 to a contiguous sequence of residues in a chain.
@@ -2688,7 +2530,7 @@ a single conformer:
 
 
 AtomGroup
-=========
+---------
 
 AtomGroup represents alternative locations of the same atom.
 It is implemented as a lightweight object that points

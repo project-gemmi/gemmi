@@ -264,7 +264,7 @@ without CIF file
 ----------------
 
 If your structure is stored in a macromolecular format (PDB, mmCIF)
-you can read it first as macromolecular :ref:`hierarchy <mcra>`
+you can read it first as macromolecular :ref:`Structure <structure>`
 and convert it to `SmallStructure`:
 
 .. doctest::
@@ -407,11 +407,14 @@ Monomer library
 ===============
 
 Structural biologists routinely use prior knowledge about biomolecules
-to augment the data obtained in an experiment. One way to store that
-prior knowledge is in a so-called *monomer library*.
+to augment the data obtained in an experiment.
+This prior knowledge is what we know about preferred geometries in molecules
+(distances between atoms, etc.). This knowledge is extracted primarily from
+experimental small molecule databases (COD and CSD) and QM calculations.
+One way to store that prior knowledge is in a so-called *monomer library*.
 In addition to describing monomers (chemical components
-from the previous section), the monomer library describes also links
-between the monomers, and may contain other data useful in
+from the previous section), the monomer library also describes links
+between monomers and may contain various other data useful in
 macromolecular refinement.
 
 In Gemmi, data from a monomer library is stored in the class `MonLib`.
@@ -427,7 +430,7 @@ In `BUSTER <https://www.globalphasing.com/buster/>`_ the prior knowledge
 is organized differently.
 
 The restraints we use are similar to those used in molecular dynamics
-(bond, angle, dihedral and improper dihedral restraints).
+(bond, angle, dihedral, improper dihedral and planarity restraints).
 Originally, the monomer library was created because MD potentials
 were deemed inadequate for refinement. Since then,
 both the restraints in experimental structural biology and MD potentials

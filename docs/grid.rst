@@ -1021,7 +1021,7 @@ shows how to calculate such a map and write it to a file.
 Examples
 --------
 
-Example 1
+mapslicer
 ~~~~~~~~~
 
 A short code that draws a contour plot similar to mapslicer plots
@@ -1037,8 +1037,8 @@ To keep the example short we assume that the lattice vectors are orthogonal.
     :align: center
     :scale: 100
 
-Example 2
-~~~~~~~~~
+maskdiff
+~~~~~~~~
 
 A tiny utility that compares two masks (maps with 0/1 values)
 of the same size, printing a summary of matches and mismatches:
@@ -1059,8 +1059,8 @@ Here is the script:
    :language: python
    :lines: 3-
 
-Example 3
-~~~~~~~~~
+Q-Q difference
+~~~~~~~~~~~~~~
 
 A script that generates a Q-Q difference plot, as described in the
 `2012 paper <https://journals.iucr.org/d/issues/2012/04/00/dz5235/index.html>`_
