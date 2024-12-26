@@ -13,6 +13,7 @@
 #include "make_iterator.h"
 #include <nanobind/stl/bind_map.h>
 #include <nanobind/stl/array.h>  // for calculate_phi_psi, find_best_plane, ...
+#include <nanobind/stl/map.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/variant.h>
@@ -177,6 +178,7 @@ void add_mol(nb::module_& m) {
     .def("add_conect", &Structure::add_conect,
          nb::arg("serial1"), nb::arg("serial2"), nb::arg("order"))
     .def("clear_conect", [](Structure& self) { self.conect_map.clear(); })
+    .def_ro("conect_map", &Structure::conect_map)
     .def("assign_subchains", &assign_subchains,
          nb::arg("force")=false, nb::arg("fail_if_unknown")=true)
     .def("ensure_entities", &ensure_entities)
