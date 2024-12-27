@@ -57,25 +57,25 @@ and a few member functions for sending messages.
 
 When a function takes a Logger argument, we can pass:
 
-**C++**
+.. tab:: C++
 
-* `{&Logger::to_stderr}` to redirect messages to stderr
-  (to_stderr() calls fprintf),
-* `{&Logger::to_stdout}` to redirect messages to stdout,
-* `{&Logger::to_stdout, 3}` to print only warnings (threshold=3),
-* `{nullptr, 0}` to disable all messages,
-* `{}` to throw errors and ignore other messages (the default, see Quirk above),
-* `{[](const std::string& s) { do_anything(s);}}` to do anything else.
+ * `{&Logger::to_stderr}` to redirect messages to stderr
+   (to_stderr() calls fprintf),
+ * `{&Logger::to_stdout}` to redirect messages to stdout,
+ * `{&Logger::to_stdout, 3}` to print only warnings (threshold=3),
+ * `{nullptr, 0}` to disable all messages,
+ * `{}` to throw errors and ignore other messages (the default, see Quirk above),
+ * `{[](const std::string& s) { do_anything(s);}}` to do anything else.
 
-**Python**
+.. tab:: Python
 
-* `sys.stderr` or `sys.stdout` or any other stream (an object with `write`
-  and `flush` methods), to redirect messages to that stream,
-* `(sys.stdout, 3)` to print only warnings (threshold=3),
-* `(None, 0)` to disable all messages,
-* `None` to throw errors and ignore other messages (the default, see Quirk above),
-* a function that takes a message string as its only argument
-  (e.g. `lambda s: print(s.upper())`).
+ * `sys.stderr` or `sys.stdout` or any other stream (an object with `write`
+   and `flush` methods), to redirect messages to that stream,
+ * `(sys.stdout, 3)` to print only warnings (threshold=3),
+ * `(None, 0)` to disable all messages,
+ * `None` to throw errors and ignore other messages (the default, see Quirk above),
+ * a function that takes a message string as its only argument
+   (e.g. `lambda s: print(s.upper())`).
 
 
 .. _pdb_dir:
@@ -83,14 +83,14 @@ When a function takes a Logger argument, we can pass:
 Copy of the PDB archive
 =======================
 
-Some of the examples in this documentation work with a local copy
-of the Protein Data Bank archive. This subsection describes
-the assumed setup and functions for working with this setup.
+Some examples in this documentation work with a local copy
+of the Protein Data Bank archive. This section describes
+our setup and functions for working with such a setup.
 
-Like in BioJava, we assume that the `$PDB_DIR` environment variable
-points to a directory that contains `structures/divided/mmCIF` -- the same
-arrangement as on the
-`PDB's FTP <ftp://ftp.wwpdb.org/pub/pdb/data/structures/>`_ server.
+As in BioJava, we assume that the `$PDB_DIR` environment variable
+points to a directory containing `structures/divided/mmCIF` -- the same
+arrangement as in the
+`PDB Archive <https://www.wwpdb.org/ftp/pdb-ftp-sites>`_.
 
 .. code-block:: console
 
@@ -101,8 +101,8 @@ arrangement as on the
     101G   structures/divided/structure_factors
     2.6G   structures/obsolete/mmCIF
 
-A traditional way to keep an up-to-date local archive is to rsync it
-once a week:
+The PDB recommends using rsync for bulk file downloads.
+We can keep the local copy up-to-date using, for instance, such a script:
 
 .. code-block:: shell
 
@@ -120,9 +120,16 @@ once a week:
     #rsync_subdir structures/divided/pdb
     #rsync_subdir structures/divided/structure_factors
 
-Gemmi has a helper function for using the local archive copy.
-It takes a PDB code (case insensitive) and a symbol denoting what file
-is requested: P for PDB, M for mmCIF, S for SF-mmCIF.
+Gemmi provides a helper function `expand_if_pdb_code()` for using the local
+archive copy. This function is used by many subcommands of the gemmi
+:ref:`program <program>`, so they can take a PDB code instead of a path.
+
+When called with a PDB code (case insensitive), `expand_if_pdb_code()`
+expands it to the path of the corresponding:
+
+* coordinate mmCIF file (if the second argument is absent or 'M'),
+* PDB file ('P'),
+* or structure factor mmCIF file ('S').
 
 .. doctest::
 
@@ -134,8 +141,8 @@ is requested: P for PDB, M for mmCIF, S for SF-mmCIF.
   >>> gemmi.expand_if_pdb_code('1abc', 'S') # SF-mmCIF file
   '/copy/structures/divided/structure_factors/ab/r1abcsf.ent.gz'
 
-If the first argument is not in the PDB code format (4 characters for now)
-the function returns the first argument.
+If the first argument is not a PDB code,
+the function returns it unchanged:
 
 .. doctest::
 
@@ -144,3 +151,77 @@ the function returns the first argument.
   False
   >>> gemmi.expand_if_pdb_code(arg, 'M')
   'file.cif'
+
+
+Directory walking
+=================
+
+.. note::
+
+  This functionality was developed primarily for C++ before `std::filesystem`
+  and is kept for backward compatibility.
+  In new code consider using `std::filesystem::recursive_directory_iterator`
+  in C++ and `os.walk` in Python.
+
+Many of the utilities and examples developed for this project
+work with archives of files, such as CIF files from wwPDB or COD.
+To make it easier to iterate over all files of a particular type
+in a directory tree, we provide classes that end with `Walk`,
+such as `CifWalk`.
+
+.. tab:: C++
+
+ .. code-block:: cpp
+
+  #include <gemmi/dirwalk.hpp>
+
+  // ...
+  // throws std::system_error if directory doesn't exist
+  for (const std::string& cif_file : gemmi::CifWalk(top_dir)) {
+    auto doc = gemmi::read_cif_gz(cif_file);
+    // ...
+  }
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> import gemmi
+  >>> # throws FileNotFoundError if directory doesn't exist
+  >>> for path in gemmi.CifWalk('../tests/'):
+  ...     doc = gemmi.cif.read(path)
+  ...     # ...
+  ...
+
+Here are all the classes in this category.
+
+* `DirWalk` (C++ only) -- returns all files. It's actually a template
+  and the items below are instantiations of this template class,
+  for instance: `using CifWalk = DirWalk<true, impl::IsCifFile>`.
+  But it's simpler to just call them classes.
+* `CifWalk` -- returns `*.cif` and `r*.ent` files (the latter matches
+  SF-mmCIF files from the PDB archive). Here, and in all the classes below
+  (except for `GlobWalk`), `.gz` at the end is ignored, and comparison
+  is case insensitive. For example, `foo.CiF.gZ` counts as `*.cif`.
+* `MmCifWalk` (C++ only) -- matches `*.cif` or `*.mmcif`.
+* `PdbWalk` (C++ only) -- matches `*.pdb` or `*.ent`, but not `r*.ent`.
+* `CoorFileWalk` -- combines the two above, except for `*-sf.mmcif`.
+* `GlobWalk` (C++ only) -- can use any glob pattern to match file names.
+  For example: `GlobWalk(top_level_path, "*.json")`.
+
+If the user doesn't have permission to read one of the traversed directories,
+the function will raise an error (`std::runtime_error` / `RuntimeError`).
+
+All these directory walking functions are powered by the
+`tinydir <https://github.com/cxong/tinydir>`_ library
+(a single-header library copied into `include/gemmi/third_party`).
+
+Decompressing
+=============
+
+Gemmi can decompress `.gz` files on the fly.
+This section is about why we have class `MaybeGzipped` (C++ only)
+and how the same interface can be used to decompress other formats
+or do different transformations.
+
+TBC

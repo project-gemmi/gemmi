@@ -20,7 +20,7 @@ and a residue contains atoms (`Atom`).
 
     While *chain* and *residue* are not accurate terms when referring to ligands
     and waters, this nomenclature is the most common.
-    An alternative nomenclature, polymer - monomer - atom, has the same problem.
+    An alternative nomenclature, polymer → monomer → atom, has the same problem.
     PDBx/mmCIF uses more general but hard to decipher terms:
     *entity* and *struct_asym* (structural component in the asymmetric unit)
     instead of chain, and *chem_comp* (chemical component) for residue/monomer.
@@ -28,7 +28,7 @@ and a residue contains atoms (`Atom`).
 .. _met_mse_example:
 
 Let's start with a simple example that illustrates the
-structure - model - chain - residue - atom hierarchy.
+structure → model → chain → residue → atom hierarchy.
 The code below iterates over all models, chains, residues, and atoms,
 mutating methionine residues (MET) to selenomethionine (MSE).
 
@@ -71,7 +71,7 @@ mutating methionine residues (MET) to selenomethionine (MSE).
 .. rubric:: Alternative conformations
 
 The hierarchy above is oversimplified if we consider that models
-can have alternative locations for subsets of atoms and even
+can include alternative atom locations and
 microheterogeneities (point mutations -- alternative residues).
 
 What are reasonable ways of presenting alternative conformations? We can:
@@ -79,7 +79,7 @@ What are reasonable ways of presenting alternative conformations? We can:
 * Group together atoms from the same conformer.
   This is relatively simple and particularly convenient when a user wants
   to see just one conformer and ignore the rest.
-  But not good for editing a model.
+  But it's not good for editing a model.
 
 * Group together alternative locations of the same atoms,
   as well as alternative residues
@@ -91,12 +91,12 @@ What are reasonable ways of presenting alternative conformations? We can:
 
 * Leave it to the user (e.g. mmdb and Clipper).
 
-In Gemmi we use a mix of these approaches (which for sure is also not ideal).
+In Gemmi we use a mix of these approaches (which is also not ideal).
 The user can work with the basic (model-chain-residue-atom) hierarchy
 and handle the *altloc* field manually (like in mmdb). However, we also have
-functions that ignore all but the main conformation (inspired by BioPython)
+functions that ignore all but the first conformation (inspired by BioPython)
 and lightweight proxy objects ResidueGroup and AtomGroup that group
-alternative conformers (inspired by iotbx).
+alternatives (inspired by iotbx).
 
 
 Coordinate files
@@ -109,20 +109,19 @@ Gemmi supports the following coordinate file formats:
 * mmJSON.
 
 It can also read coordinates from the Chemical Components Dictionary
-(CCD) and the Refmac monomer library. These are not coordinate
-files but usually contain example coordinates of a single residue.
+(CCD) and the Refmac monomer library. These aren't coordinate
+files but typically include example coordinates of a single residue.
 
 Reading any files
 -----------------
 
-In this section we show how to read a coordinate file in Gemmi,
+This section shows how to read a coordinate file in Gemmi,
 regardless of the format.
-In the next sections we will delve into the details of the individual formats.
-Then we will move on to working with structural models.
-(In this section we see objects of type `Structure`
-that will be documented :ref:`later on <structure>`.)
+In the following sections we'll delve into the details of each format.
+Afterward, we'll move on to working with :ref:`structural models <structure>`
+(objects of type `Structure` that you can see in this section).
 
-Let's read a coordinate file and print how many models it contains:
+Let's read a coordinate file and print the number of models it contains:
 
 .. tab:: C++
 
@@ -151,8 +150,8 @@ Let's read a coordinate file and print how many models it contains:
 Gemmi is built with either the zlib or zlib-ng library.
 If a file read by Gemmi is compressed with gzip (extension .gz),
 it can be uncompressed on the fly.
-All reading functions may throw exceptions, so in this example,
-we catch them:
+Note that all reading functions may throw exceptions.
+In this example, we catch them:
 
 .. tab:: C++
 
@@ -171,8 +170,8 @@ we catch them:
 
  .. doctest::
 
-  >>> # It's the same function. To keep it simple, Python bindings have
-  >>> # only functions that handle gzipped files automatically.
+  >>> # It's the same function. To keep it simple, Python bindings
+  >>> # have only equivalents of C++ _gz functions, but without _gz.
   >>> try:
   ...     st = gemmi.read_structure(path)
   ... except (RuntimeError, IOError) as e:
@@ -226,11 +225,11 @@ In the latter case (example: 100D), chain parts with the same name
 are either merged automatically (MMDB, BioPython)
 or left as separate chains (iotbx).
 
-In Gemmi, we support both ways. The chains are first read separately
-and then can be merged by calling `Structure::merge_chain_parts()`.
+In Gemmi, we support both ways. Chains are first read separately
+and can then be merged by calling `Structure::merge_chain_parts()`.
 
-But in the Python interface `read_structure()` merges the chains by default
-(for backward compatibility). It can be disabled by adding
+However, in the Python interface `read_structure()` merges chains by default
+(for backward compatibility). To get atoms in the original order, add
 the argument `merge_chain_parts=False`.
 
 
@@ -255,23 +254,20 @@ uses PDBx/mmCIF as the primary format, and the legacy PDB format is frozen.
 
    Do not read too much into the specification.
 
-Gemmi aims to support all flavours of PDB files that are in common use
-in the field of macromolecular crystallography (this format got adopted
-also in other fields, such as simulations of metals, ceramics, fluids).
-Here, we focus on files from macromolecular software and wwPDB.
-
-We support the following popular extensions of the format:
+Gemmi aims to read all flavors of PDB files that are in common use
+in macromolecular crystallography and related fields.
+We support the following extensions:
 
 * two-character chain IDs (columns 21 and 22),
 * segment ID (columns 73-76) from PDB v2,
-* hybrid-36_ encoding of sequence IDs for sequences longer than 9999
-  (although we are yet to find an examples for this),
+* hybrid-36_ encoding of sequence IDs that exceed 9999
+  (the residues assigned such IDs are usually waters),
 * hybrid-36_ encoding of serial numbers for more than 99,999 atoms,
 * tilde-hetnam extension for extended CCD codes (residue names).
 
 .. _supported_records:
 
-Gemmi interprets more PDB records than most of programs and libraries,
+Gemmi interprets more PDB records than most programs and libraries,
 but supporting all the records is not a goal.
 The records that are interpreted can be converted from/to mmCIF:
 
@@ -308,11 +304,9 @@ The records that are interpreted can be converted from/to mmCIF:
 - END
 
 Although the PDB format is widely used, some of its features can be easily
-overlooked. The rest of this section describes
-such features. It is for people who are interested in the details
-of the PDB format.
-You do not need to read it if you just want to use Gemmi and work with
-molecular models.
+overlooked. The rest of this section describes such features.
+It is for people who are interested in the details of the PDB format.
+You do not need to read it to just use Gemmi and work with molecular models.
 
 ----
 
@@ -325,23 +319,23 @@ Let us start with the list of atoms:
    ATOM     10  CA  GLU A   2       1.798   5.810  23.368  1.00 13.26           C
 
 Standard residues of protein, DNA or RNA are marked as ATOM. Solvent,
-ligands, metals, carbohydrates and everything else is marked as HETATM.
+ligands, metals, carbohydrates, and everything else are marked as HETATM.
 What about non-standard residues of protein, DNA or RNA?
-According to the wwPDB they are HETATM,
+According to the wwPDB, they are HETATM,
 but some programs and crystallographers prefer to mark them as ATOM.
-It is better to not rely on any of the two conventions.
+It is better not to rely on either convention.
 In particular, removing ligands and solvent cannot be done by
 removing all the HETATM records.
 
 The next field after ATOM/HETATM is the serial number of an atom.
 The wwPDB spec limits the serial numbers to the range 1--99,999,
 but the popular extension
-called hybrid-36_ allows to have more atoms in the file by using
-also letters in this field. If you do not need to interpret the CONECT
-records the serial number can be simply ignored.
+called hybrid-36_ allows more atoms in the file by also using
+letters in this field. If you do not need to interpret the CONECT
+records, the serial number can be simply ignored.
 
 Columns 13-27 describe the atom's place in the hierarchy.
-In the example above they are:
+In the example above, they are:
 
 .. code-block:: none
 
@@ -352,11 +346,11 @@ In the example above they are:
     N   GLU A   2
     CA  GLU A   2
 
-Here the CE atom is in chain A, in residue MSE with sequence ID 1.
+Here, the CE atom is in chain A, in residue MSE with sequence ID 1.
 
-The atom names (columns 13-16) starts with the element name,
-and as a rule columns 13-14 contain only the element name.
-Therefore Cα and calcium ion, both named CA, are aligned differently:
+The atom names (columns 13-16) start with the element name,
+and as a rule, columns 13-14 contain only the element name.
+Therefore, Cα and calcium ion, both named CA, are aligned differently:
 
 .. code-block:: none
 
@@ -378,9 +372,15 @@ it starts in column 13 even if it has a one-letter element code:
 Columns 18-20 contain the residue name (CCD code). When the PDB ran out of
 three-character codes in 2023, it started assigning codes with 5 characters,
 which no longer fit into the PDB format. The tilde-hetnam extension addresses
-this issue: long CCD code is substituted with a 3-character alias
+this issue: a long CCD code is substituted with a 3-character alias
 that starts with a tilde (`~`);
 the original code is stored in columns 72-79 of the HETNAM record.
+
+Columns 21-22 contain chain names. In the wwPDB spec, it's only column 22,
+but it's common to expand into column 21 when there are too many chains for
+single-character naming. This collides with GROMACS' PDB flavor,
+which uses custom 4-character residue names in columns 18-21,
+but that's definitely less popular.
 
 Columns 23-27 contain a sequence ID. It consists of a number (columns 23-26)
 and, optionally, also an insertion code (A-Z) in column 27:
@@ -397,9 +397,9 @@ The insertion codes are the opposite of gaps in the numbering;
 both are used to make the numbering consistent with a reference sequence
 (and for the same reason the sequence number can be negative).
 
-Another fields that is blank for most of the atoms is altloc.
+Another field that is blank for most of the atoms is altloc.
 It is a letter marking an alternative conformation
-(columns 17, just before the residue name):
+(column 17, just before the residue name):
 
 .. code-block:: none
 
@@ -407,7 +407,8 @@ It is a letter marking an alternative conformation
    HETATM  558  O  BHOH A 301      12.554  42.700   8.853  0.50 26.40           O
 
 Handling alternative conformations adds a lot of complexity,
-as it will be described later on in this documentation.
+as will be described later in this documentation.
+
 These were all tricky things in the atom list.
 
 Now let's go to matrices. In most of the PDB entries the CRYST1 record
@@ -415,8 +416,8 @@ is all that is needed to construct the crystal structure.
 But in some PDB files we need to take into account two other records:
 
 * MTRIX -- if marked as not-given it defines operations needed to reconstruct
-  the asymmetric unit,
-* SCALE -- provides fractionalization matrix. The format of this entry
+  the asymmetric unit.
+* SCALE -- provides the fractionalization matrix. The format of this entry
   is unfortunate: for large unit cells the relative precision of numbers is
   too small. So if coordinates are given in standard settings it is better
   to calculate the fractionalization matrix from the unit cell dimensions
@@ -479,7 +480,7 @@ how the file is interpreted. (Usually, the defaults are fine.)
                                      #skip_remarks=False
                                      )
 
-The content of the file can also be read from a string or a memory buffer::
+The content of the file can also be read from a string or a memory buffer:
 
 .. tab:: C++
 
@@ -490,15 +491,22 @@ The content of the file can also be read from a string or a memory buffer::
 
 .. tab:: Python
 
+ .. code-block:: python
+
     # if you have the content of the PDB file in a string:
     structure = gemmi.read_pdb_string(string)
     # or in bytes (the same function name for backward compat)
     structure = gemmi.read_pdb_string(bytes)
 
-Not all the metadata read from a PDB file is directly accessible from Python.
-Experimental details, refinement statistics, the secondary structure
-information, and many other things can be only read indirectly,
-by first putting it into a cif.Block:
+The metadata from a PDB file that is interpreted by Gemmi (a subset of all the
+metadata) can be either accessed directly:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5moo_header.pdb')
+  >>> #st.meta.  TBC
+
+or in a circuitous way, by preparing an mmCIF header and checking its content:
 
 .. doctest::
 
@@ -508,6 +516,9 @@ by first putting it into a cif.Block:
   {'id': ['1', '2'], 'crystal_id': ['1', '2'], 'ambient_temp': ['295', '295']}
   >>> block.get_mmcif_category('_diffrn_radiation')
   {'diffrn_id': ['1', '2'], 'pdbx_scattering_type': ['x-ray', 'neutron'], 'pdbx_monochromatic_or_laue_m_l': ['M', None], 'monochromator': [None, None]}
+
+The latter is the only way to access some properties from Python,
+because not all of them have Python bindings.
 
 ----
 

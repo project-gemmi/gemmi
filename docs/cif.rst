@@ -1580,58 +1580,6 @@ While further improvement would be possible (some JSON parsers are
 and parsing CIF and JSON is not that different),
 it is not a priority.
 
-Directory walking
-=================
-
-Many of the utilities and examples developed for this project
-work with archives of CIF files such as wwPDB or COD.
-To make it easier to iterate over all CIF files in a directory tree
-we provide a class `CifWalk`.
-
-C++
----
-
-.. code-block:: cpp
-
-  #include <gemmi/dirwalk.hpp>
-
-  // ...
-  // throws std::runtime_error if top_dir doesn't exist
-  for (const std::string& cif_file : gemmi::CifWalk(top_dir)) {
-    cif::Document doc = cif::read(gemmi::MaybeGzipped(cif_file));
-    // ...
-  }
-
-This header file contains also a more general `DirWalk` class,
-and classes specific to macromolecular files (`PdbWalk`, `MmCifWalk`,
-`CoorFileWalk`). The file type of each file is guessed from
-the file name.
-
-Python
-------
-
-Since Python comes with the os.walk() function for iterating over files
-and directories, this functionality is less important here.
-Anyway, we provide bindings for CifWalk:
-
-.. doctest::
-
-  >>> import gemmi
-  >>> list(gemmi.CifWalk('../tests/'))[:2]
-  ['../tests/list/mon_lib_list.cif', '../tests/1011031.cif']
-
-We also have Python bindings for `CoorFileWalk` that picks macromolecular
-coordinate files.
-
-----
-
-When the user has no permission to read one of the traversed directories,
-the functions above raise an error (std::runtime_error / RuntimeError).
-
-All these directory walking functions are powered by the
-`tinydir <https://github.com/cxong/tinydir>`_ library
-(a single-header library copied into `include/gemmi/third_party`).
-
 .. _cif_examples:
 
 Examples
