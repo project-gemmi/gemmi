@@ -53,7 +53,7 @@ mutating methionine residues (MET) to selenomethionine (MSE).
                               atom.name = 'SE'
                               atom.element = gemmi.Element('Se')
 
-.. doctest::
+ .. doctest::
   :hide:
 
   >>> st = gemmi.read_structure('../tests/1orc.pdb')
@@ -142,10 +142,25 @@ Let's read a coordinate file and print the number of models it contains:
 
  .. doctest::
 
-  >>> gemmi.read_structure(path)  #doctest: +ELLIPSIS
+  >>> st = gemmi.read_structure(path)
+  >>> st  #doctest: +ELLIPSIS
   <gemmi.Structure ...>
   >>> print('Model count:', len(st))
   Model count: 1
+
+.. warning::
+
+  Call `st.setup_entities()` after reading a file.
+  It's almost always needed (perhaps it should be the default).
+  It is *not* necessary when you read files from the official
+  PDB archive that are fully annotated, or if your code doesn't use
+  any functions for which :ref:`subchains <subchain>` and entities matter.
+  But the code you write may end up being used on file from different programs
+  and then it may behave differently.
+  `setup_entities()` uses heuristics to substitute missing annotations,
+  making the behavior more consistent.
+  Not calling in `setup_entities()` is the most common cause of problems
+  reported for Gemmi.
 
 Gemmi is built with either the zlib or zlib-ng library.
 If a file read by Gemmi is compressed with gzip (extension .gz),
@@ -256,7 +271,7 @@ uses PDBx/mmCIF as the primary format, and the legacy PDB format is frozen.
 
 Gemmi aims to read all flavors of PDB files that are in common use
 in macromolecular crystallography and related fields.
-We support the following extensions:
+We support the following extensions (by default):
 
 * two-character chain IDs (columns 21 and 22),
 * segment ID (columns 73-76) from PDB v2,
@@ -303,12 +318,11 @@ The records that are interpreted can be converted from/to mmCIF:
 - CONECT (no equivalent in mmCIF, but there is a way to read/write it)
 - END
 
-Although the PDB format is widely used, some of its features can be easily
-overlooked. The rest of this section describes such features.
-It is for people who are interested in the details of the PDB format.
-You do not need to read it to just use Gemmi and work with molecular models.
-
 ----
+
+Although the PDB format is widely used, some of its features can be easily
+overlooked. Moreover, not all programs write and interpret PDB records
+in the same way. The rest of this section is devoted to such details.
 
 Let us start with the list of atoms:
 
@@ -318,21 +332,24 @@ Let us start with the list of atoms:
    ATOM      9  N   GLU A   2       2.464   5.718  24.671  1.00 14.40           N
    ATOM     10  CA  GLU A   2       1.798   5.810  23.368  1.00 13.26           C
 
-Standard residues of protein, DNA or RNA are marked as ATOM. Solvent,
-ligands, metals, carbohydrates, and everything else are marked as HETATM.
-What about non-standard residues of protein, DNA or RNA?
+Standard residues in protein or nucleic acid polymers are marked as ATOM.
+Solvent, ligands, metals, carbohydrates, and everything else are marked
+as HETATM. But what about non-standard residues in a polymer?
 According to the wwPDB, they are HETATM,
-but some programs and crystallographers prefer to mark them as ATOM.
+though some programs and crystallographers prefer to mark them as ATOM.
 It is better not to rely on either convention.
 In particular, removing ligands and solvent cannot be done by
-removing all the HETATM records.
+simply removing all the HETATM records.
 
 The next field after ATOM/HETATM is the serial number of an atom.
 The wwPDB spec limits the serial numbers to the range 1--99,999,
 but the popular extension
 called hybrid-36_ allows more atoms in the file by also using
-letters in this field. If you do not need to interpret the CONECT
-records, the serial number can be simply ignored.
+letters in this field. An alternative approach is to write
+longer serial numbers, trading the last two letters of HETATM
+and skipping the CONECT records.
+While we don't explicitly support this, such files will be read correctly
+because the serial numbers are only used for interpreting the CONECT records.
 
 Columns 13-27 describe the atom's place in the hierarchy.
 In the example above, they are:
@@ -359,13 +376,34 @@ Therefore, Cα and calcium ion, both named CA, are aligned differently:
     CA  GLU A   2
    CA    CA A 101
 
-This rule has an exception: when the atom name has four characters
+This rule has an exception: when the atom name has four characters,
 it starts in column 13 even if it has a one-letter element code:
 
 .. code-block:: none
 
    HETATM 6495  CAX R58 A 502      17.143 -29.934   7.180  1.00 58.54           C
    HETATM 6496 CAX3 R58 A 502      16.438 -31.175   6.663  1.00 57.68           C
+
+This often happens for hydrogens (names such as HH11).
+
+Note that atom labeling was changed by the wwPDB in the 2000s.
+Before that, atom names were not required to begin with the element name;
+instead of HH11, we had 1HH1; the element could be read from the name.
+The separate element columns used nowadays were introduced in the wwPDB
+archive only in 2005. Before that, lines of PDB files in the archive
+ended with the PDB code and the line number:
+
+.. code-block:: none
+
+  ATOM      1  CA  MET     1     -19.201  51.101   6.138  1.00 35.00      1GDR 109
+  ATOM      2  CA  ARG     2     -17.008  48.871   4.008  1.00 35.00      1GDR 110
+
+(Such a file can also be read by Gemmi, but only if you set the option
+`max_line_length=72` to ignore the trailing items.)
+
+Not all programs used today write the element in separate columns
+(they don't write line numbers but may output shorter lines),
+so inferring the element from the atom name is still important.
 
 .. _tilde_hetnam:
 
@@ -377,10 +415,10 @@ that starts with a tilde (`~`);
 the original code is stored in columns 72-79 of the HETNAM record.
 
 Columns 21-22 contain chain names. In the wwPDB spec, it's only column 22,
-but it's common to expand into column 21 when there are too many chains for
-single-character naming. This collides with GROMACS' PDB flavor,
+but it's common to expand it into column 21 when there are too many chains
+for single-character naming. This collides with GROMACS' PDB flavor,
 which uses custom 4-character residue names in columns 18-21,
-but that's definitely less popular.
+but that flavor is definitely less popular.
 
 Columns 23-27 contain a sequence ID. It consists of a number (columns 23-26)
 and, optionally, also an insertion code (A-Z) in column 27:
@@ -393,7 +431,7 @@ and, optionally, also an insertion code (A-Z) in column 27:
    ATOM  11970  CE  MET D 100H     -8.264  83.348 -19.494  1.00107.93           C
    ATOM  11971  N   ASP D 101     -11.329  81.237 -14.804  1.00107.41           N
 
-The insertion codes are the opposite of gaps in the numbering;
+Insertion codes are the opposite of gaps in numbering;
 both are used to make the numbering consistent with a reference sequence
 (and for the same reason the sequence number can be negative).
 
@@ -406,24 +444,65 @@ It is a letter marking an alternative conformation
    HETATM  557  O  AHOH A 301      13.464  41.125   8.469  0.50 20.23           O
    HETATM  558  O  BHOH A 301      12.554  42.700   8.853  0.50 26.40           O
 
-Handling alternative conformations adds a lot of complexity,
-as will be described later in this documentation.
+As mentioned before, handling alternative conformations
+adds a lot of complexity.
 
-These were all tricky things in the atom list.
+The last tricky thing in the atom list is TER records.
+According to the specification and as used in the PDB archive,
+TER marks the end of polymer (terminal carboxyl end for proteins,
+3' end for nucleic acids).
+That's how Gemmi interprets it by default. If the file uses TER records,
+Gemmi can automatically setup entities (this can be later overwritten,
+see :ref:`add_entity_types() <add_entity_types>`).
+Unfortunately, not all programs write TER, and what's even worse,
+some programs write it in different places or reuse it with a different
+meaning. One could argue that because of this it is better to always
+ignore TER. But then, in some cases, we will not be able to place TER
+in the same place when writing Structure to a PDB file (it's somewhat
+arbitrary if a non-standard peptide-linking residue at the end of a chain
+is part of the sequence or a bound ligand). By default (when the option
+`split_chain_on_ter` is not used), TER records are interpreted according
+to the specification, except when they are clearly misplaced: if we have
+2+ TERs in the same chain or when a TER follows a water residue,
+all TERs in the file are ignored.
 
-Now let's go to matrices. In most of the PDB entries the CRYST1 record
+Now let's move to matrices. In most PDB entries, the CRYST1 record
 is all that is needed to construct the crystal structure.
-But in some PDB files we need to take into account two other records:
+But in some PDB files, we need to take into account two other records:
 
 * MTRIX -- if marked as not-given it defines operations needed to reconstruct
   the asymmetric unit.
 * SCALE -- provides the fractionalization matrix. The format of this entry
-  is unfortunate: for large unit cells the relative precision of numbers is
-  too small. So if coordinates are given in standard settings it is better
+  is unfortunate: for large unit cells, the relative precision of numbers
+  is too small. If coordinates are given in standard settings, it is better
   to calculate the fractionalization matrix from the unit cell dimensions
-  (i.e. from the CRYST1 record).
-  But the SCALE record needs to be checked to see if the settings *are*
-  the standard ones.
+  (i.e. from the CRYST1 record). But the SCALE record needs to be checked
+  to see if the settings *are* the standard ones.
+
+PDB files are expected to have (up to) 80 columns. Files from the wwPDB
+always have exactly 80 columns, padded with trailing spaces.
+Gemmi writes them this way too, even though these trailing spaces
+serve no real purpose.
+
+.. _pdb_max_line_length:
+
+You might come across files with longer lines. By default, Gemmi reads up to
+120 columns, but it provides an option to reduce this number.
+Which happens to be useful for reading an older PDB format used by the wwPDB
+until 2005, where columns 73-80 contained the PDB code and line number.
+
+.. code-block:: none
+
+  ATOM      1  CA  MET     1     -19.201  51.101   6.138  1.00 35.00      1GDR 109
+  ATOM      2  CA  ARG     2     -17.008  48.871   4.008  1.00 35.00      1GDR 110
+
+This confuses the parser and is not handled automatically, but such files will
+be read correctly if you limit the line length to 72:
+
+.. doctest::
+
+  >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
+  <gemmi.Structure pdb1gdr.ent with 1 model(s)>
 
 .. _specification: https://www.wwpdb.org/documentation/file-format-content/format33/v3.3.html
 .. _hybrid-36: http://cci.lbl.gov/hybrid_36/
@@ -432,9 +511,9 @@ Reading
 ~~~~~~~
 
 In addition to generic functions common for all coordinate file formats,
-we have file-format specific functions. They are preferrable if you want
-to pass additional options or, in case of C++, to avoid linking with the
-code you don't use. Here is how to read a PDB file:
+we have file-format-specific functions. These are preferable if you want
+to pass additional options or, in the case of C++, avoid linking with
+unused parts of Gemmi. Here is how to read a PDB file:
 
 .. tab:: C++
 
@@ -460,15 +539,32 @@ code you don't use. Here is how to read a PDB file:
     # or a function that reads only pdb files
     structure = gemmi.read_pdb(path)
 
-The pdb-specific functions can take the following options that control
-how the file is interpreted. (Usually, the defaults are fine.)
+The pdb-specific functions can take the following options:
+
+`max_line_length`
+  By default, Gemmi reads up to 120 columns.
+  This option allows you to reduce that number,
+  as described :ref:`earlier <pdb_max_line_length>`.
+
+`split_chain_on_ter`
+  Reads each TER-separated segment as a new chain.
+  To write a file in the same way, use option `ter_ignores_type=True`.
+
+`skip_remarks`
+  (C++ only, micro-optimization) reads :ref:`REMARKs <remarks>` into
+  `raw_remarks`; but doesn't parsed them, leaving `Structure.meta`
+  and some other properties unfilled.
+
+The options can be passed after the path:
 
 .. tab:: C++
 
- .. literalinclude:: ../include/gemmi/model.hpp
-   :language: cpp
-   :start-at: struct PdbReadOptions
-   :end-before: // end of PdbReadOptions for mol.rst
+ ::
+
+    gemmi::PdbReadOptions options;
+    options.max_line_length = 0;         // redundant - it's the default
+    options.split_chain_on_ter = false;  // also redundant
+    structure = gemmi.read_structure(path, options);
 
 .. tab:: Python
 
@@ -476,9 +572,7 @@ how the file is interpreted. (Usually, the defaults are fine.)
 
     structure = gemmi.read_structure(path,
                                      max_line_length=0,
-                                     split_chain_on_ter=False,
-                                     #skip_remarks=False
-                                     )
+                                     split_chain_on_ter=False)
 
 The content of the file can also be read from a string or a memory buffer:
 
@@ -486,7 +580,7 @@ The content of the file can also be read from a string or a memory buffer:
 
  ::
 
-    Structure read_pdb_string(const std::string& str, const std::string& name, PdbReadOptions& options={});
+    Structure read_pdb_string(const std::string& str, const std::string& name, PdbReadOptions options={});
     Structure read_pdb_from_memory(const char* data, size_t size, const std::string& name, PdbReadOptions options={});
 
 .. tab:: Python
@@ -495,16 +589,24 @@ The content of the file can also be read from a string or a memory buffer:
 
     # if you have the content of the PDB file in a string:
     structure = gemmi.read_pdb_string(string)
-    # or in bytes (the same function name for backward compat)
+    # or in bytes (the same function name for backward compatibility)
     structure = gemmi.read_pdb_string(bytes)
 
 The metadata from a PDB file that is interpreted by Gemmi (a subset of all the
-metadata) can be either accessed directly:
+metadata) can be accessed either directly:
 
 .. doctest::
 
   >>> st = gemmi.read_structure('../tests/5moo_header.pdb')
-  >>> #st.meta.  TBC
+  >>> for crystal in st.meta.crystals:
+  ...     print(f'crystal {crystal.id}')
+  ...     for d in crystal.diffractions:
+  ...         print(f'  {d.id} {d.scattering_type:10s} {d.temperature} K')
+  ...
+  crystal 1
+    1 x-ray      295.0 K
+  crystal 2
+    2 neutron    295.0 K
 
 or in a circuitous way, by preparing an mmCIF header and checking its content:
 
@@ -518,67 +620,47 @@ or in a circuitous way, by preparing an mmCIF header and checking its content:
   {'diffrn_id': ['1', '2'], 'pdbx_scattering_type': ['x-ray', 'neutron'], 'pdbx_monochromatic_or_laue_m_l': ['M', None], 'monochromator': [None, None]}
 
 The latter is the only way to access some properties from Python,
-because not all of them have Python bindings.
+as not all of them have Python bindings.
 
-----
-
-**max_line_length**
-
-PDB files are expected to have (up to) 80 columns.
-You may come across files with longer lines and Gemmi, by default,
-reads up to 120 columns. Using this option you can reduce the number
-of columns being read. It is useful when reading old files,
-from around 2004, which had somewhat different format::
-
-  ATOM      1  CA  MET     1     -19.201  51.101   6.138  1.00 35.00      1GDR 109
-  ATOM      2  CA  ARG     2     -17.008  48.871   4.008  1.00 35.00      1GDR 110
-
-Here, columns 73-80 contain PDB ID and line number.
-This confuses the parser and it is not handled automatically, but it will
-be read if you limit the line length to 72:
-
-.. doctest::
-
-  >>> gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
-  <gemmi.Structure pdb1gdr.ent with 1 model(s)>
-
-**split_chain_on_ter**
-
-TER records in the PDB, according the specification, mark the end of polymer
-(terminal carboxyl end for proteins, 3' end for nucleic acids).
-By default, gemmi interprets TER in this way and uses it to automatically
-setup entities (they can be later overwritten,
-see :ref:`add_entity_types() <add_entity_types>`).
-If you prefer to read each TER-separated segment as a new chain,
-call read_pdb() with option `split_chain_on_ter=True`
-(and then, to write a file in the same way,
-use option `ter_ignores_type=True`).
 
 Writing
 ~~~~~~~
 
-Gemmi has several switches to customize the output PDB file,
-primarily for controlling what records are included.
-Another customizable aspect is how the serial numbers are assigned.
-By default, they are set to 1,2,3,... regardless of Atom::serial
+Structure can be written in the PDB format either to a file or to a string:
+
+.. tab:: C++
+
+ ::
+
+  // functions from <gemmi/to_pdb.hpp>
+
+  void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt={});
+
+  // helper function that uses write_pdb with std::ostringstream
+  std::string make_pdb_string(const Structure& st, PdbWriteOptions opt={});
+
+.. tab:: Python
+
+ .. code-block:: python
+
+  # To write a pdb file use (the options are discussed below)
+  structure.write_pdb(path [, options: gemmi.PdbWriteOptions])
+
+  # To get the same content as a string:
+  pdb_string = structure.make_pdb_string([options : gemmi.PdbWriteOptions])
+
+
+Gemmi has a number of switches to customize the output PDB file,
+controlling what records are included, how serial numbers are assigned, etc.
+
+By default, serial numbers are set to 1,2,3,..., regardless of Atom::serial,
 and both atoms and TER records get unique numbers
-(note: giving TERs serial numbers affects the numbering of atoms after TER).
+(giving TERs serial numbers affects the numbering of atoms after TER).
 TER records in files from wwPDB also have serial numbers,
-but many programs write just "TER".
+but since it's a needless complication, many programs simply write "TER".
 You can opt for bare TER records with `numbered_ter=False`.
 To respect Atom::serial (without checking if the numbers are actually
 sequential or even unique) use `preserve_serial=True`.
-
-**C++**
-
-Function for writing data from Structure to a pdb file are
-in a header `gemmi/to_pdb.hpp`::
-
-  void write_pdb(const Structure& st, std::ostream& os,
-                 PdbWriteOptions opt=PdbWriteOptions());
-
-  std::string make_pdb_string(const Structure& st,
-                              PdbWriteOptions opt=PdbWriteOptions());
 
 Here are all the properties of PdbWriteOptions:
 
@@ -587,32 +669,29 @@ Here are all the properties of PdbWriteOptions:
    :start-after: struct PdbWriteOptions
    :end-before: // end of snippet for mol.rst
 
-Additionally, PdbWriteOptions has two static functions:
+Additionally, PdbWriteOptions has two predefined sets of options:
 
-* `minimal()` -- options for writing only the atomic model (incl. CRYST1),
-* `only_headers()` -- options for writing only headers
+* `minimal` -- options for writing only the atomic model (incl. CRYST1),
+* `only_headers` -- options for writing only headers
   (metadata, without the actual model).
 
-Usage example::
+Example usage:
 
-  gemmi::write_pdb(st, std::cout, gemmi::PdbWriteOptions::minimal());
+.. tab:: C++
 
+ ::
 
-**Python**
+  // to write only CRYST1 and coordinates, use:
+  auto options = gemmi::PdbWriteOptions::minimal())
+  // additionally, write TER records without numbers:
+  options.numbered_ter = false;
+  // to get PDB headers only:
+  //auto options = gemmi::PdbWriteOptions::headers_only()
+  gemmi::write_pdb(st, std::cout, options);
 
-To output a file or string in the PDB format use:
+.. tab:: Python
 
-.. code-block:: python
-
-  # To write full PDB use (the options are listed below):
-  structure.write_pdb(path [, options])
-  # To get the same content as a string:
-  pdb_string = structure.make_pdb_string([options])
-
-Options are passed as an instance of `gemmi.PdbWriteOptions`
-that has properties listed in the C++ section above. Examples:
-
-.. testsetup::
+ .. testsetup::
 
   import gemmi
   output_path = 'out.pdb'
@@ -620,7 +699,7 @@ that has properties listed in the C++ section above. Examples:
   print('Running doctest. Disabled features:',
         ', '.join(disabled_features) or 'none', file=sys.stderr)
 
-.. testcode::
+ .. testcode::
 
   # To write only CRYST1 and coordinates, use:
   structure.write_pdb(output_path, gemmi.PdbWriteOptions(minimal=True))
@@ -629,27 +708,30 @@ that has properties listed in the C++ section above. Examples:
   # To get PDB headers as a string:
   header_string = structure.make_pdb_string(gemmi.PdbWriteOptions(headers_only=True))
 
-----
+Two record types, REMARK and CONECT, are handled in a special way.
 
-**REMARK** records from a PDB file are stored in `raw_remarks`. Some of them
-(as listed :ref:`above <supported_records>`) are parsed and interpreted.
-When writing a structure from the PDB format back to the PDB format,
-by default, remarks are copied over from `raw_remarks`.
-To avoid it:
+.. _remarks:
+
+When a structure is read from the PDB format, **REMARK** records are stored
+in `Structure.raw_remarks`. A subset of them
+(as listed :ref:`above <supported_records>`) is parsed and interpreted,
+but a much smaller subset can be generated -- currently, only
+REMARK 2 (from `Structure.resolution`) and 350 (from `Structure.assemblies`).
+When writing a PDB file, if `raw_remarks` are present, they are copied
+to the file and no other REMARKs are added.
+To avoid copying REMARKs from the input, remove them before writing a file:
 
 .. doctest::
 
   >>> st.raw_remarks = []
 
-Then, only these records that can be parsed and formatted are written.
 
-----
-
-**CONECT records** are not written unless explicitly requested.
+**CONECT records** are not written unless explicitly requested
+(option `conect_records`).
 The data from and for these records is stored in C++ `Structure::conect_map`
 as a mapping between serial numbers (int -> list of ints).
-When a model is modified, or serial atoms are re-assigned,
-the conect_map easily becomes outdated. Gemmi doesn't use the conect_map
+When a model is modified or serial atoms are re-assigned,
+the conect_map can easily become outdated. Gemmi doesn't use the conect_map
 internally; it only provides a low-level API for users to read
 and write these records. We support the convention used in computational
 chemistry (but absent in the official PDB spec) where bond order
