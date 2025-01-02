@@ -790,7 +790,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "d_res_low",
         "percent_reflns_obs",
         "number_reflns_obs",
-        "number_reflns_work",
+        "number_reflns_R_work",
         "number_reflns_R_free",
         "R_factor_obs",
         "R_factor_R_work",
