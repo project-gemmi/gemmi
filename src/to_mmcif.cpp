@@ -1227,7 +1227,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                       q(tls.origin.x), q(tls.origin.y), q(tls.origin.z)});
       }
     cif::Loop& group_loop = block.init_mmcif_loop("_pdbx_refine_tls_group.", {
-        "id", "refine_tls_id", "beg_auth_asym_id", "beg_auth_seq_id",
+        "id", "refine_tls_id", "pdbx_refine_id", "beg_auth_asym_id", "beg_auth_seq_id",
         "end_auth_asym_id", "end_auth_seq_id", "selection_details"});
     int counter = 1;
     for (const RefinementInfo& ref : st.meta.refinement)
@@ -1235,6 +1235,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         for (const TlsGroup::Selection& sel : tls.selections)
           group_loop.add_row({std::to_string(counter++),
                               string_or_dot(tls.id),
+                              cif::quote(ref.id),
                               string_or_qmark(sel.chain),
                               sel.res_begin.num ? sel.res_begin.str() : "?",
                               string_or_qmark(sel.chain),
