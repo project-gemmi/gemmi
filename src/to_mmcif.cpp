@@ -783,7 +783,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     cif::Loop& restr_loop = block.init_mmcif_loop("_refine_ls_restr.", {
         "pdbx_refine_id", "type",
         "number", "weight", "pdbx_restraint_function", "dev_ideal"});
-    cif::Loop& shell_loop = block.init_mmcif_loop("_refine_ls_shell.", {
+    // _refine_ls_shell
+    std::vector<std::string> shell_tags = {
         "pdbx_refine_id",
         "d_res_high",
         "d_res_low",
@@ -793,9 +794,33 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "number_reflns_R_free",
         "R_factor_obs",
         "R_factor_R_work",
-        "R_factor_R_free",
-        "pdbx_fsc_work",
-        "pdbx_fsc_free"});
+        "R_factor_R_free"};
+    bool has_shell_fsc = false;
+    bool has_shell_ffcc = false;
+    bool has_shell_iicc = false;
+    for (const RefinementInfo& ref : st.meta.refinement)
+      for (const BasicRefinementInfo& bin : ref.bins) {
+        if (!std::isnan(bin.fsc_work) || !std::isnan(bin.fsc_free))
+          has_shell_fsc = true;
+        if (!std::isnan(bin.cc_fo_fc_work) || !std::isnan(bin.cc_fo_fc_free))
+          has_shell_ffcc = true;
+        if (!std::isnan(bin.cc_intensity_work) || !std::isnan(bin.cc_intensity_free))
+          has_shell_iicc = true;
+      }
+    if (has_shell_fsc) {
+      shell_tags.push_back("pdbx_fsc_work");
+      shell_tags.push_back("pdbx_fsc_free");
+    }
+    if (has_shell_ffcc) {
+      shell_tags.push_back("correlation_coeff_Fo_to_Fc");
+      shell_tags.push_back("correlation_coeff_Fo_to_Fc_free");
+    }
+    if (has_shell_iicc) {
+      shell_tags.push_back("correlation_coeff_I_to_Fcsqd_work");
+      shell_tags.push_back("correlation_coeff_I_to_Fcsqd_free");
+    }
+    cif::Loop& shell_loop = block.init_mmcif_loop("_refine_ls_shell.", shell_tags);
+
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
       const RefinementInfo& ref = st.meta.refinement[i];
       loop.values.push_back(id);
@@ -855,9 +880,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       if (st.meta.has(&RefinementInfo::fsc_free))
         add("pdbx_average_fsc_free", number_or_qmark(ref.fsc_free));
       if (st.meta.has(&RefinementInfo::cc_intensity_work))
-        add("ccp4_correlation_coeff_I_to_Fcsq_work", number_or_qmark(ref.cc_intensity_work));
+        add("correlation_coeff_I_to_Fcsqd_work", number_or_qmark(ref.cc_intensity_work));
       if (st.meta.has(&RefinementInfo::cc_intensity_free))
-        add("ccp4_correlation_coeff_I_to_Fcsq_free", number_or_qmark(ref.cc_intensity_free));
+        add("correlation_coeff_I_to_Fcsqd_free", number_or_qmark(ref.cc_intensity_free));
       if (!st.meta.solved_by.empty())
         add("pdbx_method_to_determine_struct", string_or_qmark(st.meta.solved_by));
       if (!st.meta.starting_model.empty())
@@ -873,7 +898,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                             number_or_qmark(restr.weight),
                             string_or_qmark(restr.function),
                             number_or_qmark(restr.dev_ideal)});
-      for (const BasicRefinementInfo& bin : ref.bins)
+      for (const BasicRefinementInfo& bin : ref.bins) {
         shell_loop.add_row({cif::quote(ref.id),
                             number_or_dot(bin.resolution_high),
                             number_or_qmark(bin.resolution_low),
@@ -883,10 +908,22 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                             int_or_qmark(bin.rfree_set_count),
                             number_or_qmark(bin.r_all),
                             number_or_qmark(bin.r_work),
-                            number_or_qmark(bin.r_free),
-                            number_or_qmark(bin.fsc_work),
-                            number_or_qmark(bin.fsc_free)});
+                            number_or_qmark(bin.r_free)});
+        if (has_shell_fsc) {
+          shell_loop.values.push_back(number_or_qmark(bin.fsc_work));
+          shell_loop.values.push_back(number_or_qmark(bin.fsc_free));
+        }
+        if (has_shell_ffcc) {
+          shell_loop.values.push_back(number_or_qmark(bin.cc_fo_fc_work));
+          shell_loop.values.push_back(number_or_qmark(bin.cc_fo_fc_free));
+        }
+        if (has_shell_iicc) {
+          shell_loop.values.push_back(number_or_qmark(bin.cc_intensity_work));
+          shell_loop.values.push_back(number_or_qmark(bin.cc_intensity_free));
+        }
+      }
     }
+    assert(shell_loop.values.size() % shell_loop.tags.size() == 0);
     assert(loop.values.size() % loop.tags.size() == 0);
   }
 
