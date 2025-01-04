@@ -10,8 +10,8 @@ namespace gemmi { namespace cif {
 
 namespace {
 
-std::string br(const std::string& block_name) {
-  return "[" + block_name + "] ";
+std::string br(const cif::Block& block) {
+  return "[" + block.name + "] ";
 }
 
 enum class Trinary : char { Unset, Yes, No };
@@ -254,7 +254,7 @@ private:
 } // anonymous namespace
 
 // check if the dictionary name/version correspond to _audit_conform_dict_*
-void Ddl::check_audit_conform(const cif::Document& doc, std::ostream& out) const {
+void Ddl::check_audit_conform(const cif::Document& doc) const {
   std::string audit_conform = "_audit_conform.";
   if (major_version == 1)
     audit_conform.back() = '_';  // for _audit_conform_dict_version, etc
@@ -263,22 +263,21 @@ void Ddl::check_audit_conform(const cif::Document& doc, std::ostream& out) const
     if (!raw_name)
       continue;
     std::string name = cif::as_string(*raw_name);
-    if (name == dict_name) {
-      if (print_extra_diagnostics)
-        if (const std::string* dict_ver = b.find_value(audit_conform + "dict_version")) {
-          std::string version = cif::as_string(*dict_ver);
-          if (version != dict_version)
-            out << "Note: " << br(b.name) << "conforms to " << name
-                << " ver. " << version << " while DDL has ver. " << dict_version << '\n';
-        }
-    } else {
-      out << "Note: " << br(b.name) << "dictionary name mismatch: " << name
-          << " vs " << dict_name << '\n';
+    if (name != dict_name) {
+      logger.note(br(b), "dictionary name mismatch: ", name, " vs ", dict_name);
+    } else if (const std::string* dict_ver = b.find_value(audit_conform + "dict_version")) {
+      std::string version = cif::as_string(*dict_ver);
+      if (version != dict_version) {
+        auto major = [](const std::string& s) { return s.substr(0, s.find('.')); };
+        if (logger.threshold >= 7 || major(version) == major(dict_version))
+          logger.note(br(b), "conforms to ", name, " ver. ", version,
+                      " while DDL has ver. ", dict_version);
+      }
     }
   }
 }
 
-void Ddl::check_mandatory_items(const cif::Block& b, std::ostream& out) const {
+void Ddl::check_mandatory_items(const cif::Block& b) const {
   // make a list of items in each category in the block
   std::map<std::string, std::vector<std::string>> categories;
   auto add_category = [&](const std::string& tag) {
@@ -299,21 +298,20 @@ void Ddl::check_mandatory_items(const cif::Block& b, std::ostream& out) const {
     std::string cat_name = cat.first.substr(1, n-2);
     cif::Block* cat_block = find_rules(cat_name);
     if (!cat_block) { // should not happen
-      out << br(b.name) << "category not in the dictionary: " << cat_name << std::endl;
+      warn(b, "category not in the dictionary: ", cat_name);
       continue;
     }
     // check context type
     if (use_context)
       if (const std::string* ct = cat_block->find_value("_pdbx_category_context.type"))
-        out << br(b.name) << "category indicated as "
-            << *ct << ": " << cat_name << std::endl;
+        logger.mesg(br(b), "category indicated as ", *ct, ": ", cat_name);
     // check key items
     for (const std::string& v : cat_block->find_values("_category_key.name")) {
       std::string key = cif::as_string(v);
-      if (!gemmi::istarts_with(key, cat.first))  // inconsistent dictionary
-        out << "DDL2: wrong _category_key for " << cat_name << std::endl;
+      if (!gemmi::istarts_with(key, cat.first))
+        logger.level<3>("inconsistent dictionary: wrong _category_key for ", cat_name);
       if (!gemmi::in_vector(to_lower(key.substr(n)), cat.second))
-        out << br(b.name) << "missing category key: " << key << std::endl;
+        warn(b, "missing category key: ", key);
     }
     // check mandatory items
     for (auto i = name_index_.lower_bound(cat.first);
@@ -322,13 +320,12 @@ void Ddl::check_mandatory_items(const cif::Block& b, std::ostream& out) const {
       for (auto row : i->second->find("_item.", {"name", "mandatory_code"}))
         if (row.str(1)[0] == 'y' && iequal(row.str(0), i->first) &&
             !gemmi::in_vector(i->first.substr(n), cat.second))
-          out << br(b.name) << "missing mandatory tag: " << i->first << std::endl;
+          warn(b, "missing mandatory tag: ", i->first);
     }
   }
 }
 
-void Ddl::check_unique_keys_in_loop(const cif::Loop& loop, std::ostream& out,
-                                    const std::string& block_name) const {
+void Ddl::check_unique_keys_in_loop(const cif::Loop& loop, const Block& block) const {
   const std::string& tag1 = loop.tags[0];
   size_t dot_pos = tag1.find('.');
   std::string cat_name = tag1.substr(1, dot_pos - 1);
@@ -357,35 +354,22 @@ void Ddl::check_unique_keys_in_loop(const cif::Loop& loop, std::ostream& out,
       }
     }
     if (dup_counter != 0) {
-      out << br(block_name) << "category " << cat_name << " has ";
-      if (dup_counter == 1)
-        out << "1 duplicated key: ";
-      else
-        out << dup_counter << " duplicated keys, example: ";
-      bool first = true;
-      for (int k : key_positions) {
-        if (first)
-          first = false;
-        else
-          out << " and ";
-        out << loop.tags[k].substr(dot_pos+1) << '=' << loop.values[dup_row + k];
-      }
-      out << std::endl;
+      warn(block, "category ", cat_name, " has ", dup_counter, "duplicated key(s):\n  1st dup:",
+           gemmi::join_str(key_positions, " and ", [&](int k) {
+             return gemmi::cat(loop.tags[k].substr(dot_pos+1), '=', loop.values[dup_row + k]);
+           }));
     }
   }
 }
 
-static void check_parent_for(const std::vector<std::string>& child_tags,
-                             const std::vector<std::string>& parent_tags,
-                             const cif::Block& b,
-                             std::ostream& out) {
-  cif::Table child_tab = const_cast<cif::Block&>(b).find(child_tags);
+void Ddl::check_parent_link(const ParentLink& link, const cif::Block& b) const {
+  cif::Table child_tab = const_cast<cif::Block&>(b).find(link.child_tags);
   if (!child_tab.ok())
     return;
-  cif::Table parent_tab = const_cast<cif::Block&>(b).find(parent_tags);
+  cif::Table parent_tab = const_cast<cif::Block&>(b).find(link.parent_tags);
   if (!parent_tab.ok()) {
-    out << br(b.name) << "missing " << tags_as_str(parent_tags)
-        << "\n  parent of " << tags_as_str(child_tags) << std::endl;
+    warn(b, "missing ", tags_as_str(link.parent_tags),
+         "\n  parent of ", tags_as_str(link.child_tags));
     return;
   }
   std::unordered_set<std::string> parent_hashes;
@@ -397,29 +381,30 @@ static void check_parent_for(const std::vector<std::string>& child_tags,
     if (!ret.second) {
       ++dup_counter;
       if (dup_counter < 2)
-        out << br(b.name) << "duplicated parent group "
-            << tags_as_str(parent_tags) << ":\n  "
-            << gemmi::join_str(row, '+') << std::endl;
+        warn(b, "duplicated parent group ", tags_as_str(link.parent_tags), ":\n  ",
+             gemmi::join_str(row, '+'));
     }
     */
   }
   int miss_counter = 0;
+  std::string first_miss;
   for (const cif::Table::Row row : child_tab) {
     if (std::all_of(row.begin(), row.end(), cif::is_null))
       continue;
     if (parent_hashes.count(row_as_string(row)) == 0) {
+      if (miss_counter == 0)
+        first_miss = gemmi::join_str(row, '+');
       ++miss_counter;
-      if (miss_counter < 2)
-        out << br(b.name) << gemmi::join_str(row, '+')
-            << " from " << tags_as_str(child_tags)
-            << "\n  not in " << tags_as_str(parent_tags) << std::endl;
     }
   }
-  if (miss_counter > 1)
-    out << "  [total " << miss_counter << " missing parents in this group]\n";
+  if (miss_counter != 0)
+    warn(b, miss_counter, " missing parent(s) in item-linked-group ", link.group,
+         ":\n  child:  ", tags_as_str(link.child_tags),
+         "\n  parent: ", tags_as_str(link.parent_tags),
+         "\n  1st miss: ", first_miss);
 }
 
-void Ddl::check_parents(const cif::Block& b, std::ostream& out) const {
+void Ddl::check_parents(const cif::Block& b) const {
   std::unordered_set<std::string> present;
   for (const cif::Item& item : b.items) {
     if (item.type == cif::ItemType::Pair) {
@@ -436,8 +421,7 @@ void Ddl::check_parents(const cif::Block& b, std::ostream& out) const {
     if (it != item_parents_.end()) {
       const std::string& parent_tag = it->second;
       if (present.count(parent_tag) == 0) {
-        out << br(b.name) << "parent tag of " << child_tag << " is absent: "
-            << parent_tag << std::endl;
+        warn(b, "parent tag of ", child_tag, " is absent: ", parent_tag);
       } else {
         std::unordered_set<std::string> parent_hashes;
         for (const std::string& parent : const_cast<cif::Block&>(b).find_values(parent_tag))
@@ -449,14 +433,14 @@ void Ddl::check_parents(const cif::Block& b, std::ostream& out) const {
             if (missing_counter++ == 0)
               first_missing = cif::as_string(child);
         if (missing_counter != 0)
-          out << br(b.name) << missing_counter << " missing parent(s) of " << child_tag
-              << " in " << parent_tag << ", first one: " << first_missing << std::endl;
+          warn(b, missing_counter, " missing parent(s) of ", child_tag,
+               " in ", parent_tag, ", first one: ", first_missing);
       }
     }
   }
   for (const ParentLink& link : parents_)
     if (present.find(link.child_tags[0]) != present.end())
-      check_parent_for(link.child_tags, link.parent_tags, b, out);
+      check_parent_link(link, b);
 }
 
 void Ddl::read_ddl1_block(cif::Block& block) {
@@ -472,7 +456,7 @@ void Ddl::read_ddl1_block(cif::Block& block) {
   }
 }
 
-void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
+void Ddl::read_ddl2_block(cif::Block& block) {
   for (cif::Item& item : block.items) {
     if (item.type == cif::ItemType::Frame) {
       for (const char* tag : {"_item.name", "_category.id"}) {
@@ -507,9 +491,8 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
         auto flag = std::regex::awk | std::regex::optimize;
         regexes_.emplace(row.str(0), std::regex(re_str, flag));
       } catch (const std::regex_error& e) {
-        out << "Note: Ddl has invalid regex for " << row[0] << ":\n      "
-            << row.str(1) << "\n      "
-            << e.what() << '\n';
+        logger.note("Ddl has invalid regex for ", row[0], ":\n      ",
+                    row.str(1), "\n      ", e.what(), '\n');
       }
     }
 
@@ -537,15 +520,13 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
     for (ParentLink& link : parents_) {
       bool ok = true;
       if (common_category(link.child_tags) == 0) {
-        if (print_extra_diagnostics)
-          out << "Bad DDL2: linked group [" << link.group
-              << "] has children in different categories" << std::endl;
+        logger.mesg("Bad DDL2: linked group [", link.group,
+                    "] has children in different categories");
         ok = false;
       }
       if (common_category(link.parent_tags) == 0) {
-        if (print_extra_diagnostics)
-          out << "Bad DDL2: linked group [" << link.group
-              << "] has parents in different categories" << std::endl;
+        logger.mesg("Bad DDL2: linked group [", link.group,
+                    "] has parents in different categories");
         ok = false;
       }
       if (!ok) {
@@ -566,21 +547,19 @@ void Ddl::read_ddl2_block(cif::Block& block, std::ostream& out) {
           auto it = item_parents_.find(child_name);
           if (it == item_parents_.end())
             item_parents_.emplace(child_name, parent_name);
-          else if (it->second != parent_name && print_extra_diagnostics)
-            out << "Bad DDL2: different parents for " << child_name << ": "
-                << it->second << " and " << parent_name << std::endl;
+          else if (it->second != parent_name)
+            logger.mesg("Bad DDL2: different parents for ", child_name, ": ",
+                        it->second, " and ", parent_name);
         }
     }
 }
 
-bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
+bool Ddl::validate_cif(const cif::Document& doc) const {
   std::string msg;
   bool ok = true;
-  auto err = [&](const cif::Block& b, const cif::Item& item,
-                 const std::string& s) {
+  auto err = [&](const cif::Block& b, const cif::Item& item, const std::string& s) {
     ok = false;
-    out << doc.source << ":" << item.line_number
-        << ' ' << br(b.name) << s << "\n";
+    logger.level<3>(doc.source, ':', item.line_number, " [", b.name, "] ", s);
   };
 
   for (const cif::Block& b : doc.blocks) {
@@ -589,7 +568,7 @@ bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
         cif::Block* dict_block = find_rules(item.pair[0]);
         if (!dict_block) {
           if (print_unknown_tags)
-            out << "Note: " << br(b.name) << "unknown tag " << item.pair[0] << '\n';
+            warn(b, "unknown tag ", item.pair[0]);
           continue;
         }
         // validate pair
@@ -613,7 +592,7 @@ bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
           cif::Block* dict_block = find_rules(tag);
           if (!dict_block) {
             if (print_unknown_tags)
-              out << "Note: " << br(b.name) << "unknown tag " << tag << '\n';
+              warn(b, "unknown tag ", tag);
             continue;
           }
           // validate column in loop
@@ -642,21 +621,21 @@ bool Ddl::validate_cif(const cif::Document& doc, std::ostream& out) const {
 
     if (major_version == 2) {
       if (use_mandatory)
-        check_mandatory_items(b, out);
+        check_mandatory_items(b);
       if (use_unique_keys) {
         for (const cif::Item& item : b.items)
           if (item.type == cif::ItemType::Loop)
-            check_unique_keys_in_loop(item.loop, out, b.name);
+            check_unique_keys_in_loop(item.loop, b);
       }
       if (use_parents)
-        check_parents(b, out);
+        check_parents(b);
     }
   }
 
   return ok;
 }
 
-void Ddl::read_ddl(cif::Document&& doc, std::ostream& out) {
+void Ddl::read_ddl(cif::Document&& doc) {
   ddl_docs_.emplace_back(new cif::Document(std::move(doc)));
   cif::Document& ddl_doc = *ddl_docs_.back();
   // perhaps we should check the content instead
@@ -667,7 +646,7 @@ void Ddl::read_ddl(cif::Document&& doc, std::ostream& out) {
     if (major_version == 1)
       read_ddl1_block(b);
     else
-      read_ddl2_block(b, out);
+      read_ddl2_block(b);
 }
 
 }} // namespace gemmi::cif

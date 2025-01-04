@@ -32,23 +32,18 @@ struct Logger {
   void suspend() { threshold -= 100; }
   void resume()  { threshold += 100; }
 
-  /// Send a debug message.
-  template<class... Args> void debug(Args const&... args) const {
-    if (threshold >= 7 && callback)
-      callback(cat("Debug: ", args...));
-  }
-
-  /// Send a message without any prefix.
-  template<class... Args> void mesg(Args const&... args) const {
-    if (threshold >= 6 && callback)
+  /// Send a message without any prefix on with a numeric threshold N.
+  template<int N, class... Args> void level(Args const&... args) const {
+    if (threshold >= N && callback)
       callback(cat(args...));
   }
 
+  /// Send a debug message.
+  template<class... Args> void debug(Args const&... args) const { level<7>("Debug: ", args...); }
+  /// Send a message without any prefix.
+  template<class... Args> void mesg(Args const&... args) const { level<6>(args...); }
   /// Send a note (a notice, a significant message).
-  template<class... Args> void note(Args const&... args) const {
-    if (threshold >= 5 && callback)
-      callback(cat("Note: ", args...));
-  }
+  template<class... Args> void note(Args const&... args) const { level<5>("Note: ", args...); }
 
   /// Send a warning/error (see Quirk above).
   template<class... Args> GEMMI_COLD void err(Args const&... args) const {
