@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>  // for unique_ptr
-#include <ostream>
 #include <regex>
 #include "cifdoc.hpp"  // for cif::Document
 #include "logger.hpp"  // for Logger
@@ -41,8 +40,11 @@ struct GEMMI_DLL Ddl {
   void read_ddl(cif::Document&& doc);
 
   bool validate_cif(const cif::Document& doc) const;
+  bool validate_block(const cif::Block& b, const std::string& source) const;
 
   void check_audit_conform(const cif::Document& doc) const;
+
+  const std::map<std::string, std::regex>& regexes() const { return regexes_; }
 
 private:
   // items from DDL2 _pdbx_item_linked_group[_list]
@@ -58,6 +60,8 @@ private:
   std::vector<ParentLink> parents_;
   // storage for DDL2 _item_linked.child_name -> _item_linked.parent_name
   std::map<std::string, std::string> item_parents_;
+  // counter that allows to limit the number of errors
+  mutable int missing_category_key_errors = 0;
 
   cif::Block* find_rules(const std::string& name) const {
     auto iter = name_index_.find(to_lower(name));
