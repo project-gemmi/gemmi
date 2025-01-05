@@ -1,16 +1,16 @@
 // Copyright 2017-2020 Global Phasing Ltd.
 
-#include "gemmi/cif.hpp"
 #include "gemmi/ddl.hpp"
-#include "gemmi/gz.hpp"
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/numb.hpp"
 #include "gemmi/dirwalk.hpp"  // for CifWalk
+#include "gemmi/read_cif.hpp"  // for read_cif_gz, check_cif_syntax_gz
 #include "validate_mon.h"  // for check_monomer_doc
 #include <stdio.h>
 #include <stdexcept>  // for std::runtime_error
 
 #ifdef ANALYZE_RULES
+# include "gemmi/cif.hpp"
 # include <tao/pegtl/analyze.hpp>
 #endif
 
@@ -182,9 +182,9 @@ bool process_file(const char* path, const cif::Ddl& dict,
     printf("Reading %s...\n", path);
   try {
     if (options[Fast]) {
-      ok = cif::check_syntax_any(gemmi::MaybeGzipped(path), &msg);
+      ok = gemmi::check_cif_syntax_gz(path, &msg);
     } else {
-      cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
+      cif::Document doc = gemmi::read_cif_gz(path);
       for (const cif::Block& block : doc.blocks) {
         if (block.name == " ")
           printf("%s: missing block name (bare data_)\n", doc.source.c_str());
@@ -269,7 +269,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Ddl]) {
     try {
       for (option::Option* ddl = p.options[Ddl]; ddl; ddl = ddl->next())
-        dict.read_ddl(cif::read_file(ddl->arg));
+        dict.read_ddl(gemmi::read_cif_gz(ddl->arg));
     } catch (std::runtime_error& e) {
       fprintf(stderr, "Error when reading dictionary: %s\n", e.what());
       return EXIT_FAILURE;
@@ -279,7 +279,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Ccd]) {
     try {
       for (option::Option* ccd = p.options[Ccd]; ccd; ccd = ccd->next()) {
-        cif::Document ccd_doc(cif::read(gemmi::MaybeGzipped(ccd->arg)));
+        cif::Document ccd_doc(gemmi::read_cif_gz(ccd->arg));
         for (cif::Block& ccd_block : ccd_doc.blocks) {
           std::string name = ccd_block.name;
           ccd_map.emplace(name, std::move(ccd_block));

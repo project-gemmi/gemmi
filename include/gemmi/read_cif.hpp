@@ -11,6 +11,7 @@
 namespace gemmi {
 
 GEMMI_DLL cif::Document read_cif_gz(const std::string& path);
+GEMMI_DLL bool check_cif_syntax_gz(const std::string& path, std::string* msg);
 GEMMI_DLL cif::Document read_mmjson_gz(const std::string& path);
 GEMMI_DLL CharArray read_into_buffer_gz(const std::string& path);
 GEMMI_DLL cif::Document read_cif_from_memory(const char* data, size_t size, const char* name);

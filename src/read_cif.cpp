@@ -11,6 +11,10 @@ cif::Document read_cif_gz(const std::string& path) {
   return cif::read(MaybeGzipped(path));
 }
 
+bool check_cif_syntax_gz(const std::string& path, std::string* msg) {
+  return cif::check_syntax(MaybeGzipped(path), msg);
+}
+
 cif::Document read_mmjson_gz(const std::string& path) {
   return cif::read_mmjson(MaybeGzipped(path));
 }

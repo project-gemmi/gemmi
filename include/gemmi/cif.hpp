@@ -331,7 +331,7 @@ template<> struct CheckAction<rules::missing_value> {
   }
 };
 
-template<typename Input> bool check_syntax(Input&& in, std::string* msg) {
+template<typename Input> bool try_parse(Input&& in, std::string* msg) {
   try {
     return pegtl::parse<rules::file, CheckAction, Errors>(in);
   } catch (pegtl::parse_error& e) {
@@ -353,13 +353,13 @@ Document read(T&& input) {
 }
 
 template<typename T>
-bool check_syntax_any(T&& input, std::string* msg) {
+bool check_syntax(T&& input, std::string* msg) {
   if (CharArray mem = input.uncompress_into_buffer()) {
     pegtl::memory_input<> in(mem.data(), mem.size(), input.path());
-    return check_syntax(in, msg);
+    return try_parse(in, msg);
   }
   GEMMI_CIF_FILE_INPUT(in, input.path());
-  return check_syntax(in, msg);
+  return try_parse(in, msg);
 }
 
 template<typename T>
