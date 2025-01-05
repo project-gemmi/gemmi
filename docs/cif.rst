@@ -1485,6 +1485,29 @@ has other name-value pairs in the same category (say, `_ocean.depth 8.5`)
 Additionally, like in other `_mmcif_` functions, the trailing dot
 in the category name may be omitted (but the leading underscore is required).
 
+Validation
+==========
+
+A CIF document can conform to a dictionary (ontology, think DTD for XML
+or JSON Schema for JSON). A dictionary is called DDL (dictionary
+definition language) and is itself a CIF document. There are three
+versions of DDL:
+
+* DDL1 is the simplest one. It enables fewer checks than the others.
+  It is used, for instance, for small molecule CIFs.
+* DDL2 is used for PDBx/mmCIF and the activity in this area
+  is centered around the PDB.
+* DDLm is a newer (from around 2011) version from the IUCr's COMCIFS
+  (Committee for the Maintenance of the CIF Standard). It's not widely
+  used yet and, similarly to CIF2, is not supported by Gemmi.
+
+Gemmi is used primarily in structural biology and it's exercised mostly
+with mmCIF and DDL2. DDL1 is supported to a limited extent (which could be
+expanded if there was interest and a good use case for it).
+
+TBC - overview of DDL2 dictionaries, how to use class Ddl,
+how to interpret results, what to focus on, etc
+
 
 JSON
 ====
