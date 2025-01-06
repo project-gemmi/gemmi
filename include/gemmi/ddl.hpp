@@ -37,6 +37,7 @@ struct GEMMI_DLL Ddl {
   Ddl(Ddl const&) = delete;
   Ddl& operator=(Ddl const&) = delete;
 
+  /// it moves doc to ddl_docs_ to control lifetime and prevent modifications
   void read_ddl(cif::Document&& doc);
 
   bool validate_cif(const cif::Document& doc) const;

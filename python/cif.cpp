@@ -462,9 +462,10 @@ void add_cif(nb::module_& cif) {
        nb::arg("use_context")=true, nb::arg("use_linked_groups")=true,
        nb::arg("use_mandatory")=true, nb::arg("use_unique_keys")=true)
     .def("set_logger", [](Ddl& self, gemmi::Logger&& logger) { self.logger = std::move(logger); })
-    .def("read_ddl_file", [](Ddl& self, const std::string& path) {
-        self.read_ddl(gemmi::read_cif_gz(path));
-    }, nb::arg("path"))
+    .def("read_ddl", [](Ddl& self, Document& doc) {
+        self.read_ddl(std::move(doc));
+        doc.clear();
+    }, nb::arg("doc"))
     .def("validate_cif", &Ddl::validate_cif)
     ;
 }
