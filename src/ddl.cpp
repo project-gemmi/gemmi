@@ -112,7 +112,7 @@ public:
         if (msg) {
           *msg = value + " is not one of the allowed values:";
           for (const std::string& e : enumeration_)
-            *msg += "\n\t" + e;
+            *msg += "\n  " + e;
         }
         return false;
       }

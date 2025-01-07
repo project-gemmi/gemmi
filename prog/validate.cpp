@@ -34,7 +34,11 @@ const option::Descriptor Usage[] = {
   { Quiet, 0, "q", "quiet", Arg::None, "  -q, --quiet  \tShow only errors." },
   { Fast, 0, "f", "fast", Arg::None, "  -f, --fast  \tSyntax-only check." },
   { Stat, 0, "s", "stat", Arg::None, "  -s, --stat  \tShow token statistics" },
+  { Recurse, 0, "r", "recursive", Arg::None,
+    "  -r, --recursive  \tRecurse directories and process all CIF files." },
   { Ddl, 0, "d", "ddl", Arg::Required, "  -d, --ddl=PATH  \tDDL for validation." },
+
+  { NoOp, 0, "", "", Arg::None, "\nOptional checks:" },
   { Context, 0, "c", "context", Arg::None,
     "  -c, --context  \tCheck _pdbx_{category|item}_context.type." },
   { NoRegex, 0, "", "no-regex", Arg::None,
@@ -45,8 +49,6 @@ const option::Descriptor Usage[] = {
     "  --no-unique  \tSkip checking if category keys (DDL2) are unique." },
   { Parents, 0, "p", "", Arg::None,
     "  -p  \tCheck if parent items (DDL2) are present." },
-  { Recurse, 0, "r", "recursive", Arg::None,
-    "  -r, --recursive  \tRecurse directories and process all CIF files." },
 
   { NoOp, 0, "", "", Arg::None, "\nValidation specific to CCP4 monomer files:" },
   { Monomer, 0, "m", "monomer", Arg::None,

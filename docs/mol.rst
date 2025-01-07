@@ -681,9 +681,9 @@ Example usage:
 
  ::
 
-  // to write only CRYST1 and coordinates, use:
+  // To write only CRYST1 and coordinates, use:
   auto options = gemmi::PdbWriteOptions::minimal())
-  // additionally, write TER records without numbers:
+  // Additionally, write TER records without numbers:
   options.numbered_ter = false;
   // to get PDB headers only:
   //auto options = gemmi::PdbWriteOptions::headers_only()
@@ -703,7 +703,7 @@ Example usage:
 
   # To write only CRYST1 and coordinates, use:
   structure.write_pdb(output_path, gemmi.PdbWriteOptions(minimal=True))
-  # Additionally, write TER records without numbers:
+  # As above, but write TER records without numbers:
   structure.write_pdb(output_path, gemmi.PdbWriteOptions(minimal=True, numbered_ter=False))
   # To get PDB headers as a string:
   header_string = structure.make_pdb_string(gemmi.PdbWriteOptions(headers_only=True))

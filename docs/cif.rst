@@ -1505,7 +1505,90 @@ Gemmi is used primarily in structural biology and it's exercised mostly
 with mmCIF and DDL2. DDL1 is supported to a limited extent (which could be
 expanded if there was interest and a good use case for it).
 
-TBC - overview of DDL2 dictionaries, how to use class Ddl,
+Let's start with a simple example, a pet weighting experiment:
+
+.. doctest::
+
+  >>> pet_example = '''\
+  ...   data_pets
+  ...   loop_
+  ...    _pet_id
+  ...    _pet_species
+  ...    _pet_weight
+  ...    1 parrot 2
+  ...    2 dog    15
+  ... '''
+
+Now let's make a contrived DDL1 dictionary for it:
+
+.. doctest::
+
+  >>> pet_ddl = cif.read_string('''\
+  ...  data_pet_index
+  ...    _name               '_pet_id'
+  ...    _category           pet
+  ...    _type               numb
+  ...
+  ...  data_pet_species
+  ...    _name               '_pet_species'
+  ...    _category           pet
+  ...    _type               char
+  ...    loop_ _enumeration  parrot cat dog
+  ...
+  ...  data_pet_weight
+  ...    _name               '_pet_weight'
+  ...    _category           pet
+  ...    _type               numb
+  ...    _enumeration_range  0.0:100.0
+  ...    _units              kg
+  ... ''')
+
+We can now use class `Ddl` to check if it's:
+
+.. doctest::
+
+  >>> validator = cif.Ddl(logger=sys.stdout)
+  >>> validator.read_ddl(pet_ddl)
+  >>> validator.validate_cif(cif.read_string(pet_example))
+  True
+
+Now let's add one line to our example that will trigger errors:
+
+.. doctest::
+
+  >>> pet_example += '''
+  ...    3 hippo  3000
+  ... '''
+  >>> validator.validate_cif(cif.read_string(pet_example))
+  string:2 [pets] _pet_species: hippo is not one of the allowed values:
+    parrot
+    cat
+    dog
+  string:2 [pets] _pet_weight: value out of expected range: 3000
+  False
+
+The errors are sent to a logger as described
+in a :ref:`separate section <logger>`.
+The logger was set in constructor and can be changed at any point:
+
+.. doctest::
+
+  >>> validator.set_logger((None, 0))
+  >>> validator.validate_cif(cif.read_string(pet_example))
+  False
+
+Calling `read_ddl()` moves the content of a `Document` to the `Ddl` class,
+leaving the original object empty (it avoids copying to make it faster).
+`read_ddl()` can be called multiple time to use multiple dictionaries
+(or extensions) simultanously.
+
+`Ddl` has a few flags that enable or disable a few types of checks.
+They correspond to Optional Checks of the :ref:`gemmi validate <gemmi-validate>`
+subcommand. In C++ they are member variables that can be set directly,
+while Python bindings provide corresponding keyword arguments for constructor.
+
+
+TBC - overview of DDL2 dictionaries,
 how to interpret results, what to focus on, etc
 
 

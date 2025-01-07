@@ -8,13 +8,15 @@ Options:
   -q, --quiet      Show only errors.
   -f, --fast       Syntax-only check.
   -s, --stat       Show token statistics
+  -r, --recursive  Recurse directories and process all CIF files.
   -d, --ddl=PATH   DDL for validation.
+
+Optional checks:
   -c, --context    Check _pdbx_{category|item}_context.type.
   --no-regex       Skip regex checking (when using DDL2)
   --no-mandatory   Skip checking if mandatory tags are present.
   --no-unique      Skip checking if category keys (DDL2) are unique.
   -p               Check if parent items (DDL2) are present.
-  -r, --recursive  Recurse directories and process all CIF files.
 
 Validation specific to CCP4 monomer files:
   -m, --monomer    Run checks specific to monomer dictionary.

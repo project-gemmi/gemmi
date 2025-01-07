@@ -64,7 +64,8 @@ When a function takes a Logger argument, we can pass:
  * `{&Logger::to_stdout}` to redirect messages to stdout,
  * `{&Logger::to_stdout, 3}` to print only warnings (threshold=3),
  * `{nullptr, 0}` to disable all messages,
- * `{}` to throw errors and ignore other messages (the default, see Quirk above),
+ * `{}` to throw exception on error and ignore other messages
+   (the default, see Quirk above),
  * `{[](const std::string& s) { do_anything(s);}}` to do anything else.
 
 .. tab:: Python
@@ -73,7 +74,8 @@ When a function takes a Logger argument, we can pass:
    and `flush` methods), to redirect messages to that stream,
  * `(sys.stdout, 3)` to print only warnings (threshold=3),
  * `(None, 0)` to disable all messages,
- * `None` to throw errors and ignore other messages (the default, see Quirk above),
+ * `None` to raise exception on error and ignore other messages
+   (the default, see Quirk above),
  * a function that takes a message string as its only argument
    (e.g. `lambda s: print(s.upper())`).
 

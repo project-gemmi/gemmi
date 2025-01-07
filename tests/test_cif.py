@@ -391,10 +391,11 @@ class TestDictionary(unittest.TestCase):
         msg_list = []
         ddl = cif.Ddl(logger=(lambda msg: msg_list.append(msg), 6))
         ddl.read_ddl(cif.read(full_path('mmcif_pdbx_v50_frag.dic')))
-        if msg_list:
-            # regex for type binary may result in regex_error
-            self.assertEqual(len(msg_list), 1)
-            self.assertTrue(msg_list[0].startswith("Bad DDL2: can't parse regex"))
+        self.assertEqual(len(msg_list), 1,
+                         msg=f'Messages:\n  {"\n  ".join(msg_list)}')
+        for msg in msg_list:
+            expected = "Bad DDL2: can't parse regex for 'binary':"
+            self.assertTrue(msg.startswith(expected), msg=msg)
         msg_list = []
         ddl.validate_cif(doc)
         self.assertEqual(msg_list,
