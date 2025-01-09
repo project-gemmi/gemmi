@@ -898,6 +898,31 @@ save_atom_site
 ;
      save_
 
+save__atom_site.id
+   _item_description.description  
+;              The value of _atom_site.id must uniquely identify a record in the
+               ATOM_SITE list.
+               <snip>
+;
+
+   #
+   loop_
+   _item.name
+   _item.category_id
+   _item.mandatory_code
+     "_atom_site.id"                 atom_site            yes  
+     "_atom_site_anisotrop.id"       atom_site_anisotrop  yes  
+     "_geom_angle.atom_site_id_1"    geom_angle           yes  
+     # <snip>
+   #
+   _item_aliases.alias_name  "_atom_site_label"
+   _item_aliases.dictionary  cif_core.dic
+   _item_aliases.version     2.0.1
+   #
+   # <snip>
+   _item_type.code  code
+   # <snip>
+save_
 # <snip>
 
 save__atom_site.attached_hydrogens

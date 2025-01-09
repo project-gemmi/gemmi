@@ -263,6 +263,8 @@ void Ddl::check_mandatory_items(const cif::Block& b) const {
   // make a list of items in each category in the block
   std::map<std::string, std::vector<std::string>> categories;
   auto add_category = [&](const std::string& tag) {
+    if (!find_rules(tag))  // ignore unknown tags
+      return;
     size_t pos = tag.find('.');
     if (pos != std::string::npos)
       categories[to_lower(tag.substr(0, pos+1))].push_back(to_lower(tag.substr(pos+1)));
@@ -274,6 +276,7 @@ void Ddl::check_mandatory_items(const cif::Block& b) const {
       for (const std::string& tag : item.loop.tags)
         add_category(tag);
   }
+
   // go over categories and check if nothing is missing
   for (const auto& cat : categories) {
     size_t n = cat.first.size();
@@ -287,29 +290,30 @@ void Ddl::check_mandatory_items(const cif::Block& b) const {
     if (use_context)
       if (const std::string* ct = cat_block->find_value("_pdbx_category_context.type"))
         logger.mesg(br(b), "category indicated as ", *ct, ": ", cat_name);
-    // check key items
-    for (const std::string& v : cat_block->find_values("_category_key.name")) {
-      std::string key = cif::as_string(v);
-      if (!gemmi::istarts_with(key, cat.first))
-        logger.level<3>("inconsistent dictionary: wrong _category_key for ", cat_name);
-      if (!gemmi::in_vector(to_lower(key.substr(n)), cat.second)) {
-        // In mmcif_pdbx_v50.dic a category key is missing so often,
-        // that this generates about 20,000 errors, resulting in too much text.
-        if (missing_category_key_errors < 20 || logger.threshold >= 7)
-          warn(b, "missing category key: ", key);
-        else if (missing_category_key_errors == 20)
-          logger.level<3>("(Increase verbosity to show all missing-category-key errors.)");
-        missing_category_key_errors++;
-      }
-    }
+    std::vector<std::string> implicit_items;
     // check mandatory items
     for (auto i = name_index_.lower_bound(cat.first);
          i != name_index_.end() && gemmi::starts_with(i->first, cat.first);
          ++i) {
-      for (auto row : i->second->find("_item.", {"name", "mandatory_code"}))
-        if (row.str(1)[0] == 'y' && iequal(row.str(0), i->first) &&
+      for (auto row : i->second->find("_item.", {"name", "mandatory_code"})) {
+        // mandatory_code can be one of: yes, not, implicit, implicit-ordinal
+        char mc0 = row.str(1)[0];
+        if (mc0 == 'y' && iequal(row.str(0), i->first) &&
             !gemmi::in_vector(i->first.substr(n), cat.second))
           warn(b, "missing mandatory tag: ", i->first);
+        else if (mc0 == 'i')
+          implicit_items.push_back(gemmi::to_lower(row.str(0)));
+      }
+    }
+    // check key items
+    for (const std::string& v : cat_block->find_values("_category_key.name")) {
+      std::string key = gemmi::to_lower(cif::as_string(v));
+      if (!gemmi::starts_with(key, cat.first))
+        logger.level<3>("inconsistent dictionary: wrong _category_key for ", cat_name);
+      if (!gemmi::in_vector(key.substr(n), cat.second) &&
+          // check if the key item is implicit (a feature is used in mmcif_ddl.dic)
+          !in_vector(key, implicit_items))
+        warn(b, "missing category key: ", key);
     }
   }
 }

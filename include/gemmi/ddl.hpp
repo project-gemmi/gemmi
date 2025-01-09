@@ -61,8 +61,6 @@ private:
   std::vector<ParentLink> parents_;
   // storage for DDL2 _item_linked.child_name -> _item_linked.parent_name
   std::map<std::string, std::string> item_parents_;
-  // counter that allows to limit the number of errors
-  mutable int missing_category_key_errors = 0;
 
   cif::Block* find_rules(const std::string& name) const {
     auto iter = name_index_.find(to_lower(name));

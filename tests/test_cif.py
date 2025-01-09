@@ -401,20 +401,23 @@ class TestDictionary(unittest.TestCase):
         self.assertEqual(msg_list,
                          ['[dummy_block] unknown tag _custom_tag',
                           '[dummy_block] unknown tag _another_one',
+                          '[dummy_block] missing mandatory tag: _atom_site.id',
                           '[dummy_block] missing category key: _atom_site.id'])
 
+        # try out set_logger()
         counter = 0
         def incr_counter(_):
             nonlocal counter
             counter += 1
         ddl.set_logger((incr_counter, 7))
         ddl.validate_cif(doc)
-        self.assertEqual(counter, 3)
+        self.assertEqual(counter, len(msg_list))
 
         msg_list = []
         ddl.set_logger(lambda msg: msg_list.append(msg))
         doc = cif.read_string("""
             data_b2
+            _something.unexpected here
             loop_
             _atom_site.id
             _atom_site.auth_asym_id
@@ -427,10 +430,10 @@ class TestDictionary(unittest.TestCase):
         """)
         ddl.validate_cif(doc)
         self.assertEqual(msg_list, [
-            '[b2] unknown tag _atom_site.id',                         # 1
-            "string:3 [b2] _atom_site.auth_asym_id: "
+            '[b2] unknown tag _something.unexpected',                 # 1
+            "string:4 [b2] _atom_site.auth_asym_id: "
             "'hey hey' does not match the code regex",                # 2
-            'string:3 [b2] _atom_site.attached_hydrogens: '
+            'string:4 [b2] _atom_site.attached_hydrogens: '
             'value out of expected range: -1',                        # 3
             '[b2] category atom_site has 1 duplicated key:\n  id=2',  # 4
         ])
