@@ -475,9 +475,9 @@ void Ddl::read_ddl2_block(cif::Block& block) {
         // mmcif_pdbx_v50.dic uses custom flavour of regex:
         // character classes have unescaped \, but recognize \n, \t, etc.
         // Here is a quick fix:
-        std::string::size_type pos = re_str.find("/\\{}");
-        if (pos != std::string::npos)
-          re_str.replace(pos, 4, "/\\\\{}");
+        gemmi::replace_all(re_str, "/\\{}", "/\\\\{}");
+        // in binary, \<newline> is apparently meant to be ignored
+        gemmi::replace_all(re_str, "\\\n", "");
         auto flag = std::regex::awk | std::regex::optimize;
         regexes_.emplace(row.str(0), std::regex(re_str, flag));
       } catch (const std::regex_error& e) {

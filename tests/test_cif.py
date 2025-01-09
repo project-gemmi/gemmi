@@ -391,12 +391,7 @@ class TestDictionary(unittest.TestCase):
         msg_list = []
         ddl = cif.Ddl(logger=(lambda msg: msg_list.append(msg), 6))
         ddl.read_ddl(cif.read(full_path('mmcif_pdbx_v50_frag.dic')))
-        self.assertEqual(len(msg_list), 1,
-                         msg=f'Messages:\n  {"\n  ".join(msg_list)}')
-        for msg in msg_list:
-            expected = "Bad DDL2: can't parse regex for 'binary':"
-            self.assertTrue(msg.startswith(expected), msg=msg)
-        msg_list = []
+        self.assertEqual(msg_list, [])
         ddl.validate_cif(doc)
         self.assertEqual(msg_list,
                          ['[dummy_block] unknown tag _custom_tag',
