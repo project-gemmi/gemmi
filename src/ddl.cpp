@@ -233,6 +233,10 @@ private:
   const std::regex* re_ = nullptr;
 };
 
+std::string major_ver(const std::string &s) {
+  return s.substr(0, s.find('.'));
+}
+
 } // anonymous namespace
 
 // check if the dictionary name/version correspond to _audit_conform_dict_*
@@ -250,8 +254,7 @@ void Ddl::check_audit_conform(const cif::Document& doc) const {
     } else if (const std::string* dict_ver = b.find_value(audit_conform + "dict_version")) {
       std::string version = cif::as_string(*dict_ver);
       if (version != dict_version) {
-        auto major = [](const std::string& s) { return s.substr(0, s.find('.')); };
-        if (logger.threshold >= 7 || major(version) != major(dict_version))
+        if (logger.threshold >= 7 || major_ver(version) != major_ver(dict_version))
           logger.note(br(b), "conforms to ", name, " ver. ", version,
                       " while DDL has ver. ", dict_version);
       }
