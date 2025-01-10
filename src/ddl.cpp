@@ -478,6 +478,7 @@ void Ddl::read_ddl2_block(cif::Block& block) {
         gemmi::replace_all(re_str, "/\\{}", "/\\\\{}");
         // in binary, \<newline> is apparently meant to be ignored
         gemmi::replace_all(re_str, "\\\n", "");
+        gemmi::replace_all(re_str, "\\\r\n", "");
         auto flag = std::regex::awk | std::regex::optimize;
         regexes_.emplace(row.str(0), std::regex(re_str, flag));
       } catch (const std::regex_error& e) {
