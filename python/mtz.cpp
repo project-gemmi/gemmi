@@ -103,7 +103,7 @@ void add_mtz(nb::module_& m) {
     .def_rw("valm", &Mtz::valm)
     .def_ro("nsymop", &Mtz::nsymop)
     .def_rw("cell", &Mtz::cell)
-    .def_rw("spacegroup", &Mtz::spacegroup)
+    .def_rw("spacegroup", &Mtz::spacegroup, nb::arg().none())
     .def_ro("spacegroup_name", &Mtz::spacegroup_name)
     .def_ro("spacegroup_number", &Mtz::spacegroup_number)
     .def_rw("datasets", &Mtz::datasets)
