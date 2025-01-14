@@ -58,13 +58,12 @@ class TestMath(unittest.TestCase):
         m.fromlist([[50,50,50], [50,50,50], [50,50,50]])
         for cx in [cn00, cn32, cn64, ct00, ct32, ct64]:
             self.assertEqual(cx[0][0], 1)
-        self.assertEqual(cf00[0][0], 50)
+        for cx in [cf00, cf64]:
+            self.assertEqual(cx[0][0], 50)
         if numpy.__version__ < '2.':
             self.assertEqual(cf32[0][0], 1)
-            self.assertEqual(cf64[0][0], 1)
         else:
             self.assertIsNone(cf32)
-            self.assertEqual(cf64[0][0], 50)
 
 class TestUnitCell(unittest.TestCase):
     def test_dummy_cell(self):
