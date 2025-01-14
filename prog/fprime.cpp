@@ -23,7 +23,7 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
   //CommonUsage[Verbose],
   { Energy, 0, "e", "energy", Arg::NumberOrRange,
-    "  -e, --energy=ENERGY  \tEnergy [eV] or range of energies (e.g. 9.8:12.2)." },
+    "  -e, --energy=ENERGY  \tEnergy [eV] or range of energies (e.g. 8000:14000)." },
   { Wavelen, 0, "w", "wavelength", Arg::NumberOrRange,
     "  -w, --wavelength=LAMBDA  \tWavelength [A] or range (e.g. 0.5:0.9)." },
   { Step, 0, "s", "step", Arg::Float,
@@ -32,7 +32,7 @@ const option::Descriptor Usage[] = {
     "  -n N  \tNumber of values in a range." },
   { NoOp, 0, "", "", Arg::None,
     "\nOptions -e/-w can be given multiple times:"
-    "\n  " EXE_NAME " -e 12.4 -e 11.5 -e 9.8 Se"
+    "\n  " EXE_NAME " -e 12400 -e 11500 -e 9800 Se"
     "\nIf -e or -w specifies a range, -n or -s must be provided, e.g.:"
     "\n  " EXE_NAME " -w 0.5:0.9 -s 0.01 Os"
   },
