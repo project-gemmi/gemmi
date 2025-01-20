@@ -873,13 +873,16 @@ Structure make_structure_from_block(const cif::Block& block_) {
   }
 
   cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});
-  for (auto row : block.find("_entity.", {"id", "type"})) {
+  for (auto row : block.find("_entity.", {"id", "?type"})) {
     Entity ent(row.str(0));
-    ent.entity_type = entity_type_from_string(row.str(1));
+    if (row.has(1))
+      ent.entity_type = entity_type_from_string(row.str(1));
     ent.polymer_type = PolymerType::Unknown;
     if (polymer_types.ok()) {
       try {
         std::string poly_type = polymer_types.find_row(ent.name).str(1);
+        if (ent.entity_type == EntityType::Unknown)
+          ent.entity_type = EntityType::Polymer;
         ent.polymer_type = polymer_type_from_string(poly_type);
       } catch (std::runtime_error&) {}
     }
