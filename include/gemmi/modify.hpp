@@ -58,7 +58,7 @@ template<class T> void assign_b_iso(T& obj, float b_min, float b_max) {
     assign_b_iso(child, b_min, b_max);
 }
 template<> inline void assign_b_iso(Atom& atom, float b_min, float b_max) {
-  atom.b_iso = std::min(std::max(atom.b_iso, b_min), b_max);
+  atom.b_iso = std::clamp(atom.b_iso, b_min, b_max);
 }
 
 /// Remove anisotropic ADP

@@ -93,7 +93,7 @@ struct Vec3_ {
     return dot(o) / std::sqrt(length_sq() * o.length_sq());
   }
   Real angle(const Vec3_& o) const {
-    return std::acos(std::max(-1., std::min(1., cos_angle(o))));
+    return std::acos(std::clamp(cos_angle(o), -1., 1.));
   }
   bool approx(const Vec3_& o, Real epsilon) const {
     return std::fabs(x - o.x) <= epsilon &&

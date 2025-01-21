@@ -227,7 +227,7 @@ struct Clamp {
     if (xmin == xmax)
       *x = xmin;
     else
-      *x = std::min(std::max(*x, xmin), xmax);
+      *x = std::clamp(*x, xmin, xmax);
   }
 };
 
