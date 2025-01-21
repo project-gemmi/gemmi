@@ -73,7 +73,7 @@ for:
   - path
   - dir C:\mingw-w64\
   - cmake --version
-  - cmake -G "%CMAKE_GENERATOR%" -DCMAKE_CXX_STANDARD=14  -DBUILD_SHARED_LIBS=OFF .
+  - cmake -G "%CMAKE_GENERATOR%" -DBUILD_SHARED_LIBS=OFF .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
   - cmake --install . --config %CMAKE_CONFIG%
