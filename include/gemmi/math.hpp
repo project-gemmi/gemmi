@@ -50,6 +50,11 @@ inline double angle_abs_diff(double a, double b, double full=360.0) {
   return std::min(d, full - d);
 }
 
+// similar to C++17 std::clamp()
+template<class T> constexpr T clamp(T v, T lo, T hi) {
+  return std::min(std::max(v, lo), hi);
+}
+
 template <typename Real>
 struct Vec3_ {
   Real x, y, z;
@@ -93,7 +98,7 @@ struct Vec3_ {
     return dot(o) / std::sqrt(length_sq() * o.length_sq());
   }
   Real angle(const Vec3_& o) const {
-    return std::acos(std::clamp(cos_angle(o), -1., 1.));
+    return std::acos(clamp(cos_angle(o), -1., 1.));
   }
   bool approx(const Vec3_& o, Real epsilon) const {
     return std::fabs(x - o.x) <= epsilon &&

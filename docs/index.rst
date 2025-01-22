@@ -30,7 +30,7 @@ Gemmi is open-source (MPL_) and portable -- it runs on Linux, Windows,
 MacOS and even inside a web browser if compiled to WebAssembly
 (`here <https://project-gemmi.github.io/wasm/>`__ and
 `here <https://www.npmjs.com/package/mtz>`__).
-It is written in C++17, with Python (3.8+) bindings,
+It is written in C++14, with Python (3.8+) bindings,
 and with partial C and Fortran 2003 interface.
 
 .. _MPL: https://www.mozilla.org/en-US/MPL/2.0/
