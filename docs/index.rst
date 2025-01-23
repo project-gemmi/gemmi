@@ -26,17 +26,14 @@ that use CIF files
 (we have the `fastest <https://github.com/project-gemmi/mmcif-benchmark>`_
 open-source CIF parser).
 
-Gemmi is open-source (MPL_) and portable -- it runs on Linux, Windows,
-MacOS and even inside a web browser if compiled to WebAssembly
-(`here <https://project-gemmi.github.io/wasm/>`__ and
-`here <https://www.npmjs.com/package/mtz>`__).
-It is written in C++14, with Python (3.8+) bindings,
-and with partial C and Fortran 2003 interface.
+Gemmi is open-source (`MPL <https://www.mozilla.org/en-US/MPL/2.0/>`_)
+and portable -- it runs on Linux, Windows, macOS and even inside a web
+browser when compiled :ref:`to WebAssembly <webassembly>`.
+It is written in C++14, with Python (3.8+) bindings
+and a partial C and Fortran 2003 interface.
 
-.. _MPL: https://www.mozilla.org/en-US/MPL/2.0/
-
-Occasionally, the project gets sidetracked into
-`visualization of the PDB data <https://project-gemmi.github.io/pdb-stats/>`_.
+The project also maintains `web-based tools <https://project-gemmi.github.io/wasm/>`_
+and fancy `PDB statistics <https://project-gemmi.github.io/pdb-stats/>`_.
 
 Gemmi is a joint project of
 `Global Phasing Ltd <https://www.globalphasing.com/>`_

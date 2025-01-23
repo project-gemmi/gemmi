@@ -168,6 +168,57 @@ but they should be usable on their own.
  you get a static library `libcgemmi.a` that can be used from C,
  together with the :file:`fortran/*.h` headers.
 
+.. _webassembly:
+
+WebAssembly
+-----------
+
+The Gemmi library can be compiled with Emscripten to WebAssembly.
+Since compiling the entire library is unlikely to be necessary,
+we'll show how to compile a subset needed for a particular project,
+adding bindings for JavaScript. We present two approaches.
+
+With Embind
+~~~~~~~~~~~
+
+The `wasm/` subdirectory contains bindings that use Embind to expose
+C++ classes to JavaScript. Currently, they consist of two parts:
+
+* Minimal bindings to the macromolecular `Structure`
+  that allow reading a PDB or mmCIF file and iterating over models, chains,
+  residues and atoms (see `mol.test.js`). This serves as an example
+  and a starting point for further work (which can be carried on either
+  as part of gemmi or in the user's own project). Feel free to reach out
+  if you have questions.
+* Bindings to class `Mtz` that enable map calculation (via FFT)
+  from map coefficients. This part was previously provided in the separate
+  `mtz module <https://www.npmjs.com/package/mtz>`_,
+  the first library to enable the use of MTZ files in molecular graphics apps.
+
+The files from the Gemmi library used for building the wasm module
+are listed as `GEMMI_OBJS` in the `Makefile`.
+
+With C API
+~~~~~~~~~~
+
+As part of the Gemmi project, we maintain a set of
+`web tools <https://project-gemmi.github.io/wasm/>`_ (mostly file converters),
+which are single-page applications powered by Gemmi functions in WASM.
+The source code of these tools is in the
+`wasm repository <https://github.com/project-gemmi/wasm>`_ (not to be confused
+with the wasm subdirectory of the gemmi repo -- one of them should be renamed).
+
+These tools don't use the bindings described above. They demonstrate
+an alternative approach. For each page we wrote a dedicated C++ function,
+with a C API, that performs the bulk of the work. The bindings to these
+functions are generated using Emscripten (without Embind).
+This approach -- writing part of the web app in C++ -- is more performant,
+as it keeps all computations on the WebAssembly side and minimizes
+the number of calls across the JS/WASM boundary.
+
+Check the Makefiles in subdirectories to see how the wasm modules are built.
+
+
 Program
 -------
 

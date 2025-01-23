@@ -12,12 +12,12 @@ GEMMI can help if you work with:
 
 GEMMI is a C++ library (currently, C++14) accompanied by:
 
-* command-line [tools](https://gemmi.readthedocs.io/en/latest/utils.html),
+* command-line [tools](https://gemmi.readthedocs.io/en/latest/program.html),
 * Python bindings,
 * Fortran 2003+ interface (in progress),
-* partial WebAssembly ports (see [here](https://project-gemmi.github.io/wasm/)
-  and [here](https://www.npmjs.com/package/mtz)),
-* and little data viz [projects](https://project-gemmi.github.io/pdb-stats/).
+* partial WebAssembly bindings,
+* online [tools](https://project-gemmi.github.io/wasm/)
+  and little data viz [projects](https://project-gemmi.github.io/pdb-stats/).
 
 Documentation: http://gemmi.readthedocs.io/en/latest/
 
