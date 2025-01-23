@@ -323,5 +323,8 @@ gemmi/util.hpp
 gemmi/version.hpp
     Version number.
 
+gemmi/xds2mtz.hpp
+    Convert XDS_ASCII to MTZ.
+
 gemmi/xds_ascii.hpp
-    Read unmerged XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.
+    Read XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.

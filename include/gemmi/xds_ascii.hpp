@@ -1,6 +1,6 @@
 // Copyright 2020 Global Phasing Ltd.
 //
-// Read unmerged XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.
+// Read XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.
 
 #ifndef GEMMI_XDS_ASCII_HPP_
 #define GEMMI_XDS_ASCII_HPP_
