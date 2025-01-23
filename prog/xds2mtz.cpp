@@ -128,12 +128,16 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.title = opt->arg;
     else
       mtz.title = "Converted from " + gemmi::path_basename(input_path, {});
+    std::string xds_info = gemmi::cat("From ", xds.generated_by, ' ', xds.version_str);
     if (const option::Option* opt = p.options[History]) {
-      for (; opt; opt = opt->next())
+      for (; opt; opt = opt->next()) {
         mtz.history.emplace_back(opt->arg);
+        if (mtz.history.back() == "/xds/")  // special option for -H
+          mtz.history.back().swap(xds_info);
+      }
     } else {
       mtz.history.emplace_back("From gemmi-xds2mtz " GEMMI_VERSION);
-      mtz.history.push_back(gemmi::cat("From ", xds.generated_by, ' ', xds.version_str));
+      mtz.history.push_back(std::move(xds_info));
     }
     mtz.cell.set_from_array(xds.cell_constants);
     mtz.spacegroup = gemmi::find_spacegroup_by_number(xds.spacegroup_number);
