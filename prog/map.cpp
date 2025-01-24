@@ -4,7 +4,7 @@
 #include <cstdio>          // for fprintf
 #include <algorithm>       // for nth_element, count_if
 #include "gemmi/ccp4.hpp"
-#include "gemmi/gz.hpp"    // for MaybeGzipped
+#include "gemmi/read_map.hpp" // for read_ccp4_map
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
 #include "gemmi/floodfill.hpp"  // for mask_points_above_threshold
@@ -182,11 +182,10 @@ int GEMMI_MAIN(int argc, char **argv) {
   try {
     for (int i = 0; i < p.nonOptionsCount(); ++i) {
       const char* input = p.nonOption(i);
-      gemmi::Ccp4<> map;
       if (i != 0)
         std::printf("\n\n");
       std::printf("Reading file: %s\n", input);
-      map.read_ccp4(gemmi::MaybeGzipped(input));
+      gemmi::Ccp4<> map = gemmi::read_ccp4_map(input, false);
       gemmi::DataStats stats = gemmi::calculate_data_statistics(map.grid.data);
       if (dump)
         print_info(map, stats);
