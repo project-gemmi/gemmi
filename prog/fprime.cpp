@@ -3,7 +3,6 @@
 #include "gemmi/elem.hpp"    // for Element, find_element
 #include "gemmi/fprime.hpp"  // for cromer_liberman_for_array
 #include "gemmi/math.hpp"    // for hc
-#include "gemmi/util.hpp"    // for vector_move_extend
 #include <cstdlib>           // for atof
 #include <stdio.h>
 
@@ -88,7 +87,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (xmin == xmax) {
         energies.push_back(xmin);
       } else {
-        gemmi::vector_move_extend(energies, expand_range(xmin, xmax));
+        for (double energy : expand_range(xmin, xmax))
+          energies.push_back(energy);
         if (range_error)
           return -1;
       }
