@@ -84,18 +84,17 @@ struct GEMMI_DLL XdsAscii {
     isets.emplace_back(id);
     return isets.back();
   }
-  void read_stream(LineReaderBase&& reader, const std::string& source);
+  void read_stream(AnyStream&& reader, const std::string& source);
 
   template<typename T>
   void read_input(T&& input) {
     if (input.is_stdin()) {
-      read_stream(LineReader<FileStream>{stdin}, "stdin");
+      read_stream(FileStream{stdin}, "stdin");
     } else if (input.is_compressed()) {
-      using LR = LineReader<decltype(input.get_uncompressing_stream())>;
-      read_stream(LR{input.get_uncompressing_stream()}, input.path());
+      read_stream(input.get_uncompressing_stream(), input.path());
     } else {
       auto f = file_open(input.path().c_str(), "r");
-      read_stream(LineReader<FileStream>{f.get()}, input.path());
+      read_stream(FileStream{f.get()}, input.path());
     }
   }
 
@@ -176,7 +175,7 @@ struct GEMMI_DLL XdsAscii {
 inline XdsAscii read_xds_ascii_file(const std::string& path) {
   auto f = file_open(path.c_str(), "r");
   XdsAscii ret;
-  ret.read_stream(LineReader<FileStream>{f.get()}, path);
+  ret.read_stream(FileStream{f.get()}, path);
   return ret;
 }
 

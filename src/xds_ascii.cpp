@@ -112,7 +112,7 @@ void parse_numbers_into_array(const char* start, const char* end,
 
 } // anonymous namespace
 
-void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& source) {
+void XdsAscii::read_stream(AnyStream&& line_reader, const std::string& source) {
   source_path = source;
   read_columns = 12;
   char line[256];
