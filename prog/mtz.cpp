@@ -466,7 +466,7 @@ void check_asu(const Mtz& mtz, bool tnt) {
 
 void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
   Mtz mtz2;
-  mtz2.read_input(gemmi::MaybeGzipped(path2), true);
+  mtz2.read_file_gz(path2, true);
   if (mtz1.spacegroup != mtz2.spacegroup)
     printf("Spacegroup differs:  %s  and  %s\n",
            mtz1.spacegroup_name.c_str(), mtz2.spacegroup_name.c_str());
