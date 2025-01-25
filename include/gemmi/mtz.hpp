@@ -421,14 +421,8 @@ struct GEMMI_DLL Mtz {
 
   void read_first_bytes(AnyStream& stream);
 
-  void seek_headers(AnyStream& stream) {
-    std::ptrdiff_t pos = 4 * std::ptrdiff_t(header_offset - 1);
-    if (!stream.seek(pos))
-      fail("Cannot rewind to the MTZ header at byte " + std::to_string(pos));
-  }
-
   /// read headers until END
-  void read_main_headers(AnyStream& stream);
+  void read_main_headers(AnyStream& stream, std::vector<std::string>* save_headers);
 
   /// read the part between END and MTZENDOFHEADERS
   void read_history_and_batch_headers(AnyStream& stream);

@@ -170,12 +170,18 @@ void Mtz::read_first_bytes(AnyStream& stream) {
   }
 }
 
-void Mtz::read_main_headers(AnyStream& stream) {
+void Mtz::read_main_headers(AnyStream& stream, std::vector<std::string>* save_headers) {
   char line[81] = {0};
-  seek_headers(stream);
+  std::ptrdiff_t header_pos = 4 * std::ptrdiff_t(header_offset - 1);
+  if (!stream.seek(header_pos))
+    fail("Cannot rewind to the MTZ header at byte " + std::to_string(header_pos));
   int ncol = 0;
   bool has_batch = false;
-  while (stream.read(line, 80) && ialpha3_id(line) != ialpha3_id("END")) {
+  while (stream.read(line, 80)) {
+    if (save_headers)
+      save_headers->emplace_back(line, line+80);
+    if (ialpha3_id(line) == ialpha3_id("END"))
+      break;
     const char* args = skip_word_and_space(line);
     switch (ialpha4_id(line)) {
       case ialpha4_id("VERS"):
@@ -376,7 +382,7 @@ void Mtz::read_raw_data(AnyStream& stream) {
 
 void Mtz::read_all_headers(AnyStream& stream) {
   read_first_bytes(stream);
-  read_main_headers(stream);
+  read_main_headers(stream, nullptr);
   read_history_and_batch_headers(stream);
   setup_spacegroup();
   if (datasets.empty())

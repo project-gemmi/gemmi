@@ -547,18 +547,12 @@ void print_mtz_info(gemmi::AnyStream&& stream, const char* path,
   } catch (std::runtime_error& e) {
     gemmi::fail(std::string(e.what()) + ": " + path);
   }
-  if (options[Headers]) {
-    char buf[81] = {0};
-    mtz.seek_headers(stream);
-    while (stream.read(buf, 80)) {
-      printf("%s\n", gemmi::rtrim_str(buf).c_str());
-      if (gemmi::ialpha3_id(buf) == gemmi::ialpha3_id("END"))
-        break;
-    }
-  }
   if (options[Verbose])
     mtz.logger.callback = gemmi::Logger::to_stderr;
-  mtz.read_main_headers(stream);
+  std::vector<std::string> save_headers;
+  mtz.read_main_headers(stream, options[Headers] ? &save_headers : nullptr);
+  for (const std::string& header : save_headers)
+    printf("%s\n", gemmi::rtrim_str(header).c_str());
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
   if (options[PrintTsv] || options[PrintStats] || options[PrintHistogram] ||
