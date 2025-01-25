@@ -2,6 +2,7 @@
 //
 // MTZ info
 
+#include <climits>            // for INT_MAX
 #include <cstdio>
 #include <unordered_map>
 #include <gemmi/mtz.hpp>
@@ -536,8 +537,7 @@ void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
   }
 }
 
-template<typename Stream>
-void print_mtz_info(Stream&& stream, const char* path,
+void print_mtz_info(gemmi::AnyStream&& stream, const char* path,
                     const std::vector<option::Option>& options) {
   Mtz mtz;
   try {
