@@ -18,7 +18,7 @@
 #include "symmetry.hpp"
 #include "fail.hpp"      // for fail
 #include "fileutil.hpp"  // for file_open, is_little_endian, ...
-#include "input.hpp"     // for FileStream
+#include "input.hpp"     // for AnyStream, FileStream
 #include "grid.hpp"
 
 namespace gemmi {
@@ -57,7 +57,6 @@ struct Ccp4Base {
     std::memcpy(&f, &int_value, 4);
     return f;
   }
-  // ccp4 map header has mostly 80-byte strings
   std::string header_str(int w, size_t len=80) const {
     if (4 * ccp4_header.size() < 4 * (w - 1) + len)
       fail("invalid end of string");
@@ -138,14 +137,9 @@ struct Ccp4Base {
   Position get_origin() const {
     return Position(header_float(50), header_float(51), header_float(52));
   }
-};
-
-template<typename T=float>
-struct Ccp4 : public Ccp4Base {
-  Grid<T> grid;
 
   // this function assumes that the whole unit cell is covered with offset 0
-  void prepare_ccp4_header_except_mode_and_stats() {
+  void prepare_ccp4_header_except_mode_and_stats(GridMeta& grid) {
     GroupOps ops;
     if (grid.spacegroup)
       ops = grid.spacegroup->operations();
@@ -183,25 +177,7 @@ struct Ccp4 : public Ccp4Base {
     }
   }
 
-  /// If the header is empty, prepare it; otherwise, update only MODE
-  /// and, if update_stats==true, also DMIN, DMAX, DMEAN and RMS.
-  void update_ccp4_header(int mode=-1, bool update_stats=true) {
-    if (mode > 2 && mode != 6)
-      fail("Only modes 0, 1, 2 and 6 are supported.");
-    if (grid.point_count() == 0)
-      fail("update_ccp4_header(): set the grid first (it has size 0)");
-    if (grid.axis_order == AxisOrder::Unknown)
-      fail("update_ccp4_header(): run setup() first");
-    if (update_stats)
-      hstats = calculate_data_statistics(grid.data);
-    if (ccp4_header.empty())
-      prepare_ccp4_header_except_mode_and_stats();
-    assert(ccp4_header.size() >= 256);
-    if (mode < 0) {
-      mode = mode_for_data();
-      if (mode < 0)
-        fail("update_ccp4_header: specify map mode explicitly (usually 2)");
-    }
+  void update_header_mode_and_stats(int mode) {
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
     set_header_float(21, (float) hstats.dmax);
@@ -210,19 +186,7 @@ struct Ccp4 : public Ccp4Base {
     // labels could be modified but it's not important
   }
 
-  static int mode_for_data() {
-    if (std::is_same<T, std::int8_t>::value)
-      return 0;
-    if (std::is_same<T, std::int16_t>::value)
-      return 1;
-    if (std::is_same<T, float>::value)
-      return 2;
-    if (std::is_same<T, std::uint16_t>::value)
-      return 6;
-    return -1;
-  }
-
-  bool full_cell() const {
+  bool full_cell_(const GridMeta& grid) const {
     if (ccp4_header.empty())
       return true; // assuming it's full cell
     return
@@ -232,8 +196,7 @@ struct Ccp4 : public Ccp4Base {
       header_i32(8) == grid.nu && header_i32(9) == grid.nv && header_i32(10) == grid.nw;
   }
 
-  template<typename Stream>
-  void read_ccp4_header(Stream& f, const std::string& path) {
+  void read_ccp4_header_(GridMeta& grid, AnyStream& f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
     if (!f.read(ccp4_header.data(), 4 * hsize))
@@ -270,17 +233,61 @@ struct Ccp4 : public Ccp4Base {
     grid.spacegroup = find_spacegroup_by_number(header_i32(23));
     auto pos = axis_positions();
     grid.axis_order = AxisOrder::Unknown;
-    if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell()) {
+    if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell_(grid))
       grid.axis_order = AxisOrder::XYZ;
-      grid.calculate_spacing();
+  }
+};
+
+template<typename T=float>
+struct Ccp4 : public Ccp4Base {
+  Grid<T> grid;
+
+  /// If the header is empty, prepare it; otherwise, update only MODE
+  /// and, if update_stats==true, also DMIN, DMAX, DMEAN and RMS.
+  void update_ccp4_header(int mode=-1, bool update_stats=true) {
+    if (mode > 2 && mode != 6)
+      fail("Only modes 0, 1, 2 and 6 are supported.");
+    if (grid.point_count() == 0)
+      fail("update_ccp4_header(): set the grid first (it has size 0)");
+    if (grid.axis_order == AxisOrder::Unknown)
+      fail("update_ccp4_header(): run setup() first");
+    if (update_stats)
+      hstats = calculate_data_statistics(grid.data);
+    if (ccp4_header.empty())
+      prepare_ccp4_header_except_mode_and_stats(grid);
+    assert(ccp4_header.size() >= 256);
+    if (mode < 0) {
+      mode = mode_for_data();
+      if (mode < 0)
+        fail("update_ccp4_header: specify map mode explicitly (usually 2)");
     }
+    update_header_mode_and_stats(mode);
+  }
+
+  static int mode_for_data() {
+    if (std::is_same<T, std::int8_t>::value)
+      return 0;
+    if (std::is_same<T, std::int16_t>::value)
+      return 1;
+    if (std::is_same<T, float>::value)
+      return 2;
+    if (std::is_same<T, std::uint16_t>::value)
+      return 6;
+    return -1;
+  }
+
+  bool full_cell() const { return full_cell_(grid); }
+
+  void read_ccp4_header(AnyStream& f, const std::string& path) {
+    read_ccp4_header_(grid, f, path);
+    if (grid.axis_order != AxisOrder::Unknown)
+      grid.calculate_spacing();
   }
 
   void setup(T default_value, MapSetup mode=MapSetup::Full);
   void set_extent(const Box<Fractional>& box);
 
-  template<typename Stream>
-  void read_ccp4_stream(Stream f, const std::string& path);
+  void read_ccp4_stream(AnyStream&& f, const std::string& path);
 
   void read_ccp4_file(const std::string& path) {
     fileptr_t f = file_open(path.c_str(), "rb");
@@ -313,8 +320,8 @@ To translate_map_point(From f) { return static_cast<To>(f); }
 template<> inline
 std::int8_t translate_map_point<float,std::int8_t>(float f) { return f != 0; }
 
-template<typename Stream, typename TFile, typename TMem>
-void read_data(Stream& f, std::vector<TMem>& content) {
+template<typename TFile, typename TMem>
+void read_data(AnyStream& f, std::vector<TMem>& content) {
   if (std::is_same<TFile, TMem>::value) {
     size_t len = content.size();
     if (!f.read(content.data(), sizeof(TMem) * len))
@@ -355,19 +362,19 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
 
 // This function was tested only on little-endian machines,
 // let us know if you need support for other architectures.
-template<typename T> template<typename Stream>
-void Ccp4<T>::read_ccp4_stream(Stream f, const std::string& path) {
+template<typename T>
+void Ccp4<T>::read_ccp4_stream(AnyStream&& f, const std::string& path) {
   read_ccp4_header(f, path);
   grid.data.resize(grid.point_count());
   int mode = header_i32(4);
   if (mode == 0)
-    impl::read_data<Stream, std::int8_t>(f, grid.data);
+    impl::read_data<std::int8_t>(f, grid.data);
   else if (mode == 1)
-    impl::read_data<Stream, std::int16_t>(f, grid.data);
+    impl::read_data<std::int16_t>(f, grid.data);
   else if (mode == 2)
-    impl::read_data<Stream, float>(f, grid.data);
+    impl::read_data<float>(f, grid.data);
   else if (mode == 6)
-    impl::read_data<Stream, std::uint16_t>(f, grid.data);
+    impl::read_data<std::uint16_t>(f, grid.data);
   else
     fail("Mode " + std::to_string(mode) + " is not supported "
          "(only 0, 1, 2 and 6 are supported).");
