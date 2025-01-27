@@ -3,8 +3,7 @@
 #include <cmath>           // for floor
 #include <cstdio>          // for fprintf
 #include <algorithm>       // for nth_element, count_if
-#include "gemmi/ccp4.hpp"
-#include "gemmi/read_map.hpp" // for read_ccp4_map
+#include "gemmi/ccp4.hpp"  // for Ccp4, read_ccp4_map
 #include "gemmi/util.hpp"  // for trim_str
 #include "gemmi/symmetry.hpp"
 #include "gemmi/floodfill.hpp"  // for mask_points_above_threshold

@@ -8,8 +8,7 @@
 #include <gemmi/fail.hpp>     // for fail
 #include <gemmi/grid.hpp>     // for Grid, ReciprocalGrid, ReciprocalGrid<>...
 #include <gemmi/mtz.hpp>      // for Mtz
-#include <gemmi/ccp4.hpp>     // for Ccp4
-#include <gemmi/read_map.hpp> // for read_ccp4_map
+#include <gemmi/ccp4.hpp>     // for Ccp4, read_ccp4_map
 #include <gemmi/fourier.hpp>  // for transform_map_to_f_phi
 #include <gemmi/util.hpp>     // for iends_with
 

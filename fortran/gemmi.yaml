@@ -9,12 +9,6 @@ options:
   F_line_length: 94
   F_API_case: lower
 
-splicer_code:
-  c:
-    CXX_definitions: |
-      // for read_ccp4_map() and read_ccp4_mask()
-      #include "gemmi/read_map.hpp"
-
 declarations:
 
 ### unitcell.hpp ###

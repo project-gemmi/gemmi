@@ -212,11 +212,11 @@ target_compile_features(gemmi_headers INTERFACE cxx_std_17)
 set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
-            src/align.cpp src/assembly.cpp src/calculate.cpp src/crd.cpp
-            src/ddl.cpp src/eig3.cpp src/fprime.cpp src/gz.cpp
+            src/align.cpp src/assembly.cpp src/calculate.cpp src/ccp4.cpp
+            src/crd.cpp src/ddl.cpp src/eig3.cpp src/fprime.cpp src/gz.cpp
             src/intensit.cpp src/json.cpp src/mmcif.cpp src/mmread_gz.cpp
             src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
-            src/pdb.cpp src/polyheur.cpp src/read_cif.cpp src/read_map.cpp
+            src/pdb.cpp src/polyheur.cpp src/read_cif.cpp
             src/resinfo.cpp src/riding_h.cpp src/select.cpp src/sprintf.cpp
             src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
             src/xds_ascii.cpp)

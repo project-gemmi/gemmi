@@ -1,6 +1,6 @@
 // Copyright 2021 Global Phasing Ltd.
 
-#include "gemmi/read_map.hpp"
+#include "gemmi/ccp4.hpp"
 #include "gemmi/gz.hpp"  // for MaybeGzipped
 
 namespace gemmi {

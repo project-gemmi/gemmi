@@ -1,7 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 //
 // CCP4 format for maps and masks.
-// See also read_map.hpp.
 
 #ifndef GEMMI_CCP4_HPP_
 #define GEMMI_CCP4_HPP_
@@ -490,6 +489,9 @@ void Ccp4<T>::write_ccp4_map(const std::string& path) const {
   else if (mode == 6)
     impl::write_data<std::uint16_t>(grid.data, f.get());
 }
+
+GEMMI_DLL Ccp4<float> read_ccp4_map(const std::string& path, bool setup);
+GEMMI_DLL Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup);
 
 } // namespace gemmi
 #endif

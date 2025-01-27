@@ -704,51 +704,45 @@ Here we print a few characteristics of the mask:
 MRC/CCP4 maps
 =============
 
-We support one file format for storing the grid data on disk: MRC/CCP4 map.
-The content of the map file is stored in a class that contains
-both the Grid class and all the meta-data from the CCP4 file header.
+We support one file format for storing grid data on disk: MRC/CCP4 map.
+The map file is represented as a class that contains
+the Grid class and an MRC/CCP4 format header.
 
-The CCP4 format has a few different modes that correspond to different
-data types. Gemmi supports:
+The CCP4 format offers several *modes* for storing various data types.
+Gemmi supports:
 
-* mode 0 -- which corresponds to the C++ type int8_t,
-* mode 1 -- corresponds to int16_t,
-* mode 2 -- float,
-* and mode 6 -- uint16_t.
+* mode 0 -- which corresponds to the C++ type `int8_t`,
+* mode 1 -- corresponds to `int16_t`,
+* mode 2 -- `float`,
+* and mode 6 -- `uint16_t`.
 
-CCP4 programs use mode 2 (float) for the electron density, and
+CCP4 programs use mode 2 (float) for electron density and
 mode 0 (int8_t) for masks. A mask is 0/1 data that marks a part of the volume,
-such as the solvent region. Other modes are not used in crystallography,
+such as the solvent region. Other modes are not used in crystallography
 but may be used for CryoEM data.
 
-The CCP4 format is quite flexible. The data is stored as sections,
-rows and columns that correspond to a permutation of the X, Y and Z axes
-as defined in the file header.
-The file can contain only a part of the asymmetric unit
-or more than one asymmetric unit (i.e., redundant data).
-Typically, a span of the crystallographic map is one of the following:
+The CCP4 format is quite flexible. Data is stored as sections, rows,
+and columns that correspond to a permutation (defined in the file header)
+of the X, Y, Z axes. A file can cover any part of the unit cell
+or even multiple unit cells.
+Typically, a crystallographic map covers one of the following:
 
-* Covering a molecule with some margin around it.
-  This is necessary for programs such as PyMOL that don't know about symmetry.
-  CCP4 utilities `fft` + `mapmask` can make such a map.
-* Covering the asymmetric unit (asu). The program that reads
-  the map is supposed to expand the symmetry. This approach is used by
-  the CCP4 clipper library and by programs such as Coot.
+* A molecule with a margin around it.
+  This is necessary for programs that can't use symmetry (e.g., PyMOL).
+  Traditionally, such maps are created using the CCP4 utilities
+  `fft` + `mapmask`.
+* An asymmetric unit (asu). Programs reading such maps should expand
+  the symmetry. This approach was introduced in the CCP4 clipper library
+  and is used by programs such as Coot. For most space groups,
+  the map covers exactly one asu. However, for space groups where the asu
+  in fractional coordinates is non-rectangular, some redundancy is unavoidable.
 
-The latter approach generates map for exactly one asu, if possible.
-It is not possible if the shape of the asu in fractional coordinates
-is not rectangular, and in such case we must have some redundancy.
-On average, the maps generated for asu are significantly smaller,
-as compared in the
+On average, the latter maps are significantly smaller, as compared in the
 `UglyMol wiki <https://github.com/uglymol/uglymol/wiki/ccp4-dsn6-mtz>`_.
 
-Nowadays, the CCP4 format is rarely used in crystallography.
-Almost all programs read the reflection data and calculate maps on the fly.
-
-The MRC variant of the format contains the ORIGIN header records (words 50-52)
-that specify the location (in Angstroms) of a subvolume taken
-from a larger volume. Gemmi functions ignore this header because our focus
-was on crystallographic applications. Using it is up for discussion.
+Nowadays, the CCP4 format is less commonly used in crystallography,
+as nearly all programs calculate maps on the fly
+from map coefficients in reflection data (usually in MTZ format).
 
 Reading
 -------
@@ -764,19 +758,22 @@ The Ccp4 class is templated with the data type.
 Normally, we use float type for a map::
 
     gemmi::Ccp4<float> map;
-    map.read_ccp4_map("my_map.ccp4");
+    map.read_ccp4_file("my_map.ccp4");
 
-and int8_t for a mask (mask typically has only values 0 and 1,
+and `int8_t` for a mask (mask typically has only values 0 and 1,
 but in principle the values can be from -127 to 128)::
 
     gemmi::Ccp4<int8_t> mask;
-    mask.read_ccp4_map("my_mask.ccp4");
+    mask.read_ccp4_file("my_mask.ccp4");
 
 If the grid data type does not match the file data type, the library
 will attempt to convert the data when reading.
 
-Alternatively, you can use helper functions `read_ccp4_map()`
-and `read_ccp4_mask()` defined in `gemmi/read_map.hpp`.
+Alternatively, you can use helper functions that additionally can handle
+gzipped files (`setup` arg is described below)::
+
+    Ccp4<float> read_ccp4_map(const std::string& path, bool setup);
+    Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup);
 
 Python
 ~~~~~~

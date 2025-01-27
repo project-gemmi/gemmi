@@ -2,7 +2,6 @@
 
 #include "gemmi/ccp4.hpp"
 #include "gemmi/util.hpp"  // for cat
-#include "gemmi/read_map.hpp"  // for read_ccp4_map, read_ccp4_mask
 #include "common.h"
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/array.h>  // for Ccp4Base::axis_positions
