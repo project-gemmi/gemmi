@@ -156,7 +156,7 @@ struct UnitCell : UnitCellParameters {
            double alpha_, double beta_, double gamma_) {
     set(a_, b_, c_, alpha_, beta_, gamma_);
   }
-  UnitCell(const std::array<double, 6>& v) { set_from_array(v.data()); }
+  UnitCell(const std::array<double, 6>& v) { set_from_array(v); }
 
   Transform orth;
   Transform frac;
@@ -301,7 +301,7 @@ struct UnitCell : UnitCellParameters {
     calculate_properties();
   }
 
-  void set_from_array(const double* v) { set(v[0], v[1], v[2], v[3], v[4], v[5]); }
+  void set_from_array(const std::array<double,6>& v) { set(v[0], v[1], v[2], v[3], v[4], v[5]); }
 
   void set_from_vectors(const Vec3& va, const Vec3& vb, const Vec3& vc) {
     set(va.length(), vb.length(), vc.length(),

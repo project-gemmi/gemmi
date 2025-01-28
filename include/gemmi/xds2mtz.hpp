@@ -8,7 +8,7 @@
 #include <map>
 #include "mtz.hpp"        // for Mtz
 #include "xds_ascii.hpp"  // for XdsAscii
-                         //
+
 namespace gemmi {
 
 inline void xds_to_mtz(XdsAscii& xds, Mtz& mtz) {

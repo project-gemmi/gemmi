@@ -44,7 +44,7 @@ struct GEMMI_DLL XdsAscii {
     int id;
     std::string input_file;
     double wavelength = 0.;
-    double cell_constants[6] = {0., 0., 0., 0., 0., 0.};
+    std::array<double,6> cell_constants = {0., 0., 0., 0., 0., 0.};
     //statistics set by gather_iset_statistics()
     int frame_number_min = -1;
     int frame_number_max = -1;
@@ -56,12 +56,12 @@ struct GEMMI_DLL XdsAscii {
   std::string source_path;
   int read_columns = 0;  // doesn't include ITEM_ISET from XSCALE
   int spacegroup_number = 0;
-  double cell_constants[6] = {0., 0., 0., 0., 0., 0.};
-  Mat33 cell_axes{0.};
   double wavelength = 0.;
-  double incident_beam_dir[3] = {0., 0., 0.};
+  std::array<double,6> cell_constants = {0., 0., 0., 0., 0., 0.};
+  Mat33 cell_axes{0.};
+  Vec3 incident_beam_dir;
   double oscillation_range = 0.;
-  double rotation_axis[3] = {0., 0., 0.};
+  Vec3 rotation_axis;
   double starting_angle = 0.;
   double reflecting_range_esd = 0.;
   int starting_frame = 1;
@@ -106,22 +106,20 @@ struct GEMMI_DLL XdsAscii {
     return starting_angle + oscillation_range * z;
   }
 
-  static Vec3 get_normalized(const double (&arr)[3], const char* name) {
-    Vec3 vec(arr[0], arr[1], arr[2]);
-    double length = vec.length();
-    if (length == 0)
-      fail("unknown ", name);
-    return vec / length;
-  }
-
   // it's already normalized, but just in case normalize it again
   Vec3 get_rotation_axis() const {
-    return get_normalized(rotation_axis, "rotation axis");
+    double length = rotation_axis.length();
+    if (length == 0)
+      fail("unknown rotation axis");
+    return rotation_axis / length;
   }
 
   // I'm not sure if always |incident_beam_dir| == 1/wavelength
   Vec3 get_s0_direction() const {
-    return get_normalized(incident_beam_dir, "incident beam direction");
+    double length = incident_beam_dir.length();
+    if (length == 0)
+      fail("unknown incident beam direction");
+    return incident_beam_dir / length;
   }
 
   bool has_cell_axes() const {
@@ -178,6 +176,9 @@ inline XdsAscii read_xds_ascii_file(const std::string& path) {
   ret.read_stream(FileStream{f.get()}, path);
   return ret;
 }
+
+/// read possibly gzipped file
+GEMMI_DLL XdsAscii read_xds_ascii(const std::string& path);
 
 } // namespace gemmi
 #endif
