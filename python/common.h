@@ -25,6 +25,7 @@ namespace nb = nanobind;
 constexpr auto rv_ri = nb::rv_policy::reference_internal;
 
 void add_elem(nb::module_& m); // elem.cpp
+void add_xds(nb::module_& m); // elem.cpp
 void add_symmetry(nb::module_& m); // sym.cpp
 void add_ccp4(nb::module_& m); // ccp4.cpp
 void add_grid(nb::module_& m); // grid.cpp
