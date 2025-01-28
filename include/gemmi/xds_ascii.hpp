@@ -23,23 +23,7 @@ inline bool likely_in_house_source(double wavelength) {
          std::fabs(wavelength - 2.29) < 0.01;
 }
 
-struct GEMMI_DLL XdsAscii {
-  struct Refl {
-    Miller hkl;
-    int iset = 1;
-    double iobs;
-    double sigma;
-    double xd;
-    double yd;
-    double zd;
-    double rlp;
-    double peak;
-    double corr;  // is it always integer?
-    double maxc;
-
-    // ZD can be negative for a few reflections
-    int frame() const { return (int) std::floor(zd + 1); }
-  };
+struct XdsAsciiMetadata {
   struct Iset {
     int id;
     std::string input_file;
@@ -75,7 +59,29 @@ struct GEMMI_DLL XdsAscii {
   std::string generated_by;
   std::string version_str;
   std::vector<Iset> isets;
+};
+
+struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
+  struct Refl {
+    Miller hkl;
+    int iset = 1;
+    double iobs;
+    double sigma;
+    double xd;
+    double yd;
+    double zd;
+    double rlp;
+    double peak;
+    double corr;  // is it always integer?
+    double maxc;
+
+    // ZD can be negative for a few reflections
+    int frame() const { return (int) std::floor(zd + 1); }
+  };
   std::vector<Refl> data;
+
+  XdsAscii() = default;
+  XdsAscii(const XdsAsciiMetadata& m) : XdsAsciiMetadata(m) {}
 
   Iset& find_or_add_iset(int id) {
     for (Iset& i : isets)
