@@ -370,7 +370,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::string month = us_date.substr(0, 2);
         std::string day = us_date.substr(3, 2);
         std::string year = us_date.substr(6, 2);
-        std::string date = (year[0] > '5' ? "19" : "20") + year + month + day;
+        std::string date = gemmi::cat(year[0] > '5' ? "19" : "20", year, month, day);
         pdb_dates.push_back(date + tokens[0]);
       }
     }
@@ -382,11 +382,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     for (const std::string& str : pdb_dates) {
       std::string lc = gemmi::to_lower(str.substr(8));
       if (p.options[Sf]) {
-        std::string path = top_dir + lc.substr(1, 2) + "/r" + lc + "sf.ent.gz";
+        std::string path = gemmi::cat(top_dir, lc.substr(1, 2), "/r", lc, "sf.ent.gz");
         if (file_exists(path))
             process(ctx, path);
       } else {
-        process(ctx, top_dir + lc.substr(1, 2) + "/" + lc + ".cif.gz");
+        process(ctx, gemmi::cat(top_dir, lc.substr(1, 2), "/", lc, ".cif.gz"));
       }
     }
   } else {
