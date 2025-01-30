@@ -11,16 +11,15 @@
 #include <cstdio>  // for FILE, fseek, fread
 #include <cstdlib> // for malloc, realloc
 #include <cstring> // for memchr
-#include <memory>  // for unique_ptr
 #include <string>
 #include "fail.hpp"  // for unreachable
+#include "fileutil.hpp"  // for fileptr_t
 
 namespace gemmi {
 
 // base class for FileStream, MemoryStream and GzStream
 struct AnyStream {
-  // we don't use delete on AnyStream*
-  //virtual ~AnyStream() = default;
+  virtual ~AnyStream() = default;
 
   virtual char* gets(char* line, int size) = 0;   // for pdb, copy_line()
   virtual int getc() = 0;                         // for copy_line()
@@ -43,20 +42,21 @@ struct AnyStream {
 };
 
 struct FileStream final : public AnyStream {
-  FileStream(std::FILE* f_) : f(f_) {}
+  FileStream(std::FILE* f_) : f(f_, needs_fclose{false}) {}
+  FileStream(const char* path, const char* mode) : f(file_open_or(path, mode, stdin)) {}
 
-  char* gets(char* line, int size) override { return std::fgets(line, size, f); }
-  int getc() override { return std::fgetc(f); }
-  bool read(void* buf, size_t len) override { return std::fread(buf, len, 1, f) == 1; }
+  char* gets(char* line, int size) override { return std::fgets(line, size, f.get()); }
+  int getc() override { return std::fgetc(f.get()); }
+  bool read(void* buf, size_t len) override { return std::fread(buf, len, 1, f.get()) == 1; }
 
   std::string read_rest() override {
     std::string ret;
-    int c = std::fgetc(f);
+    int c = std::fgetc(f.get());
     if (c != EOF) {
       ret += (char)c;
       char buf[512];
       for (;;) {
-        size_t n = std::fread(buf, 1, sizeof(buf), f);
+        size_t n = std::fread(buf, 1, sizeof(buf), f.get());
         ret.append(buf, n);
         if (n != sizeof(buf))
           break;
@@ -67,16 +67,16 @@ struct FileStream final : public AnyStream {
 
   bool seek(std::ptrdiff_t offset) override {
 #if defined(_MSC_VER)
-    return _fseeki64(f, offset, SEEK_SET) == 0;
+    return _fseeki64(f.get(), offset, SEEK_SET) == 0;
 #elif defined(__MINGW32__)
-    return fseeko(f, (_off_t)offset, SEEK_SET) == 0;
+    return fseeko(f.get(), (_off_t)offset, SEEK_SET) == 0;
 #else
-    return std::fseek(f, (long)offset, SEEK_SET) == 0;
+    return std::fseek(f.get(), (long)offset, SEEK_SET) == 0;
 #endif
   }
 
 private:
-  std::FILE* f;
+  fileptr_t f;
 };
 
 struct MemoryStream final : public AnyStream {
@@ -123,37 +123,6 @@ private:
   const char* cur;
 };
 
-class CharArray {
-  std::unique_ptr<char, decltype(&std::free)> ptr_;
-  size_t size_;
-public:
-  CharArray() : ptr_(nullptr, &std::free), size_(0) {}
-  explicit CharArray(size_t n) : ptr_((char*)std::malloc(n), &std::free), size_(n) {}
-  explicit operator bool() const { return (bool)ptr_; }
-  char* data() { return ptr_.get(); }
-  const char* data() const { return ptr_.get(); }
-  size_t size() const { return size_; }
-  void set_size(size_t n) { size_ = n; }
-
-  MemoryStream stream() const { return MemoryStream(data(), size()); }
-
-  void resize(size_t n) {
-    char* new_ptr = (char*) std::realloc(ptr_.get(), n);
-    if (!new_ptr && n != 0)
-      fail("Out of memory.");
-    (void) ptr_.release();  // NOLINT(bugprone-unused-return-value)
-    ptr_.reset(new_ptr);
-    size_ = n;
-  }
-
-  // Remove first n bytes making space for more text at the returned position.
-  char* roll(size_t n) {
-    assert(n <= size());
-    std::memmove(data(), data() + n, n);
-    return data() + n;
-  }
-};
-
 class BasicInput {
 public:
   explicit BasicInput(const std::string& path) : path_(path) {}
@@ -171,6 +140,9 @@ public:
   FileStream get_uncompressing_stream() const { assert(0); unreachable(); }
   // for reading (uncompressing into memory) the whole file at once
   CharArray uncompress_into_buffer(size_t=0) { return {}; }
+
+  //std::unique_ptr<AnyStream> get_stream() {
+  //};
 
 private:
   std::string path_;

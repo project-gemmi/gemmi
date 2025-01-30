@@ -5,10 +5,7 @@
 #ifndef GEMMI_XDS_ASCII_HPP_
 #define GEMMI_XDS_ASCII_HPP_
 
-#include "atof.hpp"      // for fast_from_chars
-#include "atox.hpp"      // for is_space
-#include "input.hpp"     // for copy_line_from_stream
-#include "fileutil.hpp"  // for file_open
+#include "input.hpp"     // for AnyStream, FileStream
 #include "unitcell.hpp"  // for UnitCell
 #include "util.hpp"      // for starts_with
 
@@ -94,13 +91,10 @@ struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
 
   template<typename T>
   void read_input(T&& input) {
-    if (input.is_stdin()) {
-      read_stream(FileStream{stdin}, "stdin");
-    } else if (input.is_compressed()) {
+    if (input.is_compressed()) {
       read_stream(input.get_uncompressing_stream(), input.path());
     } else {
-      auto f = file_open(input.path().c_str(), "r");
-      read_stream(FileStream{f.get()}, input.path());
+      read_stream(FileStream(input.path().c_str(), "r"), input.path());
     }
   }
 
@@ -177,9 +171,8 @@ struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
 };
 
 inline XdsAscii read_xds_ascii_file(const std::string& path) {
-  auto f = file_open(path.c_str(), "r");
   XdsAscii ret;
-  ret.read_stream(FileStream{f.get()}, path);
+  ret.read_stream(FileStream(path.c_str(), "r"), path);
   return ret;
 }
 

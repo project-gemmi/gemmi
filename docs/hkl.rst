@@ -19,7 +19,7 @@ as well as quantities derived from a macromolecular model
 that is built to explain the experimental data.
 Even electron density maps, which are used in the real space, are nowadays
 stored mostly as map coefficients in reflection files.
-Molecular viewers `Fourier-transform <fft>` them on the fly.
+Molecular viewers :ref:`Fourier-transform <fft>` them on the fly.
 
 MTZ format
 ==========

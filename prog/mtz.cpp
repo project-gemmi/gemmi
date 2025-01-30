@@ -617,13 +617,10 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fflush(stderr);
       }
       gemmi::MaybeGzipped input(path);
-      if (input.is_stdin()) {
-        print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
-      } else if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
-        print_mtz_info(mem.stream(), path, p.options);
+      if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
+        print_mtz_info(gemmi::MemoryStream(mem.data(), mem.size()), path, p.options);
       } else {
-        gemmi::fileptr_t f = gemmi::file_open(input.path().c_str(), "rb");
-        print_mtz_info(gemmi::FileStream{f.get()}, path, p.options);
+        print_mtz_info(gemmi::FileStream(path, "rb"), path, p.options);
       }
     }
   } catch (std::runtime_error& e) {

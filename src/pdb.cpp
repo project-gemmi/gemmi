@@ -6,6 +6,7 @@
 #include <cstring>            // for memcpy, strstr, strchr, strcmp
 #include <algorithm>          // for min, swap
 #include <stdexcept>          // for invalid_argument
+#include <unordered_map>
 #include "gemmi/atof.hpp"     // for fast_from_chars
 #include "gemmi/atox.hpp"     // for is_space, is_digit
 #include "gemmi/input.hpp"

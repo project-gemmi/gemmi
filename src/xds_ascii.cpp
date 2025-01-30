@@ -1,6 +1,9 @@
 // Copyright 2023 Global Phasing Ltd.
 
 #include <gemmi/xds_ascii.hpp>
+#include <gemmi/atof.hpp>      // for fast_from_chars
+#include <gemmi/atox.hpp>      // for skip_blank, read_word
+#include <gemmi/util.hpp>      // for trim_str
 #include <gemmi/gz.hpp>
 #include <gemmi/math.hpp>
 

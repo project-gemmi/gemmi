@@ -13,9 +13,6 @@
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
 
-#include <cstdio>     // for stdin, size_t
-#include <unordered_map>
-#include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
 #include "model.hpp"    // for Structure, ...
 
@@ -40,8 +37,7 @@ GEMMI_DLL Structure read_pdb_from_stream(AnyStream&& line_reader,
 
 inline Structure read_pdb_file(const std::string& path,
                                PdbReadOptions options={}) {
-  auto f = file_open(path.c_str(), "rb");
-  return read_pdb_from_stream(FileStream{f.get()}, path, options);
+  return read_pdb_from_stream(FileStream(path.c_str(), "rb"), path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
@@ -56,11 +52,8 @@ inline Structure read_pdb_string(const std::string& str,
   return read_pdb_from_memory(str.c_str(), str.length(), name, options);
 }
 
-// A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
 inline Structure read_pdb(T&& input, PdbReadOptions options={}) {
-  if (input.is_stdin())
-    return read_pdb_from_stream(FileStream{stdin}, "stdin", options);
   if (input.is_compressed())
     return read_pdb_from_stream(input.get_uncompressing_stream(), input.path(), options);
   return read_pdb_file(input.path(), options);

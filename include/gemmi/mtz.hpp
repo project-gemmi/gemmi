@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 #include "fail.hpp"      // for fail
-#include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
 #include "input.hpp"     // for AnyStream, FileStream, CharArray
 #include "iterator.hpp"  // for StrideIter
 #include "logger.hpp"    // for Logger
@@ -440,10 +439,11 @@ struct GEMMI_DLL Mtz {
   }
 
   void read_file(const std::string& path) {
-    fileptr_t f = file_open(path.c_str(), "rb");
     try {
       source_path = path;
-      read_stream(FileStream{f.get()}, true);
+      read_stream(FileStream(path.c_str(), "rb"), true);
+    } catch (std::system_error&) {
+      throw;  // system_error::what() includes path, don't add anything
     } catch (std::runtime_error& e) {
       fail(std::string(e.what()) + ": " + path);
     }
@@ -452,14 +452,10 @@ struct GEMMI_DLL Mtz {
   template<typename Input>
   void read_input(Input&& input, bool with_data) {
     source_path = input.path();
-    if (input.is_stdin()) {
-      read_stream(FileStream{stdin}, with_data);
-    } else if (CharArray mem = input.uncompress_into_buffer()) {
-      read_stream(mem.stream(), with_data);
-    } else {
-      fileptr_t f = file_open(input.path().c_str(), "rb");
-      read_stream(FileStream{f.get()}, with_data);
-    }
+    if (CharArray mem = input.uncompress_into_buffer())
+      read_stream(MemoryStream(mem.data(), mem.size()), with_data);
+    else
+      read_stream(FileStream(input.path().c_str(), "rb"), with_data);
   }
 
   /// the same as read_input(MaybeGzipped(path), with_data)

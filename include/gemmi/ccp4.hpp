@@ -289,8 +289,7 @@ struct Ccp4 : public Ccp4Base {
   void read_ccp4_stream(AnyStream&& f, const std::string& path);
 
   void read_ccp4_file(const std::string& path) {
-    fileptr_t f = file_open(path.c_str(), "rb");
-    read_ccp4_stream(FileStream{f.get()}, path);
+    read_ccp4_stream(FileStream(path.c_str(), "rb"), path);
   }
 
   void read_ccp4_from_memory(const char* data, size_t size, const std::string& name) {
@@ -299,9 +298,7 @@ struct Ccp4 : public Ccp4Base {
 
   template<typename Input>
   void read_ccp4(Input&& input) {
-    if (input.is_stdin())
-      read_ccp4_stream(FileStream{stdin}, "stdin");
-    else if (input.is_compressed())
+    if (input.is_compressed())
       read_ccp4_stream(input.get_uncompressing_stream(), input.path());
     else
       read_ccp4_file(input.path());
