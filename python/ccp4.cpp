@@ -60,4 +60,6 @@ void add_ccp4(nb::module_& m) {
   m.def("read_ccp4_mask", &read_ccp4_mask,
         nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
+  m.def("read_ccp4_header", &read_ccp4_header,
+        nb::arg("path"), nb::rv_policy::move);
 }

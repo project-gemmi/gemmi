@@ -21,4 +21,10 @@ Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup) {
   return ccp4;
 }
 
+Ccp4Base read_ccp4_header(const std::string& path) {
+  Ccp4Base ccp4;
+  ccp4.read_ccp4_header_(nullptr, *MaybeGzipped(path).create_stream(), path);
+  return ccp4;
+}
+
 } // namespace gemmi

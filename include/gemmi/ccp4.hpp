@@ -195,7 +195,7 @@ struct Ccp4Base {
       header_i32(8) == grid.nu && header_i32(9) == grid.nv && header_i32(10) == grid.nw;
   }
 
-  void read_ccp4_header_(GridMeta& grid, AnyStream& f, const std::string& path) {
+  void read_ccp4_header_(GridMeta* grid, AnyStream& f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
     if (!f.read(ccp4_header.data(), 4 * hsize))
@@ -206,8 +206,6 @@ struct Ccp4Base {
     if (machst[0] != 0x44 && machst[0] != 0x11)
       fail("Unsupported machine stamp (endianness) in the file?");
     same_byte_order = machst[0] == (is_little_endian() ? 0x44 : 0x11);
-    grid.unit_cell.set(header_rfloat(11), header_rfloat(12), header_rfloat(13),
-                       header_rfloat(14), header_rfloat(15), header_rfloat(16));
     size_t ext_w = header_i32(24) / 4;  // NSYMBT in words
     if (ext_w != 0) {
       if (ext_w > 1000000)
@@ -216,9 +214,6 @@ struct Ccp4Base {
       if (!f.read(ccp4_header.data() + hsize, 4 * ext_w))
         fail("Failed to read extended header: " + path);
     }
-    grid.nu = header_i32(1);
-    grid.nv = header_i32(2);
-    grid.nw = header_i32(3);
     for (int i = 0; i < 3; ++i) {
       int axis = header_i32(17 + i);
       if (axis < 1 || axis > 3)
@@ -229,11 +224,18 @@ struct Ccp4Base {
     hstats.dmax = header_float(21);
     hstats.dmean = header_float(22);
     hstats.rms = header_float(55);
-    grid.spacegroup = find_spacegroup_by_number(header_i32(23));
-    auto pos = axis_positions();
-    grid.axis_order = AxisOrder::Unknown;
-    if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell_(grid))
-      grid.axis_order = AxisOrder::XYZ;
+    if (grid) {
+      grid->unit_cell.set(header_rfloat(11), header_rfloat(12), header_rfloat(13),
+                          header_rfloat(14), header_rfloat(15), header_rfloat(16));
+      grid->nu = header_i32(1);
+      grid->nv = header_i32(2);
+      grid->nw = header_i32(3);
+      grid->spacegroup = find_spacegroup_by_number(header_i32(23));
+      auto pos = axis_positions();
+      grid->axis_order = AxisOrder::Unknown;
+      if (pos[0] == 0 && pos[1] == 1 && pos[2] == 2 && full_cell_(*grid))
+        grid->axis_order = AxisOrder::XYZ;
+    }
   }
 };
 
@@ -278,7 +280,7 @@ struct Ccp4 : public Ccp4Base {
   bool full_cell() const { return full_cell_(grid); }
 
   void read_ccp4_header(AnyStream& f, const std::string& path) {
-    read_ccp4_header_(grid, f, path);
+    read_ccp4_header_(&grid, f, path);
     if (grid.axis_order != AxisOrder::Unknown)
       grid.calculate_spacing();
   }
@@ -489,6 +491,7 @@ void Ccp4<T>::write_ccp4_map(const std::string& path) const {
 
 GEMMI_DLL Ccp4<float> read_ccp4_map(const std::string& path, bool setup);
 GEMMI_DLL Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup);
+GEMMI_DLL Ccp4Base read_ccp4_header(const std::string& path);
 
 } // namespace gemmi
 #endif

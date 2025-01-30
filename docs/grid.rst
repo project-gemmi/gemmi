@@ -705,8 +705,10 @@ MRC/CCP4 maps
 =============
 
 We support one file format for storing grid data on disk: MRC/CCP4 map.
+(This format is known as *CCP4* in crystallography and *MRC* in cryoEM,
+here we'll refer to it as the CCP4 format.)
 The map file is represented as a class that contains
-the Grid class and an MRC/CCP4 format header.
+the Grid class and a format header.
 
 The CCP4 format offers several *modes* for storing various data types.
 Gemmi supports:
@@ -747,47 +749,65 @@ from map coefficients in reflection data (usually in MTZ format).
 Reading
 -------
 
-C++
-~~~
+A ccp4 map can be read with:
 
-To work with CCP4 maps you need::
+.. tab:: C++
 
-    #include <gemmi/ccp4.hpp>
+ ::
 
-The Ccp4 class is templated with the data type.
-Normally, we use float type for a map::
+  #include <gemmi/ccp4.hpp>
 
-    gemmi::Ccp4<float> map;
-    map.read_ccp4_file("my_map.ccp4");
+  Ccp4<float> map = read_ccp4_map(path, /*setup=*/false);
 
-and `int8_t` for a mask (mask typically has only values 0 and 1,
-but in principle the values can be from -127 to 128)::
+.. tab:: Python
 
-    gemmi::Ccp4<int8_t> mask;
-    mask.read_ccp4_file("my_mask.ccp4");
+ .. doctest::
 
-If the grid data type does not match the file data type, the library
-will attempt to convert the data when reading.
-
-Alternatively, you can use helper functions that additionally can handle
-gzipped files (`setup` arg is described below)::
-
-    Ccp4<float> read_ccp4_map(const std::string& path, bool setup);
-    Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup);
-
-Python
-~~~~~~
-
-To read a ccp4 map:
-
-.. doctest::
-
-    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4')
+    >>> m = gemmi.read_ccp4_map('../tests/5i55_tiny.ccp4', setup=False)
     >>> m
     <gemmi.Ccp4Map with grid 8x6x10 in SG #4>
 
-Similarly, to read a mask (ccp4 map in mode 0) call `read_ccp4_mask()`.
+The `setup` arg, if true, triggers additional setup that is usually performed
+after reading a map -- it will be described :ref:`later on <ccp4_setup>`.
 
+Similarly, a mask (mode 0 map) can be read with `read_ccp4_mask()`,
+which takes the same arguments as `read_ccp4_map()`
+and returns `Ccp4<int8_t>` in C++ and `Ccp4Mask` in Python.
+A mask typically contains only values 0 and 1,
+but in principle, values can range from -127 to 128.
+
+Gemmi loads all data into memory. Large tomography files may not fit
+into memory and would require a different approach, but our focus is
+on convenient working with files that can be kept in memory.
+Regardless of size, you can always read the format's header with:
+
+.. tab:: C++
+
+ ::
+
+  Ccp4Base map_header = read_ccp4_header(path);
+
+.. tab:: Python
+
+ .. doctest::
+
+    >>> gemmi.read_ccp4_header('../tests/5i55_tiny.ccp4')
+    <gemmi.Ccp4Base object at 0x...>
+
+You can read a file in any supported mode with `read_ccp4_map()`,
+but this converts file data to the 32-bit float type.
+In **C++**, `Ccp4<>` can be templated with any type,
+allowing native storage of data from modes 1 (`int16_t`) and 6 (`uint16_t`).
+The function `gemmi::read_ccp4_file(path, false)` can be replaced by::
+
+    gemmi::Ccp4<float> map;
+    map.read_ccp4_file(path);
+
+and instead of `float` you can use `int8_t`, `int16_t`, or `uint16_t`
+(in principle, it can be any type, but other types probably won't be useful).
+`Ccp4<T>` stores data in the `Grid<T> grid` member.
+When the grid type does not match the file data type, the library
+converts the data (`static_cast`) upon reading.
 
 Header
 ------
@@ -843,6 +863,7 @@ When the file is read, the header is used to set properties of the grid:
     >>> m.grid.unit_cell
     <gemmi.UnitCell(29.45, 10.5, 29.7, 90, 111.975, 90)>
 
+.. _ccp4_setup:
 
 setup()
 -------

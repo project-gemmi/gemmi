@@ -141,8 +141,9 @@ public:
   // for reading (uncompressing into memory) the whole file at once
   CharArray uncompress_into_buffer(size_t=0) { return {}; }
 
-  //std::unique_ptr<AnyStream> get_stream() {
-  //};
+  std::unique_ptr<AnyStream> create_stream() {
+    return std::unique_ptr<AnyStream>(new FileStream(path().c_str(), "rb"));
+  }
 
 private:
   std::string path_;
