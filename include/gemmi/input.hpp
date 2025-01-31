@@ -12,7 +12,6 @@
 #include <cstdlib> // for malloc, realloc
 #include <cstring> // for memchr
 #include <string>
-#include "fail.hpp"  // for unreachable
 #include "fileutil.hpp"  // for fileptr_t
 
 namespace gemmi {
@@ -137,7 +136,6 @@ public:
 
   // providing the same interface as MaybeGzipped
   bool is_compressed() const { return false; }
-  FileStream get_uncompressing_stream() const { assert(0); unreachable(); }
   // for reading (uncompressing into memory) the whole file at once
   CharArray uncompress_into_buffer(size_t=0) { return {}; }
 

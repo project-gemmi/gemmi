@@ -288,22 +288,22 @@ struct Ccp4 : public Ccp4Base {
   void setup(T default_value, MapSetup mode=MapSetup::Full);
   void set_extent(const Box<Fractional>& box);
 
-  void read_ccp4_stream(AnyStream&& f, const std::string& path);
+  void read_ccp4_stream(AnyStream& f, const std::string& path);
 
   void read_ccp4_file(const std::string& path) {
-    read_ccp4_stream(FileStream(path.c_str(), "rb"), path);
+    FileStream stream(path.c_str(), "rb");
+    read_ccp4_stream(stream, path);
   }
 
   void read_ccp4_from_memory(const char* data, size_t size, const std::string& name) {
-    read_ccp4_stream(MemoryStream(data, size), name);
+    MemoryStream stream(data, size);
+    read_ccp4_stream(stream, name);
   }
 
   template<typename Input>
   void read_ccp4(Input&& input) {
-    if (input.is_compressed())
-      read_ccp4_stream(input.get_uncompressing_stream(), input.path());
-    else
-      read_ccp4_file(input.path());
+    std::unique_ptr<AnyStream> stream = input.create_stream();
+    read_ccp4_stream(*stream, input.path());
   }
 
   void write_ccp4_map(const std::string& path) const;
@@ -361,7 +361,7 @@ void write_data(const std::vector<TMem>& content, FILE* f) {
 // This function was tested only on little-endian machines,
 // let us know if you need support for other architectures.
 template<typename T>
-void Ccp4<T>::read_ccp4_stream(AnyStream&& f, const std::string& path) {
+void Ccp4<T>::read_ccp4_stream(AnyStream& f, const std::string& path) {
   read_ccp4_header(f, path);
   grid.data.resize(grid.point_count());
   int mode = header_i32(4);

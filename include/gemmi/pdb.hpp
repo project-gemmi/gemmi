@@ -31,19 +31,21 @@ inline bool is_record_type3(const char* s, const char* record) {
 /// Returns operations corresponding to 1555, 2555, ... N555
 GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks);
 
-GEMMI_DLL Structure read_pdb_from_stream(AnyStream&& line_reader,
+GEMMI_DLL Structure read_pdb_from_stream(AnyStream& line_reader,
                                          const std::string& source,
                                          PdbReadOptions options);
 
 inline Structure read_pdb_file(const std::string& path,
                                PdbReadOptions options={}) {
-  return read_pdb_from_stream(FileStream(path.c_str(), "rb"), path, options);
+  FileStream stream(path.c_str(), "rb");
+  return read_pdb_from_stream(stream, path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name,
                                       PdbReadOptions options={}) {
-  return read_pdb_from_stream(MemoryStream{data, size}, name, options);
+  MemoryStream stream{data, size};
+  return read_pdb_from_stream(stream, name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,
@@ -54,9 +56,7 @@ inline Structure read_pdb_string(const std::string& str,
 
 template<typename T>
 inline Structure read_pdb(T&& input, PdbReadOptions options={}) {
-  if (input.is_compressed())
-    return read_pdb_from_stream(input.get_uncompressing_stream(), input.path(), options);
-  return read_pdb_file(input.path(), options);
+  return read_pdb_from_stream(*input.create_stream(), input.path(), options);
 }
 
 } // namespace gemmi

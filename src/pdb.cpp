@@ -819,7 +819,7 @@ void read_metadata_from_remarks(Structure& st) {
 
 } // anonymous namespace
 
-Structure read_pdb_from_stream(AnyStream&& line_reader, const std::string& source,
+Structure read_pdb_from_stream(AnyStream& line_reader, const std::string& source,
                                PdbReadOptions options) {
   if (options.max_line_length <= 0 || options.max_line_length > 120)
     options.max_line_length = 120;

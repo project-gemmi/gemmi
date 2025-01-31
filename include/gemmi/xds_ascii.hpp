@@ -87,15 +87,11 @@ struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
     isets.emplace_back(id);
     return isets.back();
   }
-  void read_stream(AnyStream&& reader, const std::string& source);
+  void read_stream(AnyStream& reader, const std::string& source);
 
   template<typename T>
   void read_input(T&& input) {
-    if (input.is_compressed()) {
-      read_stream(input.get_uncompressing_stream(), input.path());
-    } else {
-      read_stream(FileStream(input.path().c_str(), "r"), input.path());
-    }
+    read_stream(*input.create_stream(), input.path());
   }
 
   // set a few Iset properties in isets
@@ -172,7 +168,8 @@ struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
 
 inline XdsAscii read_xds_ascii_file(const std::string& path) {
   XdsAscii ret;
-  ret.read_stream(FileStream(path.c_str(), "r"), path);
+  FileStream stream(path.c_str(), "rb");
+  ret.read_stream(stream, path);
   return ret;
 }
 

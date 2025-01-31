@@ -36,13 +36,8 @@ public:
   }
 
   CharArray uncompress_into_buffer(size_t limit=0);
-  GzStream get_uncompressing_stream();
 
-  std::unique_ptr<AnyStream> create_stream() {
-    if (is_compressed())
-      return std::unique_ptr<AnyStream>(new GzStream(get_uncompressing_stream()));
-    return BasicInput::create_stream();
-  }
+  std::unique_ptr<AnyStream> create_stream();
 
 private:
   void* file_ = nullptr;

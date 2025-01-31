@@ -149,15 +149,17 @@ CharArray MaybeGzipped::uncompress_into_buffer(size_t limit) {
   return mem;
 }
 
-GzStream MaybeGzipped::get_uncompressing_stream() {
-  assert(is_compressed());
-  file_ = GG(gzopen)(path().c_str(), "rb");
-  if (!file_)
-    sys_fail("Failed to gzopen " + path());
+std::unique_ptr<AnyStream> MaybeGzipped::create_stream() {
+  if (is_compressed()) {
+    file_ = GG(gzopen)(path().c_str(), "rb");
+    if (!file_)
+      sys_fail("Failed to gzopen " + path());
 #if ZLIB_VERNUM >= 0x1235
-  GG(gzbuffer)((gzFile)file_, 64*1024);
+    GG(gzbuffer)((gzFile)file_, 64*1024);
 #endif
-  return GzStream{file_};
+    return std::unique_ptr<AnyStream>(new GzStream(file_));
+  }
+  return BasicInput::create_stream();
 }
 
 } // namespace gemmi
