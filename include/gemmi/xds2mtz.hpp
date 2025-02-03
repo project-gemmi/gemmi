@@ -11,7 +11,8 @@
 
 namespace gemmi {
 
-inline void xds_to_mtz(XdsAscii& xds, Mtz& mtz) {
+inline Mtz xds_to_mtz(XdsAscii& xds) {
+  Mtz mtz;
   mtz.cell.set_from_array(xds.cell_constants);
   mtz.spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
   mtz.add_base();
@@ -168,6 +169,7 @@ inline void xds_to_mtz(XdsAscii& xds, Mtz& mtz) {
     }
     mtz.sort(3);
   }
+  return mtz;
 }
 
 } // namespace gemmi

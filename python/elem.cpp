@@ -151,6 +151,7 @@ void add_xds(nb::module_& m) {
     .def_ro("spacegroup_number", &XdsAscii::spacegroup_number)
     .def_ro("wavelength", &XdsAscii::wavelength)
     .def_ro("cell_constants", &XdsAscii::cell_constants)
+    .def_ro("rotation_axis", &XdsAscii::rotation_axis)
     .def_ro("generated_by", &XdsAscii::generated_by)
     .def_prop_ro("miller_array", [](XdsAscii& self) {
         constexpr int64_t stride = int64_t(sizeof(XdsAscii::Refl) / sizeof(int));
@@ -190,7 +191,9 @@ void add_xds(nb::module_& m) {
             ret.data.push_back(self.data[i]);
         return ret;
     })
+    .def("apply_polarization_correction", &XdsAscii::apply_polarization_correction,
+         nb::arg("p"), nb::arg("normal"))
+    .def("to_mtz", &gemmi::xds_to_mtz)
     ;
   m.def("read_xds_ascii", &read_xds_ascii);
-  m.def("xds_to_mtz", &xds_to_mtz);
 }

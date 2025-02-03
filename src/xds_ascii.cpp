@@ -32,7 +32,7 @@ void XdsAscii::gather_iset_statistics() {
   }
 }
 
-/// Based on Phil Evans' expertise and the literature, see:
+/// Based on Phil Evans' notes and the literature, see:
 /// https://github.com/project-gemmi/gemmi/discussions/248
 /// \par p is defined as in XDS (p=0.5 for unpolarized beam).
 void XdsAscii::apply_polarization_correction(double p, Vec3 normal) {

@@ -459,7 +459,7 @@ void grep_file(const std::string& path, GrepParams& par, int& err_count) {
       run_parse(in, par);
     }
   } catch (bool) {
-    // ok, "throw true" is used as goto
+    // ok, "throw true" is used as goto in this file
   } catch (std::runtime_error& e) {
     std::fflush(stdout);
     fprintf(stderr, "Error when parsing %s:\n\t%s\n", path.c_str(), e.what());

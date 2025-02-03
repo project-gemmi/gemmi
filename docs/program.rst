@@ -1172,6 +1172,8 @@ TBC
 .. literalinclude:: wcn-help.txt
    :language: console
 
+.. _gemmi-xds2mtz:
+
 xds2mtz
 =======
 

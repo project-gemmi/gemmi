@@ -978,7 +978,7 @@ so we can use it for coloring.
 Apparently, some scaling has been applied. The scaling is anisotropic
 and is the strongest along the *k* axis.
 
-MTZ <-> mmCIF
+MTZ ↔ mmCIF
 =============
 
 The library contains classes that facilitate conversions:
@@ -1004,8 +1004,113 @@ program documentation for details.
 XDS_ASCII
 =========
 
-TODO: document functions from `xds_ascii.hpp`
+XDS ascii files (often with names such as XDS_ASCII.HKL, INTEGRATE.HKL,
+or xscale.ahkl) are represented in Gemmi by the `XdsAscii` class.
+They can be read with:
 
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/xds_ascii.hpp>
+
+  gemmi::XdsAscii xds = gemmi::read_xds_file(path);
+
+.. tab:: Python
+
+ .. doctest::
+
+    >>> xds = gemmi.read_xds_ascii('../tests/INTEGRATE-tiny.HKL')
+    >>> xds
+    <gemmi.XdsAscii object at 0x...>
+
+As with other file formats, gzipped files are uncompressed on the fly.
+
+Items from the file headers are stored in XdsAscii member variables
+(although not everything is stored and not everything stored
+is accessible from Python). For instance, this line:
+
+.. code-block:: none
+
+  !ROTATION_AXIS= -0.999996  0.002745 -0.000291
+
+is stored as:
+
+.. doctest::
+
+  >>> xds.rotation_axis
+  <gemmi.Vec3(-0.999996, 0.002745, -0.000291)>
+
+Reflection data is stored in `XdsAscii::data`.
+Currently, we store only data from the columns H, K, L, ISET,
+IOBS, SIGMA, XD/XCAL, YD/YCAL, ZD/ZCAL, RLP, PEAK, CORR, and MAXC.
+
+In C++, the data is accessible directly.
+In Python, it is exposed as NumPy arrays:
+
+.. doctest::
+
+  >>> xds.miller_array
+  array([[-24,   9,   1],
+         [-24,  10,   4],
+         [-23,   4,  -4],
+         ...,
+         [ 24,  -9,   0],
+         [ 24,  -9,   1],
+         [ 24,  -9,   2]], dtype=int32)
+
+  >>> xds.zd_array
+  array([111.7, 116.1, 102.5, ...,  73. ,  71.5,  70. ])
+
+Additionally, Python bindings have the function `subset` that takes a NumPy
+array of boolean values and returns a copy of `XdsAscii` containing only
+reflections corresponding to `True`. For example:
+
+.. doctest::
+
+  >>> xds.subset(xds.zd_array < 200)
+  <gemmi.XdsAscii object at 0x...>
+
+leaves only reflections with ZD < 200.
+
+The XdsAscii class has a couple functions related to orientation matrices.
+They are used, for instance, to convert from the XDS frame to the "Cambridge"
+frame when converting an XDS file to an MTZ file.
+To learn more about it, inspect the code.
+
+The function `apply_polarization_correction()` updates the
+`polarization correction <https://github.com/project-gemmi/gemmi/discussions/248>`_
+from `INTEGRATE.HKL` files, assuming they have been corrected by XDS
+for an unpolarized incident beam.
+It aims to do the same as the `POLARIZATION` keyword in `Aimless`.
+
+XdsAscii cannot be written to a file (so far, we've had no need to write XDS
+files), but it can be converted to MTZ:
+
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/xds2mtz.hpp>
+
+  gemmi::Mtz mtz = gemmi::xds_to_mtz(xds);
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> xds.to_mtz()
+  <gemmi.Mtz with 15 columns, ... reflections>
+
+.. note::
+
+  To just convert an XDS file to MTZ, use the command-line program
+  :ref:`gemmi xds2mtz <gemmi-xds2mtz>`.
+
+
+It can also be used to populate `Intensities` -- a class
+used for merging data, among other things.
+This is described in a later :ref:`section <intensities>`.
 
 SX hkl CIF
 ==========
@@ -1047,8 +1152,12 @@ as a text value of _shelx_hkl_file:
 
 .. _intensities:
 
-Intensity merging
-=================
+Intensities
+===========
+
+  // Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
+  // and merges it into mean or anomalous intensities.
+  // It can also read merged data.
 
 TBD
 

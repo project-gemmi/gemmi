@@ -127,7 +127,8 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose && !unmerged)
       std::fprintf(stderr, "Preparing merged MTZ file...\n");
 
-    gemmi::Mtz mtz;
+    gemmi::Mtz mtz = gemmi::xds_to_mtz(xds);
+
     if (const option::Option* opt = p.options[Title])
       mtz.title = opt->arg;
     else
@@ -143,8 +144,6 @@ int GEMMI_MAIN(int argc, char **argv) {
       mtz.history.emplace_back("From gemmi-xds2mtz " GEMMI_VERSION);
       mtz.history.push_back(std::move(xds_info));
     }
-
-    gemmi::xds_to_mtz(xds, mtz);
 
     if (const option::Option* opt = p.options[Project])
       for (size_t i = 1; i < mtz.datasets.size(); ++i)
