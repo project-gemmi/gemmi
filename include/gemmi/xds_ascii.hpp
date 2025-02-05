@@ -45,6 +45,7 @@ struct XdsAsciiMetadata {
   Vec3 rotation_axis;
   double starting_angle = 0.;
   double reflecting_range_esd = 0.;
+  char friedels_law = '\0';
   int starting_frame = 1;
   int nx = 0;  // detector size - number of pixels
   int ny = 0;
