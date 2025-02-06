@@ -8,8 +8,7 @@
 #include <gemmi/neighbor.hpp>
 #include <gemmi/contact.hpp>
 #include <gemmi/model.hpp>
-#include <gemmi/mmread.hpp>
-#include <gemmi/gz.hpp>
+#include <gemmi/mmread_gz.hpp>
 #include <gemmi/dirwalk.hpp>
 #include <stdexcept>  // for runtime_error
 #include <chrono>
@@ -115,7 +114,7 @@ static std::vector<BondInfo> find_disulfide_bonds2(Model& model,
 static void check_disulf(const std::string& path) {
   if (verbose)
     printf("path: %s\n", path.c_str());
-  Structure st = read_structure(MaybeGzipped(path));
+  Structure st = read_structure_gz(path);
   Model& model = st.first_model();
   using Clock = std::chrono::steady_clock;
   auto start = Clock::now();

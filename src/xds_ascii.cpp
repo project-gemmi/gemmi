@@ -1,6 +1,10 @@
 // Copyright 2023 Global Phasing Ltd.
 
 #include <gemmi/xds_ascii.hpp>
+#include <gemmi/atof.hpp>      // for fast_from_chars
+#include <gemmi/atox.hpp>      // for skip_blank, read_word
+#include <gemmi/util.hpp>      // for trim_str
+#include <gemmi/gz.hpp>
 #include <gemmi/math.hpp>
 
 namespace gemmi {
@@ -28,7 +32,7 @@ void XdsAscii::gather_iset_statistics() {
   }
 }
 
-/// Based on Phil Evans' expertise and the literature, see:
+/// Based on Phil Evans' notes and the literature, see:
 /// https://github.com/project-gemmi/gemmi/discussions/248
 /// \par p is defined as in XDS (p=0.5 for unpolarized beam).
 void XdsAscii::apply_polarization_correction(double p, Vec3 normal) {
@@ -95,24 +99,34 @@ inline const char* parse_number_into(const char* start, const char* end,
                                      double& val, const char* line) {
   auto result = fast_from_chars(start, end, val);
   if (result.ec != std::errc())
-    fail("failed to parse number in:\n", line);
+    fail("failed to parse a number in:\n", line);
   return result.ptr;
 }
 
-template<int N>
+template<size_t N>
 void parse_numbers_into_array(const char* start, const char* end,
                               double (&arr)[N], const char* line) {
-  for (int i = 0; i < N; ++i) {
-    auto result = fast_from_chars(start, end, arr[i]);
-    if (result.ec != std::errc())
-      fail("failed to parse number #", i+1, " in:\n", line);
-    start = result.ptr;
-  }
+  for (double& val : arr)
+    start = parse_number_into(start, end, val, line);
 }
+
+template<size_t N>
+void parse_numbers_into_array(const char* start, const char* end,
+                              std::array<double,N>& arr, const char* line) {
+  for (double& val : arr)
+    start = parse_number_into(start, end, val, line);
+}
+
+void parse_numbers_into_vec3(const char* start, const char* end,
+                             Vec3& vec, const char* line) {
+  for (double* val : {&vec.x, &vec.y, &vec.z})
+    start = parse_number_into(start, end, *val, line);
+}
+
 
 } // anonymous namespace
 
-void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& source) {
+void XdsAscii::read_stream(AnyStream& line_reader, const std::string& source) {
   source_path = source;
   read_columns = 12;
   char line[256];
@@ -153,13 +167,13 @@ void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& sour
         if (result.ec != std::errc())
           fail("failed to parse wavelength:\n", line);
       } else if (starts_with_ptr(line+1, "INCIDENT_BEAM_DIRECTION=", &rhs)) {
-        parse_numbers_into_array(rhs, line+len, incident_beam_dir, line);
+        parse_numbers_into_vec3(rhs, line+len, incident_beam_dir, line);
       } else if (starts_with_ptr(line+1, "OSCILLATION_RANGE=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, oscillation_range);
         if (result.ec != std::errc())
           fail("failed to parse:\n", line);
       } else if (starts_with_ptr(line+1, "ROTATION_AXIS=", &rhs)) {
-        parse_numbers_into_array(rhs, line+len, rotation_axis, line);
+        parse_numbers_into_vec3(rhs, line+len, rotation_axis, line);
       } else if (starts_with_ptr(line+1, "STARTING_ANGLE=", &rhs)) {
         auto result = fast_from_chars(rhs, line+len, starting_angle);
         if (result.ec != std::errc())
@@ -276,6 +290,12 @@ void XdsAscii::read_stream(LineReaderBase&& line_reader, const std::string& sour
     }
   }
   fail("incorrect or unfinished file: " + source_path);
+}
+
+XdsAscii read_xds_ascii(const std::string& path) {
+  XdsAscii xds_ascii;
+  xds_ascii.read_input(gemmi::MaybeGzipped(path));
+  return xds_ascii;
 }
 
 }  // namespace gemmi

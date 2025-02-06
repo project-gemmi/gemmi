@@ -121,8 +121,8 @@ The parser supports CIF 1.1 spec and some extras.
 
 Currently, it is available as:
 
-* C++11 header-only library, and
-* Python (2 and 3) extension module.
+* C++14 header-only library, and
+* Python (3.8+) extension module.
 
 We use it to read:
 
@@ -190,7 +190,7 @@ so you do not need to compile Gemmi.
 It has a single dependency: PEGTL (also header-only),
 which is included under the `include/gemmi/third_party` directory.
 All you need is to make sure that Gemmi headers are in your
-project's include path, and compile your program as C++11 or later.
+project's include path, and compile your program as C++14 or later.
 
 Let us start with a simple example.
 This little program reads mmCIF file and shows weights of the chemical
@@ -428,8 +428,8 @@ C++
 The functions writing `cif::Document` and `cif::Block` to C++ stream
 is in a separate header `gemmi/to_cif.hpp`::
 
-  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOption options)
-  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOption options)
+  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOptions options)
+  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOptions options)
 
 Python
 ------
@@ -441,7 +441,7 @@ of the `Document` class:
 
   >>> doc.write_file('1pfe-modified.cif')
 
-It can take the style as optional, second argument:
+The output can be styled by passing `WriteOptions` as a second argument:
 
 .. doctest::
 
@@ -572,6 +572,8 @@ Document has also one property
        st.add_new_block(...)     # block gets invalidated
        block = st[0]             # block is valid again
 
+.. _cif_block:
+
 Block
 =====
 
@@ -597,7 +599,7 @@ Each block contains::
     std::string name;
     std::vector<Item> items;
 
-where `Item` is implemented as an unrestricted (C++11) union
+where `Item` is implemented as an unrestricted union
 that holds one of Pair, Loop or Block.
 
 Python
@@ -962,7 +964,7 @@ The C++ signature of `find_values` is::
   // Erases item for name-value pair; removes column for Loop
   void erase();
 
-`Column` also provides support for C++11 range-based `for`::
+`Column` also provides support for range-based `for`::
 
   // mmCIF _chem_comp_atom is usually a table, but not always
   for (const std::string &s : block.find_values("_chem_comp_atom.type_symbol"))
@@ -1483,6 +1485,206 @@ has other name-value pairs in the same category (say, `_ocean.depth 8.5`)
 Additionally, like in other `_mmcif_` functions, the trailing dot
 in the category name may be omitted (but the leading underscore is required).
 
+Validation
+==========
+
+A CIF document can conform to a dictionary (ontology, think DTD for XML
+or JSON Schema for JSON). A dictionary, written in one of the versions
+of DDL (Dictionary Definition Language), is itself a CIF document.
+There are three versions of DDL:
+
+* DDL1 is the simplest. It is used, for instance, for small molecule CIFs.
+* DDL2 is used for PDBx/mmCIF, with activity in this area
+  centered around the PDB.
+* DDLm is a newer version (from around 2011) from the IUCr's COMCIFS
+  (Committee for the Maintenance of the CIF Standard). It's not widely
+  used yet and, like CIF2, is not supported by Gemmi.
+
+Gemmi is primarily used in structural biology and is mostly exercised
+with mmCIF and DDL2. DDL1 is supported to a limited extent (which could be
+expanded if there was a good use case).
+
+.. note::
+
+   In most cases, it's simpler to use the command-line program
+   :ref:`gemmi validate <gemmi-validate>` instead of the functions
+   described below. If you use mmCIF-like files, make sure you read
+   :ref:`notes about DDL2 <DDL2>`.
+
+The validation capabilities are implemented in class `cif::Ddl`.
+Let's start with a simple example, a pet weighting experiment:
+
+.. doctest::
+
+  >>> pet_example = '''\
+  ...   data_pets
+  ...   loop_
+  ...    _pet_id
+  ...    _pet_species
+  ...    _pet_weight
+  ...    1 parrot 2
+  ...    2 dog    15
+  ... '''
+
+Now let's create a contrived DDL1 dictionary for it:
+
+.. doctest::
+
+  >>> pet_ddl = cif.read_string('''\
+  ...  data_pet_index
+  ...    _name               '_pet_id'
+  ...    _category           pet
+  ...    _type               numb
+  ...
+  ...  data_pet_species
+  ...    _name               '_pet_species'
+  ...    _category           pet
+  ...    _type               char
+  ...    loop_ _enumeration  parrot cat dog
+  ...
+  ...  data_pet_weight
+  ...    _name               '_pet_weight'
+  ...    _category           pet
+  ...    _type               numb
+  ...    _enumeration_range  0.0:100.0
+  ...    _units              kg
+  ... ''')
+
+The `Ddl` class must be first supplied with a dictionary and can then validate
+CIF files.
+
+.. doctest::
+
+  >>> validator = cif.Ddl(logger=sys.stdout)
+  >>> validator.read_ddl(pet_ddl)
+  >>> validator.validate_cif(cif.read_string(pet_example))
+  True
+
+Now let's append a line that will trigger errors:
+
+.. doctest::
+
+  >>> pet_example += '''
+  ...    3 hippo  3000
+  ... '''
+  >>> validator.validate_cif(cif.read_string(pet_example))
+  string:2 [pets] _pet_species: hippo is not one of the allowed values:
+    parrot
+    cat
+    dog
+  string:2 [pets] _pet_weight: value out of expected range: 3000
+  False
+
+Errors are sent to a logger as described in a :ref:`separate section <logger>`.
+The logger is set in the constructor and can be changed at any point:
+
+.. doctest::
+
+  >>> validator.set_logger((None, 0))
+  >>> validator.validate_cif(cif.read_string(pet_example))
+  False
+
+Calling `read_ddl()` moves the content of a `Document` to the `Ddl` class,
+leaving the original object empty (it's slightly faster this way).
+`read_ddl()` can be called multiple times to use multiple dictionaries
+(or extensions) simultaneously.
+
+`Ddl` has a few flags to enable or disable certain types of checks.
+These correspond to the optional checks listed in the documentation
+of the :ref:`gemmi validate <gemmi-validate>` subcommand.
+In C++, these are member variables that can be set directly.
+In Python, they are set through keyword arguments in the constructor.
+
+The minimal example above used a contrived dictionary. Normally, you will
+use a dictionary downloaded from the IUCr, wwPDB or another source --
+perhaps with your own extensions. So you'll use `cif.read()` instead of
+`cif.read_string()`.
+
+.. _ddl2:
+
+Notes on DDL2
+-------------
+
+The commonly used DDL2-based dictionaries are
+`available from wwPDB <https://mmcif.wwpdb.org/dictionaries/downloads.html>`_.
+To validate mmCIF files, use the current version of the PDBx/mmCIF
+dictionary (`mmcif_pdbx_v50.dic` as of 2025).
+The original IUCr mmCIF dictionary (`cif_mm.dic`) is now only of historical
+interest. It was actively developed in the 1990s, but in the 2000s development
+was taken over by the PDB under the PDBx/mmCIF name. Formally, PDBx/mmCIF
+is an extension of the IUCr mmCIF, but for all practical purposes it can be
+thought of as the current mmCIF dictionary.
+When we talk about mmCIF files, it's shorthand for PDBx/mmCIF
+or mmCIF-like files. No software targets the original mmCIF specification.
+
+The mmCIF dictionary itself is massive---over 5MB of text---so it, too, can
+use some validation. That's what the `mmcif_ddl.dic` (DDL2) dictionary is for.
+This dictionary can also validate itself, closing the loop:
+
+.. code-block:: console
+
+  $ gemmi validate -d mmcif_ddl.dic mmcif_ddl.dic
+
+The PDBx/mmCIF dictionary can be used to validate coordinate,
+structure factor and chemical component files.
+From a validation perspective, they are all the same thing.
+That's why all categories in mmCIF files are, according to the dictionary,
+optional (`_category.mandatory_code no`) -- we can't tell what the file
+must contain. However, many items are marked as mandatory within
+categories (`_item.mandatory_code`). If you've ever wondered
+about the difference between null values `?` and `.` in mmCIF files:
+the PDB's software writes `?` and `.` for optional and mandatory items,
+respectively (an implementation detail that deviates from the CIF 1.1 spec).
+If an item is *mandatory*, it only means that if its category is present,
+the tag must also be present, but its value can be unknown or n/a.
+
+DDL2 is missing a comprehensive specification. What is not covered in
+International Tables for Crystallography, vol G (2006), has to be
+inferred from studying dictionaries and asking around.
+Parent-child relationships are particularly challenging.
+Tags may have associated parent tags (e.g. `_entity.id` is the parent
+of `_entity_poly.entity_id`), and groups of tags may have associated
+parent groups (defined in the `pdbx_item_linked_group` category).
+But it's unclear if every parent must exist.
+The PDB's own validation software (CifCheck from
+`mmcif-dict-suite <https://sw-tools.rcsb.org/apps/MMCIF-DICT-SUITE/>`_)
+checks for the presence of parent tags but has a long list of arbitrary
+exceptions hardcoded into the program, otherwise most of the files from
+the PDB wouldn't validate. In gemmi, the relationships are not checked
+by default, but there is an option for it (`-p` in `gemmi validate`).
+
+In some cases, broken relationships are fixable. In others, there is a
+fundamental mismatch between the design of the mmCIF schema and the capabilities
+of DDL2. For example, some aspects of polymers and non-polymers are
+described in different categories, but a residue can't be conditionally
+linked to one or the other. So, it's linked only to polymeric categories,
+leaving the schema partially incorrect.
+
+If you run gemmi validation in verbose mode, you might see warnings about
+incorrect regular expressions in a dictionary. In general, regexes
+come in various flavors. Over the years, some flavors have been formally
+defined and standardized (POSIX BRE, ERE, RegExp in EcmaScript, etc.).
+I think the regexes used in DDL2 are closest to POSIX ERE (Extended RegExp).
+Gemmi has hacks for parsing all the regexes that have been in mmCIF dictionaries
+for a long time, but sometimes new ones are added that are inconsistent with
+the older ones, so full support can't be guaranteed.
+
+Dictionaries allow only relatively simple checks.
+When you deposit files to the PDB, they are primarily validated by other means.
+Coordinate files are processed by a program called MAXIT,
+and structure factor files -- by SF-CONVERT. These are part of a C++ codebase
+that has been developed at RCSB since the late 1990s.
+The files you deposit don't need to strictly conform to the dictionary,
+but they must be able to pass through the processing programs, which rewrite
+them anyway. Attempts to make an mmCIF file more conformant with the spec
+sometimes backfire, choking the OneDep pipeline.
+
+Validation helps spot certain types of mistakes
+but shouldn't be overemphasized.
+When generating an mmCIF file, the goal is to ensure that it can be
+read and correctly interpreted by the software it will be used with next.
+Validation against a dictionary is a guideline, not the goal.
+
 
 JSON
 ====
@@ -1578,64 +1780,12 @@ While further improvement would be possible (some JSON parsers are
 and parsing CIF and JSON is not that different),
 it is not a priority.
 
-Directory walking
-=================
-
-Many of the utilities and examples developed for this project
-work with archives of CIF files such as wwPDB or COD.
-To make it easier to iterate over all CIF files in a directory tree
-we provide a class `CifWalk`.
-
-C++
----
-
-.. code-block:: cpp
-
-  #include <gemmi/dirwalk.hpp>
-
-  // ...
-  // throws std::runtime_error if top_dir doesn't exist
-  for (const std::string& cif_file : gemmi::CifWalk(top_dir)) {
-    cif::Document doc = cif::read(gemmi::MaybeGzipped(cif_file));
-    // ...
-  }
-
-This header file contains also a more general `DirWalk` class,
-and classes specific to macromolecular files (`PdbWalk`, `MmCifWalk`,
-`CoorFileWalk`). The file type of each file is guessed from
-the file name.
-
-Python
-------
-
-Since Python comes with the os.walk() function for iterating over files
-and directories, this functionality is less important here.
-Anyway, we provide bindings for CifWalk:
-
-.. doctest::
-
-  >>> import gemmi
-  >>> list(gemmi.CifWalk('../tests/'))[:2]
-  ['../tests/list/mon_lib_list.cif', '../tests/1011031.cif']
-
-We also have Python bindings for `CoorFileWalk` that picks macromolecular
-coordinate files.
-
-----
-
-When the user has no permission to read one of the traversed directories,
-the functions above raise an error (std::runtime_error / RuntimeError).
-
-All these directory walking functions are powered by the
-`tinydir <https://github.com/cxong/tinydir>`_ library
-(a single-header library copied into `include/gemmi/third_party`).
-
 .. _cif_examples:
 
 Examples
 ========
 
-The examples here use C++11 or Python.
+The examples here use C++ or Python.
 Full working code can be found in the examples__ directory.
 
 The examples below can be run on one or more PDBx/mmCIF files.

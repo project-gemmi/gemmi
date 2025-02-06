@@ -1,6 +1,6 @@
 # includes part of shroud/regression/run/defaults.mk
 
-SUFFIX = -12
+SUFFIX = -14
 CC = gcc$(SUFFIX)
 CXX = g++$(SUFFIX)
 FC = gfortran$(SUFFIX)

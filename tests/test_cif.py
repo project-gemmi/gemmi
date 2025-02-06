@@ -376,5 +376,62 @@ class TestDictionary(unittest.TestCase):
         code = frame.find_value('_item_type.code')
         self.assertEqual(code, 'atcode')
 
+    def test_validation(self):
+        doc = cif.read_string("""
+            data_dummy_block
+            loop_
+            _atom_site.auth_asym_id
+            _atom_site.auth_comp_id
+            _atom_site.auth_atom_id
+            A CYS N
+            A CYS CA
+            _custom_tag 5
+            loop_ _another_one 6
+        """)
+        msg_list = []
+        ddl = cif.Ddl(logger=(lambda msg: msg_list.append(msg), 6))
+        ddl.read_ddl(cif.read(full_path('mmcif_pdbx_v50_frag.dic')))
+        self.assertEqual(msg_list, [])
+        ddl.validate_cif(doc)
+        self.assertEqual(msg_list,
+                         ['[dummy_block] unknown tag _custom_tag',
+                          '[dummy_block] unknown tag _another_one',
+                          '[dummy_block] missing mandatory tag: _atom_site.id',
+                          '[dummy_block] missing category key: _atom_site.id'])
+
+        # try out set_logger()
+        counter = 0
+        def incr_counter(_):
+            nonlocal counter
+            counter += 1
+        ddl.set_logger((incr_counter, 7))
+        ddl.validate_cif(doc)
+        self.assertEqual(counter, len(msg_list))
+
+        msg_list = []
+        ddl.set_logger(lambda msg: msg_list.append(msg))
+        doc = cif.read_string("""
+            data_b2
+            _something.unexpected here
+            loop_
+            _atom_site.id
+            _atom_site.auth_asym_id
+            _atom_site.auth_comp_id
+            _atom_site.auth_atom_id
+            _atom_site.attached_hydrogens
+            1 A CYS N   -1
+            2 'hey hey' CYS CA   1
+            2 A CYS CA   1
+        """)
+        ddl.validate_cif(doc)
+        self.assertEqual(msg_list, [
+            '[b2] unknown tag _something.unexpected',                 # 1
+            "string:4 [b2] _atom_site.auth_asym_id: "
+            "'hey hey' does not match the code regex",                # 2
+            'string:4 [b2] _atom_site.attached_hydrogens: '
+            'value out of expected range: -1',                        # 3
+            '[b2] category atom_site has 1 duplicated key:\n  id=2',  # 4
+        ])
+
 if __name__ == '__main__':
     unittest.main()

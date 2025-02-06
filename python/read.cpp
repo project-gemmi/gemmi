@@ -56,10 +56,6 @@ void add_cif_read(nb::module_& cif) {
   cif.def("is_null", &cif::is_null, nb::arg("value"));
 }
 
-PdbReadOptions pdb_read_opts(int max_line_length, bool split_chain_on_ter) {
-  return PdbReadOptions{max_line_length, split_chain_on_ter, false};
-}
-
 void add_read_structure(nb::module_& m) {
   nb::enum_<ChemCompModel>(m, "ChemCompModel", nb::is_flag(), nb::is_arithmetic())
     .value("Xyz", ChemCompModel::Xyz)

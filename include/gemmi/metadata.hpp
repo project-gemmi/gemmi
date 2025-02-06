@@ -116,12 +116,12 @@ struct BasicRefinementInfo {
   double r_all = NAN;           // _refine.ls_R_factor_obs,       _refine_ls_shell.R_factor_obs
   double r_work = NAN;          // _refine.ls_R_factor_R_work,    _refine_ls_shell.R_factor_R_work
   double r_free = NAN;          // _refine.ls_R_factor_R_free,    _refine_ls_shell.R_factor_R_free
-  double cc_fo_fc_work = NAN;   // _refine.correlation_coeff_Fo_to_Fc
-  double cc_fo_fc_free = NAN;   // _refine.correlation_coeff_Fo_to_Fc_free
+  double cc_fo_fc_work = NAN;   // _refine.correlation_coeff_Fo_to_Fc, _refine_ls_shell.corr...
+  double cc_fo_fc_free = NAN;   // _refine.correlation_coeff_Fo_to_Fc_free, _refine_ls_shell.c...
   double fsc_work = NAN;        // _refine.pdbx_average_fsc_work, _refine_ls_shell.pdbx_fsc_work
   double fsc_free = NAN;        // _refine.pdbx_average_fsc_free, _refine_ls_shell.pdbx_fsc_free
-  double cc_intensity_work = NAN;
-  double cc_intensity_free = NAN;
+  double cc_intensity_work = NAN;  // _refine.correlation_coeff_I_to_Fcsqd_work, ...
+  double cc_intensity_free = NAN;  // _refine.correlation_coeff_I_to_Fcsqd_free, ...
 };
 
 struct RefinementInfo : BasicRefinementInfo {

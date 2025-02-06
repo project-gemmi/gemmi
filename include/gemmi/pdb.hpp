@@ -13,9 +13,6 @@
 #ifndef GEMMI_PDB_HPP_
 #define GEMMI_PDB_HPP_
 
-#include <cstdio>     // for stdin, size_t
-#include <unordered_map>
-#include "fileutil.hpp" // for path_basename, file_open
 #include "input.hpp"    // for FileStream
 #include "model.hpp"    // for Structure, ...
 
@@ -34,39 +31,32 @@ inline bool is_record_type3(const char* s, const char* record) {
 /// Returns operations corresponding to 1555, 2555, ... N555
 GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks);
 
-GEMMI_DLL Structure read_pdb_from_stream(LineReaderBase&& line_reader,
+GEMMI_DLL Structure read_pdb_from_stream(AnyStream& line_reader,
                                          const std::string& source,
                                          PdbReadOptions options);
 
 inline Structure read_pdb_file(const std::string& path,
-                               PdbReadOptions options=PdbReadOptions()) {
-  auto f = file_open(path.c_str(), "rb");
-  return read_pdb_from_stream(LineReader<FileStream>{f.get()}, path, options);
+                               PdbReadOptions options={}) {
+  FileStream stream(path.c_str(), "rb");
+  return read_pdb_from_stream(stream, path, options);
 }
 
 inline Structure read_pdb_from_memory(const char* data, size_t size,
                                       const std::string& name,
-                                      PdbReadOptions options=PdbReadOptions()) {
-  return read_pdb_from_stream(LineReader<MemoryStream>{data, size}, name, options);
+                                      PdbReadOptions options={}) {
+  MemoryStream stream{data, size};
+  return read_pdb_from_stream(stream, name, options);
 }
 
 inline Structure read_pdb_string(const std::string& str,
                                  const std::string& name,
-                                 PdbReadOptions options=PdbReadOptions()) {
+                                 PdbReadOptions options={}) {
   return read_pdb_from_memory(str.c_str(), str.length(), name, options);
 }
 
-// A function for transparent reading of stdin and/or gzipped files.
 template<typename T>
-inline Structure read_pdb(T&& input, PdbReadOptions options=PdbReadOptions()) {
-  if (input.is_stdin()) {
-    return read_pdb_from_stream(LineReader<FileStream>{stdin}, "stdin", options);
-  }
-  if (input.is_compressed()) {
-    using LR = LineReader<decltype(input.get_uncompressing_stream())>;
-    return read_pdb_from_stream(LR{input.get_uncompressing_stream()}, input.path(), options);
-  }
-  return read_pdb_file(input.path(), options);
+inline Structure read_pdb(T&& input, PdbReadOptions options={}) {
+  return read_pdb_from_stream(*input.create_stream(), input.path(), options);
 }
 
 } // namespace gemmi

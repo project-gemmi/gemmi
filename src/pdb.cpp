@@ -6,6 +6,7 @@
 #include <cstring>            // for memcpy, strstr, strchr, strcmp
 #include <algorithm>          // for min, swap
 #include <stdexcept>          // for invalid_argument
+#include <unordered_map>
 #include "gemmi/atof.hpp"     // for fast_from_chars
 #include "gemmi/atox.hpp"     // for is_space, is_digit
 #include "gemmi/input.hpp"
@@ -818,7 +819,7 @@ void read_metadata_from_remarks(Structure& st) {
 
 } // anonymous namespace
 
-Structure read_pdb_from_stream(LineReaderBase&& line_reader, const std::string& source,
+Structure read_pdb_from_stream(AnyStream& line_reader, const std::string& source,
                                PdbReadOptions options) {
   if (options.max_line_length <= 0 || options.max_line_length > 120)
     options.max_line_length = 120;

@@ -8,10 +8,9 @@
 #include <gemmi/fail.hpp>     // for fail
 #include <gemmi/grid.hpp>     // for Grid, ReciprocalGrid, ReciprocalGrid<>...
 #include <gemmi/mtz.hpp>      // for Mtz
-#include <gemmi/ccp4.hpp>     // for Ccp4
+#include <gemmi/ccp4.hpp>     // for Ccp4, read_ccp4_map
 #include <gemmi/fourier.hpp>  // for transform_map_to_f_phi
 #include <gemmi/util.hpp>     // for iends_with
-#include <gemmi/gz.hpp>       // for MaybeGzipped
 
 #define GEMMI_PROG map2sf
 #include "options.h"
@@ -56,8 +55,7 @@ void transform_map_to_sf(OptParser& p) {
   char phi_type = p.options[PhiType] ? std::toupper(p.options[PhiType].arg[0]) : 'P';
   if (verbose)
     fprintf(stderr, "Reading %s ...\n", map_path);
-  gemmi::Ccp4<float> map;
-  map.read_ccp4(gemmi::MaybeGzipped(map_path));
+  gemmi::Ccp4<float> map = gemmi::read_ccp4_map(map_path, false);
   if (p.options[Spacegroup]) {
     map.grid.spacegroup = gemmi::find_spacegroup_by_name(p.options[Spacegroup].arg);
     if (map.grid.spacegroup == nullptr)

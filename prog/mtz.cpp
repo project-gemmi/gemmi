@@ -2,6 +2,7 @@
 //
 // MTZ info
 
+#include <climits>            // for INT_MAX
 #include <cstdio>
 #include <unordered_map>
 #include <gemmi/mtz.hpp>
@@ -124,14 +125,11 @@ void dump(const Mtz& mtz) {
   printf("\nHeader info (run with option -s for recalculated statistics):\n");
   // get maximum column size
   int col_size = 12;
-  for (const Mtz::Column& col : mtz.columns) {
-    if (col.label.length()>col_size) {
-      col_size = col.label.length();
-    }
-  }
-  printf("\n %-*s  Type  Dataset          Min        Max\n",col_size,"Column");
   for (const Mtz::Column& col : mtz.columns)
-    printf(" %-*s    %c      %2d   %12.6g %10.6g\n",col_size,
+    col_size = std::max(col_size, (int)col.label.length());
+  printf("\n %-*s  Type  Dataset          Min        Max\n", col_size, "Column");
+  for (const Mtz::Column& col : mtz.columns)
+    printf(" %-*s    %c      %2d   %12.6g %10.6g\n", col_size,
            col.label.c_str(), col.type, col.dataset_id,
            col.min_value, col.max_value);
   if (mtz.history.empty()) {
@@ -469,7 +467,7 @@ void check_asu(const Mtz& mtz, bool tnt) {
 
 void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
   Mtz mtz2;
-  mtz2.read_input(gemmi::MaybeGzipped(path2), true);
+  mtz2.read_file_gz(path2, true);
   if (mtz1.spacegroup != mtz2.spacegroup)
     printf("Spacegroup differs:  %s  and  %s\n",
            mtz1.spacegroup_name.c_str(), mtz2.spacegroup_name.c_str());
@@ -539,8 +537,7 @@ void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
   }
 }
 
-template<typename Stream>
-void print_mtz_info(Stream&& stream, const char* path,
+void print_mtz_info(gemmi::AnyStream&& stream, const char* path,
                     const std::vector<option::Option>& options) {
   Mtz mtz;
   try {
@@ -550,18 +547,12 @@ void print_mtz_info(Stream&& stream, const char* path,
   } catch (std::runtime_error& e) {
     gemmi::fail(std::string(e.what()) + ": " + path);
   }
-  if (options[Headers]) {
-    char buf[81] = {0};
-    mtz.seek_headers(stream);
-    while (stream.read(buf, 80)) {
-      printf("%s\n", gemmi::rtrim_str(buf).c_str());
-      if (gemmi::ialpha3_id(buf) == gemmi::ialpha3_id("END"))
-        break;
-    }
-  }
   if (options[Verbose])
     mtz.logger.callback = gemmi::Logger::to_stderr;
-  mtz.read_main_headers(stream);
+  std::vector<std::string> save_headers;
+  mtz.read_main_headers(stream, options[Headers] ? &save_headers : nullptr);
+  for (const std::string& header : save_headers)
+    printf("%s\n", gemmi::rtrim_str(header).c_str());
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
   if (options[PrintTsv] || options[PrintStats] || options[PrintHistogram] ||
@@ -626,13 +617,10 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fflush(stderr);
       }
       gemmi::MaybeGzipped input(path);
-      if (input.is_stdin()) {
-        print_mtz_info(gemmi::FileStream{stdin}, path, p.options);
-      } else if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
-        print_mtz_info(mem.stream(), path, p.options);
+      if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
+        print_mtz_info(gemmi::MemoryStream(mem.data(), mem.size()), path, p.options);
       } else {
-        gemmi::fileptr_t f = gemmi::file_open(input.path().c_str(), "rb");
-        print_mtz_info(gemmi::FileStream{f.get()}, path, p.options);
+        print_mtz_info(gemmi::FileStream(path, "rb"), path, p.options);
       }
     }
   } catch (std::runtime_error& e) {

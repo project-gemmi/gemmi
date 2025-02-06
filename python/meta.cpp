@@ -375,12 +375,12 @@ void add_meta(nb::module_& m) {
     ;
   nb::class_<Metadata>(m, "Metadata")
     .def_rw("authors", &Metadata::authors)
-    //.def_rw("experiments", &Metadata::experiments)
-    //.def_rw("crystals", &Metadata::crystals)
+    .def_rw("experiments", &Metadata::experiments)
+    .def_rw("crystals", &Metadata::crystals)
     .def_rw("refinement", &Metadata::refinement)
     .def_rw("software", &Metadata::software)
-    //.def_rw("solved_by", &Metadata::solved_by)
-    //.def_rw("starting_model", &Metadata::starting_model)
-    //.def_rw("remark_300_detail", &Metadata::remark_300_detail)
+    .def_rw("solved_by", &Metadata::solved_by)
+    .def_rw("starting_model", &Metadata::starting_model)
+    .def_rw("remark_300_detail", &Metadata::remark_300_detail)
     ;
 }

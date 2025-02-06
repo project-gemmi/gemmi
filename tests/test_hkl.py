@@ -304,5 +304,27 @@ class TestConversion(unittest.TestCase):
         self.assertAlmostEqual(d3['HLC'], 1.53099, delta=1e-5)
         self.assertAlmostEqual(d3['HLD'], 4.64824, delta=1e-5)
 
+class TestReciprocalGrid(unittest.TestCase):
+    @unittest.skipIf(numpy is None, 'requires NumPy')
+    def test_array_conversion(self):
+        grid = gemmi.ReciprocalComplexGrid(4, 4, 4)
+        expected_dtype = numpy.complex64
+        self.assertEqual(grid.array.dtype, expected_dtype)
+        new_val = 0+0j
+        if numpy.__version__[:2] == '1.':
+            possible_copy_values = [True, False]
+        else:
+            possible_copy_values = [None, True, False]
+        for dtype in [None, numpy.complex64]:
+            for copy in possible_copy_values:
+                arr = numpy.array(grid, dtype=dtype, copy=copy)
+                self.assertEqual(arr.dtype, expected_dtype,
+                                 msg=f'for {dtype=} {copy=} {new_val=}, {grid.array[0,0,0]=}')
+                new_val += 1+1j
+                arr[0,0,0] = new_val
+                grid_changed = (grid.array[0,0,0] == new_val)
+                self.assertEqual(grid_changed, not copy,
+                                 msg=f'for {dtype=} {copy=} {new_val=}, {grid.array[0,0,0]=}')
+
 if __name__ == '__main__':
     unittest.main()

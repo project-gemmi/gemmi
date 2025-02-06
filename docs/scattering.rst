@@ -321,7 +321,7 @@ calculation) is obtained using either isotropic or anisotropic ADPs
 Addends
 ~~~~~~~
 
-`StructureFactorCalculator` contains also addends -- per-element values
+`StructureFactorCalculator` also contains addends -- per-element values
 that are to be added to the form factor coefficient *c*
 (which is the same as adding it to the total atomic contribution
 to the structure factor):
@@ -334,8 +334,8 @@ to the structure factor):
 
 When calculating X-ray structure factors, one may want to include *f'*
 (real part of the :ref:`anomalous scattering <anomalous>`).
-To do this, *f'* needs to be set for each element present in the system:
-This is done with function `set_addend()`, which sets angle-independent
+To do this, *f'* needs to be set for each element present in the system.
+This is done with the function `set_addend()`, which sets an angle-independent
 value that will be added to the value calculated from the form factors.
 
 .. doctest::
@@ -368,17 +368,9 @@ Structure factors calculated at this point incorporate the addends:
   >>> calc_x.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
   (182.3655...+269.0002...j)
 
-Addends can also be employed to calculate the electron scattering
-from X-ray form factors, according to the Mott–Bethe formula:
-
-.. doctest::
-
-  >>> calc_x.addends.clear()
-  >>> calc_x.addends.subtract_z()
-  >>> calc_x.mott_bethe_factor() * calc_x.calculate_sf_from_model(st[0], (3,4,5))  #doctest: +ELLIPSIS
-  (54.065...+52.968...j)
-
-The next section gives slightly more details on the Mott-Bethe formula.
+Addends can also be used to calculate electron scattering
+from X-ray form factors according to the Mott–Bethe formula,
+as shown in a :ref:`separate section <mott_bethe>`.
 
 .. _density:
 
@@ -386,14 +378,15 @@ Density for FFT
 ---------------
 
 To use FFT to calculate structure factors, we first need to calculate
-density of the scatterer (usually electrons) on a grid. For this we use
+the density of the scatterer (e.g. electron density for X-rays) on a grid.
+For this we use:
 
-* in C++ -- class DensityCalculator templated with a form factor table,
-* in Python -- classes DensityCalculatorX (corresponding to X-ray
-  form factors), DensityCalculatorE (electron form factors)
-  and DensityCalculatorN (neutrons).
+* in C++ -- class `DensityCalculator` templated with a form factor table,
+* in Python -- classes `DensityCalculatorX` (corresponding to X-ray
+  form factors), `DensityCalculatorE` (electron form factors)
+  and `DensityCalculatorN` (neutrons).
 
-DensityCalculator contains a grid. The size of the grid is determined
+`DensityCalculator` contains a grid. The size of the grid is determined
 from two parameters that we need to set: `d_min` which corresponds to
 our resolution limit, and `rate` -- the oversampling rate (1.5 by default).
 
@@ -406,15 +399,14 @@ our resolution limit, and `rate` -- the oversampling rate (1.5 by default).
 These two parameters are only used to determine the spacing of the grid.
 In this case, about 2.5Å / (2 \* 1.5) = 0.83Å.
 
-As with StructureFactorCalculator, here we also have :ref:`addends <addends>`:
+As with `StructureFactorCalculator`, here we also have :ref:`addends <addends>`:
 
 .. doctest::
 
   >>> dencalc.addends  #doctest: +ELLIPSIS
   <gemmi.Addends object at 0x...>
 
-To create a grid and calculate the density we use two function calls.
-Almost all the work is in the latter:
+To create a grid and calculate the density we use two function calls:
 
 .. doctest::
 
@@ -430,9 +422,10 @@ Calling `put_model_density_on_grid` is equivalent to these three functions:
   >>> dencalc.grid.symmetrize_sum()
 
 `initialize_grid()`, in this case, uses `d_min` and `rate`
-to determine required grid spacing and uses this spacing to setup the grid.
-If `d_min` is not set, but the grid size is already set,
-initialize_grid() only zeros all the grid values.
+to determine the required grid spacing and uses this spacing to setup the grid.
+
+If `d_min` is not set but the grid size is already set,
+`initialize_grid()` zeros the grid values without changing its size.
 
 At this point, we have a grid with density:
 
@@ -456,13 +449,13 @@ In addition to `d_min` and `rate`, which govern the grid density,
 DensityCalculator has two more parameters that affect the accuracy
 of the calculated structure factors:
 
-* `cutoff` (default: 1e-5) -- density cut-off in the same unit as the map.
-  It is used to determine the atomic radius in which the density is calculated
-  (density at the radius distance should be approximately `cutoff`).
-  A smaller cutoff means more accurate but slower calculations.
-* `blur` (default: 0) -- Gaussian dampening (blurring) factor --
-  artificial temperature factor *B*\ :sub:`extra` added to all atomic B-factors
-  (the structure factors must be later corrected to cancel it out).
+* `cutoff` (default: 1e-5) -- the density cut-off in the same unit as the map.
+  It determines the atomic radius *r* within which the density is calculated
+  (density at distance *r* will be approximately equal to `cutoff`).
+  A smaller cutoff gives more accurate but slower calculations.
+* `blur` (default: 0) -- Gaussian dampening (blurring) factor,
+  an artificial temperature factor *B*\ :sub:`extra` added to all atomic
+  B-factors (the structure factors must be corrected later to cancel it out).
 
 .. _blur:
 
@@ -470,26 +463,25 @@ Choosing these parameters is a trade-off between efficiency and accuracy.
 *B*\ :sub:`extra` is the most interesting one.
 It is discussed in the `ITfC vol B <https://it.iucr.org/Bb/contents/>`_,
 section 1.3.4.4.5 by G. Bricogne, and further in papers by
-`J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and by
+`J. Navaza (2002) <https://doi.org/10.1107/S0108767302016318>`_ and
 `P. Afonine and A. Urzhumtsev (2003) <https://doi.org/10.1107/S0108767303022062>`_,
 but no formula for the optimal value exists.
 The value of *B*\ :sub:`extra` that
-gives the most accurate results depends on the resolution, oversampling,
-atomic radius cut-off, and on the distribution of B-factors
-(in particular, on the minimal B-factor in the model).
-Additionally, increasing the dampening makes the computations slower
-(because it increases the atomic radius).
+gives the most accurate results depends on resolution, oversampling,
+atomic radius cut-off, and the distribution of B-factors
+(particularly the minimal B-factor in the model).
+Additionally, increasing the dampening slows down computations
+because it increases the atomic radius.
 
-*B*\ :sub:`extra` can be set explicitly (it can be negative):
+*B*\ :sub:`extra` can be set explicitly (it can even be negative):
 
 .. doctest::
 
   >>> dencalc.blur = 10
 
-or using the formula from Refmac (which is a function of the grid spacing
+or using the formula from Refmac (a function of the grid spacing
 and *B*\ :sub:`min`). If the formula results in a negative number,
-Refmac sets *B*\ :sub:`extra`\ to 0, and Servalcat, which employs the same
-formula, uses the negative value:
+Refmac sets *B*\ :sub:`extra`\ to 0, while Servalcat uses the negative value.
 
 .. doctest::
 
@@ -500,23 +492,42 @@ formula, uses the negative value:
 The :ref:`sfcalc <sfcalc>` program can be used to test different choices
 of *B*\ :sub:`extra`.
 
-If the density was blurred, you need to calculate it by either
-adding option `unblur` to `prepare_asu_data()`:
+If the density was blurred, it needs to accounted for by either
+adding the `unblur` option to `prepare_asu_data()`:
 
 .. doctest::
 
-  >>> asu_data = grid.prepare_asu_data(dmin=dencalc.d_min, unblur=dencalc.blur)
+  >>> asu_data = sf_grid.prepare_asu_data(dmin=dencalc.d_min, unblur=dencalc.blur)
 
-or multiplying individual structure factor by
+or by multiplying individual structure factors by
 `dencalc.reciprocal_space_multiplier(inv_d2)`.
 
+.. _mott_bethe:
+
 Mott-Bethe formula
-~~~~~~~~~~~~~~~~~~
+------------------
 
-(It's a niche topic that most of the readers should skip.)
+(This is a niche topic that most readers should skip.)
 
-To calculate *f*\ :sub:`e` according to the Mott-Bethe formula
-we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
+Electron scattering can be computed using X-ray form factors.
+To do this, we use *f*\ :sub:`x`\ --\ *Z* as form factors
+and multiply the result by a factor derived from the Mott-Bethe formula.
+This factor includes *d*:sup:`\  2` (the squared length of the scattering
+vector) and is negated because we use *f*\ :sub:`x`\ --\ *Z*
+instead of *Z*\ --\ *f*\ :sub:`x`.
+
+.. doctest::
+
+  >>> calc_x = gemmi.StructureFactorCalculatorX(st.cell)
+  >>> calc_x.addends.subtract_z()
+  >>> # this also stores d^2 in calc_x, which is then used in mott_bethe_factor()
+  >>> sf = calc_x.calculate_sf_from_model(st[0], (3,4,5))
+  >>> calc_x.mott_bethe_factor()  #doctest: +ELLIPSIS
+  -2.95382566...
+  >>> calc_x.mott_bethe_factor() * sf  #doctest: +ELLIPSIS
+  (54.065...+52.968...j)
+
+We can use the same trick when calculating structure factors through FFT:
 
 .. doctest::
 
@@ -528,7 +539,7 @@ we first employ addends to calculate *f*\ :sub:`x`\ --\ *Z*:
   >>> dc.put_model_density_on_grid(st[0])
   >>> grid = gemmi.transform_map_to_f_phi(dc.grid)
 
-Then we multiply it by –1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`2`)
+Then we multiply it by –1/(2\ *π*:sup:`2`\ *a*:sub:`0`\ *d*:sup:`\  2`)
 to get *f*\ :sub:`e`.
 
 We either multiply individual values by `mott_bethe_factor()`
@@ -549,15 +560,15 @@ or we call `prepare_asu_data()` with `mott_bethe=True`:
   array([54.063...+52.970...j], dtype=complex64)
 
 That is all.
-If you would like to separate positions of hydrogen nuclei
-and electron clouds then, assuming that the model
-has positions for electrons, call `subtract_z()` as:
+If you want to separate the positions of hydrogen nuclei and electron clouds,
+first use a model in which hydrogen coordinates point to electron clouds.
+Call `subtract_z()` as:
 
 .. doctest::
 
   >>> dc.addends.subtract_z(except_hydrogen=True)
 
-change hydrogen coordinates to proton positions,
+Then adjust the hydrogen coordinates to proton positions
 and subtract Z=1 by adding c=-1:
 
 .. doctest::

@@ -180,6 +180,7 @@ NB_MODULE(gemmi_ext, m_) {
   add_symmetry(m);
   add_unitcell(m);
   add_elem(m);
+  add_xds(m);
   add_meta(m);
   add_mol(m);
   add_small(m);

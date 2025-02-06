@@ -424,6 +424,247 @@ contacts to link definitions from :ref:`monomer library <CCD_etc>`
 and to connections (LINK, SSBOND) from the structure.
 If you find it useful, please contact the author.
 
+Matthews coefficient
+====================
+
+Matthews coefficient V\ :sub:`M` is defined as the crystal volume
+per unit of protein molecular weight. Typically, the molecular weight
+for V\ :sub:`M` is calculated from a sequence,
+and that's what this section is mostly about.
+
+First, let's read a structure and get a protein sequence:
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5cvz_final.pdb')
+  >>> st.setup_entities()  # it should sort out chain parts
+  >>> list(st[0])
+  [<gemmi.Chain A with 141 res>]
+  >>> # we have just a single chain, which makes this example simpler
+  >>> chain = st[0]['A']
+  >>> chain.get_polymer()
+  <gemmi.ResidueSpan of 141: Axp [17(ALA) 18(ALA) 19(ALA) ... 157(SER)]>
+  >>> st.get_entity_of(_)  # doctest: +ELLIPSIS
+  <gemmi.Entity 'A' polymer polypeptide(L) object at 0x...>
+  >>> sequence = _.full_sequence
+
+Gemmi provides a simple function to calculate molecular weight
+from the sequence using the built-in table of popular residues:
+
+.. doctest::
+
+  >>> weight = gemmi.calculate_sequence_weight(_.full_sequence)
+  >>> # Now we can calculate Matthews coefficient
+  >>> st.cell.volume_per_image() / weight
+  3.1983428753317003
+
+We can continue and calculate the solvent content, assuming the protein
+density of 1.35 g/cm\ :sup:`3` (the other constants below are the Avogadro
+number and Å\ :sup:`3`/cm\ :sup:`3` = 10\ :sup:`-24`):
+
+.. doctest::
+
+  >>> protein_fraction = 1. / (6.02214e23 * 1e-24 * 1.35 * _)
+  >>> print('Solvent content: {:.1f}%'.format(100 * (1 - protein_fraction)))
+  Solvent content: 61.5%
+
+If the sequence includes rare chemical components
+(outside of the top 300+ most popular components in the PDB), you may
+specify the average weight of the components that are not tabulated:
+
+.. doctest::
+
+  >>> sequence = ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
+  >>> gemmi.calculate_sequence_weight(sequence, unknown=130.0)
+  784.6114543066407
+
+The weights are assumed to be of unbonded residues. Therefore, the chain weight
+is calculated as a sum of all components minus
+(*N*--1) × weight of H\ :sub:`2`\ O.
+
+.. note::
+
+    Gemmi includes a program that calculates the Matthews coefficient
+    and the solvent content: :ref:`gemmi-contents <gemmi-contents>`.
+
+
+.. _sequence-alignment:
+
+Sequence alignment
+==================
+
+Gemmi includes a sequence alignment algorithm based on the simplest
+function (`ksw_gg`) from the `ksw2 project <https://github.com/lh3/ksw2>`_
+of `Heng Li <https://www.ncbi.nlm.nih.gov/pubmed/29750242>`_.
+
+It is a pairwise, global alignment with substitution matrix (or just
+match/mismatch values) and affine gap penalty.
+Additionally, in Gemmi the gap openings at selected positions can be made free.
+
+Let say that we want to align residues in the model to the full sequence.
+Sometimes, the alignment is ambiguous. If we'd align texts ABBC and ABC,
+both A-BC and AB-C would have the same score. In a 3D structure, the position
+of gap can be informed by inter-atomic distances.
+This information is used automatically in the `align_sequence_to_polymer`
+function. Gap positions, determined by a simple heuristic, are passed
+to the alignment algorithm as places where the gap can be opened
+without penalty.
+
+.. doctest::
+
+  >>> st = gemmi.read_pdb('../tests/pdb1gdr.ent', max_line_length=72)
+  >>> result = gemmi.align_sequence_to_polymer(st.entities[0].full_sequence,
+  ...                                          st[0][0].get_polymer(),
+  ...                                          gemmi.PolymerType.PeptideL,
+  ...                                          gemmi.AlignmentScoring())
+
+The arguments of this functions are: sequence (a list of residue names),
+:ref:`ResidueSpan <residuespan>` (a span of residues in a chain),
+and the type of chain, which is used to infer gaps.
+(The type can be taken from Entity.polymer_type, but in this example
+we wanted to keep things simple).
+
+The result provides statistics and methods of summarizing the alignment:
+
+.. doctest::
+
+  >>> result  #doctest: +ELLIPSIS
+  <gemmi.AlignmentResult object at 0x...>
+
+  >>> # score calculated according AlignmentScoring explained below
+  >>> result.score
+  70
+
+  >>> # number of matching (identical) residues
+  >>> result.match_count
+  105
+  >>> # identity = match count / length of the shorter sequence
+  >>> result.calculate_identity()
+  100.0
+  >>> # identity wrt. the 1st sequence ( = match count / 1st sequence length)
+  >>> result.calculate_identity(1)
+  75.0
+  >>> # identity wrt. the 2nd sequence
+  >>> result.calculate_identity(2)
+  100.0
+
+  >>> # CIGAR = Concise Idiosyncratic Gapped Alignment Report
+  >>> result.cigar_str()
+  '11M3I23M7I71M25I'
+
+To print out the alignment, we can combine function `add_gaps`
+and property `match_string`:
+
+.. doctest::
+
+  >>> result.add_gaps(gemmi.one_letter_code(st.entities[0].full_sequence), 1)[:70]
+  'MRLFGYARVSTSQQSLDIQVRALKDAGVKANRIFTDKASGSSSDRKGLDLLRMKVEEGDVILVKKLDRLG'
+  >>> result.match_string[:70]
+  '|||||||||||   |||||||||||||||||||||||       ||||||||||||||||||||||||||'
+  >>> result.add_gaps(gemmi.one_letter_code(st[0][0].get_polymer().extract_sequence()), 2)[:70]
+  'MRLFGYARVST---SLDIQVRALKDAGVKANRIFTDK-------RKGLDLLRMKVEEGDVILVKKLDRLG'
+
+or we can use function `AlignmentResult.formatted()`.
+
+We also have a function that aligns two sequences.
+We can exercise it by comparing two strings:
+
+.. doctest::
+
+  >>> result = gemmi.align_string_sequences(list('kitten'), list('sitting'), [])
+
+The third argument above is a list of free gap openings.
+Now we can visualize the match:
+
+.. doctest::
+
+  >>> print(result.formatted('kitten', 'sitting'), end='')  # doctest: +NORMALIZE_WHITESPACE
+  kitten-
+  .|||.| 
+  sitting
+  >>> result.score
+  0
+
+The alignment and the score is calculate according to AlignmentScoring,
+which can be passed as the last argument to both `align_string_sequences`
+and `align_sequence_to_polymer` functions.
+The default scoring is +1 for match, -1 for mismatch, -1 for gap opening,
+and -1 for each residue in the gap.
+If we would like to calculate the
+`Levenshtein distance <https://en.wikipedia.org/wiki/Levenshtein_distance>`_,
+we would use the following scoring:
+
+.. doctest::
+
+  >>> scoring = gemmi.AlignmentScoring()
+  >>> scoring.match = 0
+  >>> scoring.mismatch = -1
+  >>> scoring.gapo = 0
+  >>> scoring.gape = -1
+  >>> gemmi.align_string_sequences(list('kitten'), list('sitting'), [], scoring) # doctest: +ELLIPSIS
+  <gemmi.AlignmentResult object at 0x...>
+  >>> _.score
+  -3
+
+So the distance is 3, as expected.
+
+In addition to the scoring parameters above, we can define a substitution
+matrix. Gemmi includes ready-to-use BLOSUM62 matrix with the gap cost 10/1,
+like in `BLAST <https://www.ncbi.nlm.nih.gov/blast/html/sub_matrix.html>`_.
+
+.. doctest::
+
+  >>> blosum62 = gemmi.AlignmentScoring('b')
+  >>> blosum62.gapo, blosum62.gape
+  (-10, -1)
+
+Now we can test it on one of examples from the
+`BioPython tutorial <http://biopython.org/DIST/docs/tutorial/Tutorial.html>`_.
+First, we try global alignment:
+
+.. doctest::
+
+  >>> AA = gemmi.ResidueKind.AA
+  >>> result = gemmi.align_string_sequences(
+  ...         gemmi.expand_one_letter_sequence('LSPADKTNVKAA', AA),
+  ...         gemmi.expand_one_letter_sequence('PEEKSAV', AA),
+  ...         [], blosum62)
+  >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')
+  LSPADKTNVKAA
+    |..|.   |.
+  --PEEKS---AV
+  >>> result.score
+  -7
+
+We have only global alignment available, but we can use free-gaps to
+approximate a semi-global alignment (infix method) where gaps at the start
+and at the end of the second sequence are not penalized.
+Approximate -- because only gap openings are not penalized,
+residues in the gap still decrease the score:
+
+.. doctest::
+
+  >>> result = gemmi.align_string_sequences(
+  ...         gemmi.expand_one_letter_sequence('LSPADKTNVKAA', AA),
+  ...         gemmi.expand_one_letter_sequence('PEEKSAV', AA),
+  ...         # free gaps at 0 (start) and 7 (end):   01234567
+  ...         [0, -10, -10, -10, -10, -10, -10, 0],
+  ...         blosum62)
+  >>> print(result.formatted('LSPADKTNVKAA', 'PEEKSAV'), end='')  #doctest: +NORMALIZE_WHITESPACE
+  LSPADKTNVKAA
+    |..|..|   
+  --PEEKSAV---
+  >>> result.score
+  11
+
+The real infix method (or local alignment) would yield the score 16 (11+5),
+because we have 5 missing residues at the ends.
+
+.. note::
+
+    See also the :ref:`gemmi-align <gemmi-align>` program.
+
+
 Superposition
 =============
 
@@ -1131,89 +1372,3 @@ where
 
 
 TBC
-
-.. _pdb_dir:
-
-Local copy of the PDB archive
-=============================
-
-Some of the examples in this documentation work with a local copy
-of the Protein Data Bank archive. This subsection describes
-the assumed setup.
-
-Like in BioJava, we assume that the `$PDB_DIR` environment variable
-points to a directory that contains `structures/divided/mmCIF` -- the same
-arrangement as on the
-`PDB's FTP <ftp://ftp.wwpdb.org/pub/pdb/data/structures/>`_ server.
-
-.. code-block:: console
-
-    $ cd $PDB_DIR
-    $ du -sh structures/*/*  # as of Jun 2017
-    34G    structures/divided/mmCIF
-    25G    structures/divided/pdb
-    101G   structures/divided/structure_factors
-    2.6G   structures/obsolete/mmCIF
-
-A traditional way to keep an up-to-date local archive is to rsync it
-once a week:
-
-.. code-block:: shell
-
-    #!/bin/sh -x
-    set -u  # PDB_DIR must be defined
-    rsync_subdir() {
-      mkdir -p "$PDB_DIR/$1"
-      # Using PDBe (UK) here, can be replaced with RCSB (USA) or PDBj (Japan),
-      # see https://www.wwpdb.org/download/downloads
-      rsync -rlpt -v -z --delete \
-	  rsync.ebi.ac.uk::pub/databases/pdb/data/$1/ "$PDB_DIR/$1/"
-    }
-    rsync_subdir structures/divided/mmCIF
-    #rsync_subdir structures/obsolete/mmCIF
-    #rsync_subdir structures/divided/pdb
-    #rsync_subdir structures/divided/structure_factors
-
-Gemmi has a helper function for using the local archive copy.
-It takes a PDB code (case insensitive) and a symbol denoting what file
-is requested: P for PDB, M for mmCIF, S for SF-mmCIF.
-
-.. doctest::
-
-  >>> os.environ['PDB_DIR'] = '/copy'
-  >>> gemmi.expand_if_pdb_code('1ABC', 'P') # PDB file
-  '/copy/structures/divided/pdb/ab/pdb1abc.ent.gz'
-  >>> gemmi.expand_if_pdb_code('1abc', 'M') # mmCIF file
-  '/copy/structures/divided/mmCIF/ab/1abc.cif.gz'
-  >>> gemmi.expand_if_pdb_code('1abc', 'S') # SF-mmCIF file
-  '/copy/structures/divided/structure_factors/ab/r1abcsf.ent.gz'
-
-If the first argument is not in the PDB code format (4 characters for now)
-the function returns the first argument.
-
-.. doctest::
-
-  >>> arg = 'file.cif'
-  >>> gemmi.is_pdb_code(arg)
-  False
-  >>> gemmi.expand_if_pdb_code(arg, 'M')
-  'file.cif'
-
-Multiprocessing
-===============
-
-(Python-specific)
-
-Most of the gemmi objects cannot be pickled. Therefore, they cannot be
-passed between processes when using the multiprocessing module.
-Currently, the only picklable classes (with protocol >= 2) are:
-UnitCell and SpaceGroup.
-
-Usually, it is possible to organize multiprocessing in such a way that
-gemmi objects are not passed between processes. The example script below
-traverses subdirectories and asynchronously analyzes coordinate files,
-using 4 worker processes in parallel.
-
-.. literalinclude:: ../examples/multiproc.py
-   :language: python
-   :lines: 4-

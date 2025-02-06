@@ -46,7 +46,6 @@ gemmi/calculate.hpp
 
 gemmi/ccp4.hpp
     CCP4 format for maps and masks.
-    See also read_map.hpp.
 
 gemmi/cellred.hpp
     Unit cell reductions: Buerger, Niggli, Selling-Delaunay.
@@ -227,9 +226,6 @@ gemmi/qcp.hpp
 gemmi/read_cif.hpp
     Functions for reading possibly gzipped CIF files.
 
-gemmi/read_map.hpp
-    Functions for reading possibly gzipped CCP4 map files.
-
 gemmi/recgrid.hpp
     ReciprocalGrid -- grid for reciprocal space data.
 
@@ -323,5 +319,8 @@ gemmi/util.hpp
 gemmi/version.hpp
     Version number.
 
+gemmi/xds2mtz.hpp
+    Convert XDS_ASCII to MTZ.
+
 gemmi/xds_ascii.hpp
-    Read unmerged XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.
+    Read XDS files: XDS_ASCII.HKL and INTEGRATE.HKL.

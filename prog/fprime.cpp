@@ -11,20 +11,30 @@
 
 namespace {
 
-enum OptionIndex { Energy=4, Wavelen };
+enum OptionIndex { Energy=4, Wavelen, Step, Nvalues };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n " EXE_NAME " [options] ELEMENT[...]"
-    "\nPrints anomalous scattering factors f' and f\"."
+    "\n\nPrints anomalous scattering factors f' and f\"."
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
   //CommonUsage[Verbose],
-  { Energy, 0, "e", "energy", Arg::Float,
-    "  -e, --energy=ENERGY  \tEnergy [eV]" },
-  { Wavelen, 0, "w", "wavelength", Arg::Float,
-    "  -w, --wavelength=LAMBDA  \tWavelength [A]" },
+  { Energy, 0, "e", "energy", Arg::NumberOrRange,
+    "  -e, --energy=ENERGY  \tEnergy [eV] or range of energies (e.g. 8000:14000)." },
+  { Wavelen, 0, "w", "wavelength", Arg::NumberOrRange,
+    "  -w, --wavelength=LAMBDA  \tWavelength [A] or range (e.g. 0.5:0.9)." },
+  { Step, 0, "s", "step", Arg::Float,
+    "  -s, --step=STEP  \tStep size for a range." },
+  { Nvalues, 0, "n", "", Arg::Int,
+    "  -n N  \tNumber of values in a range." },
+  { NoOp, 0, "", "", Arg::None,
+    "\nOptions -e/-w can be given multiple times:"
+    "\n  " EXE_NAME " -e 12400 -e 11500 -e 9800 Se"
+    "\nIf -e or -w specifies a range, -n or -s must be provided, e.g.:"
+    "\n  " EXE_NAME " -w 0.5:0.9 -s 0.01 Os"
+  },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -37,6 +47,32 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Neither energy nor wavelength was specified.\n");
     return -1;
   }
+  p.check_exclusive_pair(Step, Nvalues);
+  bool range_error = false;
+  auto expand_range = [&](double xmin, double xmax) {
+    std::vector<double> result;
+    int nvalues = 0;
+    double step = 0.;
+    if (p.options[Step]) {
+      step = std::atof(p.options[Step].arg);
+      if ((xmax - xmin) * step < 0)
+        step = -step;
+      nvalues = int((xmax - xmin) / step + 1.01);
+    } else if (p.options[Nvalues]) {
+      nvalues = std::atoi(p.options[Nvalues].arg);
+      step = (xmax - xmin) / (nvalues - 1);
+    } else {
+      fprintf(stderr, "Specifying range requires either -s or -n.\n");
+      range_error = true;
+    }
+    if (nvalues > 0) {
+      result.reserve(nvalues);
+      for (int i = 0; i < nvalues; ++i)
+        result.push_back(xmin + i * step);
+    }
+    return result;
+  };
+
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* name = p.nonOption(i);
     gemmi::Element elem = gemmi::find_element(name);
@@ -45,11 +81,30 @@ int GEMMI_MAIN(int argc, char **argv) {
       return -1;
     }
     std::vector<double> energies;
-    for (const option::Option* opt = p.options[Energy]; opt; opt = opt->next())
-      energies.push_back(std::atof(opt->arg));
+    double xmin, xmax;
+    for (const option::Option* opt = p.options[Energy]; opt; opt = opt->next()) {
+      parse_number_or_range(opt->arg, &xmin, &xmax);
+      if (xmin == xmax) {
+        energies.push_back(xmin);
+      } else {
+        for (double energy : expand_range(xmin, xmax))
+          energies.push_back(energy);
+        if (range_error)
+          return -1;
+      }
+    }
     double hc = gemmi::hc();
-    for (const option::Option* opt = p.options[Wavelen]; opt; opt = opt->next())
-      energies.push_back(hc / std::atof(opt->arg));
+    for (const option::Option* opt = p.options[Wavelen]; opt; opt = opt->next()) {
+      parse_number_or_range(opt->arg, &xmin, &xmax);
+      if (xmin == xmax) {
+        energies.push_back(hc / xmin);
+      } else {
+        for (double wavelength : expand_range(xmin, xmax))
+          energies.push_back(hc / wavelength);
+        if (range_error)
+          return -1;
+      }
+    }
     std::vector<double> fp(energies.size(), 0);
     std::vector<double> fpp(energies.size(), 0);
     printf("Element\t E[eV]\tWavelength[A]\t   f'   \t  f\"\n");

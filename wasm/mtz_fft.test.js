@@ -3,7 +3,7 @@ const zlib = require('node:zlib');
 const Gemmi = require('./gemmi.js')
 
 
-test('counts atom occupancies', () => {
+test('read mtz', () => {
   Gemmi().then((gemmi) => {
     const path = '../tests/5wkd_phases.mtz.gz';
     const buffer_gz = fs.readFileSync(path);

@@ -168,6 +168,57 @@ but they should be usable on their own.
  you get a static library `libcgemmi.a` that can be used from C,
  together with the :file:`fortran/*.h` headers.
 
+.. _webassembly:
+
+WebAssembly
+-----------
+
+The Gemmi library can be compiled with Emscripten to WebAssembly.
+Since compiling the entire library is unlikely to be necessary,
+we'll show how to compile a subset needed for a particular project,
+adding bindings for JavaScript. We present two approaches.
+
+With Embind
+~~~~~~~~~~~
+
+The `wasm/` subdirectory contains bindings that use Embind to expose
+C++ classes to JavaScript. Currently, they consist of two parts:
+
+* Minimal bindings to the macromolecular `Structure`
+  that allow reading a PDB or mmCIF file and iterating over models, chains,
+  residues and atoms (see `mol.test.js`). This serves as an example
+  and a starting point for further work (which can be carried on either
+  as part of gemmi or in the user's own project). Feel free to reach out
+  if you have questions.
+* Bindings to class `Mtz` that enable map calculation (via FFT)
+  from map coefficients. This part was previously provided in the separate
+  `mtz module <https://www.npmjs.com/package/mtz>`_,
+  the first library to enable the use of MTZ files in molecular graphics apps.
+
+The files from the Gemmi library used for building the wasm module
+are listed as `GEMMI_OBJS` in the `Makefile`.
+
+With C API
+~~~~~~~~~~
+
+As part of the Gemmi project, we maintain a set of
+`web tools <https://project-gemmi.github.io/wasm/>`_ (mostly file converters),
+which are single-page applications powered by Gemmi functions in WASM.
+The source code of these tools is in the
+`wasm repository <https://github.com/project-gemmi/wasm>`_ (not to be confused
+with the wasm subdirectory of the gemmi repo -- one of them should be renamed).
+
+These tools don't use the bindings described above. They demonstrate
+an alternative approach. For each page we wrote a dedicated C++ function,
+with a C API, that performs the bulk of the work. The bindings to these
+functions are generated using Emscripten (without Embind).
+This approach -- writing part of the web app in C++ -- is more performant,
+as it keeps all computations on the WebAssembly side and minimizes
+the number of calls across the JS/WASM boundary.
+
+Check the Makefiles in subdirectories to see how the wasm modules are built.
+
+
 Program
 -------
 
@@ -225,76 +276,3 @@ We also have *Python doctest* tests in the documentation,
 and a few other test routines.
 All the commands used for testing are listed in the `run-tests.sh`
 script in the repository.
-
-Credits
--------
-
-This project is using code from a number of third-party open-source projects.
-
-Projects used in the C++ library, included under
-`include/gemmi/third_party/` (if used in headers) or `third_party/`:
-
-* `PEGTL <https://github.com/taocpp/PEGTL/>`_ -- library for creating PEG
-  parsers. License: MIT.
-* `sajson <https://github.com/chadaustin/sajson>`_ -- high-performance
-  JSON parser. License: MIT.
-* `PocketFFT <https://gitlab.mpcdf.mpg.de/mtr/pocketfft>`_ -- FFT library.
-  License: 3-clause BSD.
-* `stb_sprintf <https://github.com/nothings/stb>`_ -- locale-independent
-  snprintf() implementation. License: Public Domain.
-* `fast_float <https://github.com/fastfloat/fast_float>`_ -- locale-independent
-  number parsing. License: Apache 2.0.
-* `tinydir <https://github.com/cxong/tinydir>`_ -- directory (filesystem)
-  reader. License: 2-clause BSD.
-
-Code derived from the following projects is used in the library:
-
-* `ksw2 <https://github.com/lh3/ksw2>`_ -- sequence alignment in
-  `seqalign.hpp` is based on the ksw_gg function from ksw2. License: MIT.
-* `QCProt <https://theobald.brandeis.edu/qcp/>`_ -- superposition method
-  in `qcp.hpp` is taken from QCProt and adapted to our project. License: BSD.
-* `Larch <https://github.com/xraypy/xraylarch>`_ -- calculation of f' and f"
-  in `fprime.cpp` is based on CromerLiberman code from Larch.
-  License: 2-clause BSD.
-
-Projects included under `third_party/` that are not used in the library
-itself, but are used in command-line utilities, python bindings or tests:
-
-* `zpp serializer <https://github.com/eyalz800/serializer>`_ --
-  serialization framework. License: MIT.
-* `The Lean Mean C++ Option Parser <http://optionparser.sourceforge.net/>`_ --
-  command-line option parser. License: MIT.
-* `doctest <https://github.com/onqtam/doctest>`_ -- testing framework.
-  License: MIT.
-* `linalg.h <http://github.com/sgorsten/linalg/>`_ -- linear algebra library.
-  License: Public Domain.
-* `zlib <https://github.com/madler/zlib>`_ -- a subset of the zlib library
-  for decompressing gz files, used as a fallback when the zlib library
-  is not found in the system. License: zlib.
-
-Not distributed with Gemmi:
-
-* `nanobind <https://github.com/wjakob/nanobind>`_ -- used for creating
-  Python bindings. License: 3-clause BSD.
-* `zlib-ng <https://github.com/zlib-ng/zlib-ng>`_ -- optional, can be used
-  instead of zlib for faster reading of gzipped files.
-* `cctbx <https://github.com/cctbx/cctbx_project>`_ -- used in tests
-  (if cctbx is not present, these tests are skipped) and
-  in scripts that generated space group data and 2-fold twinning operations.
-  License: 3-clause BSD.
-
-Mentions:
-
-* `NLOpt <https://github.com/stevengj/nlopt>`_
-  was used to try out various optimization methods for class Scaling.
-  License: MIT.
-
-Email me if I forgot about something.
-
-List of C++ headers
--------------------
-
-Here is a list of C++ headers in `gemmi/include/`.
-This list also provides an overview of the library.
-
-.. include:: headers.rst

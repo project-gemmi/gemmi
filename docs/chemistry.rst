@@ -264,7 +264,7 @@ without CIF file
 ----------------
 
 If your structure is stored in a macromolecular format (PDB, mmCIF)
-you can read it first as macromolecular :ref:`hierarchy <mcra>`
+you can read it first as macromolecular :ref:`Structure <structure>`
 and convert it to `SmallStructure`:
 
 .. doctest::
@@ -407,11 +407,14 @@ Monomer library
 ===============
 
 Structural biologists routinely use prior knowledge about biomolecules
-to augment the data obtained in an experiment. One way to store that
-prior knowledge is in a so-called *monomer library*.
+to augment the data obtained in an experiment.
+This prior knowledge is what we know about preferred geometries in molecules
+(distances between atoms, etc.). This knowledge is extracted primarily from
+experimental small molecule databases (COD and CSD) and QM calculations.
+One way to store that prior knowledge is in a so-called *monomer library*.
 In addition to describing monomers (chemical components
-from the previous section), the monomer library describes also links
-between the monomers, and may contain other data useful in
+from the previous section), the monomer library also describes links
+between monomers and may contain various other data useful in
 macromolecular refinement.
 
 In Gemmi, data from a monomer library is stored in the class `MonLib`.
@@ -427,7 +430,7 @@ In `BUSTER <https://www.globalphasing.com/buster/>`_ the prior knowledge
 is organized differently.
 
 The restraints we use are similar to those used in molecular dynamics
-(bond, angle, dihedral and improper dihedral restraints).
+(bond, angle, dihedral, improper dihedral and planarity restraints).
 Originally, the monomer library was created because MD potentials
 were deemed inadequate for refinement. Since then,
 both the restraints in experimental structural biology and MD potentials
@@ -475,50 +478,4 @@ The `logging` argument above is described in the next section.
 `MonLib` can be used to prepare :ref:`Topology <topology>`.
 
 TBC
-
-
-.. _logger:
-
-Logger
-======
-
-Gemmi Logger is a tiny helper class for passing messages from a gemmi function
-to the calling function. It doesn't belong in this section, but it's
-documented here because it's used in the previous subsection and I haven't found
-a better spot for it.
-
-The messages being passed are usually info or warnings that a command-line
-program would print to stdout or stderr.
-
-The Logger has two member variables:
-
-.. literalinclude:: ../include/gemmi/logger.hpp
-   :language: cpp
-   :start-at: ///
-   :end-at: int threshold
-
-and a few member functions for sending messages.
-
-When a function takes a Logger argument, we can pass:
-
-**C++**
-
-* `{&Logger::to_stderr}` to redirect messages to stderr
-  (to_stderr() calls fprintf),
-* `{&Logger::to_stdout}` to redirect messages to stdout,
-* `{&Logger::to_stdout, 3}` to print only warnings (threshold=3),
-* `{nullptr, 0}` to disable all messages,
-* `{}` to throw errors and ignore other messages (the default, see Quirk above),
-* `{[](const std::string& s) { do_anything(s);}}` to do anything else.
-
-**Python**
-
-* `sys.stderr` or `sys.stdout` or any other stream (an object with `write`
-  and `flush` methods), to redirect messages to that stream,
-* `(sys.stdout, 3)` to print only warnings (threshold=3),
-* `(None, 0)` to disable all messages,
-* `None` to throw errors and ignore other messages (the default, see Quirk above),
-* a function that takes a message string as its only argument
-  (e.g. `lambda s: print(s.upper())`).
-
 

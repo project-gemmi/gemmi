@@ -67,3 +67,32 @@
  body:not([data-theme="light"]) .cyan-bg { background-color:#055; }
  body:not([data-theme="light"]) .greenish-bg { background-color:#350; }
 }
+
+
+/* customize sphinx-inline-tabs to avoid changes of tab-set width */
+
+.tab-set {
+ display: grid;
+ grid-template-columns: auto 1fr; /* could be: repeat(auto-fit, auto)*/
+}
+
+.tab-set > label {
+ width: max-content;  /* Make label only as wide as its content */
+ grid-row: 1;
+ grid-column: auto;
+ white-space: nowrap;
+}
+
+.tab-content {
+ display: block;
+ grid-row: 2;
+ grid-column: 1 / -1;  /* Content spans across all columns */
+ visibility: hidden;
+ opacity: 0;
+ transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.tab-set > input:checked + label + .tab-content {
+ visibility: visible;
+ opacity: 1;
+}

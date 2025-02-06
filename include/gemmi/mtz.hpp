@@ -8,17 +8,13 @@
 #include <cassert>
 #include <cmath>         // for isnan
 #include <cstdint>       // for int32_t
-#include <cstring>       // for memcpy
 #include <algorithm>     // for copy
 #include <array>
 #include <initializer_list>
 #include <string>
 #include <vector>
-#include "atof.hpp"      // for fast_atof
-#include "atox.hpp"      // for simple_atoi, read_word
 #include "fail.hpp"      // for fail
-#include "fileutil.hpp"  // for file_open, is_little_endian, fileptr_t, ...
-#include "input.hpp"     // for FileStream, CharArray
+#include "input.hpp"     // for AnyStream, FileStream, CharArray
 #include "iterator.hpp"  // for StrideIter
 #include "logger.hpp"    // for Logger
 #include "math.hpp"      // for rad, Mat33
@@ -27,24 +23,6 @@
 #include "util.hpp"      // for ialpha4_id, rtrim_str, ialpha3_id, ...
 
 namespace gemmi {
-
-template <typename T, typename FP=typename std::iterator_traits<T>::value_type>
-std::array<FP,2> calculate_min_max_disregarding_nans(T begin, T end) {
-  std::array<FP,2> minmax = {{NAN, NAN}};
-  T i = begin;
-  while (i != end && std::isnan(*i))
-    ++i;
-  if (i != end) {
-    minmax[0] = minmax[1] = *i;
-    while (++i != end) {
-      if (*i < minmax[0])
-        minmax[0] = *i;
-      else if (*i > minmax[1])
-        minmax[1] = *i;
-    }
-  }
-  return minmax;
-}
 
 // Unmerged MTZ files always store in-asu hkl indices and symmetry operation
 // encoded in the M/ISYM column. Here is a helper for writing such files.
@@ -258,33 +236,7 @@ struct GEMMI_DLL Mtz {
       ds.cell = cell;
   }
 
-  UnitCell get_average_cell_from_batch_headers(double* rmsd) const {
-    if (rmsd)
-      for (int i = 0; i < 6; ++i)
-        rmsd[i] = 0.;
-    double avg[6] = {0., 0., 0., 0., 0., 0.};
-    for (const Batch& batch : batches)
-      for (int i = 0; i < 6; ++i) {
-        // if batch headers are not set correctly, return global cell
-        if (batch.floats[i] <= 0)
-          return cell;
-        avg[i] += batch.floats[i];
-      }
-    if (avg[0] <= 0 || avg[1] <= 0 || avg[2] <= 0 ||
-        avg[3] <= 0 || avg[4] <= 0 || avg[5] <= 0)
-      return UnitCell();
-    size_t n = batches.size();
-    for (int i = 0; i < 6; ++i)
-      avg[i] /= n;
-    if (rmsd) {
-      for (const Batch& batch : batches)
-        for (int i = 0; i < 6; ++i)
-          rmsd[i] += sq(avg[i] - batch.floats[i]);
-      for (int i = 0; i < 6; ++i)
-        rmsd[i] = std::sqrt(rmsd[i] / n);
-    }
-    return UnitCell(avg[0], avg[1], avg[2], avg[3], avg[4], avg[5]);
-  }
+  UnitCell get_average_cell_from_batch_headers(double* rmsd) const;
 
   void set_spacegroup(const SpaceGroup* new_sg) {
     spacegroup = new_sg;
@@ -449,34 +401,9 @@ struct GEMMI_DLL Mtz {
 
   bool is_merged() const { return batches.empty(); }
 
-  void extend_min_max_1_d2(const UnitCell& uc, double& min, double& max) const {
-    for (size_t i = 0; i < data.size(); i += columns.size()) {
-      double res = uc.calculate_1_d2_double(data[i+0], data[i+1], data[i+2]);
-      if (res < min)
-        min = res;
-      if (res > max)
-        max = res;
-    }
-  }
-
-  std::array<double,2> calculate_min_max_1_d2() const {
-    if (!has_data() || columns.size() < 3)
-      fail("No data.");
-    double min_value = INFINITY;
-    double max_value = 0.;
-    if (cell.is_crystal() && cell.a > 0)
-      extend_min_max_1_d2(cell, min_value, max_value);
-    const UnitCell* prev_cell = nullptr;
-    for (const Dataset& ds : datasets)
-      if (ds.cell.is_crystal() && ds.cell.a > 0 && ds.cell != cell &&
-          (!prev_cell || ds.cell != *prev_cell)) {
-        extend_min_max_1_d2(ds.cell, min_value, max_value);
-        prev_cell = &ds.cell;
-      }
-    if (min_value == INFINITY)
-      min_value = 0;
-    return {{min_value, max_value}};
-  }
+  /// Calculates min/max for all combinations of reflections and unit cells,
+  /// where unit cells are a global CELL and per-dataset DCELL.
+  std::array<double,2> calculate_min_max_1_d2() const;
 
   void update_reso() {
     std::array<double,2> reso = calculate_min_max_1_d2();
@@ -491,296 +418,32 @@ struct GEMMI_DLL Mtz {
     swap_eight_bytes(&header_offset);
   }
 
-  template<typename Stream>
-  void read_first_bytes(Stream& stream) {
-    char buf[20] = {0};
+  void read_first_bytes(AnyStream& stream);
 
-    if (!stream.read(buf, 20))
-      fail("Could not read the MTZ file (is it empty?)");
-    if (buf[0] != 'M' || buf[1] != 'T' || buf[2] != 'Z' || buf[3] != ' ')
-      fail("Not an MTZ file - it does not start with 'MTZ '");
+  /// read headers until END
+  void read_main_headers(AnyStream& stream, std::vector<std::string>* save_headers);
 
-    // Bytes 9-12 have so-called machine stamp:
-    // "The first 4 half-bytes represent the real, complex, integer and
-    // character formats".
-    // We don't try to handle all the combinations here, only the two most
-    // common: big endian (for all types) and little endian (for all types).
-    // BE is denoted by 1 and LE by 4.
-    // If we get a value different than 1 and 4 we assume the native byte order.
-    if ((buf[9] & 0xf0) == (is_little_endian() ? 0x10 : 0x40))
-      toggle_endianness();
+  /// read the part between END and MTZENDOFHEADERS
+  void read_history_and_batch_headers(AnyStream& stream);
 
-    std::int32_t tmp_header_offset;
-    std::memcpy(&tmp_header_offset, buf + 4, 4);
-    if (!same_byte_order)
-      swap_four_bytes(&tmp_header_offset);
+  void setup_spacegroup();
 
-    if (tmp_header_offset == -1) {
-      std::memcpy(&header_offset, buf + 12, 8);
-      if (!same_byte_order) {
-        swap_eight_bytes(&header_offset);
-      }
-    } else {
-      header_offset = (int64_t) tmp_header_offset;
-    }
-  }
+  void read_raw_data(AnyStream& stream);
 
-  static const char* skip_word(const char* line) {
-    while (*line != '\0' && !std::isspace(*line))
-      ++line;
-    while (std::isspace(*line))
-      ++line;
-    return line;
-  }
+  void read_all_headers(AnyStream& stream);
 
-  static UnitCell read_cell_parameters(const char* line) {
-    double a = fast_atof(line, &line);
-    double b = fast_atof(line, &line);
-    double c = fast_atof(line, &line);
-    double alpha = fast_atof(line, &line);
-    double beta = fast_atof(line, &line);
-    double gamma = fast_atof(line, &line);
-    return UnitCell(a, b, c, alpha, beta, gamma);
-  }
-
-  template<typename Stream>
-  void seek_headers(Stream& stream) {
-    std::ptrdiff_t pos = 4 * std::ptrdiff_t(header_offset - 1);
-    if (!stream.seek(pos))
-      fail("Cannot rewind to the MTZ header at byte " + std::to_string(pos));
-  }
-
-  // read headers until END
-  template<typename Stream>
-  void read_main_headers(Stream& stream) {
-    char line[81] = {0};
-    seek_headers(stream);
-    int ncol = 0;
-    bool has_batch = false;
-    while (stream.read(line, 80) && ialpha3_id(line) != ialpha3_id("END")) {
-      const char* args = skip_word(line);
-      switch (ialpha4_id(line)) {
-        case ialpha4_id("VERS"):
-          version_stamp = rtrim_str(args);
-          break;
-        case ialpha4_id("TITL"):
-          title = rtrim_str(args);
-          break;
-        case ialpha4_id("NCOL"): {
-          ncol = simple_atoi(args, &args);
-          nreflections = simple_atoi(args, &args);
-          int nbatches = simple_atoi(args);
-          if (nbatches < 0 || nbatches > 10000000)  // sanity check
-            fail("Wrong NCOL header");
-          batches.resize(nbatches);
-          break;
-        }
-        case ialpha4_id("CELL"):
-          cell = read_cell_parameters(args);
-          break;
-        case ialpha4_id("SORT"):
-          for (int& n : sort_order)
-            n = simple_atoi(args, &args);
-          break;
-        case ialpha4_id("SYMI"): {
-          nsymop = simple_atoi(args, &args);
-          symops.reserve(nsymop);
-          simple_atoi(args, &args); // ignore number of primitive operations
-          args = skip_word(skip_blank(args)); // ignore lattice type
-          spacegroup_number = simple_atoi(args, &args);
-          args = skip_blank(args);
-          if (*args != '\'')
-            spacegroup_name = read_word(args);
-          else if (const char* end = std::strchr(++args, '\''))
-            spacegroup_name.assign(args, end);
-          // ignore point group which is at the end of args
-          break;
-        }
-        case ialpha4_id("SYMM"):
-          symops.push_back(parse_triplet(args));
-          break;
-        case ialpha4_id("RESO"):
-          min_1_d2 = fast_atof(args, &args);
-          max_1_d2 = fast_atof(args, &args);
-          break;
-        case ialpha4_id("VALM"):
-          if (*args != 'N') {
-            const char* endptr;
-            float v = (float) fast_atof(args, &endptr);
-            if (*endptr == '\0' || is_space(*endptr))
-              valm = v;
-            else
-              logger.note("Unexpected VALM value: " + rtrim_str(args));
-          }
-          break;
-        case ialpha4_id("COLU"): {
-          columns.emplace_back();
-          Column& col = columns.back();
-          col.label = read_word(args, &args);
-          col.type = read_word(args, &args)[0];
-          col.min_value = (float) fast_atof(args, &args);
-          col.max_value = (float) fast_atof(args, &args);
-          col.dataset_id = simple_atoi(args);
-          col.parent = this;
-          col.idx = columns.size() - 1;
-          break;
-        }
-        case ialpha4_id("COLS"):
-          // COLSRC is undocumented. CMTZ (libccp4) adds it after COLUMN:
-          // COLUMN IMEAN                          J       -300.600006              4619    1
-          // COLSRC IMEAN                          CREATED_07/08/2019_11:00:23              1
-          if (!columns.empty() && columns.back().label == read_word(args, &args))
-            columns.back().source = read_word(args);
-          else
-            logger.note("MTZ: COLSRC is not after matching COLUMN");
-          break;
-        case ialpha4_id("COLG"):
-          // Column group - not used.
-          break;
-        case ialpha4_id("NDIF"):
-          datasets.reserve(simple_atoi(args));
-          break;
-        case ialpha4_id("PROJ"):
-          datasets.emplace_back();
-          datasets.back().id = simple_atoi(args, &args);
-          datasets.back().project_name = read_word(skip_word(args));
-          datasets.back().wavelength = 0.0;
-          break;
-        case ialpha4_id("CRYS"):
-          if (simple_atoi(args, &args) == last_dataset().id)
-            datasets.back().crystal_name = read_word(args);
-          else
-            logger.note("MTZ CRYSTAL line: unusual numbering.");
-          break;
-        case ialpha4_id("DATA"):
-          if (simple_atoi(args, &args) == last_dataset().id)
-            datasets.back().dataset_name = read_word(args);
-          else
-            logger.note("MTZ DATASET line: unusual numbering.");
-          break;
-        case ialpha4_id("DCEL"):
-          if (simple_atoi(args, &args) == last_dataset().id)
-            datasets.back().cell = read_cell_parameters(args);
-          else
-            logger.note("MTZ DCELL line: unusual numbering.");
-          break;
-        // case("DRES"): not in use yet
-        case ialpha4_id("DWAV"):
-          if (simple_atoi(args, &args) == last_dataset().id)
-            datasets.back().wavelength = fast_atof(args);
-          else
-            logger.note("MTZ DWAV line: unusual numbering.");
-          break;
-        case ialpha4_id("BATCH"):
-          // We take number of batches from the NCOL record and serial numbers
-          // from BH. This header could be used only to check consistency.
-          has_batch = true;
-          break;
-        default:
-          logger.note("Unknown header: " + rtrim_str(line));
-      }
-    }
-    if (ncol != (int) columns.size())
-      fail("Number of COLU records inconsistent with NCOL record.");
-    if (has_batch != !batches.empty())
-      fail("BATCH header inconsistent with NCOL record.");
-  }
-
-  // read the part between END and MTZENDOFHEADERS
-  template<typename Stream>
-  void read_history_and_batch_headers(Stream& stream) {
-    char buf[81] = {0};
-    int n_headers = 0;
-    while (stream.read(buf, 80) && ialpha4_id(buf) != ialpha4_id("MTZE")) {
-      if (n_headers != 0) {
-        const char* start = skip_blank(buf);
-        const char* end = rtrim_cstr(start, start+80);
-        history.emplace_back(start, end);
-        --n_headers;
-      } else if (ialpha4_id(buf) == ialpha4_id("MTZH")) {
-        n_headers = simple_atoi(skip_word(buf));
-        if (n_headers < 0 || n_headers > 30) {
-          logger.note("Wrong MTZ: number of headers should be between 0 and 30");
-          return;
-        }
-        history.reserve(n_headers);
-      } else if (ialpha4_id(buf) == ialpha4_id("MTZB")) {
-        for (Batch& batch : batches) {
-          stream.read(buf, 80);
-          if (ialpha3_id(buf) != ialpha3_id("BH "))
-            fail("Missing BH header");
-          const char* args = skip_word(buf);
-          batch.number = simple_atoi(args, &args);
-          int total_words = simple_atoi(args, &args);
-          int int_words = simple_atoi(args, &args);
-          int float_words = simple_atoi(args);
-          if (total_words != int_words + float_words || total_words > 1000)
-            fail("Wrong BH header");
-          stream.read(buf, 80); // TITLE
-          const char* end = rtrim_cstr(buf + 6, buf+76);
-          batch.title.assign(buf, end - buf);
-          batch.ints.resize(int_words);
-          stream.read(batch.ints.data(), int_words * 4);
-          batch.floats.resize(float_words);
-          stream.read(batch.floats.data(), float_words * 4);
-          stream.read(buf, 80);
-          if (ialpha4_id(buf) != ialpha4_id("BHCH"))
-            fail("Missing BHCH header");
-          split_str_into_multi(buf + 5, " \t", batch.axes);
-        }
-      }
-    }
-    appended_text = stream.read_rest();
-  }
-
-  void setup_spacegroup() {
-    spacegroup = find_spacegroup_by_name(spacegroup_name, cell.alpha, cell.gamma);
-    if (!spacegroup) {
-      logger.note("MTZ: unrecognized spacegroup name: " + spacegroup_name);
-      return;
-    }
-    if (spacegroup->ccp4 != spacegroup_number)
-      logger.note("MTZ: inconsistent spacegroup name and number");
-    cell.set_cell_images_from_spacegroup(spacegroup);
-    for (Dataset& d : datasets)
-      d.cell.set_cell_images_from_spacegroup(spacegroup);
-  }
-
-  template<typename Stream>
-  void read_raw_data(Stream& stream) {
-    size_t n = columns.size() * nreflections;
-    data.resize(n);
-    if (!stream.seek(80))
-      fail("Cannot rewind to the MTZ data.");
-    if (!stream.read(data.data(), 4 * n))
-      fail("Error when reading MTZ data");
-    if (!same_byte_order)
-      for (float& f : data)
-        swap_four_bytes(&f);
-  }
-
-  template<typename Stream>
-  void read_all_headers(Stream& stream) {
-    read_first_bytes(stream);
-    read_main_headers(stream);
-    read_history_and_batch_headers(stream);
-    setup_spacegroup();
-    if (datasets.empty())
-      datasets.push_back({0, "HKL_base", "HKL_base", "HKL_base", cell, 0.});
-  }
-
-  template<typename Stream>
-  void read_stream(Stream&& stream, bool with_data) {
+  void read_stream(AnyStream&& stream, bool with_data) {
     read_all_headers(stream);
     if (with_data)
       read_raw_data(stream);
   }
 
   void read_file(const std::string& path) {
-    fileptr_t f = file_open(path.c_str(), "rb");
     try {
       source_path = path;
-      read_stream(FileStream{f.get()}, true);
+      read_stream(FileStream(path.c_str(), "rb"), true);
+    } catch (std::system_error&) {
+      throw;  // system_error::what() includes path, don't add anything
     } catch (std::runtime_error& e) {
       fail(std::string(e.what()) + ": " + path);
     }
@@ -789,14 +452,10 @@ struct GEMMI_DLL Mtz {
   template<typename Input>
   void read_input(Input&& input, bool with_data) {
     source_path = input.path();
-    if (input.is_stdin()) {
-      read_stream(FileStream{stdin}, with_data);
-    } else if (CharArray mem = input.uncompress_into_buffer()) {
-      read_stream(mem.stream(), with_data);
-    } else {
-      fileptr_t f = file_open(input.path().c_str(), "rb");
-      read_stream(FileStream{f.get()}, with_data);
-    }
+    if (CharArray mem = input.uncompress_into_buffer())
+      read_stream(MemoryStream(mem.data(), mem.size()), with_data);
+    else
+      read_stream(FileStream(input.path().c_str(), "rb"), with_data);
   }
 
   /// the same as read_input(MaybeGzipped(path), with_data)

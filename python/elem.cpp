@@ -13,6 +13,10 @@
 #include "gemmi/neutron92.hpp"
 #include "gemmi/util.hpp"  // for cat
 
+#include "gemmi/xds_ascii.hpp"  // for XdsAscii
+#include "gemmi/xds2mtz.hpp"  // for xds_to_mtz
+#include "array.h"  // for vector_member_array
+
 using namespace gemmi;
 
 // Round coefficients.
@@ -138,4 +142,58 @@ void add_elem(nb::module_& m) {
         "Find chemical component information in the internal table.");
   m.def("expand_one_letter", &expand_one_letter);
   m.def("expand_one_letter_sequence", &expand_one_letter_sequence);
+}
+
+void add_xds(nb::module_& m) {
+  nb::class_<XdsAscii>(m, "XdsAscii")
+    .def_ro("source_path", &XdsAscii::source_path)
+    .def_ro("read_columns", &XdsAscii::read_columns)
+    .def_ro("spacegroup_number", &XdsAscii::spacegroup_number)
+    .def_ro("wavelength", &XdsAscii::wavelength)
+    .def_ro("cell_constants", &XdsAscii::cell_constants)
+    .def_ro("rotation_axis", &XdsAscii::rotation_axis)
+    .def_ro("generated_by", &XdsAscii::generated_by)
+    .def_prop_ro("miller_array", [](XdsAscii& self) {
+        constexpr int64_t stride = int64_t(sizeof(XdsAscii::Refl) / sizeof(int));
+        return nb::ndarray<nb::numpy, int, nb::shape<-1,3>>(
+          &self.data[0].hkl[0], {self.data.size(), 3}, nb::handle(), {stride, 1});
+    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("iset_array", [](XdsAscii& self) {
+        return vector_member_array(self.data, &XdsAscii::Refl::iset);
+    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("iobs_array", [](XdsAscii& self) {
+        return vector_member_array(self.data, &XdsAscii::Refl::iobs);
+    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("sigma_array", [](XdsAscii& self) {
+        return vector_member_array(self.data, &XdsAscii::Refl::sigma);
+    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("xd_array", [](XdsAscii& self) {
+        return vector_member_array(self.data, &XdsAscii::Refl::xd);
+    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("yd_array", [](XdsAscii& self) {
+        return vector_member_array(self.data, &XdsAscii::Refl::yd);
+    }, nb::rv_policy::reference_internal)
+    .def_prop_ro("zd_array", [](XdsAscii& self) {
+        return vector_member_array(self.data, &XdsAscii::Refl::zd);
+    }, nb::rv_policy::reference_internal)
+    .def("subset", [](XdsAscii& self, const cpu_array<bool>& selection) {
+        auto v = selection.view();
+        size_t n = self.data.size();
+        if (v.shape(0) != n)
+          throw nb::value_error("boolean array must match the number of reflections");
+        XdsAscii ret((const XdsAsciiMetadata&) self);
+        size_t count = 0;
+        for (size_t i = 0; i < v.shape(0); ++i)
+          count += (size_t) v(i);
+        ret.data.reserve(count);
+        for (size_t i = 0; i < v.shape(0); ++i)
+          if (v(i))
+            ret.data.push_back(self.data[i]);
+        return ret;
+    })
+    .def("apply_polarization_correction", &XdsAscii::apply_polarization_correction,
+         nb::arg("p"), nb::arg("normal"))
+    .def("to_mtz", &gemmi::xds_to_mtz)
+    ;
+  m.def("read_xds_ascii", &read_xds_ascii);
 }

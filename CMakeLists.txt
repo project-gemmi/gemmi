@@ -208,15 +208,15 @@ add_library(gemmi::headers ALIAS gemmi_headers)
 target_include_directories(gemmi_headers INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_compile_features(gemmi_headers INTERFACE cxx_std_14)
+target_compile_features(gemmi_headers INTERFACE cxx_std_17)
 set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
-            src/align.cpp src/assembly.cpp src/calculate.cpp src/crd.cpp
-            src/ddl.cpp src/eig3.cpp src/fprime.cpp src/gz.cpp
+            src/align.cpp src/assembly.cpp src/calculate.cpp src/ccp4.cpp
+            src/crd.cpp src/ddl.cpp src/eig3.cpp src/fprime.cpp src/gz.cpp
             src/intensit.cpp src/json.cpp src/mmcif.cpp src/mmread_gz.cpp
             src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
-            src/pdb.cpp src/polyheur.cpp src/read_cif.cpp src/read_map.cpp
+            src/pdb.cpp src/polyheur.cpp src/read_cif.cpp
             src/resinfo.cpp src/riding_h.cpp src/select.cpp src/sprintf.cpp
             src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
             src/xds_ascii.cpp)
@@ -386,12 +386,10 @@ add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
 target_link_libraries(hello PRIVATE gemmi_headers)
 add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
-               docs/code/cell.cpp src/resinfo.cpp)
+               docs/code/cell.cpp docs/code/mutate.cpp src/resinfo.cpp)
 target_link_libraries(doc_example PRIVATE gemmi_headers)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 target_link_libraries(doc_example2 PRIVATE gemmi_headers)
-add_executable(doc_maybegz EXCLUDE_FROM_ALL docs/code/maybegz.cpp docs/code/mutate.cpp)
-target_link_libraries(doc_maybegz PRIVATE gemmi_cpp)
 add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)
 target_link_libraries(doc_newmtz PRIVATE gemmi_cpp)
 
@@ -422,7 +420,7 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C \"$<CONFIG>\")
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    cpptest hello doc_example doc_example2 doc_maybegz doc_newmtz
+    cpptest hello doc_example doc_example2 doc_newmtz
     test_disulf check_conn print-version)
 
 if (USE_FORTRAN)

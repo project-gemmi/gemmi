@@ -16,11 +16,13 @@ GEMMI_DLL extern const char* const zlib_description;
 GEMMI_DLL size_t estimate_uncompressed_size(const std::string& path);
 
 // the same interface as FileStream and MemoryStream
-struct GEMMI_DLL GzStream {
+struct GEMMI_DLL GzStream final : public AnyStream {
+  GzStream(void* f_) : f(f_) {}
+  char* gets(char* line, int size) override;
+  int getc() override;
+  bool read(void* buf, size_t len) override;
+private:
   void* f;  // implementation detail
-  char* gets(char* line, int size);
-  int getc();
-  bool read(void* buf, size_t len);
 };
 
 class GEMMI_DLL MaybeGzipped : public BasicInput {
@@ -34,7 +36,8 @@ public:
   }
 
   CharArray uncompress_into_buffer(size_t limit=0);
-  GzStream get_uncompressing_stream();
+
+  std::unique_ptr<AnyStream> create_stream();
 
 private:
   void* file_ = nullptr;

@@ -1,5 +1,7 @@
 .. highlight:: console
 
+.. _program:
+
 Gemmi program
 #############
 
@@ -17,32 +19,28 @@ use a tool such as `GNU parallel <https://www.gnu.org/software/parallel/>`_::
 
   $ find $PDB_DIR/structures/divided/mmCIF/ -name '*.cif.gz' | parallel gemmi grep _exptl.method
 
+.. _gemmi-validate:
+
 validate
 ========
 
-A CIF validator. Apart from checking the syntax it can check most of the rules
-imposed by DDL1 and DDL2 dictionaries.
+This program validates CIF and mmCIF files. It can:
 
-If you want to validate mmCIF files,
-the current version of the PDBx/mmCIF specification, maintained by the PDB,
-is distributed as one file
-(`mmcif_pdbx_v50.dic <https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Index/>`_),
-which can be used to validate all kinds of mmCIF files: coordinate files,
-reflection files, and CCD monomers.
-Note that such validation can spot only certain types of mistakes.
-It won't tell you if the file is appropriate for deposition to the PDB.
-Dictionary-based validation can't even tell if the file contains all
-the necessary tables; it is unaware of what the file represents --
-coordinates, reflection data or something else.
-On the other hand, the mmCIF files deposited to the PDB do not need
-to strictly conform to the PDBx/mmCIF spec.
-Not even the files distributed by the PDB are fully compliant
-(partly because not everything can be expressed in DDL2 syntax;
-usually it's about child-parent relationships;
-PDB's own validator, program CifCheck from
-`mmcif-dict-suite <https://sw-tools.rcsb.org/apps/MMCIF-DICT-SUITE/>`_,
-has a few exceptions hardcoded in C++,
-so that non-conformance is not accidental).
+* check the STAR/CIF syntax (CIF 1.1, not 2)::
+
+    gemmi validate file1.cif file2.cif
+
+* verify rules imposed by DDL1 and DDL2 dictionaries::
+
+    gemmi validate -d mmcif_pdbx_v50.dic -d extension.dic file.mmcif
+
+* and perform a few extra checks for CCP4 monomer files::
+
+    gemmi validate -m $CLIBD_MON/a/AAA.cif
+
+Before validating mmCIF-like files, see :ref:`the notes on DDL2 <ddl2>`.
+The dictionary used for mmCIF files is the first one
+`from here <https://mmcif.wwpdb.org/dictionaries/downloads.html>`_.
 
 .. literalinclude:: validate-help.txt
    :language: console
@@ -1173,6 +1171,8 @@ TBC
 
 .. literalinclude:: wcn-help.txt
    :language: console
+
+.. _gemmi-xds2mtz:
 
 xds2mtz
 =======

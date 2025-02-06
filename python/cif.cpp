@@ -445,28 +445,27 @@ void add_cif(nb::module_& cif) {
   cif.def("quote_list", &quote_list);
 
   nb::class_<Ddl>(cif, "Ddl")
-    .def("__init__", [](Ddl* ddl, bool print_unknown_tags, bool use_regex,
+    .def("__init__", [](Ddl* ddl, gemmi::Logger&& logger,
+                        bool print_unknown_tags, bool use_regex,
                         bool use_context, bool use_parents,
                         bool use_mandatory, bool use_unique_keys) {
           new(ddl) Ddl();
+          ddl->logger = std::move(logger);
           ddl->print_unknown_tags = print_unknown_tags;
           ddl->use_regex = use_regex;
           ddl->use_context = use_context;
           ddl->use_parents = use_parents;
           ddl->use_mandatory = use_mandatory;
           ddl->use_unique_keys = use_unique_keys;
-    }, nb::arg("print_unknown_tags")=true, nb::arg("use_regex")=true,
+    }, nb::arg("logger"),
+       nb::arg("print_unknown_tags")=true, nb::arg("use_regex")=true,
        nb::arg("use_context")=true, nb::arg("use_linked_groups")=true,
        nb::arg("use_mandatory")=true, nb::arg("use_unique_keys")=true)
-    .def("read_ddl_file", [](Ddl& self, const std::string& path) {
-        std::ostringstream out;
-        self.read_ddl(gemmi::read_cif_gz(path), out);
-        return out.str();
-    }, nb::arg("path"))
-    .def("validate_cif", [](Ddl& self, const Document& doc) {
-        std::ostringstream out;
-        self.validate_cif(doc, out);
-        return out.str();
-    })
+    .def("set_logger", [](Ddl& self, gemmi::Logger&& logger) { self.logger = std::move(logger); })
+    .def("read_ddl", [](Ddl& self, Document& doc) {
+        self.read_ddl(std::move(doc));
+        doc.clear();
+    }, nb::arg("doc"))
+    .def("validate_cif", &Ddl::validate_cif)
     ;
 }

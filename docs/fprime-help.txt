@@ -1,10 +1,18 @@
 $ gemmi fprime -h
 Usage:
  gemmi fprime [options] ELEMENT[...]
+
 Prints anomalous scattering factors f' and f".
 
 Options:
   -h, --help               Print usage and exit.
   -V, --version            Print version and exit.
-  -e, --energy=ENERGY      Energy [eV]
-  -w, --wavelength=LAMBDA  Wavelength [A]
+  -e, --energy=ENERGY      Energy [eV] or range of energies (e.g. 8000:14000).
+  -w, --wavelength=LAMBDA  Wavelength [A] or range (e.g. 0.5:0.9).
+  -s, --step=STEP          Step size for a range.
+  -n N                     Number of values in a range.
+
+Options -e/-w can be given multiple times:
+  gemmi fprime -e 12400 -e 11500 -e 9800 Se
+If -e or -w specifies a range, -n or -s must be provided, e.g.:
+  gemmi fprime -w 0.5:0.9 -s 0.01 Os

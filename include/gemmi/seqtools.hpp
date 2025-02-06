@@ -13,7 +13,7 @@ namespace gemmi {
 constexpr double h2o_weight() { return 2 * 1.00794 + 15.9994; }
 
 inline double calculate_sequence_weight(const std::vector<std::string>& seq,
-                                        double unknown=0.) {
+                                        double unknown=100.) {
   double weight = 0.;
   for (const std::string& item : seq) {
     ResidueInfo res_info = find_tabulated_residue(Entity::first_mon(item));

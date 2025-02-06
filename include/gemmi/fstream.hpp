@@ -12,7 +12,9 @@
 #if defined(_MSC_VER)
 # include "utf.hpp"
 #elif defined(_WIN32) && defined(__has_include)
-# if __has_include(<filesystem>)
+// including <filesystem> in MinGW 8 gives error (in bits/fs_path.h:237:47),
+// which was fixed in GCC 9
+# if __has_include(<filesystem>) && !(defined(__MINGW32__) && __GNUC__ < 9)
 #  include <filesystem>
 #  include "utf.hpp"
 # endif

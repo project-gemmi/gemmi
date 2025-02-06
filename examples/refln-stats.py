@@ -10,6 +10,7 @@
 #   and Friedel pairs are counted as one)
 # - do Miller indices repeat? N=no, F=only Friedel pairs, Y=yes
 
+import argparse
 import sys
 import os
 import gemmi
@@ -35,11 +36,21 @@ def process(path):
         print(f'{code}\t{n}\t{cat}\t{width}\t{length}\t{unique}\t{r}')
 
 def main():
-    for arg in sys.argv[1:]:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--continue-from", type=str, help="Continue from file")
+    args, remaining_args = parser.parse_known_args()
+    for arg in remaining_args:
         for path in gemmi.CifWalk(arg, try_pdbid='S'):
+            if args.continue_from is not None:
+                if path != args.continue_from:
+                    continue
+                args.continue_from = None
             try:
                 process(path)
             except Exception as e:
                 print(path, 'was not processed:', e)
+    if args.continue_from:
+        print('Path not encountered:', args.continue_from)
+        print('Last path:', path)
 
 main()

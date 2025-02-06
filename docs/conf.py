@@ -5,7 +5,7 @@
 # while we use Sphinx 8+, old version suffices to run doctests
 needs_sphinx = '5.3.0'
 
-extensions = ['sphinx.ext.doctest']
+extensions = ['sphinx.ext.doctest', 'sphinx_inline_tabs']
 
 templates_path = ['_templates']
 
@@ -21,7 +21,8 @@ with open('../include/gemmi/version.hpp') as _f:
             version = _line.split()[2].strip('"')
 release = version
 
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+# now sure if we'll use headers.rst again, disable it for now
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'headers.rst' ]
 pygments_style = 'sphinx'
 todo_include_todos = False
 highlight_language = 'cpp'
@@ -42,6 +43,30 @@ html_css_files = ['custom.css']
 # Edit link can be also used to see the source
 html_show_sourcelink = False
 html_copy_source = False
+
+def setup(app):
+    app.connect("builder-inited", monkey_patching_furo)
+
+def monkey_patching_furo(app):
+    if app.builder.name != 'html':
+        return
+
+    import furo
+    def _compute_navigation_tree(context: Dict[str, Any]) -> str:
+        # The navigation tree, generated from the sphinx-provided ToC tree.
+        if "toctree" in context:
+            toctree = context["toctree"]
+            toctree_html = toctree(
+                collapse=False,
+                titles_only=False,
+                maxdepth=2,
+                includehidden=True,
+            )
+        else:
+            toctree_html = ""
+        return furo.get_navigation_tree(toctree_html)
+
+    furo._compute_navigation_tree = _compute_navigation_tree
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -99,4 +124,3 @@ if ccp4_path is None:
 import gemmi
 gemmi.set_leak_warnings(False)
 '''
-

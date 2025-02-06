@@ -13,6 +13,7 @@
 #include "make_iterator.h"
 #include <nanobind/stl/bind_map.h>
 #include <nanobind/stl/array.h>  // for calculate_phi_psi, find_best_plane, ...
+#include <nanobind/stl/map.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/variant.h>
@@ -24,6 +25,18 @@ using info_map_type = std::map<std::string, std::string>;
 NB_MAKE_OPAQUE(info_map_type)
 
 namespace {
+
+// cf. returns_references_to in nanobind docs
+struct returns_references {
+  static void precall(PyObject **, size_t, nb::detail::cleanup_list *) {}
+
+  static void postcall(PyObject **args, size_t, nb::handle ret) {
+    if (!nb::isinstance<nb::sequence>(ret))
+      throw std::runtime_error("return value should be a sequence");
+    for (nb::handle nurse : ret)
+      nb::detail::keep_alive(nurse.ptr(), args[0]);
+  }
+};
 
 template<typename T, typename C>
 C& add_item(T& container, C child, int pos) {
@@ -165,6 +178,7 @@ void add_mol(nb::module_& m) {
     .def("add_conect", &Structure::add_conect,
          nb::arg("serial1"), nb::arg("serial2"), nb::arg("order"))
     .def("clear_conect", [](Structure& self) { self.conect_map.clear(); })
+    .def_ro("conect_map", &Structure::conect_map)
     .def("assign_subchains", &assign_subchains,
          nb::arg("force")=false, nb::arg("fail_if_unknown")=true)
     .def("ensure_entities", &ensure_entities)
@@ -223,7 +237,7 @@ void add_mol(nb::module_& m) {
          (ResidueSpan (Model::*)(const std::string&)) &Model::get_subchain,
          nb::arg("name"), nb::rv_policy::reference_internal)
     .def("subchains", (std::vector<ResidueSpan> (Model::*)()) &Model::subchains,
-         nb::rv_policy::reference_internal)
+         nb::call_policy<returns_references>())
     .def("find_residue_group", &Model::find_residue_group,
          nb::arg("chain"), nb::arg("seqid"),
          nb::keep_alive<0, 1>())
@@ -316,7 +330,8 @@ void add_mol(nb::module_& m) {
     .def("add_residue", add_child<Chain, Residue>,
          nb::arg("residue"), nb::arg("pos")=-1,
          nb::rv_policy::reference_internal)
-    .def("subchains", (std::vector<ResidueSpan> (Chain::*)()) &Chain::subchains)
+    .def("subchains", (std::vector<ResidueSpan> (Chain::*)()) &Chain::subchains,
+         nb::call_policy<returns_references>())
     .def("whole", (ResidueSpan (Chain::*)()) &Chain::whole,
          nb::keep_alive<0, 1>())
     .def("get_polymer", (ResidueSpan (Chain::*)()) &Chain::get_polymer,

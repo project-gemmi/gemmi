@@ -113,8 +113,7 @@ Intensities read_intensities(DataType data_type, const char* input_path,
       if (data_type != DataType::Unmerged)
         intensities.take_staraniso_b_from_mtz(mtz);
     } else if (gemmi::giends_with(input_path, "hkl")) {  // .hkl or .ahkl
-      gemmi::XdsAscii xds_ascii;
-      xds_ascii.read_input(gemmi::MaybeGzipped(input_path));
+      gemmi::XdsAscii xds_ascii = gemmi::read_xds_ascii(input_path);
       intensities.read_unmerged_intensities_from_xds(xds_ascii);
     } else {
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);

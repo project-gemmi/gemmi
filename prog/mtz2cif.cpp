@@ -177,8 +177,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
   if (xds_path) {
     try {
-      xds_ascii.reset(new gemmi::XdsAscii);
-      xds_ascii->read_input(gemmi::MaybeGzipped(xds_path));
+      xds_ascii.reset(new gemmi::XdsAscii(gemmi::read_xds_ascii(xds_path)));
       xds_ascii->gather_iset_statistics();
     } catch (std::runtime_error& e) {
       std::fprintf(stderr, "ERROR reading %s: %s\n", xds_path, e.what());
