@@ -1049,6 +1049,7 @@ In C++, the data is accessible directly.
 In Python, it is exposed as NumPy arrays:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> xds.miller_array
   array([[-24,   9,   1],
@@ -1067,6 +1068,7 @@ array of boolean values and returns a copy of `XdsAscii` containing only
 reflections corresponding to `True`. For example:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> xds.subset(xds.zd_array < 200)
   <gemmi.XdsAscii object at 0x...>
