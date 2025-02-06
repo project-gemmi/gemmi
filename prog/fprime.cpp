@@ -47,6 +47,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "Neither energy nor wavelength was specified.\n");
     return -1;
   }
+  if (p.nonOptionsCount() == 0) {
+    fprintf(stderr, "No elements given.\n");
+    return -1;
+  }
   p.check_exclusive_pair(Step, Nvalues);
   bool range_error = false;
   auto expand_range = [&](double xmin, double xmax) {
@@ -73,7 +77,32 @@ int GEMMI_MAIN(int argc, char **argv) {
     return result;
   };
 
-  bool header_printed = false;
+  std::vector<double> energies;
+  for (const option::Option* opt = p.options[Energy]; opt; opt = opt->next()) {
+    double xmin, xmax;
+    parse_number_or_range(opt->arg, &xmin, &xmax);
+    if (xmin == xmax) {
+      energies.push_back(xmin);
+    } else {
+      for (double energy : expand_range(xmin, xmax))
+        energies.push_back(energy);
+      if (range_error)
+        return -1;
+    }
+  }
+  double hc = gemmi::hc();
+  for (const option::Option* opt = p.options[Wavelen]; opt; opt = opt->next()) {
+    double xmin, xmax;
+    parse_number_or_range(opt->arg, &xmin, &xmax);
+    if (xmin == xmax) {
+      energies.push_back(hc / xmin);
+    } else {
+      for (double wavelength : expand_range(xmin, xmax))
+        energies.push_back(hc / wavelength);
+      if (range_error)
+        return -1;
+    }
+  }
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* name = p.nonOption(i);
     gemmi::Element elem = gemmi::find_element(name);
@@ -81,37 +110,10 @@ int GEMMI_MAIN(int argc, char **argv) {
       fprintf(stderr, "Error: element name not recognized: '%s'\n", name);
       return -1;
     }
-    std::vector<double> energies;
-    double xmin, xmax;
-    for (const option::Option* opt = p.options[Energy]; opt; opt = opt->next()) {
-      parse_number_or_range(opt->arg, &xmin, &xmax);
-      if (xmin == xmax) {
-        energies.push_back(xmin);
-      } else {
-        for (double energy : expand_range(xmin, xmax))
-          energies.push_back(energy);
-        if (range_error)
-          return -1;
-      }
-    }
-    double hc = gemmi::hc();
-    for (const option::Option* opt = p.options[Wavelen]; opt; opt = opt->next()) {
-      parse_number_or_range(opt->arg, &xmin, &xmax);
-      if (xmin == xmax) {
-        energies.push_back(hc / xmin);
-      } else {
-        for (double wavelength : expand_range(xmin, xmax))
-          energies.push_back(hc / wavelength);
-        if (range_error)
-          return -1;
-      }
-    }
     std::vector<double> fp(energies.size(), 0);
     std::vector<double> fpp(energies.size(), 0);
-    if (! header_printed) {
+    if (i == 0)
       printf("Element\t E[eV]\tWavelength[A]\t   f'   \t  f\"\n");
-      header_printed = true;
-    }
     gemmi::cromer_liberman_for_array(elem.atomic_number(),
                                      (int) energies.size(), energies.data(),
                                      &fp[0], &fpp[0]);
