@@ -5,7 +5,7 @@ INCLUDE = -I../include
 
 COMMON_FLAGS = \
   -Wall -Wextra -std=c++20 \
-  -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 -fno-rtti \
+  -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 \
   -s STRICT=1 \
   -s DISABLE_EXCEPTION_CATCHING=0
 
@@ -28,7 +28,7 @@ debug: FLAGS = -g -O0 $(COMMON_FLAGS)
 debug: LINK_FLAGS += -s SAFE_HEAP=1 --embind-emit-tsd gemmi.d.ts
 debug: gemmi.js
 
-GEMMI_OBJS = mmcif.o pdb.o polyheur.o resinfo.o sprintf.o json.o
+GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o sprintf.o symmetry.o json.o
 
 BINDING_OBJS = gemmi.o cell.o mol.o mtz_fft.o
 
@@ -36,7 +36,7 @@ gemmi.js: $(GEMMI_OBJS) $(BINDING_OBJS)
 	$(CXX) $(FLAGS) $(LINK_FLAGS) $(GEMMI_OBJS) $(BINDING_OBJS) -o $@
 
 # old mtz module (not built by default)
-mtz.js: mtz_fft.cpp cell.o
+mtz.js: mtz_fft.cpp cell.o mtz.o symmetry.o
 	$(CXX) -DSTANDALONE_MTZ=1 $(INCLUDE) $(FLAGS) \
 	-lembind --no-entry --pre-js=pre.js \
 	-s MODULARIZE=1 -s ALLOW_MEMORY_GROWTH=1 \

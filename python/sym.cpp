@@ -204,15 +204,10 @@ void add_symmetry(nb::module_& m) {
         return strcmp(a.hall, b.hall) == 0;
     }, nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__reduce__", [](const SpaceGroup& self) {
-        // faster than just serializing self.xhm(), but also more tricky
+        // faster than serializing self.xhm()
         std::ptrdiff_t pos = &self - spacegroup_tables::main;
         int main_table_length = int(sizeof(spacegroup_tables::main) / sizeof(SpaceGroup));
-        if (pos < 0 || pos >= main_table_length) { // multi-library problem
-          const SpaceGroup* p = &self;
-          while (p->ccp4 != 1)
-            --p;
-          pos = &self - p;
-        }
+        assert(pos >= 0 && pos < main_table_length);
         return nb::make_tuple(nb::type<SpaceGroup>(), nb::make_tuple(INT_MIN + (int)pos));
     })
     .def("__repr__", [](const SpaceGroup &self) {

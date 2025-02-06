@@ -217,7 +217,8 @@ add_library(gemmi_cpp
             src/intensit.cpp src/json.cpp src/mmcif.cpp src/mmread_gz.cpp
             src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp
-            src/resinfo.cpp src/riding_h.cpp src/select.cpp src/sprintf.cpp
+            src/resinfo.cpp src/riding_h.cpp
+            src/select.cpp src/sprintf.cpp src/symmetry.cpp
             src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
             src/xds_ascii.cpp)
 add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
@@ -278,14 +279,10 @@ endif()
 # Gemmi subcommands compiled as individual binaries.
 # Not built by default and used mostly for testing.
 function(add_single_prog target)
-  cmake_parse_arguments(arg "NOLIB" "ADD_SRC" "" ${ARGN})
+  cmake_parse_arguments(arg "" "ADD_SRC" "" ${ARGN})
   add_executable(gemmi-${target} EXCLUDE_FROM_ALL prog/${target}.cpp ${arg_ADD_SRC}
                  $<TARGET_OBJECTS:options>)
-  if (arg_NOLIB)
-    target_link_libraries(gemmi-${target} PRIVATE gemmi_headers)
-  else()
-    target_link_libraries(gemmi-${target} PRIVATE gemmi_cpp)
-  endif()
+  target_link_libraries(gemmi-${target} PRIVATE gemmi_cpp)
   target_include_directories(gemmi-${target} PRIVATE
                              "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 endfunction()
@@ -317,7 +314,7 @@ add_single_prog(residues)
 add_single_prog(rmsz)
 add_single_prog(sf2map ADD_SRC prog/mapcoef.cpp)
 add_single_prog(sfcalc)
-add_single_prog(sg NOLIB)
+add_single_prog(sg)
 add_single_prog(tags)
 add_single_prog(validate ADD_SRC prog/validate_mon.cpp)
 add_single_prog(wcn)
@@ -387,7 +384,7 @@ target_link_libraries(hello PRIVATE gemmi_headers)
 add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
                docs/code/cell.cpp docs/code/mutate.cpp src/resinfo.cpp)
-target_link_libraries(doc_example PRIVATE gemmi_headers)
+target_link_libraries(doc_example PRIVATE gemmi_cpp)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 target_link_libraries(doc_example2 PRIVATE gemmi_headers)
 add_executable(doc_newmtz EXCLUDE_FROM_ALL docs/code/newmtz.cpp)

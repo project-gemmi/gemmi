@@ -3,8 +3,6 @@ Symmetry
 
 This section describes functionality related to the 3D space groups.
 
-In C++: `#include <gemmi/symmetry.hpp>` (it's header-only).
-
 Space group table
 =================
 
