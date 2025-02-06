@@ -73,6 +73,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     return result;
   };
 
+  bool header_printed = false;
   for (int i = 0; i < p.nonOptionsCount(); ++i) {
     const char* name = p.nonOption(i);
     gemmi::Element elem = gemmi::find_element(name);
@@ -107,7 +108,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     std::vector<double> fp(energies.size(), 0);
     std::vector<double> fpp(energies.size(), 0);
-    printf("Element\t E[eV]\tWavelength[A]\t   f'   \t  f\"\n");
+    if (! header_printed) {
+      printf("Element\t E[eV]\tWavelength[A]\t   f'   \t  f\"\n");
+      header_printed = true;
+    }
     gemmi::cromer_liberman_for_array(elem.atomic_number(),
                                      (int) energies.size(), energies.data(),
                                      &fp[0], &fpp[0]);
