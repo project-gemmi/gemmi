@@ -11,11 +11,11 @@ Print information from an mtz file.
   -b, --batches         Print data from all batch headers.
   -e                    (with -B or -b) expanded info from batch headers.
   -A, --appendix        Print appended text.
-  --tsv                 Print all the data as tab-separated values.
+  --tsv[=isym]          Print all the data as tab-separated values.
+                        --tsv=isym uses M/ISYM to show original (not asu) HKL.
   -s, --stats           Print column statistics (completeness, mean, etc).
   --histogram=LABEL     Print histogram of values in column LABEL.
   --cells               Print cell parameters only.
   --check-asu=ccp4|tnt  Check if reflections are in ASU.
   --compare=FILE        Compare two MTZ files.
   --toggle-endian       Toggle assumed endianness (little <-> big).
-  --no-isym             Do not apply symmetry from M/ISYM column.
