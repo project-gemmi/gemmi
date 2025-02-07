@@ -370,7 +370,7 @@ void print_stats(const Mtz& mtz) {
     }
   }
   printf("Resolution: %.5f - %.5f A\n", mtz.resolution_high(), mtz.resolution_low());
-  printf("column type @dataset  completeness        min       max"
+  printf("column type @dataset     filled           min       max"
          "       mean   stddev\n");
   for (size_t i = 0; i != column_stats.size(); ++i) {
     const Mtz::Column& col = mtz.columns[i];
