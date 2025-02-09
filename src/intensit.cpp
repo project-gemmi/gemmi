@@ -228,6 +228,10 @@ void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   if (!spacegroup)
     fail("unknown space group");
   wavelength = mtz.dataset(col.dataset_id).wavelength;
+  // In unmerged MTZ files it's common that dataset from the COLUMN header is 0,
+  // probably because dataset is set in BATCH headers.
+  if (col.dataset_id == 0 && wavelength == 0 && mtz.datasets.size() > 1)
+    wavelength = mtz.datasets[1].wavelength;
   for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
     short isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
     add_if_valid(*this, mtz.get_hkl(i), isign,
