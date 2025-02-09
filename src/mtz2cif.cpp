@@ -801,7 +801,7 @@ void MtzToCif::write_cif_from_xds(const XdsAscii& xds, std::ostream& os) const {
     for (int i = 0; i < 6; ++i)
       rmsds[i] = std::sqrt(rmsds[i] / n);
   }
-  write_cell_and_symmetry(entry_id, xds.cell_constants, rmsds, sg, buf, os);
+  write_cell_and_symmetry(entry_id, UnitCellParameters(xds.cell_constants), rmsds, sg, buf, os);
 
   os << "\nloop_"
         "\n_diffrn_refln.diffrn_id"

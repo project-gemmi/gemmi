@@ -139,11 +139,23 @@ struct UnitCellParameters {
   double alpha = 90.0, beta = 90.0, gamma = 90.0;
 
   UnitCellParameters() = default;
-  UnitCellParameters(const double (&par)[6]) {
+  explicit UnitCellParameters(const double (&par)[6]) {
     a = par[0]; b = par[1]; c = par[2]; alpha = par[3]; beta = par[4]; gamma = par[5];
   }
-  UnitCellParameters(const std::array<double,6>& par) {
+  explicit UnitCellParameters(const std::array<double,6>& par) {
     a = par[0]; b = par[1]; c = par[2]; alpha = par[3]; beta = par[4]; gamma = par[5];
+  }
+
+  bool operator==(const UnitCellParameters& o) const {
+    return a == o.a && b == o.b && c == o.c &&
+           alpha == o.alpha && beta == o.beta && gamma == o.gamma;
+  }
+  bool operator!=(const UnitCellParameters& o) const { return !operator==(o); }
+
+  bool approx(const UnitCellParameters& o, double epsilon) const {
+    auto eq = [&](double x, double y) { return std::fabs(x - y) < epsilon; };
+    return eq(a, o.a) && eq(b, o.b) && eq(c, o.c) &&
+           eq(alpha, o.alpha) && eq(beta, o.beta) && eq(gamma, o.gamma);
   }
 };
 
@@ -173,18 +185,6 @@ struct UnitCell : UnitCellParameters {
   // entries in the PDB has incorrectly set unit cell or fract. matrix,
   // that is why we check both.
   bool is_crystal() const { return a != 1.0 && frac.mat[0][0] != 1.0; }
-
-  bool operator==(const UnitCell& o) const {
-    return a == o.a && b == o.b && c == o.c &&
-           alpha == o.alpha && beta == o.beta && gamma == o.gamma;
-  }
-  bool operator!=(const UnitCell& o) const { return !operator==(o); }
-
-  bool approx(const UnitCell& o, double epsilon) const {
-    auto eq = [&](double x, double y) { return std::fabs(x - y) < epsilon; };
-    return eq(a, o.a) && eq(b, o.b) && eq(c, o.c) &&
-           eq(alpha, o.alpha) && eq(beta, o.beta) && eq(gamma, o.gamma);
-  }
 
   // compare lengths using relative tolerance rel, angles using tolerance deg
   bool is_similar(const UnitCell& o, double rel, double deg) const {
