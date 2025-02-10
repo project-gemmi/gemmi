@@ -15,7 +15,10 @@
 
 namespace gemmi {
 
-enum class DataType { Unknown, Unmerged, Mean, Anomalous };
+// If used to request a particular data type:
+// MergedMA = Mean if available, otherwise Anomalous,
+// MergedAM = Anomalous if available, otherwise Mean.
+enum class DataType { Unknown, Unmerged, Mean, Anomalous, MergedMA, MergedAM };
 
 struct ReflnBlock {
   cif::Block block;

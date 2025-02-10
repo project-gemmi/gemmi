@@ -234,11 +234,9 @@ void add_hkl(nb::module_& m) {
       self.data.clear();
       self.data.reserve(h.shape(0));
       for (size_t i = 0; i < h.shape(0); ++i)
-        if (!std::isnan(v(i)) && s(i) > 0)
-          self.data.push_back({{{h(i, 0), h(i, 1), h(i, 2)}}, 1, 0, v(i), s(i)});
-
-      self.switch_to_asu_indices();
+        self.add_if_valid({h(i, 0), h(i, 1), h(i, 2)}, 0, 0, v(i), s(i));
       self.type = DataType::Unmerged;
+      self.switch_to_asu_indices();
     }, nb::arg("cell"), nb::arg("sg").none(false),
        nb::arg("miller_array"), nb::arg("value_array"), nb::arg("sigma_array"))
     ;

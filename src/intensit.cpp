@@ -2,6 +2,7 @@
 
 #include <gemmi/intensit.hpp>
 #include <gemmi/atof.hpp>  // for fast_from_chars
+#include "gemmi/refln.hpp"
 
 namespace gemmi {
 
@@ -29,21 +30,13 @@ void copy_metadata(const Source& source, Intensities& intensities) {
     fail("unknown space group");
 }
 
-inline void add_if_valid(Intensities& intensities,
-                         const Miller& hkl, short isign, double value, double sigma) {
-  // XDS marks rejected reflections with negative sigma.
-  // Sigma 0.0 is also problematic - it rarely happens (e.g. 5tkn).
-  if (!std::isnan(value) && sigma > 0)
-    intensities.data.push_back({hkl, isign, /*nobs=*/0, value, sigma});
-}
-
 template<typename DataProxy>
 void read_data(Intensities& intensities, const DataProxy& proxy,
                size_t value_idx, size_t sigma_idx) {
   for (size_t i = 0; i < proxy.size(); i += proxy.stride())
-    add_if_valid(intensities, proxy.get_hkl(i), 0,
-                 proxy.get_num(i + value_idx),
-                 proxy.get_num(i + sigma_idx));
+    intensities.add_if_valid(proxy.get_hkl(i), 0, 0,
+                             proxy.get_num(i + value_idx),
+                             proxy.get_num(i + sigma_idx));
 }
 
 template<typename DataProxy>
@@ -55,17 +48,17 @@ void read_anomalous_data(Intensities& intensities, const DataProxy& proxy,
     bool centric = gops.is_reflection_centric(hkl);
 
     // sanity check
-    if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx)) && !centric) {
+    if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx))) {
       if (std::isnan(proxy.get_num(i + value_idx[0])) &&
           std::isnan(proxy.get_num(i + value_idx[1])))
         fail(miller_str(hkl), " has <I>, but I(+) and I(-) are both null");
     }
 
-    add_if_valid(intensities, hkl, 1, proxy.get_num(i + value_idx[0]),
-                                      proxy.get_num(i + sigma_idx[0]));
+    intensities.add_if_valid(hkl, 1, 0, proxy.get_num(i + value_idx[0]),
+                                        proxy.get_num(i + sigma_idx[0]));
     if (!centric)  // ignore I(-) of centric reflections
-      add_if_valid(intensities, hkl, -1, proxy.get_num(i + value_idx[1]),
-                                         proxy.get_num(i + sigma_idx[1]));
+      intensities.add_if_valid(hkl, -1, 0, proxy.get_num(i + value_idx[1]),
+                                           proxy.get_num(i + sigma_idx[1]));
   }
 }
 
@@ -140,6 +133,7 @@ std::array<double,2> Intensities::resolution_range() const {
 
 // cf. calculate_hkl_value_correlation()
 Correlation Intensities::calculate_correlation(const Intensities& other) const {
+  // TODO: is it only for merged data?
   Correlation corr;
   auto r1 = data.begin();
   auto r2 = other.data.begin();
@@ -157,14 +151,18 @@ Correlation Intensities::calculate_correlation(const Intensities& other) const {
   return corr;
 }
 
-void Intensities::merge_in_place(DataType data_type) {
-  type = data_type;
-  if (data.empty())
+void Intensities::merge_in_place(DataType new_type) {
+  if (data.empty() || new_type == type || type == DataType::Mean || new_type == DataType::Unmerged)
     return;
-  if (data_type == DataType::Mean)
+  if (new_type == DataType::Mean) {
     // discard signs so that merging produces Imean
     for (Refl& refl : data)
       refl.isign = 0;
+  } else if (new_type == DataType::Anomalous && type == DataType::Unmerged) {
+    GroupOps gops = spacegroup->operations();
+    for (Refl& refl : data)
+      refl.isign = refl.isym % 2 != 0 || gops.is_reflection_centric(refl.hkl) ? 1 : -1;
+  }
   sort();
   std::vector<Refl>::iterator out = data.begin();
   double sum_wI = 0.;
@@ -190,27 +188,29 @@ void Intensities::merge_in_place(DataType data_type) {
   out->sigma = 1.0 / std::sqrt(sum_w);
   out->nobs = nobs;
   data.erase(++out, data.end());
+  type = new_type;
 }
 
-void Intensities::switch_to_asu_indices(bool merged) {
+void Intensities::switch_to_asu_indices() {
   GroupOps gops = spacegroup->operations();
+  if (isym_ops.empty())
+    isym_ops = gops.sym_ops;
   ReciprocalAsu asu(spacegroup);
   for (Refl& refl : data) {
     if (asu.is_in(refl.hkl)) {
-      if (!merged) {
-        // isign is 0 for original hkl (e.g. from XDS file)
-        if (refl.isign == 0)
-          refl.isign = 1;  // since it's in asu - I+ or centric
-        // when reading asu hkl from MTZ file - count centrics always as I+
-        else if (refl.isign == -1 && gops.is_reflection_centric(refl.hkl))
-          refl.isign = 1;
+      if (refl.isym == 0)
+        refl.isym = 1;
+    } else {
+      assert(refl.isym == 0);
+      std::tie(refl.hkl, refl.isym) = asu.to_asu(refl.hkl, isym_ops);
+      if (type == DataType::Anomalous && refl.isym % 2 == 0) {
+        if (refl.isign == 1 && gops.is_reflection_centric(refl.hkl)) {
+          // leave it as 1
+        } else {
+          refl.isign = -refl.isign;
+        }
       }
-      continue;
     }
-    bool sign;
-    std::tie(refl.hkl, sign) = asu.to_asu_sign(refl.hkl, gops);
-    if (!merged)
-      refl.isign = sign ? 1 : -1;
   }
 }
 
@@ -233,14 +233,13 @@ void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   if (col.dataset_id == 0 && wavelength == 0 && mtz.datasets.size() > 1)
     wavelength = mtz.datasets[1].wavelength;
   for (size_t i = 0; i < mtz.data.size(); i += mtz.columns.size()) {
-    short isign = ((int)mtz.data[i + 3] % 2 == 0 ? -1 : 1);
-    add_if_valid(*this, mtz.get_hkl(i), isign,
+    add_if_valid(mtz.get_hkl(i), 0, (int8_t)mtz.data[i + 3],
                  mtz.data[i + value_idx], mtz.data[i + sigma_idx]);
   }
+  type = DataType::Unmerged;
   // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
   // with original indices instead of reduced indices, with all ISYM = 1.
   switch_to_asu_indices();
-  type = DataType::Unmerged;
 }
 
 void Intensities::read_mean_intensities_from_mtz(const Mtz& mtz) {
@@ -253,6 +252,7 @@ void Intensities::read_mean_intensities_from_mtz(const Mtz& mtz) {
   copy_metadata(mtz, *this);
   wavelength = mtz.dataset(col->dataset_id).wavelength;
   read_data(*this, MtzDataProxy{mtz}, col->idx, sigma_idx);
+  isym_ops = mtz.symops;
   type = DataType::Mean;
 }
 
@@ -288,8 +288,8 @@ void read_simple_intensities_from_mmcif(Intensities& intensities, const ReflnBlo
 
 void Intensities::read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
   read_simple_intensities_from_mmcif(*this, rb, "intensity_net", "intensity_sigma");
-  switch_to_asu_indices();
   type = DataType::Unmerged;
+  switch_to_asu_indices();
 }
 
 void Intensities::read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
@@ -339,9 +339,9 @@ void Intensities::read_unmerged_intensities_from_xds(const XdsAscii& xds) {
   wavelength = xds.wavelength;
   data.reserve(xds.data.size());
   for (const XdsAscii::Refl& in : xds.data)
-    add_if_valid(*this, in.hkl, 0, in.iobs, in.sigma);
-  switch_to_asu_indices();
+    add_if_valid(in.hkl, 0, 0, in.iobs, in.sigma);
   type = DataType::Unmerged;
+  switch_to_asu_indices();
 }
 
 bool Intensities::take_staraniso_b_from_mmcif(const cif::Block& block) {

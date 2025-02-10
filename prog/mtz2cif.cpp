@@ -12,6 +12,7 @@
 #include <gemmi/intensit.hpp> // for Intensities
 #include <gemmi/read_cif.hpp> // for read_cif_gz
 #include <gemmi/xds_ascii.hpp>
+#include "gemmi/refln.hpp"
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
@@ -279,7 +280,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           else
             std::cerr << ". B tensor is unknown. Intensities won't be checked.\n";
         }
-        mi.read_merged_intensities_from_mtz(*mtz[0]);
+        mi.read_mtz(*mtz[0], gemmi::DataType::MergedAM);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_memory(cif_buf.data(), cif_buf.size(), cif_input).blocks,
@@ -290,7 +291,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           mtz_to_cif.entry_id = rblock.entry_id;
         }
         mi.take_staraniso_b_from_mmcif(rblock.block);
-        mi.read_merged_intensities_from_mmcif(rblock);
+        mi.read_mmcif(rblock, gemmi::DataType::MergedAM);
       }
       gemmi::Intensities ui;
       if (mtz[1])

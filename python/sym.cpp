@@ -218,7 +218,9 @@ void add_symmetry(nb::module_& m) {
     .def(nb::init<const SpaceGroup*, bool>(), nb::arg(), nb::arg("tnt")=false)
     .def("is_in", &ReciprocalAsu::is_in, nb::arg("hkl"))
     .def("condition_str", &ReciprocalAsu::condition_str)
-    .def("to_asu", &ReciprocalAsu::to_asu, nb::arg("hkl"), nb::arg("group_ops"))
+    .def("to_asu",
+         nb::overload_cast<const Op::Miller&, const GroupOps&>(&ReciprocalAsu::to_asu, nb::const_),
+         nb::arg("hkl"), nb::arg("group_ops"))
     ;
 
   nb::handle mod = m;

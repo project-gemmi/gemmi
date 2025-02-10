@@ -930,7 +930,7 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   ui.remove_systematic_absences();
   out << "Unmerged reflections: " << ui_size1 << " (" << ui_size2 << " merged "
       << mi.type_str() << ", " << ui.data.size() << " w/o sysabs)\n";
-  mi.switch_to_asu_indices(/*merged=*/true);
+  mi.switch_to_asu_indices();
   mi.sort();
   size_t mi_size1 = mi.data.size();
   mi.remove_systematic_absences();

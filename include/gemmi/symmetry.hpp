@@ -21,7 +21,7 @@
 
 #include "fail.hpp"   // for fail, unreachable
 
-// we use brace elision with std:array's
+// we use brace elision for Op::Rot = std:array<std::array<int,3>,3>
 #ifdef __clang__
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wmissing-braces"
@@ -1456,9 +1456,9 @@ struct ReciprocalAsu {
 
   /// Returns hkl in asu and MTZ ISYM - 2*n-1 for reflections in the positive
   /// asu (I+ of a Friedel pair), 2*n for reflections in the negative asu (I-).
-  std::pair<Op::Miller,int> to_asu(const Op::Miller& hkl, const GroupOps& gops) const {
+  std::pair<Op::Miller,int> to_asu(const Op::Miller& hkl, const std::vector<Op>& sym_ops) const {
     int isym = 0;
-    for (const Op& op : gops.sym_ops) {
+    for (const Op& op : sym_ops) {
       ++isym;
       Op::Miller new_hkl = op.apply_to_hkl_without_division(hkl);
       if (is_in(new_hkl))
@@ -1470,6 +1470,11 @@ struct ReciprocalAsu {
     }
     fail("Oops, maybe inconsistent GroupOps?");
   }
+
+  std::pair<Op::Miller,int> to_asu(const Op::Miller& hkl, const GroupOps& gops) const {
+    return to_asu(hkl, gops.sym_ops);
+  }
+
   /// Similar to to_asu(), but the second returned value is sign: true for + or centric
   std::pair<Op::Miller,bool> to_asu_sign(const Op::Miller& hkl, const GroupOps& gops) const {
     std::pair<Op::Miller,bool> neg = {{0,0,0}, true};
