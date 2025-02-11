@@ -123,8 +123,8 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::printf("Number of eliminated reflections with MAXC > %g = %zu\n", overload, nover);
     }
 
-    bool unmerged = (xds.read_columns >= 8);
-    if (verbose && !unmerged)
+    bool merged = xds.is_merged();
+    if (verbose && merged)
       std::fprintf(stderr, "Preparing merged MTZ file...\n");
 
     gemmi::Mtz mtz = gemmi::xds_to_mtz(xds);
@@ -157,7 +157,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
     if (verbose)
       std::fprintf(stderr, "Writing %d reflections to (%smerged) %s ...\n",
-                   mtz.nreflections, (unmerged ? "un" : ""), output_path);
+                   mtz.nreflections, (merged ? "" : "un"), output_path);
     mtz.write_to_file(output_path);
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());
@@ -165,4 +165,3 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   return 0;
 }
-

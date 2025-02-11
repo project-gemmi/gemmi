@@ -2,7 +2,7 @@
 
 #include <gemmi/intensit.hpp>
 #include <gemmi/atof.hpp>  // for fast_from_chars
-#include "gemmi/refln.hpp"
+#include <gemmi/refln.hpp>
 
 namespace gemmi {
 
@@ -51,7 +51,8 @@ void read_anomalous_data(Intensities& intensities, const DataProxy& proxy,
     if (mean_idx >= 0 && !std::isnan(proxy.get_num(i + mean_idx))) {
       if (std::isnan(proxy.get_num(i + value_idx[0])) &&
           std::isnan(proxy.get_num(i + value_idx[1])))
-        fail(miller_str(hkl), " has <I>, but I(+) and I(-) are both null");
+        fail("(", hkl[0], ' ', hkl[1], ' ', hkl[2],
+             ") has <I>, but I(+) and I(-) are both null");
     }
 
     intensities.add_if_valid(hkl, 1, 0, proxy.get_num(i + value_idx[0]),
@@ -276,6 +277,26 @@ void Intensities::read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check
   type = DataType::Anomalous;
 }
 
+void Intensities::read_mtz(const Mtz& mtz, DataType data_type) {
+  bool check_anom_complete = false;
+  if (data_type == DataType::Unknown)
+    data_type = mtz.batches.empty() ? DataType::MergedMA : DataType::Unmerged;
+  if (data_type == DataType::MergedAM) {
+    data_type = mtz.iplus_column() ? DataType::Anomalous : DataType::Mean;
+    // if I(+) and I(-) is empty where IMEAN is not, throw error
+    check_anom_complete = true;
+  }
+  if (data_type == DataType::MergedMA)
+    data_type = mtz.imean_column() ? DataType::Mean : DataType::Anomalous;
+
+  if (data_type == DataType::Unmerged)
+    read_unmerged_intensities_from_mtz(mtz);
+  else if (data_type == DataType::Mean)
+    read_mean_intensities_from_mtz(mtz);
+  else  // (data_type == DataType::Anomalous)
+    read_anomalous_intensities_from_mtz(mtz, check_anom_complete);
+}
+
 static
 void read_simple_intensities_from_mmcif(Intensities& intensities, const ReflnBlock& rb,
                                         const char* inten, const char* sigma) {
@@ -312,6 +333,33 @@ void Intensities::read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
   type = DataType::Anomalous;
 }
 
+void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
+  bool check_anom_complete = false;
+  if (data_type == DataType::Unknown)
+    data_type = rb.is_unmerged() ? DataType::Unmerged : DataType::MergedMA;
+
+  if (data_type == DataType::MergedAM || data_type == DataType::MergedMA) {
+    bool has_anom = rb.find_column_index("pdbx_I_plus") != -1;
+    bool has_mean = rb.find_column_index("intensity_meas") != -1;
+    if (!has_anom && !has_mean)
+      fail("Intensities not found in the mmCIF file, block ", rb.block.name,
+           " has neither intensity_meas nor pdbx_I_plus/minus");
+    if (data_type == DataType::MergedAM) {
+      data_type = has_anom ? DataType::Anomalous : DataType::Mean;
+      // if both I(+) and I(-) is empty where IMEAN has value, throw error
+      check_anom_complete = true;
+    }
+    if (data_type == DataType::MergedMA)
+      data_type = has_mean ? DataType::Mean : DataType::Anomalous;
+  }
+  if (data_type == DataType::Unmerged)
+    read_unmerged_intensities_from_mmcif(rb);
+  else if (data_type == DataType::Mean)
+    read_mean_intensities_from_mmcif(rb);
+  else  // (data_type == DataType::Anomalous)
+    read_anomalous_intensities_from_mmcif(rb, check_anom_complete);
+}
+
 void Intensities::read_f_squared_from_mmcif(const ReflnBlock& rb) {
   int value_idx = rb.find_column_index("F_meas");
   if (value_idx == -1)
@@ -333,14 +381,28 @@ void Intensities::read_f_squared_from_mmcif(const ReflnBlock& rb) {
   type = DataType::Mean;
 }
 
-void Intensities::read_unmerged_intensities_from_xds(const XdsAscii& xds) {
+void Intensities::read_xds(const XdsAscii& xds) {
   unit_cell.set_from_array(xds.cell_constants);
   spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
   wavelength = xds.wavelength;
+  if (wavelength == 0) {
+    int n = 0;
+    for (const XdsAscii::Iset& iset : xds.isets)
+      if (iset.wavelength > 0) {
+        wavelength += iset.wavelength;
+        ++n;
+      }
+    if (n != 0)
+      wavelength /= n;
+  }
   data.reserve(xds.data.size());
+  if (xds.is_merged())
+    type = (xds.friedels_law == 'F' ? DataType::Anomalous : DataType::Mean);
+  else
+    type = DataType::Unmerged;
+  int8_t isign = (type == DataType::Anomalous ? 1 : 0);
   for (const XdsAscii::Refl& in : xds.data)
-    add_if_valid(in.hkl, 0, 0, in.iobs, in.sigma);
-  type = DataType::Unmerged;
+    add_if_valid(in.hkl, isign, 0, in.iobs, in.sigma);
   switch_to_asu_indices();
 }
 
@@ -352,7 +414,8 @@ Mtz Intensities::prepare_merged_mtz(bool with_nobs) {
   gemmi::Mtz mtz(/*with_base=*/true);
   mtz.spacegroup = spacegroup;
   mtz.set_cell_for_all(unit_cell);
-  mtz.add_dataset("unknown").wavelength = wavelength;
+  mtz.add_dataset("unknown");
+  mtz.datasets[1].wavelength = wavelength;
   if (type == DataType::Mean) {
     mtz.add_column("IMEAN", 'J', -1, -1, false);
     mtz.add_column("SIGIMEAN", 'Q', -1, -1, false);
@@ -370,6 +433,8 @@ Mtz Intensities::prepare_merged_mtz(bool with_nobs) {
   } else {
     fail("prepare_merged_mtz(): data is not merged");
   }
+  if (std::is_sorted(data.begin(), data.end()))
+    mtz.sort_order = {{1, 2, 3, 0, 0}};
   mtz.data.resize(data.size() * mtz.columns.size(), NAN);
   gemmi::Miller prev_hkl = data[0].hkl;
   mtz.set_hkl(0, prev_hkl);
@@ -395,7 +460,7 @@ Mtz Intensities::prepare_merged_mtz(bool with_nobs) {
   return mtz;
 }
 
-} // namespace gemmi
+}  // namespace gemmi
 
 #if WITH_TEST
 // Quick test for not exported function parse_voigt_notation().

@@ -95,6 +95,8 @@ struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
     read_stream(*input.create_stream(), input.path());
   }
 
+  bool is_merged() const { return read_columns < 8; }
+
   // set a few Iset properties in isets
   void gather_iset_statistics();
 

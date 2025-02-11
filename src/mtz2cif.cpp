@@ -958,9 +958,6 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   int missing_count = 0;
   auto r1 = ui.data.begin();
   auto r2 = mi.data.begin();
-  auto refln_str = [](const Intensities::Refl& r) {
-    return r.intensity_label() + std::string(" ") + miller_str(r.hkl);
-  };
   while (r1 != ui.data.end() && r2 != mi.data.end()) {
     if (r1->hkl == r2->hkl && r1->isign == r2->isign) {
       if (!relaxed_check) {
@@ -990,14 +987,14 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r1;
     } else {
       if (missing_count == 0)
-        out << "First missing reflection in unmerged data: " << refln_str(*r1) << '\n';
+        out << "First missing reflection in unmerged data: " << r1->hkl_label() << '\n';
       ++missing_count;
       ++r2;
     }
   }
 
   if (differ_count != 0) {
-    out << "Most significant difference: " << refln_str(*max_diff_r1) << ' '
+    out << "Most significant difference: " << max_diff_r1->hkl_label() << ' '
         << scale * max_diff_r1->value << " vs " << max_diff_r2->value << '\n';
     out << differ_count << " of " << corr.n << " intensities differ too much (by >"
         << to_str(max_diff * 100) << "%).\n";

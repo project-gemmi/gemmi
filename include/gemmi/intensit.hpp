@@ -12,15 +12,19 @@
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
 #include "mtz.hpp"      // for Mtz
-#include "refln.hpp"    // for ReflnBlock
 #include "stats.hpp"    // for Correlation
 #include "xds_ascii.hpp" // for XdsAscii
 
 namespace gemmi {
 
-inline std::string miller_str(const Miller& hkl) {
-  return cat('(', hkl[0], ' ', hkl[1], ' ', hkl[2], ')');
-}
+struct ReflnBlock;
+namespace cif { struct Block; }
+using std::int8_t;
+
+// If used to request a particular data type:
+// MergedMA = Mean if available, otherwise Anomalous,
+// MergedAM = Anomalous if available, otherwise Mean.
+enum class DataType { Unknown, Unmerged, Mean, Anomalous, MergedMA, MergedAM };
 
 /// Returns STARANISO version or empty string.
 GEMMI_DLL std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output);
@@ -28,8 +32,8 @@ GEMMI_DLL std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& 
 struct GEMMI_DLL Intensities {
   struct Refl {
     Miller hkl;
-    std::int8_t isign;  // 1 for I(+), -1 for I(-), 0 for mean or unmerged
-    std::int8_t isym;   // for unmerged data: encodes symmetry op like M/ISYM in MTZ
+    int8_t isign;  // 1 for I(+), -1 for I(-), 0 for mean or unmerged
+    int8_t isym;   // for unmerged data: encodes symmetry op like M/ISYM in MTZ
     short nobs;
     double value;
     double sigma;
@@ -44,7 +48,7 @@ struct GEMMI_DLL Intensities {
       return isign > 0 ? "I(+)" : "I(-)";
     }
     std::string hkl_label() const {
-      return cat(intensity_label(), ' ', miller_str(hkl));
+      return cat(intensity_label(), " (", hkl[0], ' ', hkl[1], ' ', hkl[2], ')');
     }
   };
 
@@ -114,25 +118,7 @@ struct GEMMI_DLL Intensities {
   // with check_complete=true, throw if anomalous data is null where it shouldn't be
   void read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete=false);
 
-  void read_mtz(const Mtz& mtz, DataType data_type) {
-    bool check_anom_complete = false;
-    if (data_type == DataType::Unknown)
-      data_type = mtz.batches.empty() ? DataType::MergedMA : DataType::Unmerged;
-    if (data_type == DataType::MergedAM) {
-      data_type = mtz.iplus_column() ? DataType::Anomalous : DataType::Mean;
-      // if I(+) and I(-) is empty where IMEAN is not, throw error
-      check_anom_complete = true;
-    }
-    if (data_type == DataType::MergedMA)
-      data_type = mtz.imean_column() ? DataType::Mean : DataType::Anomalous;
-
-    if (data_type == DataType::Unmerged)
-      read_unmerged_intensities_from_mtz(mtz);
-    else if (data_type == DataType::Mean)
-      read_mean_intensities_from_mtz(mtz);
-    else // (data_type == DataType::Anomalous)
-      read_anomalous_intensities_from_mtz(mtz, check_anom_complete);
-  }
+  void read_mtz(const Mtz& mtz, DataType data_type);
 
   void read_unmerged_intensities_from_mmcif(const ReflnBlock& rb);
   void read_mean_intensities_from_mmcif(const ReflnBlock& rb);
@@ -140,34 +126,9 @@ struct GEMMI_DLL Intensities {
 
   void read_f_squared_from_mmcif(const ReflnBlock& rb);
 
-  void read_mmcif(const ReflnBlock& rb, DataType data_type) {
-    bool check_anom_complete = false;
-    if (data_type == DataType::Unknown)
-      data_type = rb.is_unmerged() ? DataType::Unmerged : DataType::MergedMA;
+  void read_mmcif(const ReflnBlock& rb, DataType data_type);
 
-    if (data_type == DataType::MergedAM || data_type == DataType::MergedMA) {
-      bool has_anom = rb.find_column_index("pdbx_I_plus") != -1;
-      bool has_mean = rb.find_column_index("intensity_meas") != -1;
-      if (!has_anom && !has_mean)
-        fail("Intensities not found in the mmCIF file, block ", rb.block.name,
-             " has neither intensity_meas nor pdbx_I_plus/minus");
-      if (data_type == DataType::MergedAM) {
-        data_type = has_anom ? DataType::Anomalous : DataType::Mean;
-        // if both I(+) and I(-) is empty where IMEAN has value, throw error
-        check_anom_complete = true;
-      }
-      if (data_type == DataType::MergedMA)
-        data_type =  has_mean ? DataType::Mean : DataType::Anomalous;
-    }
-    if (data_type == DataType::Unmerged)
-      read_unmerged_intensities_from_mmcif(rb);
-    else if (data_type == DataType::Mean)
-      read_mean_intensities_from_mmcif(rb);
-    else // (data_type == DataType::Anomalous)
-      read_anomalous_intensities_from_mmcif(rb, check_anom_complete);
-  }
-
-  void read_unmerged_intensities_from_xds(const XdsAscii& xds);
+  void read_xds(const XdsAscii& xds);
 
   // returns STARANISO version or empty string
   std::string take_staraniso_b_from_mtz(const Mtz& mtz) {

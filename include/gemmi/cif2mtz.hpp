@@ -12,6 +12,7 @@
 #include <utility>
 #include "cifdoc.hpp"   // for Loop, as_int, ...
 #include "fail.hpp"     // for fail
+#include "intensit.hpp" // for DataType
 #include "mtz.hpp"      // for Mtz
 #include "numb.hpp"     // for as_number
 #include "refln.hpp"    // for ReflnBlock

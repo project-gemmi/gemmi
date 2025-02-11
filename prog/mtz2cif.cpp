@@ -294,10 +294,13 @@ int GEMMI_MAIN(int argc, char **argv) {
         mi.read_mmcif(rblock, gemmi::DataType::MergedAM);
       }
       gemmi::Intensities ui;
-      if (mtz[1])
+      if (mtz[1]) {
         ui.read_unmerged_intensities_from_mtz(*mtz[1]);
-      else if (xds_ascii)
-        ui.read_unmerged_intensities_from_xds(*xds_ascii);
+      } else if (xds_ascii) {
+        if (xds_ascii->read_columns < 8)
+          gemmi::fail("XDS file contains merged data");
+        ui.read_xds(*xds_ascii);
+      }
 
       bool relaxed_check =
         p.options[NoIntensityCheck] ||

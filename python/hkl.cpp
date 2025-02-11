@@ -177,6 +177,8 @@ void add_hkl(nb::module_& m) {
     .value("Unmerged", DataType::Unmerged)
     .value("Mean", DataType::Mean)
     .value("Anomalous", DataType::Anomalous)
+    .value("MergedMA", DataType::MergedMA)
+    .value("MergedAM", DataType::MergedAM)
     ;
   m.def("check_data_type_under_symmetry", [](const ReflnBlock& data) {
       return check_data_type_under_symmetry(ReflnDataProxy(data));
@@ -193,7 +195,9 @@ void add_hkl(nb::module_& m) {
     .def("resolution_range", &Intensities::resolution_range)
     .def("remove_systematic_absences", &Intensities::remove_systematic_absences)
     .def("merge_in_place", &Intensities::merge_in_place, nb::arg("itype"))
-    .def("read_mtz", &Intensities::read_mtz, nb::arg("mtz"), nb::arg("type"))
+    .def("read_mtz", &Intensities::read_mtz, nb::arg(), nb::arg("type"))
+    .def("read_xds", &Intensities::read_xds, nb::arg())
+    .def("read_mmcif", &Intensities::read_mmcif, nb::arg(), nb::arg("type"))
     .def("prepare_merged_mtz", &Intensities::prepare_merged_mtz,
          nb::arg("with_nobs"))
     .def_prop_ro("miller_array", [](Intensities& self) {

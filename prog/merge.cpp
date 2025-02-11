@@ -12,6 +12,7 @@
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
 #include <gemmi/fstream.hpp>  // for Ofstream
 #include <gemmi/intensit.hpp> // for Intensities
+#include <gemmi/refln.hpp>    // for ReflnBlock
 #include <gemmi/read_cif.hpp> // for read_cif_gz
 #define GEMMI_PROG merge
 #include "options.h"
@@ -114,7 +115,7 @@ Intensities read_intensities(DataType data_type, const char* input_path,
         intensities.take_staraniso_b_from_mtz(mtz);
     } else if (gemmi::giends_with(input_path, "hkl")) {  // .hkl or .ahkl
       gemmi::XdsAscii xds_ascii = gemmi::read_xds_ascii(input_path);
-      intensities.read_unmerged_intensities_from_xds(xds_ascii);
+      intensities.read_xds(xds_ascii);
     } else {
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
       read_intensities_from_rblocks(intensities, data_type, rblocks, block_name, verbose);
