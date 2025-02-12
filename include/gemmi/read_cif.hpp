@@ -23,11 +23,6 @@ inline cif::Document read_cif_or_mmjson_gz(const std::string& path) {
   return read_cif_gz(path);
 }
 
-// deprecated
-inline cif::Document read_cif_from_buffer(const CharArray& buffer, const char* name) {
-  return read_cif_from_memory(buffer.data(), buffer.size(), name);
-}
-
 } // namespace gemmi
 
 #endif
