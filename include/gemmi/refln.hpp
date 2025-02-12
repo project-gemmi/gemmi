@@ -70,6 +70,8 @@ struct ReflnBlock {
   void use_unmerged(bool unmerged) {
     default_loop = unmerged ? diffrn_refln_loop : refln_loop;
   }
+  bool is_merged() const { return ok() && default_loop == refln_loop; }
+  // deprecated
   bool is_unmerged() const { return ok() && default_loop == diffrn_refln_loop; }
 
   std::vector<std::string> column_labels() const {

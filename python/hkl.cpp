@@ -111,7 +111,8 @@ void add_hkl(nb::module_& m) {
                                                        bool as_is) {
         return make_asu_data<ValueSigma<float>, 2>(self, {f_col, sigma_col}, as_is);
     }, nb::arg("f"), nb::arg("sigma"), nb::arg("as_is")=false)
-    .def("is_unmerged", &ReflnBlock::is_unmerged)
+    .def("is_merged", &ReflnBlock::is_merged)
+    .def("is_unmerged", &ReflnBlock::is_unmerged)  // deprecated
     .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })
     .def("__repr__", [](const ReflnBlock& self) {

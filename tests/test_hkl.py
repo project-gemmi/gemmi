@@ -257,7 +257,7 @@ class TestConversion(unittest.TestCase):
         doc = gemmi.cif.read(full_path('4aap-sf-subset.cif'))
         (rblock,) = gemmi.as_refln_blocks(doc)
         check_metadata(rblock, rblock)
-        self.assertFalse(rblock.is_unmerged())
+        self.assertTrue(rblock.is_merged())
         mtz = gemmi.CifToMtz().convert_block_to_mtz(rblock)
         check_metadata(mtz, mtz.datasets[1])
         cif_string = gemmi.MtzToCif().write_cif_to_string(mtz)

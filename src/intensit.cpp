@@ -336,7 +336,7 @@ void Intensities::read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
 void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)
-    data_type = rb.is_unmerged() ? DataType::Unmerged : DataType::MergedMA;
+    data_type = rb.is_merged() ? DataType::MergedMA : DataType::Unmerged;
 
   if (data_type == DataType::MergedAM || data_type == DataType::MergedMA) {
     bool has_anom = rb.find_column_index("pdbx_I_plus") != -1;
