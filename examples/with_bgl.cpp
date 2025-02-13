@@ -10,7 +10,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/vf2_sub_graph_iso.hpp>
 #include <boost/graph/mcgregor_common_subgraphs.hpp>
-#include <gemmi/cif.hpp>             // for cif::read_file
+#include <gemmi/read_cif.hpp>        // for read_cif_gz
 #include <gemmi/chemcomp.hpp>        // for ChemComp, make_chemcomp_from_block
 
 struct AtomVertex {
@@ -41,7 +41,7 @@ Graph make_graph(const gemmi::ChemComp& cc) {
 }
 
 gemmi::ChemComp make_chemcomp(const char* path) {
-  gemmi::cif::Document doc = gemmi::cif::read_file(path);
+  gemmi::cif::Document doc = gemmi::read_cif_gz(path);
   // assuming the component description is in the last block of the file
   return gemmi::make_chemcomp_from_block(doc.blocks.back());
 }
@@ -83,7 +83,7 @@ void count_automorphisms_of_SO3() {
 //
 // Example output:
 //
-//  $ ./with_bgl ccd/M10.cif monomers/m/M10.cif 
+//  $ ./with_bgl ccd/M10.cif monomers/m/M10.cif
 //  isomorphic!
 //    O4 -> O9
 //    O9 -> O4
@@ -162,7 +162,7 @@ void check_subgraph_isomorphism(const char* cif1, const char* cif2) {
 //     CAE -> C7
 //     OAI -> O8
 //     CAD -> C1
-//   
+//
 //   real	0m0.012s
 //   user	0m0.008s
 //   sys	0m0.004s

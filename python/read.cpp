@@ -7,7 +7,6 @@
 
 #include "gemmi/numb.hpp"
 #include "gemmi/cifdoc.hpp"
-#include "gemmi/cif.hpp"
 #include "gemmi/mmcif.hpp"         // for make_structure_from_block, ...
 #include "gemmi/pdb.hpp"           // for read_pdb_string
 #include "gemmi/gz.hpp"            // for estimate_uncompressed_size
@@ -24,7 +23,7 @@ using namespace gemmi;
 NB_MAKE_OPAQUE(std::vector<SmallStructure::Site>)
 
 void add_cif_read(nb::module_& cif) {
-  cif.def("read_file", &cif::read_file, nb::arg("filename"),
+  cif.def("read_file", &read_cif_gz, nb::arg("filename"),
           "Reads a CIF file copying data into Document.");
   cif.def("read", &read_cif_or_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped CIF file.");
@@ -101,7 +100,7 @@ void add_read_structure(nb::module_& m) {
 
   // from smcif.hpp
   m.def("read_small_structure", [](const std::string& path) {
-          cif::Block block = cif::read_file(path).sole_block();
+          cif::Block block = read_cif_gz(path).sole_block();
           return new SmallStructure(make_small_structure_from_block(block));
         }, nb::arg("path"), "Reads a small molecule CIF file.");
   m.def("make_small_structure_from_block", &make_small_structure_from_block,
@@ -180,12 +179,3 @@ void add_small(nb::module_& m) {
         nb::arg("st"), nb::arg("n")=0);
 }
 
-// used in cif.cpp
-void cif_parse_string(cif::Document& doc, const std::string& data) {
-  tao::pegtl::memory_input<> in(data, "string");
-  cif::parse_input(doc, in);
-}
-void cif_parse_file(cif::Document& doc, const std::string& filename) {
-  GEMMI_CIF_FILE_INPUT(in, filename);
-  cif::parse_input(doc, in);
-}

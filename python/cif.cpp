@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include <sstream>
+#include "gemmi/cif.hpp"  // for parse_input
 #include "gemmi/cifdoc.hpp"
 #include "gemmi/to_cif.hpp"
 #include "gemmi/to_json.hpp"
@@ -57,6 +58,16 @@ T& add_to_vector(std::vector<T>& vec, const T& new_item, int pos) {
     throw nb::index_error();
   vec.insert(vec.begin() + pos, new_item);
   return vec[pos];
+}
+
+// cif parsing without checking for missing values and duplicates
+void cif_parse_string(Document& doc, const std::string& data) {
+  tao::pegtl::memory_input<> in(data, "string");
+  parse_input(doc, in);
+}
+void cif_parse_file(Document& doc, const std::string& filename) {
+  GEMMI_CIF_FILE_INPUT(in, filename);
+  parse_input(doc, in);
 }
 
 }  // anonymous namespace
