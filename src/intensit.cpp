@@ -464,12 +464,12 @@ Mtz Intensities::prepare_merged_mtz(bool with_nobs) {
 
 #if WITH_TEST
 // Quick test for not exported function parse_voigt_notation().
-// Compile with: c++ src/intensit.cpp -DWITH_TEST -Iinclude -lgemmi_cpp
+// Compile with: c++ src/intensit.cpp -DWITH_TEST -Iinclude -Lbuild -lgemmi_cpp
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "../third_party/doctest.h"
 #include "gemmi/mtz2cif.hpp"  // for write_staraniso_b_in_mmcif
-#include "gemmi/cif.hpp"  // for read_string
+#include "gemmi/read_cif.hpp"  // for cif::read_string
 
 TEST_CASE("aniso_b_tensor_eigen") {
   std::string line = "(0.486, 17.6, 0.981, 3.004, -0.689, -1.99)";

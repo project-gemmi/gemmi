@@ -301,10 +301,8 @@ inline Document read_file(const std::string& filename) {
   return read_input(in);
 }
 
-inline Document read_string(const std::string& data) {
-  pegtl::memory_input<> in(data, "string");
-  return read_input(in);
-}
+// declared here for backward compatibility, now it's in read_cif.hpp
+Document read_string(const std::string& data);
 
 inline Document read_memory(const char* data, size_t size, const char* name) {
   pegtl::memory_input<> in(data, size, name);

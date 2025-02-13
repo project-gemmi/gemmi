@@ -376,7 +376,7 @@ endif()
 
 add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp tests/windowsh.cpp)
 target_compile_definitions(cpptest PRIVATE USE_STD_SNPRINTF=1)
-target_link_libraries(cpptest PRIVATE gemmi_headers)
+target_link_libraries(cpptest PRIVATE gemmi_cpp)
 target_include_directories(cpptest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)

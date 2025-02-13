@@ -16,7 +16,7 @@
 #include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
 #include "gemmi/read_cif.hpp"      // for read_cif_gz, read_mmjson_gz
 #include "gemmi/mmread_gz.hpp"     // for read_structure_gz
-#include "gemmi/json.hpp"          // for read_mmjson_gz
+#include "gemmi/json.hpp"          // for read_mmjson_insitu
 
 
 using namespace gemmi;
@@ -28,10 +28,12 @@ void add_cif_read(nb::module_& cif) {
           "Reads a CIF file copying data into Document.");
   cif.def("read", &read_cif_or_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped CIF file.");
-  cif.def("read_string", &cif::read_string, nb::arg("data"),
+  cif.def("read_string", [](const std::string& str) {
+            return read_cif_from_memory(str.c_str(), str.size(), "string");
+          }, nb::arg("string"),
           "Reads a string as a CIF file.");
   cif.def("read_string", [](const nb::bytes& data) {
-            return cif::read_memory(data.c_str(), data.size(), "string");
+            return read_cif_from_memory(data.c_str(), data.size(), "data");
           }, nb::arg("data"), "Reads bytes as a CIF file.");
   cif.def("read_mmjson", &read_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped mmJSON file.");

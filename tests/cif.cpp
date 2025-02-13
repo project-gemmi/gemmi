@@ -2,7 +2,7 @@
 #include "doctest.h"
 
 #include <algorithm>
-#include <gemmi/cif.hpp>
+#include <gemmi/read_cif.hpp>
 
 namespace cif = gemmi::cif;
 
