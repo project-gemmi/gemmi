@@ -172,6 +172,8 @@ void add_hkl(nb::module_& m) {
         return out.str();
     }, nb::arg("mtz"), nb::arg("mtz2")=nb::none())
     ;
+  m.def("validate_merged_intensities", &validate_merged_intensities,
+        nb::arg(), nb::arg(), nb::arg("relaxed_check")=false, nb::arg("logger"));
 
   nb::enum_<DataType>(m, "DataType")
     .value("Unknown", DataType::Unknown)
@@ -180,6 +182,7 @@ void add_hkl(nb::module_& m) {
     .value("Anomalous", DataType::Anomalous)
     .value("MergedMA", DataType::MergedMA)
     .value("MergedAM", DataType::MergedAM)
+    .value("UAM", DataType::UAM)
     ;
   m.def("check_data_type_under_symmetry", [](const ReflnBlock& data) {
       return check_data_type_under_symmetry(ReflnDataProxy(data));

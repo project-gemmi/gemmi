@@ -294,7 +294,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       }
       gemmi::Intensities ui;
       if (mtz[1]) {
-        ui.read_unmerged_intensities_from_mtz(*mtz[1]);
+        ui.read_mtz(*mtz[1], gemmi::DataType::Unmerged);
       } else if (xds_ascii) {
         if (xds_ascii->read_columns < 8)
           gemmi::fail("XDS file contains merged data");

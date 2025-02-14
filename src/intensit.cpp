@@ -2,6 +2,7 @@
 
 #include <gemmi/intensit.hpp>
 #include <gemmi/atof.hpp>  // for fast_from_chars
+#include <gemmi/mtz.hpp>   // for Mtz
 #include <gemmi/refln.hpp>
 
 namespace gemmi {
@@ -155,11 +156,11 @@ Correlation Intensities::calculate_correlation(const Intensities& other) const {
 void Intensities::merge_in_place(DataType new_type) {
   if (data.empty() || new_type == type || type == DataType::Mean || new_type == DataType::Unmerged)
     return;
-  if (new_type == DataType::Mean) {
+  if (new_type == DataType::Mean || new_type == DataType::MergedMA) {
     // discard signs so that merging produces Imean
     for (Refl& refl : data)
       refl.isign = 0;
-  } else if (new_type == DataType::Anomalous && type == DataType::Unmerged) {
+  } else if (type == DataType::Unmerged) {
     GroupOps gops = spacegroup->operations();
     for (Refl& refl : data)
       refl.isign = refl.isym % 2 != 0 || gops.is_reflection_centric(refl.hkl) ? 1 : -1;
@@ -193,6 +194,8 @@ void Intensities::merge_in_place(DataType new_type) {
 }
 
 void Intensities::switch_to_asu_indices() {
+  if (!spacegroup)
+    return;
   GroupOps gops = spacegroup->operations();
   if (isym_ops.empty())
     isym_ops = gops.sym_ops;
@@ -240,7 +243,7 @@ void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   type = DataType::Unmerged;
   // Aimless >=0.7.6 (from 2021) has an option to output unmerged file
   // with original indices instead of reduced indices, with all ISYM = 1.
-  switch_to_asu_indices();
+  // Then it needs switch_to_asu_indices(), which is called in read_mtz().
 }
 
 void Intensities::read_mean_intensities_from_mtz(const Mtz& mtz) {
@@ -280,7 +283,9 @@ void Intensities::read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check
 void Intensities::read_mtz(const Mtz& mtz, DataType data_type) {
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)
-    data_type = mtz.batches.empty() ? DataType::MergedMA : DataType::Unmerged;
+    data_type = mtz.is_merged() ? DataType::MergedMA : DataType::Unmerged;
+  else if (data_type == DataType::UAM)
+    data_type = mtz.is_merged() ? DataType::MergedAM : DataType::Unmerged;
   if (data_type == DataType::MergedAM) {
     data_type = mtz.iplus_column() ? DataType::Anomalous : DataType::Mean;
     // if I(+) and I(-) is empty where IMEAN is not, throw error
@@ -295,6 +300,7 @@ void Intensities::read_mtz(const Mtz& mtz, DataType data_type) {
     read_mean_intensities_from_mtz(mtz);
   else  // (data_type == DataType::Anomalous)
     read_anomalous_intensities_from_mtz(mtz, check_anom_complete);
+  switch_to_asu_indices();
 }
 
 static
@@ -308,9 +314,13 @@ void read_simple_intensities_from_mmcif(Intensities& intensities, const ReflnBlo
 }
 
 void Intensities::read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
-  read_simple_intensities_from_mmcif(*this, rb, "intensity_net", "intensity_sigma");
+  const char* intensity_tag ="intensity_net";
+  // When the PDB software didn't support diffrn_refln,
+  // unmerged data was deposited using the refln category.
+  if (rb.default_loop == rb.refln_loop)
+    intensity_tag = "intensity_meas";
+  read_simple_intensities_from_mmcif(*this, rb, intensity_tag, "intensity_sigma");
   type = DataType::Unmerged;
-  switch_to_asu_indices();
 }
 
 void Intensities::read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
@@ -337,6 +347,8 @@ void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)
     data_type = rb.is_merged() ? DataType::MergedMA : DataType::Unmerged;
+  else if (data_type == DataType::UAM)
+    data_type = rb.diffrn_refln_loop ? DataType::Unmerged : DataType::MergedAM;
 
   if (data_type == DataType::MergedAM || data_type == DataType::MergedMA) {
     bool has_anom = rb.find_column_index("pdbx_I_plus") != -1;
@@ -358,6 +370,7 @@ void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
     read_mean_intensities_from_mmcif(rb);
   else  // (data_type == DataType::Anomalous)
     read_anomalous_intensities_from_mmcif(rb, check_anom_complete);
+  switch_to_asu_indices();
 }
 
 void Intensities::read_f_squared_from_mmcif(const ReflnBlock& rb) {
@@ -404,6 +417,10 @@ void Intensities::read_xds(const XdsAscii& xds) {
   for (const XdsAscii::Refl& in : xds.data)
     add_if_valid(in.hkl, isign, 0, in.iobs, in.sigma);
   switch_to_asu_indices();
+}
+
+std::string Intensities::take_staraniso_b_from_mtz(const Mtz& mtz) {
+  return read_staraniso_b_from_mtz(mtz, staraniso_b.b);
 }
 
 bool Intensities::take_staraniso_b_from_mmcif(const cif::Block& block) {

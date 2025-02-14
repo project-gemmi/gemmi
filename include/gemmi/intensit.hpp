@@ -11,20 +11,22 @@
 #include "symmetry.hpp"
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
-#include "mtz.hpp"      // for Mtz
 #include "stats.hpp"    // for Correlation
 #include "xds_ascii.hpp" // for XdsAscii
 
 namespace gemmi {
 
+struct Mtz;
 struct ReflnBlock;
 namespace cif { struct Block; }
 using std::int8_t;
 
 // If used to request a particular data type:
-// MergedMA = Mean if available, otherwise Anomalous,
-// MergedAM = Anomalous if available, otherwise Mean.
-enum class DataType { Unknown, Unmerged, Mean, Anomalous, MergedMA, MergedAM };
+//   MergedMA = Mean if available, otherwise Anomalous,
+//   MergedAM = Anomalous if available, otherwise Mean.
+//   UAM = Unmerged if available, otherwise MergedAM
+enum class DataType { Unknown, Unmerged, Mean, Anomalous,
+                      MergedMA, MergedAM, UAM };
 
 /// Returns STARANISO version or empty string.
 GEMMI_DLL std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output);
@@ -78,6 +80,7 @@ struct GEMMI_DLL Intensities {
       case DataType::Anomalous: return "I+/I-";
       case DataType::MergedAM:
       case DataType::MergedMA:
+      case DataType::UAM:
       case DataType::Unknown: return "n/a";
     }
     unreachable();
@@ -131,9 +134,8 @@ struct GEMMI_DLL Intensities {
   void read_xds(const XdsAscii& xds);
 
   // returns STARANISO version or empty string
-  std::string take_staraniso_b_from_mtz(const Mtz& mtz) {
-    return read_staraniso_b_from_mtz(mtz, staraniso_b.b);
-  }
+  std::string take_staraniso_b_from_mtz(const Mtz& mtz);
+
   bool take_staraniso_b_from_mmcif(const cif::Block& block);
 
   Mtz prepare_merged_mtz(bool with_nobs);

@@ -893,6 +893,9 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   bool ok = true;
   if (ui.spacegroup == mi.spacegroup) {
     logger.mesg("The same space group: ", mi.spacegroup_str());
+  } else if (!ui.spacegroup || !mi.spacegroup) {
+    logger.mesg("ERROR. Space group not set.");
+    ok = false;
   } else {
     GroupOps gops1 = ui.spacegroup->operations();
     GroupOps gops2 = mi.spacegroup->operations();
