@@ -4,7 +4,6 @@ Usage:
  gemmi cifdiff [options] -n FILE.cif
 
 Compares (or just prints) categories and tags in CIF files.
-First block only.
   -h, --help     Print usage and exit.
   -V, --version  Print version and exit.
   -v, --verbose  Verbose output.
