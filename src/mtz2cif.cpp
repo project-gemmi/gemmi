@@ -987,7 +987,7 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
       ++r1;
     } else {
       if (missing_count == 0)
-        logger.mesg("First missing reflection in unmerged data: ", r1->hkl_label());
+        logger.mesg("First missing reflection in unmerged data: ", r2->hkl_label());
       ++missing_count;
       ++r2;
     }
