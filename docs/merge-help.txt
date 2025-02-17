@@ -11,6 +11,7 @@ Options:
   --no-sysabs            Do not output systematic absences.
   --nobs                 Add MTZ column NOBS with the number of merged
                          reflections.
+  --input-block=NAME     input mmCIF block name (default: first unmerged).
   -b NAME, --block=NAME  output mmCIF block name: data_NAME (default: merged).
   --compare              compare unmerged and merged data (no output file).
   --print-all            print all compared reflections.

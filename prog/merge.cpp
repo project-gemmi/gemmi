@@ -20,7 +20,7 @@
 namespace {
 
 enum OptionIndex {
-  WriteAnom=4, NoSysAbs, NumObs, BlockName, Compare, PrintAll
+  WriteAnom=4, NoSysAbs, NumObs, InputBlock, OutputBlock, Compare, PrintAll
 };
 
 const option::Descriptor Usage[] = {
@@ -38,7 +38,9 @@ const option::Descriptor Usage[] = {
     "  --no-sysabs  \tDo not output systematic absences." },
   { NumObs, 0, "", "nobs", Arg::None,
     "  --nobs  \tAdd MTZ column NOBS with the number of merged reflections." },
-  { BlockName, 0, "b", "block", Arg::Required,
+  { InputBlock, 0, "", "input-block", Arg::Required,
+    "  --input-block=NAME  \tinput mmCIF block name (default: first unmerged)." },
+  { OutputBlock, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \toutput mmCIF block name: data_NAME (default: merged)." },
   { Compare, 0, "", "compare", Arg::None,
     "  --compare  \tcompare unmerged and merged data (no output file)." },
@@ -67,62 +69,54 @@ void output_intensity_statistics(const Intensities& intensities) {
                intensities.data.size(), plus_count, minus_count);
 }
 
-void read_intensities_from_rblocks(Intensities& intensities,
-                                   DataType data_type,
-                                   std::vector<gemmi::ReflnBlock>& rblocks,
-                                   const char* block_name, bool verbose) {
-  for (gemmi::ReflnBlock& rb : rblocks) {
-    if (block_name && rb.block.name != block_name)
-      continue;
-    rb.use_unmerged(data_type == DataType::Unmerged);
-    if (!rb.default_loop)
-      continue;
-    if (data_type == DataType::Mean && rb.find_column_index("intensity_meas") < 0) {
-      if (rb.find_column_index("pdbx_I_plus") < 0)
-        gemmi::fail("merged intensities not found");
-      std::fprintf(stderr, "No _refln.intensity_meas, using pdbx_I_plus/minus ...\n");
-      data_type = DataType::Anomalous;
-    }
-    if (verbose)
-      std::fprintf(stderr, "Reading %s from block %s ...\n",
-                   Intensities::type_str(data_type), rb.block.name.c_str());
-    intensities.read_mmcif(rb, data_type);
-    if (data_type != DataType::Unmerged)
-      intensities.take_staraniso_b_from_mmcif(rb.block);
-    break;
-  }
-}
-
-Intensities read_intensities(DataType data_type, const char* input_path,
-                             const char* block_name, bool verbose) {
+void read_intensities(Intensities& intensities, DataType data_type,
+                      const char* input_path, const char* block_name, bool verbose) {
   try {
-    Intensities intensities;
     if (gemmi::giends_with(input_path, ".mtz")) {
       gemmi::Mtz mtz;
       if (verbose)
         mtz.logger.callback = gemmi::Logger::to_stderr;
-      mtz.read_input(gemmi::MaybeGzipped(input_path), /*with_data=*/true);
-      if (data_type == DataType::Unknown)
-        data_type = mtz.batches.empty() ? DataType::Mean : DataType::Unmerged;
-      if (data_type == DataType::Mean && !mtz.imean_column()) {
-        std::fprintf(stderr, "No IMEAN, using I(+) and I(-) ...\n");
-        if (!mtz.iplus_column())
-          gemmi::fail("I(+) not found");
-        data_type = DataType::Anomalous;
-      }
+      mtz.read_file_gz(input_path);
       intensities.read_mtz(mtz, data_type);
-      if (data_type != DataType::Unmerged)
+      if (data_type != DataType::UAM)
         intensities.take_staraniso_b_from_mtz(mtz);
+
     } else if (gemmi::giends_with(input_path, "hkl")) {  // .hkl or .ahkl
       gemmi::XdsAscii xds_ascii = gemmi::read_xds_ascii(input_path);
       intensities.read_xds(xds_ascii);
-    } else {
+
+    } else {  // mmCIF
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
-      read_intensities_from_rblocks(intensities, data_type, rblocks, block_name, verbose);
+      gemmi::ReflnBlock* rblock = nullptr;
+      if (block_name) {
+        for (gemmi::ReflnBlock& rb : rblocks)
+          if (rb.block.name == block_name) {
+            rblock = &rb;
+            break;
+          }
+        if (!rblock) {
+          std::fprintf(stderr, "Error. No block data_%s in mmCIF file!\n", block_name);
+          std::exit(1);
+        }
+      } else if (data_type == DataType::UAM) {
+        for (gemmi::ReflnBlock& rb : rblocks)
+          if (rb.diffrn_refln_loop) {
+            rblock = &rb;
+            break;
+          }
+      }
+      if (!rblock)
+        rblock = &rblocks.at(0);
+      intensities.read_mmcif(*rblock, data_type);
+      if (verbose)
+        std::fprintf(stderr, "Got %s from block %s ...\n",
+                     Intensities::type_str(intensities.type), rblock->block.name.c_str());
+      if (data_type != DataType::UAM)
+        intensities.take_staraniso_b_from_mmcif(rblock->block);
     }
+
     if (intensities.data.empty())
       gemmi::fail("data not found");
-    return intensities;
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR while reading %s: %s\n", input_path, e.what());
     std::exit(1);
@@ -160,7 +154,6 @@ void print_reflection(const Intensities::Refl* a, const Intensities::Refl* r) {
 }
 
 void compare_intensities(Intensities& intensities, Intensities& ref, bool print_all) {
-  printf("Comparing unmerged and merged reflections...\n");
   if (intensities.spacegroup == ref.spacegroup)
     printf("Space group: %s\n", intensities.spacegroup_str().c_str());
   else
@@ -253,68 +246,55 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   if (p.nonOptionsCount() != 2 &&
       !(p.nonOptionsCount() == 1 && p.options[Compare])) {
-    fprintf(stderr, "%s requires 2 arguments (or single arg with --compare), got %d.",
+    fprintf(stderr, "%s requires 2 arguments (or single arg with --compare), got %d.\n",
                     p.program_name, p.nonOptionsCount());
     p.print_try_help_and_exit("");
   }
   bool verbose = p.options[Verbose];
+  bool two_files = p.nonOptionsCount() == 2;
   const char* input_path = p.nonOption(0);
-  const char* output_path = nullptr;
-  if (p.nonOptionsCount() == 2)
-    output_path = p.nonOption(1);
-  DataType otype = p.options[WriteAnom] ? DataType::Anomalous : DataType::Mean;
-  const char* block_name = nullptr;
-  if (p.options[BlockName])
-    block_name = p.options[BlockName].arg;
+  const char* output_path = two_files ? p.nonOption(1) : input_path;
+  const char* input_block = p.options[InputBlock].arg;  // nullptr if option not given
+  const char* output_block = p.options[OutputBlock].arg;
+  bool to_anom = p.options[WriteAnom];
 
-  Intensities ref;
-  if (p.options[Compare] && output_path) {
-    if (verbose)
-      std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
-    ref = read_intensities(otype, output_path, nullptr, verbose);
+  if (!two_files && gemmi::giends_with(input_path, "hkl")) {
+    fprintf(stderr, "ERROR. Option --compare doesn't work with one XDS file.\n");
+    return 1;
   }
 
+  Intensities intensities;
   if (verbose)
     std::fprintf(stderr, "Reading %s ...\n", input_path);
-  try {
-    Intensities intensities;
-    if (output_path) {
-      DataType data_type = DataType::Unmerged;
-      if (p.options[Compare] && gemmi::giends_with(input_path, ".mtz"))
-        // it's OK to compare also two merged files
-        data_type = DataType::Unknown;
-      intensities = read_intensities(data_type, input_path, block_name, verbose);
-    } else { // special case of --compare with one mmCIF file
-      if (gemmi::giends_with(input_path, ".mtz") ||
-          gemmi::giends_with(input_path, "hkl"))
-        gemmi::fail("`--compare ONE_FILE' make sense only with mmCIF.");
-      auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
-      read_intensities_from_rblocks(ref, otype, rblocks, nullptr, verbose);
-      read_intensities_from_rblocks(intensities, DataType::Unmerged,
-                                    rblocks, block_name, verbose);
-      if (intensities.data.empty())
-        gemmi::fail("unmerged data not found");
-    }
+  read_intensities(intensities, DataType::UAM, input_path, input_block, verbose);
+  if (intensities.type != DataType::Unmerged)
+    std::fprintf(stderr, "NOTE: Got merged %s instead of unmerged data.\n",
+                 intensities.type_str());
+  if (verbose)
+    output_intensity_statistics(intensities);
+
+  if (p.options[Compare]) {
     if (verbose)
-      output_intensity_statistics(intensities);
-    if (p.options[Compare]) {
-      if (intensities.type != ref.type)
-        intensities.merge_in_place(ref.type);
-      compare_intensities(intensities, ref, p.options[PrintAll]);
-    } else {
-      assert(output_path);
-      intensities.merge_in_place(otype);
-      if (p.options[NoSysAbs])
-        intensities.remove_systematic_absences();
-      if (verbose)
-        std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
-                     intensities.data.size(), output_path);
-      bool with_nobs = p.options[NumObs];
-      write_merged_intensities(intensities.prepare_merged_mtz(with_nobs), output_path);
-    }
-  } catch (std::exception& e) {
-    std::fprintf(stderr, "ERROR: %s\n", e.what());
-    return 1;
+      std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
+    auto type_we_want = to_anom ? DataType::Anomalous : DataType::MergedMA;
+    Intensities ref;  // for --compare
+    read_intensities(ref, type_we_want, output_path, output_block, verbose);
+    if (!to_anom && ref.type == DataType::Anomalous)
+      std::fprintf(stderr, "Using I(+)/I(-) because <I> is absent.\n");
+    if (intensities.type != ref.type)
+      intensities.merge_in_place(ref.type);
+    printf("Comparing %s ...%s\n", intensities.type_str(),
+           verbose ? "" : "   (use -v for more details)");
+    compare_intensities(intensities, ref, p.options[PrintAll]);
+  } else {
+    intensities.merge_in_place(to_anom ? DataType::Anomalous : DataType::Mean);
+    if (p.options[NoSysAbs])
+      intensities.remove_systematic_absences();
+    if (verbose)
+      std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
+                   intensities.data.size(), output_path);
+    bool with_nobs = p.options[NumObs];
+    write_merged_intensities(intensities.prepare_merged_mtz(with_nobs), output_path);
   }
   return 0;
 }
