@@ -70,7 +70,7 @@ void output_intensity_statistics(const Intensities& intensities) {
 }
 
 void read_intensities(Intensities& intensities, DataType data_type,
-                      const char* input_path, const char* block_name, bool verbose) {
+                      const std::string& input_path, const char* block_name, bool verbose) {
   try {
     if (gemmi::giends_with(input_path, ".mtz")) {
       gemmi::Mtz mtz;
@@ -118,7 +118,7 @@ void read_intensities(Intensities& intensities, DataType data_type,
     if (intensities.data.empty())
       gemmi::fail("data not found");
   } catch (std::exception& e) {
-    std::fprintf(stderr, "ERROR while reading %s: %s\n", input_path, e.what());
+    std::fprintf(stderr, "ERROR while reading %s: %s\n", input_path.c_str(), e.what());
     std::exit(1);
   }
 }
@@ -252,8 +252,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
   bool verbose = p.options[Verbose];
   bool two_files = p.nonOptionsCount() == 2;
-  const char* input_path = p.nonOption(0);
-  const char* output_path = two_files ? p.nonOption(1) : input_path;
+  std::string input_path = p.coordinate_input_file(0, 'S');
+  const char* output_path = two_files ? p.nonOption(1) : input_path.c_str();
   const char* input_block = p.options[InputBlock].arg;  // nullptr if option not given
   const char* output_block = p.options[OutputBlock].arg;
   bool to_anom = p.options[WriteAnom];
@@ -265,8 +265,8 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   Intensities intensities;
   if (verbose)
-    std::fprintf(stderr, "Reading %s ...\n", input_path);
-  read_intensities(intensities, DataType::UAM, input_path, input_block, verbose);
+    std::fprintf(stderr, "Reading %s ...\n", input_path.c_str());
+  read_intensities(intensities, DataType::UAM, input_path.c_str(), input_block, verbose);
   if (intensities.type != DataType::Unmerged)
     std::fprintf(stderr, "NOTE: Got merged %s instead of unmerged data.\n",
                  intensities.type_str());
