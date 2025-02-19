@@ -20,32 +20,6 @@
 
 namespace gemmi {
 
-template<typename DataProxy>
-std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& proxy) {
-  const SpaceGroup* sg = proxy.spacegroup();
-  if (!sg)
-    return {DataType::Unknown, 0};
-  std::unordered_map<Op::Miller, int, MillerHash> seen;
-  ReciprocalAsu asu(sg);
-  GroupOps gops = sg->operations();
-  bool centric = gops.is_centrosymmetric();
-  DataType data_type = DataType::Mean;
-  for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
-    auto hkl_sign = asu.to_asu_sign(proxy.get_hkl(i), gops);
-    int sign = hkl_sign.second ? 2 : 1;  // 2=positive, 1=negative
-    auto r = seen.emplace(hkl_sign.first, sign);
-    if (data_type != DataType::Unmerged && !r.second) {
-      if ((r.first->second & sign) != 0 || centric) {
-        data_type = DataType::Unmerged;
-      } else {
-        r.first->second |= sign;
-        data_type = DataType::Anomalous;
-      }
-    }
-  }
-  return {data_type, seen.size()};
-}
-
 // "Old-style" anomalous or unmerged data is expected to have only these tags.
 inline bool possible_old_style(const ReflnBlock& rb, DataType data_type) {
   if (rb.refln_loop == nullptr)

@@ -65,7 +65,7 @@ struct ReflnBlock {
   void check_ok() const { if (!ok()) fail("Invalid ReflnBlock"); }
 
   // position after "_refln." or "_diffrn_refln."
-  size_t tag_offset() const { return refln_loop ? 7 : 14; }
+  size_t tag_offset() const { return default_loop == refln_loop ? 7 : 14; }
 
   void use_unmerged(bool unmerged) {
     default_loop = unmerged ? diffrn_refln_loop : refln_loop;
@@ -94,8 +94,12 @@ struct ReflnBlock {
 
   size_t get_column_index(const std::string& tag) const {
     int idx = find_column_index(tag);
-    if (idx == -1)
-      fail("Column not found: " + tag);
+    if (idx == -1) {
+      if (!ok())
+        fail("No reflection data in block ", block.name);
+      const char* category = default_loop == refln_loop ? "_refln." : "_diffrn_refln.";
+      fail("Column not found in block ", block.name, ": ", category, tag);
+    }
     return idx;
   }
 

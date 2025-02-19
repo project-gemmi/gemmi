@@ -8,15 +8,16 @@
 #define GEMMI_INTENSIT_HPP_
 
 #include <cassert>
+#include <cstdint>      // for int8_t
 #include "symmetry.hpp"
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
 #include "stats.hpp"    // for Correlation
-#include "xds_ascii.hpp" // for XdsAscii
 
 namespace gemmi {
 
 struct Mtz;
+struct XdsAscii;
 struct ReflnBlock;
 namespace cif { struct Block; }
 using std::int8_t;
@@ -140,6 +141,43 @@ struct GEMMI_DLL Intensities {
 
   Mtz prepare_merged_mtz(bool with_nobs);
 };
+
+// Minimal compatibility with MtzDataProxy and ReflnDataProxy.
+struct IntensitiesDataProxy {
+  const Intensities& intensities_;
+  size_t stride() const { return 1; }
+  size_t size() const { return intensities_.data.size(); }
+  const SpaceGroup* spacegroup() const { return intensities_.spacegroup; }
+  const UnitCell& unit_cell() const { return intensities_.unit_cell; }
+  Miller get_hkl(size_t offset) const { return intensities_.data[offset].hkl; }
+  float get_num(size_t n) const { return intensities_.data[n].value; }
+};
+
+template<typename DataProxy>
+std::pair<DataType, size_t> check_data_type_under_symmetry(const DataProxy& proxy) {
+  const SpaceGroup* sg = proxy.spacegroup();
+  if (!sg)
+    return {DataType::Unknown, 0};
+  std::unordered_map<Op::Miller, int, MillerHash> seen;
+  ReciprocalAsu asu(sg);
+  GroupOps gops = sg->operations();
+  bool centric = gops.is_centrosymmetric();
+  DataType data_type = DataType::Mean;
+  for (size_t i = 0; i < proxy.size(); i += proxy.stride()) {
+    auto hkl_sign = asu.to_asu_sign(proxy.get_hkl(i), gops);
+    int sign = hkl_sign.second ? 2 : 1;  // 2=positive, 1=negative
+    auto r = seen.emplace(hkl_sign.first, sign);
+    if (data_type != DataType::Unmerged && !r.second) {
+      if ((r.first->second & sign) != 0 || centric) {
+        data_type = DataType::Unmerged;
+      } else {
+        r.first->second |= sign;
+        data_type = DataType::Anomalous;
+      }
+    }
+  }
+  return {data_type, seen.size()};
+}
 
 } // namespace gemmi
 #endif

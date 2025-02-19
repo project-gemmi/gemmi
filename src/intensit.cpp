@@ -1,9 +1,10 @@
 // Copyright Global Phasing Ltd.
 
 #include <gemmi/intensit.hpp>
-#include <gemmi/atof.hpp>  // for fast_from_chars
-#include <gemmi/mtz.hpp>   // for Mtz
-#include <gemmi/refln.hpp>
+#include <gemmi/atof.hpp>       // for fast_from_chars
+#include <gemmi/mtz.hpp>        // for Mtz
+#include <gemmi/refln.hpp>      // for ReflnBlock
+#include <gemmi/xds_ascii.hpp>  // for XdsAscii
 
 namespace gemmi {
 
@@ -314,7 +315,7 @@ void read_simple_intensities_from_mmcif(Intensities& intensities, const ReflnBlo
 }
 
 void Intensities::read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
-  const char* intensity_tag ="intensity_net";
+  const char* intensity_tag = "intensity_net";
   // When the PDB software didn't support diffrn_refln,
   // unmerged data was deposited using the refln category.
   if (rb.default_loop == rb.refln_loop)
@@ -344,6 +345,7 @@ void Intensities::read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
 }
 
 void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
+  DataType save_data_type = data_type;
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)
     data_type = rb.is_merged() ? DataType::MergedMA : DataType::Unmerged;
@@ -354,8 +356,9 @@ void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
     bool has_anom = rb.find_column_index("pdbx_I_plus") != -1;
     bool has_mean = rb.find_column_index("intensity_meas") != -1;
     if (!has_anom && !has_mean)
-      fail("Intensities not found in the mmCIF file, block ", rb.block.name,
-           " has neither intensity_meas nor pdbx_I_plus/minus");
+      fail("No merged intensities in mmCIF file, block ", rb.block.name,
+           rb.refln_loop ? " has neither intensity_meas nor pdbx_I_plus/minus"
+                         : " has no refln category");
     if (data_type == DataType::MergedAM) {
       data_type = has_anom ? DataType::Anomalous : DataType::Mean;
       // if both I(+) and I(-) is empty where IMEAN has value, throw error
@@ -370,6 +373,11 @@ void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
     read_mean_intensities_from_mmcif(rb);
   else  // (data_type == DataType::Anomalous)
     read_anomalous_intensities_from_mmcif(rb, check_anom_complete);
+  if (save_data_type == DataType::UAM && type == DataType::Mean) {
+    DataType actual = check_data_type_under_symmetry(IntensitiesDataProxy{*this}).first;
+    if (actual == DataType::Unmerged)
+      type = DataType::Unmerged;
+  }
   switch_to_asu_indices();
 }
 
