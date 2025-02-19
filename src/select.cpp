@@ -73,7 +73,7 @@ inline void parse_cid_elements(const std::string& cid, size_t pos,
           if (!is_metal(static_cast<El>(i)))
             elements[i] = char(!inverted);
       } else {
-        wrong_syntax(cid, 0, "in [...]");
+        wrong_syntax(cid, 0, " in [...]");
       }
     } else {
       char elem_str[2] = {cid[pos], sep > pos+1 ? cid[pos+1] : '\0'};
