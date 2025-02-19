@@ -287,13 +287,20 @@ void Intensities::read_mtz(const Mtz& mtz, DataType data_type) {
     data_type = mtz.is_merged() ? DataType::MergedMA : DataType::Unmerged;
   else if (data_type == DataType::UAM)
     data_type = mtz.is_merged() ? DataType::MergedAM : DataType::Unmerged;
-  if (data_type == DataType::MergedAM) {
-    data_type = mtz.iplus_column() ? DataType::Anomalous : DataType::Mean;
-    // if I(+) and I(-) is empty where IMEAN is not, throw error
-    check_anom_complete = true;
+
+  if (data_type == DataType::MergedAM || data_type == DataType::MergedMA) {
+    bool has_anom = mtz.iplus_column() != nullptr;
+    bool has_mean = mtz.imean_column() != nullptr;
+    if (!has_anom && !has_mean)
+      fail("No intensities in MTZ file, neither <I> nor I(+)/I(-)");
+    if (data_type == DataType::MergedAM) {
+      data_type = has_anom ? DataType::Anomalous : DataType::Mean;
+      // if both I(+) and I(-) is empty where IMEAN has value, throw error
+      check_anom_complete = true;
+    }
+    if (data_type == DataType::MergedMA)
+      data_type = has_mean ? DataType::Mean : DataType::Anomalous;
   }
-  if (data_type == DataType::MergedMA)
-    data_type = mtz.imean_column() ? DataType::Mean : DataType::Anomalous;
 
   if (data_type == DataType::Unmerged)
     read_unmerged_intensities_from_mtz(mtz);
