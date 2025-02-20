@@ -16,6 +16,7 @@
 
 namespace gemmi {
 
+struct Binner;
 struct Mtz;
 struct XdsAscii;
 struct ReflnBlock;
@@ -28,6 +29,40 @@ using std::int8_t;
 //   UAM = Unmerged if available, otherwise MergedAM
 enum class DataType { Unknown, Unmerged, Mean, Anomalous,
                       MergedMA, MergedAM, UAM };
+
+struct MergingR {
+  int all_refl = 0;
+  int unique_refl = 0;
+  double r_merge_num = 0;  // numerator
+  double r_meas_num = 0;
+  double r_pim_num = 0;
+  double intensity_sum = 0;  // denominator
+
+  double r_merge() const { return r_merge_num / intensity_sum; }
+  double r_meas() const { return r_meas_num / intensity_sum; }
+  double r_pim() const { return r_pim_num / intensity_sum; }
+
+  void add(double r_merge_num_, int nobs, double intensity_sum_) {
+    all_refl += nobs;
+    unique_refl += 1;
+    if (nobs > 1) { // for nobs==1, r_merge_num_ must be 0
+      r_merge_num += r_merge_num_;
+      double t = r_merge_num_ / std::sqrt(nobs - 1);
+      r_pim_num += t;
+      r_meas_num += std::sqrt(nobs) * t;
+    }
+    intensity_sum += intensity_sum_;
+  }
+
+  void add_other(const MergingR& o) {
+    all_refl += o.all_refl;
+    unique_refl += o.unique_refl;
+    r_merge_num += o.r_merge_num;
+    r_meas_num += o.r_meas_num;
+    r_pim_num += o.r_pim_num;
+    intensity_sum += o.intensity_sum;
+  }
+};
 
 /// Returns STARANISO version or empty string.
 GEMMI_DLL std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output);
@@ -45,6 +80,7 @@ struct GEMMI_DLL Intensities {
       return std::tie(hkl[0], hkl[1], hkl[2], isign) <
              std::tie(o.hkl[0], o.hkl[1], o.hkl[2], o.isign);
     }
+    // for merged data
     const char* intensity_label() const {
       if (isign == 0)
         return "<I>";
@@ -114,6 +150,8 @@ struct GEMMI_DLL Intensities {
   void sort() { std::sort(data.begin(), data.end()); }
 
   void merge_in_place(DataType data_type);
+
+  std::vector<MergingR> calculate_merging_rs(const Binner* binner) const;
 
   void switch_to_asu_indices();
 

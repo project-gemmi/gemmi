@@ -1,20 +1,23 @@
 $ gemmi merge -h
 Usage:
   gemmi merge [options] INPUT_FILE OUTPUT_FILE
+  gemmi merge --stats [options] UNMERGED_FILE
   gemmi merge --compare [options] UNMERGED_FILE MERGED_FILE
   gemmi merge --compare [options] MMCIF_FILE_WITH_BOTH
 Options:
   -h, --help             Print usage and exit.
   -V, --version          Print version and exit.
   -v, --verbose          Verbose output.
-  --anom                 output/compare I(+) and I(-) instead of IMEAN.
+  --anom                 Output/compare I(+) and I(-) instead of IMEAN.
   --no-sysabs            Do not output systematic absences.
   --nobs                 Add MTZ column NOBS with the number of merged
                          reflections.
-  --input-block=NAME     input mmCIF block name (default: first unmerged).
-  -b NAME, --block=NAME  output mmCIF block name: data_NAME (default: merged).
-  --compare              compare unmerged and merged data (no output file).
-  --print-all            print all compared reflections.
+  --input-block=NAME     Input mmCIF block name (default: first unmerged).
+  -b NAME, --block=NAME  Output mmCIF block name: data_NAME (default: merged).
+  --stats[=N]            Print merging statistics in N resolution shells
+                         (default: N=1).
+  --compare              Compare unmerged and merged data (no output file).
+  --print-all            Print all compared reflections.
 
 The input file can be SF-mmCIF with _diffrn_refln, MTZ or XDS_ASCII.HKL.
 The output file can be either SF-mmCIF or MTZ.

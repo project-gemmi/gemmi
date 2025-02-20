@@ -8,6 +8,7 @@
 #include <algorithm>          // for sort
 #include <iostream>           // for cout
 #include <gemmi/asudata.hpp>  // for calculate_hkl_value_correlation
+#include <gemmi/binner.hpp>   // for Binner
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/mtz2cif.hpp>  // for MtzToCif
 #include <gemmi/fstream.hpp>  // for Ofstream
@@ -20,12 +21,13 @@
 namespace {
 
 enum OptionIndex {
-  WriteAnom=4, NoSysAbs, NumObs, InputBlock, OutputBlock, Compare, PrintAll
+  WriteAnom=4, NoSysAbs, NumObs, InputBlock, OutputBlock, Stats, Compare, PrintAll
 };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:\n  " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
+    "\n  " EXE_NAME " --stats [options] UNMERGED_FILE"
     "\n  " EXE_NAME " --compare [options] UNMERGED_FILE MERGED_FILE"
     "\n  " EXE_NAME " --compare [options] MMCIF_FILE_WITH_BOTH"
     "\nOptions:"},
@@ -33,19 +35,21 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
   CommonUsage[Verbose],
   { WriteAnom, 0, "a", "anom", Arg::None,
-    "  --anom  \toutput/compare I(+) and I(-) instead of IMEAN." },
+    "  --anom  \tOutput/compare I(+) and I(-) instead of IMEAN." },
   { NoSysAbs, 0, "", "no-sysabs", Arg::None,
     "  --no-sysabs  \tDo not output systematic absences." },
   { NumObs, 0, "", "nobs", Arg::None,
     "  --nobs  \tAdd MTZ column NOBS with the number of merged reflections." },
   { InputBlock, 0, "", "input-block", Arg::Required,
-    "  --input-block=NAME  \tinput mmCIF block name (default: first unmerged)." },
+    "  --input-block=NAME  \tInput mmCIF block name (default: first unmerged)." },
   { OutputBlock, 0, "b", "block", Arg::Required,
-    "  -b NAME, --block=NAME  \toutput mmCIF block name: data_NAME (default: merged)." },
+    "  -b NAME, --block=NAME  \tOutput mmCIF block name: data_NAME (default: merged)." },
+  { Stats, 0, "", "stats", Arg::Optional,
+    "  --stats[=N]  \tPrint merging statistics in N resolution shells (default: N=1)." },
   { Compare, 0, "", "compare", Arg::None,
-    "  --compare  \tcompare unmerged and merged data (no output file)." },
+    "  --compare  \tCompare unmerged and merged data (no output file)." },
   { PrintAll, 0, "", "print-all", Arg::None,
-    "  --print-all  \tprint all compared reflections." },
+    "  --print-all  \tPrint all compared reflections." },
   { NoOp, 0, "", "", Arg::None,
     "\nThe input file can be SF-mmCIF with _diffrn_refln, MTZ or XDS_ASCII.HKL."
     "\nThe output file can be either SF-mmCIF or MTZ."
@@ -239,14 +243,46 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
   printf("Sigma CC: %.9g%% (mean ratio: %g)\n", 100 * cs.coefficient(), 1./cs.mean_ratio());
 }
 
+void print_merging_statistics(const Intensities& intensities, int nbins) {
+  gemmi::Binner binner;
+  if (nbins > 1) {
+    auto method = gemmi::Binner::Method::Dstar3;
+    binner.setup(nbins, method, gemmi::IntensitiesDataProxy{intensities});
+  }
+  auto stats = intensities.calculate_merging_rs(nbins > 1 ? &binner : nullptr);
+  gemmi::MergingR total;
+  for (const gemmi::MergingR& r : stats)
+    total.add_other(r);
+  printf("All reflections: %d\n", total.all_refl);
+  printf("Unique reflections: %d\n", total.unique_refl);
+  printf("Mean intensity: %g\n", total.intensity_sum / total.all_refl);
+  printf("R-merge: %.4f\n", total.r_merge());
+  printf("R-meas: %.4f\n", total.r_meas());
+  printf("R-pim: %.4f\n", total.r_pim());
+  if (nbins > 1) {
+    printf("In resolution shells:\n"
+           "  d_max  d_min  #all  #uniq    <I>     Rmerge    Rmeas    Rpim\n");
+    for (int i = 0; i < nbins; ++i) {
+      const gemmi::MergingR& r = stats[i];
+      printf(" %6.2f %5.2f %6d %6d %8.2f %8.4f %8.4f %8.4f\n",
+             binner.dmax_of_bin(i), binner.dmin_of_bin(i),
+             r.all_refl, r.unique_refl, r.intensity_sum / r.all_refl,
+             r.r_merge(), r.r_meas(), r.r_pim());
+    }
+  }
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);
-  if (p.nonOptionsCount() != 2 &&
-      !(p.nonOptionsCount() == 1 && p.options[Compare])) {
-    fprintf(stderr, "%s requires 2 arguments (or single arg with --compare), got %d.\n",
+  p.check_exclusive_pair(Stats, Compare);
+  int n_args = p.nonOptionsCount();
+  if (n_args == 1 && (p.options[Stats] || p.options[Compare])) {  // ok
+  } else if (n_args == 2 && !p.options[Stats]) {  // ok
+  } else {
+    fprintf(stderr, "%s requires 2 arguments or 1 arg with --stats/--compare, got %d.\n",
                     p.program_name, p.nonOptionsCount());
     p.print_try_help_and_exit("");
   }
@@ -273,7 +309,22 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (verbose)
     output_intensity_statistics(intensities);
 
-  if (p.options[Compare]) {
+  if (p.options[Stats]) {
+    int nbins = 1;
+    if (const char* arg = p.options[Stats].arg) {
+      nbins = std::atoi(arg);
+      if (nbins <= 0) {
+        fprintf(stderr, "Wrong argument for option --stats (expected N>0): %s\n", arg);
+        return 1;
+      }
+    }
+    try {
+      print_merging_statistics(intensities, nbins);
+    } catch (std::exception& e) {
+      std::fprintf(stderr, "ERROR: %s\n", e.what());
+      return 1;
+    }
+  } else if (p.options[Compare]) {
     if (verbose)
       std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
     auto type_we_want = to_anom ? DataType::Anomalous : DataType::MergedMA;

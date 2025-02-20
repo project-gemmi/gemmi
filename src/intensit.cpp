@@ -2,6 +2,7 @@
 
 #include <gemmi/intensit.hpp>
 #include <gemmi/atof.hpp>       // for fast_from_chars
+#include <gemmi/binner.hpp>     // for Binner
 #include <gemmi/mtz.hpp>        // for Mtz
 #include <gemmi/refln.hpp>      // for ReflnBlock
 #include <gemmi/xds_ascii.hpp>  // for XdsAscii
@@ -162,6 +163,8 @@ void Intensities::merge_in_place(DataType new_type) {
     for (Refl& refl : data)
       refl.isign = 0;
   } else if (type == DataType::Unmerged) {
+    if (!spacegroup)
+      fail("unknown space group");
     GroupOps gops = spacegroup->operations();
     for (Refl& refl : data)
       refl.isign = refl.isym % 2 != 0 || gops.is_reflection_centric(refl.hkl) ? 1 : -1;
@@ -192,6 +195,48 @@ void Intensities::merge_in_place(DataType new_type) {
   out->nobs = nobs;
   data.erase(++out, data.end());
   type = new_type;
+}
+
+std::vector<MergingR> Intensities::calculate_merging_rs(const Binner* binner) const {
+  if (data.empty())
+    fail("no data");
+  if (type != DataType::Unmerged)
+    fail("merging statistics can be calculated only from unmerged data");
+  if (!std::is_sorted(data.begin(), data.end()))
+    fail("call Intensities.sort() before calculating merging statistics");
+  if (binner)
+    binner->ensure_limits_are_set();
+
+  size_t nbins = binner ? binner->size() : 1;
+
+  std::vector<MergingR> stats(nbins);
+  int bin_hint = (int)nbins - 1;
+  Miller hkl = data[0].hkl;
+  double intensity_sum = 0;
+  int nobs = 0;
+  auto add = [&](const Refl* end) {
+    double abs_diff_sum = 0;
+    if (nobs > 1) {
+      double avg = intensity_sum / nobs;
+      for (const Refl* r = end - nobs; r != end; ++r)
+        abs_diff_sum += std::fabs(r->value - avg);
+    }
+    int bin = binner ? binner->get_bin_hinted(hkl, bin_hint) : 0;
+    stats[bin].add(abs_diff_sum, nobs, intensity_sum);
+  };
+  for (const Refl& refl : data) {
+    // TODO: optional outlier rejection
+    if (refl.hkl != hkl) {
+      add(&refl);
+      hkl = refl.hkl;
+      intensity_sum = 0;
+      nobs = 0;
+    }
+    intensity_sum += refl.value;
+    ++nobs;
+  }
+  add(data.data() + data.size());
+  return stats;
 }
 
 void Intensities::switch_to_asu_indices() {
