@@ -181,6 +181,7 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
                                   const std::vector<std::string>& labels,
                                   const char* block_name=nullptr) {
   const SpaceGroup* first_sg = nullptr;
+  bool has_block = false;
   for (cif::Block& block : blocks) {
     if (!first_sg)
       if (const std::string* hm = impl::find_spacegroup_hm_value(block)) {
@@ -188,22 +189,24 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
         if (first_sg && first_sg->ext == 'H') {
           UnitCell cell;
           impl::set_cell_from_mmcif(block, cell);
-          first_sg = find_spacegroup_by_name(cif::as_string(*hm),
-                                             cell.alpha, cell.gamma);
+          first_sg = find_spacegroup_by_name(cif::as_string(*hm), cell.alpha, cell.gamma);
         }
       }
-    if (block_name && block.name != block_name)
-      continue;
-    if (cif::Loop* loop = block.find_loop("_refln.index_h").get_loop())
-      if (std::all_of(labels.begin(), labels.end(),
-            [&](const std::string& s) { return loop->has_tag("_refln."+s); })) {
-        ReflnBlock rblock(std::move(block));
-        if (!rblock.spacegroup && first_sg)
-          rblock.spacegroup = first_sg;
-        return rblock;
-      }
+    if (!block_name || block.name == block_name) {
+      has_block = true;
+      if (cif::Loop* loop = block.find_loop("_refln.index_h").get_loop())
+        if (std::all_of(labels.begin(), labels.end(),
+              [&](const std::string& s) { return loop->has_tag("_refln."+s); })) {
+          ReflnBlock rblock(std::move(block));
+          if (!rblock.spacegroup && first_sg)
+            rblock.spacegroup = first_sg;
+          return rblock;
+        }
+    }
   }
-  fail("Required block or tags not found in the SF-mmCIF file.");
+  if (block_name && !has_block)
+    fail("Required block not found in SF-mmCIF file.");
+  fail("Tags not found in SF-mmCIF file: _refln.", join_str(labels, ", _refln."));
 }
 
 inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
