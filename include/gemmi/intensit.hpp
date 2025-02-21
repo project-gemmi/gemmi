@@ -188,7 +188,7 @@ struct IntensitiesDataProxy {
   const SpaceGroup* spacegroup() const { return intensities_.spacegroup; }
   const UnitCell& unit_cell() const { return intensities_.unit_cell; }
   Miller get_hkl(size_t offset) const { return intensities_.data[offset].hkl; }
-  float get_num(size_t n) const { return intensities_.data[n].value; }
+  double get_num(size_t n) const { return intensities_.data[n].value; }
 };
 
 template<typename DataProxy>

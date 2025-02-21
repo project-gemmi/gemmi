@@ -17,6 +17,7 @@ GEMMI_DLL CharArray read_into_buffer_gz(const std::string& path);
 GEMMI_DLL cif::Document read_cif_from_memory(const char* data, size_t size, const char* name);
 GEMMI_DLL cif::Document read_first_block_gz(const std::string& path, size_t limit);
 
+// cif::read_string() was moved here from cif.hpp to speed up compilation
 namespace cif {
 inline Document read_string(const std::string& data) {
   return read_cif_from_memory(data.data(), data.size(), "string");

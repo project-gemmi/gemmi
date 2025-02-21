@@ -20,6 +20,8 @@
 #include "fileutil.hpp" // for file_open
 #endif
 
+#include "read_cif.hpp" // for backward compat, to expose cif::read_string()
+
 #if defined(_MSC_VER)
 #pragma warning(push)
 // warning C4244: an integer type is converted to a smaller integer type
@@ -300,9 +302,6 @@ inline Document read_file(const std::string& filename) {
   GEMMI_CIF_FILE_INPUT(in, filename);
   return read_input(in);
 }
-
-// declared here for backward compatibility, now it's in read_cif.hpp
-Document read_string(const std::string& data);
 
 inline Document read_memory(const char* data, size_t size, const char* name) {
   pegtl::memory_input<> in(data, size, name);

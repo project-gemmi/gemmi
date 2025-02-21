@@ -19,7 +19,7 @@ namespace gemmi {
 
 inline void append_to_str(std::string& out, int v) { out += std::to_string(v); }
 inline void append_to_str(std::string& out, size_t v) { out += std::to_string(v); }
-inline void append_to_str(std::string& out, double) = delete;
+void append_to_str(std::string& out, double) = delete;
 template<typename T>
 void append_to_str(std::string& out, const T& v) { out += v; }
 
