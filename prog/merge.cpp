@@ -249,25 +249,26 @@ void print_merging_statistics(const Intensities& intensities, int nbins) {
     auto method = gemmi::Binner::Method::Dstar3;
     binner.setup(nbins, method, gemmi::IntensitiesDataProxy{intensities});
   }
-  auto stats = intensities.calculate_merging_rs(nbins > 1 ? &binner : nullptr);
-  gemmi::MergingR total;
-  for (const gemmi::MergingR& r : stats)
+  auto stats = intensities.calculate_merging_stats(nbins > 1 ? &binner : nullptr);
+  gemmi::MergingStats total;
+  for (const gemmi::MergingStats& r : stats)
     total.add_other(r);
   printf("All reflections: %d\n", total.all_refl);
   printf("Unique reflections: %d\n", total.unique_refl);
-  printf("Mean intensity: %g\n", total.intensity_sum / total.all_refl);
+  printf("Mean intensity: %g\n", total.total_intensity / total.all_refl);
   printf("R-merge: %.4f\n", total.r_merge());
   printf("R-meas: %.4f\n", total.r_meas());
   printf("R-pim: %.4f\n", total.r_pim());
+  printf("CC1/2: %.4f\n", total.cc_half());
   if (nbins > 1) {
     printf("In resolution shells:\n"
-           "  d_max  d_min  #all  #uniq    <I>     Rmerge    Rmeas    Rpim\n");
+           "  d_max  d_min  #all  #uniq    <I>     Rmerge    Rmeas    Rpim    CC1/2\n");
     for (int i = 0; i < nbins; ++i) {
-      const gemmi::MergingR& r = stats[i];
-      printf(" %6.2f %5.2f %6d %6d %8.2f %8.4f %8.4f %8.4f\n",
+      const gemmi::MergingStats& r = stats[i];
+      printf(" %6.2f %5.2f %6d %6d %8.2f %8.4f %8.4f %8.4f %8.4f\n",
              binner.dmax_of_bin(i), binner.dmin_of_bin(i),
-             r.all_refl, r.unique_refl, r.intensity_sum / r.all_refl,
-             r.r_merge(), r.r_meas(), r.r_pim());
+             r.all_refl, r.unique_refl, r.total_intensity / r.all_refl,
+             r.r_merge(), r.r_meas(), r.r_pim(), r.cc_half());
     }
   }
 }
@@ -302,7 +303,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   Intensities intensities;
   if (verbose)
     std::fprintf(stderr, "Reading %s ...\n", input_path.c_str());
-  read_intensities(intensities, DataType::UAM, input_path.c_str(), input_block, verbose);
+  read_intensities(intensities, DataType::UAM, input_path, input_block, verbose);
   if (intensities.type != DataType::Unmerged)
     std::fprintf(stderr, "NOTE: Got merged %s instead of unmerged data.\n",
                  intensities.type_str());

@@ -121,7 +121,6 @@ std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output) {
   return version;
 }
 
-
 std::array<double,2> Intensities::resolution_range() const {
   double min_1_d2 = INFINITY;
   double max_1_d2 = 0;
@@ -197,46 +196,71 @@ void Intensities::merge_in_place(DataType new_type) {
   type = new_type;
 }
 
-std::vector<MergingR> Intensities::calculate_merging_rs(const Binner* binner) const {
+std::vector<MergingStats> Intensities::calculate_merging_stats(const Binner* binner) const {
   if (data.empty())
     fail("no data");
   if (type != DataType::Unmerged)
     fail("merging statistics can be calculated only from unmerged data");
   if (!std::is_sorted(data.begin(), data.end()))
     fail("call Intensities.sort() before calculating merging statistics");
-  if (binner)
-    binner->ensure_limits_are_set();
 
+  if (binner)
+    binner->ensure_limits_are_set();  // asserts size() > 0
   size_t nbins = binner ? binner->size() : 1;
 
-  std::vector<MergingR> stats(nbins);
+  std::vector<MergingStats> stats(nbins);
   int bin_hint = (int)nbins - 1;
   Miller hkl = data[0].hkl;
   double intensity_sum = 0;
+  double intensity2_sum = 0;
   int nobs = 0;
-  auto add = [&](const Refl* end) {
+
+  auto process_equivalent_refl = [&](const Refl* end) {
     double abs_diff_sum = 0;
     if (nobs > 1) {
       double avg = intensity_sum / nobs;
       for (const Refl* r = end - nobs; r != end; ++r)
         abs_diff_sum += std::fabs(r->value - avg);
     }
-    int bin = binner ? binner->get_bin_hinted(hkl, bin_hint) : 0;
-    stats[bin].add(abs_diff_sum, nobs, intensity_sum);
+    MergingStats& ms = stats[binner ? binner->get_bin_hinted(hkl, bin_hint) : 0];
+    ms.all_refl += nobs;
+    ms.unique_refl += 1;
+    ms.total_intensity += intensity_sum;
+    double avg_i = intensity_sum / nobs;
+    if (nobs > 1) { // for nobs==1, abs_diff_sum must be 0
+      ms.r_merge_num += abs_diff_sum;
+      double t = abs_diff_sum / std::sqrt(nobs - 1);
+      ms.r_pim_num += t;
+      ms.r_meas_num += std::sqrt(nobs) * t;
+      int nn = (nobs - 1) * nobs / 2;
+      ms.sum_sig2_eps += (intensity2_sum - intensity_sum * avg_i) / nn;
+    }
+    ms.sum_ibar += avg_i;
+    ms.sum_ibar2 += avg_i * avg_i;
   };
+
+  // hkl indices in data are in-asu and sorted, process consecutive groups
   for (const Refl& refl : data) {
-    // TODO: optional outlier rejection
     if (refl.hkl != hkl) {
-      add(&refl);
+      process_equivalent_refl(&refl);
       hkl = refl.hkl;
       intensity_sum = 0;
+      intensity2_sum = 0;
       nobs = 0;
     }
     intensity_sum += refl.value;
+    intensity2_sum += sq(refl.value);
     ++nobs;
   }
-  add(data.data() + data.size());
+  process_equivalent_refl(data.data() + data.size());
   return stats;
+}
+
+// based on https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2
+double MergingStats::cc_half() const {
+  double sig2_y = (sum_ibar2 - sq(sum_ibar) / unique_refl) / (unique_refl - 1);
+  double sig2_eps = sum_sig2_eps / unique_refl;
+  return (sig2_y - 0.5 * sig2_eps) / (sig2_y + 0.5 * sig2_eps);
 }
 
 void Intensities::switch_to_asu_indices() {

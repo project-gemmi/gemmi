@@ -30,38 +30,36 @@ using std::int8_t;
 enum class DataType { Unknown, Unmerged, Mean, Anomalous,
                       MergedMA, MergedAM, UAM };
 
-struct MergingR {
-  int all_refl = 0;
+struct GEMMI_DLL MergingStats {
+  int all_refl = 0;  // all reflections, sometimes called observations
   int unique_refl = 0;
-  double r_merge_num = 0;  // numerator
-  double r_meas_num = 0;
-  double r_pim_num = 0;
-  double intensity_sum = 0;  // denominator
+  double r_merge_num = 0;  // numerator for R-merge
+  double r_meas_num = 0;   // numerator for R-meas
+  double r_pim_num = 0;    // numerator for R-pim
+  double total_intensity = 0;  // denominator
+  // sums for CC1/2
+  double sum_ibar = 0;
+  double sum_ibar2 = 0;
+  double sum_sig2_eps = 0;
 
-  double r_merge() const { return r_merge_num / intensity_sum; }
-  double r_meas() const { return r_meas_num / intensity_sum; }
-  double r_pim() const { return r_pim_num / intensity_sum; }
-
-  void add(double r_merge_num_, int nobs, double intensity_sum_) {
-    all_refl += nobs;
-    unique_refl += 1;
-    if (nobs > 1) { // for nobs==1, r_merge_num_ must be 0
-      r_merge_num += r_merge_num_;
-      double t = r_merge_num_ / std::sqrt(nobs - 1);
-      r_pim_num += t;
-      r_meas_num += std::sqrt(nobs) * t;
-    }
-    intensity_sum += intensity_sum_;
-  }
-
-  void add_other(const MergingR& o) {
+  /// This class is additive. Adding two MergingStats gives the same result
+  /// as calculating statistics in these two resolution shells from the start.
+  void add_other(const MergingStats& o) {
     all_refl += o.all_refl;
     unique_refl += o.unique_refl;
     r_merge_num += o.r_merge_num;
     r_meas_num += o.r_meas_num;
     r_pim_num += o.r_pim_num;
-    intensity_sum += o.intensity_sum;
+    total_intensity += o.total_intensity;
+    sum_ibar += o.sum_ibar;
+    sum_ibar2 += o.sum_ibar2;
+    sum_sig2_eps += o.sum_sig2_eps;
   }
+
+  double r_merge() const { return r_merge_num / total_intensity; }
+  double r_meas() const { return r_meas_num / total_intensity; }
+  double r_pim() const { return r_pim_num / total_intensity; }
+  double cc_half() const; // calculated using sigma-tau method
 };
 
 /// Returns STARANISO version or empty string.
@@ -151,7 +149,7 @@ struct GEMMI_DLL Intensities {
 
   void merge_in_place(DataType data_type);
 
-  std::vector<MergingR> calculate_merging_rs(const Binner* binner) const;
+  std::vector<MergingStats> calculate_merging_stats(const Binner* binner) const;
 
   void switch_to_asu_indices();
 
