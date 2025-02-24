@@ -136,8 +136,13 @@ void XdsAscii::read_stream(AnyStream& line_reader, const std::string& source) {
   int iset_col = 0;
   const char xds_ascii_header[] = "!FORMAT=XDS_ASCII    MERGE=";
   char xds_ascii_type = '\0';
-  if (starts_with(line, xds_ascii_header))
-    xds_ascii_type = line[sizeof(xds_ascii_header)-1];
+  if (starts_with(line, xds_ascii_header)) {
+    size_t n = sizeof(xds_ascii_header)-1;
+    xds_ascii_type = line[n];
+    // !FORMAT=XDS_ASCII    MERGE=FALSE    FRIEDEL'S_LAW=
+    if (strncmp(line + n + 5, "    FRIEDEL'S_LAW=", 18) == 0)
+      friedels_law = line[50];
+  }
   if (!xds_ascii_type && !starts_with(line, "!OUTPUT_FILE=INTEGRATE.HKL"))
     fail("not an XDS_ASCII nor INTEGRATE.HKL file: " + source_path);
   const char* rhs;

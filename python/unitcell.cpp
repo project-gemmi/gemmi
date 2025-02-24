@@ -284,7 +284,9 @@ void add_unitcell(nb::module_& m) {
     .def("is_compatible_with_spacegroup", &UnitCell::is_compatible_with_spacegroup,
          nb::arg("sg"), nb::arg("eps")=1e-3)
     .def("is_crystal", &UnitCell::is_crystal)
-    .def("approx", &UnitCell::approx, nb::arg("other"), nb::arg("epsilon"))
+    .def("approx", [](const UnitCell& self, const UnitCell& o, double epsilon) {
+        return self.approx(o, epsilon);
+    }, nb::arg("other"), nb::arg("epsilon"))
     .def("is_similar", &UnitCell::is_similar,
          nb::arg("other"), nb::arg("rel"), nb::arg("deg"))
     .def("calculate_u_eq", &UnitCell::calculate_u_eq)

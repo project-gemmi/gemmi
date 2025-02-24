@@ -23,6 +23,58 @@ using namespace gemmi;
 
 NB_MAKE_OPAQUE(std::vector<ReflnBlock>)
 
+// HklMatch used to live in C++ library (in binner.hpp),
+// but AFAICT it hasn't found good use in C++, so it was moved here.
+struct HklMatch {
+  std::vector<int> pos;
+  size_t hkl_size;
+
+  HklMatch(const Miller* hkl, size_t hkl_size_,
+           const Miller* ref, size_t ref_size)
+      : pos(ref_size, -1), hkl_size(hkl_size_) {
+    // Usually, both datasets are sorted. This make things faster.
+    if (std::is_sorted(hkl, hkl + hkl_size) &&
+        std::is_sorted(ref, ref + ref_size)) {
+      // cf. for_matching_reflections()
+      const Miller* a = hkl;
+      const Miller* b = ref;
+      while (a != hkl + hkl_size && b != ref + ref_size) {
+        if (*a == *b)
+          pos[b++ - ref] = static_cast<int>(a++ - hkl);
+        else if (*a < *b)
+          ++a;
+        else
+          ++b;
+      }
+    } else {
+      std::unordered_map<Miller, int, MillerHash> hkl_index;
+      for (int i = 0; i != (int)hkl_size; ++i)
+        hkl_index.emplace(hkl[i], i);
+      for (size_t i = 0; i != ref_size; ++i) {
+        auto it = hkl_index.find(ref[i]);
+        if (it != hkl_index.end())
+          pos[i] = it->second;
+      }
+    }
+  }
+
+  HklMatch(const std::vector<Miller>& hkl, const std::vector<Miller>& ref)
+    : HklMatch(hkl.data(), hkl.size(), ref.data(), ref.size()) {}
+
+  template <typename T> std::vector<T> aligned_(const T* v, size_t size, T nan) {
+    if (size != hkl_size)
+      fail("HklMatch.aligned(): wrong data, size differs");
+    std::vector<T> result(pos.size());
+    for (size_t i = 0; i != pos.size(); ++i)
+      result[i] = pos[i] >= 0 ? v[pos[i]] : nan;
+    return result;
+  }
+  template <typename T> std::vector<T> aligned(const std::vector<T>& v, T nan) {
+    return aligned_(v.data(), v.size(), nan);
+  }
+};
+
+
 void add_hkl(nb::module_& m) {
   nb::class_<ReflnBlock> pyReflnBlock(m, "ReflnBlock");
   nb::bind_vector<std::vector<ReflnBlock>, rv_ri>(m, "ReflnBlocks");
@@ -111,7 +163,8 @@ void add_hkl(nb::module_& m) {
                                                        bool as_is) {
         return make_asu_data<ValueSigma<float>, 2>(self, {f_col, sigma_col}, as_is);
     }, nb::arg("f"), nb::arg("sigma"), nb::arg("as_is")=false)
-    .def("is_unmerged", &ReflnBlock::is_unmerged)
+    .def("is_merged", &ReflnBlock::is_merged)
+    .def("is_unmerged", &ReflnBlock::is_unmerged)  // deprecated
     .def("use_unmerged", &ReflnBlock::use_unmerged)
     .def("__bool__", [](const ReflnBlock& self) { return self.ok(); })
     .def("__repr__", [](const ReflnBlock& self) {
@@ -171,12 +224,17 @@ void add_hkl(nb::module_& m) {
         return out.str();
     }, nb::arg("mtz"), nb::arg("mtz2")=nb::none())
     ;
+  m.def("validate_merged_intensities", &validate_merged_intensities,
+        nb::arg(), nb::arg(), nb::arg("relaxed_check")=false, nb::arg("logger"));
 
   nb::enum_<DataType>(m, "DataType")
     .value("Unknown", DataType::Unknown)
     .value("Unmerged", DataType::Unmerged)
     .value("Mean", DataType::Mean)
     .value("Anomalous", DataType::Anomalous)
+    .value("MergedMA", DataType::MergedMA)
+    .value("MergedAM", DataType::MergedAM)
+    .value("UAM", DataType::UAM)
     ;
   m.def("check_data_type_under_symmetry", [](const ReflnBlock& data) {
       return check_data_type_under_symmetry(ReflnDataProxy(data));
@@ -193,7 +251,9 @@ void add_hkl(nb::module_& m) {
     .def("resolution_range", &Intensities::resolution_range)
     .def("remove_systematic_absences", &Intensities::remove_systematic_absences)
     .def("merge_in_place", &Intensities::merge_in_place, nb::arg("itype"))
-    .def("read_mtz", &Intensities::read_mtz, nb::arg("mtz"), nb::arg("type"))
+    .def("read_mtz", &Intensities::read_mtz, nb::arg(), nb::arg("type"))
+    .def("read_xds", &Intensities::read_xds, nb::arg())
+    .def("read_mmcif", &Intensities::read_mmcif, nb::arg(), nb::arg("type"))
     .def("prepare_merged_mtz", &Intensities::prepare_merged_mtz,
          nb::arg("with_nobs"))
     .def_prop_ro("miller_array", [](Intensities& self) {
@@ -234,11 +294,9 @@ void add_hkl(nb::module_& m) {
       self.data.clear();
       self.data.reserve(h.shape(0));
       for (size_t i = 0; i < h.shape(0); ++i)
-        if (!std::isnan(v(i)) && s(i) > 0)
-          self.data.push_back({{{h(i, 0), h(i, 1), h(i, 2)}}, 1, 0, v(i), s(i)});
-
-      self.switch_to_asu_indices();
+        self.add_if_valid({h(i, 0), h(i, 1), h(i, 2)}, 0, 0, v(i), s(i));
       self.type = DataType::Unmerged;
+      self.switch_to_asu_indices();
     }, nb::arg("cell"), nb::arg("sg").none(false),
        nb::arg("miller_array"), nb::arg("value_array"), nb::arg("sigma_array"))
     ;

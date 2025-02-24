@@ -85,7 +85,7 @@ UnitCell Mtz::get_average_cell_from_batch_headers(double* rmsd) const {
   if (rmsd)
     for (int i = 0; i < 6; ++i)
       rmsd[i] = 0.;
-  double avg[6] = {0., 0., 0., 0., 0., 0.};
+  std::array<double, 6> avg = {0., 0., 0., 0., 0., 0.};
   for (const Batch& batch : batches)
     for (int i = 0; i < 6; ++i) {
       // if batch headers are not set correctly, return global cell
@@ -106,7 +106,11 @@ UnitCell Mtz::get_average_cell_from_batch_headers(double* rmsd) const {
     for (int i = 0; i < 6; ++i)
       rmsd[i] = std::sqrt(rmsd[i] / n);
   }
-  return UnitCell(avg[0], avg[1], avg[2], avg[3], avg[4], avg[5]);
+  // If average parameters are almost equal to the global cell, use the latter
+  // to avoid 32-bit precision artifacts (58.28 -> 58.279998).
+  if (UnitCellParameters(avg).approx(cell, 1e-4))
+    return cell;
+  return UnitCell(avg);
 }
 
 std::array<double,2> Mtz::calculate_min_max_1_d2() const {

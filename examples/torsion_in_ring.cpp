@@ -1,6 +1,6 @@
 // prints torsion restraints that are part of a ring
 
-#include <gemmi/cif.hpp>
+#include <gemmi/read_cif.hpp>
 #include <gemmi/chemcomp.hpp>
 //#include <gemmi/to_cif.hpp>  // for write_cif_to_stream
 #include <stdio.h>
@@ -9,7 +9,7 @@ namespace cif = gemmi::cif;
 using AtomId = gemmi::Restraints::AtomId;
 
 void check_torsions(const char* file_path) {
-  cif::Document doc = cif::read_file(file_path);
+  cif::Document doc = gemmi::read_cif_gz(file_path);
   for (cif::Block& block : doc.blocks) {
     if (block.name.empty() && block.name == "comp_list")
       continue;

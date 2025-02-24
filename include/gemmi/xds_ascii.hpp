@@ -45,6 +45,7 @@ struct XdsAsciiMetadata {
   Vec3 rotation_axis;
   double starting_angle = 0.;
   double reflecting_range_esd = 0.;
+  char friedels_law = '\0';
   int starting_frame = 1;
   int nx = 0;  // detector size - number of pixels
   int ny = 0;
@@ -93,6 +94,8 @@ struct GEMMI_DLL XdsAscii : XdsAsciiMetadata {
   void read_input(T&& input) {
     read_stream(*input.create_stream(), input.path());
   }
+
+  bool is_merged() const { return read_columns < 8; }
 
   // set a few Iset properties in isets
   void gather_iset_statistics();

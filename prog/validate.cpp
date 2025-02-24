@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdexcept>  // for std::runtime_error
 
-#ifdef ANALYZE_RULES
+#ifdef GEMMI_ANALYZE_RULES
 # include "gemmi/cif.hpp"
 # include <tao/pegtl/analyze.hpp>
 #endif
@@ -251,9 +251,8 @@ bool process_file(const char* path, const cif::Ddl& dict,
 
 
 int GEMMI_MAIN(int argc, char **argv) {
-#ifdef ANALYZE_RULES // for debugging only
+#ifdef GEMMI_ANALYZE_RULES // for debugging only
   tao::pegtl::analyze<cif::rules::file>();
-  tao::pegtl::analyze<cif::numb_rules::numb>();
 #endif
   OptParser p(EXE_NAME);
   p.simple_parse(argc, argv, Usage);

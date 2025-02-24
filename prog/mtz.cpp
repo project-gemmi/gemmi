@@ -29,7 +29,7 @@ struct MtzArg: public Arg {
 enum OptionIndex {
   Headers=4, Dump, PrintBatch, PrintBatches, ExpandedBatches, PrintAppendix,
   PrintTsv, PrintStats, PrintHistogram, PrintCells, CheckAsu,
-  Compare, ToggleEndian, NoIsym
+  Compare, ToggleEndian
 };
 
 const option::Descriptor Usage[] = {
@@ -51,8 +51,9 @@ const option::Descriptor Usage[] = {
     "  -e  \t(with -B or -b) expanded info from batch headers." },
   { PrintAppendix, 0, "A", "appendix", Arg::None,
     "  -A, --appendix  \tPrint appended text." },
-  { PrintTsv, 0, "", "tsv", Arg::None,
-    "  --tsv  \tPrint all the data as tab-separated values." },
+  { PrintTsv, 0, "", "tsv", Arg::Optional,
+    "  --tsv[=isym]  \tPrint all the data as tab-separated values.\n"
+    "\t--tsv=isym uses M/ISYM to show original (not asu) HKL." },
   { PrintStats, 0, "s", "stats", Arg::None,
     "  -s, --stats  \tPrint column statistics (completeness, mean, etc)." },
   { PrintHistogram, 0, "", "histogram", Arg::Required,
@@ -65,8 +66,6 @@ const option::Descriptor Usage[] = {
     "  --compare=FILE  \tCompare two MTZ files." },
   { ToggleEndian, 0, "", "toggle-endian", Arg::None,
     "  --toggle-endian  \tToggle assumed endianness (little <-> big)." },
-  { NoIsym, 0, "", "no-isym", Arg::None,
-    "  --no-isym  \tDo not apply symmetry from M/ISYM column." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -371,7 +370,7 @@ void print_stats(const Mtz& mtz) {
     }
   }
   printf("Resolution: %.5f - %.5f A\n", mtz.resolution_high(), mtz.resolution_low());
-  printf("column type @dataset  completeness        min       max"
+  printf("column type @dataset     filled           min       max"
          "       mean   stddev\n");
   for (size_t i = 0; i != column_stats.size(); ++i) {
     const Mtz::Column& col = mtz.columns[i];
@@ -581,20 +580,21 @@ void print_mtz_info(gemmi::AnyStream&& stream, const char* path,
       print_batch(b, options[ExpandedBatches]);
   if (options[PrintAppendix])
     printf("%s", mtz.appended_text.c_str());
-  if (mtz.has_data() && !options[NoIsym])
-    mtz.switch_to_original_hkl();
   if (options[PrintCells])
     print_cells(mtz);
   for (const option::Option* opt = options[PrintHistogram]; opt; opt = opt->next())
     print_column_statistics(mtz, opt->arg);
-  if (options[PrintTsv])
-    print_tsv(mtz);
   if (options[CheckAsu] || options[PrintStats])
     mtz.update_reso();
   if (options[PrintStats])
     print_stats(mtz);
   if (options[CheckAsu])
     check_asu(mtz, options[CheckAsu].arg[0] == 't');
+  if (const option::Option* opt = options[PrintTsv]) {
+    if (opt->arg && opt->arg[0] == 'i')
+      mtz.switch_to_original_hkl();
+    print_tsv(mtz);
+  }
   if (options[Compare])
     // here mtz gets sorted, so this option must be at the end
     compare_mtz(mtz, options[Compare].arg, options[Verbose]);

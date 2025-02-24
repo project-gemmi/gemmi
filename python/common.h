@@ -58,10 +58,6 @@ void add_write(nb::module_& m, nb::class_<gemmi::Structure>& structure);
 // defined in align.cpp
 void add_assign_label_seq_id(nb::class_<gemmi::Structure>& structure);
 
-// defined in read.cpp
-void cif_parse_string(gemmi::cif::Document& doc, const std::string& data);
-void cif_parse_file(gemmi::cif::Document& doc, const std::string& filename);
-
 // convert pythonic index to C++ index
 inline int c_index(int index, size_t size) {
   if (index < 0)

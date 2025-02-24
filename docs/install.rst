@@ -7,16 +7,16 @@ Installation
 C++ library
 -----------
 
-Gemmi used to be a header-only library (until ver. 0.6.0).
-Parts of the library (finding symmetry operations, parsing CIF grammar)
-are still header-only; if you happen to use only these parts,
+Gemmi was a header-only library until ver. 0.6.0.
+Some parts, such as CIF syntax parsing, remain header-only.
+If you happen to use only these parts,
 just ensure that Gemmi's `include` directory is in
 your project's include path. For example::
 
     git clone https://github.com/project-gemmi/gemmi.git
     c++ -Igemmi/include -O2 my_program.cpp
 
-However, in most cases, you need to build a library called gemmi_cpp
+However, in most cases, you need to build the gemmi_cpp library
 and link your project against it.
 
 If you use **CMake**, you may:

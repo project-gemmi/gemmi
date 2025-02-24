@@ -20,6 +20,8 @@
 #include "fileutil.hpp" // for file_open
 #endif
 
+#include "read_cif.hpp" // for backward compat, to expose cif::read_string()
+
 #if defined(_MSC_VER)
 #pragma warning(push)
 // warning C4244: an integer type is converted to a smaller integer type
@@ -298,11 +300,6 @@ size_t parse_one_block(Document& d, Input&& in) {
 
 inline Document read_file(const std::string& filename) {
   GEMMI_CIF_FILE_INPUT(in, filename);
-  return read_input(in);
-}
-
-inline Document read_string(const std::string& data) {
-  pegtl::memory_input<> in(data, "string");
   return read_input(in);
 }
 

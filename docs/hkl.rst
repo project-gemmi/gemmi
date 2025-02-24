@@ -848,8 +848,8 @@ Which one is used can be checked with the function:
 
 .. doctest::
 
-  >>> rblock.is_unmerged()
-  False
+  >>> rblock.is_merged()
+  True
 
 But it is syntactically correct to have both types of data in two tables
 in one block. In such case you can switch which table is used:
@@ -1049,6 +1049,7 @@ In C++, the data is accessible directly.
 In Python, it is exposed as NumPy arrays:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> xds.miller_array
   array([[-24,   9,   1],
@@ -1067,6 +1068,7 @@ array of boolean values and returns a copy of `XdsAscii` containing only
 reflections corresponding to `True`. For example:
 
 .. doctest::
+  :skipif: numpy is None
 
   >>> xds.subset(xds.zd_array < 200)
   <gemmi.XdsAscii object at 0x...>
@@ -1425,7 +1427,7 @@ mean *F*:sub:`obs`/σ. We can use bincount with weights for this:
 .. doctest::
   :skipif: numpy is None
 
-  >>> numpy.bincount(bins, weights=fo/sigma) / numpy.bincount(bins) 
+  >>> numpy.bincount(bins, weights=fo/sigma) / numpy.bincount(bins)
   array([17.45109335, 14.27616408, 11.48073644,  9.47130558])
 
 The bincount function here would not handle correctly NaNs, and it can perform
@@ -1795,4 +1797,3 @@ This script converts CCP4 map to MTZ file with map coefficients.
 .. literalinclude:: ../examples/map2mtz.py
   :language: python
   :lines: 4-
-

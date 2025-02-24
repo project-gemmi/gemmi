@@ -4,7 +4,7 @@
 
 #include <cstdio>
 #include <cstdlib>            // for strtod
-#include <iostream>           // for cout, cerr
+#include <iostream>           // for cout
 #include <gemmi/mtz2cif.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/fstream.hpp>  // for Ofstream
@@ -12,6 +12,7 @@
 #include <gemmi/intensit.hpp> // for Intensities
 #include <gemmi/read_cif.hpp> // for read_cif_gz
 #include <gemmi/xds_ascii.hpp>
+#include "gemmi/refln.hpp"
 #define GEMMI_PROG mtz2cif
 #include "options.h"
 
@@ -262,24 +263,23 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
 
   bool ok = true;
+  gemmi::Logger logger{&gemmi::Logger::to_stderr};
   if (mtz[0] && mtz_to_cif.spec_lines.empty())
-    remove_appendix_from_column_names(*mtz[0], std::cerr);
+    remove_appendix_from_column_names(*mtz[0], logger);
   if (check_merged_columns && mtz[0])
-    ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], std::cerr);
+    ok = gemmi::validate_merged_mtz_deposition_columns(*mtz[0], logger);
   gemmi::Intensities mi;
   if (mtz[0])
     mtz_to_cif.staraniso_version = mi.take_staraniso_b_from_mtz(*mtz[0]);
   if (validate && nargs == 3) {
     try {
       if (mtz[0]) {
-        if (!mtz_to_cif.staraniso_version.empty()) {
-          std::cerr << "Merged MTZ went through STARANISO " << mtz_to_cif.staraniso_version;
-          if (mi.staraniso_b.ok())
-            std::cerr << ". Taking into account anisotropic scaling.\n";
-          else
-            std::cerr << ". B tensor is unknown. Intensities won't be checked.\n";
-        }
-        mi.read_merged_intensities_from_mtz(*mtz[0]);
+        if (!mtz_to_cif.staraniso_version.empty())
+          std::fprintf(stderr, "Merged MTZ went through STARANISO %s. %s.\n",
+                       mtz_to_cif.staraniso_version.c_str(),
+                       mi.staraniso_b.ok() ? "Taking into account anisotropic scaling"
+                                           : "B tensor is unknown. Intensities won't be checked");
+        mi.read_mtz(*mtz[0], gemmi::DataType::MergedAM);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_memory(cif_buf.data(), cif_buf.size(), cif_input).blocks,
@@ -290,13 +290,16 @@ int GEMMI_MAIN(int argc, char **argv) {
           mtz_to_cif.entry_id = rblock.entry_id;
         }
         mi.take_staraniso_b_from_mmcif(rblock.block);
-        mi.read_merged_intensities_from_mmcif(rblock);
+        mi.read_mmcif(rblock, gemmi::DataType::MergedAM);
       }
       gemmi::Intensities ui;
-      if (mtz[1])
-        ui.read_unmerged_intensities_from_mtz(*mtz[1]);
-      else if (xds_ascii)
-        ui.read_unmerged_intensities_from_xds(*xds_ascii);
+      if (mtz[1]) {
+        ui.read_mtz(*mtz[1], gemmi::DataType::Unmerged);
+      } else if (xds_ascii) {
+        if (xds_ascii->read_columns < 8)
+          gemmi::fail("XDS file contains merged data");
+        ui.read_xds(*xds_ascii);
+      }
 
       bool relaxed_check =
         p.options[NoIntensityCheck] ||
@@ -304,7 +307,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         // allow intensities to differ.
         (!mtz_to_cif.staraniso_version.empty() && !mi.staraniso_b.ok());
 
-      if (!gemmi::validate_merged_intensities(mi, ui, relaxed_check, std::cerr))
+      if (!gemmi::validate_merged_intensities(mi, ui, relaxed_check, logger))
         ok = false;
     } catch (std::exception& e) {
       fprintf(stderr, "Error. Intensities could not be validated.\n%s.\n", e.what());

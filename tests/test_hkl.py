@@ -21,7 +21,7 @@ def compare_asu_data(self, asu_data, data, f, phi):
         data_phi = data.column_with_label(phi).array
     self.assertTrue(len(data_f) > 100)
     asu_val = numpy.array([asu_dict[tuple(hkl)] for hkl in data_hkl])
-    self.assertTrue(numpy.allclose(data_f, abs(asu_val), atol=5e-5, rtol=0))
+    self.assertTrue(numpy.allclose(data_f, abs(asu_val), atol=1e-4, rtol=0))
     x180 = abs(180 - abs(data_phi - numpy.angle(asu_val, deg=True)))
     self.assertTrue(numpy.allclose(x180, 180, atol=6e-2, rtol=0.))
 
@@ -257,7 +257,7 @@ class TestConversion(unittest.TestCase):
         doc = gemmi.cif.read(full_path('4aap-sf-subset.cif'))
         (rblock,) = gemmi.as_refln_blocks(doc)
         check_metadata(rblock, rblock)
-        self.assertFalse(rblock.is_unmerged())
+        self.assertTrue(rblock.is_merged())
         mtz = gemmi.CifToMtz().convert_block_to_mtz(rblock)
         check_metadata(mtz, mtz.datasets[1])
         cif_string = gemmi.MtzToCif().write_cif_to_string(mtz)

@@ -7,9 +7,7 @@
 
 #include <vector>
 #include <limits>        // for numeric_limits
-#include <unordered_map> // for unordered_map
 #include "unitcell.hpp"  // for UnitCell
-#include "stats.hpp"     // for Correlation
 
 namespace gemmi {
 
@@ -175,76 +173,6 @@ struct Binner {
   double max_1_d2;
   std::vector<double> limits;  // upper limit of each bin
   std::vector<double> mids;    // the middle of each bin
-};
-
-inline Correlation combine_two_correlations(const Correlation& a, const Correlation& b) {
-  Correlation r;
-  r.n = a.n + b.n;
-  r.mean_x = (a.n * a.mean_x + b.n * b.mean_x) / r.n;
-  r.mean_y = (a.n * a.mean_y + b.n * b.mean_y) / r.n;
-  r.sum_xx = a.sum_xx + a.n * sq(a.mean_x - r.mean_x)
-           + b.sum_xx + b.n * sq(b.mean_x - r.mean_x);
-  r.sum_yy = a.sum_yy + a.n * sq(a.mean_y - r.mean_y)
-           + b.sum_yy + b.n * sq(b.mean_y - r.mean_y);
-  r.sum_xy = a.sum_xy + a.n * (a.mean_x - r.mean_x) * (a.mean_y - r.mean_y)
-           + b.sum_xy + b.n * (b.mean_x - r.mean_x) * (b.mean_y - r.mean_y);
-  return r;
-}
-
-inline Correlation combine_correlations(const std::vector<Correlation>& cors) {
-  Correlation result;
-  for (const Correlation& cor : cors)
-    result = combine_two_correlations(result, cor);
-  return result;
-}
-
-struct HklMatch {
-  std::vector<int> pos;
-  size_t hkl_size;
-
-  HklMatch(const Miller* hkl, size_t hkl_size_,
-           const Miller* ref, size_t ref_size)
-      : pos(ref_size, -1), hkl_size(hkl_size_) {
-    // Usually, both datasets are sorted. This make things faster.
-    if (std::is_sorted(hkl, hkl + hkl_size) &&
-        std::is_sorted(ref, ref + ref_size)) {
-      // cf. for_matching_reflections()
-      const Miller* a = hkl;
-      const Miller* b = ref;
-      while (a != hkl + hkl_size && b != ref + ref_size) {
-        if (*a == *b)
-          pos[b++ - ref] = static_cast<int>(a++ - hkl);
-        else if (*a < *b)
-          ++a;
-        else
-          ++b;
-      }
-    } else {
-      std::unordered_map<Miller, int, MillerHash> hkl_index;
-      for (int i = 0; i != (int)hkl_size; ++i)
-        hkl_index.emplace(hkl[i], i);
-      for (size_t i = 0; i != ref_size; ++i) {
-        auto it = hkl_index.find(ref[i]);
-        if (it != hkl_index.end())
-          pos[i] = it->second;
-      }
-    }
-  }
-
-  HklMatch(const std::vector<Miller>& hkl, const std::vector<Miller>& ref)
-    : HklMatch(hkl.data(), hkl.size(), ref.data(), ref.size()) {}
-
-  template <typename T> std::vector<T> aligned_(const T* v, size_t size, T nan) {
-    if (size != hkl_size)
-      fail("HklMatch.aligned(): wrong data, size differs");
-    std::vector<T> result(pos.size());
-    for (size_t i = 0; i != pos.size(); ++i)
-      result[i] = pos[i] >= 0 ? v[pos[i]] : nan;
-    return result;
-  }
-  template <typename T> std::vector<T> aligned(const std::vector<T>& v, T nan) {
-    return aligned_(v.data(), v.size(), nan);
-  }
 };
 
 } // namespace gemmi

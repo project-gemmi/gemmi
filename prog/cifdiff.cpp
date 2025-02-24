@@ -21,8 +21,7 @@ const option::Descriptor Usage[] = {
     "Usage:\n"
     " " EXE_NAME " [options] FILE1.cif FILE2.cif\n"
     " " EXE_NAME " [options] -n FILE.cif\n\n"
-    "Compares (or just prints) categories and tags in CIF files.\n"
-    "First block only." },
+    "Compares (or just prints) categories and tags in CIF files." },
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
@@ -110,44 +109,51 @@ int GEMMI_MAIN(int argc, char **argv) {
     // Starting like an unified diff (with "--- ") enables colordiff.
     printf("%sReading %s\n", one_file ? "" : "--- ", path1);
     cif::Document doc1 = gemmi::read_cif_or_mmjson_gz(gemmi::expand_if_pdb_code(path1));
-    cif::Block* b1 = &doc1.blocks.at(0);
-    // NoComparison mode is implemented as comparing Block with itself
-    // (inefficient, but simple).
     cif::Document doc2;
-    cif::Block* b2 = b1;
     if (!one_file) {
       printf("+++ Reading %s\n", path2);
       doc2 = gemmi::read_cif_or_mmjson_gz(gemmi::expand_if_pdb_code(path2));
-      b2 = &doc2.blocks.at(0);
     }
-    if (b1->name == b2->name) {
-      printf("  block name: %s\n", b1->name.c_str());
-    } else {
-      printf("- block name: %s\n", b1->name.c_str());
-      printf("+ block name: %s\n", b2->name.c_str());
-    }
-    if (p.options[Tag]) {
-      for (const option::Option* opt = p.options[Tag]; opt; opt = opt->next())
-        compare_tag_values(*b1, *b2, opt->arg);
-      return 0;
-    }
-    Diff category_diff = make_diff(b1->get_mmcif_category_names(),
-                                   b2->get_mmcif_category_names());
-    for (DiffItem& cat : category_diff) {
-      cif::Table t1 = b1->find_mmcif_category(cat.str);
-      cif::Table t2 = b2->find_mmcif_category(cat.str);
-      size_t len1 = t1.length();
-      size_t len2 = t2.length();
-      printf("%c %-37s rows: %5zu", cat.change, cat.str.c_str(), len1);
-      if (len2 != len1)
-        printf("  -> %5zu", len2);
-      putchar('\n');
-      if (p.options[OnlyCategories])
-        continue;
-      size_t prefix_size = cat.str.size();
-      Diff tag_diff = make_diff(t1.tags(), t2.tags());
-      for (DiffItem& di : tag_diff)
-        printf("%c       %s\n", di.change, di.str.c_str() + prefix_size);
+    for (size_t i = 0; i < std::max(doc1.blocks.size(), doc2.blocks.size()); ++i) {
+      cif::Block* b1 = i < doc1.blocks.size() ? &doc1.blocks[i] : nullptr;
+      // NoComparison mode is implemented as comparing Block with itself
+      // (inefficient, but simple).
+      cif::Block* b2 = b1;
+      if (!one_file)
+        b2 = i < doc2.blocks.size() ? &doc2.blocks[i] : nullptr;
+      if (b1 && b2 && b1->name == b2->name) {
+        printf("  =========[  %s  ]=========\n", b1->name.c_str());
+      } else {
+        if (b1)
+          printf("- =========[  %s  ]=========\n", b1->name.c_str());
+        if (b2)
+          printf("+ =========[  %s  ]=========\n", b2->name.c_str());
+        if (!b1 || !b2)
+          continue;
+      }
+      if (p.options[Tag]) {
+        for (const option::Option* opt = p.options[Tag]; opt; opt = opt->next())
+          compare_tag_values(*b1, *b2, opt->arg);
+        return 0;
+      }
+      Diff category_diff = make_diff(b1->get_mmcif_category_names(),
+                                     b2->get_mmcif_category_names());
+      for (DiffItem& cat : category_diff) {
+        cif::Table t1 = b1->find_mmcif_category(cat.str);
+        cif::Table t2 = b2->find_mmcif_category(cat.str);
+        size_t len1 = t1.length();
+        size_t len2 = t2.length();
+        printf("%c %-37s rows: %5zu", cat.change, cat.str.c_str(), len1);
+        if (len2 != len1)
+          printf("  -> %5zu", len2);
+        putchar('\n');
+        if (p.options[OnlyCategories])
+          continue;
+        size_t prefix_size = cat.str.size();
+        Diff tag_diff = make_diff(t1.tags(), t2.tags());
+        for (DiffItem& di : tag_diff)
+          printf("%c       %s\n", di.change, di.str.c_str() + prefix_size);
+      }
     }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

@@ -2,7 +2,7 @@
 #
 # symmetry.hpp can be checked with:
 # python3 tools/gen_sg_table.py $CCP4/lib/data/syminfo.lib > gen.txt
-# sed -n '/gen_sg_table/,/^}/p' include/gemmi/symmetry.hpp > cur.txt
+# sed -n '/gen_sg_table/,/^}/p' src/symmetry.cpp > cur.txt
 # diff cur.txt gen.txt
 
 import shlex

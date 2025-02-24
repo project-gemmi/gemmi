@@ -204,15 +204,10 @@ void add_symmetry(nb::module_& m) {
         return strcmp(a.hall, b.hall) == 0;
     }, nb::is_operator(), nb::sig("def __eq__(self, arg: object, /) -> bool"))
     .def("__reduce__", [](const SpaceGroup& self) {
-        // faster than just serializing self.xhm(), but also more tricky
+        // faster than serializing self.xhm()
         std::ptrdiff_t pos = &self - spacegroup_tables::main;
         int main_table_length = int(sizeof(spacegroup_tables::main) / sizeof(SpaceGroup));
-        if (pos < 0 || pos >= main_table_length) { // multi-library problem
-          const SpaceGroup* p = &self;
-          while (p->ccp4 != 1)
-            --p;
-          pos = &self - p;
-        }
+        assert(pos >= 0 && pos < main_table_length);
         return nb::make_tuple(nb::type<SpaceGroup>(), nb::make_tuple(INT_MIN + (int)pos));
     })
     .def("__repr__", [](const SpaceGroup &self) {
@@ -223,7 +218,9 @@ void add_symmetry(nb::module_& m) {
     .def(nb::init<const SpaceGroup*, bool>(), nb::arg(), nb::arg("tnt")=false)
     .def("is_in", &ReciprocalAsu::is_in, nb::arg("hkl"))
     .def("condition_str", &ReciprocalAsu::condition_str)
-    .def("to_asu", &ReciprocalAsu::to_asu, nb::arg("hkl"), nb::arg("group_ops"))
+    .def("to_asu",
+         nb::overload_cast<const Op::Miller&, const GroupOps&>(&ReciprocalAsu::to_asu, nb::const_),
+         nb::arg("hkl"), nb::arg("group_ops"))
     ;
 
   nb::handle mod = m;
