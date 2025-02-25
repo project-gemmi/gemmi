@@ -1384,7 +1384,7 @@ are in each bin.
   bin 1 d= 24.648 - 2.860  count: 108
   bin 2 d=  2.860 - 2.271  count: 86
   bin 3 d=  2.271 - 1.984  count: 93
-  bin 4 d=  1.984 - 0.000  count: 80
+  bin 4 d=  1.984 - 1.802  count: 80
 
 Now let's calculate R\ :sub:`work` and R\ :sub:`free` of the whole dataset.
 

@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <cstdint>      // for int8_t
+#include <unordered_map>
 #include "symmetry.hpp"
 #include "unitcell.hpp"
 #include "util.hpp"     // for vector_remove_if
@@ -33,10 +34,11 @@ enum class DataType { Unknown, Unmerged, Mean, Anomalous,
 struct GEMMI_DLL MergingStats {
   int all_refl = 0;  // all reflections, sometimes called observations
   int unique_refl = 0;
+  int stats_refl = 0;  // unique reflections with 2+ observations (used for statistics)
   double r_merge_num = 0;  // numerator for R-merge
   double r_meas_num = 0;   // numerator for R-meas
   double r_pim_num = 0;    // numerator for R-pim
-  double total_intensity = 0;  // denominator
+  double i_sum = 0;        // denominator for R-*
   // sums for CC1/2
   double sum_ibar = 0;
   double sum_ibar2 = 0;
@@ -47,18 +49,19 @@ struct GEMMI_DLL MergingStats {
   void add_other(const MergingStats& o) {
     all_refl += o.all_refl;
     unique_refl += o.unique_refl;
+    stats_refl += o.stats_refl;
     r_merge_num += o.r_merge_num;
     r_meas_num += o.r_meas_num;
     r_pim_num += o.r_pim_num;
-    total_intensity += o.total_intensity;
+    i_sum += o.i_sum;
     sum_ibar += o.sum_ibar;
     sum_ibar2 += o.sum_ibar2;
     sum_sig2_eps += o.sum_sig2_eps;
   }
 
-  double r_merge() const { return r_merge_num / total_intensity; }
-  double r_meas() const { return r_meas_num / total_intensity; }
-  double r_pim() const { return r_pim_num / total_intensity; }
+  double r_merge() const { return r_merge_num / i_sum; }
+  double r_meas() const { return r_meas_num / i_sum; }
+  double r_pim() const { return r_pim_num / i_sum; }
   double cc_half() const; // calculated using sigma-tau method
 };
 
@@ -149,7 +152,10 @@ struct GEMMI_DLL Intensities {
 
   void merge_in_place(DataType data_type);
 
-  std::vector<MergingStats> calculate_merging_stats(const Binner* binner) const;
+  std::vector<MergingStats> calculate_merging_stats(const Binner* binner, bool use_weights) const;
+
+  // call with DataType::Anomalous before calculate_merging_stats() to get I+/I- stats
+  void set_isigns(DataType new_type);
 
   void switch_to_asu_indices();
 

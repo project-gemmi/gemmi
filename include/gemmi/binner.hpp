@@ -160,7 +160,7 @@ struct Binner {
   }
 
   double dmin_of_bin(int n) const {
-    return 1. / std::sqrt(limits.at(n));
+    return 1. / std::sqrt(n == (int) size() - 1 ? max_1_d2 : limits.at(n));
   }
   double dmax_of_bin(int n) const {
     return 1. / std::sqrt(n == 0 ? min_1_d2 : limits.at(n-1));

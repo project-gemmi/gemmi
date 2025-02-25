@@ -14,8 +14,8 @@ Options:
                          reflections.
   --input-block=NAME     Input mmCIF block name (default: first unmerged).
   -b NAME, --block=NAME  Output mmCIF block name: data_NAME (default: merged).
-  --stats[=N]            Print merging statistics in N resolution shells
-                         (default: N=1).
+  --stats[=N]            Print data metrics in N resol. shells (default: 10).
+                         Add 'u' (=10u or just =u) for unweighted statistics.
   --compare              Compare unmerged and merged data (no output file).
   --print-all            Print all compared reflections.
 

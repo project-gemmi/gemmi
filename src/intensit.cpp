@@ -154,9 +154,7 @@ Correlation Intensities::calculate_correlation(const Intensities& other) const {
   return corr;
 }
 
-void Intensities::merge_in_place(DataType new_type) {
-  if (data.empty() || new_type == type || type == DataType::Mean || new_type == DataType::Unmerged)
-    return;
+void Intensities::set_isigns(DataType new_type) {
   if (new_type == DataType::Mean || new_type == DataType::MergedMA) {
     // discard signs so that merging produces Imean
     for (Refl& refl : data)
@@ -168,6 +166,12 @@ void Intensities::merge_in_place(DataType new_type) {
     for (Refl& refl : data)
       refl.isign = refl.isym % 2 != 0 || gops.is_reflection_centric(refl.hkl) ? 1 : -1;
   }
+}
+
+void Intensities::merge_in_place(DataType new_type) {
+  if (data.empty() || new_type == type || type == DataType::Mean || new_type == DataType::Unmerged)
+    return;
+  set_isigns(new_type);
   sort();
   std::vector<Refl>::iterator out = data.begin();
   double sum_wI = 0.;
@@ -196,7 +200,8 @@ void Intensities::merge_in_place(DataType new_type) {
   type = new_type;
 }
 
-std::vector<MergingStats> Intensities::calculate_merging_stats(const Binner* binner) const {
+std::vector<MergingStats>
+Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) const {
   if (data.empty())
     fail("no data");
   if (type != DataType::Unmerged)
@@ -211,55 +216,65 @@ std::vector<MergingStats> Intensities::calculate_merging_stats(const Binner* bin
   std::vector<MergingStats> stats(nbins);
   int bin_hint = (int)nbins - 1;
   Miller hkl = data[0].hkl;
-  double intensity_sum = 0;
-  double intensity2_sum = 0;
+  int8_t isign = data[0].isign;
+  double sum_I = 0;
+  double sum_Isq = 0;
+  double sum_wI = 0;
+  double sum_w = 0;
   int nobs = 0;
 
   auto process_equivalent_refl = [&](const Refl* end) {
-    double abs_diff_sum = 0;
-    if (nobs > 1) {
-      double avg = intensity_sum / nobs;
-      for (const Refl* r = end - nobs; r != end; ++r)
-        abs_diff_sum += std::fabs(r->value - avg);
-    }
     MergingStats& ms = stats[binner ? binner->get_bin_hinted(hkl, bin_hint) : 0];
     ms.all_refl += nobs;
-    ms.unique_refl += 1;
-    ms.total_intensity += intensity_sum;
-    double avg_i = intensity_sum / nobs;
-    if (nobs > 1) { // for nobs==1, abs_diff_sum must be 0
-      ms.r_merge_num += abs_diff_sum;
-      double t = abs_diff_sum / std::sqrt(nobs - 1);
-      ms.r_pim_num += t;
-      ms.r_meas_num += std::sqrt(nobs) * t;
-      int nn = (nobs - 1) * nobs / 2;
-      ms.sum_sig2_eps += (intensity2_sum - intensity_sum * avg_i) / nn;
-    }
+    ms.unique_refl++;
+    if (nobs <= 1)
+      return;
+    ms.stats_refl++;
+    double abs_diff_sum = 0;
+    double avg_i = sum_I / nobs;
+    double imean = use_weights ? sum_wI / sum_w : avg_i;
+    for (const Refl* r = end - nobs; r != end; ++r)
+      abs_diff_sum += std::fabs(r->value - imean);
+    ms.i_sum += nobs * imean;  // == sum_I if not use_weights
+    ms.r_merge_num += abs_diff_sum;
+    double t = abs_diff_sum / std::sqrt(nobs - 1);
+    ms.r_pim_num += t;
+    ms.r_meas_num += std::sqrt(nobs) * t;
+    int nn = (nobs - 1) * nobs / 2;
+    ms.sum_sig2_eps += (sum_Isq - sum_I * avg_i) / nn;
     ms.sum_ibar += avg_i;
     ms.sum_ibar2 += avg_i * avg_i;
   };
 
   // hkl indices in data are in-asu and sorted, process consecutive groups
   for (const Refl& refl : data) {
-    if (refl.hkl != hkl) {
+    if (refl.hkl != hkl || refl.isign != isign) {
       process_equivalent_refl(&refl);
       hkl = refl.hkl;
-      intensity_sum = 0;
-      intensity2_sum = 0;
+      isign = refl.isign;
+      sum_I = 0;
+      sum_Isq = 0;
+      sum_wI = 0;
+      sum_w = 0;
       nobs = 0;
     }
-    intensity_sum += refl.value;
-    intensity2_sum += sq(refl.value);
+    sum_I += refl.value;
+    sum_Isq += sq(refl.value);
+    if (use_weights) {
+      double w = 1. / (refl.sigma * refl.sigma);
+      sum_wI += w * refl.value;
+      sum_w += w;
+    }
     ++nobs;
   }
   process_equivalent_refl(data.data() + data.size());
   return stats;
 }
 
-// based on https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2
+// based on https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2 (sigma-tau method)
 double MergingStats::cc_half() const {
-  double sig2_y = (sum_ibar2 - sq(sum_ibar) / unique_refl) / (unique_refl - 1);
-  double sig2_eps = sum_sig2_eps / unique_refl;
+  double sig2_y = (sum_ibar2 - sq(sum_ibar) / stats_refl) / (stats_refl - 1);
+  double sig2_eps = sum_sig2_eps / stats_refl;
   return (sig2_y - 0.5 * sig2_eps) / (sig2_y + 0.5 * sig2_eps);
 }
 
@@ -297,7 +312,8 @@ void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   const Mtz::Column& col = mtz.get_column_with_label("I");
   size_t value_idx = col.idx;
   size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
-  unit_cell = mtz.get_average_cell_from_batch_headers(unit_cell_rmsd);
+  //unit_cell = mtz.get_average_cell_from_batch_headers(unit_cell_rmsd);
+  unit_cell = mtz.cell;
   spacegroup = mtz.spacegroup;
   if (!spacegroup)
     fail("unknown space group");

@@ -45,7 +45,8 @@ const option::Descriptor Usage[] = {
   { OutputBlock, 0, "b", "block", Arg::Required,
     "  -b NAME, --block=NAME  \tOutput mmCIF block name: data_NAME (default: merged)." },
   { Stats, 0, "", "stats", Arg::Optional,
-    "  --stats[=N]  \tPrint merging statistics in N resolution shells (default: N=1)." },
+    "  --stats[=N]  \tPrint data metrics in N resol. shells (default: 10)."
+    "\n\tAdd 'u' (=10u or just =u) for unweighted statistics." },
   { Compare, 0, "", "compare", Arg::None,
     "  --compare  \tCompare unmerged and merged data (no output file)." },
   { PrintAll, 0, "", "print-all", Arg::None,
@@ -59,6 +60,7 @@ const option::Descriptor Usage[] = {
 
 using gemmi::Intensities;
 using gemmi::DataType;
+using gemmi::MergingStats;
 
 void output_intensity_statistics(const Intensities& intensities) {
   size_t plus_count = 0;
@@ -243,34 +245,54 @@ void compare_intensities(Intensities& intensities, Intensities& ref, bool print_
   printf("Sigma CC: %.9g%% (mean ratio: %g)\n", 100 * cs.coefficient(), 1./cs.mean_ratio());
 }
 
-void print_merging_statistics(const Intensities& intensities, int nbins) {
+double take_average(const std::vector<MergingStats>& stats,
+                    double (MergingStats::*method)() const) {
+  double sum = 0;
+  int count = 0;
+  for (const MergingStats& ms : stats) {
+    sum += ms.stats_refl * (ms.*method)();
+    count += ms.stats_refl;
+  }
+  return sum / count;
+}
+
+void print_merging_statistics(const Intensities& intensities, int nbins, bool use_weights) {
   gemmi::Binner binner;
+  const gemmi::Binner* binner_ptr = nullptr;
   if (nbins > 1) {
     auto method = gemmi::Binner::Method::Dstar3;
     binner.setup(nbins, method, gemmi::IntensitiesDataProxy{intensities});
+    binner_ptr = &binner;
   }
-  auto stats = intensities.calculate_merging_stats(nbins > 1 ? &binner : nullptr);
-  gemmi::MergingStats total;
-  for (const gemmi::MergingStats& r : stats)
-    total.add_other(r);
-  printf("All reflections: %d\n", total.all_refl);
-  printf("Unique reflections: %d\n", total.unique_refl);
-  printf("Mean intensity: %g\n", total.total_intensity / total.all_refl);
-  printf("R-merge: %.4f\n", total.r_merge());
-  printf("R-meas: %.4f\n", total.r_meas());
-  printf("R-pim: %.4f\n", total.r_pim());
-  printf("CC1/2: %.4f\n", total.cc_half());
+  auto stats = intensities.calculate_merging_stats(binner_ptr, use_weights);
   if (nbins > 1) {
     printf("In resolution shells:\n"
-           "  d_max  d_min  #all  #uniq    <I>     Rmerge    Rmeas    Rpim    CC1/2\n");
+           "  d_max  d_min   #obs  #uniq  #used  Rmerge   Rmeas   Rpim    CC1/2\n");
     for (int i = 0; i < nbins; ++i) {
-      const gemmi::MergingStats& r = stats[i];
-      printf(" %6.2f %5.2f %6d %6d %8.2f %8.4f %8.4f %8.4f %8.4f\n",
+      const MergingStats& ms = stats[i];
+      printf("%7.3f %5.3f %7d %6d %6d %7.3f %7.3f %7.3f %8.4f\n",
              binner.dmax_of_bin(i), binner.dmin_of_bin(i),
-             r.all_refl, r.unique_refl, r.total_intensity / r.all_refl,
-             r.r_merge(), r.r_meas(), r.r_pim(), r.cc_half());
+             ms.all_refl, ms.unique_refl, ms.stats_refl,
+             ms.r_merge(), ms.r_meas(), ms.r_pim(), ms.cc_half());
     }
   }
+
+  MergingStats total;
+  for (const MergingStats& ms : stats)
+    total.add_other(ms);
+  printf("\nObservations (all reflections): %d\n", total.all_refl);
+  printf("Unique reflections: %d\n", total.unique_refl);
+  printf("Used refl. (those with multiplicity 2+): %d\n", total.stats_refl);
+  printf("          Overall    Avg of %d shells weighted by #used\n", nbins);
+  printf("R-merge: %7.4f         %7.4f\n",
+         total.r_merge(), take_average(stats, &MergingStats::r_merge));
+  printf("R-meas:  %7.4f         %7.4f\n",
+         total.r_meas(), take_average(stats, &MergingStats::r_meas));
+  printf("R-pim:   %7.4f         %7.4f\n",
+         total.r_pim(), take_average(stats, &MergingStats::r_pim));
+  // xdscc12 prints CC1/2 with 5 significant digits, do the same for easy comparison
+  printf("CC1/2:   %8.5f        %8.5f\n",
+         total.cc_half(), take_average(stats, &MergingStats::cc_half));
 }
 
 } // anonymous namespace
@@ -295,7 +317,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   const char* output_block = p.options[OutputBlock].arg;
   bool to_anom = p.options[WriteAnom];
 
-  if (!two_files && gemmi::giends_with(input_path, "hkl")) {
+  if (p.options[Compare] && !two_files && gemmi::giends_with(input_path, "hkl")) {
     fprintf(stderr, "ERROR. Option --compare doesn't work with one XDS file.\n");
     return 1;
   }
@@ -307,20 +329,43 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (intensities.type != DataType::Unmerged)
     std::fprintf(stderr, "NOTE: Got merged %s instead of unmerged data.\n",
                  intensities.type_str());
+  if (p.options[NoSysAbs]) {
+    size_t before = intensities.data.size();
+    intensities.remove_systematic_absences();
+    size_t diff = intensities.data.size() - before;
+    if (verbose && diff != 0)
+      std::fprintf(stderr, "Removed systematic absences: %zu observations.\n", diff);
+  }
   if (verbose)
     output_intensity_statistics(intensities);
 
   if (p.options[Stats]) {
-    int nbins = 1;
+    int nbins = 10;
+    bool use_weights = true;
     if (const char* arg = p.options[Stats].arg) {
-      nbins = std::atoi(arg);
-      if (nbins <= 0) {
-        fprintf(stderr, "Wrong argument for option --stats (expected N>0): %s\n", arg);
-        return 1;
+      char* endptr;
+      long n = std::strtol(arg, &endptr, 10);
+      if (endptr != arg) {
+        nbins = (int) n;
+        if (nbins <= 0) {
+          fprintf(stderr, "Wrong argument for option --stats (expected N>0): %s\n", arg);
+          return 1;
+        }
+      }
+      for (; *endptr != '\0'; ++endptr) {
+        if (*endptr == 'u') {
+          use_weights = false;
+        } else {
+          fprintf(stderr, "Wrong argument for option --stats: %s\n", arg);
+          return 1;
+        }
       }
     }
     try {
-      print_merging_statistics(intensities, nbins);
+      if (to_anom)
+        intensities.set_isigns(DataType::Anomalous);
+      intensities.sort();
+      print_merging_statistics(intensities, nbins, use_weights);
     } catch (std::exception& e) {
       std::fprintf(stderr, "ERROR: %s\n", e.what());
       return 1;
@@ -339,9 +384,8 @@ int GEMMI_MAIN(int argc, char **argv) {
            verbose ? "" : "   (use -v for more details)");
     compare_intensities(intensities, ref, p.options[PrintAll]);
   } else {
-    intensities.merge_in_place(to_anom ? DataType::Anomalous : DataType::Mean);
-    if (p.options[NoSysAbs])
-      intensities.remove_systematic_absences();
+    auto merging_to = to_anom ? DataType::Anomalous : DataType::Mean;
+    intensities.merge_in_place(merging_to);
     if (verbose)
       std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
                    intensities.data.size(), output_path);
