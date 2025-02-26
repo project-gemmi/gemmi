@@ -44,8 +44,31 @@ private:
   GroupOps group_ops_;
 };
 
+struct MtzMetadata {
+  std::string source_path;  // input file path, if known
+  bool same_byte_order = true;
+  bool indices_switched_to_original = false;
+  std::int64_t header_offset = 0;
+  std::string version_stamp;
+  std::string title;
+  int nreflections = 0;
+  std::array<int, 5> sort_order = {};
+  double min_1_d2 = NAN;
+  double max_1_d2 = NAN;
+  float valm = NAN;
+  int nsymop = 0;
+  UnitCell cell;
+  int spacegroup_number = 0;
+  std::string spacegroup_name;
+  std::vector<Op> symops;
+  const SpaceGroup* spacegroup = nullptr;
+  std::vector<std::string> history;
+  std::string appended_text;
+  // used to report non-critical problems when reading a file (also used in mtz2cif)
+  Logger logger;
+};
 
-struct GEMMI_DLL Mtz {
+struct GEMMI_DLL Mtz : public MtzMetadata {
   struct Dataset {
     int id;
     std::string project_name;
@@ -145,32 +168,10 @@ struct GEMMI_DLL Mtz {
     }
   };
 
-  std::string source_path;  // input file path, if known
-  bool same_byte_order = true;
-  bool indices_switched_to_original = false;
-  std::int64_t header_offset = 0;
-  std::string version_stamp;
-  std::string title;
-  int nreflections = 0;
-  std::array<int, 5> sort_order = {};
-  double min_1_d2 = NAN;
-  double max_1_d2 = NAN;
-  float valm = NAN;
-  int nsymop = 0;
-  UnitCell cell;
-  int spacegroup_number = 0;
-  std::string spacegroup_name;
-  std::vector<Op> symops;
-  const SpaceGroup* spacegroup = nullptr;
   std::vector<Dataset> datasets;
   std::vector<Column> columns;
   std::vector<Batch> batches;
-  std::vector<std::string> history;
-  std::string appended_text;
   std::vector<float> data;
-
-  // used to report non-critical problems when reading a file (also used in mtz2cif)
-  Logger logger{};
 
   explicit Mtz(bool with_base=false) {
     if (with_base)
@@ -178,33 +179,26 @@ struct GEMMI_DLL Mtz {
   }
   Mtz(Mtz&& o) noexcept { *this = std::move(o); }
   Mtz& operator=(Mtz&& o) noexcept {
-    same_byte_order = o.same_byte_order;
-    header_offset = o.header_offset;
-    version_stamp = std::move(o.version_stamp);
-    title = std::move(o.title);
-    nreflections = o.nreflections;
-    sort_order = o.sort_order;
-    min_1_d2 = o.min_1_d2;
-    max_1_d2 = o.max_1_d2;
-    valm = o.valm;
-    nsymop = o.nsymop;
-    cell = std::move(o.cell);
-    spacegroup_number = o.spacegroup_number;
-    spacegroup_name = std::move(o.spacegroup_name);
-    symops = std::move(o.symops);
-    spacegroup = o.spacegroup;
+    MtzMetadata::operator=(std::move(o));
     datasets = std::move(o.datasets);
     columns = std::move(o.columns);
     batches = std::move(o.batches);
-    history = std::move(o.history);
-    appended_text = std::move(o.appended_text);
     data = std::move(o.data);
-    logger = std::move(o.logger);
     for (Mtz::Column& col : columns)
       col.parent = this;
     return *this;
   }
-  Mtz(Mtz const&) = delete;
+
+  // explicit to be aware where we make copies
+  explicit Mtz(const Mtz& o) : MtzMetadata(o) {
+    datasets = o.datasets;
+    columns = o.columns;
+    batches = o.batches;
+    data = o.data;
+    for (Mtz::Column& col : columns)
+      col.parent = this;
+  }
+
   Mtz& operator=(Mtz const&) = delete;
 
   void add_base() {
