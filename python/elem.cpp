@@ -178,7 +178,7 @@ void add_xds(nb::module_& m) {
     .def_prop_ro("zd_array", [](XdsAscii& self) {
         return vector_member_array(self.data, &XdsAscii::Refl::zd);
     }, nb::rv_policy::reference_internal)
-    .def("subset", [](XdsAscii& self, const cpu_array<bool>& selection) {
+    .def("filtered", [](XdsAscii& self, const cpu_array<bool>& selection) {
         auto v = selection.view();
         size_t n = self.data.size();
         if (v.shape(0) != n)

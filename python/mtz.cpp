@@ -267,6 +267,26 @@ void add_mtz(nb::module_& m) {
            for (size_t col = 0; col < ncol; col++)
              self.data[row*ncol+col] = r(row, col);
     }, nb::arg("array"))
+    .def("filtered", [](Mtz& self, const cpu_array<bool>& selection) {
+        if (!self.has_data())
+          throw std::runtime_error("Mtz.filtered(): no data, read it first");
+        auto v = selection.view();
+        if (v.shape(0) != (size_t) self.nreflections)
+          throw nb::value_error("boolean array must match the number of reflections");
+        std::vector<float> saved_data;
+        saved_data.swap(self.data); // avoid copying data
+        Mtz ret(self);
+        saved_data.swap(self.data);
+        ret.nreflections = 0;
+        for (size_t i = 0; i < v.shape(0); ++i)
+          ret.nreflections += v(i) ? 1 : 0;
+        size_t ncol = ret.columns.size();
+        ret.data.reserve(ncol * ret.nreflections);
+        for (size_t i = 0, pos = 0; i < v.shape(0); ++i, pos += ncol)
+          if (v(i))
+            ret.data.insert(ret.data.end(), &self.data[pos], &self.data[pos + ncol]);
+        return ret;
+    })
     .def("update_reso", &Mtz::update_reso)
     .def("sort", &Mtz::sort, nb::arg("use_first")=3)
     .def("ensure_asu", &Mtz::ensure_asu, nb::arg("tnt_asu")=false)

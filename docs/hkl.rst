@@ -4,11 +4,12 @@ Reciprocal space
 
 This section is primarily for people working with crystallographic data.
 
-Gemmi supports three reflection file formats:
+Gemmi supports four reflection file formats:
 
 * MTZ files -- the most popular format in macromolecular crystallography,
 * structure factor mmCIF files -- used for data archiving
   in the Protein Data Bank,
+* XDS ASCII format -- data from processing images with XDS,
 * and small molecule structure factor CIF files (usually with extension hkl).
 
 Reflection files store Miller indices (*hkl*) with various associated
@@ -409,8 +410,8 @@ Another way to get Miller indices as a N×3 array of integers is:
   >>> hkl = mtz.make_miller_array()
 
 The same method is available also in ReflnBlock (which represents SF-mmCIF
-and is described in a later section). Similarly, :ref:`AsuData <asu_data>`
-has a property `miller_array`.
+and is described in a later section). Similarly, :ref:`XdsAscii <xds_ascii>`
+and :ref:`AsuData <asu_data>` have a property `miller_array`.
 
 There is also a standalone function `make_miller_array()`
 that returns all reflections in a resolution shell.
@@ -503,6 +504,18 @@ To show that it really has an effect we print the appropriate
   >>> mtz.set_data(mtz.array[mtz.make_d_array() >= 2.0])
   >>> mtz.get_size_for_hkl()
   [10, 10, 20]
+
+We also have a function `filtered` that works like `set_data` in the example
+above, but returns **a copy** of `Mtz`, leaving the original object unchanged.
+`filtered` takes a NumPy array of boolean values and returns reflections
+corresponding to `True`. Here is how to get of a copy of Mtz with only
+reflections with *d* ≥ 2Å.
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> mtz.filtered(mtz.make_d_array() >= 2.0)
+  <gemmi.Mtz with 8 columns, 262 reflections>
 
 Columns can be removed with `Mtz::remove_column(index)`,
 where index is 0-based column index:
@@ -1001,6 +1014,8 @@ program documentation for details.
   >>> # and convert it back
   >>> cif_string = gemmi.MtzToCif().write_cif_to_string(_)
 
+.. _xds_ascii:
+
 XDS_ASCII
 =========
 
@@ -1063,14 +1078,14 @@ In Python, it is exposed as NumPy arrays:
   >>> xds.zd_array
   array([111.7, 116.1, 102.5, ...,  73. ,  71.5,  70. ])
 
-Additionally, Python bindings have the function `subset` that takes a NumPy
+Additionally, Python bindings have the function `filtered` that takes a NumPy
 array of boolean values and returns a copy of `XdsAscii` containing only
 reflections corresponding to `True`. For example:
 
 .. doctest::
   :skipif: numpy is None
 
-  >>> xds.subset(xds.zd_array < 200)
+  >>> xds.filtered(xds.zd_array < 200)
   <gemmi.XdsAscii object at 0x...>
 
 leaves only reflections with ZD < 200.
