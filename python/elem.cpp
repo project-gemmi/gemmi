@@ -154,6 +154,7 @@ void add_xds(nb::module_& m) {
     .def_ro("rotation_axis", &XdsAscii::rotation_axis)
     .def_ro("friedels_law", &XdsAscii::friedels_law)
     .def_ro("generated_by", &XdsAscii::generated_by)
+    .def_prop_ro("data_size", [](XdsAscii& self) { return self.data.size(); })
     .def_prop_ro("miller_array", [](XdsAscii& self) {
         constexpr int64_t stride = int64_t(sizeof(XdsAscii::Refl) / sizeof(int));
         return nb::ndarray<nb::numpy, int, nb::shape<-1,3>>(
