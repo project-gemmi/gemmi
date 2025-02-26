@@ -245,6 +245,7 @@ void add_hkl(nb::module_& m) {
 
   nb::class_<Intensities>(m, "Intensities")
     .def(nb::init<>())
+    .def("__len__", [](const Intensities& self) { return self.data.size(); })
     .def_rw("spacegroup", &Intensities::spacegroup)
     .def_rw("unit_cell", &Intensities::unit_cell)
     .def_rw("type", &Intensities::type)
