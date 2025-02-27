@@ -290,7 +290,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           mtz_to_cif.entry_id = rblock.entry_id;
         }
         mi.take_staraniso_b_from_mmcif(rblock.block);
-        mi.read_mmcif(rblock, gemmi::DataType::MergedAM);
+        mi.read_refln_block(rblock, gemmi::DataType::MergedAM);
       }
       gemmi::Intensities ui;
       if (mtz[1]) {

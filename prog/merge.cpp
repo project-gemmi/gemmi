@@ -113,7 +113,7 @@ void read_intensities(Intensities& intensities, DataType data_type,
       }
       if (!rblock)
         rblock = &rblocks.at(0);
-      intensities.read_mmcif(*rblock, data_type);
+      intensities.read_refln_block(*rblock, data_type);
       if (verbose)
         std::fprintf(stderr, "Got %s from block %s ...\n",
                      Intensities::type_str(intensities.type), rblock->block.name.c_str());

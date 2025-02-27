@@ -430,7 +430,7 @@ void Intensities::read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
   type = DataType::Anomalous;
 }
 
-void Intensities::read_mmcif(const ReflnBlock& rb, DataType data_type) {
+void Intensities::read_refln_block(const ReflnBlock& rb, DataType data_type) {
   DataType save_data_type = data_type;
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)

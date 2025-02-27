@@ -254,7 +254,8 @@ void add_hkl(nb::module_& m) {
     .def("merge_in_place", &Intensities::merge_in_place, nb::arg("itype"))
     .def("read_mtz", &Intensities::read_mtz, nb::arg(), nb::arg("type"))
     .def("read_xds", &Intensities::read_xds, nb::arg())
-    .def("read_mmcif", &Intensities::read_mmcif, nb::arg(), nb::arg("type"))
+    .def("read_refln_block", &Intensities::read_refln_block,
+         nb::arg(), nb::arg("type")=DataType::Unknown)
     .def("prepare_merged_mtz", &Intensities::prepare_merged_mtz,
          nb::arg("with_nobs"))
     .def_prop_ro("miller_array", [](Intensities& self) {

@@ -172,7 +172,7 @@ struct GEMMI_DLL Intensities {
 
   void read_f_squared_from_mmcif(const ReflnBlock& rb);
 
-  void read_mmcif(const ReflnBlock& rb, DataType data_type);
+  void read_refln_block(const ReflnBlock& rb, DataType data_type=DataType::Unknown);
 
   void read_xds(const XdsAscii& xds);
 
