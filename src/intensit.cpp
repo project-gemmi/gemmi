@@ -217,9 +217,8 @@ Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) con
   int bin_hint = (int)nbins - 1;
   Miller hkl = data[0].hkl;
   int8_t isign = data[0].isign;
-  double sum_I = 0;
-  double sum_Isq = 0;
   double sum_wI = 0;
+  double sum_wIsq = 0;
   double sum_w = 0;
   int nobs = 0;
 
@@ -231,19 +230,18 @@ Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) con
       return;
     ms.stats_refl++;
     double abs_diff_sum = 0;
-    double avg_i = sum_I / nobs;
-    double imean = use_weights ? sum_wI / sum_w : avg_i;
+    double imean = sum_wI / sum_w;
     for (const Refl* r = end - nobs; r != end; ++r)
       abs_diff_sum += std::fabs(r->value - imean);
-    ms.i_sum += nobs * imean;  // == sum_I if not use_weights
+    ms.i_sum += nobs * imean;
     ms.r_merge_num += abs_diff_sum;
     double t = abs_diff_sum / std::sqrt(nobs - 1);
     ms.r_pim_num += t;
     ms.r_meas_num += std::sqrt(nobs) * t;
-    int nn = (nobs - 1) * nobs / 2;
-    ms.sum_sig2_eps += (sum_Isq - sum_I * avg_i) / nn;
-    ms.sum_ibar += avg_i;
-    ms.sum_ibar2 += avg_i * avg_i;
+    // based on https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2
+    ms.sum_sig2_eps += (sum_wIsq / sum_w - sq(imean)) * 2 / (nobs - 1);
+    ms.sum_ibar += imean;
+    ms.sum_ibar2 += sq(imean);
   };
 
   // hkl indices in data are in-asu and sorted, process consecutive groups
@@ -252,19 +250,15 @@ Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) con
       process_equivalent_refl(&refl);
       hkl = refl.hkl;
       isign = refl.isign;
-      sum_I = 0;
-      sum_Isq = 0;
       sum_wI = 0;
+      sum_wIsq = 0;
       sum_w = 0;
       nobs = 0;
     }
-    sum_I += refl.value;
-    sum_Isq += sq(refl.value);
-    if (use_weights) {
-      double w = 1. / (refl.sigma * refl.sigma);
-      sum_wI += w * refl.value;
-      sum_w += w;
-    }
+    double w = use_weights ? 1 / sq(refl.sigma) : 1.;
+    sum_wI += w * refl.value;
+    sum_wIsq += w * sq(refl.value);
+    sum_w += w;
     ++nobs;
   }
   process_equivalent_refl(data.data() + data.size());
