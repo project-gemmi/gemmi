@@ -243,6 +243,16 @@ void add_hkl(nb::module_& m) {
       return check_data_type_under_symmetry(MtzDataProxy{data});
   });
 
+  nb::class_<MergingStats>(m, "MergingStats")
+    .def_ro("all_refl", &MergingStats::all_refl)
+    .def_ro("unique_refl", &MergingStats::unique_refl)
+    .def_ro("stats_refl", &MergingStats::stats_refl)
+    .def("r_merge", &MergingStats::r_merge)
+    .def("r_meas", &MergingStats::r_meas)
+    .def("r_pim", &MergingStats::r_pim)
+    .def("cc_half", &MergingStats::cc_half)
+    ;
+
   nb::class_<Intensities>(m, "Intensities")
     .def(nb::init<>())
     .def("__len__", [](const Intensities& self) { return self.data.size(); })
@@ -251,7 +261,11 @@ void add_hkl(nb::module_& m) {
     .def_rw("type", &Intensities::type)
     .def("resolution_range", &Intensities::resolution_range)
     .def("remove_systematic_absences", &Intensities::remove_systematic_absences)
+    .def("sort", &Intensities::sort)
     .def("merge_in_place", &Intensities::merge_in_place, nb::arg("itype"))
+    .def("calculate_merging_stats", &Intensities::calculate_merging_stats,
+         nb::arg("binner").none(), nb::arg("use_weights"))
+    .def("set_isigns", &Intensities::set_isigns)
     .def("read_mtz", &Intensities::read_mtz, nb::arg(), nb::arg("type"))
     .def("read_xds", &Intensities::read_xds, nb::arg())
     .def("read_refln_block", &Intensities::read_refln_block,

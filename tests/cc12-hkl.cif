@@ -1,0 +1,29 @@
+# An example (12 observations, 2 merged reflections) from:
+# https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2
+# as a minimal mmCIF.
+
+data_example_from_xds_wiki
+
+_symmetry.space_group_name_H-M 'P 2 3'
+
+loop_
+_diffrn_refln.id
+_diffrn_refln.index_h
+_diffrn_refln.index_k
+_diffrn_refln.index_l
+_diffrn_refln.intensity_net
+_diffrn_refln.intensity_sigma
+
+1  2 0 0  915.6 3.686
+2  0 2 0  558.4 3.093
+3  0 0 2  630.1 24.05
+4  2 0 0  925.6 3.686
+5  0 2 0  258.4 3.093
+6  0 0 2  730.1 24.05
+
+7  1 1 2  23.95 89.32
+8  1 2 1  90.65 7.407
+9  2 1 1  59.81 9.125
+10 1 1 2  33.95 89.32
+11 1 2 1  90.65 7.407
+12 2 1 1  16.08 22.15

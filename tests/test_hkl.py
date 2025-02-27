@@ -247,6 +247,29 @@ class TestBinner(unittest.TestCase):
         inv_d2 = numpy.array([mtz.cell.calculate_1_d2(h) for h in hkls])
         self.assertEqual(list(binner.get_bins_from_1_d2(inv_d2)), bins)
 
+class TestMerging(unittest.TestCase):
+    def test_reading(self):
+        doc = gemmi.cif.read(full_path('cc12-hkl.cif'))
+        rblock = gemmi.as_refln_blocks(doc)[0]
+        intens = gemmi.Intensities()
+        intens.read_refln_block(rblock)
+        intens.set_isigns(gemmi.DataType.Anomalous)
+        self.assertEqual(len(intens), 12)
+        self.assertEqual(intens.spacegroup.xhm(), 'P 2 3')
+        w_stats = intens.calculate_merging_stats(None, use_weights=True)[0]
+        unw_stats = intens.calculate_merging_stats(None, use_weights=False)[0]
+        self.assertEqual(w_stats.all_refl, 12)
+        self.assertEqual(w_stats.unique_refl, 2)
+        self.assertEqual(w_stats.stats_refl, 2)
+        # value from the wiki and from 'xdscc12 -w'
+        self.assertAlmostEqual(unw_stats.cc_half(), 0.94582, delta=5e-6)
+        # values from "mrfana -noice -n 1"
+        self.assertAlmostEqual(w_stats.r_merge(), 0.3214, delta=5e-5)
+        self.assertAlmostEqual(w_stats.r_meas(), 0.3520, delta=5e-5)
+        self.assertAlmostEqual(w_stats.r_pim(), 0.1437, delta=5e-5)
+        intens.merge_in_place(gemmi.DataType.Mean)
+        self.assertEqual(len(intens), 2)
+
 class TestConversion(unittest.TestCase):
     def test_4aap(self):
         def check_metadata(o, d):
