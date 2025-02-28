@@ -265,7 +265,7 @@ void add_hkl(nb::module_& m) {
     .def("sort", &Intensities::sort)
     .def("merge_in_place", &Intensities::merge_in_place, nb::arg("itype"))
     .def("calculate_merging_stats", &Intensities::calculate_merging_stats,
-         nb::arg("binner").none(), nb::arg("use_weights"))
+         nb::arg("binner").none(), nb::arg("use_weights")='Y')
     .def("set_isigns", &Intensities::set_isigns)
     .def("calculate_correlation", &Intensities::calculate_correlation)
     .def("read_mtz", &Intensities::read_mtz, nb::arg(), nb::arg("type"))

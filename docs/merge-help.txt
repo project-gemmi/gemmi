@@ -15,7 +15,8 @@ Options:
   --input-block=NAME     Input mmCIF block name (default: first unmerged).
   -b NAME, --block=NAME  Output mmCIF block name: data_NAME (default: merged).
   --stats[=N]            Print data metrics in N resol. shells (default: 10).
-                         Add 'u' (=10u or just =u) for unweighted statistics.
+                         Add U (e.g. =10U or =U) for unweighted metrics.
+                         Add X for XDS-like weighted metrics (details in docs).
   --compare              Compare unmerged and merged data (no output file).
   --print-all            Print all compared reflections.
 

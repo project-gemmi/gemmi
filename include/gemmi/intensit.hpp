@@ -38,7 +38,7 @@ struct GEMMI_DLL MergingStats {
   double r_merge_num = 0;  // numerator for R-merge
   double r_meas_num = 0;   // numerator for R-meas
   double r_pim_num = 0;    // numerator for R-pim
-  double i_sum = 0;        // denominator for R-*
+  double r_denom = 0;      // denominator for R-*
   // sums for CC1/2
   double sum_ibar = 0;
   double sum_ibar2 = 0;
@@ -53,17 +53,17 @@ struct GEMMI_DLL MergingStats {
     r_merge_num += o.r_merge_num;
     r_meas_num += o.r_meas_num;
     r_pim_num += o.r_pim_num;
-    i_sum += o.i_sum;
+    r_denom += o.r_denom;
     sum_ibar += o.sum_ibar;
     sum_ibar2 += o.sum_ibar2;
     sum_sig2_eps += o.sum_sig2_eps;
   }
 
-  double r_merge() const { return r_merge_num / i_sum; }
-  double r_meas() const { return r_meas_num / i_sum; }
-  double r_pim() const { return r_pim_num / i_sum; }
+  double r_merge() const { return r_merge_num / r_denom; }
+  double r_meas() const { return r_meas_num / r_denom; }
+  double r_pim() const { return r_pim_num / r_denom; }
   double cc_half() const; // calculated using sigma-tau method
-  /// split-half reliability using the Spearman-Brown prophecy formula :-)
+  /// split-half reliability using the Spearman-Brown prediction formula :-)
   double cc_full() const {
     double cc = cc_half();
     return 2 * cc / (1 + cc);
@@ -158,7 +158,9 @@ struct GEMMI_DLL Intensities {
 
   void merge_in_place(DataType data_type);
 
-  std::vector<MergingStats> calculate_merging_stats(const Binner* binner, bool use_weights) const;
+  /// use_weights can be 'Y' (yes, like Aimless), 'U' (unweighted), 'X' (yes, like XDS)
+  std::vector<MergingStats> calculate_merging_stats(const Binner* binner,
+                                                    char use_weights='Y') const;
 
   // call with DataType::Anomalous before calculate_merging_stats() to get I+/I- stats
   void set_isigns(DataType new_type);

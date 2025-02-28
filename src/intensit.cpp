@@ -206,7 +206,7 @@ void Intensities::merge_in_place(DataType new_type) {
 }
 
 std::vector<MergingStats>
-Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) const {
+Intensities::calculate_merging_stats(const Binner* binner, char use_weights) const {
   if (data.empty())
     fail("no data");
   if (type != DataType::Unmerged)
@@ -222,6 +222,7 @@ Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) con
   int bin_hint = (int)nbins - 1;
   Miller hkl = data[0].hkl;
   int8_t isign = data[0].isign;
+  double sum_I = 0;
   double sum_wI = 0;
   double sum_wIsq = 0;
   double sum_w = 0;
@@ -238,7 +239,7 @@ Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) con
     double imean = sum_wI / sum_w;
     for (const Refl* r = end - nobs; r != end; ++r)
       abs_diff_sum += std::fabs(r->value - imean);
-    ms.i_sum += nobs * imean;
+    ms.r_denom += use_weights == 'Y' ? nobs * imean : sum_I;
     ms.r_merge_num += abs_diff_sum;
     double t = abs_diff_sum / std::sqrt(nobs - 1);
     ms.r_pim_num += t;
@@ -255,12 +256,14 @@ Intensities::calculate_merging_stats(const Binner* binner, bool use_weights) con
       process_equivalent_refl(&refl);
       hkl = refl.hkl;
       isign = refl.isign;
+      sum_I = 0;
       sum_wI = 0;
       sum_wIsq = 0;
       sum_w = 0;
       nobs = 0;
     }
-    double w = use_weights ? 1 / sq(refl.sigma) : 1.;
+    sum_I += refl.value;
+    double w = use_weights == 'U' ? 1. : 1 / sq(refl.sigma);
     sum_wI += w * refl.value;
     sum_wIsq += w * sq(refl.value);
     sum_w += w;

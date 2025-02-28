@@ -256,17 +256,22 @@ class TestMerging(unittest.TestCase):
         intens.set_isigns(gemmi.DataType.Anomalous)
         self.assertEqual(len(intens), 12)
         self.assertEqual(intens.spacegroup.xhm(), 'P 2 3')
-        w_stats = intens.calculate_merging_stats(None, use_weights=True)[0]
-        unw_stats = intens.calculate_merging_stats(None, use_weights=False)[0]
-        self.assertEqual(w_stats.all_refl, 12)
-        self.assertEqual(w_stats.unique_refl, 2)
-        self.assertEqual(w_stats.stats_refl, 2)
+        y_stats = intens.calculate_merging_stats(None, use_weights='Y')[0]
+        u_stats = intens.calculate_merging_stats(None, use_weights='U')[0]
+        x_stats = intens.calculate_merging_stats(None, use_weights='X')[0]
+        self.assertEqual(y_stats.all_refl, 12)
+        self.assertEqual(y_stats.unique_refl, 2)
+        self.assertEqual(y_stats.stats_refl, 2)
         # value from the wiki and from 'xdscc12 -w'
-        self.assertAlmostEqual(unw_stats.cc_half(), 0.94582, delta=5e-6)
+        self.assertAlmostEqual(u_stats.cc_half(), 0.94582, delta=5e-6)
         # values from "mrfana -noice -n 1"
-        self.assertAlmostEqual(w_stats.r_merge(), 0.3214, delta=5e-5)
-        self.assertAlmostEqual(w_stats.r_meas(), 0.3520, delta=5e-5)
-        self.assertAlmostEqual(w_stats.r_pim(), 0.1437, delta=5e-5)
+        self.assertAlmostEqual(y_stats.r_merge(), 0.3214, delta=5e-5)
+        self.assertAlmostEqual(y_stats.r_meas(), 0.3520, delta=5e-5)
+        self.assertAlmostEqual(y_stats.r_pim(), 0.1437, delta=5e-5)
+        # values from iotbx.merging_statistics n_bins=1
+        self.assertAlmostEqual(x_stats.r_merge(), 0.312, delta=5e-4)
+        self.assertAlmostEqual(x_stats.r_meas(), 0.342, delta=5e-4)
+        self.assertAlmostEqual(x_stats.r_pim(), 0.139, delta=5e-4)
         intens.merge_in_place(gemmi.DataType.Mean)
         self.assertEqual(len(intens), 2)
 

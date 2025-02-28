@@ -660,10 +660,69 @@ Transforms CCP4 map into map coefficients.
 merge
 =====
 
-Merge intensities from multi-record reflection file.
+Merge intensities from a multi-record reflection file
+or calculate quality metrics for unmerged data.
 
 .. literalinclude:: merge-help.txt
    :language: console
+
+Here is an example output of the quality metrics::
+
+  $ gemmi merge --stats=10 mdm2_unmerged.mtz
+  In resolution shells:
+    d_max  d_min   #obs  #uniq  #used  Rmerge   Rmeas   Rpim    CC1/2
+   61.902 2.681   16148   4818   4604   0.175   0.208   0.111   0.9450
+    2.681 2.128   16036   4551   4449   0.221   0.261   0.137   0.9246
+    2.128 1.859   15907   4494   4417   0.301   0.354   0.185   0.8733
+    1.859 1.689   15824   4441   4372   0.489   0.577   0.302   0.8163
+    1.689 1.568   14909   4413   4196   0.980   1.163   0.618   0.5520
+    1.568 1.476    9083   4212   2913   1.731   2.208   1.344   0.2296
+    1.476 1.402    5712   3148   1811   3.974   5.222   3.337   0.0568
+    1.402 1.341    3472   2147   1043   6.521   8.750   5.765   0.0361
+    1.341 1.289    1756   1312    413  16.274  22.638  15.676   0.1174
+    1.289 1.245     481    429     52  -6.970  -9.857  -6.970  -0.0984
+
+  Observations (all reflections): 99328
+  Unique reflections: 33965
+  Used refl. (those with multiplicity 2+): 28270
+            Overall    Avg of 10 shells weighted by #used
+  R-merge:  0.2204          1.2299
+  R-meas:   0.2626          1.5896
+  R-pim:    0.1407          0.9882
+  CC1/2:    0.95915         0.67419
+
+R\ :sub:`merge`, R\ :sub:`meas` and R\ :sub:`pim` may use or not use
+σ for weighting. In the 1997 paper that introduced R\ :sub:`meas`,
+`Diederichs & Karplus <https://doi.org/10.1038/nsb0497-269>`_
+define R\ :sub:`meas` (sometimes called R\ :sub:`sym`) as:
+
+.. image:: img/rmerge-1997.png
+    :align: center
+    :scale: 100
+
+Phil Evans, in his CCP4 programs Scala and Aimless,
+and in `the 2006 paper <https://doi.org/10.1107/s0907444905036693>`_,
+uses formula with weighting by 1/σ², as used for merged ⟨I⟩:
+
+.. image:: img/rmerge-2006.png
+    :align: center
+    :scale: 100
+
+This formula is also used by `MRFANA <https://github.com/githubgphl/MRFANA>`_.
+
+A third variant, used by XDS and `iotbx.merging_statistics` from cctbx,
+has the numerator from the latter and the denominator from the former.
+
+Similarly, there are three variants of R\ :sub:`meas` and R\ :sub:`pim`.
+
+Gemmi can calculate all three variants:
+
+* By default (example above), it is compatible with Aimless and MRFANA.
+* With added `U` (e.g. `--stats=10U`) it calculates the original,
+  **u**\ nweighted formulas.
+* With added `X` (e.g. `--stats=10X`) it is compatible with XDS and cctbx.
+
+TBC (CC1/2, sigma-tau, `--anom`, binning, filtering/misfits, unit cell in MTZ)
 
 ecalc
 =====

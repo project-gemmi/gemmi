@@ -46,7 +46,8 @@ const option::Descriptor Usage[] = {
     "  -b NAME, --block=NAME  \tOutput mmCIF block name: data_NAME (default: merged)." },
   { Stats, 0, "", "stats", Arg::Optional,
     "  --stats[=N]  \tPrint data metrics in N resol. shells (default: 10)."
-    "\n\tAdd 'u' (=10u or just =u) for unweighted statistics." },
+    "\n\tAdd U (e.g. =10U or =U) for unweighted metrics."
+    "\n\tAdd X for XDS-like weighted metrics (details in docs)." },
   { Compare, 0, "", "compare", Arg::None,
     "  --compare  \tCompare unmerged and merged data (no output file)." },
   { PrintAll, 0, "", "print-all", Arg::None,
@@ -256,7 +257,7 @@ double take_average(const std::vector<MergingStats>& stats,
   return sum / count;
 }
 
-void print_merging_statistics(const Intensities& intensities, int nbins, bool use_weights) {
+void print_merging_statistics(const Intensities& intensities, int nbins, char use_weights) {
   gemmi::Binner binner;
   const gemmi::Binner* binner_ptr = nullptr;
   if (nbins > 1) {
@@ -341,7 +342,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   if (p.options[Stats]) {
     int nbins = 10;
-    bool use_weights = true;
+    char use_weights = 'Y';
     if (const char* arg = p.options[Stats].arg) {
       char* endptr;
       long n = std::strtol(arg, &endptr, 10);
@@ -353,8 +354,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
       }
       for (; *endptr != '\0'; ++endptr) {
-        if (*endptr == 'u') {
-          use_weights = false;
+        if (*endptr == 'U' || *endptr == 'X') {
+          use_weights = *endptr;
         } else {
           fprintf(stderr, "Wrong argument for option --stats: %s\n", arg);
           return 1;
