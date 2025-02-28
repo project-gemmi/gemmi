@@ -136,7 +136,12 @@ std::array<double,2> Intensities::resolution_range() const {
 
 // cf. calculate_hkl_value_correlation()
 Correlation Intensities::calculate_correlation(const Intensities& other) const {
-  // TODO: is it only for merged data?
+  if (type == DataType::Unmerged)
+    fail("calculate_correlation() of Intensities is for merged data");
+  if (!std::is_sorted(data.begin(), data.end()))
+    fail("calculate_correlation(): this data is not sorted, call Intensities.sort() first");
+  if (!std::is_sorted(other.data.begin(), other.data.end()))
+    fail("calculate_correlation(): other data is not sorted, call Intensities.sort() first");
   Correlation corr;
   auto r1 = data.begin();
   auto r2 = other.data.begin();
