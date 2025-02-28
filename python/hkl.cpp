@@ -251,6 +251,7 @@ void add_hkl(nb::module_& m) {
     .def("r_meas", &MergingStats::r_meas)
     .def("r_pim", &MergingStats::r_pim)
     .def("cc_half", &MergingStats::cc_half)
+    .def("cc_star", &MergingStats::cc_star)
     ;
 
   nb::class_<Intensities>(m, "Intensities")

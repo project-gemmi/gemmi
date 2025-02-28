@@ -63,6 +63,12 @@ struct GEMMI_DLL MergingStats {
   double r_meas() const { return r_meas_num / i_sum; }
   double r_pim() const { return r_pim_num / i_sum; }
   double cc_half() const; // calculated using sigma-tau method
+  /// split-half reliability using the Spearman-Brown prophecy formula :-)
+  double cc_full() const {
+    double cc = cc_half();
+    return 2 * cc / (1 + cc);
+  }
+  double cc_star() const { return std::sqrt(cc_full()); }
 };
 
 /// Returns STARANISO version or empty string.
