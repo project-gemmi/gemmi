@@ -17,6 +17,7 @@ Options:
   --stats[=N]            Print data metrics in N resol. shells (default: 10).
                          Add U (e.g. =10U or =U) for unweighted metrics.
                          Add X for XDS-like weighted metrics (details in docs).
+                         Add s or e for different binning (more in docs).
   --compare              Compare unmerged and merged data (no output file).
   --print-all            Print all compared reflections.
 

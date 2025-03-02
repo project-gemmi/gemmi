@@ -47,7 +47,8 @@ const option::Descriptor Usage[] = {
   { Stats, 0, "", "stats", Arg::Optional,
     "  --stats[=N]  \tPrint data metrics in N resol. shells (default: 10)."
     "\n\tAdd U (e.g. =10U or =U) for unweighted metrics."
-    "\n\tAdd X for XDS-like weighted metrics (details in docs)." },
+    "\n\tAdd X for XDS-like weighted metrics (details in docs)."
+    "\n\tAdd s or e for different binning (more in docs)." },
   { Compare, 0, "", "compare", Arg::None,
     "  --compare  \tCompare unmerged and merged data (no output file)." },
   { PrintAll, 0, "", "print-all", Arg::None,
@@ -257,22 +258,15 @@ double take_average(const std::vector<MergingStats>& stats,
   return sum / count;
 }
 
-void print_merging_statistics(const Intensities& intensities, int nbins, char use_weights) {
-  gemmi::Binner binner;
-  const gemmi::Binner* binner_ptr = nullptr;
-  if (nbins > 1) {
-    auto method = gemmi::Binner::Method::Dstar3;
-    binner.setup(nbins, method, gemmi::IntensitiesDataProxy{intensities});
-    binner_ptr = &binner;
-  }
-  auto stats = intensities.calculate_merging_stats(binner_ptr, use_weights);
-  if (nbins > 1) {
+void print_merging_statistics(const std::vector<MergingStats>& stats,
+                              const gemmi::Binner* binner) {
+  if (binner) {
     printf("In resolution shells:\n"
            "  d_max  d_min   #obs  #uniq  #used  Rmerge   Rmeas   Rpim    CC1/2\n");
-    for (int i = 0; i < nbins; ++i) {
+    for (size_t i = 0; i < binner->size(); ++i) {
       const MergingStats& ms = stats[i];
       printf("%7.3f %5.3f %7d %6d %6d %7.3f %7.3f %7.3f %8.4f\n",
-             binner.dmax_of_bin(i), binner.dmin_of_bin(i),
+             binner->dmax_of_bin(i), binner->dmin_of_bin(i),
              ms.all_refl, ms.unique_refl, ms.stats_refl,
              ms.r_merge(), ms.r_meas(), ms.r_pim(), ms.cc_half());
     }
@@ -284,16 +278,23 @@ void print_merging_statistics(const Intensities& intensities, int nbins, char us
   printf("\nObservations (all reflections): %d\n", total.all_refl);
   printf("Unique reflections: %d\n", total.unique_refl);
   printf("Used refl. (those with multiplicity 2+): %d\n", total.stats_refl);
-  printf("          Overall    Avg of %d shells weighted by #used\n", nbins);
-  printf("R-merge: %7.4f         %7.4f\n",
-         total.r_merge(), take_average(stats, &MergingStats::r_merge));
-  printf("R-meas:  %7.4f         %7.4f\n",
-         total.r_meas(), take_average(stats, &MergingStats::r_meas));
-  printf("R-pim:   %7.4f         %7.4f\n",
-         total.r_pim(), take_average(stats, &MergingStats::r_pim));
+  printf("          Overall");
+  if (binner)
+    printf("    Avg of %zu shells weighted by #used", binner->size());
+  printf("\nR-merge: %7.4f", total.r_merge());
+  if (binner)
+    printf("         %7.4f", take_average(stats, &MergingStats::r_merge));
+  printf("\nR-meas:  %7.4f", total.r_meas());
+  if (binner)
+    printf("         %7.4f", take_average(stats, &MergingStats::r_meas));
+  printf("\nR-pim:   %7.4f", total.r_pim());
+  if (binner)
+    printf("         %7.4f", take_average(stats, &MergingStats::r_pim));
   // xdscc12 prints CC1/2 with 5 significant digits, do the same for easy comparison
-  printf("CC1/2:   %8.5f        %8.5f\n",
-         total.cc_half(), take_average(stats, &MergingStats::cc_half));
+  printf("\nCC1/2:   %8.5f", total.cc_half());
+  if (binner)
+    printf("        %8.5f", take_average(stats, &MergingStats::cc_half));
+  printf("\n");
 }
 
 } // anonymous namespace
@@ -340,6 +341,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (verbose)
     output_intensity_statistics(intensities);
 
+  auto binning_method = gemmi::Binner::Method::Dstar3;
   if (p.options[Stats]) {
     int nbins = 10;
     char use_weights = 'Y';
@@ -354,19 +356,47 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
       }
       for (; *endptr != '\0'; ++endptr) {
-        if (*endptr == 'U' || *endptr == 'X') {
-          use_weights = *endptr;
+        char c = *endptr;
+        if (c == 'U' || c == 'X') {
+          use_weights = c;
+        } else if (c == 'e') {
+          binning_method = gemmi::Binner::Method::EqualCount;
+        } else if (c == 's') {
+          binning_method = gemmi::Binner::Method::Dstar2;
         } else {
-          fprintf(stderr, "Wrong argument for option --stats: %s\n", arg);
+          fprintf(stderr, "Unexpected character '%c' in option --stats: %s\n", c, arg);
           return 1;
         }
       }
+    }
+    if (verbose) {
+      if (use_weights == 'Y')
+        printf("Using weights for R-metrics like Aimless\n");
+      else if (use_weights == 'X')
+        printf("Using weights for R-metrics like XDS\n");
+      else if (use_weights == 'U')
+        printf("NOT using weights for R-metrics.\n");
     }
     try {
       if (to_anom)
         intensities.set_isigns(DataType::Anomalous);
       intensities.sort();
-      print_merging_statistics(intensities, nbins, use_weights);
+      gemmi::Binner binner;
+      const gemmi::Binner* binner_ptr = nullptr;
+      if (nbins > 1) {
+        if (verbose) {
+          const char* binning_desc = "equal volumes (equispaced in d*^3)";
+          if (binning_method == gemmi::Binner::Method::Dstar2)
+            binning_desc = "increasing volumes (equispaced in d*^2)";
+          else if (binning_method == gemmi::Binner::Method::EqualCount)
+            binning_desc = "equal reflection count";
+          printf("Setting up resolution shells with %s.\n", binning_desc);
+        }
+        binner.setup(nbins, binning_method, gemmi::IntensitiesDataProxy{intensities});
+        binner_ptr = &binner;
+      }
+      auto stats = intensities.calculate_merging_stats(binner_ptr, use_weights);
+      print_merging_statistics(stats, binner_ptr);
     } catch (std::exception& e) {
       std::fprintf(stderr, "ERROR: %s\n", e.what());
       return 1;

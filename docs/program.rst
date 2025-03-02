@@ -666,6 +666,9 @@ or calculate quality metrics for unmerged data.
 .. literalinclude:: merge-help.txt
    :language: console
 
+Quality metrics
+---------------
+
 Here is an example output of the quality metrics::
 
   $ gemmi merge --stats=10 mdm2_unmerged.mtz
@@ -722,7 +725,30 @@ Gemmi can calculate all three variants:
   **u**\ nweighted formulas.
 * With added `X` (e.g. `--stats=10X`) it is compatible with XDS and cctbx.
 
-TBC (CC1/2, sigma-tau, `--anom`, binning, filtering/misfits, unit cell in MTZ)
+CC:sub:`1/2` is calculated using the σ-τ method, proposed by
+`Assmann et al (2016) <https://doi.org/10.1107/S1600576716005471>`_ in 2016
+and described in detail on
+`this XDSwiki page <https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2>`_.
+(TBC: weighting)
+
+With the `--anom` option, I+ and I- values are treated separately.
+Centric reflections are counted in and treated as I+ (unlike, for instance,
+in MRFANA "within I+/I-" values, which contain only actual I+/I- -- the
+difference is negligible).
+
+Three ways of setting up resolution shells are supported:
+
+* default -- shells with equal volumes (equispaced in d*³),
+* 's' -- shells with increasing volumes (equispaced in d*²),
+* 'e' -- shells with an equal number of observations.
+
+Minor detail: MTZ files may store different unit cell parameters for different
+frames (batches). Additionally, they store global and per-dataset cell
+parameters. These differences don't really matter, but are annoying when
+comparing values obtained from different programs. So we have two options
+here: ...
+
+Filtering/misfits - TBC
 
 ecalc
 =====
