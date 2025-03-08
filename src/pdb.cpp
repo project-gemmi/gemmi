@@ -112,6 +112,30 @@ int read_serial(const char* ptr) {
                       : read_base36<5>(ptr) - 16796160 + 100000;
 }
 
+El infer_element_from_padded_name(const char* name) {
+  // Old versions of the PDB format had hydrogen names such as "1HB ".
+  // Some MD files use similar names for other elements ("1C4A" -> C).
+  if (name[0] == ' ' || is_digit(name[0]))
+    return impl::find_single_letter_element(name[1]);
+  // ... or it can be "C210"
+  if (is_digit(name[1]))
+    return impl::find_single_letter_element(name[0]);
+  if (name[3] != ' ') {
+    // Atom names HXXX are ambiguous, but Hg, He, Hf, Ho and Hs (almost)
+    // never have 4-character names, so H is assumed.
+    if (alpha_up(name[0]) == 'H')
+      return El::H;
+    // Similarly Deuterium (DXXX), but here alternatives are Dy, Db and Ds.
+    // Only Dysprosium is present in the PDB - in a single entry as of 2022.
+    if (alpha_up(name[0]) == 'D')
+      return El::D;
+    // Don't try harder for now. We don't recognize names such as CG11 as C
+    // (which we could; there is no Cg in the periodic table), but
+    // a name such as CL20 can be either Cl (in WGW) or C (in WQH) ¯\_(ツ)_/¯
+  }
+  return find_element(name);
+}
+
 // "28-MAR-07" -> "2007-03-28"
 // (we also accept less standard format "28-Mar-2007" as used by BUSTER)
 // We do not check if the date is correct.
@@ -902,23 +926,8 @@ Structure read_pdb_from_stream(AnyStream& line_reader, const std::string& source
         atom.b_iso = (float) read_double(line+60, 6);
       if (len > 76 && (std::isalpha(line[76]) || std::isalpha(line[77])))
         atom.element = Element(line + 76);
-      // Atom names HXXX are ambiguous, but Hg, He, Hf, Ho and Hs (almost)
-      // never have 4-character names, so H is assumed.
-      else if (alpha_up(line[12]) == 'H' && line[15] != ' ')
-        atom.element = El::H;
-      // Similarly Deuterium (DXXX), but here alternatives are Dy, Db and Ds.
-      // Only Dysprosium is present in the PDB - in a single entry as of 2022.
-      else if (alpha_up(line[12]) == 'D' && line[15] != ' ')
-        atom.element = El::D;
-      // Old versions of the PDB format had hydrogen names such as "1HB ".
-      // Some MD files use similar names for other elements ("1C4A" -> C).
-      else if (is_digit(line[12]))
-        atom.element = impl::find_single_letter_element(line[13]);
-      // ... or it can be "C210"
-      else if (is_digit(line[13]))
-        atom.element = impl::find_single_letter_element(line[12]);
       else
-        atom.element = Element(line + 12);
+        atom.element = infer_element_from_padded_name(line+12);
       atom.charge = (len > 78 ? read_charge(line[78], line[79]) : 0);
       resi->atoms.emplace_back(atom);
 
