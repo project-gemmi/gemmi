@@ -306,7 +306,9 @@ struct Ccp4 : public Ccp4Base {
     read_ccp4_stream(*stream, input.path());
   }
 
-  void write_ccp4_map(const std::string& path) const;
+  /// @param path filename for output CCP4/MRC map
+  /// @param mode_out (optional) map mode (default of -1 leaves it at the current value); typical values are 0 (binary/integer mask) or 2 (float map)
+  void write_ccp4_map(const std::string& path, int mode_out = -1) const;
 };
 
 
@@ -473,19 +475,22 @@ void Ccp4<T>::set_extent(const Box<Fractional>& box) {
   grid.axis_order = AxisOrder::Unknown;
 }
 
+/// @param path filename for output CCP4/MRC map
+/// @param mode_out (optional) map mode (default of -1 leaves it at the current value); typical values are 0 (binary/integer mask) or 2 (float map)
 template<typename T>
-void Ccp4<T>::write_ccp4_map(const std::string& path) const {
+void Ccp4<T>::write_ccp4_map(const std::string& path, int mode_out ) const {
   assert(ccp4_header.size() >= 256);
   fileptr_t f = file_open(path.c_str(), "wb");
   std::fwrite(ccp4_header.data(), 4, ccp4_header.size(), f.get());
   int mode = header_i32(4);
-  if (mode == 0)
+  if (mode_out < 0 ) mode_out = mode;
+  if (mode_out == 0)
     impl::write_data<std::int8_t>(grid.data, f.get());
-  else if (mode == 1)
+  else if (mode_out == 1)
     impl::write_data<std::int16_t>(grid.data, f.get());
-  else if (mode == 2)
+  else if (mode_out == 2)
     impl::write_data<float>(grid.data, f.get());
-  else if (mode == 6)
+  else if (mode_out == 6)
     impl::write_data<std::uint16_t>(grid.data, f.get());
 }
 
