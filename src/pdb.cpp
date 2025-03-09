@@ -136,6 +136,10 @@ El infer_element_from_padded_name(const char* name) {
   return find_element(name);
 }
 
+bool element_from_padded_name_is_ambiguous(const char* name) {
+  return name[0] != ' ' && name[3] != ' ' && !is_digit(name[0]) && !is_digit(name[1]);
+}
+
 // "28-MAR-07" -> "2007-03-28"
 // (we also accept less standard format "28-Mar-2007" as used by BUSTER)
 // We do not check if the date is correct.
@@ -694,15 +698,6 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
       if (record.length() < 57)
         continue;
       Connection c;
-      // emulating names used in wwPDB mmCIFs (covaleN and metalcN)
-      if (is_metal(find_element(&record[12])) ||
-          is_metal(find_element(&record[42]))) {
-        c.name = "metalc" + std::to_string(++metalc_count);
-        c.type = Connection::MetalC;
-      } else {
-        c.name = "covale" + std::to_string(++covale_count);
-        c.type = Connection::Covale;
-      }
       for (int i : {0, 1}) {
         const char* t = record.c_str() + 30 * i;
         AtomAddress& ad = (i == 0 ? c.partner1 : c.partner2);
@@ -710,6 +705,23 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
         ad.res_id = read_res_id(t + 22, t + 17);
         ad.atom_name = read_string(t + 12, 4);
         ad.altloc = read_altloc(t[16]);
+      }
+      auto get_elem = [&](const char* name, const AtomAddress& ad) {
+        if (element_from_padded_name_is_ambiguous(name)) {
+          const_CRA cra = st.first_model().find_cra(ad);
+          if (cra.atom)
+            return cra.atom->element.elem;
+        }
+        return infer_element_from_padded_name(name);
+      };
+      // emulating names used in wwPDB mmCIFs (covaleN and metalcN)
+      if (is_metal(get_elem(&record[12], c.partner1)) ||
+          is_metal(get_elem(&record[42], c.partner2))) {
+        c.name = "metalc" + std::to_string(++metalc_count);
+        c.type = Connection::MetalC;
+      } else {
+        c.name = "covale" + std::to_string(++covale_count);
+        c.type = Connection::Covale;
       }
       c.asu = compare_link_symops(record, c.reported_sym);
       if (record.length() > 73) {
