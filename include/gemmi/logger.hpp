@@ -14,7 +14,7 @@ namespace gemmi {
 
 /// Passes messages (including warnings/errors) to a callback function.
 /// Messages are passed as strings without a trailing newline.
-/// They have syslog-like severity levels: 7=debug, 6=info, 5=notice, 3=error,
+/// They have syslog-like severity levels: 8=debug, 6=info, 5=notice, 3=error,
 /// allowing the use of a threshold to filter them.
 /// Quirk: Errors double as both errors and warnings. Unrecoverable errors
 ///        don't go through this class; Logger only handles errors that can
@@ -24,7 +24,7 @@ struct Logger {
   /// A function that handles messages.
   std::function<void(const std::string&)> callback;
   /// Pass messages of this level and all lower (more severe) levels:
-  /// 7=all, 6=all but debug, 5=notes and warnings, 3=warnings, 0=none
+  /// 8=all, 6=all but debug, 5=notes and warnings, 3=warnings, 0=none
   int threshold = 6;
 
   /// suspend() and resume() are used internally to avoid duplicate messages
@@ -39,7 +39,7 @@ struct Logger {
   }
 
   /// Send a debug message.
-  template<class... Args> void debug(Args const&... args) const { level<7>("Debug: ", args...); }
+  template<class... Args> void debug(Args const&... args) const { level<8>("Debug: ", args...); }
   /// Send a message without any prefix.
   template<class... Args> void mesg(Args const&... args) const { level<6>(args...); }
   /// Send a note (a notice, a significant message).
