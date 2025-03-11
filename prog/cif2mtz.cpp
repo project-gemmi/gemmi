@@ -4,8 +4,6 @@
 
 #include <cstdio>             // for fprintf
 #include <cstdlib>            // for exit
-#include <iostream>           // for cerr
-#include <memory>             // for unique_ptr
 #include <gemmi/read_cif.hpp> // for read_cif_gz, read_first_block_gz
 #include <gemmi/cif2mtz.hpp>  // for CifToMtz
 #include <gemmi/pdb_id.hpp>   // for is_pdb_code, expand_pdb_code_to_path
@@ -204,7 +202,8 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.require_positional_args(convert_all ? 1 : 2);
 
   gemmi::CifToMtz cif2mtz;
-  cif2mtz.verbose = p.options[Verbose];
+  bool verbose = p.options[Verbose];
+  gemmi::Logger logger{gemmi::Logger::to_stderr, verbose ? 7 : 6};
   cif2mtz.force_unmerged = p.options[Unmerged];
   if (p.options[ReflnTo] && p.options[ReflnTo].arg[0] == 'u')
     cif2mtz.force_unmerged = true;
@@ -225,7 +224,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       if (cif_path.empty())
         gemmi::fail("To use option --local set $PDB_DIR.");
     }
-    if (cif2mtz.verbose)
+    if (verbose)
       fprintf(stderr, "Reading %s ...\n", cif_path.c_str());
     // If the file is gzipped and huge, reading it will result in error,
     // but if we are interested only in the first block we can recover.
@@ -244,7 +243,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         try {
           if (p.options[List])
             std::printf("--block=%s\n", rb.block.name.c_str());
-          gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(rb, std::cerr, mode);
+          gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(rb, logger, mode);
           if (p.options[List]) {
             print_block_info(rb, mtz);
             continue;
@@ -253,7 +252,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           path += '/';
           path += rb.block.name;
           path += ".mtz";
-          if (cif2mtz.verbose)
+          if (verbose)
             fprintf(stderr, "Writing %s ...\n", path.c_str());
           mtz.write_to_file(path);
         } catch (std::exception& e) {
@@ -275,26 +274,26 @@ int GEMMI_MAIN(int argc, char **argv) {
         rb = &rblocks.at(0);
       }
 
-      gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(*rb, std::cerr, mode);
+      gemmi::Mtz mtz = cif2mtz.auto_convert_block_to_mtz(*rb, logger, mode);
       // add data from additional cif block
       if (const option::Option* opt = p.options[BlockName])
         while ((opt = opt->next()) != nullptr) {
           gemmi::ReflnBlock& rblock = get_block_by_name(rblocks, opt->arg);
-          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr, mode);
+          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, logger, mode);
           add_columns_from_other_mtz(mtz, mtz2);
         }
       if (const option::Option* opt = p.options[BlockNumber])
         while ((opt = opt->next()) != nullptr) {
           gemmi::ReflnBlock& rblock = get_block_by_number(rblocks, std::atoi(opt->arg));
-          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, std::cerr, mode);
+          gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblock, logger, mode);
           add_columns_from_other_mtz(mtz, mtz2);
         }
       for (const option::Option* opt = p.options[Add]; opt; opt = opt->next()) {
-        if (cif2mtz.verbose)
+        if (verbose)
           fprintf(stderr, "Reading %s ...\n", opt->arg);
         auto rblocks2 = gemmi::as_refln_blocks(
                           gemmi::read_first_block_gz(opt->arg, block_limit).blocks);
-        gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblocks2.at(0), std::cerr, mode);
+        gemmi::Mtz mtz2 = cif2mtz.auto_convert_block_to_mtz(rblocks2.at(0), logger, mode);
         add_columns_from_other_mtz(mtz, mtz2);
       }
       if (p.options[SkipNegativeSigma]) {
@@ -308,10 +307,10 @@ int GEMMI_MAIN(int argc, char **argv) {
         mtz.ensure_asu(p.options[Asu].arg[0] == 't');
       if (p.options[Sort]) {
         bool reordered = mtz.sort();
-        if (cif2mtz.verbose)
+        if (verbose)
           fprintf(stderr, "Reflection order has %schanged.\n", reordered ? "" : "not ");
       }
-      if (cif2mtz.verbose)
+      if (verbose)
         fprintf(stderr, "Writing %s ...\n", mtz_path);
       mtz.write_to_file(mtz_path);
     }
@@ -319,7 +318,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
-  if (cif2mtz.verbose)
+  if (verbose)
     fprintf(stderr, "Done.\n");
   return 0;
 }

@@ -142,7 +142,7 @@ Saturday
 S--unday
 ''')
 
-    def test_cif2mtz_5e5z(self):
+    def test_mtz2cif_5e5z(self):
         self.do('''\
 $ gemmi mtz2cif tests/5e5z.mtz -
 [...] -158 -155

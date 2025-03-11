@@ -203,10 +203,8 @@ void add_hkl(nb::module_& m) {
     .def_rw("title", &CifToMtz::title)
     .def_rw("history", &CifToMtz::history)
     .def_rw("spec_lines", &CifToMtz::spec_lines)
-    .def("convert_block_to_mtz", [](const CifToMtz& self, const ReflnBlock& rb) {
-        std::ostringstream out;
-        return new Mtz(self.convert_block_to_mtz(rb, out));
-    })
+    .def("convert_block_to_mtz", &CifToMtz::convert_block_to_mtz,
+         nb::arg("rblock"), nb::arg("logger")=nb::make_tuple(nb::none(), 6))
     ;
 
   nb::class_<MtzToCif>(m, "MtzToCif")

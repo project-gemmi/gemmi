@@ -1014,6 +1014,9 @@ program documentation for details.
   >>> # and convert it back
   >>> cif_string = gemmi.MtzToCif().write_cif_to_string(_)
 
+`Cif2Mtz.convert_block_to_mtz()` optionally takes :ref:`Logger <logger>`
+as a second argument.
+
 .. _xds_ascii:
 
 XDS_ASCII

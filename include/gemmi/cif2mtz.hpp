@@ -5,7 +5,6 @@
 #ifndef GEMMI_CIF2MTZ_HPP_
 #define GEMMI_CIF2MTZ_HPP_
 
-#include <ostream>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -13,6 +12,7 @@
 #include "cifdoc.hpp"   // for Loop, as_int, ...
 #include "fail.hpp"     // for fail
 #include "intensit.hpp" // for DataType
+#include "logger.hpp"   // for Logger
 #include "mtz.hpp"      // for Mtz
 #include "numb.hpp"     // for as_number
 #include "refln.hpp"    // for ReflnBlock
@@ -249,14 +249,13 @@ struct CifToMtz {
     }
   };
 
-  bool verbose = false;
   bool force_unmerged = false;
   std::string title;
   std::vector<std::string> history = { "From gemmi-cif2mtz " GEMMI_VERSION };
   double wavelength = NAN;
   std::vector<std::string> spec_lines;
 
-  Mtz convert_block_to_mtz(const ReflnBlock& rb, std::ostream& out) const {
+  Mtz convert_block_to_mtz(const ReflnBlock& rb, Logger& logger) const {
     Mtz mtz;
     mtz.title = title.empty() ? "Converted from mmCIF block " + rb.block.name : title;
     if (!history.empty()) {
@@ -277,14 +276,13 @@ struct CifToMtz {
       if (!std::isnan(wavelength))
         ds.wavelength = wavelength;
       else if (rb.wavelength_count > 1)
-        out << "Warning: ignoring wavelengths, " << rb.wavelength_count
-            << " are present in block " << rb.block.name << ".\n";
+        logger.note("ignoring wavelengths, ", rb.wavelength_count,
+                    " are present in block ", rb.block.name, '.');
       else
         ds.wavelength = rb.wavelength;
     }
 
-    if (verbose)
-      out << "Searching tags with known MTZ equivalents ...\n";
+    logger.level<7>("Searching tags with known MTZ equivalents ...");
     std::vector<int> indices;
     std::vector<const Entry*> entries;  // used for code_to_number only
     std::string tag = loop->tags[0];
@@ -348,8 +346,7 @@ struct CifToMtz {
       col->dataset_id = unmerged ? 0 : entry.dataset_id;
       col->type = entry.col_type;
       col->label = entry.col_label;
-      if (verbose)
-        out << "  " << tag << " -> " << col->label << '\n';
+      logger.level<7>("  ", tag, " -> ", col->label);
     }
     if (!column_added)
       fail(force_unmerged ? "Unmerged d" : "D", "ata not found in block ", rb.block.name);
@@ -370,15 +367,15 @@ struct CifToMtz {
       hkl_mover.reset(new UnmergedHklMover(mtz.spacegroup));
       set_tag("diffrn_id");
       int sweep_id_index = loop->find_tag(tag);
-      if (sweep_id_index == -1 && verbose)
-        out << "No diffrn_id. Assuming a single sweep.\n";
+      if (sweep_id_index == -1)
+        logger.level<7>("No diffrn_id. Assuming a single sweep.");
       set_tag("pdbx_image_id");
       int image_id_index = loop->find_tag(tag);
-      if (verbose) {
+      if (logger.threshold >= 7) {
         if (image_id_index == -1)
-          out << "No pdbx_image_id, setting BATCH to a dummy value.\n";
+          logger.mesg("No pdbx_image_id, setting BATCH to a dummy value.");
         else
-          out << "  " << tag << " & diffrn_id -> BATCH\n";
+          logger.mesg("  ", tag, " & diffrn_id -> BATCH");
       }
       struct SweepInfo {
         std::set<int> frame_ids;
@@ -500,8 +497,7 @@ struct CifToMtz {
         } else {
           mtz.data[k] = (float) cif::as_number(v);
           if (std::isnan(mtz.data[k]))
-            out << "Value #" << i + indices[j] << " in the loop is not a number: "
-                << v << '\n';
+            logger.mesg("Value #", i + indices[j], " in the loop is not a number: ", v);
         }
         ++k;
       }
@@ -509,32 +505,32 @@ struct CifToMtz {
     return mtz;
   }
 
-  Mtz auto_convert_block_to_mtz(ReflnBlock& rb, std::ostream& out, char mode) const {
+  Mtz auto_convert_block_to_mtz(ReflnBlock& rb, Logger& logger, char mode) const {
     if (mode == 'f' && possible_old_style(rb, DataType::Anomalous))
       *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop, rb.spacegroup);
-    Mtz mtz = convert_block_to_mtz(rb, out);
+    Mtz mtz = convert_block_to_mtz(rb, logger);
     if (mtz.is_merged() && mode == 'a') {
       auto type_unique = check_data_type_under_symmetry(MtzDataProxy{mtz});
       if (type_unique.first == DataType::Anomalous) {
         if (possible_old_style(rb, DataType::Anomalous)) {
-          out << "NOTE: data in " << rb.block.name
-              << " is read as \"old-style\" anomalous (" << rb.refln_loop->length()
-              << " -> " << type_unique.second << " rows).\n";
+          logger.note("data in ", rb.block.name,
+                      " is read as \"old-style\" anomalous (", rb.refln_loop->length(),
+                      " -> ", type_unique.second, " rows).");
           *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop,
                                                                 rb.spacegroup);
           // this is rare, so it's OK to run the conversion twice
-          mtz = convert_block_to_mtz(rb, out);
+          mtz = convert_block_to_mtz(rb, logger);
         } else {
-          out << "WARNING: in " << rb.block.name << ", out of "
-              << rb.refln_loop->length() << " HKLs, only " << type_unique.second
-              << " are unique under symmetry; the rest are equivalent to Friedel mates\n";
+          logger.err("in ", rb.block.name, ", out of ",
+                     rb.refln_loop->length(), " HKLs, only ", type_unique.second,
+                     " are unique under symmetry; the rest are equivalent to Friedel mates");
         }
       } else if (type_unique.first == DataType::Unmerged) {
-        out << "WARNING: in " << rb.block.name << ", out of "
-            << rb.refln_loop->length() << " HKLs, only " << type_unique.second
-            << " are unique under symmetry\n";
+        logger.err("in ", rb.block.name, ", out of ",
+                   rb.refln_loop->length(), " HKLs, only ", type_unique.second,
+                   " are unique under symmetry");
         if (possible_old_style(rb, gemmi::DataType::Unmerged))
-          out << "Possibly unmerged data - you may use option --refln-to=unmerged\n";
+          logger.mesg("Possibly unmerged data - you may use option --refln-to=unmerged");
       }
     }
     return mtz;
