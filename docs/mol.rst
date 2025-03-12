@@ -1266,7 +1266,7 @@ In the mmCIF format entities are explicitly linked with structural units
 that we call here :ref:`subchains <subchain>`. PDB files do not have
 this concept. If we read the structure from a PDB file,
 we can assign entities by calling `setup_entities`.
-This method uses a simple heuristic to group residues into
+This method uses a heuristic to group residues into
 *subchains*, which are then mapped to entities.
 
 Internally, `setup_entities()` runs four functions (in this order):
@@ -1276,11 +1276,18 @@ Internally, `setup_entities()` runs four functions (in this order):
 * `add_entity_types()` -- sets `Residue.entity_type` if it's not already set.
 
   When reading a PDB file, entity_type is assigned automatically if the chains
-  contains the TER record. TER marks the end of polymer, so residues before
-  TER are in polymer, residues after are non-polymers and waters.
+  contain the TER record. TER marks the end of polymer, so residues before
+  TER are in the polymer, while residues after are non-polymers and waters.
   PDB files from the PDB always have TERs, but files from other sources
-  may not have it. In such cases this function uses a simple heuristic
-  to determine where the polymer ends.
+  may not have them. In such cases, this function uses a heuristic
+  to determine where the polymer ends. The heuristic takes into account
+  residue types (peptide, nucleotide, or other), record types (ATOM/HETATM),
+  distances between consecutive residues, and gaps in numbering. This allows
+  us, in almost all cases, to determine the end of the polymer.
+  Because the model might be incomplete, record types are often incorrect,
+  there may not be a gap in the sequence numbers between the polymer
+  and ligands, and the residue type doesn't generally indicate
+  if the residue is part of the polymer, we use all these clues together.
 
   Note: if you'd have a PDB file with TER records in incorrect places
   (the only correct place is the end of polymer),
