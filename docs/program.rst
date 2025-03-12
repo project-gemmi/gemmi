@@ -666,6 +666,17 @@ or calculate quality metrics for unmerged data.
 .. literalinclude:: merge-help.txt
    :language: console
 
+No rejection of observations takes place, apart from ignoring observations
+with non-positive sigma. We may implement rejecting outliers or misfits
+in the future (if there is an interest in it).
+
+MTZ files may store different unit cell parameters for different
+frames (batches). Additionally, they store global and per-dataset cell
+parameters. By default, we use the "global" parameters.
+To use the mean of per-batch parameters instead (like Aimless),
+add `--batch-cell`. Unit cell parameters are needed only to write them
+to the output file and for choosing resolution shells for statistics.
+
 Quality metrics
 ---------------
 
@@ -741,14 +752,6 @@ Three ways of setting up resolution shells are supported:
 * default -- shells with equal volumes (equispaced in d*³),
 * 's' -- shells with increasing volumes (equispaced in d*²),
 * 'e' -- shells with an equal number of observations.
-
-Minor detail: MTZ files may store different unit cell parameters for different
-frames (batches). Additionally, they store global and per-dataset cell
-parameters. These differences don't really matter, but are annoying when
-comparing values obtained from different programs. So we have two options
-here: ...
-
-Filtering/misfits - TBC
 
 ecalc
 =====

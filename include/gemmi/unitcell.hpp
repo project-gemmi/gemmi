@@ -301,6 +301,10 @@ struct UnitCell : UnitCellParameters {
     calculate_properties();
   }
 
+  void set_from_parameters(const UnitCellParameters& p) {
+    set(p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+  }
+
   void set_from_array(const std::array<double,6>& v) { set(v[0], v[1], v[2], v[3], v[4], v[5]); }
 
   void set_from_vectors(const Vec3& va, const Vec3& vb, const Vec3& vc) {

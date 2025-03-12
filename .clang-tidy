@@ -52,3 +52,5 @@ HeaderFilterRegex: '(include/gemmi/[a-z0-9_]*\.hpp)|(prog/[a-z0-9_]*\.h)'
 CheckOptions:
   # this option doesn't always work, so bugprone-signed-char-misuse is off
   bugprone-signed-char-misuse.CharTypdefsToIgnore: 'int8_t'
+  # sometimes expression is more readable with negation
+  readability-simplify-boolean-expr.SimplifyDeMorgan: false

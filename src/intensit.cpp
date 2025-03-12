@@ -305,6 +305,9 @@ void Intensities::switch_to_asu_indices() {
   }
 }
 
+// Takes Mtz::cell as the unit cell. To use parameters from batch headers,
+// set it again afterwards:
+// intensities.unit_cell = mtz.get_average_cell_from_batch_headers(nullptr);
 void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   if (mtz.batches.empty())
     fail("expected unmerged file");
@@ -314,7 +317,6 @@ void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   const Mtz::Column& col = mtz.get_column_with_label("I");
   size_t value_idx = col.idx;
   size_t sigma_idx = mtz.get_column_with_label("SIGI").idx;
-  //unit_cell = mtz.get_average_cell_from_batch_headers(unit_cell_rmsd);
   unit_cell = mtz.cell;
   spacegroup = mtz.spacegroup;
   if (!spacegroup)

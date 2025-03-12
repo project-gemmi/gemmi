@@ -9,7 +9,8 @@ Options:
   -V, --version          Print version and exit.
   -v, --verbose          Verbose output.
   --anom                 Output/compare I(+) and I(-) instead of IMEAN.
-  --no-sysabs            Do not output systematic absences.
+  --no-sysabs            Remove systematic absences.
+  --batch-cell           Use cell parameters from MTZ batch headers.
   --nobs                 Add MTZ column NOBS with the number of merged
                          reflections.
   --input-block=NAME     Input mmCIF block name (default: first unmerged).

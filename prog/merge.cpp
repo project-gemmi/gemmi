@@ -21,7 +21,7 @@
 namespace {
 
 enum OptionIndex {
-  WriteAnom=4, NoSysAbs, NumObs, InputBlock, OutputBlock, Stats, Compare, PrintAll
+  WriteAnom=4, NoSysAbs, BatchCell, NumObs, InputBlock, OutputBlock, Stats, Compare, PrintAll
 };
 
 const option::Descriptor Usage[] = {
@@ -37,7 +37,9 @@ const option::Descriptor Usage[] = {
   { WriteAnom, 0, "a", "anom", Arg::None,
     "  --anom  \tOutput/compare I(+) and I(-) instead of IMEAN." },
   { NoSysAbs, 0, "", "no-sysabs", Arg::None,
-    "  --no-sysabs  \tDo not output systematic absences." },
+    "  --no-sysabs  \tRemove systematic absences." },
+  { BatchCell, 0, "", "batch-cell", Arg::None,
+    "  --batch-cell  \tUse cell parameters from MTZ batch headers." },
   { NumObs, 0, "", "nobs", Arg::None,
     "  --nobs  \tAdd MTZ column NOBS with the number of merged reflections." },
   { InputBlock, 0, "", "input-block", Arg::Required,
@@ -78,7 +80,8 @@ void output_intensity_statistics(const Intensities& intensities) {
 }
 
 void read_intensities(Intensities& intensities, DataType data_type,
-                      const std::string& input_path, const char* block_name, bool verbose) {
+                      const std::string& input_path, const char* block_name,
+                      bool verbose, bool batch_cell) {
   try {
     if (gemmi::giends_with(input_path, ".mtz")) {
       gemmi::Mtz mtz;
@@ -88,7 +91,23 @@ void read_intensities(Intensities& intensities, DataType data_type,
       intensities.read_mtz(mtz, data_type);
       if (data_type != DataType::UAM)
         intensities.take_staraniso_b_from_mtz(mtz);
-
+      if (!mtz.is_merged()) {
+        gemmi::UnitCellParameters bcell = mtz.get_average_cell_from_batch_headers(nullptr);
+        if (bcell != mtz.cell) {
+          auto print_cell = [](const char* label, gemmi::UnitCellParameters& p) {
+            std::fprintf(stderr, "%s:  %-8g %-8g %-8g   %-8g %-8g %-8g\n",
+                         label, p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+          };
+          print_cell("Global unit cell from MTZ header", mtz.cell);
+          print_cell("Mean of batch headers unit cells", bcell);
+          if (batch_cell) {
+            intensities.unit_cell.set_from_parameters(bcell);
+          } else {
+            std::fprintf(stderr, "Using the former. Use option --batch-cell for the latter.\n");
+          }
+          std::fprintf(stderr, "\n");
+        }
+      }
     } else if (gemmi::giends_with(input_path, "hkl")) {  // .hkl or .ahkl
       gemmi::XdsAscii xds_ascii = gemmi::read_xds_ascii(input_path);
       intensities.read_xds(xds_ascii);
@@ -304,14 +323,13 @@ int GEMMI_MAIN(int argc, char **argv) {
   p.simple_parse(argc, argv, Usage);
   p.check_exclusive_pair(Stats, Compare);
   int n_args = p.nonOptionsCount();
-  if (n_args == 1 && (p.options[Stats] || p.options[Compare])) {  // ok
-  } else if (n_args == 2 && !p.options[Stats]) {  // ok
-  } else {
+  if (n_args != 2 && !(n_args == 1 && (p.options[Stats] || p.options[Compare]))) {
     fprintf(stderr, "%s requires 2 arguments or 1 arg with --stats/--compare, got %d.\n",
                     p.program_name, p.nonOptionsCount());
     p.print_try_help_and_exit("");
   }
   bool verbose = p.options[Verbose];
+  bool batch_cell = p.options[BatchCell];
   bool two_files = p.nonOptionsCount() == 2;
   std::string input_path = p.coordinate_input_file(0, 'S');
   const char* output_path = two_files ? p.nonOption(1) : input_path.c_str();
@@ -327,7 +345,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   Intensities intensities;
   if (verbose)
     std::fprintf(stderr, "Reading %s ...\n", input_path.c_str());
-  read_intensities(intensities, DataType::UAM, input_path, input_block, verbose);
+  read_intensities(intensities, DataType::UAM, input_path, input_block, verbose, batch_cell);
   if (intensities.type != DataType::Unmerged)
     std::fprintf(stderr, "NOTE: Got merged %s instead of unmerged data.\n",
                  intensities.type_str());
@@ -401,12 +419,14 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "ERROR: %s\n", e.what());
       return 1;
     }
-  } else if (p.options[Compare]) {
+  }
+
+  if (p.options[Compare]) {
     if (verbose)
       std::fprintf(stderr, "Reading merged reflections from %s ...\n", output_path);
     auto type_we_want = to_anom ? DataType::Anomalous : DataType::MergedMA;
     Intensities ref;  // for --compare
-    read_intensities(ref, type_we_want, output_path, output_block, verbose);
+    read_intensities(ref, type_we_want, output_path, output_block, verbose, false);
     if (!to_anom && ref.type == DataType::Anomalous)
       std::fprintf(stderr, "Using I(+)/I(-) because <I> is absent.\n");
     if (intensities.type != ref.type)
@@ -414,9 +434,10 @@ int GEMMI_MAIN(int argc, char **argv) {
     printf("Comparing %s ...%s\n", intensities.type_str(),
            verbose ? "" : "   (use -v for more details)");
     compare_intensities(intensities, ref, p.options[PrintAll]);
-  } else {
-    auto merging_to = to_anom ? DataType::Anomalous : DataType::Mean;
-    intensities.merge_in_place(merging_to);
+  }
+
+  if (two_files) {
+    intensities.merge_in_place(to_anom ? DataType::Anomalous : DataType::Mean);
     if (verbose)
       std::fprintf(stderr, "Writing %zu reflections to %s ...\n",
                    intensities.data.size(), output_path);
