@@ -4,7 +4,6 @@
 
 #include <cstdio>
 #include <cstring>  // for strpbrk
-#include <algorithm>
 #include <gemmi/mtz.hpp>
 #include <gemmi/gz.hpp>       // for MaybeGzipped
 #include <gemmi/version.hpp>  // for GEMMI_VERSION

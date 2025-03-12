@@ -5,7 +5,6 @@
 
 #include "validate_mon.h"
 #include <stdio.h>
-#include <exception>
 #include "gemmi/chemcomp.hpp"     // for ChemComp
 #include "gemmi/mmcif.hpp"        // for make_residue_from_chemcomp_block
 #include "gemmi/topo.hpp"         // for Topo

@@ -4,7 +4,6 @@
 #include <cmath>     // for sqrt
 #include <exception>
 #include "gemmi/model.hpp"     // for Structure, Atom, etc
-#include "gemmi/chemcomp.hpp"  // for ChemComp
 #include "gemmi/monlib.hpp"    // for MonLib
 #include "gemmi/topo.hpp"      // for Topo
 #include "gemmi/calculate.hpp" // for find_best_plane, get_distance_from_plane

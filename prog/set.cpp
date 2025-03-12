@@ -2,7 +2,6 @@
 
 #include <stdio.h>    // for printf, fprintf, stderr
 #include <cstring>    // for memchr, memcpy
-#include <algorithm>  // for min, max
 #include <exception>
 #include <functional> // for function
 #include <random>

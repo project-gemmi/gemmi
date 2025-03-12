@@ -3,7 +3,6 @@
 // A subset of CAD functionality.
 
 #include <gemmi/mtz.hpp>
-#include <gemmi/fileutil.hpp> // for file_open
 #define GEMMI_PROG mtzmix
 #include "options.h"
 #include <stdio.h>
