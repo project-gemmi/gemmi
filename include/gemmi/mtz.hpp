@@ -230,7 +230,7 @@ struct GEMMI_DLL Mtz : public MtzMetadata {
       ds.cell = cell;
   }
 
-  UnitCell get_average_cell_from_batch_headers(double* rmsd) const;
+  UnitCellParameters get_average_cell_from_batch_headers(double* rmsd) const;
 
   void set_spacegroup(const SpaceGroup* new_sg) {
     spacegroup = new_sg;

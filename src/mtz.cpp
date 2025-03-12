@@ -81,7 +81,7 @@ UnitCell read_cell_parameters(const char* line) {
 
 } // anonymous namespace
 
-UnitCell Mtz::get_average_cell_from_batch_headers(double* rmsd) const {
+UnitCellParameters Mtz::get_average_cell_from_batch_headers(double* rmsd) const {
   if (rmsd)
     for (int i = 0; i < 6; ++i)
       rmsd[i] = 0.;
@@ -95,7 +95,7 @@ UnitCell Mtz::get_average_cell_from_batch_headers(double* rmsd) const {
     }
   if (avg[0] <= 0 || avg[1] <= 0 || avg[2] <= 0 ||
       avg[3] <= 0 || avg[4] <= 0 || avg[5] <= 0)
-    return UnitCell();
+    return UnitCellParameters();
   size_t n = batches.size();
   for (int i = 0; i < 6; ++i)
     avg[i] /= n;
@@ -110,7 +110,7 @@ UnitCell Mtz::get_average_cell_from_batch_headers(double* rmsd) const {
   // to avoid 32-bit precision artifacts (58.28 -> 58.279998).
   if (UnitCellParameters(avg).approx(cell, 1e-4))
     return cell;
-  return UnitCell(avg);
+  return UnitCellParameters(avg);
 }
 
 std::array<double,2> Mtz::calculate_min_max_1_d2() const {

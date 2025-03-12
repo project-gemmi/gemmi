@@ -689,7 +689,7 @@ void MtzToCif::write_cif(const Mtz& mtz, const Mtz* mtz2,
     write_cell_and_symmetry(entry_id, mtz.get_cell(), nullptr, mtz.spacegroup, buf, os);
   } else {
     double rmsds[6];
-    UnitCell cell = unmerged->get_average_cell_from_batch_headers(rmsds);
+    UnitCellParameters cell = unmerged->get_average_cell_from_batch_headers(rmsds);
     write_cell_and_symmetry(entry_id, cell, rmsds, mtz.spacegroup, buf, os);
   }
 
