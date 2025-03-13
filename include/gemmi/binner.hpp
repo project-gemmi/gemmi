@@ -29,7 +29,8 @@ struct Binner {
       cell = *cell_;
     if (!cell.is_crystal())
       fail("Binner: unknown unit cell");
-    limits.resize(nbins);
+    // first setup 2N bins to get both bin limits and middle points
+    limits.resize(2 * nbins);
     if (method == Method::EqualCount) {
       std::sort(inv_d2.begin(), inv_d2.end());
       min_1_d2 = inv_d2.front();
@@ -45,40 +46,47 @@ struct Binner {
     }
     switch (method) {
       case Method::EqualCount: {
-        double avg_count = double(inv_d2.size()) / nbins;
-        for (int i = 1; i < nbins; ++i)
+        double avg_count = double(inv_d2.size()) / limits.size();
+        for (size_t i = 1; i < limits.size(); ++i)
           limits[i-1] = inv_d2[int(avg_count * i)];
         break;
       }
       case Method::Dstar2: {
-        double step = (max_1_d2 - min_1_d2) / nbins;
-        for (int i = 1; i < nbins; ++i)
+        double step = (max_1_d2 - min_1_d2) / limits.size();
+        for (size_t i = 1; i < limits.size(); ++i)
           limits[i-1] = min_1_d2 + i * step;
         break;
       }
       case Method::Dstar: {
         double min_1_d = std::sqrt(min_1_d2);
         double max_1_d = std::sqrt(max_1_d2);
-        double step = (max_1_d - min_1_d) / nbins;
-        for (int i = 1; i < nbins; ++i)
+        double step = (max_1_d - min_1_d) / limits.size();
+        for (size_t i = 1; i < limits.size(); ++i)
           limits[i-1] = sq(min_1_d + i * step);
         break;
       }
       case Method::Dstar3: {
         double min_1_d3 = min_1_d2 * std::sqrt(min_1_d2);
         double max_1_d3 = max_1_d2 * std::sqrt(max_1_d2);
-        double step = (max_1_d3 - min_1_d3) / nbins;
-        for (int i = 1; i < nbins; ++i)
+        double step = (max_1_d3 - min_1_d3) / limits.size();
+        for (size_t i = 1; i < limits.size(); ++i)
           limits[i-1] = sq(std::cbrt(min_1_d3 + i * step));
         break;
       }
     }
     limits.back() = std::numeric_limits<double>::infinity();
+
+    mids.resize(nbins);
+    for (int i = 0; i < nbins; ++i) {
+      mids[i] = limits[2*i];
+      limits[i] = limits[2*i+1];
+    }
+    limits.resize(nbins);
   }
 
   template<typename DataProxy>
   void setup(int nbins, Method method, const DataProxy& proxy,
-             const UnitCell* cell_=nullptr, bool with_mids=false, size_t col_idx=0) {
+             const UnitCell* cell_=nullptr, size_t col_idx=0) {
     if (col_idx >= proxy.stride())
       fail("wrong col_idx in Binner::setup()");
     cell = cell_ ? *cell_ : proxy.unit_cell();
@@ -87,16 +95,7 @@ struct Binner {
     for (size_t offset = 0; offset < proxy.size(); offset += proxy.stride())
       if (col_idx == 0 || !std::isnan(proxy.get_num(offset + col_idx)))
         inv_d2.push_back(cell.calculate_1_d2(proxy.get_hkl(offset)));
-    setup_from_1_d2((with_mids ? 2 * nbins : nbins),
-                    method, std::move(inv_d2), nullptr);
-    if (with_mids) {
-      mids.resize(nbins);
-      for (int i = 0; i < nbins; ++i) {
-        mids[i] = limits[2*i];
-        limits[i] = limits[2*i+1];
-      }
-      limits.resize(nbins);
-    }
+    setup_from_1_d2(nbins, method, std::move(inv_d2), nullptr);
   }
 
   void ensure_limits_are_set() const {

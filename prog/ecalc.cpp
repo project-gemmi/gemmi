@@ -121,7 +121,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "Calculating E ...\n");
     gemmi::Binner binner;
     gemmi::MtzDataProxy data_proxy{mtz};
-    binner.setup(nbins, method, data_proxy, nullptr, /*with_mids=*/true, fcol_idx);
+    binner.setup(nbins, method, data_proxy, nullptr, fcol_idx);
     std::vector<double> multipliers
       = gemmi::calculate_amplitude_normalizers(data_proxy, fcol_idx, binner);
 
