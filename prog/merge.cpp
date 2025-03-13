@@ -86,7 +86,7 @@ void read_intensities(Intensities& intensities, DataType data_type,
       if (verbose)
         mtz.logger.callback = gemmi::Logger::to_stderr;
       mtz.read_file_gz(input_path);
-      intensities.read_mtz(mtz, data_type);
+      intensities.import_mtz(mtz, data_type);
       if (data_type != DataType::UAM)
         intensities.take_staraniso_b_from_mtz(mtz);
       if (!mtz.is_merged()) {
@@ -106,7 +106,7 @@ void read_intensities(Intensities& intensities, DataType data_type,
       }
     } else if (gemmi::giends_with(input_path, "hkl")) {  // .hkl or .ahkl
       gemmi::XdsAscii xds_ascii = gemmi::read_xds_ascii(input_path);
-      intensities.read_xds(xds_ascii);
+      intensities.import_xds(xds_ascii);
 
     } else {  // mmCIF
       auto rblocks = gemmi::as_refln_blocks(gemmi::read_cif_gz(input_path).blocks);
@@ -130,7 +130,7 @@ void read_intensities(Intensities& intensities, DataType data_type,
       }
       if (!rblock)
         rblock = &rblocks.at(0);
-      intensities.read_refln_block(*rblock, data_type);
+      intensities.import_refln_block(*rblock, data_type);
       if (verbose)
         std::fprintf(stderr, "Got %s from block %s ...\n",
                      Intensities::type_str(intensities.type), rblock->block.name.c_str());

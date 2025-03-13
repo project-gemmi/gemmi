@@ -252,7 +252,7 @@ class TestMerging(unittest.TestCase):
         doc = gemmi.cif.read(full_path('cc12-hkl.cif'))
         rblock = gemmi.as_refln_blocks(doc)[0]
         intens = gemmi.Intensities()
-        intens.read_refln_block(rblock)
+        intens.import_refln_block(rblock)
         intens.set_isigns(gemmi.DataType.Anomalous)
         self.assertEqual(len(intens), 12)
         self.assertEqual(intens.spacegroup.xhm(), 'P 2 3')

@@ -261,14 +261,15 @@ void add_hkl(nb::module_& m) {
     .def("resolution_range", &Intensities::resolution_range)
     .def("remove_systematic_absences", &Intensities::remove_systematic_absences)
     .def("sort", &Intensities::sort)
-    .def("merge_in_place", &Intensities::merge_in_place, nb::arg("itype"))
+    .def("merge_in_place", &Intensities::merge_in_place, nb::arg("new_type"))
     .def("calculate_merging_stats", &Intensities::calculate_merging_stats,
          nb::arg("binner").none(), nb::arg("use_weights")='Y')
     .def("set_isigns", &Intensities::set_isigns)
     .def("calculate_correlation", &Intensities::calculate_correlation)
-    .def("read_mtz", &Intensities::read_mtz, nb::arg(), nb::arg("type"))
-    .def("read_xds", &Intensities::read_xds, nb::arg())
-    .def("read_refln_block", &Intensities::read_refln_block,
+    .def("import_mtz", &Intensities::import_mtz,
+         nb::arg(), nb::arg("type")=DataType::Unknown)
+    .def("import_xds", &Intensities::import_xds)
+    .def("import_refln_block", &Intensities::import_refln_block,
          nb::arg(), nb::arg("type")=DataType::Unknown)
     .def("prepare_merged_mtz", &Intensities::prepare_merged_mtz,
          nb::arg("with_nobs"))

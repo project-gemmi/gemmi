@@ -279,7 +279,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                        mtz_to_cif.staraniso_version.c_str(),
                        mi.staraniso_b.ok() ? "Taking into account anisotropic scaling"
                                            : "B tensor is unknown. Intensities won't be checked");
-        mi.read_mtz(*mtz[0], gemmi::DataType::MergedAM);
+        mi.import_mtz(*mtz[0], gemmi::DataType::MergedAM);
       } else {
         gemmi::ReflnBlock rblock = gemmi::get_refln_block(
             gemmi::read_cif_from_memory(cif_buf.data(), cif_buf.size(), cif_input).blocks,
@@ -290,15 +290,15 @@ int GEMMI_MAIN(int argc, char **argv) {
           mtz_to_cif.entry_id = rblock.entry_id;
         }
         mi.take_staraniso_b_from_mmcif(rblock.block);
-        mi.read_refln_block(rblock, gemmi::DataType::MergedAM);
+        mi.import_refln_block(rblock, gemmi::DataType::MergedAM);
       }
       gemmi::Intensities ui;
       if (mtz[1]) {
-        ui.read_mtz(*mtz[1], gemmi::DataType::Unmerged);
+        ui.import_mtz(*mtz[1], gemmi::DataType::Unmerged);
       } else if (xds_ascii) {
         if (xds_ascii->read_columns < 8)
           gemmi::fail("XDS file contains merged data");
-        ui.read_xds(*xds_ascii);
+        ui.import_xds(*xds_ascii);
       }
 
       bool relaxed_check =

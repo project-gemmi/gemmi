@@ -15,7 +15,7 @@ namespace gemmi {
 inline Mtz xds_to_mtz(XdsAscii& xds) {
   if (xds.is_merged()) {
     Intensities intensities;
-    intensities.read_xds(xds);
+    intensities.import_xds(xds);
     return intensities.prepare_merged_mtz(/*with_nobs=*/false);
   }
   Mtz mtz;

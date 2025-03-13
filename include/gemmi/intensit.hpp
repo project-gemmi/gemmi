@@ -156,7 +156,7 @@ struct GEMMI_DLL Intensities {
 
   void sort() { std::sort(data.begin(), data.end()); }
 
-  void merge_in_place(DataType data_type);
+  void merge_in_place(DataType new_type);
 
   /// use_weights can be 'Y' (yes, like Aimless), 'U' (unweighted), 'X' (yes, like XDS)
   std::vector<MergingStats> calculate_merging_stats(const Binner* binner,
@@ -167,22 +167,22 @@ struct GEMMI_DLL Intensities {
 
   void switch_to_asu_indices();
 
-  void read_unmerged_intensities_from_mtz(const Mtz& mtz);
-  void read_mean_intensities_from_mtz(const Mtz& mtz);
+  void import_unmerged_intensities_from_mtz(const Mtz& mtz);
+  void import_mean_intensities_from_mtz(const Mtz& mtz);
   // with check_complete=true, throw if anomalous data is null where it shouldn't be
-  void read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete=false);
+  void import_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete=false);
 
-  void read_mtz(const Mtz& mtz, DataType data_type);
+  void import_mtz(const Mtz& mtz, DataType data_type=DataType::Unknown);
 
-  void read_unmerged_intensities_from_mmcif(const ReflnBlock& rb);
-  void read_mean_intensities_from_mmcif(const ReflnBlock& rb);
-  void read_anomalous_intensities_from_mmcif(const ReflnBlock& rb, bool check_complete=false);
+  void import_unmerged_intensities_from_mmcif(const ReflnBlock& rb);
+  void import_mean_intensities_from_mmcif(const ReflnBlock& rb);
+  void import_anomalous_intensities_from_mmcif(const ReflnBlock& rb, bool check_complete=false);
 
-  void read_f_squared_from_mmcif(const ReflnBlock& rb);
+  void import_f_squared_from_mmcif(const ReflnBlock& rb);
 
-  void read_refln_block(const ReflnBlock& rb, DataType data_type=DataType::Unknown);
+  void import_refln_block(const ReflnBlock& rb, DataType data_type=DataType::Unknown);
 
-  void read_xds(const XdsAscii& xds);
+  void import_xds(const XdsAscii& xds);
 
   // returns STARANISO version or empty string
   std::string take_staraniso_b_from_mtz(const Mtz& mtz);

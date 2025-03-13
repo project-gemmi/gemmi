@@ -307,7 +307,7 @@ void Intensities::switch_to_asu_indices() {
 
 // Takes average of parameters from batch headers Mtz::cell as the unit cell.
 // To use Mtz::cell instead, set it afterwards: intensities.unit_cell = mtz.cell
-void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
+void Intensities::import_unmerged_intensities_from_mtz(const Mtz& mtz) {
   if (mtz.batches.empty())
     fail("expected unmerged file");
   const Mtz::Column* isym_col = mtz.column_with_label("M/ISYM");
@@ -335,7 +335,7 @@ void Intensities::read_unmerged_intensities_from_mtz(const Mtz& mtz) {
   // Then it needs switch_to_asu_indices(), which is called in read_mtz().
 }
 
-void Intensities::read_mean_intensities_from_mtz(const Mtz& mtz) {
+void Intensities::import_mean_intensities_from_mtz(const Mtz& mtz) {
   if (!mtz.batches.empty())
     fail("expected merged file");
   const Mtz::Column* col = mtz.imean_column();
@@ -349,7 +349,7 @@ void Intensities::read_mean_intensities_from_mtz(const Mtz& mtz) {
   type = DataType::Mean;
 }
 
-void Intensities::read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete) {
+void Intensities::import_anomalous_intensities_from_mtz(const Mtz& mtz, bool check_complete) {
   if (!mtz.batches.empty())
     fail("expected merged file");
   const Mtz::Column* colp = mtz.iplus_column();
@@ -369,7 +369,7 @@ void Intensities::read_anomalous_intensities_from_mtz(const Mtz& mtz, bool check
   type = DataType::Anomalous;
 }
 
-void Intensities::read_mtz(const Mtz& mtz, DataType data_type) {
+void Intensities::import_mtz(const Mtz& mtz, DataType data_type) {
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)
     data_type = mtz.is_merged() ? DataType::MergedMA : DataType::Unmerged;
@@ -391,11 +391,11 @@ void Intensities::read_mtz(const Mtz& mtz, DataType data_type) {
   }
 
   if (data_type == DataType::Unmerged)
-    read_unmerged_intensities_from_mtz(mtz);
+    import_unmerged_intensities_from_mtz(mtz);
   else if (data_type == DataType::Mean)
-    read_mean_intensities_from_mtz(mtz);
+    import_mean_intensities_from_mtz(mtz);
   else  // (data_type == DataType::Anomalous)
-    read_anomalous_intensities_from_mtz(mtz, check_anom_complete);
+    import_anomalous_intensities_from_mtz(mtz, check_anom_complete);
   switch_to_asu_indices();
 }
 
@@ -409,7 +409,7 @@ void read_simple_intensities_from_mmcif(Intensities& intensities, const ReflnBlo
   read_data(intensities, ReflnDataProxy(rb), value_idx, sigma_idx);
 }
 
-void Intensities::read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
+void Intensities::import_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
   const char* intensity_tag = "intensity_net";
   // When the PDB software didn't support diffrn_refln,
   // unmerged data was deposited using the refln category.
@@ -419,12 +419,12 @@ void Intensities::read_unmerged_intensities_from_mmcif(const ReflnBlock& rb) {
   type = DataType::Unmerged;
 }
 
-void Intensities::read_mean_intensities_from_mmcif(const ReflnBlock& rb) {
+void Intensities::import_mean_intensities_from_mmcif(const ReflnBlock& rb) {
   read_simple_intensities_from_mmcif(*this, rb, "intensity_meas", "intensity_sigma");
   type = DataType::Mean;
 }
 
-void Intensities::read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
+void Intensities::import_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
                                                         bool check_complete) {
   size_t value_idx[2] = {rb.get_column_index("pdbx_I_plus"),
                          rb.get_column_index("pdbx_I_minus")};
@@ -439,7 +439,7 @@ void Intensities::read_anomalous_intensities_from_mmcif(const ReflnBlock& rb,
   type = DataType::Anomalous;
 }
 
-void Intensities::read_refln_block(const ReflnBlock& rb, DataType data_type) {
+void Intensities::import_refln_block(const ReflnBlock& rb, DataType data_type) {
   DataType save_data_type = data_type;
   bool check_anom_complete = false;
   if (data_type == DataType::Unknown)
@@ -463,11 +463,11 @@ void Intensities::read_refln_block(const ReflnBlock& rb, DataType data_type) {
       data_type = has_mean ? DataType::Mean : DataType::Anomalous;
   }
   if (data_type == DataType::Unmerged)
-    read_unmerged_intensities_from_mmcif(rb);
+    import_unmerged_intensities_from_mmcif(rb);
   else if (data_type == DataType::Mean)
-    read_mean_intensities_from_mmcif(rb);
+    import_mean_intensities_from_mmcif(rb);
   else  // (data_type == DataType::Anomalous)
-    read_anomalous_intensities_from_mmcif(rb, check_anom_complete);
+    import_anomalous_intensities_from_mmcif(rb, check_anom_complete);
   if (save_data_type == DataType::UAM && type == DataType::Mean) {
     DataType actual = check_data_type_under_symmetry(IntensitiesDataProxy{*this}).first;
     if (actual == DataType::Unmerged)
@@ -476,7 +476,7 @@ void Intensities::read_refln_block(const ReflnBlock& rb, DataType data_type) {
   switch_to_asu_indices();
 }
 
-void Intensities::read_f_squared_from_mmcif(const ReflnBlock& rb) {
+void Intensities::import_f_squared_from_mmcif(const ReflnBlock& rb) {
   int value_idx = rb.find_column_index("F_meas");
   if (value_idx == -1)
     value_idx = rb.find_column_index("F_meas_au");
@@ -497,7 +497,7 @@ void Intensities::read_f_squared_from_mmcif(const ReflnBlock& rb) {
   type = DataType::Mean;
 }
 
-void Intensities::read_xds(const XdsAscii& xds) {
+void Intensities::import_xds(const XdsAscii& xds) {
   unit_cell.set_from_array(xds.cell_constants);
   spacegroup = find_spacegroup_by_number(xds.spacegroup_number);
   wavelength = xds.wavelength;
