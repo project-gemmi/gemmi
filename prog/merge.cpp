@@ -90,17 +90,15 @@ void read_intensities(Intensities& intensities, DataType data_type,
       if (data_type != DataType::UAM)
         intensities.take_staraniso_b_from_mtz(mtz);
       if (!mtz.is_merged()) {
-        gemmi::UnitCellParameters bcell = mtz.get_average_cell_from_batch_headers(nullptr);
-        if (bcell != mtz.cell) {
+        if (intensities.unit_cell != mtz.cell) {
           auto print_cell = [](const char* label, gemmi::UnitCellParameters& p) {
             std::fprintf(stderr, "%s:  %-8g %-8g %-8g   %-8g %-8g %-8g\n",
                          label, p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
           };
           print_cell("Global unit cell from MTZ header", mtz.cell);
-          print_cell("Mean of batch headers unit cells", bcell);
-          if (batch_cell) {
-            intensities.unit_cell.set_from_parameters(bcell);
-          } else {
+          print_cell("Mean of batch headers unit cells", intensities.unit_cell);
+          if (!batch_cell) {
+            intensities.unit_cell = mtz.cell;
             std::fprintf(stderr, "Using the former. Use option --batch-cell for the latter.\n");
           }
           std::fprintf(stderr, "\n");
@@ -178,6 +176,7 @@ void print_reflection(const Intensities::Refl* a, const Intensities::Refl* r) {
     printf("  N/A    vs %8.2f\n", r->value);
 }
 
+// cf. validate_merged_intensities()
 void compare_intensities(Intensities& intensities, Intensities& ref, bool print_all) {
   if (intensities.spacegroup == ref.spacegroup)
     printf("Space group: %s\n", intensities.spacegroup_str().c_str());
