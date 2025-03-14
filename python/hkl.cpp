@@ -336,6 +336,10 @@ void add_hkl(nb::module_& m) {
         self.setup(nbins, method, ReflnDataProxy(r), cell);
     }, nb::arg("nbins"), nb::arg("method"), nb::arg("r"), nb::arg("cell")=nb::none())
     .def("setup", [](Binner& self, int nbins, Binner::Method method,
+                     const Intensities& intensities) {
+        self.setup(nbins, method, gemmi::IntensitiesDataProxy{intensities});
+    }, nb::arg("nbins"), nb::arg("method"), nb::arg("intensities"))
+    .def("setup", [](Binner& self, int nbins, Binner::Method method,
                      const cpu_miller_array& hkl, const UnitCell* cell) {
         auto h = hkl.view();
         std::vector<double> inv_d2(h.shape(0));
