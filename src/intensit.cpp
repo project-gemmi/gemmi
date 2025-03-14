@@ -159,7 +159,7 @@ Correlation Intensities::calculate_correlation(const Intensities& other) const {
   return corr;
 }
 
-void Intensities::set_isigns(DataType new_type) {
+void Intensities::prepare_for_merging(DataType new_type) {
   if (new_type == DataType::Mean || new_type == DataType::MergedMA) {
     // discard signs so that merging produces Imean
     for (Refl& refl : data)
@@ -171,13 +171,13 @@ void Intensities::set_isigns(DataType new_type) {
     for (Refl& refl : data)
       refl.isign = refl.isym % 2 != 0 || gops.is_reflection_centric(refl.hkl) ? 1 : -1;
   }
+  sort();
 }
 
 void Intensities::merge_in_place(DataType new_type) {
   if (data.empty() || new_type == type || type == DataType::Mean || new_type == DataType::Unmerged)
     return;
-  set_isigns(new_type);
-  sort();
+  prepare_for_merging(new_type);
   std::vector<Refl>::iterator out = data.begin();
   double sum_wI = 0.;
   double sum_w = 0.;

@@ -253,7 +253,7 @@ class TestMerging(unittest.TestCase):
         rblock = gemmi.as_refln_blocks(doc)[0]
         intens = gemmi.Intensities()
         intens.import_refln_block(rblock)
-        intens.set_isigns(gemmi.DataType.Anomalous)
+        intens.prepare_for_merging(gemmi.DataType.Anomalous)
         self.assertEqual(len(intens), 12)
         self.assertEqual(intens.spacegroup.xhm(), 'P 2 3')
         y_stats = intens.calculate_merging_stats(None, use_weights='Y')[0]

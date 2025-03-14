@@ -394,8 +394,9 @@ int GEMMI_MAIN(int argc, char **argv) {
     }
     try {
       if (to_anom)
-        intensities.set_isigns(DataType::Anomalous);
-      intensities.sort();
+        intensities.prepare_for_merging(DataType::Anomalous);
+      else
+        intensities.sort();
       gemmi::Binner binner;
       const gemmi::Binner* binner_ptr = nullptr;
       if (nbins > 1) {
