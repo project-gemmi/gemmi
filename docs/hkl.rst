@@ -848,13 +848,21 @@ to initialize the following properties:
   >>> rblock.wavelength
   0.9791
 
-To check if block has either merged or unmerged data, in C++ use function
-`ok()`, and in Python:
+To check if block has either merged or unmerged data, call:
 
-.. doctest::
+.. tab:: C++
 
-  >>> bool(rblock)
-  True
+ ::
+
+  bool has_some_data = rblock.ok();
+
+.. tab:: Python
+
+ .. doctest::
+
+    >>> bool(rblock)
+    True
+
 
 Normally, one block has only one type of data, merged and unmerged.
 Which one is used can be checked with the function:
@@ -887,7 +895,7 @@ Finally, ReflnBlock has functions for working with the data table::
 
   std::vector<double> ReflnBlock::make_d_vector() const
 
-We will describe these functions while going through its Python equivalents.
+We will describe these functions while going through their Python equivalents.
 `column_labels()` returns list of tags associated with the columns,
 excluding the category part. Unlike in the MTZ format, here the tags
 must be unique.
@@ -1169,128 +1177,7 @@ as a text value of _shelx_hkl_file:
      0   0  -1   20.09    0.73
      0   0   1   19.76    0.73
 
-
-.. _intensities:
-
-Intensities
-===========
-
-  // Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
-  // and merges it into mean or anomalous intensities.
-  // It can also read merged data.
-
-TBD
-
-
-.. _asu_data:
-
-AsuData: merged reflections
-===========================
-
-AsuData is an array of symmetry-unique Miller indices and values.
-
-In C++, in principle, the values can be of any type.
-
-In Python, we have separate classes for different value types:
-IntAsuData, FloatAsuData, ComplexAsuData, ValueSigmaAsuData.
-The last one is for a pair of numbers, typically a float value
-with associated sigma.
-
-Such an array can be created in two ways:
-
-1. From reflection data read from an MTZ or SF-mmCIF file, for example:
-
-  .. doctest::
-
-    >>> mtz.get_value_sigma('F', 'SIGF')  #doctest:+ELLIPSIS
-    <gemmi.ValueSigmaAsuData with ... values>
-
-  Examples of functions giving other AsuData classes were given
-  in an :ref:`example above <example_with_asudata>`.
-
-  The choice of ASU differs between programs. By default, reflections
-  in AsuData are moved to the :ref:`ASU used in CCP4 <reciprocal_asu>`
-  and sorted. If you want to keep original Miller indices and the order
-  from the file, add parameter `as_is=True`. You can also switch the indices
-  and sort reflections using separate functions:
-
-  .. doctest::
-
-    >>> asu_data = mtz.get_value_sigma('F', 'SIGF', as_is=True)
-    >>> asu_data.ensure_asu()
-    >>> asu_data.ensure_sorted()
-    >>> asu_data  #doctest:+ELLIPSIS
-    <gemmi.ValueSigmaAsuData with ... values>
-
-2. From a reciprocal-space grid, which will be introduced in the next section:
-
-  .. doctest::
-
-    >>> grid = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
-    >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
-    >>> asu_data
-    <gemmi.ComplexAsuData with 407 values>
-
-  Arguments of the `prepare_asu_data` function are optional.
-  By default, the resolution is not limited, the (000) reflection is not
-  included and systematic absences are also not included.
-
-Each item in AsuData has two properties, hkl and value:
-
-.. doctest::
-
-  >>> asu_data[158]
-  <gemmi.ComplexHklValue (-6,2,5) (-1.376941204071045-0.19008657336235046j)>
-  >>> _.hkl, _.value
-  ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
-
-Both Miller indices and values can be accessed as NumPy arrays:
-
-.. doctest::
-  :skipif: numpy is None or sys.platform == 'win32'
-
-  >>> asu_data.miller_array
-  array([[-26,   0,   1],
-         [-26,   0,   2],
-         [-26,   0,   3],
-         ...,
-         [ 25,   1,   0],
-         [ 26,   0,   0],
-         [ 26,   0,   1]], dtype=int32)
-  >>> asu_data.value_array[158:159]
-  array([-1.3769412-0.19008657j], dtype=complex64)
-
-AsuData has several methods common with Mtz and ReflnBlock:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> asu_data.get_size_for_hkl()
-  [54, 6, 18]
-  >>> asu_data.get_size_for_hkl(sample_rate=3.0)  # explained in the next section
-  [90, 8, 30]
-  >>> asu_data.data_fits_into([54,6,18])
-  True
-  >>> asu_data.make_1_d2_array()
-  array([0.268129  , 0.26766333, 0.27679217, ..., 0.30102324, 0.27818915,
-         0.2978438 ], dtype=float32)
-  >>> asu_data.make_d_array()
-  array([1.9312037, 1.9328829, 1.9007417, ..., 1.8226361, 1.8959632,
-         1.8323385], dtype=float32)
-
-The data can be edited as two NumPy arrays and then copied into new AsuData
-object. In this example we exclude low-resolution data:
-
-.. doctest::
-  :skipif: numpy is None
-
-  >>> d = asu_data.make_d_array()
-  >>> gemmi.ComplexAsuData(asu_data.unit_cell,
-  ...                      asu_data.spacegroup,
-  ...                      asu_data.miller_array[d<8],
-  ...                      asu_data.value_array[d<8])
-  <gemmi.ComplexAsuData with 399 values>
-
+.. _binner:
 
 Resolution bins
 ===============
@@ -1386,7 +1273,9 @@ ReflnBlock, array of Miller indices or array of *d*:sup:`--2`:
   >>> binner.get_bins_from_1_d2(mtz.make_1_d2_array())
   array([3, 3, 3, ..., 3, 3, 3], dtype=int32)
 
-These are all Binner's functions.
+Using bins with NumPy
+---------------------
+
 Now we will show how the bin numbers can be used.
 First, let use `numpy.bincount()` to find out how many reflections
 are in each bin.
@@ -1523,6 +1412,330 @@ One can calculate % of free reflections in shells as:
   >>> counts = numpy.bincount(bins_and_rfree)
   >>> 100. * counts[n:] / counts[:n]
   array([6.93069307, 3.61445783, 9.41176471, 5.26315789])
+
+Normalizing amplitudes
+----------------------
+
+One of the uses of resolution bins is normalization of amplitudes F->E.
+Gemmi implements the "Karle" approach, similarly to CCP4 ECALC.
+Function `calculate_amplitude_normalizers()` returns multipliers for all
+reflections. The amplitudes can then be normalized by multiplying the value
+of both the amplitude and its associated sigma by the corresponding multiplier.
+
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/ecalc.hpp>
+
+  template<typename DataProxy>
+  std::vector<double> calculate_amplitude_normalizers(const DataProxy& data, int fcol_idx, const Binner& binner);
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> gemmi.calculate_amplitude_normalizers(mtz, 'FP', binner)
+  array([0.02100878, 0.02097921, 0.02157962, ..., 0.02023182, 0.02190913,
+         0.02167374])
+
+(All the values above are similar because reflections at the beginning
+and at the end of the list have similar *d* spacing.)
+
+.. note::
+
+  Normalized amplitudes E can be added to an MTZ file using the command-line
+  program :ref:`gemmi ecalc <gemmi-ecalc>`.
+
+.. _intensities:
+
+Intensities
+===========
+
+Class `Intensities` stores reflection intensities with associated sigmas.
+It can contain multi-record (unmerged), anomalous, or mean intensity data.
+It is used for merging unmerged data, calculating merging statistics
+(quality metrics such as CC\ :sub:`1/2` or the infamous R-merge)
+and correlations between datasets.
+
+Intensities take data from classes corresponding to reflection file formats:
+`Mtz`, `ReflnBlock` or `XdsAscii`.
+
+.. tab:: C++
+
+ ::
+
+  void import_mtz(const Mtz& mtz, DataType data_type=DataType::Unknown)
+  void import_refln_block(const ReflnBlock& rb, DataType data_type=DataType::Unknown)
+  void import_xds(const XdsAscii& xds)
+
+.. tab:: Python
+
+ .. code-block:: python
+
+  def import_mtz(self, arg0: Mtz, type: DataType = DataType.Unknown) -> None: ...
+  def import_xds(self, arg: XdsAscii, /) -> None: ...
+  def import_refln_block(self, arg0: ReflnBlock, type: DataType = DataType.Unknown) -> None: ...
+
+Since `Mtz` and `ReflnBlock` may contain more than one set of intensities
+(typically mean and anomalous, though `ReflnBlock` could hypothetically contain
+unmerged data together with merged), we specify the data type to import
+using one of the `DataType` enumeration values:
+
+* `Unmerged`,
+* `Mean`,
+* `Anomalous`,
+* `MergedMA` -- Mean if available, otherwise Anomalous
+* `MergedAM` -- Anomalous if available, otherwise Mean
+* `UAM` -- in the order: Unmerged, Anomalous, Mean
+* `Unknown` -- in the order: Mean, Anomalous, Unmerged
+
+After importing, `Intensities::type` is set to one of `DataType::Unmerged`,
+`DataType::Mean`, or `DataType::Anomalous`.
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> intensities = gemmi.Intensities()
+  >>> intensities.import_mtz(mdm2)
+  >>> intensities.type
+  DataType.Unmerged
+
+If you like, you can call `remove_systematic_absences()`,
+which does exactly that.
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> intensities.remove_systematic_absences()
+
+To merge unmerged or anomalous data, call:
+
+.. tab:: C++
+
+ ::
+
+  void merge_in_place(DataType new_type);
+
+.. tab:: Python
+
+ .. doctest::
+  :skipif: ccp4_path is None
+
+  >>> intensities.merge_in_place(new_type=gemmi.DataType.Anomalous)
+
+You can merge unmerged data with `new_type` being either `Mean` or `Anomalous`.
+If you have anomalous data, you can merge it into mean.
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> intensities.type
+  DataType.Anomalous
+  >>> len(intensities)
+  57590
+  >>> intensities.merge_in_place(gemmi.DataType.Mean)
+  >>> intensities.type
+  DataType.Mean
+  >>> len(intensities)
+  33965
+
+Before merging the data, we can call `calculate_merging_stats()` to obtain
+quality metrics. This function doesn't take `new_type` as an arg.
+Instead, call `prepare_for_merging(new_type)` before
+`calculate_merging_stats()`.
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> intensities = gemmi.Intensities()
+  >>> intensities.import_mtz(mdm2)
+  >>> intensities.prepare_for_merging(gemmi.DataType.Mean)
+  >>> intensities.calculate_merging_stats(binner=None)
+  [<gemmi.MergingStats object at 0x...>]
+
+The first argument of `calculate_merging_stats` is :ref:`Binner <binner>`.
+If we pass `None`, it returns overall statistics.
+
+Returned `MergingStats` contain the following metrics:
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> stats = _[0]
+  >>> stats.r_merge()
+  0.220415748...
+  >>> stats.r_meas()
+  0.262633829...
+  >>> stats.r_pim()
+  0.140663599...
+  >>> stats.cc_half()
+  0.959152511...
+  >>> stats.cc_star()
+  0.989520302...
+
+`calculate_merging_stats()` also has an optional argument `use_weights`
+that decides if and how sigmas are used for weighting. It can be one of:
+
+* `'Y'` (default) -- R-metrics are weighted as in Aimless and MRFANA,
+  for example:
+
+  .. image:: img/rmerge-2006.png
+
+* `'N'` -- no weighting, as in the original formulas:
+
+  .. image:: img/rmerge-1997.png
+
+* `'X'` -- R-metrics are weighted as in XDS and cctbx (the numerator
+  is weighted like in the first formula, while the denominator is not).
+
+Links to papers and additional details are given in the documentation
+of :ref:`gemmi merge <gemmi-merge-metrics>`.
+
+If we want the metrics in resolution shells, we need to prepare a Binner:
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> binner = gemmi.Binner()
+  >>> binner.setup(10, gemmi.Binner.Method.Dstar3, intensities)
+  >>> bin_stats = intensities.calculate_merging_stats(binner, use_weights='N')
+  >>> len(bin_stats)
+  10
+
+Now we can print, for instance, CC\ :sub:`1/2` and CC* in shells:
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> for n, stats in enumerate(bin_stats):
+  ...   dmax, dmin = binner.dmax_of_bin(n), binner.dmin_of_bin(n)
+  ...   print(f'{dmax:5.2f} - {dmin:4.2f} {stats.cc_half():6.3f} {stats.cc_star():6.3f}')
+  ...
+  61.93 - 2.68  0.945  0.986
+   2.68 - 2.13  0.925  0.980
+   2.13 - 1.86  0.873  0.966
+   1.86 - 1.69  0.816  0.948
+   1.69 - 1.57  0.552  0.843
+   1.57 - 1.48  0.229  0.611
+   1.48 - 1.40  0.056  0.326
+   1.40 - 1.34  0.041  0.280
+   1.34 - 1.29  0.112  0.449
+   1.29 - 1.25 -0.098    nan
+
+.. note::
+
+  To merge data from the command line, use :ref:`gemmi merge <gemmi-merge>`.
+
+
+.. _asu_data:
+
+AsuData: merged reflections
+===========================
+
+AsuData is an array of symmetry-unique Miller indices and values.
+
+In C++, in principle, the values can be of any type.
+
+In Python, we have separate classes for different value types:
+IntAsuData, FloatAsuData, ComplexAsuData, ValueSigmaAsuData.
+The last one is for a pair of numbers, typically a float value
+with associated sigma.
+
+Such an array can be created in two ways:
+
+1. From reflection data read from an MTZ or SF-mmCIF file, for example:
+
+  .. doctest::
+
+    >>> mtz.get_value_sigma('FP', 'SIGFP')  #doctest:+ELLIPSIS
+    <gemmi.ValueSigmaAsuData with ... values>
+
+  Examples of functions giving other AsuData classes were given
+  in an :ref:`example above <example_with_asudata>`.
+
+  The choice of ASU differs between programs. By default, reflections
+  in AsuData are moved to the :ref:`ASU used in CCP4 <reciprocal_asu>`
+  and sorted. If you want to keep original Miller indices and the order
+  from the file, add parameter `as_is=True`. You can also switch the indices
+  and sort reflections using separate functions:
+
+  .. doctest::
+
+    >>> asu_data = mtz.get_value_sigma('FP', 'SIGFP', as_is=True)
+    >>> asu_data.ensure_asu()
+    >>> asu_data.ensure_sorted()
+    >>> asu_data  #doctest:+ELLIPSIS
+    <gemmi.ValueSigmaAsuData with ... values>
+
+2. From a reciprocal-space grid, which will be introduced in the next section:
+
+  .. doctest::
+
+    >>> grid = rblock.get_f_phi_on_grid('pdbx_FWT', 'pdbx_PHWT', [54,6,18])
+    >>> asu_data = grid.prepare_asu_data(dmin=1.8, with_000=False, with_sys_abs=False)
+    >>> asu_data
+    <gemmi.ComplexAsuData with 407 values>
+
+  Arguments of the `prepare_asu_data` function are optional.
+  By default, the resolution is not limited, the (000) reflection is not
+  included and systematic absences are also not included.
+
+Each item in AsuData has two properties, hkl and value:
+
+.. doctest::
+
+  >>> asu_data[158]
+  <gemmi.ComplexHklValue (-6,2,5) (-1.376941204071045-0.19008657336235046j)>
+  >>> _.hkl, _.value
+  ([-6, 2, 5], (-1.376941204071045-0.19008657336235046j))
+
+Both Miller indices and values can be accessed as NumPy arrays:
+
+.. doctest::
+  :skipif: numpy is None or sys.platform == 'win32'
+
+  >>> asu_data.miller_array
+  array([[-26,   0,   1],
+         [-26,   0,   2],
+         [-26,   0,   3],
+         ...,
+         [ 25,   1,   0],
+         [ 26,   0,   0],
+         [ 26,   0,   1]], dtype=int32)
+  >>> asu_data.value_array[158:159]
+  array([-1.3769412-0.19008657j], dtype=complex64)
+
+AsuData has several methods common with Mtz and ReflnBlock:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> asu_data.get_size_for_hkl()
+  [54, 6, 18]
+  >>> asu_data.get_size_for_hkl(sample_rate=3.0)  # explained in the next section
+  [90, 8, 30]
+  >>> asu_data.data_fits_into([54,6,18])
+  True
+  >>> asu_data.make_1_d2_array()
+  array([0.268129  , 0.26766333, 0.27679217, ..., 0.30102324, 0.27818915,
+         0.2978438 ], dtype=float32)
+  >>> asu_data.make_d_array()
+  array([1.9312037, 1.9328829, 1.9007417, ..., 1.8226361, 1.8959632,
+         1.8323385], dtype=float32)
+
+The data can be edited as two NumPy arrays and then copied into new AsuData
+object. In this example we exclude low-resolution data:
+
+.. doctest::
+  :skipif: numpy is None
+
+  >>> d = asu_data.make_d_array()
+  >>> gemmi.ComplexAsuData(asu_data.unit_cell,
+  ...                      asu_data.spacegroup,
+  ...                      asu_data.miller_array[d<8],
+  ...                      asu_data.value_array[d<8])
+  <gemmi.ComplexAsuData with 399 values>
 
 
 Reciprocal-space grid

@@ -657,6 +657,8 @@ Transforms CCP4 map into map coefficients.
 .. literalinclude:: map2sf-help.txt
    :language: console
 
+.. _gemmi-merge:
+
 merge
 =====
 
@@ -676,6 +678,8 @@ parameters. By default, we use the "global" parameters.
 To use the mean of per-batch parameters instead (like Aimless),
 add `--batch-cell`. Unit cell parameters are needed only to write them
 to the output file and for choosing resolution shells for statistics.
+
+.. _gemmi-merge-metrics:
 
 Quality metrics
 ---------------
@@ -736,7 +740,7 @@ Gemmi can calculate all three variants:
   **u**\ nweighted formulas.
 * With added `X` (e.g. `--stats=10X`) it is compatible with XDS and cctbx.
 
-CC:sub:`1/2` is calculated using the σ-τ method, proposed by
+CC\ :sub:`1/2` is calculated using the σ-τ method, proposed by
 `Assmann et al (2016) <https://doi.org/10.1107/S1600576716005471>`_ in 2016
 and described in detail on
 `this XDSwiki page <https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2>`_.
@@ -752,6 +756,8 @@ Three ways of setting up resolution shells are supported:
 * default -- shells with equal volumes (equispaced in d*³),
 * 's' -- shells with increasing volumes (equispaced in d*²),
 * 'e' -- shells with an equal number of observations.
+
+.. _gemmi-ecalc:
 
 ecalc
 =====

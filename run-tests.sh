@@ -29,6 +29,10 @@ if [ $# = 1 ] && [ $1 = P ]; then
     (cd $BUILD_DIR && make -j$(nproc) gemmi_py)
     exit
 fi
+if [ $# = 1 ] && [ $1 = doctest ]; then
+    (cd docs && PYTHONPATH=$BUILD_DIR/py $PYTHON -m sphinx -M doctest . _build -q -n)
+    exit
+fi
 if [ $# != 0 ] && [ $1 = n ]; then
     shift
 else
