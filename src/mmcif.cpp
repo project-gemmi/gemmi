@@ -26,19 +26,23 @@ void copy_string(const cif::Table::Row& row, int n, std::string& dest) {
     dest = cif::as_string(row[n]);
 }
 
+template<typename T>
+SMat33<T> get_smat33(cif::Table::Row& row, int n) {
+  return SMat33<T>{(T) cif::as_number(row[n+0]),
+                   (T) cif::as_number(row[n+1]),
+                   (T) cif::as_number(row[n+2]),
+                   (T) cif::as_number(row[n+3]),
+                   (T) cif::as_number(row[n+4]),
+                   (T) cif::as_number(row[n+5])};
+}
+
 std::unordered_map<std::string, SMat33<float>> get_anisotropic_u(cif::Block& block) {
   cif::Table aniso_tab = block.find("_atom_site_anisotrop.",
                                     {"id", "U[1][1]", "U[2][2]", "U[3][3]",
                                      "U[1][2]", "U[1][3]", "U[2][3]"});
   std::unordered_map<std::string, SMat33<float>> aniso_map;
   for (auto ani : aniso_tab)
-    aniso_map.emplace(ani[0], SMat33<float>{
-                                (float) cif::as_number(ani[1]),
-                                (float) cif::as_number(ani[2]),
-                                (float) cif::as_number(ani[3]),
-                                (float) cif::as_number(ani[4]),
-                                (float) cif::as_number(ani[5]),
-                                (float) cif::as_number(ani[6])});
+    aniso_map.emplace(ani[0], get_smat33<float>(ani, 1));
   return aniso_map;
 }
 
@@ -523,6 +527,14 @@ struct RowAccess {
   }
 };
 
+template<class T>
+T* get_by_id(std::vector<T>& vec, const std::string& id) {
+  for (T& item : vec)
+    if (item.id == id)
+      return &item;
+  return nullptr;
+}
+
 } // anonymous namespace
 
 Structure make_structure_from_block(const cif::Block& block_) {
@@ -591,6 +603,47 @@ Structure make_structure_from_block(const cif::Block& block_) {
     copy_double(row, 7, ref.r_all);
     copy_double(row, 8, ref.r_work);
     copy_double(row, 9, ref.r_free);
+  }
+
+  for (auto row : block.find("_pdbx_refine_tls.", {
+        "pdbx_refine_id", "id",
+        "T[1][1]", "T[2][2]", "T[3][3]", "T[1][2]", "T[1][3]", "T[2][3]",
+        "L[1][1]", "L[2][2]", "L[3][3]", "L[1][2]", "L[1][3]", "L[2][3]",
+        "S[1][1]", "S[1][2]", "S[1][3]",
+        "S[2][1]", "S[2][2]", "S[2][3]",
+        "S[3][1]", "S[3][2]", "S[3][3]",
+        "origin_x", "origin_y", "origin_z"})) {
+    if (RefinementInfo* ref = get_by_id(st.meta.refinement, row.str(0))) {
+      ref->tls_groups.emplace_back();
+      TlsGroup& tls = ref->tls_groups.back();
+      tls.id = row.str(1);
+      tls.T = get_smat33<double>(row, 2);
+      tls.L = get_smat33<double>(row, 8);
+      for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+          tls.S[i][j] = cif::as_number(row[14+3*i+j]);
+      tls.origin.x = cif::as_number(row[23]);
+      tls.origin.y = cif::as_number(row[24]);
+      tls.origin.z = cif::as_number(row[25]);
+    }
+  }
+  for (auto row : block.find("_pdbx_refine_tls_group.", {
+        "refine_tls_id", "?beg_auth_asym_id", "?beg_auth_seq_id", "?beg_PDB_ins_code",
+        "?end_auth_seq_id", "?end_PDB_ins_code", "?selection_details"})) {
+    for (RefinementInfo& ref : st.meta.refinement)
+      if (TlsGroup* tls = get_by_id(ref.tls_groups, row.str(0))) {
+        tls->selections.emplace_back();
+        TlsGroup::Selection& sel = tls->selections.back();
+        if (row.has(1))
+          sel.chain = row.str(1);
+        if (row.has(2))
+          sel.res_begin = make_seqid(row.str(2), row.ptr_at(3));
+        if (row.has(4))
+          sel.res_end = make_seqid(row.str(4), row.ptr_at(5));
+        if (row.has(6))
+          sel.details = row.str(6);
+        break;
+      }
   }
 
   for (auto row : block.find("_exptl.", {"method", "?crystals_number"})) {
