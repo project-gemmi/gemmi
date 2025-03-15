@@ -1201,30 +1201,32 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
   if (groups.tls && st.meta.has_tls()) {
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
-        "pdbx_refine_id", "id",
+        "id", "pdbx_refine_id",
+        "origin_x", "origin_y", "origin_z",
         "T[1][1]", "T[2][2]", "T[3][3]", "T[1][2]", "T[1][3]", "T[2][3]",
         "L[1][1]", "L[2][2]", "L[3][3]", "L[1][2]", "L[1][3]", "L[2][3]",
         "S[1][1]", "S[1][2]", "S[1][3]",
         "S[2][1]", "S[2][2]", "S[2][3]",
-        "S[3][1]", "S[3][2]", "S[3][3]",
-        "origin_x", "origin_y", "origin_z"});
+        "S[3][1]", "S[3][2]", "S[3][3]"});
     for (const RefinementInfo& ref : st.meta.refinement)
       for (const TlsGroup& tls : ref.tls_groups) {
         const SMat33<double>& T = tls.T;
         const SMat33<double>& L = tls.L;
         const Mat33& S = tls.S;
         auto q = number_or_qmark;
-        loop.add_row({cif::quote(ref.id), string_or_dot(tls.id),
+        loop.add_row({string_or_dot(tls.id), cif::quote(ref.id),
+                      q(tls.origin.x), q(tls.origin.y), q(tls.origin.z),
                       q(T.u11), q(T.u22), q(T.u33), q(T.u12), q(T.u13), q(T.u23),
                       q(L.u11), q(L.u22), q(L.u33), q(L.u12), q(L.u13), q(L.u23),
                       q(S[0][0]), q(S[0][1]), q(S[0][2]),
                       q(S[1][0]), q(S[1][1]), q(S[1][2]),
-                      q(S[2][0]), q(S[2][1]), q(S[2][2]),
-                      q(tls.origin.x), q(tls.origin.y), q(tls.origin.z)});
+                      q(S[2][0]), q(S[2][1]), q(S[2][2])});
       }
     cif::Loop& group_loop = block.init_mmcif_loop("_pdbx_refine_tls_group.", {
-        "id", "refine_tls_id", "pdbx_refine_id", "beg_auth_asym_id", "beg_auth_seq_id",
-        "end_auth_asym_id", "end_auth_seq_id", "selection_details"});
+        "id", "refine_tls_id", "pdbx_refine_id",
+        "beg_auth_asym_id", "beg_auth_seq_id", "beg_PDB_ins_code",
+        "end_auth_asym_id", "end_auth_seq_id", "end_PDB_ins_code",
+        "selection_details"});
     int counter = 1;
     for (const RefinementInfo& ref : st.meta.refinement)
       for (const TlsGroup& tls : ref.tls_groups)
@@ -1233,9 +1235,11 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                               string_or_dot(tls.id),
                               cif::quote(ref.id),
                               string_or_qmark(sel.chain),
-                              sel.res_begin.num ? sel.res_begin.str() : "?",
+                              sel.res_begin.num.str(),
+                              pdbx_icode(sel.res_begin),
                               string_or_qmark(sel.chain),
-                              sel.res_end.num ? sel.res_end.str() : "?",
+                              sel.res_end.num.str(),
+                              pdbx_icode(sel.res_end),
                               string_or_qmark(sel.details)});
   }
 
