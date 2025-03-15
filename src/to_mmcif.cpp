@@ -823,13 +823,13 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
 
     for (size_t i = 0; i != st.meta.refinement.size(); ++i) {
       const RefinementInfo& ref = st.meta.refinement[i];
-      loop.values.push_back(id);
-      loop.values.push_back(cif::quote(ref.id));
-      loop.values.push_back(number_or_dot(ref.resolution_high));
-      loop.values.push_back(number_or_dot(ref.resolution_low));
-      loop.values.push_back(number_or_dot(ref.completeness));
-      loop.values.push_back(int_or_dot(get_number_obs(ref)));
-      loop.values.push_back(int_or_qmark(get_number_work(ref)));
+      loop.add_values({id,
+                       cif::quote(ref.id),
+                       number_or_dot(ref.resolution_high),
+                       number_or_dot(ref.resolution_low),
+                       number_or_dot(ref.completeness),
+                       int_or_dot(get_number_obs(ref)),
+                       int_or_qmark(get_number_work(ref))});
       auto add = [&](const std::string& tag, const std::string& val) {
         if (i == 0)
           loop.tags.push_back("_refine." + tag);
@@ -899,28 +899,25 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                             string_or_qmark(restr.function),
                             number_or_qmark(restr.dev_ideal)});
       for (const BasicRefinementInfo& bin : ref.bins) {
-        shell_loop.add_row({cif::quote(ref.id),
-                            number_or_dot(bin.resolution_high),
-                            number_or_qmark(bin.resolution_low),
-                            number_or_qmark(bin.completeness),
-                            int_or_qmark(get_number_obs(bin)),
-                            int_or_qmark(get_number_work(bin)),
-                            int_or_qmark(bin.rfree_set_count),
-                            number_or_qmark(bin.r_all),
-                            number_or_qmark(bin.r_work),
-                            number_or_qmark(bin.r_free)});
-        if (has_shell_fsc) {
-          shell_loop.values.push_back(number_or_qmark(bin.fsc_work));
-          shell_loop.values.push_back(number_or_qmark(bin.fsc_free));
-        }
-        if (has_shell_ffcc) {
-          shell_loop.values.push_back(number_or_qmark(bin.cc_fo_fc_work));
-          shell_loop.values.push_back(number_or_qmark(bin.cc_fo_fc_free));
-        }
-        if (has_shell_iicc) {
-          shell_loop.values.push_back(number_or_qmark(bin.cc_intensity_work));
-          shell_loop.values.push_back(number_or_qmark(bin.cc_intensity_free));
-        }
+        shell_loop.add_values({cif::quote(ref.id),
+                               number_or_dot(bin.resolution_high),
+                               number_or_qmark(bin.resolution_low),
+                               number_or_qmark(bin.completeness),
+                               int_or_qmark(get_number_obs(bin)),
+                               int_or_qmark(get_number_work(bin)),
+                               int_or_qmark(bin.rfree_set_count),
+                               number_or_qmark(bin.r_all),
+                               number_or_qmark(bin.r_work),
+                               number_or_qmark(bin.r_free)});
+        if (has_shell_fsc)
+          shell_loop.add_values({number_or_qmark(bin.fsc_work),
+                                 number_or_qmark(bin.fsc_free)});
+        if (has_shell_ffcc)
+          shell_loop.add_values({number_or_qmark(bin.cc_fo_fc_work),
+                                 number_or_qmark(bin.cc_fo_fc_free)});
+        if (has_shell_iicc)
+          shell_loop.add_values({number_or_qmark(bin.cc_intensity_work),
+                                 number_or_qmark(bin.cc_intensity_free)});
       }
     }
     assert(shell_loop.values.size() % shell_loop.tags.size() == 0);
@@ -1133,17 +1130,16 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       loop.tags.push_back("_pdbx_struct_mod_residue.ccp4_mod_id");
     int counter = 0;
     for (const ModRes& modres : st.mod_residues) {
-      auto& v = loop.values;
-      v.push_back(std::to_string(++counter));
-      v.push_back(qchain(modres.chain_name));
-      v.push_back(modres.res_id.seqid.num.str());
-      v.push_back(pdbx_icode(modres.res_id));
-      v.push_back(string_or_dot(modres.res_id.name));
-      v.push_back(string_or_qmark(modres.res_id.name));
-      v.push_back(string_or_qmark(modres.parent_comp_id));
-      v.push_back(string_or_qmark(modres.details));
+      loop.add_values({std::to_string(++counter),
+                       qchain(modres.chain_name),
+                       modres.res_id.seqid.num.str(),
+                       pdbx_icode(modres.res_id),
+                       string_or_dot(modres.res_id.name),
+                       string_or_qmark(modres.res_id.name),
+                       string_or_qmark(modres.parent_comp_id),
+                       string_or_qmark(modres.details)});
       if (use_ccp4_mod_id)
-        v.push_back(string_or_qmark(modres.mod_id));
+        loop.values.push_back(string_or_qmark(modres.mod_id));
     }
   }
 

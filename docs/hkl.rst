@@ -1434,6 +1434,7 @@ of both the amplitude and its associated sigma by the corresponding multiplier.
 .. tab:: Python
 
  .. doctest::
+  :skipif: numpy is None
 
   >>> gemmi.calculate_amplitude_normalizers(mtz, 'FP', binner)
   array([0.02100878, 0.02097921, 0.02157962, ..., 0.02023182, 0.02190913,

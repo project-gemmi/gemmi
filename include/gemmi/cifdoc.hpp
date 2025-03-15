@@ -149,13 +149,19 @@ struct Loop {
 
   void clear() { tags.clear(); values.clear(); }
 
-  template <typename T> void add_row(T new_values, int pos=-1) {
-    if (new_values.size() != tags.size())
-      fail("add_row(): wrong row length.");
+  template <typename T> void add_values(T new_values, int pos=-1) {
     auto it = values.end();
     if (pos >= 0 && pos * width() < values.size())
       it = values.begin() + pos * tags.size();
     values.insert(it, new_values.begin(), new_values.end());
+  }
+  void add_values(std::initializer_list<std::string> new_values, int pos=-1) {
+    add_values<std::initializer_list<std::string>>(new_values, pos);
+  }
+  template <typename T> void add_row(T new_values, int pos=-1) {
+    if (new_values.size() != tags.size())
+      fail("add_row(): wrong row length.");
+    add_values<T>(new_values, pos);
   }
   void add_row(std::initializer_list<std::string> new_values, int pos=-1) {
     add_row<std::initializer_list<std::string>>(new_values, pos);
