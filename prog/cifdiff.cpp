@@ -4,6 +4,7 @@
 #include <algorithm>  // for find
 #include "gemmi/read_cif.hpp"  // for read_cif_gz
 #include "gemmi/pdb_id.hpp"  // for expand_if_pdb_code
+#include "gemmi/dirwalk.hpp"  // for glob_match
 
 #define GEMMI_PROG cifdiff
 #include "options.h"
@@ -94,6 +95,18 @@ void compare_tag_values(cif::Block& b1, cif::Block& b2, const std::string& tag) 
     printf("  %d identical values\n", n);
 }
 
+template<typename Func>
+void for_each_tag(const cif::Block& block, const Func& func) {
+  for (const cif::Item& item : block.items) {
+    if (item.type == cif::ItemType::Pair) {
+      func(item.pair[0]);
+    } else if (item.type == cif::ItemType::Loop) {
+      for (const std::string& t : item.loop.tags)
+        func(t);
+    }
+  }
+}
+
 } // anonymous namespace
 
 int GEMMI_MAIN(int argc, char **argv) {
@@ -132,8 +145,24 @@ int GEMMI_MAIN(int argc, char **argv) {
           continue;
       }
       if (p.options[Tag]) {
-        for (const option::Option* opt = p.options[Tag]; opt; opt = opt->next())
-          compare_tag_values(*b1, *b2, opt->arg);
+        for (const option::Option* opt = p.options[Tag]; opt; opt = opt->next()) {
+          std::string tag = opt->arg;
+          if (tag.find_first_of("?*") != std::string::npos) {
+            std::vector<std::string> matching_tags;
+            for_each_tag(*b1, [&](const std::string& t) {
+                if (gemmi::glob_match(tag, t))
+                  matching_tags.push_back(t);
+            });
+            for_each_tag(*b2, [&](const std::string& t) {
+                if (gemmi::glob_match(tag, t) && !gemmi::in_vector(t, matching_tags))
+                  matching_tags.push_back(t);
+            });
+            for (const std::string& t : matching_tags)
+              compare_tag_values(*b1, *b2, t);
+          } else {
+            compare_tag_values(*b1, *b2, tag);
+          }
+        }
         return 0;
       }
       Diff category_diff = make_diff(b1->get_mmcif_category_names(),
