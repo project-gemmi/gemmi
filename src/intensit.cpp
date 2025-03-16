@@ -160,6 +160,8 @@ Correlation Intensities::calculate_correlation(const Intensities& other) const {
 }
 
 void Intensities::prepare_for_merging(DataType new_type) {
+  if (new_type == DataType::Anomalous && spacegroup && spacegroup->is_centrosymmetric())
+    new_type = DataType::Mean;
   if (new_type == DataType::Mean || new_type == DataType::MergedMA) {
     // discard signs so that merging produces Imean
     for (Refl& refl : data)
