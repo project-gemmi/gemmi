@@ -606,26 +606,31 @@ Structure make_structure_from_block(const cif::Block& block_) {
   }
 
   for (auto row : block.find("_pdbx_refine_tls.", {
-        "pdbx_refine_id", "id",
+        "id", "?pdbx_refine_id",
         "T[1][1]", "T[2][2]", "T[3][3]", "T[1][2]", "T[1][3]", "T[2][3]",
         "L[1][1]", "L[2][2]", "L[3][3]", "L[1][2]", "L[1][3]", "L[2][3]",
         "S[1][1]", "S[1][2]", "S[1][3]",
         "S[2][1]", "S[2][2]", "S[2][3]",
         "S[3][1]", "S[3][2]", "S[3][3]",
         "origin_x", "origin_y", "origin_z"})) {
-    if (RefinementInfo* ref = get_by_id(st.meta.refinement, row.str(0))) {
-      ref->tls_groups.emplace_back();
-      TlsGroup& tls = ref->tls_groups.back();
-      tls.id = row.str(1);
-      tls.T = get_smat33<double>(row, 2);
-      tls.L = get_smat33<double>(row, 8);
-      for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-          tls.S[i][j] = cif::as_number(row[14+3*i+j]);
-      tls.origin.x = cif::as_number(row[23]);
-      tls.origin.y = cif::as_number(row[24]);
-      tls.origin.z = cif::as_number(row[25]);
-    }
+    if (st.meta.refinement.empty())
+      break;
+    RefinementInfo* ref = nullptr;
+    if (row.has(1))
+      ref = get_by_id(st.meta.refinement, row.str(1));
+    if (!ref)
+      ref = &st.meta.refinement[0];
+    ref->tls_groups.emplace_back();
+    TlsGroup& tls = ref->tls_groups.back();
+    tls.id = row.str(0);
+    tls.T = get_smat33<double>(row, 2);
+    tls.L = get_smat33<double>(row, 8);
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        tls.S[i][j] = cif::as_number(row[14+3*i+j]);
+    tls.origin.x = cif::as_number(row[23]);
+    tls.origin.y = cif::as_number(row[24]);
+    tls.origin.z = cif::as_number(row[25]);
   }
   for (auto row : block.find("_pdbx_refine_tls_group.", {
         "refine_tls_id", "?beg_auth_asym_id", "?beg_auth_seq_id", "?beg_PDB_ins_code",

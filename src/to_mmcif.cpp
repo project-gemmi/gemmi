@@ -1200,6 +1200,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     add_cif_atoms(st, block, groups.group_pdb, groups.auth_all);
 
   if (groups.tls && st.meta.has_tls()) {
+    // pdbx_refine_id doesn't make sense here, but it's required
+    // by the mmCIF spec. In joint refinement, TLS constraints can't be
+    // specific to a dataset, because they constrain the shared model.
     cif::Loop& loop = block.init_mmcif_loop("_pdbx_refine_tls.", {
         "id", "pdbx_refine_id",
         "origin_x", "origin_y", "origin_z",
