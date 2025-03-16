@@ -163,7 +163,7 @@ struct GEMMI_DLL Intensities {
                                                     char use_weights='Y') const;
 
   // call with DataType::Anomalous before calculate_merging_stats() to get I+/I- stats
-  void prepare_for_merging(DataType new_type);
+  DataType prepare_for_merging(DataType new_type);
 
   void switch_to_asu_indices();
 

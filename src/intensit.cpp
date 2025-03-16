@@ -159,27 +159,29 @@ Correlation Intensities::calculate_correlation(const Intensities& other) const {
   return corr;
 }
 
-void Intensities::prepare_for_merging(DataType new_type) {
-  if (new_type == DataType::Anomalous && spacegroup && spacegroup->is_centrosymmetric())
-    new_type = DataType::Mean;
-  if (new_type == DataType::Mean || new_type == DataType::MergedMA) {
+DataType Intensities::prepare_for_merging(DataType new_type) {
+  if (new_type == DataType::Mean || new_type == DataType::MergedMA ||
+      (spacegroup && spacegroup->is_centrosymmetric())) {
     // discard signs so that merging produces Imean
     for (Refl& refl : data)
       refl.isign = 0;
+    new_type = DataType::Mean;
   } else if (type == DataType::Unmerged) {
     if (!spacegroup)
       fail("unknown space group");
     GroupOps gops = spacegroup->operations();
     for (Refl& refl : data)
       refl.isign = refl.isym % 2 != 0 || gops.is_reflection_centric(refl.hkl) ? 1 : -1;
+    new_type = DataType::Anomalous;
   }
   sort();
+  return new_type;
 }
 
 void Intensities::merge_in_place(DataType new_type) {
   if (data.empty() || new_type == type || type == DataType::Mean || new_type == DataType::Unmerged)
     return;
-  prepare_for_merging(new_type);
+  type = prepare_for_merging(new_type);
   std::vector<Refl>::iterator out = data.begin();
   double sum_wI = 0.;
   double sum_w = 0.;
@@ -204,7 +206,6 @@ void Intensities::merge_in_place(DataType new_type) {
   out->sigma = 1.0 / std::sqrt(sum_w);
   out->nobs = nobs;
   data.erase(++out, data.end());
-  type = new_type;
 }
 
 std::vector<MergingStats>
