@@ -1552,6 +1552,7 @@ Instead, call `prepare_for_merging(new_type)` before
   >>> intensities = gemmi.Intensities()
   >>> intensities.import_mtz(mdm2)
   >>> intensities.prepare_for_merging(gemmi.DataType.Mean)
+  DataType.Mean
   >>> intensities.calculate_merging_stats(binner=None)
   [<gemmi.MergingStats object at 0x...>]
 
