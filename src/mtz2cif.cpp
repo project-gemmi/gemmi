@@ -1027,4 +1027,47 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
   return ok;
 }
 
+std::vector<SoftwareItem> get_software_from_mtz_history(const std::vector<std::string>& history) {
+  std::vector<SoftwareItem> items;
+  for (const std::string& line : history) {
+    if (!starts_with(line, "From "))
+      continue;
+    const char* p = line.c_str() + 5;
+    SoftwareItem item;
+    item.name = read_word(p, &p);
+    // some progams write comma after program name, e.g.
+    // From AIMLESS, version 0.7.4, run on  3/11/2020 at 18:29:12
+    if (!item.name.empty() && item.name.back() == ',')
+      item.name.pop_back();
+    item.version = read_word(p, &p);
+    if (iequal(item.version, "version"))
+      item.version = read_word(p, &p);
+    // XDS version is a 3-word date
+    // From XDS VERSION Jan 31, 2020  BUILT=20200417, run on 03/11/2020 at 17:28:43
+    if (item.name == "XDS") {
+      const char* end = skip_word(skip_blank(skip_word(skip_blank(p))));
+      item.version.append(p, end);
+    }
+    if (!item.version.empty() && item.version.back() == ',')
+      item.version.pop_back();
+    // For now this is to be tested in refinement programs, so we parse
+    // only a few items from data processing. More may come.
+    if (item.name == "XDS" || item.name == "DIALS")
+      item.classification = SoftwareItem::Classification::DataReduction;
+    else if (item.name == "AIMLESS")
+      item.classification = SoftwareItem::Classification::DataScaling;
+    if (item.classification != SoftwareItem::Classification::Unspecified)
+      items.push_back(item);
+  }
+  if (!items.empty()) {
+    SoftwareItem item;
+    // To check how many PDB entries are populated this way, I'll add:
+    item.name = "gemmi";
+    item.version = GEMMI_VERSION;
+    item.classification = SoftwareItem::Classification::DataExtraction;
+    items.push_back(item);
+  }
+  return items;
+}
+
 } // namespace gemmi

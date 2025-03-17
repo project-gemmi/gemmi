@@ -225,6 +225,8 @@ void add_hkl(nb::module_& m) {
   m.def("validate_merged_intensities", &validate_merged_intensities,
         nb::arg(), nb::arg(), nb::arg("relaxed_check")=false, nb::arg("logger"));
 
+  m.def("get_software_from_mtz_history", &get_software_from_mtz_history);
+
   nb::enum_<DataType>(m, "DataType")
     .value("Unknown", DataType::Unknown)
     .value("Unmerged", DataType::Unmerged)

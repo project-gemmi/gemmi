@@ -15,6 +15,7 @@
 #include "xds_ascii.hpp" // for XdsAscii
 #include "intensit.hpp"  // for Intensities
 #include "logger.hpp"    // for Logger
+#include "metadata.hpp"  // for SoftwareItem
 
 namespace gemmi {
 
@@ -106,6 +107,9 @@ GEMMI_DLL bool validate_merged_mtz_deposition_columns(const Mtz& mtz, const Logg
 // note: both mi and ui get modified
 GEMMI_DLL bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                            bool relaxed_check, const Logger& logger);
+
+GEMMI_DLL std::vector<SoftwareItem>
+get_software_from_mtz_history(const std::vector<std::string>& history);
 
 } // namespace gemmi
 #endif

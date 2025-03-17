@@ -335,6 +335,48 @@ class TestConversion(unittest.TestCase):
         self.assertAlmostEqual(d3['HLC'], 1.53099, delta=1e-5)
         self.assertAlmostEqual(d3['HLD'], 4.64824, delta=1e-5)
 
+    # flake8: noqa: E501
+    def test_history_parsing(self):
+        h1 = ['From AIMLESS, version 0.8.2, run on  1/ 3/2025 at 17:08:11',
+              'REBATCH: run at 13:22:06 on  8/ 5/17',
+              'From POINTLESS, version 1.11.1, run on  8/ 5/2017 at 13:22:06',
+              'From DIALS 1.5.1-gf72becc3-release, run on 08/05/2017 at 12:22:05']
+        (aimless, dials, g) = gemmi.get_software_from_mtz_history(h1)
+        classif = gemmi.SoftwareItem.Classification
+        self.assertEqual(aimless.name, 'AIMLESS')
+        self.assertEqual(aimless.version, '0.8.2')
+        self.assertEqual(aimless.classification, classif.DataScaling)
+        self.assertEqual(dials.name, 'DIALS')
+        self.assertEqual(dials.version, '1.5.1-gf72becc3-release')
+        self.assertEqual(dials.classification, classif.DataReduction)
+        self.assertEqual(g.name, 'gemmi')
+        self.assertEqual(g.classification, classif.DataExtraction)
+        h2 = ['From XDS VERSION Jan 31, 2020  BUILT=20200417, run on 03/11/2020 at 17:27:55',
+              'From POINTLESS, version 1.12.2, run on  3/11/2020 at 18:27:54']
+        (xds, g) = gemmi.get_software_from_mtz_history(h2)
+        self.assertEqual(xds.name, 'XDS')
+        self.assertEqual(xds.version, 'Jan 31, 2020')
+        self.assertEqual(xds.classification, classif.DataReduction)
+        h3 = ['From STARANISO version: 2.3.80 (21-Oct-2021) on Sat, 23 Oct 2021 17:11:15 +0200.',
+              "Signal_type = 'local <I/sigmaI>', signal_threshold = 1.20,",
+              'averaging_radius = 0.1055/Ang.',
+              'B=(  7.2464, 20.9790,  1.3204,  0.0000, -3.0933,  0.0000); g=6.06746E-01',
+              'From XIA2 0.6.475-g7ac7bb6b-dials-2.2, run on 06/04/2021 at 19:34:04',
+              'From FREERFLAG  6/ 4/2021 21:34:03 with fraction 0.050',
+              'From FREERFLAG  6/ 4/2021 21:34:03 with fraction 0.050',
+              'cctbx.french_wilson analysis',
+              'From AIMLESS, version 0.7.4, run on  6/ 4/2021 at 21:33:58',
+              'From SORTMTZ  6/ 4/2021 21:33:55  using keys: H K L M/ISYM BATCH',
+              'From XDS VERSION Feb 5, 2021  BUILT=20210323, run on 06/04/2021 at 19:33:54',
+              'From POINTLESS, version 1.12.8, run on  6/ 4/2021 at 21:33:53']
+        (aimless, xds, g) = gemmi.get_software_from_mtz_history(h3)
+        self.assertEqual(xds.name, 'XDS')
+        self.assertEqual(xds.version, 'Feb 5, 2021')
+        self.assertEqual(xds.classification, classif.DataReduction)
+        self.assertEqual(aimless.name, 'AIMLESS')
+        self.assertEqual(aimless.version, '0.7.4')
+        self.assertEqual(aimless.classification, classif.DataScaling)
+
 class TestReciprocalGrid(unittest.TestCase):
     @unittest.skipIf(numpy is None, 'requires NumPy')
     def test_array_conversion(self):
