@@ -1247,20 +1247,31 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.software && !st.meta.software.empty()) {
-    cif::Loop& loop = block.init_mmcif_loop("_software.",
-        {"pdbx_ordinal", "classification", "name", "version", "date", "description",
-         "contact_author", "contact_author_email"});
-    int ordinal = 0;
+    bool write_all_fields = false;
     for (const SoftwareItem& item : st.meta.software)
-      loop.add_row({
+      if (!item.date.empty() || !item.description.empty() ||
+          !item.contact_author.empty() || !item.contact_author_email.empty())
+        write_all_fields = true;
+    cif::Loop& loop = block.init_mmcif_loop("_software.",
+        {"pdbx_ordinal", "classification", "name", "version"});
+    if (write_all_fields)
+      loop.tags.insert(loop.tags.end(),
+                       {"_software.date", "_software.description",
+                        "_software.contact_author", "_software.contact_author_email"});
+    int ordinal = 0;
+    for (const SoftwareItem& item : st.meta.software) {
+      loop.add_values({
           std::to_string(++ordinal),
           cif::quote(software_classification_to_string(item.classification)),
           cif::quote(item.name),
-          string_or_dot(item.version),
-          string_or_qmark(item.date),
-          string_or_qmark(item.description),
-          string_or_qmark(item.contact_author),
-          string_or_qmark(item.contact_author_email)});
+          string_or_dot(item.version)});
+      if (write_all_fields)
+        loop.add_values({
+            string_or_qmark(item.date),
+            string_or_qmark(item.description),
+            string_or_qmark(item.contact_author),
+            string_or_qmark(item.contact_author_email)});
+    }
   }
 }
 
