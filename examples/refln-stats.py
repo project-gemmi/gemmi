@@ -11,7 +11,6 @@
 # - do Miller indices repeat? N=no, F=only Friedel pairs, Y=yes
 
 import argparse
-import sys
 import os
 import gemmi
 

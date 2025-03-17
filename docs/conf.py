@@ -22,7 +22,7 @@ with open('../include/gemmi/version.hpp') as _f:
 release = version
 
 # now sure if we'll use headers.rst again, disable it for now
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'headers.rst' ]
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'headers.rst']
 pygments_style = 'sphinx'
 todo_include_todos = False
 highlight_language = 'cpp'
@@ -52,6 +52,7 @@ def monkey_patching_furo(app):
         return
 
     import furo
+    from typing import Dict, Any
     def _compute_navigation_tree(context: Dict[str, Any]) -> str:
         # The navigation tree, generated from the sphinx-provided ToC tree.
         if "toctree" in context:
