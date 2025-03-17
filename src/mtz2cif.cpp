@@ -1037,7 +1037,7 @@ std::vector<SoftwareItem> get_software_from_mtz_history(const std::vector<std::s
     item.name = read_word(p, &p);
     // some progams write comma after program name, e.g.
     // From AIMLESS, version 0.7.4, run on  3/11/2020 at 18:29:12
-    if (!item.name.empty() && item.name.back() == ',')
+    if (!item.name.empty() && (item.name.back() == ',' || item.name.back() == ':'))
       item.name.pop_back();
     item.version = read_word(p, &p);
     if (iequal(item.version, "version"))
@@ -1048,13 +1048,17 @@ std::vector<SoftwareItem> get_software_from_mtz_history(const std::vector<std::s
       const char* end = skip_word(skip_blank(skip_word(skip_blank(p))));
       item.version.append(p, end);
     }
+    // version can be absent, e.g.
+    // From SCALA: run at 16:32:41 on 10/ 8/10
+    if (item.version == "run")
+      item.version.clear();
     if (!item.version.empty() && item.version.back() == ',')
       item.version.pop_back();
     // For now this is to be tested in refinement programs, so we parse
     // only a few items from data processing. More may come.
     if (item.name == "XDS" || item.name == "DIALS")
       item.classification = SoftwareItem::Classification::DataReduction;
-    else if (item.name == "AIMLESS")
+    else if (item.name == "AIMLESS" || item.name == "SCALA")
       item.classification = SoftwareItem::Classification::DataScaling;
     if (item.classification != SoftwareItem::Classification::Unspecified)
       items.push_back(item);

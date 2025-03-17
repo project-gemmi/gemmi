@@ -376,6 +376,11 @@ class TestConversion(unittest.TestCase):
         self.assertEqual(aimless.name, 'AIMLESS')
         self.assertEqual(aimless.version, '0.7.4')
         self.assertEqual(aimless.classification, classif.DataScaling)
+        h4 = ['From SCALA: run at 16:32:41 on 10/ 8/10']
+        (scala, g) = gemmi.get_software_from_mtz_history(h4)
+        self.assertEqual(scala.name, 'SCALA')
+        self.assertEqual(scala.version, '')
+        self.assertEqual(scala.classification, classif.DataScaling)
 
 class TestReciprocalGrid(unittest.TestCase):
     @unittest.skipIf(numpy is None, 'requires NumPy')
