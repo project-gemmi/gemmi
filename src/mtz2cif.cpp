@@ -1030,15 +1030,20 @@ bool validate_merged_intensities(Intensities& mi, Intensities& ui,
 std::vector<SoftwareItem> get_software_from_mtz_history(const std::vector<std::string>& history) {
   std::vector<SoftwareItem> items;
   for (const std::string& line : history) {
-    if (!starts_with(line, "From "))
-      continue;
-    const char* p = line.c_str() + 5;
+    const char* p = line.c_str();
+    // usually history items start with "From", I've seen also:
+    // SCALA: run at 12:34:33 on 21/ 3/97
+    if (starts_with(line, "From "))
+      p += 5;
     SoftwareItem item;
     item.name = read_word(p, &p);
-    // some progams write comma after program name, e.g.
+    // some programs write comma or colon after the name, e.g.
     // From AIMLESS, version 0.7.4, run on  3/11/2020 at 18:29:12
     if (!item.name.empty() && (item.name.back() == ',' || item.name.back() == ':'))
       item.name.pop_back();
+    if (std::any_of(items.begin(), items.end(),
+                    [&](const SoftwareItem& x) { return x.name == item.name; }))
+      continue;
     item.version = read_word(p, &p);
     if (iequal(item.version, "version"))
       item.version = read_word(p, &p);
@@ -1056,7 +1061,7 @@ std::vector<SoftwareItem> get_software_from_mtz_history(const std::vector<std::s
       item.version.pop_back();
     // For now this is to be tested in refinement programs, so we parse
     // only a few items from data processing. More may come.
-    if (item.name == "XDS" || item.name == "DIALS")
+    if (item.name == "XDS" || item.name == "DIALS" || item.name == "MOSFLM")
       item.classification = SoftwareItem::Classification::DataReduction;
     else if (item.name == "AIMLESS" || item.name == "SCALA")
       item.classification = SoftwareItem::Classification::DataScaling;

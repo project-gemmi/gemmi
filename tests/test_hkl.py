@@ -342,21 +342,19 @@ class TestConversion(unittest.TestCase):
               'From POINTLESS, version 1.11.1, run on  8/ 5/2017 at 13:22:06',
               'From DIALS 1.5.1-gf72becc3-release, run on 08/05/2017 at 12:22:05']
         (aimless, dials, g) = gemmi.get_software_from_mtz_history(h1)
+        def check_sw(item, name, ver, classification):
+            self.assertEqual(item.name, name)
+            self.assertEqual(item.version, ver)
+            self.assertEqual(item.classification, classification)
         classif = gemmi.SoftwareItem.Classification
-        self.assertEqual(aimless.name, 'AIMLESS')
-        self.assertEqual(aimless.version, '0.8.2')
-        self.assertEqual(aimless.classification, classif.DataScaling)
-        self.assertEqual(dials.name, 'DIALS')
-        self.assertEqual(dials.version, '1.5.1-gf72becc3-release')
-        self.assertEqual(dials.classification, classif.DataReduction)
+        check_sw(aimless, 'AIMLESS', '0.8.2', classif.DataScaling)
+        check_sw(dials, 'DIALS', '1.5.1-gf72becc3-release', classif.DataReduction)
         self.assertEqual(g.name, 'gemmi')
         self.assertEqual(g.classification, classif.DataExtraction)
         h2 = ['From XDS VERSION Jan 31, 2020  BUILT=20200417, run on 03/11/2020 at 17:27:55',
               'From POINTLESS, version 1.12.2, run on  3/11/2020 at 18:27:54']
         (xds, g) = gemmi.get_software_from_mtz_history(h2)
-        self.assertEqual(xds.name, 'XDS')
-        self.assertEqual(xds.version, 'Jan 31, 2020')
-        self.assertEqual(xds.classification, classif.DataReduction)
+        check_sw(xds, 'XDS', 'Jan 31, 2020', classif.DataReduction)
         h3 = ['From STARANISO version: 2.3.80 (21-Oct-2021) on Sat, 23 Oct 2021 17:11:15 +0200.',
               "Signal_type = 'local <I/sigmaI>', signal_threshold = 1.20,",
               'averaging_radius = 0.1055/Ang.',
@@ -370,17 +368,29 @@ class TestConversion(unittest.TestCase):
               'From XDS VERSION Feb 5, 2021  BUILT=20210323, run on 06/04/2021 at 19:33:54',
               'From POINTLESS, version 1.12.8, run on  6/ 4/2021 at 21:33:53']
         (aimless, xds, g) = gemmi.get_software_from_mtz_history(h3)
-        self.assertEqual(xds.name, 'XDS')
-        self.assertEqual(xds.version, 'Feb 5, 2021')
-        self.assertEqual(xds.classification, classif.DataReduction)
-        self.assertEqual(aimless.name, 'AIMLESS')
-        self.assertEqual(aimless.version, '0.7.4')
-        self.assertEqual(aimless.classification, classif.DataScaling)
+        check_sw(xds, 'XDS', 'Feb 5, 2021', classif.DataReduction)
+        check_sw(aimless, 'AIMLESS', '0.7.4', classif.DataScaling)
         h4 = ['From SCALA: run at 16:32:41 on 10/ 8/10']
         (scala, g) = gemmi.get_software_from_mtz_history(h4)
-        self.assertEqual(scala.name, 'SCALA')
-        self.assertEqual(scala.version, '')
-        self.assertEqual(scala.classification, classif.DataScaling)
+        check_sw(scala, 'SCALA', '', classif.DataScaling)
+        h5 = ['From FREERFLAG, 21/ 3/97 12:34:50 with fraction 0.050',
+              'From MTZUTILS, 21/ 3/97 12:34:45 after history:',
+              'From TRUNCATE, 21/ 3/97 12:34:44',
+              'SCALA: run at 12:34:33 on 21/ 3/97',
+              'From SORTMTZ, 21/ 3/97 10:36:28  using keys: H K L M/ISYM BATCH',
+              'From REINDEX, 21/ 3/97 10:36:25',
+              'From SORTMTZ, 21/ 3/97 10:36:23  using keys: H K L M/ISYM BATCH',
+              'From MOSFLM run on 20/ 3/97                                                    \x00',
+              'From TRUNCATE, 21/ 3/97 12:34:44',
+              'SCALA: run at 12:34:33 on 21/ 3/97',
+              'From SORTMTZ, 21/ 3/97 10:36:28  using keys: H K L M/ISYM BATCH',
+              'From REINDEX, 21/ 3/97 10:36:25',
+              'From SORTMTZ, 21/ 3/97 10:36:23  using keys: H K L M/ISYM BATCH',
+              'From MOSFLM run on 20/ 3/97                                                    \x00',
+              'data from CAD on 21/ 3/97                                                      \x00']
+        (scala, mosflm, g) = gemmi.get_software_from_mtz_history(h5)
+        check_sw(scala, 'SCALA', '', classif.DataScaling)
+        check_sw(mosflm, 'MOSFLM', '', classif.DataReduction)
 
 class TestReciprocalGrid(unittest.TestCase):
     @unittest.skipIf(numpy is None, 'requires NumPy')
