@@ -366,10 +366,10 @@ void add_mtz(nb::module_& m) {
     .def("clone", [](const Mtz::Batch& self) { return new Mtz::Batch(self); })
     ;
 
-  m.def("read_mtz_file", [](const std::string& path, Logger&& logging) {
+  m.def("read_mtz_file", [](const std::string& path, Logger&& logging, bool with_data) {
     std::unique_ptr<Mtz> mtz(new Mtz);
     mtz->logger = std::move(logging);
-    mtz->read_file_gz(path, true);
+    mtz->read_file_gz(path, with_data);
     return mtz.release();
-  }, nb::arg("path"), nb::arg("logging")=nb::none());
+  }, nb::arg("path"), nb::arg("logging")=nb::none(), nb::arg("with_data")=true);
 }

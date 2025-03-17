@@ -58,12 +58,20 @@ In C++, the MTZ file can be read using either stand-alone functions::
 or member functions of the Mtz class, when more control over the reading
 process is needed.
 
-In Python, we have a single function for reading MTZ files:
+In Python, there is a single function for reading MTZ files:
 
 .. doctest::
 
   >>> import gemmi
   >>> mtz = gemmi.read_mtz_file('../tests/5e5z.mtz')
+
+The option `with_data=False` is for rare cases when only metadata
+(unit cell, history lines, etc) is needed.
+
+.. doctest::
+
+  >>> gemmi.read_mtz_file('../tests/5e5z.mtz', with_data=False)
+  <gemmi.Mtz with 8 columns, 441 reflections>
 
 class Mtz
 ---------

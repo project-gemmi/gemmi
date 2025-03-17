@@ -81,10 +81,13 @@ class TestMtz(unittest.TestCase):
         out_name = get_path_for_tempfile()
         mtz.write_to_file(out_name)
         mtz2 = gemmi.read_mtz_file(out_name)
+        mtz3 = gemmi.read_mtz_file(out_name, with_data=False)
         os.remove(out_name)
         self.assertEqual(mtz2.spacegroup.hm, 'P 1 21 1')
+        self.assertEqual(mtz3.spacegroup.hm, 'P 1 21 1')
         if numpy is not None:
             assert_numpy_equal(self, mtz.array, mtz2.array)
+            self.assertEqual(mtz3.array.shape, (0, 8))
 
     def test_remove_and_add_column(self):
         path = full_path('5e5z.mtz')
