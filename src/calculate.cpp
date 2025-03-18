@@ -52,4 +52,25 @@ FTransform parse_triplet_as_ftransform(const std::string& s) {
   return frac_tr;
 }
 
+SMat33<double> calculate_u_from_tls(const TlsGroup& tls, const Position& pos) {
+  Position r = (pos - tls.origin) * rad(1);
+  SMat33<double> l_contrib = {
+    r.y * r.y * tls.L.u33 + r.z * r.z * tls.L.u22 - 2 * r.z * r.y * tls.L.u23,
+    r.x * r.x * tls.L.u33 + r.z * r.z * tls.L.u11 - 2 * r.z * r.x * tls.L.u13,
+    r.x * r.x * tls.L.u22 + r.y * r.y * tls.L.u11 - 2 * r.y * r.x * tls.L.u12,
+   -r.x * r.y * tls.L.u33 + r.z * ( r.x * tls.L.u23 + r.y * tls.L.u13 - r.z * tls.L.u12),
+   -r.x * r.z * tls.L.u22 + r.y * ( r.x * tls.L.u23 - r.y * tls.L.u13 + r.z * tls.L.u12),
+   -r.y * r.z * tls.L.u11 + r.x * (-r.x * tls.L.u23 + r.y * tls.L.u13 + r.z * tls.L.u12)
+  };
+  SMat33<double> s_contrib = {
+    2 * (tls.S[1][0] * r.z - tls.S[2][0] * r.y),
+    2 * (tls.S[2][1] * r.x - tls.S[0][1] * r.z),
+    2 * (tls.S[0][2] * r.y - tls.S[1][2] * r.x),
+    tls.S[2][0] * r.x - tls.S[2][1] * r.y + (tls.S[1][1] - tls.S[0][0]) * r.z,
+    tls.S[1][2] * r.z - tls.S[1][0] * r.x + (tls.S[0][0] - tls.S[2][2]) * r.y,
+    tls.S[0][1] * r.y - tls.S[0][2] * r.z + (tls.S[2][2] - tls.S[1][1]) * r.x
+  };
+  return tls.T + l_contrib + s_contrib;
+}
+
 } // namespace gemmi

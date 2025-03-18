@@ -218,5 +218,7 @@ inline double get_distance_from_plane(const Position& pos,
 
 GEMMI_DLL FTransform parse_triplet_as_ftransform(const std::string& s);
 
+GEMMI_DLL SMat33<double> calculate_u_from_tls(const TlsGroup& tls, const Position& pos);
+
 } // namespace gemmi
 #endif
