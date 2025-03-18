@@ -44,6 +44,7 @@ General output options:
   -B MIN[:MAX]            Set isotropic B-factors to a single value or constrain
                           them to a range.
   --scale-biso=MULT       Multiply isotropic B-factors by MULT.
+  --add-tls               convert from residual to full B-factors.
   --anisou=yes|no|heavy   Add or remove ANISOU records.
   --assign-records[=A|H]  Re-assign ATOM/HETATM (w/o argument: auto).
 

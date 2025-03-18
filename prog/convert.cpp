@@ -65,7 +65,8 @@ enum OptionIndex {
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
   Reframe, ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
   ShortenTLC, ChangeCcdCode, SetSeq, SiftsNum,
-  Biso, BisoScale, Anisou, AssignRecords, SetCis, SegmentAsChain, OldPdb, ForceLabel
+  Biso, BisoScale, AddTls, Anisou, AssignRecords,
+  SetCis, SegmentAsChain, OldPdb, ForceLabel
 };
 
 const option::Descriptor Usage[] = {
@@ -132,6 +133,8 @@ const option::Descriptor Usage[] = {
     "  -B MIN[:MAX]  \tSet isotropic B-factors to a single value or constrain them to a range." },
   { BisoScale, 0, "", "scale-biso", Arg::Float,
     "  --scale-biso=MULT  \tMultiply isotropic B-factors by MULT." },
+  { AddTls, 0, "", "add-tls", Arg::None,
+    "  --add-tls  \tconvert from residual to full B-factors." },
   { Anisou, 0, "", "anisou", ConvArg::AnisouChoice,
     "  --anisou=yes|no|heavy  \tAdd or remove ANISOU records." },
   { AssignRecords, 0, "", "assign-records", ConvArg::RecordChoice,
@@ -286,6 +289,16 @@ bool is_uniprot_ac_format(const std::string& ac) {
   return ac.size() >= 6 && ac[0] >= 'A' && ac[0] <= 'Z' && ac[1] >= '0' && ac[1] <= '9';
 }
 
+const gemmi::TlsGroup*
+get_tls_group_by_id(const std::vector<gemmi::TlsGroup>& tls_groups, short num_id) {
+  if (size_t(num_id - 1) < tls_groups.size() && tls_groups[num_id - 1].num_id == num_id)
+    return &tls_groups[num_id - 1];
+  for (const gemmi::TlsGroup& tg : tls_groups)
+    if (tg.num_id == num_id)
+      return &tg;
+  return nullptr;
+}
+
 void convert(gemmi::Structure& st,
              const std::string& output, CoorFormat output_type,
              const std::vector<option::Option>& options) {
@@ -354,6 +367,27 @@ void convert(gemmi::Structure& st,
     if (!ok)
       gemmi::fail("argument for -B should be a number or number:number");
     assign_b_iso(st, value1, value2);
+  }
+
+  if (options[AddTls]) {
+    const std::vector<gemmi::TlsGroup>* tls_groups = st.meta.get_tls_groups();
+    if (!tls_groups)
+      return;
+    gemmi::add_tls_group_ids(st);
+    for (gemmi::Model& model: st.models)
+      for (gemmi::Chain& chain : model.chains)
+        for (gemmi::Residue& res : chain.residues)
+          for (gemmi::Atom& atom : res.atoms) {
+            if (atom.aniso.nonzero())
+              continue;
+            if (const gemmi::TlsGroup* tg = get_tls_group_by_id(*tls_groups, atom.tls_group_id)) {
+              gemmi::SMat33<double> u = gemmi::calculate_u_from_tls(*tg, atom.pos)
+                                        .added_kI(1. / gemmi::u_to_b() * atom.b_iso);
+              atom.aniso = {(float)u.u11, (float)u.u22, (float)u.u33,
+                            (float)u.u12, (float)u.u13, (float)u.u23};
+              atom.b_iso = float(gemmi::u_to_b() / 3. * u.trace());
+            }
+          }
   }
 
   for (const option::Option* opt = options[Anisou]; opt; opt = opt->next()) {
