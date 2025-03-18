@@ -183,9 +183,18 @@ struct Metadata {
     return std::any_of(refinement.begin(), refinement.end(),
             [&](const RefinementInfo& r) { return !r.restr_stats.empty(); });
   }
-  bool has_tls() const {
-    return std::any_of(refinement.begin(), refinement.end(),
-            [&](const RefinementInfo& r) { return !r.tls_groups.empty(); });
+
+  // TLS constraint are not specific to refinement in joint refinement,
+  // so they are expected to be present only in a single RefinementInfo.
+  // As of 2025, two PDB entries have TLS + joint refinement: 6N3U and 5NKU.
+  std::vector<gemmi::TlsGroup>* get_tls_groups() {
+    for (gemmi::RefinementInfo& ref : refinement)
+      if (!ref.tls_groups.empty())
+        return &ref.tls_groups;
+    return nullptr;
+  }
+  const std::vector<gemmi::TlsGroup>* get_tls_groups() const {
+    return const_cast<Metadata*>(this)->get_tls_groups();
   }
 };
 
