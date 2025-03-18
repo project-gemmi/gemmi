@@ -80,7 +80,7 @@ SERIALIZE(DiffractionInfo, o.id, o.temperature, o.source, o.source_type,
 
 SERIALIZE(CrystalInfo, o.id, o.description, o.ph, o.ph_range, o.diffractions)
 
-SERIALIZE(TlsGroup, o.id, o.selections, o.origin, o.T, o.L, o.S)
+SERIALIZE(TlsGroup, o.num_id, o.id, o.selections, o.origin, o.T, o.L, o.S)
 
 SERIALIZE(TlsGroup::Selection, o.chain, o.res_begin, o.res_end, o.details)
 

@@ -1,8 +1,9 @@
 // Copyright 2017-2022 Global Phasing Ltd.
 
 #include <gemmi/polyheur.hpp>
-#include <gemmi/resinfo.hpp>   // for find_tabulated_residue
+#include <gemmi/resinfo.hpp>  // for find_tabulated_residue
 #include <gemmi/modify.hpp>   // for rename_residues
+#include <gemmi/atox.hpp>     // for no_sign_atoi
 
 namespace gemmi {
 
@@ -420,6 +421,40 @@ void add_microhetero_to_sequences(Structure& st, bool overwrite) {
       continue;
     if (overwrite || !ent.reflects_microhetero)
       add_microhetero_to_sequence(ent, polymer);
+  }
+}
+
+void add_tls_group_ids(Structure& st) {
+  std::vector<TlsGroup>* tls_groups = st.meta.get_tls_groups();
+  if (!tls_groups)
+    return;
+  bool has_ids = false;
+  for (const Model& model : st.models)
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues)
+        for (const Atom& atom : res.atoms)
+          if (atom.tls_group_id >= 0)
+            has_ids = true;
+  if (has_ids)
+    return;
+  for (const TlsGroup& tls : *tls_groups) {
+    // assuming that _pdbx_refine_tls.id is a non-negative number
+    const char* endptr;
+    short tls_id = (short) no_sign_atoi(tls.id.c_str(), &endptr);
+    if (endptr == tls.id.c_str() || *endptr != '\0')
+      continue;
+    for (const TlsGroup::Selection& sel : tls.selections) {
+      // for now we don't use selection_details, only chains and sequence ids
+      for (Model& model : st.models)
+        for (Chain& chain : model.chains)
+          if (chain.name == sel.chain) {
+            for (Residue& res : chain.residues)
+              if (sel.res_begin <= res.seqid && res.seqid <= sel.res_end) {
+                for (Atom& atom : res.atoms)
+                  atom.tls_group_id = tls_id;
+              }
+          }
+    }
   }
 }
 

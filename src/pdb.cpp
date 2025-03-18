@@ -415,7 +415,9 @@ void read_remark3_line(const char* line, Metadata& meta,
         = read_double(value, 50);
     } else if (same_str(key, "TLS GROUP")) {
       ref_info.tls_groups.emplace_back();
-      ref_info.tls_groups.back().id = std::string(value, end);
+      TlsGroup& tls_group = ref_info.tls_groups.back();
+      tls_group.id = std::string(value, end);
+      tls_group.num_id = (short) no_sign_atoi(tls_group.id.c_str());
     } else if (same_str(key, "SET") ||
                // "REMARK   3    SELECTION:"            -> TLS
                // "REMARK   3     SELECTION          :" -> NCS

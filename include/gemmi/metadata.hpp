@@ -95,6 +95,7 @@ struct TlsGroup {
     SeqId res_end;
     std::string details;  // _pdbx_refine_tls_group.selection_details
   };
+  short num_id = -1;      // id stored as number (optimization)
   std::string id;         // _pdbx_refine_tls.id
   std::vector<Selection> selections;
   Position origin;        // _pdbx_refine_tls.origin_x/y/z
