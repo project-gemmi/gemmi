@@ -567,6 +567,7 @@ void add_mol(nb::module_& m) {
   m.def("get_distance_from_plane", &get_distance_from_plane,
         nb::arg("pos"), nb::arg("coeff"));
   m.def("parse_triplet_as_ftransform", &parse_triplet_as_ftransform);
+  m.def("calculate_u_from_tls", &calculate_u_from_tls);
   m.def("make_assembly", &make_assembly,
         nb::arg("assembly"), nb::arg("model"), nb::arg("how"), nb::arg("logging")=nb::none());
   m.def("expand_ncs_model", &expand_ncs_model);
