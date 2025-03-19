@@ -16,6 +16,7 @@ INPUT is a coordinate file (mmCIF, PDB, etc).
   --island-limit=VOL   Remove "islands" up to VOL A^3.
   --hydrogens          Don't ignore hydrogens.
   --any-occupancy      Don't ignore zero-occupancy atoms.
+  --set-occupancy      Set values according to occupancy.
   --cctbx-compat       Use vdW, Rprobe, Rshrink radii from cctbx.
   --refmac-compat      Use radii compatible with Refmac.
   -I, --invert         0 for solvent, 1 for molecule.

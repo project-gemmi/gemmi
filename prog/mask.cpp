@@ -16,7 +16,7 @@ namespace {
 enum OptionIndex {
   Timing=4, GridSpac, GridDims, Radius, RProbe, RShrink,
   IslandLimit, Hydrogens, AnyOccupancy, CctbxCompat, RefmacCompat, Invert,
-  SetOccupancy, Verbosity
+  SetOccupancy
 };
 
 struct MaskArg {
@@ -33,8 +33,6 @@ const option::Descriptor Usage[] = {
   CommonUsage[Help],
   CommonUsage[Version],
   CommonUsage[Verbose],
-  { Verbosity, 0, "", "verbosity", Arg::Int,
-    "  --verbosity=I  \tVerbosity setting." },
   { Timing, 0, "", "timing", Arg::None,
     "  --timing  \tPrint how long individual steps take." },
   { GridSpac, 0, "s", "spacing", Arg::Float,
@@ -140,18 +138,11 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[SetOccupancy])
       masker.use_atom_occupancy = true;
 
-    if (p.options[Verbose]) {
-      masker.verbosity++;
-    }
-    if (p.options[Verbosity]) {
-      masker.verbosity = std::atoi(p.options[Verbosity].arg);
-    }
+    masker.verbosity = p.options[Verbose].count();
 
     timer.start();
     masker.clear(mask.grid);
-
     masker.mask_points(mask.grid, st.models[0]);
-
     timer.print("Points masked in");
 
     timer.start();
@@ -170,46 +161,23 @@ int GEMMI_MAIN(int argc, char **argv) {
       timer.start();
       int n = 0;
       if (p.options[SetOccupancy]) {
-        std::fprintf(stderr, "Creating intermediate grid for islands removal ... ");
         gemmi::Grid<int> g;
-        g.unit_cell   = mask.grid.unit_cell;
-        g.spacegroup  = mask.grid.spacegroup;
-        g.nu          = mask.grid.nu;
-        g.nv          = mask.grid.nv;
-        g.nw          = mask.grid.nw;
-        g.axis_order  = mask.grid.axis_order;
-        g.spacing[0]  = mask.grid.spacing[0];
-        g.spacing[1]  = mask.grid.spacing[1];
-        g.spacing[2]  = mask.grid.spacing[2];
-        gemmi::Vec3 inv_n(1.0 / g.nu, 1.0 / g.nv, 1.0 / g.nw);
-        g.orth_n = g.unit_cell.orth.mat.multiply_by_diagonal(inv_n);
-        // do this as a loop:
-        for (int w = 0, idx = 0; w < g.nw; ++w) {
-          for (int v = 0; v < g.nv; ++v) {
-            for (int u = 0; u < g.nu; ++u, ++idx) {
-              // turns our 0.0 ... 1.0 mask into a 0/1 one:
-              g.data.push_back(std::round(mask.grid.data[idx]));
-            }
-          }
-        }
-        std::fprintf(stderr, "done\n");
+        g.copy_metadata_from(mask.grid);
+        g.data.resize(mask.grid.data.size());
+        for (size_t i = 0; i < g.data.size(); ++i)
+          g.data[i] = mask.grid.data[i] >= 0.5 ? 1 : 0;
         n = masker.remove_islands(g);
         int n1 = 0;
         int n2 = 0;
-        for (int w = 0, idx = 0; w < g.nw; ++w) {
-          for (int v = 0; v < g.nv; ++v) {
-            for (int u = 0; u < g.nu; ++u, ++idx) {
-              if (mask.grid.data[idx]>=0.5&&g.data[idx]==0) {
-                // change from 1 -> 0
-                mask.grid.data[idx] = 0.0;
-                n1++;
-              }
-              else if (mask.grid.data[idx]<0.5&&g.data[idx]==1) {
-                // change from 0 -> 1
-                mask.grid.data[idx] = 1.0;
-                n2++;
-              }
-            }
+        for (size_t i = 0; i < g.data.size(); ++i) {
+          if (mask.grid.data[i] >= 0.5 && g.data[i] == 0) {
+            // change from 1 -> 0
+            mask.grid.data[i] = 0.0;
+            n1++;
+          } else if (mask.grid.data[i] < 0.5 && g.data[i] == 1) {
+            // change from 0 -> 1
+            mask.grid.data[i] = 1.0;
+            n2++;
           }
         }
         if (n1>0) {
@@ -218,8 +186,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (n2>0) {
           std::fprintf(stderr, " # of grid points < 0.5 reset = %d\n",n2);
         }
-      }
-      else {
+      } else {
         n = masker.remove_islands(mask.grid);
       }
       timer.print("Islands removed in");

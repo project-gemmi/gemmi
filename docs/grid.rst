@@ -317,7 +317,7 @@ To set the whole grid to the same value use:
 
 To set the grid points in a certain radius from a specified position use::
 
-  void Grid<T>::set_points_around(const Position& ctr, double radius, T value)
+  void Grid<T>::set_points_around(const Position& ctr, double radius, T value, bool use_pbc=true)
 
 .. doctest::
   :skipif: numpy is None or sys.platform == 'win32'

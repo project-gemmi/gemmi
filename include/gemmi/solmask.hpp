@@ -103,145 +103,45 @@ inline float refmac_radius_for_bulk_solvent(El el) {
 }
 
 // mask utilities
+
 /// mask all grid points within fixed radius around model atoms
-/// @param mask existing mask object
-/// @param model model to consider
-/// @param radius radius around each atom (in A)
-/// @param value value to use (unless use_atom_occupancy is set to true)
-/// @param ignore_hydrogen should we skip hydrogen atoms
-/// @param ignore_zero_occupancy_atoms should we skip atoms with occupancy of zero
-/// @param use_atom_occupancy should we use the occupancy of each atom (to build up a non-binary mask)
 template<typename T>
 void mask_points_in_constant_radius(Grid<T>& mask, const Model& model,
                                     double radius, T value,
                                     bool ignore_hydrogen,
-                                    bool ignore_zero_occupancy_atoms,
-                                    bool use_atom_occupancy,
-                                    int verbosity = 0) {
-
-  if (verbosity>0) printf("\n#### constant-radius masker\n");
-
-  if (use_atom_occupancy) {
-    // find all altConfs
-    std::vector<char> altConfs;
-    for (const Chain& chain : model.chains) {
-      for (const Residue& res : chain.residues) {
-        for (const Atom& atom : res.atoms) {
-          if ((ignore_hydrogen && atom.is_hydrogen()) ||
-              (ignore_zero_occupancy_atoms && atom.occ <= 0))
-            continue;
-          if (atom.has_altloc()) {
-            if( std::find(altConfs.begin(), altConfs.end(), atom.altloc) == altConfs.end()) {
-              if (verbosity>1) printf(" encountered new altConf=\"%c\"\n",atom.altloc);
-              altConfs.push_back(atom.altloc);
-            }
-          }
-        }
+                                    bool ignore_zero_occupancy_atoms) {
+  for (const Chain& chain : model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms) {
+        if ((ignore_hydrogen && atom.is_hydrogen()) ||
+            (ignore_zero_occupancy_atoms && atom.occ <= 0))
+          continue;
+        mask.set_points_around(atom.pos, radius, value);
       }
-    }
+}
 
-    // now loop over altlocs
-    for (auto & ac : altConfs) {
-      if (verbosity>0) printf(" working on altConf = %c\n",ac);
-      int nset = 0;
-      gemmi::Grid<float> m;
-      m.copy_metadata_from(mask);
-      m.fill(0.0);
-      for (const Chain& chain : model.chains) {
-        for (const Residue& res : chain.residues) {
-          for (const Atom& atom : res.atoms) {
-            if ((ignore_hydrogen && atom.is_hydrogen()) ||
-                (ignore_zero_occupancy_atoms && atom.occ <= 0))
-              continue;
-            if (atom.has_altloc()) {
-              if (verbosity>2) printf("   testing atom.altloc = %c ... ",atom.altloc);
-              if(atom.altloc==ac) {
-                // consider only those:
-                nset++;
-                m.set_points_around_to_min(atom.pos, radius, (T) -atom.occ);
-                if (verbosity>2) printf("yes\n");
-              }
-              else {
-                if (verbosity>2) printf("no\n");
-              }
-            }
-          }
+template<typename T>
+void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
+                                  AtomicRadiiSet atomic_radii_set,
+                                  double r_probe, T value,
+                                  bool ignore_hydrogen,
+                                  bool ignore_zero_occupancy_atoms) {
+  for (const Chain& chain : model.chains)
+    for (const Residue& res : chain.residues)
+      for (const Atom& atom : res.atoms) {
+        if ((ignore_hydrogen && atom.is_hydrogen()) ||
+            (ignore_zero_occupancy_atoms && atom.occ <= 0))
+          continue;
+        El elem = atom.element.elem;
+        double r = 0;
+        switch (atomic_radii_set) {
+          case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
+          case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
+          case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
+          case AtomicRadiiSet::Constant: assert(0); break;
         }
+        mask.set_points_around(atom.pos, r + r_probe, value);
       }
-      if (verbosity>0) printf("   encountered %d atoms with this\n",nset);
-
-      // reduce starting mask
-      nset = 0;
-      for (int w = 0, idx = 0; w < m.nw; ++w) {
-        for (int v = 0; v < m.nv; ++v) {
-          for (int u = 0; u < m.nu; ++u, ++idx) {
-            if (m.data[idx]<0.0) {
-              nset++;
-              if (verbosity>2) printf("   setting grid point #%d (%d,%d,%d) to %f from %f\n",nset,u,v,w,mask.data[idx] + m.data[idx],mask.data[idx]);
-              mask.data[idx] = mask.data[idx] + m.data[idx];
-            }
-          }
-        }
-      }
-      if (verbosity>1) printf("   set %d grid points out of %d in total\n",nset,m.nu*m.nv*m.nw);
-    }
-
-    // and now for non altConfs:
-    if (verbosity>0) printf(" working on non-altConf\n");
-    int nset = 0;
-    gemmi::Grid<float> m;
-    m.copy_metadata_from(mask);
-    m.fill(0.0);
-    for (const Chain& chain : model.chains) {
-      for (const Residue& res : chain.residues) {
-        for (const Atom& atom : res.atoms) {
-          if ((ignore_hydrogen && atom.is_hydrogen()) ||
-              (ignore_zero_occupancy_atoms && atom.occ <= 0))
-            continue;
-          if (!atom.has_altloc()) {
-            // consider only those:
-            nset++;
-            m.set_points_around_to_min(atom.pos, radius, (T) -atom.occ);
-          }
-        }
-      }
-    }
-    if (verbosity>0) printf("   encountered %d atoms with this\n",nset);
-
-    // reduce starting mask
-    nset = 0;
-    for (int w = 0, idx = 0; w < m.nw; ++w) {
-      for (int v = 0; v < m.nv; ++v) {
-        for (int u = 0; u < m.nu; ++u, ++idx) {
-          if (m.data[idx]<0.0) {
-            nset++;
-            if (verbosity>2) printf("   setting grid point #%d (%d,%d,%d) to %f from %f\n",nset,u,v,w,mask.data[idx] + m.data[idx],mask.data[idx]);
-            mask.data[idx] = mask.data[idx] + m.data[idx];
-          }
-        }
-      }
-    }
-
-  }
-  else {
-
-    for (const Chain& chain : model.chains) {
-      for (const Residue& res : chain.residues) {
-        for (const Atom& atom : res.atoms) {
-          if ((ignore_hydrogen && atom.is_hydrogen()) ||
-              (ignore_zero_occupancy_atoms && atom.occ <= 0))
-            continue;
-          mask.set_points_around(atom.pos, radius, value);
-        }
-      }
-    }
-  }
-
-  // When we reduced the solvent mask by the atom occupancy each time
-  // we hit a grid point, we might end up with a value below zero (due
-  // to overlapping atoms) and need to limit it here.
-  if (use_atom_occupancy)
-    mask.limit_values((T)0, (T)1);
 }
 
 /// mask all grid points within a varying radius around model atoms
@@ -253,92 +153,36 @@ void mask_points_in_constant_radius(Grid<T>& mask, const Model& model,
 /// @param ignore_hydrogen should we skip hydrogen atoms
 /// @param ignore_zero_occupancy_atoms should we skip atoms with occupancy of zero
 /// @param use_atom_occupancy should we use the occupancy of each atom (to build up a non-binary mask)
-template<typename T>
-void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
-                                  AtomicRadiiSet atomic_radii_set,
-                                  double r_probe, T value,
+inline
+void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
+                                  AtomicRadiiSet atomic_radii_set, double r_probe,
                                   bool ignore_hydrogen,
                                   bool ignore_zero_occupancy_atoms,
-                                  bool use_atom_occupancy,
                                   int verbosity = 0) {
 
-  if (verbosity>0) printf("\n#### varied-radius masker\n");
+  if (verbosity>0) printf("\n#### occupancy masker\n");
 
-  if (use_atom_occupancy) {
-    // find all altConfs
-    std::vector<char> altConfs;
-    for (const Chain& chain : model.chains) {
-      for (const Residue& res : chain.residues) {
-        for (const Atom& atom : res.atoms) {
-          if ((ignore_hydrogen && atom.is_hydrogen()) ||
-              (ignore_zero_occupancy_atoms && atom.occ <= 0))
-            continue;
-         if (atom.has_altloc()) {
-            if( std::find(altConfs.begin(), altConfs.end(), atom.altloc) == altConfs.end()) {
-              if (verbosity>1) printf(" encountered new altConf=\"%c\"\n",atom.altloc);
-              altConfs.push_back(atom.altloc);
-            }
+  // find all altConfs
+  std::vector<char> altConfs;
+  for (const Chain& chain : model.chains) {
+    for (const Residue& res : chain.residues) {
+      for (const Atom& atom : res.atoms) {
+        if ((ignore_hydrogen && atom.is_hydrogen()) ||
+            (ignore_zero_occupancy_atoms && atom.occ <= 0))
+          continue;
+       if (atom.has_altloc()) {
+          if( std::find(altConfs.begin(), altConfs.end(), atom.altloc) == altConfs.end()) {
+            if (verbosity>1) printf(" encountered new altConf=\"%c\"\n",atom.altloc);
+            altConfs.push_back(atom.altloc);
           }
         }
       }
     }
+  }
 
-    // now loop over altlocs
-    for (auto & ac : altConfs) {
-      if (verbosity>0) printf(" working on altConf = %c\n",ac);
-      int nset = 0;
-      gemmi::Grid<float> m;
-      m.copy_metadata_from(mask);
-      m.fill(0.0);
-      for (const Chain& chain : model.chains) {
-        for (const Residue& res : chain.residues) {
-          for (const Atom& atom : res.atoms) {
-            if ((ignore_hydrogen && atom.is_hydrogen()) ||
-                (ignore_zero_occupancy_atoms && atom.occ <= 0))
-              continue;
-            if (atom.has_altloc()) {
-              if (verbosity>2) printf("   testing atom.altloc = %c ... ",atom.altloc);
-              if(atom.altloc==ac) {
-                // consider only those:
-                nset++;
-                El elem = atom.element.elem;
-                double r = 0;
-                switch (atomic_radii_set) {
-                  case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
-                  case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
-                  case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
-                  case AtomicRadiiSet::Constant: assert(0); break;
-                }
-                m.set_points_around_to_min(atom.pos, r + r_probe, (T) -atom.occ);
-                if (verbosity>2) printf("yes\n");
-              }
-              else {
-                if (verbosity>2) printf("no\n");
-              }
-            }
-          }
-        }
-      }
-      if (verbosity>0) printf("   encountered %d atoms with this\n",nset);
-
-      // reduce starting mask
-      nset = 0;
-      for (int w = 0, idx = 0; w < m.nw; ++w) {
-        for (int v = 0; v < m.nv; ++v) {
-          for (int u = 0; u < m.nu; ++u, ++idx) {
-            if (m.data[idx]<0.0) {
-              nset++;
-              if (verbosity>2) printf("   setting grid point #%d (%d,%d,%d) to %f from %f\n",nset,u,v,w,mask.data[idx] + m.data[idx],mask.data[idx]);
-              mask.data[idx] = mask.data[idx] + m.data[idx];
-            }
-          }
-        }
-      }
-      if (verbosity>1) printf("   set %d grid points out of %d in total\n",nset,m.nu*m.nv*m.nw);
-    }
-
-    // and now for non altConfs:
-    if (verbosity>0) printf(" working on non-altConf\n");
+  // now loop over altlocs
+  for (auto & ac : altConfs) {
+    if (verbosity>0) printf(" working on altConf = %c\n",ac);
     int nset = 0;
     gemmi::Grid<float> m;
     m.copy_metadata_from(mask);
@@ -349,18 +193,28 @@ void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
           if ((ignore_hydrogen && atom.is_hydrogen()) ||
               (ignore_zero_occupancy_atoms && atom.occ <= 0))
             continue;
-          if (!atom.has_altloc()) {
-            // consider only those:
-            nset++;
-            El elem = atom.element.elem;
-            double r = 0;
-            switch (atomic_radii_set) {
-              case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
-              case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
-              case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
-              case AtomicRadiiSet::Constant: assert(0); break;
+          if (atom.has_altloc()) {
+            if (verbosity>2) printf("   testing atom.altloc = %c ... ",atom.altloc);
+            if(atom.altloc==ac) {
+              // consider only those:
+              nset++;
+              El elem = atom.element.elem;
+              double r = 0;
+              switch (atomic_radii_set) {
+                case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
+                case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
+                case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
+                case AtomicRadiiSet::Constant: /* r is included in r_probe */ break;
+              }
+              Fractional fpos = m.unit_cell.fractionalize(atom.pos);
+              m.use_points_around<true>(fpos, r + r_probe, [&](float& ref, double) {
+                  ref = std::min(ref, -atom.occ);
+              }, false);
+              if (verbosity>2) printf("yes\n");
             }
-            m.set_points_around_to_min(atom.pos, r + r_probe, (T) -atom.occ);
+            else {
+              if (verbosity>2) printf("no\n");
+            }
           }
         }
       }
@@ -380,24 +234,51 @@ void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
         }
       }
     }
-
+    if (verbosity>1) printf("   set %d grid points out of %d in total\n",nset,m.nu*m.nv*m.nw);
   }
-  else {
-    for (const Chain& chain : model.chains) {
-      for (const Residue& res : chain.residues) {
-        for (const Atom& atom : res.atoms) {
-          if ((ignore_hydrogen && atom.is_hydrogen()) ||
-              (ignore_zero_occupancy_atoms && atom.occ <= 0))
-            continue;
+
+  // and now for non altConfs:
+  if (verbosity>0) printf(" working on non-altConf\n");
+  int nset = 0;
+  gemmi::Grid<float> m;
+  m.copy_metadata_from(mask);
+  m.fill(0.0);
+  for (const Chain& chain : model.chains) {
+    for (const Residue& res : chain.residues) {
+      for (const Atom& atom : res.atoms) {
+        if ((ignore_hydrogen && atom.is_hydrogen()) ||
+            (ignore_zero_occupancy_atoms && atom.occ <= 0))
+          continue;
+        if (!atom.has_altloc()) {
+          // consider only those:
+          nset++;
           El elem = atom.element.elem;
           double r = 0;
           switch (atomic_radii_set) {
             case AtomicRadiiSet::VanDerWaals: r = vdw_radius(elem); break;
             case AtomicRadiiSet::Cctbx: r = cctbx_vdw_radius(elem); break;
             case AtomicRadiiSet::Refmac: r = refmac_radius_for_bulk_solvent(elem); break;
-            case AtomicRadiiSet::Constant: assert(0); break;
+            case AtomicRadiiSet::Constant: /* r is included in r_probe */ break;
           }
-          mask.set_points_around(atom.pos, r + r_probe, value);
+          Fractional fpos = m.unit_cell.fractionalize(atom.pos);
+          m.use_points_around<true>(fpos, r + r_probe, [&](float& ref, double) {
+              ref = std::min(ref, -atom.occ);
+          }, false);
+        }
+      }
+    }
+  }
+  if (verbosity>0) printf("   encountered %d atoms with this\n",nset);
+
+  // reduce starting mask
+  nset = 0;
+  for (int w = 0, idx = 0; w < m.nw; ++w) {
+    for (int v = 0; v < m.nv; ++v) {
+      for (int u = 0; u < m.nu; ++u, ++idx) {
+        if (m.data[idx]<0.0) {
+          nset++;
+          if (verbosity>2) printf("   setting grid point #%d (%d,%d,%d) to %f from %f\n",nset,u,v,w,mask.data[idx] + m.data[idx],mask.data[idx]);
+          mask.data[idx] = mask.data[idx] + m.data[idx];
         }
       }
     }
@@ -406,8 +287,8 @@ void mask_points_in_varied_radius(Grid<T>& mask, const Model& model,
   // When we reduced the solvent mask by the atom occupancy each time
   // we hit a grid point, we might end up with a value below zero (due
   // to overlapping atoms) and need to limit it here.
-  if (use_atom_occupancy)
-    mask.limit_values((T)0, (T)1);
+  for (float& d : mask.data)
+    d = clamp(d, 0.f, 1.f);
 }
 
 /// All points close to a grid point which is currently set below a value are changed
@@ -443,27 +324,30 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
         }
       }
   if (stencil2.empty()) {
+    // r is small; it should be faster to go through masked points and
+    // for each one check if any point in given radius are unmasked.
     for (typename Grid<T>::Point p : mask)
       if (*p.value < value) {
-        // found grid point below value
         for (const auto& wvu : stencil1) {
           size_t idx = mask.index_near_zero(p.u + wvu[2], p.v + wvu[1], p.w + wvu[0]);
           if (mask.data[idx] >= value) {
-            // found neighbouring grid point that shows we are at a "border"
             *p.value = margin_value;
             break;
           }
         }
       }
   } else {
+    // r is large; it should be faster to go through unmasked points
+    // and for each one check if it has masked near neighbors (stencil1).
+    // These neighbors get marked as margin. If all near neighbors are
+    // unmasked, we can skip further neighbors (they will be checked
+    // from other points).
     for (typename Grid<T>::Point p : mask) {
       if (*p.value >= value) {
-        // found grid point that is not below the threashold
         bool found = false;
         for (const auto& wvu : stencil1) {
           size_t idx = mask.index_near_zero(p.u + wvu[2], p.v + wvu[1], p.w + wvu[0]);
           if (mask.data[idx] < value) {
-            // found neighbouring grid point that is below threshold (i.e. we are at a "border")
             mask.data[idx] = margin_value;
             found = true;
           }
@@ -472,7 +356,6 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
           for (const auto& wvu : stencil2) {
             size_t idx = mask.index_near_zero(p.u + wvu[2], p.v + wvu[1], p.w + wvu[0]);
             if (mask.data[idx] < value)
-              // found neighbouring grid point that is below threshold (i.e. we are at a "border")
               mask.data[idx] = margin_value;
           }
       }
@@ -531,15 +414,22 @@ struct SolventMasker {
   /// fill whole grid with 1
   template<typename T> void clear(Grid<T>& grid) const { grid.fill((T)1); }
 
-  /// set grid points around atoms to 0 (depending on used AtomicRadiiSet)
+  /// set grid points around atoms to 0
   template<typename T> void mask_points(Grid<T>& grid, const Model& model) const {
-
     if (atomic_radii_set == AtomicRadiiSet::Constant)
       mask_points_in_constant_radius(grid, model, constant_r + rprobe, (T)0,
-                                     ignore_hydrogen, ignore_zero_occupancy_atoms, use_atom_occupancy, verbosity);
+                                     ignore_hydrogen, ignore_zero_occupancy_atoms);
     else
       mask_points_in_varied_radius(grid, model, atomic_radii_set, rprobe, (T)0,
-                                   ignore_hydrogen, ignore_zero_occupancy_atoms, use_atom_occupancy, verbosity);
+                                   ignore_hydrogen, ignore_zero_occupancy_atoms);
+  }
+
+  void mask_points(Grid<float>& grid, const Model& model) const {
+    if (use_atom_occupancy)
+      mask_points_using_occupancy(grid, model, atomic_radii_set, constant_r + rprobe,
+                                  ignore_hydrogen, ignore_zero_occupancy_atoms, verbosity);
+    else
+      mask_points<float>(grid, model);
   }
 
   /// Apply symmetry to grid (to fill whole grid). If we are using an
