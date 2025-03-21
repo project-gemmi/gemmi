@@ -288,6 +288,12 @@ struct Residue : public ResidueId {
   ConstUniqProxy<Atom> first_conformer() const { return {atoms}; }
 };
 
+inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
+  for (const Atom& atom : res.atoms)
+    if (atom.altloc && altlocs.find(atom.altloc) == std::string::npos)
+      altlocs += atom.altloc;
+}
+
 struct ResidueGroup;
 struct ConstResidueGroup;
 
