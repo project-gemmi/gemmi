@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "scikit-build-core ~=0.10.7",
+    "scikit-build-core ~=0.11.1",
     "nanobind >=2.4",
     "typing-extensions >=4.0; python_version < '3.11'"
 ]

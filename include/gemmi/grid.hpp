@@ -706,7 +706,7 @@ struct Grid : GridBase<T> {
       use_points_around<false>(fctr, radius, [&](T& ref, double) { ref = value; }, false);
   }
 
-  /// Change all occurences of old_value to new_value
+  /// Change all occurrences of old_value to new_value
   void change_values(T old_value, T new_value) {
     for (auto& d : data)
       if (impl::is_same(d, old_value))

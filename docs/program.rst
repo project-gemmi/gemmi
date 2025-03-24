@@ -744,7 +744,8 @@ CC\ :sub:`1/2` is calculated using the σ-τ method, proposed by
 `Assmann et al (2016) <https://doi.org/10.1107/S1600576716005471>`_ in 2016
 and described in detail on
 `this XDSwiki page <https://wiki.uni-konstanz.de/xds/index.php?title=CC1/2>`_.
-(TBC: weighting)
+
+(NOTE: weighted CC1/2 may not be correct, it will be checked later)
 
 With the `--anom` option, I+ and I- values are treated separately.
 Centric reflections are counted in and treated as I+ (unlike, for instance,

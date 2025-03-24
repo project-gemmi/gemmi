@@ -207,6 +207,7 @@ void add_symmetry(nb::module_& m) {
         // faster than serializing self.xhm()
         std::ptrdiff_t pos = &self - spacegroup_tables::main;
         int main_table_length = int(sizeof(spacegroup_tables::main) / sizeof(SpaceGroup));
+        (void) main_table_length;
         assert(pos >= 0 && pos < main_table_length);
         return nb::make_tuple(nb::type<SpaceGroup>(), nb::make_tuple(INT_MIN + (int)pos));
     })
