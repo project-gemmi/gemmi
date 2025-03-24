@@ -138,8 +138,6 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (p.options[SetOccupancy])
       masker.use_atom_occupancy = true;
 
-    masker.verbosity = p.options[Verbose].count();
-
     timer.start();
     masker.clear(mask.grid);
     masker.mask_points(mask.grid, st.models[0]);
@@ -161,30 +159,22 @@ int GEMMI_MAIN(int argc, char **argv) {
       timer.start();
       int n = 0;
       if (p.options[SetOccupancy]) {
-        gemmi::Grid<int> g;
+        gemmi::Grid<std::int8_t> g;
         g.copy_metadata_from(mask.grid);
         g.data.resize(mask.grid.data.size());
         for (size_t i = 0; i < g.data.size(); ++i)
           g.data[i] = mask.grid.data[i] >= 0.5 ? 1 : 0;
         n = masker.remove_islands(g);
         int n1 = 0;
-        int n2 = 0;
         for (size_t i = 0; i < g.data.size(); ++i) {
           if (mask.grid.data[i] >= 0.5 && g.data[i] == 0) {
-            // change from 1 -> 0
-            mask.grid.data[i] = 0.0;
+            // this is part of removed island
+            mask.grid.data[i] = 0;
             n1++;
-          } else if (mask.grid.data[i] < 0.5 && g.data[i] == 1) {
-            // change from 0 -> 1
-            mask.grid.data[i] = 1.0;
-            n2++;
           }
         }
-        if (n1>0) {
+        if (n1>0 && p.options[Verbose]) {
           std::fprintf(stderr, " # of grid points >=0.5 reset = %d\n",n1);
-        }
-        if (n2>0) {
-          std::fprintf(stderr, " # of grid points < 0.5 reset = %d\n",n2);
         }
       } else {
         n = masker.remove_islands(mask.grid);

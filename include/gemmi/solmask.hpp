@@ -160,10 +160,7 @@ inline
 void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
                                   AtomicRadiiSet atomic_radii_set, double r_probe,
                                   bool ignore_hydrogen,
-                                  bool ignore_zero_occupancy_atoms,
-                                  int verbosity = 0) {
-
-  if (verbosity>0) printf("\n#### occupancy masker\n");
+                                  bool ignore_zero_occupancy_atoms) {
 
   std::string altlocs = distinct_altlocs(model);
   altlocs += '\0';  // no altloc
@@ -171,7 +168,6 @@ void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
   gemmi::Grid<float> m;
   m.copy_metadata_from(mask);
   for (char& altloc : altlocs) {
-    int nset = 0;
     m.fill(0.0);
     for (const Chain& chain : model.chains) {
       for (const Residue& res : chain.residues) {
@@ -180,7 +176,6 @@ void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
               (ignore_zero_occupancy_atoms && atom.occ <= 0))
             continue;
           if (atom.altloc == altloc) {
-            nset++;
             El elem = atom.element.elem;
             double r = r_probe;
             switch (atomic_radii_set) {
@@ -197,25 +192,19 @@ void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
         }
       }
     }
-    if (verbosity>0)
-      printf("   encountered %d atoms with altloc '%c'\n", nset, altloc ? altloc : ' ');
 
     // reduce starting mask
-    nset = 0;
     for (size_t i = 0; i < m.data.size(); ++i) {
-      if (m.data[i] < 0.0) {
-        nset++;
+      if (m.data[i] < 0.0)
         mask.data[i] += m.data[i];
-      }
     }
-    if (verbosity>1) printf("   set %d grid points out of %d in total\n",nset,m.nu*m.nv*m.nw);
   }
 
   // When we reduced the solvent mask by the atom occupancy each time
   // we hit a grid point, we might end up with a value below zero (due
   // to overlapping atoms) and need to limit it here.
   for (float& d : mask.data)
-    d = clamp(d, 0.f, 1.f);
+    d = std::max(d, 0.f);
 }
 
 /// All points close to a grid point which is currently set below a value are changed
@@ -302,7 +291,6 @@ struct SolventMasker {
   double island_min_volume;
   double constant_r;
   double requested_spacing = 0.;
-  int verbosity = 0;
 
   SolventMasker(AtomicRadiiSet choice, double constant_r_=0.) {
     set_radii(choice, constant_r_);
@@ -350,7 +338,7 @@ struct SolventMasker {
   void mask_points(Grid<float>& grid, const Model& model) const {
     if (use_atom_occupancy)
       mask_points_using_occupancy(grid, model, atomic_radii_set, constant_r + rprobe,
-                                  ignore_hydrogen, ignore_zero_occupancy_atoms, verbosity);
+                                  ignore_hydrogen, ignore_zero_occupancy_atoms);
     else
       mask_points<float>(grid, model);
   }
@@ -383,18 +371,7 @@ struct SolventMasker {
 
   // Removes small islands of Land=1 in the sea of 0. Uses flood fill.
   // cf. find_blobs_by_flood_fill()
-
-  // cv-20240731: should deal with floating point masks (via occupancy)
-  // here ... probably defining Land as
-  //   Land < 0.5 and Sea >= 0.5
-  //   Land > 0.5 and Sea <= 0.5
-  // For that we would have to change Land in floodfill.hpp (from int
-  // to float - or to actually store our mask as -1..+1 instead of
-  // 0..1, i.e. as x*2-1 and then work on Land=0 and Sea being either
-  // -1 or +1?
-  //
-  // Or work with an intermediate grid here?
-
+  // Currently doesn't work mask from mask_points_using_occupancy().
   template<typename T> int remove_islands(Grid<T>& grid) const {
     if (island_min_volume <= 0)
       return 0;
@@ -468,10 +445,6 @@ inline void mask_with_node_info(Grid<NodeInfo>& mask, const Model& model, double
   for (const Chain& chain : model.chains)
     for (const Residue& res : chain.residues)
       for (const Atom& atom : res.atoms) {
-
-        // cv-20240731: should we not also honour ignore_hydrogen and
-        //              ignore_zero_occupancy_atoms here?
-
         Fractional frac0 = mask.unit_cell.fractionalize(atom.pos);
         mask.template do_use_points_in_box<true>(
             frac0, du, dv, dw,
