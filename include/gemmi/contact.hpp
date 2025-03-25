@@ -125,7 +125,7 @@ void ContactSearch::for_each_contact(NeighborSearch& ns, const Func& func) {
             if (cra2.atom->occ < min_occupancy)
               return;
             func(CRA{&chain, &res, &atom}, cra2, m.image_idx, dist_sq);
-        });
+        }, ns.sufficient_k(search_radius));
       }
     }
   }
