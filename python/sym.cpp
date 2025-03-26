@@ -81,7 +81,7 @@ void add_symmetry(nb::module_& m) {
         return "<gemmi.Op(\"" + self.triplet() + "\")>";
     });
 
-  m.def("parse_triplet", &parse_triplet, nb::arg("triplet"),
+  m.def("parse_triplet", &parse_triplet, nb::arg("triplet"), nb::arg("notation")=' ',
         "Parse coordinate triplet into gemmi.Op.");
   m.def("parse_triplet_part", [](const std::string& s) {
       char notation = ' ';

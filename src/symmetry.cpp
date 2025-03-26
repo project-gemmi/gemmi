@@ -105,12 +105,11 @@ std::array<int, 4> parse_triplet_part(const std::string& s, char& notation, doub
   return r;
 }
 
-Op parse_triplet(const std::string& s) {
+Op parse_triplet(const std::string& s, char notation) {
   if (std::count(s.begin(), s.end(), ',') != 2)
     fail("expected exactly two commas in triplet");
   size_t comma1 = s.find(',');
   size_t comma2 = s.find(',', comma1 + 1);
-  char notation = ' ';
   auto a = parse_triplet_part(s.substr(0, comma1), notation);
   auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)), notation);
   auto c = parse_triplet_part(s.substr(comma2 + 1), notation);

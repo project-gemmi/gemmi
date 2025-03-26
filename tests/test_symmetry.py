@@ -166,7 +166,7 @@ class TestSymmetry(unittest.TestCase):
         op = gemmi.Op('1/2*x+1/2*y,-1/2*x+1/2*y,z')
         self.assertEqual(op.inverse().triplet(), 'x-y,x+y,z')
         # check also alternative writing
-        op2 = gemmi.Op('a/2+b/2,-A/2+b/2,C')
+        op2 = gemmi.parse_triplet('a/2+b/2,-A/2+b/2,C', notation='a')
         self.assertEqual(op, op2)
 
     def test_rot_type(self):
