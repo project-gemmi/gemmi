@@ -28,21 +28,6 @@
 
 namespace gemmi {
 
-// UTILS
-
-namespace impl {
-
-// copied a helper function from atox.hpp to keep it a two-header lib
-inline const char* skip_blank(const char* p) {
-  if (p)
-    while (*p == ' ' || *p == '\t' || *p == '_') // '_' can be used as space
-      ++p;
-  return p;
-}
-
-} // namespace impl
-
-
 // OP
 
 // Op is a symmetry operation, or a change-of-basic transformation,
@@ -221,25 +206,7 @@ inline Op Op::inverse() const {
 }
 
 // inverse of Op::float_seitz()
-inline Op seitz_to_op(const std::array<std::array<double,4>, 4>& t) {
-  static_assert(Op::DEN == 24, "");
-  auto check_round = [](double d) {
-    double r = std::round(d * Op::DEN);
-    if (std::fabs(r - d * Op::DEN) > 0.05)
-      fail("all numbers in Seitz matrix must be equal Z/24");
-    return static_cast<int>(r);
-  };
-  Op op;
-  if (std::fabs(t[3][0]) + std::fabs(t[3][1]) + std::fabs(t[3][2]) +
-      std::fabs(t[3][3] - 1) > 1e-3)
-    fail("the last row in Seitz matrix must be [0 0 0 1]");
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j)
-      op.rot[i][j] = check_round(t[i][j]);
-    op.tran[i] = check_round(t[i][3]);
-  }
-  return op;
-}
+GEMMI_DLL Op seitz_to_op(const std::array<std::array<double,4>, 4>& t);
 
 // helper function for use in AsuBrick::str()
 GEMMI_DLL void append_op_fraction(std::string& s, int w);
@@ -902,114 +869,9 @@ inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
 /// \param prefer can specify preferred H/R settings and 1/2 origin choice.
 /// For example, prefer="2H" means the origin choice 2 and hexagonal
 /// settings. The default is "1H".
-inline const SpaceGroup* find_spacegroup_by_name(std::string name,
+GEMMI_DLL const SpaceGroup* find_spacegroup_by_name(std::string name,
                                   double alpha=0., double gamma=0.,
-                                  const char* prefer=nullptr) {
-  bool prefer_2 = false;
-  bool prefer_R = false;
-  if (prefer)
-    for (const char* p = prefer; *p != '\0'; ++p) {
-      if (*p == '2')
-        prefer_2 = true;
-      else if (*p == 'R')
-        prefer_R = true;
-      else if (*p != '1' && *p != 'H')
-        throw std::invalid_argument("find_spacegroup_by_name(): invalid arg 'prefer'");
-    }
-  const char* p = impl::skip_blank(name.c_str());
-  if (*p >= '0' && *p <= '9') { // handle numbers
-    char *endptr;
-    long n = std::strtol(p, &endptr, 10);
-    return *endptr == '\0' ? find_spacegroup_by_number(n) : nullptr;
-  }
-  char first = *p & ~0x20; // to uppercase
-  if (first == '\0')
-    return nullptr;
-  if (first == 'H')
-    first = 'R';
-  p = impl::skip_blank(p+1);
-  size_t start = p - name.c_str();
-  // change letters to lower case, except the letter after :
-  for (size_t i = start; i < name.size(); ++i) {
-    if (name[i] >= 'A' && name[i] <= 'Z')
-      name[i] |= 0x20;  // to lowercase
-    else if (name[i] == ':')
-      while (++i < name.size())
-        if (name[i] >= 'a' && name[i] <= 'z')
-          name[i] &= ~0x20;  // to uppercase
-  }
-  // allow names ending with R or H, such as R3R instead of R3:R
-  if (name.back() == 'h' || name.back() == 'r') {
-    name.back() &= ~0x20;  // to uppercase
-    name.insert(name.end() - 1, ':');
-  }
-  // The string that const char* p points to was just modified.
-  // This confuses some compilers (GCC 4.8), so let's re-assign p.
-  p = name.c_str() + start;
-
-  for (const SpaceGroup& sg : spacegroup_tables::main)
-    if (sg.hm[0] == first) {
-      if (sg.hm[2] == *p) {
-        const char* a = impl::skip_blank(p + 1);
-        const char* b = impl::skip_blank(sg.hm + 3);
-        // In IT 1935 and 1952, symbols of centrosymmetric, cubic space groups
-        // 200-206 and 221-230 had symbol 3 (not -3), e.g. Pm3 instead of Pm-3,
-        // as listed in Table 3.3.3.1 in ITfC (2016) vol. A, p.788.
-        while ((*a == *b && *b != '\0') ||
-               (*a == '3' && *b == '-' && b == sg.hm + 4 && *++b == '3')) {
-          a = impl::skip_blank(a+1);
-          b = impl::skip_blank(b+1);
-        }
-        if (*b == '\0') {
-          if (*a == '\0') {
-            // Change hexagonal settings to rhombohedral if the unit cell
-            // angles are more consistent with the latter.
-            // We have possible ambiguity in the hexagonal crystal family.
-            // For instance, "R 3" may mean "R 3:H" (hexagonal setting) or
-            // "R 3:R" (rhombohedral setting). The :H symbols come first
-            // in the table and are used by default. The ratio gamma:alpha
-            // is 120:90 in the hexagonal system and 1:1 in rhombohedral.
-            // We assume that the 'R' entry follows directly the 'H' entry.
-            if (sg.ext == 'H' && (alpha == 0. ? prefer_R : gamma < 1.125 * alpha))
-              return &sg + 1;
-            // Similarly, the origin choice #2 follows directly #1.
-            if (sg.ext == '1' && prefer_2)
-              return &sg + 1;
-            return &sg;
-          }
-          if (*a == ':' && *impl::skip_blank(a+1) == sg.ext)
-            return &sg;
-        }
-      } else if (sg.hm[2] == '1' && sg.hm[3] == ' ') {
-        // check monoclinic short names, matching P2 to "P 1 2 1";
-        // as an exception "B 2" == "B 1 1 2" (like in the PDB)
-        const char* b = sg.hm + 4;
-        if (*b != '1' || (first == 'B' && *++b == ' ' && *++b != '1')) {
-          char end = (b == sg.hm + 4 ? ' ' : '\0');
-          const char* a = impl::skip_blank(p);
-          while (*a == *b && *b != end) {
-            ++a;
-            ++b;
-          }
-          if (*impl::skip_blank(a) == '\0' && *b == end)
-            return &sg;
-        }
-      }
-    }
-  for (const SpaceGroupAltName& sg : spacegroup_tables::alt_names)
-    if (sg.hm[0] == first && sg.hm[2] == *p) {
-      const char* a = impl::skip_blank(p + 1);
-      const char* b = impl::skip_blank(sg.hm + 3);
-      while (*a == *b && *b != '\0') {
-        a = impl::skip_blank(a+1);
-        b = impl::skip_blank(b+1);
-      }
-      if (*b == '\0' &&
-          (*a == '\0' || (*a == ':' && *impl::skip_blank(a+1) == sg.ext)))
-        return &spacegroup_tables::main[sg.pos];
-    }
-  return nullptr;
-}
+                                  const char* prefer=nullptr);
 
 inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
   const SpaceGroup* sg = find_spacegroup_by_name(name);

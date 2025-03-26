@@ -3,6 +3,13 @@
 #include <gemmi/symmetry.hpp>
 #include <cstring>    // for memchr, strchr
 
+static const char* skip_space(const char* p) {
+  if (p)
+    while (*p == ' ' || *p == '\t' || *p == '_') // '_' can be used as space
+      ++p;
+  return p;
+}
+
 namespace gemmi {
 
 // TRIPLET -> OP
@@ -34,10 +41,10 @@ std::array<int, 4> parse_triplet_part(const std::string& s, char& notation, doub
   std::array<int, 4> r = { 0, 0, 0, 0 };
   int num = Op::DEN;
   const char* c = s.c_str();
-  while (*(c = impl::skip_blank(c))) {
+  while (*(c = skip_space(c))) {
     if (*c == '+' || *c == '-') {
       num = (*c == '+' ? Op::DEN : -Op::DEN);
-      c = impl::skip_blank(++c);
+      c = skip_space(++c);
     }
     if (num == 0)
       fail("wrong or unsupported triplet format: " + s);
@@ -66,7 +73,7 @@ std::array<int, 4> parse_triplet_part(const std::string& s, char& notation, doub
       if (*endptr == '/')
         den = std::strtol(endptr + 1, &endptr, 10);
       if (*endptr == '*') {
-        c = impl::skip_blank(endptr + 1);
+        c = skip_space(endptr + 1);
         r_idx = interpret_letter(*c);
         ++c;
       } else {
@@ -76,7 +83,7 @@ std::array<int, 4> parse_triplet_part(const std::string& s, char& notation, doub
     } else {
       // syntax examples in this branch: "x", "+a", "-k/3"
       r_idx = interpret_letter(*c);
-      c = impl::skip_blank(++c);
+      c = skip_space(++c);
       if (*c == '/') {
         char* endptr;
         den = std::strtol(c + 1, &endptr, 10);
@@ -200,6 +207,26 @@ std::string make_triplet_part(const std::array<int, 3>& xyz, int w, char style='
 }
 
 }  // anonymous namespace
+
+Op seitz_to_op(const std::array<std::array<double,4>, 4>& t) {
+  static_assert(Op::DEN == 24, "");
+  auto check_round = [](double d) {
+    double r = std::round(d * Op::DEN);
+    if (std::fabs(r - d * Op::DEN) > 0.05)
+      fail("all numbers in Seitz matrix must be equal Z/24");
+    return static_cast<int>(r);
+  };
+  Op op;
+  if (std::fabs(t[3][0]) + std::fabs(t[3][1]) + std::fabs(t[3][2]) +
+      std::fabs(t[3][3] - 1) > 1e-3)
+    fail("the last row in Seitz matrix must be [0 0 0 1]");
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j)
+      op.rot[i][j] = check_round(t[i][j]);
+    op.tran[i] = check_round(t[i][3]);
+  }
+  return op;
+}
 
 void append_op_fraction(std::string& s, int w) {
   append_fraction(s, get_op_fraction(w));
@@ -333,17 +360,17 @@ GroupOps generators_from_hall(const char* hall) {
   };
   if (hall == nullptr)
     fail("null");
-  hall = impl::skip_blank(hall);
+  hall = skip_space(hall);
   GroupOps ops;
   ops.sym_ops.emplace_back(Op::identity());
   bool centrosym = (hall[0] == '-');
-  const char* lat = impl::skip_blank(centrosym ? hall + 1 : hall);
+  const char* lat = skip_space(centrosym ? hall + 1 : hall);
   if (!lat)
     fail("not a hall symbol: " + std::string(hall));
   ops.cen_ops = centring_vectors(*lat);
   int counter = 0;
   int prev = 0;
-  const char* part = impl::skip_blank(lat + 1);
+  const char* part = skip_space(lat + 1);
   while (*part != '\0' && *part != '(') {
     const char* space = find_blank(part);
     ++counter;
@@ -351,7 +378,7 @@ GroupOps generators_from_hall(const char* hall) {
       Op op = hall_matrix_symbol(part, space, counter, prev);
       ops.sym_ops.emplace_back(op);
     }
-    part = impl::skip_blank(space);
+    part = skip_space(space);
   }
   if (centrosym)
     ops.sym_ops.push_back({Op::identity().negated_rot(), {0,0,0}});
@@ -363,7 +390,7 @@ GroupOps generators_from_hall(const char* hall) {
       fail("misplaced translation: " + std::string(hall));
     ops.change_basis_forward(parse_hall_change_of_basis(part + 1, rb));
 
-    if (*impl::skip_blank(find_blank(rb + 1)) != '\0')
+    if (*skip_space(find_blank(rb + 1)) != '\0')
       fail("unexpected characters after ')': " + std::string(hall));
   }
   return ops;
@@ -1054,6 +1081,114 @@ const char* get_basisop(int basisop_idx) {
     "x/2+y/2,-x/2+y/2,z",  // 50
   };
   return basisops[basisop_idx];
+}
+
+const SpaceGroup* find_spacegroup_by_name(std::string name, double alpha, double gamma,
+                                          const char* prefer) {
+  bool prefer_2 = false;
+  bool prefer_R = false;
+  if (prefer)
+    for (const char* p = prefer; *p != '\0'; ++p) {
+      if (*p == '2')
+        prefer_2 = true;
+      else if (*p == 'R')
+        prefer_R = true;
+      else if (*p != '1' && *p != 'H')
+        throw std::invalid_argument("find_spacegroup_by_name(): invalid arg 'prefer'");
+    }
+  const char* p = skip_space(name.c_str());
+  if (*p >= '0' && *p <= '9') { // handle numbers
+    char *endptr;
+    long n = std::strtol(p, &endptr, 10);
+    return *endptr == '\0' ? find_spacegroup_by_number(n) : nullptr;
+  }
+  char first = *p & ~0x20; // to uppercase
+  if (first == '\0')
+    return nullptr;
+  if (first == 'H')
+    first = 'R';
+  p = skip_space(p+1);
+  size_t start = p - name.c_str();
+  // change letters to lower case, except the letter after :
+  for (size_t i = start; i < name.size(); ++i) {
+    if (name[i] >= 'A' && name[i] <= 'Z')
+      name[i] |= 0x20;  // to lowercase
+    else if (name[i] == ':')
+      while (++i < name.size())
+        if (name[i] >= 'a' && name[i] <= 'z')
+          name[i] &= ~0x20;  // to uppercase
+  }
+  // allow names ending with R or H, such as R3R instead of R3:R
+  if (name.back() == 'h' || name.back() == 'r') {
+    name.back() &= ~0x20;  // to uppercase
+    name.insert(name.end() - 1, ':');
+  }
+  // The string that const char* p points to was just modified.
+  // This confuses some compilers (GCC 4.8), so let's re-assign p.
+  p = name.c_str() + start;
+
+  for (const SpaceGroup& sg : spacegroup_tables::main)
+    if (sg.hm[0] == first) {
+      if (sg.hm[2] == *p) {
+        const char* a = skip_space(p + 1);
+        const char* b = skip_space(sg.hm + 3);
+        // In IT 1935 and 1952, symbols of centrosymmetric, cubic space groups
+        // 200-206 and 221-230 had symbol 3 (not -3), e.g. Pm3 instead of Pm-3,
+        // as listed in Table 3.3.3.1 in ITfC (2016) vol. A, p.788.
+        while ((*a == *b && *b != '\0') ||
+               (*a == '3' && *b == '-' && b == sg.hm + 4 && *++b == '3')) {
+          a = skip_space(a+1);
+          b = skip_space(b+1);
+        }
+        if (*b == '\0') {
+          if (*a == '\0') {
+            // Change hexagonal settings to rhombohedral if the unit cell
+            // angles are more consistent with the latter.
+            // We have possible ambiguity in the hexagonal crystal family.
+            // For instance, "R 3" may mean "R 3:H" (hexagonal setting) or
+            // "R 3:R" (rhombohedral setting). The :H symbols come first
+            // in the table and are used by default. The ratio gamma:alpha
+            // is 120:90 in the hexagonal system and 1:1 in rhombohedral.
+            // We assume that the 'R' entry follows directly the 'H' entry.
+            if (sg.ext == 'H' && (alpha == 0. ? prefer_R : gamma < 1.125 * alpha))
+              return &sg + 1;
+            // Similarly, the origin choice #2 follows directly #1.
+            if (sg.ext == '1' && prefer_2)
+              return &sg + 1;
+            return &sg;
+          }
+          if (*a == ':' && *skip_space(a+1) == sg.ext)
+            return &sg;
+        }
+      } else if (sg.hm[2] == '1' && sg.hm[3] == ' ') {
+        // check monoclinic short names, matching P2 to "P 1 2 1";
+        // as an exception "B 2" == "B 1 1 2" (like in the PDB)
+        const char* b = sg.hm + 4;
+        if (*b != '1' || (first == 'B' && *++b == ' ' && *++b != '1')) {
+          char end = (b == sg.hm + 4 ? ' ' : '\0');
+          const char* a = skip_space(p);
+          while (*a == *b && *b != end) {
+            ++a;
+            ++b;
+          }
+          if (*skip_space(a) == '\0' && *b == end)
+            return &sg;
+        }
+      }
+    }
+  for (const SpaceGroupAltName& sg : spacegroup_tables::alt_names)
+    if (sg.hm[0] == first && sg.hm[2] == *p) {
+      const char* a = skip_space(p + 1);
+      const char* b = skip_space(sg.hm + 3);
+      while (*a == *b && *b != '\0') {
+        a = skip_space(a+1);
+        b = skip_space(b+1);
+      }
+      if (*b == '\0' &&
+          (*a == '\0' || (*a == ':' && *skip_space(a+1) == sg.ext)))
+        return &spacegroup_tables::main[sg.pos];
+    }
+  return nullptr;
 }
 
 } // namespace gemmi

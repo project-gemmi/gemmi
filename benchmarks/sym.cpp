@@ -17,6 +17,15 @@ constexpr const char* HALL_SYMBOLS[] = {
   "P 2ac 2ab", "F 4d 2 3 -1cd", "-F 4ud 2vw 3 (x-1/8,y-1/8,z-1/8)"
 };
 
+static const std::vector<std::string> sg_names = {
+    "P 1",
+    "P 21 21 21",
+    "C2",
+    "C21",
+    "F 1 2/m 1",
+    "P 21 21 2a"
+};
+
 static void bm_parse_triplet_all(benchmark::State& state) {
   for (auto _ : state)
     for (const char* triplet : TRIPLETS)
@@ -57,11 +66,19 @@ static void bm_add_elements(benchmark::State& state) {
   }
 }
 
+static void bm_find_spacegroup(benchmark::State& state) {
+  int n = state.range(0);
+  const std::string& name = sg_names[n];
+  for (auto _ : state)
+    benchmark::DoNotOptimize(gemmi::find_spacegroup_by_name(name));
+}
+
 BENCHMARK(bm_parse_triplet_all);
 //BENCHMARK(bm_make_triplet)->DenseRange(0, 9);
 BENCHMARK(bm_make_triplet_all);
 BENCHMARK(bm_generators_from_hall)->DenseRange(0, 6);
 BENCHMARK(bm_add_elements)->DenseRange(0, 6);
+BENCHMARK(bm_find_spacegroup)->DenseRange(0, 5);
 BENCHMARK_MAIN();
 
 // gemmi::parse_triplet(): 50-300 ns/triplet
