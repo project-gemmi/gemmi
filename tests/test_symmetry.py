@@ -114,13 +114,6 @@ class TestSymmetry(unittest.TestCase):
             calculated = gemmi.parse_triplet_part(single)
             self.assertEqual(calculated, row)
 
-    def test_make_triplet_part(self):
-        self.assertEqual(gemmi.make_triplet_part([0, 0, 0], 1),
-                         '1/%d' % gemmi.Op.DEN)
-        for single, row in CANONICAL_SINGLES.items():
-            calculated = gemmi.make_triplet_part(row[:3], row[3])
-            self.assertEqual(calculated, single)
-
     def test_triplet_roundtrip(self):
         singles = list(CANONICAL_SINGLES.keys())
         for i in range(4):

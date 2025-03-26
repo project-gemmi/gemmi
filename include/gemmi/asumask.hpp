@@ -30,7 +30,7 @@ struct AsuBrick {
       s += "0<=";
       s += "xyz"[i];
       s += incl[i] ? "<=" : "<";
-      impl::append_fraction(s, impl::get_op_fraction(size[i]));
+      append_op_fraction(s, size[i]);
     }
     return s;
   }
