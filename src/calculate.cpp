@@ -41,7 +41,8 @@ FTransform parse_triplet_as_ftransform(const std::string& s) {
   auto set_ftransform_row = [](FTransform& tr, int i, const std::string& part) {
     const double mult = 1. / Op::DEN;
     double decfr[4] = {};
-    const auto op_row = parse_triplet_part(part, decfr);
+    char x_ = 'x';
+    const auto op_row = parse_triplet_part(part, x_, decfr);
     for (int j = 0; j < 3; ++j)
       tr.mat[i][j] = decfr[j] == 0. ? mult * op_row[j] : decfr[j];
     tr.vec.at(i) = decfr[3] == 0. ? mult * op_row[3] : decfr[3];

@@ -245,7 +245,7 @@ inline Op seitz_to_op(const std::array<std::array<double,4>, 4>& t) {
 GEMMI_DLL void append_op_fraction(std::string& s, int w);
 
 // TRIPLET -> OP
-GEMMI_DLL std::array<int, 4> parse_triplet_part(const std::string& s,
+GEMMI_DLL std::array<int, 4> parse_triplet_part(const std::string& s, char& notation,
                                                 double* decimal_fract=nullptr);
 GEMMI_DLL Op parse_triplet(const std::string& s);
 

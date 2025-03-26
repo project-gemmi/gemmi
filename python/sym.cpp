@@ -83,8 +83,10 @@ void add_symmetry(nb::module_& m) {
 
   m.def("parse_triplet", &parse_triplet, nb::arg("triplet"),
         "Parse coordinate triplet into gemmi.Op.");
-  m.def("parse_triplet_part", [](const std::string& s) { return parse_triplet_part(s); },
-        "Parse one of the three parts of a triplet.");
+  m.def("parse_triplet_part", [](const std::string& s) {
+      char notation = ' ';
+      return parse_triplet_part(s, notation);
+  });
 
   nb::class_<GroupOps>(m, "GroupOps")
     .def("__init__", [](GroupOps* p, const std::vector<Op>& ops) {

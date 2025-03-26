@@ -7,19 +7,30 @@ namespace gemmi {
 
 // TRIPLET -> OP
 
-static
-int interpret_miller_character(char c, const std::string& s) {
-  static const signed char values[] =
-    //a  b  c  d  e  f  g  h  i  j  k  l  m  n  o  p  q  r  s  t  u  v  w  x  y  z
-    { 1, 2, 3, 0, 0, 0, 0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3 };
-  size_t idx = size_t((c | 0x20) - 'a');  // "|0x20" = to lower
-  if (idx >= sizeof(values) || values[idx] == 0)
-    fail("unexpected character '", c, "' in: ", s);
-  return values[idx] - 1;
-}
-
+// param only can be set to 'h', 'x', 'a' or ' ' (any), to limit accepted characters.
 // decimal_fract is useful only for non-crystallographic ops (such as x+0.12)
-std::array<int, 4> parse_triplet_part(const std::string& s, double* decimal_fract) {
+std::array<int, 4> parse_triplet_part(const std::string& s, char& notation, double* decimal_fract) {
+  constexpr char a_ = 'a' & ~3;
+  constexpr char h_ = 'h' & ~3;
+  constexpr char x_ = 'x' & ~3;
+  static const signed char letter2index[] =
+    // a     b     c    d  e  f  g   h    i  j   k     l
+    { a_+0, a_+1, a_+2, 0, 0, 0, 0, h_+0, 0, 0, h_+1, h_+2,
+    // m  n  o  p  q  r  s  t  u  v  w   x     y     z
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, x_+0, x_+1, x_+2 };
+  auto interpret_letter = [&](char c) {
+    size_t idx = size_t((c | 0x20) - 'a');  // "|0x20" = to lower
+    if (idx >= sizeof(letter2index) || letter2index[idx] == 0)
+      fail("unexpected character '", c, "' in: ", s);
+    auto value = letter2index[idx];
+    int detected_notation = value & ~3;
+    if ((notation | 0x20) == ' ')
+      notation = detected_notation;
+    else if (((notation | 0x20) & ~3) != detected_notation)
+      fail("Unexpected notation (letter set) in: ", s);
+    return value & 3;
+  };
+
   std::array<int, 4> r = { 0, 0, 0, 0 };
   int num = Op::DEN;
   const char* c = s.c_str();
@@ -56,7 +67,7 @@ std::array<int, 4> parse_triplet_part(const std::string& s, double* decimal_frac
         den = std::strtol(endptr + 1, &endptr, 10);
       if (*endptr == '*') {
         c = impl::skip_blank(endptr + 1);
-        r_idx = interpret_miller_character(*c, s);
+        r_idx = interpret_letter(*c);
         ++c;
       } else {
         c = endptr;
@@ -64,7 +75,7 @@ std::array<int, 4> parse_triplet_part(const std::string& s, double* decimal_frac
       }
     } else {
       // syntax examples in this branch: "x", "+a", "-k/3"
-      r_idx = interpret_miller_character(*c, s);
+      r_idx = interpret_letter(*c);
       c = impl::skip_blank(++c);
       if (*c == '/') {
         char* endptr;
@@ -92,9 +103,10 @@ Op parse_triplet(const std::string& s) {
     fail("expected exactly two commas in triplet");
   size_t comma1 = s.find(',');
   size_t comma2 = s.find(',', comma1 + 1);
-  auto a = parse_triplet_part(s.substr(0, comma1));
-  auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)));
-  auto c = parse_triplet_part(s.substr(comma2 + 1));
+  char notation = ' ';
+  auto a = parse_triplet_part(s.substr(0, comma1), notation);
+  auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)), notation);
+  auto c = parse_triplet_part(s.substr(comma2 + 1), notation);
   Op::Rot rot = {{{a[0], a[1], a[2]}, {b[0], b[1], b[2]}, {c[0], c[1], c[2]}}};
   Op::Tran tran = {a[3], b[3], c[3]};
   return { rot, tran };
