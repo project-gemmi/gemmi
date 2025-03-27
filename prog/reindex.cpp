@@ -54,11 +54,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Op op;
     if (p.options[Hkl]) {
       std::string hkl_arg = p.options[Hkl].arg;
-      op = gemmi::parse_triplet(hkl_arg);
-      if (std::strpbrk(hkl_arg.c_str(), "xyzabcXYZABC"))
-        gemmi::fail("specify OP in terms of h, k and l");
-      if (op.tran != gemmi::Op::Tran{{0, 0, 0}})
-        gemmi::fail("reindexing operator should not have a translation");
+      op = gemmi::parse_triplet(hkl_arg, 'h');
       gemmi::cat_to(from_line, " with [", hkl_arg, ']');
     }
 

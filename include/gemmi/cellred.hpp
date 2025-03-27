@@ -41,7 +41,7 @@ struct GruberVector {
   GruberVector(const UnitCell& u, char centring, bool track_change_of_basis=false)
     : GruberVector(u.primitive_orth_matrix(centring)) {
     if (track_change_of_basis)
-      set_change_of_basis(Op{centred_to_primitive(centring), {0,0,0}});
+      set_change_of_basis(Op{centred_to_primitive(centring), {0,0,0}, 'x'});
   }
 
   GruberVector(const UnitCell& u, const SpaceGroup* sg, bool track_change_of_basis=false)

@@ -298,12 +298,12 @@ Alternatively, the letters can be hkl or abc, or uppercase:
 
 .. doctest::
 
-    >>> op.triplet(style='h')
-    '-k,h-k,l+1/3'
-    >>> op.triplet(style='a')
-    '-b,a-b,c+1/3'
     >>> op.triplet(style='X')
     '-Y,X-Y,Z+1/3'
+    >>> op.triplet(style='a')
+    '-b,a-b,c+1/3'
+    >>> # to avoid confusion, 'h' can be used only if it's a reciprocal-space op
+    >>> # op.triplet(style='h')  # error
 
 The operation consists of a 3x3 rotation matrix and
 a translation vector, both stored internally as integers that need to be

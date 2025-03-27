@@ -40,7 +40,7 @@ void print_verbose_info(const char* hall) {
   gemmi::GroupOps ops = gemmi::generators_from_hall(hall);
   printf("%zu centering vector(s):\n", ops.cen_ops.size());
   for (const Op::Tran& cenop : ops.cen_ops)
-    printf("    %s\n", Op{Op::identity().rot, cenop}.triplet().c_str());
+    printf("    %s\n", Op{Op::identity().rot, cenop, 'x'}.triplet().c_str());
   printf("%zu generator(s) of primitive symops (not counting identity):\n",
          ops.sym_ops.size() - 1);
   for (size_t i = 1; i < ops.sym_ops.size(); ++i)

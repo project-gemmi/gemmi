@@ -34,7 +34,7 @@ void add_symmetry(nb::module_& m) {
     .def_rw("rot", &Op::rot, "3x3 integer matrix.")
     .def_rw("tran", &Op::tran,
        "Numerators (integers) of the translation vector. Denominator DEN=24.")
-    .def("triplet", &Op::triplet, nb::arg("style")='x')
+    .def("triplet", &Op::triplet, nb::arg("style")=' ')
     .def("inverse", &Op::inverse, "Returns inverted operator.")
     .def("wrap", &Op::wrap, "Wrap the translation part to [0,1)")
     .def("translated", &Op::translated, nb::arg("a"), "Adds a to tran")

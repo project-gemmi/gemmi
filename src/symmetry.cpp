@@ -110,12 +110,18 @@ Op parse_triplet(const std::string& s, char notation) {
     fail("expected exactly two commas in triplet");
   size_t comma1 = s.find(',');
   size_t comma2 = s.find(',', comma1 + 1);
+  char save_notation = notation;
+  notation = (notation | 0x20) & ~3;
+  if (notation != 'x' && notation != 'h' && notation != '`' && notation != ' ')  // '`' == a' & ~3
+    fail("parse_triplet(): unexpected notation='", save_notation, "'");
   auto a = parse_triplet_part(s.substr(0, comma1), notation);
   auto b = parse_triplet_part(s.substr(comma1 + 1, comma2 - (comma1 + 1)), notation);
   auto c = parse_triplet_part(s.substr(comma2 + 1), notation);
   Op::Rot rot = {{{a[0], a[1], a[2]}, {b[0], b[1], b[2]}, {c[0], c[1], c[2]}}};
   Op::Tran tran = {a[3], b[3], c[3]};
-  return { rot, tran };
+  if (notation == 'h' && tran != Op::Tran{0, 0, 0})
+    fail("parse_triplet(): reciprocal-space Op cannot have translation: ", s);
+  return { rot, tran, notation };
 }
 
 
@@ -167,14 +173,12 @@ void append_fraction(std::string& s, std::pair<int,int> frac) {
   }
 }
 
-std::string make_triplet_part(const std::array<int, 3>& xyz, int w, char style='x') {
+std::string make_triplet_part(const std::array<int, 3>& xyz, int w, char style) {
   std::string s;
   const char* letters = "xyz hkl abc XYZ HKL ABC";
-  switch(style | 0x20) {  // |0x20 converts to lower case
-    case 'x': break;
+  switch((style | 0x20) & ~3) {  // |0x20 converts to lower case
     case 'h': letters += 4; break;
-    case 'a': letters += 8; break;
-    default: fail("unexpected triplet style: ", style);
+    case '`': letters += 8; break;  // 'a', because 'a'&~3 == 0x60 == '`'
   }
   if (!(style & 0x20))  // not lower
     letters += 12;
@@ -224,6 +228,7 @@ Op seitz_to_op(const std::array<std::array<double,4>, 4>& t) {
       op.rot[i][j] = check_round(t[i][j]);
     op.tran[i] = check_round(t[i][3]);
   }
+  op.notation = 'x';
   return op;
 }
 
@@ -232,6 +237,16 @@ void append_op_fraction(std::string& s, int w) {
 }
 
 std::string Op::triplet(char style) const {
+  if (style == ' ')
+    style = (notation & ~0x20) ? notation : 'x';
+  char lower_style = (style | 0x20) & ~3;
+  if (lower_style == 'h' && !is_hkl())
+    fail("triplet(): can't write real-space triplet as hkl");
+  if (lower_style != 'h' && is_hkl())
+    fail("triplet(): can't write reciprocal-space triplet as xyz");
+  // 'x'==0x78, 'h'==0x68, 'a'==0x61, so 'a'&~3 == 0x60 == '`'
+  if (lower_style != 'x' && lower_style != 'h' && lower_style != '`')
+    fail("unexpected triplet style: '", style, "'");
   return make_triplet_part(rot[0], tran[0], style) +
    "," + make_triplet_part(rot[1], tran[1], style) +
    "," + make_triplet_part(rot[2], tran[2], style);
@@ -380,7 +395,7 @@ GroupOps generators_from_hall(const char* hall) {
     part = skip_space(space);
   }
   if (centrosym)
-    ops.sym_ops.push_back({Op::identity().negated_rot(), {0,0,0}});
+    ops.sym_ops.push_back({Op::identity().negated_rot(), {0,0,0}, 'x'});
   if (*part == '(') {
     const char* rb = std::strchr(part, ')');
     if (!rb)

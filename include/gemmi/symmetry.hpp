@@ -41,8 +41,11 @@ struct GEMMI_DLL Op {
 
   Rot rot;
   Tran tran;
+  char notation = ' ';
 
-  std::string triplet(char style='x') const;
+  bool is_hkl() const { return notation == 'h'; }
+
+  std::string triplet(char style=' ') const;
 
   Op inverse() const;
 
@@ -104,6 +107,8 @@ struct GEMMI_DLL Op {
   }
 
   Op combine(const Op& b) const {
+    if (is_hkl() != b.is_hkl())
+      fail("can't combine real- and reciprocal-space Op");
     Op r;
     for (int i = 0; i != 3; ++i) {
       r.tran[i] = tran[i] * Op::DEN;
@@ -115,10 +120,13 @@ struct GEMMI_DLL Op {
       }
       r.tran[i] /= Op::DEN;
     }
+    r.notation = notation;
     return r;
   }
 
   std::array<double, 3> apply_to_xyz(const std::array<double, 3>& xyz) const {
+    if (is_hkl())
+      fail("can't apply reciprocal-space Op to xyz");
     std::array<double, 3> out;
     for (int i = 0; i != 3; ++i)
       out[i] = (rot[i][0] * xyz[0] + rot[i][1] * xyz[1] + rot[i][2] * xyz[2] +
@@ -165,7 +173,7 @@ struct GEMMI_DLL Op {
   }
 
   static constexpr Op identity() {
-    return {{DEN,0,0, 0,DEN,0, 0,0,DEN}, {0,0,0}};
+    return {{DEN,0,0, 0,DEN,0, 0,0,DEN}, {0,0,0}, ' '};
   }
   static constexpr Op::Rot inversion_rot() {
     return {-DEN,0,0, 0,-DEN,0, 0,0,-DEN};
@@ -186,7 +194,7 @@ inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
 inline Op Op::inverse() const {
   int detr = det_rot();
   if (detr == 0)
-    fail("cannot invert matrix: " + Op{rot, {0,0,0}}.triplet());
+    fail("cannot invert matrix: " + Op{rot, {0,0,0}, notation}.triplet());
   int d2 = Op::DEN * Op::DEN;
   Op inv;
   inv.rot[0][0] = d2 * (rot[1][1] * rot[2][2] - rot[2][1] * rot[1][2]) / detr;
@@ -202,6 +210,7 @@ inline Op Op::inverse() const {
     inv.tran[i] = (-tran[0] * inv.rot[i][0]
                    -tran[1] * inv.rot[i][1]
                    -tran[2] * inv.rot[i][2]) / Op::DEN;
+  inv.notation = notation;
   return inv;
 }
 
@@ -260,7 +269,7 @@ struct GroupOps {
         sym_ops.resize(init_size);
         return false;
       }
-      sym_ops.push_back({neg, op.tran});
+      sym_ops.push_back({neg, op.tran, op.notation});
     }
     return true;
   }
@@ -808,7 +817,7 @@ struct SpaceGroup { // typically 44 bytes
   bool is_reference_setting() const { return basisop_idx == 0; }
 
   Op centred_to_primitive() const {
-    return {gemmi::centred_to_primitive(centring_type()), {0,0,0}};
+    return {gemmi::centred_to_primitive(centring_type()), {0,0,0}, 'x'};
   }
 
   /// Returns change-of-hand operator. Compatible with similar sgtbx function.
@@ -816,7 +825,7 @@ struct SpaceGroup { // typically 44 bytes
     if (is_centrosymmetric())
       return Op::identity();
     Op::Tran t = nonzero_inversion_center(number);
-    Op op{Op::inversion_rot(), {2*t[0], 2*t[1], 2*t[2]}};
+    Op op{Op::inversion_rot(), {2*t[0], 2*t[1], 2*t[2]}, 'x'};
     if (!is_reference_setting()) {
       Op b = basisop();
       op = b.combine(op).combine(b.inverse());

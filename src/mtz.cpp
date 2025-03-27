@@ -458,7 +458,7 @@ void Mtz::reindex(const Op& op) {
   if (op.det_rot() < 0)
     gemmi::fail("reindexing operator must preserve the hand of the axes");
   switch_to_original_hkl();  // changes hkl for unmerged data only
-  Op transposed_op{op.transposed_rot(), {0, 0, 0}};
+  Op transposed_op{op.transposed_rot(), {0, 0, 0}, ' '};
   Op real_space_op = transposed_op.inverse();
   logger.mesg("Real space transformation: ", real_space_op.triplet());
   bool row_removal = false;
