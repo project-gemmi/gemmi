@@ -5,8 +5,8 @@
 #ifndef GEMMI_READ_CIF_HPP_
 #define GEMMI_READ_CIF_HPP_
 
-#include "cifdoc.hpp" // for Document
-#include "input.hpp"  // for CharArray
+#include "cifdoc.hpp"   // for Document
+#include "fileutil.hpp" // for CharArray
 
 namespace gemmi {
 

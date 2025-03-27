@@ -9,7 +9,6 @@
 #include "atox.hpp"  // for string_to_int
 #include "fail.hpp"  // for fail
 #include "util.hpp"  // for starts_with, to_lower, cat
-#include <cassert>
 #include <cstddef>   // for size_t
 #include <cstring>   // for memchr
 #include <algorithm> // for move, find_if, all_of, min, rotate

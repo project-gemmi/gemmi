@@ -1,6 +1,7 @@
 // Copyright Global Phasing Ltd.
 
 #include <gemmi/symmetry.hpp>
+#include <cmath>      // for fabs
 #include <cstring>    // for memchr, strchr
 
 static const char* skip_space(const char* p) {

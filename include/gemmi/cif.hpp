@@ -15,12 +15,7 @@
 //#include "third_party/tao/pegtl/contrib/tracer.hpp"  // for debugging
 
 #include "cifdoc.hpp" // for Document, etc
-#include "input.hpp"  // for CharArray
-#if defined(_WIN32)
-#include "fileutil.hpp" // for file_open
-#endif
-
-#include "read_cif.hpp" // for backward compat, to expose cif::read_string()
+#include "fileutil.hpp" // for CharArray, file_open
 
 #if defined(_MSC_VER)
 #pragma warning(push)

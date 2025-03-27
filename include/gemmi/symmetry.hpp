@@ -9,7 +9,6 @@
 #define GEMMI_SYMMETRY_HPP_
 
 #include <cstdlib>    // for strtol, abs
-#include <cmath>      // for fabs
 #include <array>
 #include <algorithm>  // for sort, remove
 #include <functional> // for hash

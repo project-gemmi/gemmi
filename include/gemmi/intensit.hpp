@@ -7,7 +7,6 @@
 #ifndef GEMMI_INTENSIT_HPP_
 #define GEMMI_INTENSIT_HPP_
 
-#include <cassert>
 #include <cstdint>      // for int8_t
 #include <unordered_map>
 #include "symmetry.hpp"

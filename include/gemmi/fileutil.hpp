@@ -8,7 +8,8 @@
 #include <cassert>
 #include <cstdio>    // for FILE, fopen, fclose
 #include <cstdint>
-#include <cstring>   // strlen
+#include <cstdlib>   // for malloc, realloc
+#include <cstring>   // for strlen
 #include <initializer_list>
 #include <memory>    // for unique_ptr
 #include "fail.hpp"  // for sys_fail

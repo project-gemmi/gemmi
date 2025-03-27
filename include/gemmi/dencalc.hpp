@@ -5,7 +5,6 @@
 #ifndef GEMMI_DENCALC_HPP_
 #define GEMMI_DENCALC_HPP_
 
-#include <cassert>
 #include "addends.hpp"  // for Addends
 #include "formfact.hpp" // for ExpSum
 #include "grid.hpp"     // for Grid
