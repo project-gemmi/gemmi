@@ -95,8 +95,9 @@ void add_monlib(nb::module_& m) {
                     self.link_side_matches_residue(link.side2, res2, &aliasing2) &&
                     atom_match_with_alias(link.rt.bonds[0].id1.atom, atom1, aliasing1) &&
                     atom_match_with_alias(link.rt.bonds[0].id2.atom, atom2, aliasing2));
-      return nb::make_tuple<nb::rv_policy::reference_internal>(match, aliasing1, aliasing2);
-    }, nb::arg("link"), nb::arg("res1"), nb::arg("atom1"), nb::arg("res2"), nb::arg("atom2"))
+      return std::make_tuple(match, aliasing1, aliasing2);
+    }, nb::arg("link"), nb::arg("res1"), nb::arg("atom1"), nb::arg("res2"), nb::arg("atom2"),
+       nb::rv_policy::reference_internal)
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("read_monomer_doc", &MonLib::read_monomer_doc)
     .def("read_monomer_cif", &MonLib::read_monomer_cif)
