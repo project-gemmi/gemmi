@@ -1593,7 +1593,8 @@ leaving the original object empty (it's slightly faster this way).
 These correspond to the optional checks listed in the documentation
 of the :ref:`gemmi validate <gemmi-validate>` subcommand.
 In C++, these are member variables that can be set directly.
-In Python, they are set through keyword arguments in the constructor.
+In Python, they are set through keyword arguments in the constructor
+(except for `use_deposition_checks`, which is set directly).
 
 The minimal example above used a contrived dictionary. Normally, you will
 use a dictionary downloaded from the IUCr, wwPDB or another source --
@@ -1659,6 +1660,16 @@ of DDL2. For example, some aspects of polymers and non-polymers are
 described in different categories, but a residue can't be conditionally
 linked to one or the other. So, it's linked only to polymeric categories,
 leaving the schema partially incorrect.
+
+In addition to `_item_type` (data type), the PDBx/mmCIF spec also features
+`_pdbx_item_type` (described as an "alternate data type").
+Similarly, `_item_range` (permissible range) has its twin
+`_pdbx_item_range` (alternate permissible range), and
+`_item_enumeration` has the alternate `_pdbx_item_enumeration`.
+While the purpose of this dualism is not documented, the alternates are
+interpreted as deposition constraints (typically, stricter checks).
+Gemmi provides the `use_deposition_checks` option (`--depo` in the command-line
+program) to apply the alternate criteria instead of the standard ones.
 
 If you run gemmi validation in verbose mode, you might see warnings about
 incorrect regular expressions in a dictionary. In general, regexes

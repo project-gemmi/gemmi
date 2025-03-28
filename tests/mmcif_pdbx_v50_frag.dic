@@ -1143,6 +1143,73 @@ save__atom_site.auth_comp_id
     _item_type.code               code
      save_
 
+# <snip>
+#
+save_exptl_crystal
+   _category.description     
+;              Data items in the EXPTL_CRYSTAL category record the results of
+               experimental measurements on the crystal or crystals used,
+               such as shape, size or density.
+;
+
+   _category.id              exptl_crystal
+   _category.mandatory_code  no
+   #
+   _category_key.name  "_exptl_crystal.id"
+   #
+   loop_
+   _category_group.id
+     inclusive_group  
+     exptl_group      
+   #
+save_
+
+# <snip>
+
+save__exptl_crystal.density_percent_sol
+# <snip> description
+   _item.name            "_exptl_crystal.density_percent_sol"
+   _item.category_id     exptl_crystal
+   _item.mandatory_code  no
+   #
+   _pdbx_item_description.name         "_exptl_crystal.density_percent_sol"
+   _pdbx_item_description.description  "Percent solvent content of cell"
+   #
+   loop_
+   _item_range.maximum
+   _item_range.minimum
+     100.0    0.0  
+       0.0    0.0  
+     100.0  100.0  
+   #
+   loop_
+   _pdbx_item_range.name
+   _pdbx_item_range.minimum
+   _pdbx_item_range.maximum
+     "_exptl_crystal.density_percent_sol"  15  15  
+     "_exptl_crystal.density_percent_sol"  15  80  
+     "_exptl_crystal.density_percent_sol"  80  80  
+   #
+   _item_type.code  float
+   #
+save_
+
+# <snip>
+
+save__exptl_crystal.id
+   #
+   loop_
+   _item.name
+   _item.category_id
+   _item.mandatory_code
+     "_exptl_crystal.id"                    exptl_crystal            yes  
+     # <snip>
+   #
+   _item_type.code  code
+   #
+save_
+
+# <snip>
 
 # <snip>
 
@@ -1215,3 +1282,4 @@ atom_site_anisotrop                      1  '_atom_site_anisotrop.pdbx_PDB_model
 atom_site_anisotrop                      2  '_atom_site_anisotrop.type_symbol'                    '_atom_type.symbol'                         atom_type
 atom_sites                               1  '_atom_sites.entry_id'                                '_entry.id'                                 entry
 # <snip>
+#

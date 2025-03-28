@@ -141,7 +141,18 @@ public:
   enum class Type : char { Unset, Int, Float };
 
   Ddl2Rules(cif::Block& b, const Ddl* ddl, const std::string& tag) {
-    if (const std::string* code = b.find_value("_item_type.code")) {
+    std::string item_type_code = "_item_type.code";
+    std::string item_range = "_item_range.";
+    std::string item_enumeration_value = "_item_enumeration.value";
+    if (ddl->use_deposition_checks) {
+      if (b.find_value("_pdbx_item_type.code"))
+        item_type_code = "_pdbx_item_type.code";
+      if (b.find_values("_pdbx_item_range.minimum"))
+        item_range = "_pdbx_item_range.";
+      if (b.find_values("_pdbx_item_enumeration.value"))
+        item_enumeration_value = "_pdbx_item_enumeration.value";
+    }
+    if (const std::string* code = b.find_value(item_type_code)) {
       type_code_ = cif::as_string(*code);
       if (type_code_ == "float") {
         type_ = Type::Float;
@@ -155,10 +166,10 @@ public:
           ddl->logger.mesg("Bad DDL2: ", tag, " has undefined type: ", type_code_);
       }
     }
-    for (auto row : b.find("_item_range.", {"minimum", "maximum"}))
+    for (auto row : b.find(item_range, {"minimum", "maximum"}))
       range_.emplace_back(cif::as_number(row[0], -INFINITY),
                           cif::as_number(row[1], +INFINITY));
-    for (const std::string& e : b.find_values("_item_enumeration.value"))
+    for (const std::string& e : b.find_values(item_enumeration_value))
       enumeration_.emplace_back(cif::as_string(e));
     icase_ = (type_code_[0] == 'u');
     /* we could check for esd without value

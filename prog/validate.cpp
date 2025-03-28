@@ -23,7 +23,7 @@ namespace {
 
 enum OptionIndex {
   Quiet=4, Fast, Stat, Context, Ddl, NoRegex, NoMandatory, NoUniqueKeys,
-  Parents, Recurse, Monomer, Zscore, Ccd, AuditDate
+  Parents, Depo, Recurse, Monomer, Zscore, Ccd, AuditDate
 };
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "Usage: " EXE_NAME " [options] FILE [...]"
@@ -38,17 +38,21 @@ const option::Descriptor Usage[] = {
     "  -r, --recursive  \tRecurse directories and process all CIF files." },
   { Ddl, 0, "d", "ddl", Arg::Required, "  -d, --ddl=PATH  \tDDL for validation." },
 
-  { NoOp, 0, "", "", Arg::None, "\nOptional checks:" },
+  { NoOp, 0, "", "", Arg::None, "\nOptional checks (when using DDL2):" },
   { Context, 0, "c", "context", Arg::None,
     "  -c, --context  \tCheck _pdbx_{category|item}_context.type." },
   { NoRegex, 0, "", "no-regex", Arg::None,
-    "  --no-regex  \tSkip regex checking (when using DDL2)" },
+    "  --no-regex  \tSkip regex checking" },
   { NoMandatory, 0, "", "no-mandatory", Arg::None,
     "  --no-mandatory  \tSkip checking if mandatory tags are present." },
   { NoUniqueKeys, 0, "", "no-unique", Arg::None,
-    "  --no-unique  \tSkip checking if category keys (DDL2) are unique." },
+    "  --no-unique  \tSkip checking if category keys are unique." },
   { Parents, 0, "p", "", Arg::None,
-    "  -p  \tCheck if parent items (DDL2) are present." },
+    "  -p  \tCheck if parent items are present." },
+  // instead of _item_type.code, _pdbx_item_enumeration.value, and _item_range
+  // use _pdbx-prefixed equivalents (_pdbx_item_type.code, etc).
+  { Depo, 0, "", "depo", Arg::None,
+    "  --depo  \tDeposition checks (_pdbx_item_range not _item_range, etc)." },
 
   { NoOp, 0, "", "", Arg::None, "\nValidation specific to CCP4 monomer files:" },
   { Monomer, 0, "m", "monomer", Arg::None,
@@ -265,6 +269,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   dict.use_regex = !p.options[NoRegex];
   dict.use_context = p.options[Context];
   dict.use_parents = p.options[Parents];
+  dict.use_deposition_checks = p.options[Depo];
   dict.use_mandatory = !p.options[NoMandatory];
   dict.use_unique_keys = !p.options[NoUniqueKeys];
   if (p.options[Ddl]) {

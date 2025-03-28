@@ -472,6 +472,7 @@ void add_cif(nb::module_& cif) {
        nb::arg("print_unknown_tags")=true, nb::arg("use_regex")=true,
        nb::arg("use_context")=true, nb::arg("use_linked_groups")=true,
        nb::arg("use_mandatory")=true, nb::arg("use_unique_keys")=true)
+    .def_rw("use_deposition_checks", &Ddl::use_deposition_checks)
     .def("set_logger", [](Ddl& self, gemmi::Logger&& logger) { self.logger = std::move(logger); })
     .def("read_ddl", [](Ddl& self, Document& doc) {
         self.read_ddl(std::move(doc));

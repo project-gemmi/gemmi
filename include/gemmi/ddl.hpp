@@ -25,6 +25,9 @@ struct GEMMI_DLL Ddl {
   bool use_parents = false;
   bool use_mandatory = true;
   bool use_unique_keys = true;
+  // instead of _item_type.code, _pdbx_item_enumeration.value, and _item_range
+  // use _pdbx-prefixed equivalents (_pdbx_item_type.code, etc).
+  bool use_deposition_checks = false;
 
   // variables set when reading DLL; normally, no need to change them
   int major_version = 0;  // currently 1 and 2 are supported

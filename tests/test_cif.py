@@ -422,16 +422,25 @@ class TestDictionary(unittest.TestCase):
             1 A CYS N   -1
             2 'hey hey' CYS CA   1
             2 A CYS CA   1
+
+            _exptl_crystal.id 1
+            _exptl_crystal.density_percent_sol   10.5
         """)
         ddl.validate_cif(doc)
-        self.assertEqual(msg_list, [
+        expected = [
             '[b2] unknown tag _something.unexpected',                 # 1
             "string:4 [b2] _atom_site.auth_asym_id: "
             "'hey hey' does not match the code regex",                # 2
             'string:4 [b2] _atom_site.attached_hydrogens: '
             'value out of expected range: -1',                        # 3
             '[b2] category atom_site has 1 duplicated key:\n  id=2',  # 4
-        ])
+        ]
+        self.assertEqual(msg_list, expected)
+        msg_list = []
+        ddl.use_deposition_checks = True
+        ddl.validate_cif(doc)
+        expected.insert(-1, 'string:15 [b2] value out of expected range: 10.5')
+        self.assertEqual(msg_list, expected)
 
 if __name__ == '__main__':
     unittest.main()
