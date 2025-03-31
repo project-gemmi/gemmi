@@ -383,7 +383,7 @@ add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
 target_link_libraries(hello PRIVATE gemmi_headers)
 add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
-               docs/code/cell.cpp docs/code/mutate.cpp src/resinfo.cpp)
+               docs/code/cell.cpp docs/code/mutate.cpp)
 target_link_libraries(doc_example PRIVATE gemmi_cpp)
 add_executable(doc_example2 EXCLUDE_FROM_ALL docs/code/cif_cc.cpp)
 target_link_libraries(doc_example2 PRIVATE gemmi_headers)
