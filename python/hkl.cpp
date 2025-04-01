@@ -223,7 +223,7 @@ void add_hkl(nb::module_& m) {
     }, nb::arg("mtz"), nb::arg("mtz2")=nb::none())
     ;
   m.def("validate_merged_intensities", &validate_merged_intensities,
-        nb::arg(), nb::arg(), nb::arg("relaxed_check")=false, nb::arg("logger"));
+        nb::arg(), nb::arg(), nb::arg("relaxed_check")=false, nb::arg("logger")=nb::none());
 
   m.def("get_software_from_mtz_history", &get_software_from_mtz_history);
 

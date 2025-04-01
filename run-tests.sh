@@ -65,6 +65,7 @@ echo "Building docs (in background)..."
 [ $# = 0 ] && exit;
 
 flake8 docs/ examples/ tests/ tools/
+mypy --disable-error-code=override --disable-error-code=attr-defined $BUILD_DIR/py/gemmi
 
 # this check is only for pip-installed packages
 if [ $1 = i ]; then
