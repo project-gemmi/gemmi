@@ -931,7 +931,7 @@ Writing
 -------
 
 To write a map to a file, update the header if necessary,
-(optionally) set the extent of the map that is to be written,
+(optionally) set the extent of the map to be written,
 and call `write_ccp4_map()`.
 
 ::
@@ -950,12 +950,22 @@ update_ccp4_header() does the following:
 
 - if the map header is empty (a new map was created):
   it prepares the header,
-- if the optional argument `mode` is given and if it is different than
+- if the optional argument `mode` is given and differs from
   the current mode: the mode is changed and the data type will be
   converted while writing the file; the mode can be 0, 1, 2, 6, or
   -1 (default -- no action),
 - if the optional argument `update_stats` is true (the default is true):
   DMIN, DMAX, DMEAN and RMS in the map header are re-calculated.
+
+If the mode has not been changed (i.e. it matches the data type),
+`write_ccp4_map()` simply writes `ccp4_header` and grid data as they are.
+If instead of writing a map file you'd like to store it in a memory buffer,
+just copy the memory areas of the underlying C++ vectors.
+In Python, you can do:
+
+.. doctest::
+
+    >>> map_bytes = m.ccp4_header + m.grid.array.tobytes(order='A')
 
 .. _set_extent:
 

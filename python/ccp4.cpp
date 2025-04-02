@@ -40,6 +40,9 @@ void add_ccp4(nb::module_& m) {
     .value("ReorderOnly", MapSetup::ReorderOnly);
 
   nb::class_<Ccp4Base>(m, "Ccp4Base")
+    .def_prop_ro("ccp4_header", [](Ccp4Base& self) {
+        return nb::bytes(self.ccp4_header.data(), 4 * self.ccp4_header.size());
+    })
     .def("header_i32", &Ccp4Base::header_i32)
     .def("header_float", &Ccp4Base::header_float)
     .def("header_str", &Ccp4Base::header_str, nb::arg("w"), nb::arg("len")=80)
