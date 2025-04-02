@@ -929,10 +929,12 @@ void Mtz::write_to_cstream(std::FILE* stream) const {
 }
 
 void Mtz::write_to_string(std::string& str) const {
-  write_to_stream([&](const void *ptr, size_t size, size_t nmemb) {
-      str.append(static_cast<const char*>(ptr), size * nmemb);
-      return nmemb;
-  });
+  // Calculate the size beforehand to avoid memory re-allocations
+  // and minimize memory usage. It hasn't been benchmarked against
+  // a single-pass writing.
+  size_t nbytes = size_to_write();
+  str.resize(nbytes);
+  write_to_buffer(str.data(), nbytes);
 }
 
 void Mtz::write_to_file(const std::string& path) const {
@@ -942,6 +944,28 @@ void Mtz::write_to_file(const std::string& path) const {
   } catch (std::runtime_error& e) {
     fail(std::string(e.what()) + ": " + path);
   }
+}
+
+size_t Mtz::size_to_write() const {
+  size_t nbytes = 0;
+  write_to_stream([&](const void *, size_t size, size_t nmemb) {
+      nbytes += size * nmemb;
+      return nmemb;
+  });
+  return nbytes;
+}
+
+size_t Mtz::write_to_buffer(char* buf, size_t maxlen) const {
+  size_t len = 0;
+  write_to_stream([&](const void *ptr, size_t size, size_t nmemb) {
+      len += size * nmemb;
+      if (len > maxlen)
+        fail("Mtz::write_to_buffer: size too small");
+      memcpy(buf, ptr, size * nmemb);
+      buf += size * nmemb;
+      return nmemb;
+  });
+  return len;
 }
 
 } // namespace gemmi

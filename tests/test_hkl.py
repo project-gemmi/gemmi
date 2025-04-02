@@ -80,6 +80,9 @@ class TestMtz(unittest.TestCase):
         self.assertEqual(mtz.spacegroup.hm, 'P 1 21 1')
         out_name = get_path_for_tempfile()
         mtz.write_to_file(out_name)
+        mtz_bytes = mtz.write_to_bytes()
+        with open(out_name, 'rb') as f:
+            self.assertEqual(mtz_bytes, f.read())
         mtz2 = gemmi.read_mtz_file(out_name)
         mtz3 = gemmi.read_mtz_file(out_name, with_data=False)
         os.remove(out_name)

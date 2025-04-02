@@ -293,6 +293,13 @@ void add_mtz(nb::module_& m) {
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)
     .def("write_to_file", &Mtz::write_to_file, nb::arg("path"))
+    .def("write_to_bytes", [](const Mtz& self) {
+        size_t nbytes = self.size_to_write();
+        nb::bytes obj(nullptr, nbytes);
+        char* data = const_cast<char*>(obj.c_str());
+        self.write_to_buffer(data, nbytes);
+        return obj;
+    })
     .def("reindex", &Mtz::reindex, nb::arg("op"))
     .def("expand_to_p1", &Mtz::expand_to_p1)
     // handy for testing, but slow and can't handle duplicated column names

@@ -787,11 +787,14 @@ using one of the functions::
   void Mtz::write_to_file(const std::string& path) const
   void Mtz::write_to_string(std::string& str) const
 
-In Python we have a single function for writing to a file:
+In Python we have functions for writing to a file and to a memory
+buffer that's returned as `bytes`:
 
 .. doctest::
 
   >>> mtz.write_to_file('output.mtz')
+  >>> type(mtz.write_to_bytes())
+  <class 'bytes'>
 
 Here is a complete C++ example how to create a new MTZ file:
 

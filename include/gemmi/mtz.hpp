@@ -546,6 +546,8 @@ struct GEMMI_DLL Mtz : public MtzMetadata {
   void write_to_cstream(std::FILE* stream) const;
   void write_to_string(std::string& str) const;
   void write_to_file(const std::string& path) const;
+  size_t size_to_write() const;
+  size_t write_to_buffer(char* buf, size_t maxlen) const;
 
 private:
   template<typename Write> void write_to_stream(Write write) const;
