@@ -19,12 +19,6 @@
 
 #include "fail.hpp"   // for fail, unreachable
 
-// we use brace elision for Op::Rot = std:array<std::array<int,3>,3>
-#ifdef __clang__
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wmissing-braces"
-#endif
-
 namespace gemmi {
 
 // OP
@@ -76,15 +70,15 @@ struct GEMMI_DLL Op {
   Op add_centering(const Tran& a) const { return translated(a).wrap(); }
 
   Rot negated_rot() const {
-    return { -rot[0][0], -rot[0][1], -rot[0][2],
-             -rot[1][0], -rot[1][1], -rot[1][2],
-             -rot[2][0], -rot[2][1], -rot[2][2] };
+    return {{{-rot[0][0], -rot[0][1], -rot[0][2]},
+             {-rot[1][0], -rot[1][1], -rot[1][2]},
+             {-rot[2][0], -rot[2][1], -rot[2][2]}}};
   }
 
   Rot transposed_rot() const {
-    return { rot[0][0], rot[1][0], rot[2][0],
-             rot[0][1], rot[1][1], rot[2][1],
-             rot[0][2], rot[1][2], rot[2][2] };
+    return {{{rot[0][0], rot[1][0], rot[2][0]},
+             {rot[0][1], rot[1][1], rot[2][1]},
+             {rot[0][2], rot[1][2], rot[2][2]}}};
   }
 
   // DEN^3 for rotation, -DEN^3 for rotoinversion
@@ -172,10 +166,10 @@ struct GEMMI_DLL Op {
   }
 
   static constexpr Op identity() {
-    return {{DEN,0,0, 0,DEN,0, 0,0,DEN}, {0,0,0}, ' '};
+    return {{{{DEN,0,0}, {0,DEN,0}, {0,0,DEN}}}, {0,0,0}, ' '};
   }
   static constexpr Op::Rot inversion_rot() {
-    return {-DEN,0,0, 0,-DEN,0, 0,0,-DEN};
+    return {{{-DEN,0,0}, {0,-DEN,0}, {0,0,-DEN}}};
   }
   bool operator<(const Op& rhs) const {
     return std::tie(rot, tran) < std::tie(rhs.rot, rhs.tran);
@@ -726,14 +720,14 @@ inline Op::Rot centred_to_primitive(char centring_type) {
   constexpr int H = Op::DEN / 2;
   constexpr int T = Op::DEN / 3;
   switch (centring_type) {
-    case 'P': return {D,0,0, 0,D,0, 0,0,D};
-    case 'A': return {-D,0,0, 0,-H,H, 0,H,H};
-    case 'B': return {-H,0,H, 0,-D,0, H,0,H};
-    case 'C': return {H,H,0, H,-H,0, 0,0,-D};
-    case 'I': return {-H,H,H, H,-H,H, H,H,-H};
-    case 'R': return {2*T,-T,-T, T,T,-2*T, T,T,T};
-    case 'H': return {2*T,-T,0, T,T,0, 0,0,D};  // not used normally
-    case 'F': return {0,H,H, H,0,H, H,H,0};
+    case 'P': return {{{D,0,0},     {0,D,0},    {0,0,D}}};
+    case 'A': return {{{-D,0,0},    {0,-H,H},   {0,H,H}}};
+    case 'B': return {{{-H,0,H},    {0,-D,0},   {H,0,H}}};
+    case 'C': return {{{H,H,0},     {H,-H,0},   {0,0,-D}}};
+    case 'I': return {{{-H,H,H},    {H,-H,H},   {H,H,-H}}};
+    case 'R': return {{{2*T,-T,-T}, {T,T,-2*T}, {T,T,T}}};
+    case 'H': return {{{2*T,-T,0},  {T,T,0},    {0,0,D}}};  // not used normally
+    case 'F': return {{{0,H,H},     {H,0,H},    {H,H,0}}};
     default: fail("not a centring type: ", centring_type);
   }
 }
@@ -1038,9 +1032,5 @@ template<> struct hash<gemmi::Op> {
   }
 };
 } // namespace std
-
-#ifdef __clang__
-# pragma clang diagnostic pop  // ignored -Wmissing-braces
-#endif
 
 #endif
