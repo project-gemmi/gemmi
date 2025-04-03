@@ -934,7 +934,7 @@ void Mtz::write_to_string(std::string& str) const {
   // a single-pass writing.
   size_t nbytes = size_to_write();
   str.resize(nbytes);
-  write_to_buffer(str.data(), nbytes);
+  write_to_buffer(&str[0], nbytes);
 }
 
 void Mtz::write_to_file(const std::string& path) const {

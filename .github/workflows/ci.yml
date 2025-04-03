@@ -49,7 +49,7 @@ jobs:
       shell: bash
       run: |
         cmake --version
-        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=OFF
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_STANDARD=14
         cmake --build . -j3
         cmake --build . --target check -j3
     - name: Install

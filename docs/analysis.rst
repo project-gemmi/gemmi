@@ -1326,7 +1326,7 @@ and link definitions are matched and applied to explicit and implicit links
 between monomers. Link definitions contain additional restraints
 (for the linkages) as well as recipes how to modify the rules
 within the linked monomers.
-This is described in the `Monomer Library <monlib>` section.
+This is described in the :ref:`Monomer Library <monlib>` section.
 
 
 

@@ -964,6 +964,7 @@ just copy the memory areas of the underlying C++ vectors.
 In Python, you can do:
 
 .. doctest::
+  :skipif: numpy is None
 
     >>> map_bytes = m.ccp4_header + m.grid.array.tobytes(order='A')
 
