@@ -23,8 +23,9 @@ struct AnyStream {
   virtual bool read(void* buf, size_t len) = 0;   // for ccp4, mtz
 
   // these are not used in GzStream because MemoryStream is used for mtz
-  virtual bool seek(std::ptrdiff_t /*offset*/) { return false; } // for mtz
-  virtual std::string read_rest() { return {}; }  // for mtz
+  virtual long tell() = 0; // temporary, for testing
+  virtual bool skip(size_t n) = 0;  // for reading mtz without data
+  virtual std::string read_rest() { return {}; }  // for mtz (appendix)
 
   size_t copy_line(char* line, int size) {        // for pdb, xds_ascii
     if (!gets(line, size))
@@ -62,14 +63,29 @@ struct FileStream final : public AnyStream {
     return ret;
   }
 
-  bool seek(std::ptrdiff_t offset) override {
+  long tell() override {
+    return std::ftell(f.get());
+  }
+
+  bool skip(size_t n) override {
 #if defined(_MSC_VER)
-    return _fseeki64(f.get(), offset, SEEK_SET) == 0;
+    int result = _fseeki64(f.get(), (std::ptrdiff_t)n, SEEK_CUR);
 #elif defined(__MINGW32__)
-    return fseeko(f.get(), (_off_t)offset, SEEK_SET) == 0;
+    int result = fseeko(f.get(), (_off_t)n, SEEK_CUR);
 #else
-    return std::fseek(f.get(), (long)offset, SEEK_SET) == 0;
+    int result = std::fseek(f.get(), (long)n, SEEK_CUR);
 #endif
+    if (result != 0) {
+      char buf[512];
+      while (n >= sizeof(buf)) {
+        if (std::fread(buf, sizeof(buf), 1, f.get()) != 1)
+          return false;
+        n -= sizeof(buf);
+      }
+      if (n > 0 && std::fread(buf, n, 1, f.get()) != 1)
+        return false;
+    }
+    return true;
   }
 
 private:
@@ -109,8 +125,11 @@ struct MemoryStream final : public AnyStream {
     return std::string(last, end);
   }
 
-  bool seek(std::ptrdiff_t offset) override {
-    cur = start + offset;
+  long tell() override {
+    return cur - start;
+  }
+  bool skip(size_t n) override {
+    cur += n;
     return cur < end;
   }
 

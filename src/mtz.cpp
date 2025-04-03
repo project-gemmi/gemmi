@@ -172,13 +172,16 @@ void Mtz::read_first_bytes(AnyStream& stream) {
   } else {
     header_offset = (int64_t) tmp_header_offset;
   }
+  stream.skip(60);
 }
 
 void Mtz::read_main_headers(AnyStream& stream, std::vector<std::string>* save_headers) {
   char line[81] = {0};
   std::ptrdiff_t header_pos = 4 * std::ptrdiff_t(header_offset - 1);
-  if (!stream.seek(header_pos))
-    fail("Cannot rewind to the MTZ header at byte " + std::to_string(header_pos));
+  // temporary check
+  long cur_pos = stream.tell();
+  if (cur_pos != header_pos && cur_pos != -1)
+    fail(cat("wrong pos ", int(header_pos), "  ", int(stream.tell())));
   int ncol = 0;
   bool has_batch = false;
   while (stream.read(line, 80)) {
@@ -312,6 +315,14 @@ void Mtz::read_main_headers(AnyStream& stream, std::vector<std::string>* save_he
     fail("Number of COLU records inconsistent with NCOL record.");
   if (has_batch != !batches.empty())
     fail("BATCH header inconsistent with NCOL record.");
+  // adjust data size, if necessary
+  if (!data.empty()) {
+    size_t expected_size = columns.size() * nreflections;
+    if (data.size() > expected_size)
+      data.resize(expected_size);
+    else if (data.size() < expected_size)
+      fail("internal error, wrong data size");
+  }
 }
 
 void Mtz::read_history_and_batch_headers(AnyStream& stream) {
@@ -372,11 +383,15 @@ void Mtz::setup_spacegroup() {
     d.cell.set_cell_images_from_spacegroup(spacegroup);
 }
 
-void Mtz::read_raw_data(AnyStream& stream) {
-  size_t n = columns.size() * nreflections;
+// we should be at byte 80
+void Mtz::read_raw_data(AnyStream& stream, bool do_read) {
+  size_t n = size_t(header_offset - 1 - 20);
+  if (!do_read) {
+    if (!stream.skip(4 * n))
+      fail("ignoring mtz data segment failed");
+    return;
+  }
   data.resize(n);
-  if (!stream.seek(80))
-    fail("Cannot rewind to the MTZ data.");
   if (!stream.read(data.data(), 4 * n))
     fail("Error when reading MTZ data");
   if (!same_byte_order)
@@ -384,8 +399,14 @@ void Mtz::read_raw_data(AnyStream& stream) {
       swap_four_bytes(&f);
 }
 
-void Mtz::read_all_headers(AnyStream& stream) {
+void Mtz::read_stream(AnyStream& stream, bool with_data) {
   read_first_bytes(stream);
+  // The older implementation of MTZ reading first read the headers,
+  // then the data. This required jumping to the headers at the end,
+  // then back to the beginning of the data (byte 80).
+  // The current implementation avoids calling seek(), allowing
+  // incremental reading of streams (stdin, gzipped files, etc).
+  read_raw_data(stream, with_data);
   read_main_headers(stream, nullptr);
   read_history_and_batch_headers(stream);
   setup_spacegroup();

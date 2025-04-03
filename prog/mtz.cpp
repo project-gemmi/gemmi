@@ -536,7 +536,7 @@ void compare_mtz(Mtz& mtz1, const char* path2, bool verbose) {
   }
 }
 
-void print_mtz_info(gemmi::AnyStream&& stream, const char* path,
+void print_mtz_info(gemmi::AnyStream& stream, const char* path,
                     const std::vector<option::Option>& options) {
   Mtz mtz;
   try {
@@ -548,15 +548,15 @@ void print_mtz_info(gemmi::AnyStream&& stream, const char* path,
   }
   if (options[Verbose])
     mtz.logger.callback = gemmi::Logger::to_stderr;
+  bool with_data = options[PrintTsv] || options[PrintStats] || options[PrintHistogram] ||
+                   options[CheckAsu] || options[Compare];
+  mtz.read_raw_data(stream, with_data);
   std::vector<std::string> save_headers;
   mtz.read_main_headers(stream, options[Headers] ? &save_headers : nullptr);
   for (const std::string& header : save_headers)
     printf("%s\n", gemmi::rtrim_str(header).c_str());
   mtz.read_history_and_batch_headers(stream);
   mtz.setup_spacegroup();
-  if (options[PrintTsv] || options[PrintStats] || options[PrintHistogram] ||
-      options[CheckAsu] || options[Compare])
-    mtz.read_raw_data(stream);
   if (options[Dump] ||
       !(options[PrintBatch] || options[PrintBatches] || options[PrintTsv] ||
         options[PrintStats] || options[PrintHistogram] ||
@@ -617,11 +617,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fflush(stderr);
       }
       gemmi::MaybeGzipped input(path);
-      if (gemmi::CharArray mem = input.uncompress_into_buffer()) {
-        print_mtz_info(gemmi::MemoryStream(mem.data(), mem.size()), path, p.options);
-      } else {
-        print_mtz_info(gemmi::FileStream(path, "rb"), path, p.options);
-      }
+      print_mtz_info(*input.create_stream(), path, p.options);
     }
   } catch (std::runtime_error& e) {
     std::fflush(stdout);
