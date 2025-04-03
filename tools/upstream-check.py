@@ -8,7 +8,7 @@ import json
 from urllib.request import urlopen
 
 TAGGED_REPOS = {
-    'wjakob/nanobind': 'v2.5.0',
+    'wjakob/nanobind': 'v2.6.1',
     'scikit-build/scikit-build-core': 'v0.11.1',
     'taocpp/PEGTL': '2.8.3',
     'cxong/tinydir': '1.2.6',
