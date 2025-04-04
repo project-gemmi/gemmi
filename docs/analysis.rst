@@ -227,8 +227,8 @@ image under PBC:
 
 To calculate only the distance to the atom, you can use the same function
 with `mark.pos` and symmetry operation index 0. `mark.pos` represents
-the position of the atom that has already been transformed by the symmetry
-operation `mark.image_idx` (and shifted into the unit cell).
+the position of the atom after being transformed by the symmetry
+operation `mark.image_idx` and shifted into the unit cell.
 
 .. doctest::
 
@@ -237,10 +237,14 @@ operation `mark.image_idx` (and shifted into the unit cell).
   >>> _.dist()  # doctest: +ELLIPSIS
   2.998659073040...
 
+Caveat: the image from `find_nearest_pbc_image()` is the nearest in
+fractional (not Cartesian) coordinates. It doesn't matter as long
+as the unit cell is much larger than the unit cell.
+
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 
-The neighbor search can also be used with small molecule structures.
-Here, we have MgI\ :sub:`2`, with each Mg atom surrounded by 6 iodine atoms,
+The neighbor search can also be applied to small-molecule structures.
+Here, we examine MgI\ :sub:`2`, with each Mg atom surrounded by 6 iodine atoms
 at a distance of 2.92Å:
 
 .. doctest::
@@ -258,6 +262,45 @@ at a distance of 2.92Å:
   I symmetry op #3
   I symmetry op #3
 
+In this case, the unit cell size is comparable to the search radius.
+The cif file lists two atoms under the trigonal P -3 m 1 symmetry:
+
+.. code-block:: none
+
+  Mg 0.0000 1.0000 1.0000
+  I 0.3333 0.6667 0.75763(6)
+
+If we want to determine the positions of symmetry images of the iodine atom
+surrounding the Mg atom, `find_nearest_pbc_image()` is not sufficient.
+There are three different PBC images of the same mark within the search radius.
+(This may happen only in tiny unit cells and is not relevant to biomolecules.)
+For such cases, we have the function `find_nearest_pbc_images()`
+that returns all images within the specified radius. Actually, this function
+checks only the image returned by `find_nearest_pbc_image()` and adjacent unit cells
+(27 positions in total), which should be enough for a radius comparable
+to a bond length. Below is a continuation of the previous example that
+also prints PBC translations and image positions of surrounding iodine atoms:
+
+.. doctest::
+
+  >>> marks = ns.find_site_neighbors(mg_site, min_dist=0.1)
+  >>> unique_marks = list(dict.fromkeys(marks))
+  >>> for mark in unique_marks:
+  ...   site = mark.to_site(small)
+  ...   print(site.label, 'symmetry op #%d' % mark.image_idx)
+  ...   fpos = small.cell.fractionalize(mark.pos)
+  ...   for im in small.cell.find_nearest_pbc_images(mg_site.fract, 4.0, fpos, 0):
+  ...     im_pos = small.cell.fract_image(im, fpos)
+  ...     print('  ->', im, im_pos)
+  ...
+  I symmetry op #0
+    -> <gemmi.NearestImage 1_555 in distance 2.92> <gemmi.Fractional(0.3333, 0.6667, 0.75763)>
+    -> <gemmi.NearestImage 1_565 in distance 2.92> <gemmi.Fractional(0.3333, 1.6667, 0.75763)>
+    -> <gemmi.NearestImage 1_455 in distance 2.92> <gemmi.Fractional(-0.6667, 0.6667, 0.75763)>
+  I symmetry op #3
+    -> <gemmi.NearestImage 1_466 in distance 2.92> <gemmi.Fractional(-0.3333, 1.3333, 1.24237)>
+    -> <gemmi.NearestImage 1_566 in distance 2.92> <gemmi.Fractional(0.6667, 1.3333, 1.24237)>
+    -> <gemmi.NearestImage 1_456 in distance 2.92> <gemmi.Fractional(-0.3333, 0.3333, 1.24237)>
 
 Contact search
 ==============

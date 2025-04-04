@@ -507,6 +507,24 @@ struct UnitCell : UnitCellParameters {
     return find_nearest_pbc_image(fractionalize(ref), fractionalize(pos), image_idx);
   }
 
+  std::vector<NearestImage> find_nearest_pbc_images(const Fractional& fref, double dist,
+                                                    const Fractional& fpos, int image_idx) const {
+    std::vector<NearestImage> results;
+    NearestImage im = find_nearest_pbc_image(fref, fpos, image_idx);
+    int sh[3] = {im.pbc_shift[0], im.pbc_shift[1], im.pbc_shift[2]};
+    for (im.pbc_shift[0] = sh[0]-1; im.pbc_shift[0] <= sh[0]+1; ++im.pbc_shift[0])
+      for (im.pbc_shift[1] = sh[1]-1; im.pbc_shift[1] <= sh[1]+1; ++im.pbc_shift[1])
+        for (im.pbc_shift[2] = sh[2]-1; im.pbc_shift[2] <= sh[2]+1; ++im.pbc_shift[2]) {
+          Fractional shift(im.pbc_shift[0], im.pbc_shift[1], im.pbc_shift[2]);
+          im.dist_sq = orthogonalize_difference(fpos - fref + shift).length_sq();
+          if (im.dist_sq <= sq(dist))
+            results.push_back(im);
+        }
+    std::sort(results.begin(), results.end(),
+        [](const NearestImage& a, const NearestImage& b) { return a.dist_sq < b.dist_sq; });
+    return results;
+  }
+
   Position orthogonalize_in_pbc(const Position& ref,
                                 const Fractional& fpos) const {
     Fractional fref = fractionalize(ref);
@@ -518,6 +536,12 @@ struct UnitCell : UnitCellParameters {
     Fractional fpos = fractionalize(pos);
     apply_transform(fpos, image_idx, inverse);
     return orthogonalize_in_pbc(ref, fpos);
+  }
+
+  // apply NearestImage symmetry to fpos
+  Fractional fract_image(const NearestImage& im, Fractional fpos) {
+    apply_transform(fpos, im.sym_idx, false);
+    return fpos + Fractional(im.pbc_shift[0], im.pbc_shift[1], im.pbc_shift[2]);
   }
 
   /// Counts nearby symmetry mates (0 = none, 3 = 4-fold axis, etc).

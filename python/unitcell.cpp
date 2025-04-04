@@ -305,8 +305,11 @@ void add_unitcell(nb::module_& m) {
          (NearestImage (UnitCell::*)(const Position&, const Position&, int) const)
          &UnitCell::find_nearest_pbc_image,
          nb::arg("ref"), nb::arg("pos"), nb::arg("image_idx")=0)
+    .def("find_nearest_pbc_images", &UnitCell::find_nearest_pbc_images,
+         nb::arg("fref"), nb::arg("dist"), nb::arg("fpos"), nb::arg("image_idx"))
     .def("find_nearest_pbc_position", &UnitCell::find_nearest_pbc_position,
          nb::arg("ref"), nb::arg("pos"), nb::arg("image_idx"), nb::arg("inverse")=false)
+    .def("fract_image", &UnitCell::fract_image)
     .def("is_special_position",
          (int (UnitCell::*)(const Position&, double) const)
            &UnitCell::is_special_position,
