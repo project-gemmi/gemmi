@@ -520,8 +520,6 @@ struct UnitCell : UnitCellParameters {
           if (im.dist_sq <= sq(dist))
             results.push_back(im);
         }
-    std::sort(results.begin(), results.end(),
-        [](const NearestImage& a, const NearestImage& b) { return a.dist_sq < b.dist_sq; });
     return results;
   }
 

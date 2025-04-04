@@ -294,13 +294,13 @@ also prints PBC translations and image positions of surrounding iodine atoms:
   ...     print('  ->', im, im_pos)
   ...
   I symmetry op #0
+    -> <gemmi.NearestImage 1_455 in distance 2.92> <gemmi.Fractional(-0.6667, 0.6667, 0.75763)>
     -> <gemmi.NearestImage 1_555 in distance 2.92> <gemmi.Fractional(0.3333, 0.6667, 0.75763)>
     -> <gemmi.NearestImage 1_565 in distance 2.92> <gemmi.Fractional(0.3333, 1.6667, 0.75763)>
-    -> <gemmi.NearestImage 1_455 in distance 2.92> <gemmi.Fractional(-0.6667, 0.6667, 0.75763)>
   I symmetry op #3
+    -> <gemmi.NearestImage 1_456 in distance 2.92> <gemmi.Fractional(-0.3333, 0.3333, 1.24237)>
     -> <gemmi.NearestImage 1_466 in distance 2.92> <gemmi.Fractional(-0.3333, 1.3333, 1.24237)>
     -> <gemmi.NearestImage 1_566 in distance 2.92> <gemmi.Fractional(0.6667, 1.3333, 1.24237)>
-    -> <gemmi.NearestImage 1_456 in distance 2.92> <gemmi.Fractional(-0.3333, 0.3333, 1.24237)>
 
 Contact search
 ==============
