@@ -1,16 +1,21 @@
+// Compile with: c++ -I/path/to/gemmi/include -O2 my_program.cpp
 #include <iostream>
 #include <gemmi/cif.hpp>
 
 namespace cif = gemmi::cif;
 
 int main() {
-  cif::Document doc = cif::read_file("1mru.cif");
-  for (cif::Block& block : doc.blocks)
-    for (auto cc : block.find("_chem_comp.", {"id", "formula_weight"}))
-      std::cout << cc[0] << " weights " << cc[1] << std::endl;
+  try {
+    cif::Document doc = cif::read_file("1mru.cif");
+    for (cif::Block& block : doc.blocks)
+      for (auto cc : block.find("_chem_comp.", {"id", "formula_weight"}))
+        std::cout << cc[0] << " weights " << cc[1] << std::endl;
+  } catch (std::exception& e) {
+    std::cerr << "Oops. " << e.what() << std::endl;
+  }
 }
 
-// the next example is in docs from line 15 to 27
+// the next example is in docs from line 20 to 32
 
 #include <iostream>
 #include <gemmi/cif.hpp>
@@ -27,7 +32,7 @@ void convert_to_xyz(cif::Document doc) {
 }
 
 
-// this example is in docs from line 32 to 34
+// this example is in docs from line 37 to 39
 void swap_atom_id_tags(cif::Block& block) {
   cif::Table table = block.find("_atom_site.", {"label_atom_id", "auth_atom_id"});
   cif::Table::Row tags = table.tags();

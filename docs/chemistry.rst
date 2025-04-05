@@ -75,6 +75,7 @@ It can be adjusted using the function `set_is_metal`:
 The scattering properties of elements are covered
 in the :ref:`Scattering <scattering>` section.
 
+.. _small_molecules:
 
 Small Molecules
 ===============

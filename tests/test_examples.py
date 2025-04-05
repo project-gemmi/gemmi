@@ -31,8 +31,6 @@ class TestExamples(unittest.TestCase):
         import aafreq  # noqa: F401 - imported but unused
     def test_col_order(self):
         import col_order  # noqa: F401
-    def test_hello(self):
-        import hello  # noqa: F401
     def test_matthews(self):
         import matthews  # noqa: F401
     def test_monomers(self):

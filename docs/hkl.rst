@@ -800,6 +800,8 @@ Here is a complete C++ example how to create a new MTZ file:
 
 .. literalinclude:: code/newmtz.cpp
 
+.. _sf_mmcif:
+
 SF mmCIF
 ========
 

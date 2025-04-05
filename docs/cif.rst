@@ -3,37 +3,38 @@ CIF Parser
 
 This section covers working with CIF files on a syntactic level.
 
-Higher-level functions that understand semantics of:
+Higher-level functions that understand semantics of different types
+of CIF files are documented in other sections. These types include:
 
-* small molecule or inorganic CIF files,
-* macromolecular PDBx/mmCIF,
-* and monomer/ligand cif files as used for macromolecular restraints
-
-are documented in section :ref:`molecular`.
+* :ref:`small molecule <small_molecules>` or inorganic CIF files,
+* macromolecular :ref:`PDBx/mmCIF with coordinates <mmcif_format>`,
+* PDBx/mmCIF :ref:`with reflection data <sf_mmcif>`,
+* :ref:`monomer/ligand files <CCD_etc>` used to supplement
+  macromolecular coordinates.
 
 .. _cif_intro:
 
 What are STAR, CIF, DDL, mmCIF?
 ==================================
 
-(in case someone comes here when looking for a serialization format)
+(in case someone comes here looking for a serialization format)
 
 STAR is a human-readable data serialization format (think XML or JSON)
 that happens to be known and used only in molecular-structure sciences.
 
 CIF (Crystallographic Information File) -- a file format used
 in crystallography -- is a restricted derivative of STAR.
-It is restricted in features (to make implementation easier),
-but also imposes arbitrary limits -- for example on the line length.
+It is restricted in features (to make implementation easier)
+but also imposes arbitrary limits -- for example, on line length.
 
 DDL is a schema language for STAR/CIF.
 
 All of them (STAR, CIF and DDL) have multiple versions.
 We will be more specific in the following sections.
 
-The STAR/CIF syntax is relatively simple, but may be confusing at first.
+The STAR/CIF syntax is relatively simple but may be confusing at first.
 (Note that the initial version of STAR was published by Sydney Hall in 1991 --
-before XML and long before JSON and YAML, not to mention TOML).
+before XML and long before JSON and YAML, not to mention TOML.)
 
 .. highlight:: default
 
@@ -65,7 +66,7 @@ followed by column names followed by values)::
     7 8 9
     2 4 8
 
-Typically, long tables (loops) make most of the CIF content::
+Typically, long tables (loops) make up most of the CIF content::
 
     1    N N   . LEU A 11  ? 0.5281 0.5618 0.5305 -0.0327 -0.0621 0.0104
     2    C CA  . LEU A 11  ? 0.5446 0.5722 0.5396 -0.0317 -0.0632 0.0080
@@ -75,16 +76,19 @@ Typically, long tables (loops) make most of the CIF content::
 
 The dot and question mark in the example above are two null types.
 In the CIF spec: `?` = *unknown* and `.` = *not applicable*.
-In mmCIF files `.` is used for mandatory items, `?` for not mandatory.
+In mmCIF files `.` is used for mandatory items, `?` for non-mandatory.
 
-The CIF syntax has a serious flaw resulting from historical trade-offs:
-a string that can be interpreted as a number does not need to be quoted.
-Therefore, the type of `5332` above is not certain:
-the JSON equivalent can be either `5332` or `"5332"`.
+The CIF syntax has a flaw resulting from historical trade-offs:
+strings interpretable as numbers do not need to be quoted.
+Therefore, while the CIF specification defines a formal grammar for
+numbers, we can't recognize them. The type of `5332` is not certain:
+the JSON equivalent could be either `5332` or `"5332"`.
 
-Note: "STAR File" is trademarked by IUCr, and it used to be patented_.
-
-.. _patented: https://patents.google.com/patent/WO1991016682A1
+Note: "STAR File"
+`used to be <https://www.iucr.org/__data/iucr/lists/comcifs-l/msg00710.html>`_
+trademarked by IUCr
+and `patented <https://patents.google.com/patent/WO1991016682A1>`_,
+but not anymore.
 
 The mmCIF format (by mmCIF we mean what is more formally called PDBx/mmCIF)
 is the CIF syntax + a huge dictionary (ontology/schema) in DDL2.
@@ -96,8 +100,8 @@ height of popularity of RDBMSs).
 
 International Tables for Crystallography
 `Vol. G (2006) <http://it.iucr.org/Ga/contents/>`_
-describes all of the STAR, CIF 1.1, DDL1 and DDL2.
-If you don't have access to it -- IUCr website has specs of
+describes STAR, CIF 1.1, DDL1 and DDL2.
+If you don't have access to it -- the IUCr website has specs of
 `CIF1.1 <http://www.iucr.org/resources/cif/spec/version1.1>`_
 and `DDLs <http://www.iucr.org/resources/cif/ddl>`_.
 As far as I can tell all versions of the STAR spec are behind paywalls.
@@ -111,13 +115,14 @@ and `CIF 2.0 <http://journals.iucr.org/j/issues/2016/01/00/aj5269/>`_ (2016).
 Only the last one is freely available.
 
 PDBx/mmCIF is documented at `mmcif.pdb.org <http://mmcif.pdb.org/>`_.
+(More about it :ref:`later <ddl2>`.)
 
 .. _what_is_parsed:
 
 What is parsed?
 ===============
 
-The parser supports CIF 1.1 spec and some extras.
+The parser supports the CIF 1.1 spec and some extras.
 
 Currently, it is available as:
 
@@ -127,7 +132,7 @@ Currently, it is available as:
 We use it to read:
 
 * mmCIF files (both coordinates and structure factors)
-* CIF files from Crystallography Open Database (COD)
+* CIF files from the Crystallography Open Database (COD)
 * Chemical Component Dictionary from PDB
 * DDL1 and DDL2 dictionaries from IUCr and PDB
 * monomer library a.k.a. Refmac dictionary
@@ -135,20 +140,20 @@ We use it to read:
 The parser handles:
 
 * all constructs of CIF 1.1 (including *save frames*),
-* the `global_` and `stop_` keywords from STAR -- needed for Refmac
+* the `global_` and `stop_` keywords from STAR -- needed for the Refmac
   monomer library and `mmcif_nmr-star.dic`, respectively.
 
-It could be extended to handle also the new features of CIF 2.0
+It could be extended to handle the new features of CIF 2.0
 or even the full STAR format, but we don't have a good reason to do this.
 The same goes for DDLm/dREL.
 
 The parser does not handle CIF 1.1 conventions, as they are not part
 of the syntax:
 line wrapping (``eol;\eol``),
-Greek letters (``\m`` -> µ),
-accented letters (``\'o`` -> ó),
-special alphabetic characters (``\%A`` -> Å)
-and other codes (``\\infty`` -> ∞).
+Greek letters (``\m`` → µ),
+accented letters (``\'o`` → ó),
+special alphabetic characters (``\%A`` → Å)
+and other codes (``\\infty`` → ∞).
 
 CIF parsers in the small-molecules field need to deal with incorrect syntax.
 The papers about `iotbx.cif <https://doi.org/10.1107/S0021889811041161>`_
@@ -159,77 +164,30 @@ that embraced the CIF format later. So we've decided to add only
 the following rules to relax the syntax:
 
 * names and lines can have any length like in STAR
-  (the CIF spec imposes the limit of 2048 characters, but some mmCIF files
+  (the CIF spec imposes a limit of 2048 characters, but some mmCIF files
   from PDB exceed it, e.g. 3j3q.cif),
-* quoted strings may contain non-ascii characters (if nothing has changed
+* quoted strings may contain non-ASCII characters (if nothing has changed
   one entry in the PDB has byte A0 corresponding to non-breaking space),
-* a table (loop) can have no values if it is followed by a keyword or EOF
+* a table (loop) can have no values if followed by a keyword or EOF
   (such files were written by old versions of Refmac and SHELXL,
   and were also present in the CCP4 monomer library),
 * block name (*blockcode*) can be empty, i.e. the block can start
-  with bare `data_` keyword (RELION and buccaneer write such files),
+  with bare `data_` keyword (RELION and Buccaneer write such files),
 * unquoted strings cannot start with keywords (STAR spec is ambiguous
   about this -- see
   `StarTools doc <http://www.globalphasing.com/startools/>`_ for details;
-  this rule is actually about simplifying not relaxing),
+  this rule is actually about simplifying, not relaxing),
 * missing value in a key-value pair is optionally allowed
   if whitespace after the tag ends with a new-line character.
-  More specifically, the parsing step allows for missing value in such case,
-  but the next validation step (which can be skipped when using
-  low-level functions, such as `parse_file()`) throws an error.
-
-
-Getting started
-===============
-
-C++
----
-
-CIF parser is implemented in header files,
-so you do not need to compile Gemmi.
-It has a single dependency: PEGTL (also header-only),
-which is included under the `include/gemmi/third_party` directory.
-All you need is to make sure that Gemmi headers are in your
-project's include path, and compile your program as C++14 or later.
-
-Let us start with a simple example.
-This little program reads mmCIF file and shows weights of the chemical
-components:
-
-.. literalinclude:: code/cif_cc.cpp
-   :language: cpp
-   :lines: 1-11
-
-To compile it on Unix system you need to fetch Gemmi source code
-and run a compiler:
-
-.. code-block:: none
-
-    git clone https://github.com/project-gemmi/gemmi.git
-    c++ -Igemmi/include -O2 my_program.cpp
-
-Python
-------
-
-Python module can be installed with pip, as described in the
-:ref:`Installation <install_py>` section.
-After installation `pydoc gemmi.cif` should list all classes and methods.
-
-To start with a simple example, here is a program that says hello to each
-element found in mmCIF:
-
-.. literalinclude:: ../examples/hello.py
-   :language: python
-   :lines: 2-
-   :emphasize-lines: 2,7-9
-
-More complex examples are shown in the :ref:`cif_examples` section.
+  More specifically, the parsing step allows for missing values in such cases,
+  but the next validation step (which can be skipped -- more about it
+  :ref:`later <cif_low_level>`) throws an error.
 
 
 DOM and SAX
 ===========
 
-The terms DOM and SAX originate from XML parsing, but they became also
+The terms DOM and SAX originate from XML parsing, but they also became
 names of general parsing styles.
 Gemmi can parse CIF files in two ways that correspond to DOM and SAX:
 
@@ -238,7 +196,7 @@ Gemmi can parse CIF files in two ways that correspond to DOM and SAX:
 
 * Alternatively, from C++ only, one can define own
   `PEGTL Actions <https://github.com/taocpp/PEGTL/blob/master/doc/Actions-and-States.md>`_
-  for to the grammar rules from `cif.hpp`.
+  for the grammar rules from `cif.hpp`.
   These actions will be triggered while reading a CIF file.
 
 This documentation covers the DOM parsing only.
@@ -250,15 +208,33 @@ The hierarchy in the DOM reflects the structure of CIF 1.1:
 * Loop (*m*\ ×\ *n* table) contains *n* column names and *m*\ ×\ *n* values.
 
 Names are often called *tags*. The leading `_` is usually treated
-as part of the tag, not just a syntactic feature. So we store tag string
-with the underscore (`_my_tag`), and function that take tags as arguments
+as part of the tag, not just a syntactic feature. So we store tag strings
+with the underscore (`_my_tag`), and functions that take tags as arguments
 expect strings starting with `_`.
 The case of tags is preserved.
+
+At this point it might help to show an example of DOM parsing.
+Here is a simple program that reads an mmCIF file and prints
+weights of components that are listed as `_chem_comp.formula_weight`.
+The functions used here are documented later on.
+
+.. tab:: C++
+
+ .. literalinclude:: code/cif_cc.cpp
+    :language: cpp
+    :lines: 1-16
+
+.. tab:: Python
+
+ .. literalinclude:: ../examples/read_cif.py
+    :language: python
+    :lines: 2-
+
 
 Values have types. CIF 1.1 defines four base types:
 
 * char (string)
-* uchar (ughh.. case-insensitive string)
+* uchar (case-insensitive string)
 * numb (number that cannot be recognized as number on the syntax level)
 * null (one of two possible nulls: `?` and `.`)
 
@@ -267,36 +243,40 @@ For example, `int` and `float` are mmCIF subtypes of `numb`.
 
 Since in general it is not possible to infer type without
 the corresponding dictionary, the DOM stores raw strings (including quotes).
-They can be later converted to required type using the following helper
+They can later be converted to the required type using the following helper
 functions:
 
-* `as_string()` -- gets unquoted string,
-* `as_number()` -- gets floating-point number,
-* `as_int()` -- gets integer,
-* `as_char()` -- gets single character,
-* `is_null()` -- check if the value is null (i.e. `?` or `.`),
+* `as_string()` -- gets unquoted string
+* `as_number()` -- gets floating-point number
+* `as_int()` -- gets integer
+* `as_char()` -- gets single character
+* `is_null()` -- check if the value is null (i.e. `?` or `.`)
 
-and we have also
+and we also have:
 
-* `quote()` -- the opposite of `as_string()` -- add quotes appropriate
-  for the content of the string (usually, no quotes are necessary and no
-  quotes are added).
+* `quote()` -- the opposite of `as_string()` -- adds quotes appropriate
+  for the content of the string (usually, quotes are not necessary and
+  not added).
 
-C++
----
 
 .. highlight:: cpp
 
-All these helper functions are defined in `gemmi/cifdoc.hpp`
-except for `as_number()` which is in `gemmi/numb.hpp`.
-They take a string as an argument and work as expected, for example::
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/cifdoc.hpp> // for as_string, as_int, quote
+  #include <gemmi/numb.hpp>   // for as_number
 
   double rfree = cif::as_number(raw_rfree_string); // NaN if it's '?' or '.'
 
-Python
-------
+  cif::as_int("123");      // 123
+  cif::quote("two words"); // "'two words'"
+  cif::is_null("?");       // true
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> from gemmi import cif
   >>> cif.as_number('123')
@@ -317,56 +297,61 @@ Reading a file
 We have a few reading functions that read a file (or a string, or a stream)
 and return a document (DOM) -- an instance of class `Document`.
 
-C++
----
+.. tab:: C++
 
-The reading functions are in the `gemmi::cif` namespace::
+ .. tab:: libgemmi_cpp
 
-  #include <gemmi/cif.hpp>
+  ::
 
-  Document read_file(const std::string& filename)
-  Document read_memory(const char* data, const size_t size, const char* name)
-  Document read_cstream(std::FILE *f, size_t bufsize, const char* name)
-  Document read_istream(std::istream &is, size_t bufsize, const char* name)
+   #include <gemmi/read_cif.hpp>
 
-Parameter `name` is used only when reporting errors.
-Parameter `bufsize` determines the buffer size and only affects performance.
-Regardless of the buffer size, the last two options are slower
-than `read_file()` -- they were not optimized for.
+   // functions in namespace gemmi, from -lgemmi_cpp, usually linked with zlib or zlib-ng
 
-Additional header `<gemmi/gz.hpp>` is needed to transparently open
-a gzipped file (by uncompressing it first into a memory buffer)
-if the filename ends with `.gz`::
+   // similar to cif::read_file, but uncompresses *.gz files on the fly
+   cif::Document read_cif_gz(const std::string& path);
 
-    // in this and all the next examples: namespace cif = gemmi::cif;
-    cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
+   // reads the content of CIF file from a memory buffer (name is used when reporting errors)
+   cif::Document read_cif_from_memory(const char* data, size_t size, const char* name);
 
-If you use it, you must also link the program with zlib. On Unix systems
-it usually means adding `-lz` to the compiler invocation.
+   // reads from a string; it's in namespace gemmi::cif (for backward compatibility)
+   Document read_string(const std::string& data);
 
-And if the `path` above is `-`, the standard input is read.
+ .. tab:: header-only
 
-If you use these functions in multiple compilation units, having
-the CIF parser implemented in headers makes the compilation time longer.
-To avoid it, include only `<gemmi/read_cif.hpp>`
-and either link with libgemmi or add `src/read_cif.cpp` to your project.
+  ::
 
+   #include <gemmi/cif.hpp>
 
-Python
-------
+   // Header-only functions in namespace gemmi::cif.
+   // No linking, but slower compilation.
+   // Parameter name is used only when reporting errors.
 
-.. testcode::
+   Document read_file(const std::string& filename);
+   Document read_memory(const char* data, const size_t size, const char* name);
+   // Parameter bufsize determines the buffer size and only affects performance.
+   // These functions are slower than the ones above.
+   Document read_cstream(std::FILE *f, size_t bufsize, const char* name);
+   Document read_istream(std::istream &is, size_t bufsize, const char* name);
+
+.. tab:: Python
+
+ .. testcode::
 
   from gemmi import cif
 
-  # read and parse a CIF file
+  # read and parse a CIF file; if the filename ends with .gz it is uncompressed on the fly
   doc = cif.read_file('components.cif')
 
-  # the same, but if the filename ends with .gz it is uncompressed on the fly
-  doc = cif.read('../tests/1pfe.cif.gz')
+  # the same (except that it can also read mmJSON)
+  doc = cif.read('components.cif')
 
-  # read content of a CIF file from string
+  # read content of a CIF file from string or bytes
   doc = cif.read_string('data_this _is valid _cif content')
+
+The functions that can read gzipped files also understand `path` specified
+as `-` to mean the standard input.
+
+.. _cif_low_level:
 
 Low-level functions
 -------------------
@@ -1265,7 +1250,7 @@ As an example, let us swap two names
 
 .. literalinclude:: code/cif_cc.cpp
    :language: cpp
-   :lines: 32-34
+   :lines: 37-39
 
 .. doctest::
 
@@ -1814,7 +1799,7 @@ to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
 
 .. literalinclude:: code/cif_cc.cpp
    :language: cpp
-   :lines: 15-27
+   :lines: 20-32
 
 
 .. _auth_label_example:

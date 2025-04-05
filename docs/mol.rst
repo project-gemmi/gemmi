@@ -753,6 +753,7 @@ to prepare and write CONECT records:
   write_options = gemmi.PdbWriteOptions(preserve_serial=True, conect_records=True)
   structure.write_pdb(output_path, write_options)
 
+.. _mmcif_format:
 
 PDBx/mmCIF format
 -----------------

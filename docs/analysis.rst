@@ -239,7 +239,7 @@ operation `mark.image_idx` and shifted into the unit cell.
 
 Caveat: the image from `find_nearest_pbc_image()` is the nearest in
 fractional (not Cartesian) coordinates. It doesn't matter as long
-as the unit cell is much larger than the unit cell.
+as the unit cell is much larger than the search radius.
 
 For more information see the :ref:`properties of NearestImage <nearestimage>`.
 

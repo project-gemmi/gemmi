@@ -379,8 +379,6 @@ target_compile_definitions(cpptest PRIVATE USE_STD_SNPRINTF=1)
 target_link_libraries(cpptest PRIVATE gemmi_cpp)
 target_include_directories(cpptest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
-add_executable(hello EXCLUDE_FROM_ALL examples/hello.cpp)
-target_link_libraries(hello PRIVATE gemmi_headers)
 add_executable(doc_example EXCLUDE_FROM_ALL
                docs/code/sym.cpp docs/code/elem.cpp docs/code/resinfo.cpp
                docs/code/cell.cpp docs/code/mutate.cpp)
@@ -417,7 +415,7 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C \"$<CONFIG>\")
 add_test(NAME cpptest COMMAND cpptest)
 
 add_dependencies(check
-    cpptest hello doc_example doc_example2 doc_newmtz
+    cpptest doc_example doc_example2 doc_newmtz
     test_disulf check_conn print-version)
 
 if (USE_FORTRAN)
