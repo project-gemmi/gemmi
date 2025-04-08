@@ -158,20 +158,6 @@ std::string token_stats(const cif::Document& d) {
   return info;
 }
 
-// Empty loop is not a valid CIF syntax, but we parse it to accommodate
-// some broken CIF files. Only validation shows an error.
-void check_empty_loops(const cif::Block& block) {
-  for (const cif::Item& item : block.items) {
-    if (item.type == cif::ItemType::Loop) {
-      if (item.loop.values.empty() && !item.loop.tags.empty())
-        throw std::runtime_error("Empty loop in block " + block.name +
-                                 ": " + item.loop.tags[0]);
-    } else if (item.type == cif::ItemType::Frame) {
-      check_empty_loops(item.frame);
-    }
-  }
-}
-
 bool column_contains(const cif::Column& column, const char* value) {
   for (const std::string& v : column)
     if (cif::as_string(v) == value)
@@ -190,12 +176,7 @@ bool process_file(const char* path, const cif::Ddl& dict,
     if (options[Fast]) {
       ok = gemmi::check_cif_syntax_gz(path, &msg);
     } else {
-      cif::Document doc = gemmi::read_cif_gz(path);
-      for (const cif::Block& block : doc.blocks) {
-        if (block.name == " ")
-          printf("%s: missing block name (bare data_)\n", doc.source.c_str());
-        check_empty_loops(block);
-      }
+      cif::Document doc = gemmi::read_cif_gz(path, /*check_level=*/2);
       if (options[Stat])
         msg = token_stats(doc);
       if (options[Ddl]) {

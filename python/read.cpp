@@ -23,17 +23,18 @@ using namespace gemmi;
 NB_MAKE_OPAQUE(std::vector<SmallStructure::Site>)
 
 void add_cif_read(nb::module_& cif) {
-  cif.def("read_file", &read_cif_gz, nb::arg("filename"),
+  cif.def("read_file", &read_cif_gz, nb::arg("filename"), nb::arg("check_level")=1,
           "Reads a CIF file copying data into Document.");
   cif.def("read", &read_cif_or_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped CIF file.");
-  cif.def("read_string", [](const std::string& str) {
-            return read_cif_from_memory(str.c_str(), str.size(), "string");
-          }, nb::arg("string"),
+  cif.def("read_string", [](const std::string& str, int check_level) {
+            return read_cif_from_memory(str.c_str(), str.size(), "string", check_level);
+          }, nb::arg("string"), nb::arg("check_level")=1,
           "Reads a string as a CIF file.");
-  cif.def("read_string", [](const nb::bytes& data) {
-            return read_cif_from_memory(data.c_str(), data.size(), "data");
-          }, nb::arg("data"), "Reads bytes as a CIF file.");
+  cif.def("read_string", [](const nb::bytes& data, int check_level) {
+            return read_cif_from_memory(data.c_str(), data.size(), "data", check_level);
+          }, nb::arg("data"), nb::arg("check_level")=1,
+          "Reads bytes as a CIF file.");
   cif.def("read_mmjson", &read_mmjson_gz,
           nb::arg("filename"), "Reads normal or gzipped mmJSON file.");
   cif.def("read_mmjson_string", [](std::string data) {

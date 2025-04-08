@@ -1159,6 +1159,19 @@ inline void check_for_duplicates(const Document& d) {
   }
 }
 
+// Empty loop is not a valid CIF syntax, but we parse it to accommodate
+// some broken CIF files. Only check_level>=2 shows an error.
+inline void check_empty_loops(const cif::Block& block, const std::string& source) {
+  for (const cif::Item& item : block.items) {
+    if (item.type == cif::ItemType::Loop) {
+      if (item.loop.values.empty() && !item.loop.tags.empty())
+        cif_fail(source, block, item, "empty loop with " + item.loop.tags[0]);
+    } else if (item.type == cif::ItemType::Frame) {
+      check_empty_loops(item.frame, source);
+    }
+  }
+}
+
 inline bool is_text_field(const std::string& val) {
   size_t len = val.size();
   return len > 2 && val[0] == ';' && (val[len-2] == '\n' || val[len-2] == '\r');

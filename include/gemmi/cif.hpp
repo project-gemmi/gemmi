@@ -268,12 +268,21 @@ template<typename Input> void parse_input(Document& d, Input&& in) {
   pegtl::parse<rules::file, Action, Errors>(in, d);
 }
 
-template<typename Input> Document read_input(Input&& in) {
+template<typename Input> Document read_input(Input&& in, int check_level=1) {
   Document doc;
   doc.source = in.source();
   parse_input(doc, in);
-  check_for_missing_values(doc);
-  check_for_duplicates(doc);
+  if (check_level > 0) {
+    check_for_missing_values(doc);
+    check_for_duplicates(doc);
+    if (check_level > 1) {
+      for (const cif::Block& block : doc.blocks) {
+        if (block.name == " ")
+          fail(doc.source + ": missing block name (bare data_)");
+        check_empty_loops(block, doc.source);
+      }
+    }
+  }
   return doc;
 }
 
@@ -293,24 +302,25 @@ size_t parse_one_block(Document& d, Input&& in) {
   tao::pegtl::file_input<> in(path)
 #endif
 
-inline Document read_file(const std::string& filename) {
+inline Document read_file(const std::string& filename, int check_level=1) {
   GEMMI_CIF_FILE_INPUT(in, filename);
-  return read_input(in);
+  return read_input(in, check_level);
 }
 
-inline Document read_memory(const char* data, size_t size, const char* name) {
+inline Document read_memory(const char* data, size_t size, const char* name, int check_level=1) {
   pegtl::memory_input<> in(data, size, name);
-  return read_input(in);
+  return read_input(in, check_level);
 }
 
-inline Document read_cstream(std::FILE *f, size_t bufsize, const char* name) {
+inline Document read_cstream(std::FILE *f, size_t bufsize, const char* name, int check_level=1) {
   pegtl::cstream_input<> in(f, bufsize, name);
-  return read_input(in);
+  return read_input(in, check_level);
 }
 
-inline Document read_istream(std::istream &is, size_t bufsize, const char* name) {
+inline Document read_istream(std::istream &is, size_t bufsize, const char* name,
+                             int check_level=1) {
   pegtl::istream_input<> in(is, bufsize, name);
-  return read_input(in);
+  return read_input(in, check_level);
 }
 
 
@@ -335,12 +345,12 @@ template<typename Input> bool try_parse(Input&& in, std::string* msg) {
 // A function for transparent reading of normal and compressed files.
 // T should have the same traits as BasicInput and MaybeGzipped.
 template<typename T>
-Document read(T&& input) {
+Document read(T&& input, int check_level=1) {
   if (CharArray mem = input.uncompress_into_buffer())
-    return read_memory(mem.data(), mem.size(), input.path().c_str());
+    return read_memory(mem.data(), mem.size(), input.path().c_str(), check_level);
   if (input.is_stdin())
-    return read_cstream(stdin, 16*1024, "stdin");
-  return read_file(input.path());
+    return read_cstream(stdin, 16*1024, "stdin", check_level);
+  return read_file(input.path(), check_level);
 }
 
 template<typename T>
