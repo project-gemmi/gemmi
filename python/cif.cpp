@@ -311,6 +311,7 @@ void add_cif(nb::module_& cif) {
         write_cif_block_to_stream(os, self, opt);
         return os.str();
     }, nb::arg("options")=WriteOptions(), "Returns a string in CIF format.")
+    .def("check_empty_loops", &check_empty_loops)
     .def("__getstate__", &getstate<Block>)
     .def("__setstate__", &setstate<Block>)
     .def("__repr__", [](const Block &self) {

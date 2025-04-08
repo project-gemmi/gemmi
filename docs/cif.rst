@@ -155,6 +155,8 @@ accented letters (``\'o`` → ó),
 special alphabetic characters (``\%A`` → Å)
 and other codes (``\\infty`` → ∞).
 
+.. _cif_relaxed:
+
 CIF parsers in the small-molecules field need to deal with incorrect syntax.
 The papers about `iotbx.cif <https://doi.org/10.1107/S0021889811041161>`_
 and `COD::CIF::Parser <http://dx.doi.org/10.1107/S1600576715022396>`_
@@ -163,25 +165,31 @@ Nowadays the problem is less severe, especially in the MX community
 that embraced the CIF format later. So we've decided to add only
 the following rules to relax the syntax:
 
+always
+
 * names and lines can have any length like in STAR
   (the CIF spec imposes a limit of 2048 characters, but some mmCIF files
   from PDB exceed it, e.g. 3j3q.cif),
 * quoted strings may contain non-ASCII characters (if nothing has changed
   one entry in the PDB has byte A0 corresponding to non-breaking space),
+* unquoted strings cannot start with keywords (STAR spec is ambiguous
+  about this -- see
+  `StarTools doc <http://www.globalphasing.com/startools/>`_ for details;
+  this rule is actually about simplifying, not relaxing),
+
+by default (set :ref:`check_level=2 <cif_read>` to throw errors in these cases)
+
 * a table (loop) can have no values if followed by a keyword or EOF
   (such files were written by old versions of Refmac and SHELXL,
   and were also present in the CCP4 monomer library),
 * block name (*blockcode*) can be empty, i.e. the block can start
   with bare `data_` keyword (RELION and Buccaneer write such files),
-* unquoted strings cannot start with keywords (STAR spec is ambiguous
-  about this -- see
-  `StarTools doc <http://www.globalphasing.com/startools/>`_ for details;
-  this rule is actually about simplifying, not relaxing),
-* missing value in a key-value pair is optionally allowed
-  if whitespace after the tag ends with a new-line character.
-  More specifically, the parsing step allows for missing values in such cases,
-  but the next validation step (which can be skipped -- more about it
-  :ref:`later <cif_low_level>`) throws an error.
+
+as opt-in (set :ref:`check_level=0 <cif_read>` to tolerate these cases)
+
+* missing value in a key-value pair is allowed
+  if whitespace after the tag ends with a new-line character,
+* duplicated block names, tags, and save frames are allowed.
 
 
 DOM and SAX
@@ -291,8 +299,13 @@ and we also have:
   nan
 
 
-Reading a file
-==============
+Reading and writing
+===================
+
+.. _cif_read:
+
+Reading
+-------
 
 We have a few reading functions that read a file (or a string, or a stream)
 and return a document (DOM) -- an instance of class `Document`.
@@ -308,13 +321,13 @@ and return a document (DOM) -- an instance of class `Document`.
    // functions in namespace gemmi, from -lgemmi_cpp, usually linked with zlib or zlib-ng
 
    // similar to cif::read_file, but uncompresses *.gz files on the fly
-   cif::Document read_cif_gz(const std::string& path);
+   cif::Document read_cif_gz(const std::string& path, int check_level=1);
 
-   // reads the content of CIF file from a memory buffer (name is used when reporting errors)
-   cif::Document read_cif_from_memory(const char* data, size_t size, const char* name);
+   // reads the content of a CIF file from a memory buffer (name is used when reporting errors)
+   cif::Document read_cif_from_memory(const char* data, size_t size, const char* name, int check_level=1);
 
    // reads from a string; it's in namespace gemmi::cif (for backward compatibility)
-   Document read_string(const std::string& data);
+   Document read_string(const std::string& data, int check_level=1);
 
  .. tab:: header-only
 
@@ -324,14 +337,16 @@ and return a document (DOM) -- an instance of class `Document`.
 
    // Header-only functions in namespace gemmi::cif.
    // No linking, but slower compilation.
-   // Parameter name is used only when reporting errors.
 
-   Document read_file(const std::string& filename);
-   Document read_memory(const char* data, const size_t size, const char* name);
+   Document read_file(const std::string& filename, int check_level=1);
+
+   // name is used only when reporting errors.
+   Document read_memory(const char* data, const size_t size, const char* name, int check_level=1);
+
    // Parameter bufsize determines the buffer size and only affects performance.
    // These functions are slower than the ones above.
-   Document read_cstream(std::FILE *f, size_t bufsize, const char* name);
-   Document read_istream(std::istream &is, size_t bufsize, const char* name);
+   Document read_cstream(std::FILE *f, size_t bufsize, const char* name, int check_level=1);
+   Document read_istream(std::istream &is, size_t bufsize, const char* name, int check_level=1);
 
 .. tab:: Python
 
@@ -341,37 +356,39 @@ and return a document (DOM) -- an instance of class `Document`.
 
   # read and parse a CIF file; if the filename ends with .gz it is uncompressed on the fly
   doc = cif.read_file('components.cif')
+  doc = cif.read_file('components.cif', check_level=1)  # the same, 1 is the default
 
-  # the same (except that it can also read mmJSON)
+  # the same as read_cif() except that it can also read mmJSON
   doc = cif.read('components.cif')
 
   # read content of a CIF file from string or bytes
   doc = cif.read_string('data_this _is valid _cif content')
 
-The functions that can read gzipped files also understand `path` specified
-as `-` to mean the standard input.
-
-.. _cif_low_level:
-
-Low-level functions
--------------------
-
+The optional `check_level` argument determines how strictly the CIF format
+is checked (validated); see the :ref:`list above <cif_relaxed>`.
+The same checks can be run as separate low-level functions.
 The `read_file()` call is equivalent to the following sequence:
 
 .. testcode::
+  :hide:
 
+  check_level = 2
   path = 'components.cif'
+
+.. testcode::
+
   doc = cif.Document()
   doc.source = path
   doc.parse_file(path)
-  doc.check_for_missing_values()
-  doc.check_for_duplicates()
+  if check_level > 0:
+      doc.check_for_missing_values()
+      doc.check_for_duplicates()
+      if check_level > 1:
+          for block in doc:
+              assert block.name != ' '
+              block.check_empty_loops(doc.source)
 
-The last two functions check for, respectively, missing values in tag-value
-pairs and duplicated names.
-It is possible to read erroneous CIF files by skipping these checks.
-
-Analogically, function `read_string()` can be replaced by a similar
+Similarly, the function `read_string()` can be replaced by a similar
 sequence with `Document.parse_string()` doing the main job:
 
 .. doctest::
@@ -385,14 +402,17 @@ sequence with `Document.parse_string()` doing the main job:
   ...
   missing value
 
+As in other parts of Gemmi, functions that can read gzipped files can also
+read from standard input. `path` specified as `-` means standard input.
+If you'd have a file named `-`, use, for instance, `path="./-"`.
 
-Writing a file
-==============
+Writing
+-------
 
-Document (or a single Block) can be written to a file or to a string.
+A `Document` or `Block` can be written to a file or to a string.
 Reading from a file and then writing to a file does not preserve whitespace.
 The formatting of the output file is controlled by `cif::WriteOptions`,
-which contains the following fields (by default, they are all false or 0):
+which contains the following fields (by default, all are false or 0):
 
 * `prefer_pairs` (bool) -- if set to true, write single-row loops as pairs,
 * `compact` (bool) -- if set to true, do not add blank lines between categories,
@@ -400,93 +420,124 @@ which contains the following fields (by default, they are all false or 0):
   categories -- the peculiar formatting used in the wwPDB archive;
   enables diff-ing (`diff --ignore-space-change`) with other such files,
 * `align_pairs` (int) -- pad tags in tag-value pairs to this width
-  (if set to 33, the values will be aligned at column 35,
+  (if set to 33, values will be aligned at column 35,
   except where tags have more than 33 characters),
 * `align_loops` (int) -- if non-zero, columns in loops are aligned
   to the maximum string width in each column, but not more than
   this value; if one string in the column is very wide, that row will be
   misaligned, which is usually preferable to excessive padding.
 
-C++
----
+.. tab:: C++
 
-The functions writing `cif::Document` and `cif::Block` to C++ stream
-is in a separate header `gemmi/to_cif.hpp`::
+ ::
 
-  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOptions options)
-  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOptions options)
+  #include <gemmi/to_cif.hpp>
 
-Python
-------
+  // functions declared in namespace gemmi::cif
+  void write_cif_to_stream(std::ostream& os, const Document& doc, WriteOptions options);
+  void write_cif_block_to_stream(std::ostream& os, const Block& block, WriteOptions options);
 
-In Python, the function that writes the document to a file is a method
-of the `Document` class:
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
 
   >>> doc.write_file('1pfe-modified.cif')
-
-The output can be styled by passing `WriteOptions` as a second argument:
-
-.. doctest::
 
   >>> options = cif.WriteOptions()
   >>> options.align_pairs = 33
   >>> options.align_loops = 30
   >>> doc.write_file('1pfe-aligned.cif', options)
+  >>> cif_in_string = doc.as_string(options)
 
-The `Document` class also has a method `as_string()` which returns
-the text that would be written by `write_file()`.
+  >>> # Block also has methods write_file and as_string
+  >>> block_in_string = block.as_string(options)
 
-The `Block` class also has methods `write_file()` and `as_string()`
-with the same arguments.
+JSON
+----
+
+`cif::Document` can be stored in a JSON format.
+There are two semi-standards for mapping CIF to JSON:
+
+* mmJSON -- specific to mmCIF and used by PDBj.
+  In the mid-2010s each PDB site came up with a different format that's more
+  practical than mmCIF for use in WebGL molecular viewers:
+
+  * RCSB announced MMTF, focused on minimizing file size
+    and containing only essential information.
+  * PDBe later came up with BinaryCIF, very similar to MMTF but somewhat
+    bigger, keeping everything from mmCIF.
+  * PDBj came up with mmJSON -- not as compressed as the others,
+    but doesn't require custom parsers. Takes more disk space,
+    but is much faster to parse.
+    Sadly, it doesn't have a specification and changes in the PDBj code
+    that writes mmJSON can break things (it's happened at least once).
+
+* CIF-JSON -- agreed upon in an IUCr discussion group.
+
+Neither mmJSON nor CIF-JSON is widely used.
+
+Gemmi implementation of this feature predates CIF-JSON.
+We have a number of options that customize the translation.
+More details about it are given in the description of
+:ref:`gemmi cif2json <cif2json>`.
+
+.. tab:: C++
+
+ ::
+
+  // see functions in:
+  #include <gemmi/json.hpp>      // for reading
+  #include <gemmi/read_cif.hpp>  // for reading possibly gzipped JSON files
+  #include <gemmi/to_json.hpp>   // for writing
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> doc = cif.read_string('data_this _is.minimal mmcif')
+  >>> doc.as_json(mmjson=True)
+  '{"data_this": {\n  "is": {\n   "minimal": ["mmcif"]\n  }\n }\n}\n'
+  >>> cif.read_mmjson_string(_)
+  <gemmi.cif.Document with 1 blocks (this)>
+  >>> # functions cif.read_mmjson() and cif.read() read mmJSON files from disk
+
+Binary serialization
+--------------------
+
+This is the fastest way to serialize a `Document` or `Block`.
+It is meant only for internal communication, between threads,
+processes, or computers (client and server).
+The format may change between releases.
+
+It is based on the `zpp serializer <https://github.com/eyalz800/serializer>`_
+library in C++ (see the header `<gemmi/serializer>`).
+In Python, this format is used by Document's and Block's `__getstate__`
+and `__setstate__` functions,
+which means it's used for pickling and multiprocessing.
 
 Document
 ========
 
-`Document` is made of blocks with data. The blocks can be iterated over,
-accessed by index or by name (each CIF block must have a unique name).
+`Document` contains Blocks, which correspond to CIF data blocks.
+The blocks can be iterated over and accessed by index or by name
+(each CIF block should have a unique name).
 
-As it is common for cif files to contain only a single block,
-gemmi has a method `sole_block()` that returns the first block
-if the document has only one block; otherwise it throws an exception.
+.. tab:: C++
 
-At last, is also has a member variable `source` that contains
-the path of the file from which the document was read (if it was read
-from a file).
+ ::
 
-C++
----
-
-`Document` has the two member variables::
-
-  std::string source;  // filename or the name passed to read_memory()
+  // You can directly access and modify the vector with Blocks
   std::vector<Block> blocks;
 
-Each `Block` corresponds to a data block.
-To access a block with known name use::
-
+  // To access a block with known name use find_block().
+  // It returns nullptr if the block is not found.
   Block* Document::find_block(const std::string& name)
 
-To access the only block in the file you may use::
+.. tab:: Python
 
-  Block& Document::sole_block()
+ .. doctest::
 
-A new `Document` instance can be created with default constructor.
-To modify a document you need to access directly its member variables.
-With one exception: when adding new blocks you can use a function that
-additionally checks if the new name is unique::
-
-  Block& Document::add_new_block(const std::string& name, int pos=-1)
-
-
-Python
-------
-
-`Document` can be iterated, accessed by block index and by block name:
-
-.. doctest::
-
+  >>> # Document can be iterated, accessed by block index and by block name:
   >>> doc = cif.read_file("components.cif")
   >>> len(doc)  #doctest: +SKIP
   25219
@@ -497,26 +548,63 @@ Python
   >>> doc['MSE']
   <gemmi.cif.Block MSE>
 
-It has two other ways of accessing a block:
-
-.. doctest::
-
-  >>> # The function block.find_block(name) is like block[name] ...
+  >>> # The function doc.find_block(name) is like doc[name] ...
   >>> doc.find_block('MSE')
   <gemmi.cif.Block MSE>
   >>> # ... except when the block is not found:
   >>> doc.find_block('no such thing')  # -> None
   >>> # doc['no such thing'] # -> KeyError
 
+
+As it is common for cif files to contain only a single block,
+gemmi has a method `sole_block()` that returns the first block
+if the document has only one block; otherwise it throws an exception.
+
+.. tab:: C++
+
+ ::
+
+  // To access the only block in the file you may use:
+  Block& Document::sole_block()
+
+.. tab:: Python
+
+ .. doctest::
+
   >>> # Get the only block; throws exception if the document has more blocks.
   >>> cif.read("../tests/1pfe.cif.gz").sole_block()
   <gemmi.cif.Block 1PFE>
 
-Blocks can be inserted (by default -- appended after existing blocks)
-using one of the two functions:
 
-* `Document.add_new_block(name, pos=-1)`
-* `Document.add_copied_block(block, pos=-1)`
+`Document` also has a member variable `source` that contains
+the path of the file from which the document was read (if it was read
+from a file).
+
+.. doctest::
+
+    >>> doc.source
+    'components.cif'
+
+
+A new `Document` instance can be created with the default constructor.
+To insert blocks, use:
+
+.. tab:: C++
+
+ ::
+
+  // checks if the name is unique
+  Block& Document::add_new_block(const std::string& name, int pos=-1)
+
+  // or modify directly Document::blocks
+
+.. tab:: Python
+
+ .. code-block:: python
+
+  # use one of two functions:
+  Document.add_new_block(name, pos=-1)
+  Document.add_copied_block(block, pos=-1)
 
 As an example, here is how to start a new document:
 
@@ -526,15 +614,8 @@ As an example, here is how to start a new document:
   >>> block_one = d.add_new_block('block-one')
   >>> # populate block_one
 
-To delete a block use `Document.__delitem__` (for example: `del doc[1]`).
-
-Document has also one property
-
-.. doctest::
-
-  >>> doc.source
-  'components.cif'
-
+To delete a block, in C++ access `Document::blocks` directly;
+in Python use `Document.__delitem__` (for example: `del doc[1]`).
 
 .. warning::
 
@@ -554,8 +635,8 @@ Document has also one property
     .. code-block:: python
 
        block = doc[0]
-       st.add_new_block(...)     # block gets invalidated
-       block = st[0]             # block is valid again
+       doc.add_new_block(...)     # block gets invalidated
+       block = doc[0]             # block is valid again
 
 .. _cif_block:
 
@@ -1682,39 +1763,6 @@ read and correctly interpreted by the software it will be used with next.
 Validation against a dictionary is a guideline, not the goal.
 
 
-JSON
-====
-
-`cif::Document` can be stored in a JSON format, and it can be read from
-JSON file. This is in general true about CIF files - their content can
-be converted to JSON and back. In gemmi we have a number of options to
-customize the translation. In particular, both mmCIF and CIF-JSON flavours
-are supported.
-More details about the flavours are given in the description of
-:ref:`gemmi cif2json <cif2json>`.
-
-C++
----
-
-Header `gemmi/to_json.hpp` provides code for serializing
-`cif::Document` as JSON.
-
-Such JSON files can be read back into the `cif::Document` structure
-using function from `gemmi/json.hpp`.
-
-Python
-------
-
-`Document.as_json()` returns the document serialized in JSON string.
-To output mmJSON add argument `mmjson=True`.
-
-`cif.read_mmjson_string()` reads mmJSON from a string.
-
-mmJSON file (possibly gzipped) can be read using function `cif.read_mmjson()`.
-In addition, the function `cif.read()` will also read mmJSON format
-if the file name ends with `.json` or `.json.gz`.
-
-
 Design choices
 ==============
 
@@ -1748,6 +1796,11 @@ the traditional Context Free Grammar.
 As a result, our parser depends on a third-party (header-only) library,
 but the parser itself is pretty simple.
 
+And it is still `the fastest <https://github.com/project-gemmi/mmcif-benchmark>`_
+open-source CIF parser (at least in the hands of the author).
+While further improvement would be possible (some JSON parsers are
+much faster) it is not a priority, the parser is fast enough.
+
 Data structures
 ---------------
 
@@ -1765,16 +1818,6 @@ a variant-like class.
 Strings are stored in `std::string` and it is fast enough.
 Mainstream C++ standard libraries have short string optimization (SSO)
 for up to 15 or 22 characters, which covers most of the values in mmCIF files.
-
-Performance
-===========
-
-Gemmi has `the fastest <https://github.com/project-gemmi/mmcif-benchmark>`_
-open-source CIF parser (at least in the hands of the author).
-While further improvement would be possible (some JSON parsers are
-`much faster <https://github.com/project-gemmi/benchmarking-json>`_
-and parsing CIF and JSON is not that different),
-it is not a priority.
 
 .. _cif_examples:
 
