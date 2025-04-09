@@ -61,7 +61,7 @@ void check_bond_angle_consistency(const ChemComp& cc) {
 
 template <typename T>
 bool check_esd(const std::string& name, const T* restr) {
-  if (restr->esd <= 0.) {
+  if (restr->esd <= 0. && !(restr->esd == 0 && std::is_same<T, Restraints::Torsion>::value)) {
     printf("%s [esd] %s %s has non-positive esd: %g\n", name.c_str(),
            restr->what(), restr->str().c_str(), restr->esd);
     return false;
