@@ -646,44 +646,58 @@ Block
 Each block has a name and a list of items.
 Each item is one of:
 
-* name-value pair (Pair),
+* name-value pair (Pair)
 * table, a.k.a loop (Loop)
-* or save frame (Block -- the same data structure as for block).
+* save frame (Block -- the same data structure as for block)
 
 A block headed by the word `global_`, part of the STAR syntax, although
 `not allowed <https://onlinelibrary.wiley.com/iucr/itc/Ga/ch2o2v0001/sec2o2o7o1o9o5/>`_
-in CIF, is :ref:`parsed <what_is_parsed>` into a Block with empty name.
+in CIF, is :ref:`parsed <what_is_parsed>` into a Block with an empty name.
 
-A block headed by bare `data_`, although not allowed neither in CIF nor
+A block headed by bare `data_`, although allowed neither in CIF nor
 in STAR, is parsed into a Block with name set to " " (the space character).
 
-C++
----
+The name can be accessed as:
 
-Each block contains::
+.. tab:: C++
 
-    std::string name;
-    std::vector<Item> items;
+ ::
 
-where `Item` is implemented as an unrestricted union
-that holds one of Pair, Loop or Block.
+  // member variable
+  std::string name;
 
-Python
-------
+.. tab:: Python
 
-Each block has a name:
+ .. doctest::
 
-.. doctest::
-
-  >>> doc = cif.read("../tests/1pfe.cif.gz")
-  >>> block = doc.sole_block()
+  >>> block = cif.read("../tests/1pfe.cif.gz").sole_block()
   >>> block.name
   '1PFE'
 
-and a list of items (class Item):
+Items can be accessed as:
 
-.. doctest::
+.. tab:: C++
 
+ ::
+
+  // member variable, a vector with Items.
+  // Item is implemented as an unrestricted union
+  // that holds one of Pair, Loop or Block.
+  std::vector<Item> items;
+
+  // Additionally, one may iterate over all Block's items,
+  // for example, here were are interested in "save frame":
+    for (cif::Item& item : block.items)
+      if (item.type == cif::ItemType::Frame)
+        // doing something with item.frame which is a (nested) Block
+        cif::Block& frame = item.frame;
+
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> # Block can be iterated over, yielding items (class Item)
   >>> for item in block:
   ...    if item.line_number > 1670:
   ...        if item.pair is not None:
@@ -700,31 +714,31 @@ and a list of items (class Item):
   loop <gemmi.cif.Loop 3 x 3>
   loop <gemmi.cif.Loop 83 x 10>
 
+But this is not how we usually access items.
+Usually, we use methods of `Block` that will be introduced further on.
 
 Frame
-=====
+-----
 
 (Very few people need it, skip this section.)
 
 The *named save frames* (keyword `save_`) from the STAR specification
 are used in CIF files only as sub-sections of a block.
-The only place where they are encountered are mmCIF dictionaries.
+The only place where they are encountered is mmCIF dictionaries.
 
-The save-frame is stored as `Block` and can be accessed with::
+The save-frame is stored as `Block` inside a `Block` and can be accessed with:
+
+.. tab:: C++
+
+ ::
 
   Block* Block::find_frame(std::string name)
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> frame = block.find_frame('my_frame')
-
-Additionally, in C++ one may iterate over all Block's items,
-check each item type and handle all the save frames::
-
-  for (cif::Item& item : block.items)
-    if (item.type == cif::ItemType::Frame)
-      // doing something with item.frame which is a (nested) Block
-      cif::Block& frame = item.frame;
 
 
 Pairs and Loops
@@ -732,7 +746,7 @@ Pairs and Loops
 
 The functions in this section can be considered low-level, because they are
 specific to either name-value pairs or to loops.
-
+The next sections introduce function that work with both pairs and loops.
 
 .. warning::
 
@@ -751,79 +765,60 @@ specific to either name-value pairs or to loops.
     Moreover, some CIF representations, such as mmJSON, do not preserve
     the distinction between pairs and loops at all.
 
-The next sections introduce function that work with both pairs and loops.
+A pair with a particular tag can be located using:
 
-C++
----
+.. tab:: C++
 
-Pair is simply defined as::
+ ::
 
-    using Pair = std::array<std::string, 2>;
+  // Pair is simply defined as:
+  using Pair = std::array<std::string, 2>;
 
-A pair with a particular tag can be located using::
-
+  // returns nullptr if the tag is not found
   const Pair* Block::find_pair(const std::string& tag) const
 
-or, if you want just the value::
+.. tab:: Python
 
-  const std::string* Block::find_value(const std::string& tag) const
+ .. doctest::
 
-Both functions return `nullptr` if the tag is not found
-(but the latter also searches inside CIF loops and if there
-is a matching tag with only a single value, that value is returned).
-
-To add a pair to the block, or modify an existing one, use::
-
-  void Block::set_pair(const std::string& tag, std::string value)
-
-If the value needs quoting, the passed argument needs to be already quoted
-(you may pass `cif::quote(value)`).
-
-----
-
-Loop is defined as::
-
-  struct Loop {
-    std::vector<std::string> tags;
-    std::vector<std::string> values;
-    // and a number of functions
-  };
-
-To get values corresponding to a tag in a loop (table) you may use::
-
-  Column Block::find_loop(const std::string& tag)
-
-`struct Column`, which is documented further on, has method `get_loop()`
-which gives access to `struct Loop`.
-
-A new loop can be added using function::
-
-  Loop& Block::init_loop(const std::string& prefix, std::vector<std::string> tags)
-
-Then it can be populated by either setting directly `tags` and `values`,
-or by using Loop's methods such as `add_row()` or `set_all_values()`.
-
-Loop has a few other methods for editing its content, such as
-`move_row()`, `add_columns()` and `remove_column()`.
-
-Python
-------
-
-Accessing name-value pairs:
-
-.. doctest::
-
-  >>> # (1) tag and value
   >>> block.find_pair('_cell.length_a')
   ('_cell.length_a', '39.374')
   >>> block.find_pair('_no_such_tag')  # return None
 
-  >>> # (2) only value
+If you want just the value, you can use `find_value()`.
+This function also searches inside CIF loops and if there
+is a matching tag with only a single value (which is semantically
+equivalent to a name-value pair), that value is returned.
+
+.. tab:: C++
+
+ ::
+
+  // returns nullptr if the tag is not found
+  const std::string* Block::find_value(const std::string& tag) const
+
+.. tab:: Python
+
+ .. doctest::
+
   >>> block.find_value('_cell.length_b')
   '39.374'
   >>> block.find_value('_cell.no_such_tag')  # returns None
 
-  >>> # (3) Item
+At last, if you'd like to access the `Item` containing the `Pair`
+(for example, to check the line number), use the function:
+
+.. tab:: C++
+
+ ::
+
+  // returns nullptr if the tag is not found
+  const Item* Block::find_pair_item(const std::string& tag) const
+
+.. tab:: Python
+
+ .. doctest::
+
   >>> item = block.find_pair_item('_cell.length_c')
   >>> item.pair
   ('_cell.length_c', '79.734')
@@ -831,37 +826,62 @@ Accessing name-value pairs:
   72
   >>> block.find_pair_item('_nothing')  # return None
 
-To add a name-value pair, replacing current item if it exists,
-use function `set_pair`:
 
-.. doctest::
+To add a name-value pair or modify an existing one, use:
+
+.. tab:: C++
+
+ ::
+
+  void Block::set_pair(const std::string& tag, std::string value)
+
+.. tab:: Python
+
+ .. doctest::
 
   >>> block.set_pair('_year', '2030')
 
+
+If the value needs quoting, the passed argument needs to be quoted,
+for example, with `cif::quote`:
+
+.. tab:: C++
+
+ ::
+
+  block.set_pair("_title", cif::quote("Goldilocks and the Three Bears"));
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> block.set_pair('_title', cif.quote('Goldilocks and the Three Bears'))
+
+
 If a new item is added, it is placed at the end of the block.
-Then you can move it to a more appropriate position with `move_item()`.
-Alternatively, you can use function `set_pairs` that takes a prefix and,
-when adding a new item, places it after the last item with the given prefix:
+In mmCIF files, all name-value pairs in the same category must
+be consecutive (an unwritten rule of the PDB).
+You can move a newly added item to a different position with `move_item()`,
+but that's error-prone. Here is a trick to add a new pair
+directly after the last item in a given category:
 
-.. doctest::
+.. tab:: C++
 
+ ::
+
+  cif::ItemSpan(block, "_cell.").set_pair("_cell.length_a_esd", "?");
+
+.. tab:: Python
+
+ .. doctest::
+
+  >>> # raw=True has the same meaning as in set_mmcif_category
   >>> block.set_pairs('_cell.', {'length_a_esd': '?',
   ...                            'length_b_esd': '?',
   ...                            'length_c_esd': '?'}, raw=True)
 
-(In C++ the equivalent is `cif::ItemSpan(block, "_cell.").set_pair(…)`).
-This is recommended when editing mmCIF files, because all name-value pairs
-in the same category must be consecutive (an unwritten rule of the PDB).
-The argument `raw` has the same meaning as in the function
-:ref:`set_mmcif_category <set_mmcif_category>`.
 
-If the value needs quoting, it must be passed quoted:
-
-.. doctest::
-
-  >>> block.set_pair('_title', cif.quote('Goldilocks and the Three Bears'))
-
-Now we can create a CIF file can from scratch:
+Here is an example of how to create a CIF file from scratch:
 
 .. doctest::
 
@@ -869,29 +889,64 @@ Now we can create a CIF file can from scratch:
   >>> d.add_new_block('oak')
   <gemmi.cif.Block oak>
   >>> _.set_pair('_nut', 'acorn')
-  >>> print(d.as_string().strip())
+  >>> print(d.as_string())
   data_oak
   _nut acorn
+  <BLANKLINE>
 
 ----
 
-To access values in loop:
+Loop is defined as two lists, tags and values:
 
-.. doctest::
+.. tab:: C++
 
-  >>> # (1) get a Column in Loop
+ ::
+
+  struct Loop {
+    std::vector<std::string> tags;
+    std::vector<std::string> values;
+    // and a number of functions
+  };
+
+.. tab:: Python
+
+ .. code-block:: console
+
+   In Python, loop.tags and loop.values return read-only lists.
+   They will be used in further examples.
+
+
+To get values corresponding to a tag in a loop (table), you may use::
+
+.. tab:: C++
+
+ ::
+
+  Column Block::find_loop(const std::string& tag)
+
+.. tab:: Python
+
+ .. doctest::
+
   >>> block.find_loop('_atom_type.symbol')
   <gemmi.cif.Column _atom_type.symbol length 6>
   >>> list(_)
   ['C', 'CL', 'N', 'O', 'P', 'S']
 
-  >>> # (2) get Item containing the Loop
-  >>> block.find_loop_item('_atom_type.symbol')  # doctest: +ELLIPSIS
+
+`Column`, which is documented further on, has a method `get_loop()`
+that gives access to the `Loop`.
+
+Similarly to `find_pair_item()`, there is a function `find_loop_item()`:
+
+.. doctest::
+
+  >>> block.find_loop_item('_atom_type.symbol')
   <gemmi.cif.Item object at 0x...>
   >>> _.loop
   <gemmi.cif.Loop 6 x 1>
 
-To add a row to an existing table (loop) use `add_row`:
+To add a row to an existing table (loop), use `add_row()`:
 
 .. doctest::
 
@@ -902,7 +957,7 @@ To add a row to an existing table (loop) use `add_row`:
   ['Au', 'C', 'CL', 'N', 'O', 'P', 'S', 'Zr']
 
 `add_row` takes as an argument a list of strings, which should be quoted
-if necessary. If you have a list Python values use `quote_list` first:
+if necessary. If you have a list of Python values use `quote_list` first:
 
 .. doctest::
 
@@ -920,8 +975,8 @@ Columns can be added and removed:
   >>> loop
   <gemmi.cif.Loop 8 x 2>
 
-`set_all_values` sets all the data in a table. It takes as an argument
-a list of lists of string. The lists of strings correspond to columns.
+`set_all_values` sets all the data in a table. It takes
+a list of lists of strings. The lists of strings correspond to columns.
 
 .. doctest::
 
@@ -934,7 +989,7 @@ a list of lists of string. The lists of strings correspond to columns.
   ['primary', "'Alice A.'", '1']
   ['primary', "'Bob B.'", '2']
 
-Individual values can be accessed with (row,column) tuples:
+In Python, individual values can be accessed with (row,column) tuples:
 
 .. doctest::
 
@@ -944,15 +999,27 @@ Individual values can be accessed with (row,column) tuples:
   >>> loop.values  # Loop.values is a read-only list (a copy of all values)
   ['primary', "'Carol C.'", '1', 'primary', "'Bob B.'", '2']
 
-To add a new loop (replacing old one if it exists) use `init_loop`:
+To add a new loop (replacing an old one if it exists) use `init_loop`
+and populate it with tags and values:
 
-.. doctest::
+.. tab:: C++
+
+ ::
+
+  Loop& Block::init_loop(const std::string& prefix, std::vector<std::string> tags)
+
+  // Then it can be populated by either setting directly tags and values,
+  // or by using Loop's methods such as add_row() or set_all_values().
+
+.. tab:: Python
+
+ .. doctest::
 
   >>> loop = block.init_loop('_ocean_', ['id', 'name'])
   >>> # empty table is invalid in CIF, we need to add something
   >>> loop.add_row(['1', cif.quote('Atlantic Ocean')])
 
-In the above example, if the block already has tags `_ocean_id`
+In the above Python example, if the block already has tags `_ocean_id`
 and/or `_ocean_name` and
 
 * if they are in a table: the table will be cleared and re-used,
@@ -1107,42 +1174,53 @@ so the library has another abstraction (`Table`)
 that can be used with multiple tags.
 
 `Table` is returned by `Block.find()`.
-Like column, it is a lightweight, iterable view of the data,
+Like `Column`, it is a lightweight, iterable view of the data,
 but it is for querying multiple related tags at the same time.
 
-The first form of `find()` takes a list of tags::
+The first form of `find()` takes a list of tags:
+
+.. tab:: C++
+
+ ::
 
   Table Block::find(const std::vector<std::string>& tags)
+  // example:
+  block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"});
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> block.find(['_entity_poly_seq.entity_id', '_entity_poly_seq.num', '_entity_poly_seq.mon_id'])
   <gemmi.cif.Table 18 x 3>
 
 Since tags in one loop tend to have a common prefix (category name),
-the library provides also a second form that takes the common prefix
-as the first argument::
+the library also provides a second form that takes the common prefix
+as the first argument:
+
+.. tab:: C++
+
+ ::
 
   Table Block::find(const std::string& prefix, const std::vector<std::string>& tags)
-
-  // These two calls are equivalent:
-
-  block.find({"_entity_poly_seq.entity_id", "_entity_poly_seq.num", "_entity_poly_seq.mon_id"});
+  // example:
   block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"});
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> block.find('_entity_poly_seq.', ['entity_id', 'num', 'mon_id'])
   <gemmi.cif.Table 18 x 3>
 
 
 Note that `find` is not aware of dictionaries and categories,
-therefore the category name should end with a separator
+so the category name should end with a separator
 (dot for mmCIF files, as shown above).
 
 
 In the example above, all the tags are required. If one of them is absent,
-the returned Table is empty.
+the returned `Table` is empty.
 
 .. doctest::
 
@@ -1150,36 +1228,53 @@ the returned Table is empty.
   <gemmi.cif.Table nil>
 
 Tags (all except the first one) can be marked
-as *optional* by adding prefix `?`::
+as *optional* by adding prefix `?`:
+
+.. tab:: C++
+
+ ::
 
   Table table = block.find({"_required_tag", "?_optional_tag"})
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table = block.find(['_required_tag', '?_optional_tag'])
 
 In such case the returned table may contain either one or two columns.
-Before accessing column corresponding to an optional tag one must check
-if the column exists with `Table::has_column()` (or, alternatively,
-with equivalent function `Table::Row::has()` which will be introduced
-later)::
+Before accessing the column corresponding to an optional tag one must check
+if the column exists using `Table::has_column()` (or, alternatively,
+the equivalent `Table::Row::has()` which will be introduced later):
+
+.. tab:: C++
+
+ ::
 
   bool Table::has_column(int n) const
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> block.find('_entity_poly_seq.', ['entity_id', '?num', '?bleh'])
   <gemmi.cif.Table 18 x 3>
   >>> _.has_column(0), _.has_column(1), _.has_column(2)
   (True, True, False)
 
-The `Table` has functions to check its shape::
+The `Table` has functions to check its shape:
+
+.. tab:: C++
+
+ ::
 
   bool ok() const;  // true if the table is not empty
   size_t width() const;  // number of columns
   size_t length() const;  // number of rows
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table = block.find('_entity_poly_seq.', ['entity_id', 'num', 'mon_id'])
   >>> # instead of ok() in Python we use __bool__()
@@ -1189,11 +1284,17 @@ The `Table` has functions to check its shape::
   >>> len(table)  # number of rows
   18
 
-If Table's data is in Loop, the Loop class can be accessed using::
+If the Table abstracts a loop, the Loop class can be accessed using:
+
+.. tab:: C++
+
+ ::
 
   Loop* get_loop();  // nullptr for tag-value pairs
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table.loop     # None for tag-value pairs
   <gemmi.cif.Loop 18 x 4>
@@ -1208,19 +1309,25 @@ but make sure to call it only when the table represents the whole category
 (see example :ref:`below <append_row>`).
 
 If a prefix was specified when calling find, the prefix length is stored
-and the prefix can be retrieved::
+and the prefix can be retrieved:
+
+.. tab:: C++
+
+ ::
 
   size_t prefix_length;
   std::string get_prefix() const;
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table.prefix_length
   17
   >>> table.get_prefix()
   '_entity_poly_seq.'
 
-Table also has function `erase()` that deletes all tags and data
+Table also has the function `erase()` that deletes all tags and data
 associated with the table.
 See an example in the :ref:`CCD section <ccd_example>` below.
 
@@ -1229,7 +1336,11 @@ Row-wise access
 ---------------
 
 Most importantly, the Table provides access to data in rows and columns.
-We can get a row (`Table::Row`) that in turn provides access to value strings::
+We can get a row (`Table::Row`) that in turn provides access to value strings:
+
+.. tab:: C++
+
+ ::
 
   Row Table::operator[](int n)  // access Row
   Row Table::at(int n)          // the same but with bounds checking
@@ -1241,7 +1352,9 @@ We can get a row (`Table::Row`) that in turn provides access to value strings::
   // Makes sure that the table has only one row and returns it.
   Row Table::one()
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table[0]
   <gemmi.cif.Table.Row: 1 1 DG>
@@ -1253,11 +1366,17 @@ We can get a row (`Table::Row`) that in turn provides access to value strings::
   >>> table.find_row('2')
   <gemmi.cif.Table.Row: 2 1 DSN>
 
-as well as to the tags::
+as well as to the tags:
+
+.. tab:: C++
+
+ ::
 
   Row tags();  // pseudo-row that contains tags
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table.tags
   <gemmi.cif.Table.Row: _entity_poly_seq.entity_id _entity_poly_seq.num _entity_poly_seq.mon_id>
@@ -1274,14 +1393,20 @@ Such table has 0 rows, but it can be iterated like an empty list:
   ... # nothing gets printed, but there is no error
 
 
-`Table::Row` has functions for accessing the values::
+`Table::Row` has functions for accessing the values:
+
+.. tab:: C++
+
+ ::
 
   // Get raw value.
   std::string& Table::Row::operator[](int n)  // no bounds checking
   std::string& Table::Row::at(int n)          // with bounds checking
   // and also begin(), end(), iterator, const_supports iterators.
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> for row in table: print(row[-1], end=',')
   DG,DC,DG,DT,DA,DC,DG,DC,DSN,ALA,N2C,NCY,MVA,DSN,ALA,NCY,N2C,MVA,
@@ -1300,13 +1425,19 @@ Such table has 0 rows, but it can be iterated like an empty list:
   >>> row['_entity_poly_seq.mon_id']  # the same
   'ALA'
 
-and a few convenience functions, including::
+and a few convenience functions, including:
+
+.. tab:: C++
+
+ ::
 
   size_t Table::Row::size() const           // the width of the table
   std::string Table::Row::str(int n) const  // short-cut for cif::as_string(row.at(n))
   bool Table::Row::has(int n) const         // the same as Table::has_column(n)
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> len(row)    # the same as table.width()
   3
@@ -1315,11 +1446,17 @@ and a few convenience functions, including::
   >>> row.has(2)  # the same as table.has_column(2)
   True
 
-and a property::
+and a property:
+
+.. tab:: C++
+
+ ::
 
   int row_index
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> row.row_index
   9
@@ -1329,11 +1466,15 @@ This includes tags, which are accessible as a special row.
 As an example, let us swap two names
 (these two tend to have identical values, so no one will notice):
 
-.. literalinclude:: code/cif_cc.cpp
-   :language: cpp
-   :lines: 37-39
+.. tab:: C++
 
-.. doctest::
+ .. literalinclude:: code/cif_cc.cpp
+    :language: cpp
+    :lines: 37-39
+
+.. tab:: Python
+
+ .. doctest::
 
   >>> tags = block.find('_atom_site.', ['label_atom_id', 'auth_atom_id']).tags
   >>> tags[0], tags[1] = tags[1], tags[0]
@@ -1401,14 +1542,20 @@ Column-wise access
 ------------------
 
 `Table` gives also access to columns, represented by the previously
-introduced `Column`::
+introduced `Column`:
+
+.. tab:: C++
+
+ ::
 
     Column Table::column(int index)
 
     // alternatively, specify tag name
     Column Table::find_column(const std::string& tag)
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table.column(0)
   <gemmi.cif.Column _entity_poly_seq.entity_id length 15>
@@ -1416,7 +1563,11 @@ introduced `Column`::
   <gemmi.cif.Column _entity_poly_seq.mon_id length 15>
 
 If the table is created in a function that uses prefix,
-the prefix can be omitted in `find_column`::
+the prefix can be omitted in `find_column`:
+
+.. tab:: C++
+
+ ::
 
   Table t = block.find("_entity_poly_seq.", {"entity_id", "num", "mon_id"});
   Column col = t.find_column(2);
@@ -1425,7 +1576,9 @@ the prefix can be omitted in `find_column`::
   // is equivalent to
   Column col = t.find_column("mon_id");
 
-.. doctest::
+.. tab:: Python
+
+ .. doctest::
 
   >>> table.find_column('mon_id')
   <gemmi.cif.Column _entity_poly_seq.mon_id length 15>
@@ -1445,29 +1598,35 @@ mmCIF categories
 mmCIF files group data into categories. All mmCIF tags have a dot
 (e.g. `_entry.id`) and the category name is the part before the dot.
 
-C++
-~~~
-
 We have two functions to work with categories.
-One returns a list of all categories in the block::
+One returns a list of all categories in the block:
+
+.. tab:: C++
+
+ ::
 
   std::vector<std::string> Block::get_mmcif_category_names() const
 
-The other returns a `Table` with all tags (and values) belonging to
-the specified category::
+.. tab:: Python
 
-  Table Block::find_mmcif_category(std::string cat)
-
-
-Python
-~~~~~~
-
-Python bindings have the same two functions:
-
-.. doctest::
+ .. doctest::
 
   >>> block.get_mmcif_category_names()[:3]
   ['_entry.', '_audit_conform.', '_database_2.']
+
+The other returns a `Table` with all tags (and values) belonging to
+the specified category:
+
+.. tab:: C++
+
+ ::
+
+  Table Block::find_mmcif_category(std::string cat)
+
+.. tab:: Python
+
+ .. doctest::
+
   >>> block.find_mmcif_category('_entry.')
   <gemmi.cif.Table 1 x 1>
   >>> _.tags[0], _[0][0]
@@ -1486,9 +1645,10 @@ Python bindings have the same two functions:
   >>> cat[3][1]
   'D_1000019291'
 
-Additionally, two Python-specific functions: `get_mmcif_category`
-and `set_mmcif_category` translate between an mmCIF category and
-Python dictionary:
+
+Additionally, Python bindings have functions `get_mmcif_category`
+and `set_mmcif_category` that translate between an mmCIF category
+and Python dictionary:
 
 .. doctest::
 
@@ -1827,11 +1987,6 @@ Examples
 The examples here use C++ or Python.
 Full working code can be found in the examples__ directory.
 
-The examples below can be run on one or more PDBx/mmCIF files.
-The ones that perform PDB-wide analysis are meant to be run on a
-`local copy <https://www.wwpdb.org/download/downloads>`_ of the mmCIF
-archive (30GB+ gzipped, don't uncompress!).
-
 __ https://github.com/project-gemmi/gemmi/tree/master/examples
 
 mmCIF to XYZ
@@ -1845,10 +2000,38 @@ to the `XYZ format <https://en.wikipedia.org/wiki/XYZ_file_format>`_:
    :lines: 20-32
 
 
+mmJSON-like data
+----------------
+
+Gemmi has a built-in support for mmJSON and comes with
+converters :ref:`cif2json <cif2json>` and :ref:`json2cif <json2cif>`,
+but just as an exercise let us convert mmJSON to mmCIF in Python:
+
+.. literalinclude:: ../examples/from_json.py
+   :language: python
+   :lines: 5-
+
+
+Analysing the PDB archive
+-------------------------
+
+.. image:: img/periodic-table-thumb.png
+   :align: right
+   :scale: 100
+   :target: https://project-gemmi.github.io/periodic-table/
+
+The examples here can be run on one or more PDBx/mmCIF files.
+The ones that perform PDB-wide analysis are meant to be run on a
+:ref:`local copy <pdb_dir>` of the mmCIF archive
+(gzipped, don't uncompress!).
+
+Some of the exercises analysing the PDB archive were overdone, ending up as
+`visualization projects <https://project-gemmi.github.io/pdb-stats/>`_.
+
 .. _auth_label_example:
 
 auth vs label
--------------
+~~~~~~~~~~~~~
 
 When you look at the list of atoms (`_atom_site.*`) in mmCIF files
 some columns seem to be completely redundant. Are they?
@@ -2039,7 +2222,7 @@ Tags auth_atom_id and auth_comp_id are now completely redundant
 (they always have been, except for mistakes).
 
 Amino acid frequency
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 .. highlight:: python
 
@@ -2065,11 +2248,11 @@ On my laptop it takes about an hour, using a single core.
 Most of this hour is spent on tokenizing the CIF files and copying
 the content into a DOM structure, what could be largely avoided given
 that we use only sequences not atoms.
-But it is not worth to optimize one-off scripts.
+But it is not worth the effort to optimize one-off scripts.
 The same goes for using multiple processor cores.
 
 Custom PDB search
------------------
+~~~~~~~~~~~~~~~~~
 
 We may need to go through a local copy of the PDB archive to find entries
 according to criteria that cannot be queried in RCSB/PDBe/PDBj web interfaces.
@@ -2088,36 +2271,14 @@ and then run it for an hour or so.
     3AIB 52592
     ...
 
-Search PDB by elements
-----------------------
-
-.. image:: img/periodic-table-thumb.png
-   :align: right
-   :scale: 100
-   :target: https://project-gemmi.github.io/periodic-table/
-
-Let say we want to be able to search the PDB by specifying a set of elements
-present in the model. First we write down elements present in each
-PDB entry::
-
-    block = cif.read(path).sole_block()
-    elems = set(block.find_loop("_atom_site.type_symbol"))
-    print(name + ' ' + ' '.join(elems))
-
-This example ended up overdone a bit and it was put into a
-`separate repository <https://github.com/project-gemmi/periodic-table>`_.
-
-Here is a demo: `<https://project-gemmi.github.io/periodic-table/>`_
-
-
 Solvent content vs resolution
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. |Vm| replace:: *V*\ :sub:`M`
 .. |Vs| replace:: *V*\ :sub:`S`
 .. |dmin| replace:: *d*\ :sub:`min`
 
-Let say that we would like to generate a plot of solvent content
+Let's say we want to generate a plot of solvent content
 as a function of |dmin|, similar to the plots
 by C. X. Weichenberger and B. Rupp
 in `Acta Cryst D <https://www.ncbi.nlm.nih.gov/pubmed/24914969>`_
@@ -2129,7 +2290,7 @@ estimated as:
 
     |Vs| = 1 -- 1.230 / |Vm|
 
-where |Vm| is Matthews coefficient defined as |Vm|\ =\ *V*\ /\ *m*
+where |Vm| is the Matthews coefficient defined as |Vm|\ =\ *V*\ /\ *m*
 (volume of the asymmetric unit over the molecular weight of all
 molecules in this volume).
 
@@ -2157,7 +2318,7 @@ and after 1/1/2015.
    The code used to produce this plot is in :file:`examples/matthews.py`.
 
 Ripples in the right subplot show that in many entries |Vs|
-is reported as integer, so we should calculate it ourselves
+is reported as an integer, so we should calculate it ourselves
 (like Weichenberger & Rupp) for better precision.
 Ripples in the top plot show that we should use a less arbitrary metric
 of resolution than |dmin| (but it's not so easy).
@@ -2173,9 +2334,9 @@ Or we could just smooth them out by changing parameters of this plot.
    The code used to produce this plot is in :file:`examples/matthews.py`.
 
 On the left side of the yellow egg you can see dark stripes
-caused by *group depositions*, which were introduced by PDB in 2016.
+caused by *group depositions*, which were introduced by the PDB in 2016.
 They came from two European high-throughput beamlines and
-serve as an illustration of how automated software can analyze hundreds
+illustrate how automated software can analyze hundreds
 of similar samples (fragment screening) and submit them quickly to the PDB.
 
 We can easily filter out group depositions -- either using the group IDs
@@ -2185,13 +2346,13 @@ or, like W&B, by excluding redundant entries based on the unit cell and |Vm|.
 .. _pdb-stats: https://project-gemmi.github.io/pdb-stats/
 
 Not all the dark spots are group depositions.
-For example, the one at |Vs|\ ≈66.5%, |dmin| 2.5-3A is proteasome 20S
-studied over years by Huber *et al*, with dozens PDB submissions.
+For example, the one at |Vs|\ ≈66.5%, |dmin| 2.5–3A is proteasome 20S
+studied over years by Huber *et al*, with dozens of PDB submissions.
 
 Weights
--------
+~~~~~~~
 
-Let say we would like to verify consistency of molecular weights.
+Let's say we want to verify consistency of molecular weights.
 First, let us look at chem_comp tables:
 
 .. code-block:: none
@@ -2212,11 +2373,11 @@ First, let us look at chem_comp tables:
     EDO non-polymer         . 1,2-ETHANEDIOL  'ETHYLENE GLYCOL' 'C2 H6 O2'       62.068
     ...
 
-We expect that by using molecular weights of elements and a simple arithmetic
+We expect that by using molecular weights of elements and simple arithmetic
 we can recalculate `_chem_comp.formula_weight` from `_chem_comp.formula`.
 The full code is in :file:`examples/weights.py`.
 It includes a function that converts `'C2 H6 O2'` to `{C:2, H:6, O:2}`.
-Here we only show the few lines of code that sum the element weights
+Here we only show the lines that sum the element weights
 and compare the result:
 
 .. literalinclude:: ../examples/weight.py
@@ -2241,7 +2402,7 @@ This script prints differences above 0.1 u:
 
 The differences are few and minor.
 We see a few PDB entries with the weight of D\ :sub:`2`\ O
-set to the weight H\ :sub:`2`\ O. The second line shows missing weight.
+set to the weight of H\ :sub:`2`\ O. The second line shows a missing weight.
 The differences +0.12 and -0.12 next to Mo12 and W12 probably come from
 the 0.01u difference in the input masses of the elements.
 In two entries D3O is missing D in the formula, and -2.016 in HFW
@@ -2249,19 +2410,19 @@ suggests two missing hydrogens.
 
 Now let us try to re-calculate `_entity.formula_weight` from the chem_comp
 weights and the sequence.
-The PDB software calculates it as a sum of components in the chain,
+The PDB software calculates it as the sum of components in the chain,
 minus the weight of N-1 waters.
 In case of nucleic acids also PO\ :sub:`2` is subtracted
 (why not PO\ :sub:`3`\ ? -- to be checked).
 And in case of microheterogeneity only the main conformer is taken into
 account. As the PDB software uses single precision for these computations,
-we ignore differences below 0.003%, which we checked to be enough to
+we ignore differences below 0.003%, which we verified to be enough to
 account for numerical errors.
 
 .. literalinclude:: ../examples/weight.py
    :pyobject: check_entity_formula_weight
 
-Running this script on a local copy of the PDB database prints 26 lines,
+Running this on a local copy of the PDB database prints 26 lines,
 and the difference is always (except for 4PMN) the mass of PO\ :sub:`2`
 showing that we have not fully reproduced the rule when to subtract this group.
 
@@ -2277,14 +2438,14 @@ showing that we have not fully reproduced the rule when to subtract this group.
     ...
 
 Disulfide bonds
----------------
+~~~~~~~~~~~~~~~
 
-If we were curious what residues take part in disulfide bonds we could
-write a little script that inspects annotation in the _struct_conn category.
-But to show something else, here we will use `gemmi grep`, a little
-utility that is documented in a :ref:`separate section <grep>`.
+If we're curious what residues take part in disulfide bonds, we could
+write a little script that inspects `_struct_conn`.
+But to show something else, here we use `gemmi grep`, a little
+utility documented in a :ref:`separate section <grep>`.
 
-First we try how to extract interesting data from a single entry:
+First we try it on a single entry:
 
 .. code-block:: console
 
@@ -2295,18 +2456,17 @@ First we try how to extract interesting data from a single entry:
     5CBL disulf CYS SG BME S2
     5CBL covale ILE CD1 BME C2
 
-Then we pipe the output through Unix shell utilities.
-`| grep disulf` limits the output to the disulfide bonds.
-``| awk '{ print $3, $4 "\n" $5, $6 }'`` changes each line into two;
-the first output line above becomes:
+Then we pipe the output through Unix shell tools.
+`| grep disulf` selects disulfide bonds.
+``| awk '{ print $3, $4 "\n" $5, $6 }'`` changes each line into two.
+The first output line above becomes:
 
 .. code-block:: none
 
     CYS SG
     BME S2
 
-Then we run it on the whole PDB archive, sort, count and print the
-statistics. The complete command is:
+Then we run it on the whole PDB archive, sort, count, and print stats:
 
 .. code-block:: console
 
@@ -2369,27 +2529,17 @@ And what other bond types are annotated in `_struct_conn`?
     1394732 metalc
 
 
-mmJSON-like data
-----------------
-
-Gemmi has a built-in support for mmJSON and comes with
-converters :ref:`cif2json <cif2json>` and :ref:`json2cif <json2cif>`,
-but just as an exercise let us convert mmJSON to mmCIF in Python:
-
-.. literalinclude:: ../examples/from_json.py
-   :lines: 5-
-
 .. _ccd_example:
 
 Chemical Component Dictionary
 -----------------------------
 
-For something a bit different, let us look at the data from
+Now let's look at data from
 the :file:`components.cif` from `CCD <https://www.wwpdb.org/data/ccd>`_.
-This file describes all the monomers (residues,
-ligands, solvent molecules) from the PDB entries.
+This file describes all monomers (residues,
+ligands, solvent molecules) in PDB entries.
 
-As an exercise, let us check heavy atoms in selenomethionine:
+As an exercise, let's check heavy atoms in selenomethionine:
 
 .. doctest::
 
