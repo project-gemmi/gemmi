@@ -120,8 +120,11 @@ Op parse_triplet(const std::string& s, char notation) {
   auto c = parse_triplet_part(s.substr(comma2 + 1), notation);
   Op::Rot rot = {{{a[0], a[1], a[2]}, {b[0], b[1], b[2]}, {c[0], c[1], c[2]}}};
   Op::Tran tran = {a[3], b[3], c[3]};
-  if (notation == 'h' && tran != Op::Tran{0, 0, 0})
-    fail("parse_triplet(): reciprocal-space Op cannot have translation: ", s);
+  if (notation == 'h') {
+    if (tran != Op::Tran{0, 0, 0})
+      fail("parse_triplet(): reciprocal-space Op cannot have translation: ", s);
+    rot = Op::transpose(rot);
+  }
   return { rot, tran, notation };
 }
 

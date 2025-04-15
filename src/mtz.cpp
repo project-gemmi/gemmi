@@ -479,13 +479,12 @@ void Mtz::reindex(const Op& op) {
   if (op.det_rot() < 0)
     gemmi::fail("reindexing operator must preserve the hand of the axes");
   switch_to_original_hkl();  // changes hkl for unmerged data only
-  Op transposed_op{op.transposed_rot(), {0, 0, 0}, ' '};
-  Op real_space_op = transposed_op.inverse();
-  logger.mesg("Real space transformation: ", real_space_op.triplet());
+  Op xyz_op = op.as_xyz();
+  logger.mesg("Real space transformation: ", xyz_op.triplet());
   bool row_removal = false;
   // change Miller indices
   for (size_t n = 0; n < data.size(); n += columns.size()) {
-    Miller hkl_den = transposed_op.apply_to_hkl_without_division(get_hkl(n));
+    Miller hkl_den = xyz_op.apply_to_hkl_without_division(get_hkl(n));
     Miller hkl = Op::divide_hkl_by_DEN(hkl_den);
     if (hkl[0] * Op::DEN == hkl_den[0] &&
         hkl[1] * Op::DEN == hkl_den[1] &&
@@ -509,7 +508,7 @@ void Mtz::reindex(const Op& op) {
   // change space group
   if (spacegroup) {
     GroupOps gops = spacegroup->operations();
-    gops.change_basis_impl(real_space_op, transposed_op);
+    gops.change_basis_backward(xyz_op);
     const SpaceGroup* new_sg = find_spacegroup_by_ops(gops);
     if (!new_sg)
       fail("reindexing: failed to determine new space group name");
@@ -522,11 +521,11 @@ void Mtz::reindex(const Op& op) {
   }
 
   // change unit cell parameters
-  cell = cell.changed_basis_backward(transposed_op, false);
+  cell = cell.changed_basis_backward(xyz_op, false);
   for (Mtz::Dataset& ds : datasets)
-    ds.cell = ds.cell.changed_basis_backward(transposed_op, false);
+    ds.cell = ds.cell.changed_basis_backward(xyz_op, false);
   for (Mtz::Batch& batch : batches)
-    batch.set_cell(batch.get_cell().changed_basis_backward(transposed_op, false));
+    batch.set_cell(batch.get_cell().changed_basis_backward(xyz_op, false));
 }
 
 void Mtz::expand_to_p1() {

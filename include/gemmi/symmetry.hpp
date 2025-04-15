@@ -38,6 +38,13 @@ struct GEMMI_DLL Op {
 
   bool is_hkl() const { return notation == 'h'; }
 
+  Op as_hkl() const {
+    return is_hkl() ? *this : Op{transposed_rot(), {0,0,0}, 'h'};
+  }
+  Op as_xyz() const {
+    return is_hkl() ? Op{transposed_rot(), {0,0,0}, 'x'} : *this;
+  }
+
   std::string triplet(char style=' ') const;
 
   Op inverse() const;
@@ -75,11 +82,12 @@ struct GEMMI_DLL Op {
              {-rot[2][0], -rot[2][1], -rot[2][2]}}};
   }
 
-  Rot transposed_rot() const {
+  static Rot transpose(const Rot& rot) {
     return {{{rot[0][0], rot[1][0], rot[2][0]},
              {rot[0][1], rot[1][1], rot[2][1]},
              {rot[0][2], rot[1][2], rot[2][2]}}};
   }
+  Rot transposed_rot() const { return transpose(rot); }
 
   // DEN^3 for rotation, -DEN^3 for rotoinversion
   int det_rot() const {
