@@ -34,7 +34,7 @@ struct IT92 {
     return el <= El::Cf || el == El::D;
   }
 
-  static Coef& get(El el, signed char charge) {
+  static Coef& get(El el, signed char charge, int /*serial*/=0) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
     if (charge != 0 && !ignore_charge) {

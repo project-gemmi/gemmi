@@ -65,6 +65,15 @@ void add_elem(nb::module_& m) {
     .def("calculate_density_iso", &C4322::Coef::calculate_density_iso,
          nb::arg("r2"), nb::arg("B"))
     ;
+  using CustomCoef = CustomCoef<double>;
+  m.def("set_custom_form_factors", [](const std::vector<decltype(CustomCoef::Coef::coefs)>& pp) {
+      CustomCoef::data.clear();
+      CustomCoef::Coef item;
+      for (const auto& p : pp) {
+        item.set_coefs(p);
+        CustomCoef::data.push_back(item);
+      }
+  });
 
   // neutron92.hpp
   using Neutron92 = gemmi::Neutron92<double>;

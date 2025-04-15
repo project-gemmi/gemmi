@@ -57,7 +57,7 @@ void add_dencalc(nb::module_& m, const char* name) {
         if (max_b > 0)
           b = max_b * gemmi::u_to_b();
         float bb = float(b + self.blur);
-        auto coef = Table::get(atom.element, atom.charge);
+        auto coef = Table::get(atom.element, atom.charge, atom.serial);
         auto precal = coef.precalculate_density_iso(bb, self.addends.get(atom.element));
         return self.estimate_radius(precal, bb);
     })
@@ -83,11 +83,14 @@ void add_sf(nb::module_& m) {
   using IT92 = gemmi::IT92<float>;
   using C4322 = gemmi::C4322<float>;
   using Neutron92 = gemmi::Neutron92<double>;
+  using CustomCoef = gemmi::CustomCoef<double>;
   add_sfcalc<IT92>(m, "StructureFactorCalculatorX", true);
   add_sfcalc<C4322>(m, "StructureFactorCalculatorE", false);
   add_sfcalc<Neutron92>(m, "StructureFactorCalculatorN", false);
+  //add_sfcalc<CustomCoef>(m, "StructureFactorCalculatorC", false);
   add_dencalc<IT92>(m, "DensityCalculatorX");
   add_dencalc<C4322>(m, "DensityCalculatorE");
   add_dencalc<Neutron92>(m, "DensityCalculatorN");
+  add_dencalc<CustomCoef>(m, "DensityCalculatorC");
   m.def("mott_bethe_const", &gemmi::mott_bethe_const);
 }

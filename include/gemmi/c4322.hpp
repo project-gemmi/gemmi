@@ -10,6 +10,7 @@
 #ifndef GEMMI_C4322_HPP_
 #define GEMMI_C4322_HPP_
 
+#include <vector>
 #include "formfact.hpp"  // for GaussianCoef
 #include "elem.hpp"      // for El
 
@@ -29,7 +30,7 @@ struct C4322 {
     return el <= El::Cf || el == El::D;
   }
 
-  static Coef& get(El el, signed char /*charge*/=0) {
+  static Coef& get(El el, signed char /*charge*/=0, int /*serial*/=0) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
     return data[pos];
@@ -143,6 +144,21 @@ typename C4322<Real>::Coef C4322<Real>::data[99] = {
 #if defined(__GNUC__) && __GNUC__-0 > 4
 #pragma GCC diagnostic pop
 #endif
+
+template<class Real>
+struct CustomCoef {
+  using Coef = GaussianCoef<4, 0, Real>;
+  static std::vector<Coef> data;
+
+  static Coef& get(El, signed char /*charge*/=0, int serial=0) {
+    if ((size_t)serial >= data.size())
+      fail("CustomCoef: serial number exceeds coefficient table length");
+    return data[serial];
+  }
+};
+
+template<class Real>
+typename std::vector<typename CustomCoef<Real>::Coef> CustomCoef<Real>::data;
 
 } // namespace gemmi
 #endif
