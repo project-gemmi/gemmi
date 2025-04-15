@@ -23,3 +23,7 @@ ResidueGroup.__getitem__:
 
 ResidueGroup.__delitem__:
     def __delitem__(self, name: str) -> None: ...  # type: ignore[override]
+
+# atm, IntFlag-like enums generate wrong __str__, disable it for now
+ChemCompModel.__(str|repr)__:
+    # __str__ and __repr__ disabled in stubs.pat
