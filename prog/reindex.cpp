@@ -54,7 +54,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Op op;
     if (p.options[Hkl]) {
       std::string hkl_arg = p.options[Hkl].arg;
-      op = gemmi::parse_triplet(hkl_arg, 'h');
+      op = gemmi::parse_triplet(hkl_arg, ' ');
       gemmi::cat_to(from_line, " with [", hkl_arg, ']');
     }
 

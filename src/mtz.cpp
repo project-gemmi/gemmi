@@ -480,11 +480,11 @@ void Mtz::reindex(const Op& op) {
     gemmi::fail("reindexing operator must preserve the hand of the axes");
   switch_to_original_hkl();  // changes hkl for unmerged data only
   Op xyz_op = op.as_xyz();
-  logger.mesg("Real space transformation: ", xyz_op.triplet());
+  logger.mesg("Real space transformation: ", op.as_xyz().triplet());
   bool row_removal = false;
   // change Miller indices
   for (size_t n = 0; n < data.size(); n += columns.size()) {
-    Miller hkl_den = xyz_op.apply_to_hkl_without_division(get_hkl(n));
+    Miller hkl_den = op.apply_to_hkl_without_division(get_hkl(n));
     Miller hkl = Op::divide_hkl_by_DEN(hkl_den);
     if (hkl[0] * Op::DEN == hkl_den[0] &&
         hkl[1] * Op::DEN == hkl_den[1] &&

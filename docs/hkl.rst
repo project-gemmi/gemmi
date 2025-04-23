@@ -704,8 +704,8 @@ Information about the operation is passed to a :ref:`Logger <logger>`.
 
   >>> mtz.set_logging(sys.stdout)
   >>> mtz.reindex(gemmi.Op('k,l,h'))
-  Real space transformation: y,z,x
-  Space group changed from P 21 21 2 to P 2 21 21.
+  Real space transformation: z,x,y
+  Space group changed from P 21 21 2 to P 21 2 21.
 
 If reindex() is called on merged data,
 it should be followed by a call to ensure_asu().

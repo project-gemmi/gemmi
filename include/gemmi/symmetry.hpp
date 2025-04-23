@@ -42,7 +42,7 @@ struct GEMMI_DLL Op {
     return is_hkl() ? *this : Op{transposed_rot(), {0,0,0}, 'h'};
   }
   Op as_xyz() const {
-    return is_hkl() ? Op{transposed_rot(), {0,0,0}, 'x'} : *this;
+    return is_hkl() ? Op{rot, {0,0,0}, 'x'} : *this;
   }
 
   std::string triplet(char style=' ') const;
