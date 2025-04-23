@@ -151,15 +151,15 @@ jobs:
 
   ubuntu2004:
     name: "Ubuntu 20.04"
-    container: ubuntu:20.04
     runs-on: ubuntu-latest
+    container: ubuntu:20.04
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v4
     - name: apt-get
       run: |
-        sudo apt-get update
-        sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
+        apt-get update
+        apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
     - name: install nanobind
       run: |
         python3 -m pip install nanobind typing_extensions sphinx sphinx-inline-tabs
@@ -172,7 +172,7 @@ jobs:
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=OFF
         cmake --build . --config Debug -j2
         cmake --build . --config Debug --target check -j2
-        sudo cmake --install . --config Debug
+        cmake --install . --config Debug
         cd ..
         python3 -m unittest discover -v -s tests/
     - name: run doctest
@@ -184,7 +184,7 @@ jobs:
 
   ubuntu2204_clang8:
     name: "Ubuntu 22.04 with Clang 13"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     env:
       CC: clang-13
