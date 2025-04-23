@@ -110,7 +110,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
 
   std::vector<std::string>& vv = atom_loop.values;
   vv.reserve(atom_site_count * atom_loop.tags.size());
-  std::vector<std::pair<int, const Atom*>> aniso;
+  std::vector<std::tuple<int, int, const Atom*>> aniso;
   int serial = 0;
   for (const Model& model : st.models) {
     for (const Chain& chain : model.chains) {
@@ -156,7 +156,7 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
           if (st.has_d_fraction)
             vv.emplace_back(to_str(atom.fraction));
           if (atom.aniso.nonzero())
-            aniso.emplace_back(serial, &atom);
+            aniso.emplace_back(serial, model.num, &atom);
         }
       }
     }
@@ -167,17 +167,22 @@ void add_cif_atoms(const Structure& st, cif::Block& block,
     cif::Loop& aniso_loop = block.init_mmcif_loop("_atom_site_anisotrop.", {
                                   "id", "type_symbol", "U[1][1]", "U[2][2]",
                                   "U[3][3]", "U[1][2]", "U[1][3]", "U[2][3]"});
+    if (st.models.size() > 1)
+      aniso_loop.tags.push_back("_atom_site_anisotrop.pdbx_PDB_model_num");
     std::vector<std::string>& aniso_val = aniso_loop.values;
     aniso_val.reserve(aniso_loop.tags.size() * aniso.size());
     for (const auto& a : aniso) {
-      aniso_val.emplace_back(std::to_string(a.first));
-      aniso_val.emplace_back(a.second->element.uname());
-      aniso_val.emplace_back(to_str(a.second->aniso.u11));
-      aniso_val.emplace_back(to_str(a.second->aniso.u22));
-      aniso_val.emplace_back(to_str(a.second->aniso.u33));
-      aniso_val.emplace_back(to_str(a.second->aniso.u12));
-      aniso_val.emplace_back(to_str(a.second->aniso.u13));
-      aniso_val.emplace_back(to_str(a.second->aniso.u23));
+      aniso_val.emplace_back(std::to_string(std::get<0>(a)));
+      const Atom* atom = std::get<2>(a);
+      aniso_val.emplace_back(atom->element.uname());
+      aniso_val.emplace_back(to_str(atom->aniso.u11));
+      aniso_val.emplace_back(to_str(atom->aniso.u22));
+      aniso_val.emplace_back(to_str(atom->aniso.u33));
+      aniso_val.emplace_back(to_str(atom->aniso.u12));
+      aniso_val.emplace_back(to_str(atom->aniso.u13));
+      aniso_val.emplace_back(to_str(atom->aniso.u23));
+      if (st.models.size() > 1)
+        aniso_loop.values.push_back(std::to_string(std::get<1>(a)));
     }
   }
 }
