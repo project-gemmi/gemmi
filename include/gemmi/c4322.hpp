@@ -147,7 +147,7 @@ typename C4322<Real>::Coef C4322<Real>::data[99] = {
 
 template<class Real>
 struct CustomCoef {
-  using Coef = GaussianCoef<4, 0, Real>;
+  using Coef = GaussianCoef<5, 0, Real>;
   static std::vector<Coef> data;
 
   static Coef& get(El, signed char /*charge*/=0, int serial=0) {
