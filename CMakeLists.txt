@@ -218,7 +218,7 @@ add_library(gemmi_cpp
             src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp
             src/resinfo.cpp src/riding_h.cpp
-            src/select.cpp src/sprintf.cpp src/symmetry.cpp
+            src/select.cpp src/sprintf.cpp src/dssp.cpp src/symmetry.cpp
             src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
             src/xds_ascii.cpp)
 add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
@@ -314,6 +314,7 @@ add_single_prog(residues)
 add_single_prog(rmsz)
 add_single_prog(sf2map ADD_SRC prog/mapcoef.cpp)
 add_single_prog(sfcalc)
+add_single_prog(ss)
 add_single_prog(sg)
 add_single_prog(tags)
 add_single_prog(validate ADD_SRC prog/validate_mon.cpp)
@@ -331,9 +332,9 @@ add_executable(gemmi_prog
                prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp
                prog/mondiff.cpp prog/monlib_opt.cpp prog/mtz.cpp prog/mtz2cif.cpp
                prog/reindex.cpp prog/residues.cpp prog/rmsz.cpp prog/set.cpp
-               prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/tags.cpp
-               prog/validate.cpp prog/validate_mon.cpp prog/wcn.cpp
-               prog/xds2mtz.cpp
+               prog/sf2map.cpp prog/sfcalc.cpp prog/sg.cpp prog/ss.cpp
+               prog/tags.cpp prog/validate.cpp prog/validate_mon.cpp
+               prog/wcn.cpp prog/xds2mtz.cpp
                $<TARGET_OBJECTS:options>)
 add_executable(gemmi::prog ALIAS gemmi_prog)
 target_link_libraries(gemmi_prog PRIVATE gemmi_cpp)

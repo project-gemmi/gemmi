@@ -1,0 +1,15 @@
+$ gemmi ss -h
+Usage:
+ gemmi ss [options] INPUT_FILE OUTPUT_FILE
+
+Determines secondary structure of proteins using DSSP method.
+Uses CCP4 monomer libraray to determine peptide bonds.
+
+
+Options:
+  -h, --help         Print usage and exit.
+  -V, --version      Print version and exit.
+  -v, --verbose      Verbose output.
+  --monomers=DIR     Monomer library directory (default: $CLIBD_MON).
+  -L CIF, --lib=CIF  User's restraint file(s). See more info below.
+  --format=FORMAT    Input format (default: from the file extension).

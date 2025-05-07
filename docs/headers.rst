@@ -83,6 +83,9 @@ gemmi/dirwalk.hpp
     in alphabetical order. Wraps the tinydir library (as we cannot yet
     depend on C++17 <filesystem>).
 
+gemmi/dssp.hpp
+    Functions for working with sequences (other than alignment).
+
 gemmi/ecalc.hpp
     Normalization of amplitudes F->E ("Karle" approach, similar to CCP4 ECALC).
 

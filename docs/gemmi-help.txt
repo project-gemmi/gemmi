@@ -36,6 +36,7 @@ Commands:
  sf2map        transform map coefficients (from MTZ or mmCIF) to map
  sfcalc        calculate structure factors from a model
  sg            info about space groups
+ ss            determine secondary structure structure of polypeptide chains
  tags          list tags from CIF file(s)
  validate      validate CIF 1.1 syntax
  wcn           calculate local density / contact numbers (WCN, CN, ACN, LDM)
