@@ -10,7 +10,7 @@
 
 namespace gemmi {
 
-struct HBond {
+struct GEMMI_DLL HBond {
   Topo::ResInfo *donor = nullptr, *acceptor = nullptr;
   char alt1 = '\0';
   char alt2 = '\0';
