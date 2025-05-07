@@ -17,7 +17,7 @@ struct HBond {
   double energy = 0;
 };
 
-std::vector<HBond>
+GEMMI_DLL std::vector<HBond>
 dssp_determine_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInfo& cinfo);
 
 } // namespace gemmi

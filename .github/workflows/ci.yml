@@ -159,7 +159,7 @@ jobs:
     - name: apt-get
       run: |
         apt-get update
-        apt-get install libz-dev python3-pip g++ gfortran python3-numpy valgrind
+        apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind
     - name: install nanobind
       run: |
         python3 -m pip install nanobind typing_extensions sphinx sphinx-inline-tabs
@@ -196,7 +196,7 @@ jobs:
     - run: sudo apt-get install clang-13 libz-dev python3-pip python3-numpy
     - name: install nanobind
       run: |
-        sudo /usr/bin/python3 -m pip install nanobind build
+        sudo /usr/bin/python3 -m pip install -U nanobind build packaging scikit-build-core~=0.11.1
     - name: build and test
       run: |
         $CXX --version
