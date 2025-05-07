@@ -89,6 +89,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     DEF_PROPERTY(numbered_ter)
     DEF_PROPERTY(ter_ignores_type)
     DEF_PROPERTY(use_linkr)
+    DEF_PROPERTY(use_link_id)
     DEF_PROPERTY(preserve_serial)
     ;
 #undef DEF_PROPERTY

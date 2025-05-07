@@ -602,12 +602,14 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
                 con.partner2.chain_name.c_str(),
                 write_seq_id(cra2.residue->seqid).data(),
                 "1555", im_pdb_symbol.c_str(), im_dist_str.c_str());
-          if (opt.use_linkr && !con.link_id.empty()) {
-            buf[4] = 'R';  // LINK -> LINKR
-            if (im_same_asu)
-              std::memset(buf+58, ' ', 14); // erase symmetry
+          if (im_same_asu && !con.link_id.empty())
+            std::memset(buf+58, ' ', 14); // erase symmetry
+          if ((opt.use_linkr ||opt.use_link_id) && !con.link_id.empty()) {
+            if (opt.use_linkr)
+              buf[4] = 'R';  // LINK -> LINKR
             // overwrite distance with link_id
-            snprintf_z(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
+            if (opt.use_linkr || opt.use_link_id)
+              snprintf_z(buf+72, 82-72, "%-8s\n", con.link_id.c_str());
           }
           buf[80] = '\n';
           os.write(buf, 81);

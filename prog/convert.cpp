@@ -63,7 +63,7 @@ enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, CifStyle, AllAuth, BlockName,
   ExpandNcs, AsAssembly,
   RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
-  Reframe, ShortTer, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
+  Reframe, ShortTer, Linkid, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
   ShortenTLC, ChangeCcdCode, SetSeq, SiftsNum,
   Biso, BisoScale, AddTls, Anisou, AssignRecords,
   SetCis, SegmentAsChain, OldPdb, ForceLabel
@@ -106,6 +106,8 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None, "\nPDB output options:" },
   { ShortTer, 0, "", "short-ter", Arg::None,
     "  --short-ter  \tWrite PDB TER records without numbers (iotbx compat.)." },
+  { Linkid, 0, "", "Linkid", Arg::None,
+    "  --Linkid  \tWrite link_id instead of disnance in LINK record  if link_id is known." },
   { Linkr, 0, "", "linkr", Arg::None,
     "  --linkr  \tWrite LINKR record (for Refmac) if link_id is known." },
   { CopyRemarks, 0, "", "copy-remarks", Arg::None,
@@ -539,6 +541,8 @@ void convert(gemmi::Structure& st,
       opt = gemmi::PdbWriteOptions::minimal();
     if (options[ShortTer])
       opt.numbered_ter = false;
+    if (options[Linkid])
+      opt.use_link_id = true;
     if (options[Linkr])
       opt.use_linkr = true;
     gemmi::write_pdb(st, os.ref(), opt);

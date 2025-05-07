@@ -27,6 +27,8 @@ PDB input options:
 
 PDB output options:
   --short-ter             Write PDB TER records without numbers (iotbx compat.).
+  --Linkid                Write link_id instead of disnance in LINK record  if
+                          link_id is known.
   --linkr                 Write LINKR record (for Refmac) if link_id is known.
   --copy-remarks          (pdb->pdb only) Copy REMARK records.
 
