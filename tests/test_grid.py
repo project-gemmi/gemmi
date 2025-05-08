@@ -106,6 +106,49 @@ class TestFloatGrid(unittest.TestCase):
         grid.set_size_from_spacing(dmin / 2, gemmi.GridSizeRounding.Up)
         self.assertTrue([grid.nu, grid.nv, grid.nw] == [72, 72, 120])
 
+    def test_interpolation(self):
+        # Setup grids for testing
+        cell = gemmi.UnitCell(10.0,10.0,10.0, 90.0, 90.0, 90.0)
+        moving_grid = gemmi.FloatGrid(10, 10, 10)
+        moving_grid.spacegroup = gemmi.SpaceGroup('P 1')
+        moving_grid.set_unit_cell(cell)
+        moving_grid.set_value(0,0,0,1.0)
+        moving_grid.set_value(5,5,5,1.0)
+
+        interpolated_grid = gemmi.FloatGrid(10, 10, 10)
+        interpolated_grid.spacegroup = gemmi.SpaceGroup('P 1')
+        interpolated_grid.set_unit_cell(cell)
+
+        # Test array interpolation
+        positions = numpy.array([[0.0,0.0,0.0], [5.0,5.0,5.0]], 
+                                dtype=numpy.float32)
+        values = numpy.zeros(2, dtype=numpy.float32)
+        moving_grid.interpolate_position_array(positions, values)
+        self.assertAlmostEqual(values[0], 1.0)
+        self.assertAlmostEqual(values[1], 1.0)
+
+        # Test map morphing
+        # A simple single solid translation of the cell, limited to two points
+        point_array_list = [
+            numpy.array([[1,1,1], [6,6,6]],dtype=numpy.int32),]
+        position_array_list = [
+            numpy.array([[1.0,1.0,1.0], [6.0,6.0,6.0]],dtype=numpy.float32),]
+        transforms = [gemmi.Transform(),]
+        com_moving_list = [[-1.0,-1.0,-1.0,], [-1.0,-1.0,-1.0,],]
+        com_reference_list = [[0.0,0.0,0.0,], [0.0,0.0,0.0,],]
+        interpolated_grid.interpolate_grid_flexible(
+            moving_grid, 
+            point_array_list,
+            position_array_list,
+            transforms,
+            com_moving_list,
+            com_reference_list
+        )
+        self.assertAlmostEqual(interpolated_grid.get_value(1,1,1), 1.0)
+        self.assertAlmostEqual(interpolated_grid.get_value(6,6,6), 1.0)
+        
+        ...
+
 
 class TestCcp4Map(unittest.TestCase):
     @unittest.skipIf(numpy is None, "NumPy not installed.")
