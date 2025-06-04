@@ -37,7 +37,7 @@ inline std::string pdbx_one_letter_code(const std::vector<std::string>& seq,
   std::string r;
   for (const std::string& item : seq) {
     std::string code = Entity::first_mon(item);
-    ResidueInfo ri = find_tabulated_residue(code);
+    const ResidueInfo ri = find_tabulated_residue(code);
     if (ri.is_standard() && ri.kind == kind)
       r += ri.one_letter_code;
     else

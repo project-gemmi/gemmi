@@ -136,6 +136,7 @@ void add_elem(nb::module_& m) {
     .value("ELS", ResidueKind::ELS);
 
   nb::class_<ResidueInfo>(m, "ResidueInfo")
+    .def_ro("name", &ResidueInfo::name)
     .def_ro("kind", &ResidueInfo::kind)
     .def_ro("one_letter_code", &ResidueInfo::one_letter_code)
     .def_ro("hydrogen_count", &ResidueInfo::hydrogen_count)
@@ -150,7 +151,7 @@ void add_elem(nb::module_& m) {
   m.def("find_tabulated_residue", &find_tabulated_residue, nb::arg("name"),
         "Find chemical component information in the internal table.");
   m.def("expand_one_letter", &expand_one_letter);
-  m.def("expand_one_letter_sequence", &expand_one_letter_sequence);
+  m.def("expand_one_letter_sequence", &expand_one_letter_sequence00);
 }
 
 void add_xds(nb::module_& m) {

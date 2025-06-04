@@ -29,6 +29,7 @@ enum class ResidueKind : unsigned char {
 };
 
 struct ResidueInfo {
+  char name[8];
   ResidueKind kind;
   // linking type: 0=n/a, 1=peptide-linking, 2=nucl.-linking, 3=(2|1)
   std::uint8_t linking_type;
@@ -51,14 +52,25 @@ struct ResidueInfo {
   bool is_buffer_or_water() const {
     return kind == ResidueKind::HOH || kind == ResidueKind::BUF;
   }
-  // PDB format has non-standard residues (modified AA) marked as HETATM.
+  // PDB format has non-standard residues (modified AAjjjjjjj{`n```}) marked as HETATM.
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
   char fasta_code() const { return is_standard() ? one_letter_code : 'X'; }
   bool is_peptide_linking() const { return (linking_type & 1); }
   bool is_na_linking() const { return (linking_type & 2); }
 };
 
-GEMMI_DLL ResidueInfo find_tabulated_residue(const std::string& name);
+struct GEMMI_DLL ResinfoData {
+  ResinfoData();
+  static ResidueInfo array[362];
+};
+
+GEMMI_DLL size_t find_tabulated_residue_idx(const std::string& name);
+
+
+inline ResidueInfo find_tabulated_residue(const std::string& name) {
+  size_t idx= find_tabulated_residue_idx(name);
+  return ResinfoData::array[idx];
+}
 
 /// kind can be AA, RNA or DNA
 inline const char* expand_one_letter(char c, ResidueKind kind) {
@@ -87,7 +99,7 @@ inline const char* expand_one_letter(char c, ResidueKind kind) {
 }
 
 /// kind can be AA, RNA or DNA
-GEMMI_DLL std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
+GEMMI_DLL std::vector<std::string> expand_one_letter_sequence00(const std::string& seq,
                                                               ResidueKind kind);
 
 // deprecated
@@ -95,9 +107,7 @@ inline const char* expand_protein_one_letter(char c) {
   return expand_one_letter(c, ResidueKind::AA);
 }
 // deprecated
-inline std::vector<std::string> expand_protein_one_letter_string(const std::string& s) {
-  return expand_one_letter_sequence(s, ResidueKind::AA);
-}
+GEMMI_DLL std::vector<std::string> expand_protein_one_letter_string(const std::string& s);
 
 
 } // namespace gemmi
