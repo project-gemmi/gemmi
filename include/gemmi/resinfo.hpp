@@ -99,7 +99,7 @@ inline const char* expand_one_letter(char c, ResidueKind kind) {
 }
 
 /// kind can be AA, RNA or DNA
-GEMMI_DLL std::vector<std::string> expand_one_letter_sequence00(const std::string& seq,
+GEMMI_DLL std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
                                                               ResidueKind kind);
 
 // deprecated

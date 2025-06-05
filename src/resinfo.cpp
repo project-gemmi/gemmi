@@ -826,8 +826,8 @@ ResidueInfo ResinfoData::array[362] = {
 
  }
 
-std::vector<std::string> expand_one_letter_sequence00(const std::string& seq,
-                                                      ResidueKind kind) {
+std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
+                                                    ResidueKind kind) {
 
  std::vector<std::string> r;
   r.reserve(seq.size());

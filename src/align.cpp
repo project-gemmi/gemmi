@@ -1,7 +1,7 @@
 // Copyright 2023 Global Phasing Ltd.
 
 #include <gemmi/align.hpp>
-#include <gemmi/resinfo.hpp>  // for expand_one_letter_sequence00
+#include <gemmi/resinfo.hpp>  // for expand_one_letter_sequence
 #include <gemmi/seqtools.hpp> // for sequence_kind
 
 namespace gemmi {
@@ -44,7 +44,7 @@ void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_
       sequences.reserve(fasta_sequences.size());
       for (const std::string& seq : fasta_sequences) {
         try {
-          sequences.push_back(expand_one_letter_sequence00(seq, sequence_kind(ptype)));
+          sequences.push_back(expand_one_letter_sequence(seq, sequence_kind(ptype)));
         } catch (std::runtime_error&) {}
       }
       for (Entity& ent : st.entities) {

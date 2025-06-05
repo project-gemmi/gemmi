@@ -153,7 +153,7 @@ void add_elem(nb::module_& m) {
         nb::rv_policy::reference,
         "Find chemical component information in the internal table.");
   m.def("expand_one_letter", &expand_one_letter);
-  m.def("expand_one_letter_sequence", &expand_one_letter_sequence00);
+  m.def("expand_one_letter_sequence", &expand_one_letter_sequence);
   nb::handle mod = m;
   m.def("resinfo_table", [mod]() {
       return nb::make_iterator<nb::rv_policy::reference>(mod, "spacegroup_iterator",
