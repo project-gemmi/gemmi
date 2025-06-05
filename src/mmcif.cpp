@@ -76,7 +76,9 @@ SeqId make_seqid(std::string seqid, const std::string* icode) {
         fail("Inconsistent insertion code in " + seqid);
       seqid.pop_back();
     }
-    ret.num = cif::as_int(seqid, Residue::OptionalNum::None);
+    // 7pvv has an empty seqnum in tls description, don't throw
+    if (!seqid.empty())
+      ret.num = cif::as_int(seqid, Residue::OptionalNum::None);
   }
   return ret;
 }
