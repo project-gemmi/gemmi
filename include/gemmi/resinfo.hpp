@@ -52,7 +52,7 @@ struct ResidueInfo {
   bool is_buffer_or_water() const {
     return kind == ResidueKind::HOH || kind == ResidueKind::BUF;
   }
-  // PDB format has non-standard residues (modified AAjjjjjjj{`n```}) marked as HETATM.
+  // PDB format has non-standard residues (modified AA) marked as HETATM.
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
   char fasta_code() const { return is_standard() ? one_letter_code : 'X'; }
   bool is_peptide_linking() const { return (linking_type & 1); }
@@ -67,7 +67,7 @@ struct GEMMI_DLL ResinfoData {
 GEMMI_DLL size_t find_tabulated_residue_idx(const std::string& name);
 
 
-inline ResidueInfo find_tabulated_residue(const std::string& name) {
+inline ResidueInfo& find_tabulated_residue(const std::string& name) {
   size_t idx= find_tabulated_residue_idx(name);
   return ResinfoData::array[idx];
 }

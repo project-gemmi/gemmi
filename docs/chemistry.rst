@@ -356,6 +356,15 @@ for this we have helper function `fasta_code()`:
     >>> gemmi.find_tabulated_residue('MSE').fasta_code()
     'X'
 
+The table includes only 362 entries, selected from the most popular residues in the PDB.
+Residue kind is sometimes debatable, the user may change it.
+
+.. doctest::
+
+    >>> pst = gemmi.find_tabulated_residue('PST')
+    >>> pst.kind
+    ResidueKind.UNKNOWN
+    >>> pst.kind = gemmi.ResidueKind.DNA
 
 .. _CCD_etc:
 

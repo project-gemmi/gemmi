@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include <nanobind/operators.h>
+#include <nanobind/make_iterator.h>
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>  // for expand_one_letter_sequence
@@ -137,7 +138,7 @@ void add_elem(nb::module_& m) {
 
   nb::class_<ResidueInfo>(m, "ResidueInfo")
     .def_ro("name", &ResidueInfo::name)
-    .def_ro("kind", &ResidueInfo::kind)
+    .def_rw("kind", &ResidueInfo::kind)
     .def_ro("one_letter_code", &ResidueInfo::one_letter_code)
     .def_ro("hydrogen_count", &ResidueInfo::hydrogen_count)
     .def_ro("weight", &ResidueInfo::weight)
@@ -149,9 +150,15 @@ void add_elem(nb::module_& m) {
     .def("is_amino_acid", &ResidueInfo::is_amino_acid);
 
   m.def("find_tabulated_residue", &find_tabulated_residue, nb::arg("name"),
+        nb::rv_policy::reference,
         "Find chemical component information in the internal table.");
   m.def("expand_one_letter", &expand_one_letter);
   m.def("expand_one_letter_sequence", &expand_one_letter_sequence00);
+  nb::handle mod = m;
+  m.def("resinfo_table", [mod]() {
+      return nb::make_iterator<nb::rv_policy::reference>(mod, "spacegroup_iterator",
+                                                         ResinfoData::array);
+  });
 }
 
 void add_xds(nb::module_& m) {

@@ -62,7 +62,7 @@ Transform get_transform_matrix(const cif::Table::Row& r) {
   return t;
 }
 
-SeqId make_seqid(const std::string& seqid, const std::string* icode) {
+SeqId make_seqid(std::string seqid, const std::string* icode) {
   SeqId ret;
   if (icode)
     // the insertion code happens to be always a single letter
@@ -74,10 +74,9 @@ SeqId make_seqid(const std::string& seqid, const std::string* icode) {
         ret.icode = seqid.back();
       else if (ret.icode != seqid.back())
         fail("Inconsistent insertion code in " + seqid);
-      ret.num = cif::as_int(seqid.substr(0, seqid.size() - 1));
-    } else {
-      ret.num = cif::as_int(seqid, Residue::OptionalNum::None);
+      seqid.pop_back();
     }
+    ret.num = cif::as_int(seqid, Residue::OptionalNum::None);
   }
   return ret;
 }

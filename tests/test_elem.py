@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import gemmi
 from gemmi import Element, IT92_get_exact, IT92_set_ignore_charge
 
 
@@ -53,6 +54,12 @@ class TestElem(unittest.TestCase):
         self.assertIsNone(IT92_get_exact(fe, 4))
         self.assertEqual(fe_coefs, fe0_coefs)
         self.assertNotEqual(fe_coefs, fe2_coefs)
+
+    def test_resinfo(self):
+        for i in gemmi.resinfo_table():
+            ri = gemmi.find_tabulated_residue(i.name)
+            self.assertEqual(ri.name, i.name)
+
 
 
 ELEMENT_MASS = {
