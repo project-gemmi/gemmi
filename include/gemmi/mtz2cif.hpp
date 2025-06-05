@@ -83,7 +83,7 @@ public:
       "? I       J intensity_net",
       "& SIGI    Q intensity_sigma .5g",
       // new! https://github.com/wwpdb-dictionaries/mmcif_pdbx/pull/33
-      "?ROT      R pdbx_scan_angle",
+      "? ROT     R pdbx_scan_angle",
       "$image      pdbx_image_id",
       nullptr
     };
