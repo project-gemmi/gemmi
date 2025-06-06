@@ -125,6 +125,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: apt-get
       run: |
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
         sudo apt-get update
         sudo apt-get install libz-dev python3-pip g++ gfortran python3-numpy
         sudo python3 -m pip install -U typing_extensions sphinx sphinx-inline-tabs
@@ -196,7 +197,7 @@ jobs:
     - run: sudo apt-get install clang-13 libz-dev python3-pip python3-numpy
     - name: install nanobind
       run: |
-        sudo /usr/bin/python3 -m pip install -U nanobind build scikit-build-core
+        sudo /usr/bin/python3 -m pip install -U packaging nanobind build scikit-build-core
     - name: build and test
       run: |
         $CXX --version
