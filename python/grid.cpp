@@ -209,6 +209,90 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
               r(i, j, k) = self.interpolate_value(fpos, order);
             }
     }, nb::arg().noconvert(), nb::arg(), nb::arg("order")=1)
+    // Some simple functions to make interpolating large number of points
+    // from python efficient
+    .def("interpolate_position_array",
+      //Interpolate the grid at positions in a numpy array into a numpy array of values 
+      [](const Gr& self, nb::ndarray<float, nb::shape<-1,3>>& pos_array,
+        nb::ndarray<float, nb::ndim<1>>& vals_array) {
+          auto r_pos = pos_array.view();
+          auto r_val = vals_array.view();
+          for (size_t i=0; i<r_pos.shape(0); i++){
+            Position pos = Position(
+              r_pos(i, 0),
+              r_pos(i, 1),
+              r_pos(i, 2)
+            );
+            auto val = self.interpolate_value(pos);
+            r_val(i) = val;
+          }
+        }, nb::arg().noconvert(), nb::arg().noconvert())
+    .def("interpolate_grid_flexible",
+      // Interpolate the moving grid onto the interpolated grid, applying different transforms to 
+      // different regions 
+      [](
+        Gr& interpolated_map,
+        const Gr& moving_map,
+        std::vector<nb::ndarray<int, nb::shape<-1,3>>>& point_arr_vec,
+        std::vector<nb::ndarray<float, nb::shape<-1,3>>>& pos_arr_vec,
+        std::vector<Transform> transform_vec,
+        std::vector<std::vector<float>> com_moving_vec,
+        std::vector<std::vector<float>> com_reference_vec
+      ) {
+        // For each transform in the list, interpolate the positions in the moving map 
+        // corresponding to points in the interpolated map. This method is based on 
+        // contiguous groups of positions in real space, and hence the need to 
+        // seperate out the point and pos arrays, to ensure the correct symmetry
+        // copies of of the positions corresponding to a map point are used.
+        // Python code to derive such partitionings of the unit cell around a 
+        // molecule can be found in https://github.com/ConorFWild/pandda_2_gemmi
+        for (std::size_t i=0; i < point_arr_vec.size(); i++){
+            nb::ndarray<int, nb::shape<-1,3>> point_array = point_arr_vec[i];
+            nb::ndarray<float, nb::shape<-1,3>> pos_array = pos_arr_vec[i];
+            const Transform transform = transform_vec[i];
+            std::vector<float> com_moving = com_moving_vec[i];
+            std::vector<float> com_reference = com_reference_vec[i];
+            auto r_point = point_array.view();
+            auto r_pos = pos_array.view();
+
+            for (std::size_t i=0; i < r_point.shape(0); i++)
+            {
+                // Position
+                Position pos = Position(
+                  r_pos(i,0),
+                  r_pos(i,1),
+                  r_pos(i,2)
+                );
+
+                //Subtract reference com
+                pos.x -= com_reference[0];
+                pos.y -= com_reference[1];
+                pos.z -= com_reference[2];
+
+                //transform
+                Position pos_moving = Position(transform.apply(pos));
+
+                // add moving com
+                pos_moving.x += com_moving[0];
+                pos_moving.y += com_moving[1];
+                pos_moving.z += com_moving[2];
+
+                // fractionalise
+                Fractional pos_moving_fractional = moving_map.unit_cell.fractionalize(pos_moving);
+
+                // interpolate
+                float interpolated_value = moving_map.interpolate_value(pos_moving_fractional);
+
+                // assign
+                interpolated_map.set_value(
+                    r_point(i, 0),
+                    r_point(i, 1),
+                    r_point(i, 2),
+                    interpolated_value
+                    );
+            };    
+      } 
+      }, nb::arg(), nb::arg().noconvert(), nb::arg().noconvert(), nb::arg(), nb::arg(), nb::arg())
     ;
 }
 
