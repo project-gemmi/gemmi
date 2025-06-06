@@ -13,51 +13,65 @@
 
 namespace gemmi {
 
+template<typename Real>
+std::pair<Real, Real> convert_to_sq(Real y, Real dy) {
+  Real y2 = y * y;
+  Real dy2 = 2 * y * dy;
+  return std::make_pair(y2, dy2);
+}
+
 template<int N, typename Real>
 Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff_level) {
   Real y1, dy;
   std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+  std::tie(y1, dy) = convert_to_sq(y1, dy);
+  Real cutoff_level_sq = cutoff_level * cutoff_level;
   // Generally, density is supposed to decrease with radius.
   // But if we have addends (in particular -Z for Mott-Bothe),
   // it can first rise, then decrease. We want to be after the maximum.
   while (dy > 0) { // unlikely
     x1 += 1.0f;
     std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+    std::tie(y1, dy) = convert_to_sq(y1, dy);
   }
   Real x2 = x1;
   Real y2 = y1;
-  if (y1 < cutoff_level) {
-    while (y1 < cutoff_level) {
+  if (y1 < cutoff_level_sq) {
+    while (y1 < cutoff_level_sq) {
       x2 = x1;
       y2 = y1;
       x1 -= 0.5f;
       std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+      std::tie(y1, dy) = convert_to_sq(y1, dy);
       // with addends it's possible to land on the left side of the maximum
       if (dy > 0) { // unlikely
         while (dy > 0 && x1 + 0.1f < x2) {
           x1 += 0.1f;
           std::tie(y1, dy) = precal.calculate_with_derivative(x1);
+	  std::tie(y1, dy) = convert_to_sq(y1, dy);
         }
-        if (y1 < cutoff_level)
+        if (y1 < cutoff_level_sq)
           return x1;
         break;
       }
       if (x1 < 0) { // unlikely
         x1 = 0;
         y1 = precal.calculate(x1 * x1);
+	y1 *= y1;
         break;
       }
     }
   } else {
-    while (y2 > cutoff_level) {
+    while (y2 > cutoff_level_sq) {
       x1 = x2;
       y1 = y2;
       x2 += 0.5f;
       y2 = precal.calculate(x2 * x2);
+      y2 *= y2;
     }
   }
 
-  return x1 + (x1 - x2) / (y1 - y2) * (cutoff_level - y1);
+  return x1 + (x1 - x2) / (y1 - y2) * (cutoff_level_sq - y1);
 }
 
 // approximated radius of electron density (IT92) above cutoff=1e-5 for C
