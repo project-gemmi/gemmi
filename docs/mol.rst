@@ -457,7 +457,8 @@ see :ref:`add_entity_types() <add_entity_types>`).
 Unfortunately, not all programs write TER, and what's even worse,
 some programs write it in different places or reuse it with a different
 meaning. One could argue that because of this it is better to always
-ignore TER. But then, in some cases, we will not be able to place TER
+ignore TER. (we have option `ignore_ter`).
+But in some cases, we will not be able to place TER
 in the same place when writing Structure to a PDB file (it's somewhat
 arbitrary if a non-standard peptide-linking residue at the end of a chain
 is part of the sequence or a bound ligand). By default (when the option

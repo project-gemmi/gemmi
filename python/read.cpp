@@ -81,23 +81,23 @@ void add_read_structure(nb::module_& m) {
         "CIF block from CCD or monomer library -> single-residue Model(s).");
 
   m.def("read_pdb_string", [](const std::string& s, int max_line_length,
-                              bool split_chain_on_ter) {
-          PdbReadOptions options{max_line_length, split_chain_on_ter, false};
+                              bool ignore_ter, bool split_chain_on_ter) {
+          PdbReadOptions options{max_line_length, ignore_ter, split_chain_on_ter, false};
           return new Structure(read_pdb_string(s, "string", options));
         }, nb::arg("s"), nb::arg("max_line_length")=0,
-           nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
+           nb::arg("ignore_ter")=false, nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
   m.def("read_pdb_string", [](const nb::bytes& s, int max_line_length,
-                              bool split_chain_on_ter) {
-          PdbReadOptions options{max_line_length, split_chain_on_ter, false};
+                              bool ignore_ter, bool split_chain_on_ter) {
+          PdbReadOptions options{max_line_length, ignore_ter, split_chain_on_ter, false};
           return new Structure(read_pdb_from_memory(s.c_str(), s.size(), "string", options));
         }, nb::arg("s"), nb::arg("max_line_length")=0,
-           nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
+           nb::arg("ignore_ter")=false, nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
   m.def("read_pdb", [](const std::string& path, int max_line_length,
-                       bool split_chain_on_ter) {
-          PdbReadOptions options{max_line_length, split_chain_on_ter, false};
+                       bool ignore_ter, bool split_chain_on_ter) {
+          PdbReadOptions options{max_line_length, ignore_ter, split_chain_on_ter, false};
           return new Structure(read_pdb_gz(path, options));
         }, nb::arg("filename"), nb::arg("max_line_length")=0,
-           nb::arg("split_chain_on_ter")=false);
+           nb::arg("ignore_ter")=false, nb::arg("split_chain_on_ter")=false);
 
   // from smcif.hpp
   m.def("read_small_structure", [](const std::string& path) {

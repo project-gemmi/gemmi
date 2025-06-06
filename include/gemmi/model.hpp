@@ -100,6 +100,7 @@ enum class CalcFlag : signed char {
 /// options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
+  bool ignore_ter = false; // ignores TER records completely
   bool split_chain_on_ter = false;
   bool skip_remarks = false;
 };
