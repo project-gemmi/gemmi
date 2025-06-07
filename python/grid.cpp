@@ -279,7 +279,7 @@ void add_grid(nb::module_& m) {
     ;
   m.def("interpolate_grid", &interpolate_grid<float>,
         nb::arg("dest"), nb::arg("src"), nb::arg("tr"), nb::arg("order")=1);
-  m.def("interpolate_grid_of_aligned_model2", &interpolate_grid_of_aligned_model2<float>,
+  m.def("interpolate_grid_around_model", &interpolate_grid_around_model<float>,
         nb::arg("dest"), nb::arg("src"), nb::arg("tr"),
         nb::arg("dest_model"), nb::arg("radius"), nb::arg("order")=1);
 

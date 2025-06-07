@@ -459,7 +459,7 @@ Currently, the API is not ideal and should be revisited.
 Therefore, for now we leave them undocumented:
 
     gemmi::interpolate_grid()
-    gemmi::interpolate_grid_of_aligned_model2()
+    gemmi::interpolate_grid_around_model()
 
 *Implementation note*
 

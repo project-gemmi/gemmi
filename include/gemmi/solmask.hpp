@@ -483,13 +483,12 @@ inline void unmask_symmetry_mates(Grid<NodeInfo>& mask) {
       }
 }
 
-// TODO: rename this function to interpolate_grid_around_model()
-//       would it be better to use src_model rather than dest_model?
+// TODO: would it be better to use src_model rather than dest_model?
 template<typename T>
-void interpolate_grid_of_aligned_model2(Grid<T>& dest, const Grid<T>& src,
-                                        const Transform& tr,
-                                        const Model& dest_model, double radius,
-                                        int order=1) {
+void interpolate_grid_around_model(Grid<T>& dest, const Grid<T>& src,
+                                   const Transform& tr,
+                                   const Model& dest_model, double radius,
+                                   int order=1) {
   Grid<NodeInfo> mask;
   mask.copy_metadata_from(dest);
   mask_with_node_info(mask, dest_model, radius);

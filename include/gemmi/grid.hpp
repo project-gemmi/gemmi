@@ -789,7 +789,7 @@ struct Grid : GridBase<T> {
 };
 
 // TODO: add argument Box<Fractional> src_extent
-// cf. interpolate_grid_of_aligned_model2() in solmask.hpp
+// cf. interpolate_grid_around_model() in solmask.hpp
 // cf interpolate_values in python/grid.cpp
 template<typename T>
 void interpolate_grid(Grid<T>& dest, const Grid<T>& src, const Transform& tr, int order=1) {
