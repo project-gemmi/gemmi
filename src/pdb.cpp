@@ -1029,7 +1029,7 @@ Structure read_pdb_from_stream(AnyStream& line_reader, const std::string& source
                is_record_type4(line, "CISPEP")) {
       conn_records.emplace_back(line);
 
-    } else if (is_record_type3(line, "TER")) { // finishes polymer chains
+    } else if (is_record_type3(line, "TER") && !options.ignore_ter) { // finishes polymer chains
       if (!chain || st.ter_status == 'e')
         continue;
       st.ter_status = 'y';
