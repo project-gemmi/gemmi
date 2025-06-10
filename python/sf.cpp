@@ -43,7 +43,6 @@ void add_dencalc(nb::module_& m, const char* name) {
          nb::arg("model"), nb::arg("allow_negative")=false)
     .def("put_model_density_on_grid", &DenCalc::put_model_density_on_grid)
     .def("initialize_grid", &DenCalc::initialize_grid)
-    .def("initialize_grid_to_size", &DenCalc::initialize_grid_to_size)
     .def("add_model_density_to_grid", &DenCalc::add_model_density_to_grid)
     .def("add_atom_density_to_grid", &DenCalc::add_atom_density_to_grid)
     .def("add_c_contribution_to_grid", &DenCalc::add_c_contribution_to_grid)

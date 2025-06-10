@@ -174,11 +174,6 @@ struct DensityCalculator {
       fail("initialize_grid(): d_min is not set");
   }
 
-  void initialize_grid_to_size(int u, int v, int w) {
-    grid.data.clear();
-    grid.set_size_without_checking(u, v, w);
-  }
-
   void add_model_density_to_grid(const Model& model) {
     grid.check_not_empty();
     for (const Chain& chain : model.chains)
