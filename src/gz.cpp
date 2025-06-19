@@ -96,6 +96,22 @@ long GzStream::tell() {
   return GG(gztell)((gzFile)f);
 }
 
+std::string GzStream::read_rest() {
+    std::string retval;
+    int c = getc();
+    if (c != EOF) {
+      retval += (char)c;
+      char buf[512];
+      for (;;) {
+        size_t n = big_gzread((gzFile)f, buf,  sizeof(buf));
+        retval.append(buf, n);
+        if (n != sizeof(buf))
+          break;
+      }
+    }
+    return retval;
+}
+
 
 MaybeGzipped::MaybeGzipped(const std::string& path) : BasicInput(path) {}
 
