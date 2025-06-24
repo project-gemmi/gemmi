@@ -60,7 +60,7 @@ struct ResidueInfo {
 };
 
 struct GEMMI_DLL ResinfoData {
-  ResinfoData();
+  //ResinfoData();
   static ResidueInfo array[362];
 };
 
@@ -68,8 +68,9 @@ GEMMI_DLL size_t find_tabulated_residue_idx(const std::string& name);
 
 
 inline ResidueInfo& find_tabulated_residue(const std::string& name) {
-  size_t idx= find_tabulated_residue_idx(name);
-  return ResinfoData::array[idx];
+  static ResinfoData data;
+  size_t idx = find_tabulated_residue_idx(name);
+  return data.array[idx];
 }
 
 /// kind can be AA, RNA or DNA
