@@ -518,7 +518,8 @@ specify the average weight of the components that are not tabulated:
 .. doctest::
 
   >>> sequence = ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
-  >>> gemmi.calculate_sequence_weight(sequence, unknown=float(130.0))
+  >>> # let's use unknown=130.0, but it sometimes doesn't work with keyword
+  >>> gemmi.calculate_sequence_weight(sequence, 130.0)
   784.6114543066407
 
 The weights are assumed to be of unbonded residues. Therefore, the chain weight

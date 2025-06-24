@@ -815,8 +815,8 @@ Structure make_structure_from_block(const cif::Block& block_) {
                                       "Cartn_x",
                                       "Cartn_y",
                                       "Cartn_z",
-                                      "occupancy",
-                                      "B_iso_or_equiv",
+                                      "?occupancy",
+                                      "?B_iso_or_equiv",
                                       "?pdbx_formal_charge",
                                       "?auth_seq_id",
                                       "?auth_comp_id",
@@ -919,8 +919,10 @@ Structure make_structure_from_block(const cif::Block& block_) {
       atom.pos.x = cif::as_number(row[kX]);
       atom.pos.y = cif::as_number(row[kY]);
       atom.pos.z = cif::as_number(row[kZ]);
-      atom.occ = (float) cif::as_number(row[kOcc], 1.0);
-      atom.b_iso = (float) cif::as_number(row[kBiso], 50.0);
+      if (row.has2(kOcc))
+        atom.occ = (float) cif::as_number(row[kOcc]);
+      if (row.has2(kBiso))
+        atom.b_iso = (float) cif::as_number(row[kBiso]);
 
       if (!aniso_map.empty()) {
         auto ani = aniso_map.find(row[kId]);
