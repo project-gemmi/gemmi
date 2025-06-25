@@ -162,8 +162,10 @@ void add_chemcomp(nb::module_& m) {
       .value("NonPolymer", ChemComp::Group::NonPolymer)
       .value("Null",       ChemComp::Group::Null);
   chemcompatom
+    .def(nb::init<>())
     .def_rw("id", &ChemComp::Atom::id)
     .def_rw("el", &ChemComp::Atom::el)
+    .def_rw("xyz", &ChemComp::Atom::xyz)
     .def_rw("charge", &ChemComp::Atom::charge)
     .def_rw("chem_type", &ChemComp::Atom::chem_type)
     .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
@@ -173,6 +175,7 @@ void add_chemcomp(nb::module_& m) {
     .def("name_from_alias", &ChemComp::Aliasing::name_from_alias)
     ;
   chemcomp
+    .def(nb::init<>())
     .def_rw("name", &ChemComp::name)
     .def_rw("group", &ChemComp::group)
     .def_ro("atoms", &ChemComp::atoms)

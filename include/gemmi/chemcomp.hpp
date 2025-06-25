@@ -342,11 +342,11 @@ struct ChemComp {
   struct Atom {
     std::string id;
     std::string old_id;  // read from _chem_comp_atom.alt_atom_id
-    Element el;
+    Element el = El::X;
     // _chem_comp_atom.partial_charge can be non-integer,
     // _chem_comp_atom.charge is always integer (but sometimes has format
     //  '0.000' which is not correct but we ignore it).
-    float charge;
+    float charge = 0;
     std::string chem_type;
     Position xyz;
 
