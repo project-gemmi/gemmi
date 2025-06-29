@@ -159,6 +159,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: apt-get
       run: |
+        export DEBIAN_FRONTEND=noninteractive
+        ln -fs /usr/share/zoneinfo/UTC /etc/localtime
         apt-get update
         apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind
     - name: install nanobind
@@ -202,8 +204,8 @@ jobs:
       run: |
         $CXX --version
         echo >constraints.txt <<EOF
-        scikit-build-core==0.11.1
-        packaging<0.24
+        scikit-build-core>=0.12.0
+        packaging>=21.0
         EOF
         pip install --constraint constraints.txt -e .
         python3 -m build --sdist

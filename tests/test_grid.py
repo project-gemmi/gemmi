@@ -119,6 +119,8 @@ class TestFloatGrid(unittest.TestCase):
         interpolated_grid.spacegroup = gemmi.SpaceGroup('P 1')
         interpolated_grid.set_unit_cell(cell)
 
+        if numpy is None:
+            return
         # Test array interpolation
         positions = numpy.array([[0.0,0.0,0.0], [5.0,5.0,5.0]],
                                 dtype=numpy.float64)
@@ -149,8 +151,6 @@ class TestFloatGrid(unittest.TestCase):
         )
         self.assertAlmostEqual(interpolated_grid.get_value(1,1,1), 1.0)
         self.assertAlmostEqual(interpolated_grid.get_value(6,6,6), 1.0)
-
-        ...
 
 
 class TestCcp4Map(unittest.TestCase):
