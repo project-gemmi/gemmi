@@ -13,6 +13,7 @@
 #include <vector>
 #include "formfact.hpp"  // for GaussianCoef
 #include "elem.hpp"      // for El
+#include "fail.hpp"      // for El
 
 namespace gemmi {
 

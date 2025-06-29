@@ -9,7 +9,7 @@ from urllib.request import urlopen
 
 TAGGED_REPOS = {
     'wjakob/nanobind': 'v2.6.1',
-    'scikit-build/scikit-build-core': 'v0.11.1',
+    'scikit-build/scikit-build-core': 'v0.11.5',
     'taocpp/PEGTL': '2.8.3',
     'cxong/tinydir': '1.2.6',
     'fastfloat/fast_float': 'v6.1.6',

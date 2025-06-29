@@ -120,7 +120,7 @@ class TestFloatGrid(unittest.TestCase):
         interpolated_grid.set_unit_cell(cell)
 
         # Test array interpolation
-        positions = numpy.array([[0.0,0.0,0.0], [5.0,5.0,5.0]], 
+        positions = numpy.array([[0.0,0.0,0.0], [5.0,5.0,5.0]],
                                 dtype=numpy.float64)
         values = moving_grid.interpolate_position_array(positions)
         self.assertAlmostEqual(values[0], 1.0)
@@ -135,21 +135,21 @@ class TestFloatGrid(unittest.TestCase):
         ts = [gemmi.Transform(),]
         com_m = [-1.0,-1.0,-1.0,]
         com_r = [0.0,0.0,0.0,]
-        
+
         ts[0].vec.fromlist(
             (gemmi.Vec3(*com_m) - ts[0].mat.multiply(gemmi.Vec3(*com_r))
              ).tolist()
         )
 
         interpolated_grid.interpolate_grid_flexible(
-            moving_grid, 
+            moving_grid,
             point_array_list,
             position_array_list,
             ts,
         )
         self.assertAlmostEqual(interpolated_grid.get_value(1,1,1), 1.0)
         self.assertAlmostEqual(interpolated_grid.get_value(6,6,6), 1.0)
-        
+
         ...
 
 

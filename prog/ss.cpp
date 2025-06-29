@@ -32,7 +32,7 @@ const option::Descriptor Usage[] = {
     "Usage:"
     "\n " EXE_NAME " [options] INPUT_FILE OUTPUT_FILE"
     "\n\nDetermines secondary structure of proteins using DSSP method."
-    "\nUses CCP4 monomer libraray to determine peptide bonds.\n"
+    "\nUses CCP4 monomer library to determine peptide bonds.\n"
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],

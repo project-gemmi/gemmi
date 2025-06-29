@@ -222,7 +222,7 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
         // For each transform in the list, interpolate the positions in the moving map 
         // corresponding to points in the interpolated map. This method is based on 
         // contiguous groups of positions in real space, and hence the need to 
-        // seperate out the point and pos arrays, to ensure the correct symmetry
+        // separate out the point and pos arrays, to ensure the correct symmetry
         // copies of of the positions corresponding to a map point are used.
         // Python code to derive such partitionings of the unit cell around a 
         // molecule can be found in https://github.com/ConorFWild/pandda_2_gemmi

@@ -19,7 +19,8 @@ public:
 
   bool read() {
     try {
-      mtz_.read_stream(gemmi::MemoryStream(buf_.data(), buf_.size()), false);
+      gemmi::MemoryStream stream(buf_.data(), buf_.size());
+      mtz_.read_stream(stream, false);
     } catch (std::runtime_error& e) {
       last_error_ = "Failed to read MTZ file: ";
       last_error_ += e.what();
