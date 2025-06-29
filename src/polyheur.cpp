@@ -21,7 +21,7 @@ PolymerType check_polymer_type(const ConstResidueSpan& span, bool ignore_entity_
         r.entity_type == EntityType::Polymer) {
       if (r.het_flag == 'A')
         has_atom_record = true;
-      ResidueInfo info = find_tabulated_residue(r.name);
+      const ResidueInfo& info = find_tabulated_residue(r.name);
       if (info.found()) {
         // Exclude water and ions - it can make difference
         // if this function is called for the whole chain.

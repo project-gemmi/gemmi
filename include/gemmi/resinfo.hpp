@@ -59,19 +59,9 @@ struct ResidueInfo {
   bool is_na_linking() const { return (linking_type & 2); }
 };
 
-struct GEMMI_DLL ResinfoData {
-  //ResinfoData();
-  static ResidueInfo array[362];
-};
-
+GEMMI_DLL ResidueInfo& get_residue_info(size_t idx);
 GEMMI_DLL size_t find_tabulated_residue_idx(const std::string& name);
-
-
-inline ResidueInfo& find_tabulated_residue(const std::string& name) {
-  static ResinfoData data;
-  size_t idx = find_tabulated_residue_idx(name);
-  return data.array[idx];
-}
+GEMMI_DLL ResidueInfo& find_tabulated_residue(const std::string& name);
 
 /// kind can be AA, RNA or DNA
 inline const char* expand_one_letter(char c, ResidueKind kind) {

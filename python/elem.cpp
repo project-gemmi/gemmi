@@ -152,12 +152,14 @@ void add_elem(nb::module_& m) {
   m.def("find_tabulated_residue", &find_tabulated_residue, nb::arg("name"),
         nb::rv_policy::reference,
         "Find chemical component information in the internal table.");
+  m.def("find_tabulated_residue_idx", &find_tabulated_residue_idx, nb::arg("name"));
   m.def("expand_one_letter", &expand_one_letter);
   m.def("expand_one_letter_sequence", &expand_one_letter_sequence);
   nb::handle mod = m;
   m.def("resinfo_table", [mod]() {
+      ResidueInfo* start = &gemmi::get_residue_info(0);
       return nb::make_iterator<nb::rv_policy::reference>(mod, "spacegroup_iterator",
-                                                         ResinfoData::array);
+                                                         start, start+362);
   });
 }
 
