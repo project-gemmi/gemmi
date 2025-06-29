@@ -162,7 +162,7 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         ln -fs /usr/share/zoneinfo/UTC /etc/localtime
         apt-get update
-        apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind
+        apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind cmake
     - name: install nanobind
       run: |
         python3 -m pip install nanobind typing_extensions sphinx sphinx-inline-tabs
@@ -199,15 +199,14 @@ jobs:
     - run: sudo apt-get install clang-13 libz-dev python3-pip python3-numpy
     - name: install nanobind
       run: |
-        sudo /usr/bin/python3 -m pip install -U packaging nanobind build scikit-build-core==0.11.1
+        sudo /usr/bin/python3 -m pip install -U packaging nanobind build scikit-build-core==0.10.7
     - name: build and test
       run: |
         $CXX --version
         echo >constraints.txt <<EOF
-        scikit-build-core>=0.12.0
-        packaging>=21.0
+        scikit-build-core>=0.10.7
         EOF
-        pip install --constraint constraints.txt -e .
+        pip install --constraint constraints.txt .
         python3 -m build --sdist
         python3 -m pip install -v dist/gemmi-*.tar.gz
         python3 -m unittest discover -v -s tests/
