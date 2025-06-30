@@ -199,7 +199,7 @@ jobs:
     - run: sudo apt-get install clang-13 libz-dev python3-pip python3-numpy
     - name: install nanobind
       run: |
-        sudo /usr/bin/python3 -m pip install -U packaging nanobind build scikit-build-core==0.10.7
+        sudo /usr/bin/python3 -m pip install -U nanobind build scikit-build-core==0.10.7
     - name: build and test
       run: |
         $CXX --version
