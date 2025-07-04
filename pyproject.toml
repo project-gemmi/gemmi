@@ -73,6 +73,11 @@ build.verbose = true
 USE_PYTHON = "ON"
 GENERATE_STUBS = "ON"
 
+[tool.scikit-build.sdist]
+include = [
+    "constraints.txt",  # This won't fail if the file doesn't exist
+]
+
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
 input = "include/gemmi/version.hpp"
