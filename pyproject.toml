@@ -64,6 +64,7 @@ sdist.include = [
   "third_party/zlib/*",
   "tests/*",
   "tools/gemmi-config.cmake.in",
+  "constraints.txt",  # This won't fail if the file doesn't exist
   "!__pycache__",
   "!*.pyc"
 ]
@@ -72,11 +73,6 @@ build.verbose = true
 [tool.scikit-build.cmake.define]
 USE_PYTHON = "ON"
 GENERATE_STUBS = "ON"
-
-[tool.scikit-build.sdist]
-include = [
-    "constraints.txt",  # This won't fail if the file doesn't exist
-]
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
