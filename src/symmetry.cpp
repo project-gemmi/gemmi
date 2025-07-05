@@ -251,9 +251,11 @@ std::string Op::triplet(char style) const {
   // 'x'==0x78, 'h'==0x68, 'a'==0x61, so 'a'&~3 == 0x60 == '`'
   if (lower_style != 'x' && lower_style != 'h' && lower_style != '`')
     fail("unexpected triplet style: '", style, "'");
-  return make_triplet_part(rot[0], tran[0], style) +
-   "," + make_triplet_part(rot[1], tran[1], style) +
-   "," + make_triplet_part(rot[2], tran[2], style);
+  // parse_triplet() transposes hkl ops such as l,h,k
+  auto r = !is_hkl()? rot : transposed_rot();
+  return make_triplet_part(r[0], tran[0], style) +
+   "," + make_triplet_part(r[1], tran[1], style) +
+   "," + make_triplet_part(r[2], tran[2], style);
 }
 
 
