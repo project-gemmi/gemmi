@@ -835,7 +835,7 @@ Selections
 Gemmi selection syntax is based on the selection syntax from MMDB,
 which is sometimes called CID (Coordinate ID). The MMDB syntax is described
 at the bottom of
-the `pdbcur documentation <http://legacy.ccp4.ac.uk/html/pdbcur.html>`_.
+the `pdbcur documentation <https://www.ccp4.ac.uk/html/pdbcur.html#atom-selection-syntax>`_.
 
 The selection has a form of slash-separated parts:
 /models/chains/residues/atoms. Leading and trailing parts can be omitted
