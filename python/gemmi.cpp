@@ -56,6 +56,7 @@ void add_misc(nb::module_& m) {
         return nb::make_iterator(nb::type<gemmi::CoorFileWalk>(), "iterator", self);
     }, nb::keep_alive<0, 1>());
   m.def("is_pdb_code", &gemmi::is_pdb_code);
+  m.def("path_in_pdb_dir", &gemmi::path_in_pdb_dir);
   m.def("expand_pdb_code_to_path", &gemmi::expand_pdb_code_to_path,
         nb::arg("code"), nb::arg("filetype"), nb::arg("throw_if_unset")=false);
   m.def("expand_if_pdb_code", &gemmi::expand_if_pdb_code,
