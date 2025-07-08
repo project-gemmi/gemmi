@@ -492,26 +492,19 @@ if (USE_PYTHON)
   else()
     set(py_dir py)
   endif()
-
-  file(GLOB PY_FILES "${CMAKE_CURRENT_SOURCE_DIR}/python/gemmi/*.py")
-  # Create a list of output files for BYPRODUCTS
-  set(PY_OUTPUTS)
-  foreach(PY_FILE ${PY_FILES})
-      get_filename_component(PY_NAME ${PY_FILE} NAME)
-      list(APPEND PY_OUTPUTS "${py_dir}/gemmi/${PY_NAME}")
-  endforeach()
+  set_property(TARGET gemmi_py PROPERTY LIBRARY_OUTPUT_DIRECTORY ${py_dir}/gemmi)
   add_custom_command(TARGET gemmi_py PRE_BUILD
-    COMMENT "Copying gemmi/*.py files"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${py_dir}/gemmi"
-    BYPRODUCTS ${PY_OUTPUTS})
-  foreach(PY_FILE ${PY_FILES})
-    get_filename_component(PY_NAME ${PY_FILE} NAME)
-    add_custom_command(TARGET gemmi_py PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                "${PY_FILE}"
-                "${py_dir}/gemmi/${PY_NAME}")
-  endforeach()
-
+    COMMENT "Copying gemmi/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/python/gemmi/__init__.py"
+            ${py_dir}/gemmi/__init__.py
+    BYPRODUCTS ${py_dir}/gemmi/__init__.py)
+  add_custom_command(TARGET gemmi_py POST_BUILD
+    COMMENT "Copying gemmi/fetch.py"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/python/gemmi/fetch.py"
+            ${py_dir}/gemmi/fetch.py
+    BYPRODUCTS ${py_dir}/gemmi/fetch.py)
 
   # nanobind gives warnings with -Wpedantic and -Wshadow
   if(CMAKE_CXX_FLAGS MATCHES "-Wshadow")
