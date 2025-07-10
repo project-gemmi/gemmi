@@ -15,6 +15,7 @@
 #include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
 #include "gemmi/read_cif.hpp"      // for read_cif_gz, read_mmjson_gz
 #include "gemmi/mmread_gz.hpp"     // for read_structure_gz
+#include "gemmi/mmread.hpp"        // for read_structure_from_memory
 #include "gemmi/json.hpp"          // for read_mmjson_insitu
 
 
@@ -64,6 +65,28 @@ void add_read_structure(nb::module_& m) {
     .value("Example", ChemCompModel::Example)
     .value("Ideal", ChemCompModel::Ideal);
 
+  m.def("read_structure_string", [](std::string& s, bool merge,
+                                    CoorFormat format, cif::Document* save_doc) {
+          Structure* st = new Structure(read_structure_from_memory(s.data(), s.size(), "string",
+                                                                   format, save_doc));
+          if (merge)
+            st->merge_chain_parts();
+          return st;
+        }, nb::arg("path"), nb::arg("merge_chain_parts")=true,
+           nb::arg("format")=CoorFormat::Unknown,
+           nb::arg("save_doc")=nb::none(),
+        "Reads a coordinate file into Structure.");
+  m.def("read_structure_string", [](nb::bytes& s, bool merge,
+                                    CoorFormat format, cif::Document* save_doc) {
+          Structure* st = new Structure(read_structure_from_memory((char*)s.c_str(), s.size(), "string",
+                                                                   format, save_doc));
+          if (merge)
+            st->merge_chain_parts();
+          return st;
+        }, nb::arg("path"), nb::arg("merge_chain_parts")=true,
+           nb::arg("format")=CoorFormat::Unknown,
+           nb::arg("save_doc")=nb::none(),
+        "Reads a coordinate file into Structure.");
   m.def("read_structure", [](const std::string& path, bool merge,
                              CoorFormat format, cif::Document* save_doc) {
           Structure* st = new Structure(read_structure_gz(path, format, save_doc));
