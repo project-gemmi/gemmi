@@ -265,6 +265,7 @@ void add_hkl(nb::module_& m) {
     .def("remove_systematic_absences", &Intensities::remove_systematic_absences)
     .def("sort", &Intensities::sort)
     .def("merge_in_place", &Intensities::merge_in_place, nb::arg("new_type"))
+    .def("merged", &Intensities::merged, nb::arg("new_type"))
     .def("calculate_merging_stats", &Intensities::calculate_merging_stats,
          nb::arg("binner").none(), nb::arg("use_weights")='Y')
     .def("prepare_for_merging", &Intensities::prepare_for_merging)

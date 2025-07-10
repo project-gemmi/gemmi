@@ -157,6 +157,12 @@ struct GEMMI_DLL Intensities {
 
   void merge_in_place(DataType new_type);
 
+  Intensities merged(DataType new_type) {
+    Intensities m(*this);
+    m.merge_in_place(new_type);
+    return m;
+  }
+
   /// use_weights can be 'Y' (yes, like Aimless), 'U' (unweighted), 'X' (yes, like XDS)
   std::vector<MergingStats> calculate_merging_stats(const Binner* binner,
                                                     char use_weights='Y') const;

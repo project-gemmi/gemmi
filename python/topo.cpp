@@ -27,6 +27,7 @@ NB_MAKE_OPAQUE(std::vector<Topo::FinalChemComp>)
 
 void add_topo(nb::module_& m) {
   nb::class_<Topo> topo(m, "Topo");
+  m.def("make_chemcomp_with_restraints", &make_chemcomp_with_restraints);
 
   nb::enum_<HydrogenChange>(m, "HydrogenChange")
     .value("NoChange", HydrogenChange::NoChange)
