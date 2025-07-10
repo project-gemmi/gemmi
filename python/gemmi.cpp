@@ -163,6 +163,9 @@ NB_MODULE(gemmi_ext, m_) {
   m.doc() = "Python bindings to GEMMI - a library used in macromolecular\n"
              "crystallography and related fields";
   m.attr("__version__") = GEMMI_VERSION;
+#ifdef NDEBUG
+  nb::set_leak_warnings(false);
+#endif
 
   nb::register_exception_translator([](const std::exception_ptr& p, void*) {
     try {

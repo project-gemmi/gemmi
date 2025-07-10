@@ -77,7 +77,7 @@ if __name__ == '__main__':
     for pdb_id in args.pdb_ids:
         url = get_url_for_code(pdb_id, use_cif=use_cif, pdb_site=args.pdb_site)
         print(f'get {url}...')
-        with urllib.request.urlopen(url, timeout=10) as response:
+        with urllib.request.urlopen(url, timeout=5) as response:
             content = response.read()
             ext = ('.cif' if use_cif else '.pdb')
             if args.pdb_site == 'u':
