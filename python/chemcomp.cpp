@@ -180,6 +180,7 @@ void add_chemcomp(nb::module_& m) {
     .def_rw("group", &ChemComp::group)
     .def_ro("atoms", &ChemComp::atoms)
     .def_ro("rt", &ChemComp::rt)
+    .def_rw("has_coordinates", &ChemComp::has_coordinates)
     .def_static("read_group", &ChemComp::read_group)
     .def_static("group_str", &ChemComp::group_str)
     .def("set_group", &ChemComp::set_group)
