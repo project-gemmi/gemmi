@@ -11,7 +11,7 @@ extern const option::Descriptor MonLibUsage[];
 
 struct MonArguments {
   const char* monomer_dir;
-  const option::Option* libin;
+  const option::Option* libin = nullptr;
   int verbose;
 
   bool has_plus() const {
