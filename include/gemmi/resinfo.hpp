@@ -61,6 +61,7 @@ struct ResidueInfo {
 
 GEMMI_DLL ResidueInfo& get_residue_info(size_t idx);
 GEMMI_DLL size_t find_tabulated_residue_idx(const std::string& name);
+constexpr size_t unknown_tabulated_residue_idx() { return 367; };
 GEMMI_DLL ResidueInfo& find_tabulated_residue(const std::string& name);
 
 /// kind can be AA, RNA or DNA

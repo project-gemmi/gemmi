@@ -17,7 +17,7 @@ inline double calculate_sequence_weight(const std::vector<std::string>& seq,
   double weight = 0.;
   for (const std::string& item : seq) {
     size_t idx = find_tabulated_residue_idx(Entity::first_mon(item));
-    if (idx == 361)
+    if (idx == unknown_tabulated_residue_idx())
       weight += unknown;
     else
       weight += get_residue_info(idx).weight;
