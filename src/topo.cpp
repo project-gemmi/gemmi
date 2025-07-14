@@ -858,7 +858,7 @@ void add_hydrogens_without_positions(Topo::ResInfo& ri, const NeighMap& neighbor
       auto range = neighbor_altlocs.equal_range(atoms[i].serial);
       for (auto it = range.first; it != range.second; ++it) {
         const Neigh& neigh = it->second;
-        if (altlocs.count(neigh.alt) == 0 && occ_sum + neigh.occ <= 1.001f) {
+        if (altlocs.count(neigh.alt) == 0 && neigh.occ < 1.0f && occ_sum + neigh.occ <= 1.001f) {
           occ_sum += neigh.occ;
           altlocs.emplace(neigh.alt, neigh.occ);
         }
