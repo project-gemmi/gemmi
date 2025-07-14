@@ -339,65 +339,70 @@ using RI = ResidueKind;
       case ID("ZN2"): return 318;
       case ID("FE2"): return 319;
       case ID("3NI"): return 320;
+      case ID("SIA"): return 321;
+      case ID("XYP"): return 322;
+      case ID("A2G"): return 323;
+      case ID("GLA"): return 324;
+      case ID("NDG"): return 325;
+      case ID("NGA"): return 326;
 #undef ID
     }} else if (name.size() == 1) {
     switch (name[0]& ~0x20) {
-      case 'A': return 321;
-      case 'C': return 322;
-      case 'G': return 323;
-      case 'I': return 324;
-      case 'U': return 325;
-      case 'N': return 326;
-      case 'F': return 327;
-      case 'K': return 328;
+      case 'A': return 327;
+      case 'C': return 328;
+      case 'G': return 329;
+      case 'I': return 330;
+      case 'U': return 331;
+      case 'N': return 332;
+      case 'F': return 333;
+      case 'K': return 334;
     }
   } else if (name.size() == 2) {
     if (name[0] == 'D' || name[0] == '+')
       switch (name[1]) {
-        case 'A': return 329;
-        case 'C': return 330;
-        case 'G': return 331;
-        case 'I': return 332;
-        case 'T': return 333;
-        case 'U': return 334;
-        case 'N': return 335;
+        case 'A': return 335;
+        case 'C': return 336;
+        case 'G': return 337;
+        case 'I': return 338;
+        case 'T': return 339;
+        case 'U': return 340;
+        case 'N': return 341;
       }
 #define ID(s) ((s)[0] << 8 | (s)[1])
     switch (ID(name.c_str())) {
-        case ID("AG"): return 336;
-        case ID("AL"): return 337;
-        case ID("BA"): return 338;
-        case ID("BR"): return 339;
-        case ID("CA"): return 340;
-        case ID("CD"): return 341;
-        case ID("CL"): return 342;
-        case ID("CM"): return 343;
-        case ID("CN"): return 344;
-        case ID("CO"): return 345;
-        case ID("CS"): return 346;
-        case ID("CU"): return 347;
-        case ID("FE"): return 348;
-        case ID("HG"): return 349;
-        case ID("LI"): return 350;
-        case ID("MG"): return 351;
-        case ID("MN"): return 352;
-        case ID("NA"): return 353;
-        case ID("NI"): return 354;
-        case ID("NO"): return 355;
-        case ID("PB"): return 356;
-        case ID("RB"): return 357;
-        case ID("SR"): return 358;
-        case ID("Y1"): return 359;
-        case ID("ZN"): return 360;
+        case ID("AG"): return 342;
+        case ID("AL"): return 343;
+        case ID("BA"): return 344;
+        case ID("BR"): return 345;
+        case ID("CA"): return 346;
+        case ID("CD"): return 347;
+        case ID("CL"): return 348;
+        case ID("CM"): return 349;
+        case ID("CN"): return 350;
+        case ID("CO"): return 351;
+        case ID("CS"): return 352;
+        case ID("CU"): return 353;
+        case ID("FE"): return 354;
+        case ID("HG"): return 355;
+        case ID("LI"): return 356;
+        case ID("MG"): return 357;
+        case ID("MN"): return 358;
+        case ID("NA"): return 359;
+        case ID("NI"): return 360;
+        case ID("NO"): return 361;
+        case ID("PB"): return 362;
+        case ID("RB"): return 363;
+        case ID("SR"): return 364;
+        case ID("Y1"): return 365;
+        case ID("ZN"): return 366;
       }
 #undef ID
     }
-    return 361;
-
+    return 367;
  }
 
 ResidueInfo& get_residue_info(size_t idx) {
-  static ResidueInfo array[362] = {
+  static ResidueInfo array[368] = {
     // hydrogen_count needs to be verified
     {"ALA", RI::AA,  1, 'A',   7, 89.0932f },
     {"ARG", RI::AA,  1, 'R',  15, 175.209f },
@@ -446,7 +451,7 @@ ResidueInfo& get_residue_info(size_t idx) {
     {"DAL", RI::AAD, 1, 'a',   7, 89.0932f },
     {"TYS", RI::AA,  1, 'y',  11, 261.252f },
     {"OCS", RI::AA,  1, 'c',   7, 169.156f },
-    // 40"zz
+    // 40
 
     {"M3L", RI::AA,  1, 'k',  21, 189.275f },
     {"FME", RI::AA,  1, 'm',  11, 177.221f },
@@ -777,17 +782,24 @@ ResidueInfo& get_residue_info(size_t idx) {
     {"ZN2", RI::BUF, 0, ' ',   0, 65.3800f },
     {"FE2", RI::BUF, 0, ' ',   0, 55.8450f },
     {"3NI", RI::BUF, 0, ' ',   0, 58.6934f },
+    {"SIA", RI::PYR, 0, ' ',   0, 0.0f },
+    {"XYP", RI::PYR, 0, ' ',   0, 0.0f },
+    {"A2G", RI::PYR, 0, ' ',   0, 0.0f },
+    {"GLA", RI::PYR, 0, ' ',   0, 0.0f },
+    {"NDG", RI::PYR, 0, ' ',   0, 0.0f },
+    // 290
+    {"NGA", RI::PYR, 0, ' ',   0, 0.0f },
     {"A",   RI::RNA, 2, 'A',  14, 347.221f },
     {"C",   RI::RNA, 2, 'C',  14, 323.197f },
     {"G",   RI::RNA, 2, 'G',  14, 363.221f },
     {"I",   RI::RNA, 2, 'I',  13, 348.206f },
     {"U",   RI::RNA, 2, 'U',  13, 324.181f },
     {"N",   RI::RNA, 2, 'N',  11, 214.11f },
-    // 290
 
     {"F",   RI::BUF, 0, ' ',   0, 18.9984f },
     {"K",   RI::BUF, 0, ' ',   0, 39.0983f },
     {"DA", RI::DNA, 2, 'A',  14, 331.222f },
+    // 300
     {"DC", RI::DNA, 2, 'C',  14, 307.197f },
     {"DG", RI::DNA, 2, 'G',  14, 347.221f },
     {"DI", RI::DNA, 2, 'I',  13, 332.207f },
@@ -796,7 +808,7 @@ ResidueInfo& get_residue_info(size_t idx) {
     {"DN", RI::DNA, 2, 'N',  14, 198.111f },  // unknown DNA
     {"AG",  RI::BUF, 0, ' ',   0, 107.868f },
     {"AL",  RI::BUF, 0, ' ',   0, 26.9815f },
-    // 300
+    // 308
 
     {"BA",  RI::BUF, 0, ' ',   0, 137.327f },
     {"BR",  RI::BUF, 0, ' ',   0, 79.9040f },
@@ -809,7 +821,7 @@ ResidueInfo& get_residue_info(size_t idx) {
     {"CS",  RI::BUF, 0, ' ',   0, 132.905f },
     {"CU",  RI::BUF, 0, ' ',   0, 63.5460f },
     {"FE",  RI::BUF, 0, ' ',   0, 55.8450f },
-    // 310
+    // 318
 
     {"HG",  RI::BUF, 0, ' ',   0, 200.590f },
     {"LI",  RI::BUF, 0, ' ',   0, 6.94100f },
@@ -817,12 +829,12 @@ ResidueInfo& get_residue_info(size_t idx) {
     {"MN",  RI::BUF, 0, ' ',   0, 54.9380f },
     {"NA",  RI::BUF, 0, ' ',   0, 22.9898f },
     {"NI",  RI::BUF, 0, ' ',   0, 58.6934f },
-    {"NO",  RI::ELS, 0, ' ', 0, 30.0061f },
+    {"NO",  RI::ELS, 0, ' ',   0, 30.0061f },
     {"PB",  RI::BUF, 0, ' ',   0, 207.200f },
     {"RB",  RI::BUF, 0, ' ',   0, 85.4678f },
     {"SR",  RI::BUF, 0, ' ',   0, 87.6200f },
     {"Y1",  RI::BUF, 0, ' ',   0, 88.9059f },
-    // 320
+    // 328
 
     {"ZN",  RI::BUF, 0, ' ',   0, 65.3800f },
     {"",    RI::UNKNOWN, 0, ' ', 0, 0.0f }

@@ -520,7 +520,7 @@ specify the average weight of the components that are not tabulated:
   >>> sequence = ['DSN', 'ALA', 'N2C', 'MVA', 'DSN', 'ALA', 'NCY', 'MVA']
   >>> gemmi.calculate_sequence_weight(sequence)
   524.6114543066407
-  >>> 524.6114543066407 + 2*130.0
+  >>> 524.6114543066407 + 2*130.0 # N2C and NCY are not tabulated
   784.6114543066407
   >>> gemmi.calculate_sequence_weight(sequence, unknown=130.0)
   784.6114543066407
