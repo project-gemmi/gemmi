@@ -469,7 +469,7 @@ void convert(gemmi::Structure& st,
   }
 
   HowToNameCopiedChain how = HowToNameCopiedChain::AddNumber;
-  if (output_type == CoorFormat::Pdb)
+  if (output_type == CoorFormat::Pdb || options[ShortenCN])
     how = HowToNameCopiedChain::Short;
   if (options[AsAssembly]) {
     gemmi::Logger logger{&gemmi::Logger::to_stderr, options[Verbose] ? 6 : 3};
