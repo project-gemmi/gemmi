@@ -24,7 +24,9 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  FormatIn=AfterMonLibOptions, Sort, Update, RemoveH, KeepH, Water, Unique, NoChange
+  FormatIn=AfterMonLibOptions, Sort, Update, RemoveH, KeepH, Water, Unique, NoChange,
+  CalculateH, HBondDefinition, UseNeighborSearch, Cutoff, PiHelixPreference,
+  SearchPolyproline, ClearDefective, HBondEnergyThreshold, MinCADistance, BendAngleMin
 };
 
 const option::Descriptor Usage[] = {
@@ -41,7 +43,26 @@ const option::Descriptor Usage[] = {
   MonLibUsage[1], // Libin
   { FormatIn, 0, "", "format", Arg::CoorFormat,
     "  --format=FORMAT  \tInput format (default: from the file extension)." },
-  // --angle, --existing-h, --dssp2 and other parameters
+  { CalculateH, 0, "", "calculate-h", Arg::None,
+    "  --calculate-h  \tCalculate hydrogen positions (original DSSP method). Default: use existing H atoms." },
+  { HBondDefinition, 0, "", "hbond", Arg::Required,
+    "  --hbond=TYPE  \tHydrogen bond definition: energy (DSSP) or geometry (distance+angle)." },
+  { UseNeighborSearch, 0, "", "nb", Arg::None,
+    "  --nb  \tUse neighbor search for efficiency." },
+  { Cutoff, 0, "", "cutoff", Arg::Float,
+    "  --cutoff=DIST  \tCutoff distance for neighbor search (default: 0.9 nm)." },
+  { PiHelixPreference, 0, "", "pihelix", Arg::None,
+    "  --pihelix  \tPrefer pi-helices over alpha-helices." },
+  { SearchPolyproline, 0, "", "polypro", Arg::None,
+    "  --polypro  \tSearch for polyproline helices." },
+  { ClearDefective, 0, "", "clear", Arg::None,
+    "  --clear  \tRemove residues with missing backbone atoms." },
+  { HBondEnergyThreshold, 0, "", "energy-cutoff", Arg::Float,
+    "  --energy-cutoff=VAL  \tHydrogen bond energy cutoff (default: -0.5 kcal/mol)." },
+  { MinCADistance, 0, "", "min-ca-dist", Arg::Float,
+    "  --min-ca-dist=DIST  \tMinimum CA distance for hydrogen bonding (default: 9.0 A)." },
+  { BendAngleMin, 0, "", "bend-angle", Arg::Float,
+    "  --bend-angle=ANGLE  \tMinimum angle for bend assignment (default: 70.0 degrees)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -63,6 +84,47 @@ int GEMMI_MAIN(int argc, char **argv) {
   std::string input = p.coordinate_input_file(0);
   std::string output = p.nonOption(1);
   p.check_exclusive_group({KeepH, RemoveH, Water, Unique});
+
+  // Setup DSSP options
+  gemmi::DsspOptions dssp_options;
+
+  // Parse hydrogen mode
+  if (p.options[CalculateH]) {
+    dssp_options.hydrogen_mode = gemmi::HydrogenMode::Calculate;
+  } else {
+    dssp_options.hydrogen_mode = gemmi::HydrogenMode::Existing;
+  }
+
+  // Parse hydrogen bond definition
+  if (p.options[HBondDefinition]) {
+    std::string hbond = p.options[HBondDefinition].arg;
+    if (hbond == "energy") {
+      dssp_options.hbond_definition = gemmi::HBondDefinition::Energy;
+    } else if (hbond == "geometry") {
+      dssp_options.hbond_definition = gemmi::HBondDefinition::Geometry;
+    } else {
+      std::fprintf(stderr, "Error: Invalid hydrogen bond definition '%s'. Use 'energy' or 'geometry'.\n", hbond.c_str());
+      return 1;
+    }
+  }
+
+  // Parse other DSSP options
+  if (p.options[UseNeighborSearch])
+    dssp_options.use_neighbor_search = true;
+  if (p.options[Cutoff])
+    dssp_options.cutoff = std::stod(p.options[Cutoff].arg);
+  if (p.options[PiHelixPreference])
+    dssp_options.pi_helix_preference = true;
+  if (p.options[SearchPolyproline])
+    dssp_options.search_polyproline = true;
+  if (p.options[ClearDefective])
+    dssp_options.clear_defective_residues = true;
+  if (p.options[HBondEnergyThreshold])
+    dssp_options.hbond_energy_cutoff = std::stod(p.options[HBondEnergyThreshold].arg);
+  if (p.options[MinCADistance])
+    dssp_options.min_ca_distance = std::stod(p.options[MinCADistance].arg);
+  if (p.options[BendAngleMin])
+    dssp_options.bend_angle_min = std::stod(p.options[BendAngleMin].arg);
 
   gemmi::HydrogenChange h_change = gemmi::HydrogenChange::ReAddButWater;
   if (p.options[Water])
@@ -100,8 +162,10 @@ int GEMMI_MAIN(int argc, char **argv) {
      if (st.models.empty() || st.models[0].chains.empty()) {
        std::fprintf(stderr, "No atoms in the input file. Wrong format?\n");
        return 1;
-       gemmi::setup_entities(st);
-       size_t initial_h = 0;
+     }
+
+     gemmi::setup_entities(st);
+     size_t initial_h = 0;
      if (p.options[Verbose])
        initial_h = count_hydrogens(st);
      if (h_change == gemmi::HydrogenChange::Remove)
@@ -120,13 +184,40 @@ int GEMMI_MAIN(int argc, char **argv) {
          std::unique_ptr<gemmi::Topo> topo =
            prepare_topology(st, monlib, i, h_change, p.options[Sort], {&gemmi::Logger::to_stderr});
          gemmi::NeighborSearch ns(model, st.cell, 9);
-         //size_t idx = ns.grid.index_q(u, v, w);
-         for (gemmi::Topo::ChainInfo& ci : topo->chain_infos)
-           // TODO: add Calphas atoms to ns
-           gemmi::dssp_determine_hydrogen_bonds(ns, ci);
-           // TODO: find nearby Calphas for each peptide
-           //ns.for_each(const Position &pos, char alt, double radius, const Func &func);
-           // TODO: check if NH-CO makes hydrogen bond
+
+         // Calculate secondary structure using DSSP
+         gemmi::DsspCalculator dssp_calc(dssp_options);
+
+         for (gemmi::Topo::ChainInfo& ci : topo->chain_infos) {
+           if (ci.polymer) {
+             std::string ss_string = dssp_calc.calculate_secondary_structure(ns, ci);
+             if (p.options[Verbose]) {
+               std::printf("Chain %s secondary structure: %s\n",
+                          ci.chain_ref.name.c_str(), ss_string.c_str());
+               if (p.options[Verbose].count() > 1) {
+                 for (size_t j = 0; j < dssp_calc.residue_info.size(); ++j) {
+                   gemmi::ResidueInfo& resinfo = dssp_calc.residue_info[j];
+                   gemmi::Residue& res= *resinfo.res_info->res;
+                   auto offset = [&](gemmi::Topo::ResInfo* ri) {
+                     if (!ri || !resinfo.res_info)
+                       return 0;
+                     return int(ri - resinfo.res_info);
+                   };
+                   std::printf("# %zu %s %s  %d, %g   %d, %g    %d, %g    %d, %g\n",
+                               j+1, res.seqid.str().c_str(), ci.chain_ref.name.c_str(),
+                               offset(resinfo.acceptors[0]), resinfo.acceptor_energies[0],
+                               offset(resinfo.donors[0]), resinfo.donor_energies[0],
+                               offset(resinfo.acceptors[1]), resinfo.acceptor_energies[1],
+                               offset(resinfo.donors[1]), resinfo.donor_energies[1]);
+                 }
+               }
+             }
+
+             // Store secondary structure in structure
+             // TODO: Add secondary structure annotation to the structure
+           }
+         }
+       }
      }
      if (p.options[Verbose]) {
        std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
@@ -148,8 +239,6 @@ int GEMMI_MAIN(int argc, char **argv) {
        cif::WriteOptions cif_options;
        cif_options.prefer_pairs = true;
        cif::write_cif_to_stream(os.ref(), *doc, cif_options);
-       }
-     }
      }
   } catch (std::exception& e) {
     std::fprintf(stderr, "ERROR: %s\n", e.what());

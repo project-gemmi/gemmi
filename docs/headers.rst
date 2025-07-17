@@ -84,7 +84,7 @@ gemmi/dirwalk.hpp
     depend on C++17 <filesystem>).
 
 gemmi/dssp.hpp
-    Functions for working with sequences (other than alignment).
+    DSSP (Define Secondary Structure of Proteins) implementation.
 
 gemmi/ecalc.hpp
     Normalization of amplitudes F->E ("Karle" approach, similar to CCP4 ECALC).
