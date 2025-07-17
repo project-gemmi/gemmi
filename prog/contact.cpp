@@ -18,7 +18,7 @@ namespace {
 using namespace gemmi;
 using std::printf;
 
-enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym, AsAssembly,
+enum OptionIndex { Cov=4, CovMult, MaxDist, Occ, Ignore, NoSym, Asus, AsAssembly,
                    NoH, NoWater, NoLigand, Count, Twice, Sort };
 
 const option::Descriptor Usage[] = {
@@ -41,8 +41,10 @@ const option::Descriptor Usage[] = {
     "2=same or adjacent residue, 3=chain, 4=asu." },
   { NoSym, 0, "", "nosym", Arg::None,
     "  --nosym  \tIgnore contacts between symmetry mates." },
+  { Asus, 0, "", "asus", Arg::None,
+    "  --asus  \tList asymmetric units that are in contact with 1_555, not individual contacts." },
   { AsAssembly, 0, "", "assembly", Arg::Required,
-    "  --assembly=ID  \tOutput bioassembly with given ID (1, 2, ...)." },
+    "  --assembly=ID  \tAnalyze bioassembly with given ID (1, 2, ...)." },
   { NoH, 0, "", "noh", Arg::None,
     "  --noh  \tIgnore hydrogen (and deuterium) atoms." },
   { NoWater, 0, "", "nowater", Arg::None,
@@ -64,6 +66,7 @@ struct ContactParameters {
   bool print_count;
   bool no_hydrogens;
   bool no_symmetry;
+  bool print_only_images;
   bool twice;
   bool sort;
   float cov_tol = 0.0f;
@@ -116,19 +119,53 @@ void print_contacts(Structure& st, const ContactParameters& params) {
     contacts.setup_atomic_radii(params.cov_mult, params.cov_tol);
   std::multimap<double, std::string> lines;
   char buf[256];
+  std::vector<std::string> image_triplets;
+  if (params.print_only_images)
+    if (const SpaceGroup* sg = st.find_spacegroup()) {
+      GroupOps gops = sg->operations();
+      for (gemmi::Op op : gops)
+        image_triplets.push_back(op.triplet());
+    }
   contacts.for_each_contact(ns, [&](const CRA& cra1, const CRA& cra2,
                                     int image_idx, double dist_sq) {
       ++counter;
       if (params.print_count)
         return;
       std::string sym1, sym2;
+      NearestImage im;
       if (!params.no_symmetry) {
-        NearestImage im = st.cell.find_nearest_pbc_image(cra1.atom->pos,
-                                                         cra2.atom->pos, image_idx);
+        im = st.cell.find_nearest_pbc_image(cra1.atom->pos, cra2.atom->pos, image_idx);
         sym1 = "1555";
         sym2 = im.symmetry_code(false);
       }
       std::string conn_info;
+      if (params.print_only_images) {
+        if (!im.same_asu()) {
+          std::string triplet;
+          if ((size_t) im.sym_idx < image_triplets.size())
+            triplet = image_triplets[im.sym_idx];
+          else
+            triplet = "image=" + std::to_string(im.sym_idx);
+          snprintf_z(buf, 255, "%s (%+d,%+d,%+d)\n", triplet.c_str(), im.pbc_shift[0],
+                     im.pbc_shift[1], im.pbc_shift[2]);
+          bool contains = false;
+          for (auto i = lines.begin(); i != lines.end(); ) {
+            if (i->second == buf) {
+              if (i->first < dist_sq) {
+                i = lines.erase(i);
+              } else {
+                contains = true;
+                ++i;
+              }
+            } else {
+              ++i;
+            }
+          }
+          if (!contains)
+            lines.emplace(dist_sq, buf);
+        }
+        return;
+      }
       if (Connection* conn = st.find_connection_by_cra(cra1, cra2))
         conn_info = conn->name.empty() ? "(link)" : conn->name;
       snprintf_z(buf, 255, "%-11s %-4s%c%3s%2s%4s%c         "
@@ -150,7 +187,7 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       else
         printf("%s", buf);
   });
-  if (params.sort)
+  if (params.sort || params.print_only_images)
     for (const auto& it : lines)
       printf("%s", it.second.c_str());
   if (params.print_count)
@@ -185,6 +222,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   params.print_count = p.options[Count];
   params.no_hydrogens = p.options[NoH];
   params.no_symmetry = p.options[NoSym];
+  params.print_only_images = p.options[Asus];
   params.twice = p.options[Twice];
   params.sort = p.options[Sort];
   try {

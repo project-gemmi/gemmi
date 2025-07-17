@@ -117,3 +117,6 @@ exceptions.overgeneral-exceptions = ["builtins.BaseException"]
   "duplicate-code", "import-outside-toplevel", "unspecified-encoding",
   "consider-using-f-string"
 ]
+
+[tool.ty]
+environment.extra-paths = ["build/py/gemmi"]
