@@ -1013,10 +1013,9 @@ void read_entity_and_sequence_info(cif::Block& block, Structure& st) {
 } // anonymous namespace
 
 
-Structure make_structure_from_block(const cif::Block& block_) {
+void populate_structure_from_block(const cif::Block& block_, Structure& st) {
   // find() and Table don't have const variants, but we don't change anything.
   cif::Block& block = const_cast<cif::Block&>(block_);
-  gemmi::Structure st;
   st.input_format = CoorFormat::Mmcif;
   st.name = block.name;
   impl::set_cell_from_mmcif(block, st.cell);
@@ -1072,8 +1071,6 @@ Structure make_structure_from_block(const cif::Block& block_) {
     }
     restore_full_ccd_codes(st);
   }
-
-  return st;
 }
 
 

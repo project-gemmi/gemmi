@@ -99,6 +99,8 @@ void add_read_structure(nb::module_& m) {
         "Reads a coordinate file into Structure.");
   m.def("make_structure_from_block", &make_structure_from_block,
         nb::arg("block"), "Takes mmCIF block and returns Structure.");
+  m.def("populate_structure_from_block", &populate_structure_from_block,
+        nb::arg("block"), nb::arg("st"));
   m.def("make_structure_from_chemcomp_block", &make_structure_from_chemcomp_block,
         nb::arg("block"), nb::arg("which")=7,
         "CIF block from CCD or monomer library -> single-residue Model(s).");

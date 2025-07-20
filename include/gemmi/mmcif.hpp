@@ -13,7 +13,13 @@
 namespace gemmi {
 
 /// structure from a coordinate mmCIF block
-GEMMI_DLL Structure make_structure_from_block(const cif::Block& block);
+GEMMI_DLL void populate_structure_from_block(const cif::Block& block_, Structure& st);
+
+inline Structure make_structure_from_block(const cif::Block& block_) {
+  gemmi::Structure st;
+  populate_structure_from_block(block_, st);
+  return st;
+}
 
 /// structure from a coordinate mmCIF document
 inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nullptr) {
