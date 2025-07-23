@@ -97,13 +97,13 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   // Parse hydrogen bond definition
   if (p.options[HBondDefinition]) {
-    std::string hbond = p.options[HBondDefinition].arg;
-    if (hbond == "energy") {
+    const char* hbond = p.options[HBondDefinition].arg;
+    if (gemmi::alpha_up(*hbond) == 'E') {
       dssp_options.hbond_definition = gemmi::HBondDefinition::Energy;
-    } else if (hbond == "geometry") {
+    } else if (gemmi::alpha_up(*hbond) == 'G') {
       dssp_options.hbond_definition = gemmi::HBondDefinition::Geometry;
     } else {
-      std::fprintf(stderr, "Error: Invalid hydrogen bond definition '%s'. Use 'energy' or 'geometry'.\n", hbond.c_str());
+      std::fprintf(stderr, "Error: Invalid hydrogen bond definition '%s'. Use 'energy' or 'geometry'.\n", hbond);
       return 1;
     }
   }

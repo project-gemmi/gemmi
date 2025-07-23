@@ -39,6 +39,7 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
   // Clear previous calculations
   residue_info.clear();
   ss_info.clear();
+  bridges_.clear();
 
   // Setup residue information
   setup_residue_info(cinfo);
@@ -216,14 +217,18 @@ void DsspCalculator::calculate_hbond_energy(ResidueInfo* donor, ResidueInfo* acc
   double dist_HC = h_pos.dist(acceptor->get_backbone_atom(ResidueInfo::C)->pos);
 
   // Calculate hydrogen bond energy
-  double energy;
+  double energy = 0;
   if (dist_NO < MIN_ATOM_DISTANCE || dist_HC < MIN_ATOM_DISTANCE ||
-
       dist_HO < MIN_ATOM_DISTANCE || dist_NC < MIN_ATOM_DISTANCE) {
-    energy = MIN_ENERGY;
+    energy = 0;
   } else {
     energy = COUPLING_CONSTANT * ((1.0/dist_NO) + (1.0/dist_HC) - (1.0/dist_HO) - (1.0/dist_NC));
   }
+
+  if (energy < MIN_ENERGY) {
+      energy = MIN_ENERGY;
+  }
+
   // Store the hydrogen bond information
   if (energy < donor->acceptor_energies[0]) {
     donor->acceptors[1] = donor->acceptors[0];
@@ -298,20 +303,22 @@ void DsspCalculator::calculate_hbond_geometry(ResidueInfo* donor, ResidueInfo* a
 }
 
 bool DsspCalculator::has_hbond_between(size_t donor_idx, size_t acceptor_idx) const {
-  const ResidueInfo& donor = residue_info[donor_idx];
-  const ResidueInfo& acceptor = residue_info[acceptor_idx];
+    const ResidueInfo& donor = residue_info[donor_idx];
+    const ResidueInfo& acceptor = residue_info[acceptor_idx];
 
-  bool has_bond = false;
+    for (int i = 0; i < 2; ++i) {
+        if (donor.acceptors[i] == acceptor.res_info && donor.acceptor_energies[i] < options.hbond_energy_cutoff) {
+            return true;
+        }
+    }
 
-  if (donor.acceptors[0] == acceptor.res_info) {
-    has_bond = (options.hbond_definition == HBondDefinition::Geometry) ||
-               (donor.acceptor_energies[0] < options.hbond_energy_cutoff);
-  } else if (donor.acceptors[1] == acceptor.res_info) {
-    has_bond = (options.hbond_definition == HBondDefinition::Geometry) ||
-               (donor.acceptor_energies[1] < options.hbond_energy_cutoff);
-  }
+    for (int i = 0; i < 2; ++i) {
+        if (acceptor.donors[i] == donor.res_info && acceptor.donor_energies[i] < options.hbond_energy_cutoff) {
+            return true;
+        }
+    }
 
-  return has_bond;
+    return false;
 }
 
 bool DsspCalculator::no_chain_breaks_between(size_t res1_idx, size_t res2_idx) const {
@@ -324,174 +331,102 @@ bool DsspCalculator::no_chain_breaks_between(size_t res1_idx, size_t res2_idx) c
   return true;
 }
 
-BridgeType DsspCalculator::calculate_bridge_type(size_t res1_idx, size_t res2_idx) const {
-  if (res1_idx == 0 || res2_idx == 0 ||
-      res1_idx + 1 >= residue_info.size() || res2_idx + 1 >= residue_info.size()) {
-    return BridgeType::None;
-  }
-
-  if (!no_chain_breaks_between(res1_idx - 1, res1_idx + 1) ||
-      !no_chain_breaks_between(res2_idx - 1, res2_idx + 1)) {
-    return BridgeType::None;
-  }
-
-  // Check parallel bridge patterns
-  if ((has_hbond_between(res1_idx + 1, res2_idx) && has_hbond_between(res2_idx, res1_idx - 1)) ||
-      (has_hbond_between(res2_idx + 1, res1_idx) && has_hbond_between(res1_idx, res2_idx - 1))) {
-    return BridgeType::Parallel;
-  }
-
-  // Check antiparallel bridge patterns
-  if ((has_hbond_between(res1_idx + 1, res2_idx - 1) && has_hbond_between(res2_idx + 1, res1_idx - 1)) ||
-      (has_hbond_between(res2_idx, res1_idx) && has_hbond_between(res1_idx, res2_idx))) {
+BridgeType DsspCalculator::calculate_bridge_type(size_t i, size_t j) const {
+  // antiparallel
+  bool anti1 = has_hbond_between(i, j) && has_hbond_between(j, i);
+  bool anti2 = has_hbond_between(i - 1, j + 1) && has_hbond_between(j - 1, i + 1);
+  if (anti1 && anti2)
     return BridgeType::AntiParallel;
-  }
+  // parallel
+  bool para1 = has_hbond_between(i, j + 1) && has_hbond_between(j, i + 1);
+  bool para2 = has_hbond_between(i - 1, j) && has_hbond_between(j - 1, i);
+  if (para1 && para2)
+    return BridgeType::Parallel;
 
   return BridgeType::None;
 }
 
 void DsspCalculator::find_bridges_and_strands() {
   // Find bridges
-  for (size_t i = 1; i + 4 < ss_info.size(); ++i) {
-    for (size_t j = i + 3; j + 1 < ss_info.size(); ++j) {
+  for (size_t i = 1; i + 1 < residue_info.size(); ++i) {
+    for (size_t j = i + 1; j < residue_info.size(); ++j) {
       BridgeType bridge_type = calculate_bridge_type(i, j);
       if (bridge_type != BridgeType::None) {
-        ss_info[i].add_bridge(j, bridge_type);
-        ss_info[j].add_bridge(i, bridge_type);
+        bridges_.emplace_back(Bridge{i, j, bridge_type});
       }
     }
   }
 
   // Find strands from bridge patterns
-  for (size_t i = 1; i + 1 < ss_info.size(); ++i) {
-    for (size_t j = 1; j < 3 && i + j < ss_info.size(); ++j) {
-      for (BridgeType bridge_type : {BridgeType::Parallel, BridgeType::AntiParallel}) {
-        if (ss_info[i].has_bridges(bridge_type) && ss_info[i + j].has_bridges(bridge_type) &&
-            no_chain_breaks_between(i - 1, i + 1) && no_chain_breaks_between(i + j - 1, i + j + 1)) {
-
-          const auto& i_partners = (bridge_type == BridgeType::Parallel) ?
-                                   ss_info[i].parallel_bridges : ss_info[i].antiparallel_bridges;
-          const auto& j_partners = (bridge_type == BridgeType::Parallel) ?
-                                   ss_info[i + j].parallel_bridges : ss_info[i + j].antiparallel_bridges;
-
-          for (size_t i_partner : i_partners) {
-            for (size_t j_partner : j_partners) {
-              if (std::abs(static_cast<int>(i_partner) - static_cast<int>(j_partner)) < 6) {
-                size_t strand_start = std::min(i_partner, j_partner);
-                size_t strand_end = std::max(i_partner, j_partner);
-
-                // Mark second strand as extended
-                for (size_t k = strand_start; k <= strand_end; ++k) {
-                  ss_info[k].ss_type = SecondaryStructure::Strand;
-                }
-
-                // Mark first strand as extended
-                for (size_t k = 0; k <= j; ++k) {
-                  ss_info[i + k].ss_type = SecondaryStructure::Strand;
-                }
+  for (size_t i = 0; i < bridges_.size(); ++i) {
+      for (size_t j = i + 1; j < bridges_.size(); ++j) {
+          const Bridge& b1 = bridges_[i];
+          const Bridge& b2 = bridges_[j];
+          if (b1.type == b2.type && no_chain_breaks_between(b1.partner1, b1.partner2) && no_chain_breaks_between(b2.partner1, b2.partner2)) {
+              if (b1.partner1 == b2.partner1 + 1 && b1.partner2 == b2.partner2 - 1 && b1.type == BridgeType::AntiParallel) {
+                  ss_info[b1.partner1].ss_type = SecondaryStructure::Strand;
+                  ss_info[b1.partner2].ss_type = SecondaryStructure::Strand;
+                  ss_info[b2.partner1].ss_type = SecondaryStructure::Strand;
+                  ss_info[b2.partner2].ss_type = SecondaryStructure::Strand;
               }
-            }
+              if (b1.partner1 == b2.partner1 + 1 && b1.partner2 == b2.partner2 + 1 && b1.type == BridgeType::Parallel) {
+                  ss_info[b1.partner1].ss_type = SecondaryStructure::Strand;
+                  ss_info[b1.partner2].ss_type = SecondaryStructure::Strand;
+                  ss_info[b2.partner1].ss_type = SecondaryStructure::Strand;
+                  ss_info[b2.partner2].ss_type = SecondaryStructure::Strand;
+              }
           }
-        }
       }
-    }
   }
 
   // Mark isolated bridges
-  for (size_t i = 1; i + 1 < ss_info.size(); ++i) {
-    if (ss_info[i].ss_type != SecondaryStructure::Strand &&
-        (ss_info[i].has_bridges(BridgeType::Parallel) || ss_info[i].has_bridges(BridgeType::AntiParallel))) {
-      ss_info[i].ss_type = SecondaryStructure::Bridge;
-    }
+  for (const auto& bridge : bridges_) {
+      if (ss_info[bridge.partner1].ss_type == SecondaryStructure::Loop)
+        ss_info[bridge.partner1].ss_type = SecondaryStructure::Bridge;
+      if (ss_info[bridge.partner2].ss_type == SecondaryStructure::Loop)
+        ss_info[bridge.partner2].ss_type = SecondaryStructure::Bridge;
   }
 }
 
 void DsspCalculator::find_turns_and_helices() {
   // Find helix patterns for different turn types
-  for (TurnType turn_type : {TurnType::Turn_3, TurnType::Turn_4, TurnType::Turn_5}) {
-    size_t stride = static_cast<size_t>(turn_type);
-
-    // Find individual turns
-    for (size_t i = 0; i + stride < ss_info.size(); ++i) {
-      if (has_hbond_between(i + stride, i) && no_chain_breaks_between(i, i + stride)) {
-        ss_info[i + stride].set_helix_position(turn_type, HelixPosition::End);
-
-        for (size_t k = 1; k < stride; ++k) {
-          if (ss_info[i + k].get_helix_position(turn_type) == HelixPosition::None) {
-            ss_info[i + k].set_helix_position(turn_type, HelixPosition::Middle);
-          }
-        }
-
-        if (ss_info[i].get_helix_position(turn_type) == HelixPosition::End) {
-          ss_info[i].set_helix_position(turn_type, HelixPosition::StartAndEnd);
-        } else {
-          ss_info[i].set_helix_position(turn_type, HelixPosition::Start);
+  for (size_t n = 3; n <= 5; ++n) {
+    for (size_t i = 0; i + n < residue_info.size(); ++i) {
+      if (has_hbond_between(i, i + n)) {
+        if (no_chain_breaks_between(i, i + n)) {
+            for (size_t k = i + 1; k < i + n; ++k) {
+                if (ss_info[k].ss_type == SecondaryStructure::Loop)
+                    ss_info[k].ss_type = SecondaryStructure::Turn;
+            }
         }
       }
     }
   }
 
-  // Assign helix secondary structure
-  for (TurnType turn_type : {TurnType::Turn_4, TurnType::Turn_3, TurnType::Turn_5}) {
-    size_t stride = static_cast<size_t>(turn_type);
-
-    for (size_t i = 1; i + stride < ss_info.size(); ++i) {
-      if ((ss_info[i - 1].get_helix_position(turn_type) == HelixPosition::Start ||
-           ss_info[i - 1].get_helix_position(turn_type) == HelixPosition::StartAndEnd) &&
-          (ss_info[i].get_helix_position(turn_type) == HelixPosition::Start ||
-           ss_info[i].get_helix_position(turn_type) == HelixPosition::StartAndEnd)) {
-
-        SecondaryStructure helix_type;
-        bool can_assign = true;
-
-        switch (turn_type) {
-          case TurnType::Turn_3:
-            helix_type = SecondaryStructure::Helix_3;
-            for (size_t k = 0; k < stride && can_assign; ++k) {
-              can_assign = (ss_info[i + k].ss_type <= SecondaryStructure::Helix_3);
-            }
-            break;
-          case TurnType::Turn_5:
-            helix_type = SecondaryStructure::Helix_5;
-            for (size_t k = 0; k < stride && can_assign; ++k) {
-              can_assign = (ss_info[i + k].ss_type <= SecondaryStructure::Helix_5) ||
-                          (options.pi_helix_preference && ss_info[i + k].ss_type == SecondaryStructure::Helix_4);
-            }
-            break;
-          default:
-            helix_type = SecondaryStructure::Helix_4;
-            break;
-        }
-
-        if (can_assign || helix_type == SecondaryStructure::Helix_4) {
-          for (size_t k = 0; k < stride; ++k) {
-            ss_info[i + k].ss_type = helix_type;
+  for (size_t i = 1; i + 4 < residue_info.size(); ++i) {
+      if (ss_info[i].ss_type == SecondaryStructure::Turn && ss_info[i+1].ss_type == SecondaryStructure::Turn) {
+          for(size_t j=0; j < 4; ++j) {
+              ss_info[i+j].ss_type = SecondaryStructure::Helix_4;
           }
-        }
       }
-    }
   }
 
-  // Assign turns
-  for (size_t i = 1; i + 1 < ss_info.size(); ++i) {
-    if (ss_info[i].ss_type <= SecondaryStructure::Turn) {
-      bool is_turn = false;
-
-      for (TurnType turn_type : {TurnType::Turn_3, TurnType::Turn_4, TurnType::Turn_5}) {
-        size_t stride = static_cast<size_t>(turn_type);
-
-        for (size_t k = 1; k < stride && !is_turn; ++k) {
-          if (i >= k) {
-            is_turn = (ss_info[i - k].get_helix_position(turn_type) == HelixPosition::Start ||
-                      ss_info[i - k].get_helix_position(turn_type) == HelixPosition::StartAndEnd);
+  for (size_t i = 1; i + 3 < residue_info.size(); ++i) {
+      if (ss_info[i].ss_type == SecondaryStructure::Turn && ss_info[i+1].ss_type == SecondaryStructure::Turn) {
+          for(size_t j=0; j < 3; ++j) {
+              if (ss_info[i+j].ss_type == SecondaryStructure::Loop)
+                ss_info[i+j].ss_type = SecondaryStructure::Helix_3;
           }
-        }
       }
+  }
 
-      if (is_turn) {
-        ss_info[i].ss_type = SecondaryStructure::Turn;
+  for (size_t i = 1; i + 5 < residue_info.size(); ++i) {
+      if (ss_info[i].ss_type == SecondaryStructure::Turn && ss_info[i+1].ss_type == SecondaryStructure::Turn) {
+          for(size_t j=0; j < 5; ++j) {
+              if (ss_info[i+j].ss_type == SecondaryStructure::Loop)
+                ss_info[i+j].ss_type = SecondaryStructure::Helix_5;
+          }
       }
-    }
   }
 }
 
@@ -515,35 +450,29 @@ void DsspCalculator::find_bends_and_breaks() {
 
     if (has_break) {
       ss_info[i].has_break = true;
-      ss_info[i + 1].has_break = true;
-      ss_info[i].break_partners.push_back(&ss_info[i + 1]);
-      ss_info[i + 1].break_partners.push_back(&ss_info[i]);
     }
   }
 
   // Find bends
-  for (size_t i = 2; i + 2 < residue_info.size(); ++i) {
-    if (ss_info[i - 2].has_break || ss_info[i - 1].has_break ||
-        ss_info[i].has_break || ss_info[i + 1].has_break) {
-      continue;
-    }
+  for (size_t i = 1; i + 3 < residue_info.size(); ++i) {
+    if (no_chain_breaks_between(i - 1, i + 4)) {
+        if (residue_info[i - 1].has_atom(ResidueInfo::CA) &&
+            residue_info[i + 1].has_atom(ResidueInfo::CA) &&
+            residue_info[i + 3].has_atom(ResidueInfo::CA)) {
 
-    if (residue_info[i - 2].has_atom(ResidueInfo::CA) &&
-        residue_info[i].has_atom(ResidueInfo::CA) &&
-        residue_info[i + 2].has_atom(ResidueInfo::CA)) {
+          Position ca_prev = residue_info[i - 1].get_backbone_atom(ResidueInfo::CA)->pos;
+          Position ca_curr = residue_info[i + 1].get_backbone_atom(ResidueInfo::CA)->pos;
+          Position ca_next = residue_info[i + 3].get_backbone_atom(ResidueInfo::CA)->pos;
 
-      Position ca_prev = residue_info[i - 2].get_backbone_atom(ResidueInfo::CA)->pos;
-      Position ca_curr = residue_info[i].get_backbone_atom(ResidueInfo::CA)->pos;
-      Position ca_next = residue_info[i + 2].get_backbone_atom(ResidueInfo::CA)->pos;
+          Vec3 v1 = ca_curr - ca_prev;
+          Vec3 v2 = ca_next - ca_curr;
 
-      Vec3 v1 = ca_curr - ca_prev;
-      Vec3 v2 = ca_next - ca_curr;
+          double angle = std::acos(v1.dot(v2) / (v1.length() * v2.length())) * RAD_TO_DEG;
 
-      double angle = std::acos(v1.dot(v2) / (v1.length() * v2.length())) * RAD_TO_DEG;
-
-      if (angle > options.bend_angle_min && angle < 360.0) {
-        ss_info[i].ss_type = SecondaryStructure::Bend;
-      }
+          if (angle > options.bend_angle_min && angle < 360.0) {
+            ss_info[i+1].ss_type = SecondaryStructure::Bend;
+          }
+        }
     }
   }
 }
@@ -557,15 +486,10 @@ std::string DsspCalculator::generate_ss_string() const {
   std::string result;
   result.reserve(ss_info.size());
 
-  for (const auto& info : ss_info) {
-    result += static_cast<char>(info.ss_type);
-  }
-
-  // Insert break symbols
   for (size_t i = 0; i < ss_info.size(); ++i) {
-    if (ss_info[i].has_break) {
-      result.insert(result.begin() + i + 1, static_cast<char>(SecondaryStructure::Break));
-    }
+    result += static_cast<char>(ss_info[i].ss_type);
+    if (i + 1 < ss_info.size() && ss_info[i].has_break)
+        result += static_cast<char>(SecondaryStructure::Break);
   }
 
   return result;

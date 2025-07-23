@@ -50,6 +50,12 @@ enum class BridgeType {
   AntiParallel
 };
 
+struct Bridge {
+    size_t partner1;
+    size_t partner2;
+    BridgeType type;
+};
+
 // Hydrogen bond modes
 enum class HydrogenMode {
   Existing = 0,  // Use existing hydrogen atoms from structure
@@ -160,6 +166,7 @@ struct GEMMI_DLL DsspCalculator {
   DsspOptions options;
   std::vector<ResidueInfo> residue_info;
   std::vector<SecondaryStructureInfo> ss_info;
+  std::vector<Bridge> bridges_;
 
   // Setup residue information from topology
   void setup_residue_info(Topo::ChainInfo& cinfo);
