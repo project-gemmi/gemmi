@@ -16,6 +16,7 @@ Options:
   --sort             Order atoms in residues according to _chem_comp_atom.
   --update           If deprecated atom names (from _chem_comp_atom.alt_atom_id)
                      are used in the model, change them.
+  --d-fract=FRACT    Add atoms as H/D mix, with the given deuterium fraction.
 Hydrogen options, mutually exclusive. Default: add hydrogens, but not to water.
   --water            Add hydrogens also to water.
   --unique           Add only hydrogens with uniquely determined positions.

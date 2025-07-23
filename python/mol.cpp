@@ -196,6 +196,7 @@ void add_mol(nb::module_& m) {
          remove_alternative_conformations<Structure>)
     .def("remove_hydrogens", remove_hydrogens<Structure>)
     .def("store_deuterium_as_fraction", &store_deuterium_as_fraction)
+    .def("set_deuterium_fraction_of_hydrogens", &set_deuterium_fraction_of_hydrogens)
     .def("standardize_crystal_frame", &standardize_crystal_frame)
     .def("assign_serial_numbers", (void (*)(Structure&, bool)) &assign_serial_numbers,
          nb::arg("numbered_ter")=false)

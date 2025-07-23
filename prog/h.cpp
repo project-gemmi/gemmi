@@ -22,7 +22,7 @@ namespace cif = gemmi::cif;
 namespace {
 
 enum OptionIndex {
-  FormatIn=AfterMonLibOptions, Sort, Update, RemoveH, KeepH, Water, Unique, NoChange
+  FormatIn=AfterMonLibOptions, Sort, Update, DFraction, RemoveH, KeepH, Water, Unique, NoChange
 };
 
 const option::Descriptor Usage[] = {
@@ -45,6 +45,8 @@ const option::Descriptor Usage[] = {
   { Update, 0, "", "update", Arg::None,
     "  --update  \tIf deprecated atom names (from _chem_comp_atom.alt_atom_id)"
     " are used in the model, change them." },
+  { DFraction, 0, "", "d-fract", Arg::Float,
+    "  --d-fract=FRACT \tAdd atoms as H/D mix, with the given deuterium fraction." },
   { NoOp, 0, "", "", Arg::None,
     "Hydrogen options, mutually exclusive. Default: add hydrogens, but not to water." },
   { Water, 0, "", "water", Arg::None,
@@ -136,6 +138,10 @@ int GEMMI_MAIN(int argc, char **argv) {
         prepare_topology(st, monlib, i, h_change, p.options[Sort], {&gemmi::Logger::to_stderr});
       }
     }
+    if (p.options[DFraction]) {
+      double d_fract = std::atof(p.options[DFraction].arg);
+      gemmi::set_deuterium_fraction_of_hydrogens(st, (float)d_fract);
+    }
     if (p.options[Verbose])
       std::printf("Hydrogen site count: %zu in input, %zu in output.\n",
                   initial_h, count_hydrogens(st));
@@ -144,6 +150,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     gemmi::Ofstream os(output, &std::cout);
     if (output_format == gemmi::CoorFormat::Pdb) {
       shorten_ccd_codes(st);
+      gemmi::store_deuterium_as_fraction(st, false);
       gemmi::write_pdb(st, os.ref());
     } else {
       if (preserve_doc) {

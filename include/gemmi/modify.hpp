@@ -305,6 +305,16 @@ inline void store_deuterium_as_fraction(Structure& st, bool store_fraction) {
         }
 }
 
+inline void set_deuterium_fraction_of_hydrogens(Structure& st, float d_fract) {
+  st.has_d_fraction = true;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        for (Atom& atom : res.atoms)
+          if (atom.is_hydrogen())
+            atom.fraction = d_fract;
+}
+
 /// Convert coordinates to the standard coordinate system for the unit cell.
 inline void standardize_crystal_frame(Structure& st) {
   if (!st.cell.explicit_matrices || !st.cell.is_crystal())
