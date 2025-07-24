@@ -2939,3 +2939,218 @@ analyzes coordinate files, using 4 worker processes in parallel.
 .. literalinclude:: ../examples/multiproc.py
    :language: python
    :lines: 4-
+
+
+Flat Structure Representation
+=============================
+
+The `FlatStructure` class provides an alternative, flattened view of atomic data
+that is optimized for bulk operations and NumPy integration. Instead of the
+hierarchical Structure → Model → Chain → Residue → Atom organization,
+`FlatStructure` stores all atoms in a flat table that can be accessed as
+NumPy arrays.
+
+This representation is particularly useful for:
+
+* Bulk modifications of atomic properties (B-factors, occupancies, coordinates)
+* Vectorized calculations using NumPy operations
+* Analysis requiring fast access to atomic data across the entire structure
+* Machine learning applications that work with tabular atomic data
+
+Basic Usage
+-----------
+
+Creating a `FlatStructure` from a regular `Structure` is straightforward:
+
+.. testcode::
+
+  import gemmi
+
+  # Read a structure
+  st = gemmi.read_structure('../tests/1orc.pdb')
+
+  # Create flat representation
+  flat_st = gemmi.FlatStructure(st)
+
+  print(f"Structure has {len(flat_st)} atoms")
+
+.. testoutput::
+
+  Structure has 559 atoms
+
+The original structure can be reconstructed at any time:
+
+.. testcode::
+
+  # Reconstruct hierarchical structure
+  reconstructed_st = flat_st.generate_structure()
+
+  # Verify round-trip preservation
+  print(st.make_pdb_string() == reconstructed_st.make_pdb_string())
+
+.. testoutput::
+
+  True
+
+The round-trip conversion preserves all structural information, including
+entity associations and DBREF records, ensuring that the reconstructed
+structure is functionally identical to the original.
+
+NumPy Array Access
+------------------
+
+`FlatStructure` exposes atomic properties as NumPy arrays, enabling
+efficient bulk operations:
+
+**Numeric Properties** (as 1D arrays):
+
+.. testcode::
+
+  import numpy as np
+
+  # Access B-factors as NumPy array
+  b_factors = flat_st.b_iso
+  print(f"B-factor array shape: {b_factors.shape}, dtype: {b_factors.dtype}")
+
+  # Access occupancies
+  occupancies = flat_st.occ
+  print(f"Mean occupancy: {np.mean(occupancies):.3f}")
+
+  # Access other numeric properties
+  charges = flat_st.charge
+  model_numbers = flat_st.model_num
+
+.. testoutput::
+
+  B-factor array shape: (559,), dtype: float32
+  Mean occupancy: 0.989
+
+**Coordinates** (as (N, 3) array):
+
+.. testcode::
+
+  # Access coordinates as (N, 3) array
+  positions = flat_st.pos
+  print(f"Position array shape: {positions.shape}, dtype: {positions.dtype}")
+
+  # Calculate center of mass
+  center = np.mean(positions, axis=0)
+  print(f"Center of mass: ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})")
+
+.. testoutput::
+
+  Position array shape: (559, 3), dtype: float64
+  Center of mass: (23.00, 37.15, 16.89)
+
+**String Properties** (as (N, 8) char arrays):
+
+String data like atom names and residue names are exposed as fixed-width
+character arrays:
+
+.. testcode::
+
+  # Access atom names as (N, 8) char array
+  atom_names = flat_st.atom_names
+  print(f"Atom names shape: {atom_names.shape}, dtype: {atom_names.dtype}")
+
+  # Convert first few atom names to strings
+  for i in range(5):
+      name_bytes = atom_names[i].tobytes()
+      name_str = name_bytes.decode('utf-8').rstrip('\x00')
+      print(f"Atom {i}: '{name_str}'")
+
+.. testoutput::
+
+  Atom names shape: (559, 8), dtype: int8
+  Atom 0: 'N'
+  Atom 1: 'CA'
+  Atom 2: 'C'
+  Atom 3: 'O'
+  Atom 4: 'CB'
+
+Available array properties include:
+
+* ``atom_names`` - Atom names as (N, 8) char array
+* ``residue_names`` - Residue names as (N, 8) char array
+* ``chain_ids`` - Chain IDs as (N, 8) char array
+* ``subchains`` - Subchain IDs as (N, 8) char array
+* ``entity_ids`` - Entity IDs as (N, 8) char array
+
+Bulk Operations
+---------------
+
+The main advantage of `FlatStructure` is the ability to perform bulk operations
+efficiently using NumPy:
+
+.. testcode::
+
+  # Set all B-factors to 20.0
+  flat_st.b_iso[:] = 20.0
+
+  # Verify the modification
+  print(f"All B-factors set to: {flat_st.b_iso[0]:.1f}")
+
+  # Set occupancies conditionally
+  # (atoms with index < 10 get occupancy 0.5)
+  flat_st.occ[:10] = 0.5
+
+  # Translate all coordinates by a vector
+  original_pos = flat_st.pos[0].copy()
+  translation = np.array([1.0, 2.0, 3.0])
+  positions = flat_st.pos
+  positions += translation
+  new_pos = flat_st.pos[0]
+
+  print(f"Translated first atom by ({translation[0]:.1f}, {translation[1]:.1f}, {translation[2]:.1f})")
+  print(f"Position change: ({new_pos[0]-original_pos[0]:.1f}, {new_pos[1]-original_pos[1]:.1f}, {new_pos[2]-original_pos[2]:.1f})")
+
+  print(f"Modified {len(flat_st)} atoms in bulk operations")
+
+.. testoutput::
+
+  All B-factors set to: 20.0
+  Translated first atom by (1.0, 2.0, 3.0)
+  Position change: (1.0, 2.0, 3.0)
+  Modified 559 atoms in bulk operations
+
+These operations are much faster than equivalent loops over the hierarchical
+structure, especially for large structures.
+
+Performance Considerations
+--------------------------
+
+**When to use FlatStructure:**
+
+* Bulk modifications of atomic properties
+* Vectorized calculations across all atoms
+* Machine learning feature extraction
+* Analysis requiring fast array access
+
+**When to use regular Structure:**
+
+* Navigating the molecular hierarchy (chains, residues)
+* Operations requiring chemical context
+* Most structural biology analysis tasks
+* File I/O operations
+
+**Memory efficiency:**
+
+The NumPy arrays in `FlatStructure` are memory-efficient views directly into
+the underlying atomic data. Modifications to the arrays immediately affect
+the `FlatStructure` and will be reflected in structures generated with
+`generate_structure()`.
+
+.. testcode::
+
+  # Demonstrate that array modifications propagate
+  original_b = flat_st.b_iso[0].copy()
+  flat_st.b_iso[0] = 99.9
+
+  # Generate structure and check first atom
+  new_st = flat_st.generate_structure()
+  first_atom = next(cra.atom for cra in new_st[0].all())
+  print(f"Modified B-factor: {first_atom.b_iso:.1f}")
+
+.. testoutput::
+
+  Modified B-factor: 99.9

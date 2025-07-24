@@ -105,6 +105,9 @@ gemmi/fail.hpp
 gemmi/fileutil.hpp
     File-related utilities.
 
+gemmi/flat.hpp
+    FlatStructure, FlatAtom
+
 gemmi/floodfill.hpp
     The flood fill (scanline fill) algorithm for Grid.
     Assumes periodic boundary conditions in the grid and 6-way connectivity.
