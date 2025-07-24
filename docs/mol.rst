@@ -3005,6 +3005,7 @@ efficient bulk operations:
 **Numeric Properties** (as 1D arrays):
 
 .. testcode::
+  :skipif: numpy is None
 
   import numpy as np
 
@@ -3048,6 +3049,7 @@ String data like atom names and residue names are exposed as fixed-width
 character arrays:
 
 .. testcode::
+  :skipif: numpy is None
 
   # Access atom names as (N, 8) char array
   atom_names = flat_st.atom_names
@@ -3083,6 +3085,7 @@ The main advantage of `FlatStructure` is the ability to perform bulk operations
 efficiently using NumPy:
 
 .. testcode::
+  :skipif: numpy is None
 
   # Set all B-factors to 20.0
   flat_st.b_iso[:] = 20.0
@@ -3141,6 +3144,7 @@ the `FlatStructure` and will be reflected in structures generated with
 `generate_structure()`.
 
 .. testcode::
+  :skipif: numpy is None
 
   # Demonstrate that array modifications propagate
   original_b = flat_st.b_iso[0].copy()
