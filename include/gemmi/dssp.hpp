@@ -85,6 +85,7 @@ struct GEMMI_DLL SecondaryStructureInfo {
   std::array<HelixPosition, 4> helix_positions = {HelixPosition::None, HelixPosition::None,
                                                   HelixPosition::None, HelixPosition::None};
   bool has_break = false;
+  bool nturn_acceptor = false;
 
   void set_helix_position(TurnType turn, HelixPosition pos) {
     helix_positions[static_cast<int>(turn) - 3] = pos;
@@ -139,7 +140,7 @@ struct GEMMI_DLL ResidueInfo {
 
 // DSSP options/parameters
 struct GEMMI_DLL DsspOptions {
-  HydrogenMode hydrogen_mode = HydrogenMode::Existing;
+  HydrogenMode hydrogen_mode = HydrogenMode::Calculate;
   HBondDefinition hbond_definition = HBondDefinition::Energy;
   bool use_neighbor_search = true;
   double cutoff = 0.9;  // nm

@@ -19,7 +19,6 @@ constexpr double MIN_ATOM_DISTANCE = 0.5;      // Angstrom
 constexpr double MIN_ENERGY = -9.9;            // kcal/mol
 constexpr double MAX_HBOND_DISTANCE = 0.35;    // nm for geometry-based hbonds
 constexpr double MAX_HBOND_ANGLE = 30.0;       // degrees for geometry-based hbonds
-constexpr double RAD_TO_DEG = 180.0 / M_PI;
 
 double calculate_atomic_distance(Atom* atom1, Atom* atom2) {
   if (!atom1 || !atom2) return 0.0;
@@ -154,14 +153,10 @@ void DsspCalculator::calculate_hydrogen_bonds(NeighborSearch& ) {
     for (size_t j = i + 1; j < residue_info.size(); ++j) {
       if (options.hbond_definition == HBondDefinition::Energy) {
         calculate_hbond_energy(&residue_info[i], &residue_info[j]);
-        if (j != i + 1) {
-          calculate_hbond_energy(&residue_info[j], &residue_info[i]);
-        }
+        calculate_hbond_energy(&residue_info[j], &residue_info[i]);
       } else {
         calculate_hbond_geometry(&residue_info[i], &residue_info[j]);
-        if (j != i + 1) {
-          calculate_hbond_geometry(&residue_info[j], &residue_info[i]);
-        }
+        calculate_hbond_geometry(&residue_info[j], &residue_info[i]);
       }
     }
   }
@@ -179,8 +174,8 @@ static Position calculate_h_pos(ResidueInfo* donor, const Atom* donor_n, Hydroge
       // O-C of the previous residue
       Vec3 prev_o = donor->prev_residue->get_backbone_atom(ResidueInfo::O)->pos;
       Vec3 prev_c = donor->prev_residue->get_backbone_atom(ResidueInfo::C)->pos;
-      Vec3 prev_co = (prev_c - prev_o).normalized();
-      h_pos = donor_n->pos + Position(prev_co);
+      Vec3 prev_co = (prev_o - prev_c).normalized();
+      h_pos = donor_n->pos - Position(prev_co);
     } else {
       // no previous residue, leaving H set to N
     }
@@ -278,8 +273,8 @@ void DsspCalculator::calculate_hbond_geometry(ResidueInfo* donor, ResidueInfo* a
       // O-C of the previous residue
       Vec3 prev_o = donor->prev_residue->get_backbone_atom(ResidueInfo::O)->pos;
       Vec3 prev_c = donor->prev_residue->get_backbone_atom(ResidueInfo::C)->pos;
-      Vec3 prev_co = (prev_c - prev_o).normalized();
-      h_pos = donor_n->pos + Position(prev_co);
+      Vec3 prev_co = (prev_o - prev_c).normalized();
+      h_pos = donor_n->pos - Position(prev_co);
     } else {
       // no previous residue, leaving H set to N
     }
@@ -389,44 +384,168 @@ void DsspCalculator::find_bridges_and_strands() {
 }
 
 void DsspCalculator::find_turns_and_helices() {
-  // Find helix patterns for different turn types
-  for (size_t n = 3; n <= 5; ++n) {
-    for (size_t i = 0; i + n < residue_info.size(); ++i) {
-      if (has_hbond_between(i, i + n)) {
-        if (no_chain_breaks_between(i, i + n)) {
-            for (size_t k = i + 1; k < i + n; ++k) {
-                if (ss_info[k].ss_type == SecondaryStructure::Loop)
-                    ss_info[k].ss_type = SecondaryStructure::Turn;
-            }
+  // First pass: mark all helix positions based on individual H-bonds
+  for (int turn_type = 0; turn_type < 3; ++turn_type) { // 3, 4, 5 turns
+    size_t stride = turn_type + 3;
+    TurnType turn = static_cast<TurnType>(stride);
+
+    for (size_t j = 0; j + stride < residue_info.size(); ++j) {
+      if (has_hbond_between(j + stride, j) && no_chain_breaks_between(j, j + stride)) {
+        // Mark end position
+        ss_info[j + stride].set_helix_position(turn, HelixPosition::End);
+
+        // Mark middle positions
+        for (size_t k = 1; k < stride; ++k) {
+          if (ss_info[j + k].get_helix_position(turn) == HelixPosition::None) {
+            ss_info[j + k].set_helix_position(turn, HelixPosition::Middle);
+          }
+        }
+
+        // Mark start position
+        if (ss_info[j].get_helix_position(turn) == HelixPosition::End) {
+          ss_info[j].set_helix_position(turn, HelixPosition::StartAndEnd);
+        } else {
+          ss_info[j].set_helix_position(turn, HelixPosition::Start);
         }
       }
     }
   }
 
-  for (size_t i = 1; i + 4 < residue_info.size(); ++i) {
-      if (ss_info[i].ss_type == SecondaryStructure::Turn && ss_info[i+1].ss_type == SecondaryStructure::Turn) {
-          for(size_t j=0; j < 4; ++j) {
-              ss_info[i+j].ss_type = SecondaryStructure::Helix_4;
-          }
+  // Second pass: detect helix patterns from overlapping H-bonds
+  // Process in order of precedence: alpha-helix (4-turn), 3-10 helix (3-turn), pi-helix (5-turn)
+
+  // Alpha helix detection (4-turn, highest precedence)
+  for (size_t i = 0; i + 4 < residue_info.size(); ++i) {
+    // Look for overlapping 4-turn patterns: i→i+4 AND i+1→i+5
+    if (has_hbond_between(i + 4, i) && has_hbond_between(i + 5, i + 1) &&
+        no_chain_breaks_between(i, i + 5)) {
+
+      // Found overlapping alpha-helix pattern - mark as helix
+      for (size_t k = i + 1; k <= i + 4; ++k) {
+        ss_info[k].ss_type = SecondaryStructure::Helix_4;
       }
+
+      // Continue the helix while overlapping patterns exist
+      for (size_t j = i + 2; j + 4 < residue_info.size(); ++j) {
+        if (has_hbond_between(j + 4, j) && no_chain_breaks_between(j, j + 4)) {
+          for (size_t k = std::max(j + 1, i + 5); k <= j + 4; ++k) {
+            ss_info[k].ss_type = SecondaryStructure::Helix_4;
+          }
+        } else {
+          break;
+        }
+      }
+    }
   }
 
-  for (size_t i = 1; i + 3 < residue_info.size(); ++i) {
-      if (ss_info[i].ss_type == SecondaryStructure::Turn && ss_info[i+1].ss_type == SecondaryStructure::Turn) {
-          for(size_t j=0; j < 3; ++j) {
-              if (ss_info[i+j].ss_type == SecondaryStructure::Loop)
-                ss_info[i+j].ss_type = SecondaryStructure::Helix_3;
-          }
+  // 3-10 helix detection (3-turn)
+  for (size_t i = 0; i + 3 < residue_info.size(); ++i) {
+    // Look for overlapping 3-turn patterns: i→i+3 AND i+1→i+4
+    if (has_hbond_between(i + 3, i) && has_hbond_between(i + 4, i + 1) &&
+        no_chain_breaks_between(i, i + 4)) {
+
+      // Check if positions are available (not already alpha-helix)
+      bool can_assign = true;
+      for (size_t k = i + 1; k <= i + 3 && can_assign; ++k) {
+        can_assign = (ss_info[k].ss_type < SecondaryStructure::Helix_4);
       }
+
+      if (can_assign) {
+        // Found overlapping 3-10 helix pattern
+        for (size_t k = i + 1; k <= i + 3; ++k) {
+          ss_info[k].ss_type = SecondaryStructure::Helix_3;
+        }
+
+        // Continue the helix while overlapping patterns exist
+        for (size_t j = i + 2; j + 3 < residue_info.size(); ++j) {
+          if (has_hbond_between(j + 3, j) && no_chain_breaks_between(j, j + 3)) {
+            bool can_extend = true;
+            for (size_t k = std::max(j + 1, i + 4); k <= j + 3 && can_extend; ++k) {
+              can_extend = (ss_info[k].ss_type < SecondaryStructure::Helix_4);
+            }
+            if (can_extend) {
+              for (size_t k = std::max(j + 1, i + 4); k <= j + 3; ++k) {
+                ss_info[k].ss_type = SecondaryStructure::Helix_3;
+              }
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+      }
+    }
   }
 
-  for (size_t i = 1; i + 5 < residue_info.size(); ++i) {
-      if (ss_info[i].ss_type == SecondaryStructure::Turn && ss_info[i+1].ss_type == SecondaryStructure::Turn) {
-          for(size_t j=0; j < 5; ++j) {
-              if (ss_info[i+j].ss_type == SecondaryStructure::Loop)
-                ss_info[i+j].ss_type = SecondaryStructure::Helix_5;
-          }
+  // Pi-helix detection (5-turn, lowest precedence)
+  for (size_t i = 0; i + 5 < residue_info.size(); ++i) {
+    // Look for overlapping 5-turn patterns: i→i+5 AND i+1→i+6
+    if (has_hbond_between(i + 5, i) && has_hbond_between(i + 6, i + 1) &&
+        no_chain_breaks_between(i, i + 6)) {
+
+      // Check if positions are available
+      bool can_assign = true;
+      for (size_t k = i + 1; k <= i + 5 && can_assign; ++k) {
+        SecondaryStructure current = ss_info[k].ss_type;
+        can_assign = (current < SecondaryStructure::Helix_3) ||
+                    (options.pi_helix_preference && current == SecondaryStructure::Helix_4);
       }
+
+      if (can_assign) {
+        // Found overlapping pi-helix pattern
+        for (size_t k = i + 1; k <= i + 5; ++k) {
+          ss_info[k].ss_type = SecondaryStructure::Helix_5;
+        }
+
+        // Continue the helix while overlapping patterns exist
+        for (size_t j = i + 2; j + 5 < residue_info.size(); ++j) {
+          if (has_hbond_between(j + 5, j) && no_chain_breaks_between(j, j + 5)) {
+            bool can_extend = true;
+            for (size_t k = std::max(j + 1, i + 6); k <= j + 5 && can_extend; ++k) {
+              SecondaryStructure current = ss_info[k].ss_type;
+              can_extend = (current < SecondaryStructure::Helix_3) ||
+                          (options.pi_helix_preference && current == SecondaryStructure::Helix_4);
+            }
+            if (can_extend) {
+              for (size_t k = std::max(j + 1, i + 6); k <= j + 5; ++k) {
+                ss_info[k].ss_type = SecondaryStructure::Helix_5;
+              }
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Third pass: mark remaining isolated turns
+  for (size_t i = 1; i + 1 < residue_info.size(); ++i) {
+    if (ss_info[i].ss_type == SecondaryStructure::Loop) {
+      bool is_turn = false;
+
+      // Check if this residue is part of any isolated turn pattern (not already in helix)
+      for (int turn_type = 0; turn_type < 3 && !is_turn; ++turn_type) {
+        size_t stride = turn_type + 3;
+        TurnType turn = static_cast<TurnType>(stride);
+
+        for (size_t k = 1; k < stride && !is_turn; ++k) {
+          if (i >= k) {
+            HelixPosition pos = ss_info[i - k].get_helix_position(turn);
+            if (pos == HelixPosition::Start || pos == HelixPosition::StartAndEnd) {
+              is_turn = true;
+            }
+          }
+        }
+      }
+
+      if (is_turn) {
+        ss_info[i].ss_type = SecondaryStructure::Turn;
+      }
+    }
   }
 }
 
@@ -467,7 +586,7 @@ void DsspCalculator::find_bends_and_breaks() {
           Vec3 v1 = ca_curr - ca_prev;
           Vec3 v2 = ca_next - ca_curr;
 
-          double angle = std::acos(v1.dot(v2) / (v1.length() * v2.length())) * RAD_TO_DEG;
+          double angle = deg(std::acos(v1.dot(v2) / (v1.length() * v2.length())));
 
           if (angle > options.bend_angle_min && angle < 360.0) {
             ss_info[i+1].ss_type = SecondaryStructure::Bend;
