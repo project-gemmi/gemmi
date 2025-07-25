@@ -933,7 +933,8 @@ class TestMol(unittest.TestCase):
         self.assertEqual(fst.b_iso.dtype, numpy.float32)
         self.assertEqual(fst.occ.dtype, numpy.float32)
         self.assertEqual(fst.pos.dtype, numpy.float64)
-        self.assertEqual(fst.atom_names.dtype, numpy.int8)
+        # char arrays can be int8 or uint8 depending on platform
+        self.assertIn(fst.atom_names.dtype, [numpy.int8, numpy.uint8])
         
         # Test modifying arrays
         if n_atoms > 0:

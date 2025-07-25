@@ -3007,21 +3007,20 @@ efficient bulk operations:
 .. testcode::
   :skipif: numpy is None
 
-  import numpy as np
-
   # Access B-factors as NumPy array
   b_factors = flat_st.b_iso
   print(f"B-factor array shape: {b_factors.shape}, dtype: {b_factors.dtype}")
 
   # Access occupancies
   occupancies = flat_st.occ
-  print(f"Mean occupancy: {np.mean(occupancies):.3f}")
+  print(f"Mean occupancy: {numpy.mean(occupancies):.3f}")
 
   # Access other numeric properties
   charges = flat_st.charge
   model_numbers = flat_st.model_num
 
 .. testoutput::
+  :skipif: numpy is None
 
   B-factor array shape: (559,), dtype: float32
   Mean occupancy: 0.989
@@ -3029,16 +3028,18 @@ efficient bulk operations:
 **Coordinates** (as (N, 3) array):
 
 .. testcode::
+  :skipif: numpy is None
 
   # Access coordinates as (N, 3) array
   positions = flat_st.pos
   print(f"Position array shape: {positions.shape}, dtype: {positions.dtype}")
 
   # Calculate center of mass
-  center = np.mean(positions, axis=0)
+  center = numpy.mean(positions, axis=0)
   print(f"Center of mass: ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})")
 
 .. testoutput::
+  :skipif: numpy is None
 
   Position array shape: (559, 3), dtype: float64
   Center of mass: (23.00, 37.15, 16.89)
@@ -3053,7 +3054,7 @@ character arrays:
 
   # Access atom names as (N, 8) char array
   atom_names = flat_st.atom_names
-  print(f"Atom names shape: {atom_names.shape}, dtype: {atom_names.dtype}")
+  print(f"Atom names shape: {atom_names.shape}")
 
   # Convert first few atom names to strings
   for i in range(5):
@@ -3062,8 +3063,9 @@ character arrays:
       print(f"Atom {i}: '{name_str}'")
 
 .. testoutput::
+  :skipif: numpy is None
 
-  Atom names shape: (559, 8), dtype: int8
+  Atom names shape: (559, 8)
   Atom 0: 'N'
   Atom 1: 'CA'
   Atom 2: 'C'
@@ -3087,29 +3089,33 @@ efficiently using NumPy:
 .. testcode::
   :skipif: numpy is None
 
+  # Create a fresh FlatStructure for bulk operations to avoid state contamination
+  bulk_flat_st = gemmi.FlatStructure(st)
+
   # Set all B-factors to 20.0
-  flat_st.b_iso[:] = 20.0
+  bulk_flat_st.b_iso[:] = 20.0
 
   # Verify the modification
-  print(f"All B-factors set to: {flat_st.b_iso[0]:.1f}")
+  print(f"All B-factors set to: {bulk_flat_st.b_iso[0]:.1f}")
 
   # Set occupancies conditionally
   # (atoms with index < 10 get occupancy 0.5)
-  flat_st.occ[:10] = 0.5
+  bulk_flat_st.occ[:10] = 0.5
 
   # Translate all coordinates by a vector
-  original_pos = flat_st.pos[0].copy()
-  translation = np.array([1.0, 2.0, 3.0])
-  positions = flat_st.pos
+  original_pos = bulk_flat_st.pos[0].copy()
+  translation = numpy.array([1.0, 2.0, 3.0])
+  positions = bulk_flat_st.pos
   positions += translation
-  new_pos = flat_st.pos[0]
+  new_pos = bulk_flat_st.pos[0]
 
   print(f"Translated first atom by ({translation[0]:.1f}, {translation[1]:.1f}, {translation[2]:.1f})")
   print(f"Position change: ({new_pos[0]-original_pos[0]:.1f}, {new_pos[1]-original_pos[1]:.1f}, {new_pos[2]-original_pos[2]:.1f})")
 
-  print(f"Modified {len(flat_st)} atoms in bulk operations")
+  print(f"Modified {len(bulk_flat_st)} atoms in bulk operations")
 
 .. testoutput::
+  :skipif: numpy is None
 
   All B-factors set to: 20.0
   Translated first atom by (1.0, 2.0, 3.0)
@@ -3146,15 +3152,21 @@ the `FlatStructure` and will be reflected in structures generated with
 .. testcode::
   :skipif: numpy is None
 
+  # Create a completely independent example for memory efficiency
+  import gemmi
+  memory_st = gemmi.read_structure('../tests/1orc.pdb')
+  memory_flat_st = gemmi.FlatStructure(memory_st)
+
   # Demonstrate that array modifications propagate
-  original_b = flat_st.b_iso[0].copy()
-  flat_st.b_iso[0] = 99.9
+  original_b = memory_flat_st.b_iso[0].copy()
+  memory_flat_st.b_iso[0] = 99.9
 
   # Generate structure and check first atom
-  new_st = flat_st.generate_structure()
-  first_atom = next(cra.atom for cra in new_st[0].all())
+  memory_new_st = memory_flat_st.generate_structure()
+  first_atom = next(cra.atom for cra in memory_new_st[0].all())
   print(f"Modified B-factor: {first_atom.b_iso:.1f}")
 
 .. testoutput::
+  :skipif: numpy is None
 
   Modified B-factor: 99.9
