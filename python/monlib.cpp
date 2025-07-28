@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include <nanobind/stl/bind_map.h>
+#include <nanobind/stl/map.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>  // for MonLib::match_link
 #include <nanobind/stl/vector.h>
@@ -20,6 +21,7 @@ NB_MAKE_OPAQUE(modifications_type)
 void add_monlib(nb::module_& m) {
   nb::class_<ChemMod> chemmod(m, "ChemMod");
   nb::class_<ChemLink> chemlink(m, "ChemLink");
+  nb::class_<EnerLib> enerlib(m, "EnerLib");
 
   nb::bind_map<monomers_type, rv_ri>(m, "ChemCompMap");
   nb::bind_map<links_type, rv_ri>(m, "ChemLinkMap");
@@ -66,7 +68,18 @@ void add_monlib(nb::module_& m) {
         return "<gemmi.ChemMod " + self.id + ">";
     });
 
-  nb::class_<EnerLib>(m, "EnerLib");  // NOLINT(bugprone-unused-raii)
+  nb::class_<EnerLib::Atom>(enerlib, "Atom")
+    .def_ro("element", &EnerLib::Atom::element)
+    .def_ro("hb_type", &EnerLib::Atom::hb_type)
+    .def_ro("vdw_radius", &EnerLib::Atom::vdw_radius)
+    .def_ro("vdwh_radius", &EnerLib::Atom::vdwh_radius)
+    .def_ro("ion_radius", &EnerLib::Atom::ion_radius)
+    .def_ro("valency", &EnerLib::Atom::valency)
+    .def_ro("sp", &EnerLib::Atom::sp)
+  ;
+  enerlib
+    .def_ro("atoms", &EnerLib::atoms)
+  ;
   nb::class_<MonLib>(m, "MonLib")
     .def(nb::init<>())
     .def_prop_rw("monomer_dir",
