@@ -41,15 +41,25 @@ struct FlatStructure {
     for (const Model& model : st.models) {
       fa.model_num = model.num;
       for (const Chain& chain : model.chains) {
+        if (chain.name.size() > 7)
+          fail("FlatStructure doesn't support 8+ char subchain names: ", chain.name);
         std::strcpy(fa.chain_id, chain.name.c_str());
         for (const Residue& res : chain.residues) {
+          if (res.name.size() > 7)
+            fail("FlatStructure doesn't support 8+ char residue names: ", res.name);
           std::strcpy(fa.residue_name, res.name.c_str());
+          if (res.subchain.size() > 7)
+            fail("FlatStructure doesn't support 8+ char subchain names: ", res.subchain);
           std::strcpy(fa.subchain, res.subchain.c_str());
+          if (res.entity_id.size() > 7)
+            fail("FlatStructure doesn't support 8+ char entity IDs: ", res.entity_id);
           std::strcpy(fa.entity_id, res.entity_id.c_str());
           fa.seq_id = res.seqid;
           fa.het_flag = res.het_flag;
           fa.entity_type = res.entity_type;
           for (const Atom& atom : res.atoms) {
+            if (atom.name.size() > 7)
+              fail("FlatStructure doesn't support 8+ char atom names: ", atom.name);
             std::strcpy(fa.atom_name, atom.name.c_str());
             fa.pos = atom.pos;
             fa.occ = atom.occ;
@@ -79,7 +89,6 @@ struct FlatStructure {
       residue->subchain = fa.subchain;
       residue->entity_id = fa.entity_id;
       residue->entity_type = fa.entity_type;
-      
       Atom atom;
       atom.name = fa.atom_name;
       atom.pos = fa.pos;
@@ -89,7 +98,6 @@ struct FlatStructure {
       atom.element = fa.element;
       atom.charge = fa.charge;
       atom.aniso = fa.aniso;
-      
       residue->atoms.emplace_back(atom);
     }
     return st;
