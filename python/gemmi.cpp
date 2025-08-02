@@ -203,7 +203,6 @@ NB_MODULE(gemmi_ext, m_) {
   add_search(m);
   add_read_structure(m);
   add_scaling(m);
-  add_custom(m);
 
   m.def("set_leak_warnings", nb::set_leak_warnings);
 }
