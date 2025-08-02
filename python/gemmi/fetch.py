@@ -34,7 +34,7 @@ def get_url_for_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 'R') -> 
 
 # fetch and read a file for a PDB entry from RCSB/PDBe/PDBj/PDB_REDO
 # if not available locally
-def read_structure_with_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 'R') -> gemmi.Structure:
+def read_structure_with_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 'R') -> gemmi.Structure|None:
     assert gemmi.is_pdb_code(pdb_id)
     local_path = gemmi.expand_if_pdb_code(pdb_id[0])
     if os.path.isfile(local_path):
@@ -54,6 +54,7 @@ def read_structure_with_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 
                 raise
             print(f"Retrying {url} after error: {e}")
             time.sleep(2 * (i + 1))
+    return None
 
 if __name__ == '__main__':
     import sys
