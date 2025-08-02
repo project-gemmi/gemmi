@@ -916,50 +916,51 @@ class TestMol(unittest.TestCase):
     def test_flat_arrays(self):
         st = gemmi.read_structure(full_path('5e5z.pdb'))
         fst = gemmi.FlatStructure(st)
-        
+
         # Test length
         n_atoms = len(fst)
         self.assertEqual(n_atoms, len(fst.b_iso))
         self.assertEqual(n_atoms, len(fst.occ))
         self.assertEqual(n_atoms, len(fst.atom_names))
-        
+
         # Test shapes
         self.assertEqual(fst.pos.shape, (n_atoms, 3))
         self.assertEqual(fst.atom_names.shape, (n_atoms, 8))
         self.assertEqual(fst.residue_names.shape, (n_atoms, 8))
         self.assertEqual(fst.chain_ids.shape, (n_atoms, 8))
-        
+
         # Test data types
         self.assertEqual(fst.b_iso.dtype, numpy.float32)
         self.assertEqual(fst.occ.dtype, numpy.float32)
         self.assertEqual(fst.pos.dtype, numpy.float64)
         # char arrays can be int8 or uint8 depending on platform
         self.assertIn(fst.atom_names.dtype, [numpy.int8, numpy.uint8])
-        
+
         # Test modifying arrays
         if n_atoms > 0:
             # Save original values
             orig_b_iso = fst.b_iso[0].copy()
             orig_occ = fst.occ[0].copy()
             orig_pos = fst.pos[0].copy()
-            
+
             # Modify values
             fst.b_iso[0] = 99.9
             fst.occ[0] = 0.5
             fst.pos[0] = [1.0, 2.0, 3.0]
-            
+
             # Verify changes
             self.assertAlmostEqual(fst.b_iso[0], 99.9, places=1)
             self.assertAlmostEqual(fst.occ[0], 0.5, places=1)
             numpy.testing.assert_array_almost_equal(fst.pos[0], [1.0, 2.0, 3.0])
-            
+
             # Test that changes propagate to generated structure
             st_modified = fst.generate_structure()
             first_atom = next(cra.atom for cra in st_modified[0].all())
             self.assertAlmostEqual(first_atom.b_iso, 99.9, places=1)
             self.assertAlmostEqual(first_atom.occ, 0.5, places=1)
-            numpy.testing.assert_array_almost_equal(first_atom.pos.tolist(), [1.0, 2.0, 3.0])
-            
+            numpy.testing.assert_array_almost_equal(first_atom.pos.tolist(),
+                                                    [1.0, 2.0, 3.0])
+
             # Restore original values
             fst.b_iso[0] = orig_b_iso
             fst.occ[0] = orig_occ
@@ -969,16 +970,16 @@ class TestMol(unittest.TestCase):
     def test_flat_bulk_modification(self):
         st = gemmi.read_structure(full_path('5e5z.pdb'))
         fst = gemmi.FlatStructure(st)
-        
+
         if len(fst) == 0:
             return  # Skip if no atoms
-            
+
         # Set all B-factors to 20.0
         fst.b_iso[:] = 20.0
-        
+
         # Verify all B-factors are now 20.0
         numpy.testing.assert_array_equal(fst.b_iso, 20.0)
-        
+
         # Generate structure and verify B-factors propagated
         st_modified = fst.generate_structure()
         for cra in st_modified[0].all():
