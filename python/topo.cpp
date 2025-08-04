@@ -120,7 +120,8 @@ void add_topo(nb::module_& m) {
     .def_ro("mods", &Topo::ResInfo::mods)
     .def_ro("chemcomps", &Topo::ResInfo::chemcomps)
     .def_ro("monomer_rules", &Topo::ResInfo::monomer_rules)
-    .def("get_final_chemcomp", &Topo::ResInfo::get_final_chemcomp)
+    .def("get_final_chemcomp", &Topo::ResInfo::get_final_chemcomp,
+         nb::rv_policy::reference_internal)
     ;
   nb::bind_vector<std::vector<Topo::ResInfo>, rv_ri>(m, "TopoResInfos");
 
