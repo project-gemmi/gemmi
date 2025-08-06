@@ -134,6 +134,76 @@ inline void transfer_links_from_mmdb(mmdb::LinkContainer& mmdb_links, Structure&
   }
 }
 
+// Helper function to convert gemmi sequence to mmdb ResName array
+inline void set_mmdb_seqres(const std::vector<std::string>& sequence,
+                            mmdb::SeqRes& seqres) {
+  // Free existing sequence data
+  delete[] seqres.resName;
+  if (seqres.resName)
+    seqres.resName = nullptr;
+
+  if (sequence.empty()) {
+    seqres.numRes = 0;
+    return;
+  }
+
+  // Allocate new array
+  seqres.numRes = static_cast<int>(sequence.size());
+  seqres.resName = new mmdb::ResName[seqres.numRes];
+
+  // Copy sequence data, taking first monomer from each item
+  for (int i = 0; i < seqres.numRes; ++i) {
+    // Handle microheterogeneity: use gemmi's utility function
+    std::string mon = Entity::first_mon(sequence[i]);
+
+    // Copy residue name (max 3 characters for most cases, but ResName allows up to 19)
+    strcpy_to_mmdb(seqres.resName[i], mon);
+  }
+}
+
+inline bool has_sequences(const Structure& st) {
+  // If there are no entities with sequences, try to infer sequences from chains
+  for (const Entity& entity : st.entities) {
+    if (entity.entity_type == EntityType::Polymer && !entity.full_sequence.empty())
+      return true;
+  }
+  return false;
+}
+
+// Transfer SEQRES from gemmi entities to mmdb chains
+inline void transfer_seqres_to_mmdb(const Structure& st, mmdb::Manager* manager) {
+  if (!has_sequences(st))
+    return;
+
+  // Create a map of chain ID -> entity for faster lookup
+  std::map<std::string, const Entity*> chain_to_entity;
+  for (const Model& model : st.models)
+    for (const Chain& ch : model.chains) {
+      const Entity* entity = st.get_entity_of(ch.get_polymer());
+      chain_to_entity[ch.name] = entity;
+    }
+
+  for (int imodel = 1; imodel <= manager->GetNumberOfModels(); ++imodel) {
+    if (mmdb::Model* model = manager->GetModel(imodel)) {
+      for (int ichain = 0; ichain < model->GetNumberOfChains(); ++ichain) {
+        if (mmdb::Chain* chain = model->GetChain(ichain)) {
+          std::string chain_id = chain->GetChainID();
+          // MMDB uses empty string (not space) for blank chain IDs
+
+          // Find matching entity
+          auto it = chain_to_entity.find(chain_id);
+          if (it != chain_to_entity.end()) {
+            const Entity* entity = it->second;
+            set_mmdb_seqres(entity->full_sequence, chain->seqRes);
+            // Set chain association to ensure consistency
+            chain->seqRes.SetChain(chain);
+          }
+        }
+      }
+    }
+  }
+}
+
 inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   for (const std::string& s : st.raw_remarks) {
     std::string line = rtrim_str(s);
@@ -230,6 +300,7 @@ inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
         m_model->AddCisPep(cispep_to_mmdb(cispep, ++ser_num, modnum));
     }
   }
+  transfer_seqres_to_mmdb(st, manager);
   transfer_links_to_mmdb(st, manager);
 }
 
