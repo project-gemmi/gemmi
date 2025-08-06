@@ -3,6 +3,7 @@ import os
 import urllib.request
 import urllib.error
 import time
+from typing import Optional
 
 import gemmi
 
@@ -34,7 +35,7 @@ def get_url_for_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 'R') -> 
 
 # fetch and read a file for a PDB entry from RCSB/PDBe/PDBj/PDB_REDO
 # if not available locally
-def read_structure_with_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 'R') -> gemmi.Structure|None:
+def read_structure_with_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 'R') -> Optional[gemmi.Structure]:
     assert gemmi.is_pdb_code(pdb_id)
     local_path = gemmi.expand_if_pdb_code(pdb_id[0])
     if os.path.isfile(local_path):
