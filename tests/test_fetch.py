@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 
+import os
 import unittest
 import urllib.error
 import http.client
 
 import gemmi
-import gemmi.fetch
-from common import full_path
+
+# for some reasons, importing common.py here gives me leak warnings
+def full_path(filename):
+    return os.path.join(os.path.dirname(__file__), filename)
 
 class TestFetch(unittest.TestCase):
     def fetch(self, site):
         cell = gemmi.read_structure(full_path('5i55.cif')).cell
+        import gemmi.fetch
         for use_cif in [True, False]:
             try:
                 st = gemmi.fetch.read_structure_with_code('5i55', pdb_site=site,

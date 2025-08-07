@@ -57,7 +57,7 @@ def read_structure_with_code(pdb_id: str, use_cif: bool = True, pdb_site: str = 
             time.sleep(2 * (i + 1))
     return None
 
-if __name__ == '__main__':
+def main():
     import sys
     import argparse
     parser = argparse.ArgumentParser(description='Fetch PDB/CIF files.')
@@ -88,3 +88,6 @@ if __name__ == '__main__':
             print(f'write {output_path}...')
             with open(output_path, 'wb') as output_file:
                 output_file.write(content)
+
+if __name__ == '__main__':
+    main()
