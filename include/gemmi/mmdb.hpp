@@ -9,6 +9,7 @@
 #include <cstring>           // for memcpy
 #include "model.hpp"
 #include "util.hpp"          // for rtrim_str
+#include "polyheur.hpp"      // for assign_subchains
 #include <mmdb2/mmdb_manager.h>
 
 namespace gemmi {
@@ -350,7 +351,22 @@ inline Residue copy_residue_from_mmdb(mmdb::Residue& m_res) {
   return res;
 }
 
-inline Chain copy_chain_from_mmdb(mmdb::Chain& m_chain) {
+// Helper function to convert mmdb ResName array to gemmi sequence
+inline std::vector<std::string> get_gemmi_sequence(const mmdb::SeqRes& seqres) {
+  std::vector<std::string> sequence;
+  if (seqres.numRes > 0 && seqres.resName) {
+    sequence.reserve(seqres.numRes);
+    for (int i = 0; i < seqres.numRes; ++i) {
+      const char* s = seqres.resName[i];
+      std::string resname(s, rtrim_cstr(s));
+      if (!resname.empty())
+        sequence.push_back(resname);
+    }
+  }
+  return sequence;
+}
+
+inline Chain copy_chain_from_mmdb(Structure& st, mmdb::Chain& m_chain) {
   Chain chain(m_chain.GetChainID());
   int n = m_chain.GetNumberOfResidues();
   chain.residues.reserve(n);
@@ -367,16 +383,32 @@ inline Chain copy_chain_from_mmdb(mmdb::Chain& m_chain) {
                                        : EntityType::NonPolymer;
       break;
     }
+  // Get sequence from SEQRES if available
+  std::vector<std::string> sequence = get_gemmi_sequence(m_chain.seqRes);
+  if (!sequence.empty()) {
+    Entity& ent = impl::find_or_add(st.entities, chain.name);
+    ent.entity_type = EntityType::Polymer;
+    ent.full_sequence = sequence;
+  }
   return chain;
 }
 
-inline Model copy_model_from_mmdb(mmdb::Model& m_model) {
+inline Model copy_model_from_mmdb(Structure& st, mmdb::Model& m_model) {
   Model model(m_model.GetSerNum());
   int n = m_model.GetNumberOfChains();
   model.chains.reserve(n);
   for (int i = 0; i < n; ++i)
     if (mmdb::Chain* m_chain = m_model.GetChain(i))
-      model.chains.push_back(copy_chain_from_mmdb(*m_chain));
+      model.chains.push_back(copy_chain_from_mmdb(st, *m_chain));
+  ensure_entities(st);
+  for (Model& m : st.models)
+    for (Chain& chain : m.chains) {
+      Entity& ent = impl::find_or_add(st.entities, chain.name);
+      ent.subchains.push_back(chain.get_polymer().subchain_id());
+      printf("Dodajemy Entity %s - %s\n",
+          chain.name.c_str(), chain.get_polymer().subchain_id().c_str());
+    }
+  deduplicate_entities(st);
   return model;
 }
 
@@ -391,7 +423,7 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
   st.models.reserve(n);
   for (int i = 1; i <= n; ++i)
     if (mmdb::Model* m_model = manager->GetModel(i)) {
-      st.models.push_back(copy_model_from_mmdb(*m_model));
+      st.models.push_back(copy_model_from_mmdb(st, *m_model));
       int model_num = st.models.back().num;
       for (int j = 1; j <= m_model->GetNumberOfCisPeps(); ++j)
         if (const mmdb::CisPep* m_cispep = m_model->GetCisPep(j))
@@ -401,6 +433,7 @@ inline Structure copy_from_mmdb(mmdb::Manager* manager) {
     mmdb::Model* mmdb_model = manager->GetModel(1);
     transfer_links_from_mmdb(*mmdb_model->GetLinks(), st);
   }
+  st.input_format = CoorFormat::Pdb;
   return st;
 }
 
