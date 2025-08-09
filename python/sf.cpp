@@ -68,6 +68,7 @@ void add_dencalc(nb::module_& m, const char* name) {
 
 void add_sf(nb::module_& m) {
   nb::class_<gemmi::Addends>(m, "Addends")
+    .def(nb::init<>())
     .def("set", &gemmi::Addends::set)
     .def("get", &gemmi::Addends::get)
     .def("clear", &gemmi::Addends::clear)
