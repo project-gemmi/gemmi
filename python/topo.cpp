@@ -111,6 +111,7 @@ void add_topo(nb::module_& m) {
     .def_ro("alt1", &Topo::Link::alt1)
     .def_ro("alt2", &Topo::Link::alt2)
     .def_ro("link_rules", &Topo::Link::link_rules)
+    .def_ro("asu", &Topo::Link::asu)
     ;
   nb::bind_vector<std::vector<Topo::Link>, rv_ri>(m, "TopoLinks");
 
