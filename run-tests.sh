@@ -22,11 +22,11 @@ fi
 #  P - only build Python bindings,
 #  n - do not build, only run tests.
 if [ $# = 1 ] && [ $1 = G ]; then
-    (cd $BUILD_DIR && make -j$(nproc) gemmi_prog)
+    (cd $BUILD_DIR && make -j gemmi_prog)
     exit
 fi
 if [ $# = 1 ] && [ $1 = P ]; then
-    (cd $BUILD_DIR && make -j$(nproc) gemmi_py)
+    (cd $BUILD_DIR && make -j gemmi_py)
     exit
 fi
 if [ $# = 1 ] && [ $1 = doctest ]; then
@@ -36,7 +36,7 @@ fi
 if [ $# != 0 ] && [ $1 = n ]; then
     shift
 else
-    (cd $BUILD_DIR && make -j$(nproc) all check)
+    (cd $BUILD_DIR && make -j all check)
     ./tools/cmp-size.py build/gemmi build/libgemmi_cpp.so build/py/gemmi/gemmi_ext*
     ./tools/docs-help.sh
 fi
@@ -57,7 +57,7 @@ fi
 
 echo "Building docs (in background)..."
 ./tools/header-list.py >docs/headers.rst
-(cd docs && make -j$(nproc) html SPHINXOPTS="-q -n")&
+(cd docs && make -j html SPHINXOPTS="-q -n")&
 
 # Usually, we stop here. Below are more extensive checks below that are run
 # before making a release. They are run when this script is called with 'a'
@@ -151,7 +151,7 @@ fi
 if [ $1 = w -o $1 = a ]; then
     echo "check if wasm and project-gemmi/wasm can be built"
     [ -z ${EMSDK+x} ] && . $HOME/local/emsdk/emsdk_env.sh
-    (cd wasm && make clean && make -j$(nproc) && npm run test)
+    (cd wasm && make clean && make -j && npm run test)
 fi
 
 if [ $1 = M -o $1 = a ]; then
