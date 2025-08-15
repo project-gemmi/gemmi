@@ -573,7 +573,7 @@ void Topo::initialize_refmac_topology(Structure& st, Model& model0,
         }
         // Usually the same modifications are applied to all conformers.
         // In such case reduce chemcomps to a single value.
-        if (ri.chemcomps.size() > 1 &&
+        if (ri.chemcomps.size() > 0 &&
             std::all_of(ri.chemcomps.begin() + 1, ri.chemcomps.end(),
               [&](const FinalChemComp& f) { return f.cc == ri.chemcomps[0].cc; })) {
           ri.chemcomps.resize(1);
