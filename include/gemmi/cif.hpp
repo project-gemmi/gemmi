@@ -70,10 +70,10 @@ namespace rules {
 
   // (b) Reserved words.
   struct str_data : TAOCPP_PEGTL_ISTRING("data_") {};
-  struct str_loop : TAOCPP_PEGTL_ISTRING("loop_") {};
-  struct str_global : TAOCPP_PEGTL_ISTRING("global_") {};
+  struct str_loop : pegtl::seq<TAOCPP_PEGTL_ISTRING("loop_"), pegtl::at<ws_or_eof>> {};
+  struct str_global : pegtl::seq<TAOCPP_PEGTL_ISTRING("global_"), pegtl::at<ws_or_eof>> {};
   struct str_save : TAOCPP_PEGTL_ISTRING("save_") {};
-  struct str_stop : TAOCPP_PEGTL_ISTRING("stop_") {};
+  struct str_stop : pegtl::seq<TAOCPP_PEGTL_ISTRING("stop_"), pegtl::at<ws_or_eof>> {};
   struct keyword : pegtl::sor<str_data, str_loop, str_global,
                               str_save, str_stop> {};
 
