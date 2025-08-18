@@ -857,11 +857,11 @@ void read_metadata_from_remarks(Structure& st) {
 
 } // anonymous namespace
 
-Structure read_pdb_from_stream(AnyStream& line_reader, const std::string& source,
-                               PdbReadOptions options) {
+void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::string& source,
+                                        Structure& st,
+                                        PdbReadOptions options) {
   if (options.max_line_length <= 0 || options.max_line_length > 120)
     options.max_line_length = 120;
-  Structure st;
   st.input_format = CoorFormat::Pdb;
   st.name = path_basename(source, {".gz", ".pdb"});
   Transform matrix;
@@ -1236,7 +1236,6 @@ Structure read_pdb_from_stream(AnyStream& line_reader, const std::string& source
     read_metadata_from_remarks(st);
 
   restore_full_ccd_codes(st);
-  return st;
 }
 
 std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {

@@ -31,9 +31,33 @@ inline bool is_record_type3(const char* s, const char* record) {
 /// Returns operations corresponding to 1555, 2555, ... N555
 GEMMI_DLL std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks);
 
-GEMMI_DLL Structure read_pdb_from_stream(AnyStream& line_reader,
-                                         const std::string& source,
-                                         PdbReadOptions options);
+GEMMI_DLL void populate_structure_from_pdb_stream(AnyStream& line_reader,
+                                                  const std::string& source,
+                                                  Structure& st,
+                                                  PdbReadOptions options);
+
+inline void populate_structure_from_pdb_memory(const char* data, size_t size,
+                                               const std::string& name,
+                                               Structure& st,
+                                               PdbReadOptions options={}) {
+  MemoryStream stream{data, size};
+  populate_structure_from_pdb_stream(stream, name, st, options);
+}
+
+inline void populate_structure_from_pdb_string(const std::string& str,
+                                              const std::string& name,
+                                              Structure& st,
+                                              PdbReadOptions options={}) {
+  populate_structure_from_pdb_memory(str.c_str(), str.length(), name, st, options);
+}
+
+inline Structure read_pdb_from_stream(AnyStream& line_reader,
+                                      const std::string& source,
+                                      PdbReadOptions options) {
+  gemmi::Structure st;
+  populate_structure_from_pdb_stream(line_reader, source, st, options);
+  return st;
+};
 
 inline Structure read_pdb_file(const std::string& path,
                                PdbReadOptions options={}) {
