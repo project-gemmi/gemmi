@@ -21,6 +21,7 @@ Options:
   --ciffp              Read f' from _atom_type_scat_dispersion_real in CIF.
   --wavelength=NUM     Wavelength [A] for calculation of f' (use --wavelength=0
                        or -w0 to ignore anomalous scattering).
+  --anomalous          Calculate anomalous map (f").
   --unknown=SYMBOL     Use form factor of SYMBOL for unknown atoms.
   --noaniso            Ignore anisotropic ADPs.
   --margin=NUM         For non-crystal use bounding box w/ margin (default: 10).

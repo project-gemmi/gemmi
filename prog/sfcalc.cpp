@@ -32,7 +32,7 @@ namespace {
 
 enum OptionIndex {
   Hkl=4, Dmin, For, NormalizeIt92, UseCharge, Rate, Blur, RCut,
-  Test, WriteMap, ToMtz, Compare, FLabel, PhiLabel,
+  Test, WriteMap, ToMtz, Compare, FLabel, PhiLabel, Anomalous,
   CifFp, Wavelength, Unknown, NoAniso, Margin, ScaleTo, SigmaCutoff,
   MaskSpacing, RadiiSet, Rprobe, Rshrink, MaskFile, Ksolv, Bsolv, Kov, Baniso
 };
@@ -92,6 +92,8 @@ const option::Descriptor Usage[] = {
   { Wavelength, 0, "w", "wavelength", Arg::Float,
     "  --wavelength=NUM  \tWavelength [A] for calculation of f' "
     "(use --wavelength=0 or -w0 to ignore anomalous scattering)." },
+  { Anomalous, 0, "", "anomalous", Arg::None,
+    "  --anomalous  \tCalculate anomalous map (f\")." },
   { Unknown, 0, "", "unknown", Arg::Required,
     "  --unknown=SYMBOL  \tUse form factor of SYMBOL for unknown atoms." },
   { NoAniso, 0, "", "noaniso", Arg::None,
@@ -526,7 +528,6 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
   const gemmi::UnitCell& cell = use_st ? st.cell : small.cell;
   gemmi::StructureFactorCalculator<Table> calc(cell);
 
-
   auto present_elems = use_st ? st.models[0].present_elements()
                               : small.present_elements();
   if (present_elems[(int)gemmi::El::X])
@@ -549,16 +550,22 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
     }
   } else if (wavelength > 0) {
     if (p.options[Verbose])
-      fprintf(stderr, "Wavelength %g A. Using Cromer-Liberman approximation for f'.\n",
+      fprintf(stderr, "Wavelength %g A. Using Cromer-Liberman approximation for f'/f\".\n",
               wavelength);
     double energy = gemmi::hc() / wavelength;
+    bool anomalous = p.options[Anomalous];
     for (int z = 1; z <= 92; ++z)
       if (present_elems[z] && calc.addends.values[z] == 0) {
-        calc.addends.values[z] = (float) gemmi::cromer_liberman(z, energy, nullptr);
+        double f;
+        if (anomalous)
+          gemmi::cromer_liberman(z, energy, &f);
+        else
+          f = gemmi::cromer_liberman(z, energy, nullptr);
+        calc.addends.values[z] = (float)f;
       }
   } else {
     if (p.options[Verbose])
-      fprintf(stderr, "Unknown wavelength, f' not used.\n");
+      fprintf(stderr, "Unknown wavelength, f'/f\" not used.\n");
   }
   if (mott_bethe)
     calc.addends.subtract_z();
@@ -850,6 +857,9 @@ void process(const std::string& input, const OptParser& p) {
   char table = p.options[For] ? p.options[For].arg[0] : 'x';
   if (p.options[CifFp] && table != 'x')
     gemmi::fail("Electron scattering has no dispersive part (--ciffp)");
+  if (p.options[Anomalous]) {
+    process_with_table<gemmi::ZeroCoef<float>>(use_st, st, small, wavelength, false, p);
+  }
   if (table == 'x' || table == 'm') {
     gemmi::IT92<float>::ignore_charge = (table == 'm' || !p.options[UseCharge]);
     if (p.options[NormalizeIt92])

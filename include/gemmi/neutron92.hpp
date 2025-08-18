@@ -21,6 +21,20 @@ namespace gemmi {
 #endif
 
 template<class Real>
+struct ZeroCoef {
+  using Coef = GaussianCoef<0, 1, Real>;
+  static Real data[121];
+
+  static Real& get_(El el) { return data[static_cast<int>(el)]; }
+  static bool has(El el) { return static_cast<int>(el) < sizeof(data) / sizeof(Real); }
+  static Coef get(El el, signed char /*charge*/=0, int /*serial*/=0) { return Coef{{get_(el)}}; }
+};
+
+// real part of the bound coherent neutron scattering length (fm)
+template<class Real>
+Real ZeroCoef<Real>::data[121] = { /*X*/ 0.0 };
+
+template<class Real>
 struct Neutron92 {
   using Coef = GaussianCoef<0, 1, Real>;
   static Real data[121];
