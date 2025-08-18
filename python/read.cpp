@@ -99,6 +99,8 @@ void add_read_structure(nb::module_& m) {
         nb::arg("block"), nb::arg("which")=7,
         "CIF block from CCD or monomer library -> single-residue Model(s).");
 
+  m.def("populate_structure_from_pdb_stream", &populate_structure_from_pdb_stream,
+        nb::arg("line_reader"), nb::arg("source"), nb::arg("st"), nb::arg("options"));
   m.def("read_pdb_string", [](const std::string& s, int max_line_length,
                               bool ignore_ter, bool split_chain_on_ter) {
           PdbReadOptions options{max_line_length, ignore_ter, split_chain_on_ter, false};
