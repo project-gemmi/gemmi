@@ -26,7 +26,7 @@ struct ZeroCoef {
   static Real data[121];
 
   static Real& get_(El el) { return data[static_cast<int>(el)]; }
-  static bool has(El el) { return static_cast<int>(el) < sizeof(data) / sizeof(Real); }
+  static bool has(El el) { return static_cast<size_t>(el) < sizeof(data) / sizeof(Real); }
   static Coef get(El el, signed char /*charge*/=0, int /*serial*/=0) { return Coef{{get_(el)}}; }
 };
 

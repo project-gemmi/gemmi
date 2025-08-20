@@ -56,3 +56,5 @@ Options for comparing calculated values with values from a file:
   --f=LABEL            MTZ column label (default: FC) or small molecule cif tag
                        (default: F_calc or F_squared_calc).
   --phi=LABEL          MTZ column label (default: PHIC).
+  --fcanom=LABEL       MTZ column label for anomalous F (default: FCanom).
+  --phicanom=LABEL     MTZ column label for anomalous PHI (default: PHICanom).
