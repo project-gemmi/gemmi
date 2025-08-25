@@ -213,10 +213,10 @@ read_sf_and_fft_to_map(const char* input_path,
     // nothing
   } else if (f_pow == 2.) {
     for (size_t i = 0; i != grid.data.size(); ++i)
-      grid.data[i] *= grid.data[i];
+      grid.data[i] = gemmi::sq(std::abs(grid.data[i]));
   } else {
     for (size_t i = 0; i != grid.data.size(); ++i)
-      grid.data[i] = std::pow(grid.data[i], f_pow);
+      grid.data[i] = std::pow(std::abs(grid.data[i]), f_pow);
   }
   if (output)
     fprintf(output, "Fourier transform...\n");
