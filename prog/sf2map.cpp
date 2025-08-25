@@ -16,7 +16,7 @@
 
 namespace {
 
-enum OptionIndex { Normalize=AfterMapOptions, MapMask, Margin, Select, Check };
+enum OptionIndex { Normalize=AfterMapOptions, MapMask, Margin, Select, Check, Pow };
 
 const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
@@ -58,6 +58,8 @@ const option::Descriptor Usage[] = {
     "  --select=SEL  \t(w/ --mapmask) Atom selection for mask, MMDB syntax." },
   { Check, 0, "", "check", Arg::Optional,
     "  --check[=cols]  \tAnalyze map coefficient columns in MTZ file." },
+  { Pow, 0, "", "pow", Arg::Float,
+    "  --pow=P  \tTransform |F|^P instead of F. --pow=2 for Patterson map." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -66,8 +68,10 @@ void transform_sf_to_map(OptParser& p) {
   const char* input_path = p.nonOption(0);
   const char* map_path = p.options[GridQuery] ? nullptr : p.nonOption(1);
   gemmi::Ccp4<float> ccp4;
+  double f_pow = p.options[Pow] ? std::atof(p.options[Pow].arg) : 1.0;
   ccp4.grid = read_sf_and_fft_to_map(input_path, p.options,
-                                     p.options[Verbose] ? stderr : nullptr);
+                                     p.options[Verbose] ? stderr : nullptr,
+                                     false, f_pow);
   if (p.options[Verbose])
     fprintf(stderr, "Writing %s ...\n", map_path);
   ccp4.update_ccp4_header(2);

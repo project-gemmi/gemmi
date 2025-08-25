@@ -37,3 +37,4 @@ Options:
   --margin=N           (w/ --mapmask) Border in Angstroms (default: 5).
   --select=SEL         (w/ --mapmask) Atom selection for mask, MMDB syntax.
   --check[=cols]       Analyze map coefficient columns in MTZ file.
+  --pow=P              Transform |F|^P instead of F. --pow=2 for Patterson map.

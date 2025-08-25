@@ -125,7 +125,7 @@ gemmi::Grid<float>
 read_sf_and_fft_to_map(const char* input_path,
                        const std::vector<option::Option>& options,
                        FILE* output,
-                       bool oversample_by_default) {
+                       bool oversample_by_default, double f_pow) {
   if (options[PhLabel] && !options[FLabel])
     gemmi::fail("Option -p can be given only together with -f");
   if (options[FLabel] && options[Diff])
@@ -209,6 +209,15 @@ read_sf_and_fft_to_map(const char* input_path,
   if (weight_grid.data.size() == grid.data.size())
     for (size_t i = 0; i != grid.data.size(); ++i)
       grid.data[i] *= weight_grid.data[i];
+  if (f_pow == 1.) {
+    // nothing
+  } else if (f_pow == 2.) {
+    for (size_t i = 0; i != grid.data.size(); ++i)
+      grid.data[i] *= grid.data[i];
+  } else {
+    for (size_t i = 0; i != grid.data.size(); ++i)
+      grid.data[i] = std::pow(grid.data[i], f_pow);
+  }
   if (output)
     fprintf(output, "Fourier transform...\n");
   timer.start();
