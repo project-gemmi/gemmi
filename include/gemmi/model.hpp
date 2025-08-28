@@ -262,6 +262,7 @@ struct Residue : public ResidueId {
   const Atom* get_ca() const { return find_atom("CA", '*', El::C); }
   const Atom* get_c() const { return find_atom("C", '*', El::C); }
   const Atom* get_n() const { return find_atom("N", '*', El::N); }
+  const Atom* get_o() const { return find_atom("O", '*', El::O); }
   // short-cuts to access nucleic acid atoms
   const Atom* get_p() const { return find_atom("P", '*', El::P); }
   const Atom* get_o3prim() const { return find_atom("O3'", '*', El::O); }

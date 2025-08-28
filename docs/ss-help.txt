@@ -17,11 +17,9 @@ Options:
                        Default: use existing H atoms.
   --hbond=TYPE         Hydrogen bond definition: energy (DSSP) or geometry
                        (distance+angle).
-  --nb                 Use neighbor search for efficiency.
   --cutoff=DIST        Cutoff distance for neighbor search (default: 0.9 nm).
   --pihelix            Prefer pi-helices over alpha-helices.
   --polypro            Search for polyproline helices.
-  --clear              Remove residues with missing backbone atoms.
   --energy-cutoff=VAL  Hydrogen bond energy cutoff (default: -0.5 kcal/mol).
   --min-ca-dist=DIST   Minimum CA distance for hydrogen bonding (default: 9.0
                        A).

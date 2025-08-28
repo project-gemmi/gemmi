@@ -109,45 +109,14 @@ struct GEMMI_DLL SecondaryStructureInfo {
   }
 };
 
-// Per-residue information for DSSP calculation
-struct GEMMI_DLL ResidueInfo {
-  Topo::ResInfo* res_info = nullptr;
-  std::array<Atom*, 5> backbone_atoms = {nullptr, nullptr, nullptr, nullptr, nullptr}; // CA, C, O, N, H
-  std::array<bool, 5> has_backbone_atom = {false, false, false, false, false};
-  std::array<Topo::ResInfo*, 2> donors = {nullptr, nullptr};
-  std::array<Topo::ResInfo*, 2> acceptors = {nullptr, nullptr};
-  std::array<double, 2> donor_energies = {0.0, 0.0};
-  std::array<double, 2> acceptor_energies = {0.0, 0.0};
-  ResidueInfo* prev_residue = nullptr;
-  ResidueInfo* next_residue = nullptr;
-  bool is_proline = false;
-
-  enum BackboneAtom { CA = 0, C = 1, O = 2, N = 3, H = 4 };
-
-  void set_backbone_atom(BackboneAtom type, Atom* atom) {
-    backbone_atoms[type] = atom;
-    has_backbone_atom[type] = true;
-  }
-
-  Atom* get_backbone_atom(BackboneAtom type) const {
-    return backbone_atoms[type];
-  }
-
-  bool has_atom(BackboneAtom type) const {
-    return has_backbone_atom[type];
-  }
-};
-
 // DSSP options/parameters
 struct GEMMI_DLL DsspOptions {
   HydrogenMode hydrogen_mode = HydrogenMode::Calculate;
   HBondDefinition hbond_definition = HBondDefinition::Energy;
-  bool use_neighbor_search = true;
   double cutoff = 0.9;  // nm
   bool pi_helix_preference = true;
   bool search_polyproline = true;
   bool shortened_pp_stretch = false;
-  bool clear_defective_residues = false;
   double hbond_energy_cutoff = -0.5;  // kcal/mol
   double min_ca_distance = 9.0;  // Angstrom
   double bend_angle_min = 70.0;  // degrees
@@ -159,23 +128,20 @@ struct GEMMI_DLL DsspCalculator {
   explicit DsspCalculator(const DsspOptions& opts = DsspOptions{}) : options(opts) {}
 
   // Calculate secondary structure for a chain
-  std::string calculate_secondary_structure(NeighborSearch& ns, Topo::ChainInfo& cinfo);
+  std::string calculate_secondary_structure(NeighborSearch& ns, Topo& topo);
 
   // Get detailed secondary structure information
   const std::vector<SecondaryStructureInfo>& get_detailed_info() const { return ss_info; }
 
   DsspOptions options;
-  std::vector<ResidueInfo> residue_info;
   std::vector<SecondaryStructureInfo> ss_info;
   std::vector<Bridge> bridges_;
-
-  // Setup residue information from topology
-  void setup_residue_info(Topo::ChainInfo& cinfo);
+  std::vector<Topo::ResInfo*> res_infos;  // Working set of residue info pointers
 
   // Calculate hydrogen bonds
-  void calculate_hydrogen_bonds(NeighborSearch& ns);
-  void calculate_hbond_energy(ResidueInfo* donor, ResidueInfo* acceptor);
-  void calculate_hbond_geometry(ResidueInfo* donor, ResidueInfo* acceptor);
+  void calculate_hydrogen_bonds(Topo& topo, NeighborSearch& ns);
+  void calculate_hbond_energy(Topo::ResInfo* donor, Topo::ResInfo* acceptor);
+  void calculate_hbond_geometry(Topo::ResInfo* donor, Topo::ResInfo* acceptor);
 
   // Pattern recognition functions
   void find_bridges_and_strands();
@@ -184,7 +150,7 @@ struct GEMMI_DLL DsspCalculator {
   void find_polyproline_helices();
 
   // Utility functions
-  bool has_hbond_between(size_t donor_idx, size_t acceptor_idx) const;
+  bool has_hbond_between(Topo::ResInfo* donor, Topo::ResInfo* acceptor) const;
   bool no_chain_breaks_between(size_t res1_idx, size_t res2_idx) const;
   BridgeType calculate_bridge_type(size_t res1_idx, size_t res2_idx) const;
 
@@ -195,10 +161,6 @@ struct GEMMI_DLL DsspCalculator {
 // Convenience function for simple use cases
 GEMMI_DLL std::string calculate_dssp(NeighborSearch& ns, Topo::ChainInfo& cinfo,
                                      const DsspOptions& opts = DsspOptions{});
-
-// Legacy function for backwards compatibility
-GEMMI_DLL std::vector<HBond>
-dssp_determine_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInfo& cinfo);
 
 } // namespace gemmi
 #endif

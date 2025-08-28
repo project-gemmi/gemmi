@@ -135,6 +135,11 @@ struct GEMMI_DLL Topo {
     // Pointer to restraints with modifications applied (if any).
     std::vector<FinalChemComp> chemcomps;
     std::vector<Rule> monomer_rules;
+    // lowest-energy hydrogen bonds for DSSP
+    std::array<Topo::ResInfo*, 2> donors = {nullptr, nullptr};
+    std::array<Topo::ResInfo*, 2> acceptors = {nullptr, nullptr};
+    std::array<double, 2> donor_energies = {0.0, 0.0};
+    std::array<double, 2> acceptor_energies = {0.0, 0.0};
 
     ResInfo(Residue* r) : res(r) {}
     void add_mod(const std::string& m, const ChemComp::Aliasing* aliasing, char altloc) {

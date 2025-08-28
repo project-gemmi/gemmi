@@ -25,8 +25,8 @@ namespace {
 
 enum OptionIndex {
   FormatIn=AfterMonLibOptions, Sort, Update, RemoveH, KeepH, Water, Unique, NoChange,
-  CalculateH, HBondDefinition, UseNeighborSearch, Cutoff, PiHelixPreference,
-  SearchPolyproline, ClearDefective, HBondEnergyThreshold, MinCADistance, BendAngleMin
+  CalculateH, HBondDefinition, Cutoff, PiHelixPreference,
+  SearchPolyproline, HBondEnergyThreshold, MinCADistance, BendAngleMin
 };
 
 const option::Descriptor Usage[] = {
@@ -47,16 +47,12 @@ const option::Descriptor Usage[] = {
     "  --calculate-h  \tCalculate hydrogen positions (original DSSP method). Default: use existing H atoms." },
   { HBondDefinition, 0, "", "hbond", Arg::Required,
     "  --hbond=TYPE  \tHydrogen bond definition: energy (DSSP) or geometry (distance+angle)." },
-  { UseNeighborSearch, 0, "", "nb", Arg::None,
-    "  --nb  \tUse neighbor search for efficiency." },
   { Cutoff, 0, "", "cutoff", Arg::Float,
     "  --cutoff=DIST  \tCutoff distance for neighbor search (default: 0.9 nm)." },
   { PiHelixPreference, 0, "", "pihelix", Arg::None,
     "  --pihelix  \tPrefer pi-helices over alpha-helices." },
   { SearchPolyproline, 0, "", "polypro", Arg::None,
     "  --polypro  \tSearch for polyproline helices." },
-  { ClearDefective, 0, "", "clear", Arg::None,
-    "  --clear  \tRemove residues with missing backbone atoms." },
   { HBondEnergyThreshold, 0, "", "energy-cutoff", Arg::Float,
     "  --energy-cutoff=VAL  \tHydrogen bond energy cutoff (default: -0.5 kcal/mol)." },
   { MinCADistance, 0, "", "min-ca-dist", Arg::Float,
@@ -109,16 +105,12 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
 
   // Parse other DSSP options
-  if (p.options[UseNeighborSearch])
-    dssp_options.use_neighbor_search = true;
   if (p.options[Cutoff])
     dssp_options.cutoff = std::stod(p.options[Cutoff].arg);
   if (p.options[PiHelixPreference])
     dssp_options.pi_helix_preference = true;
   if (p.options[SearchPolyproline])
     dssp_options.search_polyproline = true;
-  if (p.options[ClearDefective])
-    dssp_options.clear_defective_residues = true;
   if (p.options[HBondEnergyThreshold])
     dssp_options.hbond_energy_cutoff = std::stod(p.options[HBondEnergyThreshold].arg);
   if (p.options[MinCADistance])
@@ -183,32 +175,40 @@ int GEMMI_MAIN(int argc, char **argv) {
          // preparing topology modifies hydrogens in the model
          std::unique_ptr<gemmi::Topo> topo =
            prepare_topology(st, monlib, i, h_change, p.options[Sort], {&gemmi::Logger::to_stderr});
-         gemmi::NeighborSearch ns(model, st.cell, 9);
+         gemmi::NeighborSearch ns(model, st.cell, dssp_options.min_ca_distance);
+         for (int n_ch = 0; n_ch != (int) model.chains.size(); ++n_ch) {
+           gemmi::Chain& chain = model.chains[n_ch];
+           for (int n_res = 0; n_res != (int) chain.residues.size(); ++n_res) {
+             gemmi::Residue& res = chain.residues[n_res];
+             if (gemmi::Atom* ca = res.find_atom("CA", '*', gemmi::El::C))
+               ns.add_atom(*ca, n_ch, n_res, int(ca - &res.atoms[0]));
+           }
+         }
 
          // Calculate secondary structure using DSSP
          gemmi::DsspCalculator dssp_calc(dssp_options);
 
          for (gemmi::Topo::ChainInfo& ci : topo->chain_infos) {
            if (ci.polymer) {
-             std::string ss_string = dssp_calc.calculate_secondary_structure(ns, ci);
+             std::string ss_string = dssp_calc.calculate_secondary_structure(ns, *topo);
              if (p.options[Verbose]) {
                std::printf("Chain %s secondary structure: %s\n",
                           ci.chain_ref.name.c_str(), ss_string.c_str());
                if (p.options[Verbose].count() > 1) {
-                 for (size_t j = 0; j < dssp_calc.residue_info.size(); ++j) {
-                   gemmi::ResidueInfo& resinfo = dssp_calc.residue_info[j];
-                   gemmi::Residue& res= *resinfo.res_info->res;
+                 for (size_t j = 0; j < dssp_calc.res_infos.size(); ++j) {
+                   gemmi::Topo::ResInfo* resinfo = dssp_calc.res_infos[j];
+                   gemmi::Residue& res = *resinfo->res;
                    auto offset = [&](gemmi::Topo::ResInfo* ri) {
-                     if (!ri || !resinfo.res_info)
+                     if (!ri || !resinfo)
                        return 0;
-                     return int(ri - resinfo.res_info);
+                     return int(ri - resinfo);
                    };
                    std::printf("# %zu %s %s  %d, %g   %d, %g    %d, %g    %d, %g\n",
                                j+1, res.seqid.str().c_str(), ci.chain_ref.name.c_str(),
-                               offset(resinfo.acceptors[0]), resinfo.acceptor_energies[0],
-                               offset(resinfo.donors[0]), resinfo.donor_energies[0],
-                               offset(resinfo.acceptors[1]), resinfo.acceptor_energies[1],
-                               offset(resinfo.donors[1]), resinfo.donor_energies[1]);
+                               offset(resinfo->acceptors[0]), resinfo->acceptor_energies[0],
+                               offset(resinfo->donors[0]), resinfo->donor_energies[0],
+                               offset(resinfo->acceptors[1]), resinfo->acceptor_energies[1],
+                               offset(resinfo->donors[1]), resinfo->donor_energies[1]);
                  }
                }
              }

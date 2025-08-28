@@ -20,7 +20,7 @@ constexpr double MIN_ENERGY = -9.9;            // kcal/mol
 constexpr double MAX_HBOND_DISTANCE = 0.35;    // nm for geometry-based hbonds
 constexpr double MAX_HBOND_ANGLE = 30.0;       // degrees for geometry-based hbonds
 
-double calculate_atomic_distance(Atom* atom1, Atom* atom2) {
+double calculate_atomic_distance(const Atom* atom1, const Atom* atom2) {
   if (!atom1 || !atom2) return 0.0;
   return atom1->pos.dist(atom2->pos);
 }
@@ -34,24 +34,26 @@ double calculate_dihedral_angle(Atom* a1, Atom* a2, Atom* a3, Atom* a4) {
 } // anonymous namespace
 
 // DsspCalculator implementation
-std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, Topo::ChainInfo& cinfo) {
+std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, Topo& topo) {
   // Clear previous calculations
-  residue_info.clear();
   ss_info.clear();
   bridges_.clear();
+  res_infos.clear();
 
-  // Setup residue information
-  setup_residue_info(cinfo);
-
-  if (residue_info.empty()) {
-    return "";
+  // Build working set of residue info pointers
+  for (Topo::ChainInfo& chain_info : topo.chain_infos) {
+    for (Topo::ResInfo& res_info : chain_info.res_infos) {
+      if (res_info.res && res_info.res->get_ca()) {  // Only include residues with CA atoms
+        res_infos.push_back(&res_info);
+      }
+    }
   }
 
   // Initialize secondary structure info
-  ss_info.resize(residue_info.size());
+  ss_info.resize(res_infos.size());
 
   // Calculate hydrogen bonds
-  calculate_hydrogen_bonds(ns);
+  calculate_hydrogen_bonds(topo, ns);
 
   // Find bends and breaks first
   find_bends_and_breaks();
@@ -71,145 +73,85 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
   return generate_ss_string();
 }
 
-void DsspCalculator::setup_residue_info(Topo::ChainInfo& cinfo) {
-  residue_info.reserve(cinfo.res_infos.size());
 
-  for (auto& res_info : cinfo.res_infos) {
-    if (!res_info.res) continue;
-
-    ResidueInfo rinfo;
-    rinfo.res_info = &res_info;
-
-    // Check if this is proline
-    if (res_info.res->name == "PRO") {
-      rinfo.is_proline = true;
-    }
-
-    // Find backbone atoms
-    for (auto& atom : res_info.res->atoms) {
-      if (atom.name == "CA") {
-        rinfo.set_backbone_atom(ResidueInfo::CA, &atom);
-      } else if (atom.name == "C") {
-        rinfo.set_backbone_atom(ResidueInfo::C, &atom);
-      } else if (atom.name == "O") {
-        rinfo.set_backbone_atom(ResidueInfo::O, &atom);
-      } else if (atom.name == "N") {
-        rinfo.set_backbone_atom(ResidueInfo::N, &atom);
-        if (options.hydrogen_mode == HydrogenMode::Calculate) {
-          // In calculate mode, use N position for H calculation
-          rinfo.set_backbone_atom(ResidueInfo::H, &atom);
+void DsspCalculator::calculate_hydrogen_bonds(Topo& topo, NeighborSearch& ns) {
+  for (Topo::ChainInfo& chain_info : topo.chain_infos) {
+    for (Topo::ResInfo& res_info : chain_info.res_infos) {
+      const Atom* ca = res_info.res->get_ca();
+      if (!ca || !res_info.res || !res_info.res->get_n())
+        continue;
+      // Uses neighbor search for efficiency
+      auto marks = ns.find_neighbors(*ca, 0, 0);
+      for (gemmi::NeighborSearch::Mark* mark : marks) {
+        Topo::ChainInfo& c = topo.chain_infos.at(mark->chain_idx);
+        Topo::ResInfo& r = c.res_infos.at(mark->residue_idx);
+        CRA cra = mark->to_cra(*ns.model);
+        assert(cra.residue == r.res);
+        //TODO: get ResInfo instead
+        if (!r.res || !r.res->get_c() || !r.res->find_atom("O", '*', El::O))
+          continue;
+        if (options.hbond_definition == HBondDefinition::Energy) {
+          calculate_hbond_energy(&res_info, &r);
+          calculate_hbond_energy(&r, &res_info);
+        } else {
+          calculate_hbond_geometry(&res_info, &r);
+          calculate_hbond_geometry(&r, &res_info);
         }
-      } else if (atom.name == "H" && options.hydrogen_mode == HydrogenMode::Existing) {
-        rinfo.set_backbone_atom(ResidueInfo::H, &atom);
-      }
-    }
-
-    residue_info.push_back(rinfo);
-  }
-
-  // Remove incomplete residues if requested
-  if (options.clear_defective_residues) {
-    auto is_incomplete = [](const ResidueInfo& rinfo) {
-      return !rinfo.has_atom(ResidueInfo::CA) ||
-             !rinfo.has_atom(ResidueInfo::C) ||
-             !rinfo.has_atom(ResidueInfo::O) ||
-             !rinfo.has_atom(ResidueInfo::N) ||
-             !rinfo.has_atom(ResidueInfo::H);
-    };
-
-    residue_info.erase(std::remove_if(residue_info.begin(), residue_info.end(), is_incomplete),
-                      residue_info.end());
-  }
-
-  // Setup prev/next pointers
-  for (size_t i = 0; i < residue_info.size(); ++i) {
-    if (i > 0) {
-      residue_info[i].prev_residue = &residue_info[i-1];
-    }
-    if (i < residue_info.size() - 1) {
-      residue_info[i].next_residue = &residue_info[i+1];
-    }
-  }
-}
-
-void DsspCalculator::calculate_hydrogen_bonds(NeighborSearch& ) {
-  if (options.use_neighbor_search) {
-    // Use neighbor search for efficiency
-    std::vector<Position> ca_positions;
-    ca_positions.reserve(residue_info.size());
-
-    for (const auto& rinfo : residue_info) {
-      if (rinfo.has_atom(ResidueInfo::CA)) {
-        ca_positions.push_back(rinfo.get_backbone_atom(ResidueInfo::CA)->pos);
-      }
-    }
-
-    // TODO: Implement neighbor search based hydrogen bond calculation
-    // For now, fall back to all-vs-all
-  }
-
-  // All-vs-all hydrogen bond calculation
-  for (size_t i = 0; i < residue_info.size(); ++i) {
-    for (size_t j = i + 1; j < residue_info.size(); ++j) {
-      if (options.hbond_definition == HBondDefinition::Energy) {
-        calculate_hbond_energy(&residue_info[i], &residue_info[j]);
-        calculate_hbond_energy(&residue_info[j], &residue_info[i]);
-      } else {
-        calculate_hbond_geometry(&residue_info[i], &residue_info[j]);
-        calculate_hbond_geometry(&residue_info[j], &residue_info[i]);
       }
     }
   }
 }
 
-static Position calculate_h_pos(ResidueInfo* donor, const Atom* donor_n, HydrogenMode h_mode) {
+static Position calculate_h_pos(Topo::ResInfo* donor, const Atom* donor_n, HydrogenMode h_mode) {
 
-  Position h_pos= donor->get_backbone_atom(ResidueInfo::H)->pos;
-  if (h_mode == HydrogenMode::Calculate) {
-    // Calculate hydrogen position from previous residue C-O vector
-    if (donor->prev_residue &&
-        donor->prev_residue->has_atom(ResidueInfo::C) &&
-        donor->prev_residue->has_atom(ResidueInfo::O)) {
-      // official DSSP implementation assumes that N-H vector is a normalized
-      // O-C of the previous residue
-      Vec3 prev_o = donor->prev_residue->get_backbone_atom(ResidueInfo::O)->pos;
-      Vec3 prev_c = donor->prev_residue->get_backbone_atom(ResidueInfo::C)->pos;
-      Vec3 prev_co = (prev_o - prev_c).normalized();
-      h_pos = donor_n->pos - Position(prev_co);
-    } else {
-      // no previous residue, leaving H set to N
+  Position h_pos = donor_n->pos;
+  if (h_mode == HydrogenMode::Existing) {
+    h_pos = donor->res->find_atom("H", '*', El::H)->pos;
+  } else { // HydrogenMode::Calculate
+    if (!donor->prev.empty()) {
+      if (Residue* prev  = donor->prev[0].res1) {
+        // Calculate hydrogen position from previous residue C-O vector
+        const Atom* prev_o = prev->find_atom("O", '*', El::O);
+        const Atom* prev_c = prev->get_c();
+        if (prev_o && prev_c) {
+          // official DSSP implementation assumes that N-H vector is a normalized
+          // O-C of the previous residue
+          Vec3 prev_co = (prev_o->pos - prev_c->pos).normalized();
+          h_pos -= Position(prev_co);
+        }
+      }
     }
   }
   return h_pos;
 }
 
-void DsspCalculator::calculate_hbond_energy(ResidueInfo* donor, ResidueInfo* acceptor) {
-  if (donor->is_proline ||
-      !acceptor->has_atom(ResidueInfo::C) || !acceptor->has_atom(ResidueInfo::O) ||
-      !donor->has_atom(ResidueInfo::N) || !donor->has_atom(ResidueInfo::H)) {
+void DsspCalculator::calculate_hbond_energy(Topo::ResInfo* donor, Topo::ResInfo* acceptor) {
+  // Check for proline and required atoms
+  if (donor->res->name == "PRO" ||
+      !acceptor->res->get_c() || !acceptor->res->get_o() ||
+      !donor->res->get_n()) {
     return;
   }
 
   // Check CA distance first for efficiency
-  if (donor->has_atom(ResidueInfo::CA) && acceptor->has_atom(ResidueInfo::CA)) {
-    double ca_dist = calculate_atomic_distance(
-        donor->get_backbone_atom(ResidueInfo::CA),
-        acceptor->get_backbone_atom(ResidueInfo::CA));
-
-   if (ca_dist >= options.min_ca_distance) {
+  const Atom* donor_ca = donor->res->get_ca();
+  const Atom* acceptor_ca = acceptor->res->get_ca();
+  if (donor_ca && acceptor_ca) {
+    double ca_dist = calculate_atomic_distance(donor_ca, acceptor_ca);
+    if (ca_dist > options.min_ca_distance) {
       return;
     }
   }
 
   // Calculate distances
-  const Atom* donor_n = donor->get_backbone_atom(ResidueInfo::N);
-  const Atom* acceptor_o = acceptor->get_backbone_atom(ResidueInfo::O);
-  const Atom* acceptor_c = acceptor->get_backbone_atom(ResidueInfo::C);
+  const Atom* donor_n = donor->res->get_n();
+  const Atom* acceptor_o = acceptor->res->get_o();
+  const Atom* acceptor_c = acceptor->res->get_c();
   double dist_NO = donor_n->pos.dist(acceptor_o->pos);
   double dist_NC = donor_n->pos.dist(acceptor_c->pos);
   Position h_pos = calculate_h_pos(donor, donor_n, options.hydrogen_mode);
-  double dist_HO = h_pos.dist(acceptor->get_backbone_atom(ResidueInfo::O)->pos);
-  double dist_HC = h_pos.dist(acceptor->get_backbone_atom(ResidueInfo::C)->pos);
+  double dist_HO = h_pos.dist(acceptor->res->get_o()->pos);
+  double dist_HC = h_pos.dist(acceptor->res->get_c()->pos);
 
   // Calculate hydrogen bond energy
   double energy = 0;
@@ -221,94 +163,75 @@ void DsspCalculator::calculate_hbond_energy(ResidueInfo* donor, ResidueInfo* acc
   }
 
   if (energy < MIN_ENERGY) {
-      energy = MIN_ENERGY;
+    energy = MIN_ENERGY;
   }
 
   // Store the hydrogen bond information
   if (energy < donor->acceptor_energies[0]) {
     donor->acceptors[1] = donor->acceptors[0];
     donor->acceptor_energies[1] = donor->acceptor_energies[0];
-    donor->acceptors[0] = acceptor->res_info;
+    donor->acceptors[0] = acceptor;
     donor->acceptor_energies[0] = energy;
   } else if (energy < donor->acceptor_energies[1]) {
-    donor->acceptors[1] = acceptor->res_info;
+    donor->acceptors[1] = acceptor;
     donor->acceptor_energies[1] = energy;
   }
 
   if (energy < acceptor->donor_energies[0]) {
     acceptor->donors[1] = acceptor->donors[0];
     acceptor->donor_energies[1] = acceptor->donor_energies[0];
-    acceptor->donors[0] = donor->res_info;
+    acceptor->donors[0] = donor;
     acceptor->donor_energies[0] = energy;
   } else if (energy < acceptor->donor_energies[1]) {
-    acceptor->donors[1] = donor->res_info;
+    acceptor->donors[1] = donor;
     acceptor->donor_energies[1] = energy;
   }
 }
 
-void DsspCalculator::calculate_hbond_geometry(ResidueInfo* donor, ResidueInfo* acceptor) {
-  if (donor->is_proline ||
-      !acceptor->has_atom(ResidueInfo::C) || !acceptor->has_atom(ResidueInfo::O) ||
-      !donor->has_atom(ResidueInfo::N) || !donor->has_atom(ResidueInfo::H)) {
+void DsspCalculator::calculate_hbond_geometry(Topo::ResInfo* donor, Topo::ResInfo* acceptor) {
+  if (donor->res->name == "PRO" ||
+      !acceptor->res->get_c() || !acceptor->res->get_o() || !donor->res->get_n()) {
     return;
   }
 
   // Check distance criterion
-  const Atom* donor_n = donor->get_backbone_atom(ResidueInfo::N);
+  const Atom* donor_n = donor->res->get_n();
+  const Atom* acceptor_o = acceptor->res->get_o();
+  if (!donor_n || !acceptor_o)
+    return;
+  Position o_pos = acceptor_o->pos;
   Position n_pos = donor_n->pos;
-  Position o_pos = acceptor->get_backbone_atom(ResidueInfo::O)->pos;
   double dist_NO = (n_pos - o_pos).length();
 
   if (dist_NO > MAX_HBOND_DISTANCE)
     return;
   Position h_pos = calculate_h_pos(donor, donor_n, options.hydrogen_mode);
-  /*
-  Position h_pos = donor->get_backbone_atom(ResidueInfo::H)->pos;
-  if (options.hydrogen_mode == HydrogenMode::Calculate) {
-    // Calculate hydrogen position from previous residue C-O vector
-    if (donor->prev_residue &&
-        donor->prev_residue->has_atom(ResidueInfo::C) &&
-        donor->prev_residue->has_atom(ResidueInfo::O)) {
-      // official DSSP implementation assumes that N-H vector is a normalized
-      // O-C of the previous residue
-      Vec3 prev_o = donor->prev_residue->get_backbone_atom(ResidueInfo::O)->pos;
-      Vec3 prev_c = donor->prev_residue->get_backbone_atom(ResidueInfo::C)->pos;
-      Vec3 prev_co = (prev_o - prev_c).normalized();
-      h_pos = donor_n->pos - Position(prev_co);
-    } else {
-      // no previous residue, leaving H set to N
-    }
-  }
-  */
 
   // Check angle criterion
   double angle = (o_pos - n_pos).angle(h_pos - n_pos);
   if (angle <= MAX_HBOND_ANGLE) {
     // Store hydrogen bond (geometry-based uses nullptr for energies)
     if (donor->acceptors[0] == nullptr) {
-      donor->acceptors[0] = acceptor->res_info;
-      acceptor->donors[0] = donor->res_info;
+      donor->acceptors[0] = acceptor;
+      acceptor->donors[0] = donor;
     } else if (donor->acceptors[1] == nullptr) {
       donor->acceptors[1] = donor->acceptors[0];
-      donor->acceptors[0] = acceptor->res_info;
+      donor->acceptors[0] = acceptor;
       acceptor->donors[1] = acceptor->donors[0];
-      acceptor->donors[0] = donor->res_info;
+      acceptor->donors[0] = donor;
     }
   }
 }
 
-bool DsspCalculator::has_hbond_between(size_t donor_idx, size_t acceptor_idx) const {
-    const ResidueInfo& donor = residue_info[donor_idx];
-    const ResidueInfo& acceptor = residue_info[acceptor_idx];
-
+bool DsspCalculator::has_hbond_between(Topo::ResInfo* donor, Topo::ResInfo* acceptor) const {
     for (int i = 0; i < 2; ++i) {
-        if (donor.acceptors[i] == acceptor.res_info && donor.acceptor_energies[i] < options.hbond_energy_cutoff) {
+        if (donor->acceptors[i] == acceptor && donor->acceptor_energies[i] < options.hbond_energy_cutoff) {
             return true;
         }
     }
 
     for (int i = 0; i < 2; ++i) {
-        if (acceptor.donors[i] == donor.res_info && acceptor.donor_energies[i] < options.hbond_energy_cutoff) {
+        if (acceptor->donors[i] == donor && acceptor->donor_energies[i] < options.hbond_energy_cutoff) {
             return true;
         }
     }
@@ -327,14 +250,20 @@ bool DsspCalculator::no_chain_breaks_between(size_t res1_idx, size_t res2_idx) c
 }
 
 BridgeType DsspCalculator::calculate_bridge_type(size_t i, size_t j) const {
+  if (i >= res_infos.size() || j >= res_infos.size())
+    return BridgeType::None;
+
   // antiparallel
-  bool anti1 = has_hbond_between(i, j) && has_hbond_between(j, i);
-  bool anti2 = has_hbond_between(i - 1, j + 1) && has_hbond_between(j - 1, i + 1);
+  bool anti1 = has_hbond_between(res_infos[i], res_infos[j]) && has_hbond_between(res_infos[j], res_infos[i]);
+  bool anti2 = (i > 0 && j + 1 < res_infos.size() && j > 0 && i + 1 < res_infos.size()) &&
+               has_hbond_between(res_infos[i - 1], res_infos[j + 1]) && has_hbond_between(res_infos[j - 1], res_infos[i + 1]);
   if (anti1 && anti2)
     return BridgeType::AntiParallel;
   // parallel
-  bool para1 = has_hbond_between(i, j + 1) && has_hbond_between(j, i + 1);
-  bool para2 = has_hbond_between(i - 1, j) && has_hbond_between(j - 1, i);
+  bool para1 = (j + 1 < res_infos.size() && i + 1 < res_infos.size()) &&
+               has_hbond_between(res_infos[i], res_infos[j + 1]) && has_hbond_between(res_infos[j], res_infos[i + 1]);
+  bool para2 = (i > 0 && j > 0) &&
+               has_hbond_between(res_infos[i - 1], res_infos[j]) && has_hbond_between(res_infos[j - 1], res_infos[i]);
   if (para1 && para2)
     return BridgeType::Parallel;
 
@@ -343,8 +272,8 @@ BridgeType DsspCalculator::calculate_bridge_type(size_t i, size_t j) const {
 
 void DsspCalculator::find_bridges_and_strands() {
   // Find bridges
-  for (size_t i = 1; i + 1 < residue_info.size(); ++i) {
-    for (size_t j = i + 1; j < residue_info.size(); ++j) {
+  for (size_t i = 1; i + 1 < res_infos.size(); ++i) {
+    for (size_t j = i + 1; j < res_infos.size(); ++j) {
       BridgeType bridge_type = calculate_bridge_type(i, j);
       if (bridge_type != BridgeType::None) {
         bridges_.emplace_back(Bridge{i, j, bridge_type});
@@ -389,8 +318,8 @@ void DsspCalculator::find_turns_and_helices() {
     size_t stride = turn_type + 3;
     TurnType turn = static_cast<TurnType>(stride);
 
-    for (size_t j = 0; j + stride < residue_info.size(); ++j) {
-      if (has_hbond_between(j + stride, j) && no_chain_breaks_between(j, j + stride)) {
+    for (size_t j = 0; j + stride < res_infos.size(); ++j) {
+      if (has_hbond_between(res_infos[j + stride], res_infos[j]) && no_chain_breaks_between(j, j + stride)) {
         // Mark end position
         ss_info[j + stride].set_helix_position(turn, HelixPosition::End);
 
@@ -415,9 +344,9 @@ void DsspCalculator::find_turns_and_helices() {
   // Process in order of precedence: alpha-helix (4-turn), 3-10 helix (3-turn), pi-helix (5-turn)
 
   // Alpha helix detection (4-turn, highest precedence)
-  for (size_t i = 0; i + 4 < residue_info.size(); ++i) {
+  for (size_t i = 0; i + 4 < res_infos.size(); ++i) {
     // Look for overlapping 4-turn patterns: i→i+4 AND i+1→i+5
-    if (has_hbond_between(i + 4, i) && has_hbond_between(i + 5, i + 1) &&
+    if (has_hbond_between(res_infos[i + 4], res_infos[i]) && has_hbond_between(res_infos[i + 5], res_infos[i + 1]) &&
         no_chain_breaks_between(i, i + 5)) {
 
       // Found overlapping alpha-helix pattern - mark as helix
@@ -426,8 +355,8 @@ void DsspCalculator::find_turns_and_helices() {
       }
 
       // Continue the helix while overlapping patterns exist
-      for (size_t j = i + 2; j + 4 < residue_info.size(); ++j) {
-        if (has_hbond_between(j + 4, j) && no_chain_breaks_between(j, j + 4)) {
+      for (size_t j = i + 2; j + 4 < res_infos.size(); ++j) {
+        if (has_hbond_between(res_infos[j + 4], res_infos[j]) && no_chain_breaks_between(j, j + 4)) {
           for (size_t k = std::max(j + 1, i + 5); k <= j + 4; ++k) {
             ss_info[k].ss_type = SecondaryStructure::Helix_4;
           }
@@ -439,9 +368,9 @@ void DsspCalculator::find_turns_and_helices() {
   }
 
   // 3-10 helix detection (3-turn)
-  for (size_t i = 0; i + 3 < residue_info.size(); ++i) {
+  for (size_t i = 0; i + 3 < res_infos.size(); ++i) {
     // Look for overlapping 3-turn patterns: i→i+3 AND i+1→i+4
-    if (has_hbond_between(i + 3, i) && has_hbond_between(i + 4, i + 1) &&
+    if (has_hbond_between(res_infos[i + 3], res_infos[i]) && has_hbond_between(res_infos[i + 4], res_infos[i + 1]) &&
         no_chain_breaks_between(i, i + 4)) {
 
       // Check if positions are available (not already alpha-helix)
@@ -457,8 +386,8 @@ void DsspCalculator::find_turns_and_helices() {
         }
 
         // Continue the helix while overlapping patterns exist
-        for (size_t j = i + 2; j + 3 < residue_info.size(); ++j) {
-          if (has_hbond_between(j + 3, j) && no_chain_breaks_between(j, j + 3)) {
+        for (size_t j = i + 2; j + 3 < res_infos.size(); ++j) {
+          if (has_hbond_between(res_infos[j + 3], res_infos[j]) && no_chain_breaks_between(j, j + 3)) {
             bool can_extend = true;
             for (size_t k = std::max(j + 1, i + 4); k <= j + 3 && can_extend; ++k) {
               can_extend = (ss_info[k].ss_type < SecondaryStructure::Helix_4);
@@ -479,9 +408,9 @@ void DsspCalculator::find_turns_and_helices() {
   }
 
   // Pi-helix detection (5-turn, lowest precedence)
-  for (size_t i = 0; i + 5 < residue_info.size(); ++i) {
+  for (size_t i = 0; i + 5 < res_infos.size(); ++i) {
     // Look for overlapping 5-turn patterns: i→i+5 AND i+1→i+6
-    if (has_hbond_between(i + 5, i) && has_hbond_between(i + 6, i + 1) &&
+    if (has_hbond_between(res_infos[i + 5], res_infos[i]) && has_hbond_between(res_infos[i + 6], res_infos[i + 1]) &&
         no_chain_breaks_between(i, i + 6)) {
 
       // Check if positions are available
@@ -499,8 +428,8 @@ void DsspCalculator::find_turns_and_helices() {
         }
 
         // Continue the helix while overlapping patterns exist
-        for (size_t j = i + 2; j + 5 < residue_info.size(); ++j) {
-          if (has_hbond_between(j + 5, j) && no_chain_breaks_between(j, j + 5)) {
+        for (size_t j = i + 2; j + 5 < res_infos.size(); ++j) {
+          if (has_hbond_between(res_infos[j + 5], res_infos[j]) && no_chain_breaks_between(j, j + 5)) {
             bool can_extend = true;
             for (size_t k = std::max(j + 1, i + 6); k <= j + 5 && can_extend; ++k) {
               SecondaryStructure current = ss_info[k].ss_type;
@@ -523,7 +452,7 @@ void DsspCalculator::find_turns_and_helices() {
   }
 
   // Third pass: mark remaining isolated turns
-  for (size_t i = 1; i + 1 < residue_info.size(); ++i) {
+  for (size_t i = 1; i + 1 < res_infos.size(); ++i) {
     if (ss_info[i].ss_type == SecondaryStructure::Loop) {
       bool is_turn = false;
 
@@ -551,14 +480,14 @@ void DsspCalculator::find_turns_and_helices() {
 
 void DsspCalculator::find_bends_and_breaks() {
   // Find chain breaks
-  for (size_t i = 0; i + 1 < residue_info.size(); ++i) {
+  for (size_t i = 0; i + 1 < res_infos.size(); ++i) {
     bool has_break = false;
 
-    if (residue_info[i].has_atom(ResidueInfo::C) &&
-        residue_info[i + 1].has_atom(ResidueInfo::N)) {
-      double dist = calculate_atomic_distance(
-          residue_info[i].get_backbone_atom(ResidueInfo::C),
-          residue_info[i + 1].get_backbone_atom(ResidueInfo::N));
+    const Atom* c_atom = res_infos[i]->res->get_c();
+    const Atom* n_atom = res_infos[i + 1]->res->get_n();
+
+    if (c_atom && n_atom) {
+      double dist = calculate_atomic_distance(c_atom, n_atom);
 
       if (dist > options.max_peptide_bond_distance) {
         has_break = true;
@@ -573,15 +502,16 @@ void DsspCalculator::find_bends_and_breaks() {
   }
 
   // Find bends
-  for (size_t i = 1; i + 3 < residue_info.size(); ++i) {
+  for (size_t i = 1; i + 3 < res_infos.size(); ++i) {
     if (no_chain_breaks_between(i - 1, i + 4)) {
-        if (residue_info[i - 1].has_atom(ResidueInfo::CA) &&
-            residue_info[i + 1].has_atom(ResidueInfo::CA) &&
-            residue_info[i + 3].has_atom(ResidueInfo::CA)) {
+        const Atom* ca_prev_atom = res_infos[i - 1]->res->get_ca();
+        const Atom* ca_curr_atom = res_infos[i + 1]->res->get_ca();
+        const Atom* ca_next_atom = res_infos[i + 3]->res->get_ca();
 
-          Position ca_prev = residue_info[i - 1].get_backbone_atom(ResidueInfo::CA)->pos;
-          Position ca_curr = residue_info[i + 1].get_backbone_atom(ResidueInfo::CA)->pos;
-          Position ca_next = residue_info[i + 3].get_backbone_atom(ResidueInfo::CA)->pos;
+        if (ca_prev_atom && ca_curr_atom && ca_next_atom) {
+          Position ca_prev = ca_prev_atom->pos;
+          Position ca_curr = ca_curr_atom->pos;
+          Position ca_next = ca_next_atom->pos;
 
           Vec3 v1 = ca_curr - ca_prev;
           Vec3 v2 = ca_next - ca_curr;
@@ -617,19 +547,10 @@ std::string DsspCalculator::generate_ss_string() const {
 // Convenience function
 std::string calculate_dssp(NeighborSearch& ns, Topo::ChainInfo& cinfo, const DsspOptions& opts) {
   DsspCalculator calculator(opts);
-  return calculator.calculate_secondary_structure(ns, cinfo);
-}
-
-// Legacy function for backwards compatibility
-std::vector<HBond> dssp_determine_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInfo& cinfo) {
-  std::vector<HBond> hbonds;
-
-  DsspCalculator calculator;
-  calculator.calculate_secondary_structure(ns, cinfo);
-
-  // Extract hydrogen bonds from the calculation
-  // This is a simplified implementation for backward compatibility
-  return hbonds;
+  // Create a temporary topology with just this chain
+  Topo topo;
+  topo.chain_infos.push_back(cinfo);
+  return calculator.calculate_secondary_structure(ns, topo);
 }
 
 } // namespace gemmi
