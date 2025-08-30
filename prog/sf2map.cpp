@@ -69,6 +69,10 @@ void transform_sf_to_map(OptParser& p) {
   const char* map_path = p.options[GridQuery] ? nullptr : p.nonOption(1);
   gemmi::Ccp4<float> ccp4;
   double f_pow = p.options[Pow] ? std::atof(p.options[Pow].arg) : 1.0;
+  if (p.options[Pow] && f_pow <= 1) {
+    std::fprintf(stderr, "Expected argument P>1 for --pow=P\n");
+    std::exit(1);
+  }
   ccp4.grid = read_sf_and_fft_to_map(input_path, p.options,
                                      p.options[Verbose] ? stderr : nullptr,
                                      false, f_pow);

@@ -196,7 +196,7 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
       has_block = true;
       if (cif::Loop* loop = block.find_loop("_refln.index_h").get_loop())
         if (std::all_of(labels.begin(), labels.end(),
-              [&](const std::string& s) { return loop->has_tag("_refln."+s); })) {
+              [&](const std::string& s) { return s.empty() || loop->has_tag("_refln."+s); })) {
           ReflnBlock rblock(std::move(block));
           if (!rblock.spacegroup && first_sg)
             rblock.spacegroup = first_sg;

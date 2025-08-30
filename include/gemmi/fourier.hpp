@@ -152,12 +152,14 @@ template<typename DataProxy>
 struct FPhiProxy : DataProxy {
   FPhiProxy(const DataProxy& data_proxy, size_t f_col, size_t phi_col)
       : DataProxy(data_proxy), f_col_(f_col), phi_col_(phi_col) {
-    if (f_col >= data_proxy.stride() || phi_col >= data_proxy.stride())
+    if (f_col >= data_proxy.stride() || (phi_col >= data_proxy.stride() && phi_col != size_t(-1)))
       fail("Map coefficients not found.");
   }
   using real = typename DataProxy::num_type;
   real get_f(size_t offset) const { return this->get_num(offset + f_col_); }
-  double get_phi(size_t offset) const { return rad(this->get_num(offset + phi_col_)); }
+  double get_phi(size_t offset) const {
+    return phi_col_ != (size_t)-1 ? rad(this->get_num(offset + phi_col_)) : 0;
+  }
 private:
   size_t f_col_, phi_col_;
 };

@@ -148,7 +148,9 @@ read_sf_and_fft_to_map(const char* input_path,
     sample_rate = 3.;
   const char* section = options[Section] ? options[Section].arg : nullptr;
   const char* f_label = options[FLabel] ? options[FLabel].arg : nullptr;
-  const char* ph_label = options[PhLabel] ? options[PhLabel].arg : nullptr;
+  const char* ph_label = options[PhLabel] && f_pow <= 1 ? options[PhLabel].arg : nullptr;
+  if (f_pow > 1) // we need only |F|
+    ph_label = "";
   const char* weight_label = options[WeightLabel] ? options[WeightLabel].arg
                                                   : nullptr;
   bool diff_map = options[Diff];
@@ -161,14 +163,27 @@ read_sf_and_fft_to_map(const char* input_path,
       gemmi::giends_with(input_path, ".ent")) {
     if (!f_label)
       f_label = diff_map ? "pdbx_DELFWT" : "pdbx_FWT";
-    if (!ph_label)
+    if (!ph_label && f_pow <= 1)
       ph_label = diff_map ?  "pdbx_DELPHWT" : "pdbx_PHWT";
     if (output)
       fprintf(output, "Looking for tags _refln.%s and _refln.%s...\n",
-              f_label, ph_label);
-    gemmi::ReflnBlock rblock = gemmi::get_refln_block(
-                                   gemmi::read_cif_gz(input_path).blocks,
-                                   {f_label, ph_label}, section);
+              f_label, ph_label ? ph_label : "(null)");
+    gemmi::ReflnBlock rblock;
+    try {
+      rblock = gemmi::get_refln_block(
+                   gemmi::read_cif_gz(input_path).blocks,
+                   {f_label, ph_label}, section);
+    } catch (const std::runtime_error& e) {
+      // If --pow is given and pdbx_FWT not found, try F_meas_au
+      if (f_pow > 1 && !options[FLabel] && std::string(f_label) == "pdbx_FWT") {
+        f_label = "F_meas_au";
+        rblock = gemmi::get_refln_block(
+                     gemmi::read_cif_gz(input_path).blocks,
+                     {f_label, ph_label}, section);
+      } else {
+        throw;
+      }
+    }
     gemmi::ReflnDataProxy data(rblock);
     adjust_size(data, size, sample_rate,
                 options[ExactDims], options[GridQuery]);
@@ -177,6 +192,7 @@ read_sf_and_fft_to_map(const char* input_path,
               rblock.block.name.c_str());
     gemmi::ReflnDataProxy data_proxy(rblock);
     int f_col = rblock.find_column_index(f_label);
+    // returns -1 if ph_label is not found, which is handled by FPhiProxy
     int phi_col = rblock.find_column_index(ph_label);
     gemmi::FPhiProxy<gemmi::ReflnDataProxy> fphi(data_proxy, f_col, phi_col);
     grid = gemmi::get_f_phi_on_grid<float>(fphi, size, half_l, axis_order);
@@ -189,6 +205,7 @@ read_sf_and_fft_to_map(const char* input_path,
     Mtz mtz;
     mtz.read_file_gz(input_path);
     timer.print("MTZ read in");
+    // returns -1 if ph_labels is not found, which is handled by FPhiProxy
     auto cols = get_mtz_map_columns(mtz, section, diff_map, f_label, ph_label);
     gemmi::MtzDataProxy data_proxy{mtz};
     adjust_size(data_proxy, size, sample_rate,
@@ -212,11 +229,23 @@ read_sf_and_fft_to_map(const char* input_path,
   if (f_pow == 1.) {
     // nothing
   } else if (f_pow == 2.) {
-    for (size_t i = 0; i != grid.data.size(); ++i)
-      grid.data[i] = gemmi::sq(std::abs(grid.data[i]));
+    for (size_t i = 0; i != grid.data.size(); ++i) {
+      float abs_val = std::abs(grid.data[i]);
+      if (std::isnan(abs_val)) {
+        grid.data[i] = std::complex<float>(0.0f, 0.0f);  // Set NaN to zero
+      } else {
+        grid.data[i] = std::complex<float>(gemmi::sq(abs_val), 0.0f);
+      }
+    }
   } else {
-    for (size_t i = 0; i != grid.data.size(); ++i)
-      grid.data[i] = std::pow(std::abs(grid.data[i]), f_pow);
+    for (size_t i = 0; i != grid.data.size(); ++i) {
+      float abs_val = std::abs(grid.data[i]);
+      if (std::isnan(abs_val)) {
+        grid.data[i] = std::complex<float>(0.0f, 0.0f);  // Set NaN to zero
+      } else {
+        grid.data[i] = std::complex<float>(std::pow(abs_val, f_pow), 0.0f);
+      }
+    }
   }
   if (output)
     fprintf(output, "Fourier transform...\n");
