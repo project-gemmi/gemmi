@@ -199,9 +199,12 @@ int GEMMI_MAIN(int argc, char **argv) {
                    gemmi::Topo::ResInfo* resinfo = dssp_calc.res_infos[j];
                    gemmi::Residue& res = *resinfo->res;
                    auto offset = [&](gemmi::Topo::ResInfo* ri) {
-                     if (!ri || !resinfo)
+                     if (!ri)
                        return 0;
-                     return int(ri - resinfo);
+                     auto it = std::find(dssp_calc.res_infos.begin(), dssp_calc.res_infos.end(), ri);
+                     if (it == dssp_calc.res_infos.end())
+                       return 0;
+                     return int(it - dssp_calc.res_infos.begin()) - int(j);
                    };
                    std::printf("# %zu %s %s  %d, %g   %d, %g    %d, %g    %d, %g\n",
                                j+1, res.seqid.str().c_str(), ci.chain_ref.name.c_str(),

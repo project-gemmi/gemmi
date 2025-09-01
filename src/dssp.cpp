@@ -75,28 +75,40 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
 
 
 void DsspCalculator::calculate_hydrogen_bonds(Topo& topo, NeighborSearch& ns) {
-  for (Topo::ChainInfo& chain_info : topo.chain_infos) {
-    for (Topo::ResInfo& res_info : chain_info.res_infos) {
-      const Atom* ca = res_info.res->get_ca();
-      if (!ca || !res_info.res || !res_info.res->get_n())
+  // Process only residues in our working set
+  for (size_t i = 0; i < res_infos.size(); ++i) {
+    Topo::ResInfo* res_info = res_infos[i];
+    const Atom* ca = res_info->res->get_ca();
+    if (!ca || !res_info->res || !res_info->res->get_n())
+      continue;
+
+    // Uses neighbor search for efficiency
+    auto marks = ns.find_neighbors(*ca, 0, 0);
+    for (gemmi::NeighborSearch::Mark* mark : marks) {
+      CRA cra = mark->to_cra(*ns.model);
+      if (!cra.residue || !cra.residue->get_c() || !cra.residue->find_atom("O", '*', El::O))
         continue;
-      // Uses neighbor search for efficiency
-      auto marks = ns.find_neighbors(*ca, 0, 0);
-      for (gemmi::NeighborSearch::Mark* mark : marks) {
-        Topo::ChainInfo& c = topo.chain_infos.at(mark->chain_idx);
-        Topo::ResInfo& r = c.res_infos.at(mark->residue_idx);
-        CRA cra = mark->to_cra(*ns.model);
-        assert(cra.residue == r.res);
-        //TODO: get ResInfo instead
-        if (!r.res || !r.res->get_c() || !r.res->find_atom("O", '*', El::O))
-          continue;
-        if (options.hbond_definition == HBondDefinition::Energy) {
-          calculate_hbond_energy(&res_info, &r);
-          calculate_hbond_energy(&r, &res_info);
-        } else {
-          calculate_hbond_geometry(&res_info, &r);
-          calculate_hbond_geometry(&r, &res_info);
+
+      // Find the corresponding ResInfo in our working set
+      Topo::ResInfo* neighbor_resinfo = nullptr;
+      size_t j = 0;
+      for (j = 0; j < res_infos.size(); ++j) {
+        if (res_infos[j]->res == cra.residue) {
+          neighbor_resinfo = res_infos[j];
+          break;
         }
+      }
+
+      // Skip self-interactions and avoid duplicate processing by only processing when i < j
+      if (!neighbor_resinfo || neighbor_resinfo == res_info || j <= i)
+        continue;
+
+      if (options.hbond_definition == HBondDefinition::Energy) {
+        calculate_hbond_energy(res_info, neighbor_resinfo);
+        calculate_hbond_energy(neighbor_resinfo, res_info);
+      } else {
+        calculate_hbond_geometry(res_info, neighbor_resinfo);
+        calculate_hbond_geometry(neighbor_resinfo, res_info);
       }
     }
   }
