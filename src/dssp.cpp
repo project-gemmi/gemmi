@@ -265,18 +265,18 @@ BridgeType DsspCalculator::calculate_bridge_type(size_t i, size_t j) const {
   if (i >= res_infos.size() || j >= res_infos.size())
     return BridgeType::None;
 
-  // antiparallel
+  // antiparallel - either condition can create a bridge
   bool anti1 = has_hbond_between(res_infos[i], res_infos[j]) && has_hbond_between(res_infos[j], res_infos[i]);
   bool anti2 = (i > 0 && j + 1 < res_infos.size() && j > 0 && i + 1 < res_infos.size()) &&
                has_hbond_between(res_infos[i - 1], res_infos[j + 1]) && has_hbond_between(res_infos[j - 1], res_infos[i + 1]);
-  if (anti1 && anti2)
+  if (anti1 || anti2)
     return BridgeType::AntiParallel;
-  // parallel
+  // parallel - either condition can create a bridge
   bool para1 = (j + 1 < res_infos.size() && i + 1 < res_infos.size()) &&
                has_hbond_between(res_infos[i], res_infos[j + 1]) && has_hbond_between(res_infos[j], res_infos[i + 1]);
   bool para2 = (i > 0 && j > 0) &&
                has_hbond_between(res_infos[i - 1], res_infos[j]) && has_hbond_between(res_infos[j - 1], res_infos[i]);
-  if (para1 && para2)
+  if (para1 || para2)
     return BridgeType::Parallel;
 
   return BridgeType::None;
@@ -293,29 +293,104 @@ void DsspCalculator::find_bridges_and_strands() {
     }
   }
 
-  // Find strands from bridge patterns
+  // Find strands from bridge patterns - more permissive approach
   for (size_t i = 0; i < bridges_.size(); ++i) {
       for (size_t j = i + 1; j < bridges_.size(); ++j) {
           const Bridge& b1 = bridges_[i];
           const Bridge& b2 = bridges_[j];
           if (b1.type == b2.type && no_chain_breaks_between(b1.partner1, b1.partner2) && no_chain_breaks_between(b2.partner1, b2.partner2)) {
-              if (b1.partner1 == b2.partner1 + 1 && b1.partner2 == b2.partner2 - 1 && b1.type == BridgeType::AntiParallel) {
-                  ss_info[b1.partner1].ss_type = SecondaryStructure::Strand;
-                  ss_info[b1.partner2].ss_type = SecondaryStructure::Strand;
-                  ss_info[b2.partner1].ss_type = SecondaryStructure::Strand;
-                  ss_info[b2.partner2].ss_type = SecondaryStructure::Strand;
+              // More permissive conditions for strand formation
+              // Allow bridges that are nearby (within 4 residues) to form strands
+              bool forms_strand = false;
+
+              if (b1.type == BridgeType::AntiParallel) {
+                  // For antiparallel: check if bridges are reasonably close and in correct orientation
+                  if (abs((int)b1.partner1 - (int)b2.partner1) <= 4 && abs((int)b1.partner2 - (int)b2.partner2) <= 4) {
+                      forms_strand = true;
+                  }
+              } else if (b1.type == BridgeType::Parallel) {
+                  // For parallel: check if bridges are reasonably close and in same direction
+                  if (abs((int)b1.partner1 - (int)b2.partner1) <= 4 && abs((int)b1.partner2 - (int)b2.partner2) <= 4) {
+                      forms_strand = true;
+                  }
               }
-              if (b1.partner1 == b2.partner1 + 1 && b1.partner2 == b2.partner2 + 1 && b1.type == BridgeType::Parallel) {
+
+              if (forms_strand) {
+                  // Mark the bridge positions as strands
                   ss_info[b1.partner1].ss_type = SecondaryStructure::Strand;
                   ss_info[b1.partner2].ss_type = SecondaryStructure::Strand;
                   ss_info[b2.partner1].ss_type = SecondaryStructure::Strand;
                   ss_info[b2.partner2].ss_type = SecondaryStructure::Strand;
+
+                  // Extend strands between the bridges
+                  size_t start1 = std::min(b1.partner1, b2.partner1);
+                  size_t end1 = std::max(b1.partner1, b2.partner1);
+                  size_t start2 = std::min(b1.partner2, b2.partner2);
+                  size_t end2 = std::max(b1.partner2, b2.partner2);
+
+                  // Mark residues between bridges as strands (if no chain breaks)
+                  for (size_t k = start1; k <= end1; ++k) {
+                      if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(start1, k)) {
+                          ss_info[k].ss_type = SecondaryStructure::Strand;
+                      }
+                  }
+                  for (size_t k = start2; k <= end2; ++k) {
+                      if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(start2, k)) {
+                          ss_info[k].ss_type = SecondaryStructure::Strand;
+                      }
+                  }
               }
           }
       }
   }
 
-  // Mark isolated bridges
+
+  // Simple strand extension: extend strands by 1-2 residues at termini
+  std::vector<bool> extend_here(ss_info.size(), false);
+
+  for (size_t i = 0; i < ss_info.size(); ++i) {
+    if (ss_info[i].ss_type == SecondaryStructure::Strand) {
+      // Mark 1-2 residues before strand start for extension
+      if (i > 0 && ss_info[i-1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i-1, i)) {
+        extend_here[i-1] = true;
+        if (i > 1 && ss_info[i-2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i-2, i-1)) {
+          extend_here[i-2] = true;
+        }
+      }
+      // Mark 1-2 residues after strand end for extension
+      if (i + 1 < ss_info.size() && ss_info[i+1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i, i+1)) {
+        extend_here[i+1] = true;
+        if (i + 2 < ss_info.size() && ss_info[i+2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i+1, i+2)) {
+          extend_here[i+2] = true;
+        }
+      }
+    }
+  }
+
+  // Apply extensions
+  for (size_t i = 0; i < ss_info.size(); ++i) {
+    if (extend_here[i]) {
+      ss_info[i].ss_type = SecondaryStructure::Strand;
+    }
+  }
+
+  // Convert bridges to strands if they're adjacent to existing strands
+  for (const auto& bridge : bridges_) {
+    bool convert_to_strand = false;
+
+    // Check if bridge is adjacent to strands
+    if (bridge.partner1 > 0 && ss_info[bridge.partner1 - 1].ss_type == SecondaryStructure::Strand) convert_to_strand = true;
+    if (bridge.partner1 + 1 < ss_info.size() && ss_info[bridge.partner1 + 1].ss_type == SecondaryStructure::Strand) convert_to_strand = true;
+    if (bridge.partner2 > 0 && ss_info[bridge.partner2 - 1].ss_type == SecondaryStructure::Strand) convert_to_strand = true;
+    if (bridge.partner2 + 1 < ss_info.size() && ss_info[bridge.partner2 + 1].ss_type == SecondaryStructure::Strand) convert_to_strand = true;
+
+    if (convert_to_strand) {
+      ss_info[bridge.partner1].ss_type = SecondaryStructure::Strand;
+      ss_info[bridge.partner2].ss_type = SecondaryStructure::Strand;
+    }
+  }
+
+  // Mark remaining isolated bridges
   for (const auto& bridge : bridges_) {
       if (ss_info[bridge.partner1].ss_type == SecondaryStructure::Loop)
         ss_info[bridge.partner1].ss_type = SecondaryStructure::Bridge;
