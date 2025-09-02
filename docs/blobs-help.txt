@@ -1,6 +1,6 @@
 $ gemmi blobs -h
 Usage:
- gemmi blobs [options] MTZ_OR_MMCIF [PDB_OR_MMCIF]
+ gemmi blobs [options] FILE.map|mtz|cif [PDB_OR_MMCIF]
 
 Search for umodelled blobs of electron density.
 
@@ -8,6 +8,7 @@ Options:
   -h, --help            Print usage and exit.
   -V, --version         Print version and exit.
   -v, --verbose         Verbose output.
+  --fract               Print location in fractional coordinates.
 
 The area around model is masked to search only unmodelled density.
   --mask-radius=NUMBER  Mask radius (default: 2.0 A).
