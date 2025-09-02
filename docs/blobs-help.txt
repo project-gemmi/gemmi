@@ -1,6 +1,6 @@
 $ gemmi blobs -h
 Usage:
- gemmi blobs [options] MTZ_OR_MMCIF PDB_OR_MMCIF
+ gemmi blobs [options] MTZ_OR_MMCIF [PDB_OR_MMCIF]
 
 Search for umodelled blobs of electron density.
 
