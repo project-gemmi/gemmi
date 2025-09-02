@@ -190,28 +190,29 @@ int GEMMI_MAIN(int argc, char **argv) {
 
          for (gemmi::Topo::ChainInfo& ci : topo->chain_infos) {
            if (ci.polymer) {
-             std::string ss_string = dssp_calc.calculate_secondary_structure(ns, *topo);
+             std::string ss_string = dssp_calc.calculate_secondary_structure(ns, ci);
              if (p.options[Verbose]) {
                std::printf("Chain %s secondary structure: %s\n",
                           ci.chain_ref.name.c_str(), ss_string.c_str());
                if (p.options[Verbose].count() > 1) {
-                 for (size_t j = 0; j < dssp_calc.res_infos.size(); ++j) {
-                   gemmi::Topo::ResInfo* resinfo = dssp_calc.res_infos[j];
-                   gemmi::Residue& res = *resinfo->res;
+                 for (size_t j = 0; j < ci.res_infos.size(); ++j) {
+                   gemmi::Topo::ResInfo& resinfo = ci.res_infos[j];
+                   gemmi::Residue& res = *resinfo.res;
                    auto offset = [&](gemmi::Topo::ResInfo* ri) {
                      if (!ri)
                        return 0;
-                     auto it = std::find(dssp_calc.res_infos.begin(), dssp_calc.res_infos.end(), ri);
-                     if (it == dssp_calc.res_infos.end())
+                     auto it = std::find_if(ci.res_infos.begin(), ci.res_infos.end(), 
+                                          [ri](const gemmi::Topo::ResInfo& info) { return &info == ri; });
+                     if (it == ci.res_infos.end())
                        return 0;
-                     return int(it - dssp_calc.res_infos.begin()) - int(j);
+                     return int(it - ci.res_infos.begin()) - int(j);
                    };
                    std::printf("# %zu %s %s  %d, %g   %d, %g    %d, %g    %d, %g\n",
                                j+1, res.seqid.str().c_str(), ci.chain_ref.name.c_str(),
-                               offset(resinfo->acceptors[0]), resinfo->acceptor_energies[0],
-                               offset(resinfo->donors[0]), resinfo->donor_energies[0],
-                               offset(resinfo->acceptors[1]), resinfo->acceptor_energies[1],
-                               offset(resinfo->donors[1]), resinfo->donor_energies[1]);
+                               offset(resinfo.acceptors[0]), resinfo.acceptor_energies[0],
+                               offset(resinfo.donors[0]), resinfo.donor_energies[0],
+                               offset(resinfo.acceptors[1]), resinfo.acceptor_energies[1],
+                               offset(resinfo.donors[1]), resinfo.donor_energies[1]);
                  }
                }
              }

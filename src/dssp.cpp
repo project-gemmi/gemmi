@@ -34,39 +34,29 @@ double calculate_dihedral_angle(Atom* a1, Atom* a2, Atom* a3, Atom* a4) {
 } // anonymous namespace
 
 // DsspCalculator implementation
-std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, Topo& topo) {
+std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, Topo::ChainInfo& chain_info) {
   // Clear previous calculations
   ss_info.clear();
   bridges_.clear();
-  res_infos.clear();
 
-  // Build working set of residue info pointers
-  for (Topo::ChainInfo& chain_info : topo.chain_infos) {
-    for (Topo::ResInfo& res_info : chain_info.res_infos) {
-      if (res_info.res && res_info.res->get_ca()) {  // Only include residues with CA atoms
-        res_infos.push_back(&res_info);
-      }
-    }
-  }
-
-  // Initialize secondary structure info
-  ss_info.resize(res_infos.size());
+  // Initialize secondary structure info - size based on all residues in chain
+  ss_info.resize(chain_info.res_infos.size());
 
   // Calculate hydrogen bonds
-  calculate_hydrogen_bonds(topo, ns);
+  calculate_hydrogen_bonds(ns, chain_info);
 
   // Find bends and breaks first
-  find_bends_and_breaks();
+  find_bends_and_breaks(chain_info);
 
   // Find bridges and strands
-  find_bridges_and_strands();
+  find_bridges_and_strands(chain_info);
 
   // Find turns and helices
-  find_turns_and_helices();
+  find_turns_and_helices(chain_info);
 
   // Find polyproline helices if enabled
   if (options.search_polyproline) {
-    find_polyproline_helices();
+    find_polyproline_helices(chain_info);
   }
 
   // Generate final secondary structure string
@@ -74,12 +64,12 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
 }
 
 
-void DsspCalculator::calculate_hydrogen_bonds(Topo& topo, NeighborSearch& ns) {
-  // Process only residues in our working set
-  for (size_t i = 0; i < res_infos.size(); ++i) {
-    Topo::ResInfo* res_info = res_infos[i];
-    const Atom* ca = res_info->res->get_ca();
-    if (!ca || !res_info->res || !res_info->res->get_n())
+void DsspCalculator::calculate_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInfo& chain_info) {
+  // Process all residues in the chain
+  for (size_t i = 0; i < chain_info.res_infos.size(); ++i) {
+    Topo::ResInfo& res_info = chain_info.res_infos[i];
+    const Atom* ca = res_info.res->get_ca();
+    if (!ca || !res_info.res || !res_info.res->get_n())
       continue;
 
     // Uses neighbor search for efficiency
@@ -92,23 +82,23 @@ void DsspCalculator::calculate_hydrogen_bonds(Topo& topo, NeighborSearch& ns) {
       // Find the corresponding ResInfo in our working set
       Topo::ResInfo* neighbor_resinfo = nullptr;
       size_t j = 0;
-      for (j = 0; j < res_infos.size(); ++j) {
-        if (res_infos[j]->res == cra.residue) {
-          neighbor_resinfo = res_infos[j];
+      for (j = 0; j < chain_info.res_infos.size(); ++j) {
+        if (chain_info.res_infos[j].res == cra.residue) {
+          neighbor_resinfo = &chain_info.res_infos[j];
           break;
         }
       }
 
       // Skip self-interactions and avoid duplicate processing by only processing when i < j
-      if (!neighbor_resinfo || neighbor_resinfo == res_info || j <= i)
+      if (!neighbor_resinfo || neighbor_resinfo == &res_info || j <= i)
         continue;
 
       if (options.hbond_definition == HBondDefinition::Energy) {
-        calculate_hbond_energy(res_info, neighbor_resinfo);
-        calculate_hbond_energy(neighbor_resinfo, res_info);
+        calculate_hbond_energy(&res_info, neighbor_resinfo);
+        calculate_hbond_energy(neighbor_resinfo, &res_info);
       } else {
-        calculate_hbond_geometry(res_info, neighbor_resinfo);
-        calculate_hbond_geometry(neighbor_resinfo, res_info);
+        calculate_hbond_geometry(&res_info, neighbor_resinfo);
+        calculate_hbond_geometry(neighbor_resinfo, &res_info);
       }
     }
   }
@@ -251,7 +241,7 @@ bool DsspCalculator::has_hbond_between(Topo::ResInfo* donor, Topo::ResInfo* acce
     return false;
 }
 
-bool DsspCalculator::no_chain_breaks_between(size_t res1_idx, size_t res2_idx) const {
+bool DsspCalculator::no_chain_breaks_between(Topo::ChainInfo& chain_info, size_t res1_idx, size_t res2_idx) const {
   size_t start = std::min(res1_idx, res2_idx);
   size_t end = std::max(res1_idx, res2_idx);
 
@@ -261,32 +251,32 @@ bool DsspCalculator::no_chain_breaks_between(size_t res1_idx, size_t res2_idx) c
   return true;
 }
 
-BridgeType DsspCalculator::calculate_bridge_type(size_t i, size_t j) const {
-  if (i >= res_infos.size() || j >= res_infos.size())
+BridgeType DsspCalculator::calculate_bridge_type(Topo::ChainInfo& chain_info, size_t i, size_t j) const {
+  if (i >= chain_info.res_infos.size() || j >= chain_info.res_infos.size())
     return BridgeType::None;
 
   // antiparallel - either condition can create a bridge
-  bool anti1 = has_hbond_between(res_infos[i], res_infos[j]) && has_hbond_between(res_infos[j], res_infos[i]);
-  bool anti2 = (i > 0 && j + 1 < res_infos.size() && j > 0 && i + 1 < res_infos.size()) &&
-               has_hbond_between(res_infos[i - 1], res_infos[j + 1]) && has_hbond_between(res_infos[j - 1], res_infos[i + 1]);
+  bool anti1 = has_hbond_between(&chain_info.res_infos[i], &chain_info.res_infos[j]) && has_hbond_between(&chain_info.res_infos[j], &chain_info.res_infos[i]);
+  bool anti2 = (i > 0 && j + 1 < chain_info.res_infos.size() && j > 0 && i + 1 < chain_info.res_infos.size()) &&
+               has_hbond_between(&chain_info.res_infos[i - 1], &chain_info.res_infos[j + 1]) && has_hbond_between(&chain_info.res_infos[j - 1], &chain_info.res_infos[i + 1]);
   if (anti1 || anti2)
     return BridgeType::AntiParallel;
   // parallel - either condition can create a bridge
-  bool para1 = (j + 1 < res_infos.size() && i + 1 < res_infos.size()) &&
-               has_hbond_between(res_infos[i], res_infos[j + 1]) && has_hbond_between(res_infos[j], res_infos[i + 1]);
+  bool para1 = (j + 1 < chain_info.res_infos.size() && i + 1 < chain_info.res_infos.size()) &&
+               has_hbond_between(&chain_info.res_infos[i], &chain_info.res_infos[j + 1]) && has_hbond_between(&chain_info.res_infos[j], &chain_info.res_infos[i + 1]);
   bool para2 = (i > 0 && j > 0) &&
-               has_hbond_between(res_infos[i - 1], res_infos[j]) && has_hbond_between(res_infos[j - 1], res_infos[i]);
+               has_hbond_between(&chain_info.res_infos[i - 1], &chain_info.res_infos[j]) && has_hbond_between(&chain_info.res_infos[j - 1], &chain_info.res_infos[i]);
   if (para1 || para2)
     return BridgeType::Parallel;
 
   return BridgeType::None;
 }
 
-void DsspCalculator::find_bridges_and_strands() {
+void DsspCalculator::find_bridges_and_strands(Topo::ChainInfo& chain_info) {
   // Find bridges
-  for (size_t i = 1; i + 1 < res_infos.size(); ++i) {
-    for (size_t j = i + 1; j < res_infos.size(); ++j) {
-      BridgeType bridge_type = calculate_bridge_type(i, j);
+  for (size_t i = 1; i + 1 < chain_info.res_infos.size(); ++i) {
+    for (size_t j = i + 1; j < chain_info.res_infos.size(); ++j) {
+      BridgeType bridge_type = calculate_bridge_type(chain_info, i, j);
       if (bridge_type != BridgeType::None) {
         bridges_.emplace_back(Bridge{i, j, bridge_type});
       }
@@ -298,7 +288,7 @@ void DsspCalculator::find_bridges_and_strands() {
       for (size_t j = i + 1; j < bridges_.size(); ++j) {
           const Bridge& b1 = bridges_[i];
           const Bridge& b2 = bridges_[j];
-          if (b1.type == b2.type && no_chain_breaks_between(b1.partner1, b1.partner2) && no_chain_breaks_between(b2.partner1, b2.partner2)) {
+          if (b1.type == b2.type && no_chain_breaks_between(chain_info, b1.partner1, b1.partner2) && no_chain_breaks_between(chain_info, b2.partner1, b2.partner2)) {
               // More permissive conditions for strand formation
               // Allow bridges that are nearby (within 4 residues) to form strands
               bool forms_strand = false;
@@ -330,12 +320,12 @@ void DsspCalculator::find_bridges_and_strands() {
 
                   // Mark residues between bridges as strands (if no chain breaks)
                   for (size_t k = start1; k <= end1; ++k) {
-                      if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(start1, k)) {
+                      if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, start1, k)) {
                           ss_info[k].ss_type = SecondaryStructure::Strand;
                       }
                   }
                   for (size_t k = start2; k <= end2; ++k) {
-                      if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(start2, k)) {
+                      if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, start2, k)) {
                           ss_info[k].ss_type = SecondaryStructure::Strand;
                       }
                   }
@@ -351,16 +341,16 @@ void DsspCalculator::find_bridges_and_strands() {
   for (size_t i = 0; i < ss_info.size(); ++i) {
     if (ss_info[i].ss_type == SecondaryStructure::Strand) {
       // Mark 1-2 residues before strand start for extension
-      if (i > 0 && ss_info[i-1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i-1, i)) {
+      if (i > 0 && ss_info[i-1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i-1, i)) {
         extend_here[i-1] = true;
-        if (i > 1 && ss_info[i-2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i-2, i-1)) {
+        if (i > 1 && ss_info[i-2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i-2, i-1)) {
           extend_here[i-2] = true;
         }
       }
       // Mark 1-2 residues after strand end for extension
-      if (i + 1 < ss_info.size() && ss_info[i+1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i, i+1)) {
+      if (i + 1 < ss_info.size() && ss_info[i+1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i, i+1)) {
         extend_here[i+1] = true;
-        if (i + 2 < ss_info.size() && ss_info[i+2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(i+1, i+2)) {
+        if (i + 2 < ss_info.size() && ss_info[i+2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i+1, i+2)) {
           extend_here[i+2] = true;
         }
       }
@@ -399,14 +389,14 @@ void DsspCalculator::find_bridges_and_strands() {
   }
 }
 
-void DsspCalculator::find_turns_and_helices() {
+void DsspCalculator::find_turns_and_helices(Topo::ChainInfo& chain_info) {
   // First pass: mark all helix positions based on individual H-bonds
   for (int turn_type = 0; turn_type < 3; ++turn_type) { // 3, 4, 5 turns
     size_t stride = turn_type + 3;
     TurnType turn = static_cast<TurnType>(stride);
 
-    for (size_t j = 0; j + stride < res_infos.size(); ++j) {
-      if (has_hbond_between(res_infos[j + stride], res_infos[j]) && no_chain_breaks_between(j, j + stride)) {
+    for (size_t j = 0; j + stride < chain_info.res_infos.size(); ++j) {
+      if (has_hbond_between(&chain_info.res_infos[j + stride], &chain_info.res_infos[j]) && no_chain_breaks_between(chain_info, j, j + stride)) {
         // Mark end position
         ss_info[j + stride].set_helix_position(turn, HelixPosition::End);
 
@@ -431,10 +421,10 @@ void DsspCalculator::find_turns_and_helices() {
   // Process in order of precedence: alpha-helix (4-turn), 3-10 helix (3-turn), pi-helix (5-turn)
 
   // Alpha helix detection (4-turn, highest precedence)
-  for (size_t i = 0; i + 4 < res_infos.size(); ++i) {
+  for (size_t i = 0; i + 4 < chain_info.res_infos.size(); ++i) {
     // Look for overlapping 4-turn patterns: i→i+4 AND i+1→i+5
-    if (has_hbond_between(res_infos[i + 4], res_infos[i]) && has_hbond_between(res_infos[i + 5], res_infos[i + 1]) &&
-        no_chain_breaks_between(i, i + 5)) {
+    if (has_hbond_between(&chain_info.res_infos[i + 4], &chain_info.res_infos[i]) && has_hbond_between(&chain_info.res_infos[i + 5], &chain_info.res_infos[i + 1]) &&
+        no_chain_breaks_between(chain_info, i, i + 5)) {
 
       // Found overlapping alpha-helix pattern - mark as helix
       for (size_t k = i + 1; k <= i + 4; ++k) {
@@ -442,8 +432,8 @@ void DsspCalculator::find_turns_and_helices() {
       }
 
       // Continue the helix while overlapping patterns exist
-      for (size_t j = i + 2; j + 4 < res_infos.size(); ++j) {
-        if (has_hbond_between(res_infos[j + 4], res_infos[j]) && no_chain_breaks_between(j, j + 4)) {
+      for (size_t j = i + 2; j + 4 < chain_info.res_infos.size(); ++j) {
+        if (has_hbond_between(&chain_info.res_infos[j + 4], &chain_info.res_infos[j]) && no_chain_breaks_between(chain_info, j, j + 4)) {
           for (size_t k = std::max(j + 1, i + 5); k <= j + 4; ++k) {
             ss_info[k].ss_type = SecondaryStructure::Helix_4;
           }
@@ -455,10 +445,10 @@ void DsspCalculator::find_turns_and_helices() {
   }
 
   // 3-10 helix detection (3-turn)
-  for (size_t i = 0; i + 3 < res_infos.size(); ++i) {
+  for (size_t i = 0; i + 3 < chain_info.res_infos.size(); ++i) {
     // Look for overlapping 3-turn patterns: i→i+3 AND i+1→i+4
-    if (has_hbond_between(res_infos[i + 3], res_infos[i]) && has_hbond_between(res_infos[i + 4], res_infos[i + 1]) &&
-        no_chain_breaks_between(i, i + 4)) {
+    if (has_hbond_between(&chain_info.res_infos[i + 3], &chain_info.res_infos[i]) && has_hbond_between(&chain_info.res_infos[i + 4], &chain_info.res_infos[i + 1]) &&
+        no_chain_breaks_between(chain_info, i, i + 4)) {
 
       // Check if positions are available (not already alpha-helix)
       bool can_assign = true;
@@ -473,8 +463,8 @@ void DsspCalculator::find_turns_and_helices() {
         }
 
         // Continue the helix while overlapping patterns exist
-        for (size_t j = i + 2; j + 3 < res_infos.size(); ++j) {
-          if (has_hbond_between(res_infos[j + 3], res_infos[j]) && no_chain_breaks_between(j, j + 3)) {
+        for (size_t j = i + 2; j + 3 < chain_info.res_infos.size(); ++j) {
+          if (has_hbond_between(&chain_info.res_infos[j + 3], &chain_info.res_infos[j]) && no_chain_breaks_between(chain_info, j, j + 3)) {
             bool can_extend = true;
             for (size_t k = std::max(j + 1, i + 4); k <= j + 3 && can_extend; ++k) {
               can_extend = (ss_info[k].ss_type < SecondaryStructure::Helix_4);
@@ -495,10 +485,10 @@ void DsspCalculator::find_turns_and_helices() {
   }
 
   // Pi-helix detection (5-turn, lowest precedence)
-  for (size_t i = 0; i + 5 < res_infos.size(); ++i) {
+  for (size_t i = 0; i + 5 < chain_info.res_infos.size(); ++i) {
     // Look for overlapping 5-turn patterns: i→i+5 AND i+1→i+6
-    if (has_hbond_between(res_infos[i + 5], res_infos[i]) && has_hbond_between(res_infos[i + 6], res_infos[i + 1]) &&
-        no_chain_breaks_between(i, i + 6)) {
+    if (has_hbond_between(&chain_info.res_infos[i + 5], &chain_info.res_infos[i]) && has_hbond_between(&chain_info.res_infos[i + 6], &chain_info.res_infos[i + 1]) &&
+        no_chain_breaks_between(chain_info, i, i + 6)) {
 
       // Check if positions are available
       bool can_assign = true;
@@ -515,8 +505,8 @@ void DsspCalculator::find_turns_and_helices() {
         }
 
         // Continue the helix while overlapping patterns exist
-        for (size_t j = i + 2; j + 5 < res_infos.size(); ++j) {
-          if (has_hbond_between(res_infos[j + 5], res_infos[j]) && no_chain_breaks_between(j, j + 5)) {
+        for (size_t j = i + 2; j + 5 < chain_info.res_infos.size(); ++j) {
+          if (has_hbond_between(&chain_info.res_infos[j + 5], &chain_info.res_infos[j]) && no_chain_breaks_between(chain_info, j, j + 5)) {
             bool can_extend = true;
             for (size_t k = std::max(j + 1, i + 6); k <= j + 5 && can_extend; ++k) {
               SecondaryStructure current = ss_info[k].ss_type;
@@ -539,7 +529,7 @@ void DsspCalculator::find_turns_and_helices() {
   }
 
   // Third pass: mark remaining isolated turns
-  for (size_t i = 1; i + 1 < res_infos.size(); ++i) {
+  for (size_t i = 1; i + 1 < chain_info.res_infos.size(); ++i) {
     if (ss_info[i].ss_type == SecondaryStructure::Loop) {
       bool is_turn = false;
 
@@ -565,13 +555,13 @@ void DsspCalculator::find_turns_and_helices() {
   }
 }
 
-void DsspCalculator::find_bends_and_breaks() {
+void DsspCalculator::find_bends_and_breaks(Topo::ChainInfo& chain_info) {
   // Find chain breaks
-  for (size_t i = 0; i + 1 < res_infos.size(); ++i) {
+  for (size_t i = 0; i + 1 < chain_info.res_infos.size(); ++i) {
     bool has_break = false;
 
-    const Atom* c_atom = res_infos[i]->res->get_c();
-    const Atom* n_atom = res_infos[i + 1]->res->get_n();
+    const Atom* c_atom = chain_info.res_infos[i].res->get_c();
+    const Atom* n_atom = chain_info.res_infos[i + 1].res->get_n();
 
     if (c_atom && n_atom) {
       double dist = calculate_atomic_distance(c_atom, n_atom);
@@ -589,11 +579,11 @@ void DsspCalculator::find_bends_and_breaks() {
   }
 
   // Find bends
-  for (size_t i = 1; i + 3 < res_infos.size(); ++i) {
-    if (no_chain_breaks_between(i - 1, i + 4)) {
-        const Atom* ca_prev_atom = res_infos[i - 1]->res->get_ca();
-        const Atom* ca_curr_atom = res_infos[i + 1]->res->get_ca();
-        const Atom* ca_next_atom = res_infos[i + 3]->res->get_ca();
+  for (size_t i = 1; i + 3 < chain_info.res_infos.size(); ++i) {
+    if (no_chain_breaks_between(chain_info, i - 1, i + 4)) {
+        const Atom* ca_prev_atom = chain_info.res_infos[i - 1].res->get_ca();
+        const Atom* ca_curr_atom = chain_info.res_infos[i + 1].res->get_ca();
+        const Atom* ca_next_atom = chain_info.res_infos[i + 3].res->get_ca();
 
         if (ca_prev_atom && ca_curr_atom && ca_next_atom) {
           Position ca_prev = ca_prev_atom->pos;
@@ -613,7 +603,7 @@ void DsspCalculator::find_bends_and_breaks() {
   }
 }
 
-void DsspCalculator::find_polyproline_helices() {
+void DsspCalculator::find_polyproline_helices(Topo::ChainInfo& chain_info) {
   // TODO: Implement polyproline helix detection based on phi/psi angles
   // This requires dihedral angle calculations
 }
@@ -634,10 +624,7 @@ std::string DsspCalculator::generate_ss_string() const {
 // Convenience function
 std::string calculate_dssp(NeighborSearch& ns, Topo::ChainInfo& cinfo, const DsspOptions& opts) {
   DsspCalculator calculator(opts);
-  // Create a temporary topology with just this chain
-  Topo topo;
-  topo.chain_infos.push_back(cinfo);
-  return calculator.calculate_secondary_structure(ns, topo);
+  return calculator.calculate_secondary_structure(ns, cinfo);
 }
 
 } // namespace gemmi

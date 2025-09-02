@@ -128,7 +128,7 @@ struct GEMMI_DLL DsspCalculator {
   explicit DsspCalculator(const DsspOptions& opts = DsspOptions{}) : options(opts) {}
 
   // Calculate secondary structure for a chain
-  std::string calculate_secondary_structure(NeighborSearch& ns, Topo& topo);
+  std::string calculate_secondary_structure(NeighborSearch& ns, Topo::ChainInfo& chain_info);
 
   // Get detailed secondary structure information
   const std::vector<SecondaryStructureInfo>& get_detailed_info() const { return ss_info; }
@@ -136,23 +136,22 @@ struct GEMMI_DLL DsspCalculator {
   DsspOptions options;
   std::vector<SecondaryStructureInfo> ss_info;
   std::vector<Bridge> bridges_;
-  std::vector<Topo::ResInfo*> res_infos;  // Working set of residue info pointers
 
   // Calculate hydrogen bonds
-  void calculate_hydrogen_bonds(Topo& topo, NeighborSearch& ns);
+  void calculate_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInfo& chain_info);
   void calculate_hbond_energy(Topo::ResInfo* donor, Topo::ResInfo* acceptor);
   void calculate_hbond_geometry(Topo::ResInfo* donor, Topo::ResInfo* acceptor);
 
   // Pattern recognition functions
-  void find_bridges_and_strands();
-  void find_turns_and_helices();
-  void find_bends_and_breaks();
-  void find_polyproline_helices();
+  void find_bridges_and_strands(Topo::ChainInfo& chain_info);
+  void find_turns_and_helices(Topo::ChainInfo& chain_info);
+  void find_bends_and_breaks(Topo::ChainInfo& chain_info);
+  void find_polyproline_helices(Topo::ChainInfo& chain_info);
 
   // Utility functions
   bool has_hbond_between(Topo::ResInfo* donor, Topo::ResInfo* acceptor) const;
-  bool no_chain_breaks_between(size_t res1_idx, size_t res2_idx) const;
-  BridgeType calculate_bridge_type(size_t res1_idx, size_t res2_idx) const;
+  bool no_chain_breaks_between(Topo::ChainInfo& chain_info, size_t res1_idx, size_t res2_idx) const;
+  BridgeType calculate_bridge_type(Topo::ChainInfo& chain_info, size_t res1_idx, size_t res2_idx) const;
 
   // Generate final secondary structure string
   std::string generate_ss_string() const;
