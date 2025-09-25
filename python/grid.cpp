@@ -323,6 +323,7 @@ void add_grid(nb::module_& m) {
     .def_rw("constant_r", &SolventMasker::constant_r)
     .def_rw("ignore_hydrogen", &SolventMasker::ignore_hydrogen)
     .def_rw("ignore_zero_occupancy_atoms", &SolventMasker::ignore_zero_occupancy_atoms)
+    .def_rw("use_atom_occupancy", &SolventMasker::use_atom_occupancy)
     .def("set_radii", &SolventMasker::set_radii,
          nb::arg("choice"), nb::arg("constant_r")=0.)
     .def("put_mask_on_int8_grid", &SolventMasker::put_mask_on_grid<int8_t>)
