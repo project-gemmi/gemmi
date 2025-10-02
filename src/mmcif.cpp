@@ -619,6 +619,7 @@ void read_tls_info(cif::Block& block, Structure& st) {
         ref->tls_groups.emplace_back();
         TlsGroup& tls = ref->tls_groups.back();
         tls.id = row.str(0);
+        tls.num_id = (short) no_sign_atoi(tls.id.c_str());
         tls.T = get_smat33<double>(row, 2);
         tls.L = get_smat33<double>(row, 8);
         for (int i = 0; i < 3; ++i)
