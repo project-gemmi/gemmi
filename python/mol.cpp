@@ -211,6 +211,8 @@ void add_mol(nb::module_& m) {
     // calculate.hpp
     .def("calculate_box", &calculate_box, nb::arg("margin")=0.)
     .def("calculate_fractional_box", &calculate_fractional_box, nb::arg("margin")=0.)
+    // polyheur.hpp
+    .def("add_microhetero_to_sequences", &add_microhetero_to_sequences)
 
     .def("clone", [](const Structure& self) { return new Structure(self); })
     .def("__getstate__", &getstate<Structure>)
