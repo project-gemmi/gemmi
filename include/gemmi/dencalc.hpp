@@ -20,25 +20,25 @@ Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff
   // Generally, density is supposed to decrease with radius.
   // But if we have addends (in particular -Z for Mott-Bothe),
   // it can first rise, then decrease. We want to be after the maximum.
-  while (dy > 0) { // unlikely
+  while (std::copysign(dy, y1 * dy) > 0) { // unlikely
     x1 += 1.0f;
     std::tie(y1, dy) = precal.calculate_with_derivative(x1);
   }
   Real x2 = x1;
   Real y2 = y1;
-  if (y1 < cutoff_level) {
-    while (y1 < cutoff_level) {
+  if (std::fabs(y1) < cutoff_level) {
+    while (std::fabs(y1) < cutoff_level) {
       x2 = x1;
       y2 = y1;
       x1 -= 0.5f;
       std::tie(y1, dy) = precal.calculate_with_derivative(x1);
       // with addends it's possible to land on the left side of the maximum
-      if (dy > 0 && y1 > 0) { // unlikely
-        while (dy > 0 && y1 > 0 && x1 + 0.1f < x2) {
+      if (std::copysign(dy, y1 * dy) > 0) { // unlikely
+        while (std::copysign(dy, y1 * dy) > 0 && x1 + 0.1f < x2) {
           x1 += 0.1f;
           std::tie(y1, dy) = precal.calculate_with_derivative(x1);
         }
-        if (y1 < cutoff_level)
+        if (std::fabs(y1) < cutoff_level)
           return x1;
         break;
       }
@@ -49,7 +49,7 @@ Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff
       }
     }
   } else {
-    while (y2 > cutoff_level) {
+    while (std::fabs(y2) > cutoff_level) {
       x1 = x2;
       y1 = y2;
       x2 += 0.5f;
