@@ -2,16 +2,17 @@
 
 #include "common.h"
 #include <nanobind/operators.h>
-#include <nanobind/make_iterator.h>
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>  // for expand_one_letter_sequence
+#include <nanobind/make_iterator.h>
 
 #include "gemmi/elem.hpp"
 #include "gemmi/resinfo.hpp"
 #include "gemmi/it92.hpp"
 #include "gemmi/c4322.hpp"
 #include "gemmi/neutron92.hpp"
+#include "gemmi/dencalc.hpp"  // for it92_radius_approx, determine_cutoff_radius
 #include "gemmi/util.hpp"  // for cat
 
 #include "gemmi/xds_ascii.hpp"  // for XdsAscii
@@ -33,6 +34,7 @@ void add_elem(nb::module_& m) {
   // it92.hpp
   using IT92 = gemmi::IT92<float>;
   nb::class_<IT92::Coef>(m, "IT92Coef")
+    .def(nb::init<>())
     .def_prop_ro("a", [](IT92::Coef& c) -> std::array<double,4> {
         return {{ roc(c.a(0)), roc(c.a(1)), roc(c.a(2)), roc(c.a(3)) }};
     })
@@ -45,11 +47,25 @@ void add_elem(nb::module_& m) {
     .def("calculate_sf", &IT92::Coef::calculate_sf, nb::arg("stol2"))
     .def("calculate_density_iso", &IT92::Coef::calculate_density_iso,
          nb::arg("r2"), nb::arg("B"))
+    .def("precalculate_density_iso", &IT92::Coef::precalculate_density_iso,
+         nb::arg("B"), nb::arg("addend")=0.0f)
     ;
   m.def("IT92_normalize", &IT92::normalize);
   // can't define property for nb::module_, and we don't expose IT92 as class
   m.def("IT92_get_ignore_charge", []() { return IT92::ignore_charge; });
   m.def("IT92_set_ignore_charge", [](bool v) { IT92::ignore_charge = v; });
+
+  // ExpSum for precalculated density (5 gaussians + constant for IT92)
+  using ExpSum5 = gemmi::ExpSum<5, float>;
+  nb::class_<ExpSum5>(m, "ExpSum5")
+    .def("calculate", &ExpSum5::calculate, nb::arg("r2"))
+    .def("calculate_with_derivative", &ExpSum5::calculate_with_derivative, nb::arg("r"))
+    ;
+
+  // Helper functions from dencalc.hpp
+  m.def("it92_radius_approx", &gemmi::it92_radius_approx<float>, nb::arg("b"));
+  m.def("determine_cutoff_radius", &gemmi::determine_cutoff_radius<5, float>,
+        nb::arg("x1"), nb::arg("precal"), nb::arg("cutoff_level"));
 
   // c4322.hpp
   using C4322 = gemmi::C4322<float>;
@@ -150,7 +166,6 @@ void add_elem(nb::module_& m) {
     .def("is_amino_acid", &ResidueInfo::is_amino_acid);
 
   m.def("find_tabulated_residue", &find_tabulated_residue, nb::arg("name"),
-        nb::rv_policy::reference,
         "Find chemical component information in the internal table.");
   m.def("find_tabulated_residue_idx", &find_tabulated_residue_idx, nb::arg("name"));
   m.def("expand_one_letter", &expand_one_letter);
@@ -158,7 +173,7 @@ void add_elem(nb::module_& m) {
   nb::handle mod = m;
   m.def("resinfo_table", [mod]() {
       ResidueInfo* start = &gemmi::get_residue_info(0);
-      return nb::make_iterator<nb::rv_policy::reference>(mod, "spacegroup_iterator",
+      return nb::make_iterator<nb::rv_policy::reference>(mod, "resinfo_table_iterator",
                                                          start, start+362);
   });
 }
