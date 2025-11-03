@@ -21,7 +21,7 @@
 #include "grid.hpp"
 
 #include "third_party/half.hpp"
-using float16_t = half_float::half;
+using float16_type = half_float::half;
 
 namespace gemmi {
 
@@ -321,7 +321,7 @@ To translate_map_point(From f) { return static_cast<To>(f); }
 template<> inline
 std::int8_t translate_map_point<float,std::int8_t>(float f) { return f != 0; }
 template<> inline
-std::int8_t translate_map_point<float16_t,std::int8_t>(float16_t f) { return f != (float16_t)0; }
+std::int8_t translate_map_point<float16_type,std::int8_t>(float16_type f) { return f != (float16_type)0; }
 
 template<typename TFile, typename TMem>
 void read_data(AnyStream& f, std::vector<TMem>& content) {
@@ -379,7 +379,7 @@ void Ccp4<T>::read_ccp4_stream(AnyStream& f, const std::string& path) {
   else if (mode == 6)
     impl::read_data<std::uint16_t>(f, grid.data);
   else if (mode == 12)
-    impl::read_data<float16_t>(f, grid.data);
+    impl::read_data<float16_type>(f, grid.data);
   else
     fail("Mode " + std::to_string(mode) + " is not supported "
          "(only 0, 1, 2 and 6 are supported).");
