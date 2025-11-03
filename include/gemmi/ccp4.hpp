@@ -20,8 +20,8 @@
 #include "input.hpp"     // for AnyStream, FileStream
 #include "grid.hpp"
 
-#include "third_party/float16_t.hpp"
-using numeric::float16_t;
+#include "third_party/half.hpp"
+using float16_t = half_float::half;
 
 namespace gemmi {
 
