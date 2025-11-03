@@ -93,5 +93,6 @@ void add_sf(nb::module_& m) {
   add_dencalc<C4322>(m, "DensityCalculatorE");
   add_dencalc<Neutron92>(m, "DensityCalculatorN");
   add_dencalc<CustomCoef>(m, "DensityCalculatorC");
+  add_dencalc<gemmi::ZeroCoef<float>>(m, "DensityCalculatorZ");
   m.def("mott_bethe_const", &gemmi::mott_bethe_const);
 }
