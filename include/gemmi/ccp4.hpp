@@ -20,6 +20,9 @@
 #include "input.hpp"     // for AnyStream, FileStream
 #include "grid.hpp"
 
+#include "third_party/float16_t.hpp"
+using numeric::float16_t;
+
 namespace gemmi {
 
 using std::int32_t;
@@ -317,6 +320,8 @@ To translate_map_point(From f) { return static_cast<To>(f); }
 // We convert map 2 to 0 by translating non-zero values to 1.
 template<> inline
 std::int8_t translate_map_point<float,std::int8_t>(float f) { return f != 0; }
+template<> inline
+std::int8_t translate_map_point<float16_t,std::int8_t>(float16_t f) { return f != (float16_t)0; }
 
 template<typename TFile, typename TMem>
 void read_data(AnyStream& f, std::vector<TMem>& content) {
@@ -373,6 +378,8 @@ void Ccp4<T>::read_ccp4_stream(AnyStream& f, const std::string& path) {
     impl::read_data<float>(f, grid.data);
   else if (mode == 6)
     impl::read_data<std::uint16_t>(f, grid.data);
+  else if (mode == 12)
+    impl::read_data<float16_t>(f, grid.data);
   else
     fail("Mode " + std::to_string(mode) + " is not supported "
          "(only 0, 1, 2 and 6 are supported).");
