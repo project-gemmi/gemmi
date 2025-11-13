@@ -45,14 +45,17 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
   // Calculate hydrogen bonds
   calculate_hydrogen_bonds(ns, chain_info);
 
-  // Find bends and breaks first
+  // Find chain breaks first (needed by other functions)
   find_bends_and_breaks(chain_info);
+
+  // Find turns and helices (must be done before strands - helices have higher precedence)
+  find_turns_and_helices(chain_info);
 
   // Find bridges and strands
   find_bridges_and_strands(chain_info);
 
-  // Find turns and helices
-  find_turns_and_helices(chain_info);
+  // Find bends last (lowest precedence, only assigned to remaining loops)
+  find_bends_and_breaks(chain_info);
 
   // Find polyproline helices if enabled
   if (options.search_polyproline) {
@@ -306,11 +309,15 @@ void DsspCalculator::find_bridges_and_strands(Topo::ChainInfo& chain_info) {
               }
 
               if (forms_strand) {
-                  // Mark the bridge positions as strands
-                  ss_info[b1.partner1].ss_type = SecondaryStructure::Strand;
-                  ss_info[b1.partner2].ss_type = SecondaryStructure::Strand;
-                  ss_info[b2.partner1].ss_type = SecondaryStructure::Strand;
-                  ss_info[b2.partner2].ss_type = SecondaryStructure::Strand;
+                  // Mark the bridge positions as strands (only if not already helix)
+                  if (ss_info[b1.partner1].ss_type < SecondaryStructure::Helix_3)
+                      ss_info[b1.partner1].ss_type = SecondaryStructure::Strand;
+                  if (ss_info[b1.partner2].ss_type < SecondaryStructure::Helix_3)
+                      ss_info[b1.partner2].ss_type = SecondaryStructure::Strand;
+                  if (ss_info[b2.partner1].ss_type < SecondaryStructure::Helix_3)
+                      ss_info[b2.partner1].ss_type = SecondaryStructure::Strand;
+                  if (ss_info[b2.partner2].ss_type < SecondaryStructure::Helix_3)
+                      ss_info[b2.partner2].ss_type = SecondaryStructure::Strand;
 
                   // Extend strands between the bridges
                   size_t start1 = std::min(b1.partner1, b2.partner1);
@@ -318,7 +325,7 @@ void DsspCalculator::find_bridges_and_strands(Topo::ChainInfo& chain_info) {
                   size_t start2 = std::min(b1.partner2, b2.partner2);
                   size_t end2 = std::max(b1.partner2, b2.partner2);
 
-                  // Mark residues between bridges as strands (if no chain breaks)
+                  // Mark residues between bridges as strands (if no chain breaks and not helix)
                   for (size_t k = start1; k <= end1; ++k) {
                       if (ss_info[k].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, start1, k)) {
                           ss_info[k].ss_type = SecondaryStructure::Strand;
@@ -340,14 +347,14 @@ void DsspCalculator::find_bridges_and_strands(Topo::ChainInfo& chain_info) {
 
   for (size_t i = 0; i < ss_info.size(); ++i) {
     if (ss_info[i].ss_type == SecondaryStructure::Strand) {
-      // Mark 1-2 residues before strand start for extension
+      // Mark 1-2 residues before strand start for extension (only if not helix)
       if (i > 0 && ss_info[i-1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i-1, i)) {
         extend_here[i-1] = true;
         if (i > 1 && ss_info[i-2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i-2, i-1)) {
           extend_here[i-2] = true;
         }
       }
-      // Mark 1-2 residues after strand end for extension
+      // Mark 1-2 residues after strand end for extension (only if not helix)
       if (i + 1 < ss_info.size() && ss_info[i+1].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i, i+1)) {
         extend_here[i+1] = true;
         if (i + 2 < ss_info.size() && ss_info[i+2].ss_type == SecondaryStructure::Loop && no_chain_breaks_between(chain_info, i+1, i+2)) {
@@ -357,14 +364,14 @@ void DsspCalculator::find_bridges_and_strands(Topo::ChainInfo& chain_info) {
     }
   }
 
-  // Apply extensions
+  // Apply extensions (only to Loop residues, preserving helices)
   for (size_t i = 0; i < ss_info.size(); ++i) {
-    if (extend_here[i]) {
+    if (extend_here[i] && ss_info[i].ss_type == SecondaryStructure::Loop) {
       ss_info[i].ss_type = SecondaryStructure::Strand;
     }
   }
 
-  // Convert bridges to strands if they're adjacent to existing strands
+  // Convert bridges to strands if they're adjacent to existing strands (but not if helix)
   for (const auto& bridge : bridges_) {
     bool convert_to_strand = false;
 
@@ -375,12 +382,14 @@ void DsspCalculator::find_bridges_and_strands(Topo::ChainInfo& chain_info) {
     if (bridge.partner2 + 1 < ss_info.size() && ss_info[bridge.partner2 + 1].ss_type == SecondaryStructure::Strand) convert_to_strand = true;
 
     if (convert_to_strand) {
-      ss_info[bridge.partner1].ss_type = SecondaryStructure::Strand;
-      ss_info[bridge.partner2].ss_type = SecondaryStructure::Strand;
+      if (ss_info[bridge.partner1].ss_type < SecondaryStructure::Helix_3)
+        ss_info[bridge.partner1].ss_type = SecondaryStructure::Strand;
+      if (ss_info[bridge.partner2].ss_type < SecondaryStructure::Helix_3)
+        ss_info[bridge.partner2].ss_type = SecondaryStructure::Strand;
     }
   }
 
-  // Mark remaining isolated bridges
+  // Mark remaining isolated bridges (only if not helix)
   for (const auto& bridge : bridges_) {
       if (ss_info[bridge.partner1].ss_type == SecondaryStructure::Loop)
         ss_info[bridge.partner1].ss_type = SecondaryStructure::Bridge;
@@ -421,7 +430,7 @@ void DsspCalculator::find_turns_and_helices(Topo::ChainInfo& chain_info) {
   // Process in order of precedence: alpha-helix (4-turn), 3-10 helix (3-turn), pi-helix (5-turn)
 
   // Alpha helix detection (4-turn, highest precedence)
-  for (size_t i = 0; i + 4 < chain_info.res_infos.size(); ++i) {
+  for (size_t i = 0; i + 5 < chain_info.res_infos.size(); ++i) {
     // Look for overlapping 4-turn patterns: i→i+4 AND i+1→i+5
     if (has_hbond_between(&chain_info.res_infos[i + 4], &chain_info.res_infos[i]) && has_hbond_between(&chain_info.res_infos[i + 5], &chain_info.res_infos[i + 1]) &&
         no_chain_breaks_between(chain_info, i, i + 5)) {
@@ -445,7 +454,7 @@ void DsspCalculator::find_turns_and_helices(Topo::ChainInfo& chain_info) {
   }
 
   // 3-10 helix detection (3-turn)
-  for (size_t i = 0; i + 3 < chain_info.res_infos.size(); ++i) {
+  for (size_t i = 0; i + 4 < chain_info.res_infos.size(); ++i) {
     // Look for overlapping 3-turn patterns: i→i+3 AND i+1→i+4
     if (has_hbond_between(&chain_info.res_infos[i + 3], &chain_info.res_infos[i]) && has_hbond_between(&chain_info.res_infos[i + 4], &chain_info.res_infos[i + 1]) &&
         no_chain_breaks_between(chain_info, i, i + 4)) {
@@ -485,7 +494,7 @@ void DsspCalculator::find_turns_and_helices(Topo::ChainInfo& chain_info) {
   }
 
   // Pi-helix detection (5-turn, lowest precedence)
-  for (size_t i = 0; i + 5 < chain_info.res_infos.size(); ++i) {
+  for (size_t i = 0; i + 6 < chain_info.res_infos.size(); ++i) {
     // Look for overlapping 5-turn patterns: i→i+5 AND i+1→i+6
     if (has_hbond_between(&chain_info.res_infos[i + 5], &chain_info.res_infos[i]) && has_hbond_between(&chain_info.res_infos[i + 6], &chain_info.res_infos[i + 1]) &&
         no_chain_breaks_between(chain_info, i, i + 6)) {
@@ -595,7 +604,8 @@ void DsspCalculator::find_bends_and_breaks(Topo::ChainInfo& chain_info) {
 
           double angle = deg(std::acos(v1.dot(v2) / (v1.length() * v2.length())));
 
-          if (angle > options.bend_angle_min && angle < 360.0) {
+          // Mark as bend only if still a loop (bends have lowest precedence)
+          if (angle > options.bend_angle_min && angle < 360.0 && ss_info[i+1].ss_type == SecondaryStructure::Loop) {
             ss_info[i+1].ss_type = SecondaryStructure::Bend;
           }
         }
