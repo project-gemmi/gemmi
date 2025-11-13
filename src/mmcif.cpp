@@ -598,6 +598,12 @@ void read_refinement_info(cif::Block& block, Structure& st) {
         copy_double(row, 8, ref.r_work);
         copy_double(row, 9, ref.r_free);
     }
+    if (st.resolution == 0.) {
+      const std::string* em_res = block.find_value("_em_3d_reconstruction.resolution");
+      if (em_res)
+        st.resolution = cif::as_number(*em_res);
+
+    }
 }
 
 void read_tls_info(cif::Block& block, Structure& st) {
