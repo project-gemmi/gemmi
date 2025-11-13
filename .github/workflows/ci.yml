@@ -37,8 +37,8 @@ jobs:
         retention-days: 14
 
   macos13:
-    name: "macOS 13 (w/o python)"
-    runs-on: macos-13
+    name: "macOS 14 (w/o python)"
+    runs-on: macos-14-large
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
     - uses: actions/checkout@v4

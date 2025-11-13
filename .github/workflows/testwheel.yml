@@ -14,7 +14,8 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-22.04, ubuntu-24.04,
              windows-latest,
-             macos-13, macos-14, macos-15]
+             # 14-large is intel
+             macos-14-large, macos-14, macos-15]
         py: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
     name: ${{ matrix.os }} py${{ matrix.py }}
     runs-on: ${{ matrix.os }}
