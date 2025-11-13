@@ -650,7 +650,7 @@ class TestMol(unittest.TestCase):
         self.assertAlmostEqual(nearest_dist, 8.02, delta=1e-2)
 
         # test __getitem__(splice) - unrelated to NCS (sometimes we put
-        # unrelated tests together to avoid the same file again)
+        # unrelated tests together to avoid reading the same file again)
         chain = st[0]['A']
         res = chain.next_residue(chain[:5][0])
         self.assertTrue(res is chain[1])
