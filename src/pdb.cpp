@@ -983,7 +983,7 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
       std::string chain_name = read_string(line+10, 2);
       Entity& ent = impl::find_or_add(st.entities, chain_name);
       ent.entity_type = EntityType::Polymer;
-      for (int i = 19; i < 68; i += 4) {
+      for (int i = 19; i < 68 && i < (int)len; i += 4) {
         std::string res_name = read_string(line+i, 3);
         if (!res_name.empty())
           ent.full_sequence.emplace_back(res_name);
