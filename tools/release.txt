@@ -1,6 +1,6 @@
 
 - update .github/workflows/wheels2.yml
-  https://cibuildwheel.readthedocs.io/en/stable/setup/
+  https://cibuildwheel.readthedocs.io/en/stable/ci-services/
 
 - check ./tools/upstream-check.py
 
