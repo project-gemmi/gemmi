@@ -6,7 +6,7 @@
 #include <gemmi/calculate.hpp>
 #include <gemmi/unitcell.hpp>
 #include <cmath>
-#include <algorithm>
+//#include <algorithm>
 #include <cassert>
 
 namespace gemmi {
@@ -25,10 +25,12 @@ double calculate_atomic_distance(const Atom* atom1, const Atom* atom2) {
   return atom1->pos.dist(atom2->pos);
 }
 
+/*
 double calculate_dihedral_angle(Atom* a1, Atom* a2, Atom* a3, Atom* a4) {
   if (!a1 || !a2 || !a3 || !a4) return 0.0;
   return calculate_dihedral(a1->pos, a2->pos, a3->pos, a4->pos);
 }
+*/
 
 
 } // anonymous namespace
@@ -45,6 +47,7 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
   // Calculate hydrogen bonds
   calculate_hydrogen_bonds(ns, chain_info);
 
+  /*
   // Find chain breaks first (needed by other functions)
   find_bends_and_breaks(chain_info);
 
@@ -64,6 +67,8 @@ std::string DsspCalculator::calculate_secondary_structure(NeighborSearch& ns, To
 
   // Generate final secondary structure string
   return generate_ss_string();
+  */
+  return "";
 }
 
 
@@ -76,7 +81,7 @@ void DsspCalculator::calculate_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInf
       continue;
 
     // Uses neighbor search for efficiency
-    auto marks = ns.find_neighbors(*ca, 0, 0);
+    auto marks = ns.find_neighbors(*ca, 0.001, ns.radius_specified);
     for (gemmi::NeighborSearch::Mark* mark : marks) {
       CRA cra = mark->to_cra(*ns.model);
       if (!cra.residue || !cra.residue->get_c() || !cra.residue->find_atom("O", '*', El::O))
@@ -244,6 +249,7 @@ bool DsspCalculator::has_hbond_between(Topo::ResInfo* donor, Topo::ResInfo* acce
     return false;
 }
 
+/*
 bool DsspCalculator::no_chain_breaks_between(Topo::ChainInfo& chain_info, size_t res1_idx, size_t res2_idx) const {
   size_t start = std::min(res1_idx, res2_idx);
   size_t end = std::max(res1_idx, res2_idx);
@@ -630,6 +636,7 @@ std::string DsspCalculator::generate_ss_string() const {
 
   return result;
 }
+*/
 
 // Convenience function
 std::string calculate_dssp(NeighborSearch& ns, Topo::ChainInfo& cinfo, const DsspOptions& opts) {

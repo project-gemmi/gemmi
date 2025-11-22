@@ -10,6 +10,8 @@ tags
 /.vscode/
 /docs/_build
 /.eggs/
+/.cache
+/scratch
 /wheelhouse/
 .gdb_history
 .*.swp

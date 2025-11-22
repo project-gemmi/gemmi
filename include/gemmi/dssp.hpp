@@ -142,11 +142,13 @@ struct GEMMI_DLL DsspCalculator {
   void calculate_hbond_energy(Topo::ResInfo* donor, Topo::ResInfo* acceptor);
   void calculate_hbond_geometry(Topo::ResInfo* donor, Topo::ResInfo* acceptor);
 
+  /*
   // Pattern recognition functions
   void find_bridges_and_strands(Topo::ChainInfo& chain_info);
   void find_turns_and_helices(Topo::ChainInfo& chain_info);
   void find_bends_and_breaks(Topo::ChainInfo& chain_info);
   void find_polyproline_helices(Topo::ChainInfo& chain_info);
+  */
 
   // Utility functions
   bool has_hbond_between(Topo::ResInfo* donor, Topo::ResInfo* acceptor) const;
@@ -154,7 +156,7 @@ struct GEMMI_DLL DsspCalculator {
   BridgeType calculate_bridge_type(Topo::ChainInfo& chain_info, size_t res1_idx, size_t res2_idx) const;
 
   // Generate final secondary structure string
-  std::string generate_ss_string() const;
+  //std::string generate_ss_string() const;
 };
 
 // Convenience function for simple use cases

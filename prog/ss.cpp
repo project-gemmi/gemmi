@@ -14,6 +14,7 @@
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include <gemmi/dssp.hpp>      // for
 #include <gemmi/neighbor.hpp>  // for NeighborSearch
+#include <gemmi/fileutil.hpp>  // for file_open_or
 #include "monlib_opt.h"
 
 #define GEMMI_PROG ss
@@ -26,7 +27,7 @@ namespace {
 enum OptionIndex {
   FormatIn=AfterMonLibOptions, Sort, Update, RemoveH, KeepH, Water, Unique, NoChange,
   CalculateH, HBondDefinition, Cutoff, PiHelixPreference,
-  SearchPolyproline, HBondEnergyThreshold, MinCADistance, BendAngleMin
+  SearchPolyproline, HBondEnergyThreshold, MinCADistance, BendAngleMin, HBondsOut
 };
 
 const option::Descriptor Usage[] = {
@@ -59,6 +60,8 @@ const option::Descriptor Usage[] = {
     "  --min-ca-dist=DIST  \tMinimum CA distance for hydrogen bonding (default: 9.0 A)." },
   { BendAngleMin, 0, "", "bend-angle", Arg::Float,
     "  --bend-angle=ANGLE  \tMinimum angle for bend assignment (default: 70.0 degrees)." },
+  { HBondsOut, 0, "", "hbonds", Arg::Required,
+    "  --hbonds=FILE  \tOutput hydrogen bonds to a JSON file." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -201,7 +204,7 @@ int GEMMI_MAIN(int argc, char **argv) {
                    auto offset = [&](gemmi::Topo::ResInfo* ri) {
                      if (!ri)
                        return 0;
-                     auto it = std::find_if(ci.res_infos.begin(), ci.res_infos.end(), 
+                     auto it = std::find_if(ci.res_infos.begin(), ci.res_infos.end(),
                                           [ri](const gemmi::Topo::ResInfo& info) { return &info == ri; });
                      if (it == ci.res_infos.end())
                        return 0;
@@ -214,6 +217,40 @@ int GEMMI_MAIN(int argc, char **argv) {
                                offset(resinfo.acceptors[1]), resinfo.acceptor_energies[1],
                                offset(resinfo.donors[1]), resinfo.donor_energies[1]);
                  }
+               }
+               if (p.options[HBondsOut]) {
+                 gemmi::fileptr_t f = gemmi::file_open_or(p.options[HBondsOut].arg, "wb", stdout);
+                 char sep1 = '[';
+                 for (gemmi::Topo::ResInfo& resinfo: ci.res_infos) {
+                   gemmi::Residue* cres = resinfo.res;
+                   for (int k = 0; k <= 1; ++k) {
+                     if (gemmi::Topo::ResInfo* donor = resinfo.donors[k]) {
+                       std::putc(sep1, f.get());
+                       sep1 = ',';
+                       std::fprintf(f.get(), "\n{ 'acceptor': \"%s/%s %3s/O\",  "
+                                             "  'donor': \"%s/%s %3s/N\",  "
+                                             "  'energy': %g }",
+                                             ci.chain_ref.name.c_str(), cres->name.c_str(),
+                                                                        cres->seqid.str().c_str(),
+                                             "?", donor->res->name.c_str(),
+                                                  donor->res->seqid.str().c_str(),
+                                             resinfo.donor_energies[k]);
+                     }
+                     if (gemmi::Topo::ResInfo* acc = resinfo.acceptors[k]) {
+                       std::putc(sep1, f.get());
+                       sep1 = ',';
+                       std::fprintf(f.get(), "\n{ 'acceptor': \"%s/%s %3s/O\",  "
+                                             "  'donor': \"%s/%s %3s/N\",  "
+                                             "  'energy': %g }",
+                                             "?", acc->res->name.c_str(),
+                                                  acc->res->seqid.str().c_str(),
+                                             ci.chain_ref.name.c_str(), cres->name.c_str(),
+                                                                        cres->seqid.str().c_str(),
+                                             resinfo.acceptor_energies[k]);
+                     }
+                   }
+                 }
+                 std::putc(']', f.get());
                }
              }
 

@@ -25,3 +25,4 @@ Options:
                        A).
   --bend-angle=ANGLE   Minimum angle for bend assignment (default: 70.0
                        degrees).
+  --hbonds=FILE        Output hydrogen bonds to a JSON file.
