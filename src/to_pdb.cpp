@@ -459,7 +459,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   if (!opt.minimal_file) {
     // MODRES
     for (const ModRes& modres : st.mod_residues) {
-      WRITE("MODRES %4s %3.3s%2s %5s %3s  %-41.41s  %-8.8s\n",
+      snprintf_z(buf, 82, "MODRES %4s %3.3s%2s %5s %3s  %-41.41s  %-8.8s\n",
             entry_id_4,
             modres.res_id.name.c_str(),
             modres.chain_name.c_str(),
@@ -467,6 +467,10 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
             modres.parent_comp_id.c_str(),
             modres.details.c_str(),
             modres.mod_id.c_str());
+      buf[80] = '\n';
+      for (int i_ = 29; i_ != 80; i_++)
+        if (buf[i_] >= 'a' && buf[i_] <= 'z') buf[i_] -= 0x20;
+      os.write(buf, 81);
     }
 
     // HET
