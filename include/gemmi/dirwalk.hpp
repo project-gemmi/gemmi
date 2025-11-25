@@ -34,6 +34,7 @@
 #include "util.hpp"  // for giends_with
 #include "fail.hpp"  // for sys_fail
 #include "pdb_id.hpp" // for is_pdb_code, expand_pdb_code_to_path
+#include "glob.hpp"  // for glob_match
 #if defined(_WIN32) && defined(_UNICODE)
  #include "utf.hpp"
 #endif
@@ -46,35 +47,6 @@ inline std::string as_utf8(const _tinydir_char_t* path) {
 #else
   return path;
 #endif
-}
-
-// linear-time glob matching: https://research.swtch.com/glob
-inline bool glob_match(const std::string& pattern, const std::string& str) {
-  size_t pat_next = 0;
-  size_t str_next = std::string::npos;
-  size_t pat_pos = 0;
-  size_t str_pos = 0;
-  while (pat_pos < pattern.size() || str_pos < str.size()) {
-    if (pat_pos < pattern.size()) {
-      char c = pattern[pat_pos];
-      if (c == '*') {
-        pat_next = pat_pos;
-        str_next = str_pos + 1;
-        pat_pos++;
-        continue;
-      }
-      if (str_pos < str.size() && (c == '?' || c == str[str_pos])) {
-        pat_pos++;
-        str_pos++;
-        continue;
-      }
-    }
-    if (str_next > str.size())
-      return false;
-    pat_pos = pat_next;
-    str_pos = str_next;
-  }
-  return true;
 }
 
 
