@@ -596,6 +596,10 @@ select_atoms(const gemmi::FlatStructure& fs, const std::string& query) {
     }
     return result;
 }
+inline void remove_not_selected(gemmi::FlatStructure& fs, const std::string& query) {
+    if (auto root = compile_pymol_selection(query))
+      vector_remove_if(fs.table, [&](FlatAtom& atom) { return !root->match(atom); });
+}
 
 } // namespace gemmi
 

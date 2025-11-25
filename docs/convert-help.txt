@@ -53,6 +53,8 @@ General output options:
 Macromolecular operations:
   --select=SEL            Output only the specified selection.
   --remove=SEL            Remove the specified selection.
+  --pysel=SEL             [PyMOL selection syntax] Output only the specified
+                          selection.
   --apply-symop=OP        Apply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'.
   --reframe               Standardize the coordinate system (frame).
   --expand-ncs=dup|num|x  Expand strict NCS from MTRIXn or _struct_ncs_oper.

@@ -126,6 +126,9 @@ gemmi/fprime.hpp
 gemmi/fstream.hpp
     Ofstream and Ifstream: wrappers around std::ofstream and std::ifstream.
 
+gemmi/glob.hpp
+    Glob pattern matching
+
 gemmi/grid.hpp
     3d grids used by CCP4 maps, cell-method search and hkl data.
 

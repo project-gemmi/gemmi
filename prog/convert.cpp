@@ -12,6 +12,7 @@
 #include "gemmi/pirfasta.hpp"  // for read_pir_or_fasta
 #include "gemmi/mmread_gz.hpp" // for read_structure_gz
 #include "gemmi/select.hpp"    // for Selection
+#include "gemmi/pymol_select.hpp" // for select_atoms
 #include "gemmi/enumstr.hpp"   // for polymer_type_to_string
 #include "gemmi/calculate.hpp" // for parse_triplet_as_ftransform
 
@@ -62,7 +63,7 @@ struct ConvArg: public Arg {
 enum OptionIndex {
   FormatIn=AfterCifModOptions, FormatOut, CifStyle, AllAuth, BlockName,
   ExpandNcs, AsAssembly,
-  RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, ApplySymop,
+  RemoveH, RemoveWaters, RemoveLigWat, TrimAla, Select, Remove, PymolSel, ApplySymop,
   Reframe, ShortTer, Linkid, Linkr, CopyRemarks, Minimal, ShortenCN, RenameChain,
   ShortenTLC, ChangeCcdCode, SetSeq, SiftsNum,
   Biso, BisoScale, AddTls, Anisou, AssignRecords,
@@ -151,6 +152,8 @@ const option::Descriptor Usage[] = {
     "  --select=SEL  \tOutput only the specified selection." },
   { Remove, 0, "", "remove", Arg::Required,
     "  --remove=SEL  \tRemove the specified selection." },
+  { PymolSel, 0, "", "select", Arg::Required,
+    "  --pysel=SEL  \t[PyMOL selection syntax] Output only the specified selection." },
   { ApplySymop, 0, "", "apply-symop", Arg::Required,
     "  --apply-symop=OP  \tApply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'." },
   { Reframe, 0, "", "reframe", Arg::None,
@@ -344,6 +347,11 @@ void convert(gemmi::Structure& st,
     gemmi::Selection(options[Select].arg).remove_not_selected(st);
   if (options[Remove])
     gemmi::Selection(options[Remove].arg).remove_selected(st);
+  if (options[PymolSel]) {
+    gemmi::FlatStructure fs(st);
+    gemmi::remove_not_selected(fs, options[PymolSel].arg);
+    st = fs.generate_structure();
+  }
   if (st.models.empty())
     gemmi::fail("all models got removed");
   if (options[ApplySymop]) {
