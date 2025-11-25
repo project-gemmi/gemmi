@@ -152,7 +152,7 @@ const option::Descriptor Usage[] = {
     "  --select=SEL  \tOutput only the specified selection." },
   { Remove, 0, "", "remove", Arg::Required,
     "  --remove=SEL  \tRemove the specified selection." },
-  { PymolSel, 0, "", "select", Arg::Required,
+  { PymolSel, 0, "", "pysel", Arg::Required,
     "  --pysel=SEL  \t[PyMOL selection syntax] Output only the specified selection." },
   { ApplySymop, 0, "", "apply-symop", Arg::Required,
     "  --apply-symop=OP  \tApply operation, e.g. '-x,y+1/2,-z' or 'x,y,z+0.1'." },
