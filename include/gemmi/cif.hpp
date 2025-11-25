@@ -11,7 +11,7 @@
 #include <iosfwd>     // for size_t, istream
 #include <string>
 
-#include "third_party/tao/pegtl.hpp"
+#include "third_party/tao/pegtl.hpp" // IWYU pragma: keep
 //#include "third_party/tao/pegtl/contrib/tracer.hpp"  // for debugging
 
 #include "cifdoc.hpp" // for Document, etc

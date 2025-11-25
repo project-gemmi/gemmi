@@ -226,6 +226,9 @@ gemmi/polyheur.hpp
     Heuristic methods for working with chains and polymers.
     Also includes a few well-defined functions, such as removal of waters.
 
+gemmi/pymol_select.hpp
+    PyMOL Selection syntax
+
 gemmi/qcp.hpp
     Structural superposition, the QCP method.
 

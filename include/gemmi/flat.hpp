@@ -29,6 +29,11 @@ struct FlatAtom {
   SMat33<float> aniso = {0, 0, 0, 0, 0, 0};
   int model_num;
   bool selected = false;
+
+  std::string atom_str() const {
+    ResidueId resid{seq_id, "", residue_name};
+    return gemmi::atom_str(chain_id, resid, atom_name, altloc);
+  }
 };
 struct GEMMI_DLL FlatStructure {
   Structure empty_st;
