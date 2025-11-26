@@ -1,6 +1,7 @@
 // Copyright Global Phasing Ltd.
 
 #include "gemmi/flat.hpp"
+#include "gemmi/calculate.hpp"  // for count_atom_sites
 #include <cstring>  // for strcpy
 
 namespace gemmi {
@@ -40,6 +41,7 @@ FlatStructure::FlatStructure(const Structure& st) {
           fa.element = atom.element;
           fa.charge = atom.charge;
           fa.aniso = atom.aniso;
+          fa.serial = atom.serial;
           table.push_back(fa);
         }
       }
@@ -71,6 +73,7 @@ Structure FlatStructure::generate_structure() {
     atom.element = fa.element;
     atom.charge = fa.charge;
     atom.aniso = fa.aniso;
+    atom.serial = fa.serial;
     residue->atoms.emplace_back(atom);
   }
   return st;

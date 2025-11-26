@@ -7,7 +7,6 @@
 
 #include <vector>
 #include "model.hpp"
-#include "calculate.hpp"
 
 namespace gemmi {
 
@@ -28,6 +27,7 @@ struct FlatAtom {
   signed char charge = 0;  // [-8, +8]
   SMat33<float> aniso = {0, 0, 0, 0, 0, 0};
   int model_num;
+  int serial = 0;
   bool selected = false;
 
   std::string atom_str() const {

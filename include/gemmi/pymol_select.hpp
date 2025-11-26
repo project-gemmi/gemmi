@@ -101,6 +101,14 @@ struct ResiRangeNode : Node {
     }
 };
 
+struct IndexRangeNode : Node {
+    int min, max;
+    IndexRangeNode(int a, int b) : min(a), max(b) {}
+    bool match(const gemmi::FlatAtom& a) const override {
+        return a.serial >= min && a.serial <= max;
+    }
+};
+
 struct ElementNode : Node {
     std::vector<Element> elems;
     explicit ElementNode(std::vector<Element> v) : elems(std::move(v)) {}
@@ -234,6 +242,8 @@ struct kw_resi  : p::istring<'r','e','s','i'> {};
 struct kw_name  : p::istring<'n','a','m','e'> {};
 struct kw_alt   : p::istring<'a','l','t'> {};
 struct kw_elem  : p::istring<'e','l','e','m'> {};
+struct kw_index : p::istring<'i','n','d','e','x'> {};
+struct kw_id    : p::istring<'i','d'> {};
 struct kw_b     : p::istring<'b'> {};
 struct kw_q     : p::istring<'q'> {};
 
@@ -278,6 +288,11 @@ struct val_resi_range : p::seq<integer, p::one<'-'>, integer> {};
 struct val_resi_single : integer {};
 struct rule_resi : p::seq<kw_resi, sep, p::sor<val_resi_range, val_resi_single>> {};
 
+// Index/ID: index 5 OR index 5-10 OR id 5
+struct val_index_range : p::seq<integer, p::one<'-'>, integer> {};
+struct val_index_single : integer {};
+struct rule_index : p::seq<p::sor<kw_index, kw_id>, sep, p::sor<val_index_range, val_index_single>> {};
+
 // Elem: elem C or elem C+N+O
 struct val_elem_item : element_str {};
 struct val_elem_list : p::list<val_elem_item, p::one<'+'>> {};
@@ -306,6 +321,7 @@ struct property : p::sor<
     rule_chain,
     rule_resn,
     rule_resi,
+    rule_index,
     rule_name,
     rule_alt,
     rule_elem,
@@ -435,6 +451,23 @@ template<> struct action<val_resi_range> {
         int v1 = std::stoi(str.substr(0, split_pos));
         int v2 = std::stoi(str.substr(split_pos + 1));
         s.stack.push_back(std::make_unique<psimpl::ResiRangeNode>(v1, v2));
+    }
+};
+
+template<> struct action<val_index_single> {
+    template<typename Input> static void apply(const Input& in, State& s) {
+        int val = std::stoi(in.string());
+        s.stack.push_back(std::make_unique<psimpl::IndexRangeNode>(val, val));
+    }
+};
+
+template<> struct action<val_index_range> {
+    template<typename Input> static void apply(const Input& in, State& s) {
+        std::string str = in.string();
+        size_t split_pos = str.find('-', 1); // Skip potential leading negative sign
+        int v1 = std::stoi(str.substr(0, split_pos));
+        int v2 = std::stoi(str.substr(split_pos + 1));
+        s.stack.push_back(std::make_unique<psimpl::IndexRangeNode>(v1, v2));
     }
 };
 
