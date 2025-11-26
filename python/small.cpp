@@ -161,11 +161,12 @@ void add_small(nb::module_& m) {
     // String fields as S8 (8-byte fixed-width string) numpy arrays
     .def_prop_ro("atom_names", [](FlatStructure& self) {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
-        return nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
+        auto raw = nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
             self.table.data()->atom_name,
             {self.table.size(), 8},
             nb::handle(),
             {stride, 1});
+        return nb::cast(raw).attr("view")("S8").attr("ravel")();
     }, nb::rv_policy::reference_internal, "Atom names as (N, 8) char array")
     .def_prop_ro("residue_names", [](FlatStructure& self) {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));

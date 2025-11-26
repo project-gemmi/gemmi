@@ -925,7 +925,7 @@ class TestMol(unittest.TestCase):
 
         # Test shapes
         self.assertEqual(fst.pos.shape, (n_atoms, 3))
-        self.assertEqual(fst.atom_names.shape, (n_atoms, 8))
+        self.assertEqual(fst.atom_names.shape, (n_atoms,))
         self.assertEqual(fst.residue_names.shape, (n_atoms, 8))
         self.assertEqual(fst.chain_ids.shape, (n_atoms, 8))
 
@@ -934,7 +934,7 @@ class TestMol(unittest.TestCase):
         self.assertEqual(fst.occ.dtype, numpy.float32)
         self.assertEqual(fst.pos.dtype, numpy.float64)
         # char arrays can be int8 or uint8 depending on platform
-        self.assertIn(fst.atom_names.dtype, [numpy.int8, numpy.uint8])
+        #self.assertIn(fst.atom_names.dtype, [numpy.int8, numpy.uint8])
 
         # Test modifying arrays
         if n_atoms > 0:

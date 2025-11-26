@@ -3065,7 +3065,7 @@ character arrays:
 .. testoutput::
   :skipif: numpy is None
 
-  Atom names shape: (559, 8)
+  Atom names shape: (559,)
   Atom 0: 'N'
   Atom 1: 'CA'
   Atom 2: 'C'
