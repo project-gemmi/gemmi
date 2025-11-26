@@ -131,6 +131,31 @@ void add_small(nb::module_& m) {
     .def_prop_ro("selected", [](FlatStructure& self) {
         return vector_member_array(self.table, &FlatAtom::selected);
     }, nb::rv_policy::reference_internal, "Selection flags as numpy array")
+    .def_prop_ro("serials", [](FlatStructure& self) {
+        return vector_member_array(self.table, &FlatAtom::serial);
+    }, nb::rv_policy::reference_internal, "Serial numbers as numpy array")
+    .def_prop_ro("altlocs", [](FlatStructure& self) {
+        return vector_member_array(self.table, &FlatAtom::altloc);
+    }, nb::rv_policy::reference_internal, "Alternate location indicators as numpy array")
+    .def_prop_ro("het_flags", [](FlatStructure& self) {
+        return vector_member_array(self.table, &FlatAtom::het_flag);
+    }, nb::rv_policy::reference_internal, "Het flags as numpy array ('A'=ATOM, 'H'=HETATM)")
+    .def_prop_ro("elements", [](FlatStructure& self) {
+        constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
+        return nb::ndarray<nb::numpy, uint8_t, nb::shape<-1>>(
+            reinterpret_cast<uint8_t*>(&self.table.data()->element),
+            {self.table.size()},
+            nb::handle(),
+            {stride});
+    }, nb::rv_policy::reference_internal, "Element types as numpy array")
+    .def_prop_ro("entity_type", [](FlatStructure& self) {
+        constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
+        return nb::ndarray<nb::numpy, uint8_t, nb::shape<-1>>(
+            reinterpret_cast<uint8_t*>(&self.table.data()->entity_type),
+            {self.table.size()},
+            nb::handle(),
+            {stride});
+    }, nb::rv_policy::reference_internal, "Entity types as numpy array")
     // String fields as S8 (8-byte fixed-width string) numpy arrays
     .def_prop_ro("atom_names", [](FlatStructure& self) {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
