@@ -11,7 +11,8 @@
 #include "gemmi/gz.hpp"            // for estimate_uncompressed_size
 #include "gemmi/interop.hpp"       // for atom_to_site, mx_to_sx_structure
 #include "gemmi/flat.hpp"          // for FlatStructure, FlatAtom
-                                   //
+#include "gemmi/pymol_select.hpp"  // for select_atoms
+
 using namespace gemmi;
 
 NB_MAKE_OPAQUE(std::vector<SmallStructure::Site>)
@@ -102,6 +103,7 @@ void add_small(nb::module_& m) {
          "Create a flat representation of a Structure")
     .def("generate_structure", &FlatStructure::generate_structure,
          "Reconstructs a Structure from the flat table of atoms")
+    .def("pymol_select", &remove_not_selected)
     .def("__len__", [](const FlatStructure& self) { return self.table.size(); })
     .def("__repr__", [](const FlatStructure& self) {
         return "<gemmi.FlatStructure with " + std::to_string(self.table.size()) + " atoms>";
