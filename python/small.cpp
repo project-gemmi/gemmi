@@ -158,6 +158,22 @@ void add_small(nb::module_& m) {
             nb::handle(),
             {stride});
     }, nb::rv_policy::reference_internal, "Entity types as numpy array")
+    .def_prop_ro("resnums", [](FlatStructure& self) {
+        constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom) / sizeof(int));
+        return nb::ndarray<nb::numpy, int, nb::shape<-1>>(
+            &self.table.data()->seq_id.num.value,
+            {self.table.size()},
+            nb::handle(),
+            {stride});
+    }, nb::rv_policy::reference_internal, "Residue sequence numbers as numpy array")
+    .def_prop_ro("icodes", [](FlatStructure& self) {
+        constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
+        return nb::ndarray<nb::numpy, char, nb::shape<-1>>(
+            &self.table.data()->seq_id.icode,
+            {self.table.size()},
+            nb::handle(),
+            {stride});
+    }, nb::rv_policy::reference_internal, "Insertion codes as numpy array")
     // String fields as S8 (8-byte fixed-width string) numpy arrays
     .def_prop_ro("atom_names", [](FlatStructure& self) {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
