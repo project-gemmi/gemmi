@@ -174,6 +174,13 @@ void add_small(nb::module_& m) {
             nb::handle(),
             {stride});
     }, nb::rv_policy::reference_internal, "Insertion codes as numpy array")
+    .def_prop_ro("element_weights", [](FlatStructure& self) {
+        std::vector<double> weights;
+        weights.reserve(self.table.size());
+        for (const auto& atom : self.table)
+            weights.push_back(molecular_weight(atom.element));
+        return numpy_array_from_vector(std::move(weights));
+    }, nb::rv_policy::move, "Element molecular weights as numpy array")
     // String fields as S8 (8-byte fixed-width string) numpy arrays
     .def_prop_ro("atom_names", [](FlatStructure& self) {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
