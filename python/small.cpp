@@ -181,6 +181,16 @@ void add_small(nb::module_& m) {
             weights.push_back(molecular_weight(atom.element));
         return numpy_array_from_vector(std::move(weights));
     }, nb::rv_policy::move, "Element molecular weights as numpy array")
+    .def_prop_ro("element_names", [](FlatStructure& self) {
+        std::vector<std::array<char, 2>> names;
+        names.reserve(self.table.size());
+        for (const auto& atom : self.table) {
+            const char* name = element_name(atom.element);
+            names.push_back({name[0], name[1]});
+        }
+        auto raw = py_array2d_from_vector(std::move(names));
+        return nb::cast(raw).attr("view")("S2").attr("ravel")();
+    }, nb::rv_policy::move, "Element names as numpy array")
     // String fields as S8 (8-byte fixed-width string) numpy arrays
     .def_prop_ro("atom_names", [](FlatStructure& self) {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
