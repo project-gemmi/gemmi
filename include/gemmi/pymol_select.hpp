@@ -16,7 +16,7 @@
 #include <cstring>
 
 // Only define this if we are not in C++14 mode
-#if __cplusplus < 201402L
+#if __cplusplus < 201402L && !defined(_MSC_VER)
 namespace std {
     template<typename T, typename... Args>
     std::unique_ptr<T> make_unique(Args&&... args) {
