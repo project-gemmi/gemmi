@@ -28,4 +28,4 @@ two major providers of software for macromolecular crystallography.
 Citing: [JOSS paper](https://doi.org/10.21105/joss.04200).
 
 License: MPLv2, or (at your option) LGPLv3.
-© 2017-2024 Global Phasing Ltd.
+© 2017-2025 Global Phasing Ltd.

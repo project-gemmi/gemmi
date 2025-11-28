@@ -218,12 +218,76 @@ All these directory walking functions are powered by the
 `tinydir <https://github.com/cxong/tinydir>`_ library
 (a single-header library copied into `include/gemmi/third_party`).
 
-Decompressing
-=============
+Input abstractions (decompressing on the fly)
+=============================================
 
 Gemmi can decompress `.gz` files on the fly.
-This section is about why we have class `MaybeGzipped` (C++ only)
-and how the same interface can be used to decompress other formats
-or do different transformations.
 
-TBC
+File reading is decoupled from content parsing.
+We use input classes that read content from a plain file,
+a gzipped file (uncompressing it on the fly) or from a memory buffer.
+
+This is done by using polymorphic input classes with virtual methods
+for reading bytes or words or lines. Gemmi supports both text-based file formats
+(PDB, CIF, XDS ACII, mmJSON) and binary ones (MRC/CCP4, MTZ).
+As a side note: initially, for the first few years of development,
+gemmi was a header-only library. As the library grew, this became
+less and less practical, and gemmi started a gradual transition to a conventional
+split into .hpp headers and .cpp implementation files.
+The low-level way of reading a file, for example, a CIF file, is:
+
+  cif::read(gemmi::BasicInput{mmcif_file});
+
+and a gzipped file can be read with:
+
+  cif::read(gemmi::MaybeGzipped{mmcif_gzipped_file});
+
+Similarly with other formats, for example:
+
+  xds.read_input(gemmi::MaybeGzipped(input_path));
+
+BasicInput and MaybeGzipped are little helpers used to provide access to the actual
+input stream class: one of FileStream, MemoryStream, GzStream, all of which are
+derived from AnyStream (see `gemmi/input.hpp`).
+
+The above approach used to be recommended and documented.
+But after switching to a compiled library, this recommendation changed.
+Gemmi now has more user-friendly wrapper functions, such as:
+
+  read_structure_gz(mmcif_gzipped_file);
+
+which are compiled as part of the library. Use these wrappers instead
+of explicit MaybeGzipped (which still works)
+to make your code easier to read, understand and faster to compile.
+That's what will be documented through the rest of this manual,
+but you may still find `MaybeGzipped` in older code that uses Gemmi,
+so I wanted to mention it here.
+
+Notes:
+------
+
+When the library was header-only, we avoided the overhead of virtual
+functions by using static (compile-time) polymorphism in the input (FileStream,
+MemoryStream, GzStream) classes.
+At that time, linking with the Zlib library was necessary only for programs using
+MaybeGzipped.
+Now, the input classes (*Stream) use virtual functions;
+the overhead of the virtual calls turned out to be negligible.
+As a side-effect, libgemmi (and  therefore any program using it)
+must be linked with zlib or zlib-ng.
+
+Compilation is much faster, though.
+With static polymorphism, the parsing code had to be compiled in every
+compilation unit that used `cif::read`, and functions with different
+parameters (`BasicInput` vs `MaybeGzipped`) resulted in separate template
+instantiations, which optimized performance at the cost of binary size bloat.
+
+At first, we thought we might need more types of inputs (other compression
+formats) later on, and exposing details such as `gemmi::MaybeGzipped` could help
+the user grasp how to implement other inputs (without changing gemmi).
+This concern turned out to be unimportant (no one used another compression
+format during 8 years of Gemmi development), so using wrapper functions
+is preferable, as they are easier to read and understand.
+
+If you compile gemmi yourself, note that linking it with zlib-ng instead of zlib
+(as done in official binaries on PyPI) makes reading gzipped files noticeably faster.
