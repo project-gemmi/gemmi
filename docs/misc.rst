@@ -236,13 +236,19 @@ less and less practical, and gemmi started a gradual transition to a conventiona
 split into .hpp headers and .cpp implementation files.
 The low-level way of reading a file, for example, a CIF file, is:
 
+ .. code-block:: cpp
+
   cif::read(gemmi::BasicInput{mmcif_file});
 
 and a gzipped file can be read with:
 
+ .. code-block:: cpp
+
   cif::read(gemmi::MaybeGzipped{mmcif_gzipped_file});
 
 Similarly with other formats, for example:
+
+ .. code-block:: cpp
 
   xds.read_input(gemmi::MaybeGzipped(input_path));
 
@@ -254,6 +260,8 @@ The above approach used to be recommended and documented.
 But after switching to a compiled library, this recommendation changed.
 Gemmi now has more user-friendly wrapper functions, such as:
 
+ .. code-block:: cpp
+
   read_structure_gz(mmcif_gzipped_file);
 
 which are compiled as part of the library. Use these wrappers instead
@@ -263,15 +271,15 @@ That's what will be documented through the rest of this manual,
 but you may still find `MaybeGzipped` in older code that uses Gemmi,
 so I wanted to mention it here.
 
-Notes:
-------
+Notes
+-----
 
 When the library was header-only, we avoided the overhead of virtual
 functions by using static (compile-time) polymorphism in the input (FileStream,
 MemoryStream, GzStream) classes.
 At that time, linking with the Zlib library was necessary only for programs using
 MaybeGzipped.
-Now, the input classes (*Stream) use virtual functions;
+Now, the input classes (\*Stream) use virtual functions;
 the overhead of the virtual calls turned out to be negligible.
 As a side-effect, libgemmi (and  therefore any program using it)
 must be linked with zlib or zlib-ng.

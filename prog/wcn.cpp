@@ -47,7 +47,7 @@ const option::Descriptor Usage[] = {
   { Exponent, 0, "", "pow", Arg::Float,
     "  --pow=P  \tExponent in the weighting (default: 2)." },
   { Blur, 0, "", "blur", Arg::Float,
-    "  --blur=SIGMA  \tApply Gaussian smoothing of predicted B-factors." },
+    "  --blur=SIGMA  \tApply Gaussian smoothing to predicted B-factors." },
   { Rom, 0, "", "rom", Arg::None,
     "  --rom  \tRotation only model: |pos-ctr_of_chain|^P instead of WCN." },
   { ChainName, 0, "", "chain", Arg::Required,
