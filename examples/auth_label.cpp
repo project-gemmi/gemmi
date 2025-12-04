@@ -1,5 +1,5 @@
 // Compare pairs of columns from the _atom_site table.
-#include <gemmi/gz.hpp>
+#include <gemmi/read_cif.hpp>
 #include <gemmi/cif.hpp>
 #include <iostream>
 #include <filesystem>  // requires C++17
@@ -24,13 +24,11 @@ int main(int argc, char* argv[]) {
     return 1;
   for (auto& p : fs::recursive_directory_iterator(argv[1])) {
     std::string path = p.path().u8string();
-    if (ends_with(path, ".cif") || ends_with(path, ".cif.gz")) {
-      cif::Document doc = cif::read(gemmi::MaybeGzipped(path));
-      // What author's atom names were changed?
-      print_differences(doc.sole_block(), "atom_id");
-      // What author's residue names were changed?
-      print_differences(doc.sole_block(), "comp_id");
-    }
+    cif::Document doc = gemmi::read_cif_gz(path);
+    // What author's atom names were changed?
+    print_differences(doc.sole_block(), "atom_id");
+    // What author's residue names were changed?
+    print_differences(doc.sole_block(), "comp_id");
   }
   return 0;
 }

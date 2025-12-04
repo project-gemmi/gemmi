@@ -3,12 +3,12 @@
 
 #include <cstdio>
 #include <gemmi/dirwalk.hpp> // for PdbWalk
-#include <gemmi/gz.hpp>      // for MaybeGzipped
-#include <gemmi/pdb.hpp>     // for read_pdb, read_remark_290
+#include <gemmi/mmread_gz.hpp>      // for read_pdb_gz
+#include <gemmi/pdb.hpp>     // for read_remark_290
 
 void check_remark290(const std::string& path) {
   using namespace gemmi;
-  Structure st = read_pdb(MaybeGzipped(path));
+  Structure st = read_pdb_gz(path);
   std::vector<Op> ops = read_remark_290(st.raw_remarks);
   if (ops.empty()) {
     if (st.cell.is_crystal())

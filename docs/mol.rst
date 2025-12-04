@@ -949,7 +949,7 @@ file → `cif::Document` → `Structure`.
 
     namespace cif = gemmi::cif;
 
-    cif::Document doc = cif::read(gemmi::MaybeGzipped(mmcif_file));
+    cif::Document doc = gemmi::read_cif_gz(mmcif_file);
     gemmi::Structure structure = gemmi::make_structure(doc);
 
  `cif::Document` can be additionally used to access metadata.
@@ -1092,7 +1092,7 @@ Reading
 
     cif::Document doc = cif::read_mmjson_file(path);
     // or, to handle gzipped files:
-    cif::Document doc = cif::read_mmjson(gemmi::MaybeGzipped(path));
+    cif::Document doc = cif::read_mmjson_gz(path);
     // and then:
     gemmi::Structure structure =  gemmi::make_structure(doc);
 
