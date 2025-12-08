@@ -613,8 +613,9 @@ struct Chain {
 
 inline std::string atom_str(const Chain& chain,
                             const ResidueId& res_id,
-                            const Atom& atom) {
-  return atom_str(chain.name, res_id, atom.name, atom.altloc);
+                            const Atom& atom,
+                            bool as_cid=false) {
+  return atom_str(chain.name, res_id, atom.name, atom.altloc, as_cid);
 }
 
 struct const_CRA {
@@ -630,12 +631,13 @@ struct CRA {
   operator const_CRA() const { return const_CRA{chain, residue, atom}; }
 };
 
-inline std::string atom_str(const const_CRA& cra) {
+inline std::string atom_str(const const_CRA& cra, bool as_cif=false) {
   static const ResidueId null_residue_id = {};
   return atom_str(cra.chain ? cra.chain->name : "null",
                   cra.residue ? *cra.residue : null_residue_id,
                   cra.atom ? cra.atom->name : "null",
-                  cra.atom ? cra.atom->altloc : '\0');
+                  cra.atom ? cra.atom->altloc : '\0',
+                  as_cif);
 }
 
 inline bool atom_matches(const const_CRA& cra, const AtomAddress& addr, bool ignore_segment=false) {
