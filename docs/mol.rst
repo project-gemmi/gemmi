@@ -2848,6 +2848,10 @@ another small structure, called CRA:
   <gemmi.Residue 2(ALA) with 5 atoms>
   >>> cra.atom
   <gemmi.Atom N at (-24.5, -13.9, 14.8)>
+  >>> cra.cid()
+  '//A/2/N'
+
+The last function returns :ref:`CID selection <selections>` for the given atom.
 
 Now, as an exercise, we will delete and re-create a disulfide bond:
 
