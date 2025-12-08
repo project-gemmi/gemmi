@@ -230,27 +230,27 @@ jobs:
     - name: yum
       run: |
         dnf update -y
-        dnf install -y gcc-c++ cmake make git python38-devel python38-pip
-        python3.8 -m pip install -U numpy typing_extensions sphinx sphinx-inline-tabs
+        dnf install -y gcc-c++ cmake make git python39-devel python39-pip
+        python3.9 -m pip install -U numpy typing_extensions sphinx sphinx-inline-tabs
         g++ --version
-        python3.8 --version
+        python3.9 --version
         cmake --version
-        type python3.8
+        type python3.9
     - name: install nanobind
       run: |
         git clone --recursive --depth=1 https://github.com/wjakob/nanobind.git
         cd nanobind
-        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.8 -DNB_TEST=OFF
+        cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.9 -DNB_TEST=OFF
         make
         make install
     - name: build and test
       run: |
         pwd
-        cmake . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3.8 -DFETCH_ZLIB_NG=ON
+        cmake . -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3.9 -DFETCH_ZLIB_NG=ON
         make -j2
         make -j2 check
         make install
-        python3.8 -m unittest discover -v -s ./tests/
+        python3.9 -m unittest discover -v -s ./tests/
         strip --strip-unneeded ./gemmi ./py/gemmi/gemmi_ext.cpython*.so
     - name: run doctest
       run: |
