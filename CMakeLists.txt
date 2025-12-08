@@ -451,6 +451,10 @@ endif()
 ### Python bindings ###
 if (USE_PYTHON)
   message(STATUS "The python module will be built.")
+
+  # workaround for https://github.com/wjakob/nanobind/issues/1237
+  set(NB_USE_SUBMODULE_DEPS ON)
+
   # CMake >=3.18 has subcomponent Development.Module, scikit-build-core also has it
   if (${CMAKE_VERSION} VERSION_LESS 3.18 AND NOT SKBUILD)
     find_package(Python ${PYTHON_VERSION} REQUIRED COMPONENTS Interpreter Development)
