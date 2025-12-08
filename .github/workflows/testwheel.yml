@@ -16,7 +16,7 @@ jobs:
              windows-latest,
              # 14-large is intel
              macos-15-intel, macos-14, macos-15]
-        py: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
+        py: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
     name: ${{ matrix.os }} py${{ matrix.py }}
     runs-on: ${{ matrix.os }}
     steps:

@@ -13,7 +13,7 @@ on:
         description: 'CIBW_SKIP'
         # To limit the number of builds, skip most of musl-based versions,
         # PyPy, and 32-bit builds.
-        default: 'pp* cp{38,39,310}-musllinux* *_i686 *-win32'
+        default: 'pp* *38* cp{39,310}-musllinux* *_i686 *-win32'
       cibw_config_settings:
         description: 'CIBW_CONFIG_SETTINGS'
         default: ''
