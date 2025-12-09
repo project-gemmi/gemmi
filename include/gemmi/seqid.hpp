@@ -78,10 +78,13 @@ struct SeqId {
 
   char has_icode() const { return icode != ' '; }
 
-  std::string str() const {
+  std::string str(bool dot_before_icode=false) const {
     std::string r = num.str();
-    if (icode != ' ')
+    if (icode != ' ') {
+      if (dot_before_icode)
+        r += '.';
       r += icode;
+    }
     return r;
   }
 };
@@ -116,7 +119,7 @@ inline std::string atom_str(const std::string& chain_name,
     r += res_id.name;
     r += ' ';
   }
-  r += res_id.seqid.str();
+  r += res_id.seqid.str(as_cid);
   if (as_cid && atom_name == "null")
     return r;
   r += '/';

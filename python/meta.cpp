@@ -30,7 +30,7 @@ void add_meta(nb::module_& m) {
     .def(nb::init<const std::string&>())
     .def_rw("num", &SeqId::num, nb::arg().none())
     .def_rw("icode", &SeqId::icode)
-    .def("__str__", &SeqId::str)
+    .def("__str__", &SeqId::str, nb::arg("dot_before_icode")=false)
     .def("__repr__", [](const SeqId& self) {
         return "<gemmi.SeqId " + self.str() + ">";
     })
