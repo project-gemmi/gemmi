@@ -207,7 +207,7 @@ jobs:
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=OFF
         cmake --build . --config Debug -j2
         cmake --build . --config Debug --target check -j2
-        cmake --install . --config Debug
+        sudo cmake --install . --config Debug
         cd ..
         python3 -m unittest discover -v -s tests/
     - name: run doctest
