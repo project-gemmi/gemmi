@@ -193,10 +193,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: apt-get
       run: |
-        export DEBIAN_FRONTEND=noninteractive
-        ln -fs /usr/share/zoneinfo/UTC /etc/localtime
-        apt-get update
-        apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind cmake
+        sudo apt-get update
+        sudo apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind cmake
     - name: install nanobind
       run: |
         python3 -m pip install nanobind typing_extensions sphinx sphinx-inline-tabs
