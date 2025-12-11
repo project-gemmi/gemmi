@@ -392,6 +392,8 @@ void restore_full_ccd_codes(Structure& st) {
 // This function adds the alternative names to full_sequence.
 static void add_microhetero_to_sequence(Entity& ent, ConstResidueSpan polymer) {
   ent.reflects_microhetero = false;
+  if (ent.full_sequence.empty())
+    return;
   int max_n = -1;  // max label_seq seen so far
   for (const Residue& res : polymer) {
     int n = *res.label_seq;
