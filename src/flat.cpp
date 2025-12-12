@@ -2,9 +2,17 @@
 
 #include "gemmi/flat.hpp"
 #include "gemmi/calculate.hpp"  // for count_atom_sites
-#include <cstring>  // for strcpy
+#include <cstring>  // for memcpy, memset
 
 namespace gemmi {
+
+namespace {
+template<size_t N>
+void copy_padded(char (&dest)[N], const std::string& src) {
+  std::memcpy(dest, src.c_str(), src.size());
+  std::memset(dest + src.size(), 0, N - src.size());
+}
+}  // anonymous namespace
 
 FlatStructure::FlatStructure(const Structure& st) {
   empty_st = st.empty_copy();
@@ -16,24 +24,24 @@ FlatStructure::FlatStructure(const Structure& st) {
     for (const Chain& chain : model.chains) {
       if (chain.name.size() > 7)
         fail("FlatStructure doesn't support 8+ char subchain names: ", chain.name);
-      std::strcpy(fa.chain_id, chain.name.c_str());
+      copy_padded(fa.chain_id, chain.name);
       for (const Residue& res : chain.residues) {
         if (res.name.size() > 7)
           fail("FlatStructure doesn't support 8+ char residue names: ", res.name);
-        std::strcpy(fa.residue_name, res.name.c_str());
+        copy_padded(fa.residue_name, res.name);
         if (res.subchain.size() > 7)
           fail("FlatStructure doesn't support 8+ char subchain names: ", res.subchain);
-        std::strcpy(fa.subchain, res.subchain.c_str());
+        copy_padded(fa.subchain, res.subchain);
         if (res.entity_id.size() > 7)
           fail("FlatStructure doesn't support 8+ char entity IDs: ", res.entity_id);
-        std::strcpy(fa.entity_id, res.entity_id.c_str());
+        copy_padded(fa.entity_id, res.entity_id);
         fa.seq_id = res.seqid;
         fa.het_flag = res.het_flag;
         fa.entity_type = res.entity_type;
         for (const Atom& atom : res.atoms) {
           if (atom.name.size() > 7)
             fail("FlatStructure doesn't support 8+ char atom names: ", atom.name);
-          std::strcpy(fa.atom_name, atom.name.c_str());
+          copy_padded(fa.atom_name, atom.name);
           fa.pos = atom.pos;
           fa.occ = atom.occ;
           fa.b_iso = atom.b_iso;
