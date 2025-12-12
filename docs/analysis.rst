@@ -829,8 +829,8 @@ changing the atomic positions in-place:
 
 .. _selections:
 
-Selections
-==========
+Selections (CID)
+================
 
 Gemmi selection syntax is based on the selection syntax from MMDB,
 which is sometimes called CID (Coordinate ID). The MMDB syntax is described
@@ -1030,6 +1030,37 @@ Here, we select atoms in the radius of 8Å from a selected point:
   >>> # Next, we can use this selection.
   >>> selection.copy_model_selection(st[0]).count_atom_sites()
   59
+
+.. _pymol_sel:
+
+Selections (PyMOL syntax)
+=========================
+
+The CID syntax is simple with clearly separated filters for each hierarchy level.
+But it's rather obscure. Due to popular demand, we also added a subset of the 
+PyMOL selection syntax. It's more complex and currently it's only used
+to select/remove atoms from :ref:`FlatStructure <flat_structure>`. 
+The following keywords/identifiers can be used:
+
+* and, or, not
+* chain, resn, resi, name, alt, elem, index / id, b, q
+* hetatm, polymer,  solveent, water, hydrogens / h., backbone, sidechain, all
+
+Examples:
+
+- chain A+B+C – select multiple chains
+- resn ALA+GLY+VAL – select multiple residue types
+- elem C+N+O – select multiple elements
+- name CA* – atoms starting with Ca
+- resn G?? – three-letter residues starting with G
+- elem Fe – specific element
+- b > 50 – high B-factors
+- q < 1 – partial occupancy
+- chain A+B and resn ALA+GLY
+- (chain A or chain B) and not (water or hydrogens)
+
+Using such selections with FlatStructure is described in
+the :ref:`FlatStructure <flat_sel>` section.
 
 .. _graph_analysis:
 

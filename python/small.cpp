@@ -103,7 +103,7 @@ void add_small(nb::module_& m) {
          "Create a flat representation of a Structure")
     .def("generate_structure", &FlatStructure::generate_structure,
          "Reconstructs a Structure from the flat table of atoms")
-    .def("pymol_select", &remove_not_selected)
+    .def("leave_only", &remove_not_selected)
     .def("__len__", [](const FlatStructure& self) { return self.table.size(); })
     .def("__repr__", [](const FlatStructure& self) {
         return "<gemmi.FlatStructure with " + std::to_string(self.table.size()) + " atoms>";

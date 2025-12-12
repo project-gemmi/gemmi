@@ -2944,6 +2944,7 @@ analyzes coordinate files, using 4 worker processes in parallel.
    :language: python
    :lines: 4-
 
+.. _flat_structure:
 
 Flat Structure Representation
 =============================
@@ -3128,6 +3129,27 @@ efficiently using NumPy:
 
 These operations are much faster than equivalent loops over the hierarchical
 structure, especially for large structures.
+
+.. _flat_sel:
+
+Pymol selections
+----------------
+
+The supported subset of PyMOL selections is described in :ref:`this section <pymol_sel>`.
+Currently, the only operation that uses this syntax is selecting
+atoms in FlatStructure by removing atoms that don't match the selection
+
+.. doctest::
+
+  >>> flat_st
+  <gemmi.FlatStructure with 559 atoms>
+  >>> flat_st.leave_only("not water")
+  >>> flat_st
+  <gemmi.FlatStructure with 500 atoms>
+  >>> flat_st.leave_only("name CA")
+  >>> flat_st
+  <gemmi.FlatStructure with 64 atoms>
+
 
 Performance Considerations
 --------------------------
