@@ -3089,15 +3089,16 @@ In Python, these 5 short-string properties are available either as raw numbers
 or short bytes, depending on the `strings_as_numbers` flag:
 
 .. doctest::
+  :skipif: numpy is None
 
-  >>> flat_st.atom_names
+  >>> flat_st.atom_names  # doctest: +ELLIPSIS
   array([[78,  0,  0, ...,  0,  0,  0],
          [67, 65,  0, ...,  0,  0,  0],
          [67,  0,  0, ...,  0,  0,  0],
          ...,
          [79,  0,  0, ...,  0,  0,  0],
          [79,  0,  0, ...,  0,  0,  0],
-         [79,  0,  0, ...,  0,  0,  0]], dtype=int8)
+         [79,  0,  0, ...,  0,  0,  0]], dtype=...int8)
   >>> flat_st.strings_as_numbers=False
   >>> flat_st.atom_names
   array([b'N', b'CA', b'C', ..., b'O', b'O', b'O'], dtype='|S8')
