@@ -38,6 +38,7 @@ struct FlatAtom {
 struct GEMMI_DLL FlatStructure {
   Structure empty_st;
   std::vector<FlatAtom> table;
+  bool strings_as_numbers = true; // when accessed as NumPy arrays (Python bindings)
 
   // Structure <-> FlatStructure
   FlatStructure(const Structure& st);

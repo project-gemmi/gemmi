@@ -925,9 +925,11 @@ class TestMol(unittest.TestCase):
 
         # Test shapes
         self.assertEqual(fst.pos.shape, (n_atoms, 3))
-        self.assertEqual(fst.atom_names.shape, (n_atoms,))
+        self.assertEqual(fst.atom_names.shape, (n_atoms, 8))
         self.assertEqual(fst.residue_names.shape, (n_atoms, 8))
         self.assertEqual(fst.chain_ids.shape, (n_atoms, 8))
+        fst.strings_as_numbers = False
+        self.assertEqual(fst.atom_names.shape, (n_atoms,))
 
         # Test data types
         self.assertEqual(fst.b_iso.dtype, numpy.float32)

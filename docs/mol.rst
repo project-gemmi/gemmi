@@ -3070,7 +3070,7 @@ character arrays:
 .. testoutput::
   :skipif: numpy is None
 
-  Atom names shape: (559,)
+  Atom names shape: (559, 8)
   Atom 0: 'N'
   Atom 1: 'CA'
   Atom 2: 'C'
@@ -3084,6 +3084,31 @@ Available array properties include:
 * ``chain_ids`` - Chain IDs as (N, 8) char array
 * ``subchains`` - Subchain IDs as (N, 8) char array
 * ``entity_ids`` - Entity IDs as (N, 8) char array
+
+In Python, these 5 short-string properties are available either as raw numbers
+or short bytes, depending on the `strings_as_numbers` flag:
+
+.. doctest::
+
+  >>> flat_st.atom_names
+  array([[78,  0,  0, ...,  0,  0,  0],
+         [67, 65,  0, ...,  0,  0,  0],
+         [67,  0,  0, ...,  0,  0,  0],
+         ...,
+         [79,  0,  0, ...,  0,  0,  0],
+         [79,  0,  0, ...,  0,  0,  0],
+         [79,  0,  0, ...,  0,  0,  0]], dtype=int8)
+  >>> flat_st.strings_as_numbers=False
+  >>> flat_st.atom_names
+  array([b'N', b'CA', b'C', ..., b'O', b'O', b'O'], dtype='|S8')
+  >>> flat_st.residue_names[:1]
+  array([b'GLN'], dtype='|S8')
+  >>> flat_st.chain_ids[:1]
+  array([b'A'], dtype='|S8')
+  >>> flat_st.subchains[:1]
+  array([b'Axp'], dtype='|S8')
+  >>> flat_st.entity_ids[:1]
+  array([b''], dtype='|S8')
 
 Bulk Operations
 ---------------

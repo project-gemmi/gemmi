@@ -104,6 +104,8 @@ void add_small(nb::module_& m) {
     .def("generate_structure", &FlatStructure::generate_structure,
          "Reconstructs a Structure from the flat table of atoms")
     .def("leave_only", &remove_not_selected)
+    .def_rw("strings_as_numbers", &FlatStructure::strings_as_numbers,
+            "If true, string fields return (N,8) char arrays; if false, S8 string arrays")
     .def("__len__", [](const FlatStructure& self) { return self.table.size(); })
     .def("__repr__", [](const FlatStructure& self) {
         return "<gemmi.FlatStructure with " + std::to_string(self.table.size()) + " atoms>";
@@ -192,46 +194,60 @@ void add_small(nb::module_& m) {
         return nb::cast(raw).attr("view")("S2").attr("ravel")();
     }, nb::rv_policy::move, "Element names as numpy array")
     // String fields as S8 (8-byte fixed-width string) numpy arrays
-    .def_prop_ro("atom_names", [](FlatStructure& self) {
+    .def_prop_ro("atom_names", [](FlatStructure& self) -> nb::object {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
         auto raw = nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
             self.table.data()->atom_name,
             {self.table.size(), 8},
             nb::handle(),
             {stride, 1});
+        if (self.strings_as_numbers)
+          return nb::cast(raw);
         return nb::cast(raw).attr("view")("S8").attr("ravel")();
     }, nb::rv_policy::reference_internal, "Atom names as (N, 8) char array")
-    .def_prop_ro("residue_names", [](FlatStructure& self) {
+    .def_prop_ro("residue_names", [](FlatStructure& self) -> nb::object {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
-        return nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
+        auto raw = nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
             self.table.data()->residue_name,
             {self.table.size(), 8},
             nb::handle(),
             {stride, 1});
+        if (self.strings_as_numbers)
+          return nb::cast(raw);
+        return nb::cast(raw).attr("view")("S8").attr("ravel")();
     }, nb::rv_policy::reference_internal, "Residue names as (N, 8) char array")
-    .def_prop_ro("chain_ids", [](FlatStructure& self) {
+    .def_prop_ro("chain_ids", [](FlatStructure& self) -> nb::object {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
-        return nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
+        auto raw = nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
             self.table.data()->chain_id,
             {self.table.size(), 8},
             nb::handle(),
             {stride, 1});
+        if (self.strings_as_numbers)
+          return nb::cast(raw);
+        return nb::cast(raw).attr("view")("S8").attr("ravel")();
     }, nb::rv_policy::reference_internal, "Chain IDs as (N, 8) char array")
-    .def_prop_ro("subchains", [](FlatStructure& self) {
+    .def_prop_ro("subchains", [](FlatStructure& self) -> nb::object {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
-        return nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
+        auto raw = nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
             self.table.data()->subchain,
             {self.table.size(), 8},
             nb::handle(),
             {stride, 1});
+        if (self.strings_as_numbers)
+          return nb::cast(raw);
+        return nb::cast(raw).attr("view")("S8").attr("ravel")();
     }, nb::rv_policy::reference_internal, "Subchain IDs as (N, 8) char array")
-    .def_prop_ro("entity_ids", [](FlatStructure& self) {
+    .def_prop_ro("entity_ids", [](FlatStructure& self) -> nb::object {
         constexpr int64_t stride = static_cast<int64_t>(sizeof(FlatAtom));
-        return nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
+        auto raw = nb::ndarray<nb::numpy, char, nb::shape<-1, 8>>(
             self.table.data()->entity_id,
             {self.table.size(), 8},
             nb::handle(),
             {stride, 1});
+        if (self.strings_as_numbers)
+          return nb::cast(raw);
+        return nb::cast(raw).attr("view")("S8").attr("ravel")();
     }, nb::rv_policy::reference_internal, "Entity IDs as (N, 8) char array");
 }
 
