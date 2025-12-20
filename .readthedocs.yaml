@@ -7,9 +7,9 @@ version: 2
 
 # Set the version of Python and other tools you might need
 build:
-  os: ubuntu-lts-latest
+  os: ubuntu-24.04
   tools:
-    python: "3"
+    python: "3.12"
 
   # Format htmlzip produces a single page. Instead, use zip as shown in:
   # https://github.com/readthedocs/readthedocs.org/issues/3242#issuecomment-1410321534
