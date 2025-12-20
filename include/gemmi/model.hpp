@@ -920,6 +920,8 @@ struct Structure {
   double resolution = 0;
 
   const SpaceGroup* find_spacegroup() const {
+    if (!cell.is_crystal())
+      return nullptr;
     return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
   }
 
