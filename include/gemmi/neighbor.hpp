@@ -16,8 +16,16 @@
 
 namespace gemmi {
 
+//! Cell-linked lists method for fast neighbor searching.
+//!
+//! Implements grid-based spatial partitioning (binning) for efficient
+//! atom/site neighbor queries in crystallographic structures.
 struct NeighborSearch {
 
+  //! Represents an atom or site position in the search grid.
+  //!
+  //! Stores position, element, and indices to locate the atom
+  //! in the original Model or SmallStructure.
   struct Mark {
     Position pos;
     char altloc;
@@ -31,21 +39,36 @@ struct NeighborSearch {
     : pos(p), altloc(alt), element(el),
       image_idx(im), chain_idx(ch), residue_idx(res), atom_idx(atom) {}
 
+    //! @brief Convert Mark to Chain/Residue/Atom reference.
+    //! @param mdl Model containing the atom
+    //! @return CRA pointing to the atom in the model
     CRA to_cra(Model& mdl) const {
       Chain& c = mdl.chains.at(chain_idx);
       Residue& r = c.residues.at(residue_idx);
       Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
+
+    //! @brief Convert Mark to const Chain/Residue/Atom reference.
+    //! @param mdl Model containing the atom
+    //! @return const_CRA pointing to the atom in the model
     const_CRA to_cra(const Model& mdl) const {
       const Chain& c = mdl.chains.at(chain_idx);
       const Residue& r = c.residues.at(residue_idx);
       const Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
+
+    //! @brief Get site from SmallStructure.
+    //! @param small_st Small molecule structure
+    //! @return Reference to the site
     SmallStructure::Site& to_site(SmallStructure& small_st) const {
       return small_st.sites.at(atom_idx);
     }
+
+    //! @brief Get const site from SmallStructure.
+    //! @param small_st Small molecule structure
+    //! @return Const reference to the site
     const SmallStructure::Site& to_site(const SmallStructure& small_st) const {
       return small_st.sites.at(atom_idx);
     }
@@ -59,13 +82,21 @@ struct NeighborSearch {
   bool include_h = true;
 
   NeighborSearch() = default;
-  // Model is not const so it can be modified in for_each_contact()
+
+  //! @brief Construct neighbor search for macromolecular model.
+  //! @param model_ Model to search (non-const for potential modifications)
+  //! @param cell Unit cell parameters
+  //! @param radius Search radius for grid spacing
   NeighborSearch(Model& model_, const UnitCell& cell, double radius) {
     model = &model_;
     radius_specified = radius;
     set_bounding_cell(cell);
     set_grid_size();
   }
+
+  //! @brief Construct neighbor search for small molecule structure.
+  //! @param small_st Small molecule structure to search
+  //! @param radius Search radius for grid spacing
   NeighborSearch(SmallStructure& small_st, double radius) {
     small_structure = &small_st;
     radius_specified = radius;
@@ -73,10 +104,31 @@ struct NeighborSearch {
     set_grid_size();
   }
 
+  //! @brief Populate grid with atoms from the model.
+  //! @param include_h_ Include hydrogen atoms (default: true)
+  //! @return Reference to this NeighborSearch
   NeighborSearch& populate(bool include_h_=true);
+
+  //! @brief Add all atoms from a chain to the grid.
+  //! @param chain Chain to add
+  //! @param include_h_ Include hydrogen atoms (default: true)
   void add_chain(const Chain& chain, bool include_h_=true);
+
+  //! @brief Add chain with specified index.
+  //! @param chain Chain to add
+  //! @param n_ch Chain index in model
   void add_chain_n(const Chain& chain, int n_ch);
+
+  //! @brief Add single atom to the grid.
+  //! @param atom Atom to add
+  //! @param n_ch Chain index
+  //! @param n_res Residue index
+  //! @param n_atom Atom index
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
+
+  //! @brief Add site from small molecule structure.
+  //! @param site Site to add
+  //! @param n Site index
   void add_site(const SmallStructure::Site& site, int n);
 
   // assumes data in [0, 1), but uses index_n to account for numerical errors
@@ -111,7 +163,12 @@ struct NeighborSearch {
     return r <= radius_specified ? 1 : int(r / radius_specified + 1.00001);
   }
 
-  // with radius==0 it uses radius_specified
+  //! @brief Find atoms within specified distance range.
+  //! @param pos Query position
+  //! @param alt Altloc to match (or '\0' for any)
+  //! @param min_dist Minimum distance (inclusive)
+  //! @param radius Maximum search distance (0 uses radius_specified)
+  //! @return Vector of pointers to marks within range
   std::vector<Mark*> find_atoms(const Position& pos, char alt,
                                 double min_dist, double radius) {
     int k = sufficient_k(radius);
@@ -125,9 +182,20 @@ struct NeighborSearch {
     return out;
   }
 
+  //! @brief Find neighboring atoms around given atom.
+  //! @param atom Query atom
+  //! @param min_dist Minimum distance (inclusive)
+  //! @param max_dist Maximum distance
+  //! @return Vector of neighboring marks
   std::vector<Mark*> find_neighbors(const Atom& atom, double min_dist, double max_dist) {
     return find_atoms(atom.pos, atom.altloc, min_dist, max_dist);
   }
+
+  //! @brief Find neighbors around a site in small molecule structure.
+  //! @param site Query site
+  //! @param min_dist Minimum distance (inclusive)
+  //! @param max_dist Maximum distance
+  //! @return Vector of neighboring marks
   std::vector<Mark*> find_site_neighbors(const SmallStructure::Site& site,
                                          double min_dist, double max_dist) {
     Position pos = grid.unit_cell.orthogonalize(site.fract);

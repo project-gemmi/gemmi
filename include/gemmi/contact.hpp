@@ -11,40 +11,74 @@
 
 namespace gemmi {
 
+//! Find contacts (close approaches) between atoms.
+//!
+//! Uses NeighborSearch for efficient spatial queries with configurable
+//! filtering to ignore intra-residue, adjacent, or same-chain contacts.
 struct ContactSearch {
+  //! Filtering options for contact search.
   enum class Ignore {
-    Nothing=0, SameResidue, AdjacentResidues, SameChain, SameAsu
+    Nothing=0,           //!< Report all contacts
+    SameResidue,         //!< Ignore contacts within same residue
+    AdjacentResidues,    //!< Ignore contacts in adjacent residues
+    SameChain,           //!< Ignore contacts within same chain
+    SameAsu              //!< Ignore contacts within same asymmetric unit
   };
-  // parameters used to configure the search
-  double search_radius;
-  Ignore ignore = Ignore::SameResidue;
-  bool twice = false;  // report both A-B and B-A
-  float min_occupancy = 0.f;
-  double special_pos_cutoff_sq = 0.8 * 0.8;
-  std::vector<float> radii;
 
+  // Configuration parameters
+  double search_radius;                    //!< Maximum search distance
+  Ignore ignore = Ignore::SameResidue;     //!< Contact filtering mode
+  bool twice = false;                      //!< Report both A-B and B-A contacts
+  float min_occupancy = 0.f;               //!< Minimum occupancy threshold
+  double special_pos_cutoff_sq = 0.8 * 0.8; //!< Cutoff for special positions
+  std::vector<float> radii;                //!< Per-element distance cutoffs
+
+  //! @brief Construct contact search with specified radius.
+  //! @param radius Maximum search distance
   ContactSearch(double radius) noexcept : search_radius(radius) {}
 
-  // a helper function that sets per-atom radii basing on covalent_radius()
+  //! @brief Set per-element radii based on covalent radii.
+  //! @param multiplier Multiplier for covalent radius
+  //! @param tolerance Additional tolerance to add
+  //!
+  //! Initializes element-specific distance cutoffs using covalent radii.
   void setup_atomic_radii(double multiplier, double tolerance) {
     radii.resize((size_t)El::END);
     for (int i = 0; i != (int) El::END; ++i)
       radii[i] = float(multiplier * Element(i).covalent_r() + tolerance / 2);
   }
+
+  //! @brief Get radius for element.
+  //! @param el Element
+  //! @return Radius or 0 if not set
   float get_radius(El el) const { return radii.empty() ? 0.f : radii[(int)el]; }
+
+  //! @brief Set radius for element.
+  //! @param el Element
+  //! @param r Radius value
   void set_radius(El el, float r) {
     if (!radii.empty())
       radii[(int)el] = r;
   }
 
+  //! @brief Apply function to each contact found.
+  //! @tparam Func Callable type
+  //! @param ns Populated NeighborSearch object
+  //! @param func Function called for each contact
   template<typename Func>
   void for_each_contact(NeighborSearch& ns, const Func& func);
 
+  //! Contact result containing both partners and distance.
   struct Result {
-    CRA partner1, partner2;
-    int image_idx;
-    double dist_sq;
+    CRA partner1;      //!< First contact partner
+    CRA partner2;      //!< Second contact partner
+    int image_idx;     //!< Symmetry image index
+    double dist_sq;    //!< Squared distance
   };
+
+  //! @brief Find all contacts and return as vector.
+  //! @param ns Populated NeighborSearch object
+  //! @return Vector of contact results
   std::vector<Result> find_contacts(NeighborSearch& ns) {
     std::vector<Result> out;
     for_each_contact(ns, [&out](const CRA& cra1, const CRA& cra2,
