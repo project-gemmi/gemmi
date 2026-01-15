@@ -94,8 +94,6 @@ private:
 
   void write_as_number(const std::string& value) {
     // if we are here, value is not empty
-    if (value[0] == '.') // in JSON numbers cannot start with dot
-      os_.put('0');
     // in JSON the number cannot start with +
     size_t pos = 0;
     if (value[pos] == '+') {
@@ -104,6 +102,9 @@ private:
       os_.put('-');
       pos = 1;
     }
+    // in JSON numbers cannot start with dot (handles both .99 and -.99)
+    if (value[pos] == '.')
+      os_.put('0');
     // in JSON left-padding with 0s is not allowed
     while (value[pos] == '0' && std::isdigit(value[pos+1]))
       ++pos;

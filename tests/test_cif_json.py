@@ -43,6 +43,14 @@ class TestCifAsJson(unittest.TestCase):
         j2 = json.loads(doc.as_json(lowercase_names=False))
         self.assertEqual(j2, {'OnE': {'_TwO': [2], '_ZeRo': 0}})
 
+    def test_json_number_normalization(self):
+        # JSON requires a digit before decimal point, CIF allows -.99 and .04
+        doc = cif.read_string('data_test _a -.99 _b .04 _c -.04 _d +.5')
+        json_str = doc.as_json()
+        # The JSON must be parseable by standard parser
+        parsed = json.loads(json_str)
+        self.assertEqual(parsed, {'test': {'_a': -0.99, '_b': 0.04, '_c': -0.04, '_d': 0.5}})
+
 class TestMmjson(unittest.TestCase):
     def test_read_1pfe(self):
         path = full_path('1pfe.json')
