@@ -1,3 +1,6 @@
+//! @file
+//! @brief Interoperability between Model (MX) and SmallStructure (SX).
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // Interoperability between Model (MX) and SmallStructure (SX).
@@ -10,6 +13,12 @@
 
 namespace gemmi {
 
+//! @brief Convert MX Atom to SX Site.
+//! @param atom Atom from macromolecular structure
+//! @param cell Unit cell
+//! @return SmallStructure site
+//!
+//! Occupancy may need to be adjusted if the atom is on special position.
 inline SmallStructure::Site atom_to_site(const Atom& atom, const UnitCell& cell) {
   SmallStructure::Site site;
   site.label = atom.name;
@@ -42,6 +51,10 @@ inline SmallStructure::Site atom_to_site(const Atom& atom, const UnitCell& cell)
   return site;
 }
 
+//! @brief Convert MX Structure to SX SmallStructure.
+//! @param st Macromolecular structure
+//! @param n Model number (default 0)
+//! @return Small molecule structure
 inline SmallStructure mx_to_sx_structure(const Structure& st, int n=0) {
   const Model& model = st.models.at(n);
   SmallStructure small_st;

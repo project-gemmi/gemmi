@@ -1,3 +1,8 @@
+//! @file
+//! @brief Logger utility for message callbacks.
+//!
+//! Logger - a tiny utility for passing messages through a callback.
+
 // Copyright Global Phasing Ltd.
 //
 // Logger - a tiny utility for passing messages through a callback.
@@ -12,40 +17,62 @@
 
 namespace gemmi {
 
-/// Passes messages (including warnings/errors) to a callback function.
-/// Messages are passed as strings without a trailing newline.
-/// They have syslog-like severity levels: 8=debug, 6=info, 5=notice, 3=error,
-/// allowing the use of a threshold to filter them.
-/// Quirk: Errors double as both errors and warnings. Unrecoverable errors
-///        don't go through this class; Logger only handles errors that can
-///        be downgraded to warnings. If a callback is set, the error is passed
-///        as a warning message. Otherwise, it's thrown as std::runtime_error.
+//! @brief Message logger with severity filtering.
+//!
+//! Passes messages (including warnings/errors) to a callback function.
+//! Messages are passed as strings without a trailing newline.
+//! They have syslog-like severity levels: 8=debug, 6=info, 5=notice, 3=error,
+//! allowing the use of a threshold to filter them.
+//! Quirk: Errors double as both errors and warnings. Unrecoverable errors
+//!        don't go through this class; Logger only handles errors that can
+//!        be downgraded to warnings. If a callback is set, the error is passed
+//!        as a warning message. Otherwise, it's thrown as std::runtime_error.
 struct Logger {
-  /// A function that handles messages.
+  //! A function that handles messages.
   std::function<void(const std::string&)> callback;
-  /// Pass messages of this level and all lower (more severe) levels:
-  /// 8=all, 6=all but debug, 5=notes and warnings, 3=warnings, 0=none
+
+  //! Pass messages of this level and all lower (more severe) levels:
+  //! 8=all, 6=all but debug, 5=notes and warnings, 3=warnings, 0=none
   int threshold = 6;
 
-  /// suspend() and resume() are used internally to avoid duplicate messages
-  /// when the same function is called (internally) multiple times.
+  //! @brief Suspend logging (to avoid duplicate messages).
+  //!
+  //! suspend() and resume() are used internally to avoid duplicate messages
+  //! when the same function is called (internally) multiple times.
   void suspend() { threshold -= 100; }
+
+  //! @brief Resume logging after suspend().
   void resume()  { threshold += 100; }
 
-  /// Send a message without any prefix on with a numeric threshold N.
+  //! @brief Send message with numeric threshold N.
+  //! @tparam N Severity level
+  //! @tparam Args Argument types
+  //! @param args Message parts
+  //!
+  //! Send a message without any prefix on with a numeric threshold N.
   template<int N, class... Args> void level(Args const&... args) const {
     if (threshold >= N && callback)
       callback(cat(args...));
   }
 
-  /// Send a debug message.
+  //! @brief Send debug message (level 8).
+  //! @tparam Args Argument types
+  //! @param args Message parts
   template<class... Args> void debug(Args const&... args) const { level<8>("Debug: ", args...); }
-  /// Send a message without any prefix.
+
+  //! @brief Send message without prefix (level 6).
+  //! @tparam Args Argument types
+  //! @param args Message parts
   template<class... Args> void mesg(Args const&... args) const { level<6>(args...); }
-  /// Send a note (a notice, a significant message).
+
+  //! @brief Send note/notice (level 5).
+  //! @tparam Args Argument types
+  //! @param args Message parts
   template<class... Args> void note(Args const&... args) const { level<5>("Note: ", args...); }
 
-  /// Send a warning/error (see Quirk above).
+  //! @brief Send warning/error (level 3, see Quirk above).
+  //! @tparam Args Argument types
+  //! @param args Message parts
   template<class... Args> GEMMI_COLD void err(Args const&... args) const {
     if (threshold >= 3) {
       std::string msg = cat(args...);
@@ -55,13 +82,20 @@ struct Logger {
     }
   }
 
-  // predefined callbacks
+  // Predefined callbacks
 
-  /// to be used as: logger.callback = Logger::to_stderr;
+  //! @brief Callback to write to stderr.
+  //! @param s Message string
+  //!
+  //! To be used as: logger.callback = Logger::to_stderr;
   static void to_stderr(const std::string& s) {
     std::fprintf(stderr, "%s\n", s.c_str());
   }
-  /// to be used as: logger.callback = Logger::to_stdout;
+
+  //! @brief Callback to write to stdout.
+  //! @param s Message string
+  //!
+  //! To be used as: logger.callback = Logger::to_stdout;
   static void to_stdout(const std::string& s) {
     std::fprintf(stdout, "%s\n", s.c_str());
   }
