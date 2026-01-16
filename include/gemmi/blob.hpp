@@ -1,3 +1,13 @@
+//! @file
+//! @brief Finding maxima or "blobs" in electron density maps.
+//!
+//! Finding maxima or "blobs" in a Grid (map).
+//! Similar to CCP4 PEAKMAX and COOT's "Unmodelled blobs".
+//!
+//! Implementation of the flood fill algorithm in find_blobs_by_flood_fill()
+//! differs from from FloodFill in floodfill.hpp.
+//! FloodFill uses more efficient scanline fill, but doesn't use symmetry.
+
 // Copyright 2021 Global Phasing Ltd.
 //
 // Finding maxima or "blobs" in a Grid (map).
@@ -15,20 +25,25 @@
 
 namespace gemmi {
 
+//! @brief Blob (connected region) in electron density map.
 struct Blob {
-  double volume = 0.0;
-  double score = 0.0;
-  double peak_value = 0.0;
-  gemmi::Position centroid;
-  gemmi::Position peak_pos;
+  double volume = 0.0;  //!< Volume in cubic Angstroms
+  double score = 0.0;  //!< Sum of densities times volume per point
+  double peak_value = 0.0;  //!< Maximum density value in blob
+  gemmi::Position centroid;  //!< Density-weighted centroid position
+  gemmi::Position peak_pos;  //!< Position of peak density
+
+  //! @brief Check if blob is valid.
+  //! @return True if volume is non-zero
   explicit operator bool() const { return volume != 0. ; }
 };
 
+//! @brief Criteria for blob detection.
 struct BlobCriteria {
-  double cutoff;
-  double min_volume = 10.0;
-  double min_score = 15.0;
-  double min_peak = 0.0;
+  double cutoff;  //!< Density cutoff threshold
+  double min_volume = 10.0;  //!< Minimum volume (cubic Angstroms)
+  double min_score = 15.0;  //!< Minimum score
+  double min_peak = 0.0;  //!< Minimum peak density
 };
 
 namespace impl {
@@ -78,7 +93,13 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
 
 } // namespace impl
 
-// with negate=true grid negatives of grid values are used
+//! @brief Find blobs in density map using flood fill.
+//! @param grid Electron density grid
+//! @param criteria Blob detection criteria
+//! @param negate If true, use negated grid values
+//! @return Vector of blobs sorted by score (highest first)
+//!
+//! With negate=true grid negatives of grid values are used.
 inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
                                                   const BlobCriteria& criteria,
                                                   bool negate=false) {
