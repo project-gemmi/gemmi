@@ -9,9 +9,12 @@
 
 namespace gemmi {
 
-// elements
+//! @brief Chemical elements from the periodic table.
+//!
+//! Enumeration of all chemical elements plus X (unknown) and D (deuterium).
+//! Used throughout the library for element identification and properties.
 enum class El : unsigned char {
-  X=0,  // unknown element is marked as X in PDB entries
+  X=0,  //!< Unknown element (marked as X in PDB files)
   H, He, Li, Be, B, C, N, O, F, Ne, Na, Mg, Al, Si, P, S, Cl, Ar,  // 1-3
   K, Ca, Sc, Ti, V, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ga, Ge, As, Se, Br, Kr,  // 4
   Rb, Sr, Y, Zr, Nb, Mo, Tc, Ru, Rh, Pd, Ag, Cd, In, Sn, Sb, Te, I, Xe,  // 5
@@ -19,13 +22,20 @@ enum class El : unsigned char {
   Hf, Ta, W, Re, Os, Ir, Pt, Au, Hg, Tl, Pb, Bi, Po, At, Rn,  // ..6
   Fr, Ra, Ac, Th, Pa, U, Np, Pu, Am, Cm, Bk, Cf, Es, Fm, Md, No, Lr,  // 7..
   Rf, Db, Sg, Bh, Hs, Mt,  Ds, Rg, Cn, Nh, Fl, Mc, Lv, Ts, Og, // ..7
-  D, // heh, what should we do with Deuterium?
-  END
+  D, //!< Deuterium (heavy hydrogen isotope)
+  END  //!< Sentinel value (not a real element)
 };
 
+//! @brief Check if element is hydrogen or deuterium.
+//! @param el Element to check
+//! @return True if H or D
 inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
 
-// arbitrary division into metals and non-metals (Ge and Sb are metals here)
+//! @brief Check/set if element is classified as metal.
+//! @param el Element to check
+//! @return Reference to metal flag (can be modified)
+//!
+//! Arbitrary division into metals and non-metals (Ge and Sb are metals here).
 inline bool& is_metal_value(El el) {
   static bool table[] = {
     // X     H     He
@@ -61,7 +71,14 @@ inline bool& is_metal_value(El el) {
   return table[static_cast<int>(el)];
 }
 
+//! @brief Check if element is a metal.
+//! @param el Element to check
+//! @return True if element is classified as metal
 inline bool is_metal(El el) { return is_metal_value(el); }
+
+//! @brief Set metal classification for an element.
+//! @param el Element to modify
+//! @param v New metal classification
 inline void set_is_metal(El el, bool v) { is_metal_value(el) = v; }
 
 // Helper function, not public. Replaces =='s in static_assert comparisons
@@ -71,6 +88,9 @@ constexpr bool ce_almost_eq(double x, double y) {
   return -1e-6 < x-y && x-y < 1e-6;
 }
 
+//! @brief Get molecular weight (atomic mass) of an element.
+//! @param el Element
+//! @return Molecular weight in g/mol (unified atomic mass units)
 inline double molecular_weight(El el) {
   static constexpr double weights[] = {
     /*X*/ 1.0,
@@ -271,6 +291,11 @@ inline El find_single_letter_element(char c) {
 }
 } // namespace impl
 
+//! @brief Find element by symbol string.
+//! @param symbol Element symbol (e.g., "C", "Fe", "Ca")
+//! @return Element enum value, El::X if not found
+//!
+//! Case-insensitive lookup of chemical element by symbol.
 inline El find_element(const char* symbol) {
   if (symbol == nullptr || symbol[0] == '\0')
     return El::X;
@@ -291,12 +316,22 @@ inline El find_element(const char* symbol) {
   return El::X;
 }
 
+//! @brief Element wrapper with conversion and property access.
+//!
+//! Provides convenient interface to element properties and conversions
+//! between element enum, symbol strings, and atomic numbers.
 struct Element {
-  El elem;
+  El elem;  //!< Underlying element enum value
 
   /*implicit*/ Element(El e) noexcept : elem(e) {}
+
+  //! @brief Construct from element symbol string.
+  //! @param str Element symbol (e.g., "C", "Fe")
   explicit Element(const char* str) noexcept : elem(find_element(str)) {}
   explicit Element(const std::string& s) noexcept : Element(s.c_str()) {}
+
+  //! @brief Construct from atomic number.
+  //! @param number Atomic number (1-118)
   explicit Element(int number) noexcept
     : elem(static_cast<El>(number > 0 && number <= 118 ? number : 0)) {}
   /*implicit*/ operator El() const { return elem; }

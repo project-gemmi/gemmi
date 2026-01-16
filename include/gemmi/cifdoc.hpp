@@ -33,6 +33,14 @@ namespace cif {
 using std::size_t;
 using gemmi::fail;
 
+//! @brief Type of CIF data item.
+//!
+//! CIF files contain different types of data items:
+//! - Pair: tag-value pair (_tag value)
+//! - Loop: tabular data loop
+//! - Frame: save frame
+//! - Comment: comment text
+//! - Erased: deleted item (placeholder)
 enum class ItemType : unsigned char {
   Pair,
   Loop,
@@ -73,10 +81,18 @@ inline void ensure_mmcif_category(std::string& cat) {
     cat += '.';
 }
 
+//! @brief Check if CIF value is null/missing.
+//! @param value CIF value to check
+//! @return True if value is '?' (unknown) or '.' (not applicable)
 inline bool is_null(const std::string& value) {
   return value.size() == 1 && (value[0] == '?' || value[0] == '.');
 }
 
+//! @brief Convert CIF value to plain string.
+//! @param value CIF value (may be quoted or multiline)
+//! @return Unquoted string content, or empty if null
+//!
+//! Removes quotes and CIF formatting from value strings.
 inline std::string as_string(const std::string& value) {
   if (value.empty() || is_null(value))
     return "";
@@ -104,10 +120,18 @@ inline char as_char(const std::string& value, char null) {
   fail("Not a single character: " + value);
 }
 
+//! @brief Convert CIF value to integer.
+//! @param str CIF value string
+//! @return Integer value
+//! @throws std::invalid_argument if not a valid integer
 inline int as_int(const std::string& str) {
   return string_to_int(str, true);
 }
 
+//! @brief Convert CIF value to integer with null handling.
+//! @param str CIF value string
+//! @param null Value to return if str is null ('?' or '.')
+//! @return Integer value or null
 inline int as_int(const std::string& str, int null) {
   return is_null(str) ? null : as_int(str);
 }
@@ -117,6 +141,8 @@ inline int as_any(const std::string& s, int null) { return as_int(s, null); }
 inline char as_any(const std::string& s, char null) { return as_char(s, null); }
 
 
+//! @brief CIF tag-value pair.
+//! Array of [tag, value] strings.
 using Pair = std::array<std::string, 2>;
 
 // used only as arguments when creating Item
@@ -124,23 +150,49 @@ struct LoopArg {};
 struct FrameArg { std::string str; };
 struct CommentArg { std::string str; };
 
+//! @brief CIF loop structure (tabular data).
+//!
+//! Stores column tags and row values in a flat array.
+//! Values are stored row-major: [row0col0, row0col1, ..., row1col0, row1col1, ...].
 struct Loop {
-  std::vector<std::string> tags;
-  std::vector<std::string> values;
+  std::vector<std::string> tags;  //!< Column names (CIF tags)
+  std::vector<std::string> values;  //!< Flat array of values
 
   // search and access
+
+  //! @brief Find tag index (case-insensitive, expects lowercase input).
+  //! @param lctag Lowercase tag name to search for
+  //! @return Column index or -1 if not found
   int find_tag_lc(const std::string& lctag) const {
     auto f = std::find_if(tags.begin(), tags.end(),
         [&lctag](const std::string& t) { return gemmi::iequal(t, lctag); });
     return f == tags.end() ? -1 : f - tags.begin();
   }
+
+  //! @brief Find tag index (case-insensitive).
+  //! @param tag Tag name to search for
+  //! @return Column index or -1 if not found
   int find_tag(const std::string& tag) const {
     return find_tag_lc(gemmi::to_lower(tag));
   }
+
+  //! @brief Check if loop contains a tag.
+  //! @param tag Tag name to check
+  //! @return True if tag exists
   bool has_tag(const std::string& tag) const { return find_tag(tag) != -1; }
+
+  //! @brief Get number of columns.
+  //! @return Number of tags/columns
   size_t width() const { return tags.size(); }
+
+  //! @brief Get number of rows.
+  //! @return Number of rows (values.size() / tags.size())
   size_t length() const { return values.size() / tags.size(); }
 
+  //! @brief Access value at row and column.
+  //! @param row Row index
+  //! @param col Column index
+  //! @return Reference to value string
   std::string& val(size_t row, size_t col) { return values[row * tags.size() + col]; }
   const std::string& val(size_t row, size_t col) const {
     return const_cast<Loop*>(this)->val(row, col);
@@ -446,9 +498,13 @@ struct Table {
   iterator end() { return iterator{*this, (int)length()}; }
 };
 
+//! @brief CIF data block.
+//!
+//! A block contains tag-value pairs, loops, and save frames.
+//! Corresponds to a data_xxx block in CIF files.
 struct Block {
-  std::string name;
-  std::vector<Item> items;
+  std::string name;  //!< Block name (without "data_" prefix)
+  std::vector<Item> items;  //!< Sequence of pairs, loops, frames, comments
 
   explicit Block(const std::string& name_);
   Block();
@@ -1058,9 +1114,13 @@ inline bool Block::has_mmcif_category(std::string cat) const {
   return false;
 }
 
+//! @brief CIF document.
+//!
+//! Represents a complete CIF file containing one or more data blocks.
+//! Can also be created from CIF-JSON or mmJSON formats.
 struct Document {
-  std::string source;
-  std::vector<Block> blocks;
+  std::string source;  //!< Source filename or description
+  std::vector<Block> blocks;  //!< Data blocks in the document
 
   // implementation detail: items of the currently parsed block or frame
   std::vector<Item>* items_ = nullptr;
@@ -1079,7 +1139,9 @@ struct Document {
     items_ = nullptr;
   }
 
-  // returns blocks[0] if the document has exactly one block (like mmCIF)
+  //! @brief Get the only block (for single-block documents like mmCIF).
+  //! @return Reference to the single block
+  //! @throws std::runtime_error if document has multiple blocks
   Block& sole_block() {
     if (blocks.size() > 1)
       fail("single data block expected, got " + std::to_string(blocks.size()));
@@ -1089,6 +1151,9 @@ struct Document {
     return const_cast<Document*>(this)->sole_block();
   }
 
+  //! @brief Find block by name.
+  //! @param name Block name to search for
+  //! @return Pointer to block or nullptr if not found
   Block* find_block(const std::string& name) {
     for (Block& b : blocks)
       if (b.name == name)
