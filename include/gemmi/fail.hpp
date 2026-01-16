@@ -1,6 +1,11 @@
+//! @file
+//! @brief Error handling: fail(), unreachable() and compiler attribute macros.
+//!
+//! Provides exception-throwing functions for error handling and compiler-specific
+//! macros for optimization hints (GEMMI_COLD, GEMMI_LIKELY, GEMMI_UNLIKELY) and
+//! DLL export/import declarations (GEMMI_DLL).
+
 // Copyright 2017 Global Phasing Ltd.
-//
-// fail(), unreachable() and __declspec/__attribute__ macros
 
 #ifndef GEMMI_FAIL_HPP_
 #define GEMMI_FAIL_HPP_
@@ -55,28 +60,53 @@
 
 namespace gemmi {
 
+//! @brief Throw runtime_error with the given message.
+//! @param msg Error message
+//! @throws std::runtime_error Always throws
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
+//! @brief Throw runtime_error with concatenated message parts.
+//! @tparam T Type of first argument
+//! @tparam Args Types of remaining arguments
+//! @param str Base message string (moved)
+//! @param arg1 First argument to append
+//! @param args Remaining arguments to append
+//! @throws std::runtime_error Always throws
+//!
+//! Variadic template for building error messages from multiple parts.
 template<typename T, typename... Args> [[noreturn]]
 void fail(std::string&& str, T&& arg1, Args&&... args) {
   str += arg1;
   fail(std::move(str), std::forward<Args>(args)...);
 }
 
+//! @brief Throw runtime_error with C-string message.
+//! @param msg Error message (C-string)
+//! @throws std::runtime_error Always throws
 [[noreturn]]
 inline GEMMI_COLD void fail(const char* msg) { throw std::runtime_error(msg); }
 
+//! @brief Throw system_error with errno and message.
+//! @param msg Error message describing the system call
+//! @throws std::system_error Always throws
 [[noreturn]]
 inline GEMMI_COLD void sys_fail(const std::string& msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
+
+//! @brief Throw system_error with errno and C-string message.
+//! @param msg Error message describing the system call (C-string)
+//! @throws std::system_error Always throws
 [[noreturn]]
 inline GEMMI_COLD void sys_fail(const char* msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
 
-// unreachable() is used to silence GCC -Wreturn-type and hint the compiler
+//! @brief Mark unreachable code for compiler optimization.
+//!
+//! unreachable() is used to silence GCC -Wreturn-type and hint the compiler
+//! that this code path is never executed. Helps with optimization and warnings.
 [[noreturn]] inline void unreachable() {
 #if defined(__GNUC__) || defined(__clang__)
   __builtin_unreachable();
