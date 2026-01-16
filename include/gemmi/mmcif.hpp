@@ -12,16 +12,31 @@
 
 namespace gemmi {
 
-/// structure from a coordinate mmCIF block
+//! @brief Fill an existing Structure from an mmCIF coordinate block.
+//! @param block_ CIF block containing coordinate data
+//! @param st Structure object to populate
+//!
+//! Parses _atom_site, _cell, _entity, and other mmCIF categories into the structure.
 GEMMI_DLL void populate_structure_from_block(const cif::Block& block_, Structure& st);
 
+//! @brief Create Structure from an mmCIF coordinate block.
+//! @param block_ CIF block containing coordinate data
+//! @return New Structure object
+//!
+//! Convenience wrapper around populate_structure_from_block().
 inline Structure make_structure_from_block(const cif::Block& block_) {
   gemmi::Structure st;
   populate_structure_from_block(block_, st);
   return st;
 }
 
-/// structure from a coordinate mmCIF document
+//! @brief Create Structure from an mmCIF document.
+//! @param doc CIF document (moved, not copied)
+//! @param save_doc Optional pointer to store the original document
+//! @return Structure from the first block with coordinates
+//!
+//! Expects coordinates in the first block only. Additional blocks may
+//! contain restraints but must not have _atom_site data.
 inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nullptr) {
   // mmCIF files for deposition may have more than one block:
   // coordinates in the first block and restraints in the others.
@@ -35,18 +50,28 @@ inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nul
   return st;
 }
 
-// Reading chemical component as a coordinate file.
+//! @brief Chemical component coordinate model types.
+//!
+//! Used when reading CCD (Chemical Component Dictionary) or monomer library files.
+//! Multiple models can be combined using bitwise OR.
 enum class ChemCompModel {
-  Xyz      = 1, // _chem_comp_atom.x, etc
-  Example  = 2, // _chem_comp_atom.model_Cartn_x
-  Ideal    = 4  // _chem_comp_atom.pdbx_model_Cartn_x_ideal
+  Xyz      = 1, //!< _chem_comp_atom.x, y, z coordinates
+  Example  = 2, //!< _chem_comp_atom.model_Cartn_x (example coordinates)
+  Ideal    = 4  //!< _chem_comp_atom.pdbx_model_Cartn_x_ideal (ideal coordinates)
 };
 
 constexpr int operator|(ChemCompModel a, ChemCompModel b) { return (int)a | (int)b; }
 
-/// make_residue_from_chemcomp_block
+//! @brief Create Residue from a chemical component block.
+//! @param block CIF block containing _chem_comp_atom data
+//! @param kind Which coordinate model to use (Xyz, Example, or Ideal)
+//! @return Residue with atoms from the chemical component
 GEMMI_DLL Residue make_residue_from_chemcomp_block(const cif::Block& block, ChemCompModel kind);
 
+//! @brief Create Model containing a single residue from a chemical component block.
+//! @param block CIF block with _chem_comp_atom data
+//! @param kind Which coordinate model to use
+//! @return Model with one chain containing one residue
 inline Model make_model_from_chemcomp_block(const cif::Block& block, ChemCompModel kind) {
   Model model;
   model.chains.emplace_back("");
@@ -54,10 +79,13 @@ inline Model make_model_from_chemcomp_block(const cif::Block& block, ChemCompMod
   return model;
 }
 
-// For CCD input - returns a structure with two single-residue models:
-// example (model_Cartn_x) and ideal (pdbx_model_Cartn_x_ideal).
-// For Refmac dictionary (monomer library) files returns structure with
-// a single model.
+//! @brief Create Structure from a chemical component block.
+//! @param block CIF block with _chem_comp_atom data
+//! @param which Bitmask of ChemCompModel values (default 7 = all models)
+//! @return Structure with models for each available coordinate set
+//!
+//! For CCD files: creates models for example and ideal coordinates.
+//! For Refmac dictionary files: creates a single model.
 inline Structure make_structure_from_chemcomp_block(const cif::Block& block, int which=7) {
   Structure st;
   st.input_format = CoorFormat::ChemComp;
@@ -74,10 +102,13 @@ inline Structure make_structure_from_chemcomp_block(const cif::Block& block, int
   return st;
 }
 
-// a helper function for use with make_structure_from_chemcomp_block():
-//   int n = check_chemcomp_block_number(doc);
-//   if (n != -1)
-//     Structure st = make_structure_from_chemcomp_block(doc.blocks[n]);
+//! @brief Identify which block in a document contains chemical component data.
+//! @param doc CIF document to check
+//! @return Block index if chemical component detected, -1 otherwise
+//!
+//! Detects CCD files and Refmac monomer library files by structure.
+//! Usage: int n = check_chemcomp_block_number(doc);
+//!        if (n != -1) st = make_structure_from_chemcomp_block(doc.blocks[n]);
 inline int check_chemcomp_block_number(const cif::Document& doc) {
   // monomer library file without global_
   if (doc.blocks.size() == 2 && doc.blocks[0].name == "comp_list")
@@ -95,6 +126,13 @@ inline int check_chemcomp_block_number(const cif::Document& doc) {
   return -1;
 }
 
+//! @brief Create Structure from a chemical component document.
+//! @param doc CIF document (CCD or Refmac dictionary)
+//! @param save_doc Optional pointer to store the original document
+//! @param which Bitmask of ChemCompModel values (default 7 = all models)
+//! @return Structure with chemical component coordinate models
+//!
+//! Automatically detects and reads CCD and monomer library formats.
 inline Structure make_structure_from_chemcomp_doc(const cif::Document& doc,
                                                   cif::Document* save_doc=nullptr,
                                                   int which=7) {
