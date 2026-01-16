@@ -1,6 +1,10 @@
+//! @file
+//! @brief Reads reflection data from the mmCIF format.
+//!
+//! Provides classes for parsing and accessing reflection data from SF-mmCIF files,
+//! including both merged (_refln) and unmerged (_diffrn_refln) data.
+
 // Copyright 2019 Global Phasing Ltd.
-//
-// Reads reflection data from the mmCIF format.
 
 #ifndef GEMMI_REFLN_HPP_
 #define GEMMI_REFLN_HPP_
@@ -15,19 +19,31 @@
 
 namespace gemmi {
 
+//! @brief Wrapper for mmCIF block containing reflection data.
+//!
+//! Provides access to both merged (_refln) and unmerged (_diffrn_refln)
+//! reflection data from SF-mmCIF files. Stores crystallographic metadata
+//! (unit cell, space group, wavelength) and provides methods to extract
+//! reflection indices and data columns.
 struct ReflnBlock {
-  cif::Block block;
-  std::string entry_id;
-  UnitCell cell;
-  const SpaceGroup* spacegroup = nullptr;
-  double wavelength;
-  int wavelength_count;
-  cif::Loop* refln_loop = nullptr;
-  cif::Loop* diffrn_refln_loop = nullptr;
-  cif::Loop* default_loop = nullptr;
+  cif::Block block;  //!< Underlying CIF data block
+  std::string entry_id;  //!< Entry identifier from _entry.id
+  UnitCell cell;  //!< Unit cell parameters
+  const SpaceGroup* spacegroup = nullptr;  //!< Space group symmetry
+  double wavelength;  //!< X-ray wavelength (single wavelength case)
+  int wavelength_count;  //!< Number of wavelengths in the dataset
+  cif::Loop* refln_loop = nullptr;  //!< Pointer to merged reflection loop (_refln)
+  cif::Loop* diffrn_refln_loop = nullptr;  //!< Pointer to unmerged reflection loop (_diffrn_refln)
+  cif::Loop* default_loop = nullptr;  //!< Active loop (merged or unmerged)
 
   ReflnBlock() = default;
   ReflnBlock(ReflnBlock&& rblock_) = default;
+
+  //! @brief Construct from CIF block, extracting reflection metadata.
+  //! @param block_ CIF block (moved, not copied)
+  //!
+  //! Extracts entry ID, unit cell, space group, wavelength, and locates
+  //! reflection data loops (_refln and/or _diffrn_refln).
   ReflnBlock(cif::Block&& block_) : block(std::move(block_)) {
     entry_id = cif::as_string(block.find_value("_entry.id"));
     impl::set_cell_from_mmcif(block, cell);
@@ -61,19 +77,37 @@ struct ReflnBlock {
     return *this;
   }
 
+  //! @brief Check if block contains valid reflection data.
+  //! @return True if a reflection loop is available
   bool ok() const { return default_loop != nullptr; }
+
+  //! @brief Throw error if block is invalid.
+  //! @throws std::runtime_error if no reflection loop is available
   void check_ok() const { if (!ok()) fail("Invalid ReflnBlock"); }
 
-  // position after "_refln." or "_diffrn_refln."
+  //! @brief Get position after "_refln." or "_diffrn_refln." in tag names.
+  //! @return Offset (7 for merged, 14 for unmerged)
   size_t tag_offset() const { return default_loop == refln_loop ? 7 : 14; }
 
+  //! @brief Switch between merged and unmerged reflection data.
+  //! @param unmerged If true, use _diffrn_refln; if false, use _refln
   void use_unmerged(bool unmerged) {
     default_loop = unmerged ? diffrn_refln_loop : refln_loop;
   }
+
+  //! @brief Check if currently using merged reflection data.
+  //! @return True if using _refln loop
   bool is_merged() const { return ok() && default_loop == refln_loop; }
-  // deprecated
+
+  //! @deprecated Use !is_merged() instead
+  //! @brief Check if currently using unmerged reflection data.
+  //! @return True if using _diffrn_refln loop
   bool is_unmerged() const { return ok() && default_loop == diffrn_refln_loop; }
 
+  //! @brief Get list of column labels (without category prefix).
+  //! @return Vector of column names (e.g., "index_h", "F_meas")
+  //!
+  //! Strips the "_refln." or "_diffrn_refln." prefix from tag names.
   std::vector<std::string> column_labels() const {
     check_ok();
     std::vector<std::string> labels(default_loop->tags.size());
@@ -82,6 +116,9 @@ struct ReflnBlock {
     return labels;
   }
 
+  //! @brief Find column index by tag name.
+  //! @param tag Column name without prefix (e.g., "index_h", "F_meas")
+  //! @return Column index, or -1 if not found
   int find_column_index(const std::string& tag) const {
     if (!ok())
       return -1;
@@ -92,6 +129,10 @@ struct ReflnBlock {
     return -1;
   }
 
+  //! @brief Get column index by tag name, throwing if not found.
+  //! @param tag Column name without prefix (e.g., "index_h", "F_meas")
+  //! @return Column index
+  //! @throws std::runtime_error if column not found or block invalid
   size_t get_column_index(const std::string& tag) const {
     int idx = find_column_index(tag);
     if (idx == -1) {
@@ -103,6 +144,11 @@ struct ReflnBlock {
     return idx;
   }
 
+  //! @brief Extract a column as a vector of values.
+  //! @tparam T Value type (int, double, std::string, etc.)
+  //! @param tag Column name without prefix
+  //! @param null Value to use for missing/null CIF values
+  //! @return Vector of column values
   template<typename T>
   std::vector<T> make_vector(const std::string& tag, T null) const {
     size_t n = get_column_index(tag);
@@ -112,12 +158,17 @@ struct ReflnBlock {
     return v;
   }
 
+  //! @brief Get column indices for Miller indices (h, k, l).
+  //! @return Array of three column indices [h_idx, k_idx, l_idx]
+  //! @throws std::runtime_error if any index column not found
   std::array<size_t,3> get_hkl_column_indices() const {
     return {{get_column_index("index_h"),
              get_column_index("index_k"),
              get_column_index("index_l")}};
   }
 
+  //! @brief Extract all Miller indices as a vector.
+  //! @return Vector of Miller indices [h,k,l] for all reflections
   std::vector<Miller> make_miller_vector() const {
     auto hkl_idx = get_hkl_column_indices();
     std::vector<Miller> v(default_loop->length());
@@ -127,6 +178,9 @@ struct ReflnBlock {
     return v;
   }
 
+  //! @brief Calculate 1/d² for all reflections.
+  //! @return Vector of 1/d² values in Ų
+  //! @throws std::runtime_error if unit cell is not set
   std::vector<double> make_1_d2_vector() const {
     if (!cell.is_crystal() || cell.a <= 0)
       fail("Unit cell is not known");
@@ -141,6 +195,9 @@ struct ReflnBlock {
     return r;
   }
 
+  //! @brief Calculate resolution (d-spacing) for all reflections.
+  //! @return Vector of d values in Angstroms
+  //! @throws std::runtime_error if unit cell is not set
   std::vector<double> make_d_vector() const {
     std::vector<double> vec = make_1_d2_vector();
     for (double& d : vec)
@@ -149,7 +206,13 @@ struct ReflnBlock {
   }
 };
 
-// moves blocks from the argument to the return value
+//! @brief Convert vector of CIF blocks to ReflnBlocks.
+//! @param blocks Vector of CIF blocks (moved, not copied)
+//! @return Vector of ReflnBlock wrappers
+//!
+//! Moves blocks from the argument to the return value. Some blocks may miss
+//! space group or unit cell information; this function attempts to fill in
+//! missing metadata by propagating from the first valid block.
 inline
 std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
   std::vector<ReflnBlock> rvec;
@@ -175,8 +238,15 @@ std::vector<ReflnBlock> as_refln_blocks(std::vector<cif::Block>&& blocks) {
   return rvec;
 }
 
-// Get the first (merged) block with required labels.
-// Optionally, block name can be specified.
+//! @brief Get the first merged block with required column labels.
+//! @param blocks Vector of CIF blocks to search (moved, not copied)
+//! @param labels Required column names (without _refln. prefix)
+//! @param block_name Optional block name filter (nullptr for any block)
+//! @return ReflnBlock containing all required columns
+//! @throws std::runtime_error if required columns or block not found
+//!
+//! Searches for the first (merged) block with all required labels.
+//! Optionally, block name can be specified to filter by block.
 inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
                                   const std::vector<std::string>& labels,
                                   const char* block_name=nullptr) {
@@ -209,6 +279,13 @@ inline ReflnBlock get_refln_block(std::vector<cif::Block>&& blocks,
   fail("Tags not found in SF-mmCIF file: _refln.", join_str(labels, ", _refln."));
 }
 
+//! @brief Convert HKL-format CIF block to ReflnBlock.
+//! @param block CIF block in HKL format (swapped, not copied)
+//! @return ReflnBlock wrapper
+//!
+//! Handles the older HKL-style CIF format (non-mmCIF) with tags like
+//! _refln_index_h instead of _refln.index_h. Extracts unit cell and
+//! space group from legacy tags.
 inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
   ReflnBlock rb;
   rb.block.swap(block);
@@ -224,29 +301,65 @@ inline ReflnBlock hkl_cif_as_refln_block(cif::Block& block) {
   return rb;
 }
 
-// Abstraction of data source, cf. MtzDataProxy.
+//! @brief Abstraction of reflection data source (analogous to MtzDataProxy).
+//!
+//! Provides uniform access to reflection data for algorithms that work with
+//! multiple data formats. Allows generic code to iterate over reflections
+//! and access Miller indices, intensities, and other columns.
 struct ReflnDataProxy {
-  const ReflnBlock& rb_;
-  std::array<size_t,3> hkl_cols_;
+  const ReflnBlock& rb_;  //!< Reference to underlying ReflnBlock
+  std::array<size_t,3> hkl_cols_;  //!< Cached column indices for h, k, l
+
+  //! @brief Construct proxy for a ReflnBlock.
+  //! @param rb ReflnBlock to wrap
   explicit ReflnDataProxy(const ReflnBlock& rb)
     : rb_(rb), hkl_cols_(rb_.get_hkl_column_indices()) {}
+
+  //! @brief Get row stride (number of columns).
+  //! @return Number of tags in the reflection loop
   size_t stride() const { return loop().tags.size(); }
+
+  //! @brief Get total number of values (rows × columns).
+  //! @return Total size of the value array
   size_t size() const { return loop().values.size(); }
-  using num_type = double;
+
+  using num_type = double;  //!< Numeric type for reflection data
+
+  //! @brief Get numeric value at given position.
+  //! @param n Linear offset into values array
+  //! @return Parsed double value
   double get_num(size_t n) const { return cif::as_number(loop().values[n]); }
+
+  //! @brief Get unit cell.
+  //! @return Reference to unit cell parameters
   const UnitCell& unit_cell() const { return rb_.cell; }
+
+  //! @brief Get space group.
+  //! @return Pointer to space group (may be nullptr)
   const SpaceGroup* spacegroup() const { return rb_.spacegroup; }
+
+  //! @brief Get Miller indices at given row offset.
+  //! @param offset Row offset (stride × row_number)
+  //! @return Miller indices [h, k, l]
   Miller get_hkl(size_t offset) const {
     return {{get_int(offset + hkl_cols_[0]),
              get_int(offset + hkl_cols_[1]),
              get_int(offset + hkl_cols_[2])}};
   }
+
+  //! @brief Get column index by label.
+  //! @param label Column name without prefix
+  //! @return Column index
   size_t column_index(const std::string& label) const { return rb_.get_column_index(label); }
+
 private:
   const cif::Loop& loop() const { rb_.check_ok(); return *rb_.default_loop; }
   int get_int(size_t n) const { return cif::as_int(loop().values[n]); }
 };
 
+//! @brief Create data proxy for a ReflnBlock.
+//! @param rb ReflnBlock to wrap
+//! @return ReflnDataProxy for the block
 inline ReflnDataProxy data_proxy(const ReflnBlock& rb) { return ReflnDataProxy(rb); }
 
 } // namespace gemmi

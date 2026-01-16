@@ -17,15 +17,29 @@
 
 namespace gemmi {
 
+//! @brief Type of chemical bond.
+//!
+//! Used in restraints and chemical component definitions.
 enum class BondType {
   Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
 };
+
+//! @brief Chirality type for tetrahedral centers.
 enum class ChiralityType { Positive, Negative, Both };
 
+//! @brief Geometric restraints for a chemical component or link.
+//!
+//! Contains bond distances, angles, torsions, chirality, and planarity restraints
+//! used in refinement. Can represent monomer restraints from Refmac library or
+//! PDB Chemical Component Dictionary (CCD).
 struct Restraints {
+  //! @brief Identifier for an atom in restraints.
+  //!
+  //! The comp field identifies the residue (1 for current, 2 for next in a link).
+  //! The atom field is the atom name.
   struct AtomId {
-    int comp;
-    std::string atom;
+    int comp;  //!< Component number (1=current residue, 2=next residue in link)
+    std::string atom;  //!< Atom name
 
     bool operator==(const AtomId& o) const {
       return comp == o.comp && atom == o.atom;
@@ -39,8 +53,15 @@ struct Restraints {
       return comp == o.comp ? atom < o.atom : comp < o.comp;
     }
 
-    // altloc2 is needed only in rare case when we have a link between
-    // atoms with different altloc (example: 2e7z).
+    //! @brief Get atom pointer from residue(s).
+    //! @param res1 First residue
+    //! @param res2 Second residue (for links), or nullptr
+    //! @param alt Alternate location indicator
+    //! @param altloc2 Second altloc (rare case for links between different altlocs, e.g., 2e7z)
+    //! @return Pointer to atom, or nullptr if not found
+    //!
+    //! altloc2 is needed only in rare case when we have a link between
+    //! atoms with different altloc (example: 2e7z).
     Atom* get_from(Residue& res1, Residue* res2, char alt, char altloc2) const {
       Residue* residue = &res1;
       if (comp == 2 && res2 != nullptr) {
@@ -66,17 +87,22 @@ struct Restraints {
     return name1 < name2 ? cat(name1, '-', name2) : cat(name2, '-', name1);
   }
 
+  //! @brief What type of distance (electron cloud or nucleus).
   enum class DistanceOf { ElectronCloud, Nucleus };
 
+  //! @brief Bond distance restraint.
+  //!
+  //! Stores target bond distance and its estimated standard deviation (esd).
+  //! Can store both electron cloud and nucleus distances.
   struct Bond {
     static const char* what() { return "bond"; }
-    AtomId id1, id2;
-    BondType type;
-    bool aromatic;
-    double value;
-    double esd;
-    double value_nucleus;
-    double esd_nucleus;
+    AtomId id1, id2;  //!< Bonded atoms
+    BondType type;  //!< Bond type (single, double, etc.)
+    bool aromatic;  //!< Is aromatic bond
+    double value;  //!< Target distance (electron cloud), in Angstroms
+    double esd;  //!< Estimated standard deviation for electron cloud distance
+    double value_nucleus;  //!< Target distance (nucleus), in Angstroms
+    double esd_nucleus;  //!< Estimated standard deviation for nucleus distance
     std::string str() const { return cat(id1.atom, '-', id2.atom); }
     std::string lexicographic_str() const {
       return Restraints::lexicographic_str(id1.atom, id2.atom);
@@ -91,33 +117,42 @@ struct Restraints {
     }
   };
 
+  //! @brief Angle restraint.
+  //!
+  //! Restrains the angle formed by three atoms.
   struct Angle {
     static const char* what() { return "angle"; }
-    AtomId id1, id2, id3;
-    double value;  // degrees
-    double esd;
+    AtomId id1, id2, id3;  //!< Three atoms forming the angle (id2 is center)
+    double value;  //!< Target angle value in degrees
+    double esd;  //!< Estimated standard deviation in degrees
     double radians() const { return rad(value); }
     std::string str() const {
       return cat(id1.atom, '-', id2.atom, '-', id3.atom);
     }
   };
 
+  //! @brief Torsion angle restraint.
+  //!
+  //! Restrains the dihedral angle formed by four atoms.
   struct Torsion {
     static const char* what() { return "torsion"; }
-    std::string label;
-    AtomId id1, id2, id3, id4;
-    double value;
-    double esd;
-    int period;
+    std::string label;  //!< Torsion label/identifier
+    AtomId id1, id2, id3, id4;  //!< Four atoms defining the torsion
+    double value;  //!< Target torsion angle in degrees
+    double esd;  //!< Estimated standard deviation in degrees
+    int period;  //!< Periodicity of the torsion
     std::string str() const {
       return cat(id1.atom, '-', id2.atom, '-', id3.atom, '-', id4.atom);
     }
   };
 
+  //! @brief Chirality restraint.
+  //!
+  //! Restrains the handedness of a tetrahedral center.
   struct Chirality {
     static const char* what() { return "chirality"; }
-    AtomId id_ctr, id1, id2, id3;
-    ChiralityType sign;
+    AtomId id_ctr, id1, id2, id3;  //!< Central atom and three neighbors
+    ChiralityType sign;  //!< Expected chirality (positive/negative/both)
 
     bool is_wrong(double volume) const {
       return (sign == ChiralityType::Positive && volume < 0) ||
@@ -128,21 +163,24 @@ struct Restraints {
     }
   };
 
+  //! @brief Planarity restraint.
+  //!
+  //! Restrains a set of atoms to be coplanar.
   struct Plane {
     static const char* what() { return "plane"; }
-    std::string label;
-    std::vector<AtomId> ids;
-    double esd;
+    std::string label;  //!< Plane label/identifier
+    std::vector<AtomId> ids;  //!< Atoms that should be coplanar
+    double esd;  //!< Estimated standard deviation for planarity
     std::string str() const {
       return join_str(ids, ',', [](const AtomId& a) { return a.atom; });
     }
   };
 
-  std::vector<Bond> bonds;
-  std::vector<Angle> angles;
-  std::vector<Torsion> torsions;
-  std::vector<Chirality> chirs;
-  std::vector<Plane> planes;
+  std::vector<Bond> bonds;  //!< Bond distance restraints
+  std::vector<Angle> angles;  //!< Angle restraints
+  std::vector<Torsion> torsions;  //!< Torsion angle restraints
+  std::vector<Chirality> chirs;  //!< Chirality restraints
+  std::vector<Plane> planes;  //!< Planarity restraints
 
   bool empty() const {
     return bonds.empty() && angles.empty() && torsions.empty() &&
@@ -323,8 +361,14 @@ inline double Restraints::chiral_abs_volume(const Restraints::Chirality& ch) con
                                   get_angle(ch.id3, ch.id_ctr, ch.id1).value);
 }
 
+//! @brief Chemical component (monomer) definition.
+//!
+//! Represents a monomer from Refmac monomer library or PDB Chemical Component
+//! Dictionary (CCD). Contains atom list, restraints, and aliasing information.
 struct ChemComp {
-  // Items used in _chem_comp.group and _chem_link.group_comp_N in CCP4.
+  //! @brief Chemical component group classification.
+  //!
+  //! Items used in _chem_comp.group and _chem_link.group_comp_N in CCP4.
   enum class Group {
     Peptide,      // "peptide"
     PPeptide,     // "P-peptide"
@@ -339,23 +383,29 @@ struct ChemComp {
     Null
   };
 
+  //! @brief Atom in a chemical component definition.
   struct Atom {
-    std::string id;
-    std::string old_id;  // read from _chem_comp_atom.alt_atom_id
-    Element el = El::X;
-    // _chem_comp_atom.partial_charge can be non-integer,
-    // _chem_comp_atom.charge is always integer (but sometimes has format
-    //  '0.000' which is not correct but we ignore it).
+    std::string id;  //!< Atom identifier/name
+    std::string old_id;  //!< Alternative atom ID (from _chem_comp_atom.alt_atom_id)
+    Element el = El::X;  //!< Element type
+    //! Partial charge. _chem_comp_atom.partial_charge can be non-integer,
+    //! _chem_comp_atom.charge is always integer (but sometimes has format
+    //! '0.000' which is not correct but we ignore it).
     float charge = 0;
-    std::string chem_type;
-    Position xyz;
+    std::string chem_type;  //!< Chemical type descriptor
+    Position xyz;  //!< 3D coordinates (if available)
 
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
 
+  //! @brief Atom name aliasing for different chemical groups.
+  //!
+  //! Maps atom names in this component to standard names in specific groups
+  //! (e.g., peptide, DNA, RNA).
   struct Aliasing {
-    Group group;
-    // pairs of (name in chem_comp, usual name in this group)
+    Group group;  //!< Chemical group this aliasing applies to
+    //! Pairs of (name in chem_comp, usual name in this group).
+    //! For example, maps local atom names to standard peptide atom names.
     std::vector<std::pair<std::string, std::string>> related;
 
     const std::string* name_from_alias(const std::string& atom_id) const {
@@ -366,13 +416,13 @@ struct ChemComp {
     }
   };
 
-  std::string name;
-  std::string type_or_group;  // _chem_comp.type or _chem_comp.group
-  Group group = Group::Null;
-  bool has_coordinates = false;
-  std::vector<Atom> atoms;
-  std::vector<Aliasing> aliases;
-  Restraints rt;
+  std::string name;  //!< Component name/ID (e.g., "ALA", "GLY")
+  std::string type_or_group;  //!< Value from _chem_comp.type or _chem_comp.group
+  Group group = Group::Null;  //!< Component group classification
+  bool has_coordinates = false;  //!< Whether 3D coordinates are available
+  std::vector<Atom> atoms;  //!< Atoms in this component
+  std::vector<Aliasing> aliases;  //!< Atom name aliases for different groups
+  Restraints rt;  //!< Geometric restraints for this component
 
   const Aliasing& get_aliasing(Group g) const {
     for (const Aliasing& aliasing : aliases)
