@@ -1,3 +1,12 @@
+//! @file
+//! @brief Stream wrappers with Unicode and dash support.
+//!
+//! Ofstream and Ifstream: wrappers around std::ofstream and std::ifstream.
+//!
+//! They offer two extra features:
+//!  - on MSVC supports Unicode filenames (the filename is passed in UTF-8),
+//!  - optionally, filename "-" can be interpreted as stdout or stderr.
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // Ofstream and Ifstream: wrappers around std::ofstream and std::ifstream.
@@ -25,6 +34,12 @@
 
 namespace gemmi {
 
+//! @brief Open stream from UTF-8 path.
+//! @tparam T Smart pointer type to stream
+//! @param ptr Smart pointer to stream
+//! @param filename UTF-8 encoded filename
+//!
+//! Helper function that handles Unicode paths on Windows.
 template<typename T>
 inline void open_stream_from_utf8_path(T& ptr, const std::string& filename) {
 #if defined(_MSC_VER)
@@ -40,7 +55,15 @@ inline void open_stream_from_utf8_path(T& ptr, const std::string& filename) {
 
 // note: move of std::ofstream doesn't work in GCC 4.8.
 
+//! @brief Output file stream wrapper with Unicode and dash support.
+//!
+//! Wraps std::ofstream with UTF-8 path support on Windows and optional
+//! interpretation of "-" as stdout/stderr.
 struct Ofstream {
+  //! @brief Construct output stream.
+  //! @param filename Filename (or "-" for dash stream)
+  //! @param dash Optional stream to use for "-" (e.g., stdout or stderr)
+  //! @throws std::system_error if file cannot be opened
   Ofstream(const std::string& filename, std::ostream* dash=nullptr) {
     if (filename.size() == 1 && filename[0] == '-' && dash) {
       ptr_ = dash;
@@ -53,15 +76,28 @@ struct Ofstream {
     ptr_ = keeper_.get();
   }
 
+  //! @brief Get pointer to underlying stream.
+  //! @return Stream pointer
   std::ostream* operator->() { return ptr_; }
+
+  //! @brief Get reference to underlying stream.
+  //! @return Stream reference
   std::ostream& ref() { return *ptr_; }
 
 private:
-  std::unique_ptr<std::ofstream> keeper_;
-  std::ostream* ptr_;
+  std::unique_ptr<std::ofstream> keeper_;  //!< Owned stream
+  std::ostream* ptr_;                      //!< Pointer to stream
 };
 
+//! @brief Input file stream wrapper with Unicode and dash support.
+//!
+//! Wraps std::ifstream with UTF-8 path support on Windows and optional
+//! interpretation of "-" as stdin.
 struct Ifstream {
+  //! @brief Construct input stream.
+  //! @param filename Filename (or "-" for dash stream)
+  //! @param dash Optional stream to use for "-" (e.g., stdin)
+  //! @throws std::system_error if file cannot be opened
   Ifstream(const std::string& filename, std::istream* dash=nullptr) {
     if (filename.size() == 1 && filename[0] == '-' && dash) {
       ptr_ = dash;
@@ -74,12 +110,17 @@ struct Ifstream {
     ptr_ = keeper_.get();
   }
 
+  //! @brief Get pointer to underlying stream.
+  //! @return Stream pointer
   std::istream* operator->() { return ptr_; }
+
+  //! @brief Get reference to underlying stream.
+  //! @return Stream reference
   std::istream& ref() { return *ptr_; }
 
 private:
-  std::unique_ptr<std::ifstream> keeper_;
-  std::istream* ptr_;
+  std::unique_ptr<std::ifstream> keeper_;  //!< Owned stream
+  std::istream* ptr_;                      //!< Pointer to stream
 };
 
 

@@ -1,3 +1,6 @@
+//! @file
+//! @brief Eigen decomposition for symmetric 3x3 matrices.
+
 // Eigen decomposition code for symmetric 3x3 matrices.
 
 #ifndef GEMMI_EIG3_HPP_
@@ -8,6 +11,10 @@
 
 namespace gemmi {
 
+//! @brief Compute eigenvalues and eigenvectors of symmetric 3x3 matrix.
+//! @param A Symmetric 3x3 matrix
+//! @param d Output array for eigenvalues
+//! @return 3x3 matrix with eigenvectors as columns
 GEMMI_DLL Mat33 eigen_decomposition(const SMat33<double>& A, double (&d)[3]);
 
 } // namespace gemmi
