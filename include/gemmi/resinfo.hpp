@@ -1,3 +1,6 @@
+//! @file
+//! @brief List of common residues with basic classification data.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // List of common residues with basic data.
@@ -41,22 +44,55 @@ struct ResidueInfo {
   std::uint8_t hydrogen_count;  //!< Approx H count for mass estimation
   float weight;  //!< Molecular weight
 
+  //! @brief Check if residue info was found.
+  //! @return True if kind is not UNKNOWN
   bool found() const { return kind != ResidueKind::UNKNOWN; }
+
+  //! @brief Check if residue is water.
+  //! @return True if kind is HOH
   bool is_water() const { return kind == ResidueKind::HOH; }
+
+  //! @brief Check if residue is DNA.
+  //! @return True if kind is DNA
   bool is_dna() const { return kind == ResidueKind::DNA; }
+
+  //! @brief Check if residue is RNA.
+  //! @return True if kind is RNA
   bool is_rna() const { return kind == ResidueKind::RNA; }
+
+  //! @brief Check if residue is nucleic acid.
+  //! @return True if DNA or RNA
   bool is_nucleic_acid() const { return is_dna() || is_rna(); }
+
+  //! @brief Check if residue is amino acid.
+  //! @return True if any AA type (AA, AAD, PAA, MAA)
   bool is_amino_acid() const {
     return kind == ResidueKind::AA || kind == ResidueKind::AAD ||
            kind == ResidueKind::PAA || kind == ResidueKind::MAA;
   }
+
+  //! @brief Check if residue is buffer or water.
+  //! @return True if HOH or BUF
   bool is_buffer_or_water() const {
     return kind == ResidueKind::HOH || kind == ResidueKind::BUF;
   }
-  // PDB format has non-standard residues (modified AA) marked as HETATM.
+
+  //! @brief Check if residue is standard (uppercase one-letter code).
+  //!
+  //! PDB format has non-standard residues (modified AA) marked as HETATM.
+  //! @return True if one-letter code is uppercase
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
+
+  //! @brief Get FASTA code.
+  //! @return One-letter code if standard, otherwise 'X'
   char fasta_code() const { return is_standard() ? one_letter_code : 'X'; }
+
+  //! @brief Check if residue is peptide linking.
+  //! @return True if linking_type has bit 0 set
   bool is_peptide_linking() const { return (linking_type & 1); }
+
+  //! @brief Check if residue is nucleic acid linking.
+  //! @return True if linking_type has bit 1 set
   bool is_na_linking() const { return (linking_type & 2); }
 };
 
@@ -115,11 +151,12 @@ inline const char* expand_one_letter(char c, ResidueKind kind) {
 GEMMI_DLL std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
                                                               ResidueKind kind);
 
-// deprecated
+//! @deprecated Use expand_one_letter(c, ResidueKind::AA) instead
 inline const char* expand_protein_one_letter(char c) {
   return expand_one_letter(c, ResidueKind::AA);
 }
-// deprecated
+
+//! @deprecated Use expand_one_letter_sequence() instead
 GEMMI_DLL std::vector<std::string> expand_protein_one_letter_string(const std::string& s);
 
 
