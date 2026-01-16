@@ -1,7 +1,12 @@
+//! @file
+//! @brief Bidirectional iterator templates for filtering, grouping, and striding.
+//!
+//! Bidirectional iterators (over elements of any container) that can filter,
+//! uniquify, group, or iterate with a stride. Provides policy-based iterator
+//! design with BidirIterator template and various policy classes (StrideIterPolicy,
+//! FilterIterPolicy, UniqIterPolicy, GroupingIterPolicy, IndirectIterPolicy).
+
 // Copyright 2018 Global Phasing Ltd.
-//
-// Bidirectional iterators (over elements of any container) that can filter,
-// uniquify, group, or iterate with a stride.
 
 #ifndef GEMMI_ITERATOR_HPP_
 #define GEMMI_ITERATOR_HPP_
@@ -22,7 +27,13 @@ namespace gemmi {
   #pragma nv_diag_suppress = conversion_function_not_usable
 #endif
 
-// implements concept BidirectionalIterator
+//! @brief Policy-based bidirectional iterator template.
+//! @tparam Policy Iterator policy class defining increment, decrement, equal, dereference
+//!
+//! Implements concept BidirectionalIterator. The Policy must provide:
+//! - value_type, reference types
+//! - increment(), decrement(), equal(), dereference() methods
+//! - const_policy type for const variant
 template <typename Policy>
 struct BidirIterator : Policy {
   using value_type = typename std::remove_cv<typename Policy::value_type>::type;
@@ -48,6 +59,11 @@ struct BidirIterator : Policy {
   }
 };
 
+//! @brief Policy for strided iteration over array.
+//! @tparam Value Element type
+//!
+//! Iterates over every Nth element with optional offset (e.g., for accessing
+//! columns in row-major 2D array stored as vector).
 template<typename Value>
 class StrideIterPolicy {
 public:
@@ -67,10 +83,16 @@ private:
   std::size_t offset_;
   unsigned stride_;
 };
+
+//! Bidirectional iterator with stride.
 template<typename Value>
 using StrideIter = BidirIterator<StrideIterPolicy<Value>>;
 
-
+//! @brief Policy for indirect iteration through index vector.
+//! @tparam Redirect Object providing value_at(int) method
+//! @tparam Value Element type
+//!
+//! Iterates by dereferencing indices from a vector<int>.
 template<typename Redirect, typename Value>
 class IndirectIterPolicy {
 public:
@@ -90,10 +112,18 @@ private:
   Redirect* redir_;
   std::vector<int>::const_iterator cur_; // points into positions
 };
+
+//! Bidirectional iterator with indirection.
 template<typename Redirect, typename Value>
 using IndirectIter = BidirIterator<IndirectIterPolicy<Redirect, Value>>;
 
 
+//! @brief Policy for unique iteration (skipping duplicates by group_key).
+//! @tparam Vector Container type
+//! @tparam Value Element type
+//!
+//! Iterates over first element of each group (elements sharing group_key()).
+//! Assumes elements with same group_key() are consecutive.
 template<typename Vector, typename Value>
 class UniqIterPolicy {
 public:
@@ -122,9 +152,14 @@ private:
   Vector* vec_;
   std::size_t pos_;
 };
+
+//! Bidirectional iterator for unique elements.
 template<typename Vector, typename Value>
 using UniqIter = BidirIterator<UniqIterPolicy<Vector, Value>>;
 
+//! @brief Proxy for unique iteration (non-const).
+//! @tparam Value Element type
+//! @tparam Vector Container type
 template<typename Value, typename Vector=std::vector<Value>>
 struct UniqProxy {
   Vector& vec;
@@ -132,6 +167,10 @@ struct UniqProxy {
   iterator begin() { return {{&vec, 0}}; }
   iterator end() { return {{&vec, vec.size()}}; }
 };
+
+//! @brief Proxy for unique iteration (const).
+//! @tparam Value Element type
+//! @tparam Vector Container type
 template<typename Value, typename Vector=std::vector<Value>>
 struct ConstUniqProxy {
   const Vector& vec;
@@ -140,7 +179,12 @@ struct ConstUniqProxy {
   iterator end() const { return {{&vec, vec.size()}}; }
 };
 
-
+//! @brief Policy for grouping iteration (returns spans of elements with same group_key).
+//! @tparam Vector Container type
+//! @tparam Value Span type
+//!
+//! Iterates over groups of consecutive elements sharing group_key(). Each
+//! iteration returns a span/view of the group.
 template<typename Vector, typename Value>
 class GroupingIterPolicy {
 public:
@@ -173,10 +217,18 @@ public:
 private:
   Value span_;
 };
+
+//! Bidirectional iterator for groups.
 template<typename Vector, typename Value>
 using GroupingIter = BidirIterator<GroupingIterPolicy<Vector, Value>>;
 
 
+//! @brief Policy for filtering iteration (only matching elements).
+//! @tparam Filter Filter class with matches(Value) method
+//! @tparam Vector Container type
+//! @tparam Value Element type
+//!
+//! Iterates over elements matching filter predicate.
 template<typename Filter, typename Vector, typename Value>
 class FilterIterPolicy {
 public:
@@ -200,9 +252,14 @@ private:
   Vector* vec_;
   std::size_t pos_;
 };
+
+//! Bidirectional iterator for filtered elements.
 template<typename Filter, typename Vector, typename Value>
 using FilterIter = BidirIterator<FilterIterPolicy<Filter, Vector, Value>>;
 
+//! @brief Proxy for filtered iteration (non-const).
+//! @tparam Filter Filter class
+//! @tparam Value Element type
 template<typename Filter, typename Value>
 struct FilterProxy {
   const Filter& filter;
@@ -212,6 +269,9 @@ struct FilterProxy {
   iterator end() { return {{&filter, &vec, vec.size()}}; }
 };
 
+//! @brief Proxy for filtered iteration (const).
+//! @tparam Filter Filter class
+//! @tparam Value Element type
 template<typename Filter, typename Value>
 struct ConstFilterProxy {
   const Filter& filter;
@@ -221,11 +281,19 @@ struct ConstFilterProxy {
   iterator end() const { return {{&filter, &vec, vec.size()}}; }
 };
 
-
+//! @brief Group of items with potentially sparse storage.
+//! @tparam Item Element type with group_key() method
+//!
+//! Represents a range of items where only some may belong to the group
+//! (determined by matching group_key()). Used for iterating over grouped
+//! data where the group may be interleaved with other elements.
 template<typename Item>
 struct ItemGroup {
   using element_type = Item;
 
+  //! @brief Construct group from range.
+  //! @param start Start of range
+  //! @param end End of range
   ItemGroup(Item* start, const Item* end)
       : size_(int(end - start)), extent_(int(end - start)), start_(start) {
     for (const Item* i = start + 1; i != end; ++i)
@@ -233,6 +301,9 @@ struct ItemGroup {
         --size_;
   }
 
+  //! @brief Iterator for group members.
+  //!
+  //! Skips over items with different group_key().
   struct iterator {
     Item* ptr;
     const Item* end;
@@ -258,7 +329,11 @@ struct ItemGroup {
   Item& back() { return start_[extent_ - 1]; }
   const Item& back() const { return start_[extent_ - 1]; }
 
-  // constant time unless sparse (extend_ > size_)
+  //! @brief Access element by index (skipping non-group members).
+  //! @param i Index within group
+  //! @return Reference to i-th group element
+  //!
+  //! Constant time unless sparse (extent_ > size_).
   Item& operator[](std::size_t i) {
     if (size_ == extent_ || i == 0)
       return start_[i];
@@ -272,9 +347,9 @@ struct ItemGroup {
   }
 
 private:
-  int size_ = 0;
-  int extent_ = 0;
-  Item* start_ = nullptr;
+  int size_ = 0;     //!< Number of items in group
+  int extent_ = 0;   //!< Size of underlying range
+  Item* start_ = nullptr;  //!< Start of range
 };
 
 #if defined(__INTEL_COMPILER) || defined(__NVCOMPILER)
