@@ -1,3 +1,13 @@
+//! @file
+//! @brief Neutron coherent scattering lengths from Neutron News 1992.
+//!
+//! Neutron coherent scattering lengths of the elements,
+//! from Neutron News, Vol. 3, No. 3, 1992.
+//!
+//! We use the same data as cctbx/eltbx/neutron.h, which is based on
+//! https://www.ncnr.nist.gov/resources/n-lengths/list.html
+//! which in turn is based on Neutron News, Vol. 3, No. 3, 1992, pp. 29-37.
+
 // Copyright 2022 Global Phasing Ltd.
 
 // Neutron coherent scattering lengths of the elements,
