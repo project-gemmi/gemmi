@@ -1,8 +1,3 @@
-//! @file
-//! @brief Conversion between gemmi::Structure and MMDB2 mmdb::Manager.
-//!
-//! Converts between gemmi::Structure and mmdb::Manager.
-
 // Copyright 2020-2022 Global Phasing Ltd.
 //
 // Converts between gemmi::Structure and mmdb::Manager.

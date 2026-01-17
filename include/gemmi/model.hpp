@@ -1,8 +1,3 @@
-//! @file
-//! @brief Core data structures for macromolecular structure models.
-//!
-//! Data structures to store macromolecular structure models.
-
 // Copyright 2017 Global Phasing Ltd.
 //
 // Data structures to store macromolecular structure models.

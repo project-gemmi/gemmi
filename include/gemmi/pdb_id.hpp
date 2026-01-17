@@ -1,8 +1,3 @@
-//! @file
-//! @brief PDB code validation and path expansion using $PDB_DIR.
-//!
-//! Handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path(), ...
-
 // Copyright 2018 Global Phasing Ltd.
 //
 // Handling PDB ID and $PDB_DIR: is_pdb_code(), expand_pdb_code_to_path(), ...
