@@ -1,3 +1,6 @@
+//! @file
+//! @brief Write CIF documents to output streams.
+
 // Copyright 2017 Global Phasing Ltd.
 
 // Writing cif::Document or its parts to std::ostream.
@@ -11,7 +14,7 @@
 namespace gemmi {
 namespace cif {
 
-/// deprecated, use cif::WriteOptions instead
+//! @brief Deprecated CIF writing styles (use WriteOptions instead).
 enum class Style {
   Simple,
   NoBlankLines,
@@ -21,18 +24,15 @@ enum class Style {
   Aligned,      // columns in tables are left-aligned
 };
 
+//! @brief Options for CIF output formatting.
+//!
+//! Controls spacing, alignment, and layout when writing CIF files.
 struct WriteOptions {
-  /// write single-row loops as pairs
-  bool prefer_pairs = false;
-  /// no blank lines between categories, only between blocks
-  bool compact = false;
-  /// put '#' (empty comments) before/after categories
-  bool misuse_hash = false;
-  /// width reserved for tags in pairs (e.g. 34 = value starts at 35th column)
-  std::uint16_t align_pairs = 0;
-  /// if non-zero, determines max width of each column in a loop and aligns
-  /// all values to this width; the width is capped with the given value
-  std::uint16_t align_loops = 0;
+  bool prefer_pairs = false;    //!< Write single-row loops as tag-value pairs
+  bool compact = false;         //!< No blank lines between categories
+  bool misuse_hash = false;     //!< Put '#' comments before/after categories (PDBx style)
+  std::uint16_t align_pairs = 0;  //!< Column to start values in pairs (e.g., 34)
+  std::uint16_t align_loops = 0;  //!< Max column width for loop alignment (0=disabled)
 
   WriteOptions() {}
   // implicit conversion from deprecated Style (for backward compatibility)

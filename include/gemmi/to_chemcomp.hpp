@@ -1,3 +1,6 @@
+//! @file
+//! @brief Convert ChemComp to CIF block with monomer library categories.
+
 // Copyright 2022 Global Phasing Ltd.
 //
 // Create cif::Block with monomer library _chem_comp* categories
@@ -11,6 +14,12 @@
 
 namespace gemmi {
 
+//! @brief Add chemical component data to CIF block.
+//! @param cc ChemComp structure containing restraints and atom info
+//! @param block CIF block to populate with _chem_comp_* categories
+//!
+//! Writes monomer library data: atoms (with coordinates if present),
+//! bonds, angles, torsions, chirality, and plane restraints.
 inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
   {
     std::vector<std::string> tags =
