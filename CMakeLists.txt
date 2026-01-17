@@ -326,7 +326,7 @@ add_executable(gemmi_prog
                prog/align.cpp prog/blobs.cpp
                prog/cif2mtz.cpp prog/cif2json.cpp prog/cifdiff.cpp
                prog/contact.cpp prog/contents.cpp prog/convert.cpp prog/crd.cpp
-               prog/ecalc.cpp prog/fprime.cpp
+               prog/drg.cpp prog/ecalc.cpp prog/fprime.cpp
                prog/grep.cpp prog/h.cpp prog/json2cif.cpp
                prog/main.cpp prog/map.cpp prog/map2sf.cpp
                prog/mapcoef.cpp prog/mask.cpp prog/merge.cpp

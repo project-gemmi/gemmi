@@ -15,6 +15,7 @@ int contact_main(int argc, char** argv);
 int contents_main(int argc, char** argv);
 int convert_main(int argc, char** argv);
 int crd_main(int argc, char** argv);
+int drg_main(int argc, char** argv);
 int ecalc_main(int argc, char** argv);
 int fprime_main(int argc, char** argv);
 int grep_main(int argc, char** argv);
@@ -61,6 +62,7 @@ SubCmd subcommands[] = {
   CMD(contents, "info about content of a coordinate file (pdb, mmCIF, ...)"),
   CMD(convert, "convert file (CIF - JSON, mmCIF - PDB) or modify structure"),
   CMD(crd, "prepare topology file (.crd) for Refmac"),
+  CMD(drg, "fill restraint values using AceDrg tables"),
   CMD(ecalc, "calculate normalized amplitudes E"),
   CMD(fprime, "calculate anomalous scattering factors f' and f\""),
   CMD(grep, "search for tags in CIF file(s)"),

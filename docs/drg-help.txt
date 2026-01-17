@@ -1,0 +1,15 @@
+$ gemmi drg -h
+Usage:
+ gemmi drg [options] INPUT.cif OUTPUT.cif
+
+Fill missing restraint values (bonds, angles) in a monomer CIF file
+using COD/CSD statistical data from AceDRG tables.
+
+Options:
+  -h, --help        Print usage and exit.
+  -V, --version     Print version and exit.
+  -v, --verbose     Verbose output.
+  -t, --tables=DIR  Directory with AceDRG tables.
+  --sigma=NUM       Maximum sigma for bond restraints (default: 0.02).
+  --timing          Print timing information.
+  --style=STYLE     Output style: default, pdbx, aligned.
