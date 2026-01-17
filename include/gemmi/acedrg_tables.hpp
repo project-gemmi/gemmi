@@ -301,7 +301,6 @@ private:
 
   // Atom classification helpers
   void detect_rings(const ChemComp& cc,
-                    std::vector<CodAtomInfo>& atoms,
                     std::vector<std::vector<int>>& rings) const;
   struct BondInfo {
     int neighbor_idx;
@@ -584,7 +583,7 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
 
   // Detect rings and set ring-related properties
   std::vector<std::vector<int>> rings;
-  detect_rings(cc, atoms, rings);
+  detect_rings(cc, rings);
 
   // Set min ring size
   for (size_t i = 0; i < atoms.size(); ++i) {
@@ -630,47 +629,26 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
 }
 
 inline void AcedrgTables::detect_rings(const ChemComp& cc,
-                                      std::vector<CodAtomInfo>& atoms,
                                       std::vector<std::vector<int>>& rings) const {
-  // Build adjacency list
-  std::vector<std::vector<int>> adj(atoms.size());
   for (const auto& bond : cc.rt.bonds) {
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-      int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-      int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-      adj[idx1].push_back(idx2);
-      adj[idx2].push_back(idx1);
+    std::vector<Restraints::AtomId> path =
+        cc.rt.find_shortest_path(bond.id1, bond.id2, {}, 2);
+    if (path.size() < 3)
+      continue;
+
+    std::vector<int> ring;
+    ring.reserve(path.size());
+    for (const auto& id : path) {
+      auto it = cc.find_atom(id.atom);
+      if (it != cc.atoms.end())
+        ring.push_back(static_cast<int>(it - cc.atoms.begin()));
     }
-  }
-
-  // Simple ring detection using DFS
-  // Find all simple cycles up to size 8
-  std::vector<bool> visited(atoms.size(), false);
-  std::vector<int> path;
-
-  std::function<void(int, int, int)> find_rings;
-  find_rings = [&](int start, int current, int depth) {
-    if (depth > 8) return;
-    path.push_back(current);
-    visited[current] = true;
-
-    for (int next : adj[current]) {
-      if (next == start && depth >= 3) {
-        // Found a ring
-        rings.push_back(path);
-      } else if (!visited[next]) {
-        find_rings(start, next, depth + 1);
-      }
-    }
-
-    path.pop_back();
-    visited[current] = false;
-  };
-
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    find_rings(static_cast<int>(i), static_cast<int>(i), 1);
+    if (ring.size() < 3)
+      continue;
+    std::sort(ring.begin(), ring.end());
+    ring.erase(std::unique(ring.begin(), ring.end()), ring.end());
+    if (ring.size() >= 3)
+      rings.push_back(std::move(ring));
   }
 
   // Remove duplicate rings (same atoms in different order)
