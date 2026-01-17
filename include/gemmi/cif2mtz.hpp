@@ -1,3 +1,8 @@
+//! @file
+//! @brief Converting structure factor data from mmCIF to MTZ format.
+//!
+//! A class for converting SF-mmCIF to MTZ (merged or unmerged).
+
 // Copyright 2021 Global Phasing Ltd.
 //
 // A class for converting SF-mmCIF to MTZ (merged or unmerged).
@@ -20,7 +25,12 @@
 
 namespace gemmi {
 
-// "Old-style" anomalous or unmerged data is expected to have only these tags.
+//! @brief Check if reflection data uses old-style format.
+//! @param rb Reflection block
+//! @param data_type Data type (Anomalous or Unmerged)
+//! @return True if data uses old-style format
+//!
+//! "Old-style" anomalous or unmerged data is expected to have only these tags.
 inline bool possible_old_style(const ReflnBlock& rb, DataType data_type) {
   if (rb.refln_loop == nullptr)
     return false;
@@ -43,13 +53,18 @@ inline bool possible_old_style(const ReflnBlock& rb, DataType data_type) {
 }
 
 
-/// Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
-/// stored as two F_meas_au reflections, say (1,1,3) and (-1,-1,-3).
-/// This function transcribes it to how the anomalous data is stored
-/// in PDBx/mmCIF nowadays:
-///  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
-///  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
-///  _refln.intensity_{meas,sigma} -> _refln.pdbx_F_plus{,_sigma} / ...
+//! @brief Convert old-style anomalous data to modern PDBx/mmCIF format.
+//! @param loop CIF loop containing old-style data
+//! @param sg Space group pointer
+//! @return New loop with modern anomalous data format
+//!
+//! Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
+//! stored as two F_meas_au reflections, say (1,1,3) and (-1,-1,-3).
+//! This function transcribes it to how the anomalous data is stored
+//! in PDBx/mmCIF nowadays:
+//!  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
+//!  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
+//!  _refln.intensity_{meas,sigma} -> _refln.pdbx_F_plus{,_sigma} / ...
 inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
                                                       const SpaceGroup* sg) {
   std::vector<int> positions;
@@ -139,8 +154,16 @@ inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
 }
 
 
+//! @brief Converter for mmCIF reflection data to MTZ format.
+//!
+//! Handles conversion of both merged and unmerged structure factor data
+//! from mmCIF format to CCP4 MTZ binary format with configurable column mapping.
 struct CifToMtz {
-  // Alternative mmCIF tags for the same MTZ label should be consecutive
+  //! @brief Get default column mapping specification.
+  //! @param for_merged True for merged data, false for unmerged
+  //! @return Array of specification strings
+  //!
+  //! Alternative mmCIF tags for the same MTZ label should be consecutive
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
       "pdbx_r_free_flag FreeR_flag I 0",
@@ -192,13 +215,18 @@ struct CifToMtz {
     return for_merged ? merged : unmerged;
   }
 
+  //! @brief Column mapping entry for mmCIF to MTZ conversion.
+  //!
+  //! Maps a mmCIF reflection tag to an MTZ column with type and dataset info.
   struct Entry {
-    std::string refln_tag;
-    std::string col_label;
-    char col_type;
-    int dataset_id;
-    std::vector<std::pair<std::string, float>> code_to_number;
+    std::string refln_tag;  //!< mmCIF tag name (e.g., "pdbx_r_free_flag")
+    std::string col_label;  //!< MTZ column label (e.g., "FreeR_flag")
+    char col_type;  //!< MTZ column type (H/J/F/D/Q/G/L/K/M/P/W/A/B/Y/I)
+    int dataset_id;  //!< Dataset ID (0 or 1)
+    std::vector<std::pair<std::string, float>> code_to_number;  //!< Optional text-to-number mappings
 
+    //! @brief Construct entry from specification string.
+    //! @param line Specification string (4-5 space-separated tokens)
     Entry(const std::string& line) {
       std::vector<std::string> tokens;
       tokens.reserve(4);
@@ -234,6 +262,9 @@ struct CifToMtz {
       }
     }
 
+    //! @brief Translate text code to numeric value.
+    //! @param v CIF value string
+    //! @return Numeric value, or NAN if no mapping found
     float translate_code_to_number(const std::string& v) const {
       if (v.size() == 1) {
         for (const auto& c2n : code_to_number)
@@ -249,12 +280,16 @@ struct CifToMtz {
     }
   };
 
-  bool force_unmerged = false;
-  std::string title;
-  std::vector<std::string> history = { "From gemmi-cif2mtz " GEMMI_VERSION };
-  double wavelength = NAN;
-  std::vector<std::string> spec_lines;
+  bool force_unmerged = false;  //!< Force unmerged output format
+  std::string title;  //!< MTZ title (defaults to block-based title)
+  std::vector<std::string> history = { "From gemmi-cif2mtz " GEMMI_VERSION };  //!< MTZ history lines
+  double wavelength = NAN;  //!< Override wavelength value
+  std::vector<std::string> spec_lines;  //!< Custom column specification lines
 
+  //! @brief Convert mmCIF reflection block to MTZ.
+  //! @param rb Reflection block from mmCIF
+  //! @param logger Logger for messages
+  //! @return MTZ structure with converted data
   Mtz convert_block_to_mtz(const ReflnBlock& rb, Logger& logger) const {
     Mtz mtz;
     mtz.title = title.empty() ? "Converted from mmCIF block " + rb.block.name : title;
@@ -505,6 +540,11 @@ struct CifToMtz {
     return mtz;
   }
 
+  //! @brief Auto-convert mmCIF block with old-style handling.
+  //! @param rb Reflection block (may be modified)
+  //! @param logger Logger for messages
+  //! @param mode Mode: 'a'=auto-detect, 'f'=force old-style conversion
+  //! @return MTZ structure with converted data
   Mtz auto_convert_block_to_mtz(ReflnBlock& rb, Logger& logger, char mode) const {
     if (mode == 'f' && possible_old_style(rb, DataType::Anomalous))
       *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop, rb.spacegroup);

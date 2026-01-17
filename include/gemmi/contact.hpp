@@ -1,3 +1,8 @@
+//! @file
+//! @brief Finding contacts (close approaches) between atoms.
+//!
+//! Contact search, based on NeighborSearch from neighbor.hpp.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // Contact search, based on NeighborSearch from neighbor.hpp.

@@ -1,3 +1,8 @@
+//! @file
+//! @brief Chemical elements from the periodic table.
+//!
+//! Elements from the periodic table.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // Elements from the periodic table.

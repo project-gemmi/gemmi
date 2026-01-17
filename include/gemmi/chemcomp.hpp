@@ -1,3 +1,9 @@
+//! @file
+//! @brief Chemical component (monomer) definitions with restraints.
+//!
+//! ChemComp - chemical component that represents a monomer from Refmac
+//! monomer library, or from PDB CCD.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // ChemComp - chemical component that represents a monomer from Refmac
