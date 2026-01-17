@@ -1,3 +1,8 @@
+//! @file
+//! @brief Read coordinate files in any format (PDB, mmCIF, mmJSON).
+//!
+//! Read any supported coordinate file. Usually, mmread_gz.hpp is preferred.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // Read any supported coordinate file. Usually, mmread_gz.hpp is preferred.

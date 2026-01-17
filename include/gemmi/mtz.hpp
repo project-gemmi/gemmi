@@ -1,3 +1,8 @@
+//! @file
+//! @brief CCP4 MTZ reflection file format reader and writer.
+//!
+//! MTZ reflection file format.
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // MTZ reflection file format.
