@@ -1,11 +1,14 @@
-// Copyright 2020 Global Phasing Ltd.
+//! @file
+//! @brief Electron scattering factor coefficients from International Tables.
+//!
+//! Electron scattering factor coefficients from the International Tables.
+//!
+//! Based on International Tables for Crystallography Volume C, edition 2011,
+//! table 4.3.2.2 (pp. 282-283): "Elastic atomic scattering factors of electrons
+//! for neutral atoms and s up to 2.0 A^-1".
+//! The same data is included in cctbx and in CCP4 (file atomsf_electron.lib).
 
-// Electron scattering factor coefficients from the International Tables.
-//
-// Based on International Tables for Crystallography Volume C, edition 2011,
-// table 4.3.2.2 (pp. 282-283): "Elastic atomic scattering factors of electrons
-// for neutral atoms and s up to 2.0 A^-1".
-// The same data is included in cctbx and in CCP4 (file atomsf_electron.lib).
+// Copyright 2020 Global Phasing Ltd.
 
 #ifndef GEMMI_C4322_HPP_
 #define GEMMI_C4322_HPP_
@@ -22,15 +25,25 @@ namespace gemmi {
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
+//! @brief Electron scattering coefficients (IT Vol C Table 4.3.2.2).
+//! @tparam Real Floating-point type (float or double)
 template<class Real>
 struct C4322 {
-  using Coef = GaussianCoef<5, 0, Real>;
-  static Coef data[99];
+  using Coef = GaussianCoef<5, 0, Real>;  //!< Coefficient type (5 Gaussians)
+  static Coef data[99];  //!< Coefficient table for elements
 
+  //! @brief Check if element has coefficients.
+  //! @param el Element
+  //! @return True if coefficients available (up to Cf or D)
   static bool has(El el) {
     return el <= El::Cf || el == El::D;
   }
 
+  //! @brief Get coefficients for element.
+  //! @param el Element
+  //! @param charge Charge (ignored)
+  //! @param serial Serial number (ignored)
+  //! @return Reference to Gaussian coefficients
   static Coef& get(El el, signed char /*charge*/=0, int /*serial*/=0) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
@@ -146,11 +159,19 @@ typename C4322<Real>::Coef C4322<Real>::data[99] = {
 #pragma GCC diagnostic pop
 #endif
 
+//! @brief Custom scattering coefficients indexed by serial number.
+//! @tparam Real Floating-point type (float or double)
 template<class Real>
 struct CustomCoef {
-  using Coef = GaussianCoef<5, 0, Real>;
-  static std::vector<Coef> data;
+  using Coef = GaussianCoef<5, 0, Real>;  //!< Coefficient type (5 Gaussians)
+  static std::vector<Coef> data;  //!< User-provided coefficient table
 
+  //! @brief Get coefficients by serial number.
+  //! @param el Element (ignored)
+  //! @param charge Charge (ignored)
+  //! @param serial Serial number index into data vector
+  //! @return Reference to Gaussian coefficients
+  //! @throws Error if serial number out of range
   static Coef& get(El, signed char /*charge*/=0, int serial=0) {
     if ((size_t)serial >= data.size())
       fail("CustomCoef: serial number exceeds coefficient table length");

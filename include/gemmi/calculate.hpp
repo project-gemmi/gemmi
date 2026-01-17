@@ -1,3 +1,6 @@
+//! @file
+//! @brief Calculate various properties of molecular models.
+
 // Copyright 2017-2018 Global Phasing Ltd.
 //
 // Calculate various properties of the model.

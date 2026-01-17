@@ -1,15 +1,18 @@
-// Functions derived from modified Bessel functions I1(x) and I0(x).
-//
-// Crystallographic codes (including Refmac and cctbx) often use polynomial
-// approximation of I0 and I1 from p. 378 of Abramowitz and Stegun.
-// Gemmi uses approximation based on polynomial coefficients from bessel_i0
-// and bessel_i1(float) from Boost.Math:
-// https://www.boost.org/doc/libs/1_76_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
-// This approximation was derived in 2017 by John Maddock,
-// building on the work of Pavel Holoborodko:
-// https://www.advanpix.com/2015/11/11/rational-approximations-for-the-modified-bessel-function-of-the-first-kind-i0-computations-double-precision/
-// The efficiency is similar to that of scitbx.math.bessel_i1_over_i0.
-// Using std::cyl_bessel_if was not considered, because it requires C++17,
+//! @file
+//! @brief Modified Bessel functions I0 and I1 and derived functions.
+//!
+//! Functions derived from modified Bessel functions I1(x) and I0(x).
+//!
+//! Crystallographic codes (including Refmac and cctbx) often use polynomial
+//! approximation of I0 and I1 from p. 378 of Abramowitz and Stegun.
+//! Gemmi uses approximation based on polynomial coefficients from bessel_i0
+//! and bessel_i1(float) from Boost.Math:
+//! https://www.boost.org/doc/libs/1_76_0/libs/math/doc/html/math_toolkit/bessel/mbessel.html
+//! This approximation was derived in 2017 by John Maddock,
+//! building on the work of Pavel Holoborodko:
+//! https://www.advanpix.com/2015/11/11/rational-approximations-for-the-modified-bessel-function-of-the-first-kind-i0-computations-double-precision/
+//! The efficiency is similar to that of scitbx.math.bessel_i1_over_i0.
+//! Using std::cyl_bessel_if was not considered, because it requires C++17,
 
 #ifndef GEMMI_BESSEL_HPP_
 #define GEMMI_BESSEL_HPP_
@@ -18,6 +21,11 @@
 
 namespace gemmi {
 
+//! @brief Evaluate polynomial using Horner's method.
+//! @tparam N Number of polynomial coefficients
+//! @param poly Array of polynomial coefficients [a0, a1, ..., a_{N-1}]
+//! @param x Evaluation point
+//! @return Polynomial value a0 + a1*x + ... + a_{N-1}*x^{N-1}
 template<int N>
 inline double evaluate_polynomial(const double(&poly)[N], double x) {
   static_assert(N > 1, "");
@@ -27,14 +35,16 @@ inline double evaluate_polynomial(const double(&poly)[N], double x) {
   return result;
 }
 
+//! @brief Polynomial coefficient tables for Bessel function approximations.
+//! @tparam Dummy Template parameter to allow header-only implementation
 template<class Dummy>
 struct BesselTables_
 {
-  static const double P1[8];
-  static const double Q1[9];
-  static const double P2[5];
-  static const double Q2[5];
-  static const double Q3[3];
+  static const double P1[8];  //!< Polynomial P1 coefficients
+  static const double Q1[9];  //!< Polynomial Q1 coefficients
+  static const double Q2[5];  //!< Polynomial Q2 coefficients
+  static const double P2[5];  //!< Polynomial P2 coefficients
+  static const double Q3[3];  //!< Polynomial Q3 coefficients
 };
 template<class Dummy> const double BesselTables_<Dummy>::P1[8] = {
   8.333333221e-02,
@@ -78,6 +88,11 @@ template<class Dummy> const double BesselTables_<Dummy>::Q3[3] = {
 };
 
 
+//! @brief Calculate I1(x) / I0(x) ratio of modified Bessel functions.
+//! @param x Argument (can be negative)
+//! @return I1(x) / I0(x)
+//!
+//! Used in crystallography for atomic displacement calculations.
 inline double bessel_i1_over_i0(double x) {
   using B = BesselTables_<void>;
   if (x < 0)
@@ -95,9 +110,13 @@ inline double bessel_i1_over_i0(double x) {
   return p / q;
 }
 
-// Simplified function from Boost.Math.
-// Similar to std::cyl_bessel_i(0, x), but much faster, less exact and doesn't
-// throw out_of_range on negative argument. Relative error < 5.02e-08.
+//! @brief Calculate modified Bessel function I0(x).
+//! @param x Argument (sign ignored)
+//! @return I0(|x|)
+//!
+//! Simplified function from Boost.Math.
+//! Similar to std::cyl_bessel_i(0, x), but much faster, less exact and doesn't
+//! throw out_of_range on negative argument. Relative error < 5.02e-08.
 inline double bessel_i0(double x) {
   using B = BesselTables_<void>;
   x = std::fabs(x);
@@ -111,7 +130,11 @@ inline double bessel_i0(double x) {
   return ex * evaluate_polynomial(B::Q3, 1 / x) / std::sqrt(x) * ex;
 }
 
-// Relative error < 4e-08.
+//! @brief Calculate logarithm of modified Bessel function I0(x).
+//! @param x Argument (sign ignored)
+//! @return ln(I0(|x|))
+//!
+//! Relative error < 4e-08.
 inline double log_bessel_i0(double x) {
   using B = BesselTables_<void>;
   x = std::fabs(x);
