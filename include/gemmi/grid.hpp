@@ -1,3 +1,8 @@
+//! @file
+//! @brief 3D grid infrastructure for real-space maps and reciprocal-space data.
+//!
+//! 3d grids used by CCP4 maps, cell-method search and hkl data.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // 3d grids used by CCP4 maps, cell-method search and hkl data.
