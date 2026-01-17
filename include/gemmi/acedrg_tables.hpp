@@ -315,10 +315,15 @@ private:
                                         bool in_ring,
                                         bool is_aromatic) const;
   void compute_hash(CodAtomInfo& atom) const;
-  void compute_nb_symbols(const ChemComp& cc,
+  void compute_nb_symbols(const std::vector<std::vector<BondInfo>>& adj,
                           std::vector<CodAtomInfo>& atoms) const;
   void compute_cod_class(const ChemComp& cc,
+                         const std::vector<std::vector<BondInfo>>& adj,
                          std::vector<CodAtomInfo>& atoms) const;
+  void refine_hybridization(const std::vector<std::vector<BondInfo>>& adj,
+                            std::vector<CodAtomInfo>& atoms) const;
+  int count_non_metal_neighbors(const std::vector<BondInfo>& neighbors,
+                                const std::vector<CodAtomInfo>& atoms) const;
 
   // Bond search helpers
   ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
@@ -606,7 +611,10 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
     }
   }
 
-  // Determine hybridization
+  // Build adjacency list (needed for hybridization refinement and later steps)
+  std::vector<std::vector<BondInfo>> adj = build_adjacency(cc);
+
+  // Determine hybridization - Phase 1: element-based rules
   for (size_t i = 0; i < atoms.size(); ++i) {
     atoms[i].hybrid = determine_hybridization(cc, static_cast<int>(i),
                                               atoms[i].connectivity,
@@ -614,16 +622,19 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
                                               atoms[i].is_aromatic);
   }
 
+  // Refine hybridization - Phase 2: neighbor-based refinement
+  refine_hybridization(adj, atoms);
+
   // Compute hash codes
   for (auto& atom : atoms) {
     compute_hash(atom);
   }
 
   // Compute neighbor symbols
-  compute_nb_symbols(cc, atoms);
+  compute_nb_symbols(adj, atoms);
 
   // Compute full COD class
-  compute_cod_class(cc, atoms);
+  compute_cod_class(cc, adj, atoms);
 
   return atoms;
 }
@@ -698,13 +709,11 @@ inline Hybridization AcedrgTables::determine_hybridization(
     return Hybridization::SPD8;
   }
 
-  // Count bond orders
-  int total_order = 0;
+  // Count double and triple bonds to this atom
   int double_count = 0;
   int triple_count = 0;
 
   for (const auto& bond : cc.rt.bonds) {
-    int other_idx = -1;
     auto it1 = cc.find_atom(bond.id1.atom);
     auto it2 = cc.find_atom(bond.id2.atom);
     if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
@@ -713,36 +722,14 @@ inline Hybridization AcedrgTables::determine_hybridization(
     int idx1 = static_cast<int>(it1 - cc.atoms.begin());
     int idx2 = static_cast<int>(it2 - cc.atoms.begin());
 
-    if (idx1 == atom_idx) other_idx = idx2;
-    else if (idx2 == atom_idx) other_idx = idx1;
-    else continue;
+    if (idx1 != atom_idx && idx2 != atom_idx)
+      continue;
 
-    (void)other_idx; // suppress unused warning
-
-    switch (bond.type) {
-      case BondType::Single:
-        total_order += 1;
-        break;
-      case BondType::Double:
-        total_order += 2;
-        double_count++;
-        break;
-      case BondType::Triple:
-        total_order += 3;
-        triple_count++;
-        break;
-      case BondType::Aromatic:
-      case BondType::Deloc:
-        total_order += 1; // Treat as 1.5, round down
-        break;
-      default:
-        total_order += 1;
-        break;
-    }
+    if (bond.type == BondType::Double)
+      double_count++;
+    else if (bond.type == BondType::Triple)
+      triple_count++;
   }
-
-  // Silence unused variable warning - total_order reserved for future use
-  (void)total_order;
 
   // Determine hybridization based on element and bonding
   if (triple_count > 0) {
@@ -772,6 +759,65 @@ inline Hybridization AcedrgTables::determine_hybridization(
   }
 
   return Hybridization::SP3;
+}
+
+inline int AcedrgTables::count_non_metal_neighbors(
+    const std::vector<BondInfo>& neighbors,
+    const std::vector<CodAtomInfo>& atoms) const {
+  int count = 0;
+  for (const auto& nb : neighbors)
+    if (!atoms[nb.neighbor_idx].is_metal)
+      ++count;
+  return count;
+}
+
+// Phase 2 hybridization refinement based on neighbor states.
+// This implements the second pass from AceDRG's setAtomsBondingAndChiralCenter().
+inline void AcedrgTables::refine_hybridization(
+    const std::vector<std::vector<BondInfo>>& adj,
+    std::vector<CodAtomInfo>& atoms) const {
+
+  // Phase 2a: Oxygen atoms with 2 non-metal connections.
+  // If any neighbor is SP2, the oxygen is also SP2 (e.g., ester oxygen).
+  for (size_t i = 0; i < atoms.size(); ++i) {
+    if (atoms[i].el != El::O || atoms[i].is_metal)
+      continue;
+    if (count_non_metal_neighbors(adj[i], atoms) != 2)
+      continue;
+    for (const auto& nb : adj[i]) {
+      if (!atoms[nb.neighbor_idx].is_metal &&
+          atoms[nb.neighbor_idx].hybrid == Hybridization::SP2) {
+        atoms[i].hybrid = Hybridization::SP2;
+        break;
+      }
+    }
+  }
+
+  // Save hybridization state before Phase 2b to avoid order-dependency
+  std::vector<Hybridization> pre_hybrid(atoms.size());
+  for (size_t i = 0; i < atoms.size(); ++i)
+    pre_hybrid[i] = atoms[i].hybrid;
+
+  // Phase 2b: Nitrogen/Arsenic with 3 non-metal connections.
+  // If any non-oxygen neighbor was SP2, set to SP2 (e.g., amide nitrogen).
+  for (size_t i = 0; i < atoms.size(); ++i) {
+    if (atoms[i].el != El::N && atoms[i].el != El::As)
+      continue;
+    if (atoms[i].is_metal)
+      continue;
+    if (count_non_metal_neighbors(adj[i], atoms) != 3)
+      continue;
+    for (const auto& nb : adj[i]) {
+      if (atoms[nb.neighbor_idx].is_metal)
+        continue;
+      if (atoms[nb.neighbor_idx].el == El::O)
+        continue;
+      if (pre_hybrid[nb.neighbor_idx] == Hybridization::SP2) {
+        atoms[i].hybrid = Hybridization::SP2;
+        break;
+      }
+    }
+  }
 }
 
 // AceDrg hash used in *HRS.table files
@@ -860,10 +906,9 @@ AcedrgTables::build_adjacency(const ChemComp& cc) const {
   return adj;
 }
 
-inline void AcedrgTables::compute_nb_symbols(const ChemComp& cc,
+inline void AcedrgTables::compute_nb_symbols(
+    const std::vector<std::vector<BondInfo>>& adj,
     std::vector<CodAtomInfo>& atoms) const {
-  std::vector<std::vector<BondInfo>> adj = build_adjacency(cc);
-
   // For each atom, build neighbor symbols
   for (size_t i = 0; i < atoms.size(); ++i) {
     std::vector<std::string> nb1_parts;
@@ -891,9 +936,8 @@ inline void AcedrgTables::compute_nb_symbols(const ChemComp& cc,
 }
 
 inline void AcedrgTables::compute_cod_class(const ChemComp& cc,
+    const std::vector<std::vector<BondInfo>>& adj,
     std::vector<CodAtomInfo>& atoms) const {
-  std::vector<std::vector<BondInfo>> adj = build_adjacency(cc);
-
   // Build COD class for each atom
   // Format: Element[ring_size aromatic](neighbor1)(neighbor2)...
   for (size_t i = 0; i < atoms.size(); ++i) {
