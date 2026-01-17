@@ -1,3 +1,9 @@
+//! @file
+//! @brief Cell-linked lists method for fast neighbor searching.
+//!
+//! Cell-linked lists method for atom searching (a.k.a. grid search, binning,
+//! bucketing, cell technique for neighbor search, etc).
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Cell-linked lists method for atom searching (a.k.a. grid search, binning,

@@ -1,3 +1,8 @@
+//! @file
+//! @brief Read mmCIF (PDBx/mmCIF) files into Structure objects.
+//!
+//! Read mmCIF (PDBx/mmCIF) file into a Structure from model.hpp.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // Read mmCIF (PDBx/mmCIF) file into a Structure from model.hpp.

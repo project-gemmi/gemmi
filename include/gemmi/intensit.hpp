@@ -1,3 +1,10 @@
+//! @file
+//! @brief Intensity merging and statistics calculation.
+//!
+//! Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
+//! and merges it into mean or anomalous intensities.
+//! It can also read merged data.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // Class Intensities that reads multi-record data from MTZ, mmCIF or XDS_ASCII
@@ -23,28 +30,35 @@ struct ReflnBlock;
 namespace cif { struct Block; }
 using std::int8_t;
 
-// If used to request a particular data type:
-//   MergedMA = Mean if available, otherwise Anomalous,
-//   MergedAM = Anomalous if available, otherwise Mean.
-//   UAM = Unmerged if available, otherwise MergedAM
+//! @brief Type of reflection data.
+//!
+//! If used to request a particular data type:
+//!   MergedMA = Mean if available, otherwise Anomalous,
+//!   MergedAM = Anomalous if available, otherwise Mean.
+//!   UAM = Unmerged if available, otherwise MergedAM
 enum class DataType { Unknown, Unmerged, Mean, Anomalous,
                       MergedMA, MergedAM, UAM };
 
+//! @brief Statistics from merging reflection data.
+//!
+//! Tracks R-factors and CC1/2 statistics for data quality assessment.
 struct GEMMI_DLL MergingStats {
-  int all_refl = 0;  // all reflections, sometimes called observations
-  int unique_refl = 0;
-  int stats_refl = 0;  // unique reflections with 2+ observations (used for statistics)
-  double r_merge_num = 0;  // numerator for R-merge
-  double r_meas_num = 0;   // numerator for R-meas
-  double r_pim_num = 0;    // numerator for R-pim
-  double r_denom = 0;      // denominator for R-*
-  // sums for CC1/2
-  double sum_ibar = 0;
-  double sum_ibar2 = 0;
-  double sum_sig2_eps = 0;
+  int all_refl = 0;  //!< All reflections (observations)
+  int unique_refl = 0;  //!< Unique reflections
+  int stats_refl = 0;  //!< Unique reflections with 2+ observations (used for statistics)
+  double r_merge_num = 0;  //!< Numerator for R-merge
+  double r_meas_num = 0;   //!< Numerator for R-meas
+  double r_pim_num = 0;    //!< Numerator for R-pim
+  double r_denom = 0;      //!< Denominator for R-*
+  double sum_ibar = 0;  //!< Sum of mean intensities (for CC1/2)
+  double sum_ibar2 = 0;  //!< Sum of squared mean intensities
+  double sum_sig2_eps = 0;  //!< Sum of variance terms
 
-  /// This class is additive. Adding two MergingStats gives the same result
-  /// as calculating statistics in these two resolution shells from the start.
+  //! @brief Add statistics from another resolution shell.
+  //! @param o Statistics to add
+  //!
+  //! This class is additive. Adding two MergingStats gives the same result
+  //! as calculating statistics in these two resolution shells from the start.
   void add_other(const MergingStats& o) {
     all_refl += o.all_refl;
     unique_refl += o.unique_refl;
@@ -58,29 +72,50 @@ struct GEMMI_DLL MergingStats {
     sum_sig2_eps += o.sum_sig2_eps;
   }
 
+  //! @brief Calculate R-merge.
+  //! @return R-merge value
   double r_merge() const { return r_merge_num / r_denom; }
+  //! @brief Calculate R-meas (redundancy-independent R-merge).
+  //! @return R-meas value
   double r_meas() const { return r_meas_num / r_denom; }
+  //! @brief Calculate R-pim (precision-indicating R-factor).
+  //! @return R-pim value
   double r_pim() const { return r_pim_num / r_denom; }
+  //! @brief Calculate CC1/2 using sigma-tau method.
+  //! @return CC1/2 value
   double cc_half() const; // calculated using sigma-tau method
-  /// split-half reliability using the Spearman-Brown prediction formula :-)
+  //! @brief Calculate full-dataset correlation using Spearman-Brown formula.
+  //! @return CC-full value
+  //!
+  //! split-half reliability using the Spearman-Brown prediction formula :-)
   double cc_full() const {
     double cc = cc_half();
     return 2 * cc / (1 + cc);
   }
+  //! @brief Calculate CC*.
+  //! @return CC* value (sqrt of CC-full)
   double cc_star() const { return std::sqrt(cc_full()); }
 };
 
-/// Returns STARANISO version or empty string.
+//! @brief Read STARANISO anisotropic B-factor from MTZ.
+//! @param mtz MTZ file to read from
+//! @param output Output matrix for B-factor tensor
+//! @return STARANISO version or empty string
 GEMMI_DLL std::string read_staraniso_b_from_mtz(const Mtz& mtz, SMat33<double>& output);
 
+//! @brief Container for reflection intensities with merging and statistics.
+//!
+//! Reads multi-record data from MTZ, mmCIF or XDS_ASCII and merges it
+//! into mean or anomalous intensities. Can also read merged data.
 struct GEMMI_DLL Intensities {
+  //! @brief Single reflection measurement.
   struct Refl {
-    Miller hkl;
-    int8_t isign;  // 1 for I(+), -1 for I(-), 0 for mean or unmerged
-    int8_t isym;   // for unmerged data: encodes symmetry op like M/ISYM in MTZ
-    short nobs;
-    double value;
-    double sigma;
+    Miller hkl;  //!< Miller indices
+    int8_t isign;  //!< 1 for I(+), -1 for I(-), 0 for mean or unmerged
+    int8_t isym;   //!< For unmerged data: encodes symmetry op like M/ISYM in MTZ
+    short nobs;  //!< Number of observations
+    double value;  //!< Intensity value
+    double sigma;  //!< Standard uncertainty
 
     bool operator<(const Refl& o) const {
       return std::tie(hkl[0], hkl[1], hkl[2], isign) <

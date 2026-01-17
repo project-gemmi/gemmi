@@ -1,3 +1,8 @@
+//! @file
+//! @brief Sequence identifiers (residue numbers with insertion codes).
+//!
+//! SeqId -- residue number and insertion code together.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // SeqId -- residue number and insertion code together.
@@ -109,19 +114,37 @@ struct ResidueId {
   std::string segment;  //!< Segment ID (up to 4 chars in PDB)
   std::string name;  //!< Residue name (e.g., "ALA", "GLY")
 
-  // used for first_conformation iterators, etc.
+  //! @brief Get grouping key for residue.
+  //! @return SeqId (used for first_conformation iterators, etc.)
+  //!
+  //! used for first_conformation iterators, etc.
   SeqId group_key() const { return seqid; }
 
+  //! @brief Check if residue IDs match (including segment).
+  //! @param o Other residue ID
+  //! @return True if all fields match
   bool matches(const ResidueId& o) const {
     return seqid == o.seqid && segment == o.segment && name == o.name;
   }
+  //! @brief Check if residue IDs match (ignoring segment).
+  //! @param o Other residue ID
+  //! @return True if seqid and name match
   bool matches_noseg(const ResidueId& o) const {
     return seqid == o.seqid && name == o.name;
   }
   bool operator==(const ResidueId& o) const { return matches(o); }
+  //! @brief Convert to string representation.
+  //! @return String like "123(ALA)"
   std::string str() const { return cat(seqid.str(), '(', name, ')'); }
 };
 
+//! @brief Format atom identifier string.
+//! @param chain_name Chain identifier
+//! @param res_id Residue identifier
+//! @param atom_name Atom name
+//! @param altloc Alternate location indicator
+//! @param as_cid Format as CID (mmdb selection syntax)
+//! @return Formatted atom string
 inline std::string atom_str(const std::string& chain_name,
                             const ResidueId& res_id,
                             const std::string& atom_name,
