@@ -1,3 +1,8 @@
+//! @file
+//! @brief Read sequences from PIR or FASTA format files.
+//!
+//! Read sequences from PIR or (multi-)FASTA formats.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // Read sequences from PIR or (multi-)FASTA formats.
@@ -12,12 +17,17 @@
 
 namespace gemmi {
 
+//! @brief Sequence from FASTA or PIR file.
 struct FastaSeq {
-  std::string header;
-  std::string seq;
+  std::string header;  //!< Header line (without the leading '>')
+  std::string seq;     //!< Sequence data
 };
 
-// PIR format starts with one of: >P1; >F1; >DL; >DC; >RL; >RC; >XX;
+//! @brief Check if string starts with PIR format marker.
+//! @param s String to check
+//! @return true if starts with PIR format identifier
+//!
+//! PIR format starts with one of: >P1; >F1; >DL; >DC; >RL; >RC; >XX;
 inline bool is_pir_format(const std::string& s) {
   return s.length() > 4 && s[0] == '>' && s[3] == ';' && (
         ((s[1] == 'P' || s[1] == 'F') && s[2] == '1') ||
@@ -25,6 +35,12 @@ inline bool is_pir_format(const std::string& s) {
         (s[1] == 'X' && s[2] == 'X'));
 }
 
+//! @brief Parse PIR or FASTA format sequences from string.
+//! @param str String containing PIR or FASTA formatted sequences
+//! @return Vector of sequences with headers
+//! @throws Error if string doesn't start with '>'
+//!
+//! Supports both single and multi-FASTA files. Auto-detects PIR vs FASTA.
 inline std::vector<FastaSeq> read_pir_or_fasta(const std::string& str) {
   if (str[0] != '>')
     fail("PIR/FASTA files start with '>'");

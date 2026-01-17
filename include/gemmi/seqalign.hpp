@@ -1,3 +1,13 @@
+//! @file
+//! @brief Pairwise sequence alignment using Smith-Waterman algorithm.
+//!
+//! Simple pairwise sequence alignment.
+//!
+//! Code in this file is based on and derived from files ksw2_gg.c and ksw2.h
+//! from https://github.com/lh3/ksw2, which is under the MIT license.
+//! The original code, written by Heng Li, has more features and has more
+//! efficient variants that use SSE instructions.
+
 // Simple pairwise sequence alignment.
 //
 // Code in this file is based on and derived from files ksw2_gg.c and ksw2.h
@@ -17,16 +27,17 @@
 
 namespace gemmi {
 
+//! @brief Scoring parameters for sequence alignment.
 struct AlignmentScoring {
-  int match = 1;
-  int mismatch = -1;
-  int gapo = -1;  // gap opening penalty
-  int gape = -1;  // gap extension penalty
+  int match = 1;  //!< Score for matching residues
+  int mismatch = -1;  //!< Penalty for mismatching residues
+  int gapo = -1;  //!< Gap opening penalty
+  int gape = -1;  //!< Gap extension penalty
   // In a polymer in model, coordinates are used to determine expected gaps.
-  int good_gapo = 0;  // gap opening in expected place in a polymer
-  int bad_gapo = -2;  // gap opening that was not predicted
-  std::vector<std::int8_t> score_matrix;
-  std::vector<std::string> matrix_encoding;
+  int good_gapo = 0;  //!< Gap opening in expected place in a polymer
+  int bad_gapo = -2;  //!< Gap opening that was not predicted
+  std::vector<std::int8_t> score_matrix;  //!< Substitution matrix (e.g., BLOSUM62)
+  std::vector<std::string> matrix_encoding;  //!< Residue names for score_matrix
 
   static const AlignmentScoring* simple() {
     static const AlignmentScoring s{};
@@ -68,16 +79,18 @@ struct AlignmentScoring {
   }
 };
 
+//! @brief Result of sequence alignment.
 struct AlignmentResult {
+  //! @brief CIGAR operation item (M=match, I=insertion, D=deletion).
   struct Item {
-    std::uint32_t value;
-    char op() const { return "MID"[value & 0xf]; }
-    std::uint32_t len() const { return value >> 4; }
+    std::uint32_t value;  //!< Encoded operation and length
+    char op() const { return "MID"[value & 0xf]; }  //!< Get operation type
+    std::uint32_t len() const { return value >> 4; }  //!< Get operation length
   };
-  int score = 0;
-  int match_count = 0;
-  std::string match_string;
-  std::vector<Item> cigar;
+  int score = 0;  //!< Alignment score
+  int match_count = 0;  //!< Number of matching positions
+  std::string match_string;  //!< String showing matches (|) and mismatches
+  std::vector<Item> cigar;  //!< CIGAR representation of alignment
 
   std::string cigar_str() const {
     std::string s;
@@ -294,6 +307,12 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
   return result;
 }
 
+//! @brief Align two sequences of residue names using Smith-Waterman algorithm.
+//! @param query Query sequence (residue names)
+//! @param target Target sequence (residue names)
+//! @param target_gapo Gap opening penalties for each target position
+//! @param scoring Scoring parameters (or nullptr for default simple scoring)
+//! @return Alignment result with score, CIGAR, and match string
 inline
 AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const std::vector<std::string>& target,
