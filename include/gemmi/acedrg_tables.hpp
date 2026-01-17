@@ -255,29 +255,49 @@ private:
   };
   std::map<AngleHRSKey, ValueStats> angle_hrs_;
 
-  // Detailed indexed bond tables (1D index with 8 string keys after 2 int keys)
-  // Level 0: ha1, ha2, a1_nb2, a2_nb2, a1_nb, a2_nb, a1_class, a2_class -> value
+  // Detailed indexed bond tables from allOrgBondTables/*.table
+  // Level 0: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB, a1TypeM, a2TypeM
   using BondIdx1D = std::map<int, std::map<int,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>>>;
+    std::map<std::string, std::map<std::string,
+    std::vector<ValueStats>>>>>>>>>>>;
   BondIdx1D bond_idx_1d_;
 
-  // Level 1-2: Less specific (6 string keys)
+  // Levels 3-6: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB (no atom types)
   using BondIdx2D = std::map<int, std::map<int,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>;
+    std::map<std::string, std::map<std::string,
+    std::vector<ValueStats>>>>>>>>>;
   BondIdx2D bond_idx_2d_;
 
-  // Detailed indexed angle tables
-  using AngleIdx1D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>>>>>>>;
-  AngleIdx1D angle_idx_1d_;
+  // Levels 9-11: Hash+Sp fallback structures
+  // Level 9: ha1, ha2, hybrComb, inRing
+  using BondHaSp2D = std::map<int, std::map<int,
+    std::map<std::string, std::map<std::string,
+    std::vector<ValueStats>>>>>;
+  BondHaSp2D bond_hasp_2d_;
+
+  // Level 10: ha1, ha2, hybrComb only
+  using BondHaSp1D = std::map<int, std::map<int,
+    std::map<std::string, std::vector<ValueStats>>>>;
+  BondHaSp1D bond_hasp_1d_;
+
+  // Level 11: ha1, ha2 only
+  using BondHaSp0D = std::map<int, std::map<int, std::vector<ValueStats>>>;
+  BondHaSp0D bond_hasp_0d_;
+
+  // Bond file index: maps (ha1, ha2) -> table file number
+  std::map<int, std::map<int, int>> bond_file_index_;
+
+  // Atom type code mapping: coded -> full type string
+  std::map<std::string, std::string> atom_type_codes_;
+
+  // Detailed indexed angle tables from allOrgAngleTables/*.table
+  // Similar multi-level structure for angles (to be implemented)
+  // For now, keep existing HRS-based angle lookup
 
   // Element + hybridization based fallback bonds
   using ENBonds = std::map<std::string, std::map<std::string,
@@ -327,7 +347,7 @@ private:
 
   // Bond search helpers
   ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
-                             BondType bt, bool aromatic) const;
+                             bool aromatic) const;
   ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
   ValueStats search_metal_bond(const CodAtomInfo& metal,
                                const CodAtomInfo& ligand,
@@ -1035,7 +1055,7 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
   }
 
   // Try HRS table first
-  ValueStats vs = search_bond_hrs(a1, a2, bond.type, bond.aromatic);
+  ValueStats vs = search_bond_hrs(a1, a2, bond.aromatic);
   if (vs.count >= min_observations) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
@@ -1056,7 +1076,7 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
 }
 
 inline ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
-    const CodAtomInfo& a2, BondType /*bt*/, bool aromatic) const {
+    const CodAtomInfo& a2, bool aromatic) const {
 
   BondHRSKey key;
   key.hash1 = std::min(a1.hashing_value, a2.hashing_value);
