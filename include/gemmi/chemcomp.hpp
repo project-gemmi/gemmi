@@ -181,19 +181,31 @@ struct Restraints {
 
   // BFS
   std::vector<AtomId> find_shortest_path(const AtomId& a, const AtomId& b,
-                                         std::vector<AtomId> visited) const {
+                                         std::vector<AtomId> visited,
+                                         int min_length=1) const {
     int start = (int) visited.size();
     int end = -1;
     visited.push_back(b);
     std::vector<int> parent(visited.size(), -1);
+    std::vector<int> depth(visited.size(), -1);
+    depth[start] = 0;
     for (int n = start; end == -1 && n != (int) visited.size(); ++n) {
       for (const Bond& bond : bonds)
         if (const AtomId* id = bond.other(visited[n])) {
-          if (*id == a)
-            end = (int) visited.size();
-          if (!in_vector(*id, visited)) {
+          if (*id == a) {
+            int cand_len = depth[n] + 1;
+            if (cand_len >= min_length) {
+              end = (int) visited.size();
+              if (!in_vector(*id, visited)) {
+                visited.push_back(*id);
+                parent.push_back(n);
+                depth.push_back(cand_len);
+              }
+            }
+          } else if (!in_vector(*id, visited)) {
             visited.push_back(*id);
             parent.push_back(n);
+            depth.push_back(depth[n] + 1);
           }
         }
     }

@@ -15,8 +15,8 @@ void check_torsions(const char* file_path) {
       continue;
     gemmi::ChemComp cc = gemmi::make_chemcomp_from_block(block);
     for (gemmi::Restraints::Torsion& tor : cc.rt.torsions) {
-      std::vector<AtomId> ring = cc.rt.find_shortest_path(tor.id4, tor.id1,
-                                                          {tor.id2, tor.id3});
+      std::vector<AtomId> ring = cc.rt.find_shortest_path(
+          tor.id4, tor.id1, {tor.id2, tor.id3}, 2);
       if (ring.empty())
         continue;
       printf("[%s] torsion %s-%s-%s-%s   angle %g +/- %g period %d\n",

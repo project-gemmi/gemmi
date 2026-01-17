@@ -145,7 +145,9 @@ void add_chemcomp(nb::module_& m) {
               fail("Bond restraint not found: " + a1 + "-" + a2);
             return *it;
          }, nb::rv_policy::reference_internal)
-    .def("find_shortest_path", &Restraints::find_shortest_path)
+    .def("find_shortest_path", &Restraints::find_shortest_path,
+         nb::arg("a"), nb::arg("b"), nb::arg("visited"),
+         nb::arg("min_length") = 1)
     .def("chiral_abs_volume", &Restraints::chiral_abs_volume)
     ;
 
