@@ -774,6 +774,7 @@ inline Hybridization AcedrgTables::determine_hybridization(
   return Hybridization::SP3;
 }
 
+// AceDrg hash used in *HRS.table files
 inline void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
   static const int primes[] = {
     2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
