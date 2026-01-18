@@ -11,8 +11,8 @@
 #include <map>
 #include <set>
 #include <cmath>
+#include <cstdint>
 #include <algorithm>
-#include <functional>
 #include <fstream>
 #include <sstream>
 #include "chemcomp.hpp"
@@ -297,8 +297,48 @@ private:
   std::map<std::string, std::string> atom_type_codes_;
 
   // Detailed indexed angle tables from allOrgAngleTables/*.table
-  // Similar multi-level structure for angles (to be implemented)
-  // For now, keep existing HRS-based angle lookup
+  // Angles have 3 hashes (flanking1, center, flanking2)
+  // Level 1D: Full detail with atom types (14 levels of nesting)
+  using AngleIdx1D = std::map<int, std::map<int, std::map<int,       // ha1, ha2, ha3
+    std::map<std::string,                                            // valueKey
+    std::map<std::string, std::map<std::string, std::map<std::string,// NB2: a1,a2,a3
+    std::map<std::string, std::map<std::string, std::map<std::string,// NB: a1,a2,a3
+    std::map<std::string, std::map<std::string, std::map<std::string,// types: a1,a2,a3
+    std::vector<ValueStats>>>>>>>>>>>>>>;  // 14 closes
+  AngleIdx1D angle_idx_1d_;
+
+  // Level 2D: No atom types (11 levels)
+  using AngleIdx2D = std::map<int, std::map<int, std::map<int,
+    std::map<std::string,
+    std::map<std::string, std::map<std::string, std::map<std::string,
+    std::map<std::string, std::map<std::string, std::map<std::string,
+    std::vector<ValueStats>>>>>>>>>>>;  // 11 closes
+  AngleIdx2D angle_idx_2d_;
+
+  // Level 3D: Hash + valueKey + NB2 only (8 levels)
+  using AngleIdx3D = std::map<int, std::map<int, std::map<int,
+    std::map<std::string,
+    std::map<std::string, std::map<std::string, std::map<std::string,
+    std::vector<ValueStats>>>>>>>>; // 8 closes
+  AngleIdx3D angle_idx_3d_;
+
+  // Level 4D: Hash + valueKey only (5 levels)
+  using AngleIdx4D = std::map<int, std::map<int, std::map<int,
+    std::map<std::string, std::vector<ValueStats>>>>>; // 5 closes
+  AngleIdx4D angle_idx_4d_;
+
+  // Level 5D: Hash + hybr_tuple only - same structure as 4D
+  using AngleIdx5D = std::map<int, std::map<int, std::map<int,
+    std::map<std::string, std::vector<ValueStats>>>>>; // 5 closes
+  AngleIdx5D angle_idx_5d_;
+
+  // Level 6D: Hash only (4 levels)
+  using AngleIdx6D = std::map<int, std::map<int, std::map<int,
+    std::vector<ValueStats>>>>; // 4 closes
+  AngleIdx6D angle_idx_6d_;
+
+  // Angle file index: maps (ha1, ha2, ha3) -> table file number
+  std::map<int, std::map<int, std::map<int, int>>> angle_file_index_;
 
   // Element + hybridization based fallback bonds
   using ENBonds = std::map<std::string, std::map<std::string,
@@ -322,6 +362,8 @@ private:
   void load_atom_type_codes(const std::string& path);
   void load_bond_index(const std::string& path);
   void load_bond_tables(const std::string& dir);
+  void load_angle_index(const std::string& path);
+  void load_angle_tables(const std::string& dir);
 
   // Atom classification helpers
   void detect_rings(const ChemComp& cc,
@@ -350,8 +392,8 @@ private:
                                 const std::vector<CodAtomInfo>& atoms) const;
 
   // Bond search helpers
-  ValueStats search_bond_multilevel(const CodAtomInfo& a1, const CodAtomInfo& a2,
-                                    bool aromatic) const;
+  ValueStats search_bond_multilevel(const CodAtomInfo& a1,
+                                    const CodAtomInfo& a2) const;
   ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
                              bool aromatic) const;
   ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
@@ -360,6 +402,9 @@ private:
                                int coord_number) const;
 
   // Angle search helpers
+  ValueStats search_angle_multilevel(const CodAtomInfo& a1,
+                                     const CodAtomInfo& center,
+                                     const CodAtomInfo& a3) const;
   ValueStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
                               const CodAtomInfo& a3, bool aromatic) const;
   std::vector<double> get_metal_angles(Element metal, int coord_number) const;
@@ -402,6 +447,8 @@ inline void AcedrgTables::load_tables(const std::string& tables_dir) {
   load_atom_type_codes(tables_dir + "/allAtomTypesFromMolsCoded.list");
   load_bond_index(tables_dir + "/allOrgBondTables/bond_idx.table");
   load_bond_tables(tables_dir + "/allOrgBondTables");
+  load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
+  load_angle_tables(tables_dir + "/allOrgAngleTables");
 
   tables_loaded_ = true;
 }
@@ -702,6 +749,149 @@ inline void AcedrgTables::load_bond_tables(const std::string& dir) {
   }
 }
 
+inline void AcedrgTables::load_angle_index(const std::string& path) {
+  std::ifstream f(path);
+  if (!f)
+    return; // Optional file
+
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#')
+      continue;
+
+    // Format: ha1 ha2 ha3 fileNum
+    std::istringstream iss(line);
+    int ha1, ha2, ha3, file_num;
+    if (iss >> ha1 >> ha2 >> ha3 >> file_num) {
+      angle_file_index_[ha1][ha2][ha3] = file_num;
+    }
+  }
+}
+
+inline void AcedrgTables::load_angle_tables(const std::string& dir) {
+  // Load each angle table file referenced in the index
+  std::set<int> loaded_files;
+
+  for (const auto& ha1_pair : angle_file_index_) {
+    for (const auto& ha2_pair : ha1_pair.second) {
+      for (const auto& ha3_pair : ha2_pair.second) {
+        int file_num = ha3_pair.second;
+        if (loaded_files.count(file_num))
+          continue;
+        loaded_files.insert(file_num);
+
+        std::string path = dir + "/" + std::to_string(file_num) + ".table";
+        std::ifstream f(path);
+        if (!f)
+          continue;
+
+        std::string line;
+        while (std::getline(f, line)) {
+          if (line.empty() || line[0] == '#')
+            continue;
+
+          // 34-column format:
+          // 1-3: ha1 ha2 ha3
+          // 4: valueKey (ring:hybr_tuple, e.g. "0:SP2_SP2_SP3")
+          // 5-7: a1_cod a2_cod a3_cod
+          // 8-10: a1_nb2 a2_nb2 a3_nb2
+          // 11-13: a1_nb a2_nb a3_nb
+          // 14-16: a1_code a2_code a3_code
+          // 17-19: level1 value, sigma, count
+          // 20-22: level2 value, sigma, count
+          // ... (6 levels total)
+          std::istringstream iss(line);
+          int ha1, ha2, ha3;
+          std::string value_key;
+          std::string a1_cod, a2_cod, a3_cod;
+          std::string a1_nb2, a2_nb2, a3_nb2;
+          std::string a1_nb, a2_nb, a3_nb;
+          std::string a1_code, a2_code, a3_code;
+
+          if (!(iss >> ha1 >> ha2 >> ha3 >> value_key
+                    >> a1_cod >> a2_cod >> a3_cod
+                    >> a1_nb2 >> a2_nb2 >> a3_nb2
+                    >> a1_nb >> a2_nb >> a3_nb
+                    >> a1_code >> a2_code >> a3_code))
+            continue;
+
+          // Read 6 sets of value/sigma/count
+          double values[6], sigmas[6];
+          int counts[6];
+          bool ok = true;
+          for (int lvl = 0; lvl < 6 && ok; ++lvl) {
+            if (!(iss >> values[lvl] >> sigmas[lvl] >> counts[lvl]))
+              ok = false;
+          }
+          if (!ok)
+            continue;
+
+          // Get main atom types from codes
+          std::string a1_type, a2_type, a3_type;
+          auto it1 = atom_type_codes_.find(a1_code);
+          auto it2 = atom_type_codes_.find(a2_code);
+          auto it3 = atom_type_codes_.find(a3_code);
+          if (it1 != atom_type_codes_.end()) {
+            a1_type = it1->second;
+            size_t brace = a1_type.find('{');
+            if (brace != std::string::npos)
+              a1_type = a1_type.substr(0, brace);
+          }
+          if (it2 != atom_type_codes_.end()) {
+            a2_type = it2->second;
+            size_t brace = a2_type.find('{');
+            if (brace != std::string::npos)
+              a2_type = a2_type.substr(0, brace);
+          }
+          if (it3 != atom_type_codes_.end()) {
+            a3_type = it3->second;
+            size_t brace = a3_type.find('{');
+            if (brace != std::string::npos)
+              a3_type = a3_type.substr(0, brace);
+          }
+
+          // Extract hybr_tuple from valueKey (format: "ring:SP2_SP2_SP3")
+          std::string hybr_tuple;
+          size_t colon = value_key.find(':');
+          if (colon != std::string::npos)
+            hybr_tuple = value_key.substr(colon + 1);
+
+          // Populate structures at each level with corresponding pre-computed values
+          // Level 1D: full detail with atom types
+          ValueStats vs1(values[0], sigmas[0], counts[0]);
+          angle_idx_1d_[ha1][ha2][ha3][value_key]
+                       [a1_nb2][a2_nb2][a3_nb2]
+                       [a1_nb][a2_nb][a3_nb]
+                       [a1_type][a2_type][a3_type].push_back(vs1);
+
+          // Level 2D: no atom types
+          ValueStats vs2(values[1], sigmas[1], counts[1]);
+          angle_idx_2d_[ha1][ha2][ha3][value_key]
+                       [a1_nb2][a2_nb2][a3_nb2]
+                       [a1_nb][a2_nb][a3_nb].push_back(vs2);
+
+          // Level 3D: hash + valueKey + NB2 only
+          ValueStats vs3(values[2], sigmas[2], counts[2]);
+          angle_idx_3d_[ha1][ha2][ha3][value_key]
+                       [a1_nb2][a2_nb2][a3_nb2].push_back(vs3);
+
+          // Level 4D: hash + valueKey only
+          ValueStats vs4(values[3], sigmas[3], counts[3]);
+          angle_idx_4d_[ha1][ha2][ha3][value_key].push_back(vs4);
+
+          // Level 5D: hash + hybr_tuple only (no ring info)
+          ValueStats vs5(values[4], sigmas[4], counts[4]);
+          angle_idx_5d_[ha1][ha2][ha3][hybr_tuple].push_back(vs5);
+
+          // Level 6D: hash only
+          ValueStats vs6(values[5], sigmas[5], counts[5]);
+          angle_idx_6d_[ha1][ha2][ha3].push_back(vs6);
+        }
+      }
+    }
+  }
+}
+
 // ============================================================================
 // Implementation - Atom classification
 // ============================================================================
@@ -806,8 +996,7 @@ inline void AcedrgTables::detect_rings(const ChemComp& cc,
 
   // Remove duplicate rings (same atoms in different order)
   std::vector<std::vector<int>> unique_rings;
-  for (auto& ring : rings) {
-    std::sort(ring.begin(), ring.end());
+  for (const auto& ring : rings) {
     bool found = false;
     for (const auto& ur : unique_rings) {
       if (ur == ring) {
@@ -996,8 +1185,8 @@ inline void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
   int d5 = 24 + element_group(atom.el);
 
   // Compute hash as product of primes mod HASH_SIZE
-  long prime_product = static_cast<long>(primes[d1]) *
-                       primes[d2] * primes[d3] * primes[d4] * primes[d5];
+  int64_t prime_product = static_cast<int64_t>(primes[d1]) *
+                          primes[d2] * primes[d3] * primes[d4] * primes[d5];
   atom.hashing_value = static_cast<int>(prime_product % HASH_SIZE);
 
   // If we have hash tables loaded, resolve collisions
@@ -1177,7 +1366,7 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
   }
 
   // Try detailed multilevel search first (if tables loaded)
-  ValueStats vs = search_bond_multilevel(a1, a2, bond.aromatic);
+  ValueStats vs = search_bond_multilevel(a1, a2);
   if (vs.count >= min_observations) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
@@ -1206,7 +1395,7 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
 }
 
 inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
-    const CodAtomInfo& a2, bool /*aromatic*/) const {
+    const CodAtomInfo& a2) const {
 
   // Build lookup keys
   int ha1 = std::min(a1.hashing_value, a2.hashing_value);
@@ -1432,6 +1621,215 @@ inline ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
 // Implementation - Angle search
 // ============================================================================
 
+inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
+    const CodAtomInfo& center, const CodAtomInfo& a3) const {
+
+  // Build lookup keys - canonicalize flanking atoms
+  int ha1, ha3;
+  const CodAtomInfo *flank1, *flank3;
+  if (a1.hashing_value <= a3.hashing_value) {
+    ha1 = a1.hashing_value;
+    ha3 = a3.hashing_value;
+    flank1 = &a1;
+    flank3 = &a3;
+  } else {
+    ha1 = a3.hashing_value;
+    ha3 = a1.hashing_value;
+    flank1 = &a3;
+    flank3 = &a1;
+  }
+  int ha2 = center.hashing_value;
+
+  // Build hybridization tuple
+  std::string h1 = hybridization_to_string(flank1->hybrid);
+  std::string h2 = hybridization_to_string(center.hybrid);
+  std::string h3 = hybridization_to_string(flank3->hybrid);
+  std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
+
+  // Build valueKey (ring:hybr_tuple)
+  // Ring indicator: any atom in ring -> non-zero
+  int ring_val = (flank1->min_ring_size > 0 || center.min_ring_size > 0 ||
+                  flank3->min_ring_size > 0) ? 5 : 0;  // Simplified
+  std::string value_key = std::to_string(ring_val) + ":" + hybr_tuple;
+
+  // Get neighbor symbols
+  const std::string& a1_nb2 = flank1->nb2_symb;
+  const std::string& a2_nb2 = center.nb2_symb;
+  const std::string& a3_nb2 = flank3->nb2_symb;
+  const std::string& a1_nb = flank1->nb_symb;
+  const std::string& a2_nb = center.nb_symb;
+  const std::string& a3_nb = flank3->nb_symb;
+  const std::string& a1_type = flank1->cod_main;
+  const std::string& a2_type = center.cod_main;
+  const std::string& a3_type = flank3->cod_main;
+
+  // Level 1D: Try exact match with atom types
+  {
+    auto it1 = angle_idx_1d_.find(ha1);
+    if (it1 != angle_idx_1d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(ha3);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(value_key);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a3_nb2);
+                if (it7 != it6->second.end()) {
+                  auto it8 = it7->second.find(a1_nb);
+                  if (it8 != it7->second.end()) {
+                    auto it9 = it8->second.find(a2_nb);
+                    if (it9 != it8->second.end()) {
+                      auto it10 = it9->second.find(a3_nb);
+                      if (it10 != it9->second.end()) {
+                        auto it11 = it10->second.find(a1_type);
+                        if (it11 != it10->second.end()) {
+                          auto it12 = it11->second.find(a2_type);
+                          if (it12 != it11->second.end()) {
+                            auto it13 = it12->second.find(a3_type);
+                            if (it13 != it12->second.end() && !it13->second.empty()) {
+                              ValueStats vs = aggregate_stats(it13->second);
+                              if (vs.count >= min_observations)
+                                return vs;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Level 2D: No atom types
+  {
+    auto it1 = angle_idx_2d_.find(ha1);
+    if (it1 != angle_idx_2d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(ha3);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(value_key);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a3_nb2);
+                if (it7 != it6->second.end()) {
+                  auto it8 = it7->second.find(a1_nb);
+                  if (it8 != it7->second.end()) {
+                    auto it9 = it8->second.find(a2_nb);
+                    if (it9 != it8->second.end()) {
+                      auto it10 = it9->second.find(a3_nb);
+                      if (it10 != it9->second.end() && !it10->second.empty()) {
+                        ValueStats vs = aggregate_stats(it10->second);
+                        if (vs.count >= min_observations_fallback)
+                          return vs;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Level 3D: Hash + valueKey + NB2 only
+  {
+    auto it1 = angle_idx_3d_.find(ha1);
+    if (it1 != angle_idx_3d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(ha3);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(value_key);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a3_nb2);
+                if (it7 != it6->second.end() && !it7->second.empty()) {
+                  ValueStats vs = aggregate_stats(it7->second);
+                  if (vs.count >= min_observations_fallback)
+                    return vs;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Level 4D: Hash + valueKey only
+  {
+    auto it1 = angle_idx_4d_.find(ha1);
+    if (it1 != angle_idx_4d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(ha3);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(value_key);
+          if (it4 != it3->second.end() && !it4->second.empty()) {
+            ValueStats vs = aggregate_stats(it4->second);
+            if (vs.count >= min_observations_fallback)
+              return vs;
+          }
+        }
+      }
+    }
+  }
+
+  // Level 5D: Hash + hybr_tuple only (no ring info)
+  {
+    auto it1 = angle_idx_5d_.find(ha1);
+    if (it1 != angle_idx_5d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(ha3);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(hybr_tuple);
+          if (it4 != it3->second.end() && !it4->second.empty()) {
+            ValueStats vs = aggregate_stats(it4->second);
+            if (vs.count >= min_observations_fallback)
+              return vs;
+          }
+        }
+      }
+    }
+  }
+
+  // Level 6D: Hash only
+  {
+    auto it1 = angle_idx_6d_.find(ha1);
+    if (it1 != angle_idx_6d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(ha3);
+        if (it3 != it2->second.end() && !it3->second.empty()) {
+          return aggregate_stats(it3->second);
+        }
+      }
+    }
+  }
+
+  // No match found in detailed tables
+  return ValueStats();
+}
+
 inline void AcedrgTables::fill_angle(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
     Restraints::Angle& angle) const {
@@ -1466,8 +1864,16 @@ inline void AcedrgTables::fill_angle(const ChemComp& cc,
   // Determine if any atom is aromatic
   bool aromatic = a1.is_aromatic || center.is_aromatic || a3.is_aromatic;
 
+  // Try detailed multilevel search first
+  ValueStats vs = search_angle_multilevel(a1, center, a3);
+  if (vs.count >= min_observations) {
+    angle.value = vs.value;
+    angle.esd = clamp_angle_sigma(vs.sigma);
+    return;
+  }
+
   // Try HRS table
-  ValueStats vs = search_angle_hrs(a1, center, a3, aromatic);
+  vs = search_angle_hrs(a1, center, a3, aromatic);
   if (vs.count >= min_observations) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
