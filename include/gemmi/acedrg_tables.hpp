@@ -9,9 +9,11 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <list>
 #include <set>
 #include <cmath>
 #include <cstdint>
+#include <cctype>
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -77,25 +79,37 @@ enum class CoordGeometry {
 // Classification information for a single atom
 struct CodAtomInfo {
   int index;                // Index in ChemComp.atoms
+  std::string id;           // Atom id (name)
   int hashing_value;        // 0-1000+ hash code
   Element el;               // Element
   Hybridization hybrid;     // Hybridization state
   std::string cod_class;    // Full COD class (e.g., "C[6a](C[6a]C[6a])(C[6a])(H)")
-  std::string cod_main;     // Main atom type without neighbors
-  std::string nb_symb;      // 1st neighbor symbol string
-  std::string nb2_symb;     // 2nd neighbor symbol string
+  std::string cod_main;     // COD main type (codAtmMain)
+  std::string cod_root;     // COD root type (codAtmRoot)
+  std::string nb_symb;      // codNBSymb
+  std::string nb2_symb;     // codNB2Symb
+  std::string nb3_symb;     // codNB3Symb
+  std::string nb1nb2_sp;    // codNB1NB2_SP
   int connectivity;         // Number of bonded atoms
+  int metal_connectivity;   // Number of metal neighbors
   int min_ring_size;        // Minimum ring size (0 = not in ring)
   bool is_aromatic;         // In aromatic ring
   bool is_metal;            // Is a metal atom
   int excess_electrons;     // Formal charge/lone pair info
-  std::string nb1nb2_sp;    // Hybridization info of neighbors
-  std::string nb1nb2_ex_elec; // Excess electron info of neighbors
+  float charge;             // Formal/partial charge
+  float par_charge;         // Partial charge (AceDRG parCharge)
+  int bonding_idx;          // AceDRG bonding index (1=sp1,2=sp2,3=sp3,...)
+
+  // Ring bookkeeping (AceDRG-style).
+  std::map<std::string, int> ring_rep;
+  std::map<std::string, std::string> ring_rep_s;
+  std::vector<int> in_rings;
 
   CodAtomInfo()
     : index(-1), hashing_value(0), el(El::X), hybrid(Hybridization::SP_NON),
-      connectivity(0), min_ring_size(0), is_aromatic(false), is_metal(false),
-      excess_electrons(0) {}
+      connectivity(0), metal_connectivity(0), min_ring_size(0),
+      is_aromatic(false), is_metal(false), excess_electrons(0), charge(0.0f),
+      par_charge(0.0f), bonding_idx(0) {}
 };
 
 // Statistical value with count
@@ -215,10 +229,6 @@ public:
 
 private:
   static constexpr int HASH_SIZE = 1000;
-  // Ring indicator value used in angle valueKey when any atom is in a ring.
-  // The actual ring size is simplified to this single value for lookup.
-  static constexpr int IN_RING_INDICATOR = 5;
-
   // Table directory
   std::string tables_dir_;
   bool tables_loaded_ = false;
@@ -228,32 +238,30 @@ private:
   std::map<int, int> linked_hash_;         // hash -> linked hash
 
   // HRS (High-Resolution Summary) bond tables
-  // Key: hash1, hash2, hybrid_pair, aromatic
+  // Key: hash1, hash2, hybrid_pair, in_ring
   struct BondHRSKey {
     int hash1, hash2;
     std::string hybrid_pair;
-    bool aromatic;
+    std::string in_ring;
     bool operator<(const BondHRSKey& o) const {
       if (hash1 != o.hash1) return hash1 < o.hash1;
       if (hash2 != o.hash2) return hash2 < o.hash2;
       if (hybrid_pair != o.hybrid_pair) return hybrid_pair < o.hybrid_pair;
-      return aromatic < o.aromatic;
+      return in_ring < o.in_ring;
     }
   };
   std::map<BondHRSKey, ValueStats> bond_hrs_;
 
   // HRS angle tables
-  // Key: hash1, hash2, hash3, hybrid_tuple, aromatic
+  // Key: hash1, hash2, hash3, value_key (ring:hybr_tuple)
   struct AngleHRSKey {
     int hash1, hash2, hash3;
-    std::string hybrid_tuple;
-    bool aromatic;
+    std::string value_key;
     bool operator<(const AngleHRSKey& o) const {
       if (hash1 != o.hash1) return hash1 < o.hash1;
       if (hash2 != o.hash2) return hash2 < o.hash2;
       if (hash3 != o.hash3) return hash3 < o.hash3;
-      if (hybrid_tuple != o.hybrid_tuple) return hybrid_tuple < o.hybrid_tuple;
-      return aromatic < o.aromatic;
+      return value_key < o.value_key;
     }
   };
   std::map<AngleHRSKey, ValueStats> angle_hrs_;
@@ -368,36 +376,95 @@ private:
   void load_angle_tables(const std::string& dir);
 
   // Atom classification helpers
-  void detect_rings(const ChemComp& cc,
-                    std::vector<std::vector<int>>& rings) const;
   struct BondInfo {
     int neighbor_idx;
     BondType type;
   };
+  struct RingInfo {
+    std::vector<int> atoms;
+    std::string rep;
+    std::string s_rep;
+    bool is_aromatic = false;
+  };
+  struct SortMap {
+    std::string key;
+    int val = 0;
+  };
+  struct SortMap2 {
+    std::string key;
+    int val = 0;
+    int nNB = 0;
+  };
+  struct NB1stFam {
+    std::string name;
+    std::vector<std::string> NB2ndList;
+    int repN = 1;
+  };
+
   std::vector<std::vector<BondInfo>> build_adjacency(const ChemComp& cc) const;
-  int compute_min_ring(int atom_idx,
-                       const std::vector<std::vector<int>>& rings) const;
-  Hybridization determine_hybridization(const ChemComp& cc,
-                                        int atom_idx,
-                                        int connectivity,
-                                        bool in_ring,
-                                        bool is_aromatic) const;
+  std::vector<std::vector<int>> build_neighbors(const std::vector<std::vector<BondInfo>>& adj) const;
+  void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
+                           std::vector<CodAtomInfo>& atoms,
+                           std::vector<RingInfo>& rings) const;
+  void check_one_path_acedrg(const std::vector<std::vector<int>>& neighbors,
+                             std::vector<CodAtomInfo>& atoms,
+                             std::vector<RingInfo>& rings,
+                             std::map<std::string, int>& ring_index,
+                             int ori_idx,
+                             int cur_idx,
+                             int prev_idx,
+                             int cur_lev,
+                             int max_ring,
+                             std::map<int, std::string>& seen_atom_ids,
+                             std::map<int, std::string>& atom_ids_in_path) const;
+  void set_atoms_ring_rep_s(std::vector<CodAtomInfo>& atoms,
+                            std::vector<RingInfo>& rings) const;
+  void set_atom_cod_class_name_new2(CodAtomInfo& atom,
+                                    const CodAtomInfo& ori_atom,
+                                    int lev,
+                                    const std::vector<CodAtomInfo>& atoms,
+                                    const std::vector<std::vector<int>>& neighbors) const;
+  void set_special_3nb_symb2(CodAtomInfo& atom,
+                             const std::vector<CodAtomInfo>& atoms,
+                             const std::vector<std::vector<int>>& neighbors) const;
+  void cod_class_to_atom2(const std::string& cod_class,
+                          CodAtomInfo& atom) const;
+  void set_atoms_nb1nb2_sp(std::vector<CodAtomInfo>& atoms,
+                           const std::vector<std::vector<int>>& neighbors) const;
+  void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
+                                           const std::vector<std::vector<int>>& neighbors) const;
+  int get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
+                          const CodAtomInfo& atom,
+                          const std::vector<std::vector<int>>& neighbors) const;
+  int get_min_ring2_from_cod_class(const std::string& cod_class) const;
+  bool cod_class_is_aromatic(const std::string& cod_class) const;
+  void get_small_family(const std::string& in_str, NB1stFam& fam) const;
+  static std::string trim_spaces(const std::string& s);
+  static std::vector<std::string> split(const std::string& s, char delim);
+  static int str_to_int(const std::string& s);
+  static bool compare_no_case(const std::string& first, const std::string& second);
+  static bool compare_no_case2(const std::string& first, const std::string& second);
+  static bool des_sort_map_key(const SortMap& a, const SortMap& b);
+  static bool des_sort_map_key2(const SortMap2& a, const SortMap2& b);
+  bool are_in_same_ring(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
+  int angle_ring_size(const CodAtomInfo& center,
+                      const CodAtomInfo& a1,
+                      const CodAtomInfo& a3) const;
+  void order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
+                        const CodAtomInfo*& first,
+                        const CodAtomInfo*& second) const;
+  void order_angle_flanks(const CodAtomInfo& a1, const CodAtomInfo& a3,
+                          const CodAtomInfo*& flank1,
+                          const CodAtomInfo*& flank3) const;
+  Hybridization hybrid_from_bonding_idx(int bonding_idx, bool is_metal,
+                                        int connectivity) const;
   void compute_hash(CodAtomInfo& atom) const;
-  void compute_nb_symbols(const std::vector<std::vector<BondInfo>>& adj,
-                          std::vector<CodAtomInfo>& atoms) const;
-  void compute_cod_class(const ChemComp& cc,
-                         const std::vector<std::vector<BondInfo>>& adj,
-                         std::vector<CodAtomInfo>& atoms) const;
-  void refine_hybridization(const std::vector<std::vector<BondInfo>>& adj,
-                            std::vector<CodAtomInfo>& atoms) const;
-  int count_non_metal_neighbors(const std::vector<BondInfo>& neighbors,
-                                const std::vector<CodAtomInfo>& atoms) const;
 
   // Bond search helpers
   ValueStats search_bond_multilevel(const CodAtomInfo& a1,
                                     const CodAtomInfo& a2) const;
   ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
-                             bool aromatic) const;
+                             bool in_ring) const;
   ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
   ValueStats search_metal_bond(const CodAtomInfo& metal,
                                const CodAtomInfo& ligand,
@@ -408,7 +475,7 @@ private:
                                      const CodAtomInfo& center,
                                      const CodAtomInfo& a3) const;
   ValueStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
-                              const CodAtomInfo& a3, bool aromatic) const;
+                              const CodAtomInfo& a3, int ring_size) const;
   std::vector<double> get_metal_angles(Element metal, int coord_number) const;
 
   // Statistical aggregation
@@ -488,16 +555,16 @@ inline void AcedrgTables::load_bond_hrs(const std::string& path) {
 
     std::istringstream iss(line);
     int hash1, hash2;
-    std::string hybrid_pair, arom_str;
+    std::string hybrid_pair, in_ring;
     double value, sigma;
     int count;
 
-    if (iss >> hash1 >> hash2 >> hybrid_pair >> arom_str >> value >> sigma >> count) {
+    if (iss >> hash1 >> hash2 >> hybrid_pair >> in_ring >> value >> sigma >> count) {
       BondHRSKey key;
       key.hash1 = std::min(hash1, hash2);
       key.hash2 = std::max(hash1, hash2);
       key.hybrid_pair = hybrid_pair;
-      key.aromatic = (arom_str == "Y" || arom_str == "y");
+      key.in_ring = (in_ring == "Y" || in_ring == "y") ? "Y" : "N";
       bond_hrs_[key] = ValueStats(value, sigma, count);
     }
   }
@@ -515,20 +582,38 @@ inline void AcedrgTables::load_angle_hrs(const std::string& path) {
 
     std::istringstream iss(line);
     int hash1, hash2, hash3;
-    std::string hybrid_tuple, arom_str;
-    double value, sigma;
-    int count;
+    std::string value_key;
+    std::string a1_cod, a2_cod, a3_cod;
+    double value1, sigma1;
+    int count1;
+    double value2, sigma2;
+    int count2;
 
-    if (iss >> hash1 >> hash2 >> hash3 >> hybrid_tuple >> arom_str
-        >> value >> sigma >> count) {
+    if (iss >> hash1 >> hash2 >> hash3 >> value_key
+        >> a1_cod >> a2_cod >> a3_cod
+        >> value1 >> sigma1 >> count1
+        >> value2 >> sigma2 >> count2) {
       AngleHRSKey key;
       // For angles, center is always hash2, but we canonicalize flanking atoms
-      key.hash1 = std::min(hash1, hash3);
+      bool swap_flanks = hash1 > hash3;
+      key.hash1 = swap_flanks ? hash3 : hash1;
       key.hash2 = hash2;
-      key.hash3 = std::max(hash1, hash3);
-      key.hybrid_tuple = hybrid_tuple;
-      key.aromatic = (arom_str == "Y" || arom_str == "y");
-      angle_hrs_[key] = ValueStats(value, sigma, count);
+      key.hash3 = swap_flanks ? hash1 : hash3;
+      if (swap_flanks) {
+        size_t colon = value_key.find(':');
+        if (colon != std::string::npos) {
+          std::string ring_part = value_key.substr(0, colon);
+          std::string hybrid_part = value_key.substr(colon + 1);
+          std::vector<std::string> parts = split(hybrid_part, '_');
+          if (parts.size() == 3) {
+            std::swap(parts[0], parts[2]);
+            hybrid_part = parts[0] + "_" + parts[1] + "_" + parts[2];
+          }
+          value_key = ring_part + ":" + hybrid_part;
+        }
+      }
+      key.value_key = value_key;
+      angle_hrs_[key] = ValueStats(value1, sigma1, count1);
     }
   }
 }
@@ -611,6 +696,10 @@ inline void AcedrgTables::load_metal_tables(const std::string& dir) {
         else if (geo_str == "TRIGONAL_BIPYRAMIDAL") geo = CoordGeometry::TRIGONAL_BIPYRAMIDAL;
         else if (geo_str == "SQUARE_PYRAMIDAL") geo = CoordGeometry::SQUARE_PYRAMIDAL;
         else if (geo_str == "OCTAHEDRAL") geo = CoordGeometry::OCTAHEDRAL;
+        else if (geo_str == "TRIGONAL_PRISM") geo = CoordGeometry::TRIGONAL_PRISM;
+        else if (geo_str == "PENTAGONAL_BIPYRAMIDAL") geo = CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
+        else if (geo_str == "CAPPED_OCTAHEDRAL") geo = CoordGeometry::CAPPED_OCTAHEDRAL;
+        else if (geo_str == "SQUARE_ANTIPRISM") geo = CoordGeometry::SQUARE_ANTIPRISM;
         metal_coord_geo_[metal][coord] = geo;
       }
     }
@@ -707,11 +796,14 @@ inline void AcedrgTables::load_bond_tables(const std::string& dir) {
         std::string atom_code1, atom_code2;
         double value, sigma;
         int count;
+        double value2, sigma2;
+        int count2;
 
         if (!(iss >> ha1 >> ha2 >> hybr_comb >> in_ring
                   >> a1_nb2 >> a2_nb2 >> a1_nb >> a2_nb
                   >> atom_code1 >> atom_code2
-                  >> value >> sigma >> count))
+                  >> value >> sigma >> count
+                  >> value2 >> sigma2 >> count2))
           continue;
 
         // Get main atom types from codes
@@ -733,10 +825,11 @@ inline void AcedrgTables::load_bond_tables(const std::string& dir) {
         }
 
         ValueStats vs(value, sigma, count);
+        ValueStats vs1d(value2, sigma2, count2);
 
         // Populate 1D structure (full detail)
         bond_idx_1d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
-                    [a1_nb][a2_nb][a1_type_m][a2_type_m].push_back(vs);
+                    [a1_nb][a2_nb][a1_type_m][a2_type_m].push_back(vs1d);
 
         // Populate 2D structure (no atom types)
         bond_idx_2d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
@@ -904,32 +997,28 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
   // Initialize basic info
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     atoms[i].index = static_cast<int>(i);
+    atoms[i].id = cc.atoms[i].id;
     atoms[i].el = cc.atoms[i].el;
     atoms[i].is_metal = is_metal(cc.atoms[i].el);
+    atoms[i].charge = cc.atoms[i].charge;
+    atoms[i].par_charge = cc.atoms[i].charge;
   }
 
-  // Build connectivity
-  for (const auto& bond : cc.rt.bonds) {
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-      int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-      int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-      atoms[idx1].connectivity++;
-      atoms[idx2].connectivity++;
-    }
-  }
+  // Build adjacency and neighbor lists
+  std::vector<std::vector<BondInfo>> adj = build_adjacency(cc);
+  std::vector<std::vector<int>> neighbors = build_neighbors(adj);
 
-  // Detect rings and set ring-related properties
-  std::vector<std::vector<int>> rings;
-  detect_rings(cc, rings);
-
-  // Set min ring size
+  // Connectivity counts
   for (size_t i = 0; i < atoms.size(); ++i) {
-    atoms[i].min_ring_size = compute_min_ring(static_cast<int>(i), rings);
+    atoms[i].connectivity = static_cast<int>(neighbors[i].size());
+    int metal_conn = 0;
+    for (int nb : neighbors[i])
+      if (atoms[nb].is_metal)
+        ++metal_conn;
+    atoms[i].metal_connectivity = metal_conn;
   }
 
-  // Determine aromaticity from bonds
+  // Seed aromaticity from input bonds
   for (const auto& bond : cc.rt.bonds) {
     if (!bond.aromatic)
       continue;
@@ -945,212 +1034,35 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
     }
   }
 
-  // Build adjacency list (needed for hybridization refinement and later steps)
-  std::vector<std::vector<BondInfo>> adj = build_adjacency(cc);
+  // Detect rings and populate ring representations
+  std::vector<RingInfo> rings;
+  detect_rings_acedrg(neighbors, atoms, rings);
+  set_atoms_ring_rep_s(atoms, rings);
 
-  // Determine hybridization - Phase 1: element-based rules
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    atoms[i].hybrid = determine_hybridization(cc, static_cast<int>(i),
-                                              atoms[i].connectivity,
-                                              atoms[i].min_ring_size > 0,
-                                              atoms[i].is_aromatic);
-  }
+  // Build COD class names (AceDRG style)
+  for (size_t i = 0; i < atoms.size(); ++i)
+    set_atom_cod_class_name_new2(atoms[i], atoms[i], 2, atoms, neighbors);
 
-  // Refine hybridization - Phase 2: neighbor-based refinement
-  refine_hybridization(adj, atoms);
+  for (size_t i = 0; i < atoms.size(); ++i)
+    set_special_3nb_symb2(atoms[i], atoms, neighbors);
 
-  // Compute hash codes
+  for (size_t i = 0; i < atoms.size(); ++i)
+    cod_class_to_atom2(atoms[i].cod_class, atoms[i]);
+
+  // Hybridization and NB1/NB2_SP
+  set_atoms_bonding_and_chiral_center(atoms, neighbors);
+  set_atoms_nb1nb2_sp(atoms, neighbors);
+
+  // Ring props from codClass and hash codes
   for (auto& atom : atoms) {
+    atom.min_ring_size = get_min_ring2_from_cod_class(atom.cod_class);
+    atom.is_aromatic = cod_class_is_aromatic(atom.cod_class);
+    atom.hybrid = hybrid_from_bonding_idx(atom.bonding_idx, atom.is_metal,
+                                          atom.connectivity);
     compute_hash(atom);
   }
 
-  // Compute neighbor symbols
-  compute_nb_symbols(adj, atoms);
-
-  // Compute full COD class
-  compute_cod_class(cc, adj, atoms);
-
   return atoms;
-}
-
-inline void AcedrgTables::detect_rings(const ChemComp& cc,
-                                      std::vector<std::vector<int>>& rings) const {
-  for (const auto& bond : cc.rt.bonds) {
-    std::vector<Restraints::AtomId> path =
-        cc.rt.find_shortest_path(bond.id1, bond.id2, {}, 2);
-    if (path.size() < 3)
-      continue;
-
-    std::vector<int> ring;
-    ring.reserve(path.size());
-    for (const auto& id : path) {
-      auto it = cc.find_atom(id.atom);
-      if (it != cc.atoms.end())
-        ring.push_back(static_cast<int>(it - cc.atoms.begin()));
-    }
-    if (ring.size() < 3)
-      continue;
-    std::sort(ring.begin(), ring.end());
-    ring.erase(std::unique(ring.begin(), ring.end()), ring.end());
-    if (ring.size() >= 3)
-      rings.push_back(std::move(ring));
-  }
-
-  // Remove duplicate rings (same atoms in different order)
-  std::vector<std::vector<int>> unique_rings;
-  for (const auto& ring : rings) {
-    bool found = false;
-    for (const auto& ur : unique_rings) {
-      if (ur == ring) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      unique_rings.push_back(ring);
-    }
-  }
-  rings = std::move(unique_rings);
-}
-
-inline int AcedrgTables::compute_min_ring(int atom_idx,
-    const std::vector<std::vector<int>>& rings) const {
-  int min_size = 0;
-  for (const auto& ring : rings) {
-    if (std::find(ring.begin(), ring.end(), atom_idx) != ring.end()) {
-      int size = static_cast<int>(ring.size());
-      if (min_size == 0 || size < min_size) {
-        min_size = size;
-      }
-    }
-  }
-  return min_size;
-}
-
-inline Hybridization AcedrgTables::determine_hybridization(
-    const ChemComp& cc, int atom_idx, int connectivity,
-    bool in_ring, bool is_aromatic) const {
-
-  Element el = cc.atoms[atom_idx].el;
-
-  // Metals have special hybridization
-  if (is_metal(el)) {
-    if (connectivity <= 4) return Hybridization::SPD5;
-    if (connectivity == 5) return Hybridization::SPD5;
-    if (connectivity == 6) return Hybridization::SPD6;
-    if (connectivity == 7) return Hybridization::SPD7;
-    return Hybridization::SPD8;
-  }
-
-  // Count double and triple bonds to this atom
-  int double_count = 0;
-  int triple_count = 0;
-
-  for (const auto& bond : cc.rt.bonds) {
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
-      continue;
-
-    int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-    int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-
-    if (idx1 != atom_idx && idx2 != atom_idx)
-      continue;
-
-    if (bond.type == BondType::Double)
-      double_count++;
-    else if (bond.type == BondType::Triple)
-      triple_count++;
-  }
-
-  // Determine hybridization based on element and bonding
-  if (triple_count > 0) {
-    return Hybridization::SP1;
-  }
-
-  if (is_aromatic) {
-    return Hybridization::SP2;
-  }
-
-  if (double_count > 0) {
-    return Hybridization::SP2;
-  }
-
-  // Default based on connectivity
-  if (connectivity == 2) {
-    // Could be SP1 (linear) or SP2/SP3 (bent)
-    // Check if it's a linear arrangement based on element
-    if (el == El::C || el == El::N) {
-      // Need more context - default to SP3 for now
-      return in_ring ? Hybridization::SP2 : Hybridization::SP3;
-    }
-  }
-
-  if (connectivity == 3) {
-    return Hybridization::SP2;
-  }
-
-  return Hybridization::SP3;
-}
-
-inline int AcedrgTables::count_non_metal_neighbors(
-    const std::vector<BondInfo>& neighbors,
-    const std::vector<CodAtomInfo>& atoms) const {
-  int count = 0;
-  for (const auto& nb : neighbors)
-    if (!atoms[nb.neighbor_idx].is_metal)
-      ++count;
-  return count;
-}
-
-// Phase 2 hybridization refinement based on neighbor states.
-// This implements the second pass from AceDRG's setAtomsBondingAndChiralCenter().
-inline void AcedrgTables::refine_hybridization(
-    const std::vector<std::vector<BondInfo>>& adj,
-    std::vector<CodAtomInfo>& atoms) const {
-
-  // Phase 2a: Oxygen atoms with 2 non-metal connections.
-  // If any neighbor is SP2, the oxygen is also SP2 (e.g., ester oxygen).
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    if (atoms[i].el != El::O || atoms[i].is_metal)
-      continue;
-    if (count_non_metal_neighbors(adj[i], atoms) != 2)
-      continue;
-    for (const auto& nb : adj[i]) {
-      if (!atoms[nb.neighbor_idx].is_metal &&
-          atoms[nb.neighbor_idx].hybrid == Hybridization::SP2) {
-        atoms[i].hybrid = Hybridization::SP2;
-        break;
-      }
-    }
-  }
-
-  // Save hybridization state before Phase 2b to avoid order-dependency
-  std::vector<Hybridization> pre_hybrid(atoms.size());
-  for (size_t i = 0; i < atoms.size(); ++i)
-    pre_hybrid[i] = atoms[i].hybrid;
-
-  // Phase 2b: Nitrogen/Arsenic with 3 non-metal connections.
-  // If any non-oxygen neighbor was SP2, set to SP2 (e.g., amide nitrogen).
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    if (atoms[i].el != El::N && atoms[i].el != El::As)
-      continue;
-    if (atoms[i].is_metal)
-      continue;
-    if (count_non_metal_neighbors(adj[i], atoms) != 3)
-      continue;
-    for (const auto& nb : adj[i]) {
-      if (atoms[nb.neighbor_idx].is_metal)
-        continue;
-      if (atoms[nb.neighbor_idx].el == El::O)
-        continue;
-      if (pre_hybrid[nb.neighbor_idx] == Hybridization::SP2) {
-        atoms[i].hybrid = Hybridization::SP2;
-        break;
-      }
-    }
-  }
 }
 
 // AceDrg hash used in *HRS.table files
@@ -1239,77 +1151,931 @@ AcedrgTables::build_adjacency(const ChemComp& cc) const {
   return adj;
 }
 
-inline void AcedrgTables::compute_nb_symbols(
-    const std::vector<std::vector<BondInfo>>& adj,
-    std::vector<CodAtomInfo>& atoms) const {
-  // For each atom, build neighbor symbols
+inline std::vector<std::vector<int>> AcedrgTables::build_neighbors(
+    const std::vector<std::vector<BondInfo>>& adj) const {
+  std::vector<std::vector<int>> neighbors(adj.size());
+  for (size_t i = 0; i < adj.size(); ++i) {
+    neighbors[i].reserve(adj[i].size());
+    for (const auto& nb : adj[i])
+      neighbors[i].push_back(nb.neighbor_idx);
+  }
+  return neighbors;
+}
+
+inline void AcedrgTables::detect_rings_acedrg(
+    const std::vector<std::vector<int>>& neighbors,
+    std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings) const {
+  rings.clear();
+  std::map<std::string, int> ring_index;
+
   for (size_t i = 0; i < atoms.size(); ++i) {
-    std::vector<std::string> nb1_parts;
-    std::vector<std::string> nb2_parts;
-
-    for (const auto& nb : adj[i]) {
-      const CodAtomInfo& nb_atom = atoms[nb.neighbor_idx];
-      // First neighbor: element + connectivity
-      std::string nb1 = std::string(nb_atom.el.name()) + "-" +
-                        std::to_string(nb_atom.connectivity) + ":";
-      nb1_parts.push_back(nb1);
-
-      // Second neighbor: just connectivity count
-      nb2_parts.push_back(std::to_string(nb_atom.connectivity) + ":");
-    }
-
-    // Sort for canonical form
-    std::sort(nb1_parts.begin(), nb1_parts.end());
-    std::sort(nb2_parts.begin(), nb2_parts.end());
-
-    // Concatenate
-    for (const auto& p : nb1_parts) atoms[i].nb_symb += p;
-    for (const auto& p : nb2_parts) atoms[i].nb2_symb += p;
+    if (atoms[i].is_metal || atoms[i].el == El::H)
+      continue;
+    std::map<int, std::string> seen;
+    std::map<int, std::string> path;
+    check_one_path_acedrg(neighbors, atoms, rings, ring_index,
+                          static_cast<int>(i), static_cast<int>(i), -999,
+                          1, 7, seen, path);
   }
 }
 
-inline void AcedrgTables::compute_cod_class(const ChemComp& cc,
-    const std::vector<std::vector<BondInfo>>& adj,
-    std::vector<CodAtomInfo>& atoms) const {
-  // Build COD class for each atom
-  // Format: Element[ring_size aromatic](neighbor1)(neighbor2)...
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    std::string& cod = atoms[i].cod_class;
-    cod = cc.atoms[i].el.name();
+inline void AcedrgTables::check_one_path_acedrg(
+    const std::vector<std::vector<int>>& neighbors,
+    std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings,
+    std::map<std::string, int>& ring_index,
+    int ori_idx, int cur_idx, int prev_idx, int cur_lev, int max_ring,
+    std::map<int, std::string>& seen_atom_ids,
+    std::map<int, std::string>& atom_ids_in_path) const {
+  if (cur_lev >= max_ring)
+    return;
 
-    // Ring annotation
-    if (atoms[i].min_ring_size > 0) {
-      cod += "[";
-      cod += std::to_string(atoms[i].min_ring_size);
-      if (atoms[i].is_aromatic) cod += "a";
-      cod += "]";
-    }
-
-    // Main type (without neighbors)
-    atoms[i].cod_main = cod;
-
-    // Neighbor groups
-    std::vector<std::string> nb_groups;
-    for (const auto& nb : adj[i]) {
-      const CodAtomInfo& nb_atom = atoms[nb.neighbor_idx];
-      std::string nb_str = cc.atoms[nb.neighbor_idx].el.name();
-      if (nb_atom.min_ring_size > 0) {
-        nb_str += "[";
-        nb_str += std::to_string(nb_atom.min_ring_size);
-        if (nb_atom.is_aromatic) nb_str += "a";
-        nb_str += "]";
-      }
-      nb_groups.push_back(nb_str);
-    }
-
-    // Sort neighbor groups for canonical form
-    std::sort(nb_groups.begin(), nb_groups.end());
-
-    // Add to class
-    for (const auto& ng : nb_groups) {
-      cod += "(" + ng + ")";
+  bool path_collision = false;
+  for (int nb : neighbors[cur_idx]) {
+    if (nb != ori_idx && nb != prev_idx &&
+        seen_atom_ids.find(nb) != seen_atom_ids.end()) {
+      path_collision = true;
+      break;
     }
   }
+
+  if (!path_collision) {
+    for (int nb : neighbors[cur_idx]) {
+      if (nb == ori_idx && nb != prev_idx && cur_lev > 2 && atoms[nb].el != El::H) {
+        atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
+        std::list<std::string> all_ids;
+        std::list<std::string> all_seris;
+        std::vector<int> ring_atoms;
+        for (const auto& it : atom_ids_in_path) {
+          all_seris.push_back(std::to_string(it.first));
+          all_ids.push_back(it.second);
+          ring_atoms.push_back(it.first);
+        }
+        all_seris.sort(compare_no_case);
+        all_ids.sort(compare_no_case);
+
+        std::string rep;
+        for (const auto& id : all_ids)
+          rep += id;
+
+        std::string s_rep;
+        int nrs = 0;
+        for (const auto& seri : all_seris) {
+          if (nrs == 0)
+            s_rep += seri;
+          else
+            s_rep += "_" + seri;
+          ++nrs;
+        }
+
+        atoms[ori_idx].ring_rep[rep] = static_cast<int>(atom_ids_in_path.size());
+
+        if (ring_index.find(s_rep) == ring_index.end()) {
+          RingInfo ring;
+          ring.atoms = ring_atoms;
+          ring.rep = rep;
+          ring.s_rep = s_rep;
+          ring.is_aromatic = true;
+          for (int idx : ring_atoms)
+            if (!atoms[idx].is_aromatic)
+              ring.is_aromatic = false;
+
+          int idx = static_cast<int>(rings.size());
+          ring_index[s_rep] = idx;
+          rings.push_back(ring);
+          for (int atom_idx : ring_atoms)
+            atoms[atom_idx].in_rings.push_back(idx);
+        }
+
+        atom_ids_in_path.erase(cur_idx);
+        path_collision = true;
+        break;
+      }
+    }
+  }
+
+  if (!path_collision) {
+    int next_lev = cur_lev + 1;
+    seen_atom_ids[cur_idx] = atoms[cur_idx].id;
+    if (next_lev < max_ring) {
+      if (cur_lev == 1) {
+        seen_atom_ids.clear();
+        atom_ids_in_path.clear();
+        seen_atom_ids[cur_idx] = atoms[cur_idx].id;
+        atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
+      }
+      atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
+      for (int nb : neighbors[cur_idx]) {
+        if (nb != prev_idx && !atoms[nb].is_metal) {
+          check_one_path_acedrg(neighbors, atoms, rings, ring_index,
+                                ori_idx, nb, cur_idx, next_lev, max_ring,
+                                seen_atom_ids, atom_ids_in_path);
+        }
+      }
+      atom_ids_in_path.erase(cur_idx);
+      seen_atom_ids.erase(cur_idx);
+    }
+    atom_ids_in_path.erase(cur_idx);
+    seen_atom_ids.erase(cur_idx);
+  }
+}
+
+inline void AcedrgTables::set_atoms_ring_rep_s(
+    std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings) const {
+  for (const auto& ring : rings) {
+    std::string size = std::to_string(ring.atoms.size());
+    std::string rep_id;
+    std::list<std::string> all_seris;
+    for (int idx : ring.atoms)
+      all_seris.push_back(std::to_string(idx));
+    all_seris.sort(compare_no_case);
+    int nrs = 0;
+    for (const auto& seri : all_seris) {
+      if (nrs == 0)
+        rep_id += seri;
+      else
+        rep_id += "_" + seri;
+      ++nrs;
+    }
+
+    for (int idx : ring.atoms) {
+      if (ring.is_aromatic)
+        atoms[idx].ring_rep_s[rep_id] = size + "a";
+      else
+        atoms[idx].ring_rep_s[rep_id] = size;
+    }
+  }
+}
+
+inline void AcedrgTables::set_atom_cod_class_name_new2(
+    CodAtomInfo& atom, const CodAtomInfo& ori_atom, int lev,
+    const std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) const {
+  if (lev == 1) {
+    atom.cod_class.clear();
+    atom.cod_class.append(atom.el.name());
+
+    if (!atom.ring_rep_s.empty()) {
+      std::map<std::string, int> size_map;
+      for (const auto& it : atom.ring_rep_s)
+        size_map[it.second] += 1;
+
+      atom.cod_class.append("[");
+      int i = 0;
+      int j = static_cast<int>(size_map.size());
+      for (const auto& it : size_map) {
+        std::string size = it.first;
+        std::string num = std::to_string(it.second);
+        if (it.second >= 3)
+          atom.cod_class.append(num + "x" + size);
+        else if (it.second == 2)
+          atom.cod_class.append(size + "," + size);
+        else
+          atom.cod_class.append(size);
+        if (i != j - 1)
+          atom.cod_class.append(",");
+        else
+          atom.cod_class.append("]");
+        ++i;
+      }
+    }
+
+    std::string t_str;
+    std::list<std::string> t_str_list;
+    std::map<std::string, int> comps;
+    for (int nb : neighbors[atom.index]) {
+      if (nb == ori_atom.index)
+        continue;
+      std::string nb_type = atoms[nb].el.name();
+      if (!atoms[nb].ring_rep_s.empty()) {
+        std::map<std::string, int> size_map;
+        for (const auto& it : atoms[nb].ring_rep_s)
+          size_map[it.second] += 1;
+        nb_type.append("[");
+        int i = 0;
+        int j = static_cast<int>(size_map.size());
+        for (const auto& it : size_map) {
+          std::string size = it.first;
+          std::string num = std::to_string(it.second);
+          if (it.second >= 3)
+            nb_type.append(num + "x" + size);
+          else if (it.second == 2)
+            nb_type.append(size + "," + size);
+          else
+            nb_type.append(size);
+          if (i != j - 1)
+            nb_type.append(",");
+          else
+            nb_type.append("]");
+          ++i;
+        }
+      }
+      comps[nb_type] += 1;
+    }
+
+    std::vector<SortMap> sorted;
+    for (const auto& it : comps) {
+      SortMap sm;
+      sm.key = it.first;
+      sm.val = it.second;
+      sorted.push_back(sm);
+    }
+    std::sort(sorted.begin(), sorted.end(), des_sort_map_key);
+    for (const auto& sm : sorted) {
+      std::string s1 = sm.key + std::to_string(sm.val);
+      std::string s2;
+      for (int i = 0; i < sm.val; ++i)
+        s2.append(sm.key);
+      if (s1.size() < s2.size())
+        t_str_list.push_back(s1);
+      else
+        t_str_list.push_back(s2);
+    }
+    for (const auto& s : t_str_list)
+      t_str.append(s);
+
+    atom.cod_class.append(t_str);
+  } else if (lev == 2) {
+    atom.cod_class.clear();
+    atom.cod_class.append(atom.el.name());
+
+    if (!atom.ring_rep_s.empty()) {
+      std::map<std::string, int> size_map;
+      for (const auto& it : atom.ring_rep_s)
+        size_map[it.second] += 1;
+
+      atom.cod_class.append("[");
+      int i = 0;
+      int j = static_cast<int>(size_map.size());
+      for (const auto& it : size_map) {
+        std::string size = it.first;
+        std::string num = std::to_string(it.second);
+        if (it.second >= 3)
+          atom.cod_class.append(num + "x" + size);
+        else if (it.second == 2)
+          atom.cod_class.append(size + "," + size);
+        else
+          atom.cod_class.append(size);
+        if (i != j - 1)
+          atom.cod_class.append(",");
+        else
+          atom.cod_class.append("]");
+        ++i;
+      }
+    }
+
+    int low_lev = lev - 1;
+    std::map<std::string, std::vector<int>> id_map;
+    for (int nb : neighbors[atom.index]) {
+      CodAtomInfo nb_atom = atoms[nb];
+      set_atom_cod_class_name_new2(nb_atom, ori_atom, low_lev, atoms, neighbors);
+      auto& entry = id_map[nb_atom.cod_class];
+      if (entry.empty()) {
+        entry.push_back(1);
+        entry.push_back(static_cast<int>(neighbors[nb].size()));
+      } else {
+        entry[0] += 1;
+      }
+    }
+
+    std::vector<SortMap2> sorted;
+    for (const auto& it : id_map) {
+      SortMap2 sm;
+      sm.key = it.first;
+      sm.val = it.second[0];
+      sm.nNB = it.second[1];
+      sorted.push_back(sm);
+    }
+    std::sort(sorted.begin(), sorted.end(), des_sort_map_key2);
+    for (const auto& sm : sorted) {
+      if (sm.val == 1)
+        atom.cod_class.append("(" + sm.key + ")");
+      else
+        atom.cod_class.append("(" + sm.key + ")" + std::to_string(sm.val));
+    }
+  }
+}
+
+inline void AcedrgTables::set_special_3nb_symb2(
+    CodAtomInfo& atom, const std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) const {
+  if (atom.ring_rep.empty())
+    return;
+
+  std::vector<int> ser_num_nb123;
+  std::map<std::string, int> nb3_props;
+
+  for (int nb1 : neighbors[atom.index]) {
+    if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb1) == ser_num_nb123.end())
+      ser_num_nb123.push_back(nb1);
+    for (int nb2 : neighbors[nb1]) {
+      if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb2) == ser_num_nb123.end() &&
+          nb2 != atom.index) {
+        ser_num_nb123.push_back(nb2);
+      }
+    }
+  }
+
+  for (int nb1 : neighbors[atom.index]) {
+    if (atoms[nb1].ring_rep.empty())
+      continue;
+    for (int nb2 : neighbors[nb1]) {
+      if (atoms[nb2].ring_rep.empty())
+        continue;
+      for (int nb3 : neighbors[nb2]) {
+        if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb3) == ser_num_nb123.end() &&
+            nb3 != atom.index) {
+          std::string prop = atoms[nb3].el.name();
+          prop.append("<" + std::to_string(neighbors[nb3].size()) + ">");
+          nb3_props[prop] += 1;
+          ser_num_nb123.push_back(nb3);
+        }
+      }
+    }
+  }
+
+  std::list<std::string> comps;
+  for (const auto& it : nb3_props) {
+    std::string id = std::to_string(it.second) + "|" + it.first;
+    comps.push_back(id);
+  }
+  comps.sort(compare_no_case2);
+
+  if (!comps.empty()) {
+    std::string all3 = "{";
+    unsigned i = 0;
+    unsigned n = comps.size();
+    for (const auto& id : comps) {
+      if (i < n - 1)
+        all3.append(id + ",");
+      else
+        all3.append(id);
+      ++i;
+    }
+    all3.append("}");
+    atom.cod_class.append(all3);
+  }
+}
+
+inline void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
+                                             CodAtomInfo& atom) const {
+  std::string t_cod = trim_spaces(cod_class);
+  atom.cod_class = t_cod;
+  atom.nb_symb.clear();
+  atom.nb2_symb.clear();
+  atom.nb3_symb.clear();
+
+  std::vector<std::string> two_parts;
+  if (t_cod.find('{') != std::string::npos) {
+    two_parts = split(t_cod, '{');
+    if (two_parts.size() == 2) {
+      atom.cod_main = two_parts[0];
+      std::vector<std::string> nb3 = split(two_parts[1], '}');
+      if (!nb3.empty())
+        atom.nb3_symb = nb3[0];
+    } else {
+      atom.cod_main = t_cod;
+    }
+  } else {
+    atom.cod_main = t_cod;
+  }
+
+  std::vector<std::string> atm_strs = split(atom.cod_main, '(');
+  if (!atm_strs.empty()) {
+    atom.cod_root = trim_spaces(atm_strs[0]);
+  }
+
+  std::vector<NB1stFam> all_nbs;
+  for (size_t i = 1; i < atm_strs.size(); ++i) {
+    std::string tS = trim_spaces(atm_strs[i]);
+    std::vector<std::string> nb1 = split(tS, ')');
+    NB1stFam fam;
+    if (nb1.size() > 1) {
+      fam.repN = str_to_int(nb1[1]);
+      if (fam.repN == 0)
+        fam.repN = 1;
+    } else {
+      fam.repN = 1;
+    }
+
+    std::string tS1 = trim_spaces(nb1[0]);
+    get_small_family(tS1, fam);
+    all_nbs.push_back(fam);
+  }
+
+  for (const auto& fam : all_nbs) {
+    for (int j = 0; j < fam.repN; ++j) {
+      std::string sN = std::to_string(static_cast<int>(fam.NB2ndList.size()) + 1);
+      atom.nb_symb += fam.name + "-" + sN + ":";
+      atom.nb2_symb += sN + ":";
+    }
+  }
+}
+
+inline void AcedrgTables::set_atoms_nb1nb2_sp(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) const {
+  for (auto& atom : atoms) {
+    std::vector<std::string> nb1_nb2_sp_set;
+    for (int nb1 : neighbors[atom.index]) {
+      std::string nb1_main = atoms[nb1].cod_root;
+      std::vector<int> nb2_sp_set;
+      for (int nb2 : neighbors[nb1])
+        nb2_sp_set.push_back(atoms[nb2].bonding_idx);
+      std::sort(nb2_sp_set.begin(), nb2_sp_set.end(), std::greater<int>());
+      std::string nb2_sp_str;
+      for (size_t i = 0; i < nb2_sp_set.size(); ++i) {
+        nb2_sp_str.append(std::to_string(nb2_sp_set[i]));
+        if (i != nb2_sp_set.size() - 1)
+          nb2_sp_str.append("_");
+      }
+      nb1_nb2_sp_set.push_back(nb1_main + "-" + nb2_sp_str);
+    }
+    std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(), compare_no_case2);
+    atom.nb1nb2_sp.clear();
+    for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
+      atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
+      if (i != nb1_nb2_sp_set.size() - 1)
+        atom.nb1nb2_sp.append(":");
+    }
+  }
+}
+
+inline void AcedrgTables::set_atoms_bonding_and_chiral_center(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) const {
+  std::map<int, std::vector<int>> num_conn_map;
+
+  for (auto& atom : atoms) {
+    int t_len = 0;
+    int t_m_len = 0;
+    for (int nb : neighbors[atom.index]) {
+      if (!atoms[nb].is_metal)
+        t_len++;
+      else
+        t_m_len++;
+    }
+    if (atom.metal_connectivity > 0)
+      t_m_len = atom.metal_connectivity;
+
+    if (atom.el == El::C) {
+      if (t_len == 3 && t_m_len == 2)
+        t_len = 3;
+    }
+
+    num_conn_map[atom.index].push_back(t_len);
+    num_conn_map[atom.index].push_back(t_m_len);
+
+    if (t_len > 4) {
+      atom.bonding_idx = t_len;
+    } else if (atom.el == El::C || atom.el == El::Si || atom.el == El::Ge) {
+      if (t_len == 4) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 3) {
+        atom.bonding_idx = 2;
+      } else if (t_len == 2) {
+        if (get_num_oxy_connect(atoms, atom, neighbors) == 1)
+          atom.bonding_idx = 1;
+        else if (t_m_len == 1 || atom.charge == -1.0f)
+          atom.bonding_idx = 2;
+        else if (t_m_len == 1 || atom.charge == -2.0f)
+          atom.bonding_idx = 1;
+        else
+          atom.bonding_idx = 1;
+      }
+    } else if (atom.el == El::N || atom.el == El::As) {
+      if (t_len == 4 || t_len == 3) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 2) {
+        if (atom.charge == 1.0f)
+          atom.bonding_idx = 1;
+        else
+          atom.bonding_idx = 2;
+      } else if (t_len == 1) {
+        atom.bonding_idx = 1;
+      }
+    } else if (atom.el == El::B) {
+      if (t_len == 4) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 3) {
+        atom.bonding_idx = 2;
+      } else if (t_len == 2) {
+        if (atom.charge == 1.0f)
+          atom.bonding_idx = 1;
+        else
+          atom.bonding_idx = 2;
+      } else if (t_len == 1) {
+        atom.bonding_idx = 1;
+      }
+    } else if (atom.el == El::O) {
+      if (neighbors[atom.index].size() == 2) {
+        atom.bonding_idx = 3;
+      } else if (neighbors[atom.index].size() == 1) {
+        if (neighbors[neighbors[atom.index][0]].size() != 1)
+          atom.bonding_idx = 2;
+        else
+          atom.bonding_idx = 3;
+      } else {
+        atom.bonding_idx = 3;
+      }
+    } else if (atom.el == El::P) {
+      if (t_len == 4 || t_len == 3 || t_len == 2 || t_len == 5)
+        atom.bonding_idx = 3;
+    } else if (atom.el == El::S) {
+      if (t_len == 2 || t_len == 3 || t_len == 4)
+        atom.bonding_idx = 3;
+      else if (t_len == 6)
+        atom.bonding_idx = 5;
+      else if (t_len == 1)
+        atom.bonding_idx = 3;
+    } else if (atom.el == El::Se) {
+      if (t_len == 4 || t_len == 3 || t_len == 2) {
+        atom.bonding_idx = (t_len == 3) ? 2 : 3;
+      } else if (t_len == 6) {
+        atom.bonding_idx = 5;
+      } else if (t_len == 1) {
+        atom.bonding_idx = 3;
+      }
+    } else if (atom.el == El::Br) {
+      if (t_len == 3)
+        atom.bonding_idx = 3;
+    }
+  }
+
+  for (auto& atom : atoms) {
+    int t_len = 0;
+    for (int nb : neighbors[atom.index]) {
+      if (!atoms[nb].is_metal)
+        t_len++;
+    }
+
+    if (atom.el == El::O) {
+      if (t_len == 2 && atom.par_charge == 0.0f) {
+        bool l_sp2 = false;
+        for (int nb : neighbors[atom.index]) {
+          if (atoms[nb].bonding_idx == 2) {
+            l_sp2 = true;
+            break;
+          }
+        }
+        if (l_sp2)
+          atom.bonding_idx = 2;
+      }
+    }
+  }
+
+  std::map<int, int> pre_bonding;
+  for (const auto& atom : atoms)
+    pre_bonding[atom.index] = atom.bonding_idx;
+
+  for (auto& atom : atoms) {
+    int t_len = 0;
+    for (int nb : neighbors[atom.index]) {
+      if (!atoms[nb].is_metal)
+        t_len++;
+    }
+    if (atom.el == El::N || atom.el == El::As) {
+      if (t_len == 3) {
+        if (atom.charge == 0.0f) {
+          bool l_sp2 = false;
+          for (int nb : neighbors[atom.index]) {
+            if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
+              l_sp2 = true;
+              break;
+            }
+          }
+          if (l_sp2) {
+            if (num_conn_map[atom.index][1] != 0)
+              atom.bonding_idx = 3;
+            else
+              atom.bonding_idx = 2;
+          } else {
+            atom.bonding_idx = 3;
+          }
+        } else if (atom.charge == 1.0f) {
+          atom.bonding_idx = 2;
+        }
+      }
+    }
+    if (atom.el == El::S) {
+      if (t_len == 2 && atom.charge == 0.0f) {
+        bool l_sp2 = false;
+        for (int nb : neighbors[atom.index]) {
+          if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
+            l_sp2 = true;
+            break;
+          }
+        }
+        if (l_sp2)
+          atom.bonding_idx = 2;
+      }
+    }
+    if (atom.el == El::C) {
+      if (t_len == 3 && atom.charge == -1.0f) {
+        std::vector<int> sp2_set;
+        for (int nb : neighbors[atom.index]) {
+          if (atoms[nb].bonding_idx == 2)
+            sp2_set.push_back(nb);
+        }
+        if (sp2_set.size() == 2)
+          atom.bonding_idx = 2;
+        else
+          atom.bonding_idx = 3;
+      }
+    }
+  }
+}
+
+inline int AcedrgTables::get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
+                                             const CodAtomInfo& atom,
+                                             const std::vector<std::vector<int>>& neighbors) const {
+  int nO = 0;
+  for (int nb : neighbors[atom.index])
+    if (atoms[nb].el == El::O)
+      nO++;
+  return nO;
+}
+
+inline int AcedrgTables::get_min_ring2_from_cod_class(const std::string& cod_class) const {
+  int r_size = 0;
+  if (!cod_class.empty()) {
+    std::vector<std::string> tmp1 = split(cod_class, '(');
+    if (!tmp1.empty()) {
+      if (tmp1[0].find('[') != std::string::npos) {
+        std::vector<std::string> tmp2 = split(tmp1[0], '[');
+        if (tmp2.size() > 1) {
+          if (tmp2[1].find(',') != std::string::npos) {
+            std::vector<std::string> tmp3 = split(tmp2[1], ',');
+            if (!tmp3.empty()) {
+              if (tmp3[0].find('x') != std::string::npos) {
+                std::vector<std::string> tmp4 = split(tmp3[0], 'x');
+                if (tmp4.size() > 1)
+                  r_size = str_to_int(tmp4[1]);
+              } else {
+                r_size = str_to_int(tmp3[0]);
+              }
+            }
+          } else {
+            std::vector<std::string> tmp3 = split(tmp2[1], ']');
+            if (!tmp3.empty()) {
+              if (tmp3[0].find('x') != std::string::npos) {
+                std::vector<std::string> tmp4 = split(tmp3[0], 'x');
+                if (tmp4.size() > 1)
+                  r_size = str_to_int(tmp4[1]);
+              } else {
+                r_size = str_to_int(tmp3[0]);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return r_size;
+}
+
+inline bool AcedrgTables::cod_class_is_aromatic(const std::string& cod_class) const {
+  if (cod_class.empty())
+    return false;
+  std::vector<std::string> secs = split(cod_class, '(');
+  if (secs.empty())
+    return false;
+  if (secs[0].find('[') != std::string::npos) {
+    std::vector<std::string> rs = split(secs[0], '[');
+    if (rs.size() > 1)
+      return rs[1].find('a') != std::string::npos;
+  }
+  return false;
+}
+
+inline void AcedrgTables::get_small_family(const std::string& in_str, NB1stFam& fam) const {
+  fam.name.clear();
+  fam.NB2ndList.clear();
+  std::vector<std::string> ch_list = {",", "x"};
+  std::string name_str;
+  bool l_r = false;
+  int n_rep = 1;
+  for (size_t i = 0; i < in_str.size(); ++i) {
+    char c = in_str[i];
+    if (std::isalpha(static_cast<unsigned char>(c))) {
+      if (std::toupper(c) == c) {
+        if (!name_str.empty()) {
+          if (fam.name.empty()) {
+            fam.name = name_str;
+            n_rep = 1;
+          } else {
+            for (int l = 0; l < n_rep; ++l)
+              fam.NB2ndList.push_back(name_str);
+            n_rep = 1;
+          }
+        }
+        name_str = c;
+      } else {
+        name_str += c;
+      }
+    } else if (c == '[') {
+      name_str += c;
+      l_r = true;
+    } else if (c == ']') {
+      name_str += c;
+      l_r = false;
+    } else if (std::find(ch_list.begin(), ch_list.end(), std::string(1, c)) != ch_list.end()) {
+      name_str += c;
+    } else if (std::isdigit(static_cast<unsigned char>(c))) {
+      if (l_r) {
+        name_str += c;
+      } else {
+        n_rep = std::stoi(in_str.substr(i, 1));
+      }
+    }
+  }
+
+  if (!name_str.empty()) {
+    if (fam.name.empty()) {
+      fam.name = name_str;
+    } else {
+      for (int l = 0; l < n_rep; ++l)
+        fam.NB2ndList.push_back(name_str);
+    }
+  }
+}
+
+inline std::string AcedrgTables::trim_spaces(const std::string& s) {
+  size_t start = s.find_first_not_of(" \t\r\n");
+  if (start == std::string::npos)
+    return "";
+  size_t end = s.find_last_not_of(" \t\r\n");
+  return s.substr(start, end - start + 1);
+}
+
+inline std::vector<std::string> AcedrgTables::split(const std::string& s, char delim) {
+  std::vector<std::string> out;
+  std::string cur;
+  for (char c : s) {
+    if (c == delim) {
+      out.push_back(cur);
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  out.push_back(cur);
+  return out;
+}
+
+inline int AcedrgTables::str_to_int(const std::string& s) {
+  std::istringstream iss(s);
+  int value = 0;
+  iss >> value;
+  return value;
+}
+
+inline bool AcedrgTables::compare_no_case(const std::string& first,
+                                          const std::string& second) {
+  size_t i = 0;
+  while (i < first.length() && i < second.length()) {
+    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
+    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+    ++i;
+  }
+  return first.length() > second.length();
+}
+
+inline bool AcedrgTables::compare_no_case2(const std::string& first,
+                                           const std::string& second) {
+  if (first.length() > second.length())
+    return true;
+  if (first.length() < second.length())
+    return false;
+  for (size_t i = 0; i < first.length() && i < second.length(); ++i) {
+    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
+    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+  }
+  return true;
+}
+
+inline bool AcedrgTables::des_sort_map_key(const SortMap& a, const SortMap& b) {
+  return a.key.length() > b.key.length();
+}
+
+inline bool AcedrgTables::des_sort_map_key2(const SortMap2& a, const SortMap2& b) {
+  if (a.key.length() > b.key.length())
+    return true;
+  if (a.key.length() == b.key.length())
+    return a.nNB > b.nNB;
+  return false;
+}
+
+inline bool AcedrgTables::are_in_same_ring(const CodAtomInfo& a1,
+                                           const CodAtomInfo& a2) const {
+  for (int ring_idx : a1.in_rings)
+    if (std::find(a2.in_rings.begin(), a2.in_rings.end(), ring_idx) != a2.in_rings.end())
+      return true;
+  return false;
+}
+
+inline int AcedrgTables::angle_ring_size(const CodAtomInfo& center,
+                                         const CodAtomInfo& a1,
+                                         const CodAtomInfo& a3) const {
+  for (const auto& it : center.ring_rep) {
+    if (a1.ring_rep.find(it.first) != a1.ring_rep.end() &&
+        a3.ring_rep.find(it.first) != a3.ring_rep.end())
+      return it.second;
+  }
+  return 0;
+}
+
+inline void AcedrgTables::order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
+                                           const CodAtomInfo*& first,
+                                           const CodAtomInfo*& second) const {
+  if (a1.hashing_value < a2.hashing_value) {
+    first = &a1;
+    second = &a2;
+    return;
+  }
+  if (a1.hashing_value > a2.hashing_value) {
+    first = &a2;
+    second = &a1;
+    return;
+  }
+  if (compare_no_case2(a1.cod_main, a2.cod_main)) {
+    first = &a1;
+    second = &a2;
+  } else {
+    first = &a2;
+    second = &a1;
+  }
+}
+
+inline void AcedrgTables::order_angle_flanks(const CodAtomInfo& a1, const CodAtomInfo& a3,
+                                             const CodAtomInfo*& flank1,
+                                             const CodAtomInfo*& flank3) const {
+  if (a1.hashing_value < a3.hashing_value) {
+    flank1 = &a1;
+    flank3 = &a3;
+    return;
+  }
+  if (a1.hashing_value > a3.hashing_value) {
+    flank1 = &a3;
+    flank3 = &a1;
+    return;
+  }
+  if (a1.cod_main.size() > a3.cod_main.size()) {
+    flank1 = &a1;
+    flank3 = &a3;
+    return;
+  }
+  if (a1.cod_main.size() < a3.cod_main.size()) {
+    flank1 = &a3;
+    flank3 = &a1;
+    return;
+  }
+  if (compare_no_case2(a1.cod_main, a3.cod_main)) {
+    flank1 = &a1;
+    flank3 = &a3;
+  } else {
+    flank1 = &a3;
+    flank3 = &a1;
+  }
+}
+
+inline Hybridization AcedrgTables::hybrid_from_bonding_idx(int bonding_idx,
+                                                           bool is_metal_atom,
+                                                           int connectivity) const {
+  if (is_metal_atom) {
+    if (connectivity <= 4) return Hybridization::SPD5;
+    if (connectivity == 5) return Hybridization::SPD5;
+    if (connectivity == 6) return Hybridization::SPD6;
+    if (connectivity == 7) return Hybridization::SPD7;
+    return Hybridization::SPD8;
+  }
+  if (bonding_idx <= 0)
+    return Hybridization::SP_NON;
+  if (bonding_idx == 1)
+    return Hybridization::SP1;
+  if (bonding_idx == 2)
+    return Hybridization::SP2;
+  if (bonding_idx == 3)
+    return Hybridization::SP3;
+  if (bonding_idx == 5)
+    return Hybridization::SPD5;
+  if (bonding_idx == 6)
+    return Hybridization::SPD6;
+  if (bonding_idx == 7)
+    return Hybridization::SPD7;
+  if (bonding_idx >= 8)
+    return Hybridization::SPD8;
+  return Hybridization::SP_NON;
 }
 
 // ============================================================================
@@ -1376,7 +2142,7 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
   }
 
   // Try HRS (summary) table
-  vs = search_bond_hrs(a1, a2, bond.aromatic);
+  vs = search_bond_hrs(a1, a2, are_in_same_ring(a1, a2));
   if (vs.count >= min_observations) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
@@ -1399,26 +2165,30 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
 inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     const CodAtomInfo& a2) const {
 
-  // Build lookup keys
-  int ha1 = std::min(a1.hashing_value, a2.hashing_value);
-  int ha2 = std::max(a1.hashing_value, a2.hashing_value);
+  const CodAtomInfo* left = nullptr;
+  const CodAtomInfo* right = nullptr;
+  order_bond_atoms(a1, a2, left, right);
 
-  std::string h1 = hybridization_to_string(a1.hybrid);
-  std::string h2 = hybridization_to_string(a2.hybrid);
+  // Build lookup keys
+  int ha1 = left->hashing_value;
+  int ha2 = right->hashing_value;
+
+  std::string h1 = hybridization_to_string(left->hybrid);
+  std::string h2 = hybridization_to_string(right->hybrid);
   if (h1 > h2) std::swap(h1, h2);
   std::string hybr_comb = h1 + "_" + h2;
 
-  std::string in_ring = (a1.min_ring_size > 0 || a2.min_ring_size > 0) ? "Y" : "N";
+  std::string in_ring = are_in_same_ring(a1, a2) ? "Y" : "N";
 
   // Use neighbor symbols as additional keys
-  const std::string& a1_nb2 = a1.nb2_symb;
-  const std::string& a2_nb2 = a2.nb2_symb;
-  const std::string& a1_nb = a1.nb_symb;
-  const std::string& a2_nb = a2.nb_symb;
+  const std::string& a1_nb2 = left->nb2_symb;
+  const std::string& a2_nb2 = right->nb2_symb;
+  const std::string& a1_nb = left->nb1nb2_sp;
+  const std::string& a2_nb = right->nb1nb2_sp;
 
   // Use COD main type as atom type (simplified)
-  const std::string& a1_type = a1.cod_main;
-  const std::string& a2_type = a2.cod_main;
+  const std::string& a1_type = left->cod_main;
+  const std::string& a2_type = right->cod_main;
 
   // Level 0: Try exact match in 1D structure
   {
@@ -1539,7 +2309,7 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
 }
 
 inline ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
-    const CodAtomInfo& a2, bool aromatic) const {
+    const CodAtomInfo& a2, bool in_ring) const {
 
   BondHRSKey key;
   key.hash1 = std::min(a1.hashing_value, a2.hashing_value);
@@ -1550,16 +2320,9 @@ inline ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
   std::string h2 = hybridization_to_string(a2.hybrid);
   if (h1 > h2) std::swap(h1, h2);
   key.hybrid_pair = h1 + "_" + h2;
-  key.aromatic = aromatic;
+  key.in_ring = in_ring ? "Y" : "N";
 
   auto it = bond_hrs_.find(key);
-  if (it != bond_hrs_.end()) {
-    return it->second;
-  }
-
-  // Try without aromatic flag
-  key.aromatic = !aromatic;
-  it = bond_hrs_.find(key);
   if (it != bond_hrs_.end()) {
     return it->second;
   }
@@ -1629,17 +2392,9 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   // Build lookup keys - canonicalize flanking atoms
   int ha1, ha3;
   const CodAtomInfo *flank1, *flank3;
-  if (a1.hashing_value <= a3.hashing_value) {
-    ha1 = a1.hashing_value;
-    ha3 = a3.hashing_value;
-    flank1 = &a1;
-    flank3 = &a3;
-  } else {
-    ha1 = a3.hashing_value;
-    ha3 = a1.hashing_value;
-    flank1 = &a3;
-    flank3 = &a1;
-  }
+  order_angle_flanks(a1, a3, flank1, flank3);
+  ha1 = flank1->hashing_value;
+  ha3 = flank3->hashing_value;
   int ha2 = center.hashing_value;
 
   // Build hybridization tuple
@@ -1649,8 +2404,7 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
 
   // Build valueKey (ring:hybr_tuple)
-  int ring_val = (flank1->min_ring_size > 0 || center.min_ring_size > 0 ||
-                  flank3->min_ring_size > 0) ? IN_RING_INDICATOR : 0;
+  int ring_val = angle_ring_size(center, *flank1, *flank3);
   std::string value_key = std::to_string(ring_val) + ":" + hybr_tuple;
 
   // Get neighbor symbols
@@ -1862,8 +2616,7 @@ inline void AcedrgTables::fill_angle(const ChemComp& cc,
     }
   }
 
-  // Determine if any atom is aromatic
-  bool aromatic = a1.is_aromatic || center.is_aromatic || a3.is_aromatic;
+  int ring_size = angle_ring_size(center, a1, a3);
 
   // Try detailed multilevel search first
   ValueStats vs = search_angle_multilevel(a1, center, a3);
@@ -1874,7 +2627,7 @@ inline void AcedrgTables::fill_angle(const ChemComp& cc,
   }
 
   // Try HRS table
-  vs = search_angle_hrs(a1, center, a3, aromatic);
+  vs = search_angle_hrs(a1, center, a3, ring_size);
   if (vs.count >= min_observations) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
@@ -1904,7 +2657,7 @@ inline void AcedrgTables::fill_angle(const ChemComp& cc,
 }
 
 inline ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
-    const CodAtomInfo& center, const CodAtomInfo& a3, bool aromatic) const {
+    const CodAtomInfo& center, const CodAtomInfo& a3, int ring_size) const {
 
   AngleHRSKey key;
   key.hash1 = std::min(a1.hashing_value, a3.hashing_value);
@@ -1915,18 +2668,12 @@ inline ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
   std::string h1 = hybridization_to_string(a1.hybrid);
   std::string h2 = hybridization_to_string(center.hybrid);
   std::string h3 = hybridization_to_string(a3.hybrid);
-  if (h1 > h3) std::swap(h1, h3);
-  key.hybrid_tuple = h1 + "_" + h2 + "_" + h3;
-  key.aromatic = aromatic;
+  if (a1.hashing_value > a3.hashing_value)
+    std::swap(h1, h3);
+  std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
+  key.value_key = std::to_string(ring_size) + ":" + hybr_tuple;
 
   auto it = angle_hrs_.find(key);
-  if (it != angle_hrs_.end()) {
-    return it->second;
-  }
-
-  // Try without aromatic flag
-  key.aromatic = !aromatic;
-  it = angle_hrs_.find(key);
   if (it != angle_hrs_.end()) {
     return it->second;
   }
