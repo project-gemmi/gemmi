@@ -141,7 +141,8 @@ const option::Descriptor Usage[] = {
   CommonUsage[Version],
   CommonUsage[Verbose],
   { Tables, 0, "t", "tables", Arg::Required,
-    "  -t, --tables=DIR  \tDirectory with AceDRG tables." },
+    "  -t, --tables=DIR  \tDirectory with AceDRG tables (default: $ACEDRG_TABLES"
+    "\n\t\tor $CCP4/share/acedrg/tables)." },
   { Sigma, 0, "", "sigma", Arg::Float,
     "  --sigma=NUM  \tMaximum sigma for bond restraints (default: 0.02)." },
   { Timing, 0, "", "timing", Arg::None,
@@ -167,15 +168,21 @@ int GEMMI_MAIN(int argc, char **argv) {
   if (p.options[Tables]) {
     tables_dir = p.options[Tables].arg;
   } else {
-    // Try environment variable
+    // Try ACEDRG_TABLES environment variable
     const char* env = std::getenv("ACEDRG_TABLES");
-    if (env)
+    if (env) {
       tables_dir = env;
+    } else {
+      // Fallback to $CCP4/share/acedrg/tables
+      const char* ccp4 = std::getenv("CCP4");
+      if (ccp4)
+        tables_dir = std::string(ccp4) + "/share/acedrg/tables";
+    }
   }
 
   if (tables_dir.empty()) {
     std::fprintf(stderr, "ERROR: No tables directory specified.\n"
-                         "Use --tables=DIR or set ACEDRG_TABLES environment variable.\n");
+                         "Use --tables=DIR or set ACEDRG_TABLES or CCP4 environment variable.\n");
     return 1;
   }
 
