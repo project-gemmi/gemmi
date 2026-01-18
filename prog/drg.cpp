@@ -129,14 +129,14 @@ void add_n_terminal_h3(ChemComp& cc) {
 void adjust_phosphate_group(ChemComp& cc) {
   for (auto& atom : cc.atoms) {
     if (atom.el == El::O &&
-        (atom.id == "OP1" || atom.id == "OP2" || atom.id == "OP3")) {
+        (atom.id == "OP2" || atom.id == "OP3")) {
       atom.charge = -1.0f;
     }
   }
   std::vector<std::string> phos_h;
   for (const auto& atom : cc.atoms) {
     if (atom.el == El::H &&
-        (atom.id == "HOP1" || atom.id == "HOP2" || atom.id == "HOP3")) {
+        (atom.id == "HOP2" || atom.id == "HOP3")) {
       phos_h.push_back(atom.id);
     }
   }
