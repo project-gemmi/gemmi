@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <cmath>
 #include <algorithm>
 #include <functional>
@@ -318,6 +319,9 @@ private:
   void load_angle_hrs(const std::string& path);
   void load_metal_tables(const std::string& dir);
   void load_en_bonds(const std::string& path);
+  void load_atom_type_codes(const std::string& path);
+  void load_bond_index(const std::string& path);
+  void load_bond_tables(const std::string& dir);
 
   // Atom classification helpers
   void detect_rings(const ChemComp& cc,
@@ -346,6 +350,8 @@ private:
                                 const std::vector<CodAtomInfo>& atoms) const;
 
   // Bond search helpers
+  ValueStats search_bond_multilevel(const CodAtomInfo& a1, const CodAtomInfo& a2,
+                                    bool aromatic) const;
   ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
                              bool aromatic) const;
   ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
@@ -391,6 +397,11 @@ inline void AcedrgTables::load_tables(const std::string& tables_dir) {
 
   // Load metal tables
   load_metal_tables(tables_dir);
+
+  // Load detailed indexed tables
+  load_atom_type_codes(tables_dir + "/allAtomTypesFromMolsCoded.list");
+  load_bond_index(tables_dir + "/allOrgBondTables/bond_idx.table");
+  load_bond_tables(tables_dir + "/allOrgBondTables");
 
   tables_loaded_ = true;
 }
@@ -575,6 +586,117 @@ inline void AcedrgTables::load_metal_tables(const std::string& dir) {
         entry.angle = angle;
         entry.sigma = sigma;
         metal_angles_.push_back(entry);
+      }
+    }
+  }
+}
+
+inline void AcedrgTables::load_atom_type_codes(const std::string& path) {
+  std::ifstream f(path);
+  if (!f)
+    return; // Optional file
+
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#')
+      continue;
+
+    // Format: code<whitespace>full_type
+    std::istringstream iss(line);
+    std::string code, full_type;
+    if (iss >> code >> full_type) {
+      atom_type_codes_[code] = full_type;
+    }
+  }
+}
+
+inline void AcedrgTables::load_bond_index(const std::string& path) {
+  std::ifstream f(path);
+  if (!f)
+    return; // Optional file
+
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#')
+      continue;
+
+    // Format: ha1 ha2 fileNum
+    std::istringstream iss(line);
+    int ha1, ha2, file_num;
+    if (iss >> ha1 >> ha2 >> file_num) {
+      bond_file_index_[ha1][ha2] = file_num;
+    }
+  }
+}
+
+inline void AcedrgTables::load_bond_tables(const std::string& dir) {
+  // Load each bond table file referenced in the index
+  std::set<int> loaded_files;
+
+  for (const auto& ha1_pair : bond_file_index_) {
+    for (const auto& ha2_pair : ha1_pair.second) {
+      int file_num = ha2_pair.second;
+      if (loaded_files.count(file_num))
+        continue;
+      loaded_files.insert(file_num);
+
+      std::string path = dir + "/" + std::to_string(file_num) + ".table";
+      std::ifstream f(path);
+      if (!f)
+        continue;
+
+      std::string line;
+      while (std::getline(f, line)) {
+        if (line.empty() || line[0] == '#')
+          continue;
+
+        // Format: ha1 ha2 hybrComb inRing a1NB2 a2NB2 a1NB a2NB atomCode1 atomCode2
+        //         value sigma count val2 sig2 cnt2
+        std::istringstream iss(line);
+        int ha1, ha2;
+        std::string hybr_comb, in_ring, a1_nb2, a2_nb2, a1_nb, a2_nb;
+        std::string atom_code1, atom_code2;
+        double value, sigma;
+        int count;
+
+        if (!(iss >> ha1 >> ha2 >> hybr_comb >> in_ring
+                  >> a1_nb2 >> a2_nb2 >> a1_nb >> a2_nb
+                  >> atom_code1 >> atom_code2
+                  >> value >> sigma >> count))
+          continue;
+
+        // Get main atom types from codes
+        std::string a1_type_m, a2_type_m;
+        auto it1 = atom_type_codes_.find(atom_code1);
+        auto it2 = atom_type_codes_.find(atom_code2);
+        if (it1 != atom_type_codes_.end()) {
+          // Extract main type (before '{' if present)
+          a1_type_m = it1->second;
+          size_t brace = a1_type_m.find('{');
+          if (brace != std::string::npos)
+            a1_type_m = a1_type_m.substr(0, brace);
+        }
+        if (it2 != atom_type_codes_.end()) {
+          a2_type_m = it2->second;
+          size_t brace = a2_type_m.find('{');
+          if (brace != std::string::npos)
+            a2_type_m = a2_type_m.substr(0, brace);
+        }
+
+        ValueStats vs(value, sigma, count);
+
+        // Populate 1D structure (full detail)
+        bond_idx_1d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
+                    [a1_nb][a2_nb][a1_type_m][a2_type_m].push_back(vs);
+
+        // Populate 2D structure (no atom types)
+        bond_idx_2d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
+                    [a1_nb][a2_nb].push_back(vs);
+
+        // Populate HaSp structures for fallback
+        bond_hasp_2d_[ha1][ha2][hybr_comb][in_ring].push_back(vs);
+        bond_hasp_1d_[ha1][ha2][hybr_comb].push_back(vs);
+        bond_hasp_0d_[ha1][ha2].push_back(vs);
       }
     }
   }
@@ -1054,8 +1176,16 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
     }
   }
 
-  // Try HRS table first
-  ValueStats vs = search_bond_hrs(a1, a2, bond.aromatic);
+  // Try detailed multilevel search first (if tables loaded)
+  ValueStats vs = search_bond_multilevel(a1, a2, bond.aromatic);
+  if (vs.count >= min_observations) {
+    bond.value = vs.value;
+    bond.esd = clamp_bond_sigma(vs.sigma);
+    return;
+  }
+
+  // Try HRS (summary) table
+  vs = search_bond_hrs(a1, a2, bond.aromatic);
   if (vs.count >= min_observations) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
@@ -1073,6 +1203,148 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
   // Ultimate fallback: sum of covalent radii
   bond.value = a1.el.covalent_r() + a2.el.covalent_r();
   bond.esd = upper_bond_sigma;
+}
+
+inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
+    const CodAtomInfo& a2, bool /*aromatic*/) const {
+
+  // Build lookup keys
+  int ha1 = std::min(a1.hashing_value, a2.hashing_value);
+  int ha2 = std::max(a1.hashing_value, a2.hashing_value);
+
+  std::string h1 = hybridization_to_string(a1.hybrid);
+  std::string h2 = hybridization_to_string(a2.hybrid);
+  if (h1 > h2) std::swap(h1, h2);
+  std::string hybr_comb = h1 + "_" + h2;
+
+  std::string in_ring = (a1.min_ring_size > 0 || a2.min_ring_size > 0) ? "Y" : "N";
+
+  // Use neighbor symbols as additional keys
+  const std::string& a1_nb2 = a1.nb2_symb;
+  const std::string& a2_nb2 = a2.nb2_symb;
+  const std::string& a1_nb = a1.nb_symb;
+  const std::string& a2_nb = a2.nb_symb;
+
+  // Use COD main type as atom type (simplified)
+  const std::string& a1_type = a1.cod_main;
+  const std::string& a2_type = a2.cod_main;
+
+  // Level 0: Try exact match in 1D structure
+  {
+    auto it1 = bond_idx_1d_.find(ha1);
+    if (it1 != bond_idx_1d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(in_ring);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a1_nb);
+                if (it7 != it6->second.end()) {
+                  auto it8 = it7->second.find(a2_nb);
+                  if (it8 != it7->second.end()) {
+                    auto it9 = it8->second.find(a1_type);
+                    if (it9 != it8->second.end()) {
+                      auto it10 = it9->second.find(a2_type);
+                      if (it10 != it9->second.end() && !it10->second.empty()) {
+                        ValueStats vs = aggregate_stats(it10->second);
+                        if (vs.count >= min_observations)
+                          return vs;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Level 3: Try 2D structure (no atom types)
+  {
+    auto it1 = bond_idx_2d_.find(ha1);
+    if (it1 != bond_idx_2d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(in_ring);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a1_nb);
+                if (it7 != it6->second.end()) {
+                  auto it8 = it7->second.find(a2_nb);
+                  if (it8 != it7->second.end() && !it8->second.empty()) {
+                    ValueStats vs = aggregate_stats(it8->second);
+                    if (vs.count >= min_observations_fallback)
+                      return vs;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Level 9: Try HaSp2D (hash + hybridization + ring)
+  {
+    auto it1 = bond_hasp_2d_.find(ha1);
+    if (it1 != bond_hasp_2d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(in_ring);
+          if (it4 != it3->second.end() && !it4->second.empty()) {
+            ValueStats vs = aggregate_stats(it4->second);
+            if (vs.count >= min_observations_fallback)
+              return vs;
+          }
+        }
+      }
+    }
+  }
+
+  // Level 10: Try HaSp1D (hash + hybridization only)
+  {
+    auto it1 = bond_hasp_1d_.find(ha1);
+    if (it1 != bond_hasp_1d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end() && !it3->second.empty()) {
+          ValueStats vs = aggregate_stats(it3->second);
+          if (vs.count >= min_observations_fallback)
+            return vs;
+        }
+      }
+    }
+  }
+
+  // Level 11: Try HaSp0D (hash codes only)
+  {
+    auto it1 = bond_hasp_0d_.find(ha1);
+    if (it1 != bond_hasp_0d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end() && !it2->second.empty()) {
+        return aggregate_stats(it2->second);
+      }
+    }
+  }
+
+  // No match found in detailed tables
+  return ValueStats();
 }
 
 inline ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
