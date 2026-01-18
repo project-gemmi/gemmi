@@ -42,9 +42,8 @@ inline const char* hybridization_to_string(Hybridization h) {
     case Hybridization::SPD6: return "SPD6";
     case Hybridization::SPD7: return "SPD7";
     case Hybridization::SPD8: return "SPD8";
-    case Hybridization::SP_NON: return "SP-NON";
+    case Hybridization::SP_NON: default: return "SP-NON";
   }
-  return "SP-NON";
 }
 
 inline Hybridization hybridization_from_string(const std::string& s) {
@@ -101,11 +100,11 @@ struct CodAtomInfo {
 
 // Statistical value with count
 struct ValueStats {
-  double value;
-  double sigma;
-  int count;
+  double value = NAN;
+  double sigma = NAN;
+  int count = 0;
 
-  ValueStats() : value(NAN), sigma(NAN), count(0) {}
+  ValueStats() = default;
   ValueStats(double v, double s, int c) : value(v), sigma(s), count(c) {}
 };
 
@@ -143,36 +142,36 @@ inline int element_row(Element el) {
 }
 
 inline int element_group(Element el) {
+  // Lookup table for periodic table groups (1-18) by element ordinal (0-118)
+  // Lanthanides (57-71) and actinides (89-103) are assigned to group 3
+  static constexpr int groups[119] = {
+    // 0: unknown
+    0,
+    // 1-2: H, He
+    1, 18,
+    // 3-10: Li-Ne
+    1, 2, 13, 14, 15, 16, 17, 18,
+    // 11-18: Na-Ar
+    1, 2, 13, 14, 15, 16, 17, 18,
+    // 19-36: K-Kr
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 37-54: Rb-Xe
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 55-56: Cs, Ba
+    1, 2,
+    // 57-71: La-Lu (lanthanides)
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    // 72-86: Hf-Rn
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 87-88: Fr, Ra
+    1, 2,
+    // 89-103: Ac-Lr (actinides)
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    // 104-118: Rf-Og
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+  };
   int n = el.ordinal();
-  if (n == 0) return 0;
-  // Period 1
-  if (n == 1) return 1;  // H
-  if (n == 2) return 18; // He
-  // Period 2
-  if (n >= 3 && n <= 4) return n - 2;     // Li, Be
-  if (n >= 5 && n <= 10) return n + 8;    // B-Ne
-  // Period 3
-  if (n >= 11 && n <= 12) return n - 10;  // Na, Mg
-  if (n >= 13 && n <= 18) return n;       // Al-Ar
-  // Period 4
-  if (n >= 19 && n <= 20) return n - 18;  // K, Ca
-  if (n >= 21 && n <= 30) return n - 18;  // Sc-Zn
-  if (n >= 31 && n <= 36) return n - 18;  // Ga-Kr
-  // Period 5
-  if (n >= 37 && n <= 38) return n - 36;  // Rb, Sr
-  if (n >= 39 && n <= 48) return n - 36;  // Y-Cd
-  if (n >= 49 && n <= 54) return n - 36;  // In-Xe
-  // Period 6
-  if (n >= 55 && n <= 56) return n - 54;  // Cs, Ba
-  if (n >= 57 && n <= 71) return 3;       // La-Lu (lanthanides, group 3)
-  if (n >= 72 && n <= 80) return n - 68;  // Hf-Hg
-  if (n >= 81 && n <= 86) return n - 68;  // Tl-Rn
-  // Period 7
-  if (n >= 87 && n <= 88) return n - 86;  // Fr, Ra
-  if (n >= 89 && n <= 103) return 3;      // Ac-Lr (actinides, group 3)
-  if (n >= 104 && n <= 112) return n - 100; // Rf-Cn
-  if (n >= 113 && n <= 118) return n - 100; // Nh-Og
-  return 0;
+  return (n >= 0 && n <= 118) ? groups[n] : 0;
 }
 
 // ============================================================================
@@ -216,6 +215,9 @@ public:
 
 private:
   static constexpr int HASH_SIZE = 1000;
+  // Ring indicator value used in angle valueKey when any atom is in a ring.
+  // The actual ring size is simplified to this single value for lookup.
+  static constexpr int IN_RING_INDICATOR = 5;
 
   // Table directory
   std::string tables_dir_;
@@ -1647,9 +1649,8 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
 
   // Build valueKey (ring:hybr_tuple)
-  // Ring indicator: any atom in ring -> non-zero
   int ring_val = (flank1->min_ring_size > 0 || center.min_ring_size > 0 ||
-                  flank3->min_ring_size > 0) ? 5 : 0;  // Simplified
+                  flank3->min_ring_size > 0) ? IN_RING_INDICATOR : 0;
   std::string value_key = std::to_string(ring_val) + ":" + hybr_tuple;
 
   // Get neighbor symbols
