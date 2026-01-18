@@ -1,5 +1,6 @@
 // Copyright 2025 Global Phasing Ltd.
 
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
 #include "gemmi/read_cif.hpp"     // for read_cif_gz
@@ -15,6 +16,8 @@
 
 using namespace gemmi;
 
+namespace {
+
 template <typename Range>
 int count_missing_values(const Range& range) {
   int missing = 0;
@@ -23,7 +26,105 @@ int count_missing_values(const Range& range) {
   return missing;
 }
 
-namespace {
+void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
+  auto is_id = [&](const Restraints::AtomId& id) { return id.atom == atom_id; };
+  cc.rt.bonds.erase(std::remove_if(cc.rt.bonds.begin(), cc.rt.bonds.end(),
+                                  [&](const Restraints::Bond& b) {
+                                    return is_id(b.id1) || is_id(b.id2);
+                                  }),
+                    cc.rt.bonds.end());
+  cc.rt.angles.erase(std::remove_if(cc.rt.angles.begin(), cc.rt.angles.end(),
+                                   [&](const Restraints::Angle& a) {
+                                     return is_id(a.id1) || is_id(a.id2) || is_id(a.id3);
+                                   }),
+                     cc.rt.angles.end());
+  cc.rt.torsions.erase(std::remove_if(cc.rt.torsions.begin(), cc.rt.torsions.end(),
+                                     [&](const Restraints::Torsion& t) {
+                                       return is_id(t.id1) || is_id(t.id2) ||
+                                              is_id(t.id3) || is_id(t.id4);
+                                     }),
+                       cc.rt.torsions.end());
+  cc.rt.chirs.erase(std::remove_if(cc.rt.chirs.begin(), cc.rt.chirs.end(),
+                                  [&](const Restraints::Chirality& c) {
+                                    return is_id(c.id_ctr) || is_id(c.id1) ||
+                                           is_id(c.id2) || is_id(c.id3);
+                                  }),
+                    cc.rt.chirs.end());
+  for (auto it = cc.rt.planes.begin(); it != cc.rt.planes.end(); ) {
+    auto& ids = it->ids;
+    ids.erase(std::remove_if(ids.begin(), ids.end(),
+                             [&](const Restraints::AtomId& id) { return is_id(id); }),
+              ids.end());
+    if (ids.empty())
+      it = cc.rt.planes.erase(it);
+    else
+      ++it;
+  }
+  cc.atoms.erase(std::remove_if(cc.atoms.begin(), cc.atoms.end(),
+                               [&](const ChemComp::Atom& a) { return a.id == atom_id; }),
+                 cc.atoms.end());
+}
+
+void adjust_terminal_carboxylate(ChemComp& cc) {
+  bool has_oxt = false;
+  bool has_hxt = false;
+  for (const auto& atom : cc.atoms) {
+    if (atom.id == "OXT" && atom.el == El::O)
+      has_oxt = true;
+    else if (atom.id == "HXT" && atom.el == El::H)
+      has_hxt = true;
+  }
+  if (!has_oxt || !has_hxt)
+    return;
+  for (auto& atom : cc.atoms)
+    if (atom.id == "OXT")
+      atom.charge = -1.0f;
+  remove_atom_by_id(cc, "HXT");
+}
+
+void add_n_terminal_h3(ChemComp& cc) {
+  if (cc.find_atom("N") == cc.atoms.end())
+    return;
+  if (cc.find_atom("H3") != cc.atoms.end())
+    return;
+  if (cc.find_atom("H") == cc.atoms.end() || cc.find_atom("H2") == cc.atoms.end())
+    return;
+
+  bool n_has_h = false;
+  bool n_has_h2 = false;
+  bool n_has_h3 = false;
+  for (const auto& bond : cc.rt.bonds) {
+    if (bond.id1.atom == "N" || bond.id2.atom == "N") {
+      const std::string& other = (bond.id1.atom == "N") ? bond.id2.atom : bond.id1.atom;
+      if (other == "H")
+        n_has_h = true;
+      else if (other == "H2")
+        n_has_h2 = true;
+      else if (other == "H3")
+        n_has_h3 = true;
+    }
+  }
+  if (!n_has_h || !n_has_h2 || n_has_h3)
+    return;
+
+  cc.atoms.push_back(ChemComp::Atom{"H3", "", El::H, 0.0f, "H", Position()});
+  // Bond/angle values set to NAN - will be filled by fill_restraints()
+  cc.rt.bonds.push_back({{1, "N"}, {1, "H3"}, BondType::Single, false,
+                        NAN, NAN, NAN, NAN});
+
+  auto add_angle_if_present = [&](const std::string& a1, const std::string& a2,
+                                  const std::string& a3) {
+    if (cc.find_atom(a1) == cc.atoms.end() ||
+        cc.find_atom(a2) == cc.atoms.end() ||
+        cc.find_atom(a3) == cc.atoms.end())
+      return;
+    cc.rt.angles.push_back({{1, a1}, {1, a2}, {1, a3}, NAN, NAN});  // filled later
+  };
+
+  add_angle_if_present("CA", "N", "H3");
+  add_angle_if_present("H", "N", "H3");
+  add_angle_if_present("H2", "N", "H3");
+}
 
 enum OptionIndex {
   Tables=4, Sigma, Timing, CifStyle
@@ -109,6 +210,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::fprintf(stderr, "Processing block %s ...\n", block.name.c_str());
 
       ChemComp cc = make_chemcomp_from_block(block);
+      adjust_terminal_carboxylate(cc);
+      add_n_terminal_h3(cc);
 
       // Count missing values before
       int missing_bonds = count_missing_values(cc.rt.bonds);
@@ -123,6 +226,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       // Fill restraints
       timer.start();
       tables.fill_restraints(cc);
+      tables.assign_ccp4_types(cc);
       timer.print("Restraints filled in");
 
       // Count filled values

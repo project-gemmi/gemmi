@@ -20,6 +20,7 @@
 #include "chemcomp.hpp"
 #include "elem.hpp"
 #include "fail.hpp"
+#include "util.hpp"
 
 namespace gemmi {
 
@@ -208,6 +209,9 @@ public:
   // Process a ChemComp - fill all missing restraint values
   void fill_restraints(ChemComp& cc) const;
 
+  // Assign CCP4 atom energy types (type_energy) following AceDRG rules
+  void assign_ccp4_types(ChemComp& cc) const;
+
   // Individual lookups
   void fill_bond(const ChemComp& cc,
                  const std::vector<CodAtomInfo>& atom_info,
@@ -265,6 +269,23 @@ private:
     }
   };
   std::map<AngleHRSKey, ValueStats> angle_hrs_;
+
+  struct Ccp4AtomInfo {
+    Element el = El::X;
+    std::string chem_type;
+    std::string ccp4_type;
+    int bonding_idx = 0;
+    std::map<std::string, int> ring_rep;
+    std::vector<int> conn_atoms;
+    std::vector<int> conn_h_atoms;
+    float par_charge = 0.0f;
+    int formal_charge = 0;
+  };
+
+  static int ccp4_material_type(Element el);
+  static void set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
+  static void set_hydro_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
+  static void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
 
   // Detailed indexed bond tables from allOrgBondTables/*.table
   // Level 0: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB, a1TypeM, a2TypeM
@@ -2076,6 +2097,359 @@ inline Hybridization AcedrgTables::hybrid_from_bonding_idx(int bonding_idx,
   if (bonding_idx >= 8)
     return Hybridization::SPD8;
   return Hybridization::SP_NON;
+}
+
+// ============================================================================
+// CCP4 atom type assignment (AceDRG)
+// ============================================================================
+
+inline int AcedrgTables::ccp4_material_type(Element el) {
+  switch (el.elem) {
+    case El::H: case El::D:
+      return 1;
+    case El::C: case El::N: case El::O: case El::P: case El::S: case El::Se:
+      return 2;
+    case El::Li: case El::Na: case El::K: case El::Rb: case El::Cs: case El::Fr:
+      return 3;
+    case El::Be: case El::Mg: case El::Ca: case El::Sr: case El::Ba: case El::Ra:
+      return 4;
+    case El::Sc: case El::Y: case El::Ti: case El::Zr: case El::Hf: case El::Rf:
+    case El::V: case El::Nb: case El::Ta: case El::Db:
+    case El::Cr: case El::Mo: case El::W: case El::Sg:
+    case El::Mn: case El::Tc: case El::Re: case El::Bh:
+    case El::Fe: case El::Ru: case El::Os: case El::Hs:
+    case El::Co: case El::Rh: case El::Ir: case El::Mt:
+    case El::Ni: case El::Pd: case El::Pt: case El::Ds:
+    case El::Cu: case El::Ag: case El::Au: case El::Rg:
+    case El::Zn: case El::Cd: case El::Hg: case El::Cn:
+      return 5;
+    case El::Al: case El::Ga: case El::In: case El::Tl: case El::Sn:
+    case El::Pb: case El::Bi:
+      return 6;
+    case El::B: case El::Si: case El::Ge: case El::As: case El::Sb:
+    case El::Te: case El::Po:
+      return 7;
+    case El::F: case El::Cl: case El::Br: case El::I: case El::At:
+      return 8;
+    case El::La: case El::Ce: case El::Pr: case El::Nd: case El::Pm:
+    case El::Sm: case El::Eu: case El::Gd: case El::Tb: case El::Dy:
+    case El::Ho: case El::Er: case El::Tm: case El::Yb: case El::Lu:
+    case El::Ac: case El::Th: case El::Pa: case El::U: case El::Np:
+    case El::Pu: case El::Am: case El::Cm: case El::Bk: case El::Cf:
+    case El::Es: case El::Fm: case El::Md: case El::No: case El::Lr:
+      return 9;
+    case El::He: case El::Ne: case El::Ar: case El::Kr: case El::Xe: case El::Rn:
+      return 10;
+    default:
+      return 0;
+  }
+}
+
+inline void AcedrgTables::set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
+                                            size_t idx) {
+  int ntype = ccp4_material_type(atoms[idx].el);
+  switch (ntype) {
+    case 1:
+      set_hydro_ccp4_type(atoms, idx);
+      break;
+    case 2:
+      set_org_ccp4_type(atoms, idx);
+      break;
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+      atoms[idx].ccp4_type = atoms[idx].chem_type;
+      break;
+    default:
+      atoms[idx].ccp4_type = atoms[idx].chem_type;
+      break;
+  }
+  atoms[idx].ccp4_type = to_upper(atoms[idx].ccp4_type);
+}
+
+inline void AcedrgTables::set_hydro_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
+                                              size_t idx) {
+  Ccp4AtomInfo& atom = atoms[idx];
+  atom.ccp4_type = "H";
+  if (atom.conn_atoms.size() == 1) {
+    int nb = atom.conn_atoms[0];
+    if (atoms[nb].chem_type == "S")
+      atom.ccp4_type = "HSH1";
+  }
+}
+
+inline void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
+                                            size_t idx) {
+  Ccp4AtomInfo& atom = atoms[idx];
+  int r5 = 0;
+  int r6 = 0;
+  for (const auto& item : atom.ring_rep) {
+    if (item.second == 5)
+      r5 += 1;
+    if (item.second == 6)
+      r6 += 1;
+  }
+
+  const size_t nconn = atom.conn_atoms.size();
+  const size_t nh = atom.conn_h_atoms.size();
+
+  if (atom.chem_type == "C") {
+    if (atom.bonding_idx == 2) {
+      if (r5 && r6) {
+        atom.ccp4_type = "CR56";
+      } else if (r5 == 2) {
+        atom.ccp4_type = "CR55";
+      } else if (r6 == 2) {
+        atom.ccp4_type = "CR66";
+      } else if (r5 == 1) {
+        if (nh == 1) {
+          atom.ccp4_type = "CR15";
+        } else if (nh == 0) {
+          atom.ccp4_type = "CR5";
+        }
+      } else if (r6 == 1) {
+        if (nh == 1) {
+          atom.ccp4_type = "CR16";
+        } else if (nh == 0) {
+          atom.ccp4_type = "CR6";
+        }
+      } else {
+        if (nh == 1) {
+          atom.ccp4_type = "C1";
+        } else if (nh == 2) {
+          atom.ccp4_type = "C2";
+        } else if (nh == 0) {
+          atom.ccp4_type = "C";
+        }
+      }
+    } else if (atom.bonding_idx == 3) {
+      if (nh == 0) {
+        atom.ccp4_type = "CT";
+      } else if (nh == 1) {
+        atom.ccp4_type = "CH1";
+      } else if (nh == 2) {
+        atom.ccp4_type = "CH2";
+      } else if (nh == 3) {
+        atom.ccp4_type = "CH3";
+      }
+    } else if (atom.bonding_idx == 1) {
+      atom.ccp4_type = "CSP";
+    }
+  } else if (atom.chem_type == "N") {
+    if (atom.bonding_idx == 2) {
+      if (nconn == 3) {
+        if (nh == 1) {
+          atom.ccp4_type = "NH1";
+        } else if (nh == 2) {
+          atom.ccp4_type = "NH2";
+        } else if (nh == 0) {
+          atom.ccp4_type = "NH0";
+        } else {
+          atom.ccp4_type = "N";
+        }
+      } else if (nconn == 2) {
+        if (nh == 1) {
+          atom.ccp4_type = "N21";
+        } else if (nh == 0) {
+          atom.ccp4_type = "N20";
+        } else {
+          atom.ccp4_type = "N";
+        }
+      }
+    } else if (atom.bonding_idx == 3) {
+      if (nconn == 4) {
+        if (nh == 1) {
+          atom.ccp4_type = "NT1";
+        } else if (nh == 2) {
+          atom.ccp4_type = "NT2";
+        } else if (nh == 3) {
+          atom.ccp4_type = "NT3";
+        } else if (nh == 4) {
+          atom.ccp4_type = "NT4";
+        } else if (nh == 0) {
+          atom.ccp4_type = "NT";
+        } else {
+          atom.ccp4_type = "N";
+        }
+      } else if (nconn == 3) {
+        if (nh == 1) {
+          atom.ccp4_type = "N31";
+        } else if (nh == 2) {
+          atom.ccp4_type = "N32";
+        } else if (nh == 3) {
+          atom.ccp4_type = "N33";
+        } else if (nh == 0) {
+          atom.ccp4_type = "N30";
+        } else {
+          atom.ccp4_type = "N3";
+        }
+      }
+    } else if (atom.bonding_idx == 1) {
+      atom.ccp4_type = "NSP";
+    }
+  } else if (atom.chem_type == "P") {
+    atom.ccp4_type = (nconn == 4 ? "P" : "P1");
+  } else if (atom.chem_type == "O") {
+    bool lP = false;
+    bool lS = false;
+    bool lB = false;
+    for (int nb : atom.conn_atoms) {
+      if (atoms[nb].chem_type == "P") lP = true;
+      if (atoms[nb].chem_type == "S") lS = true;
+      if (atoms[nb].chem_type == "B") lB = true;
+    }
+
+    bool has_par_charge = std::fabs(atom.par_charge) > 1e-6f;
+    bool has_formal_charge = atom.formal_charge != 0;
+
+    if (atom.bonding_idx == 2) {
+      if (has_par_charge) {
+        if (lP) {
+          atom.ccp4_type = "OP";
+        } else if (lS) {
+          atom.ccp4_type = "OS";
+        } else if (lB) {
+          atom.ccp4_type = "OB";
+        } else {
+          atom.ccp4_type = "OC";
+        }
+      } else if (nconn == 2) {
+        if (nh == 1) {
+          atom.ccp4_type = "OH1";
+        } else if (nh == 2) {
+          atom.ccp4_type = "OH2";
+        } else {
+          atom.ccp4_type = "O";
+        }
+      } else {
+        if (has_formal_charge) {
+          if (lP) {
+            atom.ccp4_type = "OP";
+          } else if (lS) {
+            atom.ccp4_type = "OS";
+          } else if (lB) {
+            atom.ccp4_type = "OB";
+          } else {
+            atom.ccp4_type = "OC";
+          }
+        } else {
+          atom.ccp4_type = "O";
+        }
+      }
+    } else if (atom.bonding_idx == 3) {
+      bool lC = false;
+      for (int nb : atom.conn_atoms)
+        if (atoms[nb].chem_type == "C")
+          lC = true;
+      if (lC && nh == 1 && nconn == 2) {
+        atom.ccp4_type = "OH1";
+      } else if (nh == 2) {
+        atom.ccp4_type = "OH2";
+      } else if (nconn == 2) {
+        if (has_par_charge) {
+          atom.ccp4_type = "OC2";
+        } else if (nh == 1) {
+          atom.ccp4_type = "OH1";
+        } else {
+          atom.ccp4_type = "O2";
+        }
+      }
+    } else if (nconn == 1) {
+      if (has_formal_charge) {
+        if (lP) {
+          atom.ccp4_type = "OP";
+        } else if (lS) {
+          atom.ccp4_type = "OS";
+        } else if (lB) {
+          atom.ccp4_type = "OB";
+        } else {
+          atom.ccp4_type = "OC";
+        }
+      } else {
+        atom.ccp4_type = "O";
+      }
+    } else {
+      atom.ccp4_type = "O";
+    }
+  } else if (atom.chem_type == "S") {
+    if (nconn == 3 || nconn == 4) {
+      if (nh == 0) {
+        atom.ccp4_type = "S3";
+      } else if (nh == 1) {
+        atom.ccp4_type = "SH1";
+      }
+    } else if (nconn == 2) {
+      if (nh == 0) {
+        atom.ccp4_type = "S2";
+      } else {
+        atom.ccp4_type = "SH1";
+      }
+    } else if (nconn == 1) {
+      atom.ccp4_type = "S1";
+    } else if (nh == 0) {
+      atom.ccp4_type = "S";
+    } else if (nh == 1) {
+      atom.ccp4_type = "SH1";
+    } else {
+      atom.ccp4_type = "S";
+    }
+  } else if (atom.chem_type == "Se") {
+    // Selenium - similar to sulfur
+    if (nconn == 3 || nconn == 4) {
+      atom.ccp4_type = "SE";
+    } else if (nconn == 2) {
+      atom.ccp4_type = "SE";
+    } else if (nconn == 1) {
+      atom.ccp4_type = "SE";
+    } else {
+      atom.ccp4_type = "SE";
+    }
+  } else {
+    atom.ccp4_type = atom.chem_type;
+  }
+}
+
+inline void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
+  if (cc.atoms.empty())
+    return;
+
+  std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
+  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
+  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+
+  std::vector<Ccp4AtomInfo> atoms;
+  atoms.reserve(cc.atoms.size());
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    Ccp4AtomInfo info;
+    info.el = cc.atoms[i].el;
+    info.chem_type = cc.atoms[i].el.name();
+    info.ccp4_type = info.chem_type;
+    info.bonding_idx = atom_info[i].bonding_idx;
+    info.ring_rep = atom_info[i].ring_rep;
+    info.conn_atoms = neighbors[i];
+    for (int nb : neighbors[i]) {
+      if (cc.atoms[nb].is_hydrogen())
+        info.conn_h_atoms.push_back(nb);
+    }
+    info.par_charge = cc.atoms[i].charge;
+    info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
+    atoms.emplace_back(std::move(info));
+  }
+
+  for (size_t i = 0; i < atoms.size(); ++i)
+    if (ccp4_material_type(atoms[i].el) != 1)
+      set_one_ccp4_type(atoms, i);
+  for (size_t i = 0; i < atoms.size(); ++i)
+    if (ccp4_material_type(atoms[i].el) == 1)
+      set_one_ccp4_type(atoms, i);
+
+  for (size_t i = 0; i < atoms.size(); ++i)
+    cc.atoms[i].chem_type = atoms[i].ccp4_type;
 }
 
 // ============================================================================
