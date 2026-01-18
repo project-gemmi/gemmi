@@ -277,6 +277,7 @@ private:
     int bonding_idx = 0;
     std::map<std::string, int> ring_rep;
     std::vector<int> conn_atoms;
+    std::vector<int> conn_atoms_no_metal;
     std::vector<int> conn_h_atoms;
     float par_charge = 0.0f;
     int formal_charge = 0;
@@ -2195,7 +2196,7 @@ inline void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
       r6 += 1;
   }
 
-  const size_t nconn = atom.conn_atoms.size();
+  const size_t nconn = atom.conn_atoms_no_metal.size();
   const size_t nh = atom.conn_h_atoms.size();
 
   if (atom.chem_type == "C") {
@@ -2432,9 +2433,12 @@ inline void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     info.bonding_idx = atom_info[i].bonding_idx;
     info.ring_rep = atom_info[i].ring_rep;
     info.conn_atoms = neighbors[i];
+    info.conn_atoms_no_metal.clear();
     for (int nb : neighbors[i]) {
       if (cc.atoms[nb].is_hydrogen())
         info.conn_h_atoms.push_back(nb);
+      if (!cc.atoms[nb].el.is_metal())
+        info.conn_atoms_no_metal.push_back(nb);
     }
     info.par_charge = cc.atoms[i].charge;
     info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
