@@ -9,6 +9,7 @@
 #include "gemmi/to_cif.hpp"       // for write_cif_to_stream
 #include "gemmi/to_chemcomp.hpp"  // for add_chemcomp_to_block
 #include "gemmi/fstream.hpp"      // for Ofstream
+#include "gemmi/util.hpp"         // for to_upper
 
 #define GEMMI_PROG drg
 #include "options.h"

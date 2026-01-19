@@ -21,6 +21,7 @@
 #include "elem.hpp"
 #include "fail.hpp"
 #include "util.hpp"
+#include "read_cif.hpp"
 
 namespace gemmi {
 
@@ -91,6 +92,7 @@ struct CodAtomInfo {
   std::string nb2_symb;     // codNB2Symb
   std::string nb3_symb;     // codNB3Symb
   std::string nb1nb2_sp;    // codNB1NB2_SP
+  std::vector<int> conn_atoms_no_metal; // Non-metal neighbors (index list)
   int connectivity;         // Number of bonded atoms
   int metal_connectivity;   // Number of metal neighbors
   int min_ring_size;        // Minimum ring size (0 = not in ring)
@@ -127,8 +129,12 @@ struct ValueStats {
 struct MetalBondEntry {
   Element metal = El::X;
   Element ligand = El::X;
-  int coord_number = 0;
+  int metal_coord = 0;
+  int ligand_coord = 0;
   std::string ligand_class;
+  double pre_value = NAN;
+  double pre_sigma = NAN;
+  int pre_count = 0;
   double value = NAN;
   double sigma = NAN;
   int count = 0;
@@ -228,8 +234,9 @@ public:
   double lower_bond_sigma = 0.02;
   double upper_angle_sigma = 3.0;
   double lower_angle_sigma = 1.5;
-  int min_observations = 5;   // Minimum count for exact match
-  int min_observations_fallback = 4; // Minimum for fallback levels
+  int min_observations = 3;   // Minimum count for exact match (AceDRG default)
+  int min_observations_fallback = 3; // Minimum for fallback levels
+  int metal_class_min_count = 5; // AceDRG uses >5 for metal class selection
 
 private:
   static constexpr int HASH_SIZE = 1000;
@@ -283,10 +290,26 @@ private:
     int formal_charge = 0;
   };
 
+  struct Ccp4BondEntry {
+    double length = NAN;
+    double sigma = NAN;
+  };
+
+  std::map<std::string, std::map<std::string, std::map<std::string, Ccp4BondEntry>>> ccp4_bonds_;
+
   static int ccp4_material_type(Element el);
   static void set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
   static void set_hydro_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
   static void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
+  static std::string bond_order_key(BondType type);
+  void load_ccp4_bonds(const std::string& path);
+  std::vector<std::string> compute_ccp4_types(const ChemComp& cc,
+                                              const std::vector<CodAtomInfo>& atom_info,
+                                              const std::vector<std::vector<int>>& neighbors) const;
+  bool search_ccp4_bond(const std::string& type1,
+                        const std::string& type2,
+                        const std::string& order,
+                        ValueStats& out) const;
 
   // Detailed indexed bond tables from allOrgBondTables/*.table
   // Level 0: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB, a1TypeM, a2TypeM
@@ -490,7 +513,7 @@ private:
   ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
   ValueStats search_metal_bond(const CodAtomInfo& metal,
                                const CodAtomInfo& ligand,
-                               int coord_number) const;
+                               const std::vector<CodAtomInfo>& atoms) const;
 
   // Angle search helpers
   ValueStats search_angle_multilevel(const CodAtomInfo& a1,
@@ -533,6 +556,9 @@ inline void AcedrgTables::load_tables(const std::string& tables_dir) {
 
   // Load metal tables
   load_metal_tables(tables_dir);
+
+  // Load CCP4 energetic library bonds (for AceDRG fallback)
+  load_ccp4_bonds(tables_dir + "/ener_lib.cif");
 
   // Load detailed indexed tables
   load_atom_type_codes(tables_dir + "/allAtomTypesFromMolsCoded.list");
@@ -678,20 +704,31 @@ inline void AcedrgTables::load_metal_tables(const std::string& dir) {
       continue;
 
     std::istringstream iss(line);
-    std::string metal_str, ligand_str, ligand_class;
-    int coord;
-    double value, sigma;
-    int count;
+    std::vector<std::string> tokens;
+    std::string token;
+    while (iss >> token)
+      tokens.push_back(token);
 
-    if (iss >> metal_str >> ligand_str >> coord >> ligand_class >> value >> sigma >> count) {
+    if (tokens.size() == 10 || tokens.size() == 11) {
       MetalBondEntry entry;
-      entry.metal = Element(metal_str);
-      entry.ligand = Element(ligand_str);
-      entry.coord_number = coord;
-      entry.ligand_class = ligand_class;
-      entry.value = value;
-      entry.sigma = sigma;
-      entry.count = count;
+      entry.metal = Element(tokens[0]);
+      entry.metal_coord = str_to_int(tokens[1]);
+      entry.ligand = Element(tokens[2]);
+      entry.ligand_coord = str_to_int(tokens[3]);
+      entry.pre_value = std::stod(tokens[4]);
+      entry.pre_sigma = std::stod(tokens[5]);
+      entry.pre_count = str_to_int(tokens[6]);
+      if (tokens.size() == 11) {
+        entry.ligand_class = tokens[7];
+        entry.value = std::stod(tokens[8]);
+        entry.sigma = std::stod(tokens[9]);
+        entry.count = str_to_int(tokens[10]);
+      } else {
+        entry.ligand_class = "NONE";
+        entry.value = std::stod(tokens[7]);
+        entry.sigma = std::stod(tokens[8]);
+        entry.count = str_to_int(tokens[9]);
+      }
       metal_bonds_.push_back(entry);
     }
   }
@@ -1033,10 +1070,15 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
   // Connectivity counts
   for (size_t i = 0; i < atoms.size(); ++i) {
     atoms[i].connectivity = static_cast<int>(neighbors[i].size());
+    atoms[i].conn_atoms_no_metal.clear();
     int metal_conn = 0;
-    for (int nb : neighbors[i])
-      if (atoms[nb].is_metal)
+    for (int nb : neighbors[i]) {
+      if (atoms[nb].is_metal) {
         ++metal_conn;
+      } else {
+        atoms[i].conn_atoms_no_metal.push_back(nb);
+      }
+    }
     atoms[i].metal_connectivity = metal_conn;
   }
 
@@ -2146,6 +2188,100 @@ inline int AcedrgTables::ccp4_material_type(Element el) {
   }
 }
 
+inline std::string AcedrgTables::bond_order_key(BondType type) {
+  std::string s = bond_type_to_string(type);
+  if (s.empty())
+    s = "single";
+  s = to_upper(s);
+  if (s.size() > 4)
+    s.resize(4);
+  return s;
+}
+
+inline void AcedrgTables::load_ccp4_bonds(const std::string& path) {
+  try {
+    cif::Document doc = read_cif_gz(path);
+    if (doc.blocks.empty())
+      return;
+    for (const auto& row : doc.blocks[0].find("_lib_bond.",
+                    {"atom_type_1", "atom_type_2", "type",
+                     "length", "value_esd"})) {
+      std::string type1 = row.str(0);
+      std::string type2 = row.str(1);
+      std::string order = row.str(2);
+      double length = cif::as_number(row[3], NAN);
+      double sigma = cif::as_number(row[4], NAN);
+      if (type1.empty() || order.empty() || std::isnan(length))
+        continue;
+      std::string order_key = to_upper(order);
+      if (order_key.size() > 4)
+        order_key.resize(4);
+      ccp4_bonds_[type1][type2][order_key] = {length, sigma};
+    }
+  } catch (std::exception&) {
+    return;
+  }
+}
+
+inline bool AcedrgTables::search_ccp4_bond(const std::string& type1,
+                                           const std::string& type2,
+                                           const std::string& order,
+                                           ValueStats& out) const {
+  auto it1 = ccp4_bonds_.find(type1);
+  if (it1 == ccp4_bonds_.end())
+    return false;
+  auto it2 = it1->second.find(type2);
+  if (it2 == it1->second.end())
+    return false;
+  auto it3 = it2->second.find(order);
+  if (it3 == it2->second.end())
+    return false;
+  out.value = it3->second.length;
+  out.sigma = it3->second.sigma;
+  out.count = 1;
+  return true;
+}
+
+inline std::vector<std::string> AcedrgTables::compute_ccp4_types(
+    const ChemComp& cc,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::vector<std::vector<int>>& neighbors) const {
+  std::vector<Ccp4AtomInfo> atoms;
+  atoms.reserve(cc.atoms.size());
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    Ccp4AtomInfo info;
+    info.el = cc.atoms[i].el;
+    info.chem_type = cc.atoms[i].el.name();
+    info.ccp4_type = info.chem_type;
+    info.bonding_idx = atom_info[i].bonding_idx;
+    info.ring_rep = atom_info[i].ring_rep;
+    info.conn_atoms = neighbors[i];
+    info.conn_atoms_no_metal.clear();
+    for (int nb : neighbors[i]) {
+      if (cc.atoms[nb].is_hydrogen())
+        info.conn_h_atoms.push_back(nb);
+      if (!cc.atoms[nb].el.is_metal())
+        info.conn_atoms_no_metal.push_back(nb);
+    }
+    info.par_charge = cc.atoms[i].charge;
+    info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
+    atoms.emplace_back(std::move(info));
+  }
+
+  for (size_t i = 0; i < atoms.size(); ++i)
+    if (ccp4_material_type(atoms[i].el) != 1)
+      set_one_ccp4_type(atoms, i);
+  for (size_t i = 0; i < atoms.size(); ++i)
+    if (ccp4_material_type(atoms[i].el) == 1)
+      set_one_ccp4_type(atoms, i);
+
+  std::vector<std::string> out;
+  out.reserve(atoms.size());
+  for (const auto& atom : atoms)
+    out.push_back(atom.ccp4_type);
+  return out;
+}
+
 inline void AcedrgTables::set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
                                             size_t idx) {
   int ntype = ccp4_material_type(atoms[idx].el);
@@ -2466,11 +2602,40 @@ inline void AcedrgTables::fill_restraints(ChemComp& cc) const {
 
   // Classify atoms
   std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
+  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
+  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+  std::vector<std::string> ccp4_types;
+  if (!ccp4_bonds_.empty())
+    ccp4_types = compute_ccp4_types(cc, atom_info, neighbors);
 
   // Fill bonds
   for (auto& bond : cc.rt.bonds) {
     if (std::isnan(bond.value)) {
       fill_bond(cc, atom_info, bond);
+      // CCP4 energetic library fallback
+      if (std::isnan(bond.value) && !ccp4_types.empty()) {
+        auto it1 = cc.find_atom(bond.id1.atom);
+        auto it2 = cc.find_atom(bond.id2.atom);
+        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
+          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
+          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+          std::string order = bond_order_key(bond.type);
+          ValueStats vs;
+          if (!search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) &&
+              !search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
+            ValueStats v1, v2;
+            bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
+            bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
+            if (has1 && has2) {
+              bond.value = 0.5 * (v1.value + v2.value);
+              bond.esd = 0.02;
+            }
+          } else {
+            bond.value = vs.value;
+            bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+          }
+        }
+      }
     }
   }
 
@@ -2501,10 +2666,9 @@ inline void AcedrgTables::fill_bond(const ChemComp& cc,
   if (a1.is_metal || a2.is_metal) {
     const CodAtomInfo& metal = a1.is_metal ? a1 : a2;
     const CodAtomInfo& ligand = a1.is_metal ? a2 : a1;
-    int coord = metal.connectivity;
 
-    ValueStats vs = search_metal_bond(metal, ligand, coord);
-    if (vs.count >= min_observations) {
+    ValueStats vs = search_metal_bond(metal, ligand, atom_info);
+    if (vs.count > 0) {
       bond.value = vs.value;
       bond.esd = clamp_bond_sigma(vs.sigma);
       return;
@@ -2561,8 +2725,8 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   // Use neighbor symbols as additional keys
   const std::string& a1_nb2 = left->nb2_symb;
   const std::string& a2_nb2 = right->nb2_symb;
-  const std::string& a1_nb = left->nb1nb2_sp;
-  const std::string& a2_nb = right->nb1nb2_sp;
+  const std::string& a1_nb = left->nb_symb;
+  const std::string& a2_nb = right->nb_symb;
 
   // Use COD main type as atom type (simplified)
   const std::string& a1_type = left->cod_main;
@@ -2740,22 +2904,49 @@ inline ValueStats AcedrgTables::search_bond_en(const CodAtomInfo& a1,
 }
 
 inline ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
-    const CodAtomInfo& ligand, int coord_number) const {
+    const CodAtomInfo& ligand, const std::vector<CodAtomInfo>& atoms) const {
 
-  std::vector<ValueStats> matches;
+  int ha1 = metal.connectivity;
+  int ha2 = static_cast<int>(ligand.conn_atoms_no_metal.size());
+
+  std::vector<std::string> nb_ids;
+  nb_ids.reserve(ligand.conn_atoms_no_metal.size());
+  for (int nb : ligand.conn_atoms_no_metal) {
+    if (nb >= 0 && nb < static_cast<int>(atoms.size()))
+      nb_ids.push_back(atoms[nb].el.name());
+  }
+  std::sort(nb_ids.begin(), nb_ids.end(), compare_no_case);
+
+  std::string ligand_class;
+  for (const auto& id : nb_ids)
+    ligand_class.append("_" + id);
+
+  const MetalBondEntry* class_entry = nullptr;
+  const MetalBondEntry* pre_entry = nullptr;
 
   for (const auto& entry : metal_bonds_) {
-    if (entry.metal == metal.el && entry.ligand == ligand.el) {
-      if (entry.coord_number == coord_number ||
-          entry.coord_number == 0) { // 0 means any coordination
-        matches.emplace_back(entry.value, entry.sigma, entry.count);
-      }
-    }
+    if (entry.metal != metal.el || entry.ligand != ligand.el)
+      continue;
+    if (entry.metal_coord != ha1 || entry.ligand_coord != ha2)
+      continue;
+    if (!pre_entry)
+      pre_entry = &entry;
+    if (!ligand_class.empty() && entry.ligand_class == ligand_class)
+      class_entry = &entry;
   }
 
-  if (!matches.empty()) {
-    return aggregate_stats(matches);
+  if (class_entry) {
+    if (class_entry->count > metal_class_min_count)
+      return ValueStats(class_entry->value, class_entry->sigma,
+                        class_entry->count);
+    if (pre_entry)
+      return ValueStats(pre_entry->pre_value, pre_entry->pre_sigma,
+                        pre_entry->pre_count);
   }
+
+  if (pre_entry)
+    return ValueStats(pre_entry->pre_value, pre_entry->pre_sigma,
+                      pre_entry->pre_count);
 
   return ValueStats();
 }
