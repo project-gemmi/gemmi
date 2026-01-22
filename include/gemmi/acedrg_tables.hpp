@@ -1152,8 +1152,7 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
   set_atoms_bonding_and_chiral_center(atoms, neighbors);
   set_atoms_nb1nb2_sp(atoms, neighbors);
 
-  // nb2_symb is now computed in set_atoms_nb1nb2_sp() in the same order
-  // as the alphabetically sorted nb1nb2_sp to match AceDRG table conventions
+  // nb2_symb (codNB2Symb) stays derived from cod_class (AceDRG behavior).
 
   // Ring props from codClass and hash codes
   for (auto& atom : atoms) {
@@ -1687,8 +1686,7 @@ inline void AcedrgTables::set_atoms_nb1nb2_sp(
     std::vector<CodAtomInfo>& atoms,
     const std::vector<std::vector<int>>& neighbors) const {
   for (auto& atom : atoms) {
-    // Store pairs of (nb1nb2_sp string, neighbor count) for sorting
-    std::vector<std::pair<std::string, int>> nb1_nb2_sp_with_count;
+    std::vector<std::string> nb1_nb2_sp_set;
     for (int nb1 : neighbors[atom.index]) {
       std::string nb1_main = atoms[nb1].cod_root;
       std::vector<int> nb2_sp_set;
@@ -1701,26 +1699,19 @@ inline void AcedrgTables::set_atoms_nb1nb2_sp(
         if (i != nb2_sp_set.size() - 1)
           nb2_sp_str.append("_");
       }
-      // Store the string and the neighbor count for nb2_symb
-      nb1_nb2_sp_with_count.emplace_back(nb1_main + "-" + nb2_sp_str,
-                                         static_cast<int>(neighbors[nb1].size()));
+      nb1_nb2_sp_set.emplace_back(nb1_main + "-" + nb2_sp_str);
     }
     // Sort alphabetically by the string (same order as AceDRG tables)
-    std::sort(nb1_nb2_sp_with_count.begin(), nb1_nb2_sp_with_count.end(),
+    std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(),
               [](const auto& a, const auto& b) {
-                return compare_no_case(a.first, b.first);
+                return compare_no_case(a, b);
               });
     // Build nb1nb2_sp in alphabetical order
     atom.nb1nb2_sp.clear();
-    for (size_t i = 0; i < nb1_nb2_sp_with_count.size(); ++i) {
-      atom.nb1nb2_sp.append(nb1_nb2_sp_with_count[i].first);
-      if (i != nb1_nb2_sp_with_count.size() - 1)
+    for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
+      atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
+      if (i != nb1_nb2_sp_set.size() - 1)
         atom.nb1nb2_sp.append(":");
-    }
-    // Build nb2_symb in REVERSE alphabetical order (AceDRG convention)
-    atom.nb2_symb.clear();
-    for (size_t i = nb1_nb2_sp_with_count.size(); i > 0; --i) {
-      atom.nb2_symb.append(std::to_string(nb1_nb2_sp_with_count[i-1].second) + ":");
     }
   }
 }
