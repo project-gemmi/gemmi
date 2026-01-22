@@ -2669,8 +2669,9 @@ inline void AcedrgTables::fill_restraints(ChemComp& cc) const {
                    hybridization_to_string(a.hybrid), a.bonding_idx,
                    a.hashing_value, a.cod_class.c_str());
       if (verbose >= 2)
-        std::fprintf(stderr, "        cod_main=%s nb1nb2_sp=%s nb2=%s\n",
-                     a.cod_main.c_str(), a.nb1nb2_sp.c_str(), a.nb2_symb.c_str());
+        std::fprintf(stderr, "        cod_main=%s nb1nb2_sp=%s nb=%s nb2=%s\n",
+                     a.cod_main.c_str(), a.nb1nb2_sp.c_str(),
+                     a.nb_symb.c_str(), a.nb2_symb.c_str());
     }
   }
 
@@ -3209,14 +3210,14 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   int ha1, ha3;
   const CodAtomInfo *flank1, *flank3;
   order_angle_flanks(a1, a3, flank1, flank3);
-  ha1 = flank1->hashing_value;
+  ha1 = center.hashing_value;
+  int ha2 = flank1->hashing_value;
   ha3 = flank3->hashing_value;
-  int ha2 = center.hashing_value;
 
   // Build hybridization tuple
-  std::string h1 = hybridization_to_string(flank1->hybrid);
-  std::string h2 = hybridization_to_string(center.hybrid);
-  std::string h3 = hybridization_to_string(flank3->hybrid);
+  std::string h1 = hybridization_to_string(center.hybrid);
+  std::string h2 = hybridization_to_string(flank3->hybrid);
+  std::string h3 = hybridization_to_string(flank1->hybrid);
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
 
   // Build valueKey (ring:hybr_tuple)
@@ -3224,15 +3225,26 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   std::string value_key = std::to_string(ring_val) + ":" + hybr_tuple;
 
   // Get neighbor symbols
-  const std::string& a1_nb2 = flank1->nb2_symb;
-  const std::string& a2_nb2 = center.nb2_symb;
+  const std::string& a1_nb2 = center.nb2_symb;
+  const std::string& a2_nb2 = flank1->nb2_symb;
   const std::string& a3_nb2 = flank3->nb2_symb;
-  const std::string& a1_nb = flank1->nb1nb2_sp;
-  const std::string& a2_nb = center.nb1nb2_sp;
-  const std::string& a3_nb = flank3->nb1nb2_sp;
-  const std::string& a1_type = flank1->cod_main;
-  const std::string& a2_type = center.cod_main;
+  const std::string& a1_nb = center.nb_symb;
+  const std::string& a2_nb = flank1->nb_symb;
+  const std::string& a3_nb = flank3->nb_symb;
+  const std::string& a1_type = center.cod_main;
+  const std::string& a2_type = flank1->cod_main;
   const std::string& a3_type = flank3->cod_main;
+
+  if (verbose >= 2) {
+    std::fprintf(stderr,
+                 "      angle key %s-%s-%s: hash=%d/%d/%d value=%s "
+                 "nb2=%s/%s/%s nb=%s/%s/%s type=%s/%s/%s\n",
+                 a1.id.c_str(), center.id.c_str(), a3.id.c_str(),
+                 ha1, ha2, ha3, value_key.c_str(),
+                 a1_nb2.c_str(), a2_nb2.c_str(), a3_nb2.c_str(),
+                 a1_nb.c_str(), a2_nb.c_str(), a3_nb.c_str(),
+                 a1_type.c_str(), a2_type.c_str(), a3_type.c_str());
+  }
 
   // Level 1D: Try exact match with atom types
   {
@@ -3263,8 +3275,14 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                             auto it13 = it12->second.find(a3_type);
                             if (it13 != it12->second.end() && !it13->second.empty()) {
                               ValueStats vs = aggregate_stats(it13->second);
-                              if (vs.count >= min_observations)
+                              if (vs.count >= min_observations) {
+                                if (verbose >= 2)
+                                  std::fprintf(stderr,
+                                               "      matched angle %s-%s-%s: level=1D\n",
+                                               a1.id.c_str(), center.id.c_str(),
+                                               a3.id.c_str());
                                 return vs;
+                              }
                             }
                           }
                         }
@@ -3303,8 +3321,14 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                       auto it10 = it9->second.find(a3_nb);
                       if (it10 != it9->second.end() && !it10->second.empty()) {
                         ValueStats vs = aggregate_stats(it10->second);
-                        if (vs.count >= min_observations_fallback)
+                        if (vs.count >= min_observations_fallback) {
+                          if (verbose >= 2)
+                            std::fprintf(stderr,
+                                         "      matched angle %s-%s-%s: level=2D\n",
+                                         a1.id.c_str(), center.id.c_str(),
+                                         a3.id.c_str());
                           return vs;
+                        }
                       }
                     }
                   }
@@ -3334,8 +3358,14 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                 auto it7 = it6->second.find(a3_nb2);
                 if (it7 != it6->second.end() && !it7->second.empty()) {
                   ValueStats vs = aggregate_stats(it7->second);
-                  if (vs.count >= min_observations_fallback)
+                  if (vs.count >= min_observations_fallback) {
+                    if (verbose >= 2)
+                      std::fprintf(stderr,
+                                   "      matched angle %s-%s-%s: level=3D\n",
+                                   a1.id.c_str(), center.id.c_str(),
+                                   a3.id.c_str());
                     return vs;
+                  }
                 }
               }
             }
@@ -3356,8 +3386,14 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
           auto it4 = it3->second.find(value_key);
           if (it4 != it3->second.end() && !it4->second.empty()) {
             ValueStats vs = aggregate_stats(it4->second);
-            if (vs.count >= min_observations_fallback)
+            if (vs.count >= min_observations_fallback) {
+              if (verbose >= 2)
+                std::fprintf(stderr,
+                             "      matched angle %s-%s-%s: level=4D\n",
+                             a1.id.c_str(), center.id.c_str(),
+                             a3.id.c_str());
               return vs;
+            }
           }
         }
       }
@@ -3375,8 +3411,14 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
           auto it4 = it3->second.find(hybr_tuple);
           if (it4 != it3->second.end() && !it4->second.empty()) {
             ValueStats vs = aggregate_stats(it4->second);
-            if (vs.count >= min_observations_fallback)
+            if (vs.count >= min_observations_fallback) {
+              if (verbose >= 2)
+                std::fprintf(stderr,
+                             "      matched angle %s-%s-%s: level=5D\n",
+                             a1.id.c_str(), center.id.c_str(),
+                             a3.id.c_str());
               return vs;
+            }
           }
         }
       }
@@ -3391,6 +3433,9 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
       if (it2 != it1->second.end()) {
         auto it3 = it2->second.find(ha3);
         if (it3 != it2->second.end() && !it3->second.empty()) {
+          if (verbose >= 2)
+            std::fprintf(stderr, "      matched angle %s-%s-%s: level=6D\n",
+                         a1.id.c_str(), center.id.c_str(), a3.id.c_str());
           return aggregate_stats(it3->second);
         }
       }
@@ -3476,16 +3521,21 @@ inline ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3, int ring_size) const {
 
   AngleHRSKey key;
-  key.hash1 = std::min(a1.hashing_value, a3.hashing_value);
-  key.hash2 = center.hashing_value;
+  key.hash1 = center.hashing_value;
+  key.hash2 = std::min(a1.hashing_value, a3.hashing_value);
   key.hash3 = std::max(a1.hashing_value, a3.hashing_value);
 
   // Build hybrid tuple
-  std::string h1 = hybridization_to_string(a1.hybrid);
-  std::string h2 = hybridization_to_string(center.hybrid);
-  std::string h3 = hybridization_to_string(a3.hybrid);
-  if (a1.hashing_value > a3.hashing_value)
-    std::swap(h1, h3);
+  std::string h1 = hybridization_to_string(center.hybrid);
+  std::string h2;
+  std::string h3;
+  if (a1.hashing_value > a3.hashing_value) {
+    h2 = hybridization_to_string(a1.hybrid);
+    h3 = hybridization_to_string(a3.hybrid);
+  } else {
+    h2 = hybridization_to_string(a3.hybrid);
+    h3 = hybridization_to_string(a1.hybrid);
+  }
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
   key.value_key = std::to_string(ring_size) + ":" + hybr_tuple;
 

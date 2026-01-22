@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
+#include <set>
 #include "gemmi/read_cif.hpp"     // for read_cif_gz
 #include "gemmi/chemcomp.hpp"     // for ChemComp, make_chemcomp_from_block
 #include "gemmi/acedrg_tables.hpp" // for AcedrgTables
@@ -82,13 +83,13 @@ void adjust_terminal_carboxylate(ChemComp& cc) {
   remove_atom_by_id(cc, "HXT");
 }
 
-void add_n_terminal_h3(ChemComp& cc) {
+bool add_n_terminal_h3(ChemComp& cc) {
   if (cc.find_atom("N") == cc.atoms.end())
-    return;
+    return false;
   if (cc.find_atom("H3") != cc.atoms.end())
-    return;
+    return false;
   if (cc.find_atom("H") == cc.atoms.end() || cc.find_atom("H2") == cc.atoms.end())
-    return;
+    return false;
 
   bool n_has_h = false;
   bool n_has_h2 = false;
@@ -105,7 +106,7 @@ void add_n_terminal_h3(ChemComp& cc) {
     }
   }
   if (!n_has_h || !n_has_h2 || n_has_h3)
-    return;
+    return false;
 
   cc.atoms.push_back(ChemComp::Atom{"H3", "", El::H, 0.0f, "H", Position()});
   // Bond/angle values set to NAN - will be filled by fill_restraints()
@@ -124,6 +125,43 @@ void add_n_terminal_h3(ChemComp& cc) {
   add_angle_if_present("CA", "N", "H3");
   add_angle_if_present("H", "N", "H3");
   add_angle_if_present("H2", "N", "H3");
+  return true;
+}
+
+Restraints::Angle* find_angle(ChemComp& cc, const std::string& center,
+                              const std::string& a1, const std::string& a3) {
+  for (auto& angle : cc.rt.angles) {
+    if (angle.id2.atom != center)
+      continue;
+    if ((angle.id1.atom == a1 && angle.id3.atom == a3) ||
+        (angle.id1.atom == a3 && angle.id3.atom == a1))
+      return &angle;
+  }
+  return nullptr;
+}
+
+void sync_n_terminal_h3_angles(ChemComp& cc) {
+  if (cc.find_atom("H3") == cc.atoms.end() || cc.find_atom("N") == cc.atoms.end())
+    return;
+
+  auto copy_angle = [&](const std::string& a1, const std::string& a3,
+                        const std::string& src1, const std::string& src3) {
+    Restraints::Angle* target = find_angle(cc, "N", a1, a3);
+    if (!target)
+      return;
+    Restraints::Angle* source = find_angle(cc, "N", src1, src3);
+    if (!source || std::isnan(source->value))
+      return;
+    target->value = source->value;
+    target->esd = source->esd;
+  };
+
+  if (cc.find_atom("CA") != cc.atoms.end()) {
+    copy_angle("CA", "H3", "CA", "H");
+    copy_angle("CA", "H3", "CA", "H2");
+  }
+  copy_angle("H", "H3", "H", "H2");
+  copy_angle("H2", "H3", "H", "H2");
 }
 
 void adjust_phosphate_group(ChemComp& cc) {
@@ -191,6 +229,47 @@ void adjust_carboxylate_group(ChemComp& cc) {
 
   for (const std::string& h_id : hydrogens_to_remove)
     remove_atom_by_id(cc, h_id);
+}
+
+void add_angles_from_bonds_if_missing(ChemComp& cc) {
+  if (!cc.rt.angles.empty())
+    return;
+
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::vector<std::vector<size_t>> neighbors(cc.atoms.size());
+  for (const auto& bond : cc.rt.bonds) {
+    auto it1 = atom_index.find(bond.id1.atom);
+    auto it2 = atom_index.find(bond.id2.atom);
+    if (it1 == atom_index.end() || it2 == atom_index.end())
+      continue;
+    neighbors[it1->second].push_back(it2->second);
+    neighbors[it2->second].push_back(it1->second);
+  }
+
+  std::set<std::tuple<std::string, std::string, std::string>> seen;
+  for (size_t center = 0; center < neighbors.size(); ++center) {
+    auto& nbs = neighbors[center];
+    if (nbs.size() < 2)
+      continue;
+    for (size_t i = 0; i + 1 < nbs.size(); ++i) {
+      for (size_t j = i + 1; j < nbs.size(); ++j) {
+        const std::string& a1 = cc.atoms[nbs[i]].id;
+        const std::string& a3 = cc.atoms[nbs[j]].id;
+        std::string first = a1;
+        std::string third = a3;
+        if (third < first)
+          std::swap(first, third);
+        auto key = std::make_tuple(cc.atoms[center].id, first, third);
+        if (!seen.insert(key).second)
+          continue;
+        cc.rt.angles.push_back({{1, a1}, {1, cc.atoms[center].id},
+                                {1, a3}, NAN, NAN});
+      }
+    }
+  }
 }
 
 enum OptionIndex {
@@ -324,7 +403,8 @@ int GEMMI_MAIN(int argc, char **argv) {
 
         ChemComp cc = make_chemcomp_from_block(block);
         adjust_terminal_carboxylate(cc);
-        add_n_terminal_h3(cc);
+        add_angles_from_bonds_if_missing(cc);
+        bool added_h3 = add_n_terminal_h3(cc);
         adjust_phosphate_group(cc);
         adjust_carboxylate_group(cc);
 
@@ -341,6 +421,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         // Fill restraints
         timer.start();
         tables.fill_restraints(cc);
+        if (added_h3)
+          sync_n_terminal_h3_angles(cc);
         tables.assign_ccp4_types(cc);
         timer.print("Restraints filled in");
 
