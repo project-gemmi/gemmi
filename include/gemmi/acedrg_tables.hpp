@@ -337,6 +337,14 @@ private:
     std::vector<ValueStats>>>>>>>;
   BondNb2D bond_nb2d_;
 
+  // Level Nb2DType: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, type1, type2 (with atom types)
+  using BondNb2DType = std::map<int, std::map<int,
+    std::map<std::string, std::map<std::string,
+    std::map<std::string, std::map<std::string,
+    std::map<std::string, std::map<std::string,
+    std::vector<ValueStats>>>>>>>>>;
+  BondNb2DType bond_nb2d_type_;
+
   // Levels 9-11: Hash+Sp fallback structures
   // Level 9: ha1, ha2, hybrComb, inRing
   using BondHaSp2D = std::map<int, std::map<int,
@@ -891,6 +899,17 @@ inline void AcedrgTables::load_bond_tables(const std::string& dir) {
             a2_type_m = a2_type_m.substr(0, brace);
         }
 
+        // Extract root types (element + ring annotation, e.g., "C[5a]")
+        std::string a1_root, a2_root;
+        if (!a1_type_m.empty()) {
+          size_t paren = a1_type_m.find('(');
+          a1_root = (paren != std::string::npos) ? a1_type_m.substr(0, paren) : a1_type_m;
+        }
+        if (!a2_type_m.empty()) {
+          size_t paren = a2_type_m.find('(');
+          a2_root = (paren != std::string::npos) ? a2_type_m.substr(0, paren) : a2_type_m;
+        }
+
         ValueStats vs(value, sigma, count);
         ValueStats vs1d(value2, sigma2, count2);
 
@@ -904,6 +923,11 @@ inline void AcedrgTables::load_bond_tables(const std::string& dir) {
 
         // Populate Nb2D structure (nb2 only, no nb1nb2_sp)
         bond_nb2d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2].push_back(vs);
+
+        // Populate Nb2DType structure (nb2 + root types, no nb1nb2_sp)
+        if (!a1_root.empty() && !a2_root.empty())
+          bond_nb2d_type_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
+                         [a1_root][a2_root].push_back(vs1d);
 
         // Populate HaSp structures for fallback
         bond_hasp_2d_[ha1][ha2][hybr_comb][in_ring].push_back(vs);
@@ -1128,17 +1152,8 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
   set_atoms_bonding_and_chiral_center(atoms, neighbors);
   set_atoms_nb1nb2_sp(atoms, neighbors);
 
-  // Regenerate nb2_symb with counts of 2nd neighbors for each 1st neighbor
-  // This matches the format expected by AceDRG tables (count of bonding_idx values in nb1nb2_sp)
-  for (auto& atom : atoms) {
-    std::vector<int> nb2_counts;
-    for (int nb : neighbors[atom.index])
-      nb2_counts.push_back(static_cast<int>(neighbors[nb].size()));
-    std::sort(nb2_counts.begin(), nb2_counts.end(), std::greater<int>());
-    atom.nb2_symb.clear();
-    for (int cnt : nb2_counts)
-      atom.nb2_symb += std::to_string(cnt) + ":";
-  }
+  // nb2_symb is now computed in set_atoms_nb1nb2_sp() in the same order
+  // as the alphabetically sorted nb1nb2_sp to match AceDRG table conventions
 
   // Ring props from codClass and hash codes
   for (auto& atom : atoms) {
@@ -1396,26 +1411,14 @@ inline void AcedrgTables::set_atoms_ring_rep_s(
   }
 }
 
-// Build ring size_map using smallest aromatic ring for fused rings.
-// AceDRG tables primarily use single-ring notation (e.g., C[5a] or C[6a]),
-// not combined fused notation (e.g., C[5a,6a]). For atoms in multiple
-// aromatic rings, use the smallest aromatic ring size.
+// Build ring size_map for cod_class annotation.
+// For fused aromatic rings, collect all sizes (e.g., C[5a,6a] for indole fusion).
 inline void build_ring_size_map(const std::map<std::string, std::string>& ring_rep_s,
                                 std::map<std::string, int>& size_map) {
-  int min_aromatic_size = 999;
   for (const auto& it : ring_rep_s) {
     const std::string& ring_str = it.second;
-    bool is_aromatic = !ring_str.empty() && ring_str.back() == 'a';
-    if (is_aromatic) {
-      int size = std::stoi(ring_str.substr(0, ring_str.size() - 1));
-      if (size < min_aromatic_size)
-        min_aromatic_size = size;
-    } else {
-      size_map[ring_str] += 1;
-    }
+    size_map[ring_str] += 1;
   }
-  if (min_aromatic_size < 999)
-    size_map[std::to_string(min_aromatic_size) + "a"] += 1;
 }
 
 inline void AcedrgTables::set_atom_cod_class_name_new2(
@@ -1684,7 +1687,8 @@ inline void AcedrgTables::set_atoms_nb1nb2_sp(
     std::vector<CodAtomInfo>& atoms,
     const std::vector<std::vector<int>>& neighbors) const {
   for (auto& atom : atoms) {
-    std::vector<std::string> nb1_nb2_sp_set;
+    // Store pairs of (nb1nb2_sp string, neighbor count) for sorting
+    std::vector<std::pair<std::string, int>> nb1_nb2_sp_with_count;
     for (int nb1 : neighbors[atom.index]) {
       std::string nb1_main = atoms[nb1].cod_root;
       std::vector<int> nb2_sp_set;
@@ -1697,14 +1701,26 @@ inline void AcedrgTables::set_atoms_nb1nb2_sp(
         if (i != nb2_sp_set.size() - 1)
           nb2_sp_str.append("_");
       }
-      nb1_nb2_sp_set.push_back(nb1_main + "-" + nb2_sp_str);
+      // Store the string and the neighbor count for nb2_symb
+      nb1_nb2_sp_with_count.emplace_back(nb1_main + "-" + nb2_sp_str,
+                                         static_cast<int>(neighbors[nb1].size()));
     }
-    std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(), compare_no_case);
+    // Sort alphabetically by the string (same order as AceDRG tables)
+    std::sort(nb1_nb2_sp_with_count.begin(), nb1_nb2_sp_with_count.end(),
+              [](const auto& a, const auto& b) {
+                return compare_no_case(a.first, b.first);
+              });
+    // Build nb1nb2_sp in alphabetical order
     atom.nb1nb2_sp.clear();
-    for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
-      atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
-      if (i != nb1_nb2_sp_set.size() - 1)
+    for (size_t i = 0; i < nb1_nb2_sp_with_count.size(); ++i) {
+      atom.nb1nb2_sp.append(nb1_nb2_sp_with_count[i].first);
+      if (i != nb1_nb2_sp_with_count.size() - 1)
         atom.nb1nb2_sp.append(":");
+    }
+    // Build nb2_symb in REVERSE alphabetical order (AceDRG convention)
+    atom.nb2_symb.clear();
+    for (size_t i = nb1_nb2_sp_with_count.size(); i > 0; --i) {
+      atom.nb2_symb.append(std::to_string(nb1_nb2_sp_with_count[i-1].second) + ":");
     }
   }
 }
@@ -2832,9 +2848,13 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   const std::string& a1_nb = left->nb1nb2_sp;
   const std::string& a2_nb = right->nb1nb2_sp;
 
-  // Use COD main type as atom type (simplified)
+  // Use COD main type as atom type (for 1D lookup)
   const std::string& a1_type = left->cod_main;
   const std::string& a2_type = right->cod_main;
+
+  // Use COD root type for Nb2DType lookup (element + ring annotation, e.g., "C[5a]")
+  const std::string& a1_root = left->cod_root;
+  const std::string& a2_root = right->cod_root;
 
   if (verbose >= 2)
     std::fprintf(stderr, "      lookup: hash=%d/%d hybr=%s ring=%s nb1nb2_sp=%s/%s nb2=%s/%s type=%s/%s\n",
@@ -2945,6 +2965,45 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                     }
                     if (verbose >= 3) std::fprintf(stderr, "      2D: count=%d < min=%d\n", vs.count, min_observations_fallback);
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Level Nb2DType: Try nb2 + root type match without nb1nb2_sp
+  {
+    auto it1 = bond_nb2d_type_.find(ha1);
+    if (it1 != bond_nb2d_type_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(in_ring);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a1_root);
+                if (it7 != it6->second.end()) {
+                  auto it8 = it7->second.find(a2_root);
+                  if (it8 != it7->second.end() && !it8->second.empty()) {
+                    ValueStats vs = aggregate_stats(it8->second);
+                    if (vs.count >= min_observations_fallback) {
+                      if (verbose >= 2)
+                        std::fprintf(stderr, "      matched: level=Nb2DType (nb2+root)\n");
+                      return vs;
+                    }
+                    if (verbose >= 3) std::fprintf(stderr, "      Nb2DType: count=%d < min=%d\n", vs.count, min_observations_fallback);
+                  } else {
+                    if (verbose >= 3) std::fprintf(stderr, "      Nb2DType: no root2=%s\n", a2_root.c_str());
+                  }
+                } else {
+                  if (verbose >= 3) std::fprintf(stderr, "      Nb2DType: no root1=%s\n", a1_root.c_str());
                 }
               }
             }
