@@ -272,6 +272,248 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
   }
 }
 
+struct NeighborBond {
+  size_t idx;
+  BondType type;
+};
+
+std::vector<std::vector<NeighborBond>> build_bond_adjacency(const ChemComp& cc,
+                                                            const std::map<std::string, size_t>& atom_index) {
+  std::vector<std::vector<NeighborBond>> adj(cc.atoms.size());
+  for (const auto& bond : cc.rt.bonds) {
+    auto it1 = atom_index.find(bond.id1.atom);
+    auto it2 = atom_index.find(bond.id2.atom);
+    if (it1 == atom_index.end() || it2 == atom_index.end())
+      continue;
+    size_t idx1 = it1->second;
+    size_t idx2 = it2->second;
+    adj[idx1].push_back({idx2, bond.type});
+    adj[idx2].push_back({idx1, bond.type});
+  }
+  return adj;
+}
+
+bool is_carbonyl_carbon(size_t idx, const ChemComp& cc,
+                        const std::vector<std::vector<NeighborBond>>& adj) {
+  if (cc.atoms[idx].el != El::C)
+    return false;
+  for (const auto& nb : adj[idx]) {
+    if (cc.atoms[nb.idx].el == El::O &&
+        (nb.type == BondType::Double || nb.type == BondType::Deloc))
+      return true;
+  }
+  return false;
+}
+
+int element_priority(Element el) {
+  if (el == El::N) return 0;
+  if (el == El::C) return 1;
+  if (el == El::O) return 2;
+  if (el == El::S) return 3;
+  if (el == El::P) return 4;
+  if (el == El::Se) return 5;
+  return 6;
+}
+
+const ChemComp::Atom* pick_torsion_neighbor(
+    const ChemComp& cc,
+    const std::vector<std::vector<NeighborBond>>& adj,
+    size_t center_idx,
+    size_t exclude_idx) {
+  std::vector<size_t> candidates;
+  for (const auto& nb : adj[center_idx])
+    if (nb.idx != exclude_idx)
+      candidates.push_back(nb.idx);
+  if (candidates.empty())
+    return nullptr;
+
+  bool has_non_h = false;
+  for (size_t idx : candidates)
+    if (!cc.atoms[idx].is_hydrogen())
+      has_non_h = true;
+
+  auto better_h = [&](size_t a, size_t b) {
+    const std::string& na = cc.atoms[a].id;
+    const std::string& nb = cc.atoms[b].id;
+    bool a_is_h = (na == "H");
+    bool b_is_h = (nb == "H");
+    if (a_is_h != b_is_h)
+      return a_is_h;
+    if (!a_is_h && !b_is_h)
+      return na > nb; // prefer higher index for HB1/2/3
+    return na < nb;
+  };
+
+  size_t best = candidates.front();
+  for (size_t idx : candidates) {
+    if (has_non_h && cc.atoms[idx].is_hydrogen())
+      continue;
+    if (has_non_h && cc.atoms[best].is_hydrogen())
+      best = idx;
+    if (cc.atoms[idx].is_hydrogen()) {
+      if (better_h(idx, best))
+        best = idx;
+      continue;
+    }
+    if (cc.atoms[best].is_hydrogen()) {
+      best = idx;
+      continue;
+    }
+    int p_idx = element_priority(cc.atoms[idx].el);
+    int p_best = element_priority(cc.atoms[best].el);
+    if (p_idx != p_best) {
+      if (p_idx < p_best)
+        best = idx;
+      continue;
+    }
+    if (cc.atoms[idx].el == El::C && cc.atoms[best].el == El::C) {
+      bool c_idx = is_carbonyl_carbon(idx, cc, adj);
+      bool c_best = is_carbonyl_carbon(best, cc, adj);
+      if (c_idx != c_best) {
+        if (c_idx)
+          best = idx;
+        continue;
+      }
+    }
+    if (cc.atoms[idx].id < cc.atoms[best].id)
+      best = idx;
+  }
+
+  return &cc.atoms[best];
+}
+
+void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables) {
+  if (!cc.rt.torsions.empty())
+    return;
+
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  auto adj = build_bond_adjacency(cc, atom_index);
+  std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
+
+  for (const auto& bond : cc.rt.bonds) {
+    auto it1 = atom_index.find(bond.id1.atom);
+    auto it2 = atom_index.find(bond.id2.atom);
+    if (it1 == atom_index.end() || it2 == atom_index.end())
+      continue;
+    size_t idx1 = it1->second;
+    size_t idx2 = it2->second;
+
+    size_t center2 = idx1;
+    size_t center3 = idx2;
+    bool c1_carbonyl = is_carbonyl_carbon(idx1, cc, adj);
+    bool c2_carbonyl = is_carbonyl_carbon(idx2, cc, adj);
+    if (c1_carbonyl != c2_carbonyl) {
+      center2 = c1_carbonyl ? idx1 : idx2;
+      center3 = c1_carbonyl ? idx2 : idx1;
+    } else if (cc.atoms[idx1].id == "CA" || cc.atoms[idx2].id == "CA") {
+      center2 = (cc.atoms[idx1].id == "CA") ? idx1 : idx2;
+      center3 = (center2 == idx1) ? idx2 : idx1;
+    } else if (cc.atoms[idx1].el != cc.atoms[idx2].el) {
+      center2 = (element_priority(cc.atoms[idx1].el) <
+                 element_priority(cc.atoms[idx2].el)) ? idx1 : idx2;
+      center3 = (center2 == idx1) ? idx2 : idx1;
+    } else if (cc.atoms[idx2].id < cc.atoms[idx1].id) {
+      center2 = idx2;
+      center3 = idx1;
+    }
+
+    const ChemComp::Atom* a1 = pick_torsion_neighbor(cc, adj, center2, center3);
+    const ChemComp::Atom* a4 = pick_torsion_neighbor(cc, adj, center3, center2);
+    if (!a1 || !a4)
+      continue;
+
+    const CodAtomInfo& h2 = atom_info[center2];
+    const CodAtomInfo& h3 = atom_info[center3];
+    bool sp3_2 = (h2.hybrid == Hybridization::SP3);
+    bool sp3_3 = (h3.hybrid == Hybridization::SP3);
+    bool sp2_2 = (h2.hybrid == Hybridization::SP2);
+    bool sp2_3 = (h3.hybrid == Hybridization::SP2);
+
+    double value = 180.0;
+    double esd = 10.0;
+    int period = 3;
+    if ((sp2_2 && sp3_3) || (sp3_2 && sp2_3)) {
+      value = 0.0;
+      esd = 20.0;
+      period = 6;
+    } else if (sp2_2 && sp2_3) {
+      value = 180.0;
+      esd = 20.0;
+      period = 2;
+    }
+
+    cc.rt.torsions.push_back({"auto",
+                              {1, a1->id},
+                              {1, cc.atoms[center2].id},
+                              {1, cc.atoms[center3].id},
+                              {1, a4->id},
+                              value, esd, period});
+  }
+}
+
+void add_chirality_if_missing(ChemComp& cc) {
+  if (!cc.rt.chirs.empty())
+    return;
+
+  std::string type = cc.type_or_group;
+  for (char& c : type)
+    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  ChiralityType sign = ChiralityType::Both;
+  if (type.find("L-PEPTIDE") != std::string::npos)
+    sign = ChiralityType::Positive;
+  else if (type.find("D-PEPTIDE") != std::string::npos)
+    sign = ChiralityType::Negative;
+  if (sign == ChiralityType::Both)
+    return;
+
+  auto ca = cc.find_atom("CA");
+  if (ca == cc.atoms.end())
+    return;
+  if (cc.find_atom("N") == cc.atoms.end() ||
+      cc.find_atom("C") == cc.atoms.end() ||
+      cc.find_atom("CB") == cc.atoms.end())
+    return;
+
+  cc.rt.chirs.push_back({{1, "CA"}, {1, "N"}, {1, "C"}, {1, "CB"}, sign});
+}
+
+void add_planes_if_missing(ChemComp& cc) {
+  if (!cc.rt.planes.empty())
+    return;
+
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+  auto adj = build_bond_adjacency(cc, atom_index);
+
+  for (size_t idx = 0; idx < cc.atoms.size(); ++idx) {
+    if (cc.atoms[idx].el != El::C)
+      continue;
+    std::vector<std::string> oxy;
+    std::vector<std::string> other;
+    for (const auto& nb : adj[idx]) {
+      if (cc.atoms[nb.idx].el == El::O)
+        oxy.push_back(cc.atoms[nb.idx].id);
+      else
+        other.push_back(cc.atoms[nb.idx].id);
+    }
+    if (oxy.size() < 2 || other.empty())
+      continue;
+    Restraints::Plane plane;
+    plane.label = "plan-1";
+    plane.esd = 0.02;
+    plane.ids.push_back({1, cc.atoms[idx].id});
+    plane.ids.push_back({1, other.front()});
+    for (const std::string& o : oxy)
+      plane.ids.push_back({1, o});
+    cc.rt.planes.push_back(std::move(plane));
+    break;
+  }
+}
+
 enum OptionIndex {
   Tables=4, Sigma, Timing, CifStyle, OutputDir
 };
@@ -424,6 +666,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         if (added_h3)
           sync_n_terminal_h3_angles(cc);
         tables.assign_ccp4_types(cc);
+        add_torsions_from_bonds_if_missing(cc, tables);
+        add_chirality_if_missing(cc);
+        add_planes_if_missing(cc);
         timer.print("Restraints filled in");
 
         // Count filled values
