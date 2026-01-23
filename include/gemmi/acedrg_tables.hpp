@@ -247,7 +247,7 @@ public:
   double lower_angle_sigma = 1.5;
   int min_observations_angle = 3;  // AceDRG default for angles
   int min_observations_angle_fallback = 3;
-  int min_observations_bond = 4;   // AceDRG default for bonds
+  int min_observations_bond = 4;   // AceDRG default for bonds (codClassify.cpp)
   int metal_class_min_count = 5; // AceDRG uses >5 for metal class selection
   int verbose = 0;  // Debug output level (0=off, 1=basic, 2=detailed)
 
@@ -503,6 +503,8 @@ private:
 
   std::vector<std::vector<BondInfo>> build_adjacency(const ChemComp& cc) const;
   std::vector<std::vector<int>> build_neighbors(const std::vector<std::vector<BondInfo>>& adj) const;
+  void set_ring_aromaticity_from_bonds(const std::vector<std::vector<BondInfo>>& adj,
+                                       std::vector<RingInfo>& rings) const;
   void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
                            std::vector<CodAtomInfo>& atoms,
                            std::vector<RingInfo>& rings) const;
@@ -1201,25 +1203,10 @@ inline std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc)
     atoms[i].metal_connectivity = metal_conn;
   }
 
-  // Seed aromaticity from input bonds
-  for (const auto& bond : cc.rt.bonds) {
-    if (!bond.aromatic)
-      continue;
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 != cc.atoms.end()) {
-      int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-      atoms[idx1].is_aromatic = true;
-    }
-    if (it2 != cc.atoms.end()) {
-      int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-      atoms[idx2].is_aromatic = true;
-    }
-  }
-
   // Detect rings and populate ring representations
   std::vector<RingInfo> rings;
   detect_rings_acedrg(neighbors, atoms, rings);
+  set_ring_aromaticity_from_bonds(adj, rings);
   set_atoms_ring_rep_s(atoms, rings);
 
   // Build COD class names (AceDRG style)
@@ -1345,6 +1332,77 @@ inline std::vector<std::vector<int>> AcedrgTables::build_neighbors(
       neighbors[i].push_back(nb.neighbor_idx);
   }
   return neighbors;
+}
+
+inline void AcedrgTables::set_ring_aromaticity_from_bonds(
+    const std::vector<std::vector<BondInfo>>& adj,
+    std::vector<RingInfo>& rings) const {
+  // Heuristic: mark 6-member rings with 3 double bonds (benzene-like) or any
+  // ring with explicit aromatic/deloc bonds as aromatic. Then propagate to
+  // fused 5-member rings that share >=2 atoms with an aromatic ring and have
+  // 2+ double bonds (indole-like).
+  std::vector<char> in_ring(adj.size(), 0);
+
+  for (auto& ring : rings) {
+    std::fill(in_ring.begin(), in_ring.end(), 0);
+    for (int idx : ring.atoms)
+      in_ring[idx] = 1;
+
+    bool has_arom = false;
+    int double_bonds = 0;
+    for (int idx : ring.atoms) {
+      for (const auto& bond : adj[idx]) {
+        int nb = bond.neighbor_idx;
+        if (idx < nb && in_ring[nb]) {
+          if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc) {
+            has_arom = true;
+          } else if (bond.type == BondType::Double) {
+            ++double_bonds;
+          }
+        }
+      }
+    }
+
+    ring.is_aromatic = has_arom ||
+                       (ring.atoms.size() == 6 && double_bonds == 3);
+  }
+
+  for (auto& ring : rings) {
+    if (ring.is_aromatic || ring.atoms.size() != 5)
+      continue;
+    std::fill(in_ring.begin(), in_ring.end(), 0);
+    for (int idx : ring.atoms)
+      in_ring[idx] = 1;
+
+    int double_bonds = 0;
+    for (int idx : ring.atoms) {
+      for (const auto& bond : adj[idx]) {
+        int nb = bond.neighbor_idx;
+        if (idx < nb && in_ring[nb] && bond.type == BondType::Double)
+          ++double_bonds;
+      }
+    }
+
+    if (double_bonds < 2)
+      continue;
+
+    bool fused_to_arom = false;
+    for (const auto& other : rings) {
+      if (!other.is_aromatic)
+        continue;
+      int shared = 0;
+      for (int idx : ring.atoms) {
+        if (std::find(other.atoms.begin(), other.atoms.end(), idx) != other.atoms.end())
+          ++shared;
+      }
+      if (shared >= 2) {
+        fused_to_arom = true;
+        break;
+      }
+    }
+    if (fused_to_arom)
+      ring.is_aromatic = true;
+  }
 }
 
 inline void AcedrgTables::detect_rings_acedrg(
@@ -3029,6 +3087,7 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                  a1_nb.c_str(), a2_nb.c_str(), a1_nb2.c_str(), a2_nb2.c_str(),
                  a1_type.c_str(), a2_type.c_str());
 
+
   // Exact match with full COD class (a1C/a2C) before any aggregation.
   {
     auto it1 = bond_idx_full_.find(ha1);
@@ -3124,9 +3183,83 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     return &it4->second;
   }();
 
+  const auto* map_full = [&]() -> const std::map<std::string,
+                                 std::map<std::string, std::map<std::string,
+                                 std::map<std::string, ValueStats>>>>* {
+    auto it1 = bond_idx_full_.find(ha1);
+    if (it1 == bond_idx_full_.end()) return nullptr;
+    auto it2 = it1->second.find(ha2);
+    if (it2 == it1->second.end()) return nullptr;
+    auto it3 = it2->second.find(hybr_comb);
+    if (it3 == it2->second.end()) return nullptr;
+    auto it4 = it3->second.find(in_ring);
+    if (it4 == it3->second.end()) return nullptr;
+    auto it5 = it4->second.find(a1_nb2);
+    if (it5 == it4->second.end()) return nullptr;
+    auto it6 = it5->second.find(a2_nb2);
+    if (it6 == it5->second.end()) return nullptr;
+    auto it7 = it6->second.find(a1_nb);
+    if (it7 == it6->second.end()) return nullptr;
+    auto it8 = it7->second.find(a2_nb);
+    if (it8 == it7->second.end()) return nullptr;
+    return &it8->second;
+  }();
+
+  bool has_hybr = false;
+  bool has_in_ring = false;
+  if (auto it1 = bond_idx_2d_.find(ha1); it1 != bond_idx_2d_.end()) {
+    if (auto it2 = it1->second.find(ha2); it2 != it1->second.end()) {
+      if (auto it3 = it2->second.find(hybr_comb); it3 != it2->second.end()) {
+        has_hybr = true;
+        if (it3->second.find(in_ring) != it3->second.end())
+          has_in_ring = true;
+      }
+    }
+  }
+
+  bool has_a1_nb2 = map_nb2 && map_nb2->find(a1_nb2) != map_nb2->end();
+  bool has_a2_nb2 = has_a1_nb2 &&
+                    map_nb2->at(a1_nb2).find(a2_nb2) != map_nb2->at(a1_nb2).end();
+  bool has_a1_nb = has_a2_nb2 &&
+                   map_nb2->at(a1_nb2).at(a2_nb2).find(a1_nb) != map_nb2->at(a1_nb2).at(a2_nb2).end();
+  bool has_a2_nb = has_a1_nb &&
+                   map_nb2->at(a1_nb2).at(a2_nb2).at(a1_nb).find(a2_nb) !=
+                     map_nb2->at(a1_nb2).at(a2_nb2).at(a1_nb).end();
+
+  bool has_a1_type = map_full && map_full->find(a1_type) != map_full->end();
+  bool has_a2_type = has_a1_type &&
+                     map_full->at(a1_type).find(a2_type) != map_full->at(a1_type).end();
+
+  int num_th = min_observations_bond;
+  if (a1.el == El::As || a2.el == El::As || a1.el == El::Ge || a2.el == El::Ge)
+    num_th = 1;
+
+  int start_level = 0;
+  if (!has_hybr)
+    start_level = 11;
+  else if (!has_in_ring)
+    start_level = 10;
+  else if (!has_a1_nb2)
+    start_level = 8;
+  else if (!has_a2_nb2)
+    start_level = 7;
+  else if (!has_a1_nb)
+    start_level = 5;
+  else if (!has_a2_nb)
+    start_level = 4;
+  else if (!has_a1_type)
+    start_level = 2;
+  else if (!has_a2_type)
+    start_level = 1;
+
+  ValueStats last_vs;
+  bool have_last = false;
+
   // AceDRG-like multilevel fallback ordering (levels 0..11).
-  for (int level = 0; level < 12; ++level) {
+  for (int level = start_level; level < 12; ++level) {
     ValueStats vs;
+    int values_size = 0;
+
     if (level == 0) {
       if (map_1d) {
         auto it1 = map_1d->find(a1_type);
@@ -3134,6 +3267,7 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
           auto it2 = it1->second.find(a2_type);
           if (it2 != it1->second.end() && !it2->second.empty()) {
             vs = it2->second.front();
+            values_size = 1;
           }
         }
       }
@@ -3146,13 +3280,27 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
               if (!it2.second.empty())
                 values.push_back(it2.second.front());
             }
-          } else if (it1.first != a1_type) {
+          }
+          if (it1.first != a1_type) {
             auto it2 = it1.second.find(a2_type);
             if (it2 != it1.second.end() && !it2->second.empty())
               values.push_back(it2->second.front());
           }
         }
-        if (static_cast<int>(values.size()) >= min_observations_bond)
+        if (level == 2) {
+          // Keep only entries where a1M differs and a2M matches.
+          std::vector<ValueStats> filtered;
+          for (const auto& it1 : *map_1d) {
+            if (it1.first != a1_type) {
+              auto it2 = it1.second.find(a2_type);
+              if (it2 != it1.second.end() && !it2->second.empty())
+                filtered.push_back(it2->second.front());
+            }
+          }
+          values.swap(filtered);
+        }
+        values_size = static_cast<int>(values.size());
+        if (!values.empty())
           vs = aggregate_stats(values);
       }
     } else if (level == 3) {
@@ -3161,8 +3309,8 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
         if (it1 != map_2d->end()) {
           auto it2 = it1->second.find(a2_nb);
           if (it2 != it1->second.end() && !it2->second.empty()) {
-            if (static_cast<int>(it2->second.size()) >= min_observations_bond)
-              vs = aggregate_stats(it2->second);
+            values_size = static_cast<int>(it2->second.size());
+            vs = aggregate_stats(it2->second);
           }
         }
       }
@@ -3171,44 +3319,42 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
         std::vector<ValueStats> values;
         for (const auto& it1 : *map_2d) {
           if (level == 4 && it1.first == a1_nb) {
-            for (const auto& it2 : it1.second) {
+            for (const auto& it2 : it1.second)
               for (const auto& v : it2.second)
                 values.push_back(v);
-            }
-          } else if (it1.first != a1_nb) {
+          } else if (level == 5 && it1.first != a1_nb) {
             auto it2 = it1.second.find(a2_nb);
-            if (it2 != it1.second.end()) {
+            if (it2 != it1.second.end())
               for (const auto& v : it2->second)
                 values.push_back(v);
-            }
           }
         }
-        if (static_cast<int>(values.size()) >= min_observations_bond)
+        values_size = static_cast<int>(values.size());
+        if (!values.empty())
           vs = aggregate_stats(values);
       }
     } else if (level == 6) {
       if (map_2d) {
         std::vector<ValueStats> values;
-        for (const auto& it1 : *map_2d) {
-          for (const auto& it2 : it1.second) {
+        for (const auto& it1 : *map_2d)
+          for (const auto& it2 : it1.second)
             for (const auto& v : it2.second)
               values.push_back(v);
-          }
-        }
-        if (static_cast<int>(values.size()) >= min_observations_bond)
+        values_size = static_cast<int>(values.size());
+        if (!values.empty())
           vs = aggregate_stats(values);
       }
     } else if (level == 7 || level == 8) {
       if (map_nb2) {
         std::vector<ValueStats> values;
-        auto it1 = map_nb2->find(a1_nb2);
-        if (level == 7 && it1 != map_nb2->end()) {
-          for (const auto& it2 : it1->second) {
-            for (const auto& it3 : it2.second) {
-              for (const auto& it4 : it3.second)
-                for (const auto& v : it4.second)
-                  values.push_back(v);
-            }
+        if (level == 7) {
+          auto it1 = map_nb2->find(a1_nb2);
+          if (it1 != map_nb2->end()) {
+            for (const auto& it2 : it1->second)
+              for (const auto& it3 : it2.second)
+                for (const auto& it4 : it3.second)
+                  for (const auto& v : it4.second)
+                    values.push_back(v);
           }
         }
         for (const auto& it2 : *map_nb2) {
@@ -3216,14 +3362,14 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
             continue;
           auto it3 = it2.second.find(a2_nb2);
           if (it3 != it2.second.end()) {
-            for (const auto& it4 : it3->second) {
+            for (const auto& it4 : it3->second)
               for (const auto& it5 : it4.second)
                 for (const auto& v : it5.second)
                   values.push_back(v);
-            }
           }
         }
-        if (static_cast<int>(values.size()) >= min_observations_bond)
+        values_size = static_cast<int>(values.size());
+        if (!values.empty())
           vs = aggregate_stats(values);
       }
     } else if (level == 9) {
@@ -3234,8 +3380,10 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
           auto it3 = it2->second.find(hybr_comb);
           if (it3 != it2->second.end()) {
             auto it4 = it3->second.find(in_ring);
-            if (it4 != it3->second.end() && !it4->second.empty())
+            if (it4 != it3->second.end() && !it4->second.empty()) {
+              values_size = static_cast<int>(it4->second.size());
               vs = aggregate_stats(it4->second);
+            }
           }
         }
       }
@@ -3245,24 +3393,44 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
         auto it2 = it1->second.find(ha2);
         if (it2 != it1->second.end()) {
           auto it3 = it2->second.find(hybr_comb);
-          if (it3 != it2->second.end() && !it3->second.empty())
+          if (it3 != it2->second.end() && !it3->second.empty()) {
+            values_size = static_cast<int>(it3->second.size());
             vs = aggregate_stats(it3->second);
+          }
         }
       }
     } else if (level == 11) {
       auto it1 = bond_hasp_0d_.find(ha1);
       if (it1 != bond_hasp_0d_.end()) {
         auto it2 = it1->second.find(ha2);
-        if (it2 != it1->second.end() && !it2->second.empty())
+        if (it2 != it1->second.end() && !it2->second.empty()) {
+          values_size = static_cast<int>(it2->second.size());
           vs = aggregate_stats(it2->second);
+        }
       }
     }
 
-    if (vs.count >= min_observations_bond) {
-      if (verbose >= 2)
-        std::fprintf(stderr, "      matched: level=%d\n", level);
-      return vs;
+    if (level <= 8) {
+      if (values_size >= num_th) {
+        if (verbose >= 2)
+          std::fprintf(stderr, "      matched: level=%d\n", level);
+        return vs;
+      }
+    } else if (values_size > 0) {
+      if (vs.count >= num_th) {
+        if (verbose >= 2)
+          std::fprintf(stderr, "      matched: level=%d\n", level);
+        return vs;
+      }
+      last_vs = vs;
+      have_last = true;
     }
+  }
+
+  if (have_last) {
+    if (verbose >= 2)
+      std::fprintf(stderr, "      matched: level=late\n");
+    return last_vs;
   }
 
   // No match found in detailed tables
@@ -3853,34 +4021,30 @@ inline ValueStats AcedrgTables::aggregate_stats(
   if (values.size() == 1)
     return values[0];
 
-  // Weighted average by count
-  double sum_val = 0;
-  double sum_weight = 0;
+  // Match AceDRG setValueSet() aggregation (weighted mean + pooled sigma).
+  double sum_val = 0.0;
+  double sum1 = 0.0;
   int total_count = 0;
 
   for (const auto& v : values) {
     if (v.count > 0) {
       sum_val += v.value * v.count;
-      sum_weight += v.count;
+      sum1 += (v.count - 1) * v.sigma * v.sigma + v.count * v.value * v.value;
       total_count += v.count;
     }
   }
 
-  if (sum_weight == 0)
+  if (total_count == 0)
     return ValueStats();
 
-  double mean = sum_val / sum_weight;
+  double mean = sum_val / total_count;
+  double sum2 = mean * sum_val;
 
-  // Compute pooled standard deviation
-  double sum_sq = 0;
-  for (const auto& v : values) {
-    if (v.count > 0) {
-      double diff = v.value - mean;
-      sum_sq += v.count * (v.sigma * v.sigma + diff * diff);
-    }
-  }
-
-  double sigma = std::sqrt(sum_sq / sum_weight);
+  double sigma = 0.0;
+  if (total_count > 1)
+    sigma = std::sqrt(std::fabs(sum1 - sum2) / (total_count - 1));
+  else
+    sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
 
   return ValueStats(mean, sigma, total_count);
 }
