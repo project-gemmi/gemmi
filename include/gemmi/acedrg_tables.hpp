@@ -152,6 +152,8 @@ struct MetalAngleEntry {
 struct TorsionEntry {
   double value = 0.0;
   int period = 0;
+  int priority = 0;
+  std::string id;
 };
 
 // Periodic table row and group information
@@ -1154,7 +1156,12 @@ inline void AcedrgTables::load_pep_tors(const std::string& path) {
     double value = 0.0;
     if (!(iss >> tors_id >> label >> a1 >> a2 >> a3 >> a4 >> period >> idx >> value))
       continue;
-    pep_tors_[a1 + "_" + a2 + "_" + a3 + "_" + a4] = {value, period};
+    TorsionEntry entry;
+    entry.value = value;
+    entry.period = period;
+    entry.priority = idx;
+    entry.id = label;
+    pep_tors_[a1 + "_" + a2 + "_" + a3 + "_" + a4] = std::move(entry);
   }
 }
 
@@ -2790,12 +2797,55 @@ inline void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
   }
 
-  // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles,
-  // keeping ring angles fixed (checkRingAngleConstraints behavior).
-  std::map<std::string, std::vector<size_t>> center_angles;
+  // AceDRG adjustment: enforce planar ring angle sum ((n-2)*180/n) for SP2 rings.
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
+  std::map<int, std::vector<size_t>> rings;
+  for (size_t i = 0; i < atom_info.size(); ++i)
+    for (int ring_id : atom_info[i].in_rings)
+      rings[ring_id].push_back(i);
+  for (const auto& ring : rings) {
+    const std::vector<size_t>& ring_atoms = ring.second;
+    if (ring_atoms.size() < 3)
+      continue;
+    bool planar = true;
+    for (size_t idx : ring_atoms) {
+      if (atom_info[idx].bonding_idx == 3) {
+        planar = false;
+        break;
+      }
+    }
+    if (!planar)
+      continue;
+    std::set<std::string> ring_ids;
+    for (size_t idx : ring_atoms)
+      ring_ids.insert(cc.atoms[idx].id);
+    std::vector<size_t> ring_angles;
+    ring_angles.reserve(ring_atoms.size());
+    for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
+      const auto& ang = cc.rt.angles[i];
+      if (ring_ids.count(ang.id2.atom) &&
+          ring_ids.count(ang.id1.atom) &&
+          ring_ids.count(ang.id3.atom))
+        ring_angles.push_back(i);
+    }
+    if (ring_angles.size() != ring_atoms.size())
+      continue;
+    double sum = 0.0;
+    for (size_t idx : ring_angles)
+      sum += cc.rt.angles[idx].value;
+    double mean = sum / static_cast<double>(ring_angles.size());
+    double target = (static_cast<double>(ring_atoms.size()) - 2.0) *
+                    180.0 / static_cast<double>(ring_atoms.size());
+    double shift = target - mean;
+    for (size_t idx : ring_angles)
+      cc.rt.angles[idx].value += shift;
+  }
+
+  // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles,
+  // keeping ring angles fixed (checkRingAngleConstraints behavior).
+  std::map<std::string, std::vector<size_t>> center_angles;
   for (size_t i = 0; i < cc.rt.angles.size(); ++i)
     center_angles[cc.rt.angles[i].id2.atom].push_back(i);
   for (const auto& entry : center_angles) {
