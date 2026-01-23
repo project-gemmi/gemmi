@@ -165,18 +165,38 @@ void sync_n_terminal_h3_angles(ChemComp& cc) {
 }
 
 void adjust_phosphate_group(ChemComp& cc) {
-  for (auto& atom : cc.atoms) {
-    if (atom.el == El::O &&
-        (atom.id == "OP2" || atom.id == "OP3")) {
-      atom.charge = -1.0f;
-    }
+  // Identify phosphate oxygens with attached H so we can deprotonate them.
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
   }
+
   std::vector<std::string> phos_h;
-  for (const auto& atom : cc.atoms) {
-    if (atom.el == El::H &&
-        (atom.id == "HOP2" || atom.id == "HOP3")) {
-      phos_h.push_back(atom.id);
+  for (auto& atom : cc.atoms) {
+    if (atom.el != El::O)
+      continue;
+    const auto& nb = neighbors[atom.id];
+    std::string h_id;
+    bool has_p = false;
+    for (const std::string& nid : nb) {
+      auto it = atom_index.find(nid);
+      if (it == atom_index.end())
+        continue;
+      Element el = cc.atoms[it->second].el;
+      if (el == El::H)
+        h_id = nid;
+      else if (el == El::P)
+        has_p = true;
     }
+    if (!has_p || h_id.empty())
+      continue;
+    atom.charge = -1.0f;
+    phos_h.push_back(h_id);
   }
   for (const std::string& atom_id : phos_h)
     remove_atom_by_id(cc, atom_id);
@@ -450,6 +470,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto adj = build_bond_adjacency(cc, atom_index);
   std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
 
+  // Restrict generic torsions to peptide-like residues to keep prior behavior.
+  bool allow_generic_torsions = (cc.find_atom("CA") != cc.atoms.end() &&
+                                 cc.find_atom("N") != cc.atoms.end() &&
+                                 cc.find_atom("C") != cc.atoms.end());
+
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
     auto it2 = atom_index.find(bond.id2.atom);
@@ -517,6 +542,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                 tors_entry.value, 10.0, tors_entry.period});
       continue;
     }
+    if (!allow_generic_torsions)
+      continue;
 
     double value = 180.0;
     double esd = 10.0;
@@ -550,6 +577,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 }
 
 void add_chirality_if_missing(ChemComp& cc) {
+  // Keep legacy behavior: only seed peptide chirality when a backbone is present.
+  if (cc.find_atom("CA") == cc.atoms.end() ||
+      cc.find_atom("N") == cc.atoms.end() ||
+      cc.find_atom("C") == cc.atoms.end())
+    return;
   if (!cc.rt.chirs.empty())
     return;
 
@@ -576,6 +608,11 @@ void add_chirality_if_missing(ChemComp& cc) {
 }
 
 void add_planes_if_missing(ChemComp& cc) {
+  // Keep legacy behavior: only seed peptide planes when a backbone is present.
+  if (cc.find_atom("CA") == cc.atoms.end() ||
+      cc.find_atom("N") == cc.atoms.end() ||
+      cc.find_atom("C") == cc.atoms.end())
+    return;
   if (!cc.rt.planes.empty())
     return;
 

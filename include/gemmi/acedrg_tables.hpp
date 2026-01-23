@@ -2790,32 +2790,55 @@ inline void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
   }
 
-  // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles.
+  // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles,
+  // keeping ring angles fixed (checkRingAngleConstraints behavior).
   std::map<std::string, std::vector<size_t>> center_angles;
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
   for (size_t i = 0; i < cc.rt.angles.size(); ++i)
     center_angles[cc.rt.angles[i].id2.atom].push_back(i);
   for (const auto& entry : center_angles) {
     if (entry.second.size() != 3)
       continue;
-    auto it = cc.find_atom(entry.first);
-    if (it == cc.atoms.end())
+    auto it = atom_index.find(entry.first);
+    if (it == atom_index.end())
       continue;
-    int idx = static_cast<int>(it - cc.atoms.begin());
-    if (atom_info[idx].hybrid != Hybridization::SP2)
+    size_t center_idx = it->second;
+    if (atom_info[center_idx].hybrid != Hybridization::SP2)
       continue;
-    double sum = 0.0;
-    for (size_t idx_ang : entry.second)
-      sum += cc.rt.angles[idx_ang].value;
-    double diff = (360.0 - sum) / 3.0;
+    std::vector<size_t> fixed, free;
+    for (size_t idx_ang : entry.second) {
+      const auto& ang = cc.rt.angles[idx_ang];
+      auto it1 = atom_index.find(ang.id1.atom);
+      auto it3 = atom_index.find(ang.id3.atom);
+      if (it1 == atom_index.end() || it3 == atom_index.end())
+        continue;
+      const CodAtomInfo& a1 = atom_info[it1->second];
+      const CodAtomInfo& a3 = atom_info[it3->second];
+      if (angle_ring_size(atom_info[center_idx], a1, a3) > 0)
+        fixed.push_back(idx_ang);
+      else
+        free.push_back(idx_ang);
+    }
+    if (free.empty())
+      continue;
+    double fixed_sum = 0.0;
+    for (size_t idx_ang : fixed)
+      fixed_sum += cc.rt.angles[idx_ang].value;
+    double free_sum = 0.0;
+    for (size_t idx_ang : free)
+      free_sum += cc.rt.angles[idx_ang].value;
+    double diff = (360.0 - fixed_sum - free_sum) / static_cast<double>(free.size());
     if (std::fabs(diff) > 0.01) {
       double new_sum = 0.0;
-      for (size_t idx_ang : entry.second) {
+      for (size_t idx_ang : free) {
         cc.rt.angles[idx_ang].value += diff;
         new_sum += cc.rt.angles[idx_ang].value;
       }
-      cc.rt.angles[entry.second[0]].value += (360.0 - new_sum);
+      cc.rt.angles[free[0]].value += (360.0 - fixed_sum - new_sum);
     } else {
-      cc.rt.angles[entry.second[0]].value += diff;
+      cc.rt.angles[free[0]].value += diff;
     }
   }
 }
@@ -3328,6 +3351,8 @@ inline ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   std::string h1 = hybridization_to_string(center.hybrid);
   std::string h2 = hybridization_to_string(flank3->hybrid);
   std::string h3 = hybridization_to_string(flank1->hybrid);
+  if (h2 > h3)
+    std::swap(h2, h3);
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
 
   // Build valueKey (ring:hybr_tuple)
@@ -3678,13 +3703,10 @@ inline ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
   std::string h1 = hybridization_to_string(center.hybrid);
   std::string h2;
   std::string h3;
-  if (a1.hashing_value > a3.hashing_value) {
-    h2 = hybridization_to_string(a1.hybrid);
-    h3 = hybridization_to_string(a3.hybrid);
-  } else {
-    h2 = hybridization_to_string(a3.hybrid);
-    h3 = hybridization_to_string(a1.hybrid);
-  }
+  h2 = hybridization_to_string(a1.hybrid);
+  h3 = hybridization_to_string(a3.hybrid);
+  if (h2 > h3)
+    std::swap(h2, h3);
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
   key.value_key = std::to_string(ring_size) + ":" + hybr_tuple;
 
