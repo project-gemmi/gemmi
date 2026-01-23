@@ -506,6 +506,18 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     bool sp2_2 = (h2.hybrid == Hybridization::SP2);
     bool sp2_3 = (h3.hybrid == Hybridization::SP2);
 
+    TorsionEntry tors_entry;
+    if (tables.lookup_pep_tors(a1->id, cc.atoms[center2].id,
+                               cc.atoms[center3].id, a4->id, tors_entry)) {
+      cc.rt.torsions.push_back({"auto",
+                                {1, a1->id},
+                                {1, cc.atoms[center2].id},
+                                {1, cc.atoms[center3].id},
+                                {1, a4->id},
+                                tors_entry.value, 10.0, tors_entry.period});
+      continue;
+    }
+
     double value = 180.0;
     double esd = 10.0;
     int period = 3;

@@ -149,6 +149,11 @@ struct MetalAngleEntry {
   double sigma = NAN;
 };
 
+struct TorsionEntry {
+  double value = 0.0;
+  int period = 0;
+};
+
 // Periodic table row and group information
 inline int element_row(Element el) {
   int n = el.ordinal();
@@ -217,6 +222,10 @@ public:
 
   // Assign CCP4 atom energy types (type_energy) following AceDRG rules
   void assign_ccp4_types(ChemComp& cc) const;
+
+  bool lookup_pep_tors(const std::string& a1, const std::string& a2,
+                       const std::string& a3, const std::string& a4,
+                       TorsionEntry& out) const;
 
   // Individual lookups
   void fill_bond(const ChemComp& cc,
@@ -447,6 +456,7 @@ private:
   std::vector<MetalBondEntry> metal_bonds_;
   std::vector<MetalAngleEntry> metal_angles_;
   std::map<Element, std::map<int, CoordGeometry>> metal_coord_geo_;
+  std::map<std::string, TorsionEntry> pep_tors_;
 
   // Internal helper functions
 
@@ -459,6 +469,7 @@ private:
   void load_atom_type_codes(const std::string& path);
   void load_bond_index(const std::string& path);
   void load_bond_tables(const std::string& dir);
+  void load_pep_tors(const std::string& path);
   void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
 
@@ -556,7 +567,6 @@ private:
   ValueStats search_metal_bond(const CodAtomInfo& metal,
                                const CodAtomInfo& ligand,
                                const std::vector<CodAtomInfo>& atoms) const;
-
   // Angle search helpers
   ValueStats search_angle_multilevel(const CodAtomInfo& a1,
                                      const CodAtomInfo& center,
@@ -608,6 +618,7 @@ inline void AcedrgTables::load_tables(const std::string& tables_dir) {
   load_bond_tables(tables_dir + "/allOrgBondTables");
   load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
   load_angle_tables(tables_dir + "/allOrgAngleTables");
+  load_pep_tors(tables_dir + "/pep_tors.table");
 
   tables_loaded_ = true;
 }
@@ -1124,6 +1135,26 @@ inline void AcedrgTables::load_angle_tables(const std::string& dir) {
         }
       }
     }
+  }
+}
+
+inline void AcedrgTables::load_pep_tors(const std::string& path) {
+  std::ifstream f(path);
+  if (!f)
+    return;
+
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#')
+      continue;
+    std::istringstream iss(line);
+    std::string tors_id, label, a1, a2, a3, a4;
+    int period = 0;
+    int idx = 0;
+    double value = 0.0;
+    if (!(iss >> tors_id >> label >> a1 >> a2 >> a3 >> a4 >> period >> idx >> value))
+      continue;
+    pep_tors_[a1 + "_" + a2 + "_" + a3 + "_" + a4] = {value, period};
   }
 }
 
@@ -2758,6 +2789,35 @@ inline void AcedrgTables::fill_restraints(ChemComp& cc) const {
       fill_angle(cc, atom_info, angle);
     }
   }
+
+  // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles.
+  std::map<std::string, std::vector<size_t>> center_angles;
+  for (size_t i = 0; i < cc.rt.angles.size(); ++i)
+    center_angles[cc.rt.angles[i].id2.atom].push_back(i);
+  for (const auto& entry : center_angles) {
+    if (entry.second.size() != 3)
+      continue;
+    auto it = cc.find_atom(entry.first);
+    if (it == cc.atoms.end())
+      continue;
+    int idx = static_cast<int>(it - cc.atoms.begin());
+    if (atom_info[idx].hybrid != Hybridization::SP2)
+      continue;
+    double sum = 0.0;
+    for (size_t idx_ang : entry.second)
+      sum += cc.rt.angles[idx_ang].value;
+    double diff = (360.0 - sum) / 3.0;
+    if (std::fabs(diff) > 0.01) {
+      double new_sum = 0.0;
+      for (size_t idx_ang : entry.second) {
+        cc.rt.angles[idx_ang].value += diff;
+        new_sum += cc.rt.angles[idx_ang].value;
+      }
+      cc.rt.angles[entry.second[0]].value += (360.0 - new_sum);
+    } else {
+      cc.rt.angles[entry.second[0]].value += diff;
+    }
+  }
 }
 
 inline void AcedrgTables::fill_bond(const ChemComp& cc,
@@ -3237,6 +3297,16 @@ inline ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
                       pre_entry->pre_count);
 
   return ValueStats();
+}
+
+inline bool AcedrgTables::lookup_pep_tors(const std::string& a1,
+    const std::string& a2, const std::string& a3, const std::string& a4,
+    TorsionEntry& out) const {
+  auto it = pep_tors_.find(a1 + "_" + a2 + "_" + a3 + "_" + a4);
+  if (it == pep_tors_.end())
+    return false;
+  out = it->second;
+  return true;
 }
 
 // ============================================================================
