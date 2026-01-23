@@ -382,6 +382,63 @@ const ChemComp::Atom* pick_torsion_neighbor(
   return &cc.atoms[best];
 }
 
+int shared_ring_size(const CodAtomInfo& a, const CodAtomInfo& b) {
+  if (a.min_ring_size > 0 && b.min_ring_size > 0)
+    return std::min(a.min_ring_size, b.min_ring_size);
+  return 0;
+}
+
+const ChemComp::Atom* pick_torsion_neighbor_in_ring(
+    const ChemComp& cc,
+    const std::vector<std::vector<NeighborBond>>& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    size_t center_idx,
+    size_t other_center_idx,
+    size_t exclude_idx) {
+  std::vector<size_t> ring_candidates;
+  for (const auto& nb : adj[center_idx]) {
+    if (nb.idx == exclude_idx)
+      continue;
+    if (shared_ring_size(atom_info[nb.idx], atom_info[other_center_idx]) > 0)
+      ring_candidates.push_back(nb.idx);
+  }
+  if (ring_candidates.empty())
+    return nullptr;
+
+  bool has_non_h = false;
+  for (size_t idx : ring_candidates)
+    if (!cc.atoms[idx].is_hydrogen())
+      has_non_h = true;
+
+  size_t best = ring_candidates.front();
+  for (size_t idx : ring_candidates) {
+    if (has_non_h && cc.atoms[idx].is_hydrogen())
+      continue;
+    if (has_non_h && cc.atoms[best].is_hydrogen())
+      best = idx;
+    if (cc.atoms[idx].is_hydrogen()) {
+      if (cc.atoms[idx].id > cc.atoms[best].id)
+        best = idx;
+      continue;
+    }
+    if (cc.atoms[best].is_hydrogen()) {
+      best = idx;
+      continue;
+    }
+    int p_idx = element_priority(cc.atoms[idx].el);
+    int p_best = element_priority(cc.atoms[best].el);
+    if (p_idx != p_best) {
+      if (p_idx < p_best)
+        best = idx;
+      continue;
+    }
+    if (cc.atoms[idx].id < cc.atoms[best].id)
+      best = idx;
+  }
+
+  return &cc.atoms[best];
+}
+
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables) {
   if (!cc.rt.torsions.empty())
     return;
@@ -401,6 +458,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     size_t idx1 = it1->second;
     size_t idx2 = it2->second;
 
+    int ring_size = shared_ring_size(atom_info[idx1], atom_info[idx2]);
     size_t center2 = idx1;
     size_t center3 = idx2;
     bool c1_carbonyl = is_carbonyl_carbon(idx1, cc, adj);
@@ -410,6 +468,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       center3 = c1_carbonyl ? idx2 : idx1;
     } else if (cc.atoms[idx1].id == "CA" || cc.atoms[idx2].id == "CA") {
       center2 = (cc.atoms[idx1].id == "CA") ? idx1 : idx2;
+      center3 = (center2 == idx1) ? idx2 : idx1;
+    } else if (ring_size > 0 &&
+               ((cc.atoms[idx1].el == El::C && cc.atoms[idx2].el == El::N) ||
+                (cc.atoms[idx2].el == El::C && cc.atoms[idx1].el == El::N))) {
+      center2 = (cc.atoms[idx1].el == El::C) ? idx1 : idx2;
       center3 = (center2 == idx1) ? idx2 : idx1;
     } else if (cc.atoms[idx1].el != cc.atoms[idx2].el) {
       center2 = (element_priority(cc.atoms[idx1].el) <
@@ -422,6 +485,17 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
     const ChemComp::Atom* a1 = pick_torsion_neighbor(cc, adj, center2, center3);
     const ChemComp::Atom* a4 = pick_torsion_neighbor(cc, adj, center3, center2);
+    ring_size = shared_ring_size(atom_info[center2], atom_info[center3]);
+    if (ring_size > 0) {
+      const ChemComp::Atom* ring_a1 =
+          pick_torsion_neighbor_in_ring(cc, adj, atom_info, center2, center3, center3);
+      const ChemComp::Atom* ring_a4 =
+          pick_torsion_neighbor_in_ring(cc, adj, atom_info, center3, center2, center2);
+      if (ring_a1)
+        a1 = ring_a1;
+      if (ring_a4)
+        a4 = ring_a4;
+    }
     if (!a1 || !a4)
       continue;
 
@@ -435,7 +509,16 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     double value = 180.0;
     double esd = 10.0;
     int period = 3;
-    if ((sp2_2 && sp3_3) || (sp3_2 && sp2_3)) {
+    if (ring_size == 5 && sp3_2 && sp3_3) {
+      bool ca_n_bond =
+          (cc.atoms[center2].id == "CA" && cc.atoms[center3].el == El::N) ||
+          (cc.atoms[center3].id == "CA" && cc.atoms[center2].el == El::N);
+      if (ca_n_bond) {
+        value = 60.0;
+      } else if (a1->el == El::N || a4->el == El::N) {
+        value = -60.0;
+      }
+    } else if ((sp2_2 && sp3_3) || (sp3_2 && sp2_3)) {
       value = 0.0;
       esd = 20.0;
       period = 6;
