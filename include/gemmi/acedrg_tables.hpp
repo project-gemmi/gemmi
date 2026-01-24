@@ -3271,33 +3271,31 @@ inline ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
           }
         }
       }
-    } else if (level == 1 || level == 2) {
+    } else if (level == 1) {
+      // Level 1: a1_type matches exactly, aggregate over all a2_types
+      if (map_1d) {
+        std::vector<ValueStats> values;
+        auto it1 = map_1d->find(a1_type);
+        if (it1 != map_1d->end()) {
+          for (const auto& it2 : it1->second) {
+            if (!it2.second.empty())
+              values.push_back(it2.second.front());
+          }
+        }
+        values_size = static_cast<int>(values.size());
+        if (!values.empty())
+          vs = aggregate_stats(values);
+      }
+    } else if (level == 2) {
+      // Level 2: a2_type matches exactly, aggregate over different a1_types
       if (map_1d) {
         std::vector<ValueStats> values;
         for (const auto& it1 : *map_1d) {
-          if (level == 1 && it1.first == a1_type) {
-            for (const auto& it2 : it1.second) {
-              if (!it2.second.empty())
-                values.push_back(it2.second.front());
-            }
-          }
           if (it1.first != a1_type) {
             auto it2 = it1.second.find(a2_type);
             if (it2 != it1.second.end() && !it2->second.empty())
               values.push_back(it2->second.front());
           }
-        }
-        if (level == 2) {
-          // Keep only entries where a1M differs and a2M matches.
-          std::vector<ValueStats> filtered;
-          for (const auto& it1 : *map_1d) {
-            if (it1.first != a1_type) {
-              auto it2 = it1.second.find(a2_type);
-              if (it2 != it1.second.end() && !it2->second.empty())
-                filtered.push_back(it2->second.front());
-            }
-          }
-          values.swap(filtered);
         }
         values_size = static_cast<int>(values.size());
         if (!values.empty())
