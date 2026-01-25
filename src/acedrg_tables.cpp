@@ -21,14 +21,6 @@ namespace gemmi {
 
 
 
-} // namespace gemmi
-
-
-namespace gemmi {
-
-
-namespace {
-
 const char* hybridization_to_string(Hybridization h) {
   switch (h) {
     case Hybridization::SP1: return "SP1";
@@ -42,8 +34,6 @@ const char* hybridization_to_string(Hybridization h) {
   }
 }
 
-
-
 Hybridization hybridization_from_string(const std::string& s) {
   if (s == "SP1") return Hybridization::SP1;
   if (s == "SP2") return Hybridization::SP2;
@@ -55,19 +45,6 @@ Hybridization hybridization_from_string(const std::string& s) {
   return Hybridization::SP_NON;
 }
 
-AcedrgTables::AcedrgTables() {
-  // Initialize default values
-  upper_bond_sigma = 0.2;
-  lower_bond_sigma = 0.02;
-  upper_angle_sigma = 3.0;
-  lower_angle_sigma = 1.5;
-  min_observations_angle = 3;
-  min_observations_angle_fallback = 3;
-  min_observations_bond = 4;
-  metal_class_min_count = 5;
-  verbose = 0;
-  tables_loaded_ = false;
-}
 
 void AcedrgTables::load_tables(const std::string& tables_dir) {
   tables_dir_ = tables_dir;
@@ -1105,7 +1082,7 @@ void AcedrgTables::set_atom_cod_class_name_new2(
       sm.val = it.second;
       sorted.push_back(sm);
     }
-    std::sort(sorted.begin(), sorted.end(), des_sort_map_key);
+    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key);
     for (const auto& sm : sorted) {
       std::string s1 = sm.key + std::to_string(sm.val);
       std::string s2;
@@ -1170,7 +1147,7 @@ void AcedrgTables::set_atom_cod_class_name_new2(
       sm.nNB = it.second[1];
       sorted.push_back(sm);
     }
-    std::sort(sorted.begin(), sorted.end(), des_sort_map_key2);
+    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key2);
     for (const auto& sm : sorted) {
       if (sm.val == 1)
         atom.cod_class.append("(" + sm.key + ")");
@@ -1629,79 +1606,6 @@ void AcedrgTables::get_small_family(const std::string& in_str, NB1stFam& fam) co
   }
 }
 
-std::string AcedrgTables::trim_spaces(const std::string& s) {
-  size_t start = s.find_first_not_of(" \t\r\n");
-  if (start == std::string::npos)
-    return "";
-  size_t end = s.find_last_not_of(" \t\r\n");
-  return s.substr(start, end - start + 1);
-}
-
-std::vector<std::string> AcedrgTables::split(const std::string& s, char delim) {
-  std::vector<std::string> out;
-  std::string cur;
-  for (char c : s) {
-    if (c == delim) {
-      out.push_back(cur);
-      cur.clear();
-    } else {
-      cur.push_back(c);
-    }
-  }
-  out.push_back(cur);
-  return out;
-}
-
-int AcedrgTables::str_to_int(const std::string& s) {
-  std::istringstream iss(s);
-  int value = 0;
-  iss >> value;
-  return value;
-}
-
-bool AcedrgTables::compare_no_case(const std::string& first,
-                                          const std::string& second) {
-  size_t i = 0;
-  while (i < first.length() && i < second.length()) {
-    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
-    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
-    if (a < b)
-      return true;
-    if (a > b)
-      return false;
-    ++i;
-  }
-  return first.length() > second.length();
-}
-
-bool AcedrgTables::compare_no_case2(const std::string& first,
-                                           const std::string& second) {
-  if (first.length() > second.length())
-    return true;
-  if (first.length() < second.length())
-    return false;
-  for (size_t i = 0; i < first.length() && i < second.length(); ++i) {
-    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
-    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
-    if (a < b)
-      return true;
-    if (a > b)
-      return false;
-  }
-  return true;
-}
-
-bool AcedrgTables::des_sort_map_key(const SortMap& a, const SortMap& b) {
-  return a.key.length() > b.key.length();
-}
-
-bool AcedrgTables::des_sort_map_key2(const SortMap2& a, const SortMap2& b) {
-  if (a.key.length() > b.key.length())
-    return true;
-  if (a.key.length() == b.key.length())
-    return a.nNB > b.nNB;
-  return false;
-}
 
 bool AcedrgTables::are_in_same_ring(const CodAtomInfo& a1,
                                            const CodAtomInfo& a2) const {
@@ -3517,6 +3421,80 @@ ValueStats AcedrgTables::aggregate_stats(
     sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
 
   return ValueStats(mean, sigma, total_count);
+}
+
+std::string AcedrgTables::trim_spaces(const std::string& s) {
+  size_t start = s.find_first_not_of(" \t\r\n");
+  if (start == std::string::npos)
+    return "";
+  size_t end = s.find_last_not_of(" \t\r\n");
+  return s.substr(start, end - start + 1);
+}
+
+std::vector<std::string> AcedrgTables::split(const std::string& s, char delim) {
+  std::vector<std::string> out;
+  std::string cur;
+  for (char c : s) {
+    if (c == delim) {
+      out.push_back(cur);
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  out.push_back(cur);
+  return out;
+}
+
+int AcedrgTables::str_to_int(const std::string& s) {
+  std::istringstream iss(s);
+  int value = 0;
+  iss >> value;
+  return value;
+}
+
+bool AcedrgTables::compare_no_case(const std::string& first,
+                                   const std::string& second) {
+  size_t i = 0;
+  while (i < first.length() && i < second.length()) {
+    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
+    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+    ++i;
+  }
+  return first.length() > second.length();
+}
+
+bool AcedrgTables::compare_no_case2(const std::string& first,
+                                    const std::string& second) {
+  if (first.length() > second.length())
+    return true;
+  if (first.length() < second.length())
+    return false;
+  for (size_t i = 0; i < first.length() && i < second.length(); ++i) {
+    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
+    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+  }
+  return true;
+}
+
+bool AcedrgTables::desc_sort_map_key(const SortMap& a, const SortMap& b) {
+  return a.key.length() > b.key.length();
+}
+
+bool AcedrgTables::desc_sort_map_key2(const SortMap2& a, const SortMap2& b) {
+  if (a.key.length() > b.key.length())
+    return true;
+  if (a.key.length() == b.key.length())
+    return a.nNB > b.nNB;
+  return false;
 }
 
 } // namespace gemmi

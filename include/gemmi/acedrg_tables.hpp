@@ -472,19 +472,13 @@ public:
                            const std::vector<std::vector<int>>& neighbors) const;
   void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
                                            const std::vector<std::vector<int>>& neighbors) const;
+ private:
   int get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
                           const CodAtomInfo& atom,
                           const std::vector<std::vector<int>>& neighbors) const;
   int get_min_ring2_from_cod_class(const std::string& cod_class) const;
   bool cod_class_is_aromatic(const std::string& cod_class) const;
   void get_small_family(const std::string& in_str, NB1stFam& fam) const;
-  static std::string trim_spaces(const std::string& s);
-  static std::vector<std::string> split(const std::string& s, char delim);
-  static int str_to_int(const std::string& s);
-  static bool compare_no_case(const std::string& first, const std::string& second);
-  static bool compare_no_case2(const std::string& first, const std::string& second);
-  static bool des_sort_map_key(const SortMap& a, const SortMap& b);
-  static bool des_sort_map_key2(const SortMap2& a, const SortMap2& b);
   bool are_in_same_ring(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
   int angle_ring_size(const CodAtomInfo& center,
                       const CodAtomInfo& a1,
@@ -498,6 +492,13 @@ public:
   Hybridization hybrid_from_bonding_idx(int bonding_idx, bool is_metal,
                                         int connectivity) const;
   void compute_hash(CodAtomInfo& atom) const;
+  static std::string trim_spaces(const std::string& s);
+  static std::vector<std::string> split(const std::string& s, char delim);
+  static int str_to_int(const std::string& s);
+  static bool compare_no_case(const std::string& first, const std::string& second);
+  static bool compare_no_case2(const std::string& first, const std::string& second);
+  static bool desc_sort_map_key(const SortMap& a, const SortMap& b);
+  static bool desc_sort_map_key2(const SortMap2& a, const SortMap2& b);
 
   // Bond search helpers
   ValueStats search_bond_multilevel(const CodAtomInfo& a1,
