@@ -167,7 +167,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     } else {
       matched_chir[b - cc2.rt.chirs.begin()] = true;
       if (b->sign == ChiralityType::Both || b->sign == a.sign)
-        printf("! %-30s %s : -%s\n", str(cc1, a).c_str(),
+        printf("! %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
                chirality_to_string(a.sign), chirality_to_string(b->sign));
     }
   }
