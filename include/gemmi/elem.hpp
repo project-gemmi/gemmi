@@ -25,6 +25,53 @@ enum class El : unsigned char {
 
 inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
 
+inline int element_row(El el) {
+  int n = static_cast<int>(el);
+  if (n <= 2) return n != 0 ? 1 : 0;
+  if (n <= 10) return 2;
+  if (n <= 18) return 3;
+  if (n <= 36) return 4;
+  if (n <= 54) return 5;
+  if (n <= 86) return 6;
+  return 7;
+}
+
+// Periodic table row and group information
+inline int element_group(El el) {
+  // Lookup table for periodic table groups (1-18) by element ordinal (0-118)
+  // Lanthanides (57-71) and actinides (89-103) are assigned to group 3
+  static constexpr int groups[119] = {
+    // 0: unknown
+    0,
+    // 1-2: H, He
+    1, 18,
+    // 3-10: Li-Ne
+    1, 2, 13, 14, 15, 16, 17, 18,
+    // 11-18: Na-Ar
+    1, 2, 13, 14, 15, 16, 17, 18,
+    // 19-36: K-Kr
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 37-54: Rb-Xe
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 55-56: Cs, Ba
+    1, 2,
+    // 57-71: La-Lu (lanthanides)
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    // 72-86: Hf-Rn
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 87-88: Fr, Ra
+    1, 2,
+    // 89-103: Ac-Lr (actinides)
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    // 104-118: Rf-Og
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+  };
+  int n = static_cast<int>(el);
+  return (n >= 0 && n <= 118) ? groups[n] : 0;
+}
+
+
+
 // arbitrary division into metals and non-metals (Ge and Sb are metals here)
 inline bool& is_metal_value(El el) {
   static bool table[] = {

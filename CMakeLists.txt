@@ -212,7 +212,7 @@ target_compile_features(gemmi_headers INTERFACE cxx_std_14)
 set_target_properties(gemmi_headers PROPERTIES EXPORT_NAME headers)
 
 add_library(gemmi_cpp
-            src/align.cpp src/assembly.cpp src/calculate.cpp src/ccp4.cpp
+            src/acedrg_tables.cpp src/align.cpp src/assembly.cpp src/calculate.cpp src/ccp4.cpp
             src/crd.cpp src/ddl.cpp src/eig3.cpp src/flat.cpp src/fprime.cpp src/gz.cpp
             src/intensit.cpp src/json.cpp src/mmcif.cpp src/mmread_gz.cpp
             src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
