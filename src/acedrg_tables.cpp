@@ -158,7 +158,7 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
         if (colon != std::string::npos) {
           std::string ring_part = value_key.substr(0, colon);
           std::string hybrid_part = value_key.substr(colon + 1);
-          std::vector<std::string> parts = split(hybrid_part, '_');
+          std::vector<std::string> parts = split_str(hybrid_part, '_');
           if (parts.size() == 3) {
             std::swap(parts[0], parts[2]);
             hybrid_part = parts[0] + "_" + parts[1] + "_" + parts[2];
@@ -1220,7 +1220,7 @@ void AcedrgTables::set_special_3nb_symb2(
 
 void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
                                              CodAtomInfo& atom) const {
-  std::string t_cod = trim_spaces(cod_class);
+  std::string t_cod = trim_str(cod_class);
   atom.cod_class = t_cod;
   atom.nb_symb.clear();
   atom.nb2_symb.clear();
@@ -1228,10 +1228,10 @@ void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
 
   std::vector<std::string> two_parts;
   if (t_cod.find('{') != std::string::npos) {
-    two_parts = split(t_cod, '{');
+    two_parts = split_str(t_cod, '{');
     if (two_parts.size() == 2) {
       atom.cod_main = two_parts[0];
-      std::vector<std::string> nb3 = split(two_parts[1], '}');
+      std::vector<std::string> nb3 = split_str(two_parts[1], '}');
       if (!nb3.empty())
         atom.nb3_symb = nb3[0];
     } else {
@@ -1241,15 +1241,15 @@ void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
     atom.cod_main = t_cod;
   }
 
-  std::vector<std::string> atm_strs = split(atom.cod_main, '(');
+  std::vector<std::string> atm_strs = split_str(atom.cod_main, '(');
   if (!atm_strs.empty()) {
-    atom.cod_root = trim_spaces(atm_strs[0]);
+    atom.cod_root = trim_str(atm_strs[0]);
   }
 
   std::vector<NB1stFam> all_nbs;
   for (size_t i = 1; i < atm_strs.size(); ++i) {
-    std::string tS = trim_spaces(atm_strs[i]);
-    std::vector<std::string> nb1 = split(tS, ')');
+    std::string tS = trim_str(atm_strs[i]);
+    std::vector<std::string> nb1 = split_str(tS, ')');
     NB1stFam fam;
     if (nb1.size() > 1) {
       fam.repN = str_to_int(nb1[1]);
@@ -1259,7 +1259,7 @@ void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
       fam.repN = 1;
     }
 
-    std::string tS1 = trim_spaces(nb1[0]);
+    std::string tS1 = trim_str(nb1[0]);
     get_small_family(tS1, fam);
     all_nbs.push_back(fam);
   }
@@ -1505,16 +1505,16 @@ int AcedrgTables::get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
 int AcedrgTables::get_min_ring2_from_cod_class(const std::string& cod_class) const {
   int r_size = 0;
   if (!cod_class.empty()) {
-    std::vector<std::string> tmp1 = split(cod_class, '(');
+    std::vector<std::string> tmp1 = split_str(cod_class, '(');
     if (!tmp1.empty()) {
       if (tmp1[0].find('[') != std::string::npos) {
-        std::vector<std::string> tmp2 = split(tmp1[0], '[');
+        std::vector<std::string> tmp2 = split_str(tmp1[0], '[');
         if (tmp2.size() > 1) {
           if (tmp2[1].find(',') != std::string::npos) {
-            std::vector<std::string> tmp3 = split(tmp2[1], ',');
+            std::vector<std::string> tmp3 = split_str(tmp2[1], ',');
             if (!tmp3.empty()) {
               if (tmp3[0].find('x') != std::string::npos) {
-                std::vector<std::string> tmp4 = split(tmp3[0], 'x');
+                std::vector<std::string> tmp4 = split_str(tmp3[0], 'x');
                 if (tmp4.size() > 1)
                   r_size = str_to_int(tmp4[1]);
               } else {
@@ -1522,10 +1522,10 @@ int AcedrgTables::get_min_ring2_from_cod_class(const std::string& cod_class) con
               }
             }
           } else {
-            std::vector<std::string> tmp3 = split(tmp2[1], ']');
+            std::vector<std::string> tmp3 = split_str(tmp2[1], ']');
             if (!tmp3.empty()) {
               if (tmp3[0].find('x') != std::string::npos) {
-                std::vector<std::string> tmp4 = split(tmp3[0], 'x');
+                std::vector<std::string> tmp4 = split_str(tmp3[0], 'x');
                 if (tmp4.size() > 1)
                   r_size = str_to_int(tmp4[1]);
               } else {
@@ -1543,11 +1543,11 @@ int AcedrgTables::get_min_ring2_from_cod_class(const std::string& cod_class) con
 bool AcedrgTables::cod_class_is_aromatic(const std::string& cod_class) const {
   if (cod_class.empty())
     return false;
-  std::vector<std::string> secs = split(cod_class, '(');
+  std::vector<std::string> secs = split_str(cod_class, '(');
   if (secs.empty())
     return false;
   if (secs[0].find('[') != std::string::npos) {
-    std::vector<std::string> rs = split(secs[0], '[');
+    std::vector<std::string> rs = split_str(secs[0], '[');
     if (rs.size() > 1)
       return rs[1].find('a') != std::string::npos;
   }
@@ -3421,29 +3421,6 @@ ValueStats AcedrgTables::aggregate_stats(
     sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
 
   return ValueStats(mean, sigma, total_count);
-}
-
-std::string AcedrgTables::trim_spaces(const std::string& s) {
-  size_t start = s.find_first_not_of(" \t\r\n");
-  if (start == std::string::npos)
-    return "";
-  size_t end = s.find_last_not_of(" \t\r\n");
-  return s.substr(start, end - start + 1);
-}
-
-std::vector<std::string> AcedrgTables::split(const std::string& s, char delim) {
-  std::vector<std::string> out;
-  std::string cur;
-  for (char c : s) {
-    if (c == delim) {
-      out.push_back(cur);
-      cur.clear();
-    } else {
-      cur.push_back(c);
-    }
-  }
-  out.push_back(cur);
-  return out;
 }
 
 int AcedrgTables::str_to_int(const std::string& s) {

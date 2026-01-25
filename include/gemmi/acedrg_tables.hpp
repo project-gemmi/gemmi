@@ -152,7 +152,7 @@ inline int element_row(Element el) {
 
 struct GEMMI_DLL AcedrgTables {
 public:
-  AcedrgTables();
+  AcedrgTables() = default;
 
   // Load all tables from directory
   void load_tables(const std::string& tables_dir);
@@ -438,6 +438,21 @@ public:
     int repN = 1;
   };
 
+  void set_atom_cod_class_name_new2(CodAtomInfo& atom,
+                                    const CodAtomInfo& ori_atom,
+                                    int lev,
+                                    const std::vector<CodAtomInfo>& atoms,
+                                    const std::vector<std::vector<int>>& neighbors) const;
+  void set_special_3nb_symb2(CodAtomInfo& atom,
+                             const std::vector<CodAtomInfo>& atoms,
+                             const std::vector<std::vector<int>>& neighbors) const;
+  void cod_class_to_atom2(const std::string& cod_class,
+                          CodAtomInfo& atom) const;
+  void set_atoms_nb1nb2_sp(std::vector<CodAtomInfo>& atoms,
+                           const std::vector<std::vector<int>>& neighbors) const;
+  void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
+                                           const std::vector<std::vector<int>>& neighbors) const;
+ private:
   std::vector<std::vector<BondInfo>> build_adjacency(const ChemComp& cc) const;
   std::vector<std::vector<int>> build_neighbors(const std::vector<std::vector<BondInfo>>& adj) const;
   void set_ring_aromaticity_from_bonds(const std::vector<std::vector<BondInfo>>& adj,
@@ -458,21 +473,6 @@ public:
                              std::map<int, std::string>& atom_ids_in_path) const;
   void set_atoms_ring_rep_s(std::vector<CodAtomInfo>& atoms,
                             std::vector<RingInfo>& rings) const;
-  void set_atom_cod_class_name_new2(CodAtomInfo& atom,
-                                    const CodAtomInfo& ori_atom,
-                                    int lev,
-                                    const std::vector<CodAtomInfo>& atoms,
-                                    const std::vector<std::vector<int>>& neighbors) const;
-  void set_special_3nb_symb2(CodAtomInfo& atom,
-                             const std::vector<CodAtomInfo>& atoms,
-                             const std::vector<std::vector<int>>& neighbors) const;
-  void cod_class_to_atom2(const std::string& cod_class,
-                          CodAtomInfo& atom) const;
-  void set_atoms_nb1nb2_sp(std::vector<CodAtomInfo>& atoms,
-                           const std::vector<std::vector<int>>& neighbors) const;
-  void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
-                                           const std::vector<std::vector<int>>& neighbors) const;
- private:
   int get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
                           const CodAtomInfo& atom,
                           const std::vector<std::vector<int>>& neighbors) const;
@@ -492,8 +492,6 @@ public:
   Hybridization hybrid_from_bonding_idx(int bonding_idx, bool is_metal,
                                         int connectivity) const;
   void compute_hash(CodAtomInfo& atom) const;
-  static std::string trim_spaces(const std::string& s);
-  static std::vector<std::string> split(const std::string& s, char delim);
   static int str_to_int(const std::string& s);
   static bool compare_no_case(const std::string& first, const std::string& second);
   static bool compare_no_case2(const std::string& first, const std::string& second);
