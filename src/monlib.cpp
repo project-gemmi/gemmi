@@ -261,7 +261,7 @@ void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
       if (!chemcomp.has_atom(real(mod.new_id)))
         chemcomp.atoms.push_back({mod.new_id, "", mod.el,
                                   std::isnan(mod.charge) ? mod.charge : 0,
-                                  mod.chem_type, Position()});
+                                  mod.chem_type, "", Position()});
       continue;
     }
     const std::string& old = real(mod.old_id);

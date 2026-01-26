@@ -108,7 +108,7 @@ bool add_n_terminal_h3(ChemComp& cc) {
   if (!n_has_h || !n_has_h2 || n_has_h3)
     return false;
 
-  cc.atoms.push_back(ChemComp::Atom{"H3", "", El::H, 0.0f, "H", Position()});
+  cc.atoms.push_back(ChemComp::Atom{"H3", "", El::H, 0.0f, "H", "", Position()});
   // Bond/angle values set to NAN - will be filled by fill_restraints()
   cc.rt.bonds.push_back({{1, "N"}, {1, "H3"}, BondType::Single, false,
                         NAN, NAN, NAN, NAN});
@@ -1107,7 +1107,7 @@ void add_planes_if_missing(ChemComp& cc, const AcedrgTables& tables) {
 }
 
 enum OptionIndex {
-  Tables=4, Sigma, Timing, CifStyle, OutputDir
+  Tables=4, Sigma, Timing, CifStyle, OutputDir, TypeOut
 };
 
 const option::Descriptor Usage[] = {
@@ -1132,6 +1132,8 @@ const option::Descriptor Usage[] = {
     "  --timing  \tPrint timing information." },
   { CifStyle, 0, "", "style", Arg::CifStyle,
     "  --style=STYLE  \tOutput style: default, pdbx, aligned." },
+  { TypeOut, 0, "", "typeOut", Arg::None,
+    "  --typeOut  \tWrite _chem_comp_atom.atom_type column." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -1258,35 +1260,45 @@ int GEMMI_MAIN(int argc, char **argv) {
         int missing_bonds = count_missing_values(cc.rt.bonds);
         int missing_angles = count_missing_values(cc.rt.angles);
 
-        if (missing_bonds == 0 && missing_angles == 0) {
+        bool need_fill = (missing_bonds > 0 || missing_angles > 0);
+        bool need_typeout = p.options[TypeOut];
+
+        if (!need_fill && !need_typeout) {
           if (verbose)
             std::fprintf(stderr, "  No missing values.\n");
           continue;
         }
 
-        // Fill restraints
-        timer.start();
-        tables.fill_restraints(cc);
-        if (added_h3)
-          sync_n_terminal_h3_angles(cc);
-        tables.assign_ccp4_types(cc);
-        add_torsions_from_bonds_if_missing(cc, tables);
-        add_chirality_if_missing(cc, atom_stereo, tables);
-        add_planes_if_missing(cc, tables);
-        timer.print("Restraints filled in");
+        // Fill restraints if needed
+        if (need_fill) {
+          timer.start();
+          tables.fill_restraints(cc);
+          if (added_h3)
+            sync_n_terminal_h3_angles(cc);
+          tables.assign_ccp4_types(cc);
+          add_torsions_from_bonds_if_missing(cc, tables);
+          add_chirality_if_missing(cc, atom_stereo, tables);
+          add_planes_if_missing(cc, tables);
+          timer.print("Restraints filled in");
 
-        // Count filled values
-        int filled_bonds = missing_bonds - count_missing_values(cc.rt.bonds);
-        int filled_angles = missing_angles - count_missing_values(cc.rt.angles);
+          // Count filled values
+          int filled_bonds = missing_bonds - count_missing_values(cc.rt.bonds);
+          int filled_angles = missing_angles - count_missing_values(cc.rt.angles);
 
-        if (verbose)
-          std::fprintf(stderr, "  Filled %d/%d bonds, %d/%d angles.\n",
-                       filled_bonds, missing_bonds, filled_angles, missing_angles);
+          if (verbose)
+            std::fprintf(stderr, "  Filled %d/%d bonds, %d/%d angles.\n",
+                         filled_bonds, missing_bonds, filled_angles, missing_angles);
 
-        filled_count += filled_bonds + filled_angles;
+          filled_count += filled_bonds + filled_angles;
+        }
+
+        // Compute acedrg_types if requested
+        std::vector<std::string> acedrg_types;
+        if (p.options[TypeOut])
+          acedrg_types = tables.compute_acedrg_types(cc);
 
         // Update the block with new values
-        add_chemcomp_to_block(cc, block);
+        add_chemcomp_to_block(cc, block, acedrg_types);
       }
 
       if (verbose)

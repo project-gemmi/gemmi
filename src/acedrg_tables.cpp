@@ -3474,4 +3474,80 @@ bool AcedrgTables::desc_sort_map_key2(const SortMap2& a, const SortMap2& b) {
   return false;
 }
 
+// Helper to compact element list: ["H","H","H"] -> "H3"
+// Only compacts runs of 3+ identical elements (acedrg convention)
+static std::string compact_element_list(const std::vector<std::string>& elems) {
+  std::string result;
+  for (size_t i = 0; i < elems.size(); ) {
+    size_t count = 1;
+    while (i + count < elems.size() && elems[i + count] == elems[i])
+      ++count;
+    if (count >= 3) {
+      // Compact runs of 3+
+      result += elems[i];
+      result += std::to_string(count);
+    } else {
+      // Don't compact runs of 1-2, just repeat the element
+      for (size_t j = 0; j < count; ++j)
+        result += elems[i];
+    }
+    i += count;
+  }
+  return result;
+}
+
+std::string AcedrgTables::compute_acedrg_type(
+    const CodAtomInfo& atom,
+    const std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) const {
+  std::string result = element_name(atom.el);
+
+  // Build neighbor descriptions: neighbor_element + neighbor's_other_neighbors
+  std::map<std::string, int> neighbor_groups;
+  for (int nb_idx : neighbors[atom.index]) {
+    std::string desc = element_name(atoms[nb_idx].el);
+    // Collect second neighbors (excluding the central atom)
+    std::vector<std::string> second_nbs;
+    for (int nb2_idx : neighbors[nb_idx]) {
+      if (nb2_idx != atom.index)
+        second_nbs.push_back(element_name(atoms[nb2_idx].el));
+    }
+    // Sort alphabetically
+    std::sort(second_nbs.begin(), second_nbs.end());
+    // Compact runs: H,H,H -> H3
+    desc += compact_element_list(second_nbs);
+    neighbor_groups[desc]++;
+  }
+
+  // Sort groups: by length desc, then alphabetically
+  std::vector<std::pair<std::string, int>> sorted_groups(
+      neighbor_groups.begin(), neighbor_groups.end());
+  std::sort(sorted_groups.begin(), sorted_groups.end(),
+    [](const std::pair<std::string, int>& a, const std::pair<std::string, int>& b) {
+      if (a.first.size() != b.first.size())
+        return a.first.size() > b.first.size();  // longer first
+      return a.first < b.first;  // then alphabetically
+    });
+
+  for (const auto& group : sorted_groups) {
+    result += "(" + group.first + ")";
+    if (group.second > 1)
+      result += std::to_string(group.second);
+  }
+  return result;
+}
+
+std::vector<std::string> AcedrgTables::compute_acedrg_types(const ChemComp& cc) const {
+  std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
+  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
+  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+
+  std::vector<std::string> types;
+  types.reserve(cc.atoms.size());
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    types.push_back(compute_acedrg_type(atom_info[i], atom_info, neighbors));
+  }
+  return types;
+}
+
 } // namespace gemmi

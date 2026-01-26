@@ -178,6 +178,14 @@ public:
   // Atom classification - returns info for all atoms
   std::vector<CodAtomInfo> classify_atoms(const ChemComp& cc) const;
 
+  // Compute acedrg_type string (like acedrg --typeOut)
+  // Format: CentralElement(Neighbor1_desc)(Neighbor2_desc)...
+  // where each neighbor description = neighbor element + sorted neighbor's other neighbors
+  std::string compute_acedrg_type(const CodAtomInfo& atom,
+                                  const std::vector<CodAtomInfo>& atoms,
+                                  const std::vector<std::vector<int>>& neighbors) const;
+  std::vector<std::string> compute_acedrg_types(const ChemComp& cc) const;
+
   // Configuration
   double upper_bond_sigma = 0.2;
   double lower_bond_sigma = 0.02;

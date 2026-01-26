@@ -80,11 +80,17 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
   // atoms
   for (const ChemComp::Atom& a : cc1.atoms) {
     auto b = cc2.find_atom(a.id);
-    if (b == cc2.atoms.end())
+    if (b == cc2.atoms.end()) {
       printf("- atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
-    else if (a.chem_type != b->chem_type)
-      printf("! atom %s (%s : %s)\n",
-             a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+    } else {
+      if (a.chem_type != b->chem_type)
+        printf("! atom %s (%s : %s)\n",
+               a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+      if (!a.acedrg_type.empty() && !b->acedrg_type.empty() &&
+          a.acedrg_type != b->acedrg_type)
+        printf("! atom %s acedrg_type (%s : %s)\n",
+               a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
+    }
   }
   for (const ChemComp::Atom& a : cc2.atoms)
     if (cc1.find_atom(a.id) == cc1.atoms.end())

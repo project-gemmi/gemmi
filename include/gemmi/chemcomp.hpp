@@ -360,6 +360,7 @@ struct ChemComp {
     //  '0.000' which is not correct but we ignore it).
     float charge = 0;
     std::string chem_type;
+    std::string acedrg_type;  // read from _chem_comp_atom.atom_type
     Position xyz;
 
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
@@ -605,13 +606,17 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     cc.type_or_group = type_col.str(0);
   for (auto row : block.find("_chem_comp_atom.",
                              {"atom_id", "type_symbol", "?type_energy",
-                             "?charge", "?partial_charge", "?alt_atom_id"}))
-    cc.atoms.push_back({row.str(0),
-                        row.has(5) ? row.str(5) : "",
-                        Element(row.str(1)),
-                        (float) cif::as_number(row.one_of(3, 4), 0.0),
-                        row.has(2) ? row.str(2) : "",
-                        Position()});
+                             "?charge", "?partial_charge", "?alt_atom_id",
+                             "?atom_type"})) {
+    ChemComp::Atom atom;
+    atom.id = row.str(0);
+    atom.old_id = row.has(5) ? row.str(5) : "";
+    atom.el = Element(row.str(1));
+    atom.charge = (float) cif::as_number(row.one_of(3, 4), 0.0);
+    atom.chem_type = row.has(2) ? row.str(2) : "";
+    atom.acedrg_type = row.has(6) ? row.str(6) : "";
+    cc.atoms.push_back(std::move(atom));
+  }
   for (auto row : block.find("_chem_comp_bond.",
                              {"atom_id_1", "atom_id_2",              // 0, 1
                               "?type", "?value_order",               // 2, 3
