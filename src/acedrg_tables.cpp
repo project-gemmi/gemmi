@@ -3287,8 +3287,9 @@ ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3, int ring_size) const {
 
   AngleHRSKey key;
-  key.hash1 = center.hashing_value;
-  key.hash2 = std::min(a1.hashing_value, a3.hashing_value);
+  // Loaded data has: hash1=min(flank), hash2=center, hash3=max(flank)
+  key.hash1 = std::min(a1.hashing_value, a3.hashing_value);
+  key.hash2 = center.hashing_value;
   key.hash3 = std::max(a1.hashing_value, a3.hashing_value);
 
   // Build hybrid tuple
