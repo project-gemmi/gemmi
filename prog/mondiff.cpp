@@ -238,10 +238,12 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       fprintf(stderr, "Reading %s ...\n", path2);
     cif::Document doc2 = read_cif_gz(path2);
-    std::string name =block1->name;
-   if (starts_with(name, "comp_"))
+    std::string name = block1->name;
+    if (starts_with(name, "comp_"))
       name = name.substr(5);
     const cif::Block* block2 = doc2.find_block(name);
+    if (!block2)
+      block2 = doc2.find_block("comp_" + name);
     if (!block2)
       block2 = doc2.find_block(block1->name);
     if (!block2)
