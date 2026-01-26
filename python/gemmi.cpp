@@ -197,6 +197,7 @@ NB_MODULE(gemmi_ext, m_) {
   add_mtz(m);
   add_hkl(m);
   add_chemcomp(m);
+  add_acedrg_tables(m);
   add_monlib(m);
   add_topo(m);
   add_alignment(m);

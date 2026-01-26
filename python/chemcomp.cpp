@@ -170,6 +170,7 @@ void add_chemcomp(nb::module_& m) {
     .def_rw("xyz", &ChemComp::Atom::xyz)
     .def_rw("charge", &ChemComp::Atom::charge)
     .def_rw("chem_type", &ChemComp::Atom::chem_type)
+    .def_rw("acedrg_type", &ChemComp::Atom::acedrg_type)
     .def("is_hydrogen", &ChemComp::Atom::is_hydrogen)
     ;
   nb::class_<ChemComp::Aliasing>(chemcomp, "Aliasing")

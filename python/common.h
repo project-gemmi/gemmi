@@ -46,6 +46,7 @@ void add_alignment(nb::module_& m); // align.cpp
 void add_scaling(nb::module_& m); // scaling.cpp
 void add_search(nb::module_& m); // search.cpp
 void add_sf(nb::module_& m); // sf.cpp
+void add_acedrg_tables(nb::module_& m); // acedrg_tables.cpp
 
 // defined in write.cpp
 namespace gemmi {
