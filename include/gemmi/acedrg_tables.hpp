@@ -34,8 +34,8 @@ enum class Hybridization {
   SP_NON  // non-standard/unknown hybridization
 };
 
-const char* hybridization_to_string(Hybridization h);
-Hybridization hybridization_from_string(const std::string& s);
+GEMMI_DLL const char* hybridization_to_string(Hybridization h);
+GEMMI_DLL Hybridization hybridization_from_string(const std::string& s);
 
 // Metal coordination geometry types
 enum class CoordGeometry {

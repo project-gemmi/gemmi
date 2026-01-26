@@ -2932,12 +2932,12 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3) const {
 
   // Build lookup keys - canonicalize flanking atoms
-  int ha1, ha3;
+  // Table format: ha1=left_flank, ha2=center, ha3=right_flank
   const CodAtomInfo *flank1, *flank3;
   order_angle_flanks(a1, a3, flank1, flank3);
-  ha1 = center.hashing_value;
-  int ha2 = flank1->hashing_value;
-  ha3 = flank3->hashing_value;
+  int ha1 = flank1->hashing_value;
+  int ha2 = center.hashing_value;
+  int ha3 = flank3->hashing_value;
 
   // Build hybridization tuple
   std::string h1 = hybridization_to_string(center.hybrid);
@@ -2951,18 +2951,18 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   int ring_val = angle_ring_size(center, *flank1, *flank3);
   std::string value_key = std::to_string(ring_val) + ":" + hybr_tuple;
 
-  // Get neighbor symbols
-  const std::string& a1_nb2 = center.nb2_symb;
-  const std::string& a2_nb2 = flank1->nb2_symb;
+  // Get neighbor symbols - table format: a1=flank1, a2=center, a3=flank3
+  const std::string& a1_nb2 = flank1->nb2_symb;
+  const std::string& a2_nb2 = center.nb2_symb;
   const std::string& a3_nb2 = flank3->nb2_symb;
-  const std::string& a1_root = center.cod_root;
-  const std::string& a2_root = flank1->cod_root;
+  const std::string& a1_root = flank1->cod_root;
+  const std::string& a2_root = center.cod_root;
   const std::string& a3_root = flank3->cod_root;
-  const std::string& a1_nb = center.nb_symb;
-  const std::string& a2_nb = flank1->nb_symb;
+  const std::string& a1_nb = flank1->nb_symb;
+  const std::string& a2_nb = center.nb_symb;
   const std::string& a3_nb = flank3->nb_symb;
-  const std::string& a1_type = center.cod_main;
-  const std::string& a2_type = flank1->cod_main;
+  const std::string& a1_type = flank1->cod_main;
+  const std::string& a2_type = center.cod_main;
   const std::string& a3_type = flank3->cod_main;
 
   if (verbose >= 2) {
