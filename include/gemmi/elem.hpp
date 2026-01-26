@@ -5,6 +5,7 @@
 #ifndef GEMMI_ELEM_HPP_
 #define GEMMI_ELEM_HPP_
 
+#include <cstdint>
 #include <string>
 
 namespace gemmi {
@@ -25,22 +26,43 @@ enum class El : unsigned char {
 
 inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
 
-inline int element_row(El el) {
+inline std::int8_t element_row(El el) {
+  // Lookup table for periodic table periods (rows) by element ordinal (0-118)
+  static constexpr std::int8_t rows[119] = {
+    // 0: unknown
+    0,
+    // 1-2: H, He (period 1)
+    1, 1,
+    // 3-10: Li-Ne (period 2)
+    2, 2, 2, 2, 2, 2, 2, 2,
+    // 11-18: Na-Ar (period 3)
+    3, 3, 3, 3, 3, 3, 3, 3,
+    // 19-36: K-Kr (period 4)
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    // 37-54: Rb-Xe (period 5)
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    // 55-56: Cs, Ba (period 6)
+    6, 6,
+    // 57-71: La-Lu (lanthanides, period 6)
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    // 72-86: Hf-Rn (period 6)
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    // 87-88: Fr, Ra (period 7)
+    7, 7,
+    // 89-103: Ac-Lr (actinides, period 7)
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    // 104-118: Rf-Og (period 7)
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+  };
   int n = static_cast<int>(el);
-  if (n <= 2) return n != 0 ? 1 : 0;
-  if (n <= 10) return 2;
-  if (n <= 18) return 3;
-  if (n <= 36) return 4;
-  if (n <= 54) return 5;
-  if (n <= 86) return 6;
-  return 7;
+  return (n >= 0 && n <= 118) ? rows[n] : (int8_t) 0;
 }
 
 // Periodic table row and group information
-inline int element_group(El el) {
+inline std::int8_t element_group(El el) {
   // Lookup table for periodic table groups (1-18) by element ordinal (0-118)
   // Lanthanides (57-71) and actinides (89-103) are assigned to group 3
-  static constexpr int groups[119] = {
+  static constexpr std::int8_t groups[119] = {
     // 0: unknown
     0,
     // 1-2: H, He
@@ -67,7 +89,7 @@ inline int element_group(El el) {
     4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
   };
   int n = static_cast<int>(el);
-  return (n >= 0 && n <= 118) ? groups[n] : 0;
+  return (n >= 0 && n <= 118) ? groups[n] :  (std::int8_t)0;
 }
 
 
