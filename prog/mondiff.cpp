@@ -157,8 +157,6 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
   // chiralities
   std::vector<bool> matched_chir(cc2.rt.chirs.size(), false);
   for (const Restraints::Chirality& a : cc1.rt.chirs) {
-    if (a.sign == ChiralityType::Both)  // not interesting
-      continue;
     auto b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id2, a.id3);
     if (b != cc2.rt.chirs.end()) {
       if (a.sign != b->sign)
