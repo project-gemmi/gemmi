@@ -1117,6 +1117,7 @@ const option::Descriptor Usage[] = {
     "\n " EXE_NAME " [options] --output-dir=DIR INPUT1.cif [INPUT2.cif ...]"
     "\n\nFill missing restraint values (bonds, angles) in a monomer CIF file"
     "\nusing COD/CSD statistical data from AceDRG tables."
+    "\nIf OUTPUT.cif is -, the output is printed to stdout."
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],

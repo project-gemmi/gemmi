@@ -5,6 +5,7 @@ Usage:
 
 Fill missing restraint values (bonds, angles) in a monomer CIF file
 using COD/CSD statistical data from AceDRG tables.
+If OUTPUT.cif is -, the output is printed to stdout.
 
 Options:
   -h, --help            Print usage and exit.
