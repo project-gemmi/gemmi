@@ -475,7 +475,7 @@ if (USE_PYTHON)
   endif()
   nanobind_add_module(gemmi_py NOMINSIZE
           python/gemmi.cpp python/align.cpp
-          python/acedrg_tables.cpp python/ccp4.cpp python/chemcomp.cpp python/cif.cpp
+          python/ccp4.cpp python/chemcomp.cpp python/cif.cpp
           python/elem.cpp python/grid.cpp python/hkl.cpp
           python/meta.cpp python/mol.cpp python/monlib.cpp
           python/mtz.cpp python/read.cpp python/recgrid.cpp
