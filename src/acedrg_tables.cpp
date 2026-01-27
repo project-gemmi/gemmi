@@ -2583,12 +2583,17 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
 
   bool has_hybr = false;
   bool has_in_ring = false;
-  if (auto it1 = bond_idx_2d_.find(ha1); it1 != bond_idx_2d_.end()) {
-    if (auto it2 = it1->second.find(ha2); it2 != it1->second.end()) {
-      if (auto it3 = it2->second.find(hybr_comb); it3 != it2->second.end()) {
-        has_hybr = true;
-        if (it3->second.find(in_ring) != it3->second.end())
-          has_in_ring = true;
+  {
+    auto it1 = bond_idx_2d_.find(ha1);
+    if (it1 != bond_idx_2d_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end()) {
+          has_hybr = true;
+          if (it3->second.find(in_ring) != it3->second.end())
+            has_in_ring = true;
+        }
       }
     }
   }
