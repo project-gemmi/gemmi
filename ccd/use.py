@@ -50,8 +50,7 @@ def run_acedrg(code: str, input_file: str, output_dir: str):
             return  # Stop if we can't create the output directory
 
     output_prefix = os.path.join(output_dir, code)
-    #command = ["acedrg", "-c", input_file, "-o", output_prefix]
-    command = ["acedrg", "--typeOut", "-c", input_file, "-o", output_prefix]
+    command = ["acedrg", "-c", input_file, "-o", output_prefix]
     print(f"\nRunning: {' '.join(command)}")
 
     try:
