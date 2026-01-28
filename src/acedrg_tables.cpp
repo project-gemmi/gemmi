@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cstdio>
 #include <fstream>
+#include <numeric>
 #include <sstream>
 #include <iostream>
 #include <set>
@@ -655,7 +656,7 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   // Detect rings and populate ring representations
   std::vector<RingInfo> rings;
   detect_rings_acedrg(neighbors, atoms, rings);
-  set_ring_aromaticity_from_bonds(adj, rings);
+  set_ring_aromaticity_from_bonds(adj, atoms, rings);
   set_atoms_ring_rep_s(atoms, rings);
 
   // Build COD class names (AceDRG style)
@@ -671,8 +672,8 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   // Hybridization and NB1/NB2_SP
   set_atoms_bonding_and_chiral_center(atoms, neighbors);
   set_atoms_nb1nb2_sp(atoms, neighbors);
-
-  // nb2_symb (codNB2Symb) stays derived from cod_class (AceDRG behavior).
+  // Recompute nb_symb and nb2_symb from actual neighbor cod_root and bonding_idx
+  set_atoms_nb_symb_from_neighbors(atoms, neighbors);
 
   // Ring props from codClass and hash codes
   for (auto& atom : atoms) {
@@ -785,6 +786,7 @@ std::vector<std::vector<int>> AcedrgTables::build_neighbors(
 
 void AcedrgTables::set_ring_aromaticity_from_bonds(
     const std::vector<std::vector<BondInfo>>& adj,
+    const std::vector<CodAtomInfo>& atoms,
     std::vector<RingInfo>& rings) const {
   // Heuristic: mark 6-member rings with 3 double bonds (benzene-like) or any
   // ring with explicit aromatic/deloc bonds as aromatic. Then propagate to
@@ -814,6 +816,33 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
 
     ring.is_aromatic = has_arom ||
                        (ring.atoms.size() == 6 && double_bonds == 3);
+
+    // Also check for pyrimidine-like 6-member rings: most atoms have double bonds
+    // (to any neighbor), and remaining atoms are nitrogen (contributing lone pairs).
+    // This catches pyrimidine bases where carbonyl C=O bonds are outside the ring.
+    if (!ring.is_aromatic && ring.atoms.size() == 6) {
+      int atoms_with_double = 0;
+      int nitrogen_without_double = 0;
+      for (int idx : ring.atoms) {
+        bool has_double = false;
+        for (const auto& bond : adj[idx]) {
+          if (bond.type == BondType::Double ||
+              bond.type == BondType::Aromatic ||
+              bond.type == BondType::Deloc) {
+            has_double = true;
+            break;
+          }
+        }
+        if (has_double) {
+          ++atoms_with_double;
+        } else if (atoms[idx].el == El::N) {
+          ++nitrogen_without_double;
+        }
+      }
+      // Aromatic if at least 4 atoms have double bonds and the rest are nitrogen
+      if (atoms_with_double >= 4 && atoms_with_double + nitrogen_without_double == 6)
+        ring.is_aromatic = true;
+    }
   }
 
   for (auto& ring : rings) {
@@ -1307,6 +1336,55 @@ void AcedrgTables::set_atoms_nb1nb2_sp(
   }
 }
 
+void AcedrgTables::set_atoms_nb_symb_from_neighbors(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) const {
+  for (auto& atom : atoms) {
+    // Collect neighbor info: cod_root and connectivity
+    // The value used in nb_symb/nb2_symb is the neighbor's connectivity
+    // (number of bonded atoms), which matches the table format used in
+    // acedrg's indexed angle tables (e.g., "C-4:" means carbon with 4 bonds).
+    struct NbInfo {
+      std::string root;
+      int connectivity;
+    };
+    std::vector<NbInfo> nb_info;
+    for (int nb_idx : neighbors[atom.index]) {
+      nb_info.push_back({atoms[nb_idx].cod_root,
+                         atoms[nb_idx].connectivity});
+    }
+
+    // Build "root-connectivity" strings for sorting and lookup
+    std::vector<std::string> nb_strs;
+    nb_strs.reserve(nb_info.size());
+    for (const auto& info : nb_info) {
+      nb_strs.push_back(info.root + "-" + std::to_string(info.connectivity));
+    }
+
+    // Sort by: 1) string length (longer first), 2) connectivity (higher first)
+    // This matches desc_sort_map_key2 sorting used in set_atom_cod_class_name_new2
+    std::vector<size_t> indices(nb_info.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(),
+              [&nb_strs, &nb_info](size_t a, size_t b) {
+                if (nb_strs[a].length() > nb_strs[b].length())
+                  return true;
+                if (nb_strs[a].length() < nb_strs[b].length())
+                  return false;
+                // Same length: sort by connectivity (higher first)
+                return nb_info[a].connectivity > nb_info[b].connectivity;
+              });
+
+    // Build nb_symb and nb2_symb using sorted order
+    atom.nb_symb.clear();
+    atom.nb2_symb.clear();
+    for (size_t i : indices) {
+      atom.nb_symb += nb_strs[i] + ":";
+      atom.nb2_symb += std::to_string(nb_info[i].connectivity) + ":";
+    }
+  }
+}
+
 void AcedrgTables::set_atoms_bonding_and_chiral_center(
     std::vector<CodAtomInfo>& atoms,
     const std::vector<std::vector<int>>& neighbors) const {
@@ -1405,6 +1483,8 @@ void AcedrgTables::set_atoms_bonding_and_chiral_center(
     } else if (atom.el == El::Br) {
       if (t_len == 3)
         atom.bonding_idx = 3;
+    } else if (atom.el == El::H || atom.el == El::D) {
+      atom.bonding_idx = 1;  // H is always single-bonded
     }
   }
 
@@ -2944,12 +3024,10 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   int ha2 = center.hashing_value;
   int ha3 = flank3->hashing_value;
 
-  // Build hybridization tuple
-  std::string h1 = hybridization_to_string(center.hybrid);
-  std::string h2 = hybridization_to_string(flank3->hybrid);
-  std::string h3 = hybridization_to_string(flank1->hybrid);
-  if (h2 > h3)
-    std::swap(h2, h3);
+  // Build hybridization tuple - table uses hash order: minFlank_center_maxFlank
+  std::string h1 = hybridization_to_string(flank1->hybrid);  // min hash
+  std::string h2 = hybridization_to_string(center.hybrid);   // center
+  std::string h3 = hybridization_to_string(flank3->hybrid);  // max hash
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
 
   // Build valueKey (ring:hybr_tuple)
@@ -3157,9 +3235,9 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                   if (vs.count >= min_observations_angle_fallback) {
                     if (verbose >= 2)
                       std::fprintf(stderr,
-                                   "      matched angle %s-%s-%s: level=4D\n",
+                                   "      matched angle %s-%s-%s: level=4D (value=%.3f sigma=%.3f count=%d)\n",
                                    a1.id.c_str(), center.id.c_str(),
-                                   a3.id.c_str());
+                                   a3.id.c_str(), vs.value, vs.sigma, vs.count);
                     return vs;
                   }
                 }
@@ -3292,18 +3370,22 @@ ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3, int ring_size) const {
 
   AngleHRSKey key;
-  key.hash1 = center.hashing_value;
-  key.hash2 = std::min(a1.hashing_value, a3.hashing_value);
+  // Loaded data has: hash1=min(flank), hash2=center, hash3=max(flank)
+  key.hash1 = std::min(a1.hashing_value, a3.hashing_value);
+  key.hash2 = center.hashing_value;
   key.hash3 = std::max(a1.hashing_value, a3.hashing_value);
 
-  // Build hybrid tuple
-  std::string h1 = hybridization_to_string(center.hybrid);
-  std::string h2;
-  std::string h3;
-  h2 = hybridization_to_string(a1.hybrid);
-  h3 = hybridization_to_string(a3.hybrid);
-  if (h2 > h3)
-    std::swap(h2, h3);
+  // Build hybrid tuple - table uses hash order: first_center_third
+  // where first/third are determined by min/max of flank hash values
+  std::string h1, h2, h3;
+  h2 = hybridization_to_string(center.hybrid);
+  if (a1.hashing_value <= a3.hashing_value) {
+    h1 = hybridization_to_string(a1.hybrid);
+    h3 = hybridization_to_string(a3.hybrid);
+  } else {
+    h1 = hybridization_to_string(a3.hybrid);
+    h3 = hybridization_to_string(a1.hybrid);
+  }
   std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
   key.value_key = std::to_string(ring_size) + ":" + hybr_tuple;
 
@@ -3544,13 +3626,11 @@ std::string AcedrgTables::compute_acedrg_type(
 
 std::vector<std::string> AcedrgTables::compute_acedrg_types(const ChemComp& cc) const {
   std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
-  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
-  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
 
   std::vector<std::string> types;
   types.reserve(cc.atoms.size());
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    types.push_back(compute_acedrg_type(atom_info[i], atom_info, neighbors));
+    types.push_back(atom_info[i].cod_class);
   }
   return types;
 }

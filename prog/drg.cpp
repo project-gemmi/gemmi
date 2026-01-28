@@ -1251,11 +1251,15 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
 
         ChemComp cc = make_chemcomp_from_block(block);
-        adjust_terminal_carboxylate(cc);
         add_angles_from_bonds_if_missing(cc);
-        bool added_h3 = add_n_terminal_h3(cc);
         adjust_phosphate_group(cc);
         adjust_carboxylate_group(cc);
+
+        // Convert to zwitterionic form (add H3, deprotonate carboxyl) BEFORE
+        // classification and fill_restraints. Acedrg tables are built using
+        // the zwitterionic form where N has 4 neighbors (CA, H, H2, H3).
+        bool added_h3 = add_n_terminal_h3(cc);
+        adjust_terminal_carboxylate(cc);
 
         // Count missing values before
         int missing_bonds = count_missing_values(cc.rt.bonds);
@@ -1270,10 +1274,16 @@ int GEMMI_MAIN(int argc, char **argv) {
           continue;
         }
 
+        // Compute acedrg_types if requested (on zwitterionic form with H3)
+        std::vector<std::string> acedrg_types;
+        if (p.options[TypeOut])
+          acedrg_types = tables.compute_acedrg_types(cc);
+
         // Fill restraints if needed
         if (need_fill) {
           timer.start();
           tables.fill_restraints(cc);
+          // Sync H3 angles from H/H2 angles (they use the same values)
           if (added_h3)
             sync_n_terminal_h3_angles(cc);
           tables.assign_ccp4_types(cc);
@@ -1291,12 +1301,11 @@ int GEMMI_MAIN(int argc, char **argv) {
                          filled_bonds, missing_bonds, filled_angles, missing_angles);
 
           filled_count += filled_bonds + filled_angles;
+        } else {
+          // H3 and carboxylate already adjusted above, just sync angles if needed
+          if (added_h3)
+            sync_n_terminal_h3_angles(cc);
         }
-
-        // Compute acedrg_types if requested
-        std::vector<std::string> acedrg_types;
-        if (p.options[TypeOut])
-          acedrg_types = tables.compute_acedrg_types(cc);
 
         // Update the block with new values
         add_chemcomp_to_block(cc, block, acedrg_types);

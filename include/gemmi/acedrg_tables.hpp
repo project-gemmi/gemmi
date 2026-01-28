@@ -458,12 +458,15 @@ public:
                           CodAtomInfo& atom) const;
   void set_atoms_nb1nb2_sp(std::vector<CodAtomInfo>& atoms,
                            const std::vector<std::vector<int>>& neighbors) const;
+  void set_atoms_nb_symb_from_neighbors(std::vector<CodAtomInfo>& atoms,
+                                        const std::vector<std::vector<int>>& neighbors) const;
   void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
                                            const std::vector<std::vector<int>>& neighbors) const;
  private:
   std::vector<std::vector<BondInfo>> build_adjacency(const ChemComp& cc) const;
   std::vector<std::vector<int>> build_neighbors(const std::vector<std::vector<BondInfo>>& adj) const;
   void set_ring_aromaticity_from_bonds(const std::vector<std::vector<BondInfo>>& adj,
+                                       const std::vector<CodAtomInfo>& atoms,
                                        std::vector<RingInfo>& rings) const;
   void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
                            std::vector<CodAtomInfo>& atoms,
