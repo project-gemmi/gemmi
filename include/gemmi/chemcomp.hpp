@@ -617,6 +617,16 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     atom.acedrg_type = row.has(6) ? row.str(6) : "";
     cc.atoms.push_back(std::move(atom));
   }
+  // Also check _chem_comp_acedrg table for atom types (used by acedrg output)
+  for (auto row : block.find("_chem_comp_acedrg.", {"atom_id", "atom_type"})) {
+    std::string atom_id = row.str(0);
+    std::string atom_type = row.str(1);
+    for (auto& atom : cc.atoms)
+      if (atom.id == atom_id && atom.acedrg_type.empty()) {
+        atom.acedrg_type = atom_type;
+        break;
+      }
+  }
   for (auto row : block.find("_chem_comp_bond.",
                              {"atom_id_1", "atom_id_2",              // 0, 1
                               "?type", "?value_order",               // 2, 3
