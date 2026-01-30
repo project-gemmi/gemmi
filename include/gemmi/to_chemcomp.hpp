@@ -17,13 +17,28 @@ namespace gemmi {
 //! @brief Add chemical component data to CIF block.
 //! @param cc ChemComp structure containing restraints and atom info
 //! @param block CIF block to populate with _chem_comp_* categories
+//! @param acedrg_types acedrg atoms types to be added
 //!
 //! Writes monomer library data: atoms (with coordinates if present),
 //! bonds, angles, torsions, chirality, and plane restraints.
-inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
+inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block,
+                                  const std::vector<std::string>& acedrg_types = {}) {
   {
     std::vector<std::string> tags =
         {"comp_id", "atom_id", "type_symbol", "type_energy", "charge"};
+    // Use external acedrg_types if provided, otherwise check if atoms have acedrg_type set
+    bool use_external_types = !acedrg_types.empty() && acedrg_types.size() == cc.atoms.size();
+    bool has_stored_types = false;
+    if (!use_external_types) {
+      for (const ChemComp::Atom& a : cc.atoms)
+        if (!a.acedrg_type.empty()) {
+          has_stored_types = true;
+          break;
+        }
+    }
+    bool has_acedrg_type = use_external_types || has_stored_types;
+    if (has_acedrg_type)
+      tags.push_back("atom_type");
     if (cc.has_coordinates)
       for (char c = 'x'; c <= 'z'; ++c)
         tags.emplace_back(1, c);
@@ -32,18 +47,23 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block) {
     size_t pos = tab.length();
     cif::Loop& loop = tab.loop_item->loop;
     loop.values.resize(loop.values.size() + loop.width() * cc.atoms.size(), ".");
+    size_t idx = 0;
     for (const ChemComp::Atom& a : cc.atoms) {
       cif::Table::Row row = tab[pos++];
-      row[0] = cc.name;
-      row[1] = a.id;
-      row[2] = a.el.name();
-      row[3] = cif::quote(a.chem_type);
-      row[4] = std::to_string(iround(a.charge));
+      size_t col = 0;
+      row[col++] = cc.name;
+      row[col++] = a.id;
+      row[col++] = a.el.name();
+      row[col++] = cif::quote(a.chem_type);
+      row[col++] = std::to_string(iround(a.charge));
+      if (has_acedrg_type)
+        row[col++] = use_external_types ? acedrg_types[idx] : a.acedrg_type;
       if (cc.has_coordinates) {
-        row[5] = to_str(a.xyz.x);
-        row[6] = to_str(a.xyz.y);
-        row[7] = to_str(a.xyz.z);
+        row[col++] = to_str(a.xyz.x);
+        row[col++] = to_str(a.xyz.y);
+        row[col++] = to_str(a.xyz.z);
       }
+      ++idx;
     }
   }
   {

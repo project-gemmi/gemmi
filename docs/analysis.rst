@@ -1073,6 +1073,8 @@ We don't plan to implement graph algorithms within gemmi,
 except for the simplest ones, like breadth-first search,
 which is used in a couple of functions
 ( ``Restraints::find_shortest_path()``, ``BondIndex::graph_distance()``).
+``Restraints::find_shortest_path()`` accepts an optional ``min_length``
+parameter to skip trivial paths.
 
 ChemComp to graph
 -----------------
@@ -1666,4 +1668,3 @@ for contacts. For most of the structures, considering only the same
 and neighbouring unit cells (1+26) is enough.
 But some structures have contacts between molecules several unit cells apart,
 even with only :ref:`a single chain in the asu <long_chain>`.
-

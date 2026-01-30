@@ -17,6 +17,7 @@ Commands:
  contents      info about content of a coordinate file (pdb, mmCIF, ...)
  convert       convert file (CIF - JSON, mmCIF - PDB) or modify structure
  crd           prepare topology file (.crd) for Refmac
+ drg           fill restraint values using AceDrg tables
  ecalc         calculate normalized amplitudes E
  fprime        calculate anomalous scattering factors f' and f"
  grep          search for tags in CIF file(s)

@@ -80,11 +80,17 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
   // atoms
   for (const ChemComp::Atom& a : cc1.atoms) {
     auto b = cc2.find_atom(a.id);
-    if (b == cc2.atoms.end())
+    if (b == cc2.atoms.end()) {
       printf("- atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
-    else if (a.chem_type != b->chem_type)
-      printf("! atom %s (%s : %s)\n",
-             a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+    } else {
+      if (a.chem_type != b->chem_type)
+        printf("! atom %s (%s : %s)\n",
+               a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+      if (!a.acedrg_type.empty() && !b->acedrg_type.empty() &&
+          a.acedrg_type != b->acedrg_type)
+        printf("! atom %s acedrg_type (%s : %s)\n",
+               a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
+    }
   }
   for (const ChemComp::Atom& a : cc2.atoms)
     if (cc1.find_atom(a.id) == cc1.atoms.end())
@@ -151,8 +157,6 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
   // chiralities
   std::vector<bool> matched_chir(cc2.rt.chirs.size(), false);
   for (const Restraints::Chirality& a : cc1.rt.chirs) {
-    if (a.sign == ChiralityType::Both)  // not interesting
-      continue;
     auto b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id2, a.id3);
     if (b != cc2.rt.chirs.end()) {
       if (a.sign != b->sign)
@@ -167,7 +171,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     } else {
       matched_chir[b - cc2.rt.chirs.begin()] = true;
       if (b->sign == ChiralityType::Both || b->sign == a.sign)
-        printf("! %-30s %s : -%s\n", str(cc1, a).c_str(),
+        printf("! %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
                chirality_to_string(a.sign), chirality_to_string(b->sign));
     }
   }
@@ -232,9 +236,16 @@ int GEMMI_MAIN(int argc, char **argv) {
     if (verbose)
       fprintf(stderr, "Reading %s ...\n", path2);
     cif::Document doc2 = read_cif_gz(path2);
-    const cif::Block* block2 = doc2.find_block(block1->name);
+    std::string name = block1->name;
+    if (starts_with(name, "comp_"))
+      name = name.substr(5);
+    const cif::Block* block2 = doc2.find_block(name);
     if (!block2)
-      fail("Block ", block1->name, " not found in ", path2);
+      block2 = doc2.find_block("comp_" + name);
+    if (!block2)
+      block2 = doc2.find_block(block1->name);
+    if (!block2)
+      fail("Block ", name, " not found in ", path2);
     ChemComp cc1 = make_chemcomp_from_block(*block1);
     ChemComp cc2 = make_chemcomp_from_block(*block2);
     compare_chemcomps(cc1, cc2, delta);

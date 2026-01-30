@@ -138,7 +138,7 @@ jobs:
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=MinSizeRel -DUSE_FORTRAN=1 -DEXTRA_WARNINGS=1 -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3 -DBUILD_SHARED_LIBS=ON -DCMAKE_CXX_VISIBILITY_PRESET=hidden
+        cmake .. -DCMAKE_BUILD_TYPE=MinSizeRel -DEXTRA_WARNINGS=1 -DUSE_PYTHON=1 -DPython_EXECUTABLE=/usr/bin/python3 -DBUILD_SHARED_LIBS=ON
         make -j2
         make -j2 check
         sudo make install
@@ -205,8 +205,8 @@ jobs:
         mkdir build
         cd build
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=OFF
-        cmake --build . --config Debug -j2
-        cmake --build . --config Debug --target check -j2
+        cmake --build . --config Debug
+        cmake --build . --config Debug-target check
         sudo cmake --install . --config Debug
         cd ..
         python3 -m unittest discover -v -s tests/

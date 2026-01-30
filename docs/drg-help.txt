@@ -1,0 +1,21 @@
+$ gemmi drg -h
+Usage:
+ gemmi drg [options] INPUT.cif OUTPUT.cif
+ gemmi drg [options] --output-dir=DIR INPUT1.cif [INPUT2.cif ...]
+
+Fill missing restraint values (bonds, angles) in a monomer CIF file
+using COD/CSD statistical data from AceDRG tables.
+If OUTPUT.cif is -, the output is printed to stdout.
+
+Options:
+  -h, --help            Print usage and exit.
+  -V, --version         Print version and exit.
+  -v, --verbose         Verbose output.
+  -t, --tables=DIR      Directory with AceDRG tables (default: $ACEDRG_TABLES
+                                                                             
+                    or $CCP4/share/acedrg/tables).
+  -o, --output-dir=DIR  Output directory for batch processing.
+  --sigma=NUM           Maximum sigma for bond restraints (default: 0.02).
+  --timing              Print timing information.
+  --style=STYLE         Output style: default, pdbx, aligned.
+  --typeOut             Write _chem_comp_atom.atom_type column.

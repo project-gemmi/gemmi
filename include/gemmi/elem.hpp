@@ -10,6 +10,7 @@
 #ifndef GEMMI_ELEM_HPP_
 #define GEMMI_ELEM_HPP_
 
+#include <cstdint>
 #include <string>
 
 namespace gemmi {
@@ -37,10 +38,81 @@ enum class El : unsigned char {
 inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
 
 //! @brief Check/set if element is classified as metal.
+//!
 //! @param el Element to check
 //! @return Reference to metal flag (can be modified)
 //!
 //! Arbitrary division into metals and non-metals (Ge and Sb are metals here).
+//!
+inline std::int8_t element_row(El el) {
+  // Lookup table for periodic table periods (rows) by element ordinal (0-118)
+  static constexpr std::int8_t rows[119] = {
+    // 0: unknown
+    0,
+    // 1-2: H, He (period 1)
+    1, 1,
+    // 3-10: Li-Ne (period 2)
+    2, 2, 2, 2, 2, 2, 2, 2,
+    // 11-18: Na-Ar (period 3)
+    3, 3, 3, 3, 3, 3, 3, 3,
+    // 19-36: K-Kr (period 4)
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    // 37-54: Rb-Xe (period 5)
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    // 55-56: Cs, Ba (period 6)
+    6, 6,
+    // 57-71: La-Lu (lanthanides, period 6)
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    // 72-86: Hf-Rn (period 6)
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    // 87-88: Fr, Ra (period 7)
+    7, 7,
+    // 89-103: Ac-Lr (actinides, period 7)
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    // 104-118: Rf-Og (period 7)
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+  };
+  int n = static_cast<int>(el);
+  return (n >= 0 && n <= 118) ? rows[n] : (int8_t) 0;
+}
+
+// Periodic table row and group information
+inline std::int8_t element_group(El el) {
+  // Lookup table for periodic table groups (1-18) by element ordinal (0-118)
+  // Lanthanides (57-71) and actinides (89-103) are assigned to group 3
+  static constexpr std::int8_t groups[119] = {
+    // 0: unknown
+    0,
+    // 1-2: H, He
+    1, 18,
+    // 3-10: Li-Ne
+    1, 2, 13, 14, 15, 16, 17, 18,
+    // 11-18: Na-Ar
+    1, 2, 13, 14, 15, 16, 17, 18,
+    // 19-36: K-Kr
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 37-54: Rb-Xe
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 55-56: Cs, Ba
+    1, 2,
+    // 57-71: La-Lu (lanthanides)
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    // 72-86: Hf-Rn
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+    // 87-88: Fr, Ra
+    1, 2,
+    // 89-103: Ac-Lr (actinides)
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    // 104-118: Rf-Og
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+  };
+  int n = static_cast<int>(el);
+  return (n >= 0 && n <= 118) ? groups[n] :  (std::int8_t)0;
+}
+
+
+
+// arbitrary division into metals and non-metals (Ge and Sb are metals here)
 inline bool& is_metal_value(El el) {
   static bool table[] = {
     // X     H     He
