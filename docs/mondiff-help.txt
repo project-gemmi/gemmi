@@ -12,3 +12,5 @@ Minimal reported differences:
   --angle=DELTA      difference in angle value (default: 0.1).
   --angle-esd=DELTA  difference in angle esd (default: 1.0).
   --rel=SIGMA         abs(value difference) / esd > SIGMA (default: 0.0).
+  --only=WHAT        only check specified items (a=atoms, t=atom types, b=bonds,
+                     A=angles, c=torsions, h=chiralities, p=planes).
