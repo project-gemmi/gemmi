@@ -1484,7 +1484,7 @@ void AcedrgTables::set_atoms_bonding_and_chiral_center(
       if (t_len == 3)
         atom.bonding_idx = 3;
     } else if (atom.el == El::H || atom.el == El::D) {
-      atom.bonding_idx = 1;  // H is always single-bonded
+      atom.bonding_idx = 0;  // H has SP0 hybridization (no p orbitals)
     }
   }
 
