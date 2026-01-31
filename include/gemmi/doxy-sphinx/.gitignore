@@ -1,0 +1,17 @@
+# Generated Doxygen output directories
+html/
+xml/
+latex/
+_build/
+
+# Generated archives
+*.tar.gz
+
+# Build logs
+*.log
+
+# Backup files
+*.bak
+
+# macOS files
+.DS_Store

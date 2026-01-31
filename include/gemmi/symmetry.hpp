@@ -45,9 +45,20 @@ struct GEMMI_DLL Op {
     return is_hkl() ? Op{rot, {0,0,0}, 'x'} : *this;
   }
 
+  //! @brief Convert operation to string triplet representation.
+  //! @param style Output style (default: xyz notation)
+  //! @return String representation like "x,y,z" or "h,k,l"
+
   std::string triplet(char style=' ') const;
 
+  //! @brief Calculate inverse of this symmetry operation.
+  //! @return Inverted operation
+  //! @throws Error if operation is not invertible (determinant is zero)
+
   Op inverse() const;
+
+  //! @brief Get translation wrapped to range [0, DEN).
+  //! @return Translation vector with components in [0, DEN)
 
   Op::Tran wrapped_tran() const {
     Op::Tran t = tran;
@@ -60,11 +71,18 @@ struct GEMMI_DLL Op {
     return t;
   }
 
-  // If the translation points outside of the unit cell, wrap it.
+  //! @brief Wrap translation to unit cell.
+  //! @return Reference to this operation after wrapping translation
+  //!
+  //! If translation points outside unit cell, wrap it to [0, DEN).
   Op& wrap() {
     tran = wrapped_tran();
     return *this;
   }
+
+  //! @brief Add translation to this operation.
+  //! @param a Translation vector to add
+  //! @return Reference to this operation after adding translation
 
   Op& translate(const Tran& a) {
     for (int i = 0; i != 3; ++i)
@@ -72,9 +90,20 @@ struct GEMMI_DLL Op {
     return *this;
   }
 
+  //! @brief Create copy with added translation.
+  //! @param a Translation vector to add
+  //! @return New operation with added translation
+
   Op translated(const Tran& a) const { return Op(*this).translate(a); }
 
+  //! @brief Add centering translation and wrap to unit cell.
+  //! @param a Centering translation vector
+  //! @return New operation with centering applied and wrapped
+
   Op add_centering(const Tran& a) const { return translated(a).wrap(); }
+
+  //! @brief Get rotation matrix with negated elements.
+  //! @return Rotation matrix with all elements negated
 
   Rot negated_rot() const {
     return {{{-rot[0][0], -rot[0][1], -rot[0][2]},
@@ -82,21 +111,33 @@ struct GEMMI_DLL Op {
              {-rot[2][0], -rot[2][1], -rot[2][2]}}};
   }
 
+  //! @brief Transpose a rotation matrix.
+  //! @param rot Rotation matrix to transpose
+  //! @return Transposed rotation matrix
+
   static Rot transpose(const Rot& rot) {
     return {{{rot[0][0], rot[1][0], rot[2][0]},
              {rot[0][1], rot[1][1], rot[2][1]},
              {rot[0][2], rot[1][2], rot[2][2]}}};
   }
+
+  //! @brief Get transposed rotation matrix.
+  //! @return Transposed rotation of this operation
+
   Rot transposed_rot() const { return transpose(rot); }
 
-  // DEN^3 for rotation, -DEN^3 for rotoinversion
+  //! @brief Calculate determinant of rotation matrix.
+  //! @return DEN^3 for rotation, -DEN^3 for rotoinversion
+
   int det_rot() const {
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
          - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
 
-  // Rotation-part type based on Table 1 in RWGK, Acta Cryst. A55, 383 (1999)
+  //! @brief Classify rotation type.
+  //! @return Rotation type based on Table 1 in RWGK, Acta Cryst. A55, 383 (1999)
+
   int rot_type() const {
     int det = det_rot();
     int tr_den = rot[0][0] + rot[1][1] + rot[2][2];
@@ -106,6 +147,11 @@ struct GEMMI_DLL Op {
       return det > 0 ? table[3 + tr] : -table[3 - tr];
     return 0;
   }
+
+  //! @brief Combine two symmetry operations (matrix multiplication).
+  //! @param b Operation to combine with this one
+  //! @return Combined operation (this * b)
+  //! @throws Error if mixing real-space and reciprocal-space operations
 
   Op combine(const Op& b) const {
     if (is_hkl() != b.is_hkl())
@@ -125,6 +171,11 @@ struct GEMMI_DLL Op {
     return r;
   }
 
+  //! @brief Apply operation to fractional coordinates.
+  //! @param xyz Fractional coordinates [x, y, z]
+  //! @return Transformed coordinates
+  //! @throws Error if operation is reciprocal-space (hkl notation)
+
   std::array<double, 3> apply_to_xyz(const std::array<double, 3>& xyz) const {
     if (is_hkl())
       fail("can't apply reciprocal-space Op to xyz");
@@ -138,18 +189,36 @@ struct GEMMI_DLL Op {
   // Miller is defined in the same way in namespace gemmi in unitcell.hpp
   using Miller = std::array<int, 3>;
 
+  //! @brief Apply operation to Miller indices without final division.
+  //! @param hkl Miller indices [h, k, l]
+  //! @return Transformed indices (still need division by DEN)
+
   Miller apply_to_hkl_without_division(const Miller& hkl) const {
     Miller r;
     for (int i = 0; i != 3; ++i)
       r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2]);
     return r;
   }
+
+  //! @brief Divide Miller indices by DEN.
+  //! @param hkl Miller indices to divide
+  //! @return Divided Miller indices
+
   static Miller divide_hkl_by_DEN(const Miller& hkl) {
     return {{ hkl[0] / DEN, hkl[1] / DEN, hkl[2] / DEN }};
   }
+
+  //! @brief Apply operation to Miller indices.
+  //! @param hkl Miller indices [h, k, l]
+  //! @return Transformed Miller indices
+
   Miller apply_to_hkl(const Miller& hkl) const {
     return divide_hkl_by_DEN(apply_to_hkl_without_division(hkl));
   }
+
+  //! @brief Calculate phase shift for given Miller indices.
+  //! @param hkl Miller indices [h, k, l]
+  //! @return Phase shift in radians
 
   double phase_shift(const Miller& hkl) const {
     constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;

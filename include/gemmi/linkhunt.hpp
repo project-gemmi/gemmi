@@ -1,3 +1,8 @@
+//! @file
+//! @brief Searching for links from monomer dictionary.
+//!
+//! Searching for links based on the _chem_link table from monomer dictionary.
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // Searching for links based on the _chem_link table from monomer dictionary.
@@ -14,22 +19,27 @@
 
 namespace gemmi {
 
+//! @brief Search for chemical links based on monomer library.
 struct LinkHunt {
+  //! @brief Potential link match.
   struct Match {
-    const ChemLink* chem_link = nullptr;
-    int chem_link_count = 0;
-    int score = -1000;
-    CRA cra1;
-    CRA cra2;
-    bool same_image;
-    double bond_length = 0;
-    Connection* conn = nullptr;
+    const ChemLink* chem_link = nullptr;  //!< Matched chemical link
+    int chem_link_count = 0;              //!< Number of matching links
+    int score = -1000;                    //!< Match score
+    CRA cra1;                             //!< First atom (Chain/Residue/Atom)
+    CRA cra2;                             //!< Second atom
+    bool same_image;                      //!< Same unit cell image
+    double bond_length = 0;               //!< Actual bond length
+    Connection* conn = nullptr;           //!< Corresponding connection
   };
 
-  double global_max_dist = 2.34; // ZN-CYS
-  const MonLib* monlib_ptr = nullptr;
-  std::multimap<std::string, const ChemLink*> links;
+  double global_max_dist = 2.34;         //!< Maximum distance (e.g., ZN-CYS)
+  const MonLib* monlib_ptr = nullptr;    //!< Monomer library pointer
+  std::multimap<std::string, const ChemLink*> links;  //!< Indexed links
 
+  //! @brief Index chemical links from monomer library.
+  //! @param monlib Monomer library
+  //! @param use_alias Use aliasing information
   void index_chem_links(const MonLib& monlib, bool use_alias=true) {
     std::map<ChemComp::Group, std::map<std::string, std::vector<std::string>>> aliases;
     if (use_alias)

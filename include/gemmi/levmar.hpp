@@ -1,3 +1,10 @@
+//! @file
+//! @brief Least-squares fitting using Levenberg-Marquardt method.
+//!
+//! Least-squares fitting - Levenberg-Marquardt method.
+//!
+//! Based on the code from fityk (but here it's under MPL 2.0).
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // Least-squares fitting - Levenberg-Marquardt method.
@@ -18,14 +25,19 @@
 
 namespace gemmi {
 
-/// This function solves a set of linear algebraic equations using
-/// Gauss-Jordan elimination with partial pivoting.
-///
-/// A * x = b
-///
-/// a is n x n matrix (in vector)
-/// b is vector of length n,
-/// This function returns vector x[] in b[], and 1-matrix in a[].
+//! @brief Solve linear system using Gauss-Jordan elimination.
+//! @param a n×n matrix (in vector, modified in-place to identity)
+//! @param b Right-hand side vector (modified in-place to solution)
+//! @param n Matrix/vector size
+//!
+//! This function solves a set of linear algebraic equations using
+//! Gauss-Jordan elimination with partial pivoting.
+//!
+//! A * x = b
+//!
+//! a is n x n matrix (in vector)
+//! b is vector of length n,
+//! This function returns vector x[] in b[], and 1-matrix in a[].
 inline void jordan_solve(double* a, double* b, int n) {
   for (int i = 0; i < n; i++) {
     // looking for a pivot element
@@ -69,11 +81,17 @@ inline void jordan_solve(double* a, double* b, int n) {
   }
 }
 
+//! @brief Solve linear system (vector interface).
+//! @param a n×n matrix in vector (modified to identity)
+//! @param b Right-hand side (modified to solution)
 inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
   assert(a.size() == b.size() * b.size());
   jordan_solve(a.data(), b.data(), (int)b.size());
 }
 
+//! @brief Print parameters for debugging.
+//! @param name Parameter name
+//! @param a Parameter values
 inline void print_parameters(const std::string& name, std::vector<double> &a) {
   fprintf(stderr, " %s:", name.c_str());
   for (double& x : a)

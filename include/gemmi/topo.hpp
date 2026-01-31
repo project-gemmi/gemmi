@@ -1,3 +1,6 @@
+//! @file
+//! @brief Topology - restraints from monomer library applied to a model.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Topo(logy) - restraints (from a monomer library) applied to a model.
@@ -16,10 +19,21 @@
 
 namespace gemmi {
 
+//! @brief How to handle hydrogens when preparing topology.
 enum class HydrogenChange {
-  NoChange, Shift, Remove, ReAdd, ReAddButWater, ReAddKnown
+  NoChange,        //!< Leave hydrogens as-is
+  Shift,           //!< Adjust hydrogen positions
+  Remove,          //!< Remove all hydrogens
+  ReAdd,           //!< Remove and re-add all hydrogens
+  ReAddButWater,   //!< Re-add hydrogens except on water
+  ReAddKnown       //!< Re-add hydrogens only for known residues
 };
 
+//! @brief Topology of a model with restraints applied.
+//!
+//! Maps restraints from monomer library to specific atoms in a model.
+//! Contains bond, angle, torsion, chirality, and plane restraints
+//! with pointers to actual atoms in the Structure.
 struct GEMMI_DLL Topo {
   // We have internal pointers in this class (pointers setup in
   // apply_restraints() that point to ResInfo::chemcomp.rt),
@@ -28,42 +42,58 @@ struct GEMMI_DLL Topo {
   Topo(Topo const&) = delete;
   Topo& operator=(Topo const&) = delete;
 
+  //! @brief Bond restraint applied to specific atoms.
   struct Bond {
-    const Restraints::Bond* restr;
-    std::array<Atom*, 2> atoms;
-    Asu asu;
+    const Restraints::Bond* restr;  //!< Restraint definition from monomer library
+    std::array<Atom*, 2> atoms;     //!< Pointers to the two bonded atoms
+    Asu asu;                         //!< Asymmetric unit relationship
+    //! @brief Calculate actual bond distance.
     double calculate() const {
       return asu != Asu::Different ? atoms[0]->pos.dist(atoms[1]->pos) : NAN;
     }
+    //! @brief Calculate Z-score for given distance.
     double calculate_z_(double d) const { return std::abs(d - restr->value) / restr->esd; }
+    //! @brief Calculate Z-score for current distance.
     double calculate_z() const { return calculate_z_(calculate()); }
   };
+
+  //! @brief Angle restraint applied to specific atoms.
   struct Angle {
-    const Restraints::Angle* restr;
-    std::array<Atom*, 3> atoms;
+    const Restraints::Angle* restr;  //!< Restraint definition from monomer library
+    std::array<Atom*, 3> atoms;      //!< Pointers to the three atoms forming angle
+    //! @brief Calculate actual angle in degrees.
     double calculate() const {
       return calculate_angle(atoms[0]->pos, atoms[1]->pos, atoms[2]->pos);
     }
+    //! @brief Calculate Z-score for current angle.
     double calculate_z() const { return angle_z(calculate(), *restr); }
   };
+
+  //! @brief Torsion (dihedral) restraint applied to specific atoms.
   struct Torsion {
-    const Restraints::Torsion* restr;
-    std::array<Atom*, 4> atoms;
+    const Restraints::Torsion* restr;  //!< Restraint definition from monomer library
+    std::array<Atom*, 4> atoms;        //!< Pointers to the four atoms forming torsion
+    //! @brief Calculate actual torsion angle in degrees.
     double calculate() const {
       return calculate_dihedral(atoms[0]->pos, atoms[1]->pos,
                                 atoms[2]->pos, atoms[3]->pos);
     }
+    //! @brief Calculate Z-score for current torsion.
     double calculate_z() const {
       return angle_z(calculate(), *restr, 360. / std::max(1, restr->period));
     }
   };
+
+  //! @brief Chirality restraint applied to specific atoms.
   struct Chirality {
-    const Restraints::Chirality* restr;
-    std::array<Atom*, 4> atoms;
+    const Restraints::Chirality* restr;  //!< Restraint definition from monomer library
+    std::array<Atom*, 4> atoms;          //!< Pointers to center and three neighbor atoms
+    //! @brief Calculate actual chiral volume.
     double calculate() const {
       return calculate_chiral_volume(atoms[0]->pos, atoms[1]->pos,
                                      atoms[2]->pos, atoms[3]->pos);
     }
+    //! @brief Calculate Z-score for chirality.
     double calculate_z(double ideal_abs_vol, double esd) const {
       double calc = calculate();
       if (restr->sign == ChiralityType::Negative ||
@@ -71,11 +101,15 @@ struct GEMMI_DLL Topo {
         ideal_abs_vol *= -1;
       return std::abs(calc - ideal_abs_vol) / esd;
     }
+    //! @brief Check if chirality is correct.
     bool check() const { return !restr->is_wrong(calculate()); }
   };
+
+  //! @brief Plane restraint applied to specific atoms.
   struct Plane {
-    const Restraints::Plane* restr;
-    std::vector<Atom*> atoms;
+    const Restraints::Plane* restr;  //!< Restraint definition from monomer library
+    std::vector<Atom*> atoms;        //!< Pointers to atoms that should be coplanar
+    //! @brief Check if atom is in this plane.
     bool has(const Atom* atom) const {
       return in_vector(const_cast<Atom*>(atom), atoms);
     }

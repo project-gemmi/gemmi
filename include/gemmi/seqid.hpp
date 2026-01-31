@@ -1,3 +1,8 @@
+//! @file
+//! @brief Sequence identifiers (residue numbers with insertion codes).
+//!
+//! SeqId -- residue number and insertion code together.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // SeqId -- residue number and insertion code together.
@@ -13,10 +18,13 @@
 
 namespace gemmi {
 
-// Optional int value. N is a special value that means not-set.
+//! @brief Optional integer with special "not-set" value.
+//! @tparam N The value representing "not-set"
+//!
+//! Used for sequence numbers that may be absent.
 template<int N> struct OptionalInt {
-  enum { None=N };
-  int value = None;
+  enum { None=N };  //!< Special value indicating "not-set"
+  int value = None;  //!< Stored value
 
   OptionalInt() = default;
   OptionalInt(int n) : value(n) {}
@@ -50,15 +58,23 @@ template<int N> struct OptionalInt {
   void reset() noexcept { value = None; }
 };
 
+//! @brief Sequence identifier (residue number + insertion code).
+//!
+//! Uniquely identifies a residue position in a PDB file.
+//! Follows PDB format conventions for residue numbering.
 struct SeqId {
   using OptionalNum = OptionalInt<INT_MIN>;
 
-  OptionalNum num;   // sequence number
-  char icode = ' ';  // insertion code
+  OptionalNum num;   //!< Sequence number
+  char icode = ' ';  //!< Insertion code (space if none)
 
   SeqId() = default;
   SeqId(int num_, char icode_) { num = num_; icode = icode_; }
   SeqId(OptionalNum num_, char icode_) { num = num_; icode = icode_; }
+
+  //! @brief Construct from string representation (e.g., "123", "45A").
+  //! @param str String containing number and optional insertion code
+  //! @throws std::invalid_argument if string is not valid
   explicit SeqId(const std::string& str) {
     char* endptr;
     num = std::strtol(str.c_str(), &endptr, 10);
@@ -89,25 +105,46 @@ struct SeqId {
   }
 };
 
-// Sequence ID (sequence number + insertion code) + residue name + segment ID
+//! @brief Complete residue identifier.
+//!
+//! Combines sequence ID, residue name, and segment ID.
+//! Uniquely identifies a residue in a chain.
 struct ResidueId {
-  SeqId seqid;
-  std::string segment; // segid - up to 4 characters in the PDB file
-  std::string name;
+  SeqId seqid;  //!< Sequence number + insertion code
+  std::string segment;  //!< Segment ID (up to 4 chars in PDB)
+  std::string name;  //!< Residue name (e.g., "ALA", "GLY")
 
-  // used for first_conformation iterators, etc.
+  //! @brief Get grouping key for residue.
+  //! @return SeqId (used for first_conformation iterators, etc.)
+  //!
+  //! used for first_conformation iterators, etc.
   SeqId group_key() const { return seqid; }
 
+  //! @brief Check if residue IDs match (including segment).
+  //! @param o Other residue ID
+  //! @return True if all fields match
   bool matches(const ResidueId& o) const {
     return seqid == o.seqid && segment == o.segment && name == o.name;
   }
+  //! @brief Check if residue IDs match (ignoring segment).
+  //! @param o Other residue ID
+  //! @return True if seqid and name match
   bool matches_noseg(const ResidueId& o) const {
     return seqid == o.seqid && name == o.name;
   }
   bool operator==(const ResidueId& o) const { return matches(o); }
+  //! @brief Convert to string representation.
+  //! @return String like "123(ALA)"
   std::string str() const { return cat(seqid.str(), '(', name, ')'); }
 };
 
+//! @brief Format atom identifier string.
+//! @param chain_name Chain identifier
+//! @param res_id Residue identifier
+//! @param atom_name Atom name
+//! @param altloc Alternate location indicator
+//! @param as_cid Format as CID (mmdb selection syntax)
+//! @return Formatted atom string
 inline std::string atom_str(const std::string& chain_name,
                             const ResidueId& res_id,
                             const std::string& atom_name,
@@ -131,11 +168,15 @@ inline std::string atom_str(const std::string& chain_name,
   return r;
 }
 
+//! @brief Complete atom address (chain + residue + atom + altloc).
+//!
+//! Uniquely identifies a specific atom in a structure.
+//! Includes all hierarchical information needed to locate an atom.
 struct AtomAddress {
-  std::string chain_name;
-  ResidueId res_id;
-  std::string atom_name;
-  char altloc = '\0';
+  std::string chain_name;  //!< Chain identifier
+  ResidueId res_id;  //!< Residue identifier
+  std::string atom_name;  //!< Atom name (e.g., "CA", "N")
+  char altloc = '\0';  //!< Alternate location indicator
 
   AtomAddress() = default;
   AtomAddress(const std::string& ch, const ResidueId& resid,

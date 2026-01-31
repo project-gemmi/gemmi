@@ -1,3 +1,6 @@
+//! @file
+//! @brief List of common residues with basic classification data.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // List of common residues with basic data.
@@ -12,59 +15,110 @@
 
 namespace gemmi {
 
-// Simple approximate classification.
-// AA - aminoacid
-// AAD - D-aminoacid
-// PAA - proline-like aminoacid
-// MAA - methylated aminoacid
-// RNA, DNA - nucleic acids
-// HOH - water or heavy water (OH, H3O, D3O are not included here)
-// PYR - pyranose according to the refmac dictionary
-// KET - ketopyranose according to the refmac dictionary
-// BUF - agent from crystallization buffer according to PISA agents.dat
-// ELS - something else (ligand).
+//! @brief Classification of residue types.
+//!
+//! Simple approximate classification:
+//! - AA: Standard amino acid
+//! - AAD: D-amino acid
+//! - PAA: Proline-like amino acid
+//! - MAA: Methylated amino acid
+//! - RNA, DNA: Nucleic acids
+//! - HOH: Water or heavy water
+//! - PYR: Pyranose (from refmac dictionary)
+//! - KET: Ketopyranose (from refmac dictionary)
+//! - BUF: Crystallization buffer agent (from PISA agents.dat)
+//! - ELS: Everything else (ligand)
 enum class ResidueKind : unsigned char {
   // when changing this list update check_polymer_type()
   UNKNOWN=0, AA, AAD, PAA, MAA, RNA, DNA, BUF, HOH, PYR, KET, ELS
 };
 
+//! @brief Information about a residue type.
+//!
+//! Contains classification, linking info, one-letter code, and molecular weight.
 struct ResidueInfo {
-  char name[8];
-  ResidueKind kind;
-  // linking type: 0=n/a, 1=peptide-linking, 2=nucl.-linking, 3=(2|1)
-  std::uint8_t linking_type;
-  // one-letter code or space (uppercase iff it is a standard residues)
-  char one_letter_code;
-  // rough count of hydrogens used to estimate mass with implicit hydrogens
-  std::uint8_t hydrogen_count;
-  // molecular weight
-  float weight;
+  char name[8];  //!< Residue name (e.g., "ALA", "GLY")
+  ResidueKind kind;  //!< Residue classification
+  std::uint8_t linking_type;  //!< 0=n/a, 1=peptide, 2=nucleic, 3=both
+  char one_letter_code;  //!< One-letter code (uppercase if standard)
+  std::uint8_t hydrogen_count;  //!< Approx H count for mass estimation
+  float weight;  //!< Molecular weight
 
+  //! @brief Check if residue info was found.
+  //! @return True if kind is not UNKNOWN
   bool found() const { return kind != ResidueKind::UNKNOWN; }
+
+  //! @brief Check if residue is water.
+  //! @return True if kind is HOH
   bool is_water() const { return kind == ResidueKind::HOH; }
+
+  //! @brief Check if residue is DNA.
+  //! @return True if kind is DNA
   bool is_dna() const { return kind == ResidueKind::DNA; }
+
+  //! @brief Check if residue is RNA.
+  //! @return True if kind is RNA
   bool is_rna() const { return kind == ResidueKind::RNA; }
+
+  //! @brief Check if residue is nucleic acid.
+  //! @return True if DNA or RNA
   bool is_nucleic_acid() const { return is_dna() || is_rna(); }
+
+  //! @brief Check if residue is amino acid.
+  //! @return True if any AA type (AA, AAD, PAA, MAA)
   bool is_amino_acid() const {
     return kind == ResidueKind::AA || kind == ResidueKind::AAD ||
            kind == ResidueKind::PAA || kind == ResidueKind::MAA;
   }
+
+  //! @brief Check if residue is buffer or water.
+  //! @return True if HOH or BUF
   bool is_buffer_or_water() const {
     return kind == ResidueKind::HOH || kind == ResidueKind::BUF;
   }
-  // PDB format has non-standard residues (modified AA) marked as HETATM.
+
+  //! @brief Check if residue is standard (uppercase one-letter code).
+  //!
+  //! PDB format has non-standard residues (modified AA) marked as HETATM.
+  //! @return True if one-letter code is uppercase
   bool is_standard() const { return (one_letter_code & 0x20) == 0; }
+
+  //! @brief Get FASTA code.
+  //! @return One-letter code if standard, otherwise 'X'
   char fasta_code() const { return is_standard() ? one_letter_code : 'X'; }
+
+  //! @brief Check if residue is peptide linking.
+  //! @return True if linking_type has bit 0 set
   bool is_peptide_linking() const { return (linking_type & 1); }
+
+  //! @brief Check if residue is nucleic acid linking.
+  //! @return True if linking_type has bit 1 set
   bool is_na_linking() const { return (linking_type & 2); }
 };
 
+//! @brief Get residue info by table index.
+//! @param idx Index in internal residue table
+//! @return Reference to ResidueInfo
 GEMMI_DLL ResidueInfo& get_residue_info(size_t idx);
+
+//! @brief Find index of residue in internal table.
+//! @param name Residue name to search for
+//! @return Table index, or unknown_tabulated_residue_idx() if not found
 GEMMI_DLL size_t find_tabulated_residue_idx(const std::string& name);
+
+//! @brief Get index for unknown residue type.
+//! @return Index value representing unknown residue
 constexpr size_t unknown_tabulated_residue_idx() { return 367; };
+
+//! @brief Find residue info by name.
+//! @param name Residue name (e.g., "ALA", "GLY")
+//! @return Reference to ResidueInfo (unknown if not found)
 GEMMI_DLL ResidueInfo& find_tabulated_residue(const std::string& name);
 
-/// kind can be AA, RNA or DNA
+//! @brief Expand one-letter code to three-letter residue name.
+//! @param c One-letter code (e.g., 'A', 'C', 'G')
+//! @param kind Residue type (AA, RNA, or DNA)
+//! @return Three-letter code (e.g., "ALA", "CYS") or nullptr if invalid
 inline const char* expand_one_letter(char c, ResidueKind kind) {
   static const char* names =
     // amino-acids (all letters but J are used)
@@ -90,15 +144,19 @@ inline const char* expand_one_letter(char c, ResidueKind kind) {
   return (ret && *ret) ? ret : nullptr;
 }
 
-/// kind can be AA, RNA or DNA
+//! @brief Expand one-letter sequence to three-letter residue names.
+//! @param seq Sequence string (e.g., "ACGT" or "MKFL")
+//! @param kind Residue type (AA, RNA, or DNA)
+//! @return Vector of three-letter codes
 GEMMI_DLL std::vector<std::string> expand_one_letter_sequence(const std::string& seq,
                                                               ResidueKind kind);
 
-// deprecated
+//! @deprecated Use expand_one_letter(c, ResidueKind::AA) instead
 inline const char* expand_protein_one_letter(char c) {
   return expand_one_letter(c, ResidueKind::AA);
 }
-// deprecated
+
+//! @deprecated Use expand_one_letter_sequence() instead
 GEMMI_DLL std::vector<std::string> expand_protein_one_letter_string(const std::string& s);
 
 

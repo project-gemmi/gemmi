@@ -1,3 +1,6 @@
+//! @file
+//! @brief Binning - resolution shells for reflections.
+
 // Copyright 2022 Global Phasing Ltd.
 //
 // Binning - resolution shells for reflections.
@@ -11,14 +14,21 @@
 
 namespace gemmi {
 
+//! @brief Resolution shell binner for reflections.
 struct Binner {
+  //! @brief Binning method.
   enum class Method {
-    EqualCount,
-    Dstar,
-    Dstar2,
-    Dstar3,
+    EqualCount,  //!< Equal number of reflections per bin
+    Dstar,       //!< Equal intervals in 1/d
+    Dstar2,      //!< Equal intervals in 1/d^2
+    Dstar3,      //!< Equal intervals in 1/d^3
   };
 
+  //! @brief Setup binning from 1/d^2 values.
+  //! @param nbins Number of bins
+  //! @param method Binning method
+  //! @param inv_d2 Vector of 1/d^2 values (moved)
+  //! @param cell_ Unit cell pointer
   void setup_from_1_d2(int nbins, Method method, std::vector<double>&& inv_d2,
                        const UnitCell* cell_) {
     if (nbins < 1)
@@ -84,6 +94,13 @@ struct Binner {
     limits.resize(nbins);
   }
 
+  //! @brief Setup binning from data proxy.
+  //! @tparam DataProxy Data proxy type
+  //! @param nbins Number of bins
+  //! @param method Binning method
+  //! @param proxy Data proxy
+  //! @param cell_ Optional unit cell override
+  //! @param col_idx Column index to check for valid data
   template<typename DataProxy>
   void setup(int nbins, Method method, const DataProxy& proxy,
              const UnitCell* cell_=nullptr, size_t col_idx=0) {
@@ -98,12 +115,18 @@ struct Binner {
     setup_from_1_d2(nbins, method, std::move(inv_d2), nullptr);
   }
 
+  //! @brief Check that binning is set up.
+  //! @throws std::runtime_error if not set up
   void ensure_limits_are_set() const {
     if (limits.empty())
       fail("Binner not set up");
   }
 
-  // Generic. Method-specific versions could be faster.
+  //! @brief Get bin index from 1/d^2 value.
+  //! @param inv_d2 Value of 1/d^2
+  //! @return Bin index
+  //!
+  //! Generic. Method-specific versions could be faster.
   int get_bin_from_1_d2(double inv_d2) {
     ensure_limits_are_set();
     auto it = std::lower_bound(limits.begin(), limits.end(), inv_d2);
@@ -111,13 +134,21 @@ struct Binner {
     return int(it - limits.begin());
   }
 
+  //! @brief Get bin index from Miller indices.
+  //! @param hkl Miller indices
+  //! @return Bin index
   int get_bin(const Miller& hkl) {
     double inv_d2 = cell.calculate_1_d2(hkl);
     return get_bin_from_1_d2(inv_d2);
   }
 
-  // We assume that bins are seeked mostly for sorted reflections,
-  // so it's usually either the same bin as previously, or the next one.
+  //! @brief Get bin index from 1/d^2 value with hint.
+  //! @param inv_d2 Value of 1/d^2
+  //! @param hint Hint for bin search (updated)
+  //! @return Bin index
+  //!
+  //! We assume that bins are seeked mostly for sorted reflections,
+  //! so it's usually either the same bin as previously, or the next one.
   int get_bin_from_1_d2_hinted(double inv_d2, int& hint) const {
     if (inv_d2 <= limits[hint]) {
       while (hint != 0 && limits[hint-1] > inv_d2)
@@ -130,11 +161,19 @@ struct Binner {
     return hint;
   }
 
+  //! @brief Get bin index from Miller indices with hint.
+  //! @param hkl Miller indices
+  //! @param hint Hint for bin search (updated)
+  //! @return Bin index
   int get_bin_hinted(const Miller& hkl, int& hint) const {
     double inv_d2 = cell.calculate_1_d2(hkl);
     return get_bin_from_1_d2_hinted(inv_d2, hint);
   }
 
+  //! @brief Get bin indices for all reflections in data proxy.
+  //! @tparam DataProxy Data proxy type
+  //! @param proxy Data proxy
+  //! @return Vector of bin indices
   template<typename DataProxy>
   std::vector<int> get_bins(const DataProxy& proxy) const {
     ensure_limits_are_set();
@@ -145,6 +184,10 @@ struct Binner {
     return nums;
   }
 
+  //! @brief Get bin indices from array of 1/d^2 values.
+  //! @param inv_d2 Array of 1/d^2 values
+  //! @param size Array size
+  //! @return Vector of bin indices
   std::vector<int> get_bins_from_1_d2(const double* inv_d2, size_t size) const {
     ensure_limits_are_set();
     int hint = 0;
@@ -154,24 +197,36 @@ struct Binner {
     return nums;
   }
 
+  //! @brief Get bin indices from vector of 1/d^2 values.
+  //! @param inv_d2 Vector of 1/d^2 values
+  //! @return Vector of bin indices
   std::vector<int> get_bins_from_1_d2(const std::vector<double>& inv_d2) const {
     return get_bins_from_1_d2(inv_d2.data(), inv_d2.size());
   }
 
+  //! @brief Get minimum d-spacing of bin.
+  //! @param n Bin index
+  //! @return Minimum d-spacing (Angstroms)
   double dmin_of_bin(int n) const {
     return 1. / std::sqrt(n == (int) size() - 1 ? max_1_d2 : limits.at(n));
   }
+
+  //! @brief Get maximum d-spacing of bin.
+  //! @param n Bin index
+  //! @return Maximum d-spacing (Angstroms)
   double dmax_of_bin(int n) const {
     return 1. / std::sqrt(n == 0 ? min_1_d2 : limits.at(n-1));
   }
 
+  //! @brief Get number of bins.
+  //! @return Number of bins
   size_t size() const { return limits.size(); }
 
-  UnitCell cell;
-  double min_1_d2;
-  double max_1_d2;
-  std::vector<double> limits;  // upper limit of each bin
-  std::vector<double> mids;    // the middle of each bin
+  UnitCell cell;  //!< Unit cell
+  double min_1_d2;  //!< Minimum 1/d^2 value
+  double max_1_d2;  //!< Maximum 1/d^2 value
+  std::vector<double> limits;  //!< Upper limit of each bin (1/d^2)
+  std::vector<double> mids;    //!< Middle of each bin (1/d^2)
 };
 
 } // namespace gemmi

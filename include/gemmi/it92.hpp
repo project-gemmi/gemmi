@@ -1,3 +1,16 @@
+//! @file
+//! @brief IT92 X-ray scattering factor coefficients (Cromer-Mann).
+//!
+//! X-ray scattering factor coefficients from International Tables
+//! for Crystallography Volume C, edition from 1992 or later.
+//!
+//! The same data is in CCP4 (file atomsf.lib) and in cctbx (table="it1992").
+//! But here we have only one entry per element. The original table also
+//! lists ions, for example Fe2+ and Fe3+ in addition to Fe.
+//! Scattering factors from ITC are approximated by four Gaussians
+//! and a constant value - together 9 coefficients known as Cromer-Mann
+//! coefficients. The approximation holds for sin(theta)/lambda < 2 A^-1.
+
 // Copyright 2019 Global Phasing Ltd.
 
 // X-ray scattering factor coefficients from International Tables
@@ -23,17 +36,29 @@ namespace gemmi {
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
+//! @brief IT92 scattering factor table (Cromer-Mann coefficients).
+//! @tparam Real Floating-point type (float or double)
+//!
+//! Provides X-ray scattering factors from International Tables Vol C (1992+).
 template<class Real>
 struct IT92 {
-  using Coef = GaussianCoef<4, 1, Real>;
-  static Coef data[99+112];
-  static std::pair<El, signed char> ion_list[112];
-  static bool ignore_charge;
+  using Coef = GaussianCoef<4, 1, Real>;  //!< Coefficient type (4 Gaussians + constant)
+  static Coef data[99+112];  //!< Coefficient data for elements and ions
+  static std::pair<El, signed char> ion_list[112];  //!< List of ions with coefficients
+  static bool ignore_charge;  //!< If true, ignore charge when looking up coefficients
 
+  //! @brief Check if coefficients available for element.
+  //! @param el Element
+  //! @return True if coefficients available
   static bool has(El el) {
     return el <= El::Cf || el == El::D;
   }
 
+  //! @brief Get scattering factor coefficients.
+  //! @param el Element
+  //! @param charge Formal charge
+  //! @param serial Unused (for interface compatibility)
+  //! @return Reference to Gaussian coefficients
   static Coef& get(El el, signed char charge, int /*serial*/=0) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
@@ -52,6 +77,10 @@ struct IT92 {
     return data[pos];
   }
 
+  //! @brief Get exact coefficients or nullptr.
+  //! @param el Element
+  //! @param charge Formal charge
+  //! @return Pointer to coefficients or nullptr if not available
   static Coef* get_exact(El el, signed char charge) {
     if (has(el)) {
       Coef* coef = &get(el, charge);
@@ -61,14 +90,21 @@ struct IT92 {
     return nullptr;
   }
 
-  // Make a1+a2+a3+a4+c equal exactly to the number of electrons.
-  // It changes the values from ITC only slightly (by not more than 0.12%).
+  //! @brief Normalize coefficients to match electron count.
+  //! @param f Coefficients to normalize
+  //! @param n Number of electrons
+  //!
+  //! Make a1+a2+a3+a4+c equal exactly to the number of electrons.
+  //! It changes the values from ITC only slightly (by not more than 0.12%).
   static void normalize_one(Coef& f, int n) {
     double factor = n / (f.a(0) + f.a(1) + f.a(2) + f.a(3) + f.c());
     for (int j = 0; j < 4; ++j)
       f.coefs[j] *= factor;
     f.coefs[8] *= factor;
   }
+  //! @brief Normalize all coefficients in table.
+  //!
+  //! Ensures all coefficients sum exactly to their electron count.
   static void normalize() {
     for (int i = 1; i < 99; ++i)
       normalize_one(data[i], i);

@@ -1,3 +1,8 @@
+//! @file
+//! @brief Reciprocal space grid for reflection data.
+//!
+//! ReciprocalGrid -- grid for reciprocal space data.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // ReciprocalGrid -- grid for reciprocal space data.
@@ -11,15 +16,32 @@
 
 namespace gemmi {
 
+//! @brief Get Friedel mate value (identity for real types).
+//! @tparam T Value type
+//! @param v Value
+//! @return Same value
 template<typename T> T friedel_mate_value(T v) { return v; }
+
+//! @brief Get Friedel mate value (conjugate for complex).
+//! @tparam T Floating-point type
+//! @param v Complex value
+//! @return Conjugate value
 template<typename T>
 std::complex<T> friedel_mate_value(const std::complex<T>& v) {
   return std::conj(v);
 }
 
+//! @brief Grid for reciprocal space data (structure factors).
+//! @tparam T Data type (float, double, or complex)
 template<typename T>
 struct ReciprocalGrid : GridBase<T> {
-  bool half_l = false; // hkl grid that stores only l>=0
+  bool half_l = false;  //!< hkl grid that stores only l>=0
+
+  //! @brief Check if index is within grid bounds.
+  //! @param u First index
+  //! @param v Second index
+  //! @param w Third index
+  //! @return True if index is valid
   bool has_index(int u, int v, int w) const {
     bool half_u = (half_l && this->axis_order == AxisOrder::ZYX);
     bool half_w = (half_l && this->axis_order != AxisOrder::ZYX);

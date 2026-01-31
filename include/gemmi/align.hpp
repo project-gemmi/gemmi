@@ -1,6 +1,11 @@
+//! @file
+//! @brief Sequence alignment, label_seq_id assignment, and structure superposition.
+//!
+//! Provides functions for aligning sequences to coordinate models, assigning
+//! label_seq_id based on SEQRES, and calculating structure superpositions using
+//! QCP algorithm with optional iterative trimming.
+
 // Copyright 2020 Global Phasing Ltd.
-//
-// Sequence alignment, label_seq_id assignment, structure superposition.
 
 #ifndef GEMMI_ALIGN_HPP_
 #define GEMMI_ALIGN_HPP_
@@ -14,7 +19,15 @@ namespace gemmi {
 
 // Sequence alignment and label_seq_id assignment
 
-// helper function for sequence alignment
+//! @brief Prepare gap opening penalties for sequence alignment.
+//! @param polymer Polymer chain from coordinate model
+//! @param polymer_type Type of polymer (peptide, DNA, RNA)
+//! @param scoring Alignment scoring parameters (nullptr for default)
+//! @return Vector of gap opening penalties for each position
+//!
+//! Helper function for sequence alignment. Returns position-specific gap opening
+//! penalties based on connectivity between residues. Gaps are penalized less
+//! where residues are not connected (chain breaks).
 inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
                                             PolymerType polymer_type,
                                             const AlignmentScoring* scoring=nullptr) {
@@ -35,6 +48,16 @@ inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
   return gaps;
 }
 
+//! @brief Align a full sequence (SEQRES) to a polymer chain from coordinates.
+//! @param full_seq Full sequence from SEQRES or entity
+//! @param polymer Polymer chain from coordinate model
+//! @param polymer_type Type of polymer (peptide, DNA, RNA)
+//! @param scoring Alignment scoring parameters (nullptr for default)
+//! @return Alignment result with CIGAR string
+//!
+//! Performs sequence alignment between the full sequence (from SEQRES or entity)
+//! and the residues present in the coordinate model. Uses position-specific gap
+//! penalties to account for chain breaks in the model.
 inline AlignmentResult align_sequence_to_polymer(
                                      const std::vector<std::string>& full_seq,
                                      const ConstResidueSpan& polymer,
@@ -68,7 +91,13 @@ inline AlignmentResult align_sequence_to_polymer(
                          (std::uint8_t)encoding.size(), *scoring);
 }
 
-// check for exact match between model sequence and full sequence (SEQRES)
+//! @brief Check for exact match between model sequence and full sequence (SEQRES).
+//! @param polymer Polymer chain from coordinate model
+//! @param ent Entity with full sequence
+//! @return True if sequences match exactly and seqid numbering is sequential
+//!
+//! Fast path for the common case where model sequence exactly matches SEQRES
+//! and residue numbering is sequential (1, 2, 3, ...) with no insertion codes.
 inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
                                  const Entity& ent) {
   if (ent.full_sequence.size() != polymer.size())
@@ -82,6 +111,11 @@ inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
   return true;
 }
 
+//! @brief Clear all sequences from structure entities.
+//! @param st Structure to modify
+//!
+//! Removes full_sequence, database references, and SIFTS UniProt accessions
+//! from all entities in the structure.
 inline void clear_sequences(Structure& st) {
   for (Entity& ent : st.entities) {
     ent.full_sequence.clear();
@@ -90,11 +124,22 @@ inline void clear_sequences(Structure& st) {
   }
 }
 
+//! @brief Assign best matching sequences from FASTA to structure entities.
+//! @param st Structure to populate with sequences
+//! @param fasta_sequences Vector of FASTA sequence strings
+//!
+//! Aligns provided FASTA sequences to the coordinate models and assigns the
+//! best matches to each entity's full_sequence.
 GEMMI_DLL
 void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_sequences);
 
-// Uses sequence alignment (model to SEQRES) to assign label_seq.
-// force: assign label_seq even if full sequence is not known (assumes no gaps)
+//! @brief Assign label_seq_id to polymer using sequence alignment.
+//! @param polymer Polymer chain to assign label_seq_id
+//! @param ent Entity with full sequence (may be nullptr)
+//! @param force If true, assign label_seq even if full sequence unknown (assumes no gaps)
+//!
+//! Uses sequence alignment (model to SEQRES) to assign label_seq.
+//! The force parameter allows assignment even without full sequence, assuming no gaps.
 inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
                                         const Entity* ent, bool force) {
   AlignmentResult result;
@@ -142,6 +187,10 @@ inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
   }
 }
 
+//! @brief Clear all label_seq_id values from structure.
+//! @param st Structure to modify
+//!
+//! Resets label_seq to unset for all residues in all models.
 inline void clear_label_seq_id(Structure& st) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
@@ -149,6 +198,13 @@ inline void clear_label_seq_id(Structure& st) {
         res.label_seq = Residue::OptionalNum();
 }
 
+//! @brief Assign label_seq_id to all polymers in structure.
+//! @param st Structure to process
+//! @param force If true, assign even without full sequence (assumes no gaps)
+//!
+//! Iterates over all polymer chains in all models and assigns label_seq_id
+//! based on sequence alignment to SEQRES. Only processes chains where
+//! label_seq is not already assigned at both ends.
 inline void assign_label_seq_id(Structure& st, bool force) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
@@ -162,12 +218,25 @@ inline void assign_label_seq_id(Structure& st, bool force) {
 
 // superposition
 
+//! @brief Atom selection for structure superposition.
 enum class SupSelect {
-  CaP,  // only Ca (aminoacids) or P (nucleotides) atoms
-  MainChain,  // only main chain atoms
-  All
+  CaP,       //!< Only CA (amino acids) or P (nucleotides) atoms
+  MainChain, //!< Only main chain atoms (N,CA,C,O for peptides; P,O5',C5',C4',C3',O3' for nucleotides)
+  All        //!< All atoms (matched by name and element)
 };
 
+//! @brief Prepare position vectors for superposition calculation.
+//! @param pos1 Output: positions from fixed structure
+//! @param pos2 Output: positions from movable structure
+//! @param fixed Fixed polymer chain
+//! @param movable Movable polymer chain
+//! @param ptype Polymer type
+//! @param sel Atom selection strategy
+//! @param altloc Alternate location to use ('\0' for default)
+//! @param ca_offsets Optional output: indices of CA/P positions in pos1/pos2
+//!
+//! Aligns sequences and extracts matching atom positions from both structures.
+//! Only atoms present in both structures at aligned positions are included.
 inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
                                                 std::vector<Position>& pos2,
                                                 ConstResidueSpan fixed,
@@ -226,6 +295,17 @@ inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
   }
 }
 
+//! @brief Calculate current RMSD between two structures without superposition.
+//! @param fixed Fixed polymer chain
+//! @param movable Movable polymer chain
+//! @param ptype Polymer type
+//! @param sel Atom selection strategy
+//! @param altloc Alternate location to use ('\0' for default)
+//! @return Result with RMSD and atom count
+//!
+//! Calculates RMSD between aligned structures in their current positions,
+//! without performing any superposition. Useful for checking RMSD after
+//! applying a known transformation.
 inline SupResult calculate_current_rmsd(ConstResidueSpan fixed,
                                         ConstResidueSpan movable,
                                         PolymerType ptype,
@@ -242,6 +322,19 @@ inline SupResult calculate_current_rmsd(ConstResidueSpan fixed,
   return r;
 }
 
+//! @brief Calculate optimal superposition between two polymer chains.
+//! @param fixed Fixed polymer chain (reference)
+//! @param movable Movable polymer chain (to be transformed)
+//! @param ptype Polymer type
+//! @param sel Atom selection strategy
+//! @param trim_cycles Number of iterative trimming cycles (0 for no trimming)
+//! @param trim_cutoff RMSD multiplier for trimming threshold
+//! @param altloc Alternate location to use ('\0' for default)
+//! @return Superposition result with transformation and RMSD
+//!
+//! Calculates optimal superposition using QCP algorithm. With trim_cycles > 0,
+//! iteratively removes outlier atom pairs (distance > trim_cutoff × RMSD) and
+//! recalculates superposition. Useful for improving alignment quality.
 inline SupResult calculate_superposition(ConstResidueSpan fixed,
                                          ConstResidueSpan movable,
                                          PolymerType ptype,
@@ -280,8 +373,16 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
   return sr;
 }
 
-// Returns superpositions for all residues in fixed.first_conformer(),
-// performed by superposing backbone in radius=10.0 from residue's Ca.
+//! @brief Calculate local superpositions in moving window around each residue.
+//! @param fixed Fixed polymer chain (reference)
+//! @param movable Movable polymer chain (to be transformed)
+//! @param ptype Polymer type
+//! @param radius Window radius around each CA/P atom (Angstroms)
+//! @return Vector of superposition results, one per residue in fixed
+//!
+//! Returns superpositions for all residues in fixed.first_conformer(),
+//! performed by superposing backbone in radius=10.0 from residue's Ca.
+//! Useful for analyzing local structural flexibility or identifying rigid regions.
 inline std::vector<SupResult> calculate_superpositions_in_moving_window(
                                       ConstResidueSpan fixed,
                                       ConstResidueSpan movable,
