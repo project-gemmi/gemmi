@@ -7,39 +7,53 @@
 #:rm -f gemmi/*.cif
 #../run-tests.sh G
 
-files=()
+# Group files by subdirectory for proper output-dir handling
+declare -A subdir_files
+
 for x in "$@"; do
   if [[ "$x" == *.cif ]]; then
-    # It's a file path
-    files+=("$x")
+    # It's a file path - extract subdir
+    subdir=$(dirname "$x" | sed 's|^orig||; s|^/||')
+    [[ -z "$subdir" ]] && subdir="."
   else
     # It's a monomer code
-    code=${x^^}
-    files+=("orig/$code.cif")
+    x="orig/${x^^}.cif"
+    subdir="."
   fi
+  subdir_files["$subdir"]+="$x "
 done
 
-# Run gemmi drg on all files
-../build/gemmi drg --typeOut -v --output-dir=gemmi "${files[@]}" 2>drg.log ||:
+# Run gemmi drg for each subdirectory group
+for subdir in "${!subdir_files[@]}"; do
+  read -ra files <<< "${subdir_files[$subdir]}"
+  if [[ "$subdir" == "." ]]; then
+    outdir="gemmi"
+  else
+    outdir="gemmi/$subdir"
+  fi
+  mkdir -p "$outdir"
+  echo "Processing ${#files[@]} files -> $outdir"
+  ../build/gemmi drg --typeOut -v --output-dir="$outdir" "${files[@]}" 2>>drg.log ||:
+done
 
 # Compare each file
-for f in "${files[@]}"; do
-  if [[ "$f" == *.cif ]]; then
-    # Extract code and subdir from path like orig/a/ARG.cif
-    code=$(basename "$f" .cif)
-    subdir=$(dirname "$f" | sed 's|^orig||; s|^/||')
-    if [[ -n "$subdir" ]]; then
-      acedrg_file="acedrg/$subdir/$code.cif"
-      gemmi_file="gemmi/$subdir/$code.cif"
-    else
-      acedrg_file="acedrg/$code.cif"
-      gemmi_file="gemmi/$code.cif"
-    fi
+for x in "$@"; do
+  if [[ "$x" == *.cif ]]; then
+    code=$(basename "$x" .cif)
+    subdir=$(dirname "$x" | sed 's|^orig||; s|^/||')
   else
-    code=${f^^}
+    code=${x^^}
+    subdir=""
+  fi
+
+  if [[ -n "$subdir" ]]; then
+    acedrg_file="acedrg/$subdir/$code.cif"
+    gemmi_file="gemmi/$subdir/$code.cif"
+  else
     acedrg_file="acedrg/$code.cif"
     gemmi_file="gemmi/$code.cif"
   fi
+
   echo "========================${code}========================"
   ../build/gemmi mondiff "$acedrg_file" "$gemmi_file" ||:
 done
