@@ -204,9 +204,9 @@ jobs:
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=ON
-        cmake --build . --config RelWithDebInfo
-        cmake --build . --config RelWithDebInfo --target check
+        cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=ON -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g1 -DNDEBUG"
+        cmake --build . --config RelWithDebInfo -- -j2
+        cmake --build . --config RelWithDebInfo --target check -- -j2
         sudo cmake --install . --config RelWithDebInfo
         cd ..
         python3 -m unittest discover -v -s tests/
