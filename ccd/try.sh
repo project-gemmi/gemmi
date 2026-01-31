@@ -7,30 +7,42 @@
 #:rm -f gemmi/*.cif
 #../run-tests.sh G
 
-# Group files by subdirectory for proper output-dir handling
-declare -A subdir_files
-
+# Convert args to absolute input files and find unique subdirs
+declare -a all_files
+declare -a subdirs
 for x in "$@"; do
   if [[ "$x" == *.cif ]]; then
-    # It's a file path - extract subdir
+    all_files+=("$x")
     subdir=$(dirname "$x" | sed 's|^orig||; s|^/||')
     [[ -z "$subdir" ]] && subdir="."
   else
-    # It's a monomer code
-    x="orig/${x^^}.cif"
+    all_files+=("orig/${x^^}.cif")
     subdir="."
   fi
-  subdir_files["$subdir"]+="$x "
+  # Add to subdirs if not already present
+  if [[ ! " ${subdirs[*]:-} " =~ " $subdir " ]]; then
+    subdirs+=("$subdir")
+  fi
 done
 
 # Run gemmi drg for each subdirectory group
-for subdir in "${!subdir_files[@]}"; do
-  read -ra files <<< "${subdir_files[$subdir]}"
+for subdir in "${subdirs[@]}"; do
   if [[ "$subdir" == "." ]]; then
     outdir="gemmi"
+    pattern="orig/*.cif"
   else
     outdir="gemmi/$subdir"
+    pattern="orig/$subdir/*.cif"
   fi
+  # Filter files matching this subdir
+  files=()
+  for f in "${all_files[@]}"; do
+    f_subdir=$(dirname "$f" | sed 's|^orig||; s|^/||')
+    [[ -z "$f_subdir" ]] && f_subdir="."
+    if [[ "$f_subdir" == "$subdir" ]]; then
+      files+=("$f")
+    fi
+  done
   mkdir -p "$outdir"
   echo "Processing ${#files[@]} files -> $outdir"
   ../build/gemmi drg --typeOut -v --output-dir="$outdir" "${files[@]}" 2>>drg.log ||:
