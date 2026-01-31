@@ -204,7 +204,7 @@ jobs:
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=OFF
+        cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_PYTHON=1 -DPython_EXECUTABLE=python3 -DBUILD_SHARED_LIBS=ON
         cmake --build . --config Debug
         cmake --build . --config Debug --target check
         sudo cmake --install . --config Debug
