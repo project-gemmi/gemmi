@@ -2302,7 +2302,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
         }
       }
       // CCP4 override for delocalized bonds (carboxylate)
-      // Detect carboxylate pattern: C bonded to two O atoms (one OC, one O)
+      // Detect carboxylate pattern: C bonded to two TERMINAL O atoms
+      // (terminal = oxygen only bonded to this carbon, not to other heavy atoms)
       if (!std::isnan(bond.value) && !ccp4_types.empty()) {
         auto it1 = cc.find_atom(bond.id1.atom);
         auto it2 = cc.find_atom(bond.id2.atom);
@@ -2315,19 +2316,31 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
           bool is_c_o_bond = (t1 == "C" && (t2 == "O" || t2 == "OC")) ||
                              (t2 == "C" && (t1 == "O" || t1 == "OC"));
           if (is_c_o_bond) {
-            // Check if this C has another O neighbor (carboxylate pattern)
+            // Check if this C has two terminal O neighbors (carboxylate pattern)
             int c_idx = (t1 == "C") ? idx1 : idx2;
-            int o_count = 0;
+            int terminal_o_count = 0;
             for (const auto& b : cc.rt.bonds) {
               if (b.id1.atom == cc.atoms[c_idx].id || b.id2.atom == cc.atoms[c_idx].id) {
-                const std::string& other = (b.id1.atom == cc.atoms[c_idx].id) ? b.id2.atom : b.id1.atom;
-                auto it_other = cc.find_atom(other);
-                if (it_other != cc.atoms.end() && it_other->el == El::O)
-                  ++o_count;
+                const std::string& other_name = (b.id1.atom == cc.atoms[c_idx].id) ? b.id2.atom : b.id1.atom;
+                auto it_other = cc.find_atom(other_name);
+                if (it_other != cc.atoms.end() && it_other->el == El::O) {
+                  // Check if this oxygen is terminal (only bonded to C and possibly H)
+                  int heavy_neighbors = 0;
+                  for (const auto& b2 : cc.rt.bonds) {
+                    if (b2.id1.atom == other_name || b2.id2.atom == other_name) {
+                      const std::string& nb = (b2.id1.atom == other_name) ? b2.id2.atom : b2.id1.atom;
+                      auto it_nb = cc.find_atom(nb);
+                      if (it_nb != cc.atoms.end() && it_nb->el != El::H)
+                        ++heavy_neighbors;
+                    }
+                  }
+                  if (heavy_neighbors == 1)  // Only bonded to C (the carboxyl carbon)
+                    ++terminal_o_count;
+                }
               }
             }
-            if (o_count >= 2) {
-              // Carboxylate pattern - use DELO value
+            if (terminal_o_count >= 2) {
+              // True carboxylate pattern - use DELO value
               ValueStats vs;
               if (search_ccp4_bond("OC", "C", "DELO", vs) ||
                   search_ccp4_bond("C", "OC", "DELO", vs)) {
