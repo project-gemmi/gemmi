@@ -3126,8 +3126,13 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
           if (it2 != it1->second.end() && !it2->second.empty()) {
             values_size = static_cast<int>(it2->second.size());
             vs = aggregate_stats(it2->second);
+            if (verbose >= 2)
+              std::fprintf(stderr, "      level 3: found %d entries, value=%.3f count=%d (need %d)\n",
+                           values_size, vs.value, vs.count, num_th);
           }
         }
+        if (verbose >= 2 && values_size == 0)
+          std::fprintf(stderr, "      level 3 miss: a1_nb='%s' a2_nb='%s'\n", a1_nb.c_str(), a2_nb.c_str());
       }
     } else if (level == 4 || level == 5) {
       if (map_2d) {
@@ -3225,7 +3230,17 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       }
     }
 
-    if (level <= 8) {
+    // For level 3 (exact nb1nb2_sp match on both atoms), use observation count
+    // threshold like late levels. This is the most specific match so should be
+    // accepted if observations are sufficient.
+    if (level == 3) {
+      if (values_size > 0 && vs.count >= num_th) {
+        if (verbose >= 2)
+          std::fprintf(stderr, "      matched: level=%d\n", level);
+        vs.level = level;
+        return vs;
+      }
+    } else if (level <= 8) {
       if (values_size >= num_th) {
         if (verbose >= 2)
           std::fprintf(stderr, "      matched: level=%d\n", level);
