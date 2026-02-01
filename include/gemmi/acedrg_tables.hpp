@@ -102,6 +102,42 @@ struct ValueStats {
   ValueStats(double v, double s, int c, int lvl = 0) : value(v), sigma(s), count(c), level(lvl) {}
 };
 
+// Protonated hydrogen distances (both electron cloud and nucleus)
+struct ProtHydrDist {
+  double electron_val = NAN;
+  double electron_sigma = NAN;
+  double nucleus_val = NAN;
+  double nucleus_sigma = NAN;
+};
+
+// Debug info for bond lookup (to be written to output CIF)
+struct BondDebugInfo {
+  std::string atom1;
+  std::string atom2;
+  std::string source;      // "multilevel", "HRS", "EN", "CCP4", "covalent", "DELO"
+  int ml_level = 0;        // multilevel match level (10=full, 4+=neighbor, 0-3=aggregated)
+  int ml_count = 0;        // multilevel observation count
+  int hrs_count = 0;       // HRS observation count
+  std::string hybr1;       // hybridization of atom1
+  std::string hybr2;       // hybridization of atom2
+  int hash1 = 0;           // hash value of atom1
+  int hash2 = 0;           // hash value of atom2
+  bool same_ring = false;  // atoms in same ring
+};
+
+// Debug info for atom lookup
+struct AtomDebugInfo {
+  std::string atom_id;
+  std::string hybridization;
+  int hash_value = 0;
+  int bonding_idx = 0;
+  std::string h_table;     // which H table was used (if H bond)
+  // Multilevel lookup key fields
+  std::string nb1nb2_sp;   // codNB1NB2_SP
+  std::string nb2_symb;    // codNB2Symb
+  std::string cod_class;   // full COD class
+};
+
 // Metal bond entry
 struct MetalBondEntry {
   Element metal = El::X;
@@ -161,6 +197,11 @@ public:
   // Process a ChemComp - fill all missing restraint values
   void fill_restraints(ChemComp& cc) const;
 
+  // Process a ChemComp with debug info collection
+  void fill_restraints(ChemComp& cc,
+                       std::vector<AtomDebugInfo>& atom_debug,
+                       std::vector<BondDebugInfo>& bond_debug) const;
+
   // Assign CCP4 atom energy types (type_energy) following AceDRG rules
   void assign_ccp4_types(ChemComp& cc) const;
 
@@ -171,7 +212,8 @@ public:
   // Individual lookups - returns match level (10=full, 4+=neighbor matched, 0-3=aggregated)
   int fill_bond(const ChemComp& cc,
                 const std::vector<CodAtomInfo>& atom_info,
-                Restraints::Bond& bond) const;
+                Restraints::Bond& bond,
+                BondDebugInfo* debug = nullptr) const;
   void fill_angle(const ChemComp& cc,
                             const std::vector<CodAtomInfo>& atom_info,
                             Restraints::Angle& angle) const;
@@ -406,6 +448,9 @@ public:
   std::map<Element, std::map<int, CoordGeometry>> metal_coord_geo_;
   std::map<std::string, TorsionEntry> pep_tors_;
 
+  // Protonated hydrogen distances: maps type (e.g., "H_sp3_C") -> ProtHydrDist
+  std::map<std::string, ProtHydrDist> prot_hydr_dists_;
+
   // Internal helper functions
 
   // Loading functions
@@ -418,6 +463,7 @@ public:
   void load_bond_index(const std::string& path);
   void load_bond_tables(const std::string& dir);
   void load_pep_tors(const std::string& path);
+  void load_prot_hydr_dists(const std::string& path);
   void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
 
@@ -517,6 +563,8 @@ public:
   ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
                              bool in_ring) const;
   ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
+  ProtHydrDist search_prot_hydr_dist(const CodAtomInfo& h_atom,
+                                     const CodAtomInfo& heavy_atom) const;
   ValueStats search_metal_bond(const CodAtomInfo& metal,
                                const CodAtomInfo& ligand,
                                const std::vector<CodAtomInfo>& atoms) const;

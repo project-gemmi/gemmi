@@ -274,7 +274,8 @@ static void add_acedrg_tables(nb::module_& m) {
     .def("classify_atoms", &AcedrgTables::classify_atoms,
          nb::arg("chemcomp"),
          "Classify all atoms in a ChemComp and return CodAtomInfo for each.")
-    .def("fill_restraints", &AcedrgTables::fill_restraints,
+    .def("fill_restraints",
+         static_cast<void (AcedrgTables::*)(ChemComp&) const>(&AcedrgTables::fill_restraints),
          nb::arg("chemcomp"),
          "Fill missing bond and angle values in a ChemComp using COD/CSD statistics.")
     .def("fill_bond",

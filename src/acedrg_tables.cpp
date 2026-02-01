@@ -60,6 +60,9 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
   // Load element+hybridization fallback
   load_en_bonds(tables_dir + "/allOrgBondEN.table");
 
+  // Load protonated hydrogen distances
+  load_prot_hydr_dists(tables_dir + "/prot_hydr_dists.table");
+
   // Load metal tables
   load_metal_tables(tables_dir);
 
@@ -195,6 +198,35 @@ void AcedrgTables::load_en_bonds(const std::string& path) {
         std::swap(sp1, sp2);
       }
       en_bonds_[elem1][sp1][elem2][sp2].emplace_back(value, sigma, count);
+    }
+  }
+}
+
+void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
+  std::ifstream f(path);
+  if (!f)
+    return; // Optional file
+
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#')
+      continue;
+
+    std::istringstream iss(line);
+    std::string h_elem, heavy_elem, type_key;
+    double nucleus_val, nucleus_sigma, v1, s1, electron_val, electron_sigma;
+
+    // Format: H  C  H_sp3_C  1.092  0.010  1.093107  0.003875  0.988486  0.005251  ...
+    // Column 4-5: nucleus distance (ener_lib-like)
+    // Column 6-7: refined nucleus distance
+    // Column 8-9: electron distance (X-ray) - this is what acedrg uses for value_dist
+    if (iss >> h_elem >> heavy_elem >> type_key >> nucleus_val >> nucleus_sigma
+            >> v1 >> s1 >> electron_val >> electron_sigma) {
+      ProtHydrDist& phd = prot_hydr_dists_[type_key];
+      phd.electron_val = electron_val;
+      phd.electron_sigma = electron_sigma;
+      phd.nucleus_val = nucleus_val;
+      phd.nucleus_sigma = nucleus_sigma;
     }
   }
 }
@@ -2355,6 +2387,27 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
   }
 
+  // Populate value_nucleus/esd_nucleus for X-H bonds from prot_hydr_dists
+  for (auto& bond : cc.rt.bonds) {
+    auto it1 = cc.find_atom(bond.id1.atom);
+    auto it2 = cc.find_atom(bond.id2.atom);
+    if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
+      continue;
+    int idx1 = static_cast<int>(it1 - cc.atoms.begin());
+    int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+    const CodAtomInfo& a1 = atom_info[idx1];
+    const CodAtomInfo& a2 = atom_info[idx2];
+    if (a1.el == El::H || a2.el == El::H) {
+      const CodAtomInfo& h_atom = (a1.el == El::H) ? a1 : a2;
+      const CodAtomInfo& heavy_atom = (a1.el == El::H) ? a2 : a1;
+      ProtHydrDist phd = search_prot_hydr_dist(h_atom, heavy_atom);
+      if (!std::isnan(phd.nucleus_val)) {
+        bond.value_nucleus = phd.nucleus_val;
+        bond.esd_nucleus = phd.nucleus_sigma;
+      }
+    }
+  }
+
   // Fill angles
   for (auto& angle : cc.rt.angles) {
     if (std::isnan(angle.value)) {
@@ -2458,9 +2511,226 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   }
 }
 
+void AcedrgTables::fill_restraints(ChemComp& cc,
+                                   std::vector<AtomDebugInfo>& atom_debug,
+                                   std::vector<BondDebugInfo>& bond_debug) const {
+  if (!tables_loaded_)
+    return;
+
+  // Classify atoms
+  std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
+  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
+  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+  std::vector<std::string> ccp4_types;
+  if (!ccp4_bonds_.empty())
+    ccp4_types = compute_ccp4_types(cc, atom_info, neighbors);
+
+  // Collect atom debug info
+  atom_debug.clear();
+  atom_debug.reserve(atom_info.size());
+  for (const auto& a : atom_info) {
+    AtomDebugInfo ad;
+    ad.atom_id = a.id;
+    ad.hybridization = hybridization_to_string(a.hybrid);
+    ad.hash_value = a.hashing_value;
+    ad.bonding_idx = a.bonding_idx;
+    ad.nb1nb2_sp = a.nb1nb2_sp;
+    ad.nb2_symb = a.nb2_symb;
+    ad.cod_class = a.cod_class;
+    atom_debug.push_back(ad);
+  }
+
+  // Print atom classification if verbose
+  if (verbose >= 1) {
+    std::fprintf(stderr, "  Atom classification:\n");
+    for (size_t i = 0; i < atom_info.size(); ++i) {
+      const auto& a = atom_info[i];
+      std::fprintf(stderr, "    %s: el=%s conn=%d ring=%d arom=%d hybr=%s "
+                   "bonding_idx=%d hash=%d cod_class=%s\n",
+                   a.id.c_str(), element_name(a.el), a.connectivity,
+                   a.min_ring_size, a.is_aromatic ? 1 : 0,
+                   hybridization_to_string(a.hybrid), a.bonding_idx,
+                   a.hashing_value, a.cod_class.c_str());
+    }
+  }
+
+  // Fill bonds with debug info collection
+  bond_debug.clear();
+  bond_debug.reserve(cc.rt.bonds.size());
+  for (auto& bond : cc.rt.bonds) {
+    if (std::isnan(bond.value)) {
+      BondDebugInfo debug;
+      int match_level = fill_bond(cc, atom_info, bond, &debug);
+
+      // CCP4 energetic library fallback
+      if (std::isnan(bond.value) && !ccp4_types.empty()) {
+        auto it1 = cc.find_atom(bond.id1.atom);
+        auto it2 = cc.find_atom(bond.id2.atom);
+        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
+          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
+          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+          std::string order = bond_order_key(bond.type);
+          ValueStats vs;
+          if (!search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) &&
+              !search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
+            ValueStats v1, v2;
+            bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
+            bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
+            if (has1 && has2) {
+              bond.value = 0.5 * (v1.value + v2.value);
+              bond.esd = 0.02;
+              debug.source = "CCP4_avg";
+            }
+          } else {
+            bond.value = vs.value;
+            bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+            debug.source = "CCP4";
+          }
+        }
+      }
+      // DELO override (carboxylate) - same logic as main fill_restraints
+      if (!std::isnan(bond.value) && !ccp4_types.empty() && match_level < 4) {
+        auto it1 = cc.find_atom(bond.id1.atom);
+        auto it2 = cc.find_atom(bond.id2.atom);
+        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
+          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
+          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+          const std::string& t1 = ccp4_types[idx1];
+          const std::string& t2 = ccp4_types[idx2];
+          bool is_c_o_bond = (t1 == "C" && (t2 == "O" || t2 == "OC")) ||
+                             (t2 == "C" && (t1 == "O" || t1 == "OC"));
+          if (is_c_o_bond) {
+            int c_idx = (t1 == "C") ? idx1 : idx2;
+            int terminal_o_count = 0;
+            for (const auto& b : cc.rt.bonds) {
+              if (b.id1.atom == cc.atoms[c_idx].id || b.id2.atom == cc.atoms[c_idx].id) {
+                const std::string& other_name = (b.id1.atom == cc.atoms[c_idx].id) ? b.id2.atom : b.id1.atom;
+                auto it_other = cc.find_atom(other_name);
+                if (it_other != cc.atoms.end() && it_other->el == El::O) {
+                  int heavy_neighbors = 0;
+                  for (const auto& b2 : cc.rt.bonds) {
+                    if (b2.id1.atom == other_name || b2.id2.atom == other_name) {
+                      const std::string& nb = (b2.id1.atom == other_name) ? b2.id2.atom : b2.id1.atom;
+                      auto it_nb = cc.find_atom(nb);
+                      if (it_nb != cc.atoms.end() && it_nb->el != El::H)
+                        ++heavy_neighbors;
+                    }
+                  }
+                  if (heavy_neighbors == 1)
+                    ++terminal_o_count;
+                }
+              }
+            }
+            if (terminal_o_count >= 2) {
+              ValueStats vs;
+              if (search_ccp4_bond("OC", "C", "DELO", vs) ||
+                  search_ccp4_bond("C", "OC", "DELO", vs)) {
+                bond.value = vs.value;
+                bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+                debug.source = "DELO";
+              }
+            }
+          }
+        }
+      }
+      bond_debug.push_back(debug);
+    } else {
+      // Bond value was already set - add minimal debug entry
+      BondDebugInfo debug;
+      debug.atom1 = bond.id1.atom;
+      debug.atom2 = bond.id2.atom;
+      debug.source = "preset";
+      bond_debug.push_back(debug);
+    }
+  }
+
+  // Populate value_nucleus/esd_nucleus for X-H bonds from prot_hydr_dists
+  for (auto& bond : cc.rt.bonds) {
+    auto it1 = cc.find_atom(bond.id1.atom);
+    auto it2 = cc.find_atom(bond.id2.atom);
+    if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
+      continue;
+    int idx1 = static_cast<int>(it1 - cc.atoms.begin());
+    int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+    const CodAtomInfo& a1 = atom_info[idx1];
+    const CodAtomInfo& a2 = atom_info[idx2];
+    if (a1.el == El::H || a2.el == El::H) {
+      const CodAtomInfo& h_atom = (a1.el == El::H) ? a1 : a2;
+      const CodAtomInfo& heavy_atom = (a1.el == El::H) ? a2 : a1;
+      ProtHydrDist phd = search_prot_hydr_dist(h_atom, heavy_atom);
+      if (!std::isnan(phd.nucleus_val)) {
+        bond.value_nucleus = phd.nucleus_val;
+        bond.esd_nucleus = phd.nucleus_sigma;
+      }
+    }
+  }
+
+  // Fill angles (same as main fill_restraints, no debug needed for now)
+  for (auto& angle : cc.rt.angles) {
+    if (std::isnan(angle.value)) {
+      fill_angle(cc, atom_info, angle);
+    }
+  }
+
+  // Ring angle adjustment (same as main fill_restraints)
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+  std::map<int, std::vector<size_t>> rings;
+  for (size_t i = 0; i < atom_info.size(); ++i)
+    for (int ring_id : atom_info[i].in_rings)
+      rings[ring_id].push_back(i);
+  for (const auto& ring : rings) {
+    const std::vector<size_t>& ring_atoms = ring.second;
+    if (ring_atoms.size() < 3)
+      continue;
+    bool planar = true;
+    for (size_t idx : ring_atoms) {
+      if (atom_info[idx].bonding_idx == 3) {
+        planar = false;
+        break;
+      }
+    }
+    if (!planar)
+      continue;
+    std::set<std::string> ring_ids;
+    for (size_t idx : ring_atoms)
+      ring_ids.insert(cc.atoms[idx].id);
+    std::vector<size_t> ring_angles;
+    for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
+      const auto& ang = cc.rt.angles[i];
+      if (ring_ids.count(ang.id1.atom) && ring_ids.count(ang.id2.atom) && ring_ids.count(ang.id3.atom))
+        ring_angles.push_back(i);
+    }
+    if (ring_angles.size() != ring_atoms.size())
+      continue;
+    double sum = 0.0;
+    for (size_t i : ring_angles)
+      sum += cc.rt.angles[i].value;
+    double ideal = (ring_atoms.size() - 2) * 180.0;
+    double diff = ideal - sum;
+    if (std::fabs(diff) < 0.01)
+      continue;
+    std::vector<size_t> free;
+    for (size_t i : ring_angles)
+      if (cc.rt.angles[i].esd > 2.5)
+        free.push_back(i);
+    if (free.empty())
+      continue;
+    if (free.size() > 1) {
+      double per_angle = diff / static_cast<double>(free.size());
+      for (size_t i : free)
+        cc.rt.angles[i].value += per_angle;
+    } else {
+      cc.rt.angles[free[0]].value += diff;
+    }
+  }
+}
+
 int AcedrgTables::fill_bond(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
-    Restraints::Bond& bond) const {
+    Restraints::Bond& bond,
+    BondDebugInfo* debug) const {
 
   auto it1 = cc.find_atom(bond.id1.atom);
   auto it2 = cc.find_atom(bond.id2.atom);
@@ -2485,6 +2755,15 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       bond.value = vs.value;
       bond.esd = clamp_bond_sigma(vs.sigma);
       source = "metal";
+      if (debug) {
+        debug->atom1 = bond.id1.atom;
+        debug->atom2 = bond.id2.atom;
+        debug->source = source;
+        debug->hybr1 = hybridization_to_string(a1.hybrid);
+        debug->hybr2 = hybridization_to_string(a2.hybrid);
+        debug->hash1 = a1.hashing_value;
+        debug->hash2 = a2.hashing_value;
+      }
       if (verbose)
         std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                      bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -2496,25 +2775,21 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   }
 
   // Try both multilevel and HRS
+  bool same_ring = are_in_same_ring(a1, a2);
   ValueStats vs_ml = search_bond_multilevel(a1, a2);
-  ValueStats vs_hrs = search_bond_hrs(a1, a2, are_in_same_ring(a1, a2));
+  ValueStats vs_hrs = search_bond_hrs(a1, a2, same_ring);
 
   // Acedrg's logic: use multilevel when it matches at good specificity (level >= 4).
   // At low levels (0-3), multilevel aggregates across different atom types which can give
-  // incorrect values. However, if multilevel has sufficient observations (>= 30),
-  // the aggregated value is still more reliable than HRS.
+  // incorrect values. Prefer HRS when available at low multilevel levels.
   // Level 10 means "full" match (most specific). Levels 4+ match neighbor information.
   ValueStats vs;
   if (vs_ml.level >= 4) {
     // Multilevel matched at good specificity (neighbor info matched)
     vs = vs_ml;
     source = "multilevel";
-  } else if (vs_ml.count >= 30) {
-    // Low-level but sufficient observations - trust multilevel
-    vs = vs_ml;
-    source = "multilevel";
-  } else if (vs_hrs.count >= min_observations_bond) {
-    // Low-level with few observations - prefer HRS (hash+hybr+ring)
+  } else if (vs_hrs.count >= 10) {
+    // Low-level multilevel - prefer HRS (hash+hybr+ring) when available
     vs = vs_hrs;
     source = "HRS";
   } else if (vs_ml.count > 0) {
@@ -2523,9 +2798,25 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     source = "multilevel";
   }
 
+  // Populate debug info
+  if (debug) {
+    debug->atom1 = bond.id1.atom;
+    debug->atom2 = bond.id2.atom;
+    debug->hybr1 = hybridization_to_string(a1.hybrid);
+    debug->hybr2 = hybridization_to_string(a2.hybrid);
+    debug->hash1 = a1.hashing_value;
+    debug->hash2 = a2.hashing_value;
+    debug->ml_level = vs_ml.level;
+    debug->ml_count = vs_ml.count;
+    debug->hrs_count = vs_hrs.count;
+    debug->same_ring = same_ring;
+  }
+
   if (vs.count >= min_observations_bond) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
+    if (debug)
+      debug->source = source;
     if (verbose)
       std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                    bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -2541,6 +2832,8 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
     source = "EN";
+    if (debug)
+      debug->source = source;
     if (verbose)
       std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                    bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -2554,6 +2847,8 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   bond.value = a1.el.covalent_r() + a2.el.covalent_r();
   bond.esd = upper_bond_sigma;
   source = "covalent_radii";
+  if (debug)
+    debug->source = source;
   if (verbose)
     std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f)\n",
                  bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -3016,6 +3311,43 @@ ValueStats AcedrgTables::search_bond_en(const CodAtomInfo& a1,
   if (it4->second.empty()) return ValueStats();
 
   return aggregate_stats(it4->second);
+}
+
+ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */,
+    const CodAtomInfo& heavy_atom) const {
+  // Build type key: H_sp[1|2|3][_arom]_ELEM
+  // Examples: H_sp3_C, H_sp2_arom_C, H_sp2_N
+  std::string hybr;
+  switch (heavy_atom.hybrid) {
+    case Hybridization::SP1: hybr = "sp1"; break;
+    case Hybridization::SP2: hybr = heavy_atom.is_aromatic ? "sp2_arom" : "sp2"; break;
+    case Hybridization::SP3: hybr = "sp3"; break;
+    default: return ProtHydrDist();
+  }
+
+  std::string type_key = std::string("H_") + hybr + "_" + heavy_atom.el.name();
+
+  auto it = prot_hydr_dists_.find(type_key);
+  if (it != prot_hydr_dists_.end()) {
+    if (verbose >= 2)
+      std::fprintf(stderr, "      prot_hydr_dists: found %s -> electron=%.4f nucleus=%.4f\n",
+                   type_key.c_str(), it->second.electron_val, it->second.nucleus_val);
+    return it->second;
+  }
+
+  // Try without aromatic qualifier if sp2_arom not found
+  if (heavy_atom.is_aromatic && heavy_atom.hybrid == Hybridization::SP2) {
+    type_key = std::string("H_sp2_") + heavy_atom.el.name();
+    it = prot_hydr_dists_.find(type_key);
+    if (it != prot_hydr_dists_.end()) {
+      if (verbose >= 2)
+        std::fprintf(stderr, "      prot_hydr_dists: found %s (fallback from arom) -> electron=%.4f nucleus=%.4f\n",
+                     type_key.c_str(), it->second.electron_val, it->second.nucleus_val);
+      return it->second;
+    }
+  }
+
+  return ProtHydrDist();
 }
 
 ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
