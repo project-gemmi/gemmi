@@ -766,8 +766,8 @@ AcedrgTables::build_adjacency(const ChemComp& cc) const {
     if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
       int idx1 = static_cast<int>(it1 - cc.atoms.begin());
       int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-      adj[idx1].push_back({idx2, bond.type});
-      adj[idx2].push_back({idx1, bond.type});
+      adj[idx1].push_back({idx2, bond.type, bond.aromatic});
+      adj[idx2].push_back({idx1, bond.type, bond.aromatic});
     }
   }
   return adj;
@@ -805,7 +805,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
       for (const auto& bond : adj[idx]) {
         int nb = bond.neighbor_idx;
         if (idx < nb && in_ring[nb]) {
-          if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc) {
+          if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc || bond.aromatic) {
             has_arom = true;
           } else if (bond.type == BondType::Double) {
             ++double_bonds;
@@ -2301,6 +2301,43 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
           }
         }
       }
+      // CCP4 override for delocalized bonds (carboxylate)
+      // Detect carboxylate pattern: C bonded to two O atoms (one OC, one O)
+      if (!std::isnan(bond.value) && !ccp4_types.empty()) {
+        auto it1 = cc.find_atom(bond.id1.atom);
+        auto it2 = cc.find_atom(bond.id2.atom);
+        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
+          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
+          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+          const std::string& t1 = ccp4_types[idx1];
+          const std::string& t2 = ccp4_types[idx2];
+          // Check for carboxylate C-O bond (C bonded to O or OC)
+          bool is_c_o_bond = (t1 == "C" && (t2 == "O" || t2 == "OC")) ||
+                             (t2 == "C" && (t1 == "O" || t1 == "OC"));
+          if (is_c_o_bond) {
+            // Check if this C has another O neighbor (carboxylate pattern)
+            int c_idx = (t1 == "C") ? idx1 : idx2;
+            int o_count = 0;
+            for (const auto& b : cc.rt.bonds) {
+              if (b.id1.atom == cc.atoms[c_idx].id || b.id2.atom == cc.atoms[c_idx].id) {
+                const std::string& other = (b.id1.atom == cc.atoms[c_idx].id) ? b.id2.atom : b.id1.atom;
+                auto it_other = cc.find_atom(other);
+                if (it_other != cc.atoms.end() && it_other->el == El::O)
+                  ++o_count;
+              }
+            }
+            if (o_count >= 2) {
+              // Carboxylate pattern - use DELO value
+              ValueStats vs;
+              if (search_ccp4_bond("OC", "C", "DELO", vs) ||
+                  search_ccp4_bond("C", "OC", "DELO", vs)) {
+                bond.value = vs.value;
+                bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -2444,27 +2481,37 @@ void AcedrgTables::fill_bond(const ChemComp& cc,
     }
   }
 
-  // Try detailed multilevel search first (if tables loaded)
-  ValueStats vs = search_bond_multilevel(a1, a2);
-  if (vs.count >= min_observations_bond) {
-    bond.value = vs.value;
-    bond.esd = clamp_bond_sigma(vs.sigma);
+  // Try both multilevel and HRS
+  ValueStats vs_ml = search_bond_multilevel(a1, a2);
+  ValueStats vs_hrs = search_bond_hrs(a1, a2, are_in_same_ring(a1, a2));
+
+  // Acedrg's logic: use multilevel when it matches at good specificity (level >= 4).
+  // At low levels (0-3), multilevel aggregates across different atom types which can give
+  // incorrect values. However, if multilevel has sufficient observations (>= 30),
+  // the aggregated value is still more reliable than HRS.
+  // Level 10 means "full" match (most specific). Levels 4+ match neighbor information.
+  ValueStats vs;
+  if (vs_ml.level >= 4) {
+    // Multilevel matched at good specificity (neighbor info matched)
+    vs = vs_ml;
     source = "multilevel";
-    if (verbose)
-      std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
-                   bond.id1.atom.c_str(), bond.id2.atom.c_str(),
-                   a1.hashing_value, a2.hashing_value,
-                   hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                   source, bond.value, bond.esd, vs.count);
-    return;
+  } else if (vs_ml.count >= 30) {
+    // Low-level but sufficient observations - trust multilevel
+    vs = vs_ml;
+    source = "multilevel";
+  } else if (vs_hrs.count >= min_observations_bond) {
+    // Low-level with few observations - prefer HRS (hash+hybr+ring)
+    vs = vs_hrs;
+    source = "HRS";
+  } else if (vs_ml.count > 0) {
+    // No HRS data - use low-level multilevel as last resort
+    vs = vs_ml;
+    source = "multilevel";
   }
 
-  // Try HRS (summary) table
-  vs = search_bond_hrs(a1, a2, are_in_same_ring(a1, a2));
   if (vs.count >= min_observations_bond) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
-    source = "HRS";
     if (verbose)
       std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                    bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -2574,7 +2621,9 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                             if (vs.count >= min_observations_bond) {
                               if (verbose >= 2)
                                 std::fprintf(stderr, "      matched: level=full\n");
-                              return vs;
+                              ValueStats result = vs;
+                              result.level = 10;  // full match
+                              return result;
                             }
                           }
                         }
@@ -2873,15 +2922,18 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       if (values_size >= num_th) {
         if (verbose >= 2)
           std::fprintf(stderr, "      matched: level=%d\n", level);
+        vs.level = level;
         return vs;
       }
     } else if (values_size > 0) {
       if (vs.count >= num_th) {
         if (verbose >= 2)
           std::fprintf(stderr, "      matched: level=%d\n", level);
+        vs.level = level;
         return vs;
       }
       last_vs = vs;
+      last_vs.level = level;
       have_last = true;
     }
   }

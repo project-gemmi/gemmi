@@ -96,9 +96,10 @@ struct ValueStats {
   double value = NAN;
   double sigma = NAN;
   int count = 0;
+  int level = 0;  // match specificity: 0=none, 1-4=aggregated, 10=full
 
   ValueStats() = default;
-  ValueStats(double v, double s, int c) : value(v), sigma(s), count(c) {}
+  ValueStats(double v, double s, int c, int lvl = 0) : value(v), sigma(s), count(c), level(lvl) {}
 };
 
 // Metal bond entry
@@ -424,6 +425,7 @@ public:
   struct BondInfo {
     int neighbor_idx;
     BondType type;
+    bool aromatic = false;
   };
   struct RingInfo {
     std::vector<int> atoms;
