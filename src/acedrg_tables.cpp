@@ -55,7 +55,7 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
 
   // Load HRS (summary) tables
   load_bond_hrs(tables_dir + "/allOrgBondsHRS.table");
-  load_angle_hrs(tables_dir + "/allOrgAnglesHRS.table");
+  //load_angle_hrs(tables_dir + "/allOrgAnglesHRS.table");  // temporarily disabled
 
   // Load element+hybridization fallback
   load_en_bonds(tables_dir + "/allOrgBondEN.table");
@@ -73,8 +73,8 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
   load_atom_type_codes(tables_dir + "/allAtomTypesFromMolsCoded.list");
   load_bond_index(tables_dir + "/allOrgBondTables/bond_idx.table");
   load_bond_tables(tables_dir + "/allOrgBondTables");
-  load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
-  load_angle_tables(tables_dir + "/allOrgAngleTables");
+  //load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");  // temporarily disabled
+  //load_angle_tables(tables_dir + "/allOrgAngleTables");  // temporarily disabled
   load_pep_tors(tables_dir + "/pep_tors.table");
 
   tables_loaded_ = true;
@@ -2779,23 +2779,20 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   ValueStats vs_ml = search_bond_multilevel(a1, a2);
   ValueStats vs_hrs = search_bond_hrs(a1, a2, same_ring);
 
-  // Acedrg's logic: use multilevel when it matches at good specificity.
-  // Level 10 = full match (most specific)
-  // Levels 3-8 = neighbor-based matches (nb1nb2_sp or nb2_symb) - good specificity
-  // Levels 0-2 = type aggregation - less specific, prefer HRS when available
-  // Levels 9-11 = hash fallbacks - least specific
+  // Acedrg's logic: use multilevel when it matches with sufficient observations.
+  // Acedrg iterates from start_level upward and uses the first level that meets threshold.
+  // There's no special preference for HRS over type-based (levels 0-2) matches.
   ValueStats vs;
-  bool good_ml_level = (vs_ml.level >= 3 && vs_ml.level <= 8) || vs_ml.level == 10;
-  if (good_ml_level && vs_ml.count >= min_observations_bond) {
-    // Multilevel matched at good specificity (neighbor info matched)
+  if (vs_ml.count >= min_observations_bond) {
+    // Multilevel matched with sufficient observations - use it
     vs = vs_ml;
     source = "multilevel";
   } else if (vs_hrs.count >= 10) {
-    // Low-level multilevel or insufficient count - prefer HRS when available
+    // Multilevel insufficient - try HRS
     vs = vs_hrs;
     source = "HRS";
   } else if (vs_ml.count > 0) {
-    // No HRS data - use low-level multilevel as last resort
+    // No HRS data - use low-count multilevel as last resort
     vs = vs_ml;
     source = "multilevel";
   }
@@ -3056,18 +3053,27 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   if (a1.el == El::As || a2.el == El::As || a1.el == El::Ge || a2.el == El::Ge)
     num_th = 1;
 
+  // Determine start level based on available keys (matching acedrg's dynamic logic from codClassify.cpp)
+  // acedrg iterates from start_level upward (0→1→2→...) until threshold is met
+  int start_level = 0;
+  if (!has_a2_type) start_level = std::max(start_level, 1);   // a2M missing
+  if (!has_a1_type) start_level = std::max(start_level, 2);   // a1M missing
+  if (!has_a2_nb) start_level = std::max(start_level, 4);     // a2NB missing
+  if (!has_a1_nb) start_level = std::max(start_level, 5);     // a1NB missing
+  if (!has_a2_nb2) start_level = std::max(start_level, 7);    // a2NB2 missing
+  if (!has_a1_nb2) start_level = std::max(start_level, 8);    // a1NB2 missing
+  if (!has_in_ring) start_level = std::max(start_level, 10);
+  if (!has_hybr) start_level = std::max(start_level, 11);
+
   if (verbose >= 2)
-    std::fprintf(stderr, "      has: hybr=%d ring=%d a1_nb2=%d a2_nb2=%d a1_nb=%d a2_nb=%d a1_type=%d a2_type=%d\n",
-                 has_hybr, has_in_ring, has_a1_nb2, has_a2_nb2, has_a1_nb, has_a2_nb, has_a1_type, has_a2_type);
+    std::fprintf(stderr, "      has: hybr=%d ring=%d a1_nb2=%d a2_nb2=%d a1_nb=%d a2_nb=%d a1_type=%d a2_type=%d start_level=%d\n",
+                 has_hybr, has_in_ring, has_a1_nb2, has_a2_nb2, has_a1_nb, has_a2_nb, has_a1_type, has_a2_type, start_level);
 
   ValueStats last_vs;
   bool have_last = false;
 
-  // AceDRG-like multilevel fallback ordering:
-  // Priority: nb1nb2_sp matches (3-6) > nb2 aggregates (7-8) > type aggregation (0-2) > hash fallbacks (9-11)
-  // This ensures more specific neighbor matches are tried before less specific type aggregations.
-  static const int level_order[] = {3, 4, 5, 6, 7, 8, 0, 1, 2, 9, 10, 11};
-  for (int level : level_order) {
+  // AceDRG-like multilevel fallback: iterate from start_level upward until threshold is met
+  for (int level = start_level; level < 12; level++) {
     // Skip levels that require keys we don't have
     if (level <= 2 && !map_1d) continue;  // type levels need map_1d
     if (level >= 3 && level <= 6 && !map_2d) continue;  // nb levels need map_2d
@@ -3230,30 +3236,16 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       }
     }
 
-    // For level 3 (exact nb1nb2_sp match on both atoms), use observation count
-    // threshold like late levels. This is the most specific match so should be
-    // accepted if observations are sufficient.
-    if (level == 3) {
-      if (values_size > 0 && vs.count >= num_th) {
-        if (verbose >= 2)
-          std::fprintf(stderr, "      matched: level=%d\n", level);
-        vs.level = level;
-        return vs;
-      }
-    } else if (level <= 8) {
-      if (values_size >= num_th) {
-        if (verbose >= 2)
-          std::fprintf(stderr, "      matched: level=%d\n", level);
-        vs.level = level;
-        return vs;
-      }
-    } else if (values_size > 0) {
-      if (vs.count >= num_th) {
-        if (verbose >= 2)
-          std::fprintf(stderr, "      matched: level=%d\n", level);
-        vs.level = level;
-        return vs;
-      }
+    // Check observation count threshold (matching acedrg's logic)
+    // acedrg uses numCodValues (observation count) for the threshold check at all levels
+    if (values_size > 0 && vs.count >= num_th) {
+      if (verbose >= 2)
+        std::fprintf(stderr, "      matched: level=%d\n", level);
+      vs.level = level;
+      return vs;
+    }
+    // Store as fallback if we have data but didn't meet threshold
+    if (values_size > 0) {
       last_vs = vs;
       last_vs.level = level;
       have_last = true;
