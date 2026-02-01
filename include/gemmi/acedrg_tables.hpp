@@ -168,10 +168,10 @@ public:
                                  const std::string& a3, const std::string& a4,
                                  TorsionEntry& out) const;
 
-  // Individual lookups
-  void fill_bond(const ChemComp& cc,
-                           const std::vector<CodAtomInfo>& atom_info,
-                           Restraints::Bond& bond) const;
+  // Individual lookups - returns match level (10=full, 4+=neighbor matched, 0-3=aggregated)
+  int fill_bond(const ChemComp& cc,
+                const std::vector<CodAtomInfo>& atom_info,
+                Restraints::Bond& bond) const;
   void fill_angle(const ChemComp& cc,
                             const std::vector<CodAtomInfo>& atom_info,
                             Restraints::Angle& angle) const;

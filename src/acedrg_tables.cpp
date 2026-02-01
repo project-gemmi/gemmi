@@ -2276,7 +2276,7 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   // Fill bonds
   for (auto& bond : cc.rt.bonds) {
     if (std::isnan(bond.value)) {
-      fill_bond(cc, atom_info, bond);
+      int match_level = fill_bond(cc, atom_info, bond);
       // CCP4 energetic library fallback
       if (std::isnan(bond.value) && !ccp4_types.empty()) {
         auto it1 = cc.find_atom(bond.id1.atom);
@@ -2304,7 +2304,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
       // CCP4 override for delocalized bonds (carboxylate)
       // Detect carboxylate pattern: C bonded to two TERMINAL O atoms
       // (terminal = oxygen only bonded to this carbon, not to other heavy atoms)
-      if (!std::isnan(bond.value) && !ccp4_types.empty()) {
+      // Skip this override if multilevel found a good type-specific match (level >= 4)
+      if (!std::isnan(bond.value) && !ccp4_types.empty() && match_level < 4) {
         auto it1 = cc.find_atom(bond.id1.atom);
         auto it2 = cc.find_atom(bond.id2.atom);
         if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
@@ -2457,14 +2458,14 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   }
 }
 
-void AcedrgTables::fill_bond(const ChemComp& cc,
+int AcedrgTables::fill_bond(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
     Restraints::Bond& bond) const {
 
   auto it1 = cc.find_atom(bond.id1.atom);
   auto it2 = cc.find_atom(bond.id2.atom);
   if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
-    return;
+    return 0;
 
   int idx1 = static_cast<int>(it1 - cc.atoms.begin());
   int idx2 = static_cast<int>(it2 - cc.atoms.begin());
@@ -2490,7 +2491,7 @@ void AcedrgTables::fill_bond(const ChemComp& cc,
                      a1.hashing_value, a2.hashing_value,
                      hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
                      source, bond.value, bond.esd, vs.count);
-      return;
+      return 10;  // metal bond - treat as high-specificity match
     }
   }
 
@@ -2531,7 +2532,7 @@ void AcedrgTables::fill_bond(const ChemComp& cc,
                    a1.hashing_value, a2.hashing_value,
                    hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
                    source, bond.value, bond.esd, vs.count);
-    return;
+    return vs.level;  // return match level for multilevel, or 0 for HRS
   }
 
   // Try element+hybridization fallback
@@ -2546,7 +2547,7 @@ void AcedrgTables::fill_bond(const ChemComp& cc,
                    a1.hashing_value, a2.hashing_value,
                    hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
                    source, bond.value, bond.esd, vs.count);
-    return;
+    return 0;  // fallback - no good type-specific match
   }
 
   // Ultimate fallback: sum of covalent radii
@@ -2559,6 +2560,7 @@ void AcedrgTables::fill_bond(const ChemComp& cc,
                  a1.hashing_value, a2.hashing_value,
                  hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
                  source, bond.value, bond.esd);
+  return 0;  // no type-specific match
 }
 
 ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
