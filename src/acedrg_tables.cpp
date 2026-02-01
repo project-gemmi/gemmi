@@ -2779,17 +2779,19 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   ValueStats vs_ml = search_bond_multilevel(a1, a2);
   ValueStats vs_hrs = search_bond_hrs(a1, a2, same_ring);
 
-  // Acedrg's logic: use multilevel when it matches at good specificity (level >= 4).
-  // At low levels (0-3), multilevel aggregates across different atom types which can give
-  // incorrect values. Prefer HRS when available at low multilevel levels.
-  // Level 10 means "full" match (most specific). Levels 4+ match neighbor information.
+  // Acedrg's logic: use multilevel when it matches at good specificity.
+  // Level 10 = full match (most specific)
+  // Levels 3-8 = neighbor-based matches (nb1nb2_sp or nb2_symb) - good specificity
+  // Levels 0-2 = type aggregation - less specific, prefer HRS when available
+  // Levels 9-11 = hash fallbacks - least specific
   ValueStats vs;
-  if (vs_ml.level >= 4) {
+  bool good_ml_level = (vs_ml.level >= 3 && vs_ml.level <= 8) || vs_ml.level == 10;
+  if (good_ml_level && vs_ml.count >= min_observations_bond) {
     // Multilevel matched at good specificity (neighbor info matched)
     vs = vs_ml;
     source = "multilevel";
   } else if (vs_hrs.count >= 10) {
-    // Low-level multilevel - prefer HRS (hash+hybr+ring) when available
+    // Low-level multilevel or insufficient count - prefer HRS when available
     vs = vs_hrs;
     source = "HRS";
   } else if (vs_ml.count > 0) {
@@ -3054,29 +3056,24 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   if (a1.el == El::As || a2.el == El::As || a1.el == El::Ge || a2.el == El::Ge)
     num_th = 1;
 
-  int start_level = 0;
-  if (!has_hybr)
-    start_level = 11;
-  else if (!has_in_ring)
-    start_level = 10;
-  else if (!has_a1_nb2)
-    start_level = 8;
-  else if (!has_a2_nb2)
-    start_level = 7;
-  else if (!has_a1_nb)
-    start_level = 5;
-  else if (!has_a2_nb)
-    start_level = 4;
-  else if (!has_a1_type)
-    start_level = 2;
-  else if (!has_a2_type)
-    start_level = 1;
+  if (verbose >= 2)
+    std::fprintf(stderr, "      has: hybr=%d ring=%d a1_nb2=%d a2_nb2=%d a1_nb=%d a2_nb=%d a1_type=%d a2_type=%d\n",
+                 has_hybr, has_in_ring, has_a1_nb2, has_a2_nb2, has_a1_nb, has_a2_nb, has_a1_type, has_a2_type);
 
   ValueStats last_vs;
   bool have_last = false;
 
-  // AceDRG-like multilevel fallback ordering (levels 0..11).
-  for (int level = start_level; level < 12; ++level) {
+  // AceDRG-like multilevel fallback ordering:
+  // Priority: nb1nb2_sp matches (3-6) > nb2 aggregates (7-8) > type aggregation (0-2) > hash fallbacks (9-11)
+  // This ensures more specific neighbor matches are tried before less specific type aggregations.
+  static const int level_order[] = {3, 4, 5, 6, 7, 8, 0, 1, 2, 9, 10, 11};
+  for (int level : level_order) {
+    // Skip levels that require keys we don't have
+    if (level <= 2 && !map_1d) continue;  // type levels need map_1d
+    if (level >= 3 && level <= 6 && !map_2d) continue;  // nb levels need map_2d
+    if ((level == 7 || level == 8) && !map_nb2) continue;  // nb2 levels need map_nb2
+    if (level == 9 && !has_in_ring) continue;
+    if (level == 10 && !has_hybr) continue;
     ValueStats vs;
     int values_size = 0;
 
