@@ -67,19 +67,50 @@ void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
 }
 
 void adjust_terminal_carboxylate(ChemComp& cc) {
-  bool has_oxt = false;
-  bool has_hxt = false;
-  for (const auto& atom : cc.atoms) {
-    if (atom.id == "OXT" && atom.el == El::O)
-      has_oxt = true;
-    else if (atom.id == "HXT" && atom.el == El::H)
-      has_hxt = true;
-  }
-  if (!has_oxt || !has_hxt)
+  // Check for standard amino acid C-terminus: OXT-C(=O)-...
+  // Don't apply to other groups (e.g., boronic acid B(OH)3)
+  auto oxt_it = cc.find_atom("OXT");
+  auto hxt_it = cc.find_atom("HXT");
+  if (oxt_it == cc.atoms.end() || hxt_it == cc.atoms.end())
     return;
-  for (auto& atom : cc.atoms)
-    if (atom.id == "OXT")
-      atom.charge = -1.0f;
+  if (oxt_it->el != El::O || hxt_it->el != El::H)
+    return;
+
+  // Find what OXT is bonded to
+  std::string oxt_neighbor;
+  for (const auto& bond : cc.rt.bonds) {
+    if (bond.id1.atom == "OXT" && bond.id2.atom != "HXT")
+      oxt_neighbor = bond.id2.atom;
+    else if (bond.id2.atom == "OXT" && bond.id1.atom != "HXT")
+      oxt_neighbor = bond.id1.atom;
+  }
+  if (oxt_neighbor.empty())
+    return;
+
+  // Check that OXT is bonded to a carbon (not boron, etc.)
+  auto neighbor_it = cc.find_atom(oxt_neighbor);
+  if (neighbor_it == cc.atoms.end() || neighbor_it->el != El::C)
+    return;
+
+  // Verify it's a carboxyl: the carbon should have another oxygen neighbor
+  int o_count = 0;
+  for (const auto& bond : cc.rt.bonds) {
+    std::string other;
+    if (bond.id1.atom == oxt_neighbor)
+      other = bond.id2.atom;
+    else if (bond.id2.atom == oxt_neighbor)
+      other = bond.id1.atom;
+    else
+      continue;
+    auto other_it = cc.find_atom(other);
+    if (other_it != cc.atoms.end() && other_it->el == El::O)
+      ++o_count;
+  }
+  if (o_count < 2)
+    return;
+
+  // It's a carboxylate - deprotonate OXT and remove HXT
+  oxt_it->charge = -1.0f;
   remove_atom_by_id(cc, "HXT");
 }
 
