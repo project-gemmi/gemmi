@@ -282,6 +282,90 @@ void adjust_carboxylate_group(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
+// Protonate guanidinium groups to neutral pH form (+NH2 instead of =NH)
+// Guanidinium has pKa ~12.5, so it's protonated at neutral pH.
+void adjust_guanidinium_group(ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+
+  // Find guanidinium carbons: C bonded to exactly 3 N atoms
+  for (auto& atom : cc.atoms) {
+    if (atom.el != El::C)
+      continue;
+    const auto& nb = neighbors[atom.id];
+    std::vector<std::string> n_neighbors;
+    for (const std::string& nid : nb) {
+      auto it = atom_index.find(nid);
+      if (it != atom_index.end() && cc.atoms[it->second].el == El::N)
+        n_neighbors.push_back(nid);
+    }
+    if (n_neighbors.size() != 3)
+      continue;
+
+    // This is a guanidinium carbon - find N with double bond
+    for (const std::string& n_id : n_neighbors) {
+      // Check if this N has a double bond to the guanidinium C
+      bool has_double = false;
+      for (const auto& bond : cc.rt.bonds) {
+        if ((bond.id1.atom == atom.id && bond.id2.atom == n_id) ||
+            (bond.id2.atom == atom.id && bond.id1.atom == n_id)) {
+          if (bond.type == BondType::Double)
+            has_double = true;
+          break;
+        }
+      }
+      if (!has_double)
+        continue;
+
+      // Count hydrogens on this nitrogen
+      const auto& n_nb = neighbors[n_id];
+      std::vector<std::string> h_neighbors;
+      for (const std::string& hid : n_nb) {
+        auto it = atom_index.find(hid);
+        if (it != atom_index.end() && cc.atoms[it->second].el == El::H)
+          h_neighbors.push_back(hid);
+      }
+
+      // If only 1 hydrogen, add another (protonate =NH to +NH2)
+      if (h_neighbors.size() == 1) {
+        auto n_it = atom_index.find(n_id);
+        if (n_it == atom_index.end())
+          continue;
+
+        // Set charge on the nitrogen
+        cc.atoms[n_it->second].charge = 1.0f;
+
+        // Generate new hydrogen name - acedrg uses sequential H3, H4, etc.
+        std::string new_h_id;
+        for (int n = 3; n < 100; ++n) {
+          new_h_id = "H" + std::to_string(n);
+          if (cc.find_atom(new_h_id) == cc.atoms.end())
+            break;
+        }
+        if (cc.find_atom(new_h_id) != cc.atoms.end())
+          continue;  // Can't find unique name, skip
+
+        // Add the new hydrogen atom
+        cc.atoms.push_back(ChemComp::Atom{new_h_id, "", El::H, 0.0f, "H", "", Position()});
+        // Add bond (value will be filled by fill_restraints)
+        cc.rt.bonds.push_back({{1, n_id}, {1, new_h_id}, BondType::Single, false,
+                              NAN, NAN, NAN, NAN});
+        // Update atom_index and neighbors for subsequent iterations
+        atom_index[new_h_id] = cc.atoms.size() - 1;
+        neighbors[n_id].push_back(new_h_id);
+        neighbors[new_h_id].push_back(n_id);
+      }
+    }
+  }
+}
+
 void add_angles_from_bonds_if_missing(ChemComp& cc) {
   if (!cc.rt.angles.empty())
     return;
@@ -1285,6 +1369,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         add_angles_from_bonds_if_missing(cc);
         adjust_phosphate_group(cc);
         adjust_carboxylate_group(cc);
+        adjust_guanidinium_group(cc);
 
         // Convert to zwitterionic form (add H3, deprotonate carboxyl) BEFORE
         // classification and fill_restraints. Acedrg tables are built using
