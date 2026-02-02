@@ -55,8 +55,8 @@ template<> void add_to_asu_data(nb::class_<AsuData<ValueSigma<float>>>& cl) {
 template<typename T> struct array_for {
   using type = cpu_c_array<T>;
 };
-template<> struct array_for<ValueSigma<float>> {
-  using type = nb::ndarray<float, nb::shape<-1, 2>, nb::device::cpu, nb::c_contig>;
+template<> struct array_for<const ValueSigma<float>> {
+  using type = nb::ndarray<const float, nb::shape<-1, 2>, nb::device::cpu, nb::c_contig>;
 };
 
 template<typename T>
@@ -73,7 +73,7 @@ void add_asudata(nb::module_& m, const std::string& prefix) {
   nb::class_<AsuData> asu_data(m, (prefix + "AsuData").c_str());
   asu_data
     .def("__init__", [](AsuData* p, const UnitCell& unit_cell, const SpaceGroup* sg,
-                        const cpu_miller_array& hkl, const typename array_for<T>::type& values) {
+                        const cpu_miller_array& hkl, const typename array_for<const T>::type& values) {
       new(p) AsuData;
       auto h = hkl.view();
       auto v = values.view();
@@ -162,7 +162,7 @@ void add_asudata_and_recgrid(nb::module_& m,
       grid->axis_order = AxisOrder::XYZ;
     }, nb::arg("nx"), nb::arg("ny"), nb::arg("nz"))
     .def("__init__", [](RecGr* grid,
-                        const nb::ndarray<TG, nb::ndim<3>, nb::device::cpu>& arr,
+                        const nb::ndarray<const TG, nb::ndim<3>, nb::device::cpu>& arr,
                         const UnitCell *cell, const SpaceGroup* sg) {
       auto r = arr.view();
       new(grid) RecGr();

@@ -87,7 +87,7 @@ nb::class_<Grid<T>, GridBase<T>> add_grid_common(nb::module_& m, const std::stri
       new(grid) Gr();
       grid->set_size(nx, ny, nz);
     }, nb::arg("nx"), nb::arg("ny"), nb::arg("nz"))
-    .def("__init__", [](Gr* grid, const nb::ndarray<nb::numpy, T, nb::ndim<3>>& arr,
+    .def("__init__", [](Gr* grid, const nb::ndarray<nb::numpy, const T, nb::ndim<3>>& arr,
                         const UnitCell *cell, const SpaceGroup* sg) {
       new(grid) Gr();
       auto r = arr.view();
@@ -180,7 +180,7 @@ void add_grid_interpolation(nb::class_<Grid<T>, GridBase<T>>& grid) {
          (std::array<double,4> (Gr::*)(const Fractional&) const)
          &Gr::tricubic_interpolation_der)
     .def("interpolate_position_array",
-         [](const Gr& self, const nb::ndarray<double, nb::shape<-1,3>, nb::device::cpu>& xyz,
+         [](const Gr& self, const nb::ndarray<const double, nb::shape<-1,3>, nb::device::cpu>& xyz,
             int order, const Transform* to_frac) {
         auto xyz_view = xyz.view();
         size_t len = xyz_view.shape(0);

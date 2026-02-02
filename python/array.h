@@ -8,8 +8,8 @@ template<typename T>
 using cpu_array = nb::ndarray<T, nb::shape<-1>, nb::device::cpu>;
 template<typename T>
 using cpu_c_array = nb::ndarray<T, nb::shape<-1>, nb::device::cpu, nb::c_contig>;
-using cpu_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu>;
-using cpu_c_miller_array = nb::ndarray<int, nb::shape<-1,3>, nb::device::cpu, nb::c_contig>;
+using cpu_miller_array = nb::ndarray<const int, nb::shape<-1,3>, nb::device::cpu>;
+using cpu_c_miller_array = nb::ndarray<const int, nb::shape<-1,3>, nb::device::cpu, nb::c_contig>;
 
 template<typename T>
 auto numpy_array_from_vector(std::vector<T>&& original_vec) {

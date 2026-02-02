@@ -254,7 +254,7 @@ void add_mtz(nb::module_& m) {
            self.data.push_back(item.value);
          }
     }, nb::arg("asu_data"))
-    .def("set_data", [](Mtz& self, const nb::ndarray<float, nb::ndim<2>>& arr) {
+    .def("set_data", [](Mtz& self, const nb::ndarray<const float, nb::ndim<2>>& arr) {
          size_t nrow = arr.shape(0);
          size_t ncol = arr.shape(1);
          if (ncol != self.columns.size())
@@ -267,7 +267,7 @@ void add_mtz(nb::module_& m) {
            for (size_t col = 0; col < ncol; col++)
              self.data[row*ncol+col] = r(row, col);
     }, nb::arg("array"))
-    .def("filtered", [](Mtz& self, const cpu_array<bool>& selection) {
+    .def("filtered", [](Mtz& self, const cpu_array<const bool>& selection) {
         if (!self.has_data())
           throw std::runtime_error("Mtz.filtered(): no data, read it first");
         auto v = selection.view();

@@ -33,7 +33,7 @@ template<typename T> size_t get_max_bin(const T& bins) {
 struct VectorizeFunc {
   typedef double (*Func)(double);
   Func func;
-  auto operator()(const cpu_array<double>& x) const {
+  auto operator()(const cpu_array<const double>& x) const {
     auto x_ = x.view();
     size_t len = x_.shape(0);
     auto ret = make_numpy_array<double>({len});
@@ -112,8 +112,8 @@ void add_misc(nb::module_& m) {
       return ret;
   }, nb::arg("nbins"), nb::arg("values"));
 
-  m.def("binrfactor", [](const cpu_array<int>& bins, const cpu_array<double>& obs,
-                         const cpu_array<double>& calc, bool riso) {
+  m.def("binrfactor", [](const cpu_array<const int>& bins, const cpu_array<const double>& obs,
+                         const cpu_array<const double>& calc, bool riso) {
       auto bins_ = bins.view();
       auto obs_ = obs.view();
       auto calc_ = calc.view();
@@ -137,8 +137,8 @@ void add_misc(nb::module_& m) {
       return ret;
   }, nb::arg("nbins"), nb::arg("obs"), nb::arg("calc"), nb::arg("riso")=false);
 
-  m.def("bincorr", [](const cpu_array<int>& bins, const cpu_array<double>& obs,
-                      const cpu_array<double>& calc) {
+  m.def("bincorr", [](const cpu_array<const int>& bins, const cpu_array<const double>& obs,
+                      const cpu_array<const double>& calc) {
       auto bins_ = bins.view();
       auto obs_ = obs.view();
       auto calc_ = calc.view();

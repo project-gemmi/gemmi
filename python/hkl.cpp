@@ -303,8 +303,8 @@ void add_hkl(nb::module_& m) {
                         const UnitCell& unit_cell,
                         const SpaceGroup* sg,
                         const cpu_miller_array& hkl,
-                        const cpu_array<double>& values,
-                        const cpu_array<double>& sigmas) {
+                        const cpu_array<const double>& values,
+                        const cpu_array<const double>& sigmas) {
       auto h = hkl.view();
       auto v = values.view();
       auto s = sigmas.view();
@@ -353,8 +353,8 @@ void add_hkl(nb::module_& m) {
         self.setup_from_1_d2(nbins, method, std::move(inv_d2), cell);
     }, nb::arg("nbins"), nb::arg("method"), nb::arg("hkl"), nb::arg("cell"))
     .def("setup_from_1_d2", [](Binner& self, int nbins, Binner::Method method,
-                               const cpu_c_array<double>& inv_d2, const UnitCell* cell) {
-        double* ptr = inv_d2.data();
+                               const cpu_c_array<const double>& inv_d2, const UnitCell* cell) {
+        const double* ptr = inv_d2.data();
         auto len = inv_d2.shape(0);
         self.setup_from_1_d2(nbins, method, std::vector<double>(ptr, ptr+len), cell);
     }, nb::arg("nbins"), nb::arg("method"), nb::arg("inv_d2"), nb::arg("cell"))
@@ -371,7 +371,7 @@ void add_hkl(nb::module_& m) {
         struct {  // cf. MtzDataProxy
           size_t size_;
           size_t stride_;
-          int* data_;
+          const int* data_;
           size_t size() const noexcept { return size_; }
           size_t stride() const noexcept { return stride_; }
           Miller get_hkl(size_t offset) const noexcept {
