@@ -156,6 +156,42 @@ bool add_n_terminal_h3(ChemComp& cc) {
     }
   }
 
+  // Verify alpha-amino acid backbone: CA must be directly bonded to a carboxyl carbon.
+  // This prevents protonating cyclic amino acids like AFC where CA is not bonded to C(=O).
+  if (!ca_atom.empty()) {
+    bool has_direct_carboxyl = false;
+    for (const auto& bond : cc.rt.bonds) {
+      std::string other;
+      if (bond.id1.atom == ca_atom)
+        other = bond.id2.atom;
+      else if (bond.id2.atom == ca_atom)
+        other = bond.id1.atom;
+      else
+        continue;
+
+      // Check if 'other' is a carbon with C=O
+      auto it = cc.find_atom(other);
+      if (it == cc.atoms.end() || it->el != El::C)
+        continue;
+
+      // Check for C=O double bond on this carbon
+      for (const auto& b2 : cc.rt.bonds) {
+        if (b2.id1.atom != other && b2.id2.atom != other)
+          continue;
+        std::string o_atom = (b2.id1.atom == other) ? b2.id2.atom : b2.id1.atom;
+        auto o_it = cc.find_atom(o_atom);
+        if (o_it != cc.atoms.end() && o_it->el == El::O && b2.type == BondType::Double) {
+          has_direct_carboxyl = true;
+          break;
+        }
+      }
+      if (has_direct_carboxyl)
+        break;
+    }
+    if (!has_direct_carboxyl)
+      return false;
+  }
+
   cc.atoms.push_back(ChemComp::Atom{"H3", "", El::H, 0.0f, "H", "", Position()});
   // Bond/angle values set to NAN - will be filled by fill_restraints()
   cc.rt.bonds.push_back({{1, "N"}, {1, "H3"}, BondType::Single, false,
