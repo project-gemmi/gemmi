@@ -960,20 +960,27 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     return 0;
   };
 
-  // Helper: check if an atom is planar (SP2-like)
+  // Helper: check if an atom is planar (SP2-like) using AceDRG's bondingIdx criterion
+  // AceDRG requires bondingIdx==2 (sp2) for planarity, with special handling for
+  // heteroatoms that can be sp2 in aromatic rings (N, O, S with 2 connections)
   auto is_atom_planar = [&](int idx) -> bool {
-    if (atoms[idx].el == El::N)
-      return true;  // N is always allowed in planar rings
+    const auto& atom = atoms[idx];
+    // N is allowed in planar rings even if sp3 (pyrrole-like)
+    if (atom.el == El::N)
+      return true;
+    // O/S with exactly 2 connections can be sp2 in aromatic rings (furan/thiophene-like)
+    if ((atom.el == El::O || atom.el == El::S) && atom.connectivity == 2)
+      return true;
+    // Hypervalent S/P (4+ connections) are not planar even with double bonds
+    if (atom.connectivity >= 4 && (atom.el == El::S || atom.el == El::P))
+      return false;
+    // Atoms with double bonds are sp2 and planar
     for (const auto& bond : adj[idx]) {
-      if (bond.type == BondType::Double ||
-          bond.type == BondType::Aromatic ||
-          bond.type == BondType::Deloc ||
-          bond.aromatic) {
+      if (bond.type == BondType::Double)
         return true;
-      }
     }
-    // 4 neighbors and no unsaturated bonds -> definitely SP3
-    return atoms[idx].connectivity < 4;
+    // For other atoms, require sp2 hybridization (bondingIdx == 2)
+    return atom.bonding_idx == 2;
   };
 
   // Helper: check if a ring is planar
