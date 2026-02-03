@@ -125,6 +125,7 @@ bool add_n_terminal_h3(ChemComp& cc) {
   bool n_has_h = false;
   bool n_has_h2 = false;
   bool n_has_h3 = false;
+  std::string ca_atom;  // The heavy atom bonded to N (usually "CA")
   for (const auto& bond : cc.rt.bonds) {
     if (bond.id1.atom == "N" || bond.id2.atom == "N") {
       const std::string& other = (bond.id1.atom == "N") ? bond.id2.atom : bond.id1.atom;
@@ -134,10 +135,26 @@ bool add_n_terminal_h3(ChemComp& cc) {
         n_has_h2 = true;
       else if (other == "H3")
         n_has_h3 = true;
+      else if (other[0] != 'H')  // Heavy atom neighbor
+        ca_atom = other;
     }
   }
   if (!n_has_h || !n_has_h2 || n_has_h3)
     return false;
+
+  // Don't protonate if the N-attached carbon is sp2 (has double/aromatic/deloc bonds).
+  // This prevents over-protonating enamines (C=C-NH2) where N is conjugated.
+  if (!ca_atom.empty()) {
+    for (const auto& bond : cc.rt.bonds) {
+      if (bond.id1.atom == ca_atom || bond.id2.atom == ca_atom) {
+        if (bond.type == BondType::Double ||
+            bond.type == BondType::Aromatic ||
+            bond.type == BondType::Deloc) {
+          return false;
+        }
+      }
+    }
+  }
 
   cc.atoms.push_back(ChemComp::Atom{"H3", "", El::H, 0.0f, "H", "", Position()});
   // Bond/angle values set to NAN - will be filled by fill_restraints()
@@ -233,7 +250,9 @@ void adjust_phosphate_group(ChemComp& cc) {
     remove_atom_by_id(cc, atom_id);
 }
 
-void adjust_carboxylate_group(ChemComp& cc) {
+// Deprotonate carboxylic acid groups (-COOH -> -COO-)
+// Carboxylic acids have pKa ~4-5, so they're deprotonated at neutral pH.
+void adjust_carboxylic_acid(ChemComp& cc) {
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
@@ -244,7 +263,15 @@ void adjust_carboxylate_group(ChemComp& cc) {
     neighbors[bond.id2.atom].push_back(bond.id1.atom);
   }
 
-  std::vector<std::string> hydrogens_to_remove;
+  auto get_bond_type = [&](const std::string& a, const std::string& b) {
+    for (const auto& bond : cc.rt.bonds)
+      if ((bond.id1.atom == a && bond.id2.atom == b) ||
+          (bond.id2.atom == a && bond.id1.atom == b))
+        return bond.type;
+    return BondType::Unspec;
+  };
+
+  std::vector<std::string> carboxyl_h;
   for (auto& atom : cc.atoms) {
     if (atom.el != El::O)
       continue;
@@ -261,25 +288,29 @@ void adjust_carboxylate_group(ChemComp& cc) {
       else if (el == El::C)
         c_id = nid;
     }
+    // Must have both H and C neighbors
     if (h_id.empty() || c_id.empty())
       continue;
-    const auto& c_nb = neighbors[c_id];
-    int o_count = 0;
-    for (const std::string& nid : c_nb) {
-      auto it = atom_index.find(nid);
+    // The carbon must have another oxygen neighbor with double bond (carbonyl)
+    bool has_carbonyl = false;
+    for (const std::string& c_nb : neighbors[c_id]) {
+      if (c_nb == atom.id)
+        continue;
+      auto it = atom_index.find(c_nb);
       if (it == atom_index.end())
         continue;
-      if (cc.atoms[it->second].el == El::O)
-        o_count += 1;
+      if (cc.atoms[it->second].el == El::O &&
+          get_bond_type(c_id, c_nb) == BondType::Double)
+        has_carbonyl = true;
     }
-    if (o_count < 2)
+    if (!has_carbonyl)
       continue;
+    // This is a carboxylic acid OH - deprotonate it
     atom.charge = -1.0f;
-    hydrogens_to_remove.push_back(h_id);
+    carboxyl_h.push_back(h_id);
   }
-
-  for (const std::string& h_id : hydrogens_to_remove)
-    remove_atom_by_id(cc, h_id);
+  for (const std::string& atom_id : carboxyl_h)
+    remove_atom_by_id(cc, atom_id);
 }
 
 // Protonate guanidinium groups to neutral pH form (+NH2 instead of =NH)
@@ -361,6 +392,102 @@ void adjust_guanidinium_group(ChemComp& cc) {
         atom_index[new_h_id] = cc.atoms.size() - 1;
         neighbors[n_id].push_back(new_h_id);
         neighbors[new_h_id].push_back(n_id);
+      }
+    }
+  }
+}
+
+// Protonate amino-terminal amines matching the AMINO-TER pattern from funSmi.table:
+// NCC(=O)N(*) - an NH2 attached to C that's attached to C(=O) that's attached to another N.
+// This handles general ligand amines like N19/H191/H192 that aren't standard amino acid N-termini.
+void adjust_amino_ter_amine(ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+
+  auto get_bond_type = [&](const std::string& a, const std::string& b) {
+    for (const auto& bond : cc.rt.bonds)
+      if ((bond.id1.atom == a && bond.id2.atom == b) ||
+          (bond.id2.atom == a && bond.id1.atom == b))
+        return bond.type;
+    return BondType::Unspec;
+  };
+
+  for (auto& n1 : cc.atoms) {
+    if (n1.el != El::N)
+      continue;
+
+    // Find NH2: exactly 2 H neighbors
+    std::vector<std::string> h_ids;
+    std::string c1_id;
+    for (const std::string& nb : neighbors[n1.id]) {
+      auto it = atom_index.find(nb);
+      if (it == atom_index.end())
+        continue;
+      if (cc.atoms[it->second].el == El::H)
+        h_ids.push_back(nb);
+      else if (cc.atoms[it->second].el == El::C)
+        c1_id = nb;
+    }
+    if (h_ids.size() != 2 || c1_id.empty())
+      continue;
+
+    // Check C1 neighbors for carbonyl carbon C2
+    for (const std::string& c2_id : neighbors[c1_id]) {
+      if (c2_id == n1.id)
+        continue;
+      auto it = atom_index.find(c2_id);
+      if (it == atom_index.end() || cc.atoms[it->second].el != El::C)
+        continue;
+
+      // Check C2 for C=O and another N
+      bool has_carbonyl = false, has_amide_n = false;
+      for (const std::string& c2_nb : neighbors[c2_id]) {
+        auto it2 = atom_index.find(c2_nb);
+        if (it2 == atom_index.end())
+          continue;
+        Element el = cc.atoms[it2->second].el;
+        if (el == El::O && get_bond_type(c2_id, c2_nb) == BondType::Double)
+          has_carbonyl = true;
+        if (el == El::N && c2_nb != n1.id)
+          has_amide_n = true;
+      }
+
+      if (has_carbonyl && has_amide_n) {
+        // Pattern matched! Protonate NH2 -> NH3+
+        n1.charge = 1.0f;
+        // Generate unique H name - acedrg uses sequential H3, H4, etc. for global
+        // hydrogen naming, or HXX3 for nitrogen XX with HXX1/HXX2 hydrogens.
+        std::string new_h;
+        if (n1.id == "N") {
+          // Standard amino terminus: use H3, H4, etc.
+          for (int i = 3; i < 100; ++i) {
+            new_h = "H" + std::to_string(i);
+            if (cc.find_atom(new_h) == cc.atoms.end())
+              break;
+          }
+        } else {
+          // Named nitrogen like N19: try H193, H194, etc. based on existing H191/H192
+          std::string n_suffix = n1.id.size() > 1 ? n1.id.substr(1) : "";
+          for (int i = 3; i < 1000; ++i) {
+            new_h = "H" + n_suffix + std::to_string(i);
+            if (cc.find_atom(new_h) == cc.atoms.end())
+              break;
+          }
+        }
+        if (cc.find_atom(new_h) != cc.atoms.end())
+          break;  // Can't find unique name
+        // Add hydrogen atom and bond
+        cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
+        cc.rt.bonds.push_back({{1, n1.id}, {1, new_h}, BondType::Single, false,
+                              NAN, NAN, NAN, NAN});
+        break;
       }
     }
   }
@@ -1401,8 +1528,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         ChemComp cc = make_chemcomp_from_block(block);
         add_angles_from_bonds_if_missing(cc);
         adjust_phosphate_group(cc);
-        adjust_carboxylate_group(cc);
+        adjust_carboxylic_acid(cc);
         adjust_guanidinium_group(cc);
+        adjust_amino_ter_amine(cc);
 
         // Convert to zwitterionic form (add H3, deprotonate carboxyl) BEFORE
         // classification and fill_restraints. Acedrg tables are built using
