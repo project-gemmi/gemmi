@@ -1054,120 +1054,85 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
       }
       ring.is_aromatic = has_arom;
     } else {
-      // Fused system: count π-electrons across the WHOLE system
-      // Collect unique atoms in the fused system
-      std::set<int> system_atoms;
+      // Fused system: check each ring individually (like AceDRG)
       for (int ring_idx : system) {
-        for (int atom_idx : rings[ring_idx].atoms)
-          system_atoms.insert(atom_idx);
-      }
+        RingInfo& ring = rings[ring_idx];
+        std::vector<char> in_ring(adj.size(), 0);
 
-      // Check if whole system is planar
-      bool system_planar = true;
-      for (int idx : system_atoms) {
-        if (!is_atom_planar(idx)) {
-          system_planar = false;
-          break;
-        }
-      }
+        bool has_arom = ring_has_all_aromatic_bonds(ring, in_ring);
 
-      // Count total π-electrons across the whole fused system (no double-counting)
-      std::fill(in_system.begin(), in_system.end(), 0);
-      for (int idx : system_atoms)
-        in_system[idx] = 1;
+        if (has_arom && ring.atoms.size() == 5 && !is_ring_planar(ring))
+          has_arom = false;
 
-      int system_pi = 0;
-      for (int idx : system_atoms)
-        system_pi += count_atom_pi(idx, in_system);
+        bool is_planar = is_ring_planar(ring);
 
-      // Check if whole fused system satisfies Hückel 4n+2 rule
-      bool system_aromatic = system_planar && (system_pi > 0 && (system_pi % 4) == 2);
+        std::fill(in_ring.begin(), in_ring.end(), 0);
+        for (int idx : ring.atoms)
+          in_ring[idx] = 1;
 
-      if (system_aromatic) {
-        // Whole fused system is aromatic → mark ALL rings as aromatic
-        for (int ring_idx : system)
-          rings[ring_idx].is_aromatic = true;
-      } else {
-        // Fall back to individual ring checks
-        for (int ring_idx : system) {
-          RingInfo& ring = rings[ring_idx];
-          std::vector<char> in_ring(adj.size(), 0);
-
-          bool has_arom = ring_has_all_aromatic_bonds(ring, in_ring);
-
-          if (has_arom && ring.atoms.size() == 5 && !is_ring_planar(ring))
-            has_arom = false;
-
-          bool is_planar = is_ring_planar(ring);
-
-          std::fill(in_ring.begin(), in_ring.end(), 0);
-          for (int idx : ring.atoms)
-            in_ring[idx] = 1;
-
-          auto count_ring_pi = [&]() -> int {
-            int pi = 0;
-            for (int idx : ring.atoms)
-              pi += count_atom_pi(idx, in_ring);
-            return pi;
-          };
-
-          if (is_planar && !has_arom) {
-            int pi = count_ring_pi();
-            if (pi > 0 && (pi % 4) == 2)
-              has_arom = true;
-          }
-          if ((ring.atoms.size() == 5 || ring.atoms.size() == 6) && has_arom) {
-            if (!is_planar) {
-              has_arom = false;
-            } else {
-              int pi = count_ring_pi();
-              if (!(pi > 0 && (pi % 4) == 2))
-                has_arom = false;
-            }
-          }
-          ring.is_aromatic = has_arom;
-        }
-
-        // Additional pass: check if non-aromatic 5-member rings are fused to
-        // now-aromatic rings (indole-like pattern)
-        for (int ring_idx : system) {
-          RingInfo& ring = rings[ring_idx];
-          if (ring.is_aromatic || ring.atoms.size() != 5)
-            continue;
-          if (!is_ring_planar(ring))
-            continue;
-
-          // Check if fused to an aromatic ring in this system
-          bool fused_to_arom = false;
-          for (int other_idx : system) {
-            if (!rings[other_idx].is_aromatic)
-              continue;
-            int shared = 0;
-            for (int a : ring.atoms) {
-              if (std::find(rings[other_idx].atoms.begin(),
-                            rings[other_idx].atoms.end(), a) != rings[other_idx].atoms.end())
-                ++shared;
-            }
-            if (shared >= 2) {
-              fused_to_arom = true;
-              break;
-            }
-          }
-          if (!fused_to_arom)
-            continue;
-
-          // Count π-electrons for this ring and apply Hückel
-          std::vector<char> in_ring(adj.size(), 0);
-          for (int idx : ring.atoms)
-            in_ring[idx] = 1;
-
+        auto count_ring_pi = [&]() -> int {
           int pi = 0;
           for (int idx : ring.atoms)
             pi += count_atom_pi(idx, in_ring);
+          return pi;
+        };
 
+        if (is_planar && !has_arom) {
+          int pi = count_ring_pi();
           if (pi > 0 && (pi % 4) == 2)
-            ring.is_aromatic = true;
+            has_arom = true;
         }
+        if ((ring.atoms.size() == 5 || ring.atoms.size() == 6) && has_arom) {
+          if (!is_planar) {
+            has_arom = false;
+          } else {
+            int pi = count_ring_pi();
+            if (!(pi > 0 && (pi % 4) == 2))
+              has_arom = false;
+          }
+        }
+        ring.is_aromatic = has_arom;
+      }
+
+      // Additional pass: check if non-aromatic 5-member rings are fused to
+      // now-aromatic rings (indole-like pattern)
+      for (int ring_idx : system) {
+        RingInfo& ring = rings[ring_idx];
+        if (ring.is_aromatic || ring.atoms.size() != 5)
+          continue;
+        if (!is_ring_planar(ring))
+          continue;
+
+        // Check if fused to an aromatic ring in this system
+        bool fused_to_arom = false;
+        for (int other_idx : system) {
+          if (!rings[other_idx].is_aromatic)
+            continue;
+          int shared = 0;
+          for (int a : ring.atoms) {
+            if (std::find(rings[other_idx].atoms.begin(),
+                          rings[other_idx].atoms.end(), a) != rings[other_idx].atoms.end())
+              ++shared;
+          }
+          if (shared >= 2) {
+            fused_to_arom = true;
+            break;
+          }
+        }
+        if (!fused_to_arom)
+          continue;
+
+        // Count π-electrons for this ring and apply Hückel
+        std::vector<char> in_ring(adj.size(), 0);
+        for (int idx : ring.atoms)
+          in_ring[idx] = 1;
+
+        int pi = 0;
+        for (int idx : ring.atoms)
+          pi += count_atom_pi(idx, in_ring);
+
+        if (pi > 0 && (pi % 4) == 2)
+          ring.is_aromatic = true;
       }
     }
   }
