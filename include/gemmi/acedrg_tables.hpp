@@ -62,6 +62,7 @@ struct CodAtomInfo {
   Element el;               // Element
   Hybridization hybrid;     // Hybridization state
   std::string cod_class;    // Full COD class (e.g., "C[6a](C[6a]C[6a])(C[6a])(H)")
+  std::string cod_class_no_charge;  // COD class computed without formal charges (for COD table lookup)
   std::string cod_main;     // COD main type (codAtmMain)
   std::string cod_root;     // COD root type (codAtmRoot)
   std::string nb_symb;      // codNBSymb

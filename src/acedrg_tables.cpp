@@ -212,6 +212,10 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
     if (line.empty() || line[0] == '#')
       continue;
 
+    // Remove stray commas that may appear in numeric fields
+    for (char& c : line)
+      if (c == ',') c = ' ';
+
     std::istringstream iss(line);
     std::string h_elem, heavy_elem, type_key;
     double nucleus_val, nucleus_sigma, v1, s1, electron_val, electron_sigma;
@@ -714,6 +718,12 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     atom.hybrid = hybrid_from_bonding_idx(atom.bonding_idx, atom.is_metal,
                                           atom.connectivity);
     compute_hash(atom);
+    // Store no-charge variant for COD table lookup consistency.
+    // cod_class itself doesn't encode charges (it's based on ring aromaticity and
+    // neighbor topology). The charge-sensitive fields are bonding_idx/hybrid/nb1nb2_sp,
+    // but those are used separately in lookups. For now, cod_class_no_charge equals
+    // cod_class since the COD class string format doesn't include charge info.
+    atom.cod_class_no_charge = atom.cod_class;
   }
 
   return atoms;
@@ -816,102 +826,348 @@ std::vector<std::vector<int>> AcedrgTables::build_neighbors(
   return neighbors;
 }
 
+// Detect fused ring systems: group rings that share 2+ atoms into connected components.
+// Returns a vector of systems, where each system is a vector of ring indices.
+static std::vector<std::vector<int>> detect_fused_ring_systems(
+    const std::vector<AcedrgTables::RingInfo>& rings) {
+  int n = static_cast<int>(rings.size());
+  if (n == 0)
+    return {};
+
+  // Build adjacency: rings i and j are connected if they share >=2 atoms
+  std::vector<std::vector<int>> ring_adj(n);
+  for (int i = 0; i < n; ++i) {
+    for (int j = i + 1; j < n; ++j) {
+      int shared = 0;
+      for (int a : rings[i].atoms) {
+        if (std::find(rings[j].atoms.begin(), rings[j].atoms.end(), a) != rings[j].atoms.end()) {
+          ++shared;
+          if (shared >= 2)
+            break;
+        }
+      }
+      if (shared >= 2) {
+        ring_adj[i].push_back(j);
+        ring_adj[j].push_back(i);
+      }
+    }
+  }
+
+  // Find connected components using DFS
+  std::vector<int> component(n, -1);
+  int num_components = 0;
+  for (int i = 0; i < n; ++i) {
+    if (component[i] >= 0)
+      continue;
+    // BFS/DFS to mark this component
+    std::vector<int> stack;
+    stack.push_back(i);
+    while (!stack.empty()) {
+      int cur = stack.back();
+      stack.pop_back();
+      if (component[cur] >= 0)
+        continue;
+      component[cur] = num_components;
+      for (int nb : ring_adj[cur]) {
+        if (component[nb] < 0)
+          stack.push_back(nb);
+      }
+    }
+    ++num_components;
+  }
+
+  // Group ring indices by component
+  std::vector<std::vector<int>> systems(num_components);
+  for (int i = 0; i < n; ++i)
+    systems[component[i]].push_back(i);
+
+  return systems;
+}
+
 void AcedrgTables::set_ring_aromaticity_from_bonds(
     const std::vector<std::vector<BondInfo>>& adj,
     const std::vector<CodAtomInfo>& atoms,
     std::vector<RingInfo>& rings) const {
-  // Heuristic: mark 6-member rings with 3 double bonds (benzene-like) or any
-  // ring with explicit aromatic/deloc bonds as aromatic. Then propagate to
-  // fused 5-member rings that share >=2 atoms with an aromatic ring and have
-  // 2+ double bonds (indole-like).
-  std::vector<char> in_ring(adj.size(), 0);
+  // For fused ring systems:
+  // 1. Count π-electrons across the WHOLE fused system (avoiding double-counting)
+  // 2. If the whole system satisfies Hückel 4n+2 rule, mark ALL rings as aromatic
+  // 3. If not, fall back to checking each ring individually
 
-  for (auto& ring : rings) {
+  std::vector<char> in_system(adj.size(), 0);  // atoms in the current fused system
+
+  // Helper: check if atom has an exocyclic double bond preventing π contribution
+  auto has_exocyclic_double_bond = [&](int idx, const std::vector<char>& in_atoms) -> bool {
+    for (const auto& bond : adj[idx]) {
+      int nb = bond.neighbor_idx;
+      if (in_atoms[nb])
+        continue;  // Only check exocyclic bonds
+      if (bond.type != BondType::Double)
+        continue;
+      // Exocyclic carbonyl: O with only 1 connection
+      if (atoms[nb].el == El::O && atoms[nb].connectivity == 1)
+        return true;
+      // Exocyclic methylene: C with 3 neighbors and >=2 H
+      if (atoms[nb].el == El::C && atoms[nb].connectivity == 3) {
+        int h_count = 0;
+        for (const auto& nb_bond : adj[nb])
+          if (atoms[nb_bond.neighbor_idx].el == El::H)
+            ++h_count;
+        if (h_count >= 2)
+          return true;
+      }
+    }
+    return false;
+  };
+
+  // Helper: count π-electrons for a single atom
+  auto count_atom_pi = [&](int idx, const std::vector<char>& in_atoms) -> int {
+    const auto& atom = atoms[idx];
+    int conn = atom.connectivity;
+    // Atom is SP2 if it has a double/aromatic bond
+    bool is_sp2 = false;
+    for (const auto& bond : adj[idx]) {
+      if (bond.type == BondType::Double ||
+          bond.type == BondType::Aromatic ||
+          bond.type == BondType::Deloc ||
+          bond.aromatic) {
+        is_sp2 = true;
+        break;
+      }
+    }
+
+    if (is_sp2) {
+      if (atom.el == El::C) {
+        if (conn == 3)
+          return has_exocyclic_double_bond(idx, in_atoms) ? 0 : 1;
+        return 0;  // SP2 carbon with 2 neighbors: 0 π
+      } else if (atom.el == El::N) {
+        if (conn == 2) return 1;      // pyridine-like
+        if (conn == 3) return 2;      // pyrrole-like (lone pair)
+      } else if (atom.el == El::O) {
+        if (conn == 2) return 2;      // furan-like (lone pair)
+      } else if (atom.el == El::S) {
+        if (conn == 2) return 2;      // thiophene-like (lone pair)
+      }
+    } else {
+      // Non-SP2 atoms: heteroatoms with lone pairs can still contribute
+      if (atom.el == El::N)
+        return 2;  // pyrrole-like nitrogen
+      if ((atom.el == El::O || atom.el == El::S) && conn == 2)
+        return 2;  // furan/thiophene-like (lone pair donor)
+    }
+    return 0;
+  };
+
+  // Helper: check if an atom is planar (SP2-like)
+  auto is_atom_planar = [&](int idx) -> bool {
+    if (atoms[idx].el == El::N)
+      return true;  // N is always allowed in planar rings
+    for (const auto& bond : adj[idx]) {
+      if (bond.type == BondType::Double ||
+          bond.type == BondType::Aromatic ||
+          bond.type == BondType::Deloc ||
+          bond.aromatic) {
+        return true;
+      }
+    }
+    // 4 neighbors and no unsaturated bonds -> definitely SP3
+    return atoms[idx].connectivity < 4;
+  };
+
+  // Helper: check if a ring is planar
+  auto is_ring_planar = [&](const RingInfo& ring) -> bool {
+    for (int idx : ring.atoms) {
+      if (!is_atom_planar(idx))
+        return false;
+    }
+    return true;
+  };
+
+  // Helper: check if a ring has all aromatic bond flags
+  auto ring_has_all_aromatic_bonds = [&](const RingInfo& ring, std::vector<char>& in_ring) -> bool {
     std::fill(in_ring.begin(), in_ring.end(), 0);
     for (int idx : ring.atoms)
       in_ring[idx] = 1;
 
-    bool has_arom = false;
-    int double_bonds = 0;
+    int arom_bond_count = 0;
+    int total_bond_count = 0;
     for (int idx : ring.atoms) {
       for (const auto& bond : adj[idx]) {
         int nb = bond.neighbor_idx;
         if (idx < nb && in_ring[nb]) {
-          if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc || bond.aromatic) {
-            has_arom = true;
-          } else if (bond.type == BondType::Double) {
-            ++double_bonds;
+          ++total_bond_count;
+          if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc || bond.aromatic)
+            ++arom_bond_count;
+        }
+      }
+    }
+    return (arom_bond_count == total_bond_count && arom_bond_count > 0);
+  };
+
+  // Detect fused ring systems
+  std::vector<std::vector<int>> fused_systems = detect_fused_ring_systems(rings);
+
+  // Process each fused system
+  for (const auto& system : fused_systems) {
+    if (system.size() == 1) {
+      // Single ring: use existing individual ring logic
+      RingInfo& ring = rings[system[0]];
+      std::vector<char> in_ring(adj.size(), 0);
+
+      bool has_arom = ring_has_all_aromatic_bonds(ring, in_ring);
+
+      // For 5-member rings, require planarity check even with aromatic bonds
+      if (has_arom && ring.atoms.size() == 5 && !is_ring_planar(ring))
+        has_arom = false;
+
+      bool is_planar = is_ring_planar(ring);
+
+      // Count π-electrons for this ring
+      std::fill(in_ring.begin(), in_ring.end(), 0);
+      for (int idx : ring.atoms)
+        in_ring[idx] = 1;
+
+      auto count_ring_pi = [&]() -> int {
+        int pi = 0;
+        for (int idx : ring.atoms)
+          pi += count_atom_pi(idx, in_ring);
+        return pi;
+      };
+
+      // Apply Hückel 4n+2 rule for planar rings
+      if (is_planar && !has_arom) {
+        int pi = count_ring_pi();
+        if (pi > 0 && (pi % 4) == 2)
+          has_arom = true;
+      }
+      // Verify aromatic bond flags with Hückel for 5/6-member rings
+      if ((ring.atoms.size() == 5 || ring.atoms.size() == 6) && has_arom) {
+        if (!is_planar) {
+          has_arom = false;
+        } else {
+          int pi = count_ring_pi();
+          if (!(pi > 0 && (pi % 4) == 2))
+            has_arom = false;
+        }
+      }
+      ring.is_aromatic = has_arom;
+    } else {
+      // Fused system: count π-electrons across the WHOLE system
+      // Collect unique atoms in the fused system
+      std::set<int> system_atoms;
+      for (int ring_idx : system) {
+        for (int atom_idx : rings[ring_idx].atoms)
+          system_atoms.insert(atom_idx);
+      }
+
+      // Check if whole system is planar
+      bool system_planar = true;
+      for (int idx : system_atoms) {
+        if (!is_atom_planar(idx)) {
+          system_planar = false;
+          break;
+        }
+      }
+
+      // Count total π-electrons across the whole fused system (no double-counting)
+      std::fill(in_system.begin(), in_system.end(), 0);
+      for (int idx : system_atoms)
+        in_system[idx] = 1;
+
+      int system_pi = 0;
+      for (int idx : system_atoms)
+        system_pi += count_atom_pi(idx, in_system);
+
+      // Check if whole fused system satisfies Hückel 4n+2 rule
+      bool system_aromatic = system_planar && (system_pi > 0 && (system_pi % 4) == 2);
+
+      if (system_aromatic) {
+        // Whole fused system is aromatic → mark ALL rings as aromatic
+        for (int ring_idx : system)
+          rings[ring_idx].is_aromatic = true;
+      } else {
+        // Fall back to individual ring checks
+        for (int ring_idx : system) {
+          RingInfo& ring = rings[ring_idx];
+          std::vector<char> in_ring(adj.size(), 0);
+
+          bool has_arom = ring_has_all_aromatic_bonds(ring, in_ring);
+
+          if (has_arom && ring.atoms.size() == 5 && !is_ring_planar(ring))
+            has_arom = false;
+
+          bool is_planar = is_ring_planar(ring);
+
+          std::fill(in_ring.begin(), in_ring.end(), 0);
+          for (int idx : ring.atoms)
+            in_ring[idx] = 1;
+
+          auto count_ring_pi = [&]() -> int {
+            int pi = 0;
+            for (int idx : ring.atoms)
+              pi += count_atom_pi(idx, in_ring);
+            return pi;
+          };
+
+          if (is_planar && !has_arom) {
+            int pi = count_ring_pi();
+            if (pi > 0 && (pi % 4) == 2)
+              has_arom = true;
           }
-        }
-      }
-    }
-
-    ring.is_aromatic = has_arom ||
-                       (ring.atoms.size() == 6 && double_bonds == 3);
-
-    // Also check for pyrimidine-like 6-member rings: most atoms have double bonds
-    // (to any neighbor), and remaining atoms are nitrogen (contributing lone pairs).
-    // This catches pyrimidine bases where carbonyl C=O bonds are outside the ring.
-    if (!ring.is_aromatic && ring.atoms.size() == 6) {
-      int atoms_with_double = 0;
-      int nitrogen_without_double = 0;
-      for (int idx : ring.atoms) {
-        bool has_double = false;
-        for (const auto& bond : adj[idx]) {
-          if (bond.type == BondType::Double ||
-              bond.type == BondType::Aromatic ||
-              bond.type == BondType::Deloc) {
-            has_double = true;
-            break;
+          if ((ring.atoms.size() == 5 || ring.atoms.size() == 6) && has_arom) {
+            if (!is_planar) {
+              has_arom = false;
+            } else {
+              int pi = count_ring_pi();
+              if (!(pi > 0 && (pi % 4) == 2))
+                has_arom = false;
+            }
           }
+          ring.is_aromatic = has_arom;
         }
-        if (has_double) {
-          ++atoms_with_double;
-        } else if (atoms[idx].el == El::N) {
-          ++nitrogen_without_double;
+
+        // Additional pass: check if non-aromatic 5-member rings are fused to
+        // now-aromatic rings (indole-like pattern)
+        for (int ring_idx : system) {
+          RingInfo& ring = rings[ring_idx];
+          if (ring.is_aromatic || ring.atoms.size() != 5)
+            continue;
+          if (!is_ring_planar(ring))
+            continue;
+
+          // Check if fused to an aromatic ring in this system
+          bool fused_to_arom = false;
+          for (int other_idx : system) {
+            if (!rings[other_idx].is_aromatic)
+              continue;
+            int shared = 0;
+            for (int a : ring.atoms) {
+              if (std::find(rings[other_idx].atoms.begin(),
+                            rings[other_idx].atoms.end(), a) != rings[other_idx].atoms.end())
+                ++shared;
+            }
+            if (shared >= 2) {
+              fused_to_arom = true;
+              break;
+            }
+          }
+          if (!fused_to_arom)
+            continue;
+
+          // Count π-electrons for this ring and apply Hückel
+          std::vector<char> in_ring(adj.size(), 0);
+          for (int idx : ring.atoms)
+            in_ring[idx] = 1;
+
+          int pi = 0;
+          for (int idx : ring.atoms)
+            pi += count_atom_pi(idx, in_ring);
+
+          if (pi > 0 && (pi % 4) == 2)
+            ring.is_aromatic = true;
         }
       }
-      // Aromatic if at least 4 atoms have double bonds and the rest are nitrogen
-      if (atoms_with_double >= 4 && atoms_with_double + nitrogen_without_double == 6)
-        ring.is_aromatic = true;
     }
-  }
-
-  for (auto& ring : rings) {
-    if (ring.is_aromatic || ring.atoms.size() != 5)
-      continue;
-    std::fill(in_ring.begin(), in_ring.end(), 0);
-    for (int idx : ring.atoms)
-      in_ring[idx] = 1;
-
-    int double_bonds = 0;
-    for (int idx : ring.atoms) {
-      for (const auto& bond : adj[idx]) {
-        int nb = bond.neighbor_idx;
-        if (idx < nb && in_ring[nb] && bond.type == BondType::Double)
-          ++double_bonds;
-      }
-    }
-
-    if (double_bonds < 2)
-      continue;
-
-    bool fused_to_arom = false;
-    for (const auto& other : rings) {
-      if (!other.is_aromatic)
-        continue;
-      int shared = 0;
-      for (int idx : ring.atoms) {
-        if (std::find(other.atoms.begin(), other.atoms.end(), idx) != other.atoms.end())
-          ++shared;
-      }
-      if (shared >= 2) {
-        fused_to_arom = true;
-        break;
-      }
-    }
-    if (fused_to_arom)
-      ring.is_aromatic = true;
   }
 }
 
@@ -2779,16 +3035,18 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   ValueStats vs_ml = search_bond_multilevel(a1, a2);
   ValueStats vs_hrs = search_bond_hrs(a1, a2, same_ring);
 
-  // Acedrg's logic: use multilevel when it matches with sufficient observations.
+  // Acedrg's logic: use multilevel when it matches with sufficient threshold.
   // Acedrg iterates from start_level upward and uses the first level that meets threshold.
+  // The threshold check is done inside search_bond_multilevel (entry count for levels 1-8,
+  // observation count for others). When it returns with level >= 0, the threshold was met.
   // There's no special preference for HRS over type-based (levels 0-2) matches.
   ValueStats vs;
-  if (vs_ml.count >= min_observations_bond) {
-    // Multilevel matched with sufficient observations - use it
+  if (vs_ml.level >= 0) {
+    // Multilevel matched with threshold met - use it
     vs = vs_ml;
     source = "multilevel";
   } else if (vs_hrs.count >= 10) {
-    // Multilevel insufficient - try HRS
+    // Multilevel didn't match - try HRS
     vs = vs_hrs;
     source = "HRS";
   } else if (vs_ml.count > 0) {
@@ -2922,9 +3180,11 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                     if (it9 != it8->second.end()) {
                       auto it10 = it9->second.find(a2_type);
                       if (it10 != it9->second.end()) {
-                        auto it11 = it10->second.find(left->cod_class);
+                        // Use cod_class_no_charge for COD table lookup consistency
+                        // (COD structures often lack formal charges)
+                        auto it11 = it10->second.find(left->cod_class_no_charge);
                         if (it11 != it10->second.end()) {
-                          auto it12 = it11->second.find(right->cod_class);
+                          auto it12 = it11->second.find(right->cod_class_no_charge);
                           if (it12 != it11->second.end()) {
                             const ValueStats& vs = it12->second;
                             if (vs.count >= min_observations_bond) {
@@ -3236,9 +3496,15 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       }
     }
 
-    // Check observation count threshold (matching acedrg's logic)
-    // acedrg uses numCodValues (observation count) for the threshold check at all levels
-    if (values_size > 0 && vs.count >= num_th) {
+    // Check threshold (matching acedrg's logic)
+    // Levels 1-8 use entry count threshold, level 0 and others use observation count
+    bool threshold_met;
+    if (level >= 1 && level <= 8) {
+      threshold_met = values_size >= num_th;  // entry count
+    } else {
+      threshold_met = vs.count >= num_th;     // observation count
+    }
+    if (values_size > 0 && threshold_met) {
       if (verbose >= 2)
         std::fprintf(stderr, "      matched: level=%d\n", level);
       vs.level = level;
@@ -3261,7 +3527,9 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   // No match found in detailed tables
   if (verbose >= 2)
     std::fprintf(stderr, "      matched: level=none (no multilevel match)\n");
-  return ValueStats();
+  ValueStats no_match;
+  no_match.level = -1;  // sentinel for no match
+  return no_match;
 }
 
 ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
