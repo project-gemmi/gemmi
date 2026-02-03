@@ -493,6 +493,154 @@ void adjust_amino_ter_amine(ChemComp& cc) {
   }
 }
 
+// Protonate alpha-amino acid terminal amines (R-NH2 -> R-NH3+) matching AceDRG's
+// CARBOXY-AMINO-TERS SMARTS pattern: O=C(O)C(N)(*) - an amine attached to a carbon
+// that also has a carboxylic acid group (alpha-amino acid pattern).
+// Only these are protonated; side-chain amines like lysine's epsilon-amino are not.
+void adjust_terminal_amine(ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+
+  for (auto& n_atom : cc.atoms) {
+    if (n_atom.el != El::N)
+      continue;
+    // Skip if already charged (already processed)
+    if (std::fabs(n_atom.charge) > 0.5f)
+      continue;
+
+    // Count neighbor types
+    int n_carbon = 0, n_hydrogen = 0, n_other = 0;
+    std::string alpha_carbon_id;
+    std::vector<std::string> h_ids;
+    for (const std::string& nb : neighbors[n_atom.id]) {
+      auto it = atom_index.find(nb);
+      if (it == atom_index.end())
+        continue;
+      Element el = cc.atoms[it->second].el;
+      if (el == El::C) {
+        n_carbon++;
+        alpha_carbon_id = nb;
+      } else if (el == El::H) {
+        n_hydrogen++;
+        h_ids.push_back(nb);
+      } else {
+        n_other++;
+      }
+    }
+
+    // Condition: exactly 1 carbon neighbor, 0 other heavy atoms
+    if (n_carbon != 1 || n_other != 0)
+      continue;
+    // Need at least 2 hydrogens to be an amine (NH2)
+    if (n_hydrogen < 2)
+      continue;
+    // Already has 3+ hydrogens (already protonated)
+    if (n_hydrogen >= 3)
+      continue;
+
+    // Don't protonate if the N-attached carbon is sp2 (has double/aromatic/deloc bonds).
+    // This prevents over-protonating enamines (C=C-NH2) where N is conjugated.
+    bool c_is_sp2 = false;
+    for (const auto& bond : cc.rt.bonds) {
+      if (bond.id1.atom == alpha_carbon_id || bond.id2.atom == alpha_carbon_id) {
+        if (bond.type == BondType::Double ||
+            bond.type == BondType::Aromatic ||
+            bond.type == BondType::Deloc) {
+          c_is_sp2 = true;
+          break;
+        }
+      }
+    }
+    if (c_is_sp2)
+      continue;
+
+    // Check if N itself has any double bonds (imine =NH, not amine)
+    bool n_has_double = false;
+    for (const auto& bond : cc.rt.bonds) {
+      if (bond.id1.atom == n_atom.id || bond.id2.atom == n_atom.id) {
+        if (bond.type == BondType::Double ||
+            bond.type == BondType::Aromatic ||
+            bond.type == BondType::Deloc) {
+          n_has_double = true;
+          break;
+        }
+      }
+    }
+    if (n_has_double)
+      continue;
+
+    // Check for alpha-amino acid pattern: N-C-COOH (CARBOXY-AMINO-TERS)
+    // The alpha carbon must be bonded to a carboxyl carbon (C with C=O)
+    bool has_carboxyl = false;
+    for (const std::string& c_neighbor : neighbors[alpha_carbon_id]) {
+      auto it = atom_index.find(c_neighbor);
+      if (it == atom_index.end())
+        continue;
+      if (cc.atoms[it->second].el != El::C)
+        continue;
+      // Check if this carbon has a double-bonded oxygen (carbonyl/carboxyl)
+      for (const auto& bond : cc.rt.bonds) {
+        if (bond.id1.atom != c_neighbor && bond.id2.atom != c_neighbor)
+          continue;
+        std::string other = (bond.id1.atom == c_neighbor) ? bond.id2.atom : bond.id1.atom;
+        auto other_it = atom_index.find(other);
+        if (other_it != atom_index.end() &&
+            cc.atoms[other_it->second].el == El::O &&
+            bond.type == BondType::Double) {
+          has_carboxyl = true;
+          break;
+        }
+      }
+      if (has_carboxyl)
+        break;
+    }
+    if (!has_carboxyl)
+      continue;  // Not alpha-amino acid pattern, skip protonation
+
+    // This is an alpha-amino acid amine - protonate it (NH2 -> NH3+)
+    n_atom.charge = 1.0f;
+
+    // Generate unique hydrogen name
+    std::string new_h;
+    if (n_atom.id == "N") {
+      // Standard amino terminus: use H3, H4, etc.
+      for (int i = 3; i < 100; ++i) {
+        new_h = "H" + std::to_string(i);
+        if (cc.find_atom(new_h) == cc.atoms.end())
+          break;
+      }
+    } else {
+      // Named nitrogen like N14: try H143, H144, etc. based on existing H141/H142
+      std::string n_suffix = n_atom.id.size() > 1 ? n_atom.id.substr(1) : "";
+      for (int i = 3; i < 100; ++i) {
+        new_h = "H" + n_suffix + std::to_string(i);
+        if (cc.find_atom(new_h) == cc.atoms.end())
+          break;
+      }
+    }
+    if (cc.find_atom(new_h) != cc.atoms.end())
+      continue;  // Can't find unique name, skip
+
+    // Add hydrogen atom and bond
+    cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
+    cc.rt.bonds.push_back({{1, n_atom.id}, {1, new_h}, BondType::Single, false,
+                          NAN, NAN, NAN, NAN});
+
+    // Add angles for new hydrogen
+    for (const std::string& h_id : h_ids) {
+      cc.rt.angles.push_back({{1, h_id}, {1, n_atom.id}, {1, new_h}, NAN, NAN});
+    }
+    cc.rt.angles.push_back({{1, alpha_carbon_id}, {1, n_atom.id}, {1, new_h}, NAN, NAN});
+  }
+}
+
 void add_angles_from_bonds_if_missing(ChemComp& cc) {
   if (!cc.rt.angles.empty())
     return;
@@ -1531,6 +1679,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         adjust_carboxylic_acid(cc);
         adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
+        adjust_terminal_amine(cc);
 
         // Convert to zwitterionic form (add H3, deprotonate carboxyl) BEFORE
         // classification and fill_restraints. Acedrg tables are built using
