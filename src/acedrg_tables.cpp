@@ -942,7 +942,9 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
         return 0;  // SP2 carbon with 2 neighbors: 0 π
       } else if (atom.el == El::N) {
         if (conn == 2) return 1;      // pyridine-like
-        if (conn == 3) return 2;      // pyrrole-like (lone pair)
+        // N+ with 3 neighbors: 1 π (AceDRG isAromaticP / mode 1 behavior)
+        // Neutral N with 3 neighbors: 2 π (pyrrole-like lone pair)
+        if (conn == 3) return (atom.charge > 0.5f) ? 1 : 2;
       } else if (atom.el == El::O) {
         if (conn == 2) return 2;      // furan-like (lone pair)
       } else if (atom.el == El::S) {
