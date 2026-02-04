@@ -1482,7 +1482,11 @@ void AcedrgTables::set_special_3nb_symb2(
         if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb3) == ser_num_nb123.end() &&
             nb3 != atom.index) {
           std::string prop = atoms[nb3].el.name();
-          prop.append("<" + std::to_string(neighbors[nb3].size()) + ">");
+          int deg = 0;
+          for (int nbx : neighbors[nb3])
+            if (!atoms[nbx].is_metal)
+              ++deg;
+          prop.append("<" + std::to_string(deg) + ">");
           nb3_props[prop] += 1;
           ser_num_nb123.push_back(nb3);
         }
