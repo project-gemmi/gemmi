@@ -1954,10 +1954,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         // doesn't deprotonate generic carboxylic acids. Only terminal carboxylates
         // (OXT/HXT) via adjust_terminal_carboxylate() and alpha-hydroxy groups
         // via adjust_carboxy_asp() are deprotonated.
-        // Note: adjust_guanidinium_group() is NOT called because acedrg keeps
-        // guanidinium groups in the neutral tautomeric form (=NH) rather than
-        // the charged form (+NH2), even though guanidinium has pKa ~12.5.
-        // adjust_guanidinium_group(cc);
+        // Guanidinium groups (pKa ~12.5) are protonated at neutral pH.
+        adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
         adjust_terminal_amine(cc);
 
