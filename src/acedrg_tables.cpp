@@ -1426,7 +1426,11 @@ void AcedrgTables::set_atom_cod_class_name_new2(
       auto& entry = id_map[nb_atom.cod_class];
       if (entry.empty()) {
         entry.push_back(1);
-        entry.push_back(static_cast<int>(neighbors[nb].size()));
+        int non_metal = 0;
+        for (int nb2 : neighbors[nb])
+          if (!atoms[nb2].is_metal)
+            ++non_metal;
+        entry.push_back(non_metal);
       } else {
         entry[0] += 1;
       }
