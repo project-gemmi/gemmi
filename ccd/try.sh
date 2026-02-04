@@ -45,7 +45,7 @@ for subdir in "${subdirs[@]}"; do
   done
   mkdir -p "$outdir"
   echo "Processing ${#files[@]} files -> $outdir"
-  if ! ../build/gemmi drg --typeOut --output-dir="$outdir" "${files[@]}" 2> >(tee -a drg.log >&2); then
+  if ! ../build/gemmi drg  --output-dir="$outdir" "${files[@]}" 2> >(tee -a drg.log >&2); then
     echo "ERROR: gemmi drg failed. Check drg.log for details." >&2
     exit 1
   fi
