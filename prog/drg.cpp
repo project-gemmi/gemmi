@@ -129,6 +129,7 @@ void adjust_terminal_carboxylate(ChemComp& cc) {
   // Verify it's a carboxyl: the carbon should have another oxygen neighbor
   // Also check if it's a carbamic acid (N-C(=O)-OH) - these should NOT be deprotonated
   int o_count = 0;
+  bool has_double_o = false;
   bool has_n_neighbor = false;
   for (const auto& bond : cc.rt.bonds) {
     std::string other;
@@ -140,13 +141,17 @@ void adjust_terminal_carboxylate(ChemComp& cc) {
       continue;
     auto other_it = cc.find_atom(other);
     if (other_it != cc.atoms.end()) {
-      if (other_it->el == El::O)
+      if (other_it->el == El::O) {
         ++o_count;
-      else if (other_it->el == El::N)
+        if (bond.type == BondType::Double || bond.type == BondType::Deloc)
+          has_double_o = true;
+      } else if (other_it->el == El::N) {
         has_n_neighbor = true;
+      }
     }
   }
-  if (o_count < 2)
+  // Require carbonyl-like C(=O)-O(H) pattern, not hydrated carbon C(OH)2(H).
+  if (o_count < 2 || !has_double_o)
     return;
   // Carbamic acids (N-C(=O)-OH) remain protonated - they have higher pKa (~5-6)
   if (has_n_neighbor)
@@ -555,6 +560,31 @@ void adjust_carboxy_asp(ChemComp& cc) {
 // Protonate guanidinium groups to neutral pH form (+NH2 instead of =NH)
 // Guanidinium has pKa ~12.5, so it's protonated at neutral pH.
 void adjust_guanidinium_group(ChemComp& cc) {
+  auto choose_h_name = [&](const std::string& n_id,
+                           const std::vector<std::string>& h_neighbors) {
+    // AceDRG naming quirks for added guanidinium hydrogens.
+    if (n_id == "NH2" && cc.find_atom("HH") == cc.atoms.end())
+      return std::string("HH");
+    if (h_neighbors.size() == 1 && n_id.size() > 1 && n_id[0] == 'N') {
+      const std::string& h0 = h_neighbors[0];
+      std::string n_suffix = n_id.substr(1);
+      bool digits = !n_suffix.empty() &&
+                    std::all_of(n_suffix.begin(), n_suffix.end(),
+                                [](char c) { return c >= '0' && c <= '9'; });
+      if (digits && h0 == "HN" + n_suffix) {
+        std::string cand = "H" + std::to_string(std::stoi(n_suffix) + 1);
+        if (cc.find_atom(cand) == cc.atoms.end())
+          return cand;
+      }
+    }
+    for (int n = 3; n < 100; ++n) {
+      std::string cand = "H" + std::to_string(n);
+      if (cc.find_atom(cand) == cc.atoms.end())
+        return cand;
+    }
+    return std::string();
+  };
+
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
@@ -622,14 +652,8 @@ void adjust_guanidinium_group(ChemComp& cc) {
         // Set charge on the nitrogen
         cc.atoms[n_it->second].charge = 1.0f;
 
-        // Generate new hydrogen name - acedrg uses sequential H3, H4, etc.
-        std::string new_h_id;
-        for (int n = 3; n < 100; ++n) {
-          new_h_id = "H" + std::to_string(n);
-          if (cc.find_atom(new_h_id) == cc.atoms.end())
-            break;
-        }
-        if (cc.find_atom(new_h_id) != cc.atoms.end())
+        std::string new_h_id = choose_h_name(n_id, h_neighbors);
+        if (new_h_id.empty())
           continue;  // Can't find unique name, skip
 
         // Add the new hydrogen atom
@@ -1958,22 +1982,17 @@ int GEMMI_MAIN(int argc, char **argv) {
         adjust_phosphate_group(cc);
         adjust_sulfate_group(cc);
         adjust_carboxy_asp(cc);
-        // Note: adjust_carboxylic_acid() is NOT called here because acedrg
-        // doesn't deprotonate generic carboxylic acids. Only terminal carboxylates
-        // (OXT/HXT) via adjust_terminal_carboxylate() and alpha-hydroxy groups
-        // via adjust_carboxy_asp() are deprotonated.
-        // Note: guanidinium protonation is disabled. Most CCD entries for
-        // amino acids (like ARG) are already in the protonated form, and
-        // acedrg doesn't add hydrogens to guanidinium groups in other compounds.
-        // adjust_guanidinium_group(cc);
+        // adjust_carboxylic_acid() is NOT called here because acedrg doesn't
+        // deprotonate generic carboxylic acids. It does deprotonate terminal
+        // carboxylates (OXT/HXT) and CARBOXY-ASP matches.
+        adjust_terminal_carboxylate(cc);
+        adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
         adjust_terminal_amine(cc);
 
         // Convert to zwitterionic form (add H3) BEFORE classification and
         // fill_restraints. Acedrg tables are built using the zwitterionic form
         // where N has 4 neighbors (CA, H, H2, H3).
-        // Note: acedrg does NOT deprotonate the terminal carboxylate (OXT/HXT)
-        // in its output, so we don't call adjust_terminal_carboxylate() here.
         bool added_h3 = add_n_terminal_h3(cc);
 
         // Count missing values before
