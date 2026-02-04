@@ -159,10 +159,11 @@ bool add_n_terminal_h3(ChemComp& cc) {
     }
   }
 
-  // Verify alpha-amino acid backbone: CA must be directly bonded to a carboxyl carbon.
-  // This prevents protonating cyclic amino acids like AFC where CA is not bonded to C(=O).
+  // Verify alpha-amino acid backbone: CA must be directly bonded to a carboxylic acid carbon.
+  // This prevents protonating non-amino-acids like A5R where CA is bonded to a ketone (C=O only).
+  // Carboxylic acid = carbon with 2 oxygen neighbors, at least one double-bonded.
   if (!ca_atom.empty()) {
-    bool has_direct_carboxyl = false;
+    bool has_carboxylic_acid = false;
     for (const auto& bond : cc.rt.bonds) {
       std::string other;
       if (bond.id1.atom == ca_atom)
@@ -172,26 +173,32 @@ bool add_n_terminal_h3(ChemComp& cc) {
       else
         continue;
 
-      // Check if 'other' is a carbon with C=O
+      // Check if 'other' is a carbon with carboxylic acid pattern
       auto it = cc.find_atom(other);
       if (it == cc.atoms.end() || it->el != El::C)
         continue;
 
-      // Check for C=O double bond on this carbon
+      // Count oxygen neighbors of this carbon
+      int o_count = 0;
+      bool has_double_o = false;
       for (const auto& b2 : cc.rt.bonds) {
         if (b2.id1.atom != other && b2.id2.atom != other)
           continue;
         std::string o_atom = (b2.id1.atom == other) ? b2.id2.atom : b2.id1.atom;
         auto o_it = cc.find_atom(o_atom);
-        if (o_it != cc.atoms.end() && o_it->el == El::O && b2.type == BondType::Double) {
-          has_direct_carboxyl = true;
-          break;
+        if (o_it != cc.atoms.end() && o_it->el == El::O) {
+          ++o_count;
+          if (b2.type == BondType::Double || b2.type == BondType::Deloc)
+            has_double_o = true;
         }
       }
-      if (has_direct_carboxyl)
+      // Carboxylic acid: C with 2+ oxygen neighbors, at least one double-bonded
+      if (o_count >= 2 && has_double_o) {
+        has_carboxylic_acid = true;
         break;
+      }
     }
-    if (!has_direct_carboxyl)
+    if (!has_carboxylic_acid)
       return false;
   }
 
@@ -311,6 +318,67 @@ void adjust_phosphate_group(ChemComp& cc) {
   }
 
   // Remove the H atoms
+  for (const std::string& h_id : h_to_remove)
+    remove_atom_by_id(cc, h_id);
+}
+
+// Deprotonate sulfate ester oxygens (R-O-SO3H -> R-O-SO3-).
+// Sulfuric acid has pKa ~ 2, so sulfate esters are deprotonated at neutral pH.
+// AceDRG deprotonates sulfate esters but NOT sulfonic acids (R-SO3H).
+// Key difference: sulfate esters have S bonded to 4 oxygens, sulfonic acids have S bonded to C.
+void adjust_sulfate_group(ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+
+  // Find S atoms in sulfate ester pattern: S with 4 neighbors, ALL being O
+  // This matches sulfate esters (R-O-SO3) but NOT sulfonic acids (R-SO3H where R-S direct bond)
+  std::set<std::string> sulfate_sulfur;
+  for (const auto& atom : cc.atoms) {
+    if (atom.el != El::S)
+      continue;
+    const auto& nb = neighbors[atom.id];
+    if (nb.size() != 4)
+      continue;
+    int o_count = 0;
+    for (const std::string& nid : nb) {
+      auto it = atom_index.find(nid);
+      if (it != atom_index.end() && cc.atoms[it->second].el == El::O)
+        ++o_count;
+    }
+    // Only match true sulfate pattern: all 4 neighbors must be O
+    // Sulfonic acids (C-SO3H) have C directly bonded to S, so o_count < 4
+    if (o_count == 4)
+      sulfate_sulfur.insert(atom.id);
+  }
+
+  // Deprotonate O atoms bonded to sulfate S, remove their H
+  std::vector<std::string> h_to_remove;
+  for (auto& atom : cc.atoms) {
+    if (atom.el != El::O)
+      continue;
+    const auto& nb = neighbors[atom.id];
+    bool bonded_to_sulfate = false;
+    std::string h_neighbor;
+    for (const std::string& nid : nb) {
+      if (sulfate_sulfur.count(nid))
+        bonded_to_sulfate = true;
+      auto it = atom_index.find(nid);
+      if (it != atom_index.end() && cc.atoms[it->second].el == El::H)
+        h_neighbor = nid;
+    }
+    if (bonded_to_sulfate && !h_neighbor.empty()) {
+      atom.charge = -1.0f;
+      h_to_remove.push_back(h_neighbor);
+    }
+  }
+
   for (const std::string& h_id : h_to_remove)
     remove_atom_by_id(cc, h_id);
 }
@@ -701,32 +769,37 @@ void adjust_terminal_amine(ChemComp& cc) {
       continue;
 
     // Check for alpha-amino acid pattern: N-C-COOH (CARBOXY-AMINO-TERS)
-    // The alpha carbon must be bonded to a carboxyl carbon (C with C=O)
-    bool has_carboxyl = false;
+    // The alpha carbon must be bonded to a carboxylic acid carbon (C with two O atoms)
+    // This excludes ketones (C with only one O) like in A5R/ABK.
+    bool has_carboxylic_acid = false;
     for (const std::string& c_neighbor : neighbors[alpha_carbon_id]) {
       auto it = atom_index.find(c_neighbor);
       if (it == atom_index.end())
         continue;
       if (cc.atoms[it->second].el != El::C)
         continue;
-      // Check if this carbon has a double-bonded oxygen (carbonyl/carboxyl)
+      // Count oxygen neighbors of this carbon
+      int o_count = 0;
+      bool has_double_o = false;
       for (const auto& bond : cc.rt.bonds) {
         if (bond.id1.atom != c_neighbor && bond.id2.atom != c_neighbor)
           continue;
         std::string other = (bond.id1.atom == c_neighbor) ? bond.id2.atom : bond.id1.atom;
         auto other_it = atom_index.find(other);
-        if (other_it != atom_index.end() &&
-            cc.atoms[other_it->second].el == El::O &&
-            bond.type == BondType::Double) {
-          has_carboxyl = true;
-          break;
+        if (other_it != atom_index.end() && cc.atoms[other_it->second].el == El::O) {
+          ++o_count;
+          if (bond.type == BondType::Double || bond.type == BondType::Deloc)
+            has_double_o = true;
         }
       }
-      if (has_carboxyl)
+      // Carboxylic acid pattern: C with 2 oxygen neighbors, one double-bonded
+      if (o_count >= 2 && has_double_o) {
+        has_carboxylic_acid = true;
         break;
+      }
     }
-    if (!has_carboxyl)
-      continue;  // Not alpha-amino acid pattern, skip protonation
+    if (!has_carboxylic_acid)
+      continue;  // Not alpha-amino acid pattern (e.g., ketone), skip protonation
 
     // This is an alpha-amino acid amine - protonate it (NH2 -> NH3+)
     n_atom.charge = 1.0f;
@@ -1800,6 +1873,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         ChemComp cc = make_chemcomp_from_block(block);
         add_angles_from_bonds_if_missing(cc);
         adjust_phosphate_group(cc);
+        adjust_sulfate_group(cc);
         adjust_carboxy_asp(cc);
         // Note: adjust_carboxylic_acid() is NOT called here because acedrg
         // doesn't deprotonate generic carboxylic acids. Only terminal carboxylates
