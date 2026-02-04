@@ -430,6 +430,57 @@ void adjust_sulfate_group(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
+// Add missing hydrogen to hexafluorophosphate: P(F)6 -> P(F)6(H)
+// AceDRG adds H for PF6- (e.g. A9J) and uses type P(F)6(H), F(PF5H).
+void adjust_hexafluorophosphate(ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+
+  for (auto& atom : cc.atoms) {
+    if (atom.el != El::P)
+      continue;
+    int f_count = 0;
+    bool has_h = false;
+    for (const std::string& nb : neighbors[atom.id]) {
+      auto it = atom_index.find(nb);
+      if (it == atom_index.end())
+        continue;
+      Element el = cc.atoms[it->second].el;
+      if (el == El::F)
+        ++f_count;
+      else if (el == El::H)
+        has_h = true;
+    }
+    if (f_count != 6 || has_h)
+      continue;
+
+    std::string new_h = "H";
+    if (cc.find_atom(new_h) != cc.atoms.end()) {
+      for (int i = 1; i < 100; ++i) {
+        new_h = "H" + std::to_string(i);
+        if (cc.find_atom(new_h) == cc.atoms.end())
+          break;
+      }
+    }
+    if (cc.find_atom(new_h) != cc.atoms.end())
+      continue;  // Can't find unique name, skip
+
+    cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
+    cc.rt.bonds.push_back({{1, atom.id}, {1, new_h}, BondType::Single, false,
+                          NAN, NAN, NAN, NAN});
+    for (const std::string& nb : neighbors[atom.id]) {
+      cc.rt.angles.push_back({{1, nb}, {1, atom.id}, {1, new_h}, NAN, NAN});
+    }
+  }
+}
+
 // Deprotonate CARBOXY-ASP pattern: O=C(O)C(*)
 // AceDRG matches this pattern and deprotonates any O in the match with exactly 1 H.
 // This is broader than just carboxylic acids - it includes alpha-hydroxy groups.
@@ -1981,6 +2032,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         add_angles_from_bonds_if_missing(cc);
         adjust_phosphate_group(cc);
         adjust_sulfate_group(cc);
+        adjust_hexafluorophosphate(cc);
         adjust_carboxy_asp(cc);
         // adjust_carboxylic_acid() is NOT called here because acedrg doesn't
         // deprotonate generic carboxylic acids. It does deprotonate terminal
