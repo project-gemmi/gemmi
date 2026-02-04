@@ -248,44 +248,6 @@ void sync_n_terminal_h3_angles(ChemComp& cc) {
   copy_angle("H2", "H3", "H", "H2");
 }
 
-void adjust_phosphate_group(ChemComp& cc) {
-  // Identify phosphate oxygens with attached H so we can deprotonate them.
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
-
-  std::vector<std::string> phos_h;
-  for (auto& atom : cc.atoms) {
-    if (atom.el != El::O)
-      continue;
-    const auto& nb = neighbors[atom.id];
-    std::string h_id;
-    bool has_p = false;
-    for (const std::string& nid : nb) {
-      auto it = atom_index.find(nid);
-      if (it == atom_index.end())
-        continue;
-      Element el = cc.atoms[it->second].el;
-      if (el == El::H)
-        h_id = nid;
-      else if (el == El::P)
-        has_p = true;
-    }
-    if (!has_p || h_id.empty())
-      continue;
-    atom.charge = -1.0f;
-    phos_h.push_back(h_id);
-  }
-  for (const std::string& atom_id : phos_h)
-    remove_atom_by_id(cc, atom_id);
-}
-
 // Deprotonate carboxylic acid groups (-COOH -> -COO-)
 // Carboxylic acids have pKa ~4-5, so they're deprotonated at neutral pH.
 void adjust_carboxylic_acid(ChemComp& cc) {
@@ -1711,7 +1673,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
         ChemComp cc = make_chemcomp_from_block(block);
         add_angles_from_bonds_if_missing(cc);
-        adjust_phosphate_group(cc);
+        // Note: AceDRG does not deprotonate phosphate groups, so we don't either
         adjust_carboxylic_acid(cc);
         adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);

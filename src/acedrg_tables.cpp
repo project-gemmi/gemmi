@@ -1338,7 +1338,7 @@ void AcedrgTables::set_atom_cod_class_name_new2(
     std::list<std::string> t_str_list;
     std::map<std::string, int> comps;
     for (int nb : neighbors[atom.index]) {
-      if (nb == ori_atom.index)
+      if (nb == ori_atom.index || atoms[nb].is_metal)
         continue;
       std::string nb_type = atoms[nb].el.name();
       if (!atoms[nb].ring_rep_s.empty()) {
@@ -1419,6 +1419,8 @@ void AcedrgTables::set_atom_cod_class_name_new2(
     int low_lev = lev - 1;
     std::map<std::string, std::vector<int>> id_map;
     for (int nb : neighbors[atom.index]) {
+      if (atoms[nb].is_metal)
+        continue;
       CodAtomInfo nb_atom = atoms[nb];
       set_atom_cod_class_name_new2(nb_atom, ori_atom, low_lev, atoms, neighbors);
       auto& entry = id_map[nb_atom.cod_class];
@@ -4235,13 +4237,16 @@ std::string AcedrgTables::compute_acedrg_type(
   std::string result = element_name(atom.el);
 
   // Build neighbor descriptions: neighbor_element + neighbor's_other_neighbors
+  // Note: AceDRG excludes metals from the atom typing system entirely
   std::map<std::string, int> neighbor_groups;
   for (int nb_idx : neighbors[atom.index]) {
+    if (atoms[nb_idx].is_metal)  // Skip metals in neighbor description
+      continue;
     std::string desc = element_name(atoms[nb_idx].el);
-    // Collect second neighbors (excluding the central atom)
+    // Collect second neighbors (excluding the central atom and metals)
     std::vector<std::string> second_nbs;
     for (int nb2_idx : neighbors[nb_idx]) {
-      if (nb2_idx != atom.index)
+      if (nb2_idx != atom.index && !atoms[nb2_idx].is_metal)
         second_nbs.push_back(element_name(atoms[nb2_idx].el));
     }
     // Sort alphabetically
