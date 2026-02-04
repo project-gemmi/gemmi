@@ -1860,9 +1860,9 @@ namespace half_float
 				if(b.exp > a.exp)
 					std::swap(a, b);
 				int d = a.exp - b.exp;
-				uint32 m = a.m + ((d<32) ? (b.m>>d) : 0);
-				int i = (m&0xFFFFFFFF) < a.m;
-				return f31(((m+i)>>i)|0x80000000, a.exp+i);
+				uint32 mant = a.m + ((d<32) ? (b.m>>d) : 0);
+				int i = (mant&0xFFFFFFFF) < a.m;
+				return f31(((mant+i)>>i)|0x80000000, a.exp+i);
 			}
 
 			/// Subtraction operator.
@@ -1871,12 +1871,12 @@ namespace half_float
 			/// \return \a a - \a b
 			friend f31 operator-(f31 a, f31 b)
 			{
-				int d = a.exp - b.exp, exp = a.exp;
-				uint32 m = a.m - ((d<32) ? (b.m>>d) : 0);
-				if(!m)
+				int d = a.exp - b.exp, out_exp = a.exp;
+				uint32 mant = a.m - ((d<32) ? (b.m>>d) : 0);
+				if(!mant)
 					return f31(0, -32);
-				for(; m<0x80000000; m<<=1,--exp) ;
-				return f31(m, exp);
+				for(; mant<0x80000000; mant<<=1,--out_exp) ;
+				return f31(mant, out_exp);
 			}
 
 			/// Multiplication operator.
@@ -1885,9 +1885,9 @@ namespace half_float
 			/// \return \a a * \a b
 			friend f31 operator*(f31 a, f31 b)
 			{
-				uint32 m = multiply64(a.m, b.m);
-				int i = static_cast<int>(m >> 31);
-				return f31(m<<(1-i), a.exp + b.exp + i);
+				uint32 mant = multiply64(a.m, b.m);
+				int i = static_cast<int>(mant >> 31);
+				return f31(mant<<(1-i), a.exp + b.exp + i);
 			}
 
 			/// Division operator.
@@ -1897,8 +1897,8 @@ namespace half_float
 			friend f31 operator/(f31 a, f31 b)
 			{
 				int i = a.m >= b.m, s;
-				uint32 m = divide64((a.m+i)>>i, b.m, s);
-				return f31(m, a.exp - b.exp + i - 1);
+				uint32 mant = divide64((a.m+i)>>i, b.m, s);
+				return f31(mant, a.exp - b.exp + i - 1);
 			}
 
 			uint32 m;			///< mantissa as 1.31.
