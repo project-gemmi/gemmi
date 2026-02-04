@@ -66,6 +66,37 @@ void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
                  cc.atoms.end());
 }
 
+// Check if two bonded atoms are in the same ring by looking for an alternative path
+bool atoms_in_same_ring(const std::string& atom1, const std::string& atom2,
+                        const std::map<std::string, std::vector<std::string>>& neighbors) {
+  // BFS from atom1 to atom2, excluding the direct bond between them
+  std::set<std::string> visited;
+  std::vector<std::string> queue;
+  visited.insert(atom1);
+  for (const std::string& nb : neighbors.at(atom1)) {
+    if (nb != atom2) {
+      queue.push_back(nb);
+      visited.insert(nb);
+    }
+  }
+  while (!queue.empty()) {
+    std::string current = queue.back();
+    queue.pop_back();
+    if (current == atom2)
+      return true;  // Found alternative path -> in same ring
+    auto it = neighbors.find(current);
+    if (it == neighbors.end())
+      continue;
+    for (const std::string& nb : it->second) {
+      if (visited.find(nb) == visited.end()) {
+        visited.insert(nb);
+        queue.push_back(nb);
+      }
+    }
+  }
+  return false;
+}
+
 void adjust_terminal_carboxylate(ChemComp& cc) {
   // Check for standard amino acid C-terminus: OXT-C(=O)-...
   // Only apply to amino acids (compounds with N atom), not simple carboxylic
@@ -96,7 +127,9 @@ void adjust_terminal_carboxylate(ChemComp& cc) {
     return;
 
   // Verify it's a carboxyl: the carbon should have another oxygen neighbor
+  // Also check if it's a carbamic acid (N-C(=O)-OH) - these should NOT be deprotonated
   int o_count = 0;
+  bool has_n_neighbor = false;
   for (const auto& bond : cc.rt.bonds) {
     std::string other;
     if (bond.id1.atom == oxt_neighbor)
@@ -106,10 +139,17 @@ void adjust_terminal_carboxylate(ChemComp& cc) {
     else
       continue;
     auto other_it = cc.find_atom(other);
-    if (other_it != cc.atoms.end() && other_it->el == El::O)
-      ++o_count;
+    if (other_it != cc.atoms.end()) {
+      if (other_it->el == El::O)
+        ++o_count;
+      else if (other_it->el == El::N)
+        has_n_neighbor = true;
+    }
   }
   if (o_count < 2)
+    return;
+  // Carbamic acids (N-C(=O)-OH) remain protonated - they have higher pKa (~5-6)
+  if (has_n_neighbor)
     return;
 
   // It's a carboxylate - deprotonate OXT and remove HXT
@@ -450,8 +490,10 @@ void adjust_carboxy_asp(ChemComp& cc) {
       }
       if (!has_substituent)
         continue;
-      // Check if alpha C has a non-aromatic C=C double bond (conjugated acid)
-      // AceDRG doesn't deprotonate conjugated carboxylic acids like A4K
+      // Check if alpha C has a non-aromatic, acyclic C=C double bond (conjugated acid)
+      // AceDRG doesn't deprotonate conjugated carboxylic acids like A4K, but
+      // ring-based double bonds (like in AI8's dihydrothiazine ring) are not
+      // considered conjugating for this purpose.
       bool is_conjugated = false;
       for (const auto& bond : cc.rt.bonds) {
         std::string other;
@@ -464,8 +506,11 @@ void adjust_carboxy_asp(ChemComp& cc) {
         if (bond.type == BondType::Double && !bond.aromatic) {
           auto it = atom_index.find(other);
           if (it != atom_index.end() && cc.atoms[it->second].el == El::C) {
-            is_conjugated = true;
-            break;
+            // Only consider acyclic double bonds as conjugating
+            if (!atoms_in_same_ring(ac, other, neighbors)) {
+              is_conjugated = true;
+              break;
+            }
           }
         }
       }
@@ -592,7 +637,9 @@ void adjust_guanidinium_group(ChemComp& cc) {
 }
 
 // Protonate amino-terminal amines matching the AMINO-TER pattern from funSmi.table:
-// NCC(=O)N(*) - an NH2 attached to C that's attached to C(=O) that's attached to another N.
+// NCC(=O)N(*) - an NH2 attached to C that's attached to C(=O) that's attached to N with non-H substituent.
+// The N(*) means the amide nitrogen must have at least one non-H neighbor besides the carbonyl carbon,
+// which distinguishes secondary amides (C=O-NH-R) from primary amides (C=O-NH2).
 // This handles general ligand amines like N19/H191/H192 that aren't standard amino acid N-termini.
 void adjust_amino_ter_amine(ChemComp& cc) {
   std::map<std::string, size_t> atom_index;
@@ -632,6 +679,18 @@ void adjust_amino_ter_amine(ChemComp& cc) {
     if (h_ids.size() != 2 || c1_id.empty())
       continue;
 
+    // C1 (alpha carbon) must be sp3 (no double bonds) - skip ring systems like pyrimidines
+    bool c1_has_double = false;
+    for (const auto& bond : cc.rt.bonds) {
+      if ((bond.id1.atom == c1_id || bond.id2.atom == c1_id) &&
+          bond.type == BondType::Double) {
+        c1_has_double = true;
+        break;
+      }
+    }
+    if (c1_has_double)
+      continue;
+
     // Check C1 neighbors for carbonyl carbon C2
     for (const std::string& c2_id : neighbors[c1_id]) {
       if (c2_id == n1.id)
@@ -649,19 +708,24 @@ void adjust_amino_ter_amine(ChemComp& cc) {
         Element el = cc.atoms[it2->second].el;
         if (el == El::O && get_bond_type(c2_id, c2_nb) == BondType::Double)
           has_carbonyl = true;
-        if (el == El::N && c2_nb != n1.id)
-          has_amide_n = true;
+        // Check for N(*) pattern: amide N with non-H substituent besides carbonyl
+        if (el == El::N && c2_nb != n1.id) {
+          // The amide N must have at least one non-H neighbor besides the carbonyl C
+          // This distinguishes secondary amides (C=O-NH-R) from primary amides (C=O-NH2)
+          for (const std::string& amide_n_nb : neighbors[c2_nb]) {
+            if (amide_n_nb == c2_id)  // skip the carbonyl carbon
+              continue;
+            auto it3 = atom_index.find(amide_n_nb);
+            if (it3 != atom_index.end() && cc.atoms[it3->second].el != El::H) {
+              has_amide_n = true;
+              break;
+            }
+          }
+        }
       }
 
-      // This pattern was designed to match amides (carbonyl + amide nitrogen), but
-      // it incorrectly protonates peptide-linking compounds like AEA that have amide
-      // groups (C=O-NH2) instead of carboxylic acids. AceDRG does not protonate such
-      // compounds, so this pattern is disabled. The CARBOXY-AMINO-TERS pattern
-      // (carboxylic acid requirement) in adjust_terminal_amine() is sufficient.
-      (void)has_carbonyl;
-      (void)has_amide_n;
-      if (false) {
-        // Disabled: Pattern matched! Protonate NH2 -> NH3+
+      if (has_carbonyl && has_amide_n) {
+        // Pattern matched! Protonate NH2 -> NH3+
         n1.charge = 1.0f;
         // Generate unique H name - acedrg uses sequential H3, H4, etc. for global
         // hydrogen naming, or HXX3 for nitrogen XX with HXX1/HXX2 hydrogens.
