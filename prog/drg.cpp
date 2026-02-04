@@ -162,6 +162,8 @@ bool add_n_terminal_h3(ChemComp& cc) {
   // Verify alpha-amino acid backbone: CA must be directly bonded to a carboxylic acid carbon.
   // This prevents protonating non-amino-acids like A5R where CA is bonded to a ketone (C=O only).
   // Carboxylic acid = carbon with 2 oxygen neighbors, at least one double-bonded.
+  // Note: peptide-linking compounds like AEA have amides (C=O-NH2) not carboxylic acids,
+  // so they won't match and won't be protonated - matching AceDRG behavior.
   if (!ca_atom.empty()) {
     bool has_carboxylic_acid = false;
     for (const auto& bond : cc.rt.bonds) {
@@ -651,8 +653,15 @@ void adjust_amino_ter_amine(ChemComp& cc) {
           has_amide_n = true;
       }
 
-      if (has_carbonyl && has_amide_n) {
-        // Pattern matched! Protonate NH2 -> NH3+
+      // This pattern was designed to match amides (carbonyl + amide nitrogen), but
+      // it incorrectly protonates peptide-linking compounds like AEA that have amide
+      // groups (C=O-NH2) instead of carboxylic acids. AceDRG does not protonate such
+      // compounds, so this pattern is disabled. The CARBOXY-AMINO-TERS pattern
+      // (carboxylic acid requirement) in adjust_terminal_amine() is sufficient.
+      (void)has_carbonyl;
+      (void)has_amide_n;
+      if (false) {
+        // Disabled: Pattern matched! Protonate NH2 -> NH3+
         n1.charge = 1.0f;
         // Generate unique H name - acedrg uses sequential H3, H4, etc. for global
         // hydrogen naming, or HXX3 for nitrogen XX with HXX1/HXX2 hydrogens.
@@ -769,8 +778,10 @@ void adjust_terminal_amine(ChemComp& cc) {
       continue;
 
     // Check for alpha-amino acid pattern: N-C-COOH (CARBOXY-AMINO-TERS)
-    // The alpha carbon must be bonded to a carboxylic acid carbon (C with two O atoms)
+    // The alpha carbon must be bonded to a carboxylic acid carbon (C with two O atoms).
     // This excludes ketones (C with only one O) like in A5R/ABK.
+    // Note: peptide-linking compounds like AEA have amides (C=O-NH2) not carboxylic acids,
+    // so they won't match and won't be protonated - matching AceDRG behavior.
     bool has_carboxylic_acid = false;
     for (const std::string& c_neighbor : neighbors[alpha_carbon_id]) {
       auto it = atom_index.find(c_neighbor);
@@ -792,7 +803,7 @@ void adjust_terminal_amine(ChemComp& cc) {
             has_double_o = true;
         }
       }
-      // Carboxylic acid pattern: C with 2 oxygen neighbors, one double-bonded
+      // Carboxylic acid pattern: C with 2+ oxygen neighbors, one double-bonded
       if (o_count >= 2 && has_double_o) {
         has_carboxylic_acid = true;
         break;
