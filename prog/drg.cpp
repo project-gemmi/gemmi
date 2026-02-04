@@ -68,7 +68,10 @@ void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
 
 void adjust_terminal_carboxylate(ChemComp& cc) {
   // Check for standard amino acid C-terminus: OXT-C(=O)-...
-  // Don't apply to other groups (e.g., boronic acid B(OH)3)
+  // Only apply to amino acids (compounds with N atom), not simple carboxylic
+  // acids like acetic acid (ACY) which have OXT/HXT naming but no amino group.
+  if (cc.find_atom("N") == cc.atoms.end())
+    return;
   auto oxt_it = cc.find_atom("OXT");
   auto hxt_it = cc.find_atom("HXT");
   if (oxt_it == cc.atoms.end() || hxt_it == cc.atoms.end())
@@ -312,9 +315,11 @@ void adjust_phosphate_group(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
-// Deprotonate carboxylic acid groups (-COOH -> -COO-)
-// Carboxylic acids have pKa ~4-5, so they're deprotonated at neutral pH.
-void adjust_carboxylic_acid(ChemComp& cc) {
+// Deprotonate CARBOXY-ASP pattern: O=C(O)C(*)
+// AceDRG matches this pattern and deprotonates any O in the match with exactly 1 H.
+// This is broader than just carboxylic acids - it includes alpha-hydroxy groups.
+// Note: This replicates AceDRG behavior which may be chemically questionable.
+void adjust_carboxy_asp(ChemComp& cc) {
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
@@ -333,46 +338,103 @@ void adjust_carboxylic_acid(ChemComp& cc) {
     return BondType::Unspec;
   };
 
-  std::vector<std::string> carboxyl_h;
-  for (auto& atom : cc.atoms) {
-    if (atom.el != El::O)
+  // Find all atoms matching O=C(O)C(*) pattern
+  // Pattern: carbonyl_O = carbonyl_C - carboxyl_O
+  //                              \- alpha_C - substituent
+  std::set<std::string> matched_atoms;
+  for (const auto& atom : cc.atoms) {
+    if (atom.el != El::C)
       continue;
-    const auto& nb = neighbors[atom.id];
-    std::string h_id;
-    std::string c_id;
-    for (const std::string& nid : nb) {
+    // Check if this C has a double-bonded O (carbonyl)
+    std::string carbonyl_o;
+    std::vector<std::string> single_o;
+    std::vector<std::string> alpha_c;
+    for (const std::string& nid : neighbors[atom.id]) {
       auto it = atom_index.find(nid);
       if (it == atom_index.end())
         continue;
       Element el = cc.atoms[it->second].el;
-      if (el == El::H)
-        h_id = nid;
-      else if (el == El::C)
-        c_id = nid;
+      if (el == El::O) {
+        if (get_bond_type(atom.id, nid) == BondType::Double)
+          carbonyl_o = nid;
+        else
+          single_o.push_back(nid);
+      } else if (el == El::C) {
+        alpha_c.push_back(nid);
+      }
     }
-    // Must have both H and C neighbors
-    if (h_id.empty() || c_id.empty())
+    // Must have carbonyl O, at least one single-bonded O, and at least one alpha C
+    if (carbonyl_o.empty() || single_o.empty() || alpha_c.empty())
       continue;
-    // The carbon must have another oxygen neighbor with double bond (carbonyl)
-    bool has_carbonyl = false;
-    for (const std::string& c_nb : neighbors[c_id]) {
-      if (c_nb == atom.id)
+    // Check that alpha C has at least one non-H substituent (the * in pattern)
+    for (const std::string& ac : alpha_c) {
+      bool has_substituent = false;
+      for (const std::string& ac_nb : neighbors[ac]) {
+        if (ac_nb == atom.id)
+          continue;
+        auto it = atom_index.find(ac_nb);
+        if (it != atom_index.end() && cc.atoms[it->second].el != El::H) {
+          has_substituent = true;
+          break;
+        }
+      }
+      if (!has_substituent)
         continue;
-      auto it = atom_index.find(c_nb);
-      if (it == atom_index.end())
-        continue;
-      if (cc.atoms[it->second].el == El::O &&
-          get_bond_type(c_id, c_nb) == BondType::Double)
-        has_carbonyl = true;
+      // Check if alpha C has a non-aromatic C=C double bond (conjugated acid)
+      // AceDRG doesn't deprotonate conjugated carboxylic acids like A4K
+      bool is_conjugated = false;
+      for (const auto& bond : cc.rt.bonds) {
+        std::string other;
+        if (bond.id1.atom == ac)
+          other = bond.id2.atom;
+        else if (bond.id2.atom == ac)
+          other = bond.id1.atom;
+        else
+          continue;
+        if (bond.type == BondType::Double && !bond.aromatic) {
+          auto it = atom_index.find(other);
+          if (it != atom_index.end() && cc.atoms[it->second].el == El::C) {
+            is_conjugated = true;
+            break;
+          }
+        }
+      }
+      // This matches O=C(O)C(*) - collect all atoms in match
+      // AceDRG deprotonates any O with 1 H neighbor in the match, which includes:
+      // - The carboxylic/ester O on the carbonyl carbon (single_o) - unless conjugated
+      // - Any alpha-hydroxy O on the alpha carbon
+      if (!is_conjugated) {
+        for (const auto& so : single_o)
+          matched_atoms.insert(so);
+      }
+      for (const std::string& ac_nb : neighbors[ac]) {
+        if (ac_nb != atom.id)
+          matched_atoms.insert(ac_nb);
+      }
     }
-    if (!has_carbonyl)
-      continue;
-    // This is a carboxylic acid OH - deprotonate it
-    atom.charge = -1.0f;
-    carboxyl_h.push_back(h_id);
   }
-  for (const std::string& atom_id : carboxyl_h)
-    remove_atom_by_id(cc, atom_id);
+
+  // Deprotonate any O in matched_atoms that has exactly 1 H neighbor
+  std::vector<std::string> h_to_remove;
+  for (auto& atom : cc.atoms) {
+    if (atom.el != El::O || matched_atoms.find(atom.id) == matched_atoms.end())
+      continue;
+    std::string h_neighbor;
+    int h_count = 0;
+    for (const std::string& nid : neighbors[atom.id]) {
+      auto it = atom_index.find(nid);
+      if (it != atom_index.end() && cc.atoms[it->second].el == El::H) {
+        h_neighbor = nid;
+        ++h_count;
+      }
+    }
+    if (h_count == 1) {
+      atom.charge = -1.0f;
+      h_to_remove.push_back(h_neighbor);
+    }
+  }
+  for (const std::string& h_id : h_to_remove)
+    remove_atom_by_id(cc, h_id);
 }
 
 // Protonate guanidinium groups to neutral pH form (+NH2 instead of =NH)
@@ -1738,7 +1800,11 @@ int GEMMI_MAIN(int argc, char **argv) {
         ChemComp cc = make_chemcomp_from_block(block);
         add_angles_from_bonds_if_missing(cc);
         adjust_phosphate_group(cc);
-        adjust_carboxylic_acid(cc);
+        adjust_carboxy_asp(cc);
+        // Note: adjust_carboxylic_acid() is NOT called here because acedrg
+        // doesn't deprotonate generic carboxylic acids. Only terminal carboxylates
+        // (OXT/HXT) via adjust_terminal_carboxylate() and alpha-hydroxy groups
+        // via adjust_carboxy_asp() are deprotonated.
         adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
         adjust_terminal_amine(cc);
