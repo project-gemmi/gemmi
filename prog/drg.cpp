@@ -248,6 +248,70 @@ void sync_n_terminal_h3_angles(ChemComp& cc) {
   copy_angle("H2", "H3", "H", "H2");
 }
 
+// Deprotonate phosphate oxygens based on AceDRG's SMARTS matching logic.
+// AceDRG only deprotonates PO4/PO3R/PO3N patterns where P has 4 oxygen neighbors.
+// Phosphinates/phosphonates (P with P-H bond) don't match and keep their O-H.
+void adjust_phosphate_group(ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+
+  // First pass: identify P atoms matching PO4/PO3R/PO3N patterns
+  // These have 4 neighbors with at least 3 being oxygen (the 4th can be O, N, C, etc.)
+  // Excludes phosphinates with P-H (like A1P)
+  std::set<std::string> po4_phosphorus;
+  for (const auto& atom : cc.atoms) {
+    if (atom.el != El::P)
+      continue;
+    const auto& nb = neighbors[atom.id];
+    int o_count = 0;
+    bool has_h = false;
+    for (const std::string& nid : nb) {
+      auto it = atom_index.find(nid);
+      if (it != atom_index.end()) {
+        if (cc.atoms[it->second].el == El::O)
+          ++o_count;
+        else if (cc.atoms[it->second].el == El::H)
+          has_h = true;
+      }
+    }
+    // Match if 4 neighbors, at least 3 are O, and no P-H bond
+    if (nb.size() == 4 && o_count >= 3 && !has_h)
+      po4_phosphorus.insert(atom.id);
+  }
+
+  // Second pass: deprotonate O atoms bonded to PO4 phosphorus, remove their H
+  std::vector<std::string> h_to_remove;
+  for (auto& atom : cc.atoms) {
+    if (atom.el != El::O)
+      continue;
+    const auto& nb = neighbors[atom.id];
+    bool bonded_to_po4 = false;
+    std::string h_neighbor;
+    for (const std::string& nid : nb) {
+      if (po4_phosphorus.count(nid))
+        bonded_to_po4 = true;
+      auto it = atom_index.find(nid);
+      if (it != atom_index.end() && cc.atoms[it->second].el == El::H)
+        h_neighbor = nid;
+    }
+    if (bonded_to_po4 && !h_neighbor.empty()) {
+      atom.charge = -1.0f;
+      h_to_remove.push_back(h_neighbor);
+    }
+  }
+
+  // Remove the H atoms
+  for (const std::string& h_id : h_to_remove)
+    remove_atom_by_id(cc, h_id);
+}
+
 // Deprotonate carboxylic acid groups (-COOH -> -COO-)
 // Carboxylic acids have pKa ~4-5, so they're deprotonated at neutral pH.
 void adjust_carboxylic_acid(ChemComp& cc) {
@@ -1673,7 +1737,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
         ChemComp cc = make_chemcomp_from_block(block);
         add_angles_from_bonds_if_missing(cc);
-        // Note: AceDRG does not deprotonate phosphate groups, so we don't either
+        adjust_phosphate_group(cc);
         adjust_carboxylic_acid(cc);
         adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
