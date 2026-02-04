@@ -1812,7 +1812,7 @@ void add_planes_if_missing(ChemComp& cc, const AcedrgTables& tables) {
 }
 
 enum OptionIndex {
-  Tables=4, Sigma, Timing, CifStyle, OutputDir, TypeOut
+  Tables=4, Sigma, Timing, CifStyle, OutputDir
 };
 
 const option::Descriptor Usage[] = {
@@ -1838,8 +1838,6 @@ const option::Descriptor Usage[] = {
     "  --timing  \tPrint timing information." },
   { CifStyle, 0, "", "style", Arg::CifStyle,
     "  --style=STYLE  \tOutput style: default, pdbx, aligned." },
-  { TypeOut, 0, "", "typeOut", Arg::None,
-    "  --typeOut  \tWrite _chem_comp_atom.atom_type column." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -1964,34 +1962,33 @@ int GEMMI_MAIN(int argc, char **argv) {
         // doesn't deprotonate generic carboxylic acids. Only terminal carboxylates
         // (OXT/HXT) via adjust_terminal_carboxylate() and alpha-hydroxy groups
         // via adjust_carboxy_asp() are deprotonated.
-        // Guanidinium groups (pKa ~12.5) are protonated at neutral pH.
-        adjust_guanidinium_group(cc);
+        // Note: guanidinium protonation is disabled. Most CCD entries for
+        // amino acids (like ARG) are already in the protonated form, and
+        // acedrg doesn't add hydrogens to guanidinium groups in other compounds.
+        // adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
         adjust_terminal_amine(cc);
 
-        // Convert to zwitterionic form (add H3, deprotonate carboxyl) BEFORE
-        // classification and fill_restraints. Acedrg tables are built using
-        // the zwitterionic form where N has 4 neighbors (CA, H, H2, H3).
+        // Convert to zwitterionic form (add H3) BEFORE classification and
+        // fill_restraints. Acedrg tables are built using the zwitterionic form
+        // where N has 4 neighbors (CA, H, H2, H3).
+        // Note: acedrg does NOT deprotonate the terminal carboxylate (OXT/HXT)
+        // in its output, so we don't call adjust_terminal_carboxylate() here.
         bool added_h3 = add_n_terminal_h3(cc);
-        adjust_terminal_carboxylate(cc);
 
         // Count missing values before
         int missing_bonds = count_missing_values(cc.rt.bonds);
         int missing_angles = count_missing_values(cc.rt.angles);
 
         bool need_fill = (missing_bonds > 0 || missing_angles > 0);
-        bool need_typeout = p.options[TypeOut];
 
-        if (!need_fill && !need_typeout) {
+        if (!need_fill) {
           if (verbose)
             std::fprintf(stderr, "  No missing values.\n");
-          continue;
         }
 
-        // Compute acedrg_types if requested (on zwitterionic form with H3)
-        std::vector<std::string> acedrg_types;
-        if (p.options[TypeOut])
-          acedrg_types = tables.compute_acedrg_types(cc);
+        // Compute acedrg_types on zwitterionic form with H3.
+        std::vector<std::string> acedrg_types = tables.compute_acedrg_types(cc);
 
         // Fill restraints if needed
         std::vector<AtomDebugInfo> atom_debug;

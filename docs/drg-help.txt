@@ -18,4 +18,3 @@ Options:
   --sigma=NUM           Maximum sigma for bond restraints (default: 0.02).
   --timing              Print timing information.
   --style=STYLE         Output style: default, pdbx, aligned.
-  --typeOut             Write _chem_comp_atom.atom_type column.

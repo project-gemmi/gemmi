@@ -1477,6 +1477,8 @@ void AcedrgTables::set_special_3nb_symb2(
       if (atoms[nb2].ring_rep.empty())
         continue;
       for (int nb3 : neighbors[nb2]) {
+        if (atoms[nb3].is_metal)
+          continue;
         if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb3) == ser_num_nb123.end() &&
             nb3 != atom.index) {
           std::string prop = atoms[nb3].el.name();
@@ -1695,7 +1697,9 @@ void AcedrgTables::set_atoms_bonding_and_chiral_center(
       if (t_len == 4 || t_len == 3) {
         atom.bonding_idx = 3;
       } else if (t_len == 2) {
-        if (atom.charge == 1.0f)
+        // Aromatic nitrogens (e.g., in pyridine coordinated to metals) stay sp2
+        // even with formal charge +1 from complex charge distribution
+        if (atom.charge == 1.0f && !cod_class_is_aromatic(atom.cod_class))
           atom.bonding_idx = 1;
         else
           atom.bonding_idx = 2;
@@ -2354,9 +2358,11 @@ void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
 
     bool has_par_charge = std::fabs(atom.par_charge) > 1e-6f;
     bool has_formal_charge = atom.formal_charge != 0;
+    bool has_negative_charge = atom.formal_charge < 0;
 
     if (atom.bonding_idx == 2) {
-      if (has_par_charge) {
+      // par_charge check - but only negative charges trigger OP/OS/OB/OC types
+      if (has_par_charge && atom.par_charge < 0) {
         if (lP) {
           atom.ccp4_type = "OP";
         } else if (lS) {
@@ -2375,7 +2381,9 @@ void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
           atom.ccp4_type = "O";
         }
       } else {
-        if (has_formal_charge) {
+        // Only negative charges trigger OP/OS/OB/OC types
+        // Positive charges (like C≡O+ ligands) stay as "O"
+        if (has_negative_charge) {
           if (lP) {
             atom.ccp4_type = "OP";
           } else if (lS) {
@@ -2406,9 +2414,20 @@ void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
         } else {
           atom.ccp4_type = "O2";
         }
+      } else if (nconn == 1 && has_negative_charge) {
+        // Metal-bonded oxygen with negative formal charge from valence calculation
+        if (lP) {
+          atom.ccp4_type = "OP";
+        } else if (lS) {
+          atom.ccp4_type = "OS";
+        } else if (lB) {
+          atom.ccp4_type = "OB";
+        } else {
+          atom.ccp4_type = "OC";
+        }
       }
     } else if (nconn == 1) {
-      if (has_formal_charge) {
+      if (has_negative_charge) {
         if (lP) {
           atom.ccp4_type = "OP";
         } else if (lS) {
@@ -2490,6 +2509,51 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     info.par_charge = cc.atoms[i].charge;
     info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
     atoms.emplace_back(std::move(info));
+  }
+
+  // Valence-based charge calculation for atoms bonded to metals.
+  // Acedrg computes ligand charges via valence bookkeeping: for non-metal atoms,
+  // sum only non-metal bond orders, then set charge = -(expectedValence - sumBo).
+  // This ensures metal-bonded oxygens (like O bonded to both C and Hg) get
+  // formal_charge=-1 and thus type "OC".
+  // Note: atoms bonded ONLY to metals (no non-metal neighbors except H) are excluded
+  // from this adjustment - their type stays "O" even with formal charge.
+  for (size_t i = 0; i < atoms.size(); ++i) {
+    const Ccp4AtomInfo& info = atoms[i];
+    // Skip metals, hydrogens, and atoms already charged
+    if (info.el.is_metal() || info.el == El::H || info.formal_charge != 0)
+      continue;
+    // Check if this atom has any metal neighbors
+    bool has_metal_neighbor = info.conn_atoms.size() > info.conn_atoms_no_metal.size();
+    if (!has_metal_neighbor)
+      continue;
+    // Skip if bonded only to metals (and possibly H) - no non-metal heavy atom neighbors
+    bool has_non_metal_heavy_neighbor = false;
+    for (int nb : info.conn_atoms_no_metal) {
+      if (!cc.atoms[nb].is_hydrogen()) {
+        has_non_metal_heavy_neighbor = true;
+        break;
+      }
+    }
+    if (!has_non_metal_heavy_neighbor)
+      continue;
+    // Get expected valence for common elements
+    int expected_valence = 0;
+    if (info.el == El::O) expected_valence = 2;
+    else if (info.el == El::N) expected_valence = 3;
+    else if (info.el == El::S) expected_valence = 2;
+    else if (info.el == El::C) expected_valence = 4;
+    else continue;  // Skip elements we don't have valence info for
+    // Sum bond orders to non-metal neighbors only
+    float sum_bo = 0.0f;
+    for (const BondInfo& bi : adjacency[i]) {
+      if (!cc.atoms[bi.neighbor_idx].el.is_metal())
+        sum_bo += order_of_bond_type(bi.type);
+    }
+    // Calculate remaining valence and set formal charge
+    int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
+    if (rem_v != 0)
+      atoms[i].formal_charge = -rem_v;
   }
 
   for (size_t i = 0; i < atoms.size(); ++i)
