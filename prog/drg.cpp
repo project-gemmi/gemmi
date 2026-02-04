@@ -594,14 +594,24 @@ void adjust_guanidinium_group(ChemComp& cc) {
       if (!has_double)
         continue;
 
-      // Count hydrogens on this nitrogen
+      // Count hydrogens and check for non-H substituents on this nitrogen
       const auto& n_nb = neighbors[n_id];
       std::vector<std::string> h_neighbors;
-      for (const std::string& hid : n_nb) {
-        auto it = atom_index.find(hid);
-        if (it != atom_index.end() && cc.atoms[it->second].el == El::H)
-          h_neighbors.push_back(hid);
+      bool has_substituent = false;
+      for (const std::string& nid : n_nb) {
+        auto it = atom_index.find(nid);
+        if (it == atom_index.end())
+          continue;
+        if (cc.atoms[it->second].el == El::H)
+          h_neighbors.push_back(nid);
+        else if (nid != atom.id)  // Non-H neighbor that's not the guanidinium C
+          has_substituent = true;
       }
+
+      // Only protonate terminal =NH (no substituents besides guanidinium C)
+      // Substituted guanidiniums like N-allyl-arginine keep =N-R form
+      if (has_substituent)
+        continue;
 
       // If only 1 hydrogen, add another (protonate =NH to +NH2)
       if (h_neighbors.size() == 1) {
@@ -1954,10 +1964,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         // doesn't deprotonate generic carboxylic acids. Only terminal carboxylates
         // (OXT/HXT) via adjust_terminal_carboxylate() and alpha-hydroxy groups
         // via adjust_carboxy_asp() are deprotonated.
-        // Note: adjust_guanidinium_group() is NOT called because acedrg keeps
-        // guanidinium groups in the neutral tautomeric form (=NH) rather than
-        // the charged form (+NH2), even though guanidinium has pKa ~12.5.
-        // adjust_guanidinium_group(cc);
+        // Guanidinium groups (pKa ~12.5) are protonated at neutral pH.
+        adjust_guanidinium_group(cc);
         adjust_amino_ter_amine(cc);
         adjust_terminal_amine(cc);
 
