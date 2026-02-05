@@ -1,5 +1,10 @@
 #!/bin/bash -eu
 
+# Set ACEDRG_TABLES if not set and CCP4 is not set but local tables exist
+if [[ -z "${ACEDRG_TABLES:-}" && -z "${CCP4:-}" && -d "./acedrg/tables" ]]; then
+  export ACEDRG_TABLES="./acedrg/tables"
+fi
+
 # Usage:
 #   ./try.sh ARG ATP        # process orig/ARG.cif, orig/ATP.cif
 #   ./try.sh orig/a/*.cif   # process all files in orig/a/
