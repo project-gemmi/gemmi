@@ -1,3 +1,13 @@
+//! @file
+//! @brief Convert MTZ reflection files to SF-mmCIF format.
+//!
+//! A class for converting MTZ (merged or unmerged) to SF-mmCIF
+
+// TODO:
+//  - cell parameters may be different in CELL and DCELL records, check for it
+//  - check that the FP column is not from Refmac
+//  - should we allow for repeated column names in MTZ?
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // A class for converting MTZ (merged or unmerged) to SF-mmCIF

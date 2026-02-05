@@ -30,6 +30,11 @@ namespace cif {
 using std::size_t;
 namespace pegtl = tao::pegtl;
 
+//! @file
+//! @brief CIF parser implementation using PEGTL.
+//!
+//! Implements CIF 1.1 grammar rules and provides functions to parse
+//! CIF files from various sources into Document objects.
 
 // **** grammar rules, named similarly as in the CIF 1.1 spec ****
 namespace rules {
@@ -302,21 +307,47 @@ size_t parse_one_block(Document& d, Input&& in) {
   tao::pegtl::file_input<> in(path)
 #endif
 
+//! @brief Parse CIF file from filesystem.
+//! @param filename Path to CIF file
+//! @param check_level Validation level (0=none, 1=basic, 2=strict)
+//! @return Parsed Document
+//! @throws pegtl::parse_error on syntax errors
 inline Document read_file(const std::string& filename, int check_level=1) {
   GEMMI_CIF_FILE_INPUT(in, filename);
   return read_input(in, check_level);
 }
 
+//! @brief Parse CIF from memory buffer.
+//! @param data Pointer to CIF text data
+//! @param size Size of data in bytes
+//! @param name Name/description for error messages
+//! @param check_level Validation level (0=none, 1=basic, 2=strict)
+//! @return Parsed Document
+//! @throws pegtl::parse_error on syntax errors
 inline Document read_memory(const char* data, size_t size, const char* name, int check_level=1) {
   pegtl::memory_input<> in(data, size, name);
   return read_input(in, check_level);
 }
 
+//! @brief Parse CIF from C FILE stream.
+//! @param f Open FILE pointer
+//! @param bufsize Buffer size for reading
+//! @param name Name/description for error messages
+//! @param check_level Validation level (0=none, 1=basic, 2=strict)
+//! @return Parsed Document
+//! @throws pegtl::parse_error on syntax errors
 inline Document read_cstream(std::FILE *f, size_t bufsize, const char* name, int check_level=1) {
   pegtl::cstream_input<> in(f, bufsize, name);
   return read_input(in, check_level);
 }
 
+//! @brief Parse CIF from C++ input stream.
+//! @param is Input stream to read from
+//! @param bufsize Buffer size for reading
+//! @param name Name/description for error messages
+//! @param check_level Validation level (0=none, 1=basic, 2=strict)
+//! @return Parsed Document
+//! @throws pegtl::parse_error on syntax errors
 inline Document read_istream(std::istream &is, size_t bufsize, const char* name,
                              int check_level=1) {
   pegtl::istream_input<> in(is, bufsize, name);

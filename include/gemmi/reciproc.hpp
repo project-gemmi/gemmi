@@ -1,3 +1,8 @@
+//! @file
+//! @brief Reciprocal space utilities for reflection iteration.
+//!
+//! Reciprocal space helper functions.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // Reciprocal space helper functions.
@@ -10,7 +15,16 @@
 
 namespace gemmi {
 
-// dmin should include a tiny margin for numerical errors
+//! @brief Iterate over all reflections in resolution range.
+//! @tparam Func Callable taking Miller index
+//! @param func Function to call for each reflection
+//! @param cell Unit cell
+//! @param spacegroup Space group (or nullptr for P1)
+//! @param dmin Minimum d-spacing (include tiny margin for numerical errors)
+//! @param dmax Maximum d-spacing (0=no limit)
+//! @param unique If true, only unique reflections in ASU
+//!
+//! dmin should include a tiny margin for numerical errors
 template<typename Func>
 void for_all_reflections(Func func,
                          const UnitCell& cell, const SpaceGroup* spacegroup,
@@ -34,7 +48,15 @@ void for_all_reflections(Func func,
         }
 }
 
-// dmin should include a tiny margin for numerical errors
+//! @brief Count reflections in resolution range.
+//! @param cell Unit cell
+//! @param spacegroup Space group (or nullptr for P1)
+//! @param dmin Minimum d-spacing (include tiny margin for numerical errors)
+//! @param dmax Maximum d-spacing (0=no limit)
+//! @param unique If true, count only unique reflections
+//! @return Number of reflections
+//!
+//! dmin should include a tiny margin for numerical errors
 inline int count_reflections(const UnitCell& cell, const SpaceGroup* spacegroup,
                              double dmin, double dmax=0., bool unique=true) {
   int counter = 0;
@@ -43,6 +65,13 @@ inline int count_reflections(const UnitCell& cell, const SpaceGroup* spacegroup,
   return counter;
 }
 
+//! @brief Generate vector of all Miller indices in resolution range.
+//! @param cell Unit cell
+//! @param spacegroup Space group (or nullptr for P1)
+//! @param dmin Minimum d-spacing
+//! @param dmax Maximum d-spacing (0=no limit)
+//! @param unique If true, only unique reflections
+//! @return Vector of Miller indices
 inline std::vector<Miller>
 make_miller_vector(const UnitCell& cell, const SpaceGroup* spacegroup,
                    double dmin, double dmax=0., bool unique=true) {

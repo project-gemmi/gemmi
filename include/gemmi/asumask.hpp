@@ -1,3 +1,8 @@
+//! @file
+//! @brief ASU brick and masked grid for asymmetric unit masks.
+//!
+//! AsuBrick and MaskedGrid that is used primarily as direct-space asu mask.
+
 // Copyright 2022 Global Phasing Ltd.
 //
 // AsuBrick and MaskedGrid that is used primarily as direct-space asu mask.
@@ -12,16 +17,24 @@
 
 namespace gemmi {
 
+//! @brief ASU brick defining direct-space asymmetric unit bounds.
+//!
+//! The brick is 0<=x<=size[0]/24, 0<=y<=size[1]/24, 0<=z<=size[2]/24
 struct AsuBrick {
-  // The brick is 0<=x<=size[0]/24, 0<=y<=size[1]/24, 0<=z<=size[2]/24
-  static constexpr int denom = 24;
-  std::array<int, 3> size;
-  std::array<bool, 3> incl;
-  int volume;
+  static constexpr int denom = 24;  //!< Denominator for fractional bounds
+  std::array<int, 3> size;  //!< Size numerators in units of 1/24
+  std::array<bool, 3> incl;  //!< Inclusive upper bound flags
+  int volume;  //!< Volume in units of (1/24)^3
 
+  //! @brief Constructor.
+  //! @param a Size in x direction (numerator of 1/24)
+  //! @param b Size in y direction (numerator of 1/24)
+  //! @param c Size in z direction (numerator of 1/24)
   AsuBrick(int a, int b, int c)
     : size({a,b,c}), incl({a < denom, b < denom, c < denom}), volume(a*b*c) {}
 
+  //! @brief Get string representation of brick bounds.
+  //! @return String like "0<=x<=1/2; 0<=y<1/3; 0<=z<=1/4"
   std::string str() const {
     std::string s;
     for (int i = 0; i < 3; ++i) {
@@ -35,6 +48,8 @@ struct AsuBrick {
     return s;
   }
 
+  //! @brief Get upper limit as fractional coordinates.
+  //! @return Upper limit of brick with small epsilon adjustment
   Fractional get_upper_limit() const {
     double inv_denom = 1.0 / denom;
     return Fractional(inv_denom * size[0] + (incl[0] ? 1e-9 : -1e-9),
@@ -42,7 +57,10 @@ struct AsuBrick {
                       inv_denom * size[2] + (incl[2] ? 1e-9 : -1e-9));
   }
 
-  // cf. Ccp4Base::get_extent()
+  //! @brief Get brick extent as fractional box.
+  //! @return Box with minimum at origin and maximum at upper limit
+  //!
+  //! cf. Ccp4Base::get_extent()
   Box<Fractional> get_extent() const {
     Box<Fractional> box;
     box.minimum = Fractional(-1e-9, -1e-9, -1e-9);
@@ -50,6 +68,10 @@ struct AsuBrick {
     return box;
   }
 
+  //! @brief Get grid indices at upper limit.
+  //! @param meta Grid metadata
+  //! @return Array of [u_end, v_end, w_end] grid indices
+  //! @throws Error if grid axis order is not XYZ
   std::array<int,3> uvw_end(const GridMeta& meta) const {
     if (meta.axis_order != AxisOrder::XYZ)
       fail("grid is not fully setup");
@@ -60,8 +82,13 @@ struct AsuBrick {
   }
 };
 
-// Returns asu brick upper bound. Lower bound is always (0,0,0).
-// Brute force method that considers 8^3 sizes.
+//! @brief Find ASU brick for a space group.
+//! @param sg Space group pointer
+//! @return ASU brick with optimal bounds (lower bound always (0,0,0))
+//! @throws Error if sg is nullptr
+//!
+//! Returns asu brick upper bound. Lower bound is always (0,0,0).
+//! Brute force method that considers 8^3 sizes.
 inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
   if (sg == nullptr)
     fail("Missing space group");
@@ -213,29 +240,43 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
 }
 
 
+//! @brief Grid with mask for iterating over ASU points.
+//! @tparam T Grid data type
+//! @tparam V Mask value type (default: int8_t)
 template<typename T, typename V=std::int8_t> struct MaskedGrid {
-  std::vector<V> mask;
-  Grid<T>* grid;
+  std::vector<V> mask;  //!< Mask values (0=in ASU, 1=symmetry mate, 2=unset)
+  Grid<T>* grid;  //!< Pointer to the grid
 
+  //! @brief Iterator over ASU points (mask value == 0).
   struct iterator {
-    typename GridBase<T>::iterator grid_iterator;
-    const std::vector<V>& mask_ref;
+    typename GridBase<T>::iterator grid_iterator;  //!< Underlying grid iterator
+    const std::vector<V>& mask_ref;  //!< Reference to mask
+    //! @brief Constructor.
+    //! @param it Grid iterator
+    //! @param mask Mask vector
     iterator(typename GridBase<T>::iterator it, const std::vector<V>& mask)
       : grid_iterator(it), mask_ref(mask) {}
+    //! @brief Advance to next ASU point.
+    //! @return Reference to this iterator
     iterator& operator++() {
       do {
         ++grid_iterator;
       } while (grid_iterator.index != mask_ref.size() && mask_ref[grid_iterator.index] != 0);
       return *this;
     }
-    typename GridBase<T>::Point operator*() { return *grid_iterator; }
-    bool operator==(const iterator &o) const { return grid_iterator == o.grid_iterator; }
-    bool operator!=(const iterator &o) const { return grid_iterator != o.grid_iterator; }
+    typename GridBase<T>::Point operator*() { return *grid_iterator; }  //!< Dereference.
+    bool operator==(const iterator &o) const { return grid_iterator == o.grid_iterator; }  //!< Equality.
+    bool operator!=(const iterator &o) const { return grid_iterator != o.grid_iterator; }  //!< Inequality.
   };
-  iterator begin() { return {grid->begin(), mask}; }
-  iterator end() { return {grid->end(), mask}; }
+  iterator begin() { return {grid->begin(), mask}; }  //!< Begin iterator.
+  iterator end() { return {grid->end(), mask}; }  //!< End iterator.
 };
 
+//! @brief Create ASU mask for a grid.
+//! @tparam V Mask value type (default: int8_t)
+//! @param grid Grid metadata
+//! @return Mask vector (0=in ASU, 1=symmetry mate)
+//! @throws Error if grid is not fully set up or on internal error
 template<typename V=std::int8_t>
 std::vector<V> get_asu_mask(const GridMeta& grid) {
   std::vector<V> mask(grid.point_count(), 2);
@@ -261,16 +302,22 @@ std::vector<V> get_asu_mask(const GridMeta& grid) {
   return mask;
 }
 
+//! @brief Create masked grid for ASU iteration.
+//! @tparam T Grid data type
+//! @param grid Grid to mask
+//! @return MaskedGrid wrapper for iterating over ASU points
 template<typename T>
 MaskedGrid<T> masked_asu(Grid<T>& grid) {
   return {get_asu_mask(grid), &grid};
 }
 
 
-// Calculating bounding box (brick) with the data (non-zero and non-NaN).
+//! @brief Calculating bounding box (brick) with the data (non-zero and non-NaN).
 
 namespace impl {
-// find the shortest span (possibly wrapped) that contains all true values
+//! @brief Find shortest span (possibly wrapped) containing all true values.
+//! @param vec Boolean vector
+//! @return Pair of (start, end) indices defining trimmed span
 inline std::pair<int, int> trim_false_values(const std::vector<bool>& vec) {
   const int n = (int) vec.size();
   assert(n != 0);
@@ -311,7 +358,11 @@ inline std::pair<int, int> trim_false_values(const std::vector<bool>& vec) {
 }
 }  // namespace impl
 
-// Get the smallest box with non-zero (and non-NaN) values.
+//! @brief Get smallest box containing all non-zero (and non-NaN) grid values.
+//! @tparam T Grid data type
+//! @param grid Grid to analyze
+//! @return Bounding box in fractional coordinates
+//! @throws Error if grid is empty
 template<typename T>
 Box<Fractional> get_nonzero_extent(const GridBase<T>& grid) {
   grid.check_not_empty();

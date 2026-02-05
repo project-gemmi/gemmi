@@ -1,3 +1,8 @@
+//! @file
+//! @brief Calculate electron density from molecular models.
+//!
+//! Tools to prepare a grid with values of electron density of a model.
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // Tools to prepare a grid with values of electron density of a model.
@@ -13,6 +18,13 @@
 
 namespace gemmi {
 
+//! @brief Determine radius where density falls below cutoff.
+//! @tparam N Number of Gaussian terms
+//! @tparam Real Floating-point type
+//! @param x1 Initial radius estimate
+//! @param precal Precalculated exponential sum
+//! @param cutoff_level Density threshold
+//! @return Radius where density equals cutoff_level
 template<int N, typename Real>
 Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff_level) {
   Real y1, dy;
@@ -60,37 +72,51 @@ Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff
   return x1 + (x1 - x2) / (y1 - y2) * (cutoff_level - y1);
 }
 
-// approximated radius of electron density (IT92) above cutoff=1e-5 for C
+//! @brief Approximate density radius for IT92 scattering factors.
+//! @tparam Real Floating-point type
+//! @param b B-factor value
+//! @return Approximate radius above cutoff=1e-5 (calibrated for carbon)
+//!
+//! approximated radius of electron density (IT92) above cutoff=1e-5 for C
 template <typename Real>
 Real it92_radius_approx(Real b) {
   return (8.5f + 0.075f * b) / (2.4f + 0.0045f * b);
 }
 
-// Usual usage:
-// - set d_min and optionally also other parameters,
-// - set addends to f' values for your wavelength (see fprime.hpp)
-// - use grid.setup_from() to set grid's unit cell and space group
-// - check that Table has SF coefficients for all elements that are to be used
-// - call put_model_density_on_grid()
-// - do FFT using transform_map_to_f_phi()
-// - if blur is used, multiply the SF by reciprocal_space_multiplier()
+//! @brief Calculate electron density on a grid.
+//! @tparam Table Scattering factor table type (e.g., IT92)
+//! @tparam GReal Grid data type (float or double)
+//!
+//! Usual usage:
+//! - set d_min and optionally also other parameters,
+//! - set addends to f' values for your wavelength (see fprime.hpp)
+//! - use grid.setup_from() to set grid's unit cell and space group
+//! - check that Table has SF coefficients for all elements that are to be used
+//! - call put_model_density_on_grid()
+//! - do FFT using transform_map_to_f_phi()
+//! - if blur is used, multiply the SF by reciprocal_space_multiplier()
 template <typename Table, typename GReal>
 struct DensityCalculator {
   // GReal = type of grid; CReal = type of coefficients in Table
   using CReal = typename Table::Coef::coef_type;
-  Grid<GReal> grid;
-  double d_min = 0.;
-  double rate = 1.5;
-  double blur = 0.;
-  float cutoff = 1e-5f;
+  Grid<GReal> grid;  //!< Output density grid
+  double d_min = 0.;  //!< Minimum resolution (Angstroms)
+  double rate = 1.5;  //!< Oversampling rate
+  double blur = 0.;  //!< Additional B-factor blur
+  float cutoff = 1e-5f;  //!< Density cutoff threshold
 #if GEMMI_COUNT_DC
   size_t atoms_added = 0;
   size_t density_computations = 0;
 #endif
-  Addends addends;
+  Addends addends;  //!< Anomalous scattering corrections (f')
 
+  //! @brief Get requested grid spacing.
+  //! @return Grid spacing (d_min / (2 * rate))
   double requested_grid_spacing() const { return d_min / (2 * rate); }
 
+  //! @brief Set blur to match Refmac FFT map calculations.
+  //! @param model Model to analyze
+  //! @param allow_negative Allow negative blur values
   void set_refmac_compatible_blur(const Model& model, bool allow_negative=false) {
     double spacing = requested_grid_spacing();
     if (spacing <= 0)
@@ -101,15 +127,22 @@ struct DensityCalculator {
       blur = 0.;
   }
 
-  // pre: check if Table::has(atom.element)
+  //! @brief Add single atom's density to grid.
+  //! @param atom Atom to add
+  //!
+  //! pre: check if Table::has(atom.element)
   void add_atom_density_to_grid(const Atom& atom) {
     Element el = atom.element;
     const auto& coef = Table::get(el, atom.charge, atom.serial);
     do_add_atom_density_to_grid(atom, coef, addends.get(el));
   }
 
-  // Parameter c is a constant factor and has the same meaning as either addend
-  // or c in scattering factor coefficients (a1, b1, ..., c).
+  //! @brief Add constant density contribution for atom.
+  //! @param atom Atom position
+  //! @param c Constant factor value
+  //!
+  //! Parameter c is a constant factor and has the same meaning as either addend
+  //! or c in scattering factor coefficients (a1, b1, ..., c).
   void add_c_contribution_to_grid(const Atom& atom, float c) {
     do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, CReal>{0}, c);
   }
@@ -162,6 +195,8 @@ struct DensityCalculator {
     }
   }
 
+  //! @brief Initialize grid with appropriate size and zero values.
+  //! @throws std::runtime_error if d_min not set and grid not configured
   void initialize_grid() {
     grid.data.clear();
     double spacing = requested_grid_spacing();
@@ -174,6 +209,8 @@ struct DensityCalculator {
       fail("initialize_grid(): d_min is not set");
   }
 
+  //! @brief Add all atoms from model to existing grid.
+  //! @param model Model with atoms to add
   void add_model_density_to_grid(const Model& model) {
     grid.check_not_empty();
     for (const Chain& chain : model.chains)
@@ -182,6 +219,10 @@ struct DensityCalculator {
           add_atom_density_to_grid(atom);
   }
 
+  //! @brief Calculate complete density map for model.
+  //! @param model Model to calculate density for
+  //!
+  //! Initializes grid, adds all atoms, and symmetrizes.
   void put_model_density_on_grid(const Model& model) {
     initialize_grid();
     add_model_density_to_grid(model);
@@ -193,11 +234,18 @@ struct DensityCalculator {
     grid.setup_from(st);
   }
 
-  // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).
+  //! @brief Get blur correction in reciprocal space.
+  //! @param inv_d2 Inverse d-spacing squared (1/d^2)
+  //! @return Blur multiplier exp(blur * 0.25 * 1/d^2)
+  //!
+  //! The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).
   double reciprocal_space_multiplier(double inv_d2) const {
     return std::exp(blur * 0.25 * inv_d2);
   }
 
+  //! @brief Get Mott-Bethe correction factor for reflection.
+  //! @param hkl Miller indices
+  //! @return Mott-Bethe factor with optional blur correction
   double mott_bethe_factor(const Miller& hkl) const {
     double inv_d2 = grid.unit_cell.calculate_1_d2(hkl);
     double factor = -mott_bethe_const() / inv_d2;

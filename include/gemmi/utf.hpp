@@ -1,3 +1,6 @@
+//! @file
+//! @brief UTF-8 to wchar conversion (for Windows file names).
+
 // Conversion between UTF-8 and wchar. Used only for file names on Windows.
 
 #ifndef GEMMI_UTF_HPP_
@@ -7,8 +10,13 @@
 
 namespace gemmi {
 
-// from Mark Ransom's answer
-// https://stackoverflow.com/questions/148403/utf8-to-from-wide-char-conversion-in-stl/148766#148766
+//! @brief Convert UTF-8 string to wide character string.
+//! @param in UTF-8 encoded C string
+//! @return Wide character string
+//!
+//! From Mark Ransom's answer:
+//! https://stackoverflow.com/questions/148403/utf8-to-from-wide-char-conversion-in-stl/148766#148766
+//! Handles surrogate pairs correctly for both 16-bit and 32-bit wchar_t.
 inline std::wstring UTF8_to_wchar(const char* in) {
   std::wstring out;
   unsigned int codepoint = 0;
@@ -39,6 +47,11 @@ inline std::wstring UTF8_to_wchar(const char* in) {
   return out;
 }
 
+//! @brief Convert wide character string to UTF-8.
+//! @param in Wide character C string
+//! @return UTF-8 encoded string
+//!
+//! Handles surrogate pairs correctly for both 16-bit and 32-bit wchar_t.
 inline std::string wchar_to_UTF8(const wchar_t* in) {
   std::string out;
   unsigned int codepoint = 0;

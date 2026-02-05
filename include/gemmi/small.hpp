@@ -1,3 +1,8 @@
+//! @file
+//! @brief Representation of small molecule or inorganic crystal.
+//!
+//! Flat list of atom sites with minimal functionality.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Representation of a small molecule or inorganic crystal.
@@ -19,6 +24,9 @@
 
 namespace gemmi {
 
+//! @brief Check if group operations are complete (closed under multiplication).
+//! @param gops Group operations
+//! @return True if gops is complete
 inline bool is_complete(const GroupOps& gops) {
   for (Op op1 : gops.sym_ops)
     for (Op op2 : gops.sym_ops)
@@ -27,6 +35,9 @@ inline bool is_complete(const GroupOps& gops) {
   return true;
 }
 
+//! @brief Convert symmetry operation strings to Op objects.
+//! @param symops Vector of symmetry triplets (e.g., "x,y,z")
+//! @return Vector of Op objects
 inline std::vector<Op> triplets_to_ops(const std::vector<std::string>& symops) {
   std::vector<Op> ops;
   ops.reserve(symops.size());
@@ -35,22 +46,29 @@ inline std::vector<Op> triplets_to_ops(const std::vector<std::string>& symops) {
   return ops;
 }
 
+//! @brief Small molecule or inorganic crystal structure.
 struct SmallStructure {
+  //! @brief Atom site in small structure.
   struct Site {
-    std::string label;
-    std::string type_symbol;
-    Fractional fract;
-    double occ = 1.0;
-    double u_iso = 0.;
-    SMat33<double> aniso = {0, 0, 0, 0, 0, 0};
-    int disorder_group = 0;
-    Element element = El::X;
-    signed char charge = 0;  // [-8, +8]
+    std::string label;  //!< Atom label
+    std::string type_symbol;  //!< Atom type symbol
+    Fractional fract;  //!< Fractional coordinates
+    double occ = 1.0;  //!< Occupancy
+    double u_iso = 0.;  //!< Isotropic displacement parameter
+    SMat33<double> aniso = {0, 0, 0, 0, 0, 0};  //!< Anisotropic displacement parameters
+    int disorder_group = 0;  //!< Disorder group ID
+    Element element = El::X;  //!< Element
+    signed char charge = 0;  //!< Charge [-8, +8]
 
+    //! @brief Get orthogonal coordinates.
+    //! @param cell_ Unit cell
+    //! @return Orthogonalized position
     Position orth(const gemmi::UnitCell& cell_) const {
       return cell_.orthogonalize(fract);
     }
 
+    //! @brief Get element and charge as string.
+    //! @return String like "Fe3+" or "O2-"
     std::string element_and_charge_symbol() const {
       std::string s = element.name();
       if (charge != 0) {
@@ -61,27 +79,32 @@ struct SmallStructure {
     }
   };
 
+  //! @brief Atom type with dispersion corrections.
   struct AtomType {
-    std::string symbol;
-    Element element = El::X;
-    signed char charge = 0;  // [-8, +8]
-    double dispersion_real;
-    double dispersion_imag;
+    std::string symbol;  //!< Atom type symbol
+    Element element = El::X;  //!< Element
+    signed char charge = 0;  //!< Charge [-8, +8]
+    double dispersion_real;  //!< Real part of anomalous dispersion (f')
+    double dispersion_imag;  //!< Imaginary part of anomalous dispersion (f'')
   };
 
-  std::string name;
-  UnitCell cell;
-  const SpaceGroup* spacegroup = nullptr;
-  std::string spacegroup_hm;
-  std::string spacegroup_hall;
-  int spacegroup_number = 0;
-  std::vector<std::string> symops;
-  std::vector<Site> sites;
-  std::vector<AtomType> atom_types;
-  double wavelength = 0.; // the first wavelength if multiple
+  std::string name;  //!< Structure name
+  UnitCell cell;  //!< Unit cell
+  const SpaceGroup* spacegroup = nullptr;  //!< Space group pointer
+  std::string spacegroup_hm;  //!< Hermann-Mauguin symbol
+  std::string spacegroup_hall;  //!< Hall symbol
+  int spacegroup_number = 0;  //!< Space group number
+  std::vector<std::string> symops;  //!< Symmetry operations as triplets
+  std::vector<Site> sites;  //!< Atom sites
+  std::vector<AtomType> atom_types;  //!< Atom types with dispersion
+  double wavelength = 0.;  //!< Wavelength (first if multiple)
 
+  //! @brief Get all symmetry-related sites in unit cell.
+  //! @return Vector of all sites including symmetry mates
   std::vector<Site> get_all_unit_cell_sites() const;
 
+  //! @brief Determine and set space group from available data.
+  //! @param order Order of preference (s=symops, h=hall, 1/2=H-M, n=number)
   void determine_and_set_spacegroup(const char* order) {
     spacegroup = nullptr;
     if (order)
@@ -103,6 +126,10 @@ struct SmallStructure {
     setup_cell_images();
   }
 
+  //! @brief Determine space group from specific source.
+  //! @param c Source character (s=symops, h=hall, 1/2=H-M, n=number)
+  //! @param gops Group operations (output for 's' option)
+  //! @return Space group pointer or nullptr
   const SpaceGroup* determine_spacegroup_from(char c, GroupOps& gops) const {
     switch (lower(c)) {
       case 's':
@@ -130,6 +157,8 @@ struct SmallStructure {
     }
   }
 
+  //! @brief Check consistency of space group information.
+  //! @return Error message string (empty if OK)
   std::string check_spacegroup() const {
     std::string err;
     if (!symops.empty())
@@ -176,6 +205,9 @@ struct SmallStructure {
     return err;
   }
 
+  //! @brief Find atom type by symbol.
+  //! @param symbol Atom type symbol
+  //! @return Pointer to AtomType or nullptr if not found
   const AtomType* get_atom_type(const std::string& symbol) const {
     for (const AtomType& at : atom_types)
       if (at.symbol == symbol)
@@ -183,7 +215,10 @@ struct SmallStructure {
     return nullptr;
   }
 
-  // similar to Model::present_elements() from model.hpp
+  //! @brief Get set of elements present in structure.
+  //! @return Bitset with elements present
+  //!
+  //! Similar to Model::present_elements() from model.hpp.
   std::bitset<(size_t)El::END> present_elements() const {
     std::bitset<(size_t)El::END> table;
     for (const Site& atom : sites)
@@ -191,12 +226,16 @@ struct SmallStructure {
     return table;
   }
 
+  //! @brief Remove all hydrogen atoms.
   void remove_hydrogens() {
     vector_remove_if(sites, [](const Site& a) { return a.element.is_hydrogen(); });
   }
 
-  // pre: atoms on special positions have "chemical" occupancy (i.e. not divided
-  // by n for n-fold symmetry)
+  //! @brief Convert occupancies from chemical to crystallographic.
+  //! @param max_dist Maximum distance for special position check
+  //!
+  //! Precondition: atoms on special positions have "chemical" occupancy (i.e. not divided
+  //! by n for n-fold symmetry).
   void change_occupancies_to_crystallographic(double max_dist=0.4) {
     for (Site& site : sites) {
       int n_mates = cell.is_special_position(site.fract, max_dist);
@@ -205,11 +244,16 @@ struct SmallStructure {
     }
   }
 
+  //! @brief Setup cell images from space group.
   void setup_cell_images() {
     cell.set_cell_images_from_spacegroup(spacegroup);
   }
 };
 
+//! @brief Parse element and charge from label string.
+//! @tparam T Destination type (must have element and charge fields)
+//! @param label Label string (e.g., "Fe3+", "O2-")
+//! @param dest Destination object to set element and charge
 template<typename T>
 inline void split_element_and_charge(const std::string& label, T* dest) {
   int len = label.size() > 1 && std::isalpha(label[1]) ? 2 : 1;

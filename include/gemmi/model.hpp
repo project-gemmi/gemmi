@@ -106,12 +106,20 @@ struct PdbReadOptions {
 };
 // end of PdbReadOptions for mol.rst
 
-// remove empty residues from chain, empty chains from model, etc
+//! @brief Remove empty child elements from a hierarchical object.
+//! @tparam T Type of the parent object (Model, Chain, etc.)
+//! @param obj The parent object to clean up
+//!
+//! Removes empty residues from chains, empty chains from models, etc.
 template<class T> void remove_empty_children(T& obj) {
   using Item = typename T::child_type;
   vector_remove_if(obj.children(), [](const Item& x) { return x.children().empty(); });
 }
 
+//! @brief Check if two alternate location indicators belong to the same conformer.
+//! @param altloc1 First alternate location indicator ('\0' if not set)
+//! @param altloc2 Second alternate location indicator ('\0' if not set)
+//! @return true if both altlocs are compatible (same conformer or one is unset)
 inline bool is_same_conformer(char altloc1, char altloc2) {
   return altloc1 == '\0' || altloc2 == '\0' || altloc1 == altloc2;
 }
@@ -134,21 +142,46 @@ struct Atom {
   float b_iso = 20.0f; // arbitrary default value
   SMat33<float> aniso = {0, 0, 0, 0, 0, 0};
 
+  //! @brief Get altloc or a replacement character if not set.
+  //! @param null_char Character to return if altloc is '\0'
+  //! @return The altloc character or null_char if altloc is not set
   char altloc_or(char null_char) const { return altloc ? altloc : null_char; }
+
+  //! @brief Check if this atom is in the same conformer as another atom.
+  //! @param other The other atom to compare with
+  //! @return true if both atoms are compatible conformers
   bool same_conformer(const Atom& other) const {
     return is_same_conformer(altloc, other.altloc);
   }
+
+  //! @brief Check if altloc matches a requested value.
+  //! @param request The requested altloc ('*' for any, '\0' for none)
+  //! @return true if altloc matches the request
   bool altloc_matches(char request) const {
     return request == '*' || altloc == '\0' || altloc == request;
   }
-  // group_key() is used in UniqIter and similar tools
+
+  //! @brief Get the grouping key for UniqIter and similar tools.
+  //! @return The atom name used as grouping key
   const std::string& group_key() const { return name; }
+
+  //! @brief Check if atom has an alternate location indicator.
+  //! @return true if altloc is set (not '\0')
   bool has_altloc() const { return altloc != '\0'; }
+
+  //! @brief Calculate equivalent isotropic B-factor from anisotropic ADPs.
+  //! @return B-equivalent value
   double b_eq() const { return u_to_b() / 3. * aniso.trace(); }
+
+  //! @brief Check if this atom is a hydrogen.
+  //! @return true if element is hydrogen or deuterium
   bool is_hydrogen() const { return gemmi::is_hydrogen(element); }
 
-  // Name as a string left-padded like in the PDB format:
-  // the first two characters make the element name.
+  //! @brief Get atom name padded like in PDB format.
+  //! @return Atom name left-padded so first two characters are element name
+  //!
+  //! Returns atom name formatted according to PDB conventions where
+  //! the element name occupies the first two columns.
   std::string padded_name() const {
     std::string s;
     const char* el = element.uname();
@@ -214,6 +247,9 @@ struct Residue : public ResidueId {
   std::vector<Atom>& children() { return atoms; }
   const std::vector<Atom>& children() const { return atoms; }
 
+  //! @brief Find first atom with specified element.
+  //! @param el Element to search for
+  //! @return Pointer to first matching atom or nullptr if not found
   const Atom* find_by_element(El el) const {
     for (const Atom& a : atoms)
       if (a.element == el)
@@ -221,8 +257,14 @@ struct Residue : public ResidueId {
     return nullptr;
   }
 
-  /// El::X means anything;
-  /// in strict_altloc mode, '*' = any altloc, otherwise it's \0
+  //! @brief Find atom by name, altloc, and optionally element.
+  //! @param atom_name Atom name to search for
+  //! @param altloc Alternate location indicator
+  //! @param el Element type (El::X means any element)
+  //! @param strict_altloc If true, match exact altloc; if false, '\0' matches any
+  //! @return Pointer to matching atom or nullptr if not found
+  //!
+  //! In strict_altloc mode, '*' matches any altloc, otherwise '\0' is used.
   Atom* find_atom(const std::string& atom_name, char altloc, El el=El::X,
                   bool strict_altloc=true) {
     if (!strict_altloc && altloc == '\0')
@@ -258,13 +300,30 @@ struct Residue : public ResidueId {
     return aa.front();
   }
 
-  // short-cuts to access peptide backbone atoms
+  // Short-cuts to access nucleic acid atoms
+
+  //! @brief Get CA (C-alpha) backbone atom.
+  //! @return Pointer to CA atom or nullptr if not found
   const Atom* get_ca() const { return find_atom("CA", '*', El::C); }
+
+  //! @brief Get C (carbonyl carbon) backbone atom.
+  //! @return Pointer to C atom or nullptr if not found
   const Atom* get_c() const { return find_atom("C", '*', El::C); }
+
+  //! @brief Get N (nitrogen) backbone atom.
+  //! @return Pointer to N atom or nullptr if not found
   const Atom* get_n() const { return find_atom("N", '*', El::N); }
+
+  //! @brief Get O (carbonyl oxygen) backbone atom.
+  //! @return Pointer to O atom or nullptr if not found
   const Atom* get_o() const { return find_atom("O", '*', El::O); }
-  // short-cuts to access nucleic acid atoms
+
+  //! @brief Get P (phosphorus) atom in nucleic acid backbone.
+  //! @return Pointer to P atom or nullptr if not found
   const Atom* get_p() const { return find_atom("P", '*', El::P); }
+
+  //! @brief Get O3' (3' oxygen) atom in nucleic acid backbone.
+  //! @return Pointer to O3' atom or nullptr if not found
   const Atom* get_o3prim() const { return find_atom("O3'", '*', El::O); }
 
   bool same_conformer(const Residue& other) const {
@@ -505,6 +564,10 @@ struct Chain {
     return whole().subspan(func);
   }
 
+  //! @brief Get polymer residues from this chain.
+  //! @return ResidueSpan containing consecutive polymer residues
+  //!
+  //! Returns residues with entity_type==Polymer from the same subchain.
   ResidueSpan get_polymer() {
     auto begin = residues.begin();
     while (begin != residues.end() && begin->entity_type != EntityType::Polymer)
@@ -519,6 +582,8 @@ struct Chain {
     return const_cast<Chain*>(this)->get_polymer();
   }
 
+  //! @brief Get ligand residues from this chain.
+  //! @return ResidueSpan containing non-polymer and branched entity residues
   ResidueSpan get_ligands() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::NonPolymer ||
@@ -529,6 +594,8 @@ struct Chain {
     return const_cast<Chain*>(this)->get_ligands();
   }
 
+  //! @brief Get water residues from this chain.
+  //! @return ResidueSpan containing water entity residues
   ResidueSpan get_waters() {
     return get_residue_span([](const Residue& r) {
         return r.entity_type == EntityType::Water;
@@ -538,6 +605,9 @@ struct Chain {
     return const_cast<Chain*>(this)->get_waters();
   }
 
+  //! @brief Get residues belonging to specified subchain.
+  //! @param s Subchain identifier (label_asym_id)
+  //! @return ResidueSpan containing residues from the specified subchain
   ResidueSpan get_subchain(const std::string& s) {
     return get_residue_span([&](const Residue& r) { return r.subchain == s; });
   }
@@ -727,7 +797,9 @@ struct Model {
   Model() = default;
   explicit Model(int num_) noexcept : num(num_) {}
 
-  // Returns the first chain with given name, or nullptr.
+  //! @brief Find first chain with given name.
+  //! @param chain_name Chain identifier to search for
+  //! @return Pointer to first matching chain or nullptr if not found
   Chain* find_chain(const std::string& chain_name) {
     return impl::find_or_null(chains, chain_name);
   }
@@ -735,7 +807,9 @@ struct Model {
     return const_cast<Model*>(this)->find_chain(chain_name);
   }
 
-  // Returns the last chain with given name, or nullptr.
+  //! @brief Find last chain with given name.
+  //! @param chain_name Chain identifier to search for
+  //! @return Pointer to last matching chain or nullptr if not found
   Chain* find_last_chain(const std::string& chain_name) {
     auto it = std::find_if(chains.rbegin(), chains.rend(),
                          [&](const Chain& c) { return c.name == chain_name; });
@@ -743,11 +817,18 @@ struct Model {
   }
 
 
+  //! @brief Remove all chains with specified name.
+  //! @param chain_name Chain identifier to remove
   void remove_chain(const std::string& chain_name) {
     vector_remove_if(chains,
                      [&](const Chain& c) { return c.name == chain_name; });
   }
 
+  //! @brief Merge split chains with same name into single chains.
+  //! @param min_sep Minimum separation between merged residue numbers (default: 0)
+  //!
+  //! Combines chains with identical names by appending residues and adjusting
+  //! sequence numbers if necessary to maintain minimum separation.
   void merge_chain_parts(int min_sep=0) {
     for (auto i = chains.begin(); i != chains.end(); ++i)
       for (auto j = i + 1; j != chains.end(); ++j)
@@ -919,18 +1000,26 @@ struct Structure {
   /// simplistic resolution value from/for REMARK 2
   double resolution = 0;
 
+  //! @brief Find space group based on stored Hermann-Mauguin symbol.
+  //! @return Pointer to SpaceGroup or nullptr if not found or non-crystal
   const SpaceGroup* find_spacegroup() const {
     if (!cell.is_crystal())
       return nullptr;
     return find_spacegroup_by_name(spacegroup_hm, cell.alpha, cell.gamma);
   }
 
+  //! @brief Get metadata value by mmCIF tag.
+  //! @param tag mmCIF tag (e.g., "_entry.id", "_cell.Z_PDB")
+  //! @return Reference to value string or empty string if not found
   const std::string& get_info(const std::string& tag) const {
     static const std::string empty;
     auto it = info.find(tag);
     return it != info.end() ? it->second : empty;
   }
 
+  //! @brief Get first model in structure.
+  //! @return Reference to first model
+  //! @throws Error if structure has no models
   Model& first_model() {
     if (models.empty())
       fail("no structural models");
@@ -940,21 +1029,32 @@ struct Structure {
     return const_cast<Structure*>(this)->first_model();
   }
 
+  //! @brief Find model by number.
+  //! @param model_num Model number to search for
+  //! @return Pointer to matching model or nullptr if not found
   Model* find_model(int model_num) {
     return impl::find_or_null(models, model_num);
   }
   const Model* find_model(int model_num) const {
     return const_cast<Structure*>(this)->find_model(model_num);
   }
+
+  //! @brief Find model by number or create new one if not found.
+  //! @param model_num Model number to find or create
+  //! @return Reference to found or newly created model
   Model& find_or_add_model(int model_num) {
     return impl::find_or_add(models, model_num);
   }
 
+  //! @brief Renumber models sequentially starting from 1.
   void renumber_models() {
     for (size_t i = 0; i != models.size(); ++i)
       models[i].num = i + 1;
   }
 
+  //! @brief Get entity by ID.
+  //! @param ent_id Entity identifier
+  //! @return Pointer to entity or nullptr if not found
   Entity* get_entity(const std::string& ent_id) {
     return impl::find_or_null(entities, ent_id);
   }
@@ -962,6 +1062,9 @@ struct Structure {
     return const_cast<Structure*>(this)->get_entity(ent_id);
   }
 
+  //! @brief Get entity associated with a residue span.
+  //! @param sub Residue span (subchain)
+  //! @return Pointer to entity or nullptr if not found
   Entity* get_entity_of(const ConstResidueSpan& sub) {
     return sub ? find_entity_of_subchain(sub.subchain_id(), entities) : nullptr;
   }
@@ -969,6 +1072,9 @@ struct Structure {
     return const_cast<Structure*>(this)->get_entity_of(sub);
   }
 
+  //! @brief Find assembly by ID.
+  //! @param assembly_id Assembly identifier
+  //! @return Pointer to assembly or nullptr if not found
   Assembly* find_assembly(const std::string& assembly_id) {
     return impl::find_or_null(assemblies, assembly_id);
   }

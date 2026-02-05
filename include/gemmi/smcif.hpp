@@ -1,3 +1,8 @@
+//! @file
+//! @brief Read small molecule CIF files into SmallStructure.
+//!
+//! Read small molecule CIF file into SmallStructure (from small.hpp).
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Read small molecule CIF file into SmallStructure (from small.hpp).
@@ -12,6 +17,13 @@
 
 namespace gemmi {
 
+//! @brief Read small molecule structure from CIF block.
+//! @param block_ CIF block containing small molecule structure data
+//! @return SmallStructure object populated with data from the CIF block
+//!
+//! Reads unit cell parameters, space group symmetry, atomic sites,
+//! anisotropic displacement parameters, atom types with anomalous
+//! scattering factors, and radiation wavelength from CIF data items.
 inline
 SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   using cif::as_number;
@@ -127,6 +139,12 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   return st;
 }
 
+//! @brief Write small molecule structure to CIF block.
+//! @param st SmallStructure object to convert
+//! @return CIF block containing the structure data
+//!
+//! Writes unit cell, space group, atomic sites, anisotropic displacement
+//! parameters (if present), and radiation wavelength to CIF data items.
 inline cif::Block make_cif_block_from_small_structure(const SmallStructure& st) {
   cif::Block block;
   block.name = st.name;
