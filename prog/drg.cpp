@@ -2120,6 +2120,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         // where N has 4 neighbors (CA, H, H2, H3).
         bool added_h3 = add_n_terminal_h3(cc);
 
+        // AceDRG adjusts charges for atoms bonded to metals before typing.
+        tables.apply_metal_charge_corrections(cc);
+
         // Count missing values before
         int missing_bonds = count_missing_values(cc.rt.bonds);
         int missing_angles = count_missing_values(cc.rt.angles);

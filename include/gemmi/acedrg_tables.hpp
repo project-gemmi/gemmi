@@ -205,6 +205,8 @@ public:
 
   // Assign CCP4 atom energy types (type_energy) following AceDRG rules
   void assign_ccp4_types(ChemComp& cc) const;
+  // Adjust charges for atoms bonded to metals using AceDRG valence rules
+  void apply_metal_charge_corrections(ChemComp& cc) const;
 
   bool lookup_pep_tors(const std::string& a1, const std::string& a2,
                                  const std::string& a3, const std::string& a4,

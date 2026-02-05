@@ -689,6 +689,41 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     atoms[i].metal_connectivity = metal_conn;
   }
 
+  // AceDRG adjusts charges for atoms bonded to metals via valence bookkeeping.
+  // Use non-metal bond orders to recompute charge for such atoms so that
+  // bonding_idx and aromaticity match AceDRG behavior (e.g., AIV N2).
+  for (size_t i = 0; i < atoms.size(); ++i) {
+    CodAtomInfo& atom = atoms[i];
+    if (atom.is_metal || atom.el == El::H)
+      continue;
+    bool has_metal_neighbor = atom.connectivity > static_cast<int>(atom.conn_atoms_no_metal.size());
+    if (!has_metal_neighbor)
+      continue;
+    bool has_non_metal_heavy_neighbor = false;
+    for (int nb : atom.conn_atoms_no_metal) {
+      if (atoms[nb].el != El::H) {
+        has_non_metal_heavy_neighbor = true;
+        break;
+      }
+    }
+    if (!has_non_metal_heavy_neighbor)
+      continue;
+    int expected_valence = 0;
+    if (atom.el == El::O) expected_valence = 2;
+    else if (atom.el == El::N) expected_valence = 3;
+    else if (atom.el == El::S) expected_valence = 2;
+    else if (atom.el == El::C) expected_valence = 4;
+    else if (atom.el == El::P) expected_valence = 3;
+    else continue;
+    float sum_bo = 0.0f;
+    for (const BondInfo& bi : adj[i]) {
+      if (!atoms[bi.neighbor_idx].is_metal)
+        sum_bo += order_of_bond_type(bi.type);
+    }
+    int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
+    atom.charge = static_cast<float>(-rem_v);
+  }
+
   // Bonding/planarity info is needed for AceDRG ring aromaticity rules.
   set_atoms_bonding_and_chiral_center(atoms, neighbors);
 
@@ -840,8 +875,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     int non_mc = 0;
     for (const auto& nb : adj[idx]) {
       const auto& at = atoms[nb.neighbor_idx];
-      // AceDRG treats Hg as non-metal in pi counting (see AMS).
-      if (!at.is_metal || at.el == El::Hg)
+      if (!at.is_metal)
         ++non_mc;
     }
     return non_mc;
@@ -2538,6 +2572,54 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
 
   for (size_t i = 0; i < atoms.size(); ++i)
     cc.atoms[i].chem_type = atoms[i].ccp4_type;
+}
+
+void AcedrgTables::apply_metal_charge_corrections(ChemComp& cc) const {
+  if (cc.atoms.empty())
+    return;
+
+  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
+  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    const Element& el = cc.atoms[i].el;
+    if (el.is_metal() || el == El::H)
+      continue;
+
+    int non_metal_conn = 0;
+    for (int nb : neighbors[i]) {
+      if (!cc.atoms[nb].el.is_metal())
+        ++non_metal_conn;
+    }
+    if (non_metal_conn == static_cast<int>(neighbors[i].size()))
+      continue;  // no metal neighbors
+
+    bool has_non_metal_heavy_neighbor = false;
+    for (int nb : neighbors[i]) {
+      if (!cc.atoms[nb].el.is_metal() && !cc.atoms[nb].is_hydrogen()) {
+        has_non_metal_heavy_neighbor = true;
+        break;
+      }
+    }
+    if (!has_non_metal_heavy_neighbor)
+      continue;
+
+    int expected_valence = 0;
+    if (el == El::O) expected_valence = 2;
+    else if (el == El::N) expected_valence = 3;
+    else if (el == El::S) expected_valence = 2;
+    else if (el == El::C) expected_valence = 4;
+    else if (el == El::P) expected_valence = 3;
+    else continue;
+
+    float sum_bo = 0.0f;
+    for (const BondInfo& bi : adjacency[i]) {
+      if (!cc.atoms[bi.neighbor_idx].el.is_metal())
+        sum_bo += order_of_bond_type(bi.type);
+    }
+    int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
+    cc.atoms[i].charge = static_cast<float>(-rem_v);
+  }
 }
 
 // ============================================================================
