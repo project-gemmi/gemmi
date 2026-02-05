@@ -896,7 +896,8 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
   std::vector<char> in_system(adj.size(), 0);  // atoms in the current fused system
 
   // Helper: check if atom has an exocyclic double bond preventing π contribution
-  auto has_exocyclic_double_bond = [&](int idx, const std::vector<char>& in_atoms) -> bool {
+  auto has_exocyclic_double_bond = [&](int idx, const std::vector<char>& in_atoms,
+                                       size_t ring_size) -> bool {
     for (const auto& bond : adj[idx]) {
       int nb = bond.neighbor_idx;
       if (in_atoms[nb])
@@ -904,8 +905,12 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
       if (bond.type != BondType::Double)
         continue;
       // Exocyclic carbonyl: O with only 1 connection
-      if (atoms[nb].el == El::O && atoms[nb].connectivity == 1)
-        return true;
+      if (atoms[nb].el == El::O && atoms[nb].connectivity == 1) {
+        // AceDRG treats 5-member heterocycles with exocyclic carbonyls as aromatic.
+        if (ring_size != 5)
+          return true;
+        continue;
+      }
       // Exocyclic methylene: C with 3 neighbors and >=2 H
       if (atoms[nb].el == El::C && atoms[nb].connectivity == 3) {
         int h_count = 0;
@@ -920,7 +925,8 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
   };
 
   // Helper: count π-electrons for a single atom
-  auto count_atom_pi = [&](int idx, const std::vector<char>& in_atoms) -> int {
+  auto count_atom_pi = [&](int idx, const std::vector<char>& in_atoms,
+                           size_t ring_size) -> int {
     const auto& atom = atoms[idx];
     int conn = atom.connectivity;
     // Atom is SP2 if it has a double/aromatic bond
@@ -938,10 +944,15 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     if (is_sp2) {
       if (atom.el == El::C) {
         if (conn == 3)
-          return has_exocyclic_double_bond(idx, in_atoms) ? 0 : 1;
+          return has_exocyclic_double_bond(idx, in_atoms, ring_size) ? 0 : 1;
         return 0;  // SP2 carbon with 2 neighbors: 0 π
       } else if (atom.el == El::N) {
-        if (conn == 2) return 1;      // pyridine-like
+        if (conn == 2) {
+          // AceDRG treats 5-member rings with neutral 2-conn N as aromatic (pyrrole-like).
+          if (ring_size == 5 && atom.charge <= 0.5f)
+            return 2;
+          return 1;      // pyridine-like
+        }
         // N+ with 3 neighbors: 1 π (AceDRG isAromaticP / mode 1 behavior)
         // Neutral N with 3 neighbors: 2 π (pyrrole-like lone pair)
         if (conn == 3) return (atom.charge > 0.5f) ? 1 : 2;
@@ -1039,7 +1050,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
       auto count_ring_pi = [&]() -> int {
         int pi = 0;
         for (int idx : ring.atoms)
-          pi += count_atom_pi(idx, in_ring);
+          pi += count_atom_pi(idx, in_ring, ring.atoms.size());
         return pi;
       };
 
@@ -1080,7 +1091,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
         auto count_ring_pi = [&]() -> int {
           int pi = 0;
           for (int idx : ring.atoms)
-            pi += count_atom_pi(idx, in_ring);
+            pi += count_atom_pi(idx, in_ring, ring.atoms.size());
           return pi;
         };
 
@@ -1136,7 +1147,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
 
         int pi = 0;
         for (int idx : ring.atoms)
-          pi += count_atom_pi(idx, in_ring);
+          pi += count_atom_pi(idx, in_ring, ring.atoms.size());
 
         if (pi > 0 && (pi % 4) == 2)
           ring.is_aromatic = true;
