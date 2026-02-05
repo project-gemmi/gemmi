@@ -1464,9 +1464,13 @@ void AcedrgTables::set_special_3nb_symb2(
   std::map<std::string, int> nb3_props;
 
   for (int nb1 : neighbors[atom.index]) {
+    if (atoms[nb1].is_metal)
+      continue;
     if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb1) == ser_num_nb123.end())
       ser_num_nb123.push_back(nb1);
     for (int nb2 : neighbors[nb1]) {
+      if (atoms[nb2].is_metal)
+        continue;
       if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb2) == ser_num_nb123.end() &&
           nb2 != atom.index) {
         ser_num_nb123.push_back(nb2);
@@ -2186,6 +2190,12 @@ std::vector<std::string> AcedrgTables::compute_ccp4_types(
       if (!cc.atoms[nb].el.is_metal())
         info.conn_atoms_no_metal.push_back(nb);
     }
+    // AceDRG treats metal-coordinated carbons with 4+ total neighbors as sp3 in CCP4 types.
+    if (info.el == El::C && info.bonding_idx == 2) {
+      size_t total_conn = info.conn_atoms.size();
+      if (total_conn >= 4 && total_conn > info.conn_atoms_no_metal.size())
+        info.bonding_idx = 3;
+    }
     info.par_charge = cc.atoms[i].charge;
     info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
     atoms.emplace_back(std::move(info));
@@ -2513,6 +2523,12 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
         info.conn_h_atoms.push_back(nb);
       if (!cc.atoms[nb].el.is_metal())
         info.conn_atoms_no_metal.push_back(nb);
+    }
+    // AceDRG treats metal-coordinated carbons with 4+ total neighbors as sp3 in CCP4 types.
+    if (info.el == El::C && info.bonding_idx == 2) {
+      size_t total_conn = info.conn_atoms.size();
+      if (total_conn >= 4 && total_conn > info.conn_atoms_no_metal.size())
+        info.bonding_idx = 3;
     }
     info.par_charge = cc.atoms[i].charge;
     info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));

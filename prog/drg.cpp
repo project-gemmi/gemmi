@@ -2070,7 +2070,6 @@ int GEMMI_MAIN(int argc, char **argv) {
           // Sync H3 angles from H/H2 angles (they use the same values)
           if (added_h3)
             sync_n_terminal_h3_angles(cc);
-          tables.assign_ccp4_types(cc);
           add_torsions_from_bonds_if_missing(cc, tables);
           add_chirality_if_missing(cc, atom_stereo, tables);
           add_planes_if_missing(cc, tables);
@@ -2090,6 +2089,9 @@ int GEMMI_MAIN(int argc, char **argv) {
           if (added_h3)
             sync_n_terminal_h3_angles(cc);
         }
+
+        // Assign CCP4 chem_type even if no filling was needed.
+        tables.assign_ccp4_types(cc);
 
         // Update the block with new values
         add_chemcomp_to_block(cc, block, acedrg_types);
