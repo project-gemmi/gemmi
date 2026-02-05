@@ -646,6 +646,19 @@ void adjust_guanidinium_group(ChemComp& cc) {
     neighbors[bond.id2.atom].push_back(bond.id1.atom);
   }
 
+  std::map<std::string, bool> has_unsat_bond;
+  for (const auto& bond : cc.rt.bonds) {
+    bool unsat = bond.aromatic ||
+                 bond.type == BondType::Double ||
+                 bond.type == BondType::Triple ||
+                 bond.type == BondType::Aromatic ||
+                 bond.type == BondType::Deloc;
+    if (unsat) {
+      has_unsat_bond[bond.id1.atom] = true;
+      has_unsat_bond[bond.id2.atom] = true;
+    }
+  }
+
   // Find guanidinium carbons: C bonded to exactly 3 N atoms
   for (auto& atom : cc.atoms) {
     if (atom.el != El::C)
@@ -673,6 +686,39 @@ void adjust_guanidinium_group(ChemComp& cc) {
         }
       }
       if (!has_double)
+        continue;
+
+      // Skip if any other guanidinium N is attached to an unsaturated substituent.
+      bool other_n_has_unsat_sub = false;
+      for (const std::string& other_n_id : n_neighbors) {
+        if (other_n_id == n_id)
+          continue;
+        const auto& other_nb = neighbors[other_n_id];
+        for (const std::string& onb : other_nb) {
+          if (onb == atom.id)
+            continue;
+          auto it = atom_index.find(onb);
+          if (it == atom_index.end())
+            continue;
+          if (cc.atoms[it->second].el == El::H)
+            continue;
+          // If another guanidinium N is substituted by a hetero atom,
+          // do not protonate the =NH (matches AceDRG for biguanide-like motifs).
+          if (cc.atoms[it->second].el != El::C &&
+              cc.atoms[it->second].el != El::Si &&
+              cc.atoms[it->second].el != El::Ge) {
+            other_n_has_unsat_sub = true;
+            break;
+          }
+          if (has_unsat_bond[onb]) {
+            other_n_has_unsat_sub = true;
+            break;
+          }
+        }
+        if (other_n_has_unsat_sub)
+          break;
+      }
+      if (other_n_has_unsat_sub)
         continue;
 
       // Count hydrogens and check for non-H substituents on this nitrogen
