@@ -42,6 +42,11 @@ def run_acedrg(code: str, input_file: str, output_dir: str):
         input_file: Path to the input CIF file (e.g., 'orig/ATP.cif').
         output_dir: The directory for Acedrg output (e.g., 'acedrg').
     """
+    output_cif = os.path.join(output_dir, code + ".cif")
+    if os.path.exists(output_cif):
+        print(f"Skipping {code}: {output_cif} already exists")
+        return
+
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
