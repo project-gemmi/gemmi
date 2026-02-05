@@ -832,12 +832,20 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     const std::vector<std::vector<BondInfo>>& adj,
     const std::vector<CodAtomInfo>& atoms,
     std::vector<RingInfo>& rings) const {
-  (void) adj;
-  // AceDRG ring aromaticity (checkAndSetupPlanes + reDoAtomCodClassNames):
+  // AceDRG ring aromaticity used for final COD class names:
   // - ring must be planar (bondingIdx==2, N allowed)
-  // - aromaticP uses checkAromaSys(..., mode=1) with both NoMetal/All π counts
-  // - cod_class is recomputed using aromaticP (reDoAtomCodClassNames),
-  //   so we use the aromaticP criterion directly here.
+  // - reDoAtomCodClassNames() sets isAromatic = isAromaticP, so ringRepS is
+  //   based on aromaticP (checkAromaSys(..., mode=1) with NoMetal/All π counts).
+  auto count_non_mc = [&](int idx) -> int {
+    int non_mc = 0;
+    for (const auto& nb : adj[idx]) {
+      const auto& at = atoms[nb.neighbor_idx];
+      // AceDRG treats Hg as non-metal in pi counting (see AMS).
+      if (!at.is_metal || at.el == El::Hg)
+        ++non_mc;
+    }
+    return non_mc;
+  };
 
   auto is_atom_planar = [&](int idx) -> bool {
     const auto& atom = atoms[idx];
@@ -855,7 +863,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
 
   auto count_atom_pi_no_metal = [&](int idx, int mode) -> double {
     const auto& atom = atoms[idx];
-    int non_mc = static_cast<int>(atom.conn_atoms_no_metal.size());
+    int non_mc = count_non_mc(idx);
     double aN = 0.0;
 
     if (atom.bonding_idx == 2) {
@@ -952,7 +960,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
 
   auto count_atom_pi_all = [&](int idx, int mode) -> double {
     const auto& atom = atoms[idx];
-    int non_mc = static_cast<int>(atom.conn_atoms_no_metal.size());
+    int non_mc = count_non_mc(idx);
     double aN = 0.0;
 
     if (atom.bonding_idx == 2) {
@@ -1060,6 +1068,31 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     if ((pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001) ||
         (pi2 > 0.0 && std::fabs(std::fmod(pi2, 4.0) - 2.0) < 0.001))
       ring.is_aromatic = true;
+  }
+
+  // AceDRG pyrole rule: if there are exactly 4 five-member rings with 4C+1N
+  // and they are planar, mark them aromatic even if pi-count failed.
+  std::vector<size_t> pyrole_rings;
+  for (size_t i = 0; i < rings.size(); ++i) {
+    const RingInfo& ring = rings[i];
+    if (ring.atoms.size() != 5)
+      continue;
+    int num_c = 0;
+    int num_n = 0;
+    for (int idx : ring.atoms) {
+      if (atoms[idx].el == El::C)
+        ++num_c;
+      else if (atoms[idx].el == El::N)
+        ++num_n;
+    }
+    if (num_c == 4 && num_n == 1)
+      pyrole_rings.push_back(i);
+  }
+  if (pyrole_rings.size() == 4) {
+    for (size_t i : pyrole_rings) {
+      if (is_ring_planar(rings[i]))
+        rings[i].is_aromatic = true;
+    }
   }
 }
 
