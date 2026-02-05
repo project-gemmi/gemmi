@@ -689,6 +689,9 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     atoms[i].metal_connectivity = metal_conn;
   }
 
+  // Bonding/planarity info is needed for AceDRG ring aromaticity rules.
+  set_atoms_bonding_and_chiral_center(atoms, neighbors);
+
   // Detect rings and populate ring representations
   std::vector<RingInfo> rings;
   detect_rings_acedrg(neighbors, atoms, rings);
@@ -706,7 +709,6 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     cod_class_to_atom2(atoms[i].cod_class, atoms[i]);
 
   // Hybridization and NB1/NB2_SP
-  set_atoms_bonding_and_chiral_center(atoms, neighbors);
   set_atoms_nb1nb2_sp(atoms, neighbors);
   // Recompute nb_symb and nb2_symb from actual neighbor cod_root and bonding_idx
   set_atoms_nb_symb_from_neighbors(atoms, neighbors);
@@ -826,333 +828,238 @@ std::vector<std::vector<int>> AcedrgTables::build_neighbors(
   return neighbors;
 }
 
-// Detect fused ring systems: group rings that share 2+ atoms into connected components.
-// Returns a vector of systems, where each system is a vector of ring indices.
-static std::vector<std::vector<int>> detect_fused_ring_systems(
-    const std::vector<AcedrgTables::RingInfo>& rings) {
-  int n = static_cast<int>(rings.size());
-  if (n == 0)
-    return {};
-
-  // Build adjacency: rings i and j are connected if they share >=2 atoms
-  std::vector<std::vector<int>> ring_adj(n);
-  for (int i = 0; i < n; ++i) {
-    for (int j = i + 1; j < n; ++j) {
-      int shared = 0;
-      for (int a : rings[i].atoms) {
-        if (std::find(rings[j].atoms.begin(), rings[j].atoms.end(), a) != rings[j].atoms.end()) {
-          ++shared;
-          if (shared >= 2)
-            break;
-        }
-      }
-      if (shared >= 2) {
-        ring_adj[i].push_back(j);
-        ring_adj[j].push_back(i);
-      }
-    }
-  }
-
-  // Find connected components using DFS
-  std::vector<int> component(n, -1);
-  int num_components = 0;
-  for (int i = 0; i < n; ++i) {
-    if (component[i] >= 0)
-      continue;
-    // BFS/DFS to mark this component
-    std::vector<int> stack;
-    stack.push_back(i);
-    while (!stack.empty()) {
-      int cur = stack.back();
-      stack.pop_back();
-      if (component[cur] >= 0)
-        continue;
-      component[cur] = num_components;
-      for (int nb : ring_adj[cur]) {
-        if (component[nb] < 0)
-          stack.push_back(nb);
-      }
-    }
-    ++num_components;
-  }
-
-  // Group ring indices by component
-  std::vector<std::vector<int>> systems(num_components);
-  for (int i = 0; i < n; ++i)
-    systems[component[i]].push_back(i);
-
-  return systems;
-}
-
 void AcedrgTables::set_ring_aromaticity_from_bonds(
     const std::vector<std::vector<BondInfo>>& adj,
     const std::vector<CodAtomInfo>& atoms,
     std::vector<RingInfo>& rings) const {
-  // For fused ring systems:
-  // 1. Count π-electrons across the WHOLE fused system (avoiding double-counting)
-  // 2. If the whole system satisfies Hückel 4n+2 rule, mark ALL rings as aromatic
-  // 3. If not, fall back to checking each ring individually
+  (void) adj;
+  // AceDRG ring aromaticity (checkAndSetupPlanes + reDoAtomCodClassNames):
+  // - ring must be planar (bondingIdx==2, N allowed)
+  // - aromaticP uses checkAromaSys(..., mode=1) with both NoMetal/All π counts
+  // - cod_class is recomputed using aromaticP (reDoAtomCodClassNames),
+  //   so we use the aromaticP criterion directly here.
 
-  std::vector<char> in_system(adj.size(), 0);  // atoms in the current fused system
-
-  // Helper: check if atom has an exocyclic double bond preventing π contribution
-  auto has_exocyclic_double_bond = [&](int idx, const std::vector<char>& in_atoms,
-                                       size_t ring_size) -> bool {
-    for (const auto& bond : adj[idx]) {
-      int nb = bond.neighbor_idx;
-      if (in_atoms[nb])
-        continue;  // Only check exocyclic bonds
-      if (bond.type != BondType::Double)
-        continue;
-      // Exocyclic carbonyl: O with only 1 connection
-      if (atoms[nb].el == El::O && atoms[nb].connectivity == 1) {
-        // AceDRG treats 5-member heterocycles with exocyclic carbonyls as aromatic.
-        if (ring_size != 5)
-          return true;
-        continue;
-      }
-      // Exocyclic methylene: C with 3 neighbors and >=2 H
-      if (atoms[nb].el == El::C && atoms[nb].connectivity == 3) {
-        int h_count = 0;
-        for (const auto& nb_bond : adj[nb])
-          if (atoms[nb_bond.neighbor_idx].el == El::H)
-            ++h_count;
-        if (h_count >= 2)
-          return true;
-      }
-    }
-    return false;
-  };
-
-  // Helper: count π-electrons for a single atom
-  auto count_atom_pi = [&](int idx, const std::vector<char>& in_atoms,
-                           size_t ring_size) -> int {
-    const auto& atom = atoms[idx];
-    int conn = atom.connectivity;
-    // Atom is SP2 if it has a double/aromatic bond
-    bool is_sp2 = false;
-    for (const auto& bond : adj[idx]) {
-      if (bond.type == BondType::Double ||
-          bond.type == BondType::Aromatic ||
-          bond.type == BondType::Deloc ||
-          bond.aromatic) {
-        is_sp2 = true;
-        break;
-      }
-    }
-
-    if (is_sp2) {
-      if (atom.el == El::C) {
-        if (conn == 3)
-          return has_exocyclic_double_bond(idx, in_atoms, ring_size) ? 0 : 1;
-        return 0;  // SP2 carbon with 2 neighbors: 0 π
-      } else if (atom.el == El::N) {
-        if (conn == 2) {
-          // AceDRG treats 5-member rings with neutral 2-conn N as aromatic (pyrrole-like).
-          if (ring_size == 5 && atom.charge <= 0.5f)
-            return 2;
-          return 1;      // pyridine-like
-        }
-        // N+ with 3 neighbors: 1 π (AceDRG isAromaticP / mode 1 behavior)
-        // Neutral N with 3 neighbors: 2 π (pyrrole-like lone pair)
-        if (conn == 3) return (atom.charge > 0.5f) ? 1 : 2;
-      } else if (atom.el == El::O) {
-        if (conn == 2) return 2;      // furan-like (lone pair)
-      } else if (atom.el == El::S) {
-        if (conn == 2) return 2;      // thiophene-like (lone pair)
-      }
-    } else {
-      // Non-SP2 atoms: heteroatoms with lone pairs can still contribute
-      if (atom.el == El::N)
-        return 2;  // pyrrole-like nitrogen
-      if ((atom.el == El::O || atom.el == El::S) && conn == 2)
-        return 2;  // furan/thiophene-like (lone pair donor)
-    }
-    return 0;
-  };
-
-  // Helper: check if an atom is planar (SP2-like) using AceDRG's bondingIdx criterion
-  // AceDRG requires bondingIdx==2 (sp2) for planarity, with special handling for
-  // heteroatoms that can be sp2 in aromatic rings (N, O, S with 2 connections)
   auto is_atom_planar = [&](int idx) -> bool {
     const auto& atom = atoms[idx];
-    // N is allowed in planar rings even if sp3 (pyrrole-like)
     if (atom.el == El::N)
       return true;
-    // O/S with exactly 2 connections can be sp2 in aromatic rings (furan/thiophene-like)
-    if ((atom.el == El::O || atom.el == El::S) && atom.connectivity == 2)
-      return true;
-    // Hypervalent S/P (4+ connections) are not planar even with double bonds
-    if (atom.connectivity >= 4 && (atom.el == El::S || atom.el == El::P))
-      return false;
-    // Atoms with double bonds are sp2 and planar
-    for (const auto& bond : adj[idx]) {
-      if (bond.type == BondType::Double)
-        return true;
-    }
-    // For other atoms, require sp2 hybridization (bondingIdx == 2)
     return atom.bonding_idx == 2;
   };
 
-  // Helper: check if a ring is planar
   auto is_ring_planar = [&](const RingInfo& ring) -> bool {
-    for (int idx : ring.atoms) {
+    for (int idx : ring.atoms)
       if (!is_atom_planar(idx))
         return false;
-    }
     return true;
   };
 
-  // Helper: check if a ring has all aromatic bond flags
-  auto ring_has_all_aromatic_bonds = [&](const RingInfo& ring, std::vector<char>& in_ring) -> bool {
-    std::fill(in_ring.begin(), in_ring.end(), 0);
-    for (int idx : ring.atoms)
-      in_ring[idx] = 1;
+  auto count_atom_pi_no_metal = [&](int idx, int mode) -> double {
+    const auto& atom = atoms[idx];
+    int non_mc = static_cast<int>(atom.conn_atoms_no_metal.size());
+    double aN = 0.0;
 
-    int arom_bond_count = 0;
-    int total_bond_count = 0;
-    for (int idx : ring.atoms) {
-      for (const auto& bond : adj[idx]) {
-        int nb = bond.neighbor_idx;
-        if (idx < nb && in_ring[nb]) {
-          ++total_bond_count;
-          if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc || bond.aromatic)
-            ++arom_bond_count;
+    if (atom.bonding_idx == 2) {
+      if (atom.charge == 0.0f) {
+        if (atom.el == El::C) {
+          if (non_mc == 3) {
+            bool has_exo = false;
+            for (int nb : atom.conn_atoms_no_metal) {
+              if (atoms[nb].el == El::O &&
+                  atoms[nb].conn_atoms_no_metal.size() == 1 &&
+                  atoms[nb].charge == 0.0f) {
+                has_exo = true;
+              } else if (atoms[nb].el == El::C &&
+                         atoms[nb].conn_atoms_no_metal.size() == 3) {
+                int h_count = 0;
+                for (int nb2 : atoms[nb].conn_atoms_no_metal)
+                  if (atoms[nb2].el == El::H)
+                    ++h_count;
+                if (h_count >= 2)
+                  has_exo = true;
+              }
+            }
+            if (!has_exo)
+              aN = 1;
+          } else if (non_mc == 2) {
+            aN = 0.0;
+          }
+        } else if (atom.el == El::N) {
+          if (non_mc == 2)
+            aN = 1;
+          else if (non_mc == 3)
+            aN = 2;
+        } else if (atom.el == El::B) {
+          if (non_mc == 2)
+            aN = 1;
+          else if (non_mc == 3)
+            aN = 0.0;
+        } else if (atom.el == El::O) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.el == El::S) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.el == El::P) {
+          if (non_mc == 3)
+            aN = 2;
+        }
+      } else {
+        if (atom.el == El::C) {
+          if (atom.charge == -1.0f) {
+            if (non_mc == 3)
+              aN = 2;
+            else if (non_mc == 2)
+              aN = (mode == 1) ? 1.0 : 2.0;
+          } else if (atom.charge == -2.0f) {
+            if (non_mc == 2)
+              aN = 2;
+          }
+        } else if (atom.el == El::N) {
+          if (atom.charge == -1.0f) {
+            if (non_mc == 2)
+              aN = 2;
+          } else if (atom.charge == 1.0f) {
+            if (non_mc == 3)
+              aN = (mode == 1) ? 1.0 : 2.0;
+          }
+        } else if (atom.el == El::O) {
+          if (atom.charge == 1.0f && non_mc == 2)
+            aN = 1;
+        } else if (atom.el == El::B) {
+          if (atom.charge == -1.0f && non_mc == 3)
+            aN = 1;
         }
       }
+    } else if (atom.bonding_idx == 3 &&
+               (atom.el == El::N || atom.el == El::B)) {
+      if (atom.el == El::N) {
+        if (atom.charge == -1.0f) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.charge == 1.0f) {
+          if (non_mc == 3)
+            aN = 1;
+        } else {
+          aN = 2;
+        }
+      } else if (atom.el == El::B) {
+        aN = 0.0;
+      }
     }
-    return (arom_bond_count == total_bond_count && arom_bond_count > 0);
+
+    return aN;
   };
 
-  // Detect fused ring systems
-  std::vector<std::vector<int>> fused_systems = detect_fused_ring_systems(rings);
+  auto count_atom_pi_all = [&](int idx, int mode) -> double {
+    const auto& atom = atoms[idx];
+    int non_mc = static_cast<int>(atom.conn_atoms_no_metal.size());
+    double aN = 0.0;
 
-  // Process each fused system
-  for (const auto& system : fused_systems) {
-    if (system.size() == 1) {
-      // Single ring: use existing individual ring logic
-      RingInfo& ring = rings[system[0]];
-      std::vector<char> in_ring(adj.size(), 0);
-
-      bool has_arom = ring_has_all_aromatic_bonds(ring, in_ring);
-
-      // For 5-member rings, require planarity check even with aromatic bonds
-      if (has_arom && ring.atoms.size() == 5 && !is_ring_planar(ring))
-        has_arom = false;
-
-      bool is_planar = is_ring_planar(ring);
-
-      // Count π-electrons for this ring
-      std::fill(in_ring.begin(), in_ring.end(), 0);
-      for (int idx : ring.atoms)
-        in_ring[idx] = 1;
-
-      auto count_ring_pi = [&]() -> int {
-        int pi = 0;
-        for (int idx : ring.atoms)
-          pi += count_atom_pi(idx, in_ring, ring.atoms.size());
-        return pi;
-      };
-
-      // Apply Hückel 4n+2 rule for planar rings
-      if (is_planar && !has_arom) {
-        int pi = count_ring_pi();
-        if (pi > 0 && (pi % 4) == 2)
-          has_arom = true;
+    if (atom.bonding_idx == 2) {
+      if (atom.charge == 0.0f) {
+        if (atom.el == El::C) {
+          if (non_mc == 3) {
+            bool has_exo = false;
+            for (int nb : atom.conn_atoms_no_metal) {
+              if (atoms[nb].el == El::O &&
+                  atoms[nb].conn_atoms_no_metal.size() == 1 &&
+                  atoms[nb].charge == 0.0f) {
+                has_exo = true;
+              } else if (atoms[nb].el == El::C &&
+                         atoms[nb].conn_atoms_no_metal.size() == 3) {
+                int h_count = 0;
+                for (int nb2 : atoms[nb].conn_atoms_no_metal)
+                  if (atoms[nb2].el == El::H)
+                    ++h_count;
+                if (h_count >= 2)
+                  has_exo = true;
+              }
+            }
+            if (!has_exo)
+              aN = 1;
+          } else if (non_mc == 2) {
+            aN = 0.0;
+          }
+        } else if (atom.el == El::N) {
+          if (non_mc == 2)
+            aN = 1;
+          else if (non_mc == 3)
+            aN = 2;
+        } else if (atom.el == El::B) {
+          if (non_mc == 2)
+            aN = 1;
+          else if (non_mc == 3)
+            aN = 0.0;
+        } else if (atom.el == El::O) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.el == El::S) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.el == El::P) {
+          if (non_mc == 3)
+            aN = 2;
+        }
+      } else {
+        if (atom.el == El::C) {
+          if (atom.charge == -1.0f) {
+            if (non_mc == 3)
+              aN = 2;
+            else if (non_mc == 2)
+              aN = 1.0;
+          }
+        } else if (atom.el == El::N) {
+          if (atom.charge == -1.0f) {
+            if (non_mc == 2)
+              aN = 2;
+          } else if (atom.charge == 1.0f) {
+            if (non_mc == 3)
+              aN = 1.0;
+          }
+        } else if (atom.el == El::O) {
+          if (atom.charge == 1.0f && non_mc == 2)
+            aN = 1;
+        } else if (atom.el == El::B) {
+          if (atom.charge == -1.0f && non_mc == 3)
+            aN = 1;
+        }
       }
-      // Verify aromatic bond flags with Hückel for 5/6-member rings
-      if ((ring.atoms.size() == 5 || ring.atoms.size() == 6) && has_arom) {
-        if (!is_planar) {
-          has_arom = false;
+    } else if (atom.bonding_idx == 3 &&
+               (atom.el == El::N || atom.el == El::B)) {
+      if (atom.el == El::N) {
+        if (atom.charge == -1.0f) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.charge == 1.0f) {
+          if (non_mc == 3)
+            aN = 1;
         } else {
-          int pi = count_ring_pi();
-          if (!(pi > 0 && (pi % 4) == 2))
-            has_arom = false;
+          aN = 2;
         }
-      }
-      ring.is_aromatic = has_arom;
-    } else {
-      // Fused system: check each ring individually (like AceDRG)
-      for (int ring_idx : system) {
-        RingInfo& ring = rings[ring_idx];
-        std::vector<char> in_ring(adj.size(), 0);
-
-        bool has_arom = ring_has_all_aromatic_bonds(ring, in_ring);
-
-        if (has_arom && ring.atoms.size() == 5 && !is_ring_planar(ring))
-          has_arom = false;
-
-        bool is_planar = is_ring_planar(ring);
-
-        std::fill(in_ring.begin(), in_ring.end(), 0);
-        for (int idx : ring.atoms)
-          in_ring[idx] = 1;
-
-        auto count_ring_pi = [&]() -> int {
-          int pi = 0;
-          for (int idx : ring.atoms)
-            pi += count_atom_pi(idx, in_ring, ring.atoms.size());
-          return pi;
-        };
-
-        if (is_planar && !has_arom) {
-          int pi = count_ring_pi();
-          if (pi > 0 && (pi % 4) == 2)
-            has_arom = true;
-        }
-        if ((ring.atoms.size() == 5 || ring.atoms.size() == 6) && has_arom) {
-          if (!is_planar) {
-            has_arom = false;
-          } else {
-            int pi = count_ring_pi();
-            if (!(pi > 0 && (pi % 4) == 2))
-              has_arom = false;
-          }
-        }
-        ring.is_aromatic = has_arom;
-      }
-
-      // Additional pass: check if non-aromatic 5-member rings are fused to
-      // now-aromatic rings (indole-like pattern)
-      for (int ring_idx : system) {
-        RingInfo& ring = rings[ring_idx];
-        if (ring.is_aromatic || ring.atoms.size() != 5)
-          continue;
-        if (!is_ring_planar(ring))
-          continue;
-
-        // Check if fused to an aromatic ring in this system
-        bool fused_to_arom = false;
-        for (int other_idx : system) {
-          if (!rings[other_idx].is_aromatic)
-            continue;
-          int shared = 0;
-          for (int a : ring.atoms) {
-            if (std::find(rings[other_idx].atoms.begin(),
-                          rings[other_idx].atoms.end(), a) != rings[other_idx].atoms.end())
-              ++shared;
-          }
-          if (shared >= 2) {
-            fused_to_arom = true;
-            break;
-          }
-        }
-        if (!fused_to_arom)
-          continue;
-
-        // Count π-electrons for this ring and apply Hückel
-        std::vector<char> in_ring(adj.size(), 0);
-        for (int idx : ring.atoms)
-          in_ring[idx] = 1;
-
-        int pi = 0;
-        for (int idx : ring.atoms)
-          pi += count_atom_pi(idx, in_ring, ring.atoms.size());
-
-        if (pi > 0 && (pi % 4) == 2)
-          ring.is_aromatic = true;
+      } else if (atom.el == El::B) {
+        aN = 0.0;
       }
     }
+
+    return aN;
+  };
+
+  for (size_t i = 0; i < rings.size(); ++i) {
+    RingInfo& ring = rings[i];
+    ring.is_aromatic = false;
+
+    if (!is_ring_planar(ring))
+      continue;
+
+    double pi1 = 0.0;
+    double pi2 = 0.0;
+    for (int idx : ring.atoms) {
+      pi1 += count_atom_pi_no_metal(idx, 1);
+      pi2 += count_atom_pi_all(idx, 1);
+    }
+    if ((pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001) ||
+        (pi2 > 0.0 && std::fabs(std::fmod(pi2, 4.0) - 2.0) < 0.001))
+      ring.is_aromatic = true;
   }
 }
 
@@ -1720,9 +1627,7 @@ void AcedrgTables::set_atoms_bonding_and_chiral_center(
       if (t_len == 4 || t_len == 3) {
         atom.bonding_idx = 3;
       } else if (t_len == 2) {
-        // Aromatic nitrogens (e.g., in pyridine coordinated to metals) stay sp2
-        // even with formal charge +1 from complex charge distribution
-        if (atom.charge == 1.0f && !cod_class_is_aromatic(atom.cod_class))
+        if (atom.charge == 1.0f)
           atom.bonding_idx = 1;
         else
           atom.bonding_idx = 2;

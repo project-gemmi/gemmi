@@ -659,6 +659,33 @@ void adjust_guanidinium_group(ChemComp& cc) {
     }
   }
 
+  auto is_carbonyl_like = [&](const std::string& c_id) {
+    auto itc = atom_index.find(c_id);
+    if (itc == atom_index.end() || cc.atoms[itc->second].el != El::C)
+      return false;
+    bool has_double_hetero = false;
+    for (const auto& bond : cc.rt.bonds) {
+      if (bond.id1.atom != c_id && bond.id2.atom != c_id)
+        continue;
+      if (bond.aromatic || bond.type == BondType::Aromatic ||
+          bond.type == BondType::Deloc || bond.type == BondType::Triple)
+        return false;
+      if (bond.type == BondType::Double) {
+        const std::string& other = (bond.id1.atom == c_id) ? bond.id2.atom
+                                                           : bond.id1.atom;
+        auto it = atom_index.find(other);
+        if (it == atom_index.end())
+          continue;
+        Element el = cc.atoms[it->second].el;
+        if (el == El::O || el == El::S || el == El::Se)
+          has_double_hetero = true;
+        else
+          return false;
+      }
+    }
+    return has_double_hetero;
+  };
+
   // Find guanidinium carbons: C bonded to exactly 3 N atoms
   for (auto& atom : cc.atoms) {
     if (atom.el != El::C)
@@ -710,7 +737,7 @@ void adjust_guanidinium_group(ChemComp& cc) {
             other_n_has_unsat_sub = true;
             break;
           }
-          if (has_unsat_bond[onb]) {
+          if (has_unsat_bond[onb] && !is_carbonyl_like(onb)) {
             other_n_has_unsat_sub = true;
             break;
           }
