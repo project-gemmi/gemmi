@@ -992,7 +992,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     return aN;
   };
 
-  auto count_atom_pi_all = [&](int idx, int mode) -> double {
+  auto count_atom_pi_all = [&](int idx) -> double {
     const auto& atom = atoms[idx];
     int non_mc = count_non_mc(idx);
     double aN = 0.0;
@@ -1097,7 +1097,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     double pi2 = 0.0;
     for (int idx : ring.atoms) {
       pi1 += count_atom_pi_no_metal(idx, 1);
-      pi2 += count_atom_pi_all(idx, 1);
+      pi2 += count_atom_pi_all(idx);
     }
     if ((pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001) ||
         (pi2 > 0.0 && std::fabs(std::fmod(pi2, 4.0) - 2.0) < 0.001))
@@ -2358,7 +2358,6 @@ void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
     }
 
     bool has_par_charge = std::fabs(atom.par_charge) > 1e-6f;
-    bool has_formal_charge = atom.formal_charge != 0;
     bool has_negative_charge = atom.formal_charge < 0;
 
     if (atom.bonding_idx == 2) {
