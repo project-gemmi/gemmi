@@ -3287,9 +3287,9 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   int ha1 = left->hashing_value;
   int ha2 = right->hashing_value;
 
+  // AceDRG keys hybridization in the same ordered atom direction as hash keys.
   std::string h1 = hybridization_to_string(left->hybrid);
   std::string h2 = hybridization_to_string(right->hybrid);
-  if (h1 > h2) std::swap(h1, h2);
   std::string hybr_comb = h1 + "_" + h2;
 
   std::string in_ring = are_in_same_ring(a1, a2) ? "Y" : "N";
@@ -3660,15 +3660,17 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
 ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& a2, bool in_ring) const {
 
-  BondHRSKey key;
-  key.hash1 = std::min(a1.hashing_value, a2.hashing_value);
-  key.hash2 = std::max(a1.hashing_value, a2.hashing_value);
+  const CodAtomInfo* left = nullptr;
+  const CodAtomInfo* right = nullptr;
+  order_bond_atoms(a1, a2, left, right);
 
-  // Build hybrid pair string
-  std::string h1 = hybridization_to_string(a1.hybrid);
-  std::string h2 = hybridization_to_string(a2.hybrid);
-  if (h1 > h2) std::swap(h1, h2);
-  key.hybrid_pair = h1 + "_" + h2;
+  BondHRSKey key;
+  key.hash1 = left->hashing_value;
+  key.hash2 = right->hashing_value;
+
+  // Keep hybridization order aligned with ordered hash pair.
+  key.hybrid_pair = std::string(hybridization_to_string(left->hybrid)) + "_" +
+                    hybridization_to_string(right->hybrid);
   key.in_ring = in_ring ? "Y" : "N";
 
   auto it = bond_hrs_.find(key);

@@ -124,10 +124,12 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
       if (b == cc2.rt.bonds.end()) {
         printf("- %s\n", str(cc1, a).c_str());
       } else {
+#if PRINT_SINGLE_DOUBLE_DIFFS
         if (a.type != b->type)
           printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
                  bond_type_to_string(a.type),
                  bond_type_to_string(b->type));
+#endif
         double d = std::fabs(a.value - b->value);
         if ((d > delta.bond || std::fabs(a.esd - b->esd) > delta.bond_esd) &&
             d > delta.rel * std::min(a.esd, b->esd))
