@@ -1,9 +1,14 @@
 #!/bin/bash -eu
 
+cd "$(dirname "$0")"
+cd ..
+GEMMI_DIR="$(pwd)"
+./run-tests.sh G
 # Set ACEDRG_TABLES if not set and CCP4 is not set but local tables exist
 if [[ -z "${ACEDRG_TABLES:-}" && -z "${CCP4:-}" && -d "./acedrg/tables" ]]; then
-  export ACEDRG_TABLES="./acedrg/tables"
+    export ACEDRG_TABLES="$GEMMI_DIR/acedrg/tables"
 fi
+cd ccd
 
 # Usage:
 #   ./try.sh ARG ATP        # process orig/ARG.cif, orig/ATP.cif
@@ -50,7 +55,7 @@ for subdir in "${subdirs[@]}"; do
   done
   mkdir -p "$outdir"
   echo "Processing ${#files[@]} files -> $outdir"
-  if ! ../build/gemmi drg  --output-dir="$outdir" --tables=:./acedrg/tables/"${files[@]}" 2> >(tee -a drg.log >&2); then
+  if ! ../build/gemmi drg  --output-dir="$outdir" "${files[@]}" 2> >(tee -a drg.log >&2); then
     echo "ERROR: gemmi drg failed. Check drg.log for details." >&2
     exit 1
   fi
