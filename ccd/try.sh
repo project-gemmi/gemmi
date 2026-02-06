@@ -50,7 +50,7 @@ for subdir in "${subdirs[@]}"; do
   done
   mkdir -p "$outdir"
   echo "Processing ${#files[@]} files -> $outdir"
-  if ! ../build/gemmi drg  --output-dir="$outdir" "${files[@]}" 2> >(tee -a drg.log >&2); then
+  if ! ../build/gemmi drg  --output-dir="$outdir" --tables=:./acedrg/tables/"${files[@]}" 2> >(tee -a drg.log >&2); then
     echo "ERROR: gemmi drg failed. Check drg.log for details." >&2
     exit 1
   fi
@@ -75,6 +75,6 @@ for x in "$@"; do
   fi
 
   echo "========================${code}========================"
-  ../build/gemmi mondiff --only=at "$acedrg_file" "$gemmi_file" ||:
+  ../build/gemmi mondiff --only=atb "$acedrg_file" "$gemmi_file" ||:
 done
 echo "Script ended successfully!"
