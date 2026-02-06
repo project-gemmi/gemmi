@@ -1598,10 +1598,15 @@ void AcedrgTables::set_atoms_nb1nb2_sp(
   for (auto& atom : atoms) {
     std::vector<std::string> nb1_nb2_sp_set;
     for (int nb1 : neighbors[atom.index]) {
+      if (atoms[nb1].is_metal)
+        continue;
       std::string nb1_main = atoms[nb1].cod_root;
       std::vector<int> nb2_sp_set;
-      for (int nb2 : neighbors[nb1])
+      for (int nb2 : neighbors[nb1]) {
+        if (atoms[nb2].is_metal)
+          continue;
         nb2_sp_set.push_back(atoms[nb2].bonding_idx);
+      }
       std::sort(nb2_sp_set.begin(), nb2_sp_set.end(), std::greater<int>());
       std::string nb2_sp_str;
       for (size_t i = 0; i < nb2_sp_set.size(); ++i) {
@@ -1640,8 +1645,11 @@ void AcedrgTables::set_atoms_nb_symb_from_neighbors(
     };
     std::vector<NbInfo> nb_info;
     for (int nb_idx : neighbors[atom.index]) {
+      if (atoms[nb_idx].is_metal)
+        continue;
+      int non_metal_conn = static_cast<int>(atoms[nb_idx].conn_atoms_no_metal.size());
       nb_info.push_back({atoms[nb_idx].cod_root,
-                         atoms[nb_idx].connectivity});
+                         non_metal_conn});
     }
 
     // Build "root-connectivity" strings for sorting and lookup
@@ -2010,7 +2018,7 @@ void AcedrgTables::order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2
     return;
   }
   // AceDRG: for equal hash, order by codAtmMain (length, then case-insensitive
-  // lexicographic). If identical, keep a stable order by atom id.
+  // lexicographic).
   if (compare_no_case2(a1.cod_main, a2.cod_main)) {
     first = &a1;
     second = &a2;
@@ -2688,40 +2696,60 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   for (auto& bond : cc.rt.bonds) {
     if (std::isnan(bond.value)) {
       int match_level = fill_bond(cc, atom_info, bond);
-      // CCP4 energetic library fallback
-      if (std::isnan(bond.value) && !ccp4_types.empty()) {
-        auto it1 = cc.find_atom(bond.id1.atom);
-        auto it2 = cc.find_atom(bond.id2.atom);
-        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-          std::string order = bond_order_key(bond.type);
-          ValueStats vs;
-          if (!search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) &&
-              !search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
-            ValueStats v1, v2;
-            bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
-            bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
-            if (has1 && has2) {
-              bond.value = 0.5 * (v1.value + v2.value);
-              bond.esd = 0.02;
-            }
-          } else {
-            bond.value = vs.value;
-            bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
-          }
-        }
+      auto it1 = cc.find_atom(bond.id1.atom);
+      auto it2 = cc.find_atom(bond.id2.atom);
+      int idx1 = -1;
+      int idx2 = -1;
+      if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
+        idx1 = static_cast<int>(it1 - cc.atoms.begin());
+        idx2 = static_cast<int>(it2 - cc.atoms.begin());
       }
-      // CCP4 override for delocalized bonds (carboxylate)
-      // Detect carboxylate pattern: C bonded to two TERMINAL O atoms
-      // (terminal = oxygen only bonded to this carbon, not to other heavy atoms)
-      // Skip this override if multilevel found a good type-specific match (level >= 4)
-      if (!std::isnan(bond.value) && !ccp4_types.empty() && match_level < 4) {
-        auto it1 = cc.find_atom(bond.id1.atom);
-        auto it2 = cc.find_atom(bond.id2.atom);
-        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+      auto apply_ccp4 = [&](bool override_existing) {
+        if (ccp4_types.empty() || idx1 < 0 || idx2 < 0)
+          return false;
+        if (!override_existing && !std::isnan(bond.value))
+          return false;
+        std::string order = bond_order_key(bond.type);
+        ValueStats vs;
+        if (search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) ||
+            search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
+          bond.value = vs.value;
+          bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+          return true;
+        }
+        ValueStats v1, v2;
+        bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
+        bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
+        if (has1 && has2) {
+          bond.value = 0.5 * (v1.value + v2.value);
+          bond.esd = 0.02;
+          return true;
+        }
+        return false;
+      };
+      // AceDRG uses CCP4-like values for organic bonds adjacent to metal-coordinated
+      // donor atoms (e.g. N32-H and CH2-N32 in Pt amine complexes).
+      bool metal_adjacent_donor =
+          idx1 >= 0 && idx2 >= 0 &&
+          !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
+          ((atom_info[idx1].metal_connectivity > 0 &&
+            (atom_info[idx1].el == El::N || atom_info[idx1].el == El::O ||
+             atom_info[idx1].el == El::S || atom_info[idx1].el == El::P ||
+             atom_info[idx1].el == El::As || atom_info[idx1].el == El::Se)) ||
+           (atom_info[idx2].metal_connectivity > 0 &&
+            (atom_info[idx2].el == El::N || atom_info[idx2].el == El::O ||
+             atom_info[idx2].el == El::S || atom_info[idx2].el == El::P ||
+             atom_info[idx2].el == El::As || atom_info[idx2].el == El::Se)));
+      if (metal_adjacent_donor)
+        apply_ccp4(true);
+      // CCP4 energetic library fallback
+      if (std::isnan(bond.value))
+        apply_ccp4(false);
+      // CCP4 DELO override for explicit delocalized bonds only.
+      // Applying this to regular single/double C-O bonds causes mismatches with AceDRG.
+      if (!std::isnan(bond.value) && !ccp4_types.empty() &&
+          bond.type == BondType::Deloc && match_level < 4) {
+        if (idx1 >= 0 && idx2 >= 0) {
           const std::string& t1 = ccp4_types[idx1];
           const std::string& t2 = ccp4_types[idx2];
           // Check for carboxylate C-O bond (C bonded to O or OC)
@@ -2940,40 +2968,60 @@ void AcedrgTables::fill_restraints(ChemComp& cc,
     if (std::isnan(bond.value)) {
       BondDebugInfo debug;
       int match_level = fill_bond(cc, atom_info, bond, &debug);
+      auto it1 = cc.find_atom(bond.id1.atom);
+      auto it2 = cc.find_atom(bond.id2.atom);
+      int idx1 = -1;
+      int idx2 = -1;
+      if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
+        idx1 = static_cast<int>(it1 - cc.atoms.begin());
+        idx2 = static_cast<int>(it2 - cc.atoms.begin());
+      }
+      auto apply_ccp4 = [&](bool override_existing) {
+        if (ccp4_types.empty() || idx1 < 0 || idx2 < 0)
+          return false;
+        if (!override_existing && !std::isnan(bond.value))
+          return false;
+        std::string order = bond_order_key(bond.type);
+        ValueStats vs;
+        if (search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) ||
+            search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
+          bond.value = vs.value;
+          bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+          debug.source = "CCP4";
+          return true;
+        }
+        ValueStats v1, v2;
+        bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
+        bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
+        if (has1 && has2) {
+          bond.value = 0.5 * (v1.value + v2.value);
+          bond.esd = 0.02;
+          debug.source = "CCP4_avg";
+          return true;
+        }
+        return false;
+      };
+      bool metal_adjacent_donor =
+          idx1 >= 0 && idx2 >= 0 &&
+          !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
+          ((atom_info[idx1].metal_connectivity > 0 &&
+            (atom_info[idx1].el == El::N || atom_info[idx1].el == El::O ||
+             atom_info[idx1].el == El::S || atom_info[idx1].el == El::P ||
+             atom_info[idx1].el == El::As || atom_info[idx1].el == El::Se)) ||
+           (atom_info[idx2].metal_connectivity > 0 &&
+            (atom_info[idx2].el == El::N || atom_info[idx2].el == El::O ||
+             atom_info[idx2].el == El::S || atom_info[idx2].el == El::P ||
+             atom_info[idx2].el == El::As || atom_info[idx2].el == El::Se)));
+      if (metal_adjacent_donor)
+        apply_ccp4(true);
 
       // CCP4 energetic library fallback
-      if (std::isnan(bond.value) && !ccp4_types.empty()) {
-        auto it1 = cc.find_atom(bond.id1.atom);
-        auto it2 = cc.find_atom(bond.id2.atom);
-        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-          std::string order = bond_order_key(bond.type);
-          ValueStats vs;
-          if (!search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) &&
-              !search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
-            ValueStats v1, v2;
-            bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
-            bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
-            if (has1 && has2) {
-              bond.value = 0.5 * (v1.value + v2.value);
-              bond.esd = 0.02;
-              debug.source = "CCP4_avg";
-            }
-          } else {
-            bond.value = vs.value;
-            bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
-            debug.source = "CCP4";
-          }
-        }
-      }
-      // DELO override (carboxylate) - same logic as main fill_restraints
-      if (!std::isnan(bond.value) && !ccp4_types.empty() && match_level < 4) {
-        auto it1 = cc.find_atom(bond.id1.atom);
-        auto it2 = cc.find_atom(bond.id2.atom);
-        if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-          int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-          int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+      if (std::isnan(bond.value))
+        apply_ccp4(false);
+      // DELO override (debug path): explicit delocalized bonds only.
+      if (!std::isnan(bond.value) && !ccp4_types.empty() &&
+          bond.type == BondType::Deloc && match_level < 4) {
+        if (idx1 >= 0 && idx2 >= 0) {
           const std::string& t1 = ccp4_types[idx1];
           const std::string& t2 = ccp4_types[idx2];
           bool is_c_o_bond = (t1 == "C" && (t2 == "O" || t2 == "OC")) ||
@@ -3220,8 +3268,13 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   }
 
   bool is_hrs = (source && std::strcmp(source, "HRS") == 0);
-  bool accept = is_hrs || vs.level >= 9 ? (vs.count > 0)
-                                        : (vs.count >= min_observations_bond);
+  bool accept = false;
+  if (is_hrs || vs.level >= 9) {
+    accept = vs.count > 0;
+  } else {
+    // For multilevel levels 0-8, thresholding is handled inside search_bond_multilevel().
+    accept = vs.level >= 0;
+  }
   if (accept) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
@@ -3327,11 +3380,69 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   std::string a1_class = left->cod_class_no_charge;
   std::string a2_class = right->cod_class_no_charge;
 
+  int num_th = min_observations_bond;
+  if (a1.el == El::As || a2.el == El::As || a1.el == El::Ge || a2.el == El::Ge)
+    num_th = 1;
+
   if (verbose >= 2)
     std::fprintf(stderr, "      lookup: hash=%d/%d hybr=%s ring=%s nb1nb2_sp=%s/%s nb2=%s/%s type=%s/%s\n",
                  ha1, ha2, hybr_comb.c_str(), in_ring.c_str(),
                  a1_nb.c_str(), a2_nb.c_str(), a1_nb2.c_str(), a2_nb2.c_str(),
                  a1_type.c_str(), a2_type.c_str());
+
+  // AceDRG first tries the exact full codClass match (approx level 0) before
+  // entering inter-level fallback.
+  bool has_a1_class_only = false;  // a1 class exists, a2 class missing
+  {
+    auto it1 = bond_idx_full_.find(ha1);
+    if (it1 != bond_idx_full_.end()) {
+      auto it2 = it1->second.find(ha2);
+      if (it2 != it1->second.end()) {
+        auto it3 = it2->second.find(hybr_comb);
+        if (it3 != it2->second.end()) {
+          auto it4 = it3->second.find(in_ring);
+          if (it4 != it3->second.end()) {
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                auto it7 = it6->second.find(a1_nb);
+                if (it7 != it6->second.end()) {
+                  auto it8 = it7->second.find(a2_nb);
+                  if (it8 != it7->second.end()) {
+                    auto it9 = it8->second.find(a1_type);
+                    if (it9 != it8->second.end()) {
+                      auto it10 = it9->second.find(a2_type);
+                      if (it10 != it9->second.end()) {
+                        auto it11 = it10->second.find(a1_class);
+                        if (it11 != it10->second.end()) {
+                          auto it12 = it11->second.find(a2_class);
+                          if (it12 != it11->second.end()) {
+                            if (it12->second.count >= num_th) {
+                              ValueStats exact = it12->second;
+                              exact.level = 0;
+                              if (verbose >= 2)
+                                std::fprintf(stderr,
+                                             "      matched exact codClass level=0: value=%.3f sigma=%.3f count=%d\n",
+                                             exact.value, exact.sigma, exact.count);
+                              return exact;
+                            }
+                          } else {
+                            // Special AceDRG fallback only when a2 class is absent.
+                            has_a1_class_only = true;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
 
   const auto* map_1d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<ValueStats>>>* {
@@ -3369,6 +3480,11 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     if (it6 == it5->second.end()) return nullptr;
     return &it6->second;
   }();
+
+  // Keep the signal only for level-gating compatibility with AceDRG's
+  // class-missing branches. Do not short-circuit to direct 2D stats here:
+  // AceDRG still proceeds through start-level logic in these cases.
+  (void) has_a1_class_only;
 
   const auto* map_nb2 = [&]() -> const std::map<std::string, std::map<std::string,
                                       std::map<std::string, std::map<std::string, std::vector<ValueStats>>>>>* {
@@ -3432,10 +3548,6 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     }
   }
 
-  int num_th = min_observations_bond;
-  if (a1.el == El::As || a2.el == El::As || a1.el == El::Ge || a2.el == El::Ge)
-    num_th = 1;
-
   // Determine start level based on available keys (matching acedrg's dynamic logic from codClassify.cpp)
   // acedrg iterates from start_level upward (0→1→2→...) until threshold is met
   int start_level = 0;
@@ -3452,7 +3564,11 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     std::fprintf(stderr, "      has: hybr=%d ring=%d a1_nb2=%d a2_nb2=%d a1_nb=%d a2_nb=%d a1_type=%d a2_type=%d start_level=%d\n",
                  has_hybr, has_in_ring, has_a1_nb2, has_a2_nb2, has_a1_nb, has_a2_nb, has_a1_type, has_a2_type, start_level);
 
-  // AceDRG-like multilevel fallback: iterate from start_level upward until threshold is met
+  // AceDRG-like multilevel fallback: iterate from start_level upward until threshold is met.
+  // For the special "a2 class missing" branch, AceDRG continues with post-search overrides,
+  // so we must not return early here.
+  ValueStats matched_vs;
+  bool have_matched_vs = false;
   for (int level = start_level; level < 12; level++) {
     // Skip levels that require keys we don't have
     if (level <= 2 && !map_1d) continue;  // type levels need map_1d
@@ -3645,9 +3761,48 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       if (verbose >= 2)
         std::fprintf(stderr, "      matched: level=%d\n", level);
       vs.level = level;
-      return vs;
+      if (!has_a1_class_only)
+        return vs;
+      matched_vs = vs;
+      have_matched_vs = true;
+      break;
     }
   }
+
+  // AceDRG branch (searchCodOrgBonds2_2, a2C missing):
+  // after inter-level search, prefer exact (a1M,a2M)[0] if enough observations,
+  // otherwise use exact (a1NB1NB2,a2NB1NB2) 2D stats regardless threshold.
+  if (has_a1_class_only) {
+    if (map_1d) {
+      auto it1 = map_1d->find(a1_type);
+      if (it1 != map_1d->end()) {
+        auto it2 = it1->second.find(a2_type);
+        if (it2 != it1->second.end() && !it2->second.empty()) {
+          ValueStats exact_1d = it2->second.front();
+          if (exact_1d.count >= num_th) {
+            exact_1d.level = 0;
+            return exact_1d;
+          }
+        }
+      }
+    }
+    if (map_2d) {
+      auto it1 = map_2d->find(a1_nb);
+      if (it1 != map_2d->end()) {
+        auto it2 = it1->second.find(a2_nb);
+        if (it2 != it1->second.end() && !it2->second.empty()) {
+          ValueStats exact_2d = aggregate_stats(it2->second);
+          exact_2d.level = 3;
+          return exact_2d;
+        }
+      }
+    }
+    if (have_matched_vs)
+      return matched_vs;
+  }
+
+  if (have_matched_vs)
+    return matched_vs;
 
   // No match found in detailed tables
   if (verbose >= 2)
@@ -4344,7 +4499,7 @@ bool AcedrgTables::compare_no_case2(const std::string& first,
     if (a > b)
       return false;
   }
-  return true;
+  return false;
 }
 
 bool AcedrgTables::desc_sort_map_key(const SortMap& a, const SortMap& b) {
