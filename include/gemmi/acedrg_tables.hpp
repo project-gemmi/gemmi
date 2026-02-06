@@ -233,13 +233,13 @@ public:
   std::vector<std::string> compute_acedrg_types(const ChemComp& cc) const;
 
   // Configuration
-  double upper_bond_sigma = 0.2;
-  double lower_bond_sigma = 0.02;
+  double upper_bond_sigma = 0.02;
+  double lower_bond_sigma = 0.01;
   double upper_angle_sigma = 3.0;
   double lower_angle_sigma = 1.5;
   int min_observations_angle = 3;  // AceDRG default for angles
   int min_observations_angle_fallback = 3;
-  int min_observations_bond = 4;   // AceDRG default for bonds (codClassify.cpp)
+  int min_observations_bond = 3;   // AceDRG default for bonds (aNumTh=3)
   int metal_class_min_count = 5; // AceDRG uses >5 for metal class selection
   int verbose = 0;  // Debug output level (0=off, 1=basic, 2=detailed)
 
@@ -447,6 +447,7 @@ public:
 
   // Metal bond tables
   std::vector<MetalBondEntry> metal_bonds_;
+  std::map<std::string, double> covalent_radii_;
   std::vector<MetalAngleEntry> metal_angles_;
   std::map<Element, std::map<int, CoordGeometry>> metal_coord_geo_;
   std::map<std::string, TorsionEntry> pep_tors_;
@@ -461,6 +462,7 @@ public:
   void load_bond_hrs(const std::string& path);
   void load_angle_hrs(const std::string& path);
   void load_metal_tables(const std::string& dir);
+  void load_covalent_radii(const std::string& path);
   void load_en_bonds(const std::string& path);
   void load_atom_type_codes(const std::string& path);
   void load_bond_index(const std::string& path);

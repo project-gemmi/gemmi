@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cctype>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <numeric>
 #include <sstream>
@@ -20,6 +21,8 @@
 
 namespace gemmi {
 
+namespace {
+}  // namespace
 
 
 const char* hybridization_to_string(Hybridization h) {
@@ -65,6 +68,7 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
 
   // Load metal tables
   load_metal_tables(tables_dir);
+  load_covalent_radii(tables_dir + "/radii.table");
 
   // Load CCP4 energetic library bonds (for AceDRG fallback)
   load_ccp4_bonds(tables_dir + "/ener_lib.cif");
@@ -123,7 +127,12 @@ void AcedrgTables::load_bond_hrs(const std::string& path) {
       key.hash2 = std::max(hash1, hash2);
       key.hybrid_pair = hybrid_pair;
       key.in_ring = (in_ring == "Y" || in_ring == "y") ? "Y" : "N";
-      bond_hrs_[key] = ValueStats(value, sigma, count);
+      ValueStats vs(value, sigma, count);
+      bond_hrs_[key] = vs;
+      // AceDRG levels 9-11 use the HRS table hierarchy.
+      bond_hasp_2d_[key.hash1][key.hash2][key.hybrid_pair][key.in_ring].push_back(vs);
+      bond_hasp_1d_[key.hash1][key.hash2][key.hybrid_pair].push_back(vs);
+      bond_hasp_0d_[key.hash1][key.hash2].push_back(vs);
     }
   }
 }
@@ -331,6 +340,29 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
   }
 }
 
+void AcedrgTables::load_covalent_radii(const std::string& path) {
+  std::ifstream f(path);
+  if (!f)
+    return;
+
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#')
+      continue;
+    std::istringstream iss(line);
+    std::string elem, kind;
+    double value = NAN;
+    if (!(iss >> elem >> kind >> value))
+      continue;
+    if (kind != "cova")
+      continue;
+    std::string key = elem;
+    for (char& c : key)
+      c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    covalent_radii_[key] = value;
+  }
+}
+
 void AcedrgTables::load_atom_type_codes(const std::string& path) {
   std::ifstream f(path);
   if (!f)
@@ -466,10 +498,7 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
           bond_nb2d_type_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
                          [a1_root][a2_root].push_back(vs1d);
 
-        // Populate HaSp structures for fallback
-        bond_hasp_2d_[ha1][ha2][hybr_comb][in_ring].push_back(vs);
-        bond_hasp_1d_[ha1][ha2][hybr_comb].push_back(vs);
-        bond_hasp_0d_[ha1][ha2].push_back(vs);
+        // Levels 9-11 are populated from allOrgBondsHRS.table in load_bond_hrs().
       }
     }
   }
@@ -745,8 +774,6 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
 
   // Hybridization and NB1/NB2_SP
   set_atoms_nb1nb2_sp(atoms, neighbors);
-  // Recompute nb_symb and nb2_symb from actual neighbor cod_root and bonding_idx
-  set_atoms_nb_symb_from_neighbors(atoms, neighbors);
 
   // Ring props from codClass and hash codes
   for (auto& atom : atoms) {
@@ -1982,6 +2009,8 @@ void AcedrgTables::order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2
     second = &a1;
     return;
   }
+  // AceDRG: for equal hash, order by codAtmMain (length, then case-insensitive
+  // lexicographic). If identical, keep a stable order by atom id.
   if (compare_no_case2(a1.cod_main, a2.cod_main)) {
     first = &a1;
     second = &a2;
@@ -3100,10 +3129,41 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     const CodAtomInfo& metal = a1.is_metal ? a1 : a2;
     const CodAtomInfo& ligand = a1.is_metal ? a2 : a1;
 
+    std::string mkey = metal.el.name();
+    std::string lkey = ligand.el.name();
+    for (char& c : mkey)
+      c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    for (char& c : lkey)
+      c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    auto it_m = covalent_radii_.find(mkey);
+    auto it_l = covalent_radii_.find(lkey);
+    if (it_m != covalent_radii_.end() && it_l != covalent_radii_.end()) {
+      bond.value = it_m->second + it_l->second;
+      bond.esd = 0.04;
+      source = "metal_cova";
+      if (debug) {
+        debug->atom1 = bond.id1.atom;
+        debug->atom2 = bond.id2.atom;
+        debug->source = source;
+        debug->hybr1 = hybridization_to_string(a1.hybrid);
+        debug->hybr2 = hybridization_to_string(a2.hybrid);
+        debug->hash1 = a1.hashing_value;
+        debug->hash2 = a2.hashing_value;
+      }
+      if (verbose)
+        std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f)\n",
+                     bond.id1.atom.c_str(), bond.id2.atom.c_str(),
+                     a1.hashing_value, a2.hashing_value,
+                     hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
+                     source, bond.value, bond.esd);
+      return 10;
+    }
+
     ValueStats vs = search_metal_bond(metal, ligand, atom_info);
     if (vs.count > 0) {
       bond.value = vs.value;
-      bond.esd = clamp_bond_sigma(vs.sigma);
+      double sigma = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
+      bond.esd = std::max(0.02, clamp_bond_sigma(sigma));
       source = "metal";
       if (debug) {
         debug->atom1 = bond.id1.atom;
@@ -3132,21 +3192,17 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   // Acedrg's logic: use multilevel when it matches with sufficient threshold.
   // Acedrg iterates from start_level upward and uses the first level that meets threshold.
   // The threshold check is done inside search_bond_multilevel (entry count for levels 1-8,
-  // observation count for others). When it returns with level >= 0, the threshold was met.
+  // and no threshold for HRS-like levels 9-11). When it returns with level >= 0, the threshold was met.
   // There's no special preference for HRS over type-based (levels 0-2) matches.
   ValueStats vs;
   if (vs_ml.level >= 0) {
     // Multilevel matched with threshold met - use it
     vs = vs_ml;
     source = "multilevel";
-  } else if (vs_hrs.count >= 10) {
+  } else if (vs_hrs.count > 0) {
     // Multilevel didn't match - try HRS
     vs = vs_hrs;
     source = "HRS";
-  } else if (vs_ml.count > 0) {
-    // No HRS data - use low-count multilevel as last resort
-    vs = vs_ml;
-    source = "multilevel";
   }
 
   // Populate debug info
@@ -3163,7 +3219,10 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     debug->same_ring = same_ring;
   }
 
-  if (vs.count >= min_observations_bond) {
+  bool is_hrs = (source && std::strcmp(source, "HRS") == 0);
+  bool accept = is_hrs || vs.level >= 9 ? (vs.count > 0)
+                                        : (vs.count >= min_observations_bond);
+  if (accept) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
     if (debug)
@@ -3234,16 +3293,39 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   std::string hybr_comb = h1 + "_" + h2;
 
   std::string in_ring = are_in_same_ring(a1, a2) ? "Y" : "N";
+  // AceDRG: if requested ring key is missing, fall back to the other (Y/N).
+  auto has_ring_key = [&](const std::string& key) -> bool {
+    auto it1 = bond_idx_full_.find(ha1);
+    if (it1 == bond_idx_full_.end()) return false;
+    auto it2 = it1->second.find(ha2);
+    if (it2 == it1->second.end()) return false;
+    auto it3 = it2->second.find(hybr_comb);
+    if (it3 == it2->second.end()) return false;
+    return it3->second.find(key) != it3->second.end();
+  };
+  if (!has_ring_key(in_ring)) {
+    std::string alt = (in_ring == "Y") ? "N" : "Y";
+    if (has_ring_key(alt)) {
+      if (verbose >= 2)
+        std::fprintf(stderr, "      ring key '%s' missing, using '%s'\n",
+                     in_ring.c_str(), alt.c_str());
+      in_ring = alt;
+    }
+  }
 
-  // Use neighbor symbols as additional keys
-  const std::string& a1_nb2 = left->nb2_symb;
-  const std::string& a2_nb2 = right->nb2_symb;
-  const std::string& a1_nb = left->nb1nb2_sp;
-  const std::string& a2_nb = right->nb1nb2_sp;
+  // Use neighbor symbols as additional keys.
+  std::string a1_nb2 = left->nb2_symb;
+  std::string a2_nb2 = right->nb2_symb;
+  std::string a1_nb = left->nb1nb2_sp;
+  std::string a2_nb = right->nb1nb2_sp;
 
-  // Use COD main type as atom type (for 1D lookup)
-  const std::string& a1_type = left->cod_main;
-  const std::string& a2_type = right->cod_main;
+  // Use COD main type as atom type (for 1D lookup).
+  std::string a1_type = left->cod_main;
+  std::string a2_type = right->cod_main;
+
+  // Full COD class keys (as generated, AceDRG uses codClass directly).
+  std::string a1_class = left->cod_class_no_charge;
+  std::string a2_class = right->cod_class_no_charge;
 
   if (verbose >= 2)
     std::fprintf(stderr, "      lookup: hash=%d/%d hybr=%s ring=%s nb1nb2_sp=%s/%s nb2=%s/%s type=%s/%s\n",
@@ -3251,56 +3333,6 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                  a1_nb.c_str(), a2_nb.c_str(), a1_nb2.c_str(), a2_nb2.c_str(),
                  a1_type.c_str(), a2_type.c_str());
 
-
-  // Exact match with full COD class (a1C/a2C) before any aggregation.
-  {
-    auto it1 = bond_idx_full_.find(ha1);
-    if (it1 != bond_idx_full_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(hybr_comb);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(in_ring);
-          if (it4 != it3->second.end()) {
-            auto it5 = it4->second.find(a1_nb2);
-            if (it5 != it4->second.end()) {
-              auto it6 = it5->second.find(a2_nb2);
-              if (it6 != it5->second.end()) {
-                auto it7 = it6->second.find(a1_nb);
-                if (it7 != it6->second.end()) {
-                  auto it8 = it7->second.find(a2_nb);
-                  if (it8 != it7->second.end()) {
-                    auto it9 = it8->second.find(a1_type);
-                    if (it9 != it8->second.end()) {
-                      auto it10 = it9->second.find(a2_type);
-                      if (it10 != it9->second.end()) {
-                        // Use cod_class_no_charge for COD table lookup consistency
-                        // (COD structures often lack formal charges)
-                        auto it11 = it10->second.find(left->cod_class_no_charge);
-                        if (it11 != it10->second.end()) {
-                          auto it12 = it11->second.find(right->cod_class_no_charge);
-                          if (it12 != it11->second.end()) {
-                            const ValueStats& vs = it12->second;
-                            if (vs.count >= min_observations_bond) {
-                              if (verbose >= 2)
-                                std::fprintf(stderr, "      matched: level=full\n");
-                              ValueStats result = vs;
-                              result.level = 10;  // full match
-                              return result;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
 
   const auto* map_1d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<ValueStats>>>* {
     auto it1 = bond_idx_1d_.find(ha1);
@@ -3351,30 +3383,15 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     return &it4->second;
   }();
 
-  const auto* map_full = [&]() -> const std::map<std::string,
-                                 std::map<std::string, std::map<std::string,
-                                 std::map<std::string, ValueStats>>>>* {
-    auto it1 = bond_idx_full_.find(ha1);
-    if (it1 == bond_idx_full_.end()) return nullptr;
-    auto it2 = it1->second.find(ha2);
-    if (it2 == it1->second.end()) return nullptr;
-    auto it3 = it2->second.find(hybr_comb);
-    if (it3 == it2->second.end()) return nullptr;
-    auto it4 = it3->second.find(in_ring);
-    if (it4 == it3->second.end()) return nullptr;
-    auto it5 = it4->second.find(a1_nb2);
-    if (it5 == it4->second.end()) return nullptr;
-    auto it6 = it5->second.find(a2_nb2);
-    if (it6 == it5->second.end()) return nullptr;
-    auto it7 = it6->second.find(a1_nb);
-    if (it7 == it6->second.end()) return nullptr;
-    auto it8 = it7->second.find(a2_nb);
-    if (it8 == it7->second.end()) return nullptr;
-    return &it8->second;
-  }();
-
+  // Determine key availability for gating (mirror AceDRG's presence checks).
   bool has_hybr = false;
   bool has_in_ring = false;
+  bool has_a1_nb2 = false;
+  bool has_a2_nb2 = false;
+  bool has_a1_nb = false;
+  bool has_a2_nb = false;
+  bool has_a1_type = false;
+  bool has_a2_type = false;
   {
     auto it1 = bond_idx_2d_.find(ha1);
     if (it1 != bond_idx_2d_.end()) {
@@ -3383,25 +3400,37 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
         auto it3 = it2->second.find(hybr_comb);
         if (it3 != it2->second.end()) {
           has_hybr = true;
-          if (it3->second.find(in_ring) != it3->second.end())
+          auto it4 = it3->second.find(in_ring);
+          if (it4 != it3->second.end()) {
             has_in_ring = true;
+            auto it5 = it4->second.find(a1_nb2);
+            if (it5 != it4->second.end()) {
+              has_a1_nb2 = true;
+              auto it6 = it5->second.find(a2_nb2);
+              if (it6 != it5->second.end()) {
+                has_a2_nb2 = true;
+                auto it7 = it6->second.find(a1_nb);
+                if (it7 != it6->second.end()) {
+                  has_a1_nb = true;
+                  auto it8 = it7->second.find(a2_nb);
+                  if (it8 != it7->second.end())
+                    has_a2_nb = true;
+                }
+              }
+            }
+          }
         }
       }
     }
   }
-
-  bool has_a1_nb2 = map_nb2 && map_nb2->find(a1_nb2) != map_nb2->end();
-  bool has_a2_nb2 = has_a1_nb2 &&
-                    map_nb2->at(a1_nb2).find(a2_nb2) != map_nb2->at(a1_nb2).end();
-  bool has_a1_nb = has_a2_nb2 &&
-                   map_nb2->at(a1_nb2).at(a2_nb2).find(a1_nb) != map_nb2->at(a1_nb2).at(a2_nb2).end();
-  bool has_a2_nb = has_a1_nb &&
-                   map_nb2->at(a1_nb2).at(a2_nb2).at(a1_nb).find(a2_nb) !=
-                     map_nb2->at(a1_nb2).at(a2_nb2).at(a1_nb).end();
-
-  bool has_a1_type = map_full && map_full->find(a1_type) != map_full->end();
-  bool has_a2_type = has_a1_type &&
-                     map_full->at(a1_type).find(a2_type) != map_full->at(a1_type).end();
+  if (map_1d) {
+    auto it1 = map_1d->find(a1_type);
+    if (it1 != map_1d->end()) {
+      has_a1_type = true;
+      if (it1->second.find(a2_type) != it1->second.end())
+        has_a2_type = true;
+    }
+  }
 
   int num_th = min_observations_bond;
   if (a1.el == El::As || a2.el == El::As || a1.el == El::Ge || a2.el == El::Ge)
@@ -3422,9 +3451,6 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   if (verbose >= 2)
     std::fprintf(stderr, "      has: hybr=%d ring=%d a1_nb2=%d a2_nb2=%d a1_nb=%d a2_nb=%d a1_type=%d a2_type=%d start_level=%d\n",
                  has_hybr, has_in_ring, has_a1_nb2, has_a2_nb2, has_a1_nb, has_a2_nb, has_a1_type, has_a2_type, start_level);
-
-  ValueStats last_vs;
-  bool have_last = false;
 
   // AceDRG-like multilevel fallback: iterate from start_level upward until threshold is met
   for (int level = start_level; level < 12; level++) {
@@ -3458,6 +3484,14 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
             if (!it2.second.empty())
               values.push_back(it2.second.front());
           }
+        }
+        // Add entries where a2_type matches but a1_type differs (AceDRG tLev==1)
+        for (const auto& it1b : *map_1d) {
+          if (it1b.first == a1_type)
+            continue;
+          auto it2 = it1b.second.find(a2_type);
+          if (it2 != it1b.second.end() && !it2->second.empty())
+            values.push_back(it2->second.front());
         }
         values_size = static_cast<int>(values.size());
         if (!values.empty())
@@ -3497,16 +3531,23 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     } else if (level == 4 || level == 5) {
       if (map_2d) {
         std::vector<ValueStats> values;
-        for (const auto& it1 : *map_2d) {
-          if (level == 4 && it1.first == a1_nb) {
-            for (const auto& it2 : it1.second)
+        // AceDRG level 4: combine entries with a1NB plus entries with a2NB but not a1NB.
+        // AceDRG level 5: only entries with a2NB but not a1NB.
+        if (level == 4) {
+          auto it1 = map_2d->find(a1_nb);
+          if (it1 != map_2d->end()) {
+            for (const auto& it2 : it1->second)
               for (const auto& v : it2.second)
                 values.push_back(v);
-          } else if (level == 5 && it1.first != a1_nb) {
-            auto it2 = it1.second.find(a2_nb);
-            if (it2 != it1.second.end())
-              for (const auto& v : it2->second)
-                values.push_back(v);
+          }
+        }
+        for (const auto& it1 : *map_2d) {
+          if (it1.first == a1_nb)
+            continue;
+          auto it2 = it1.second.find(a2_nb);
+          if (it2 != it1.second.end()) {
+            for (const auto& v : it2->second)
+              values.push_back(v);
           }
         }
         values_size = static_cast<int>(values.size());
@@ -3592,9 +3633,11 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
 
     // Check threshold (matching acedrg's logic)
     // Levels 1-8 use entry count threshold, level 0 and others use observation count
-    bool threshold_met;
+    bool threshold_met = false;
     if (level >= 1 && level <= 8) {
       threshold_met = values_size >= num_th;  // entry count
+    } else if (level >= 9) {
+      threshold_met = values_size > 0;        // HRS entries only require presence
     } else {
       threshold_met = vs.count >= num_th;     // observation count
     }
@@ -3604,18 +3647,6 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       vs.level = level;
       return vs;
     }
-    // Store as fallback if we have data but didn't meet threshold
-    if (values_size > 0) {
-      last_vs = vs;
-      last_vs.level = level;
-      have_last = true;
-    }
-  }
-
-  if (have_last) {
-    if (verbose >= 2)
-      std::fprintf(stderr, "      matched: level=late\n");
-    return last_vs;
   }
 
   // No match found in detailed tables
@@ -3718,7 +3749,6 @@ ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */
 
 ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
     const CodAtomInfo& ligand, const std::vector<CodAtomInfo>& atoms) const {
-
   int ha1 = metal.connectivity;
   int ha2 = static_cast<int>(ligand.conn_atoms_no_metal.size());
 
@@ -3800,18 +3830,18 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   std::string value_key = std::to_string(ring_val) + ":" + hybr_tuple;
 
   // Get neighbor symbols - table format: a1=flank1, a2=center, a3=flank3
-  const std::string& a1_nb2 = flank1->nb2_symb;
-  const std::string& a2_nb2 = center.nb2_symb;
-  const std::string& a3_nb2 = flank3->nb2_symb;
-  const std::string& a1_root = flank1->cod_root;
-  const std::string& a2_root = center.cod_root;
-  const std::string& a3_root = flank3->cod_root;
-  const std::string& a1_nb = flank1->nb_symb;
-  const std::string& a2_nb = center.nb_symb;
-  const std::string& a3_nb = flank3->nb_symb;
-  const std::string& a1_type = flank1->cod_main;
-  const std::string& a2_type = center.cod_main;
-  const std::string& a3_type = flank3->cod_main;
+  std::string a1_nb2 = flank1->nb2_symb;
+  std::string a2_nb2 = center.nb2_symb;
+  std::string a3_nb2 = flank3->nb2_symb;
+  std::string a1_root = flank1->cod_root;
+  std::string a2_root = center.cod_root;
+  std::string a3_root = flank3->cod_root;
+  std::string a1_nb = flank1->nb_symb;
+  std::string a2_nb = center.nb_symb;
+  std::string a3_nb = flank3->nb_symb;
+  std::string a1_type = flank1->cod_main;
+  std::string a2_type = center.cod_main;
+  std::string a3_type = flank3->cod_main;
 
   if (verbose >= 2) {
     std::fprintf(stderr,
