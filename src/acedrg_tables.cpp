@@ -817,8 +817,9 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
     default: d2 = 7; break;
   }
 
-  // d3: connectivity + 8
-  int d3 = 8 + atom.connectivity;
+  // d3: non-metal connectivity + 8
+  // AceDRG excludes metal neighbors from connectivity when computing hash.
+  int d3 = 8 + static_cast<int>(atom.conn_atoms_no_metal.size());
 
   // d4: periodic row + 16
   int d4 = 16 + element_row(atom.el);
