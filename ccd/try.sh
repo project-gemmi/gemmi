@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 cd ..
 GEMMI_DIR="$(pwd)"
-./run-tests.sh G
+./run-tests.sh G >&2
 # Set ACEDRG_TABLES if not set and CCP4 is not set but local tables exist
 if [[ -z "${ACEDRG_TABLES:-}" && -z "${CCP4:-}" && -d "./acedrg/tables" ]]; then
     export ACEDRG_TABLES="$GEMMI_DIR/acedrg/tables"
