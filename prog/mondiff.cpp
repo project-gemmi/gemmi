@@ -14,7 +14,7 @@ using namespace gemmi;
 
 namespace {
 
-enum OptionIndex { Bond=4, BondEsd, Angle, AngleEsd, Relative, Only };
+enum OptionIndex { Bond=4, BondEsd, Angle, AngleEsd, Relative, Only, Tsv };
 
 // Constants for --only option
 const char ATOMS_OPT = 'a';
@@ -47,6 +47,8 @@ const option::Descriptor Usage[] = {
   { Only, 0, "", "only", Arg::Required,
     "  --only=WHAT  \tonly check specified items (a=atoms, t=atom types, b=bonds, A=angles, "
     "c=torsions, h=chiralities, p=planes)." },
+  { Tsv, 0, "", "tsv", Arg::None,
+    "  --tsv  \toutput in tab-separated format." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -63,6 +65,8 @@ struct MinDelta {
   bool check_torsions = true;
   bool check_chirs = true;
   bool check_planes = true;
+  bool tsv = false;
+  std::string name;
 };
 
 std::string str(const ChemComp& cc, const Restraints::Bond& b) {
@@ -96,25 +100,44 @@ const char* mark(double delta, double eps) {
 
 void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
                        const MinDelta& delta) {
+  const char* code = delta.name.c_str();
+  bool tsv = delta.tsv;
   // atoms
   if (delta.check_atoms || delta.check_atom_types) {
     for (const ChemComp::Atom& a : cc1.atoms) {
       auto b = cc2.find_atom(a.id);
       if (b == cc2.atoms.end()) {
-        printf("- atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
+        if (tsv)
+          printf("%s\tatom\t-\t%s\t%s\n", code, a.id.c_str(), a.chem_type.c_str());
+        else
+          printf("- atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
       } else {
-        if (delta.check_atom_types && a.chem_type != b->chem_type)
-          printf("! atom %s (%s : %s)\n",
-                 a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+        if (delta.check_atom_types && a.chem_type != b->chem_type) {
+          if (tsv)
+            printf("%s\tatom\t!\t%s\t%s\t%s\n",
+                   code, a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+          else
+            printf("! atom %s (%s : %s)\n",
+                   a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
+        }
         if (delta.check_atom_types && !a.acedrg_type.empty() && !b->acedrg_type.empty() &&
-            a.acedrg_type != b->acedrg_type)
-          printf("! atom %s acedrg_type (%s : %s)\n",
-                 a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
+            a.acedrg_type != b->acedrg_type) {
+          if (tsv)
+            printf("%s\tatomtype\t!\t%s\t%s\t%s\n",
+                   code, a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
+          else
+            printf("! atom %s acedrg_type (%s : %s)\n",
+                   a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
+        }
       }
     }
     for (const ChemComp::Atom& a : cc2.atoms)
-      if (cc1.find_atom(a.id) == cc1.atoms.end())
-        printf("+ atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
+      if (cc1.find_atom(a.id) == cc1.atoms.end()) {
+        if (tsv)
+          printf("%s\tatom\t+\t%s\t%s\n", code, a.id.c_str(), a.chem_type.c_str());
+        else
+          printf("+ atom %s (%s)\n", a.id.c_str(), a.chem_type.c_str());
+      }
   }
 
   // bonds
@@ -122,7 +145,13 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     for (const Restraints::Bond& a : cc1.rt.bonds) {
       auto b = cc2.rt.find_bond(a.id1, a.id2);
       if (b == cc2.rt.bonds.end()) {
-        printf("- %s\n", str(cc1, a).c_str());
+        if (tsv)
+          printf("%s\tbond\t-\t%s\t%s\t%s\t%s\n", code,
+                 a.id1.atom.c_str(), a.id2.atom.c_str(),
+                 cc1.get_atom(a.id1.atom).chem_type.c_str(),
+                 cc1.get_atom(a.id2.atom).chem_type.c_str());
+        else
+          printf("- %s\n", str(cc1, a).c_str());
       } else {
 #if PRINT_SINGLE_DOUBLE_DIFFS
         if (a.type != b->type)
@@ -132,15 +161,30 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
 #endif
         double d = std::fabs(a.value - b->value);
         if ((d > delta.bond || std::fabs(a.esd - b->esd) > delta.bond_esd) &&
-            d > delta.rel * std::min(a.esd, b->esd))
-          printf("! %-30s %4s %.3f : %.3f   esd %.3f : %.3f\n",
-                 str(cc1, a).c_str(), mark(d, a.esd),
-                 a.value, b->value, a.esd, b->esd);
+            d > delta.rel * std::min(a.esd, b->esd)) {
+          if (tsv)
+            printf("%s\tbond\t!\t%s\t%s\t%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\n", code,
+                   a.id1.atom.c_str(), a.id2.atom.c_str(),
+                   cc1.get_atom(a.id1.atom).chem_type.c_str(),
+                   cc1.get_atom(a.id2.atom).chem_type.c_str(),
+                   a.value, b->value, a.esd, b->esd);
+          else
+            printf("! %-30s %4s %.3f : %.3f   esd %.3f : %.3f\n",
+                   str(cc1, a).c_str(), mark(d, a.esd),
+                   a.value, b->value, a.esd, b->esd);
+        }
       }
     }
     for (const Restraints::Bond& a : cc2.rt.bonds)
-      if (cc1.rt.find_bond(a.id1, a.id2) == cc1.rt.bonds.end())
-        printf("+ %s\n", str(cc2, a).c_str());
+      if (cc1.rt.find_bond(a.id1, a.id2) == cc1.rt.bonds.end()) {
+        if (tsv)
+          printf("%s\tbond\t+\t%s\t%s\t%s\t%s\n", code,
+                 a.id1.atom.c_str(), a.id2.atom.c_str(),
+                 cc2.get_atom(a.id1.atom).chem_type.c_str(),
+                 cc2.get_atom(a.id2.atom).chem_type.c_str());
+        else
+          printf("+ %s\n", str(cc2, a).c_str());
+      }
   }
 
   // angles
@@ -148,19 +192,43 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     for (const Restraints::Angle& a : cc1.rt.angles) {
       auto b = cc2.rt.find_angle(a.id1, a.id2, a.id3);
       if (b == cc2.rt.angles.end()) {
-        printf("- %s\n", str(cc1, a).c_str());
+        if (tsv)
+          printf("%s\tangle\t-\t%s\t%s\t%s\t%s\t%s\t%s\n", code,
+                 a.id1.atom.c_str(), a.id2.atom.c_str(), a.id3.atom.c_str(),
+                 cc1.get_atom(a.id1.atom).chem_type.c_str(),
+                 cc1.get_atom(a.id2.atom).chem_type.c_str(),
+                 cc1.get_atom(a.id3.atom).chem_type.c_str());
+        else
+          printf("- %s\n", str(cc1, a).c_str());
       } else {
         double d = std::fabs(a.value - b->value);
         if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd) &&
-            d > delta.rel * std::min(a.esd, b->esd))
-          printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
-                 str(cc1, a).c_str(), mark(d, a.esd),
-                 a.value, b->value, a.esd, b->esd);
+            d > delta.rel * std::min(a.esd, b->esd)) {
+          if (tsv)
+            printf("%s\tangle\t!\t%s\t%s\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\n", code,
+                   a.id1.atom.c_str(), a.id2.atom.c_str(), a.id3.atom.c_str(),
+                   cc1.get_atom(a.id1.atom).chem_type.c_str(),
+                   cc1.get_atom(a.id2.atom).chem_type.c_str(),
+                   cc1.get_atom(a.id3.atom).chem_type.c_str(),
+                   a.value, b->value, a.esd, b->esd);
+          else
+            printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+                   str(cc1, a).c_str(), mark(d, a.esd),
+                   a.value, b->value, a.esd, b->esd);
+        }
       }
     }
     for (const Restraints::Angle& a : cc2.rt.angles)
-      if (cc1.rt.find_angle(a.id1, a.id2, a.id3) == cc1.rt.angles.end())
-        printf("+ %s\n", str(cc2, a).c_str());
+      if (cc1.rt.find_angle(a.id1, a.id2, a.id3) == cc1.rt.angles.end()) {
+        if (tsv)
+          printf("%s\tangle\t+\t%s\t%s\t%s\t%s\t%s\t%s\n", code,
+                 a.id1.atom.c_str(), a.id2.atom.c_str(), a.id3.atom.c_str(),
+                 cc2.get_atom(a.id1.atom).chem_type.c_str(),
+                 cc2.get_atom(a.id2.atom).chem_type.c_str(),
+                 cc2.get_atom(a.id3.atom).chem_type.c_str());
+        else
+          printf("+ %s\n", str(cc2, a).c_str());
+      }
   }
 
   // torsion angles
@@ -168,19 +236,31 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     for (const Restraints::Torsion& a : cc1.rt.torsions) {
       auto b = cc2.rt.find_torsion(a.id1, a.id2, a.id3, a.id4);
       if (b == cc2.rt.torsions.end()) {
-        printf("- %s\n", str(cc1, a).c_str());
+        if (tsv)
+          printf("%s\ttorsion\t-\t%s\n", code, a.str().c_str());
+        else
+          printf("- %s\n", str(cc1, a).c_str());
       } else {
         double d = std::fabs(a.value - b->value);
         if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd) &&
-            d > delta.rel * std::min(a.esd, b->esd))
-          printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
-                 str(cc1, a).c_str(), mark(d, a.esd),
-                 a.value, b->value, a.esd, b->esd);
+            d > delta.rel * std::min(a.esd, b->esd)) {
+          if (tsv)
+            printf("%s\ttorsion\t!\t%s\t%.2f\t%.2f\t%.2f\t%.2f\n", code,
+                   a.str().c_str(), a.value, b->value, a.esd, b->esd);
+          else
+            printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+                   str(cc1, a).c_str(), mark(d, a.esd),
+                   a.value, b->value, a.esd, b->esd);
+        }
       }
     }
     for (const Restraints::Torsion& a : cc2.rt.torsions)
-      if (cc1.rt.find_torsion(a.id1, a.id2, a.id3,a.id4) == cc1.rt.torsions.end())
-        printf("+ %s\n", str(cc2, a).c_str());
+      if (cc1.rt.find_torsion(a.id1, a.id2, a.id3,a.id4) == cc1.rt.torsions.end()) {
+        if (tsv)
+          printf("%s\ttorsion\t+\t%s\n", code, a.str().c_str());
+        else
+          printf("+ %s\n", str(cc2, a).c_str());
+      }
   }
 
   // chiralities
@@ -189,26 +269,44 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
     for (const Restraints::Chirality& a : cc1.rt.chirs) {
       auto b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id2, a.id3);
       if (b != cc2.rt.chirs.end()) {
-        if (a.sign != b->sign)
-          printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
-                 chirality_to_string(a.sign), chirality_to_string(b->sign));
+        if (a.sign != b->sign) {
+          if (tsv)
+            printf("%s\tchir\t!\t%s\t%s\t%s\n", code, a.str().c_str(),
+                   chirality_to_string(a.sign), chirality_to_string(b->sign));
+          else
+            printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
+                   chirality_to_string(a.sign), chirality_to_string(b->sign));
+        }
         matched_chir[b - cc2.rt.chirs.begin()] = true;
         continue;
       }
       b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id3, a.id2);
       if (b == cc2.rt.chirs.end()) {
-        printf("- %s  %s\n", str(cc1, a).c_str(), chirality_to_string(a.sign));
+        if (tsv)
+          printf("%s\tchir\t-\t%s\t%s\n", code, a.str().c_str(),
+                 chirality_to_string(a.sign));
+        else
+          printf("- %s  %s\n", str(cc1, a).c_str(), chirality_to_string(a.sign));
       } else {
         matched_chir[b - cc2.rt.chirs.begin()] = true;
-        if (b->sign == ChiralityType::Both || b->sign == a.sign)
-          printf("! %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
-                 chirality_to_string(a.sign), chirality_to_string(b->sign));
+        if (b->sign == ChiralityType::Both || b->sign == a.sign) {
+          if (tsv)
+            printf("%s\tchir\t!\t%s\t%s\t%s\tswapped\n", code, a.str().c_str(),
+                   chirality_to_string(a.sign), chirality_to_string(b->sign));
+          else
+            printf("! %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
+                   chirality_to_string(a.sign), chirality_to_string(b->sign));
+        }
       }
     }
     for (size_t i = 0; i != cc2.rt.chirs.size(); ++i)
       if (!matched_chir[i]) {
         const Restraints::Chirality& a = cc2.rt.chirs[i];
-        printf("+ %s  %s\n", str(cc2, a).c_str(), chirality_to_string(a.sign));
+        if (tsv)
+          printf("%s\tchir\t+\t%s\t%s\n", code, a.str().c_str(),
+                 chirality_to_string(a.sign));
+        else
+          printf("+ %s  %s\n", str(cc2, a).c_str(), chirality_to_string(a.sign));
       }
   }
 
@@ -223,17 +321,28 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
       std::set<Restraints::AtomId> plane1(a.ids.begin(), a.ids.end());
       auto b = std::find(planes2.begin(), planes2.end(), plane1);
       if (b == planes2.end()) {
-        printf("- plane %s\n", a.str().c_str());
+        if (tsv)
+          printf("%s\tplane\t-\t%s\n", code, a.str().c_str());
+        else
+          printf("- plane %s\n", a.str().c_str());
         continue;
       }
       double b_esd = cc2.rt.planes[b - planes2.begin()].esd;
-      if (std::fabs(a.esd - b_esd) > 0.02)
-        printf("! plane %-53s esd %.2f : %.2f\n", a.str().c_str(), a.esd, b_esd);
+      if (std::fabs(a.esd - b_esd) > 0.02) {
+        if (tsv)
+          printf("%s\tplane\t!\t%s\t%.2f\t%.2f\n", code, a.str().c_str(), a.esd, b_esd);
+        else
+          printf("! plane %-53s esd %.2f : %.2f\n", a.str().c_str(), a.esd, b_esd);
+      }
       b->clear();
     }
     for (size_t i = 0; i != planes2.size(); ++i)
-      if (!planes2[i].empty())
-        printf("+ plane %s\n", cc2.rt.planes[i].str().c_str());
+      if (!planes2[i].empty()) {
+        if (tsv)
+          printf("%s\tplane\t+\t%s\n", code, cc2.rt.planes[i].str().c_str());
+        else
+          printf("+ plane %s\n", cc2.rt.planes[i].str().c_str());
+      }
   }
 }
 
@@ -319,6 +428,9 @@ int GEMMI_MAIN(int argc, char **argv) {
       block2 = doc2.find_block(block1->name);
     if (!block2)
       fail("Block ", name, " not found in ", path2);
+    if (p.options[Tsv])
+      delta.tsv = true;
+    delta.name = name;
     ChemComp cc1 = make_chemcomp_from_block(*block1);
     ChemComp cc2 = make_chemcomp_from_block(*block2);
     compare_chemcomps(cc1, cc2, delta);
