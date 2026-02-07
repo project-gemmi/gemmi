@@ -2727,21 +2727,19 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
         }
         return false;
       };
-      // AceDRG uses CCP4-like values for organic bonds adjacent to metal-coordinated
-      // donor atoms (e.g. N32-H and CH2-N32 in Pt amine complexes).
-      bool metal_adjacent_donor =
-          idx1 >= 0 && idx2 >= 0 &&
+      // CCP4 override for heavy-atom bonds adjacent to metal-coordinated donors.
+      // Excludes X-H bonds where multilevel values are more reliable.
+      if (idx1 >= 0 && idx2 >= 0 &&
           !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
-          ((atom_info[idx1].metal_connectivity > 0 &&
-            (atom_info[idx1].el == El::N || atom_info[idx1].el == El::O ||
-             atom_info[idx1].el == El::S || atom_info[idx1].el == El::P ||
-             atom_info[idx1].el == El::As || atom_info[idx1].el == El::Se)) ||
-           (atom_info[idx2].metal_connectivity > 0 &&
-            (atom_info[idx2].el == El::N || atom_info[idx2].el == El::O ||
-             atom_info[idx2].el == El::S || atom_info[idx2].el == El::P ||
-             atom_info[idx2].el == El::As || atom_info[idx2].el == El::Se)));
-      if (metal_adjacent_donor)
-        apply_ccp4(true);
+          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H) {
+        auto is_donor = [](const CodAtomInfo& a) {
+          return a.metal_connectivity > 0 &&
+                 (a.el == El::N || a.el == El::O || a.el == El::S ||
+                  a.el == El::P || a.el == El::As || a.el == El::Se);
+        };
+        if (is_donor(atom_info[idx1]) || is_donor(atom_info[idx2]))
+          apply_ccp4(true);
+      }
       // CCP4 energetic library fallback
       if (std::isnan(bond.value))
         apply_ccp4(false);
@@ -3001,20 +2999,19 @@ void AcedrgTables::fill_restraints(ChemComp& cc,
         }
         return false;
       };
-      bool metal_adjacent_donor =
-          idx1 >= 0 && idx2 >= 0 &&
+      // CCP4 override for heavy-atom bonds adjacent to metal-coordinated donors.
+      // Excludes X-H bonds where multilevel values are more reliable.
+      if (idx1 >= 0 && idx2 >= 0 &&
           !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
-          ((atom_info[idx1].metal_connectivity > 0 &&
-            (atom_info[idx1].el == El::N || atom_info[idx1].el == El::O ||
-             atom_info[idx1].el == El::S || atom_info[idx1].el == El::P ||
-             atom_info[idx1].el == El::As || atom_info[idx1].el == El::Se)) ||
-           (atom_info[idx2].metal_connectivity > 0 &&
-            (atom_info[idx2].el == El::N || atom_info[idx2].el == El::O ||
-             atom_info[idx2].el == El::S || atom_info[idx2].el == El::P ||
-             atom_info[idx2].el == El::As || atom_info[idx2].el == El::Se)));
-      if (metal_adjacent_donor)
-        apply_ccp4(true);
-
+          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H) {
+        auto is_donor = [](const CodAtomInfo& a) {
+          return a.metal_connectivity > 0 &&
+                 (a.el == El::N || a.el == El::O || a.el == El::S ||
+                  a.el == El::P || a.el == El::As || a.el == El::Se);
+        };
+        if (is_donor(atom_info[idx1]) || is_donor(atom_info[idx2]))
+          apply_ccp4(true);
+      }
       // CCP4 energetic library fallback
       if (std::isnan(bond.value))
         apply_ccp4(false);
