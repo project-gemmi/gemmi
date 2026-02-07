@@ -2729,10 +2729,13 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
         return false;
       };
       // CCP4 override for heavy-atom bonds adjacent to metal-coordinated donors.
-      // Excludes X-H bonds where multilevel values are more reliable.
+      // Excludes X-H bonds and bonds involving P/As, whose bonds (e.g.
+      // phosphate P-O) are well characterized by the multilevel tables.
       if (idx1 >= 0 && idx2 >= 0 &&
           !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
-          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H) {
+          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H &&
+          atom_info[idx1].el != El::P && atom_info[idx2].el != El::P &&
+          atom_info[idx1].el != El::As && atom_info[idx2].el != El::As) {
         auto is_donor = [](const CodAtomInfo& a) {
           return a.metal_connectivity > 0 &&
                  (a.el == El::N || a.el == El::O || a.el == El::S ||
@@ -3001,10 +3004,13 @@ void AcedrgTables::fill_restraints(ChemComp& cc,
         return false;
       };
       // CCP4 override for heavy-atom bonds adjacent to metal-coordinated donors.
-      // Excludes X-H bonds where multilevel values are more reliable.
+      // Excludes X-H bonds and bonds involving P/As, whose bonds (e.g.
+      // phosphate P-O) are well characterized by the multilevel tables.
       if (idx1 >= 0 && idx2 >= 0 &&
           !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
-          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H) {
+          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H &&
+          atom_info[idx1].el != El::P && atom_info[idx2].el != El::P &&
+          atom_info[idx1].el != El::As && atom_info[idx2].el != El::As) {
         auto is_donor = [](const CodAtomInfo& a) {
           return a.metal_connectivity > 0 &&
                  (a.el == El::N || a.el == El::O || a.el == El::S ||
