@@ -3305,18 +3305,16 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     return 0;  // fallback - no good type-specific match
   }
 
-  // Ultimate fallback: sum of covalent radii
-  bond.value = a1.el.covalent_r() + a2.el.covalent_r();
-  bond.esd = upper_bond_sigma;
-  source = "covalent_radii";
+  // No match found - leave bond.value as NaN so CCP4 fallback in fill_restraints
+  // can be applied. AceDRG's search order is: multilevel -> HRS -> EN -> CCP4.
   if (debug)
     debug->source = source;
   if (verbose)
-    std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f)\n",
+    std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s -> %s\n",
                  bond.id1.atom.c_str(), bond.id2.atom.c_str(),
                  a1.hashing_value, a2.hashing_value,
                  hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                 source, bond.value, bond.esd);
+                 source);
   return 0;  // no type-specific match
 }
 
