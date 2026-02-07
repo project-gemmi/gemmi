@@ -163,7 +163,11 @@ void adjust_terminal_carboxylate(ChemComp& cc) {
 }
 
 bool add_n_terminal_h3(ChemComp& cc) {
-  if (cc.find_atom("N") == cc.atoms.end())
+  auto n_it = cc.find_atom("N");
+  if (n_it == cc.atoms.end())
+    return false;
+  // Skip if N is already protonated (e.g. by adjust_terminal_amine)
+  if (std::fabs(n_it->charge) > 0.5f)
     return false;
   if (cc.find_atom("H3") != cc.atoms.end())
     return false;
@@ -608,33 +612,67 @@ void adjust_carboxy_asp(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
-// Protonate guanidinium groups to neutral pH form (+NH2 instead of =NH)
-// Guanidinium has pKa ~12.5, so it's protonated at neutral pH.
-void adjust_guanidinium_group(ChemComp& cc) {
-  auto choose_h_name = [&](const std::string& n_id,
-                           const std::vector<std::string>& h_neighbors) {
-    // AceDRG naming quirks for added guanidinium hydrogens.
-    if (n_id == "NH2" && cc.find_atom("HH") == cc.atoms.end())
-      return std::string("HH");
-    if (h_neighbors.size() == 1 && n_id.size() > 1 && n_id[0] == 'N') {
-      const std::string& h0 = h_neighbors[0];
-      std::string n_suffix = n_id.substr(1);
-      bool digits = !n_suffix.empty() &&
-                    std::all_of(n_suffix.begin(), n_suffix.end(),
-                                [](char c) { return c >= '0' && c <= '9'; });
-      if (digits && h0 == "HN" + n_suffix) {
-        std::string cand = "H" + std::to_string(std::stoi(n_suffix) + 1);
-        if (cc.find_atom(cand) == cc.atoms.end())
-          return cand;
+// Choose a name for an added hydrogen on nitrogen, matching AceDRG conventions.
+// n_id: nitrogen atom name; h_on_n: existing H atom names bonded to this nitrogen.
+// used_names: set of all original atom names (including removed ones); updated on return.
+std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& n_id,
+                          const std::vector<std::string>& h_on_n) {
+  // 1. Determine hRootId from nitrogen name.
+  //    Extract alphabetic characters; if 2+, use "H" + rest; else "H".
+  std::string root;
+  for (char c : n_id)
+    if (std::isalpha(static_cast<unsigned char>(c)))
+      root += c;
+  std::string h_root = (root.size() == 2) ? "H" + root.substr(1) : "H";
+
+  // 2. Multi-char root: try bare root first.
+  if (h_root.size() >= 2 && used_names.find(h_root) == used_names.end()) {
+    used_names.insert(h_root);
+    return h_root;
+  }
+
+  // 3. For "H" root (or multi-char fallback):
+  //    Compute idxMax from existing H atoms on this nitrogen.
+  int idx_max = 0;
+  for (const std::string& h : h_on_n) {
+    // Find first digit position.
+    size_t d = 0;
+    for (; d < h.size(); ++d)
+      if (std::isdigit(static_cast<unsigned char>(h[d])))
+        break;
+    if (d < h.size()) {
+      const std::string suffix = h.substr(d);
+      if (std::all_of(suffix.begin(), suffix.end(),
+                      [](char c) { return std::isdigit(static_cast<unsigned char>(c)); })) {
+        int val = std::stoi(suffix);
+        if (val > idx_max)
+          idx_max = val;
       }
     }
-    for (int n = 3; n < 100; ++n) {
-      std::string cand = "H" + std::to_string(n);
-      if (cc.find_atom(cand) == cc.atoms.end())
-        return cand;
+  }
+
+  // 4. First candidate: h_root + (idxMax+1), or h_root + "2" if idxMax==0.
+  int start = (idx_max > 0) ? idx_max + 1 : 2;
+  std::string cand = h_root + std::to_string(start);
+  if (used_names.find(cand) == used_names.end()) {
+    used_names.insert(cand);
+    return cand;
+  }
+
+  // 5. Collision: search from h_root+"2" upward for first available.
+  for (int n = 2; n < 10000; ++n) {
+    cand = h_root + std::to_string(n);
+    if (used_names.find(cand) == used_names.end()) {
+      used_names.insert(cand);
+      return cand;
     }
-    return std::string();
-  };
+  }
+  return {};
+}
+
+// Protonate guanidinium groups to neutral pH form (+NH2 instead of =NH)
+// Guanidinium has pKa ~12.5, so it's protonated at neutral pH.
+void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
 
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
@@ -776,7 +814,7 @@ void adjust_guanidinium_group(ChemComp& cc) {
         // Set charge on the nitrogen
         cc.atoms[n_it->second].charge = 1.0f;
 
-        std::string new_h_id = choose_h_name(n_id, h_neighbors);
+        std::string new_h_id = acedrg_h_name(used_names, n_id, h_neighbors);
         if (new_h_id.empty())
           continue;  // Can't find unique name, skip
 
@@ -799,7 +837,7 @@ void adjust_guanidinium_group(ChemComp& cc) {
 // The N(*) means the amide nitrogen must have at least one non-H neighbor besides the carbonyl carbon,
 // which distinguishes secondary amides (C=O-NH-R) from primary amides (C=O-NH2).
 // This handles general ligand amines like N19/H191/H192 that aren't standard amino acid N-termini.
-void adjust_amino_ter_amine(ChemComp& cc) {
+void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
@@ -820,6 +858,9 @@ void adjust_amino_ter_amine(ChemComp& cc) {
 
   for (auto& n1 : cc.atoms) {
     if (n1.el != El::N)
+      continue;
+    // Skip if already charged (already protonated)
+    if (std::fabs(n1.charge) > 0.5f)
       continue;
 
     // Find NH2: exactly 2 H neighbors
@@ -885,26 +926,9 @@ void adjust_amino_ter_amine(ChemComp& cc) {
       if (has_carbonyl && has_amide_n) {
         // Pattern matched! Protonate NH2 -> NH3+
         n1.charge = 1.0f;
-        // Generate unique H name - acedrg uses sequential H3, H4, etc. for global
-        // hydrogen naming, or HXX3 for nitrogen XX with HXX1/HXX2 hydrogens.
-        std::string new_h;
-        if (n1.id == "N") {
-          // Standard amino terminus: use H3, H4, etc.
-          for (int i = 3; i < 100; ++i) {
-            new_h = "H" + std::to_string(i);
-            if (cc.find_atom(new_h) == cc.atoms.end())
-              break;
-          }
-        } else {
-          // Named nitrogen like N19: try H193, H194, etc. based on existing H191/H192
-          std::string n_suffix = n1.id.size() > 1 ? n1.id.substr(1) : "";
-          for (int i = 3; i < 1000; ++i) {
-            new_h = "H" + n_suffix + std::to_string(i);
-            if (cc.find_atom(new_h) == cc.atoms.end())
-              break;
-          }
-        }
-        if (cc.find_atom(new_h) != cc.atoms.end())
+        // Generate unique hydrogen name matching AceDRG conventions
+        std::string new_h = acedrg_h_name(used_names, n1.id, h_ids);
+        if (new_h.empty())
           break;  // Can't find unique name
         // Add hydrogen atom and bond
         cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
@@ -920,7 +944,7 @@ void adjust_amino_ter_amine(ChemComp& cc) {
 // CARBOXY-AMINO-TERS SMARTS pattern: O=C(O)C(N)(*) - an amine attached to a carbon
 // that also has a carboxylic acid group (alpha-amino acid pattern).
 // Only these are protonated; side-chain amines like lysine's epsilon-amino are not.
-void adjust_terminal_amine(ChemComp& cc) {
+void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
   std::map<std::string, size_t> atom_index;
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
@@ -1037,25 +1061,9 @@ void adjust_terminal_amine(ChemComp& cc) {
     // This is an alpha-amino acid amine - protonate it (NH2 -> NH3+)
     n_atom.charge = 1.0f;
 
-    // Generate unique hydrogen name
-    std::string new_h;
-    if (n_atom.id == "N") {
-      // Standard amino terminus: use H3, H4, etc.
-      for (int i = 3; i < 100; ++i) {
-        new_h = "H" + std::to_string(i);
-        if (cc.find_atom(new_h) == cc.atoms.end())
-          break;
-      }
-    } else {
-      // Named nitrogen like N14: try H143, H144, etc. based on existing H141/H142
-      std::string n_suffix = n_atom.id.size() > 1 ? n_atom.id.substr(1) : "";
-      for (int i = 3; i < 100; ++i) {
-        new_h = "H" + n_suffix + std::to_string(i);
-        if (cc.find_atom(new_h) == cc.atoms.end())
-          break;
-      }
-    }
-    if (cc.find_atom(new_h) != cc.atoms.end())
+    // Generate unique hydrogen name matching AceDRG conventions
+    std::string new_h = acedrg_h_name(used_names, n_atom.id, h_ids);
+    if (new_h.empty())
       continue;  // Can't find unique name, skip
 
     // Add hydrogen atom and bond
@@ -2103,6 +2111,12 @@ int GEMMI_MAIN(int argc, char **argv) {
 
         ChemComp cc = make_chemcomp_from_block(block);
         add_angles_from_bonds_if_missing(cc);
+        // Collect all original atom names for H naming collision checks.
+        // AceDRG checks new H names against all CCD atom names (including
+        // those removed during deprotonation), not just current atoms.
+        std::set<std::string> used_names;
+        for (const auto& atom : cc.atoms)
+          used_names.insert(atom.id);
         adjust_phosphate_group(cc);
         adjust_sulfate_group(cc);
         adjust_hexafluorophosphate(cc);
@@ -2111,9 +2125,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         // deprotonate generic carboxylic acids. It does deprotonate terminal
         // carboxylates (OXT/HXT) and CARBOXY-ASP matches.
         adjust_terminal_carboxylate(cc);
-        adjust_guanidinium_group(cc);
-        adjust_amino_ter_amine(cc);
-        adjust_terminal_amine(cc);
+        adjust_guanidinium_group(cc, used_names);
+        adjust_amino_ter_amine(cc, used_names);
+        adjust_terminal_amine(cc, used_names);
 
         // Convert to zwitterionic form (add H3) BEFORE classification and
         // fill_restraints. Acedrg tables are built using the zwitterionic form
