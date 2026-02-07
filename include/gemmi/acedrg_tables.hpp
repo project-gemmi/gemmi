@@ -483,6 +483,7 @@ public:
     std::string rep;
     std::string s_rep;
     bool is_aromatic = false;
+    bool is_aromatic_permissive = false;
   };
   struct SortMap {
     std::string key;

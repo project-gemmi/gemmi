@@ -790,6 +790,28 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     atom.cod_class_no_charge = atom.cod_class;
   }
 
+  // Phase 2: Rebuild codClass with permissive aromaticity for output.
+  // AceDRG's reDoAtomCodClassNames() sets isAromatic = isAromaticP after lookups.
+  // cod_class_no_charge (used for table lookups) retains the strict version.
+  bool has_permissive_diff = false;
+  for (const auto& ring : rings)
+    if (ring.is_aromatic_permissive != ring.is_aromatic)
+      has_permissive_diff = true;
+  if (has_permissive_diff) {
+    for (auto& ring : rings)
+      ring.is_aromatic = ring.is_aromatic_permissive;
+    for (auto& atom : atoms)
+      atom.ring_rep_s.clear();
+    set_atoms_ring_rep_s(atoms, rings);
+    for (size_t i = 0; i < atoms.size(); ++i)
+      set_atom_cod_class_name_new2(atoms[i], atoms[i], 2, atoms, neighbors);
+    for (size_t i = 0; i < atoms.size(); ++i)
+      set_special_3nb_symb2(atoms[i], atoms, neighbors);
+    // Don't call cod_class_to_atom2 here — it would overwrite cod_main, cod_root,
+    // nb_symb, nb2_symb, nb3_symb with permissive-aromaticity values, but these
+    // fields must retain strict-aromaticity values for COD table lookups.
+  }
+
   return atoms;
 }
 
@@ -895,10 +917,10 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     const std::vector<std::vector<BondInfo>>& adj,
     const std::vector<CodAtomInfo>& atoms,
     std::vector<RingInfo>& rings) const {
-  // AceDRG ring aromaticity used for final COD class names:
-  // - ring must be planar (bondingIdx==2, N allowed)
-  // - reDoAtomCodClassNames() sets isAromatic = isAromaticP, so ringRepS is
-  //   based on aromaticP (checkAromaSys(..., mode=1) with NoMetal/All π counts).
+  // AceDRG has two-phase aromaticity:
+  // - Strict (mode 0): only NoMetal pi count → isAromatic (used for COD table lookup)
+  // - Permissive (mode 1): NoMetal+All pi counts → isAromaticP (used for output CIF)
+  // Ring must be planar (bondingIdx==2, N allowed).
   auto count_non_mc = [&](int idx) -> int {
     int non_mc = 0;
     for (const auto& nb : adj[idx]) {
@@ -1020,6 +1042,59 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     return aN;
   };
 
+  for (size_t i = 0; i < rings.size(); ++i) {
+    RingInfo& ring = rings[i];
+    ring.is_aromatic = false;
+
+    if (!is_ring_planar(ring))
+      continue;
+
+    // AceDRG uses strict aromaticity (mode 0) for the COD table lookup.
+    // Mode 0 differs from mode 1 for charged N+ with 3 connections:
+    // mode 0 gives 2 pi electrons, mode 1 gives 1.
+    // AceDRG only checks the NoMetal pi count in strict mode.
+    double pi1 = 0.0;
+    for (int idx : ring.atoms)
+      pi1 += count_atom_pi_no_metal(idx, 0);
+    if (pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001)
+      ring.is_aromatic = true;
+    if (verbose >= 2) {
+      std::fprintf(stderr, "    ring %zu (size=%zu): pi1=%.1f aromatic=%d atoms:",
+                   i, ring.atoms.size(), pi1, ring.is_aromatic ? 1 : 0);
+      for (int idx : ring.atoms)
+        std::fprintf(stderr, " %s", atoms[idx].id.c_str());
+      std::fprintf(stderr, "\n");
+    }
+  }
+
+  // AceDRG pyrole rule: if there are exactly 4 five-member rings with 4C+1N
+  // and they are planar, mark them aromatic even if pi-count failed.
+  std::vector<size_t> pyrole_rings;
+  for (size_t i = 0; i < rings.size(); ++i) {
+    const RingInfo& ring = rings[i];
+    if (ring.atoms.size() != 5)
+      continue;
+    int num_c = 0;
+    int num_n = 0;
+    for (int idx : ring.atoms) {
+      if (atoms[idx].el == El::C)
+        ++num_c;
+      else if (atoms[idx].el == El::N)
+        ++num_n;
+    }
+    if (num_c == 4 && num_n == 1)
+      pyrole_rings.push_back(i);
+  }
+  if (pyrole_rings.size() == 4) {
+    for (size_t i : pyrole_rings) {
+      if (is_ring_planar(rings[i]))
+        rings[i].is_aromatic = true;
+    }
+  }
+
+  // Permissive aromaticity (AceDRG mode 1): used for output codClass names.
+  // Differs from strict for charged N+ (mode 1 gives 1 pi, mode 0 gives 2),
+  // and also checks the "all" pi count (which always gives 1 for N+).
   auto count_atom_pi_all = [&](int idx) -> double {
     const auto& atom = atoms[idx];
     int non_mc = count_non_mc(idx);
@@ -1114,13 +1189,12 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     return aN;
   };
 
-  for (size_t i = 0; i < rings.size(); ++i) {
-    RingInfo& ring = rings[i];
-    ring.is_aromatic = false;
-
+  for (auto& ring : rings) {
+    ring.is_aromatic_permissive = ring.is_aromatic;
+    if (ring.is_aromatic)
+      continue;
     if (!is_ring_planar(ring))
       continue;
-
     double pi1 = 0.0;
     double pi2 = 0.0;
     for (int idx : ring.atoms) {
@@ -1129,32 +1203,7 @@ void AcedrgTables::set_ring_aromaticity_from_bonds(
     }
     if ((pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001) ||
         (pi2 > 0.0 && std::fabs(std::fmod(pi2, 4.0) - 2.0) < 0.001))
-      ring.is_aromatic = true;
-  }
-
-  // AceDRG pyrole rule: if there are exactly 4 five-member rings with 4C+1N
-  // and they are planar, mark them aromatic even if pi-count failed.
-  std::vector<size_t> pyrole_rings;
-  for (size_t i = 0; i < rings.size(); ++i) {
-    const RingInfo& ring = rings[i];
-    if (ring.atoms.size() != 5)
-      continue;
-    int num_c = 0;
-    int num_n = 0;
-    for (int idx : ring.atoms) {
-      if (atoms[idx].el == El::C)
-        ++num_c;
-      else if (atoms[idx].el == El::N)
-        ++num_n;
-    }
-    if (num_c == 4 && num_n == 1)
-      pyrole_rings.push_back(i);
-  }
-  if (pyrole_rings.size() == 4) {
-    for (size_t i : pyrole_rings) {
-      if (is_ring_planar(rings[i]))
-        rings[i].is_aromatic = true;
-    }
+      ring.is_aromatic_permissive = true;
   }
 }
 
@@ -1751,10 +1800,21 @@ void AcedrgTables::set_atoms_bonding_and_chiral_center(
         atom.bonding_idx = 1;
       }
     } else if (atom.el == El::O) {
-      if (neighbors[atom.index].size() == 2) {
+      // Use t_len (non-metal connection count) like AceDRG, which
+      // excludes metal bonds from connAtoms before hybridization assignment.
+      if (t_len == 2) {
         atom.bonding_idx = 3;
-      } else if (neighbors[atom.index].size() == 1) {
-        if (neighbors[neighbors[atom.index][0]].size() != 1)
+      } else if (t_len == 1) {
+        // Find the first non-metal neighbor and check its non-metal connections
+        int first_nb = -1;
+        for (int nb : neighbors[atom.index])
+          if (!atoms[nb].is_metal) { first_nb = nb; break; }
+        int nb_non_metal = 0;
+        if (first_nb >= 0)
+          for (int nnb : neighbors[first_nb])
+            if (!atoms[nnb].is_metal)
+              nb_non_metal++;
+        if (nb_non_metal != 1)
           atom.bonding_idx = 2;
         else
           atom.bonding_idx = 3;
@@ -2728,22 +2788,6 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
         }
         return false;
       };
-      // CCP4 override for heavy-atom bonds adjacent to metal-coordinated donors.
-      // Excludes X-H bonds and bonds involving P/As, whose bonds (e.g.
-      // phosphate P-O) are well characterized by the multilevel tables.
-      if (idx1 >= 0 && idx2 >= 0 &&
-          !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
-          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H &&
-          atom_info[idx1].el != El::P && atom_info[idx2].el != El::P &&
-          atom_info[idx1].el != El::As && atom_info[idx2].el != El::As) {
-        auto is_donor = [](const CodAtomInfo& a) {
-          return a.metal_connectivity > 0 &&
-                 (a.el == El::N || a.el == El::O || a.el == El::S ||
-                  a.el == El::P || a.el == El::As || a.el == El::Se);
-        };
-        if (is_donor(atom_info[idx1]) || is_donor(atom_info[idx2]))
-          apply_ccp4(true);
-      }
       // CCP4 energetic library fallback
       if (std::isnan(bond.value))
         apply_ccp4(false);
@@ -3003,22 +3047,6 @@ void AcedrgTables::fill_restraints(ChemComp& cc,
         }
         return false;
       };
-      // CCP4 override for heavy-atom bonds adjacent to metal-coordinated donors.
-      // Excludes X-H bonds and bonds involving P/As, whose bonds (e.g.
-      // phosphate P-O) are well characterized by the multilevel tables.
-      if (idx1 >= 0 && idx2 >= 0 &&
-          !atom_info[idx1].is_metal && !atom_info[idx2].is_metal &&
-          atom_info[idx1].el != El::H && atom_info[idx2].el != El::H &&
-          atom_info[idx1].el != El::P && atom_info[idx2].el != El::P &&
-          atom_info[idx1].el != El::As && atom_info[idx2].el != El::As) {
-        auto is_donor = [](const CodAtomInfo& a) {
-          return a.metal_connectivity > 0 &&
-                 (a.el == El::N || a.el == El::O || a.el == El::S ||
-                  a.el == El::P || a.el == El::As || a.el == El::Se);
-        };
-        if (is_donor(atom_info[idx1]) || is_donor(atom_info[idx2]))
-          apply_ccp4(true);
-      }
       // CCP4 energetic library fallback
       if (std::isnan(bond.value))
         apply_ccp4(false);
