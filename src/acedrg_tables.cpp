@@ -3168,7 +3168,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   const CodAtomInfo& a1 = atom_info[idx1];
   const CodAtomInfo& a2 = atom_info[idx2];
 
-  const char* source = "none";
+  const char* source = "no_match";
 
   // Check for metal bond
   if (a1.is_metal || a2.is_metal) {
@@ -3241,6 +3241,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   // and no threshold for HRS-like levels 9-11). When it returns with level >= 0, the threshold was met.
   // There's no special preference for HRS over type-based (levels 0-2) matches.
   ValueStats vs;
+  vs.level = -1;  // no match by default; prevents false acceptance below
   if (vs_ml.level >= 0) {
     // Multilevel matched with threshold met - use it
     vs = vs_ml;
