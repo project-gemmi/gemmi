@@ -9,16 +9,11 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <list>
-#include <set>
 #include <cmath>
-#include <cstdint>
-#include <cctype>
 #include <algorithm>
 #include "chemcomp.hpp"
 #include "elem.hpp"
 #include "fail.hpp"
-#include "util.hpp"
 
 namespace gemmi {
 

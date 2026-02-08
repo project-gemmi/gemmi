@@ -39,41 +39,27 @@ std::map<std::string, std::vector<std::string>> make_neighbor_names(const ChemCo
 
 void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
   auto is_id = [&](const Restraints::AtomId& id) { return id.atom == atom_id; };
-  cc.rt.bonds.erase(std::remove_if(cc.rt.bonds.begin(), cc.rt.bonds.end(),
-                                  [&](const Restraints::Bond& b) {
-                                    return is_id(b.id1) || is_id(b.id2);
-                                  }),
-                    cc.rt.bonds.end());
-  cc.rt.angles.erase(std::remove_if(cc.rt.angles.begin(), cc.rt.angles.end(),
-                                   [&](const Restraints::Angle& a) {
-                                     return is_id(a.id1) || is_id(a.id2) || is_id(a.id3);
-                                   }),
-                     cc.rt.angles.end());
-  cc.rt.torsions.erase(std::remove_if(cc.rt.torsions.begin(), cc.rt.torsions.end(),
-                                     [&](const Restraints::Torsion& t) {
-                                       return is_id(t.id1) || is_id(t.id2) ||
-                                              is_id(t.id3) || is_id(t.id4);
-                                     }),
-                       cc.rt.torsions.end());
-  cc.rt.chirs.erase(std::remove_if(cc.rt.chirs.begin(), cc.rt.chirs.end(),
-                                  [&](const Restraints::Chirality& c) {
-                                    return is_id(c.id_ctr) || is_id(c.id1) ||
-                                           is_id(c.id2) || is_id(c.id3);
-                                  }),
-                    cc.rt.chirs.end());
+  vector_remove_if(cc.rt.bonds, [&](const Restraints::Bond& b) {
+    return is_id(b.id1) || is_id(b.id2);
+  });
+  vector_remove_if(cc.rt.angles, [&](const Restraints::Angle& a) {
+    return is_id(a.id1) || is_id(a.id2) || is_id(a.id3);
+  });
+  vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& t) {
+    return is_id(t.id1) || is_id(t.id2) || is_id(t.id3) || is_id(t.id4);
+  });
+  vector_remove_if(cc.rt.chirs, [&](const Restraints::Chirality& c) {
+    return is_id(c.id_ctr) || is_id(c.id1) || is_id(c.id2) || is_id(c.id3);
+  });
   for (auto it = cc.rt.planes.begin(); it != cc.rt.planes.end(); ) {
     auto& ids = it->ids;
-    ids.erase(std::remove_if(ids.begin(), ids.end(),
-                             [&](const Restraints::AtomId& id) { return is_id(id); }),
-              ids.end());
+    vector_remove_if(ids, [&](const Restraints::AtomId& id) { return is_id(id); });
     if (ids.empty())
       it = cc.rt.planes.erase(it);
     else
       ++it;
   }
-  cc.atoms.erase(std::remove_if(cc.atoms.begin(), cc.atoms.end(),
-                               [&](const ChemComp::Atom& a) { return a.id == atom_id; }),
-                 cc.atoms.end());
+  vector_remove_if(cc.atoms, [&](const ChemComp::Atom& a) { return a.id == atom_id; });
 }
 
 // Check if two bonded atoms are in the same ring by looking for an alternative path
@@ -1346,9 +1332,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
 
     if (pep_seeded) {
-      std::string id_lower = pep_entry.id;
-      for (char& c : id_lower)
-        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+      std::string id_lower = to_lower(pep_entry.id);
       double value = pep_entry.value;
       int period = pep_entry.period;
       double esd = 10.0;
@@ -1570,7 +1554,7 @@ void add_chirality_if_missing(
     auto adj = build_bond_adjacency(cc, atom_index);
 
     for (const auto& entry : atom_stereo) {
-      char stereo = static_cast<char>(std::tolower(static_cast<unsigned char>(entry.second[0])));
+      char stereo = lower(entry.second[0]);
       if (stereo != 'r' && stereo != 's')
         continue;
       auto it = atom_index.find(entry.first);
@@ -1629,9 +1613,7 @@ void add_chirality_if_missing(
   if (!cc.rt.chirs.empty())
     return;
 
-  std::string type = cc.type_or_group;
-  for (char& c : type)
-    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  std::string type = to_upper(cc.type_or_group);
   ChiralityType sign = ChiralityType::Both;
   if (type.find("L-PEPTIDE") != std::string::npos)
     sign = ChiralityType::Positive;
@@ -1670,10 +1652,10 @@ void add_planes_if_missing(ChemComp& cc,
     std::set<Restraints::AtomId> ids;
     for (size_t idx : idxs)
       ids.insert({1, cc.atoms[idx].id});
-    if (std::find(plane_sets.begin(), plane_sets.end(), ids) != plane_sets.end())
+    if (in_vector(ids, plane_sets))
       return;
     Restraints::Plane plane;
-    plane.label = "plan-" + std::to_string(cc.rt.planes.size() + 1);
+    plane.label = cat("plan-", cc.rt.planes.size() + 1);
     plane.esd = 0.02;
     std::vector<std::string> names;
     names.reserve(ids.size());
