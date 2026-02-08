@@ -244,19 +244,6 @@ public:
   };
   std::map<AngleHRSKey, ValueStats> angle_hrs_;
 
-  struct Ccp4AtomInfo {
-    Element el = El::X;
-    std::string chem_type;
-    std::string ccp4_type;
-    int bonding_idx = 0;
-    std::map<std::string, int> ring_rep;
-    std::vector<int> conn_atoms;
-    std::vector<int> conn_atoms_no_metal;
-    std::vector<int> conn_h_atoms;
-    float par_charge = 0.0f;
-    int formal_charge = 0;
-  };
-
   struct Ccp4BondEntry {
     double length = NAN;
     double sigma = NAN;
@@ -264,11 +251,6 @@ public:
 
   std::map<std::string, std::map<std::string, std::map<std::string, Ccp4BondEntry>>> ccp4_bonds_;
 
-  static int ccp4_material_type(Element el);
-  static void set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
-  static void set_hydro_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
-  static void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx);
-  static std::string bond_order_key(BondType type);
   void load_ccp4_bonds(const std::string& path);
   std::vector<std::string> compute_ccp4_types(const ChemComp& cc,
                                               const std::vector<CodAtomInfo>& atom_info,
@@ -448,15 +430,6 @@ public:
     bool is_aromatic = false;
     bool is_aromatic_permissive = false;
   };
-  struct SortMap {
-    std::string key;
-    int val = 0;
-  };
-  struct SortMap2 {
-    std::string key;
-    int val = 0;
-    int nNB = 0;
-  };
   struct NB1stFam {
     std::string name;
     std::vector<std::string> NB2ndList;
@@ -520,11 +493,6 @@ public:
   Hybridization hybrid_from_bonding_idx(int bonding_idx, bool is_metal,
                                         int connectivity) const;
   void compute_hash(CodAtomInfo& atom) const;
-  static int str_to_int(const std::string& s);
-  static bool compare_no_case(const std::string& first, const std::string& second);
-  static bool compare_no_case2(const std::string& first, const std::string& second);
-  static bool desc_sort_map_key(const SortMap& a, const SortMap& b);
-  static bool desc_sort_map_key2(const SortMap2& a, const SortMap2& b);
 
   // Bond search helpers
   ValueStats search_bond_multilevel(const CodAtomInfo& a1,

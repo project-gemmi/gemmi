@@ -15,6 +15,7 @@
 #include <sstream>
 #include <iostream>
 #include <set>
+#include "gemmi/atox.hpp"
 #include "gemmi/elem.hpp"
 #include "gemmi/fail.hpp"
 #include "gemmi/util.hpp"
@@ -29,6 +30,61 @@ std::map<std::string, size_t> make_atom_index(const ChemComp& cc) {
   for (size_t i = 0; i < cc.atoms.size(); ++i)
     atom_index[cc.atoms[i].id] = i;
   return atom_index;
+}
+
+bool compare_no_case(const std::string& first,
+                     const std::string& second) {
+  size_t i = 0;
+  while (i < first.length() && i < second.length()) {
+    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
+    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+    ++i;
+  }
+  return first.length() > second.length();
+}
+
+bool compare_no_case2(const std::string& first,
+                      const std::string& second) {
+  if (first.length() > second.length())
+    return true;
+  if (first.length() < second.length())
+    return false;
+  for (size_t i = 0; i < first.length() && i < second.length(); ++i) {
+    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
+    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+  }
+  return false;
+}
+
+struct SortMap {
+  std::string key;
+  int val = 0;
+};
+
+struct SortMap2 {
+  std::string key;
+  int val = 0;
+  int nNB = 0;
+};
+
+bool desc_sort_map_key(const SortMap& a, const SortMap& b) {
+  return a.key.length() > b.key.length();
+}
+
+bool desc_sort_map_key2(const SortMap2& a, const SortMap2& b) {
+  if (a.key.length() > b.key.length())
+    return true;
+  if (a.key.length() == b.key.length())
+    return a.nNB > b.nNB;
+  return false;
 }
 
 }  // namespace
@@ -272,22 +328,22 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
     if (tokens.size() == 10 || tokens.size() == 11) {
       MetalBondEntry entry;
       entry.metal = Element(tokens[0]);
-      entry.metal_coord = str_to_int(tokens[1]);
+      entry.metal_coord = string_to_int(tokens[1], false);
       entry.ligand = Element(tokens[2]);
-      entry.ligand_coord = str_to_int(tokens[3]);
+      entry.ligand_coord = string_to_int(tokens[3], false);
       entry.pre_value = std::stod(tokens[4]);
       entry.pre_sigma = std::stod(tokens[5]);
-      entry.pre_count = str_to_int(tokens[6]);
+      entry.pre_count = string_to_int(tokens[6], false);
       if (tokens.size() == 11) {
         entry.ligand_class = tokens[7];
         entry.value = std::stod(tokens[8]);
         entry.sigma = std::stod(tokens[9]);
-        entry.count = str_to_int(tokens[10]);
+        entry.count = string_to_int(tokens[10], false);
       } else {
         entry.ligand_class = "NONE";
         entry.value = std::stod(tokens[7]);
         entry.sigma = std::stod(tokens[8]);
-        entry.count = str_to_int(tokens[9]);
+        entry.count = string_to_int(tokens[9], false);
       }
       metal_bonds_.push_back(entry);
     }
@@ -1627,7 +1683,7 @@ void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
     std::vector<std::string> nb1 = split_str(tS, ')');
     NB1stFam fam;
     if (nb1.size() > 1) {
-      fam.repN = str_to_int(nb1[1]);
+      fam.repN = string_to_int(nb1[1], false);
       if (fam.repN == 0)
         fam.repN = 1;
     } else {
@@ -1961,9 +2017,9 @@ int AcedrgTables::get_min_ring2_from_cod_class(const std::string& cod_class) con
               if (tmp3[0].find('x') != std::string::npos) {
                 std::vector<std::string> tmp4 = split_str(tmp3[0], 'x');
                 if (tmp4.size() > 1)
-                  r_size = str_to_int(tmp4[1]);
+                  r_size = string_to_int(tmp4[1], false);
               } else {
-                r_size = str_to_int(tmp3[0]);
+                r_size = string_to_int(tmp3[0], false);
               }
             }
           } else {
@@ -1972,9 +2028,9 @@ int AcedrgTables::get_min_ring2_from_cod_class(const std::string& cod_class) con
               if (tmp3[0].find('x') != std::string::npos) {
                 std::vector<std::string> tmp4 = split_str(tmp3[0], 'x');
                 if (tmp4.size() > 1)
-                  r_size = str_to_int(tmp4[1]);
+                  r_size = string_to_int(tmp4[1], false);
               } else {
-                r_size = str_to_int(tmp3[0]);
+                r_size = string_to_int(tmp3[0], false);
               }
             }
           }
@@ -2173,7 +2229,22 @@ Hybridization AcedrgTables::hybrid_from_bonding_idx(int bonding_idx,
 // CCP4 atom type assignment (AceDRG)
 // ============================================================================
 
-int AcedrgTables::ccp4_material_type(Element el) {
+namespace {
+
+struct Ccp4AtomInfo {
+  Element el = El::X;
+  std::string chem_type;
+  std::string ccp4_type;
+  int bonding_idx = 0;
+  std::map<std::string, int> ring_rep;
+  std::vector<int> conn_atoms;
+  std::vector<int> conn_atoms_no_metal;
+  std::vector<int> conn_h_atoms;
+  float par_charge = 0.0f;
+  int formal_charge = 0;
+};
+
+int ccp4_material_type(Element el) {
   switch (el.elem) {
     case El::H: case El::D:
       return 1;
@@ -2215,7 +2286,7 @@ int AcedrgTables::ccp4_material_type(Element el) {
   }
 }
 
-std::string AcedrgTables::bond_order_key(BondType type) {
+std::string bond_order_key(BondType type) {
   std::string s = bond_type_to_string(type);
   if (s.empty())
     s = "single";
@@ -2224,6 +2295,145 @@ std::string AcedrgTables::bond_order_key(BondType type) {
     s.resize(4);
   return s;
 }
+
+void set_hydro_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
+  Ccp4AtomInfo& atom = atoms[idx];
+  atom.ccp4_type = "H";
+  if (atom.conn_atoms.size() == 1) {
+    int nb = atom.conn_atoms[0];
+    if (atoms[nb].chem_type == "S")
+      atom.ccp4_type = "HSH1";
+  }
+}
+
+void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
+  Ccp4AtomInfo& atom = atoms[idx];
+  int r5 = 0;
+  int r6 = 0;
+  for (const auto& item : atom.ring_rep) {
+    if (item.second == 5)
+      r5 += 1;
+    if (item.second == 6)
+      r6 += 1;
+  }
+  const size_t nconn = atom.conn_atoms_no_metal.size();
+  const size_t nh = atom.conn_h_atoms.size();
+  if (atom.chem_type == "C") {
+    if (atom.bonding_idx == 2) {
+      if (r5 && r6) atom.ccp4_type = "CR56";
+      else if (r5 == 2) atom.ccp4_type = "CR55";
+      else if (r6 == 2) atom.ccp4_type = "CR66";
+      else if (r5 == 1) atom.ccp4_type = (nh == 1 ? "CR15" : nh == 0 ? "CR5" : "C");
+      else if (r6 == 1) atom.ccp4_type = (nh == 1 ? "CR16" : nh == 0 ? "CR6" : "C");
+      else if (nh == 1) atom.ccp4_type = "C1";
+      else if (nh == 2) atom.ccp4_type = "C2";
+      else if (nh == 0) atom.ccp4_type = "C";
+    } else if (atom.bonding_idx == 3) {
+      if (nh == 0) atom.ccp4_type = "CT";
+      else if (nh == 1) atom.ccp4_type = "CH1";
+      else if (nh == 2) atom.ccp4_type = "CH2";
+      else if (nh == 3) atom.ccp4_type = "CH3";
+    } else if (atom.bonding_idx == 1) {
+      atom.ccp4_type = "CSP";
+    }
+  } else if (atom.chem_type == "N") {
+    if (atom.bonding_idx == 2) {
+      if (nconn == 3) {
+        if (nh == 1) atom.ccp4_type = "NH1";
+        else if (nh == 2) atom.ccp4_type = "NH2";
+        else if (nh == 0) atom.ccp4_type = "NH0";
+        else atom.ccp4_type = "N";
+      } else if (nconn == 2) {
+        if (nh == 1) atom.ccp4_type = "N21";
+        else if (nh == 0) atom.ccp4_type = "N20";
+        else atom.ccp4_type = "N";
+      }
+    } else if (atom.bonding_idx == 3) {
+      if (nconn == 4) {
+        if (nh == 1) atom.ccp4_type = "NT1";
+        else if (nh == 2) atom.ccp4_type = "NT2";
+        else if (nh == 3) atom.ccp4_type = "NT3";
+        else if (nh == 4) atom.ccp4_type = "NT4";
+        else if (nh == 0) atom.ccp4_type = "NT";
+        else atom.ccp4_type = "N";
+      } else if (nconn == 3) {
+        if (nh == 1) atom.ccp4_type = "N31";
+        else if (nh == 2) atom.ccp4_type = "N32";
+        else if (nh == 3) atom.ccp4_type = "N33";
+        else if (nh == 0) atom.ccp4_type = "N30";
+        else atom.ccp4_type = "N3";
+      }
+    } else if (atom.bonding_idx == 1) {
+      atom.ccp4_type = "NSP";
+    }
+  } else if (atom.chem_type == "P") {
+    atom.ccp4_type = (nconn == 4 ? "P" : "P1");
+  } else if (atom.chem_type == "O") {
+    bool lP = false, lS = false, lB = false;
+    for (int nb : atom.conn_atoms) {
+      if (atoms[nb].chem_type == "P") lP = true;
+      if (atoms[nb].chem_type == "S") lS = true;
+      if (atoms[nb].chem_type == "B") lB = true;
+    }
+    bool has_par_charge = std::fabs(atom.par_charge) > 1e-6f;
+    bool has_negative_charge = atom.formal_charge < 0;
+    auto oc_type = [&]() -> const char* {
+      return lP ? "OP" : lS ? "OS" : lB ? "OB" : "OC";
+    };
+    if (atom.bonding_idx == 2) {
+      if (has_par_charge && atom.par_charge < 0) {
+        atom.ccp4_type = oc_type();
+      } else if (nconn == 2) {
+        if (nh == 1) atom.ccp4_type = "OH1";
+        else if (nh == 2) atom.ccp4_type = "OH2";
+        else atom.ccp4_type = "O";
+      } else if (has_negative_charge) {
+        atom.ccp4_type = oc_type();
+      } else {
+        atom.ccp4_type = "O";
+      }
+    } else if (atom.bonding_idx == 3) {
+      bool lC = false;
+      for (int nb : atom.conn_atoms)
+        if (atoms[nb].chem_type == "C")
+          lC = true;
+      if (lC && nh == 1 && nconn == 2) atom.ccp4_type = "OH1";
+      else if (nh == 2) atom.ccp4_type = "OH2";
+      else if (nconn == 2) {
+        if (has_par_charge) atom.ccp4_type = "OC2";
+        else if (nh == 1) atom.ccp4_type = "OH1";
+        else atom.ccp4_type = "O2";
+      } else if (nconn == 1 && has_negative_charge) {
+        atom.ccp4_type = oc_type();
+      }
+    } else if (nconn == 1) {
+      atom.ccp4_type = has_negative_charge ? oc_type() : "O";
+    } else {
+      atom.ccp4_type = "O";
+    }
+  } else if (atom.chem_type == "S") {
+    if (nconn == 3 || nconn == 4) atom.ccp4_type = (nh == 0 ? "S3" : "SH1");
+    else if (nconn == 2) atom.ccp4_type = (nh == 0 ? "S2" : "SH1");
+    else if (nconn == 1) atom.ccp4_type = "S1";
+    else atom.ccp4_type = (nh == 1 ? "SH1" : "S");
+  } else if (atom.chem_type == "Se") {
+    atom.ccp4_type = "SE";
+  } else {
+    atom.ccp4_type = atom.chem_type;
+  }
+}
+
+void set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
+  int ntype = ccp4_material_type(atoms[idx].el);
+  switch (ntype) {
+    case 1: set_hydro_ccp4_type(atoms, idx); break;
+    case 2: set_org_ccp4_type(atoms, idx); break;
+    default: atoms[idx].ccp4_type = atoms[idx].chem_type; break;
+  }
+  atoms[idx].ccp4_type = to_upper(atoms[idx].ccp4_type);
+}
+
+}  // namespace
 
 void AcedrgTables::load_ccp4_bonds(const std::string& path) {
   try {
@@ -2313,289 +2523,6 @@ std::vector<std::string> AcedrgTables::compute_ccp4_types(
   for (const auto& atom : atoms)
     out.push_back(atom.ccp4_type);
   return out;
-}
-
-void AcedrgTables::set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
-                                            size_t idx) {
-  int ntype = ccp4_material_type(atoms[idx].el);
-  switch (ntype) {
-    case 1:
-      set_hydro_ccp4_type(atoms, idx);
-      break;
-    case 2:
-      set_org_ccp4_type(atoms, idx);
-      break;
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-      atoms[idx].ccp4_type = atoms[idx].chem_type;
-      break;
-    default:
-      atoms[idx].ccp4_type = atoms[idx].chem_type;
-      break;
-  }
-  atoms[idx].ccp4_type = to_upper(atoms[idx].ccp4_type);
-}
-
-void AcedrgTables::set_hydro_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
-                                              size_t idx) {
-  Ccp4AtomInfo& atom = atoms[idx];
-  atom.ccp4_type = "H";
-  if (atom.conn_atoms.size() == 1) {
-    int nb = atom.conn_atoms[0];
-    if (atoms[nb].chem_type == "S")
-      atom.ccp4_type = "HSH1";
-  }
-}
-
-void AcedrgTables::set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms,
-                                            size_t idx) {
-  Ccp4AtomInfo& atom = atoms[idx];
-  int r5 = 0;
-  int r6 = 0;
-  for (const auto& item : atom.ring_rep) {
-    if (item.second == 5)
-      r5 += 1;
-    if (item.second == 6)
-      r6 += 1;
-  }
-
-  const size_t nconn = atom.conn_atoms_no_metal.size();
-  const size_t nh = atom.conn_h_atoms.size();
-
-  if (atom.chem_type == "C") {
-    if (atom.bonding_idx == 2) {
-      if (r5 && r6) {
-        atom.ccp4_type = "CR56";
-      } else if (r5 == 2) {
-        atom.ccp4_type = "CR55";
-      } else if (r6 == 2) {
-        atom.ccp4_type = "CR66";
-      } else if (r5 == 1) {
-        if (nh == 1) {
-          atom.ccp4_type = "CR15";
-        } else if (nh == 0) {
-          atom.ccp4_type = "CR5";
-        }
-      } else if (r6 == 1) {
-        if (nh == 1) {
-          atom.ccp4_type = "CR16";
-        } else if (nh == 0) {
-          atom.ccp4_type = "CR6";
-        }
-      } else {
-        if (nh == 1) {
-          atom.ccp4_type = "C1";
-        } else if (nh == 2) {
-          atom.ccp4_type = "C2";
-        } else if (nh == 0) {
-          atom.ccp4_type = "C";
-        }
-      }
-    } else if (atom.bonding_idx == 3) {
-      if (nh == 0) {
-        atom.ccp4_type = "CT";
-      } else if (nh == 1) {
-        atom.ccp4_type = "CH1";
-      } else if (nh == 2) {
-        atom.ccp4_type = "CH2";
-      } else if (nh == 3) {
-        atom.ccp4_type = "CH3";
-      }
-    } else if (atom.bonding_idx == 1) {
-      atom.ccp4_type = "CSP";
-    }
-  } else if (atom.chem_type == "N") {
-    if (atom.bonding_idx == 2) {
-      if (nconn == 3) {
-        if (nh == 1) {
-          atom.ccp4_type = "NH1";
-        } else if (nh == 2) {
-          atom.ccp4_type = "NH2";
-        } else if (nh == 0) {
-          atom.ccp4_type = "NH0";
-        } else {
-          atom.ccp4_type = "N";
-        }
-      } else if (nconn == 2) {
-        if (nh == 1) {
-          atom.ccp4_type = "N21";
-        } else if (nh == 0) {
-          atom.ccp4_type = "N20";
-        } else {
-          atom.ccp4_type = "N";
-        }
-      }
-    } else if (atom.bonding_idx == 3) {
-      if (nconn == 4) {
-        if (nh == 1) {
-          atom.ccp4_type = "NT1";
-        } else if (nh == 2) {
-          atom.ccp4_type = "NT2";
-        } else if (nh == 3) {
-          atom.ccp4_type = "NT3";
-        } else if (nh == 4) {
-          atom.ccp4_type = "NT4";
-        } else if (nh == 0) {
-          atom.ccp4_type = "NT";
-        } else {
-          atom.ccp4_type = "N";
-        }
-      } else if (nconn == 3) {
-        if (nh == 1) {
-          atom.ccp4_type = "N31";
-        } else if (nh == 2) {
-          atom.ccp4_type = "N32";
-        } else if (nh == 3) {
-          atom.ccp4_type = "N33";
-        } else if (nh == 0) {
-          atom.ccp4_type = "N30";
-        } else {
-          atom.ccp4_type = "N3";
-        }
-      }
-    } else if (atom.bonding_idx == 1) {
-      atom.ccp4_type = "NSP";
-    }
-  } else if (atom.chem_type == "P") {
-    atom.ccp4_type = (nconn == 4 ? "P" : "P1");
-  } else if (atom.chem_type == "O") {
-    bool lP = false;
-    bool lS = false;
-    bool lB = false;
-    for (int nb : atom.conn_atoms) {
-      if (atoms[nb].chem_type == "P") lP = true;
-      if (atoms[nb].chem_type == "S") lS = true;
-      if (atoms[nb].chem_type == "B") lB = true;
-    }
-
-    bool has_par_charge = std::fabs(atom.par_charge) > 1e-6f;
-    bool has_negative_charge = atom.formal_charge < 0;
-
-    if (atom.bonding_idx == 2) {
-      // par_charge check - but only negative charges trigger OP/OS/OB/OC types
-      if (has_par_charge && atom.par_charge < 0) {
-        if (lP) {
-          atom.ccp4_type = "OP";
-        } else if (lS) {
-          atom.ccp4_type = "OS";
-        } else if (lB) {
-          atom.ccp4_type = "OB";
-        } else {
-          atom.ccp4_type = "OC";
-        }
-      } else if (nconn == 2) {
-        if (nh == 1) {
-          atom.ccp4_type = "OH1";
-        } else if (nh == 2) {
-          atom.ccp4_type = "OH2";
-        } else {
-          atom.ccp4_type = "O";
-        }
-      } else {
-        // Only negative charges trigger OP/OS/OB/OC types
-        // Positive charges (like C≡O+ ligands) stay as "O"
-        if (has_negative_charge) {
-          if (lP) {
-            atom.ccp4_type = "OP";
-          } else if (lS) {
-            atom.ccp4_type = "OS";
-          } else if (lB) {
-            atom.ccp4_type = "OB";
-          } else {
-            atom.ccp4_type = "OC";
-          }
-        } else {
-          atom.ccp4_type = "O";
-        }
-      }
-    } else if (atom.bonding_idx == 3) {
-      bool lC = false;
-      for (int nb : atom.conn_atoms)
-        if (atoms[nb].chem_type == "C")
-          lC = true;
-      if (lC && nh == 1 && nconn == 2) {
-        atom.ccp4_type = "OH1";
-      } else if (nh == 2) {
-        atom.ccp4_type = "OH2";
-      } else if (nconn == 2) {
-        if (has_par_charge) {
-          atom.ccp4_type = "OC2";
-        } else if (nh == 1) {
-          atom.ccp4_type = "OH1";
-        } else {
-          atom.ccp4_type = "O2";
-        }
-      } else if (nconn == 1 && has_negative_charge) {
-        // Metal-bonded oxygen with negative formal charge from valence calculation
-        if (lP) {
-          atom.ccp4_type = "OP";
-        } else if (lS) {
-          atom.ccp4_type = "OS";
-        } else if (lB) {
-          atom.ccp4_type = "OB";
-        } else {
-          atom.ccp4_type = "OC";
-        }
-      }
-    } else if (nconn == 1) {
-      if (has_negative_charge) {
-        if (lP) {
-          atom.ccp4_type = "OP";
-        } else if (lS) {
-          atom.ccp4_type = "OS";
-        } else if (lB) {
-          atom.ccp4_type = "OB";
-        } else {
-          atom.ccp4_type = "OC";
-        }
-      } else {
-        atom.ccp4_type = "O";
-      }
-    } else {
-      atom.ccp4_type = "O";
-    }
-  } else if (atom.chem_type == "S") {
-    if (nconn == 3 || nconn == 4) {
-      if (nh == 0) {
-        atom.ccp4_type = "S3";
-      } else if (nh == 1) {
-        atom.ccp4_type = "SH1";
-      }
-    } else if (nconn == 2) {
-      if (nh == 0) {
-        atom.ccp4_type = "S2";
-      } else {
-        atom.ccp4_type = "SH1";
-      }
-    } else if (nconn == 1) {
-      atom.ccp4_type = "S1";
-    } else if (nh == 0) {
-      atom.ccp4_type = "S";
-    } else if (nh == 1) {
-      atom.ccp4_type = "SH1";
-    } else {
-      atom.ccp4_type = "S";
-    }
-  } else if (atom.chem_type == "Se") {
-    // Selenium - similar to sulfur
-    if (nconn == 3 || nconn == 4) {
-      atom.ccp4_type = "SE";
-    } else if (nconn == 2) {
-      atom.ccp4_type = "SE";
-    } else if (nconn == 1) {
-      atom.ccp4_type = "SE";
-    } else {
-      atom.ccp4_type = "SE";
-    }
-  } else {
-    atom.ccp4_type = atom.chem_type;
-  }
 }
 
 void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
@@ -4184,57 +4111,6 @@ ValueStats AcedrgTables::aggregate_stats(
     sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
 
   return ValueStats(mean, sigma, total_count);
-}
-
-int AcedrgTables::str_to_int(const std::string& s) {
-  std::istringstream iss(s);
-  int value = 0;
-  iss >> value;
-  return value;
-}
-
-bool AcedrgTables::compare_no_case(const std::string& first,
-                                   const std::string& second) {
-  size_t i = 0;
-  while (i < first.length() && i < second.length()) {
-    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
-    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
-    if (a < b)
-      return true;
-    if (a > b)
-      return false;
-    ++i;
-  }
-  return first.length() > second.length();
-}
-
-bool AcedrgTables::compare_no_case2(const std::string& first,
-                                    const std::string& second) {
-  if (first.length() > second.length())
-    return true;
-  if (first.length() < second.length())
-    return false;
-  for (size_t i = 0; i < first.length() && i < second.length(); ++i) {
-    char a = static_cast<char>(std::toupper(static_cast<unsigned char>(first[i])));
-    char b = static_cast<char>(std::toupper(static_cast<unsigned char>(second[i])));
-    if (a < b)
-      return true;
-    if (a > b)
-      return false;
-  }
-  return false;
-}
-
-bool AcedrgTables::desc_sort_map_key(const SortMap& a, const SortMap& b) {
-  return a.key.length() > b.key.length();
-}
-
-bool AcedrgTables::desc_sort_map_key2(const SortMap2& a, const SortMap2& b) {
-  if (a.key.length() > b.key.length())
-    return true;
-  if (a.key.length() == b.key.length())
-    return a.nNB > b.nNB;
-  return false;
 }
 
 // Helper to compact element list: ["H","H","H"] -> "H3"
