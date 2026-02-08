@@ -2079,8 +2079,15 @@ void AcedrgTables::order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2
     return;
   }
   // AceDRG: for equal hash, order by codAtmMain (length, then case-insensitive
-  // lexicographic).
+  // lexicographic). When codAtmMain is also equal, the atom with the greater
+  // name (under compare_no_case2) goes first.
   if (compare_no_case2(a1.cod_main, a2.cod_main)) {
+    first = &a1;
+    second = &a2;
+  } else if (compare_no_case2(a2.cod_main, a1.cod_main)) {
+    first = &a2;
+    second = &a1;
+  } else if (!compare_no_case2(a1.id, a2.id)) {
     first = &a1;
     second = &a2;
   } else {
@@ -2113,6 +2120,12 @@ void AcedrgTables::order_angle_flanks(const CodAtomInfo& a1, const CodAtomInfo& 
     return;
   }
   if (compare_no_case2(a1.cod_main, a3.cod_main)) {
+    flank1 = &a1;
+    flank3 = &a3;
+  } else if (compare_no_case2(a3.cod_main, a1.cod_main)) {
+    flank1 = &a3;
+    flank3 = &a1;
+  } else if (!compare_no_case2(a1.id, a3.id)) {
     flank1 = &a1;
     flank3 = &a3;
   } else {
