@@ -11,11 +11,9 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 #include <set>
-#include <sstream>
 #include "gemmi/atox.hpp"
+#include "gemmi/fileutil.hpp"
 #include "gemmi/elem.hpp"
 #include "gemmi/fail.hpp"
 #include "gemmi/util.hpp"
@@ -142,20 +140,19 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
 }
 
 void AcedrgTables::load_hash_codes(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
-    std::istringstream iss(line);
     int hash_code, linked_hash;
-    std::string footprint;
+    char footprint[64];
 
-    if (iss >> hash_code >> footprint >> linked_hash) {
+    if (std::sscanf(line, "%d %63s %d", &hash_code, footprint, &linked_hash) == 3) {
       digit_keys_[hash_code] = footprint;
       linked_hash_[hash_code] = linked_hash;
     }
@@ -163,27 +160,24 @@ void AcedrgTables::load_hash_codes(const std::string& path) {
 }
 
 void AcedrgTables::load_bond_hrs(const std::string& path) {
-  std::ifstream f(path);
-  if (!f)
-    fail("Cannot open bond HRS table: ", path);
+  fileptr_t f = file_open(path.c_str(), "r");
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
-    std::istringstream iss(line);
-    int hash1, hash2;
-    std::string hybrid_pair, in_ring;
+    int hash1, hash2, count;
+    char hybrid_pair[64], in_ring[8];
     double value, sigma;
-    int count;
 
-    if (iss >> hash1 >> hash2 >> hybrid_pair >> in_ring >> value >> sigma >> count) {
+    if (std::sscanf(line, "%d %d %63s %7s %lf %lf %d",
+                    &hash1, &hash2, hybrid_pair, in_ring, &value, &sigma, &count) == 7) {
       BondHRSKey key;
       key.hash1 = std::min(hash1, hash2);
       key.hash2 = std::max(hash1, hash2);
       key.hybrid_pair = hybrid_pair;
-      key.in_ring = (in_ring == "Y" || in_ring == "y") ? "Y" : "N";
+      key.in_ring = (in_ring[0] == 'Y' || in_ring[0] == 'y') ? "Y" : "N";
       ValueStats vs(value, sigma, count);
       bond_hrs_[key] = vs;
       // AceDRG levels 9-11 use the HRS table hierarchy.
@@ -195,28 +189,20 @@ void AcedrgTables::load_bond_hrs(const std::string& path) {
 }
 
 void AcedrgTables::load_angle_hrs(const std::string& path) {
-  std::ifstream f(path);
-  if (!f)
-    fail("Cannot open angle HRS table: ", path);
+  fileptr_t f = file_open(path.c_str(), "r");
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
-    std::istringstream iss(line);
-    int hash1, hash2, hash3;
-    std::string value_key;
-    std::string a1_cod, a2_cod, a3_cod;
-    double value1, sigma1;
-    int count1;
-    double value2, sigma2;
-    int count2;
+    int hash1, hash2, hash3, count1, count2;
+    char value_key[128], a1_cod[64], a2_cod[64], a3_cod[64];
+    double value1, sigma1, value2, sigma2;
 
-    if (iss >> hash1 >> hash2 >> hash3 >> value_key
-        >> a1_cod >> a2_cod >> a3_cod
-        >> value1 >> sigma1 >> count1
-        >> value2 >> sigma2 >> count2) {
+    if (std::sscanf(line, "%d %d %d %127s %63s %63s %63s %lf %lf %d %lf %lf %d",
+                    &hash1, &hash2, &hash3, value_key, a1_cod, a2_cod, a3_cod,
+                    &value1, &sigma1, &count1, &value2, &sigma2, &count2) == 13) {
       AngleHRSKey key;
       // For angles, center is always hash2, but we canonicalize flanking atoms
       bool swap_flanks = hash1 > hash3;
@@ -224,74 +210,79 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
       key.hash2 = hash2;
       key.hash3 = swap_flanks ? hash1 : hash3;
       if (swap_flanks) {
-        size_t colon = value_key.find(':');
-        if (colon != std::string::npos) {
-          std::string ring_part = value_key.substr(0, colon);
-          std::string hybrid_part = value_key.substr(colon + 1);
+        const char* colon = std::strchr(value_key, ':');
+        if (colon) {
+          std::string ring_part(value_key, colon - value_key);
+          std::string hybrid_part(colon + 1);
           std::vector<std::string> parts = split_str(hybrid_part, '_');
           if (parts.size() == 3) {
             std::swap(parts[0], parts[2]);
             hybrid_part = cat(parts[0], '_', parts[1], '_', parts[2]);
           }
-          value_key = cat(ring_part, ':', hybrid_part);
+          key.value_key = cat(ring_part, ':', hybrid_part);
+        } else {
+          key.value_key = value_key;
         }
+      } else {
+        key.value_key = value_key;
       }
-      key.value_key = value_key;
       angle_hrs_[key] = ValueStats(value1, sigma1, count1);
     }
   }
 }
 
 void AcedrgTables::load_en_bonds(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
-    std::istringstream iss(line);
-    std::string elem1, sp1, elem2, sp2;
+    char elem1[16], sp1[16], elem2[16], sp2[16];
     double value, sigma;
     int count;
 
-    if (iss >> elem1 >> sp1 >> elem2 >> sp2 >> value >> sigma >> count) {
+    if (std::sscanf(line, "%15s %15s %15s %15s %lf %lf %d",
+                    elem1, sp1, elem2, sp2, &value, &sigma, &count) == 7) {
       // Canonicalize order
-      if (elem1 > elem2 || (elem1 == elem2 && sp1 > sp2)) {
-        std::swap(elem1, elem2);
-        std::swap(sp1, sp2);
+      std::string e1(elem1), s1(sp1), e2(elem2), s2(sp2);
+      if (e1 > e2 || (e1 == e2 && s1 > s2)) {
+        std::swap(e1, e2);
+        std::swap(s1, s2);
       }
-      en_bonds_[elem1][sp1][elem2][sp2].emplace_back(value, sigma, count);
+      en_bonds_[e1][s1][e2][s2].emplace_back(value, sigma, count);
     }
   }
 }
 
 void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
     // Remove stray commas that may appear in numeric fields
-    for (char& c : line)
-      if (c == ',') c = ' ';
+    for (char* p = line; *p; ++p)
+      if (*p == ',') *p = ' ';
 
-    std::istringstream iss(line);
-    std::string h_elem, heavy_elem, type_key;
+    char h_elem[16], heavy_elem[16], type_key[64];
     double nucleus_val, nucleus_sigma, v1, s1, electron_val, electron_sigma;
 
     // Format: H  C  H_sp3_C  1.092  0.010  1.093107  0.003875  0.988486  0.005251  ...
     // Column 4-5: nucleus distance (ener_lib-like)
     // Column 6-7: refined nucleus distance
     // Column 8-9: electron distance (X-ray) - this is what acedrg uses for value_dist
-    if (iss >> h_elem >> heavy_elem >> type_key >> nucleus_val >> nucleus_sigma
-            >> v1 >> s1 >> electron_val >> electron_sigma) {
+    if (std::sscanf(line, "%15s %15s %63s %lf %lf %lf %lf %lf %lf",
+                    h_elem, heavy_elem, type_key,
+                    &nucleus_val, &nucleus_sigma, &v1, &s1,
+                    &electron_val, &electron_sigma) == 9) {
       ProtHydrDist& phd = prot_hydr_dists_[type_key];
       phd.electron_val = electron_val;
       phd.electron_sigma = electron_sigma;
@@ -303,153 +294,173 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
 
 void AcedrgTables::load_metal_tables(const std::string& dir) {
   // Load allMetalBonds.table
-  std::ifstream f(dir + "/allMetalBonds.table");
-  if (!f)
-    return;
+  {
+    std::string path = dir + "/allMetalBonds.table";
+    fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    if (!f)
+      return;
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
-      continue;
+    char line[512];
+    while (std::fgets(line, sizeof(line), f.get())) {
+      if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+        continue;
 
-    std::istringstream iss(line);
-    std::vector<std::string> tokens;
-    std::string token;
-    while (iss >> token)
-      tokens.push_back(token);
+      char metal[8], ligand[8], ligand_class[64];
+      int metal_coord, ligand_coord, pre_count, cnt;
+      double pre_val, pre_sig, val, sig;
 
-    if (tokens.size() == 10 || tokens.size() == 11) {
-      MetalBondEntry entry;
-      entry.metal = Element(tokens[0]);
-      entry.metal_coord = string_to_int(tokens[1], false);
-      entry.ligand = Element(tokens[2]);
-      entry.ligand_coord = string_to_int(tokens[3], false);
-      entry.pre_value = std::stod(tokens[4]);
-      entry.pre_sigma = std::stod(tokens[5]);
-      entry.pre_count = string_to_int(tokens[6], false);
-      if (tokens.size() == 11) {
-        entry.ligand_class = tokens[7];
-        entry.value = std::stod(tokens[8]);
-        entry.sigma = std::stod(tokens[9]);
-        entry.count = string_to_int(tokens[10], false);
-      } else {
+      // Try 11-field format first (with ligand_class)
+      int n = std::sscanf(line, "%7s %d %7s %d %lf %lf %d %63s %lf %lf %d",
+                          metal, &metal_coord, ligand, &ligand_coord,
+                          &pre_val, &pre_sig, &pre_count,
+                          ligand_class, &val, &sig, &cnt);
+      if (n == 11) {
+        MetalBondEntry entry;
+        entry.metal = Element(metal);
+        entry.metal_coord = metal_coord;
+        entry.ligand = Element(ligand);
+        entry.ligand_coord = ligand_coord;
+        entry.pre_value = pre_val;
+        entry.pre_sigma = pre_sig;
+        entry.pre_count = pre_count;
+        entry.ligand_class = ligand_class;
+        entry.value = val;
+        entry.sigma = sig;
+        entry.count = cnt;
+        metal_bonds_.push_back(entry);
+      } else if (n == 10) {
+        // 10-field: the 8th field was parsed into ligand_class but is actually val
+        MetalBondEntry entry;
+        entry.metal = Element(metal);
+        entry.metal_coord = metal_coord;
+        entry.ligand = Element(ligand);
+        entry.ligand_coord = ligand_coord;
+        entry.pre_value = pre_val;
+        entry.pre_sigma = pre_sig;
+        entry.pre_count = pre_count;
         entry.ligand_class = "NONE";
-        entry.value = std::stod(tokens[7]);
-        entry.sigma = std::stod(tokens[8]);
-        entry.count = string_to_int(tokens[9], false);
+        // Re-parse as 10 numeric fields
+        std::sscanf(line, "%*s %*d %*s %*d %*f %*f %*d %lf %lf %d", &val, &sig, &cnt);
+        entry.value = val;
+        entry.sigma = sig;
+        entry.count = cnt;
+        metal_bonds_.push_back(entry);
       }
-      metal_bonds_.push_back(entry);
     }
   }
 
   // Load metal coordination geometry
-  std::ifstream f2(dir + "/allMetalDefCoordGeos.table");
-  if (f2) {
-    while (std::getline(f2, line)) {
-      if (line.empty() || line[0] == '#')
-        continue;
+  {
+    std::string path = dir + "/allMetalDefCoordGeos.table";
+    fileptr_t f2(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    if (f2) {
+      char line[512];
+      while (std::fgets(line, sizeof(line), f2.get())) {
+        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+          continue;
 
-      std::istringstream iss(line);
-      std::string metal_str, geo_str;
-      int coord;
+        char metal_str[8], geo_str[64];
+        int coord;
 
-      if (iss >> metal_str >> coord >> geo_str) {
-        Element metal(metal_str);
-        CoordGeometry geo = CoordGeometry::UNKNOWN;
-        if (geo_str == "LINEAR") geo = CoordGeometry::LINEAR;
-        else if (geo_str == "TRIGONAL_PLANAR") geo = CoordGeometry::TRIGONAL_PLANAR;
-        else if (geo_str == "T_SHAPED") geo = CoordGeometry::T_SHAPED;
-        else if (geo_str == "TETRAHEDRAL") geo = CoordGeometry::TETRAHEDRAL;
-        else if (geo_str == "SQUARE_PLANAR") geo = CoordGeometry::SQUARE_PLANAR;
-        else if (geo_str == "TRIGONAL_BIPYRAMIDAL") geo = CoordGeometry::TRIGONAL_BIPYRAMIDAL;
-        else if (geo_str == "SQUARE_PYRAMIDAL") geo = CoordGeometry::SQUARE_PYRAMIDAL;
-        else if (geo_str == "OCTAHEDRAL") geo = CoordGeometry::OCTAHEDRAL;
-        else if (geo_str == "TRIGONAL_PRISM") geo = CoordGeometry::TRIGONAL_PRISM;
-        else if (geo_str == "PENTAGONAL_BIPYRAMIDAL") geo = CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
-        else if (geo_str == "CAPPED_OCTAHEDRAL") geo = CoordGeometry::CAPPED_OCTAHEDRAL;
-        else if (geo_str == "SQUARE_ANTIPRISM") geo = CoordGeometry::SQUARE_ANTIPRISM;
-        metal_coord_geo_[metal][coord] = geo;
+        if (std::sscanf(line, "%7s %d %63s", metal_str, &coord, geo_str) == 3) {
+          Element metal(metal_str);
+          CoordGeometry geo = CoordGeometry::UNKNOWN;
+          if (std::strcmp(geo_str, "LINEAR") == 0) geo = CoordGeometry::LINEAR;
+          else if (std::strcmp(geo_str, "TRIGONAL_PLANAR") == 0) geo = CoordGeometry::TRIGONAL_PLANAR;
+          else if (std::strcmp(geo_str, "T_SHAPED") == 0) geo = CoordGeometry::T_SHAPED;
+          else if (std::strcmp(geo_str, "TETRAHEDRAL") == 0) geo = CoordGeometry::TETRAHEDRAL;
+          else if (std::strcmp(geo_str, "SQUARE_PLANAR") == 0) geo = CoordGeometry::SQUARE_PLANAR;
+          else if (std::strcmp(geo_str, "TRIGONAL_BIPYRAMIDAL") == 0) geo = CoordGeometry::TRIGONAL_BIPYRAMIDAL;
+          else if (std::strcmp(geo_str, "SQUARE_PYRAMIDAL") == 0) geo = CoordGeometry::SQUARE_PYRAMIDAL;
+          else if (std::strcmp(geo_str, "OCTAHEDRAL") == 0) geo = CoordGeometry::OCTAHEDRAL;
+          else if (std::strcmp(geo_str, "TRIGONAL_PRISM") == 0) geo = CoordGeometry::TRIGONAL_PRISM;
+          else if (std::strcmp(geo_str, "PENTAGONAL_BIPYRAMIDAL") == 0) geo = CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
+          else if (std::strcmp(geo_str, "CAPPED_OCTAHEDRAL") == 0) geo = CoordGeometry::CAPPED_OCTAHEDRAL;
+          else if (std::strcmp(geo_str, "SQUARE_ANTIPRISM") == 0) geo = CoordGeometry::SQUARE_ANTIPRISM;
+          metal_coord_geo_[metal][coord] = geo;
+        }
       }
     }
   }
 
   // Load metal coordination angles
-  std::ifstream f3(dir + "/allMetalCoordGeoAngles.table");
-  if (f3) {
-    while (std::getline(f3, line)) {
-      if (line.empty() || line[0] == '#')
-        continue;
+  {
+    std::string path = dir + "/allMetalCoordGeoAngles.table";
+    fileptr_t f3(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    if (f3) {
+      char line[512];
+      while (std::fgets(line, sizeof(line), f3.get())) {
+        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+          continue;
 
-      std::istringstream iss(line);
-      std::string metal_str, geo_str;
-      int coord;
-      double angle, sigma;
+        char metal_str[8], geo_str[64];
+        int coord;
+        double angle, sigma;
 
-      if (iss >> metal_str >> coord >> geo_str >> angle >> sigma) {
-        MetalAngleEntry entry;
-        entry.metal = Element(metal_str);
-        entry.coord_number = coord;
-        entry.angle = angle;
-        entry.sigma = sigma;
-        metal_angles_.push_back(entry);
+        if (std::sscanf(line, "%7s %d %63s %lf %lf",
+                        metal_str, &coord, geo_str, &angle, &sigma) == 5) {
+          MetalAngleEntry entry;
+          entry.metal = Element(metal_str);
+          entry.coord_number = coord;
+          entry.angle = angle;
+          entry.sigma = sigma;
+          metal_angles_.push_back(entry);
+        }
       }
     }
   }
 }
 
 void AcedrgTables::load_covalent_radii(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return;
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
-    std::istringstream iss(line);
-    std::string elem, kind;
+    char elem[16], kind[16];
     double value = NAN;
-    if (!(iss >> elem >> kind >> value))
+    if (std::sscanf(line, "%15s %15s %lf", elem, kind, &value) != 3)
       continue;
-    if (kind != "cova")
+    if (std::strcmp(kind, "cova") != 0)
       continue;
     covalent_radii_[to_upper(elem)] = value;
   }
 }
 
 void AcedrgTables::load_atom_type_codes(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
     // Format: code<whitespace>full_type
-    std::istringstream iss(line);
-    std::string code, full_type;
-    if (iss >> code >> full_type) {
+    char code[64], full_type[256];
+    if (std::sscanf(line, "%63s %255s", code, full_type) == 2) {
       atom_type_codes_[code] = full_type;
     }
   }
 }
 
 void AcedrgTables::load_bond_index(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
     // Format: ha1 ha2 fileNum
-    std::istringstream iss(line);
     int ha1, ha2, file_num;
-    if (iss >> ha1 >> ha2 >> file_num) {
+    if (std::sscanf(line, "%d %d %d", &ha1, &ha2, &file_num) == 3) {
       bond_file_index_[ha1][ha2] = file_num;
     }
   }
@@ -467,31 +478,29 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
       loaded_files.insert(file_num);
 
       std::string path = cat(dir, '/', file_num, ".table");
-      std::ifstream f(path);
+      fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
       if (!f)
         continue;
 
-      std::string line;
-      while (std::getline(f, line)) {
-        if (line.empty() || line[0] == '#')
+      char line[512];
+      while (std::fgets(line, sizeof(line), f.get())) {
+        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
           continue;
 
         // Format: ha1 ha2 hybrComb inRing a1NB2 a2NB2 a1NB a2NB atomCode1 atomCode2
         //         value sigma count val2 sig2 cnt2
-        std::istringstream iss(line);
-        int ha1, ha2;
-        std::string hybr_comb, in_ring, a1_nb2, a2_nb2, a1_nb, a2_nb;
-        std::string atom_code1, atom_code2;
-        double value, sigma;
-        int count;
-        double value2, sigma2;
-        int count2;
+        int ha1, ha2, count, count2;
+        char hybr_comb[64], in_ring[8], a1_nb2[64], a2_nb2[64];
+        char a1_nb[64], a2_nb[64], atom_code1[64], atom_code2[64];
+        double value, sigma, value2, sigma2;
 
-        if (!(iss >> ha1 >> ha2 >> hybr_comb >> in_ring
-                  >> a1_nb2 >> a2_nb2 >> a1_nb >> a2_nb
-                  >> atom_code1 >> atom_code2
-                  >> value >> sigma >> count
-                  >> value2 >> sigma2 >> count2))
+        if (std::sscanf(line, "%d %d %63s %7s %63s %63s %63s %63s %63s %63s"
+                              " %lf %lf %d %lf %lf %d",
+                        &ha1, &ha2, hybr_comb, in_ring,
+                        a1_nb2, a2_nb2, a1_nb, a2_nb,
+                        atom_code1, atom_code2,
+                        &value, &sigma, &count,
+                        &value2, &sigma2, &count2) != 16)
           continue;
 
         // Get main atom types from codes
@@ -559,19 +568,18 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
 }
 
 void AcedrgTables::load_angle_index(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
 
     // Format: ha1 ha2 ha3 fileNum
-    std::istringstream iss(line);
     int ha1, ha2, ha3, file_num;
-    if (iss >> ha1 >> ha2 >> ha3 >> file_num) {
+    if (std::sscanf(line, "%d %d %d %d", &ha1, &ha2, &ha3, &file_num) == 4) {
       angle_file_index_[ha1][ha2][ha3] = file_num;
     }
   }
@@ -590,13 +598,13 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
         loaded_files.insert(file_num);
 
         std::string path = cat(dir, '/', file_num, ".table");
-        std::ifstream f(path);
+        fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
         if (!f)
           continue;
 
-        std::string line;
-        while (std::getline(f, line)) {
-          if (line.empty() || line[0] == '#')
+        char line[1024];
+        while (std::fgets(line, sizeof(line), f.get())) {
+          if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
             continue;
 
           // 34-column format:
@@ -606,34 +614,37 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
           // 8-10: a1_nb2 a2_nb2 a3_nb2
           // 11-13: a1_nb a2_nb a3_nb
           // 14-16: a1_code a2_code a3_code
-          // 17-19: AxC value, sigma, count (unused)
-          // 20-22: AxM value, sigma, count (1D)
-          // 23-25: A_NB value, sigma, count (2D)
-          // 26-28: A_NB2 value, sigma, count (3D)
-          // 29-31: a1R/a2R/a3R value, sigma, count (4D)
-          // 32-34: R3A value, sigma, count (5D)
-          std::istringstream iss(line);
+          // 17-34: 6 sets of value sigma count
           int ha1, ha2, ha3;
-          std::string value_key;
-          std::string a1_root, a2_root, a3_root;
-          std::string a1_nb2, a2_nb2, a3_nb2;
-          std::string a1_nb, a2_nb, a3_nb;
-          std::string a1_code, a2_code, a3_code;
+          char value_key[128];
+          char a1_root[64], a2_root[64], a3_root[64];
+          char a1_nb2[64], a2_nb2[64], a3_nb2[64];
+          char a1_nb[64], a2_nb[64], a3_nb[64];
+          char a1_code[64], a2_code[64], a3_code[64];
+          int pos = 0;
 
-          if (!(iss >> ha1 >> ha2 >> ha3 >> value_key
-                    >> a1_root >> a2_root >> a3_root
-                    >> a1_nb2 >> a2_nb2 >> a3_nb2
-                    >> a1_nb >> a2_nb >> a3_nb
-                    >> a1_code >> a2_code >> a3_code))
+          if (std::sscanf(line, "%d %d %d %127s"
+                                " %63s %63s %63s %63s %63s %63s"
+                                " %63s %63s %63s %63s %63s %63s%n",
+                          &ha1, &ha2, &ha3, value_key,
+                          a1_root, a2_root, a3_root,
+                          a1_nb2, a2_nb2, a3_nb2,
+                          a1_nb, a2_nb, a3_nb,
+                          a1_code, a2_code, a3_code, &pos) != 16)
             continue;
 
           // Read 6 sets of value/sigma/count
           double values[6], sigmas[6];
           int counts[6];
+          const char* p = line + pos;
           bool ok = true;
           for (int lvl = 0; lvl < 6 && ok; ++lvl) {
-            if (!(iss >> values[lvl] >> sigmas[lvl] >> counts[lvl]))
+            int n = 0;
+            if (std::sscanf(p, " %lf %lf %d%n",
+                            &values[lvl], &sigmas[lvl], &counts[lvl], &n) != 3)
               ok = false;
+            else
+              p += n;
           }
           if (!ok)
             continue;
@@ -712,20 +723,19 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
 }
 
 void AcedrgTables::load_pep_tors(const std::string& path) {
-  std::ifstream f(path);
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return;
 
-  std::string line;
-  while (std::getline(f, line)) {
-    if (line.empty() || line[0] == '#')
+  char line[512];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
       continue;
-    std::istringstream iss(line);
-    std::string tors_id, label, a1, a2, a3, a4;
-    int period = 0;
-    int idx = 0;
+    char tors_id[64], label[64], a1[16], a2[16], a3[16], a4[16];
+    int period = 0, idx = 0;
     double value = 0.0;
-    if (!(iss >> tors_id >> label >> a1 >> a2 >> a3 >> a4 >> period >> idx >> value))
+    if (std::sscanf(line, "%63s %63s %15s %15s %15s %15s %d %d %lf",
+                    tors_id, label, a1, a2, a3, a4, &period, &idx, &value) != 9)
       continue;
     TorsionEntry entry;
     entry.value = value;
