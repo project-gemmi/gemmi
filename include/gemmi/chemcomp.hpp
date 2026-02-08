@@ -473,6 +473,13 @@ struct ChemComp {
     return it != atoms.end() ? int(it - atoms.begin()) : -1;
   }
 
+  std::map<std::string, size_t> make_atom_index() const {
+    std::map<std::string, size_t> atom_index;
+    for (size_t i = 0; i < atoms.size(); ++i)
+      atom_index[atoms[i].id] = i;
+    return atom_index;
+  }
+
   const Atom& get_atom(const std::string& atom_id) const {
     return atoms[get_atom_index(atom_id)];
   }

@@ -22,13 +22,6 @@ int count_missing_values(const Range& range) {
   return missing;
 }
 
-std::map<std::string, size_t> make_atom_index(const ChemComp& cc) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-  return atom_index;
-}
-
 std::map<std::string, std::vector<std::string>> make_neighbor_names(const ChemComp& cc) {
   std::map<std::string, std::vector<std::string>> neighbors;
   for (const auto& bond : cc.rt.bonds) {
@@ -895,7 +888,7 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
   if (!cc.rt.angles.empty())
     return;
 
-  auto atom_index = make_atom_index(cc);
+  auto atom_index = cc.make_atom_index();
 
   std::vector<std::vector<size_t>> neighbors(cc.atoms.size());
   for (const auto& bond : cc.rt.bonds) {
@@ -1270,7 +1263,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   if (!cc.rt.torsions.empty())
     return;
 
-  auto atom_index = make_atom_index(cc);
+  auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
@@ -1551,7 +1544,7 @@ void add_chirality_if_missing(
     return;
 
   if (!atom_stereo.empty()) {
-    auto atom_index = make_atom_index(cc);
+    auto atom_index = cc.make_atom_index();
     auto adj = build_bond_adjacency(cc, atom_index);
 
     for (const auto& entry : atom_stereo) {
@@ -1639,7 +1632,7 @@ void add_planes_if_missing(ChemComp& cc,
   if (!cc.rt.planes.empty())
     return;
 
-  auto atom_index = make_atom_index(cc);
+  auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
 
   std::vector<std::set<Restraints::AtomId>> plane_sets;
@@ -1735,7 +1728,7 @@ void add_planes_if_missing(ChemComp& cc,
 void apply_metal_charge_corrections(ChemComp& cc) {
   if (cc.atoms.empty())
     return;
-  auto atom_index = make_atom_index(cc);
+  auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     const Element& el = cc.atoms[i].el;

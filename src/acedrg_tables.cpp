@@ -13,8 +13,6 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include <list>
-#include <numeric>
 #include <set>
 #include <sstream>
 #include "gemmi/atox.hpp"
@@ -26,13 +24,6 @@
 namespace gemmi {
 
 namespace {
-
-std::map<std::string, size_t> make_atom_index(const ChemComp& cc) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-  return atom_index;
-}
 
 bool compare_no_case(const std::string& first,
                      const std::string& second) {
@@ -1138,16 +1129,16 @@ void check_one_path_acedrg(
     for (int nb : neighbors[cur_idx]) {
       if (nb == ori_idx && nb != prev_idx && cur_lev > 2 && atoms[nb].el != El::H) {
         atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
-        std::list<std::string> all_ids;
-        std::list<std::string> all_seris;
+        std::vector<std::string> all_ids;
+        std::vector<std::string> all_seris;
         std::vector<int> ring_atoms;
         for (const auto& it : atom_ids_in_path) {
           all_seris.push_back(std::to_string(it.first));
           all_ids.push_back(it.second);
           ring_atoms.push_back(it.first);
         }
-        all_seris.sort(compare_no_case);
-        all_ids.sort(compare_no_case);
+        std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
+        std::sort(all_ids.begin(), all_ids.end(), compare_no_case);
 
         std::string rep;
         for (const auto& id : all_ids)
@@ -1221,10 +1212,10 @@ void set_atoms_ring_rep_s(
   for (const auto& ring : rings) {
     std::string size = std::to_string(ring.atoms.size());
     std::string rep_id;
-    std::list<std::string> all_seris;
+    std::vector<std::string> all_seris;
     for (int idx : ring.atoms)
       all_seris.push_back(std::to_string(idx));
-    all_seris.sort(compare_no_case);
+    std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
     int nrs = 0;
     for (const auto& seri : all_seris) {
       if (nrs == 0)
@@ -1513,7 +1504,7 @@ void set_atom_cod_class_name_new2(
     }
 
     std::string t_str;
-    std::list<std::string> t_str_list;
+    std::vector<std::string> t_str_list;
     std::map<std::string, int> comps;
     for (int nb : neighbors[atom.index]) {
       if (nb == ori_atom.index || atoms[nb].is_metal)
@@ -1678,12 +1669,12 @@ void set_special_3nb_symb2(
     }
   }
 
-  std::list<std::string> comps;
+  std::vector<std::string> comps;
   for (const auto& it : nb3_props) {
     std::string id = cat(it.second, "|", it.first);
     comps.push_back(id);
   }
-  comps.sort(compare_no_case2);
+  std::sort(comps.begin(), comps.end(), compare_no_case2);
 
   if (!comps.empty()) {
     std::string all3 = "{";
@@ -1786,58 +1777,6 @@ void set_atoms_nb1nb2_sp(
       atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
       if (i != nb1_nb2_sp_set.size() - 1)
         atom.nb1nb2_sp.append(":");
-    }
-  }
-}
-
-void set_atoms_nb_symb_from_neighbors(
-    std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) {
-  for (auto& atom : atoms) {
-    // Collect neighbor info: cod_root and connectivity
-    // The value used in nb_symb/nb2_symb is the neighbor's connectivity
-    // (number of bonded atoms), which matches the table format used in
-    // acedrg's indexed angle tables (e.g., "C-4:" means carbon with 4 bonds).
-    struct NbInfo {
-      std::string root;
-      int connectivity;
-    };
-    std::vector<NbInfo> nb_info;
-    for (int nb_idx : neighbors[atom.index]) {
-      if (atoms[nb_idx].is_metal)
-        continue;
-      int non_metal_conn = static_cast<int>(atoms[nb_idx].conn_atoms_no_metal.size());
-      nb_info.push_back({atoms[nb_idx].cod_root,
-                         non_metal_conn});
-    }
-
-    // Build "root-connectivity" strings for sorting and lookup
-    std::vector<std::string> nb_strs;
-    nb_strs.reserve(nb_info.size());
-    for (const auto& info : nb_info) {
-      nb_strs.push_back(cat(info.root, "-", info.connectivity));
-    }
-
-    // Sort by: 1) string length (longer first), 2) connectivity (higher first)
-    // This matches desc_sort_map_key2 sorting used in set_atom_cod_class_name_new2
-    std::vector<size_t> indices(nb_info.size());
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(),
-              [&nb_strs, &nb_info](size_t a, size_t b) {
-                if (nb_strs[a].length() > nb_strs[b].length())
-                  return true;
-                if (nb_strs[a].length() < nb_strs[b].length())
-                  return false;
-                // Same length: sort by connectivity (higher first)
-                return nb_info[a].connectivity > nb_info[b].connectivity;
-              });
-
-    // Build nb_symb and nb2_symb using sorted order
-    atom.nb_symb.clear();
-    atom.nb2_symb.clear();
-    for (size_t i : indices) {
-      cat_to(atom.nb_symb, nb_strs[i], ":");
-      cat_to(atom.nb2_symb, nb_info[i].connectivity, ":");
     }
   }
 }
@@ -2780,7 +2719,7 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   }
 
   // AceDRG adjustment: enforce planar ring angle sum ((n-2)*180/n) for SP2 rings.
-  auto atom_index = make_atom_index(cc);
+  auto atom_index = cc.make_atom_index();
   std::map<int, std::vector<size_t>> rings;
   for (size_t i = 0; i < atom_info.size(); ++i)
     for (int ring_id : atom_info[i].in_rings)
