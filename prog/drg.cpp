@@ -17,39 +17,6 @@ using namespace gemmi;
 
 namespace {
 
-// Write debug info to CIF block (as custom _drg_debug_* loops)
-void write_debug_info_to_block(cif::Block& block, const std::string& comp_id,
-                               const std::vector<AtomDebugInfo>& atom_debug,
-                               const std::vector<BondDebugInfo>& bond_debug) {
-  // Write atom debug info
-  if (!atom_debug.empty()) {
-    cif::Loop& loop = block.init_loop("_drg_debug_atom.",
-        {"comp_id", "atom_id", "hybridization", "hash_value", "bonding_idx", "h_table",
-         "nb1nb2_sp", "nb2_symb", "cod_class"});
-    for (const auto& a : atom_debug) {
-      loop.add_row({comp_id, a.atom_id, a.hybridization,
-                    std::to_string(a.hash_value), std::to_string(a.bonding_idx),
-                    a.h_table.empty() ? "." : a.h_table,
-                    a.nb1nb2_sp.empty() ? "." : a.nb1nb2_sp,
-                    a.nb2_symb.empty() ? "." : a.nb2_symb,
-                    a.cod_class.empty() ? "." : a.cod_class});
-    }
-  }
-  // Write bond debug info
-  if (!bond_debug.empty()) {
-    cif::Loop& loop = block.init_loop("_drg_debug_bond.",
-        {"comp_id", "atom_id_1", "atom_id_2", "source", "ml_level", "ml_count",
-         "hrs_count", "hybr1", "hybr2", "hash1", "hash2", "same_ring"});
-    for (const auto& b : bond_debug) {
-      loop.add_row({comp_id, b.atom1, b.atom2, b.source,
-                    std::to_string(b.ml_level), std::to_string(b.ml_count),
-                    std::to_string(b.hrs_count), b.hybr1, b.hybr2,
-                    std::to_string(b.hash1), std::to_string(b.hash2),
-                    b.same_ring ? "Y" : "N"});
-    }
-  }
-}
-
 enum OptionIndex {
   Tables=4, Sigma, Timing, CifStyle, OutputDir
 };

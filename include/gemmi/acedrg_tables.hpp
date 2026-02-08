@@ -111,34 +111,6 @@ struct ProtHydrDist {
   double nucleus_sigma = NAN;
 };
 
-// Debug info for bond lookup (to be written to output CIF)
-struct BondDebugInfo {
-  std::string atom1;
-  std::string atom2;
-  std::string source;      // "multilevel", "HRS", "EN", "CCP4", "covalent", "DELO"
-  int ml_level = 0;        // multilevel match level (10=full, 4+=neighbor, 0-3=aggregated)
-  int ml_count = 0;        // multilevel observation count
-  int hrs_count = 0;       // HRS observation count
-  std::string hybr1;       // hybridization of atom1
-  std::string hybr2;       // hybridization of atom2
-  int hash1 = 0;           // hash value of atom1
-  int hash2 = 0;           // hash value of atom2
-  bool same_ring = false;  // atoms in same ring
-};
-
-// Debug info for atom lookup
-struct AtomDebugInfo {
-  std::string atom_id;
-  std::string hybridization;
-  int hash_value = 0;
-  int bonding_idx = 0;
-  std::string h_table;     // which H table was used (if H bond)
-  // Multilevel lookup key fields
-  std::string nb1nb2_sp;   // codNB1NB2_SP
-  std::string nb2_symb;    // codNB2Symb
-  std::string cod_class;   // full COD class
-};
-
 // Metal bond entry
 struct MetalBondEntry {
   Element metal = El::X;
@@ -198,11 +170,6 @@ public:
   // Process a ChemComp - fill all missing restraint values
   void fill_restraints(ChemComp& cc) const;
 
-  // Process a ChemComp with debug info collection
-  void fill_restraints(ChemComp& cc,
-                       std::vector<AtomDebugInfo>& atom_debug,
-                       std::vector<BondDebugInfo>& bond_debug) const;
-
   // Assign CCP4 atom energy types (type_energy) following AceDRG rules
   void assign_ccp4_types(ChemComp& cc) const;
   // Adjust charges for atoms bonded to metals using AceDRG valence rules
@@ -215,8 +182,7 @@ public:
   // Individual lookups - returns match level (10=full, 4+=neighbor matched, 0-3=aggregated)
   int fill_bond(const ChemComp& cc,
                 const std::vector<CodAtomInfo>& atom_info,
-                Restraints::Bond& bond,
-                BondDebugInfo* debug = nullptr) const;
+                Restraints::Bond& bond) const;
   void fill_angle(const ChemComp& cc,
                             const std::vector<CodAtomInfo>& atom_info,
                             Restraints::Angle& angle) const;

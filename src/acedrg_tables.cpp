@@ -31,6 +31,22 @@ int count_missing_values(const Range& range) {
   return missing;
 }
 
+std::map<std::string, size_t> make_atom_index(const ChemComp& cc) {
+  std::map<std::string, size_t> atom_index;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    atom_index[cc.atoms[i].id] = i;
+  return atom_index;
+}
+
+std::map<std::string, std::vector<std::string>> make_neighbor_names(const ChemComp& cc) {
+  std::map<std::string, std::vector<std::string>> neighbors;
+  for (const auto& bond : cc.rt.bonds) {
+    neighbors[bond.id1.atom].push_back(bond.id2.atom);
+    neighbors[bond.id2.atom].push_back(bond.id1.atom);
+  }
+  return neighbors;
+}
+
 void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
   auto is_id = [&](const Restraints::AtomId& id) { return id.atom == atom_id; };
   cc.rt.bonds.erase(std::remove_if(cc.rt.bonds.begin(), cc.rt.bonds.end(),
@@ -292,15 +308,8 @@ void sync_n_terminal_h3_angles(ChemComp& cc) {
 }
 
 void adjust_phosphate_group(ChemComp& cc) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   std::set<std::string> po4_phosphorus;
   for (const auto& atom : cc.atoms) {
@@ -347,15 +356,8 @@ void adjust_phosphate_group(ChemComp& cc) {
 }
 
 void adjust_sulfate_group(ChemComp& cc) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   std::set<std::string> sulfate_sulfur;
   for (const auto& atom : cc.atoms) {
@@ -399,15 +401,8 @@ void adjust_sulfate_group(ChemComp& cc) {
 }
 
 void adjust_hexafluorophosphate(ChemComp& cc) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   for (auto& atom : cc.atoms) {
     if (atom.el != El::P)
@@ -448,15 +443,8 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
 }
 
 void adjust_carboxy_asp(ChemComp& cc) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   auto get_bond_type = [&](const std::string& a, const std::string& b) {
     for (const auto& bond : cc.rt.bonds)
@@ -603,15 +591,8 @@ std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& 
 
 void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
 
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   std::map<std::string, bool> has_unsat_bond;
   for (const auto& bond : cc.rt.bonds) {
@@ -748,15 +729,8 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
 }
 
 void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   auto get_bond_type = [&](const std::string& a, const std::string& b) {
     for (const auto& bond : cc.rt.bonds)
@@ -840,15 +814,8 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
 }
 
 void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
+  auto atom_index = make_atom_index(cc);
+  auto neighbors = make_neighbor_names(cc);
 
   for (auto& n_atom : cc.atoms) {
     if (n_atom.el != El::N)
@@ -959,9 +926,7 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
   if (!cc.rt.angles.empty())
     return;
 
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
+  auto atom_index = make_atom_index(cc);
 
   std::vector<std::vector<size_t>> neighbors(cc.atoms.size());
   for (const auto& bond : cc.rt.bonds) {
@@ -1331,16 +1296,13 @@ const ChemComp::Atom* pick_aromatic_ring_neighbor(
   return nullptr;
 }
 
-void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables) {
+void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
+                                        const std::vector<CodAtomInfo>& atom_info) {
   if (!cc.rt.torsions.empty())
     return;
 
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-
+  auto atom_index = make_atom_index(cc);
   auto adj = build_bond_adjacency(cc, atom_index);
-  std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1617,16 +1579,13 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
 void add_chirality_if_missing(
     ChemComp& cc, const std::map<std::string, std::string>& atom_stereo,
-    const AcedrgTables& tables) {
+    const std::vector<CodAtomInfo>& atom_info) {
   if (!cc.rt.chirs.empty())
     return;
 
   if (!atom_stereo.empty()) {
-    std::map<std::string, size_t> atom_index;
-    for (size_t i = 0; i < cc.atoms.size(); ++i)
-      atom_index[cc.atoms[i].id] = i;
+    auto atom_index = make_atom_index(cc);
     auto adj = build_bond_adjacency(cc, atom_index);
-    std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
 
     for (const auto& entry : atom_stereo) {
       char stereo = static_cast<char>(std::tolower(static_cast<unsigned char>(entry.second[0])));
@@ -1710,15 +1669,13 @@ void add_chirality_if_missing(
   cc.rt.chirs.push_back({{1, "CA"}, {1, "N"}, {1, "C"}, {1, "CB"}, sign});
 }
 
-void add_planes_if_missing(ChemComp& cc, const AcedrgTables& tables) {
+void add_planes_if_missing(ChemComp& cc,
+                           const std::vector<CodAtomInfo>& atom_info) {
   if (!cc.rt.planes.empty())
     return;
 
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
+  auto atom_index = make_atom_index(cc);
   auto adj = build_bond_adjacency(cc, atom_index);
-  std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
 
   std::vector<std::set<Restraints::AtomId>> plane_sets;
   plane_sets.reserve(cc.rt.planes.size());
@@ -1812,6 +1769,13 @@ void add_planes_if_missing(ChemComp& cc, const AcedrgTables& tables) {
 
 }  // namespace
 
+// ============================================================================
+// Below: AcedrgTables member functions — table loading, atom classification,
+// bond/angle search, CCP4 type assignment.
+// Above anonymous namespace: restraint generation helpers — torsions,
+// chirality, planes, H naming, chemical adjustments, prepare_chemcomp().
+// These two parts are candidates for splitting into separate source files.
+// ============================================================================
 
 const char* hybridization_to_string(Hybridization h) {
   switch (h) {
@@ -4670,9 +4634,7 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   }
 
   // AceDRG adjustment: enforce planar ring angle sum ((n-2)*180/n) for SP2 rings.
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
+  auto atom_index = make_atom_index(cc);
   std::map<int, std::vector<size_t>> rings;
   for (size_t i = 0; i < atom_info.size(); ++i)
     for (int ring_id : atom_info[i].in_rings)
@@ -4765,232 +4727,9 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   }
 }
 
-void AcedrgTables::fill_restraints(ChemComp& cc,
-                                   std::vector<AtomDebugInfo>& atom_debug,
-                                   std::vector<BondDebugInfo>& bond_debug) const {
-  if (!tables_loaded_)
-    return;
-
-  // Classify atoms
-  std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
-  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
-  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
-  std::vector<std::string> ccp4_types;
-  if (!ccp4_bonds_.empty())
-    ccp4_types = compute_ccp4_types(cc, atom_info, neighbors);
-
-  // Collect atom debug info
-  atom_debug.clear();
-  atom_debug.reserve(atom_info.size());
-  for (const auto& a : atom_info) {
-    AtomDebugInfo ad;
-    ad.atom_id = a.id;
-    ad.hybridization = hybridization_to_string(a.hybrid);
-    ad.hash_value = a.hashing_value;
-    ad.bonding_idx = a.bonding_idx;
-    ad.nb1nb2_sp = a.nb1nb2_sp;
-    ad.nb2_symb = a.nb2_symb;
-    ad.cod_class = a.cod_class;
-    atom_debug.push_back(ad);
-  }
-
-  // Print atom classification if verbose
-  if (verbose >= 1) {
-    std::fprintf(stderr, "  Atom classification:\n");
-    for (size_t i = 0; i < atom_info.size(); ++i) {
-      const auto& a = atom_info[i];
-      std::fprintf(stderr, "    %s: el=%s conn=%d ring=%d arom=%d hybr=%s "
-                   "bonding_idx=%d hash=%d cod_class=%s\n",
-                   a.id.c_str(), element_name(a.el), a.connectivity,
-                   a.min_ring_size, a.is_aromatic ? 1 : 0,
-                   hybridization_to_string(a.hybrid), a.bonding_idx,
-                   a.hashing_value, a.cod_class.c_str());
-    }
-  }
-
-  // Fill bonds with debug info collection
-  bond_debug.clear();
-  bond_debug.reserve(cc.rt.bonds.size());
-  for (auto& bond : cc.rt.bonds) {
-    if (std::isnan(bond.value)) {
-      BondDebugInfo debug;
-      int match_level = fill_bond(cc, atom_info, bond, &debug);
-      auto it1 = cc.find_atom(bond.id1.atom);
-      auto it2 = cc.find_atom(bond.id2.atom);
-      int idx1 = -1;
-      int idx2 = -1;
-      if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-        idx1 = static_cast<int>(it1 - cc.atoms.begin());
-        idx2 = static_cast<int>(it2 - cc.atoms.begin());
-      }
-      auto apply_ccp4 = [&](bool override_existing) {
-        if (ccp4_types.empty() || idx1 < 0 || idx2 < 0)
-          return false;
-        if (!override_existing && !std::isnan(bond.value))
-          return false;
-        std::string order = bond_order_key(bond.type);
-        ValueStats vs;
-        if (search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) ||
-            search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
-          bond.value = vs.value;
-          bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
-          debug.source = "CCP4";
-          return true;
-        }
-        ValueStats v1, v2;
-        bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
-        bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
-        if (has1 && has2) {
-          bond.value = 0.5 * (v1.value + v2.value);
-          bond.esd = 0.02;
-          debug.source = "CCP4_avg";
-          return true;
-        }
-        return false;
-      };
-      // CCP4 energetic library fallback
-      if (std::isnan(bond.value))
-        apply_ccp4(false);
-      // DELO override (debug path): explicit delocalized bonds only.
-      if (!std::isnan(bond.value) && !ccp4_types.empty() &&
-          bond.type == BondType::Deloc && match_level < 4) {
-        if (idx1 >= 0 && idx2 >= 0) {
-          const std::string& t1 = ccp4_types[idx1];
-          const std::string& t2 = ccp4_types[idx2];
-          bool is_c_o_bond = (t1 == "C" && (t2 == "O" || t2 == "OC")) ||
-                             (t2 == "C" && (t1 == "O" || t1 == "OC"));
-          if (is_c_o_bond) {
-            int c_idx = (t1 == "C") ? idx1 : idx2;
-            int terminal_o_count = 0;
-            for (const auto& b : cc.rt.bonds) {
-              if (b.id1.atom == cc.atoms[c_idx].id || b.id2.atom == cc.atoms[c_idx].id) {
-                const std::string& other_name = (b.id1.atom == cc.atoms[c_idx].id) ? b.id2.atom : b.id1.atom;
-                auto it_other = cc.find_atom(other_name);
-                if (it_other != cc.atoms.end() && it_other->el == El::O) {
-                  int heavy_neighbors = 0;
-                  for (const auto& b2 : cc.rt.bonds) {
-                    if (b2.id1.atom == other_name || b2.id2.atom == other_name) {
-                      const std::string& nb = (b2.id1.atom == other_name) ? b2.id2.atom : b2.id1.atom;
-                      auto it_nb = cc.find_atom(nb);
-                      if (it_nb != cc.atoms.end() && it_nb->el != El::H)
-                        ++heavy_neighbors;
-                    }
-                  }
-                  if (heavy_neighbors == 1)
-                    ++terminal_o_count;
-                }
-              }
-            }
-            if (terminal_o_count >= 2) {
-              ValueStats vs;
-              if (search_ccp4_bond("OC", "C", "DELO", vs) ||
-                  search_ccp4_bond("C", "OC", "DELO", vs)) {
-                bond.value = vs.value;
-                bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
-                debug.source = "DELO";
-              }
-            }
-          }
-        }
-      }
-      bond_debug.push_back(debug);
-    } else {
-      // Bond value was already set - add minimal debug entry
-      BondDebugInfo debug;
-      debug.atom1 = bond.id1.atom;
-      debug.atom2 = bond.id2.atom;
-      debug.source = "preset";
-      bond_debug.push_back(debug);
-    }
-  }
-
-  // Populate value_nucleus/esd_nucleus for X-H bonds from prot_hydr_dists
-  for (auto& bond : cc.rt.bonds) {
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
-      continue;
-    int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-    int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-    const CodAtomInfo& a1 = atom_info[idx1];
-    const CodAtomInfo& a2 = atom_info[idx2];
-    if (a1.el == El::H || a2.el == El::H) {
-      const CodAtomInfo& h_atom = (a1.el == El::H) ? a1 : a2;
-      const CodAtomInfo& heavy_atom = (a1.el == El::H) ? a2 : a1;
-      ProtHydrDist phd = search_prot_hydr_dist(h_atom, heavy_atom);
-      if (!std::isnan(phd.nucleus_val)) {
-        bond.value_nucleus = phd.nucleus_val;
-        bond.esd_nucleus = phd.nucleus_sigma;
-      }
-    }
-  }
-
-  // Fill angles (same as main fill_restraints, no debug needed for now)
-  for (auto& angle : cc.rt.angles) {
-    if (std::isnan(angle.value)) {
-      fill_angle(cc, atom_info, angle);
-    }
-  }
-
-  // Ring angle adjustment (same as main fill_restraints)
-  std::map<std::string, size_t> atom_index;
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    atom_index[cc.atoms[i].id] = i;
-  std::map<int, std::vector<size_t>> rings;
-  for (size_t i = 0; i < atom_info.size(); ++i)
-    for (int ring_id : atom_info[i].in_rings)
-      rings[ring_id].push_back(i);
-  for (const auto& ring : rings) {
-    const std::vector<size_t>& ring_atoms = ring.second;
-    if (ring_atoms.size() < 3)
-      continue;
-    bool planar = true;
-    for (size_t idx : ring_atoms) {
-      if (atom_info[idx].bonding_idx == 3) {
-        planar = false;
-        break;
-      }
-    }
-    if (!planar)
-      continue;
-    std::set<std::string> ring_ids;
-    for (size_t idx : ring_atoms)
-      ring_ids.insert(cc.atoms[idx].id);
-    std::vector<size_t> ring_angles;
-    for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
-      const auto& ang = cc.rt.angles[i];
-      if (ring_ids.count(ang.id1.atom) && ring_ids.count(ang.id2.atom) && ring_ids.count(ang.id3.atom))
-        ring_angles.push_back(i);
-    }
-    if (ring_angles.size() != ring_atoms.size())
-      continue;
-    double sum = 0.0;
-    for (size_t i : ring_angles)
-      sum += cc.rt.angles[i].value;
-    double ideal = (ring_atoms.size() - 2) * 180.0;
-    double diff = ideal - sum;
-    if (std::fabs(diff) < 0.01)
-      continue;
-    std::vector<size_t> free;
-    for (size_t i : ring_angles)
-      if (cc.rt.angles[i].esd > 2.5)
-        free.push_back(i);
-    if (free.empty())
-      continue;
-    if (free.size() > 1) {
-      double per_angle = diff / static_cast<double>(free.size());
-      for (size_t i : free)
-        cc.rt.angles[i].value += per_angle;
-    } else {
-      cc.rt.angles[free[0]].value += diff;
-    }
-  }
-}
-
 int AcedrgTables::fill_bond(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
-    Restraints::Bond& bond,
-    BondDebugInfo* debug) const {
+    Restraints::Bond& bond) const {
 
   auto it1 = cc.find_atom(bond.id1.atom);
   auto it2 = cc.find_atom(bond.id2.atom);
@@ -5022,15 +4761,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       bond.value = it_m->second + it_l->second;
       bond.esd = 0.04;
       source = "metal_cova";
-      if (debug) {
-        debug->atom1 = bond.id1.atom;
-        debug->atom2 = bond.id2.atom;
-        debug->source = source;
-        debug->hybr1 = hybridization_to_string(a1.hybrid);
-        debug->hybr2 = hybridization_to_string(a2.hybrid);
-        debug->hash1 = a1.hashing_value;
-        debug->hash2 = a2.hashing_value;
-      }
       if (verbose)
         std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f)\n",
                      bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -5046,15 +4776,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       double sigma = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
       bond.esd = std::max(0.02, clamp_bond_sigma(sigma));
       source = "metal";
-      if (debug) {
-        debug->atom1 = bond.id1.atom;
-        debug->atom2 = bond.id2.atom;
-        debug->source = source;
-        debug->hybr1 = hybridization_to_string(a1.hybrid);
-        debug->hybr2 = hybridization_to_string(a2.hybrid);
-        debug->hash1 = a1.hashing_value;
-        debug->hash2 = a2.hashing_value;
-      }
       if (verbose)
         std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                      bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -5087,20 +4808,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     source = "HRS";
   }
 
-  // Populate debug info
-  if (debug) {
-    debug->atom1 = bond.id1.atom;
-    debug->atom2 = bond.id2.atom;
-    debug->hybr1 = hybridization_to_string(a1.hybrid);
-    debug->hybr2 = hybridization_to_string(a2.hybrid);
-    debug->hash1 = a1.hashing_value;
-    debug->hash2 = a2.hashing_value;
-    debug->ml_level = vs_ml.level;
-    debug->ml_count = vs_ml.count;
-    debug->hrs_count = vs_hrs.count;
-    debug->same_ring = same_ring;
-  }
-
   bool is_hrs = (source && std::strcmp(source, "HRS") == 0);
   bool accept = false;
   if (is_hrs || vs.level >= 9) {
@@ -5112,8 +4819,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   if (accept) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
-    if (debug)
-      debug->source = source;
     if (verbose)
       std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                    bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -5129,8 +4834,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
     source = "EN";
-    if (debug)
-      debug->source = source;
     if (verbose)
       std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
                    bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -5142,8 +4845,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
 
   // No match found - leave bond.value as NaN so CCP4 fallback in fill_restraints
   // can be applied. AceDRG's search order is: multilevel -> HRS -> EN -> CCP4.
-  if (debug)
-    debug->source = source;
   if (verbose)
     std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s -> %s\n",
                  bond.id1.atom.c_str(), bond.id2.atom.c_str(),
@@ -6453,9 +6154,10 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
     tables.fill_restraints(cc);
     if (added_h3)
       sync_n_terminal_h3_angles(cc);
-    add_torsions_from_bonds_if_missing(cc, tables);
-    add_chirality_if_missing(cc, atom_stereo, tables);
-    add_planes_if_missing(cc, tables);
+    std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
+    add_torsions_from_bonds_if_missing(cc, tables, atom_info);
+    add_chirality_if_missing(cc, atom_stereo, atom_info);
+    add_planes_if_missing(cc, atom_info);
   } else {
     if (added_h3)
       sync_n_terminal_h3_angles(cc);
