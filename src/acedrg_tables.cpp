@@ -1133,7 +1133,7 @@ void check_one_path_acedrg(
         std::vector<std::string> all_seris;
         std::vector<int> ring_atoms;
         for (const auto& it : atom_ids_in_path) {
-          all_seris.push_back(std::to_string(it.first));
+          all_seris.push_back(cat(it.first));
           all_ids.push_back(it.second);
           ring_atoms.push_back(it.first);
         }
@@ -1208,13 +1208,13 @@ void check_one_path_acedrg(
 
 void set_atoms_ring_rep_s(
     std::vector<CodAtomInfo>& atoms,
-    std::vector<RingInfo>& rings) {
+    const std::vector<RingInfo>& rings) {
   for (const auto& ring : rings) {
-    std::string size = std::to_string(ring.atoms.size());
+    std::string size = cat(ring.atoms.size());
     std::string rep_id;
     std::vector<std::string> all_seris;
     for (int idx : ring.atoms)
-      all_seris.push_back(std::to_string(idx));
+      all_seris.push_back(cat(idx));
     std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
     int nrs = 0;
     for (const auto& seri : all_seris) {
@@ -1484,7 +1484,7 @@ void set_atom_cod_class_name_new2(
       std::map<std::string, int> size_map;
       build_ring_size_map(atom.ring_rep_s, size_map);
 
-      atom.cod_class.append("[");
+      atom.cod_class+= '[';
       int i = 0;
       int j = static_cast<int>(size_map.size());
       for (const auto& it : size_map) {
@@ -1496,9 +1496,9 @@ void set_atom_cod_class_name_new2(
         else
           atom.cod_class.append(size);
         if (i != j - 1)
-          atom.cod_class.append(",");
+          atom.cod_class+= ',';
         else
-          atom.cod_class.append("]");
+          atom.cod_class+= ']';
         ++i;
       }
     }
@@ -1513,7 +1513,7 @@ void set_atom_cod_class_name_new2(
       if (!atoms[nb].ring_rep_s.empty()) {
         std::map<std::string, int> size_map;
         build_ring_size_map(atoms[nb].ring_rep_s, size_map);
-        nb_type.append("[");
+        nb_type+= '[';
         int i = 0;
         int j = static_cast<int>(size_map.size());
         for (const auto& it : size_map) {
@@ -1525,9 +1525,9 @@ void set_atom_cod_class_name_new2(
           else
             nb_type.append(size);
           if (i != j - 1)
-            nb_type.append(",");
+            nb_type+= ',';
           else
-            nb_type.append("]");
+            nb_type+= ']';
           ++i;
         }
       }
@@ -1564,7 +1564,7 @@ void set_atom_cod_class_name_new2(
       std::map<std::string, int> size_map;
       build_ring_size_map(atom.ring_rep_s, size_map);
 
-      atom.cod_class.append("[");
+      atom.cod_class+= '[';
       int i = 0;
       int j = static_cast<int>(size_map.size());
       for (const auto& it : size_map) {
@@ -1576,9 +1576,9 @@ void set_atom_cod_class_name_new2(
         else
           atom.cod_class.append(size);
         if (i != j - 1)
-          atom.cod_class.append(",");
+          atom.cod_class+= ',';
         else
-          atom.cod_class.append("]");
+          atom.cod_class+= ']';
         ++i;
       }
     }
@@ -1687,7 +1687,7 @@ void set_special_3nb_symb2(
         all3.append(id);
       ++i;
     }
-    all3.append("}");
+    all3+= '}';
     atom.cod_class.append(all3);
   }
 }
@@ -1776,7 +1776,7 @@ void set_atoms_nb1nb2_sp(
     for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
       atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
       if (i != nb1_nb2_sp_set.size() - 1)
-        atom.nb1nb2_sp.append(":");
+        atom.nb1nb2_sp+= ':';
     }
   }
 }

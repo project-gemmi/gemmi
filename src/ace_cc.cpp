@@ -392,7 +392,7 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
     std::string new_h = "H";
     if (cc.find_atom(new_h) != cc.atoms.end()) {
       for (int i = 1; i < 100; ++i) {
-        new_h = "H" + std::to_string(i);
+        new_h = cat("H", i);
         if (cc.find_atom(new_h) == cc.atoms.end())
           break;
       }
@@ -539,14 +539,14 @@ std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& 
   }
 
   int start = (idx_max > 0) ? idx_max + 1 : 2;
-  std::string cand = h_root + std::to_string(start);
+  std::string cand = cat(h_root, start);
   if (used_names.find(cand) == used_names.end()) {
     used_names.insert(cand);
     return cand;
   }
 
   for (int n = 2; n < 10000; ++n) {
-    cand = h_root + std::to_string(n);
+    cand = cat(h_root, n);
     if (used_names.find(cand) == used_names.end()) {
       used_names.insert(cand);
       return cand;

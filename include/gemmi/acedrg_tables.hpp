@@ -7,6 +7,7 @@
 #define GEMMI_ACEDRG_TABLES_HPP_
 
 #include <string>
+#include <tuple>
 #include <vector>
 #include <map>
 #include <cmath>
@@ -217,10 +218,8 @@ public:
     std::string hybrid_pair;
     std::string in_ring;
     bool operator<(const BondHRSKey& o) const {
-      if (hash1 != o.hash1) return hash1 < o.hash1;
-      if (hash2 != o.hash2) return hash2 < o.hash2;
-      if (hybrid_pair != o.hybrid_pair) return hybrid_pair < o.hybrid_pair;
-      return in_ring < o.in_ring;
+      return std::tie(hash1, hash2, hybrid_pair, in_ring)
+           < std::tie(o.hash1, o.hash2, o.hybrid_pair, o.in_ring);
     }
   };
   std::map<BondHRSKey, ValueStats> bond_hrs_;
@@ -231,10 +230,8 @@ public:
     int hash1, hash2, hash3;
     std::string value_key;
     bool operator<(const AngleHRSKey& o) const {
-      if (hash1 != o.hash1) return hash1 < o.hash1;
-      if (hash2 != o.hash2) return hash2 < o.hash2;
-      if (hash3 != o.hash3) return hash3 < o.hash3;
-      return value_key < o.value_key;
+      return std::tie(hash1, hash2, hash3, value_key)
+           < std::tie(o.hash1, o.hash2, o.hash3, o.value_key);
     }
   };
   std::map<AngleHRSKey, ValueStats> angle_hrs_;
