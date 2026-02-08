@@ -439,9 +439,6 @@ public:
                               const CodAtomInfo& a3, int ring_size) const;
   std::vector<double> get_metal_angles(Element metal, int coord_number) const;
 
-  // Statistical aggregation
-  ValueStats aggregate_stats(const std::vector<ValueStats>& values) const;
-
   // Utility: clamp sigma to reasonable range
   double clamp_bond_sigma(double sigma) const {
     return std::max(lower_bond_sigma, std::min(upper_bond_sigma, sigma));

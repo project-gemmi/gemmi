@@ -2883,6 +2883,38 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   }
 }
 
+namespace {
+
+ValueStats aggregate_stats(const std::vector<ValueStats>& values) {
+  if (values.empty())
+    return ValueStats();
+  if (values.size() == 1)
+    return values[0];
+  // Match AceDRG setValueSet() aggregation (weighted mean + pooled sigma).
+  double sum_val = 0.0;
+  double sum1 = 0.0;
+  int total_count = 0;
+  for (const auto& v : values) {
+    if (v.count > 0) {
+      sum_val += v.value * v.count;
+      sum1 += (v.count - 1) * v.sigma * v.sigma + v.count * v.value * v.value;
+      total_count += v.count;
+    }
+  }
+  if (total_count == 0)
+    return ValueStats();
+  double mean = sum_val / total_count;
+  double sum2 = mean * sum_val;
+  double sigma = 0.0;
+  if (total_count > 1)
+    sigma = std::sqrt(std::fabs(sum1 - sum2) / (total_count - 1));
+  else
+    sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
+  return ValueStats(mean, sigma, total_count);
+}
+
+}  // namespace
+
 int AcedrgTables::fill_bond(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
     Restraints::Bond& bond) const {
@@ -4106,43 +4138,6 @@ std::vector<double> AcedrgTables::get_metal_angles(Element metal,
 // ============================================================================
 // Implementation - Statistical helpers
 // ============================================================================
-
-ValueStats AcedrgTables::aggregate_stats(
-    const std::vector<ValueStats>& values) const {
-
-  if (values.empty())
-    return ValueStats();
-
-  if (values.size() == 1)
-    return values[0];
-
-  // Match AceDRG setValueSet() aggregation (weighted mean + pooled sigma).
-  double sum_val = 0.0;
-  double sum1 = 0.0;
-  int total_count = 0;
-
-  for (const auto& v : values) {
-    if (v.count > 0) {
-      sum_val += v.value * v.count;
-      sum1 += (v.count - 1) * v.sigma * v.sigma + v.count * v.value * v.value;
-      total_count += v.count;
-    }
-  }
-
-  if (total_count == 0)
-    return ValueStats();
-
-  double mean = sum_val / total_count;
-  double sum2 = mean * sum_val;
-
-  double sigma = 0.0;
-  if (total_count > 1)
-    sigma = std::sqrt(std::fabs(sum1 - sum2) / (total_count - 1));
-  else
-    sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
-
-  return ValueStats(mean, sigma, total_count);
-}
 
 // Helper to compact element list: ["H","H","H"] -> "H3"
 // Only compacts runs of 3+ identical elements (acedrg convention)
