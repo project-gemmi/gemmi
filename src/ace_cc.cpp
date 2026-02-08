@@ -4,6 +4,7 @@
 // chemical adjustments, torsions, chirality, planes, H naming.
 
 #include "gemmi/ace_cc.hpp"
+#include "gemmi/acedrg_tables.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cctype>

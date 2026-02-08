@@ -7,9 +7,11 @@
 
 #include <map>
 #include <string>
-#include "acedrg_tables.hpp"  // for AcedrgTables
+#include "chemcomp.hpp"  // for ChemComp
 
 namespace gemmi {
+
+struct AcedrgTables;
 
 /// Run the full restraint-generation pipeline on a ChemComp:
 /// chemical-group adjustments, protonation, fill_restraints,
