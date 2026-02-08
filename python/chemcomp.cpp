@@ -319,4 +319,11 @@ static void add_acedrg_tables(nb::module_& m) {
   m.def("hybridization_from_string", &hybridization_from_string,
         nb::arg("s"),
         "Convert string to Hybridization enum.");
+  m.def("prepare_chemcomp", &prepare_chemcomp,
+        nb::arg("chemcomp"), nb::arg("tables"),
+        nb::arg("atom_stereo") = std::map<std::string, std::string>{},
+        "Run the full restraint-generation pipeline on a ChemComp:\n"
+        "chemical-group adjustments, protonation, fill_restraints,\n"
+        "torsion/chirality/plane generation, and CCP4 type assignment.\n"
+        "atom_stereo maps atom names to pdbx_stereo_config strings.");
 }
