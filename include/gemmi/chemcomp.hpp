@@ -468,6 +468,11 @@ struct ChemComp {
     return int(it - atoms.begin());
   }
 
+  int find_atom_index(const std::string& atom_id) const {
+    auto it = find_atom(atom_id);
+    return it != atoms.end() ? int(it - atoms.begin()) : -1;
+  }
+
   const Atom& get_atom(const std::string& atom_id) const {
     return atoms[get_atom_index(atom_id)];
   }

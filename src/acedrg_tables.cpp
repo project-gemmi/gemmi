@@ -2642,11 +2642,9 @@ std::vector<std::vector<AcedrgTables::BondInfo>>
 AcedrgTables::build_adjacency(const ChemComp& cc) const {
   std::vector<std::vector<BondInfo>> adj(cc.atoms.size());
   for (const auto& bond : cc.rt.bonds) {
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-      int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-      int idx2 = static_cast<int>(it2 - cc.atoms.begin());
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 >= 0 && idx2 >= 0) {
       adj[idx1].push_back({idx2, bond.type, bond.aromatic});
       adj[idx2].push_back({idx1, bond.type, bond.aromatic});
     }
@@ -4522,14 +4520,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   for (auto& bond : cc.rt.bonds) {
     if (std::isnan(bond.value)) {
       int match_level = fill_bond(cc, atom_info, bond);
-      auto it1 = cc.find_atom(bond.id1.atom);
-      auto it2 = cc.find_atom(bond.id2.atom);
-      int idx1 = -1;
-      int idx2 = -1;
-      if (it1 != cc.atoms.end() && it2 != cc.atoms.end()) {
-        idx1 = static_cast<int>(it1 - cc.atoms.begin());
-        idx2 = static_cast<int>(it2 - cc.atoms.begin());
-      }
+      int idx1 = cc.find_atom_index(bond.id1.atom);
+      int idx2 = cc.find_atom_index(bond.id2.atom);
       auto apply_ccp4 = [&](bool override_existing) {
         if (ccp4_types.empty() || idx1 < 0 || idx2 < 0)
           return false;
@@ -4607,12 +4599,10 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
 
   // Populate value_nucleus/esd_nucleus for X-H bonds from prot_hydr_dists
   for (auto& bond : cc.rt.bonds) {
-    auto it1 = cc.find_atom(bond.id1.atom);
-    auto it2 = cc.find_atom(bond.id2.atom);
-    if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 < 0 || idx2 < 0)
       continue;
-    int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-    int idx2 = static_cast<int>(it2 - cc.atoms.begin());
     const CodAtomInfo& a1 = atom_info[idx1];
     const CodAtomInfo& a2 = atom_info[idx2];
     if (a1.el == El::H || a2.el == El::H) {
@@ -4731,13 +4721,10 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
     Restraints::Bond& bond) const {
 
-  auto it1 = cc.find_atom(bond.id1.atom);
-  auto it2 = cc.find_atom(bond.id2.atom);
-  if (it1 == cc.atoms.end() || it2 == cc.atoms.end())
+  int idx1 = cc.find_atom_index(bond.id1.atom);
+  int idx2 = cc.find_atom_index(bond.id2.atom);
+  if (idx1 < 0 || idx2 < 0)
     return 0;
-
-  int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-  int idx2 = static_cast<int>(it2 - cc.atoms.begin());
 
   const CodAtomInfo& a1 = atom_info[idx1];
   const CodAtomInfo& a2 = atom_info[idx2];
@@ -5785,16 +5772,11 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
     Restraints::Angle& angle) const {
 
-  auto it1 = cc.find_atom(angle.id1.atom);
-  auto it2 = cc.find_atom(angle.id2.atom);  // center
-  auto it3 = cc.find_atom(angle.id3.atom);
-
-  if (it1 == cc.atoms.end() || it2 == cc.atoms.end() || it3 == cc.atoms.end())
+  int idx1 = cc.find_atom_index(angle.id1.atom);
+  int idx2 = cc.find_atom_index(angle.id2.atom);  // center
+  int idx3 = cc.find_atom_index(angle.id3.atom);
+  if (idx1 < 0 || idx2 < 0 || idx3 < 0)
     return;
-
-  int idx1 = static_cast<int>(it1 - cc.atoms.begin());
-  int idx2 = static_cast<int>(it2 - cc.atoms.begin());
-  int idx3 = static_cast<int>(it3 - cc.atoms.begin());
 
   const CodAtomInfo& a1 = atom_info[idx1];
   const CodAtomInfo& center = atom_info[idx2];
