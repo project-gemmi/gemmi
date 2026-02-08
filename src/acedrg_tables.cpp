@@ -1481,6 +1481,573 @@ Hybridization hybrid_from_bonding_idx(int bonding_idx,
   return Hybridization::SP_NON;
 }
 
+
+void set_atom_cod_class_name_new2(
+    CodAtomInfo& atom, const CodAtomInfo& ori_atom, int lev,
+    const std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) {
+  if (lev == 1) {
+    atom.cod_class.clear();
+    atom.cod_class.append(atom.el.name());
+
+    if (!atom.ring_rep_s.empty()) {
+      std::map<std::string, int> size_map;
+      build_ring_size_map(atom.ring_rep_s, size_map);
+
+      atom.cod_class.append("[");
+      int i = 0;
+      int j = static_cast<int>(size_map.size());
+      for (const auto& it : size_map) {
+        std::string size = it.first;
+        std::string num = std::to_string(it.second);
+        if (it.second >= 3)
+          atom.cod_class.append(num + "x" + size);
+        else if (it.second == 2)
+          atom.cod_class.append(size + "," + size);
+        else
+          atom.cod_class.append(size);
+        if (i != j - 1)
+          atom.cod_class.append(",");
+        else
+          atom.cod_class.append("]");
+        ++i;
+      }
+    }
+
+    std::string t_str;
+    std::list<std::string> t_str_list;
+    std::map<std::string, int> comps;
+    for (int nb : neighbors[atom.index]) {
+      if (nb == ori_atom.index || atoms[nb].is_metal)
+        continue;
+      std::string nb_type = atoms[nb].el.name();
+      if (!atoms[nb].ring_rep_s.empty()) {
+        std::map<std::string, int> size_map;
+        build_ring_size_map(atoms[nb].ring_rep_s, size_map);
+        nb_type.append("[");
+        int i = 0;
+        int j = static_cast<int>(size_map.size());
+        for (const auto& it : size_map) {
+          std::string size = it.first;
+          std::string num = std::to_string(it.second);
+          if (it.second >= 3)
+            nb_type.append(num + "x" + size);
+          else if (it.second == 2)
+            nb_type.append(size + "," + size);
+          else
+            nb_type.append(size);
+          if (i != j - 1)
+            nb_type.append(",");
+          else
+            nb_type.append("]");
+          ++i;
+        }
+      }
+      comps[nb_type] += 1;
+    }
+
+    std::vector<SortMap> sorted;
+    for (const auto& it : comps) {
+      SortMap sm;
+      sm.key = it.first;
+      sm.val = it.second;
+      sorted.push_back(sm);
+    }
+    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key);
+    for (const auto& sm : sorted) {
+      std::string s1 = sm.key + std::to_string(sm.val);
+      std::string s2;
+      for (int i = 0; i < sm.val; ++i)
+        s2.append(sm.key);
+      if (s1.size() < s2.size())
+        t_str_list.push_back(s1);
+      else
+        t_str_list.push_back(s2);
+    }
+    for (const auto& s : t_str_list)
+      t_str.append(s);
+
+    atom.cod_class.append(t_str);
+  } else if (lev == 2) {
+    atom.cod_class.clear();
+    atom.cod_class.append(atom.el.name());
+
+    if (!atom.ring_rep_s.empty()) {
+      std::map<std::string, int> size_map;
+      build_ring_size_map(atom.ring_rep_s, size_map);
+
+      atom.cod_class.append("[");
+      int i = 0;
+      int j = static_cast<int>(size_map.size());
+      for (const auto& it : size_map) {
+        std::string size = it.first;
+        std::string num = std::to_string(it.second);
+        if (it.second >= 3)
+          atom.cod_class.append(num + "x" + size);
+        else if (it.second == 2)
+          atom.cod_class.append(size + "," + size);
+        else
+          atom.cod_class.append(size);
+        if (i != j - 1)
+          atom.cod_class.append(",");
+        else
+          atom.cod_class.append("]");
+        ++i;
+      }
+    }
+
+    int low_lev = lev - 1;
+    std::map<std::string, std::vector<int>> id_map;
+    for (int nb : neighbors[atom.index]) {
+      if (atoms[nb].is_metal)
+        continue;
+      CodAtomInfo nb_atom = atoms[nb];
+      set_atom_cod_class_name_new2(nb_atom, ori_atom, low_lev, atoms, neighbors);
+      auto& entry = id_map[nb_atom.cod_class];
+      if (entry.empty()) {
+        entry.push_back(1);
+        int non_metal = 0;
+        for (int nb2 : neighbors[nb])
+          if (!atoms[nb2].is_metal)
+            ++non_metal;
+        entry.push_back(non_metal);
+      } else {
+        entry[0] += 1;
+      }
+    }
+
+    std::vector<SortMap2> sorted;
+    for (const auto& it : id_map) {
+      SortMap2 sm;
+      sm.key = it.first;
+      sm.val = it.second[0];
+      sm.nNB = it.second[1];
+      sorted.push_back(sm);
+    }
+    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key2);
+    for (const auto& sm : sorted) {
+      if (sm.val == 1)
+        atom.cod_class.append("(" + sm.key + ")");
+      else
+        atom.cod_class.append("(" + sm.key + ")" + std::to_string(sm.val));
+    }
+  }
+}
+
+void set_special_3nb_symb2(
+    CodAtomInfo& atom, const std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) {
+  if (atom.ring_rep.empty())
+    return;
+
+  std::vector<int> ser_num_nb123;
+  std::map<std::string, int> nb3_props;
+
+  for (int nb1 : neighbors[atom.index]) {
+    if (atoms[nb1].is_metal)
+      continue;
+    if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb1) == ser_num_nb123.end())
+      ser_num_nb123.push_back(nb1);
+    for (int nb2 : neighbors[nb1]) {
+      if (atoms[nb2].is_metal)
+        continue;
+      if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb2) == ser_num_nb123.end() &&
+          nb2 != atom.index) {
+        ser_num_nb123.push_back(nb2);
+      }
+    }
+  }
+
+  for (int nb1 : neighbors[atom.index]) {
+    if (atoms[nb1].ring_rep.empty())
+      continue;
+    for (int nb2 : neighbors[nb1]) {
+      if (atoms[nb2].ring_rep.empty())
+        continue;
+      for (int nb3 : neighbors[nb2]) {
+        if (atoms[nb3].is_metal)
+          continue;
+        if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb3) == ser_num_nb123.end() &&
+            nb3 != atom.index) {
+          std::string prop = atoms[nb3].el.name();
+          int deg = 0;
+          for (int nbx : neighbors[nb3])
+            if (!atoms[nbx].is_metal)
+              ++deg;
+          prop.append("<" + std::to_string(deg) + ">");
+          nb3_props[prop] += 1;
+          ser_num_nb123.push_back(nb3);
+        }
+      }
+    }
+  }
+
+  std::list<std::string> comps;
+  for (const auto& it : nb3_props) {
+    std::string id = std::to_string(it.second) + "|" + it.first;
+    comps.push_back(id);
+  }
+  comps.sort(compare_no_case2);
+
+  if (!comps.empty()) {
+    std::string all3 = "{";
+    unsigned i = 0;
+    unsigned n = comps.size();
+    for (const auto& id : comps) {
+      if (i < n - 1)
+        all3.append(id + ",");
+      else
+        all3.append(id);
+      ++i;
+    }
+    all3.append("}");
+    atom.cod_class.append(all3);
+  }
+}
+
+void cod_class_to_atom2(const std::string& cod_class, CodAtomInfo& atom) {
+  std::string t_cod = trim_str(cod_class);
+  atom.cod_class = t_cod;
+  atom.nb_symb.clear();
+  atom.nb2_symb.clear();
+  atom.nb3_symb.clear();
+
+  std::vector<std::string> two_parts;
+  if (t_cod.find('{') != std::string::npos) {
+    two_parts = split_str(t_cod, '{');
+    if (two_parts.size() == 2) {
+      atom.cod_main = two_parts[0];
+      std::vector<std::string> nb3 = split_str(two_parts[1], '}');
+      if (!nb3.empty())
+        atom.nb3_symb = nb3[0];
+    } else {
+      atom.cod_main = t_cod;
+    }
+  } else {
+    atom.cod_main = t_cod;
+  }
+
+  std::vector<std::string> atm_strs = split_str(atom.cod_main, '(');
+  if (!atm_strs.empty()) {
+    atom.cod_root = trim_str(atm_strs[0]);
+  }
+
+  std::vector<NB1stFam> all_nbs;
+  for (size_t i = 1; i < atm_strs.size(); ++i) {
+    std::string tS = trim_str(atm_strs[i]);
+    std::vector<std::string> nb1 = split_str(tS, ')');
+    NB1stFam fam;
+    if (nb1.size() > 1) {
+      fam.repN = string_to_int(nb1[1], false);
+      if (fam.repN == 0)
+        fam.repN = 1;
+    } else {
+      fam.repN = 1;
+    }
+
+    std::string tS1 = trim_str(nb1[0]);
+    get_small_family(tS1, fam);
+    all_nbs.push_back(fam);
+  }
+
+  for (const auto& fam : all_nbs) {
+    for (int j = 0; j < fam.repN; ++j) {
+      std::string sN = std::to_string(static_cast<int>(fam.NB2ndList.size()) + 1);
+      atom.nb_symb += fam.name + "-" + sN + ":";
+      atom.nb2_symb += sN + ":";
+    }
+  }
+}
+
+void set_atoms_nb1nb2_sp(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) {
+  for (auto& atom : atoms) {
+    std::vector<std::string> nb1_nb2_sp_set;
+    for (int nb1 : neighbors[atom.index]) {
+      if (atoms[nb1].is_metal)
+        continue;
+      std::string nb1_main = atoms[nb1].cod_root;
+      std::vector<int> nb2_sp_set;
+      for (int nb2 : neighbors[nb1]) {
+        if (atoms[nb2].is_metal)
+          continue;
+        nb2_sp_set.push_back(atoms[nb2].bonding_idx);
+      }
+      std::sort(nb2_sp_set.begin(), nb2_sp_set.end(), std::greater<int>());
+      std::string nb2_sp_str;
+      for (size_t i = 0; i < nb2_sp_set.size(); ++i) {
+        nb2_sp_str.append(std::to_string(nb2_sp_set[i]));
+        if (i != nb2_sp_set.size() - 1)
+          nb2_sp_str.append("_");
+      }
+      nb1_nb2_sp_set.emplace_back(nb1_main + "-" + nb2_sp_str);
+    }
+    // Sort alphabetically by the string (same order as AceDRG tables)
+    std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(),
+              [](const auto& a, const auto& b) {
+                return compare_no_case(a, b);
+              });
+    // Build nb1nb2_sp in alphabetical order
+    atom.nb1nb2_sp.clear();
+    for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
+      atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
+      if (i != nb1_nb2_sp_set.size() - 1)
+        atom.nb1nb2_sp.append(":");
+    }
+  }
+}
+
+void set_atoms_nb_symb_from_neighbors(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) {
+  for (auto& atom : atoms) {
+    // Collect neighbor info: cod_root and connectivity
+    // The value used in nb_symb/nb2_symb is the neighbor's connectivity
+    // (number of bonded atoms), which matches the table format used in
+    // acedrg's indexed angle tables (e.g., "C-4:" means carbon with 4 bonds).
+    struct NbInfo {
+      std::string root;
+      int connectivity;
+    };
+    std::vector<NbInfo> nb_info;
+    for (int nb_idx : neighbors[atom.index]) {
+      if (atoms[nb_idx].is_metal)
+        continue;
+      int non_metal_conn = static_cast<int>(atoms[nb_idx].conn_atoms_no_metal.size());
+      nb_info.push_back({atoms[nb_idx].cod_root,
+                         non_metal_conn});
+    }
+
+    // Build "root-connectivity" strings for sorting and lookup
+    std::vector<std::string> nb_strs;
+    nb_strs.reserve(nb_info.size());
+    for (const auto& info : nb_info) {
+      nb_strs.push_back(info.root + "-" + std::to_string(info.connectivity));
+    }
+
+    // Sort by: 1) string length (longer first), 2) connectivity (higher first)
+    // This matches desc_sort_map_key2 sorting used in set_atom_cod_class_name_new2
+    std::vector<size_t> indices(nb_info.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(),
+              [&nb_strs, &nb_info](size_t a, size_t b) {
+                if (nb_strs[a].length() > nb_strs[b].length())
+                  return true;
+                if (nb_strs[a].length() < nb_strs[b].length())
+                  return false;
+                // Same length: sort by connectivity (higher first)
+                return nb_info[a].connectivity > nb_info[b].connectivity;
+              });
+
+    // Build nb_symb and nb2_symb using sorted order
+    atom.nb_symb.clear();
+    atom.nb2_symb.clear();
+    for (size_t i : indices) {
+      atom.nb_symb += nb_strs[i] + ":";
+      atom.nb2_symb += std::to_string(nb_info[i].connectivity) + ":";
+    }
+  }
+}
+
+void set_atoms_bonding_and_chiral_center(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<std::vector<int>>& neighbors) {
+  std::map<int, std::vector<int>> num_conn_map;
+
+  for (auto& atom : atoms) {
+    int t_len = 0;
+    int t_m_len = 0;
+    for (int nb : neighbors[atom.index]) {
+      if (!atoms[nb].is_metal)
+        t_len++;
+      else
+        t_m_len++;
+    }
+    if (atom.metal_connectivity > 0)
+      t_m_len = atom.metal_connectivity;
+
+    if (atom.el == El::C) {
+      if (t_len == 3 && t_m_len == 2)
+        t_len = 3;
+    }
+
+    num_conn_map[atom.index].push_back(t_len);
+    num_conn_map[atom.index].push_back(t_m_len);
+
+    if (t_len > 4) {
+      atom.bonding_idx = t_len;
+    } else if (atom.el == El::C || atom.el == El::Si || atom.el == El::Ge) {
+      if (t_len == 4) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 3) {
+        atom.bonding_idx = 2;
+      } else if (t_len == 2) {
+        if (get_num_oxy_connect(atoms, atom, neighbors) == 1)
+          atom.bonding_idx = 1;
+        else if (t_m_len == 1 || atom.charge == -1.0f)
+          atom.bonding_idx = 2;
+        else if (t_m_len == 1 || atom.charge == -2.0f)
+          atom.bonding_idx = 1;
+        else
+          atom.bonding_idx = 1;
+      }
+    } else if (atom.el == El::N || atom.el == El::As) {
+      if (t_len == 4 || t_len == 3) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 2) {
+        if (atom.charge == 1.0f)
+          atom.bonding_idx = 1;
+        else
+          atom.bonding_idx = 2;
+      } else if (t_len == 1) {
+        atom.bonding_idx = 1;
+      }
+    } else if (atom.el == El::B) {
+      if (t_len == 4) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 3) {
+        atom.bonding_idx = 2;
+      } else if (t_len == 2) {
+        if (atom.charge == 1.0f)
+          atom.bonding_idx = 1;
+        else
+          atom.bonding_idx = 2;
+      } else if (t_len == 1) {
+        atom.bonding_idx = 1;
+      }
+    } else if (atom.el == El::O) {
+      // Use t_len (non-metal connection count) like AceDRG, which
+      // excludes metal bonds from connAtoms before hybridization assignment.
+      if (t_len == 2) {
+        atom.bonding_idx = 3;
+      } else if (t_len == 1) {
+        // Find the first non-metal neighbor and check its non-metal connections
+        int first_nb = -1;
+        for (int nb : neighbors[atom.index])
+          if (!atoms[nb].is_metal) { first_nb = nb; break; }
+        int nb_non_metal = 0;
+        if (first_nb >= 0)
+          for (int nnb : neighbors[first_nb])
+            if (!atoms[nnb].is_metal)
+              nb_non_metal++;
+        if (nb_non_metal != 1)
+          atom.bonding_idx = 2;
+        else
+          atom.bonding_idx = 3;
+      } else {
+        atom.bonding_idx = 3;
+      }
+    } else if (atom.el == El::P) {
+      if (t_len == 4 || t_len == 3 || t_len == 2 || t_len == 5)
+        atom.bonding_idx = 3;
+    } else if (atom.el == El::S) {
+      if (t_len == 2 || t_len == 3 || t_len == 4)
+        atom.bonding_idx = 3;
+      else if (t_len == 6)
+        atom.bonding_idx = 5;
+      else if (t_len == 1)
+        atom.bonding_idx = 3;
+    } else if (atom.el == El::Se) {
+      if (t_len == 4 || t_len == 3 || t_len == 2) {
+        atom.bonding_idx = (t_len == 3) ? 2 : 3;
+      } else if (t_len == 6) {
+        atom.bonding_idx = 5;
+      } else if (t_len == 1) {
+        atom.bonding_idx = 3;
+      }
+    } else if (atom.el == El::Br) {
+      if (t_len == 3)
+        atom.bonding_idx = 3;
+    } else if (atom.el == El::H || atom.el == El::D) {
+      atom.bonding_idx = 0;  // H has SP0 hybridization (no p orbitals)
+    }
+  }
+
+  for (auto& atom : atoms) {
+    int t_len = 0;
+    for (int nb : neighbors[atom.index]) {
+      if (!atoms[nb].is_metal)
+        t_len++;
+    }
+
+    if (atom.el == El::O) {
+      if (t_len == 2 && atom.par_charge == 0.0f) {
+        bool l_sp2 = false;
+        for (int nb : neighbors[atom.index]) {
+          if (atoms[nb].bonding_idx == 2) {
+            l_sp2 = true;
+            break;
+          }
+        }
+        if (l_sp2)
+          atom.bonding_idx = 2;
+      }
+    }
+  }
+
+  std::map<int, int> pre_bonding;
+  for (const auto& atom : atoms)
+    pre_bonding[atom.index] = atom.bonding_idx;
+
+  for (auto& atom : atoms) {
+    int t_len = 0;
+    for (int nb : neighbors[atom.index]) {
+      if (!atoms[nb].is_metal)
+        t_len++;
+    }
+    if (atom.el == El::N || atom.el == El::As) {
+      if (t_len == 3) {
+        if (atom.charge == 0.0f) {
+          bool l_sp2 = false;
+          for (int nb : neighbors[atom.index]) {
+            if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
+              l_sp2 = true;
+              break;
+            }
+          }
+          if (l_sp2) {
+            if (num_conn_map[atom.index][1] != 0)
+              atom.bonding_idx = 3;
+            else
+              atom.bonding_idx = 2;
+          } else {
+            atom.bonding_idx = 3;
+          }
+        } else if (atom.charge == 1.0f) {
+          atom.bonding_idx = 2;
+        }
+      }
+    }
+    if (atom.el == El::S) {
+      if (t_len == 2 && atom.charge == 0.0f) {
+        bool l_sp2 = false;
+        for (int nb : neighbors[atom.index]) {
+          if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
+            l_sp2 = true;
+            break;
+          }
+        }
+        if (l_sp2)
+          atom.bonding_idx = 2;
+      }
+    }
+    if (atom.el == El::C) {
+      if (t_len == 3 && atom.charge == -1.0f) {
+        std::vector<int> sp2_set;
+        for (int nb : neighbors[atom.index]) {
+          if (atoms[nb].bonding_idx == 2)
+            sp2_set.push_back(nb);
+        }
+        if (sp2_set.size() == 2)
+          atom.bonding_idx = 2;
+        else
+          atom.bonding_idx = 3;
+      }
+    }
+  }
+}
+
 }  // namespace
 
 // ============================================================================
@@ -1688,572 +2255,6 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
 }
 
 
-void AcedrgTables::set_atom_cod_class_name_new2(
-    CodAtomInfo& atom, const CodAtomInfo& ori_atom, int lev,
-    const std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) const {
-  if (lev == 1) {
-    atom.cod_class.clear();
-    atom.cod_class.append(atom.el.name());
-
-    if (!atom.ring_rep_s.empty()) {
-      std::map<std::string, int> size_map;
-      build_ring_size_map(atom.ring_rep_s, size_map);
-
-      atom.cod_class.append("[");
-      int i = 0;
-      int j = static_cast<int>(size_map.size());
-      for (const auto& it : size_map) {
-        std::string size = it.first;
-        std::string num = std::to_string(it.second);
-        if (it.second >= 3)
-          atom.cod_class.append(num + "x" + size);
-        else if (it.second == 2)
-          atom.cod_class.append(size + "," + size);
-        else
-          atom.cod_class.append(size);
-        if (i != j - 1)
-          atom.cod_class.append(",");
-        else
-          atom.cod_class.append("]");
-        ++i;
-      }
-    }
-
-    std::string t_str;
-    std::list<std::string> t_str_list;
-    std::map<std::string, int> comps;
-    for (int nb : neighbors[atom.index]) {
-      if (nb == ori_atom.index || atoms[nb].is_metal)
-        continue;
-      std::string nb_type = atoms[nb].el.name();
-      if (!atoms[nb].ring_rep_s.empty()) {
-        std::map<std::string, int> size_map;
-        build_ring_size_map(atoms[nb].ring_rep_s, size_map);
-        nb_type.append("[");
-        int i = 0;
-        int j = static_cast<int>(size_map.size());
-        for (const auto& it : size_map) {
-          std::string size = it.first;
-          std::string num = std::to_string(it.second);
-          if (it.second >= 3)
-            nb_type.append(num + "x" + size);
-          else if (it.second == 2)
-            nb_type.append(size + "," + size);
-          else
-            nb_type.append(size);
-          if (i != j - 1)
-            nb_type.append(",");
-          else
-            nb_type.append("]");
-          ++i;
-        }
-      }
-      comps[nb_type] += 1;
-    }
-
-    std::vector<SortMap> sorted;
-    for (const auto& it : comps) {
-      SortMap sm;
-      sm.key = it.first;
-      sm.val = it.second;
-      sorted.push_back(sm);
-    }
-    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key);
-    for (const auto& sm : sorted) {
-      std::string s1 = sm.key + std::to_string(sm.val);
-      std::string s2;
-      for (int i = 0; i < sm.val; ++i)
-        s2.append(sm.key);
-      if (s1.size() < s2.size())
-        t_str_list.push_back(s1);
-      else
-        t_str_list.push_back(s2);
-    }
-    for (const auto& s : t_str_list)
-      t_str.append(s);
-
-    atom.cod_class.append(t_str);
-  } else if (lev == 2) {
-    atom.cod_class.clear();
-    atom.cod_class.append(atom.el.name());
-
-    if (!atom.ring_rep_s.empty()) {
-      std::map<std::string, int> size_map;
-      build_ring_size_map(atom.ring_rep_s, size_map);
-
-      atom.cod_class.append("[");
-      int i = 0;
-      int j = static_cast<int>(size_map.size());
-      for (const auto& it : size_map) {
-        std::string size = it.first;
-        std::string num = std::to_string(it.second);
-        if (it.second >= 3)
-          atom.cod_class.append(num + "x" + size);
-        else if (it.second == 2)
-          atom.cod_class.append(size + "," + size);
-        else
-          atom.cod_class.append(size);
-        if (i != j - 1)
-          atom.cod_class.append(",");
-        else
-          atom.cod_class.append("]");
-        ++i;
-      }
-    }
-
-    int low_lev = lev - 1;
-    std::map<std::string, std::vector<int>> id_map;
-    for (int nb : neighbors[atom.index]) {
-      if (atoms[nb].is_metal)
-        continue;
-      CodAtomInfo nb_atom = atoms[nb];
-      set_atom_cod_class_name_new2(nb_atom, ori_atom, low_lev, atoms, neighbors);
-      auto& entry = id_map[nb_atom.cod_class];
-      if (entry.empty()) {
-        entry.push_back(1);
-        int non_metal = 0;
-        for (int nb2 : neighbors[nb])
-          if (!atoms[nb2].is_metal)
-            ++non_metal;
-        entry.push_back(non_metal);
-      } else {
-        entry[0] += 1;
-      }
-    }
-
-    std::vector<SortMap2> sorted;
-    for (const auto& it : id_map) {
-      SortMap2 sm;
-      sm.key = it.first;
-      sm.val = it.second[0];
-      sm.nNB = it.second[1];
-      sorted.push_back(sm);
-    }
-    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key2);
-    for (const auto& sm : sorted) {
-      if (sm.val == 1)
-        atom.cod_class.append("(" + sm.key + ")");
-      else
-        atom.cod_class.append("(" + sm.key + ")" + std::to_string(sm.val));
-    }
-  }
-}
-
-void AcedrgTables::set_special_3nb_symb2(
-    CodAtomInfo& atom, const std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) const {
-  if (atom.ring_rep.empty())
-    return;
-
-  std::vector<int> ser_num_nb123;
-  std::map<std::string, int> nb3_props;
-
-  for (int nb1 : neighbors[atom.index]) {
-    if (atoms[nb1].is_metal)
-      continue;
-    if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb1) == ser_num_nb123.end())
-      ser_num_nb123.push_back(nb1);
-    for (int nb2 : neighbors[nb1]) {
-      if (atoms[nb2].is_metal)
-        continue;
-      if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb2) == ser_num_nb123.end() &&
-          nb2 != atom.index) {
-        ser_num_nb123.push_back(nb2);
-      }
-    }
-  }
-
-  for (int nb1 : neighbors[atom.index]) {
-    if (atoms[nb1].ring_rep.empty())
-      continue;
-    for (int nb2 : neighbors[nb1]) {
-      if (atoms[nb2].ring_rep.empty())
-        continue;
-      for (int nb3 : neighbors[nb2]) {
-        if (atoms[nb3].is_metal)
-          continue;
-        if (std::find(ser_num_nb123.begin(), ser_num_nb123.end(), nb3) == ser_num_nb123.end() &&
-            nb3 != atom.index) {
-          std::string prop = atoms[nb3].el.name();
-          int deg = 0;
-          for (int nbx : neighbors[nb3])
-            if (!atoms[nbx].is_metal)
-              ++deg;
-          prop.append("<" + std::to_string(deg) + ">");
-          nb3_props[prop] += 1;
-          ser_num_nb123.push_back(nb3);
-        }
-      }
-    }
-  }
-
-  std::list<std::string> comps;
-  for (const auto& it : nb3_props) {
-    std::string id = std::to_string(it.second) + "|" + it.first;
-    comps.push_back(id);
-  }
-  comps.sort(compare_no_case2);
-
-  if (!comps.empty()) {
-    std::string all3 = "{";
-    unsigned i = 0;
-    unsigned n = comps.size();
-    for (const auto& id : comps) {
-      if (i < n - 1)
-        all3.append(id + ",");
-      else
-        all3.append(id);
-      ++i;
-    }
-    all3.append("}");
-    atom.cod_class.append(all3);
-  }
-}
-
-void AcedrgTables::cod_class_to_atom2(const std::string& cod_class,
-                                             CodAtomInfo& atom) const {
-  std::string t_cod = trim_str(cod_class);
-  atom.cod_class = t_cod;
-  atom.nb_symb.clear();
-  atom.nb2_symb.clear();
-  atom.nb3_symb.clear();
-
-  std::vector<std::string> two_parts;
-  if (t_cod.find('{') != std::string::npos) {
-    two_parts = split_str(t_cod, '{');
-    if (two_parts.size() == 2) {
-      atom.cod_main = two_parts[0];
-      std::vector<std::string> nb3 = split_str(two_parts[1], '}');
-      if (!nb3.empty())
-        atom.nb3_symb = nb3[0];
-    } else {
-      atom.cod_main = t_cod;
-    }
-  } else {
-    atom.cod_main = t_cod;
-  }
-
-  std::vector<std::string> atm_strs = split_str(atom.cod_main, '(');
-  if (!atm_strs.empty()) {
-    atom.cod_root = trim_str(atm_strs[0]);
-  }
-
-  std::vector<NB1stFam> all_nbs;
-  for (size_t i = 1; i < atm_strs.size(); ++i) {
-    std::string tS = trim_str(atm_strs[i]);
-    std::vector<std::string> nb1 = split_str(tS, ')');
-    NB1stFam fam;
-    if (nb1.size() > 1) {
-      fam.repN = string_to_int(nb1[1], false);
-      if (fam.repN == 0)
-        fam.repN = 1;
-    } else {
-      fam.repN = 1;
-    }
-
-    std::string tS1 = trim_str(nb1[0]);
-    get_small_family(tS1, fam);
-    all_nbs.push_back(fam);
-  }
-
-  for (const auto& fam : all_nbs) {
-    for (int j = 0; j < fam.repN; ++j) {
-      std::string sN = std::to_string(static_cast<int>(fam.NB2ndList.size()) + 1);
-      atom.nb_symb += fam.name + "-" + sN + ":";
-      atom.nb2_symb += sN + ":";
-    }
-  }
-}
-
-void AcedrgTables::set_atoms_nb1nb2_sp(
-    std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) const {
-  for (auto& atom : atoms) {
-    std::vector<std::string> nb1_nb2_sp_set;
-    for (int nb1 : neighbors[atom.index]) {
-      if (atoms[nb1].is_metal)
-        continue;
-      std::string nb1_main = atoms[nb1].cod_root;
-      std::vector<int> nb2_sp_set;
-      for (int nb2 : neighbors[nb1]) {
-        if (atoms[nb2].is_metal)
-          continue;
-        nb2_sp_set.push_back(atoms[nb2].bonding_idx);
-      }
-      std::sort(nb2_sp_set.begin(), nb2_sp_set.end(), std::greater<int>());
-      std::string nb2_sp_str;
-      for (size_t i = 0; i < nb2_sp_set.size(); ++i) {
-        nb2_sp_str.append(std::to_string(nb2_sp_set[i]));
-        if (i != nb2_sp_set.size() - 1)
-          nb2_sp_str.append("_");
-      }
-      nb1_nb2_sp_set.emplace_back(nb1_main + "-" + nb2_sp_str);
-    }
-    // Sort alphabetically by the string (same order as AceDRG tables)
-    std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(),
-              [](const auto& a, const auto& b) {
-                return compare_no_case(a, b);
-              });
-    // Build nb1nb2_sp in alphabetical order
-    atom.nb1nb2_sp.clear();
-    for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
-      atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
-      if (i != nb1_nb2_sp_set.size() - 1)
-        atom.nb1nb2_sp.append(":");
-    }
-  }
-}
-
-void AcedrgTables::set_atoms_nb_symb_from_neighbors(
-    std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) const {
-  for (auto& atom : atoms) {
-    // Collect neighbor info: cod_root and connectivity
-    // The value used in nb_symb/nb2_symb is the neighbor's connectivity
-    // (number of bonded atoms), which matches the table format used in
-    // acedrg's indexed angle tables (e.g., "C-4:" means carbon with 4 bonds).
-    struct NbInfo {
-      std::string root;
-      int connectivity;
-    };
-    std::vector<NbInfo> nb_info;
-    for (int nb_idx : neighbors[atom.index]) {
-      if (atoms[nb_idx].is_metal)
-        continue;
-      int non_metal_conn = static_cast<int>(atoms[nb_idx].conn_atoms_no_metal.size());
-      nb_info.push_back({atoms[nb_idx].cod_root,
-                         non_metal_conn});
-    }
-
-    // Build "root-connectivity" strings for sorting and lookup
-    std::vector<std::string> nb_strs;
-    nb_strs.reserve(nb_info.size());
-    for (const auto& info : nb_info) {
-      nb_strs.push_back(info.root + "-" + std::to_string(info.connectivity));
-    }
-
-    // Sort by: 1) string length (longer first), 2) connectivity (higher first)
-    // This matches desc_sort_map_key2 sorting used in set_atom_cod_class_name_new2
-    std::vector<size_t> indices(nb_info.size());
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(),
-              [&nb_strs, &nb_info](size_t a, size_t b) {
-                if (nb_strs[a].length() > nb_strs[b].length())
-                  return true;
-                if (nb_strs[a].length() < nb_strs[b].length())
-                  return false;
-                // Same length: sort by connectivity (higher first)
-                return nb_info[a].connectivity > nb_info[b].connectivity;
-              });
-
-    // Build nb_symb and nb2_symb using sorted order
-    atom.nb_symb.clear();
-    atom.nb2_symb.clear();
-    for (size_t i : indices) {
-      atom.nb_symb += nb_strs[i] + ":";
-      atom.nb2_symb += std::to_string(nb_info[i].connectivity) + ":";
-    }
-  }
-}
-
-void AcedrgTables::set_atoms_bonding_and_chiral_center(
-    std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) const {
-  std::map<int, std::vector<int>> num_conn_map;
-
-  for (auto& atom : atoms) {
-    int t_len = 0;
-    int t_m_len = 0;
-    for (int nb : neighbors[atom.index]) {
-      if (!atoms[nb].is_metal)
-        t_len++;
-      else
-        t_m_len++;
-    }
-    if (atom.metal_connectivity > 0)
-      t_m_len = atom.metal_connectivity;
-
-    if (atom.el == El::C) {
-      if (t_len == 3 && t_m_len == 2)
-        t_len = 3;
-    }
-
-    num_conn_map[atom.index].push_back(t_len);
-    num_conn_map[atom.index].push_back(t_m_len);
-
-    if (t_len > 4) {
-      atom.bonding_idx = t_len;
-    } else if (atom.el == El::C || atom.el == El::Si || atom.el == El::Ge) {
-      if (t_len == 4) {
-        atom.bonding_idx = 3;
-      } else if (t_len == 3) {
-        atom.bonding_idx = 2;
-      } else if (t_len == 2) {
-        if (get_num_oxy_connect(atoms, atom, neighbors) == 1)
-          atom.bonding_idx = 1;
-        else if (t_m_len == 1 || atom.charge == -1.0f)
-          atom.bonding_idx = 2;
-        else if (t_m_len == 1 || atom.charge == -2.0f)
-          atom.bonding_idx = 1;
-        else
-          atom.bonding_idx = 1;
-      }
-    } else if (atom.el == El::N || atom.el == El::As) {
-      if (t_len == 4 || t_len == 3) {
-        atom.bonding_idx = 3;
-      } else if (t_len == 2) {
-        if (atom.charge == 1.0f)
-          atom.bonding_idx = 1;
-        else
-          atom.bonding_idx = 2;
-      } else if (t_len == 1) {
-        atom.bonding_idx = 1;
-      }
-    } else if (atom.el == El::B) {
-      if (t_len == 4) {
-        atom.bonding_idx = 3;
-      } else if (t_len == 3) {
-        atom.bonding_idx = 2;
-      } else if (t_len == 2) {
-        if (atom.charge == 1.0f)
-          atom.bonding_idx = 1;
-        else
-          atom.bonding_idx = 2;
-      } else if (t_len == 1) {
-        atom.bonding_idx = 1;
-      }
-    } else if (atom.el == El::O) {
-      // Use t_len (non-metal connection count) like AceDRG, which
-      // excludes metal bonds from connAtoms before hybridization assignment.
-      if (t_len == 2) {
-        atom.bonding_idx = 3;
-      } else if (t_len == 1) {
-        // Find the first non-metal neighbor and check its non-metal connections
-        int first_nb = -1;
-        for (int nb : neighbors[atom.index])
-          if (!atoms[nb].is_metal) { first_nb = nb; break; }
-        int nb_non_metal = 0;
-        if (first_nb >= 0)
-          for (int nnb : neighbors[first_nb])
-            if (!atoms[nnb].is_metal)
-              nb_non_metal++;
-        if (nb_non_metal != 1)
-          atom.bonding_idx = 2;
-        else
-          atom.bonding_idx = 3;
-      } else {
-        atom.bonding_idx = 3;
-      }
-    } else if (atom.el == El::P) {
-      if (t_len == 4 || t_len == 3 || t_len == 2 || t_len == 5)
-        atom.bonding_idx = 3;
-    } else if (atom.el == El::S) {
-      if (t_len == 2 || t_len == 3 || t_len == 4)
-        atom.bonding_idx = 3;
-      else if (t_len == 6)
-        atom.bonding_idx = 5;
-      else if (t_len == 1)
-        atom.bonding_idx = 3;
-    } else if (atom.el == El::Se) {
-      if (t_len == 4 || t_len == 3 || t_len == 2) {
-        atom.bonding_idx = (t_len == 3) ? 2 : 3;
-      } else if (t_len == 6) {
-        atom.bonding_idx = 5;
-      } else if (t_len == 1) {
-        atom.bonding_idx = 3;
-      }
-    } else if (atom.el == El::Br) {
-      if (t_len == 3)
-        atom.bonding_idx = 3;
-    } else if (atom.el == El::H || atom.el == El::D) {
-      atom.bonding_idx = 0;  // H has SP0 hybridization (no p orbitals)
-    }
-  }
-
-  for (auto& atom : atoms) {
-    int t_len = 0;
-    for (int nb : neighbors[atom.index]) {
-      if (!atoms[nb].is_metal)
-        t_len++;
-    }
-
-    if (atom.el == El::O) {
-      if (t_len == 2 && atom.par_charge == 0.0f) {
-        bool l_sp2 = false;
-        for (int nb : neighbors[atom.index]) {
-          if (atoms[nb].bonding_idx == 2) {
-            l_sp2 = true;
-            break;
-          }
-        }
-        if (l_sp2)
-          atom.bonding_idx = 2;
-      }
-    }
-  }
-
-  std::map<int, int> pre_bonding;
-  for (const auto& atom : atoms)
-    pre_bonding[atom.index] = atom.bonding_idx;
-
-  for (auto& atom : atoms) {
-    int t_len = 0;
-    for (int nb : neighbors[atom.index]) {
-      if (!atoms[nb].is_metal)
-        t_len++;
-    }
-    if (atom.el == El::N || atom.el == El::As) {
-      if (t_len == 3) {
-        if (atom.charge == 0.0f) {
-          bool l_sp2 = false;
-          for (int nb : neighbors[atom.index]) {
-            if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
-              l_sp2 = true;
-              break;
-            }
-          }
-          if (l_sp2) {
-            if (num_conn_map[atom.index][1] != 0)
-              atom.bonding_idx = 3;
-            else
-              atom.bonding_idx = 2;
-          } else {
-            atom.bonding_idx = 3;
-          }
-        } else if (atom.charge == 1.0f) {
-          atom.bonding_idx = 2;
-        }
-      }
-    }
-    if (atom.el == El::S) {
-      if (t_len == 2 && atom.charge == 0.0f) {
-        bool l_sp2 = false;
-        for (int nb : neighbors[atom.index]) {
-          if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
-            l_sp2 = true;
-            break;
-          }
-        }
-        if (l_sp2)
-          atom.bonding_idx = 2;
-      }
-    }
-    if (atom.el == El::C) {
-      if (t_len == 3 && atom.charge == -1.0f) {
-        std::vector<int> sp2_set;
-        for (int nb : neighbors[atom.index]) {
-          if (atoms[nb].bonding_idx == 2)
-            sp2_set.push_back(nb);
-        }
-        if (sp2_set.size() == 2)
-          atom.bonding_idx = 2;
-        else
-          atom.bonding_idx = 3;
-      }
-    }
-  }
-}
 
 // ============================================================================
 // CCP4 atom type assignment (AceDRG)

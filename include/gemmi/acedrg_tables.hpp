@@ -417,22 +417,6 @@ public:
   void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
 
-  void set_atom_cod_class_name_new2(CodAtomInfo& atom,
-                                    const CodAtomInfo& ori_atom,
-                                    int lev,
-                                    const std::vector<CodAtomInfo>& atoms,
-                                    const std::vector<std::vector<int>>& neighbors) const;
-  void set_special_3nb_symb2(CodAtomInfo& atom,
-                             const std::vector<CodAtomInfo>& atoms,
-                             const std::vector<std::vector<int>>& neighbors) const;
-  void cod_class_to_atom2(const std::string& cod_class,
-                          CodAtomInfo& atom) const;
-  void set_atoms_nb1nb2_sp(std::vector<CodAtomInfo>& atoms,
-                           const std::vector<std::vector<int>>& neighbors) const;
-  void set_atoms_nb_symb_from_neighbors(std::vector<CodAtomInfo>& atoms,
-                                        const std::vector<std::vector<int>>& neighbors) const;
-  void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
-                                           const std::vector<std::vector<int>>& neighbors) const;
  private:
   void compute_hash(CodAtomInfo& atom) const;
 
