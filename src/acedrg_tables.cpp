@@ -231,9 +231,9 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
           std::vector<std::string> parts = split_str(hybrid_part, '_');
           if (parts.size() == 3) {
             std::swap(parts[0], parts[2]);
-            hybrid_part = parts[0] + "_" + parts[1] + "_" + parts[2];
+            hybrid_part = cat(parts[0], '_', parts[1], '_', parts[2]);
           }
-          value_key = ring_part + ":" + hybrid_part;
+          value_key = cat(ring_part, ':', hybrid_part);
         }
       }
       key.value_key = value_key;
@@ -466,7 +466,7 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
         continue;
       loaded_files.insert(file_num);
 
-      std::string path = cat(dir, "/", file_num, ".table");
+      std::string path = cat(dir, '/', file_num, ".table");
       std::ifstream f(path);
       if (!f)
         continue;
@@ -589,7 +589,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
           continue;
         loaded_files.insert(file_num);
 
-        std::string path = cat(dir, "/", file_num, ".table");
+        std::string path = cat(dir, '/', file_num, ".table");
         std::ifstream f(path);
         if (!f)
           continue;
@@ -732,7 +732,7 @@ void AcedrgTables::load_pep_tors(const std::string& path) {
     entry.period = period;
     entry.priority = idx;
     entry.id = label;
-    pep_tors_[a1 + "_" + a2 + "_" + a3 + "_" + a4] = std::move(entry);
+    pep_tors_[cat(a1, '_', a2, '_', a3, '_', a4)] = std::move(entry);
   }
 }
 
@@ -1490,9 +1490,9 @@ void set_atom_cod_class_name_new2(
       for (const auto& it : size_map) {
         const std::string& size = it.first;
         if (it.second >= 3)
-          cat_to(atom.cod_class, it.second, "x", size);
+          cat_to(atom.cod_class, it.second, 'x', size);
         else if (it.second == 2)
-          cat_to(atom.cod_class, size, ",", size);
+          cat_to(atom.cod_class, size, ',', size);
         else
           atom.cod_class.append(size);
         if (i != j - 1)
@@ -1519,9 +1519,9 @@ void set_atom_cod_class_name_new2(
         for (const auto& it : size_map) {
           const std::string& size = it.first;
           if (it.second >= 3)
-            cat_to(nb_type, it.second, "x", size);
+            cat_to(nb_type, it.second, 'x', size);
           else if (it.second == 2)
-            cat_to(nb_type, size, ",", size);
+            cat_to(nb_type, size, ',', size);
           else
             nb_type.append(size);
           if (i != j - 1)
@@ -1570,9 +1570,9 @@ void set_atom_cod_class_name_new2(
       for (const auto& it : size_map) {
         const std::string& size = it.first;
         if (it.second >= 3)
-          cat_to(atom.cod_class, it.second, "x", size);
+          cat_to(atom.cod_class, it.second, 'x', size);
         else if (it.second == 2)
-          cat_to(atom.cod_class, size, ",", size);
+          cat_to(atom.cod_class, size, ',', size);
         else
           atom.cod_class.append(size);
         if (i != j - 1)
@@ -1614,9 +1614,9 @@ void set_atom_cod_class_name_new2(
     std::sort(sorted.begin(), sorted.end(), desc_sort_map_key2);
     for (const auto& sm : sorted) {
       if (sm.val == 1)
-        atom.cod_class.append("(" + sm.key + ")");
+        cat_to(atom.cod_class, '(', sm.key, ')');
       else
-        atom.cod_class.append(cat("(", sm.key, ")", sm.val));
+        cat_to(atom.cod_class, '(', sm.key, ')', sm.val);
     }
   }
 }
@@ -1661,7 +1661,7 @@ void set_special_3nb_symb2(
           for (int nbx : neighbors[nb3])
             if (!atoms[nbx].is_metal)
               ++deg;
-          cat_to(prop, "<", deg, ">");
+          cat_to(prop, '<', deg, '>');
           nb3_props[prop] += 1;
           ser_num_nb123.push_back(nb3);
         }
@@ -1671,7 +1671,7 @@ void set_special_3nb_symb2(
 
   std::vector<std::string> comps;
   for (const auto& it : nb3_props) {
-    std::string id = cat(it.second, "|", it.first);
+    std::string id = cat(it.second, '|', it.first);
     comps.push_back(id);
   }
   std::sort(comps.begin(), comps.end(), compare_no_case2);
@@ -1682,7 +1682,7 @@ void set_special_3nb_symb2(
     unsigned n = comps.size();
     for (const auto& id : comps) {
       if (i < n - 1)
-        all3.append(id + ",");
+        cat_to(all3, id, ",");
       else
         all3.append(id);
       ++i;
@@ -1740,7 +1740,7 @@ void cod_class_to_atom2(const std::string& cod_class, CodAtomInfo& atom) {
   for (const auto& fam : all_nbs) {
     for (int j = 0; j < fam.repN; ++j) {
       int sN = static_cast<int>(fam.NB2ndList.size()) + 1;
-      cat_to(atom.nb_symb, fam.name, "-", sN, ":");
+      cat_to(atom.nb_symb, fam.name, '-', sN, ":");
       cat_to(atom.nb2_symb, sN, ":");
     }
   }
@@ -1762,9 +1762,9 @@ void set_atoms_nb1nb2_sp(
         nb2_sp_set.push_back(atoms[nb2].bonding_idx);
       }
       std::sort(nb2_sp_set.begin(), nb2_sp_set.end(), std::greater<int>());
-      std::string nb2_sp_str = join_str(nb2_sp_set, "_",
+      std::string nb2_sp_str = join_str(nb2_sp_set, '_',
           [](int v) { return std::to_string(v); });
-      nb1_nb2_sp_set.emplace_back(cat(nb1_main, "-", nb2_sp_str));
+      nb1_nb2_sp_set.emplace_back(cat(nb1_main, '-', nb2_sp_str));
     }
     // Sort alphabetically by the string (same order as AceDRG tables)
     std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(),
@@ -2155,7 +2155,7 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
 
   // If we have hash tables loaded, resolve collisions
   if (!digit_keys_.empty()) {
-    std::string footprint = cat(d1, "_", d2, "_", d3, "_", d4, "_", d5);
+    std::string footprint = cat(d1, '_', d2, '_', d3, '_', d4, '_', d5);
 
     int pseudo_hash = atom.hashing_value;
     auto it = digit_keys_.find(pseudo_hash);
@@ -2986,7 +2986,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   std::string h1 = hybridization_to_string(left->hybrid);
   std::string h2 = hybridization_to_string(right->hybrid);
   if (h1 > h2) std::swap(h1, h2);
-  std::string hybr_comb = h1 + "_" + h2;
+  std::string hybr_comb = cat(h1, '_', h2);
 
   std::string in_ring = are_in_same_ring(a1, a2) ? "Y" : "N";
   // AceDRG: if requested ring key is missing, fall back to the other (Y/N).
@@ -3469,7 +3469,7 @@ ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
   std::string h1 = hybridization_to_string(left->hybrid);
   std::string h2 = hybridization_to_string(right->hybrid);
   if (h1 > h2) std::swap(h1, h2);
-  key.hybrid_pair = h1 + "_" + h2;
+  key.hybrid_pair = cat(h1, '_', h2);
   key.in_ring = in_ring ? "Y" : "N";
 
   auto it = bond_hrs_.find(key);
@@ -3523,7 +3523,7 @@ ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */
     default: return ProtHydrDist();
   }
 
-  std::string type_key = std::string("H_") + hybr + "_" + heavy_atom.el.name();
+  std::string type_key = cat("H_", hybr, '_', heavy_atom.el.name());
 
   auto it = prot_hydr_dists_.find(type_key);
   if (it != prot_hydr_dists_.end()) {
@@ -3563,7 +3563,7 @@ ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
 
   std::string ligand_class;
   for (const auto& id : nb_ids)
-    ligand_class.append("_" + id);
+    cat_to(ligand_class, '_', id);
 
   const MetalBondEntry* class_entry = nullptr;
   const MetalBondEntry* pre_entry = nullptr;
@@ -3598,7 +3598,7 @@ ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
 bool AcedrgTables::lookup_pep_tors(const std::string& a1,
     const std::string& a2, const std::string& a3, const std::string& a4,
     TorsionEntry& out) const {
-  auto it = pep_tors_.find(a1 + "_" + a2 + "_" + a3 + "_" + a4);
+  auto it = pep_tors_.find(cat(a1, '_', a2, '_', a3, '_', a4));
   if (it == pep_tors_.end())
     return false;
   out = it->second;
@@ -3624,11 +3624,11 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   std::string h1 = hybridization_to_string(flank1->hybrid);  // min hash
   std::string h2 = hybridization_to_string(center.hybrid);   // center
   std::string h3 = hybridization_to_string(flank3->hybrid);  // max hash
-  std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
+  std::string hybr_tuple = cat(h1, '_', h2, '_', h3);
 
   // Build valueKey (ring:hybr_tuple)
   int ring_val = angle_ring_size(center, *flank1, *flank3);
-  std::string value_key = cat(ring_val, ":", hybr_tuple);
+  std::string value_key = cat(ring_val, ':', hybr_tuple);
 
   // Get neighbor symbols - table format: a1=flank1, a2=center, a3=flank3
   std::string a1_nb2 = flank1->nb2_symb;
@@ -3977,8 +3977,8 @@ ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     h1 = hybridization_to_string(a3.hybrid);
     h3 = hybridization_to_string(a1.hybrid);
   }
-  std::string hybr_tuple = h1 + "_" + h2 + "_" + h3;
-  key.value_key = cat(ring_size, ":", hybr_tuple);
+  std::string hybr_tuple = cat(h1, '_', h2, '_', h3);
+  key.value_key = cat(ring_size, ':', hybr_tuple);
 
   auto it = angle_hrs_.find(key);
   if (it != angle_hrs_.end()) {
