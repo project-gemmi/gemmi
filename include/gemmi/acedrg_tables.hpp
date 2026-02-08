@@ -417,25 +417,6 @@ public:
   void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
 
-  // Atom classification helpers
-  struct BondInfo {
-    int neighbor_idx;
-    BondType type;
-    bool aromatic = false;
-  };
-  struct RingInfo {
-    std::vector<int> atoms;
-    std::string rep;
-    std::string s_rep;
-    bool is_aromatic = false;
-    bool is_aromatic_permissive = false;
-  };
-  struct NB1stFam {
-    std::string name;
-    std::vector<std::string> NB2ndList;
-    int repN = 1;
-  };
-
   void set_atom_cod_class_name_new2(CodAtomInfo& atom,
                                     const CodAtomInfo& ori_atom,
                                     int lev,
@@ -453,45 +434,6 @@ public:
   void set_atoms_bonding_and_chiral_center(std::vector<CodAtomInfo>& atoms,
                                            const std::vector<std::vector<int>>& neighbors) const;
  private:
-  std::vector<std::vector<BondInfo>> build_adjacency(const ChemComp& cc) const;
-  std::vector<std::vector<int>> build_neighbors(const std::vector<std::vector<BondInfo>>& adj) const;
-  void set_ring_aromaticity_from_bonds(const std::vector<std::vector<BondInfo>>& adj,
-                                       const std::vector<CodAtomInfo>& atoms,
-                                       std::vector<RingInfo>& rings) const;
-  void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
-                           std::vector<CodAtomInfo>& atoms,
-                           std::vector<RingInfo>& rings) const;
-  void check_one_path_acedrg(const std::vector<std::vector<int>>& neighbors,
-                             std::vector<CodAtomInfo>& atoms,
-                             std::vector<RingInfo>& rings,
-                             std::map<std::string, int>& ring_index,
-                             int ori_idx,
-                             int cur_idx,
-                             int prev_idx,
-                             int cur_lev,
-                             int max_ring,
-                             std::map<int, std::string>& seen_atom_ids,
-                             std::map<int, std::string>& atom_ids_in_path) const;
-  void set_atoms_ring_rep_s(std::vector<CodAtomInfo>& atoms,
-                            std::vector<RingInfo>& rings) const;
-  int get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
-                          const CodAtomInfo& atom,
-                          const std::vector<std::vector<int>>& neighbors) const;
-  int get_min_ring2_from_cod_class(const std::string& cod_class) const;
-  bool cod_class_is_aromatic(const std::string& cod_class) const;
-  void get_small_family(const std::string& in_str, NB1stFam& fam) const;
-  bool are_in_same_ring(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
-  int angle_ring_size(const CodAtomInfo& center,
-                      const CodAtomInfo& a1,
-                      const CodAtomInfo& a3) const;
-  void order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
-                        const CodAtomInfo*& first,
-                        const CodAtomInfo*& second) const;
-  void order_angle_flanks(const CodAtomInfo& a1, const CodAtomInfo& a3,
-                          const CodAtomInfo*& flank1,
-                          const CodAtomInfo*& flank3) const;
-  Hybridization hybrid_from_bonding_idx(int bonding_idx, bool is_metal,
-                                        int connectivity) const;
   void compute_hash(CodAtomInfo& atom) const;
 
   // Bond search helpers
