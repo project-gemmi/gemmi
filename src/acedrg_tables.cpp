@@ -308,7 +308,6 @@ void sync_n_terminal_h3_angles(ChemComp& cc) {
 }
 
 void adjust_phosphate_group(ChemComp& cc) {
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   std::set<std::string> po4_phosphorus;
@@ -319,11 +318,11 @@ void adjust_phosphate_group(ChemComp& cc) {
     int o_count = 0;
     bool has_h = false;
     for (const std::string& nid : nb) {
-      auto it = atom_index.find(nid);
-      if (it != atom_index.end()) {
-        if (cc.atoms[it->second].el == El::O)
+      int idx = cc.find_atom_index(nid);
+      if (idx >= 0) {
+        if (cc.atoms[idx].el == El::O)
           ++o_count;
-        else if (cc.atoms[it->second].el == El::H)
+        else if (cc.atoms[idx].el == El::H)
           has_h = true;
       }
     }
@@ -341,8 +340,8 @@ void adjust_phosphate_group(ChemComp& cc) {
     for (const std::string& nid : nb) {
       if (po4_phosphorus.count(nid))
         bonded_to_po4 = true;
-      auto it = atom_index.find(nid);
-      if (it != atom_index.end() && cc.atoms[it->second].el == El::H)
+      int idx = cc.find_atom_index(nid);
+      if (idx >= 0 && cc.atoms[idx].el == El::H)
         h_neighbor = nid;
     }
     if (bonded_to_po4 && !h_neighbor.empty()) {
@@ -356,7 +355,6 @@ void adjust_phosphate_group(ChemComp& cc) {
 }
 
 void adjust_sulfate_group(ChemComp& cc) {
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   std::set<std::string> sulfate_sulfur;
@@ -368,8 +366,8 @@ void adjust_sulfate_group(ChemComp& cc) {
       continue;
     int o_count = 0;
     for (const std::string& nid : nb) {
-      auto it = atom_index.find(nid);
-      if (it != atom_index.end() && cc.atoms[it->second].el == El::O)
+      int idx = cc.find_atom_index(nid);
+      if (idx >= 0 && cc.atoms[idx].el == El::O)
         ++o_count;
     }
     if (o_count == 4)
@@ -386,8 +384,8 @@ void adjust_sulfate_group(ChemComp& cc) {
     for (const std::string& nid : nb) {
       if (sulfate_sulfur.count(nid))
         bonded_to_sulfate = true;
-      auto it = atom_index.find(nid);
-      if (it != atom_index.end() && cc.atoms[it->second].el == El::H)
+      int idx = cc.find_atom_index(nid);
+      if (idx >= 0 && cc.atoms[idx].el == El::H)
         h_neighbor = nid;
     }
     if (bonded_to_sulfate && !h_neighbor.empty()) {
@@ -401,7 +399,6 @@ void adjust_sulfate_group(ChemComp& cc) {
 }
 
 void adjust_hexafluorophosphate(ChemComp& cc) {
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   for (auto& atom : cc.atoms) {
@@ -410,10 +407,10 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
     int f_count = 0;
     bool has_h = false;
     for (const std::string& nb : neighbors[atom.id]) {
-      auto it = atom_index.find(nb);
-      if (it == atom_index.end())
+      int idx = cc.find_atom_index(nb);
+      if (idx < 0)
         continue;
-      Element el = cc.atoms[it->second].el;
+      Element el = cc.atoms[idx].el;
       if (el == El::F)
         ++f_count;
       else if (el == El::H)
@@ -443,7 +440,6 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
 }
 
 void adjust_carboxy_asp(ChemComp& cc) {
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   auto get_bond_type = [&](const std::string& a, const std::string& b) {
@@ -462,10 +458,10 @@ void adjust_carboxy_asp(ChemComp& cc) {
     std::vector<std::string> single_o;
     std::vector<std::string> alpha_c;
     for (const std::string& nid : neighbors[atom.id]) {
-      auto it = atom_index.find(nid);
-      if (it == atom_index.end())
+      int idx = cc.find_atom_index(nid);
+      if (idx < 0)
         continue;
-      Element el = cc.atoms[it->second].el;
+      Element el = cc.atoms[idx].el;
       if (el == El::O) {
         if (get_bond_type(atom.id, nid) == BondType::Double)
           carbonyl_o = nid;
@@ -482,8 +478,8 @@ void adjust_carboxy_asp(ChemComp& cc) {
       for (const std::string& ac_nb : neighbors[ac]) {
         if (ac_nb == atom.id)
           continue;
-        auto it = atom_index.find(ac_nb);
-        if (it != atom_index.end() && cc.atoms[it->second].el != El::H) {
+        int idx = cc.find_atom_index(ac_nb);
+        if (idx >= 0 && cc.atoms[idx].el != El::H) {
           has_substituent = true;
           break;
         }
@@ -500,8 +496,8 @@ void adjust_carboxy_asp(ChemComp& cc) {
         else
           continue;
         if (bond.type == BondType::Double && !bond.aromatic) {
-          auto it = atom_index.find(other);
-          if (it != atom_index.end() && cc.atoms[it->second].el == El::C) {
+          int idx = cc.find_atom_index(other);
+          if (idx >= 0 && cc.atoms[idx].el == El::C) {
             if (!atoms_in_same_ring(ac, other, neighbors)) {
               is_conjugated = true;
               break;
@@ -527,8 +523,8 @@ void adjust_carboxy_asp(ChemComp& cc) {
     std::string h_neighbor;
     int h_count = 0;
     for (const std::string& nid : neighbors[atom.id]) {
-      auto it = atom_index.find(nid);
-      if (it != atom_index.end() && cc.atoms[it->second].el == El::H) {
+      int idx = cc.find_atom_index(nid);
+      if (idx >= 0 && cc.atoms[idx].el == El::H) {
         h_neighbor = nid;
         ++h_count;
       }
@@ -591,7 +587,6 @@ std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& 
 
 void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
 
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   std::map<std::string, bool> has_unsat_bond;
@@ -608,8 +603,8 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
   }
 
   auto is_carbonyl_like = [&](const std::string& c_id) {
-    auto itc = atom_index.find(c_id);
-    if (itc == atom_index.end() || cc.atoms[itc->second].el != El::C)
+    int c_idx = cc.find_atom_index(c_id);
+    if (c_idx < 0 || cc.atoms[c_idx].el != El::C)
       return false;
     bool has_double_hetero = false;
     for (const auto& bond : cc.rt.bonds) {
@@ -621,10 +616,10 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
       if (bond.type == BondType::Double) {
         const std::string& other = (bond.id1.atom == c_id) ? bond.id2.atom
                                                            : bond.id1.atom;
-        auto it = atom_index.find(other);
-        if (it == atom_index.end())
+        int idx = cc.find_atom_index(other);
+        if (idx < 0)
           continue;
-        Element el = cc.atoms[it->second].el;
+        Element el = cc.atoms[idx].el;
         if (el == El::O || el == El::S || el == El::Se)
           has_double_hetero = true;
         else
@@ -640,8 +635,8 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
     const auto& nb = neighbors[atom.id];
     std::vector<std::string> n_neighbors;
     for (const std::string& nid : nb) {
-      auto it = atom_index.find(nid);
-      if (it != atom_index.end() && cc.atoms[it->second].el == El::N)
+      int idx = cc.find_atom_index(nid);
+      if (idx >= 0 && cc.atoms[idx].el == El::N)
         n_neighbors.push_back(nid);
     }
     if (n_neighbors.size() != 3)
@@ -668,14 +663,14 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
         for (const std::string& onb : other_nb) {
           if (onb == atom.id)
             continue;
-          auto it = atom_index.find(onb);
-          if (it == atom_index.end())
+          int onb_idx = cc.find_atom_index(onb);
+          if (onb_idx < 0)
             continue;
-          if (cc.atoms[it->second].el == El::H)
+          if (cc.atoms[onb_idx].el == El::H)
             continue;
-          if (cc.atoms[it->second].el != El::C &&
-              cc.atoms[it->second].el != El::Si &&
-              cc.atoms[it->second].el != El::Ge) {
+          if (cc.atoms[onb_idx].el != El::C &&
+              cc.atoms[onb_idx].el != El::Si &&
+              cc.atoms[onb_idx].el != El::Ge) {
             other_n_has_unsat_sub = true;
             break;
           }
@@ -694,10 +689,10 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
       std::vector<std::string> h_neighbors;
       bool has_substituent = false;
       for (const std::string& nid : n_nb) {
-        auto it = atom_index.find(nid);
-        if (it == atom_index.end())
+        int nid_idx = cc.find_atom_index(nid);
+        if (nid_idx < 0)
           continue;
-        if (cc.atoms[it->second].el == El::H)
+        if (cc.atoms[nid_idx].el == El::H)
           h_neighbors.push_back(nid);
         else if (nid != atom.id)
           has_substituent = true;
@@ -707,11 +702,11 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
         continue;
 
       if (h_neighbors.size() == 1) {
-        auto n_it = atom_index.find(n_id);
-        if (n_it == atom_index.end())
+        int n_idx = cc.find_atom_index(n_id);
+        if (n_idx < 0)
           continue;
 
-        cc.atoms[n_it->second].charge = 1.0f;
+        cc.atoms[n_idx].charge = 1.0f;
 
         std::string new_h_id = acedrg_h_name(used_names, n_id, h_neighbors);
         if (new_h_id.empty())
@@ -720,7 +715,6 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
         cc.atoms.push_back(ChemComp::Atom{new_h_id, "", El::H, 0.0f, "H", "", Position()});
         cc.rt.bonds.push_back({{1, n_id}, {1, new_h_id}, BondType::Single, false,
                               NAN, NAN, NAN, NAN});
-        atom_index[new_h_id] = cc.atoms.size() - 1;
         neighbors[n_id].push_back(new_h_id);
         neighbors[new_h_id].push_back(n_id);
       }
@@ -729,7 +723,6 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
 }
 
 void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   auto get_bond_type = [&](const std::string& a, const std::string& b) {
@@ -749,12 +742,12 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
     std::vector<std::string> h_ids;
     std::string c1_id;
     for (const std::string& nb : neighbors[n1.id]) {
-      auto it = atom_index.find(nb);
-      if (it == atom_index.end())
+      int idx = cc.find_atom_index(nb);
+      if (idx < 0)
         continue;
-      if (cc.atoms[it->second].el == El::H)
+      if (cc.atoms[idx].el == El::H)
         h_ids.push_back(nb);
-      else if (cc.atoms[it->second].el == El::C)
+      else if (cc.atoms[idx].el == El::C)
         c1_id = nb;
     }
     if (h_ids.size() != 2 || c1_id.empty())
@@ -774,24 +767,24 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
     for (const std::string& c2_id : neighbors[c1_id]) {
       if (c2_id == n1.id)
         continue;
-      auto it = atom_index.find(c2_id);
-      if (it == atom_index.end() || cc.atoms[it->second].el != El::C)
+      int c2_idx = cc.find_atom_index(c2_id);
+      if (c2_idx < 0 || cc.atoms[c2_idx].el != El::C)
         continue;
 
       bool has_carbonyl = false, has_amide_n = false;
       for (const std::string& c2_nb : neighbors[c2_id]) {
-        auto it2 = atom_index.find(c2_nb);
-        if (it2 == atom_index.end())
+        int nb_idx = cc.find_atom_index(c2_nb);
+        if (nb_idx < 0)
           continue;
-        Element el = cc.atoms[it2->second].el;
+        Element el = cc.atoms[nb_idx].el;
         if (el == El::O && get_bond_type(c2_id, c2_nb) == BondType::Double)
           has_carbonyl = true;
         if (el == El::N && c2_nb != n1.id) {
           for (const std::string& amide_n_nb : neighbors[c2_nb]) {
             if (amide_n_nb == c2_id)
               continue;
-            auto it3 = atom_index.find(amide_n_nb);
-            if (it3 != atom_index.end() && cc.atoms[it3->second].el != El::H) {
+            int an_idx = cc.find_atom_index(amide_n_nb);
+            if (an_idx >= 0 && cc.atoms[an_idx].el != El::H) {
               has_amide_n = true;
               break;
             }
@@ -814,7 +807,6 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
 }
 
 void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
-  auto atom_index = make_atom_index(cc);
   auto neighbors = make_neighbor_names(cc);
 
   for (auto& n_atom : cc.atoms) {
@@ -827,10 +819,10 @@ void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
     std::string alpha_carbon_id;
     std::vector<std::string> h_ids;
     for (const std::string& nb : neighbors[n_atom.id]) {
-      auto it = atom_index.find(nb);
-      if (it == atom_index.end())
+      int idx = cc.find_atom_index(nb);
+      if (idx < 0)
         continue;
-      Element el = cc.atoms[it->second].el;
+      Element el = cc.atoms[idx].el;
       if (el == El::C) {
         n_carbon++;
         alpha_carbon_id = nb;
@@ -879,10 +871,10 @@ void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
 
     bool has_carboxylic_acid = false;
     for (const std::string& c_neighbor : neighbors[alpha_carbon_id]) {
-      auto it = atom_index.find(c_neighbor);
-      if (it == atom_index.end())
+      int cn_idx = cc.find_atom_index(c_neighbor);
+      if (cn_idx < 0)
         continue;
-      if (cc.atoms[it->second].el != El::C)
+      if (cc.atoms[cn_idx].el != El::C)
         continue;
       int o_count = 0;
       bool has_double_o = false;
@@ -890,8 +882,8 @@ void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
         if (bond.id1.atom != c_neighbor && bond.id2.atom != c_neighbor)
           continue;
         std::string other = (bond.id1.atom == c_neighbor) ? bond.id2.atom : bond.id1.atom;
-        auto other_it = atom_index.find(other);
-        if (other_it != atom_index.end() && cc.atoms[other_it->second].el == El::O) {
+        int other_idx = cc.find_atom_index(other);
+        if (other_idx >= 0 && cc.atoms[other_idx].el == El::O) {
           ++o_count;
           if (bond.type == BondType::Double || bond.type == BondType::Deloc)
             has_double_o = true;
