@@ -89,14 +89,14 @@ struct CodAtomInfo {
 };
 
 // Statistical value with count
-struct ValueStats {
+struct CodStats {
   double value = NAN;
   double sigma = NAN;
   int count = 0;
   int level = 0;  // match specificity: 0=none, 1-4=aggregated, 10=full
 
-  ValueStats() = default;
-  ValueStats(double v, double s, int c, int lvl = 0) : value(v), sigma(s), count(c), level(lvl) {}
+  CodStats() = default;
+  CodStats(double v, double s, int c, int lvl = 0) : value(v), sigma(s), count(c), level(lvl) {}
 };
 
 // Protonated hydrogen distances (both electron cloud and nucleus)
@@ -222,7 +222,7 @@ public:
            < std::tie(o.hash1, o.hash2, o.hybrid_pair, o.in_ring);
     }
   };
-  std::map<BondHRSKey, ValueStats> bond_hrs_;
+  std::map<BondHRSKey, CodStats> bond_hrs_;
 
   // HRS angle tables
   // Key: hash1, hash2, hash3, value_key (ring:hybr_tuple)
@@ -234,7 +234,7 @@ public:
            < std::tie(o.hash1, o.hash2, o.hash3, o.value_key);
     }
   };
-  std::map<AngleHRSKey, ValueStats> angle_hrs_;
+  std::map<AngleHRSKey, CodStats> angle_hrs_;
 
   struct Ccp4BondEntry {
     double length = NAN;
@@ -250,7 +250,7 @@ public:
   bool search_ccp4_bond(const std::string& type1,
                         const std::string& type2,
                         const std::string& order,
-                        ValueStats& out) const;
+                        CodStats& out) const;
 
   // Detailed indexed bond tables from allOrgBondTables/*.table
   // Level 0: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB, a1TypeM, a2TypeM
@@ -259,7 +259,7 @@ public:
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>>>>>;
+    std::vector<CodStats>>>>>>>>>>>;
   BondIdx1D bond_idx_1d_;
 
   // Exact match with full COD class (a1TypeF/a2TypeF) and main types
@@ -269,7 +269,7 @@ public:
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    ValueStats>>>>>>>>>>>>;
+    CodStats>>>>>>>>>>>>;
   BondIdxFull bond_idx_full_;
 
   // Levels 3-6: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB (no atom types)
@@ -277,14 +277,14 @@ public:
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>>>;
+    std::vector<CodStats>>>>>>>>>;
   BondIdx2D bond_idx_2d_;
 
   // Level Nb2D: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2 (no nb1nb2_sp)
   using BondNb2D = std::map<int, std::map<int,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>;
+    std::vector<CodStats>>>>>>>;
   BondNb2D bond_nb2d_;
 
   // Level Nb2DType: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, type1, type2 (with atom types)
@@ -292,23 +292,23 @@ public:
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>>>>>;
+    std::vector<CodStats>>>>>>>>>;
   BondNb2DType bond_nb2d_type_;
 
   // Levels 9-11: Hash+Sp fallback structures
   // Level 9: ha1, ha2, hybrComb, inRing
   using BondHaSp2D = std::map<int, std::map<int,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>;
+    std::vector<CodStats>>>>>;
   BondHaSp2D bond_hasp_2d_;
 
   // Level 10: ha1, ha2, hybrComb only
   using BondHaSp1D = std::map<int, std::map<int,
-    std::map<std::string, std::vector<ValueStats>>>>;
+    std::map<std::string, std::vector<CodStats>>>>;
   BondHaSp1D bond_hasp_1d_;
 
   // Level 11: ha1, ha2 only
-  using BondHaSp0D = std::map<int, std::map<int, std::vector<ValueStats>>>;
+  using BondHaSp0D = std::map<int, std::map<int, std::vector<CodStats>>>;
   BondHaSp0D bond_hasp_0d_;
 
   // Bond file index: maps (ha1, ha2) -> table file number
@@ -320,7 +320,7 @@ public:
   // Detailed indexed angle tables from allOrgAngleTables/*.table
   // Angles have 3 hashes (center, flank1, flank2)
   using AngleTypes = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<ValueStats>>>>;
+    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
   using AngleNB = std::map<std::string,
     std::map<std::string, std::map<std::string, AngleTypes>>>;
   using AngleNB2 = std::map<std::string,
@@ -334,7 +334,7 @@ public:
   AngleIdx1D angle_idx_1d_;
 
   using AngleNBNoTypes = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<ValueStats>>>>;
+    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
   using AngleNB2NoTypes = std::map<std::string,
     std::map<std::string, std::map<std::string, AngleNBNoTypes>>>;
   using AngleRootsNoTypes = std::map<std::string,
@@ -346,7 +346,7 @@ public:
   AngleIdx2D angle_idx_2d_;
 
   using AngleNB2Only = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<ValueStats>>>>;
+    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
   using AngleRootsNB2 = std::map<std::string,
     std::map<std::string, std::map<std::string, AngleNB2Only>>>;
 
@@ -356,7 +356,7 @@ public:
   AngleIdx3D angle_idx_3d_;
 
   using AngleRootsOnly = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<ValueStats>>>>;
+    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
 
   // Level 4D: Hash + valueKey + roots
   using AngleIdx4D = std::map<int, std::map<int, std::map<int,
@@ -365,12 +365,12 @@ public:
 
   // Level 5D: Hash + valueKey only
   using AngleIdx5D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, std::vector<ValueStats>>>>>; // 5 closes
+    std::map<std::string, std::vector<CodStats>>>>>; // 5 closes
   AngleIdx5D angle_idx_5d_;
 
   // Level 6D: Hash only (4 levels)
   using AngleIdx6D = std::map<int, std::map<int, std::map<int,
-    std::vector<ValueStats>>>>; // 4 closes
+    std::vector<CodStats>>>>; // 4 closes
   AngleIdx6D angle_idx_6d_;
 
   // Angle file index: maps (ha1, ha2, ha3) -> table file number
@@ -379,7 +379,7 @@ public:
   // Element + hybridization based fallback bonds
   using ENBonds = std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::vector<ValueStats>>>>>;
+    std::vector<CodStats>>>>>;
   ENBonds en_bonds_;
 
   // Metal bond tables
@@ -413,21 +413,21 @@ public:
   void compute_hash(CodAtomInfo& atom) const;
 
   // Bond search helpers
-  ValueStats search_bond_multilevel(const CodAtomInfo& a1,
+  CodStats search_bond_multilevel(const CodAtomInfo& a1,
                                     const CodAtomInfo& a2) const;
-  ValueStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
+  CodStats search_bond_hrs(const CodAtomInfo& a1, const CodAtomInfo& a2,
                              bool in_ring) const;
-  ValueStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
+  CodStats search_bond_en(const CodAtomInfo& a1, const CodAtomInfo& a2) const;
   ProtHydrDist search_prot_hydr_dist(const CodAtomInfo& h_atom,
                                      const CodAtomInfo& heavy_atom) const;
-  ValueStats search_metal_bond(const CodAtomInfo& metal,
+  CodStats search_metal_bond(const CodAtomInfo& metal,
                                const CodAtomInfo& ligand,
                                const std::vector<CodAtomInfo>& atoms) const;
   // Angle search helpers
-  ValueStats search_angle_multilevel(const CodAtomInfo& a1,
+  CodStats search_angle_multilevel(const CodAtomInfo& a1,
                                      const CodAtomInfo& center,
                                      const CodAtomInfo& a3) const;
-  ValueStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
+  CodStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
                               const CodAtomInfo& a3, int ring_size) const;
   std::vector<double> get_metal_angles(Element metal, int coord_number) const;
 

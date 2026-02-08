@@ -178,7 +178,7 @@ void AcedrgTables::load_bond_hrs(const std::string& path) {
       key.hash2 = std::max(hash1, hash2);
       key.hybrid_pair = hybrid_pair;
       key.in_ring = (in_ring[0] == 'Y' || in_ring[0] == 'y') ? "Y" : "N";
-      ValueStats vs(value, sigma, count);
+      CodStats vs(value, sigma, count);
       bond_hrs_[key] = vs;
       // AceDRG levels 9-11 use the HRS table hierarchy.
       bond_hasp_2d_[key.hash1][key.hash2][key.hybrid_pair][key.in_ring].push_back(vs);
@@ -226,7 +226,7 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
       } else {
         key.value_key = value_key;
       }
-      angle_hrs_[key] = ValueStats(value1, sigma1, count1);
+      angle_hrs_[key] = CodStats(value1, sigma1, count1);
     }
   }
 }
@@ -535,8 +535,8 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
           a2_root = (paren != std::string::npos) ? a2_type_m.substr(0, paren) : a2_type_m;
         }
 
-        ValueStats vs(value, sigma, count);
-        ValueStats vs1d(value2, sigma2, count2);
+        CodStats vs(value, sigma, count);
+        CodStats vs1d(value2, sigma2, count2);
 
         // Populate 1D structure (full detail)
         bond_idx_1d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
@@ -676,7 +676,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
           // Populate structures at each level with corresponding pre-computed values.
           // AceDRG keeps only the first entry for each key (no aggregation).
           // Level 1D: full detail with atom types
-          ValueStats vs1(values[1], sigmas[1], counts[1]);
+          CodStats vs1(values[1], sigmas[1], counts[1]);
           auto& angle_1d_vec = angle_idx_1d_[ha1][ha2][ha3][value_key]
                                [a1_root][a2_root][a3_root]
                                [a1_nb2][a2_nb2][a3_nb2]
@@ -686,7 +686,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
             angle_1d_vec.push_back(vs1);
 
           // Level 2D: no atom types
-          ValueStats vs2(values[2], sigmas[2], counts[2]);
+          CodStats vs2(values[2], sigmas[2], counts[2]);
           auto& angle_2d_vec = angle_idx_2d_[ha1][ha2][ha3][value_key]
                                [a1_root][a2_root][a3_root]
                                [a1_nb2][a2_nb2][a3_nb2]
@@ -695,7 +695,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
             angle_2d_vec.push_back(vs2);
 
           // Level 3D: hash + valueKey + NB2 only
-          ValueStats vs3(values[3], sigmas[3], counts[3]);
+          CodStats vs3(values[3], sigmas[3], counts[3]);
           auto& angle_3d_vec = angle_idx_3d_[ha1][ha2][ha3][value_key]
                                [a1_root][a2_root][a3_root]
                                [a1_nb2][a2_nb2][a3_nb2];
@@ -703,14 +703,14 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
             angle_3d_vec.push_back(vs3);
 
           // Level 4D: hash + valueKey + roots
-          ValueStats vs4(values[4], sigmas[4], counts[4]);
+          CodStats vs4(values[4], sigmas[4], counts[4]);
           auto& angle_4d_vec = angle_idx_4d_[ha1][ha2][ha3][value_key]
                                [a1_root][a2_root][a3_root];
           if (angle_4d_vec.empty())
             angle_4d_vec.push_back(vs4);
 
           // Level 5D: hash + valueKey only
-          ValueStats vs5(values[5], sigmas[5], counts[5]);
+          CodStats vs5(values[5], sigmas[5], counts[5]);
           auto& angle_5d_vec = angle_idx_5d_[ha1][ha2][ha3][value_key];
           if (angle_5d_vec.empty())
             angle_5d_vec.push_back(vs5);
@@ -2433,7 +2433,7 @@ void AcedrgTables::load_ccp4_bonds(const std::string& path) {
 bool AcedrgTables::search_ccp4_bond(const std::string& type1,
                                            const std::string& type2,
                                            const std::string& order,
-                                           ValueStats& out) const {
+                                           CodStats& out) const {
   auto it1 = ccp4_bonds_.find(type1);
   if (it1 == ccp4_bonds_.end())
     return false;
@@ -2633,14 +2633,14 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
         if (!override_existing && !std::isnan(bond.value))
           return false;
         std::string order = bond_order_key(bond.type);
-        ValueStats vs;
+        CodStats vs;
         if (search_ccp4_bond(ccp4_types[idx1], ccp4_types[idx2], order, vs) ||
             search_ccp4_bond(ccp4_types[idx2], ccp4_types[idx1], order, vs)) {
           bond.value = vs.value;
           bond.esd = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
           return true;
         }
-        ValueStats v1, v2;
+        CodStats v1, v2;
         bool has1 = search_ccp4_bond(ccp4_types[idx1], ".", order, v1);
         bool has2 = search_ccp4_bond(ccp4_types[idx2], ".", order, v2);
         if (has1 && has2) {
@@ -2689,7 +2689,7 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
             }
             if (terminal_o_count >= 2) {
               // True carboxylate pattern - use DELO value
-              ValueStats vs;
+              CodStats vs;
               if (search_ccp4_bond("OC", "C", "DELO", vs) ||
                   search_ccp4_bond("C", "OC", "DELO", vs)) {
                 bond.value = vs.value;
@@ -2824,9 +2824,9 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
 
 namespace {
 
-ValueStats aggregate_stats(const std::vector<ValueStats>& values) {
+CodStats aggregate_stats(const std::vector<CodStats>& values) {
   if (values.empty())
-    return ValueStats();
+    return CodStats();
   if (values.size() == 1)
     return values[0];
   // Match AceDRG setValueSet() aggregation (weighted mean + pooled sigma).
@@ -2841,7 +2841,7 @@ ValueStats aggregate_stats(const std::vector<ValueStats>& values) {
     }
   }
   if (total_count == 0)
-    return ValueStats();
+    return CodStats();
   double mean = sum_val / total_count;
   double sum2 = mean * sum_val;
   double sigma = 0.0;
@@ -2849,7 +2849,7 @@ ValueStats aggregate_stats(const std::vector<ValueStats>& values) {
     sigma = std::sqrt(std::fabs(sum1 - sum2) / (total_count - 1));
   else
     sigma = std::sqrt(std::fabs(sum1 - sum2) / total_count);
-  return ValueStats(mean, sigma, total_count);
+  return CodStats(mean, sigma, total_count);
 }
 
 }  // namespace
@@ -2890,7 +2890,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       return 10;
     }
 
-    ValueStats vs = search_metal_bond(metal, ligand, atom_info);
+    CodStats vs = search_metal_bond(metal, ligand, atom_info);
     if (vs.count > 0) {
       bond.value = vs.value;
       double sigma = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
@@ -2908,15 +2908,15 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
 
   // Try both multilevel and HRS
   bool same_ring = are_in_same_ring(a1, a2);
-  ValueStats vs_ml = search_bond_multilevel(a1, a2);
-  ValueStats vs_hrs = search_bond_hrs(a1, a2, same_ring);
+  CodStats vs_ml = search_bond_multilevel(a1, a2);
+  CodStats vs_hrs = search_bond_hrs(a1, a2, same_ring);
 
   // Acedrg's logic: use multilevel when it matches with sufficient threshold.
   // Acedrg iterates from start_level upward and uses the first level that meets threshold.
   // The threshold check is done inside search_bond_multilevel (entry count for levels 1-8,
   // and no threshold for HRS-like levels 9-11). When it returns with level >= 0, the threshold was met.
   // There's no special preference for HRS over type-based (levels 0-2) matches.
-  ValueStats vs;
+  CodStats vs;
   vs.level = -1;  // no match by default; prevents false acceptance below
   if (vs_ml.level >= 0) {
     // Multilevel matched with threshold met - use it
@@ -2974,7 +2974,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   return 0;  // no type-specific match
 }
 
-ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
+CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     const CodAtomInfo& a2) const {
 
   if (verbose >= 2)
@@ -3072,7 +3072,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                           auto it12 = it11->second.find(a2_class);
                           if (it12 != it11->second.end()) {
                             if (it12->second.count >= num_th) {
-                              ValueStats exact = it12->second;
+                              CodStats exact = it12->second;
                               exact.level = 0;
                               if (verbose >= 2)
                                 std::fprintf(stderr,
@@ -3098,7 +3098,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   }
 
 
-  const auto* map_1d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<ValueStats>>>* {
+  const auto* map_1d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<CodStats>>>* {
     auto it1 = bond_idx_1d_.find(ha1);
     if (it1 == bond_idx_1d_.end()) return nullptr;
     auto it2 = it1->second.find(ha2);
@@ -3118,7 +3118,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     return &it8->second;
   }();
 
-  const auto* map_2d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<ValueStats>>>* {
+  const auto* map_2d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<CodStats>>>* {
     auto it1 = bond_idx_2d_.find(ha1);
     if (it1 == bond_idx_2d_.end()) return nullptr;
     auto it2 = it1->second.find(ha2);
@@ -3140,7 +3140,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   (void) has_a1_class_only;
 
   const auto* map_nb2 = [&]() -> const std::map<std::string, std::map<std::string,
-                                      std::map<std::string, std::map<std::string, std::vector<ValueStats>>>>>* {
+                                      std::map<std::string, std::map<std::string, std::vector<CodStats>>>>>* {
     auto it1 = bond_idx_2d_.find(ha1);
     if (it1 == bond_idx_2d_.end()) return nullptr;
     auto it2 = it1->second.find(ha2);
@@ -3220,7 +3220,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   // AceDRG-like multilevel fallback: iterate from start_level upward until threshold is met.
   // For the special "a2 class missing" branch, AceDRG continues with post-search overrides,
   // so we must not return early here.
-  ValueStats matched_vs;
+  CodStats matched_vs;
   bool have_matched_vs = false;
   for (int level = start_level; level < 12; level++) {
     // Skip levels that require keys we don't have
@@ -3229,7 +3229,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     if ((level == 7 || level == 8) && !map_nb2) continue;  // nb2 levels need map_nb2
     if (level == 9 && !has_in_ring) continue;
     if (level == 10 && !has_hybr) continue;
-    ValueStats vs;
+    CodStats vs;
     int values_size = 0;
 
     if (level == 0) {
@@ -3246,7 +3246,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     } else if (level == 1) {
       // Level 1: a1_type matches exactly, aggregate over all a2_types
       if (map_1d) {
-        std::vector<ValueStats> values;
+        std::vector<CodStats> values;
         auto it1 = map_1d->find(a1_type);
         if (it1 != map_1d->end()) {
           for (const auto& it2 : it1->second) {
@@ -3269,7 +3269,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     } else if (level == 2) {
       // Level 2: a2_type matches exactly, aggregate over different a1_types
       if (map_1d) {
-        std::vector<ValueStats> values;
+        std::vector<CodStats> values;
         for (const auto& it1 : *map_1d) {
           if (it1.first != a1_type) {
             auto it2 = it1.second.find(a2_type);
@@ -3299,7 +3299,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       }
     } else if (level == 4 || level == 5) {
       if (map_2d) {
-        std::vector<ValueStats> values;
+        std::vector<CodStats> values;
         // AceDRG level 4: combine entries with a1NB plus entries with a2NB but not a1NB.
         // AceDRG level 5: only entries with a2NB but not a1NB.
         if (level == 4) {
@@ -3325,7 +3325,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       }
     } else if (level == 6) {
       if (map_2d) {
-        std::vector<ValueStats> values;
+        std::vector<CodStats> values;
         for (const auto& it1 : *map_2d)
           for (const auto& it2 : it1.second)
             for (const auto& v : it2.second)
@@ -3336,7 +3336,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       }
     } else if (level == 7 || level == 8) {
       if (map_nb2) {
-        std::vector<ValueStats> values;
+        std::vector<CodStats> values;
         if (level == 7) {
           auto it1 = map_nb2->find(a1_nb2);
           if (it1 != map_nb2->end()) {
@@ -3431,7 +3431,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       if (it1 != map_1d->end()) {
         auto it2 = it1->second.find(a2_type);
         if (it2 != it1->second.end() && !it2->second.empty()) {
-          ValueStats exact_1d = it2->second.front();
+          CodStats exact_1d = it2->second.front();
           if (exact_1d.count >= num_th) {
             exact_1d.level = 0;
             return exact_1d;
@@ -3444,7 +3444,7 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
       if (it1 != map_2d->end()) {
         auto it2 = it1->second.find(a2_nb);
         if (it2 != it1->second.end() && !it2->second.empty()) {
-          ValueStats exact_2d = aggregate_stats(it2->second);
+          CodStats exact_2d = aggregate_stats(it2->second);
           exact_2d.level = 3;
           return exact_2d;
         }
@@ -3460,12 +3460,12 @@ ValueStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   // No match found in detailed tables
   if (verbose >= 2)
     std::fprintf(stderr, "      matched: level=none (no multilevel match)\n");
-  ValueStats no_match;
+  CodStats no_match;
   no_match.level = -1;  // sentinel for no match
   return no_match;
 }
 
-ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
+CodStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& a2, bool in_ring) const {
 
   const CodAtomInfo* left = nullptr;
@@ -3487,10 +3487,10 @@ ValueStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
     return it->second;
   }
 
-  return ValueStats();
+  return CodStats();
 }
 
-ValueStats AcedrgTables::search_bond_en(const CodAtomInfo& a1,
+CodStats AcedrgTables::search_bond_en(const CodAtomInfo& a1,
     const CodAtomInfo& a2) const {
 
   std::string elem1 = a1.el.name();
@@ -3505,18 +3505,18 @@ ValueStats AcedrgTables::search_bond_en(const CodAtomInfo& a1,
   }
 
   auto it1 = en_bonds_.find(elem1);
-  if (it1 == en_bonds_.end()) return ValueStats();
+  if (it1 == en_bonds_.end()) return CodStats();
 
   auto it2 = it1->second.find(sp1);
-  if (it2 == it1->second.end()) return ValueStats();
+  if (it2 == it1->second.end()) return CodStats();
 
   auto it3 = it2->second.find(elem2);
-  if (it3 == it2->second.end()) return ValueStats();
+  if (it3 == it2->second.end()) return CodStats();
 
   auto it4 = it3->second.find(sp2);
-  if (it4 == it3->second.end()) return ValueStats();
+  if (it4 == it3->second.end()) return CodStats();
 
-  if (it4->second.empty()) return ValueStats();
+  if (it4->second.empty()) return CodStats();
 
   return aggregate_stats(it4->second);
 }
@@ -3558,7 +3558,7 @@ ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */
   return ProtHydrDist();
 }
 
-ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
+CodStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
     const CodAtomInfo& ligand, const std::vector<CodAtomInfo>& atoms) const {
   int ha1 = metal.connectivity;
   int ha2 = static_cast<int>(ligand.conn_atoms_no_metal.size());
@@ -3591,18 +3591,18 @@ ValueStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
 
   if (class_entry) {
     if (class_entry->count > metal_class_min_count)
-      return ValueStats(class_entry->value, class_entry->sigma,
+      return CodStats(class_entry->value, class_entry->sigma,
                         class_entry->count);
     if (pre_entry)
-      return ValueStats(pre_entry->pre_value, pre_entry->pre_sigma,
+      return CodStats(pre_entry->pre_value, pre_entry->pre_sigma,
                         pre_entry->pre_count);
   }
 
   if (pre_entry)
-    return ValueStats(pre_entry->pre_value, pre_entry->pre_sigma,
+    return CodStats(pre_entry->pre_value, pre_entry->pre_sigma,
                       pre_entry->pre_count);
 
-  return ValueStats();
+  return CodStats();
 }
 
 bool AcedrgTables::lookup_pep_tors(const std::string& a1,
@@ -3619,7 +3619,7 @@ bool AcedrgTables::lookup_pep_tors(const std::string& a1,
 // Implementation - Angle search
 // ============================================================================
 
-ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
+CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3) const {
 
   // Build lookup keys - canonicalize flanking atoms
@@ -3699,7 +3699,7 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                                 if (it15 != it14->second.end()) {
                                   auto it16 = it15->second.find(a3_type);
                                   if (it16 != it15->second.end() && !it16->second.empty()) {
-                                    ValueStats vs = it16->second.front();
+                                    CodStats vs = it16->second.front();
                                     if (vs.count >= min_observations_angle) {
                                       if (verbose >= 2)
                                         std::fprintf(stderr,
@@ -3754,7 +3754,7 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                           if (it12 != it11->second.end()) {
                             auto it13 = it12->second.find(a3_nb);
                             if (it13 != it12->second.end() && !it13->second.empty()) {
-                              ValueStats vs = it13->second.front();
+                              CodStats vs = it13->second.front();
                               if (vs.count >= min_observations_angle_fallback) {
                                 if (verbose >= 2)
                                   std::fprintf(stderr,
@@ -3800,7 +3800,7 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                     if (it9 != it8->second.end()) {
                       auto it10 = it9->second.find(a3_nb2);
                       if (it10 != it9->second.end() && !it10->second.empty()) {
-                        ValueStats vs = it10->second.front();
+                        CodStats vs = it10->second.front();
                         if (vs.count >= min_observations_angle_fallback) {
                           if (verbose >= 2)
                             std::fprintf(stderr,
@@ -3837,7 +3837,7 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
               if (it6 != it5->second.end()) {
                 auto it7 = it6->second.find(a3_root);
                 if (it7 != it6->second.end() && !it7->second.empty()) {
-                  ValueStats vs = it7->second.front();
+                  CodStats vs = it7->second.front();
                   if (vs.count >= min_observations_angle_fallback) {
                     if (verbose >= 2)
                       std::fprintf(stderr,
@@ -3865,7 +3865,7 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
         if (it3 != it2->second.end()) {
           auto it4 = it3->second.find(value_key);
           if (it4 != it3->second.end() && !it4->second.empty()) {
-            ValueStats vs = it4->second.front();
+            CodStats vs = it4->second.front();
             if (vs.count >= min_observations_angle_fallback) {
               if (verbose >= 2)
                 std::fprintf(stderr,
@@ -3898,7 +3898,7 @@ ValueStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   }
 
   // No match found in detailed tables
-  return ValueStats();
+  return CodStats();
 }
 
 void AcedrgTables::fill_angle(const ChemComp& cc,
@@ -3930,7 +3930,7 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
   int ring_size = angle_ring_size(center, a1, a3);
 
   // Try detailed multilevel search first
-  ValueStats vs = search_angle_multilevel(a1, center, a3);
+  CodStats vs = search_angle_multilevel(a1, center, a3);
   if (vs.count >= min_observations_angle) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
@@ -3967,7 +3967,7 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
   angle.esd = upper_angle_sigma;
 }
 
-ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
+CodStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3, int ring_size) const {
 
   AngleHRSKey key;
@@ -3995,7 +3995,7 @@ ValueStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     return it->second;
   }
 
-  return ValueStats();
+  return CodStats();
 }
 
 std::vector<double> AcedrgTables::get_metal_angles(Element metal,

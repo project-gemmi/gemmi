@@ -249,14 +249,14 @@ static void add_acedrg_tables(nb::module_& m) {
                " hash=" + std::to_string(self.hashing_value) + ">";
     });
 
-  nb::class_<ValueStats>(m, "ValueStats")
+  nb::class_<CodStats>(m, "CodStats")
     .def(nb::init<>())
     .def(nb::init<double, double, int>())
-    .def_ro("value", &ValueStats::value)
-    .def_ro("sigma", &ValueStats::sigma)
-    .def_ro("count", &ValueStats::count)
-    .def("__repr__", [](const ValueStats& self) {
-        return "<gemmi.ValueStats value=" + std::to_string(self.value) +
+    .def_ro("value", &CodStats::value)
+    .def_ro("sigma", &CodStats::sigma)
+    .def_ro("count", &CodStats::count)
+    .def("__repr__", [](const CodStats& self) {
+        return "<gemmi.CodStats value=" + std::to_string(self.value) +
                " sigma=" + std::to_string(self.sigma) +
                " count=" + std::to_string(self.count) + ">";
     });
