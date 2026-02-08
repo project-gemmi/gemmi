@@ -2,7 +2,7 @@
 
 #include "gemmi/chemcomp.hpp"    // for ChemComp
 #include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
-#include "gemmi/acedrg_tables.hpp"
+#include "gemmi/ace_cc.hpp"
 
 #include "common.h"
 #include <nanobind/stl/bind_vector.h>

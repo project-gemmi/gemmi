@@ -172,9 +172,6 @@ public:
 
   // Assign CCP4 atom energy types (type_energy) following AceDRG rules
   void assign_ccp4_types(ChemComp& cc) const;
-  // Adjust charges for atoms bonded to metals using AceDRG valence rules
-  void apply_metal_charge_corrections(ChemComp& cc) const;
-
   bool lookup_pep_tors(const std::string& a1, const std::string& a2,
                                  const std::string& a3, const std::string& a4,
                                  TorsionEntry& out) const;
@@ -559,14 +556,6 @@ public:
     return std::max(lower_angle_sigma, std::min(upper_angle_sigma, sigma));
   }
 };
-
-/// Run the full restraint-generation pipeline on a ChemComp:
-/// chemical-group adjustments, protonation, fill_restraints,
-/// torsion/chirality/plane generation, and CCP4 type assignment.
-/// \param atom_stereo  maps atom names to pdbx_stereo_config strings
-///                     (needed for chirality generation).
-GEMMI_DLL void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
-                                const std::map<std::string, std::string>& atom_stereo = {});
 
 } // namespace gemmi
 

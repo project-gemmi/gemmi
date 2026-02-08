@@ -4,7 +4,7 @@
 #include <iostream>
 #include "gemmi/read_cif.hpp"     // for read_cif_gz
 #include "gemmi/chemcomp.hpp"     // for ChemComp, make_chemcomp_from_block
-#include "gemmi/acedrg_tables.hpp" // for AcedrgTables, prepare_chemcomp
+#include "gemmi/ace_cc.hpp"        // for AcedrgTables, prepare_chemcomp
 #include "gemmi/to_cif.hpp"       // for write_cif_to_stream
 #include "gemmi/to_chemcomp.hpp"  // for add_chemcomp_to_block
 #include "gemmi/fstream.hpp"      // for Ofstream
