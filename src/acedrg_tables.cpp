@@ -480,9 +480,8 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
   for (const auto& ha1_pair : bond_file_index_) {
     for (const auto& ha2_pair : ha1_pair.second) {
       int file_num = ha2_pair.second;
-      if (loaded_files.count(file_num))
+      if (!loaded_files.insert(file_num).second)
         continue;
-      loaded_files.insert(file_num);
 
       std::string path = cat(dir, '/', file_num, ".table");
       fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
@@ -578,9 +577,8 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
     for (const auto& ha2_pair : ha1_pair.second) {
       for (const auto& ha3_pair : ha2_pair.second) {
         int file_num = ha3_pair.second;
-        if (loaded_files.count(file_num))
+        if (!loaded_files.insert(file_num).second)
           continue;
-        loaded_files.insert(file_num);
 
         std::string path = cat(dir, '/', file_num, ".table");
         fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
