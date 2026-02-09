@@ -226,13 +226,12 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
         const char* colon = std::strchr(value_key, ':');
         if (colon) {
           std::string ring_part(value_key, colon - value_key);
-          std::string hybrid_part(colon + 1);
-          std::vector<std::string> parts = split_str(hybrid_part, '_');
-          if (parts.size() == 3) {
-            std::swap(parts[0], parts[2]);
-            hybrid_part = cat(parts[0], '_', parts[1], '_', parts[2]);
-          }
-          key.value_key = cat(ring_part, ':', hybrid_part);
+          std::string hp(colon + 1);
+          size_t u1 = hp.find('_');
+          size_t u2 = u1 != std::string::npos ? hp.find('_', u1 + 1) : std::string::npos;
+          if (u2 != std::string::npos)  // swap A_B_C → C_B_A
+            hp = cat(hp.substr(u2 + 1), '_', hp.substr(u1 + 1, u2 - u1 - 1), '_', hp.substr(0, u1));
+          key.value_key = cat(ring_part, ':', hp);
         } else {
           key.value_key = value_key;
         }
@@ -1175,17 +1174,14 @@ int get_min_ring2_from_cod_class(const std::string& cod_class) {
 }
 
 bool cod_class_is_aromatic(const std::string& cod_class) {
-  if (cod_class.empty())
+  // Check if the ring annotation (between '[' and ']', before any '(') contains 'a'
+  size_t bracket = cod_class.find('[');
+  if (bracket == std::string::npos)
     return false;
-  std::vector<std::string> secs = split_str(cod_class, '(');
-  if (secs.empty())
-    return false;
-  if (secs[0].find('[') != std::string::npos) {
-    std::vector<std::string> rs = split_str(secs[0], '[');
-    if (rs.size() > 1)
-      return rs[1].find('a') != std::string::npos;
-  }
-  return false;
+  size_t end = cod_class.find(']', bracket + 1);
+  if (end == std::string::npos)
+    end = cod_class.size();
+  return cod_class.find('a', bracket + 1) < end;
 }
 
 void get_small_family(const std::string& in_str, NB1stFam& fam) {
@@ -1416,11 +1412,8 @@ void set_atom_cod_class_name_new2(
       auto& entry = id_map[nb_atom.cod_class];
       if (entry.empty()) {
         entry.push_back(1);
-        int non_metal = 0;
-        for (int nb2 : neighbors[nb])
-          if (!atoms[nb2].is_metal)
-            ++non_metal;
-        entry.push_back(non_metal);
+        entry.push_back((int)std::count_if(neighbors[nb].begin(), neighbors[nb].end(),
+                                           [&](int nb2) { return !atoms[nb2].is_metal; }));
       } else {
         entry[0] += 1;
       }
@@ -1708,23 +1701,16 @@ void set_atoms_bonding_and_chiral_center(
     }
   }
 
-  for (auto& atom : atoms) {
-    int t_len = 0;
-    for (int nb : neighbors[atom.index]) {
-      if (!atoms[nb].is_metal)
-        t_len++;
-    }
+  auto non_metal_count = [&](int idx) {
+    return (int)std::count_if(neighbors[idx].begin(), neighbors[idx].end(),
+                              [&](int nb) { return !atoms[nb].is_metal; });
+  };
 
+  for (auto& atom : atoms) {
     if (atom.el == El::O) {
-      if (t_len == 2 && atom.par_charge == 0.0f) {
-        bool l_sp2 = false;
-        for (int nb : neighbors[atom.index]) {
-          if (atoms[nb].bonding_idx == 2) {
-            l_sp2 = true;
-            break;
-          }
-        }
-        if (l_sp2)
+      if (non_metal_count(atom.index) == 2 && atom.par_charge == 0.0f) {
+        if (std::any_of(neighbors[atom.index].begin(), neighbors[atom.index].end(),
+                        [&](int nb) { return atoms[nb].bonding_idx == 2; }))
           atom.bonding_idx = 2;
       }
     }
@@ -1734,27 +1720,18 @@ void set_atoms_bonding_and_chiral_center(
   for (const auto& atom : atoms)
     pre_bonding[atom.index] = atom.bonding_idx;
 
+  auto has_sp2_nb_not_O = [&](int idx) {
+    return std::any_of(neighbors[idx].begin(), neighbors[idx].end(),
+                       [&](int nb) { return pre_bonding[nb] == 2 && atoms[nb].el != El::O; });
+  };
+
   for (auto& atom : atoms) {
-    int t_len = 0;
-    for (int nb : neighbors[atom.index]) {
-      if (!atoms[nb].is_metal)
-        t_len++;
-    }
+    int t_len = non_metal_count(atom.index);
     if (atom.el == El::N || atom.el == El::As) {
       if (t_len == 3) {
         if (atom.charge == 0.0f) {
-          bool l_sp2 = false;
-          for (int nb : neighbors[atom.index]) {
-            if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
-              l_sp2 = true;
-              break;
-            }
-          }
-          if (l_sp2) {
-            if (num_conn_map[atom.index][1] != 0)
-              atom.bonding_idx = 3;
-            else
-              atom.bonding_idx = 2;
+          if (has_sp2_nb_not_O(atom.index)) {
+            atom.bonding_idx = num_conn_map[atom.index][1] != 0 ? 3 : 2;
           } else {
             atom.bonding_idx = 3;
           }
@@ -1765,14 +1742,7 @@ void set_atoms_bonding_and_chiral_center(
     }
     if (atom.el == El::S) {
       if (t_len == 2 && atom.charge == 0.0f) {
-        bool l_sp2 = false;
-        for (int nb : neighbors[atom.index]) {
-          if (pre_bonding[nb] == 2 && atoms[nb].el != El::O) {
-            l_sp2 = true;
-            break;
-          }
-        }
-        if (l_sp2)
+        if (has_sp2_nb_not_O(atom.index))
           atom.bonding_idx = 2;
       }
     }
@@ -1840,14 +1810,8 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     bool has_metal_neighbor = atom.connectivity > static_cast<int>(atom.conn_atoms_no_metal.size());
     if (!has_metal_neighbor)
       continue;
-    bool has_non_metal_heavy_neighbor = false;
-    for (int nb : atom.conn_atoms_no_metal) {
-      if (atoms[nb].el != El::H) {
-        has_non_metal_heavy_neighbor = true;
-        break;
-      }
-    }
-    if (!has_non_metal_heavy_neighbor)
+    if (std::none_of(atom.conn_atoms_no_metal.begin(), atom.conn_atoms_no_metal.end(),
+                      [&](int nb) { return atoms[nb].el != El::H; }))
       continue;
     int expected_valence = 0;
     if (atom.el == El::O) expected_valence = 2;
@@ -2350,15 +2314,8 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     bool has_metal_neighbor = info.conn_atoms.size() > info.conn_atoms_no_metal.size();
     if (!has_metal_neighbor)
       continue;
-    // Skip if bonded only to metals (and possibly H) - no non-metal heavy atom neighbors
-    bool has_non_metal_heavy_neighbor = false;
-    for (int nb : info.conn_atoms_no_metal) {
-      if (!cc.atoms[nb].is_hydrogen()) {
-        has_non_metal_heavy_neighbor = true;
-        break;
-      }
-    }
-    if (!has_non_metal_heavy_neighbor)
+    if (std::none_of(info.conn_atoms_no_metal.begin(), info.conn_atoms_no_metal.end(),
+                      [&](int nb) { return !cc.atoms[nb].is_hydrogen(); }))
       continue;
     // Get expected valence for common elements
     int expected_valence = 0;
