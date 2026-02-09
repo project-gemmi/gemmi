@@ -1164,8 +1164,9 @@ int get_min_ring2_from_cod_class(const std::string& cod_class) {
 
 bool cod_class_is_aromatic(const std::string& cod_class) {
   // Check if the ring annotation (between '[' and ']', before any '(') contains 'a'
+  size_t paren = cod_class.find('(');
   size_t bracket = cod_class.find('[');
-  if (bracket == std::string::npos)
+  if (bracket == std::string::npos || (paren != std::string::npos && bracket > paren))
     return false;
   size_t end = cod_class.find(']', bracket + 1);
   if (end == std::string::npos)
