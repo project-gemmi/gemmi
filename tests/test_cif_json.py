@@ -49,7 +49,8 @@ class TestCifAsJson(unittest.TestCase):
         json_str = doc.as_json()
         # The JSON must be parseable by standard parser
         parsed = json.loads(json_str)
-        self.assertEqual(parsed, {'test': {'_a': -0.99, '_b': 0.04, '_c': -0.04, '_d': 0.5}})
+        self.assertEqual(parsed, {'test': {'_a': -0.99, '_b': 0.04,
+                                           '_c': -0.04, '_d': 0.5}})
 
 class TestMmjson(unittest.TestCase):
     def test_read_1pfe(self):

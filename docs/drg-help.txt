@@ -18,3 +18,4 @@ Options:
   --sigma=NUM           Maximum sigma for bond restraints (default: 0.02).
   --timing              Print timing information.
   --style=STYLE         Output style: default, pdbx, aligned.
+  --only-bonds          Only calculate bond restraints (skip angles, torsions, etc.).
