@@ -71,24 +71,13 @@ bool compare_no_case2(const std::string& first,
 struct SortMap {
   std::string key;
   int val = 0;
-};
-
-struct SortMap2 {
-  std::string key;
-  int val = 0;
   int nNB = 0;
 };
 
 bool desc_sort_map_key(const SortMap& a, const SortMap& b) {
-  return a.key.length() > b.key.length();
-}
-
-bool desc_sort_map_key2(const SortMap2& a, const SortMap2& b) {
-  if (a.key.length() > b.key.length())
-    return true;
-  if (a.key.length() == b.key.length())
-    return a.nNB > b.nNB;
-  return false;
+  if (a.key.length() != b.key.length())
+    return a.key.length() > b.key.length();
+  return a.nNB > b.nNB;
 }
 
 }  // namespace
@@ -1383,15 +1372,15 @@ void set_atom_cod_class_name_new2(
       }
     }
 
-    std::vector<SortMap2> sorted;
+    std::vector<SortMap> sorted;
     for (const auto& it : id_map) {
-      SortMap2 sm;
+      SortMap sm;
       sm.key = it.first;
       sm.val = it.second[0];
       sm.nNB = it.second[1];
       sorted.push_back(sm);
     }
-    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key2);
+    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key);
     for (const auto& sm : sorted) {
       if (sm.val == 1)
         cat_to(atom.cod_class, '(', sm.key, ')');
@@ -1544,9 +1533,9 @@ void set_atoms_nb1nb2_sp(
     // Build nb1nb2_sp in alphabetical order
     atom.nb1nb2_sp.clear();
     for (size_t i = 0; i < nb1_nb2_sp_set.size(); ++i) {
-      atom.nb1nb2_sp.append(nb1_nb2_sp_set[i]);
-      if (i != nb1_nb2_sp_set.size() - 1)
-        atom.nb1nb2_sp+= ':';
+      if (i > 0)
+        atom.nb1nb2_sp += ':';
+      atom.nb1nb2_sp += nb1_nb2_sp_set[i];
     }
   }
 }
@@ -1803,14 +1792,11 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   set_atoms_ring_rep_s(atoms, rings);
 
   // Build COD class names (AceDRG style)
-  for (size_t i = 0; i < atoms.size(); ++i)
+  for (size_t i = 0; i < atoms.size(); ++i) {
     set_atom_cod_class_name_new2(atoms[i], atoms[i], 2, atoms, neighbors);
-
-  for (size_t i = 0; i < atoms.size(); ++i)
     set_special_3nb_symb2(atoms[i], atoms, neighbors);
-
-  for (size_t i = 0; i < atoms.size(); ++i)
     cod_class_to_atom2(atoms[i].cod_class, atoms[i]);
+  }
 
   // Hybridization and NB1/NB2_SP
   set_atoms_nb1nb2_sp(atoms, neighbors);
@@ -1843,10 +1829,10 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     for (auto& atom : atoms)
       atom.ring_rep_s.clear();
     set_atoms_ring_rep_s(atoms, rings);
-    for (size_t i = 0; i < atoms.size(); ++i)
+    for (size_t i = 0; i < atoms.size(); ++i) {
       set_atom_cod_class_name_new2(atoms[i], atoms[i], 2, atoms, neighbors);
-    for (size_t i = 0; i < atoms.size(); ++i)
       set_special_3nb_symb2(atoms[i], atoms, neighbors);
+    }
     // Don't call cod_class_to_atom2 here — it would overwrite cod_main, cod_root,
     // nb_symb, nb2_symb, nb3_symb with permissive-aromaticity values, but these
     // fields must retain strict-aromaticity values for COD table lookups.
