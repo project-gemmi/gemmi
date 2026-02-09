@@ -23,6 +23,13 @@ namespace gemmi {
 
 namespace {
 
+// Look up a key in a map, returning pointer to value or nullptr.
+template<typename Map, typename Key>
+const typename Map::mapped_type* find_val(const Map& m, const Key& k) {
+  auto it = m.find(k);
+  return it != m.end() ? &it->second : nullptr;
+}
+
 // Returns the prefix of s before the first occurrence of ch, or s itself.
 std::string prefix_before(const std::string& s, char ch) {
   size_t pos = s.find(ch);
@@ -320,7 +327,11 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
                           metal, &metal_coord, ligand, &ligand_coord,
                           &pre_val, &pre_sig, &pre_count,
                           ligand_class, &val, &sig, &cnt);
-      if (n == 11) {
+      if (n == 11 || n == 10) {
+        if (n == 10) {
+          // 10-field: the 8th field was parsed into ligand_class but is actually val
+          std::sscanf(line, "%*s %*d %*s %*d %*f %*f %*d %lf %lf %d", &val, &sig, &cnt);
+        }
         MetalBondEntry entry;
         entry.metal = Element(metal);
         entry.metal_coord = metal_coord;
@@ -329,24 +340,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
         entry.pre_value = pre_val;
         entry.pre_sigma = pre_sig;
         entry.pre_count = pre_count;
-        entry.ligand_class = ligand_class;
-        entry.value = val;
-        entry.sigma = sig;
-        entry.count = cnt;
-        metal_bonds_.push_back(entry);
-      } else if (n == 10) {
-        // 10-field: the 8th field was parsed into ligand_class but is actually val
-        MetalBondEntry entry;
-        entry.metal = Element(metal);
-        entry.metal_coord = metal_coord;
-        entry.ligand = Element(ligand);
-        entry.ligand_coord = ligand_coord;
-        entry.pre_value = pre_val;
-        entry.pre_sigma = pre_sig;
-        entry.pre_count = pre_count;
-        entry.ligand_class = "NONE";
-        // Re-parse as 10 numeric fields
-        std::sscanf(line, "%*s %*d %*s %*d %*f %*f %*d %lf %lf %d", &val, &sig, &cnt);
+        entry.ligand_class = (n == 11) ? ligand_class : "NONE";
         entry.value = val;
         entry.sigma = sig;
         entry.count = cnt;
@@ -370,19 +364,23 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
 
         if (std::sscanf(line, "%7s %d %63s", metal_str, &coord, geo_str) == 3) {
           Element metal(metal_str);
+          static const struct { const char* name; CoordGeometry geo; } geo_names[] = {
+            {"LINEAR", CoordGeometry::LINEAR},
+            {"TRIGONAL_PLANAR", CoordGeometry::TRIGONAL_PLANAR},
+            {"T_SHAPED", CoordGeometry::T_SHAPED},
+            {"TETRAHEDRAL", CoordGeometry::TETRAHEDRAL},
+            {"SQUARE_PLANAR", CoordGeometry::SQUARE_PLANAR},
+            {"TRIGONAL_BIPYRAMIDAL", CoordGeometry::TRIGONAL_BIPYRAMIDAL},
+            {"SQUARE_PYRAMIDAL", CoordGeometry::SQUARE_PYRAMIDAL},
+            {"OCTAHEDRAL", CoordGeometry::OCTAHEDRAL},
+            {"TRIGONAL_PRISM", CoordGeometry::TRIGONAL_PRISM},
+            {"PENTAGONAL_BIPYRAMIDAL", CoordGeometry::PENTAGONAL_BIPYRAMIDAL},
+            {"CAPPED_OCTAHEDRAL", CoordGeometry::CAPPED_OCTAHEDRAL},
+            {"SQUARE_ANTIPRISM", CoordGeometry::SQUARE_ANTIPRISM},
+          };
           CoordGeometry geo = CoordGeometry::UNKNOWN;
-          if (std::strcmp(geo_str, "LINEAR") == 0) geo = CoordGeometry::LINEAR;
-          else if (std::strcmp(geo_str, "TRIGONAL_PLANAR") == 0) geo = CoordGeometry::TRIGONAL_PLANAR;
-          else if (std::strcmp(geo_str, "T_SHAPED") == 0) geo = CoordGeometry::T_SHAPED;
-          else if (std::strcmp(geo_str, "TETRAHEDRAL") == 0) geo = CoordGeometry::TETRAHEDRAL;
-          else if (std::strcmp(geo_str, "SQUARE_PLANAR") == 0) geo = CoordGeometry::SQUARE_PLANAR;
-          else if (std::strcmp(geo_str, "TRIGONAL_BIPYRAMIDAL") == 0) geo = CoordGeometry::TRIGONAL_BIPYRAMIDAL;
-          else if (std::strcmp(geo_str, "SQUARE_PYRAMIDAL") == 0) geo = CoordGeometry::SQUARE_PYRAMIDAL;
-          else if (std::strcmp(geo_str, "OCTAHEDRAL") == 0) geo = CoordGeometry::OCTAHEDRAL;
-          else if (std::strcmp(geo_str, "TRIGONAL_PRISM") == 0) geo = CoordGeometry::TRIGONAL_PRISM;
-          else if (std::strcmp(geo_str, "PENTAGONAL_BIPYRAMIDAL") == 0) geo = CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
-          else if (std::strcmp(geo_str, "CAPPED_OCTAHEDRAL") == 0) geo = CoordGeometry::CAPPED_OCTAHEDRAL;
-          else if (std::strcmp(geo_str, "SQUARE_ANTIPRISM") == 0) geo = CoordGeometry::SQUARE_ANTIPRISM;
+          for (const auto& g : geo_names)
+            if (std::strcmp(geo_str, g.name) == 0) { geo = g.geo; break; }
           metal_coord_geo_[metal][coord] = geo;
         }
       }
@@ -1222,6 +1220,27 @@ void build_ring_size_map(const std::map<std::string, std::string>& ring_rep_s,
   }
 }
 
+// Append ring size annotation like "[5a,6a]" to string s.
+void append_ring_annotation(std::string& s,
+                            const std::map<std::string, std::string>& ring_rep_s) {
+  std::map<std::string, int> size_map;
+  build_ring_size_map(ring_rep_s, size_map);
+  s += '[';
+  int i = 0;
+  int j = static_cast<int>(size_map.size());
+  for (const auto& it : size_map) {
+    const std::string& size = it.first;
+    if (it.second >= 3)
+      cat_to(s, it.second, 'x', size);
+    else if (it.second == 2)
+      cat_to(s, size, ',', size);
+    else
+      s.append(size);
+    s += (i != j - 1) ? ',' : ']';
+    ++i;
+  }
+}
+
 int get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
                         const CodAtomInfo& atom,
                         const std::vector<std::vector<int>>& neighbors) {
@@ -1458,28 +1477,8 @@ void set_atom_cod_class_name_new2(
     atom.cod_class.clear();
     atom.cod_class.append(atom.el.name());
 
-    if (!atom.ring_rep_s.empty()) {
-      std::map<std::string, int> size_map;
-      build_ring_size_map(atom.ring_rep_s, size_map);
-
-      atom.cod_class+= '[';
-      int i = 0;
-      int j = static_cast<int>(size_map.size());
-      for (const auto& it : size_map) {
-        const std::string& size = it.first;
-        if (it.second >= 3)
-          cat_to(atom.cod_class, it.second, 'x', size);
-        else if (it.second == 2)
-          cat_to(atom.cod_class, size, ',', size);
-        else
-          atom.cod_class.append(size);
-        if (i != j - 1)
-          atom.cod_class+= ',';
-        else
-          atom.cod_class+= ']';
-        ++i;
-      }
-    }
+    if (!atom.ring_rep_s.empty())
+      append_ring_annotation(atom.cod_class, atom.ring_rep_s);
 
     std::string t_str;
     std::vector<std::string> t_str_list;
@@ -1488,27 +1487,8 @@ void set_atom_cod_class_name_new2(
       if (nb == ori_atom.index || atoms[nb].is_metal)
         continue;
       std::string nb_type = atoms[nb].el.name();
-      if (!atoms[nb].ring_rep_s.empty()) {
-        std::map<std::string, int> size_map;
-        build_ring_size_map(atoms[nb].ring_rep_s, size_map);
-        nb_type+= '[';
-        int i = 0;
-        int j = static_cast<int>(size_map.size());
-        for (const auto& it : size_map) {
-          const std::string& size = it.first;
-          if (it.second >= 3)
-            cat_to(nb_type, it.second, 'x', size);
-          else if (it.second == 2)
-            cat_to(nb_type, size, ',', size);
-          else
-            nb_type.append(size);
-          if (i != j - 1)
-            nb_type+= ',';
-          else
-            nb_type+= ']';
-          ++i;
-        }
-      }
+      if (!atoms[nb].ring_rep_s.empty())
+        append_ring_annotation(nb_type, atoms[nb].ring_rep_s);
       comps[nb_type] += 1;
     }
 
@@ -1538,28 +1518,8 @@ void set_atom_cod_class_name_new2(
     atom.cod_class.clear();
     atom.cod_class.append(atom.el.name());
 
-    if (!atom.ring_rep_s.empty()) {
-      std::map<std::string, int> size_map;
-      build_ring_size_map(atom.ring_rep_s, size_map);
-
-      atom.cod_class+= '[';
-      int i = 0;
-      int j = static_cast<int>(size_map.size());
-      for (const auto& it : size_map) {
-        const std::string& size = it.first;
-        if (it.second >= 3)
-          cat_to(atom.cod_class, it.second, 'x', size);
-        else if (it.second == 2)
-          cat_to(atom.cod_class, size, ',', size);
-        else
-          atom.cod_class.append(size);
-        if (i != j - 1)
-          atom.cod_class+= ',';
-        else
-          atom.cod_class+= ']';
-        ++i;
-      }
-    }
+    if (!atom.ring_rep_s.empty())
+      append_ring_annotation(atom.cod_class, atom.ring_rep_s);
 
     int low_lev = lev - 1;
     std::map<std::string, std::vector<int>> id_map;
@@ -3014,160 +2974,67 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   // AceDRG first tries the exact full codClass match (approx level 0) before
   // entering inter-level fallback.
   bool has_a1_class_only = false;  // a1 class exists, a2 class missing
-  {
-    auto it1 = bond_idx_full_.find(ha1);
-    if (it1 != bond_idx_full_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(hybr_comb);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(in_ring);
-          if (it4 != it3->second.end()) {
-            auto it5 = it4->second.find(a1_nb2);
-            if (it5 != it4->second.end()) {
-              auto it6 = it5->second.find(a2_nb2);
-              if (it6 != it5->second.end()) {
-                auto it7 = it6->second.find(a1_nb);
-                if (it7 != it6->second.end()) {
-                  auto it8 = it7->second.find(a2_nb);
-                  if (it8 != it7->second.end()) {
-                    auto it9 = it8->second.find(a1_type);
-                    if (it9 != it8->second.end()) {
-                      auto it10 = it9->second.find(a2_type);
-                      if (it10 != it9->second.end()) {
-                        auto it11 = it10->second.find(a1_class);
-                        if (it11 != it10->second.end()) {
-                          auto it12 = it11->second.find(a2_class);
-                          if (it12 != it11->second.end()) {
-                            if (it12->second.count >= num_th) {
-                              CodStats exact = it12->second;
-                              exact.level = 0;
-                              if (verbose >= 2)
-                                std::fprintf(stderr,
-                                             "      matched exact codClass level=0: value=%.3f sigma=%.3f count=%d\n",
-                                             exact.value, exact.sigma, exact.count);
-                              return exact;
-                            }
-                          } else {
-                            // Special AceDRG fallback only when a2 class is absent.
-                            has_a1_class_only = true;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+  if (auto* p = find_val(bond_idx_full_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, hybr_comb))
+  if (auto* p4 = find_val(*p3, in_ring))
+  if (auto* p5 = find_val(*p4, a1_nb2))
+  if (auto* p6 = find_val(*p5, a2_nb2))
+  if (auto* p7 = find_val(*p6, a1_nb))
+  if (auto* p8 = find_val(*p7, a2_nb))
+  if (auto* p9 = find_val(*p8, a1_type))
+  if (auto* p10 = find_val(*p9, a2_type))
+  if (auto* p11 = find_val(*p10, a1_class)) {
+    if (auto* vs = find_val(*p11, a2_class)) {
+      if (vs->count >= num_th) {
+        CodStats exact = *vs;
+        exact.level = 0;
+        if (verbose >= 2)
+          std::fprintf(stderr,
+                       "      matched exact codClass level=0: value=%.3f sigma=%.3f count=%d\n",
+                       exact.value, exact.sigma, exact.count);
+        return exact;
       }
+    } else {
+      has_a1_class_only = true;
     }
   }
 
 
-  const auto* map_1d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<CodStats>>>* {
-    auto it1 = bond_idx_1d_.find(ha1);
-    if (it1 == bond_idx_1d_.end()) return nullptr;
-    auto it2 = it1->second.find(ha2);
-    if (it2 == it1->second.end()) return nullptr;
-    auto it3 = it2->second.find(hybr_comb);
-    if (it3 == it2->second.end()) return nullptr;
-    auto it4 = it3->second.find(in_ring);
-    if (it4 == it3->second.end()) return nullptr;
-    auto it5 = it4->second.find(a1_nb2);
-    if (it5 == it4->second.end()) return nullptr;
-    auto it6 = it5->second.find(a2_nb2);
-    if (it6 == it5->second.end()) return nullptr;
-    auto it7 = it6->second.find(a1_nb);
-    if (it7 == it6->second.end()) return nullptr;
-    auto it8 = it7->second.find(a2_nb);
-    if (it8 == it7->second.end()) return nullptr;
-    return &it8->second;
-  }();
+  // Pre-resolve nested map pointers for bond lookup levels.
+  auto* bond_ha = find_val(bond_idx_1d_, ha1);
+  auto* bond_ha2 = bond_ha ? find_val(*bond_ha, ha2) : nullptr;
+  auto* bond_hybr = bond_ha2 ? find_val(*bond_ha2, hybr_comb) : nullptr;
+  auto* bond_ring = bond_hybr ? find_val(*bond_hybr, in_ring) : nullptr;
+  auto* bond_nb2a = bond_ring ? find_val(*bond_ring, a1_nb2) : nullptr;
+  auto* bond_nb2b = bond_nb2a ? find_val(*bond_nb2a, a2_nb2) : nullptr;
+  auto* bond_nba = bond_nb2b ? find_val(*bond_nb2b, a1_nb) : nullptr;
+  const auto* map_1d = bond_nba ? find_val(*bond_nba, a2_nb) : nullptr;
 
-  const auto* map_2d = [&]() -> const std::map<std::string, std::map<std::string, std::vector<CodStats>>>* {
-    auto it1 = bond_idx_2d_.find(ha1);
-    if (it1 == bond_idx_2d_.end()) return nullptr;
-    auto it2 = it1->second.find(ha2);
-    if (it2 == it1->second.end()) return nullptr;
-    auto it3 = it2->second.find(hybr_comb);
-    if (it3 == it2->second.end()) return nullptr;
-    auto it4 = it3->second.find(in_ring);
-    if (it4 == it3->second.end()) return nullptr;
-    auto it5 = it4->second.find(a1_nb2);
-    if (it5 == it4->second.end()) return nullptr;
-    auto it6 = it5->second.find(a2_nb2);
-    if (it6 == it5->second.end()) return nullptr;
-    return &it6->second;
-  }();
+  // Same prefix but from bond_idx_2d_ (no atom type levels).
+  auto* bond2_ha = find_val(bond_idx_2d_, ha1);
+  auto* bond2_ha2 = bond2_ha ? find_val(*bond2_ha, ha2) : nullptr;
+  auto* bond2_hybr = bond2_ha2 ? find_val(*bond2_ha2, hybr_comb) : nullptr;
+  auto* bond2_ring = bond2_hybr ? find_val(*bond2_hybr, in_ring) : nullptr;
+  auto* bond2_nb2a = bond2_ring ? find_val(*bond2_ring, a1_nb2) : nullptr;
+  const auto* map_2d = bond2_nb2a ? find_val(*bond2_nb2a, a2_nb2) : nullptr;
 
   // Keep the signal only for level-gating compatibility with AceDRG's
   // class-missing branches. Do not short-circuit to direct 2D stats here:
   // AceDRG still proceeds through start-level logic in these cases.
   (void) has_a1_class_only;
 
-  const auto* map_nb2 = [&]() -> const std::map<std::string, std::map<std::string,
-                                      std::map<std::string, std::map<std::string, std::vector<CodStats>>>>>* {
-    auto it1 = bond_idx_2d_.find(ha1);
-    if (it1 == bond_idx_2d_.end()) return nullptr;
-    auto it2 = it1->second.find(ha2);
-    if (it2 == it1->second.end()) return nullptr;
-    auto it3 = it2->second.find(hybr_comb);
-    if (it3 == it2->second.end()) return nullptr;
-    auto it4 = it3->second.find(in_ring);
-    if (it4 == it3->second.end()) return nullptr;
-    return &it4->second;
-  }();
+  const auto* map_nb2 = bond2_ring;  // same as bond_idx_2d_[ha1][ha2][hybr][ring]
 
   // Determine key availability for gating (mirror AceDRG's presence checks).
-  bool has_hybr = false;
-  bool has_in_ring = false;
-  bool has_a1_nb2 = false;
-  bool has_a2_nb2 = false;
-  bool has_a1_nb = false;
-  bool has_a2_nb = false;
-  bool has_a1_type = false;
-  bool has_a2_type = false;
-  {
-    auto it1 = bond_idx_2d_.find(ha1);
-    if (it1 != bond_idx_2d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(hybr_comb);
-        if (it3 != it2->second.end()) {
-          has_hybr = true;
-          auto it4 = it3->second.find(in_ring);
-          if (it4 != it3->second.end()) {
-            has_in_ring = true;
-            auto it5 = it4->second.find(a1_nb2);
-            if (it5 != it4->second.end()) {
-              has_a1_nb2 = true;
-              auto it6 = it5->second.find(a2_nb2);
-              if (it6 != it5->second.end()) {
-                has_a2_nb2 = true;
-                auto it7 = it6->second.find(a1_nb);
-                if (it7 != it6->second.end()) {
-                  has_a1_nb = true;
-                  auto it8 = it7->second.find(a2_nb);
-                  if (it8 != it7->second.end())
-                    has_a2_nb = true;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (map_1d) {
-    auto it1 = map_1d->find(a1_type);
-    if (it1 != map_1d->end()) {
-      has_a1_type = true;
-      if (it1->second.find(a2_type) != it1->second.end())
-        has_a2_type = true;
-    }
-  }
+  bool has_hybr = bond2_hybr != nullptr;
+  bool has_in_ring = bond2_ring != nullptr;
+  bool has_a1_nb2 = bond2_nb2a != nullptr;
+  bool has_a2_nb2 = map_2d != nullptr;
+  bool has_a1_nb = map_2d && find_val(*map_2d, a1_nb) != nullptr;
+  bool has_a2_nb = has_a1_nb && find_val(*find_val(*map_2d, a1_nb), a2_nb) != nullptr;
+  bool has_a1_type = map_1d && find_val(*map_1d, a1_type) != nullptr;
+  bool has_a2_type = has_a1_type && find_val(*find_val(*map_1d, a1_type), a2_type) != nullptr;
 
   // Determine start level based on available keys (matching acedrg's dynamic logic from codClassify.cpp)
   // acedrg iterates from start_level upward (0→1→2→...) until threshold is met
@@ -3331,40 +3198,28 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
           vs = aggregate_stats(values);
       }
     } else if (level == 9) {
-      auto it1 = bond_hasp_2d_.find(ha1);
-      if (it1 != bond_hasp_2d_.end()) {
-        auto it2 = it1->second.find(ha2);
-        if (it2 != it1->second.end()) {
-          auto it3 = it2->second.find(hybr_comb);
-          if (it3 != it2->second.end()) {
-            auto it4 = it3->second.find(in_ring);
-            if (it4 != it3->second.end() && !it4->second.empty()) {
-              values_size = static_cast<int>(it4->second.size());
-              vs = aggregate_stats(it4->second);
-            }
-          }
-        }
+      if (auto* p = find_val(bond_hasp_2d_, ha1))
+      if (auto* p2 = find_val(*p, ha2))
+      if (auto* p3 = find_val(*p2, hybr_comb))
+      if (auto* p4 = find_val(*p3, in_ring))
+      if (!p4->empty()) {
+        values_size = static_cast<int>(p4->size());
+        vs = aggregate_stats(*p4);
       }
     } else if (level == 10) {
-      auto it1 = bond_hasp_1d_.find(ha1);
-      if (it1 != bond_hasp_1d_.end()) {
-        auto it2 = it1->second.find(ha2);
-        if (it2 != it1->second.end()) {
-          auto it3 = it2->second.find(hybr_comb);
-          if (it3 != it2->second.end() && !it3->second.empty()) {
-            values_size = static_cast<int>(it3->second.size());
-            vs = aggregate_stats(it3->second);
-          }
-        }
+      if (auto* p = find_val(bond_hasp_1d_, ha1))
+      if (auto* p2 = find_val(*p, ha2))
+      if (auto* p3 = find_val(*p2, hybr_comb))
+      if (!p3->empty()) {
+        values_size = static_cast<int>(p3->size());
+        vs = aggregate_stats(*p3);
       }
     } else if (level == 11) {
-      auto it1 = bond_hasp_0d_.find(ha1);
-      if (it1 != bond_hasp_0d_.end()) {
-        auto it2 = it1->second.find(ha2);
-        if (it2 != it1->second.end() && !it2->second.empty()) {
-          values_size = static_cast<int>(it2->second.size());
-          vs = aggregate_stats(it2->second);
-        }
+      if (auto* p = find_val(bond_hasp_0d_, ha1))
+      if (auto* p2 = find_val(*p, ha2))
+      if (!p2->empty()) {
+        values_size = static_cast<int>(p2->size());
+        vs = aggregate_stats(*p2);
       }
     }
 
@@ -3633,236 +3488,104 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                  a1_type.c_str(), a2_type.c_str(), a3_type.c_str());
   }
 
-  // Level 1D: Try exact match with atom types
-  {
-    auto it1 = angle_idx_1d_.find(ha1);
-    if (it1 != angle_idx_1d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(ha3);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(value_key);
-          if (it4 != it3->second.end()) {
-            auto it5 = it4->second.find(a1_root);
-            if (it5 != it4->second.end()) {
-              auto it6 = it5->second.find(a2_root);
-              if (it6 != it5->second.end()) {
-                auto it7 = it6->second.find(a3_root);
-                if (it7 != it6->second.end()) {
-                  auto it8 = it7->second.find(a1_nb2);
-                  if (it8 != it7->second.end()) {
-                    auto it9 = it8->second.find(a2_nb2);
-                    if (it9 != it8->second.end()) {
-                      auto it10 = it9->second.find(a3_nb2);
-                      if (it10 != it9->second.end()) {
-                        auto it11 = it10->second.find(a1_nb);
-                        if (it11 != it10->second.end()) {
-                          auto it12 = it11->second.find(a2_nb);
-                          if (it12 != it11->second.end()) {
-                            auto it13 = it12->second.find(a3_nb);
-                            if (it13 != it12->second.end()) {
-                              auto it14 = it13->second.find(a1_type);
-                              if (it14 != it13->second.end()) {
-                                auto it15 = it14->second.find(a2_type);
-                                if (it15 != it14->second.end()) {
-                                  auto it16 = it15->second.find(a3_type);
-                                  if (it16 != it15->second.end() && !it16->second.empty()) {
-                                    CodStats vs = it16->second.front();
-                                    if (vs.count >= min_observations_angle) {
-                                      if (verbose >= 2)
-                                        std::fprintf(stderr,
-                                                     "      matched angle %s-%s-%s: level=1D\n",
-                                                     a1.id.c_str(), center.id.c_str(),
-                                                     a3.id.c_str());
-                                      return vs;
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+  // Helper lambda: check if vs from angle level meets threshold and return it.
+  auto try_angle = [&](const std::vector<CodStats>* vec, int min_obs, const char* level_name) -> CodStats {
+    if (vec && !vec->empty()) {
+      CodStats vs = vec->front();
+      if (vs.count >= min_obs) {
+        if (verbose >= 2)
+          std::fprintf(stderr, "      matched angle %s-%s-%s: level=%s\n",
+                       a1.id.c_str(), center.id.c_str(), a3.id.c_str(), level_name);
+        return vs;
       }
     }
+    return CodStats();
+  };
+
+  // Level 1D: exact match with atom types (16 keys)
+  if (auto* p = find_val(angle_idx_1d_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, ha3))
+  if (auto* p4 = find_val(*p3, value_key))
+  if (auto* p5 = find_val(*p4, a1_root))
+  if (auto* p6 = find_val(*p5, a2_root))
+  if (auto* p7 = find_val(*p6, a3_root))
+  if (auto* p8 = find_val(*p7, a1_nb2))
+  if (auto* p9 = find_val(*p8, a2_nb2))
+  if (auto* p10 = find_val(*p9, a3_nb2))
+  if (auto* p11 = find_val(*p10, a1_nb))
+  if (auto* p12 = find_val(*p11, a2_nb))
+  if (auto* p13 = find_val(*p12, a3_nb))
+  if (auto* p14 = find_val(*p13, a1_type))
+  if (auto* p15 = find_val(*p14, a2_type)) {
+    CodStats vs = try_angle(find_val(*p15, a3_type), min_observations_angle, "1D");
+    if (!std::isnan(vs.value))
+      return vs;
   }
 
-  // Level 2D: No atom types
-  {
-    auto it1 = angle_idx_2d_.find(ha1);
-    if (it1 != angle_idx_2d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(ha3);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(value_key);
-          if (it4 != it3->second.end()) {
-            auto it5 = it4->second.find(a1_root);
-            if (it5 != it4->second.end()) {
-              auto it6 = it5->second.find(a2_root);
-              if (it6 != it5->second.end()) {
-                auto it7 = it6->second.find(a3_root);
-                if (it7 != it6->second.end()) {
-                  auto it8 = it7->second.find(a1_nb2);
-                  if (it8 != it7->second.end()) {
-                    auto it9 = it8->second.find(a2_nb2);
-                    if (it9 != it8->second.end()) {
-                      auto it10 = it9->second.find(a3_nb2);
-                      if (it10 != it9->second.end()) {
-                        auto it11 = it10->second.find(a1_nb);
-                        if (it11 != it10->second.end()) {
-                          auto it12 = it11->second.find(a2_nb);
-                          if (it12 != it11->second.end()) {
-                            auto it13 = it12->second.find(a3_nb);
-                            if (it13 != it12->second.end() && !it13->second.empty()) {
-                              CodStats vs = it13->second.front();
-                              if (vs.count >= min_observations_angle_fallback) {
-                                if (verbose >= 2)
-                                  std::fprintf(stderr,
-                                               "      matched angle %s-%s-%s: level=2D\n",
-                                               a1.id.c_str(), center.id.c_str(),
-                                               a3.id.c_str());
-                                return vs;
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  // Level 2D: no atom types (13 keys)
+  if (auto* p = find_val(angle_idx_2d_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, ha3))
+  if (auto* p4 = find_val(*p3, value_key))
+  if (auto* p5 = find_val(*p4, a1_root))
+  if (auto* p6 = find_val(*p5, a2_root))
+  if (auto* p7 = find_val(*p6, a3_root))
+  if (auto* p8 = find_val(*p7, a1_nb2))
+  if (auto* p9 = find_val(*p8, a2_nb2))
+  if (auto* p10 = find_val(*p9, a3_nb2))
+  if (auto* p11 = find_val(*p10, a1_nb))
+  if (auto* p12 = find_val(*p11, a2_nb)) {
+    CodStats vs = try_angle(find_val(*p12, a3_nb), min_observations_angle_fallback, "2D");
+    if (!std::isnan(vs.value))
+      return vs;
   }
 
-  // Level 3D: Hash + valueKey + NB2 only
-  {
-    auto it1 = angle_idx_3d_.find(ha1);
-    if (it1 != angle_idx_3d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(ha3);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(value_key);
-          if (it4 != it3->second.end()) {
-            auto it5 = it4->second.find(a1_root);
-            if (it5 != it4->second.end()) {
-              auto it6 = it5->second.find(a2_root);
-              if (it6 != it5->second.end()) {
-                auto it7 = it6->second.find(a3_root);
-                if (it7 != it6->second.end()) {
-                  auto it8 = it7->second.find(a1_nb2);
-                  if (it8 != it7->second.end()) {
-                    auto it9 = it8->second.find(a2_nb2);
-                    if (it9 != it8->second.end()) {
-                      auto it10 = it9->second.find(a3_nb2);
-                      if (it10 != it9->second.end() && !it10->second.empty()) {
-                        CodStats vs = it10->second.front();
-                        if (vs.count >= min_observations_angle_fallback) {
-                          if (verbose >= 2)
-                            std::fprintf(stderr,
-                                         "      matched angle %s-%s-%s: level=3D\n",
-                                         a1.id.c_str(), center.id.c_str(),
-                                         a3.id.c_str());
-                          return vs;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  // Level 3D: hash + valueKey + roots + NB2 (10 keys)
+  if (auto* p = find_val(angle_idx_3d_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, ha3))
+  if (auto* p4 = find_val(*p3, value_key))
+  if (auto* p5 = find_val(*p4, a1_root))
+  if (auto* p6 = find_val(*p5, a2_root))
+  if (auto* p7 = find_val(*p6, a3_root))
+  if (auto* p8 = find_val(*p7, a1_nb2))
+  if (auto* p9 = find_val(*p8, a2_nb2)) {
+    CodStats vs = try_angle(find_val(*p9, a3_nb2), min_observations_angle_fallback, "3D");
+    if (!std::isnan(vs.value))
+      return vs;
   }
 
-  // Level 4D: Hash + valueKey only
-  {
-    auto it1 = angle_idx_4d_.find(ha1);
-    if (it1 != angle_idx_4d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(ha3);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(value_key);
-          if (it4 != it3->second.end()) {
-            auto it5 = it4->second.find(a1_root);
-            if (it5 != it4->second.end()) {
-              auto it6 = it5->second.find(a2_root);
-              if (it6 != it5->second.end()) {
-                auto it7 = it6->second.find(a3_root);
-                if (it7 != it6->second.end() && !it7->second.empty()) {
-                  CodStats vs = it7->second.front();
-                  if (vs.count >= min_observations_angle_fallback) {
-                    if (verbose >= 2)
-                      std::fprintf(stderr,
-                                   "      matched angle %s-%s-%s: level=4D (value=%.3f sigma=%.3f count=%d)\n",
-                                   a1.id.c_str(), center.id.c_str(),
-                                   a3.id.c_str(), vs.value, vs.sigma, vs.count);
-                    return vs;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  // Level 4D: hash + valueKey + roots (7 keys)
+  if (auto* p = find_val(angle_idx_4d_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, ha3))
+  if (auto* p4 = find_val(*p3, value_key))
+  if (auto* p5 = find_val(*p4, a1_root))
+  if (auto* p6 = find_val(*p5, a2_root)) {
+    CodStats vs = try_angle(find_val(*p6, a3_root), min_observations_angle_fallback, "4D");
+    if (!std::isnan(vs.value))
+      return vs;
   }
 
-  // Level 5D: Hash + valueKey only
-  {
-    auto it1 = angle_idx_5d_.find(ha1);
-    if (it1 != angle_idx_5d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(ha3);
-        if (it3 != it2->second.end()) {
-          auto it4 = it3->second.find(value_key);
-          if (it4 != it3->second.end() && !it4->second.empty()) {
-            CodStats vs = it4->second.front();
-            if (vs.count >= min_observations_angle_fallback) {
-              if (verbose >= 2)
-                std::fprintf(stderr,
-                             "      matched angle %s-%s-%s: level=5D\n",
-                             a1.id.c_str(), center.id.c_str(),
-                             a3.id.c_str());
-              return vs;
-            }
-          }
-        }
-      }
-    }
+  // Level 5D: hash + valueKey (4 keys)
+  if (auto* p = find_val(angle_idx_5d_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, ha3)) {
+    CodStats vs = try_angle(find_val(*p3, value_key), min_observations_angle_fallback, "5D");
+    if (!std::isnan(vs.value))
+      return vs;
   }
 
-  // Level 6D: Hash only
-  {
-    auto it1 = angle_idx_6d_.find(ha1);
-    if (it1 != angle_idx_6d_.end()) {
-      auto it2 = it1->second.find(ha2);
-      if (it2 != it1->second.end()) {
-        auto it3 = it2->second.find(ha3);
-        if (it3 != it2->second.end() && !it3->second.empty()) {
-          if (verbose >= 2)
-            std::fprintf(stderr, "      matched angle %s-%s-%s: level=6D\n",
-                         a1.id.c_str(), center.id.c_str(), a3.id.c_str());
-          return it3->second.front();
-        }
-      }
-    }
+  // Level 6D: hash only (3 keys)
+  if (auto* p = find_val(angle_idx_6d_, ha1))
+  if (auto* p2 = find_val(*p, ha2))
+  if (auto* p3 = find_val(*p2, ha3))
+  if (!p3->empty()) {
+    if (verbose >= 2)
+      std::fprintf(stderr, "      matched angle %s-%s-%s: level=6D\n",
+                   a1.id.c_str(), center.id.c_str(), a3.id.c_str());
+    return p3->front();
   }
 
   // No match found in detailed tables
