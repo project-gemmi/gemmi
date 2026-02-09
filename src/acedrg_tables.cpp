@@ -632,45 +632,44 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
           // 11-13: a1_nb a2_nb a3_nb
           // 14-16: a1_code a2_code a3_code
           // 17-34: 6 sets of value sigma count
-          int ha1, ha2, ha3;
-          char value_key[128];
-          char a1_root[64], a2_root[64], a3_root[64];
-          char a1_nb2[64], a2_nb2[64], a3_nb2[64];
-          char a1_nb[64], a2_nb[64], a3_nb[64];
-          char a1_code[64], a2_code[64], a3_code[64];
-          int pos = 0;
-
-          if (std::sscanf(line, "%d %d %d %127s"
-                                " %63s %63s %63s %63s %63s %63s"
-                                " %63s %63s %63s %63s %63s %63s%n",
-                          &ha1, &ha2, &ha3, value_key,
-                          a1_root, a2_root, a3_root,
-                          a1_nb2, a2_nb2, a3_nb2,
-                          a1_nb, a2_nb, a3_nb,
-                          a1_code, a2_code, a3_code, &pos) != 16)
+          const char* p = line;
+          int ha1 = simple_atoi(p, &p);
+          int ha2 = simple_atoi(p, &p);
+          int ha3 = simple_atoi(p, &p);
+          const char* s;
+          s = skip_blank(p); p = skip_word(s); std::string value_key(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a1_root(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a2_root(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a3_root(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a1_nb2(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a2_nb2(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a3_nb2(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a1_nb(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a2_nb(s, p);
+          s = skip_blank(p); p = skip_word(s); std::string a3_nb(s, p);
+          s = skip_blank(p); p = skip_word(s);
+          const char* code1_s = s; const char* code1_e = p;
+          s = skip_blank(p); p = skip_word(s);
+          const char* code2_s = s; const char* code2_e = p;
+          s = skip_blank(p); p = skip_word(s);
+          if (s == p)  // not enough fields
             continue;
+          const char* code3_s = s; const char* code3_e = p;
 
           // Read 6 sets of value/sigma/count
           double values[6], sigmas[6];
           int counts[6];
-          const char* p = line + pos;
-          bool ok = true;
-          for (int lvl = 0; lvl < 6 && ok; ++lvl) {
-            int n = 0;
-            if (std::sscanf(p, " %lf %lf %d%n",
-                            &values[lvl], &sigmas[lvl], &counts[lvl], &n) != 3)
-              ok = false;
-            else
-              p += n;
+          for (int lvl = 0; lvl < 6; ++lvl) {
+            values[lvl] = fast_atof(p, &p);
+            sigmas[lvl] = fast_atof(p, &p);
+            counts[lvl] = simple_atoi(p, &p);
           }
-          if (!ok)
-            continue;
 
           ++n_lines;
           // Get main atom types (before '{') from codes
-          auto* q1 = find_val(atom_type_codes_, a1_code);
-          auto* q2 = find_val(atom_type_codes_, a2_code);
-          auto* q3 = find_val(atom_type_codes_, a3_code);
+          auto* q1 = find_val(atom_type_codes_, std::string(code1_s, code1_e));
+          auto* q2 = find_val(atom_type_codes_, std::string(code2_s, code2_e));
+          auto* q3 = find_val(atom_type_codes_, std::string(code3_s, code3_e));
           std::string a1_type = q1 ? prefix_before(*q1, '{') : std::string();
           std::string a2_type = q2 ? prefix_before(*q2, '{') : std::string();
           std::string a3_type = q3 ? prefix_before(*q3, '{') : std::string();
