@@ -36,6 +36,11 @@ std::string prefix_before(const std::string& s, char ch) {
   return pos != std::string::npos ? s.substr(0, pos) : s;
 }
 
+// Skip blank lines, comments, and empty lines when reading table files.
+bool is_skip_line(const char* line) {
+  return line[0] == '\n' || line[0] == '#' || line[0] == '\0';
+}
+
 bool compare_no_case(const std::string& first,
                      const std::string& second) {
   size_t i = 0;
@@ -148,7 +153,7 @@ void AcedrgTables::load_hash_codes(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     int hash_code, linked_hash;
@@ -166,7 +171,7 @@ void AcedrgTables::load_bond_hrs(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     int hash1, hash2, count;
@@ -195,7 +200,7 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     int hash1, hash2, hash3, count1, count2;
@@ -239,7 +244,7 @@ void AcedrgTables::load_en_bonds(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     char elem1[16], sp1[16], elem2[16], sp2[16];
@@ -266,7 +271,7 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     // Remove stray commas that may appear in numeric fields
@@ -303,7 +308,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
 
     char line[512];
     while (std::fgets(line, sizeof(line), f.get())) {
-      if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+      if (is_skip_line(line))
         continue;
 
       char metal[8], ligand[8], ligand_class[64];
@@ -344,7 +349,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
     if (f2) {
       char line[512];
       while (std::fgets(line, sizeof(line), f2.get())) {
-        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+        if (is_skip_line(line))
           continue;
 
         char metal_str[8], geo_str[64];
@@ -382,7 +387,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
     if (f3) {
       char line[512];
       while (std::fgets(line, sizeof(line), f3.get())) {
-        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+        if (is_skip_line(line))
           continue;
 
         char metal_str[8], geo_str[64];
@@ -410,7 +415,7 @@ void AcedrgTables::load_covalent_radii(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
     char elem[16], kind[16];
     double value = NAN;
@@ -429,7 +434,7 @@ void AcedrgTables::load_atom_type_codes(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     // Format: code<whitespace>full_type
@@ -447,7 +452,7 @@ void AcedrgTables::load_bond_index(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     // Format: ha1 ha2 fileNum
@@ -476,7 +481,7 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
 
       char line[512];
       while (std::fgets(line, sizeof(line), f.get())) {
-        if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+        if (is_skip_line(line))
           continue;
 
         // Format: ha1 ha2 hybrComb inRing a1NB2 a2NB2 a1NB a2NB atomCode1 atomCode2
@@ -544,7 +549,7 @@ void AcedrgTables::load_angle_index(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
 
     // Format: ha1 ha2 ha3 fileNum
@@ -574,7 +579,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
 
         char line[1024];
         while (std::fgets(line, sizeof(line), f.get())) {
-          if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+          if (is_skip_line(line))
             continue;
 
           // 34-column format:
@@ -683,7 +688,7 @@ void AcedrgTables::load_pep_tors(const std::string& path) {
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
-    if (line[0] == '\n' || line[0] == '#' || line[0] == '\0')
+    if (is_skip_line(line))
       continue;
     char tors_id[64], label[64], a1[16], a2[16], a3[16], a4[16];
     int period = 0, idx = 0;
@@ -3100,21 +3105,13 @@ CodStats AcedrgTables::search_bond_en(const CodAtomInfo& a1,
     std::swap(sp1, sp2);
   }
 
-  auto it1 = en_bonds_.find(elem1);
-  if (it1 == en_bonds_.end()) return CodStats();
-
-  auto it2 = it1->second.find(sp1);
-  if (it2 == it1->second.end()) return CodStats();
-
-  auto it3 = it2->second.find(elem2);
-  if (it3 == it2->second.end()) return CodStats();
-
-  auto it4 = it3->second.find(sp2);
-  if (it4 == it3->second.end()) return CodStats();
-
-  if (it4->second.empty()) return CodStats();
-
-  return aggregate_stats(it4->second);
+  if (auto* p1 = find_val(en_bonds_, elem1))
+    if (auto* p2 = find_val(*p1, sp1))
+      if (auto* p3 = find_val(*p2, elem2))
+        if (auto* p4 = find_val(*p3, sp2))
+          if (!p4->empty())
+            return aggregate_stats(*p4);
+  return CodStats();
 }
 
 ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */,
