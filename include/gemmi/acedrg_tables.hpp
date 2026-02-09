@@ -10,6 +10,7 @@
 #include <tuple>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <cmath>
 #include <algorithm>
 #include "chemcomp.hpp"
@@ -315,7 +316,7 @@ public:
   std::map<int, std::map<int, int>> bond_file_index_;
 
   // Atom type code mapping: coded -> full type string
-  std::map<std::string, std::string> atom_type_codes_;
+  std::unordered_map<std::string, std::string> atom_type_codes_;
 
   // Detailed indexed angle tables from allOrgAngleTables/*.table
   // Angles have 3 hashes (center, flank1, flank2)

@@ -7,11 +7,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <set>
+#include "gemmi/atof.hpp"
 #include "gemmi/atox.hpp"
 #include "gemmi/fileutil.hpp"
 #include "gemmi/elem.hpp"
@@ -123,38 +125,51 @@ Hybridization hybridization_from_string(const std::string& s) {
 
 
 void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) {
+  using Clock = std::chrono::steady_clock;
+  auto t0 = Clock::now();
+  auto lap = [&](const char* label) {
+    if (verbose >= 1) {
+      auto t1 = Clock::now();
+      std::fprintf(stderr, "  %-44s %6.3f s\n", label,
+                   std::chrono::duration<double>(t1 - t0).count());
+      t0 = t1;
+    }
+  };
+
   tables_dir_ = tables_dir;
 
-  // Load hash code mapping
   load_hash_codes(tables_dir + "/allOrgLinkedHashCode.table");
-
-  // Load HRS (summary) tables
+  lap("load_hash_codes");
   load_bond_hrs(tables_dir + "/allOrgBondsHRS.table");
-  if (!skip_angles)
+  lap("load_bond_hrs");
+  if (!skip_angles) {
     load_angle_hrs(tables_dir + "/allOrgAnglesHRS.table");
-
-  // Load element+hybridization fallback
+    lap("load_angle_hrs");
+  }
   load_en_bonds(tables_dir + "/allOrgBondEN.table");
-
-  // Load protonated hydrogen distances
+  lap("load_en_bonds");
   load_prot_hydr_dists(tables_dir + "/prot_hydr_dists.table");
-
-  // Load metal tables
+  lap("load_prot_hydr_dists");
   load_metal_tables(tables_dir);
+  lap("load_metal_tables");
   load_covalent_radii(tables_dir + "/radii.table");
-
-  // Load CCP4 energetic library bonds (for AceDRG fallback)
+  lap("load_covalent_radii");
   load_ccp4_bonds(tables_dir + "/ener_lib.cif");
-
-  // Load detailed indexed tables
+  lap("load_ccp4_bonds");
   load_atom_type_codes(tables_dir + "/allAtomTypesFromMolsCoded.list");
+  lap("load_atom_type_codes");
   load_bond_index(tables_dir + "/allOrgBondTables/bond_idx.table");
+  lap("load_bond_index");
   load_bond_tables(tables_dir + "/allOrgBondTables");
+  lap("load_bond_tables");
   if (!skip_angles) {
     load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
+    lap("load_angle_index");
     load_angle_tables(tables_dir + "/allOrgAngleTables");
+    lap("load_angle_tables");
   }
   load_pep_tors(tables_dir + "/pep_tors.table");
+  lap("load_pep_tors");
 
   tables_loaded_ = true;
 }
@@ -479,6 +494,7 @@ void AcedrgTables::load_bond_index(const std::string& path) {
 void AcedrgTables::load_bond_tables(const std::string& dir) {
   // Load each bond table file referenced in the index
   std::set<int> loaded_files;
+  int n_files = 0, n_lines = 0;
 
   for (const auto& ha1_pair : bond_file_index_) {
     for (const auto& ha2_pair : ha1_pair.second) {
@@ -490,6 +506,7 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
       fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
       if (!f)
         continue;
+      ++n_files;
 
       char line[512];
       while (std::fgets(line, sizeof(line), f.get())) {
@@ -498,23 +515,33 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
 
         // Format: ha1 ha2 hybrComb inRing a1NB2 a2NB2 a1NB a2NB atomCode1 atomCode2
         //         value sigma count val2 sig2 cnt2
-        int ha1, ha2, count, count2;
-        char hybr_comb[64], in_ring[8], a1_nb2[64], a2_nb2[64];
-        char a1_nb[64], a2_nb[64], atom_code1[64], atom_code2[64];
-        double value, sigma, value2, sigma2;
-
-        if (std::sscanf(line, "%d %d %63s %7s %63s %63s %63s %63s %63s %63s"
-                              " %lf %lf %d %lf %lf %d",
-                        &ha1, &ha2, hybr_comb, in_ring,
-                        a1_nb2, a2_nb2, a1_nb, a2_nb,
-                        atom_code1, atom_code2,
-                        &value, &sigma, &count,
-                        &value2, &sigma2, &count2) != 16)
+        const char* p = line;
+        int ha1 = simple_atoi(p, &p);
+        int ha2 = simple_atoi(p, &p);
+        const char* s;
+        s = skip_blank(p); p = skip_word(s); std::string hybr_comb(s, p);
+        s = skip_blank(p); p = skip_word(s); std::string in_ring(s, p);
+        s = skip_blank(p); p = skip_word(s); std::string a1_nb2(s, p);
+        s = skip_blank(p); p = skip_word(s); std::string a2_nb2(s, p);
+        s = skip_blank(p); p = skip_word(s); std::string a1_nb(s, p);
+        s = skip_blank(p); p = skip_word(s); std::string a2_nb(s, p);
+        s = skip_blank(p); p = skip_word(s);
+        const char* code1_s = s; const char* code1_e = p;
+        s = skip_blank(p); p = skip_word(s);
+        if (s == p)  // not enough fields
           continue;
+        const char* code2_s = s; const char* code2_e = p;
+        double value = fast_atof(p, &p);
+        double sigma = fast_atof(p, &p);
+        int count = simple_atoi(p, &p);
+        double value2 = fast_atof(p, &p);
+        double sigma2 = fast_atof(p, &p);
+        int count2 = simple_atoi(p, &p);
 
+        ++n_lines;
         // Get atom types from codes: full, main (before '{'), root (before '(')
-        auto* p1 = find_val(atom_type_codes_, atom_code1);
-        auto* p2 = find_val(atom_type_codes_, atom_code2);
+        auto* p1 = find_val(atom_type_codes_, std::string(code1_s, code1_e));
+        auto* p2 = find_val(atom_type_codes_, std::string(code2_s, code2_e));
         std::string a1_type_f = p1 ? *p1 : std::string();
         std::string a2_type_f = p2 ? *p2 : std::string();
         std::string a1_type_m = prefix_before(a1_type_f, '{');
@@ -552,6 +579,8 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
       }
     }
   }
+  if (verbose >= 1)
+    std::fprintf(stderr, "    bond tables: %d files, %d lines\n", n_files, n_lines);
 }
 
 void AcedrgTables::load_angle_index(const std::string& path) {
@@ -575,6 +604,7 @@ void AcedrgTables::load_angle_index(const std::string& path) {
 void AcedrgTables::load_angle_tables(const std::string& dir) {
   // Load each angle table file referenced in the index
   std::set<int> loaded_files;
+  int n_files = 0, n_lines = 0;
 
   for (const auto& ha1_pair : angle_file_index_) {
     for (const auto& ha2_pair : ha1_pair.second) {
@@ -587,6 +617,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
         fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
         if (!f)
           continue;
+        ++n_files;
 
         char line[1024];
         while (std::fgets(line, sizeof(line), f.get())) {
@@ -635,6 +666,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
           if (!ok)
             continue;
 
+          ++n_lines;
           // Get main atom types (before '{') from codes
           auto* q1 = find_val(atom_type_codes_, a1_code);
           auto* q2 = find_val(atom_type_codes_, a2_code);
@@ -690,6 +722,8 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
       }
     }
   }
+  if (verbose >= 1)
+    std::fprintf(stderr, "    angle tables: %d files, %d lines\n", n_files, n_lines);
 }
 
 void AcedrgTables::load_pep_tors(const std::string& path) {

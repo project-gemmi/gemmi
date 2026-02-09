@@ -105,14 +105,12 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "Loading tables from %s ...\n", tables_dir.c_str());
     timer.start();
     AcedrgTables tables;
+    tables.verbose = verbose;
     tables.load_tables(tables_dir, only_bonds);
     timer.print("Tables loaded in");
 
     if (p.options[Sigma])
       tables.lower_bond_sigma = std::strtod(p.options[Sigma].arg, nullptr);
-
-    // Set verbose level: -v=atoms, -vv=lookup, -vvv=1D/2D failures
-    tables.verbose = verbose;
 
     // Build list of (input, output) pairs
     std::vector<std::pair<std::string, std::string>> files;
