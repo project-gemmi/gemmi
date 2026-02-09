@@ -1254,9 +1254,11 @@ int angle_ring_size(const CodAtomInfo& center,
   return 0;
 }
 
-void order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
-                      const CodAtomInfo*& first,
-                      const CodAtomInfo*& second) {
+// Order two atoms by: hashing_value, then cod_main (longer first, then
+// case-insensitive), then atom id as tiebreaker.
+void order_two_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
+                     const CodAtomInfo*& first,
+                     const CodAtomInfo*& second) {
   if (a1.hashing_value < a2.hashing_value) {
     first = &a1;
     second = &a2;
@@ -1279,44 +1281,6 @@ void order_bond_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
   } else {
     first = &a2;
     second = &a1;
-  }
-}
-
-void order_angle_flanks(const CodAtomInfo& a1, const CodAtomInfo& a3,
-                        const CodAtomInfo*& flank1,
-                        const CodAtomInfo*& flank3) {
-  if (a1.hashing_value < a3.hashing_value) {
-    flank1 = &a1;
-    flank3 = &a3;
-    return;
-  }
-  if (a1.hashing_value > a3.hashing_value) {
-    flank1 = &a3;
-    flank3 = &a1;
-    return;
-  }
-  if (a1.cod_main.size() > a3.cod_main.size()) {
-    flank1 = &a1;
-    flank3 = &a3;
-    return;
-  }
-  if (a1.cod_main.size() < a3.cod_main.size()) {
-    flank1 = &a3;
-    flank3 = &a1;
-    return;
-  }
-  if (compare_no_case2(a1.cod_main, a3.cod_main)) {
-    flank1 = &a1;
-    flank3 = &a3;
-  } else if (compare_no_case2(a3.cod_main, a1.cod_main)) {
-    flank1 = &a3;
-    flank3 = &a1;
-  } else if (!compare_no_case2(a1.id, a3.id)) {
-    flank1 = &a1;
-    flank3 = &a3;
-  } else {
-    flank1 = &a3;
-    flank3 = &a1;
   }
 }
 
@@ -2628,6 +2592,21 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
 
   const char* source = "no_match";
 
+  auto log_bond = [&](const char* src, int count = -1) {
+    if (!verbose) return;
+    std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s",
+                 bond.id1.atom.c_str(), bond.id2.atom.c_str(),
+                 a1.hashing_value, a2.hashing_value,
+                 hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid));
+    if (!std::isnan(bond.value)) {
+      std::fprintf(stderr, " → %s (%.3f, %.3f", src, bond.value, bond.esd);
+      if (count >= 0) std::fprintf(stderr, ", n=%d", count);
+      std::fprintf(stderr, ")\n");
+    } else {
+      std::fprintf(stderr, " -> %s\n", src);
+    }
+  };
+
   // Check for metal bond
   if (a1.is_metal || a2.is_metal) {
     const CodAtomInfo& metal = a1.is_metal ? a1 : a2;
@@ -2641,12 +2620,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       bond.value = it_m->second + it_l->second;
       bond.esd = 0.04;
       source = "metal_cova";
-      if (verbose)
-        std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f)\n",
-                     bond.id1.atom.c_str(), bond.id2.atom.c_str(),
-                     a1.hashing_value, a2.hashing_value,
-                     hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                     source, bond.value, bond.esd);
+      log_bond(source);
       return 10;
     }
 
@@ -2656,12 +2630,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       double sigma = std::isnan(vs.sigma) ? 0.02 : vs.sigma;
       bond.esd = std::max(0.02, clamp_bond_sigma(sigma));
       source = "metal";
-      if (verbose)
-        std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
-                     bond.id1.atom.c_str(), bond.id2.atom.c_str(),
-                     a1.hashing_value, a2.hashing_value,
-                     hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                     source, bond.value, bond.esd, vs.count);
+      log_bond(source, vs.count);
       return 10;  // metal bond - treat as high-specificity match
     }
   }
@@ -2699,12 +2668,7 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
   if (accept) {
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
-    if (verbose)
-      std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
-                   bond.id1.atom.c_str(), bond.id2.atom.c_str(),
-                   a1.hashing_value, a2.hashing_value,
-                   hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                   source, bond.value, bond.esd, vs.count);
+    log_bond(source, vs.count);
     return vs.level;  // return match level for multilevel, or 0 for HRS
   }
 
@@ -2714,23 +2678,13 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     bond.value = vs.value;
     bond.esd = clamp_bond_sigma(vs.sigma);
     source = "EN";
-    if (verbose)
-      std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s → %s (%.3f, %.3f, n=%d)\n",
-                   bond.id1.atom.c_str(), bond.id2.atom.c_str(),
-                   a1.hashing_value, a2.hashing_value,
-                   hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                   source, bond.value, bond.esd, vs.count);
+    log_bond(source, vs.count);
     return 0;  // fallback - no good type-specific match
   }
 
   // No match found - leave bond.value as NaN so CCP4 fallback in fill_restraints
   // can be applied. AceDRG's search order is: multilevel -> HRS -> EN -> CCP4.
-  if (verbose)
-    std::fprintf(stderr, "  bond %s-%s: hash %d-%d hybr %s-%s -> %s\n",
-                 bond.id1.atom.c_str(), bond.id2.atom.c_str(),
-                 a1.hashing_value, a2.hashing_value,
-                 hybridization_to_string(a1.hybrid), hybridization_to_string(a2.hybrid),
-                 source);
+  log_bond(source);
   return 0;  // no type-specific match
 }
 
@@ -2743,7 +2697,7 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
 
   const CodAtomInfo* left = nullptr;
   const CodAtomInfo* right = nullptr;
-  order_bond_atoms(a1, a2, left, right);
+  order_two_atoms(a1, a2, left, right);
 
   if (verbose >= 2)
     std::fprintf(stderr, "      after order: left=%s(hash=%d) right=%s(hash=%d)\n",
@@ -3125,7 +3079,7 @@ CodStats AcedrgTables::search_bond_hrs(const CodAtomInfo& a1,
 
   const CodAtomInfo* left = nullptr;
   const CodAtomInfo* right = nullptr;
-  order_bond_atoms(a1, a2, left, right);
+  order_two_atoms(a1, a2, left, right);
 
   BondHRSKey key;
   key.hash1 = left->hashing_value;
@@ -3244,19 +3198,12 @@ CodStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
       class_entry = &entry;
   }
 
-  if (class_entry) {
-    if (class_entry->count > metal_class_min_count)
-      return CodStats(class_entry->value, class_entry->sigma,
-                        class_entry->count);
-    if (pre_entry)
-      return CodStats(pre_entry->pre_value, pre_entry->pre_sigma,
-                        pre_entry->pre_count);
-  }
-
+  if (class_entry && class_entry->count > metal_class_min_count)
+    return CodStats(class_entry->value, class_entry->sigma,
+                      class_entry->count);
   if (pre_entry)
     return CodStats(pre_entry->pre_value, pre_entry->pre_sigma,
                       pre_entry->pre_count);
-
   return CodStats();
 }
 
@@ -3280,7 +3227,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   // Build lookup keys - canonicalize flanking atoms
   // Table format: ha1=left_flank, ha2=center, ha3=right_flank
   const CodAtomInfo *flank1, *flank3;
-  order_angle_flanks(a1, a3, flank1, flank3);
+  order_two_atoms(a1, a3, flank1, flank3);
   int ha1 = flank1->hashing_value;
   int ha2 = center.hashing_value;
   int ha3 = flank3->hashing_value;
