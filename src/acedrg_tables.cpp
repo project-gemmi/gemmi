@@ -792,7 +792,11 @@ void set_ring_aromaticity_from_bonds(
     return true;
   };
 
-  auto count_atom_pi_no_metal = [&](int idx, int mode) -> double {
+  // Count pi electrons for an atom in a ring.
+  // mode 0 (strict): C(-1)/non_mc=2 and N(+1)/non_mc=3 give 2 pi.
+  // mode 1 (permissive): those same cases give 1 pi.
+  // include_c_minus2: if false, skip the C charge=-2 case (used for "all" count).
+  auto count_atom_pi = [&](int idx, int mode, bool include_c_minus2) -> double {
     const auto& atom = atoms[idx];
     int non_mc = count_non_mc(idx);
     double aN = 0.0;
@@ -819,8 +823,6 @@ void set_ring_aromaticity_from_bonds(
             }
             if (!has_exo)
               aN = 1;
-          } else if (non_mc == 2) {
-            aN = 0.0;
           }
         } else if (atom.el == El::N) {
           if (non_mc == 2)
@@ -830,12 +832,7 @@ void set_ring_aromaticity_from_bonds(
         } else if (atom.el == El::B) {
           if (non_mc == 2)
             aN = 1;
-          else if (non_mc == 3)
-            aN = 0.0;
-        } else if (atom.el == El::O) {
-          if (non_mc == 2)
-            aN = 2;
-        } else if (atom.el == El::S) {
+        } else if (atom.el == El::O || atom.el == El::S) {
           if (non_mc == 2)
             aN = 2;
         } else if (atom.el == El::P) {
@@ -849,7 +846,7 @@ void set_ring_aromaticity_from_bonds(
               aN = 2;
             else if (non_mc == 2)
               aN = (mode == 1) ? 1.0 : 2.0;
-          } else if (atom.charge == -2.0f) {
+          } else if (include_c_minus2 && atom.charge == -2.0f) {
             if (non_mc == 2)
               aN = 2;
           }
@@ -902,7 +899,7 @@ void set_ring_aromaticity_from_bonds(
     // AceDRG only checks the NoMetal pi count in strict mode.
     double pi1 = 0.0;
     for (int idx : ring.atoms)
-      pi1 += count_atom_pi_no_metal(idx, 0);
+      pi1 += count_atom_pi(idx, 0, true);
     if (pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001)
       ring.is_aromatic = true;
     if (verbose >= 2) {
@@ -939,103 +936,6 @@ void set_ring_aromaticity_from_bonds(
     }
   }
 
-  // Permissive aromaticity (AceDRG mode 1): used for output codClass names.
-  // Differs from strict for charged N+ (mode 1 gives 1 pi, mode 0 gives 2),
-  // and also checks the "all" pi count (which always gives 1 for N+).
-  auto count_atom_pi_all = [&](int idx) -> double {
-    const auto& atom = atoms[idx];
-    int non_mc = count_non_mc(idx);
-    double aN = 0.0;
-
-    if (atom.bonding_idx == 2) {
-      if (atom.charge == 0.0f) {
-        if (atom.el == El::C) {
-          if (non_mc == 3) {
-            bool has_exo = false;
-            for (int nb : atom.conn_atoms_no_metal) {
-              if (atoms[nb].el == El::O &&
-                  atoms[nb].conn_atoms_no_metal.size() == 1 &&
-                  atoms[nb].charge == 0.0f) {
-                has_exo = true;
-              } else if (atoms[nb].el == El::C &&
-                         atoms[nb].conn_atoms_no_metal.size() == 3) {
-                int h_count = 0;
-                for (int nb2 : atoms[nb].conn_atoms_no_metal)
-                  if (atoms[nb2].el == El::H)
-                    ++h_count;
-                if (h_count >= 2)
-                  has_exo = true;
-              }
-            }
-            if (!has_exo)
-              aN = 1;
-          } else if (non_mc == 2) {
-            aN = 0.0;
-          }
-        } else if (atom.el == El::N) {
-          if (non_mc == 2)
-            aN = 1;
-          else if (non_mc == 3)
-            aN = 2;
-        } else if (atom.el == El::B) {
-          if (non_mc == 2)
-            aN = 1;
-          else if (non_mc == 3)
-            aN = 0.0;
-        } else if (atom.el == El::O) {
-          if (non_mc == 2)
-            aN = 2;
-        } else if (atom.el == El::S) {
-          if (non_mc == 2)
-            aN = 2;
-        } else if (atom.el == El::P) {
-          if (non_mc == 3)
-            aN = 2;
-        }
-      } else {
-        if (atom.el == El::C) {
-          if (atom.charge == -1.0f) {
-            if (non_mc == 3)
-              aN = 2;
-            else if (non_mc == 2)
-              aN = 1.0;
-          }
-        } else if (atom.el == El::N) {
-          if (atom.charge == -1.0f) {
-            if (non_mc == 2)
-              aN = 2;
-          } else if (atom.charge == 1.0f) {
-            if (non_mc == 3)
-              aN = 1.0;
-          }
-        } else if (atom.el == El::O) {
-          if (atom.charge == 1.0f && non_mc == 2)
-            aN = 1;
-        } else if (atom.el == El::B) {
-          if (atom.charge == -1.0f && non_mc == 3)
-            aN = 1;
-        }
-      }
-    } else if (atom.bonding_idx == 3 &&
-               (atom.el == El::N || atom.el == El::B)) {
-      if (atom.el == El::N) {
-        if (atom.charge == -1.0f) {
-          if (non_mc == 2)
-            aN = 2;
-        } else if (atom.charge == 1.0f) {
-          if (non_mc == 3)
-            aN = 1;
-        } else {
-          aN = 2;
-        }
-      } else if (atom.el == El::B) {
-        aN = 0.0;
-      }
-    }
-
-    return aN;
-  };
-
   for (auto& ring : rings) {
     ring.is_aromatic_permissive = ring.is_aromatic;
     if (ring.is_aromatic)
@@ -1045,8 +945,8 @@ void set_ring_aromaticity_from_bonds(
     double pi1 = 0.0;
     double pi2 = 0.0;
     for (int idx : ring.atoms) {
-      pi1 += count_atom_pi_no_metal(idx, 1);
-      pi2 += count_atom_pi_all(idx);
+      pi1 += count_atom_pi(idx, 1, true);
+      pi2 += count_atom_pi(idx, 1, false);
     }
     if ((pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001) ||
         (pi2 > 0.0 && std::fabs(std::fmod(pi2, 4.0) - 2.0) < 0.001))
@@ -1251,42 +1151,27 @@ int get_num_oxy_connect(const std::vector<CodAtomInfo>& atoms,
   return nO;
 }
 
+// Parse the first ring size from a COD class like "C[5a,6a](...)".
+// Extracts from the bracket content: first token before ',' or ']',
+// handling "NxSIZE" multiplier format.
 int get_min_ring2_from_cod_class(const std::string& cod_class) {
-  int r_size = 0;
-  if (!cod_class.empty()) {
-    std::vector<std::string> tmp1 = split_str(cod_class, '(');
-    if (!tmp1.empty()) {
-      if (tmp1[0].find('[') != std::string::npos) {
-        std::vector<std::string> tmp2 = split_str(tmp1[0], '[');
-        if (tmp2.size() > 1) {
-          if (tmp2[1].find(',') != std::string::npos) {
-            std::vector<std::string> tmp3 = split_str(tmp2[1], ',');
-            if (!tmp3.empty()) {
-              if (tmp3[0].find('x') != std::string::npos) {
-                std::vector<std::string> tmp4 = split_str(tmp3[0], 'x');
-                if (tmp4.size() > 1)
-                  r_size = string_to_int(tmp4[1], false);
-              } else {
-                r_size = string_to_int(tmp3[0], false);
-              }
-            }
-          } else {
-            std::vector<std::string> tmp3 = split_str(tmp2[1], ']');
-            if (!tmp3.empty()) {
-              if (tmp3[0].find('x') != std::string::npos) {
-                std::vector<std::string> tmp4 = split_str(tmp3[0], 'x');
-                if (tmp4.size() > 1)
-                  r_size = string_to_int(tmp4[1], false);
-              } else {
-                r_size = string_to_int(tmp3[0], false);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return r_size;
+  // Find bracket content before '('
+  size_t bracket = cod_class.find('[');
+  if (bracket == std::string::npos)
+    return 0;
+  size_t paren = cod_class.find('(');
+  if (paren != std::string::npos && paren < bracket)
+    return 0;
+  // Extract first token: from '[' to first ',' or ']'
+  size_t end = cod_class.find_first_of(",]", bracket + 1);
+  if (end == std::string::npos)
+    return 0;
+  std::string token = cod_class.substr(bracket + 1, end - bracket - 1);
+  // Handle "NxSIZE" format — take part after 'x'
+  size_t x = token.find('x');
+  if (x != std::string::npos)
+    token = token.substr(x + 1);
+  return string_to_int(token, false);
 }
 
 bool cod_class_is_aromatic(const std::string& cod_class) {
@@ -1615,18 +1500,13 @@ void set_special_3nb_symb2(
   std::sort(comps.begin(), comps.end(), compare_no_case2);
 
   if (!comps.empty()) {
-    std::string all3 = "{";
-    unsigned i = 0;
-    unsigned n = comps.size();
-    for (const auto& id : comps) {
-      if (i < n - 1)
-        cat_to(all3, id, ",");
-      else
-        all3.append(id);
-      ++i;
+    atom.cod_class += '{';
+    for (size_t i = 0; i < comps.size(); ++i) {
+      if (i > 0)
+        atom.cod_class += ',';
+      atom.cod_class.append(comps[i]);
     }
-    all3+= '}';
-    atom.cod_class.append(all3);
+    atom.cod_class += '}';
   }
 }
 
@@ -1637,17 +1517,12 @@ void cod_class_to_atom2(const std::string& cod_class, CodAtomInfo& atom) {
   atom.nb2_symb.clear();
   atom.nb3_symb.clear();
 
-  std::vector<std::string> two_parts;
-  if (t_cod.find('{') != std::string::npos) {
-    two_parts = split_str(t_cod, '{');
-    if (two_parts.size() == 2) {
-      atom.cod_main = two_parts[0];
-      std::vector<std::string> nb3 = split_str(two_parts[1], '}');
-      if (!nb3.empty())
-        atom.nb3_symb = nb3[0];
-    } else {
-      atom.cod_main = t_cod;
-    }
+  size_t brace = t_cod.find('{');
+  if (brace != std::string::npos) {
+    atom.cod_main = t_cod.substr(0, brace);
+    size_t brace_end = t_cod.find('}', brace + 1);
+    if (brace_end != std::string::npos)
+      atom.nb3_symb = t_cod.substr(brace + 1, brace_end - brace - 1);
   } else {
     atom.cod_main = t_cod;
   }
