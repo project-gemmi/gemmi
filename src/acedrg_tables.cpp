@@ -23,6 +23,12 @@ namespace gemmi {
 
 namespace {
 
+// Returns the prefix of s before the first occurrence of ch, or s itself.
+std::string prefix_before(const std::string& s, char ch) {
+  size_t pos = s.find(ch);
+  return pos != std::string::npos ? s.substr(0, pos) : s;
+}
+
 bool compare_no_case(const std::string& first,
                      const std::string& second) {
   size_t i = 0;
@@ -503,37 +509,15 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
                         &value2, &sigma2, &count2) != 16)
           continue;
 
-        // Get main atom types from codes
-        std::string a1_type_m, a2_type_m;
-        std::string a1_type_f, a2_type_f;
+        // Get atom types from codes: full, main (before '{'), root (before '(')
         auto it1 = atom_type_codes_.find(atom_code1);
         auto it2 = atom_type_codes_.find(atom_code2);
-        if (it1 != atom_type_codes_.end()) {
-          a1_type_f = it1->second;
-          // Extract main type (before '{' if present)
-          a1_type_m = a1_type_f;
-          size_t brace = a1_type_m.find('{');
-          if (brace != std::string::npos)
-            a1_type_m = a1_type_m.substr(0, brace);
-        }
-        if (it2 != atom_type_codes_.end()) {
-          a2_type_f = it2->second;
-          a2_type_m = a2_type_f;
-          size_t brace = a2_type_m.find('{');
-          if (brace != std::string::npos)
-            a2_type_m = a2_type_m.substr(0, brace);
-        }
-
-        // Extract root types (element + ring annotation, e.g., "C[5a]")
-        std::string a1_root, a2_root;
-        if (!a1_type_m.empty()) {
-          size_t paren = a1_type_m.find('(');
-          a1_root = (paren != std::string::npos) ? a1_type_m.substr(0, paren) : a1_type_m;
-        }
-        if (!a2_type_m.empty()) {
-          size_t paren = a2_type_m.find('(');
-          a2_root = (paren != std::string::npos) ? a2_type_m.substr(0, paren) : a2_type_m;
-        }
+        std::string a1_type_f = (it1 != atom_type_codes_.end()) ? it1->second : std::string();
+        std::string a2_type_f = (it2 != atom_type_codes_.end()) ? it2->second : std::string();
+        std::string a1_type_m = prefix_before(a1_type_f, '{');
+        std::string a2_type_m = prefix_before(a2_type_f, '{');
+        std::string a1_root = prefix_before(a1_type_m, '(');
+        std::string a2_root = prefix_before(a2_type_m, '(');
 
         CodStats vs(value, sigma, count);
         CodStats vs1d(value2, sigma2, count2);
@@ -649,29 +633,13 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
           if (!ok)
             continue;
 
-          // Get main atom types from codes
-          std::string a1_type, a2_type, a3_type;
+          // Get main atom types (before '{') from codes
           auto it1 = atom_type_codes_.find(a1_code);
           auto it2 = atom_type_codes_.find(a2_code);
           auto it3 = atom_type_codes_.find(a3_code);
-          if (it1 != atom_type_codes_.end()) {
-            a1_type = it1->second;
-            size_t brace = a1_type.find('{');
-            if (brace != std::string::npos)
-              a1_type = a1_type.substr(0, brace);
-          }
-          if (it2 != atom_type_codes_.end()) {
-            a2_type = it2->second;
-            size_t brace = a2_type.find('{');
-            if (brace != std::string::npos)
-              a2_type = a2_type.substr(0, brace);
-          }
-          if (it3 != atom_type_codes_.end()) {
-            a3_type = it3->second;
-            size_t brace = a3_type.find('{');
-            if (brace != std::string::npos)
-              a3_type = a3_type.substr(0, brace);
-          }
+          std::string a1_type = it1 != atom_type_codes_.end() ? prefix_before(it1->second, '{') : std::string();
+          std::string a2_type = it2 != atom_type_codes_.end() ? prefix_before(it2->second, '{') : std::string();
+          std::string a3_type = it3 != atom_type_codes_.end() ? prefix_before(it3->second, '{') : std::string();
 
           // Populate structures at each level with corresponding pre-computed values.
           // AceDRG keeps only the first entry for each key (no aggregation).
