@@ -19,7 +19,7 @@ using namespace gemmi;
 namespace {
 
 enum OptionIndex {
-  Tables=4, Sigma, Timing, CifStyle, OutputDir
+  Tables=4, Sigma, Timing, CifStyle, OutputDir, OnlyBonds
 };
 
 const option::Descriptor Usage[] = {
@@ -45,6 +45,8 @@ const option::Descriptor Usage[] = {
     "  --timing  \tPrint timing information." },
   { CifStyle, 0, "", "style", Arg::CifStyle,
     "  --style=STYLE  \tOutput style: default, pdbx, aligned." },
+  { OnlyBonds, 0, "", "only-bonds", Arg::None,
+    "  --only-bonds  \tOnly calculate bond restraints (skip angles, torsions, etc.)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -70,6 +72,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
 
   int verbose = p.options[Verbose].count();
+  bool only_bonds = p.options[OnlyBonds];
 
   // Get tables directory
   std::string tables_dir;
@@ -102,7 +105,7 @@ int GEMMI_MAIN(int argc, char **argv) {
       std::fprintf(stderr, "Loading tables from %s ...\n", tables_dir.c_str());
     timer.start();
     AcedrgTables tables;
-    tables.load_tables(tables_dir);
+    tables.load_tables(tables_dir, only_bonds);
     timer.print("Tables loaded in");
 
     if (p.options[Sigma])
@@ -167,11 +170,12 @@ int GEMMI_MAIN(int argc, char **argv) {
         for (const auto& b : cc.rt.bonds)
           if (std::isnan(b.value)) missing_bonds++;
         int missing_angles = 0;
-        for (const auto& a : cc.rt.angles)
-          if (std::isnan(a.value)) missing_angles++;
+        if (!only_bonds)
+          for (const auto& a : cc.rt.angles)
+            if (std::isnan(a.value)) missing_angles++;
 
         timer.start();
-        prepare_chemcomp(cc, tables, atom_stereo);
+        prepare_chemcomp(cc, tables, atom_stereo, only_bonds);
         timer.print("Restraints filled in");
 
         // Count filled values
@@ -179,8 +183,9 @@ int GEMMI_MAIN(int argc, char **argv) {
         for (const auto& b : cc.rt.bonds)
           if (std::isnan(b.value)) remaining_bonds++;
         int remaining_angles = 0;
-        for (const auto& a : cc.rt.angles)
-          if (std::isnan(a.value)) remaining_angles++;
+        if (!only_bonds)
+          for (const auto& a : cc.rt.angles)
+            if (std::isnan(a.value)) remaining_angles++;
 
         int filled_bonds = missing_bonds - remaining_bonds;
         int filled_angles = missing_angles - remaining_angles;
@@ -194,7 +199,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::vector<std::string> acedrg_types = tables.compute_acedrg_types(cc);
 
         // Update the block with new values
-        add_chemcomp_to_block(cc, block, acedrg_types);
+        add_chemcomp_to_block(cc, block, acedrg_types, only_bonds);
       }
 
       if (verbose)

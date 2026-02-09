@@ -264,10 +264,11 @@ static void add_acedrg_tables(nb::module_& m) {
   nb::class_<AcedrgTables>(m, "AcedrgTables")
     .def(nb::init<>())
     .def("load_tables", &AcedrgTables::load_tables,
-         nb::arg("tables_dir"),
+         nb::arg("tables_dir"), nb::arg("skip_angles") = false,
          "Load COD/CSD statistical tables from the given directory.\n"
          "This directory should contain allOrgBondsHRS.table, "
-         "allOrgAnglesHRS.table, etc.")
+         "allOrgAnglesHRS.table, etc.\n"
+         "If skip_angles is True, angle tables are not loaded.")
     .def("tables_loaded", [](const AcedrgTables& self) { return self.tables_loaded_; },
          "Check if tables have been loaded.")
     .def("tables_dir", [](const AcedrgTables& self) { return self.tables_dir_; },
@@ -323,8 +324,10 @@ static void add_acedrg_tables(nb::module_& m) {
   m.def("prepare_chemcomp", &prepare_chemcomp,
         nb::arg("chemcomp"), nb::arg("tables"),
         nb::arg("atom_stereo") = std::map<std::string, std::string>{},
+        nb::arg("only_bonds") = false,
         "Run the full restraint-generation pipeline on a ChemComp:\n"
         "chemical-group adjustments, protonation, fill_restraints,\n"
         "torsion/chirality/plane generation, and CCP4 type assignment.\n"
-        "atom_stereo maps atom names to pdbx_stereo_config strings.");
+        "atom_stereo maps atom names to pdbx_stereo_config strings.\n"
+        "If only_bonds is True, only bond restraints are calculated.");
 }

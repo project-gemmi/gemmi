@@ -161,7 +161,7 @@ public:
   AcedrgTables() = default;
 
   // Load all tables from directory
-  void load_tables(const std::string& tables_dir);
+  void load_tables(const std::string& tables_dir, bool skip_angles = false);
 
   // Process a ChemComp - fill all missing restraint values
   void fill_restraints(ChemComp& cc) const;

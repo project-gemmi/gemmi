@@ -122,7 +122,7 @@ Hybridization hybridization_from_string(const std::string& s) {
 }
 
 
-void AcedrgTables::load_tables(const std::string& tables_dir) {
+void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) {
   tables_dir_ = tables_dir;
 
   // Load hash code mapping
@@ -130,7 +130,8 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
 
   // Load HRS (summary) tables
   load_bond_hrs(tables_dir + "/allOrgBondsHRS.table");
-  load_angle_hrs(tables_dir + "/allOrgAnglesHRS.table");
+  if (!skip_angles)
+    load_angle_hrs(tables_dir + "/allOrgAnglesHRS.table");
 
   // Load element+hybridization fallback
   load_en_bonds(tables_dir + "/allOrgBondEN.table");
@@ -149,8 +150,10 @@ void AcedrgTables::load_tables(const std::string& tables_dir) {
   load_atom_type_codes(tables_dir + "/allAtomTypesFromMolsCoded.list");
   load_bond_index(tables_dir + "/allOrgBondTables/bond_idx.table");
   load_bond_tables(tables_dir + "/allOrgBondTables");
-  load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
-  load_angle_tables(tables_dir + "/allOrgAngleTables");
+  if (!skip_angles) {
+    load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
+    load_angle_tables(tables_dir + "/allOrgAngleTables");
+  }
   load_pep_tors(tables_dir + "/pep_tors.table");
 
   tables_loaded_ = true;
@@ -2396,7 +2399,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
   }
 
-  // Fill angles
+  // Fill angles (skipped when angle tables are not loaded)
+  if (!angle_hrs_.empty()) {
   for (auto& angle : cc.rt.angles) {
     if (std::isnan(angle.value)) {
       fill_angle(cc, atom_info, angle);
@@ -2495,6 +2499,7 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
       cc.rt.angles[free[0]].value += diff;
     }
   }
+  } // !angle_hrs_.empty()
 }
 
 namespace {

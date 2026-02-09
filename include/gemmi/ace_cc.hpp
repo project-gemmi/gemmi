@@ -19,7 +19,8 @@ struct AcedrgTables;
 /// \param atom_stereo  maps atom names to pdbx_stereo_config strings
 ///                     (needed for chirality generation).
 GEMMI_DLL void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
-                                const std::map<std::string, std::string>& atom_stereo = {});
+                                const std::map<std::string, std::string>& atom_stereo = {},
+                                bool only_bonds = false);
 
 } // namespace gemmi
 #endif
