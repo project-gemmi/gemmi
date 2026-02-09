@@ -510,10 +510,10 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
           continue;
 
         // Get atom types from codes: full, main (before '{'), root (before '(')
-        auto it1 = atom_type_codes_.find(atom_code1);
-        auto it2 = atom_type_codes_.find(atom_code2);
-        std::string a1_type_f = (it1 != atom_type_codes_.end()) ? it1->second : std::string();
-        std::string a2_type_f = (it2 != atom_type_codes_.end()) ? it2->second : std::string();
+        auto* p1 = find_val(atom_type_codes_, atom_code1);
+        auto* p2 = find_val(atom_type_codes_, atom_code2);
+        std::string a1_type_f = p1 ? *p1 : std::string();
+        std::string a2_type_f = p2 ? *p2 : std::string();
         std::string a1_type_m = prefix_before(a1_type_f, '{');
         std::string a2_type_m = prefix_before(a2_type_f, '{');
         std::string a1_root = prefix_before(a1_type_m, '(');
@@ -633,12 +633,12 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
             continue;
 
           // Get main atom types (before '{') from codes
-          auto it1 = atom_type_codes_.find(a1_code);
-          auto it2 = atom_type_codes_.find(a2_code);
-          auto it3 = atom_type_codes_.find(a3_code);
-          std::string a1_type = it1 != atom_type_codes_.end() ? prefix_before(it1->second, '{') : std::string();
-          std::string a2_type = it2 != atom_type_codes_.end() ? prefix_before(it2->second, '{') : std::string();
-          std::string a3_type = it3 != atom_type_codes_.end() ? prefix_before(it3->second, '{') : std::string();
+          auto* q1 = find_val(atom_type_codes_, a1_code);
+          auto* q2 = find_val(atom_type_codes_, a2_code);
+          auto* q3 = find_val(atom_type_codes_, a3_code);
+          std::string a1_type = q1 ? prefix_before(*q1, '{') : std::string();
+          std::string a2_type = q2 ? prefix_before(*q2, '{') : std::string();
+          std::string a3_type = q3 ? prefix_before(*q3, '{') : std::string();
 
           // Populate structures at each level with corresponding pre-computed values.
           // AceDRG keeps only the first entry for each key (no aggregation).
@@ -797,10 +797,10 @@ void set_ring_aromaticity_from_bonds(
   // mode 0 (strict): C(-1)/non_mc=2 and N(+1)/non_mc=3 give 2 pi.
   // mode 1 (permissive): those same cases give 1 pi.
   // include_c_minus2: if false, skip the C charge=-2 case (used for "all" count).
-  auto count_atom_pi = [&](int idx, int mode, bool include_c_minus2) -> double {
+  auto count_atom_pi = [&](int idx, int mode, bool include_c_minus2) -> int {
     const auto& atom = atoms[idx];
     int non_mc = count_non_mc(idx);
-    double aN = 0.0;
+    int aN = 0;
 
     if (atom.bonding_idx == 2) {
       if (atom.charge == 0.0f) {
@@ -846,7 +846,7 @@ void set_ring_aromaticity_from_bonds(
             if (non_mc == 3)
               aN = 2;
             else if (non_mc == 2)
-              aN = (mode == 1) ? 1.0 : 2.0;
+              aN = (mode == 1) ? 1 : 2;
           } else if (include_c_minus2 && atom.charge == -2.0f) {
             if (non_mc == 2)
               aN = 2;
@@ -857,7 +857,7 @@ void set_ring_aromaticity_from_bonds(
               aN = 2;
           } else if (atom.charge == 1.0f) {
             if (non_mc == 3)
-              aN = (mode == 1) ? 1.0 : 2.0;
+              aN = (mode == 1) ? 1 : 2;
           }
         } else if (atom.el == El::O) {
           if (atom.charge == 1.0f && non_mc == 2)
@@ -880,7 +880,7 @@ void set_ring_aromaticity_from_bonds(
           aN = 2;
         }
       } else if (atom.el == El::B) {
-        aN = 0.0;
+        aN = 0;
       }
     }
 
@@ -898,13 +898,13 @@ void set_ring_aromaticity_from_bonds(
     // Mode 0 differs from mode 1 for charged N+ with 3 connections:
     // mode 0 gives 2 pi electrons, mode 1 gives 1.
     // AceDRG only checks the NoMetal pi count in strict mode.
-    double pi1 = 0.0;
+    int pi1 = 0;
     for (int idx : ring.atoms)
       pi1 += count_atom_pi(idx, 0, true);
-    if (pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001)
+    if (pi1 > 0 && pi1 % 4 == 2)
       ring.is_aromatic = true;
     if (verbose >= 2) {
-      std::fprintf(stderr, "    ring %zu (size=%zu): pi1=%.1f aromatic=%d atoms:",
+      std::fprintf(stderr, "    ring %zu (size=%zu): pi1=%d aromatic=%d atoms:",
                    i, ring.atoms.size(), pi1, ring.is_aromatic ? 1 : 0);
       for (int idx : ring.atoms)
         std::fprintf(stderr, " %s", atoms[idx].id.c_str());
@@ -943,14 +943,13 @@ void set_ring_aromaticity_from_bonds(
       continue;
     if (!is_ring_planar(ring))
       continue;
-    double pi1 = 0.0;
-    double pi2 = 0.0;
+    int pi1 = 0;
+    int pi2 = 0;
     for (int idx : ring.atoms) {
       pi1 += count_atom_pi(idx, 1, true);
       pi2 += count_atom_pi(idx, 1, false);
     }
-    if ((pi1 > 0.0 && std::fabs(std::fmod(pi1, 4.0) - 2.0) < 0.001) ||
-        (pi2 > 0.0 && std::fabs(std::fmod(pi2, 4.0) - 2.0) < 0.001))
+    if ((pi1 > 0 && pi1 % 4 == 2) || (pi2 > 0 && pi2 % 4 == 2))
       ring.is_aromatic_permissive = true;
   }
 }
@@ -1021,15 +1020,7 @@ void check_one_path_acedrg(
         for (const auto& id : all_ids)
           rep += id;
 
-        std::string s_rep;
-        int nrs = 0;
-        for (const auto& seri : all_seris) {
-          if (nrs == 0)
-            s_rep += seri;
-          else
-            s_rep += "_" + seri;
-          ++nrs;
-        }
+        std::string s_rep = join_str(all_seris, '_');
 
         atoms[ori_idx].ring_rep[rep] = static_cast<int>(atom_ids_in_path.size());
 
@@ -1088,19 +1079,11 @@ void set_atoms_ring_rep_s(
     const std::vector<RingInfo>& rings) {
   for (const auto& ring : rings) {
     std::string size = cat(ring.atoms.size());
-    std::string rep_id;
     std::vector<std::string> all_seris;
     for (int idx : ring.atoms)
       all_seris.push_back(cat(idx));
     std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
-    int nrs = 0;
-    for (const auto& seri : all_seris) {
-      if (nrs == 0)
-        rep_id += seri;
-      else
-        rep_id += "_" + seri;
-      ++nrs;
-    }
+    std::string rep_id = join_str(all_seris, '_');
 
     for (int idx : ring.atoms) {
       if (ring.is_aromatic)
@@ -2066,12 +2049,11 @@ void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
   } else if (atom.chem_type == "P") {
     atom.ccp4_type = (nconn == 4 ? "P" : "P1");
   } else if (atom.chem_type == "O") {
-    bool lP = false, lS = false, lB = false;
-    for (int nb : atom.conn_atoms) {
-      if (atoms[nb].chem_type == "P") lP = true;
-      if (atoms[nb].chem_type == "S") lS = true;
-      if (atoms[nb].chem_type == "B") lB = true;
-    }
+    auto has_nb_type = [&](const char* t) {
+      return std::any_of(atom.conn_atoms.begin(), atom.conn_atoms.end(),
+                         [&](int nb) { return atoms[nb].chem_type == t; });
+    };
+    bool lP = has_nb_type("P"), lS = has_nb_type("S"), lB = has_nb_type("B");
     bool has_par_charge = std::fabs(atom.par_charge) > 1e-6f;
     bool has_negative_charge = atom.formal_charge < 0;
     auto oc_type = [&]() -> const char* {
@@ -2090,10 +2072,7 @@ void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
         atom.ccp4_type = "O";
       }
     } else if (atom.bonding_idx == 3) {
-      bool lC = false;
-      for (int nb : atom.conn_atoms)
-        if (atoms[nb].chem_type == "C")
-          lC = true;
+      bool lC = has_nb_type("C");
       if (lC && nh == 1 && nconn == 2) atom.ccp4_type = "OH1";
       else if (nh == 2) atom.ccp4_type = "OH2";
       else if (nconn == 2) {
@@ -2789,10 +2768,12 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   bool has_in_ring = bond2_ring != nullptr;
   bool has_a1_nb2 = bond2_nb2a != nullptr;
   bool has_a2_nb2 = map_2d != nullptr;
-  bool has_a1_nb = map_2d && find_val(*map_2d, a1_nb) != nullptr;
-  bool has_a2_nb = has_a1_nb && find_val(*find_val(*map_2d, a1_nb), a2_nb) != nullptr;
-  bool has_a1_type = map_1d && find_val(*map_1d, a1_type) != nullptr;
-  bool has_a2_type = has_a1_type && find_val(*find_val(*map_1d, a1_type), a2_type) != nullptr;
+  auto* map_2d_a1nb = map_2d ? find_val(*map_2d, a1_nb) : nullptr;
+  bool has_a1_nb = map_2d_a1nb != nullptr;
+  bool has_a2_nb = has_a1_nb && find_val(*map_2d_a1nb, a2_nb) != nullptr;
+  auto* map_1d_a1type = map_1d ? find_val(*map_1d, a1_type) : nullptr;
+  bool has_a1_type = map_1d_a1type != nullptr;
+  bool has_a2_type = has_a1_type && find_val(*map_1d_a1type, a2_type) != nullptr;
 
   // Determine start level based on available keys (matching acedrg's dynamic logic from codClassify.cpp)
   // acedrg iterates from start_level upward (0→1→2→...) until threshold is met
