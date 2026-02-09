@@ -36,6 +36,16 @@ std::string prefix_before(const std::string& s, char ch) {
   return pos != std::string::npos ? s.substr(0, pos) : s;
 }
 
+// Expected valence for common non-metal elements (used in metal charge adjustment).
+int get_expected_valence(Element el) {
+  if (el == El::O) return 2;
+  if (el == El::N) return 3;
+  if (el == El::S) return 2;
+  if (el == El::C) return 4;
+  if (el == El::P) return 3;
+  return 0;
+}
+
 // Skip blank lines, comments, and empty lines when reading table files.
 bool is_skip_line(const char* line) {
   return line[0] == '\n' || line[0] == '#' || line[0] == '\0';
@@ -1772,13 +1782,9 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     if (std::none_of(atom.conn_atoms_no_metal.begin(), atom.conn_atoms_no_metal.end(),
                       [&](int nb) { return atoms[nb].el != El::H; }))
       continue;
-    int expected_valence = 0;
-    if (atom.el == El::O) expected_valence = 2;
-    else if (atom.el == El::N) expected_valence = 3;
-    else if (atom.el == El::S) expected_valence = 2;
-    else if (atom.el == El::C) expected_valence = 4;
-    else if (atom.el == El::P) expected_valence = 3;
-    else continue;
+    int expected_valence = get_expected_valence(atom.el);
+    if (expected_valence == 0)
+      continue;
     float sum_bo = 0.0f;
     for (const BondInfo& bi : adj[i]) {
       if (!atoms[bi.neighbor_idx].is_metal)
@@ -2172,10 +2178,10 @@ bool AcedrgTables::search_ccp4_bond(const std::string& type1,
   return true;
 }
 
-std::vector<std::string> AcedrgTables::compute_ccp4_types(
+std::vector<Ccp4AtomInfo> build_ccp4_atoms(
     const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
-    const std::vector<std::vector<int>>& neighbors) const {
+    const std::vector<std::vector<int>>& neighbors) {
   std::vector<Ccp4AtomInfo> atoms;
   atoms.reserve(cc.atoms.size());
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
@@ -2203,13 +2209,24 @@ std::vector<std::string> AcedrgTables::compute_ccp4_types(
     info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
     atoms.emplace_back(std::move(info));
   }
+  return atoms;
+}
 
+void assign_all_ccp4_types(std::vector<Ccp4AtomInfo>& atoms) {
   for (size_t i = 0; i < atoms.size(); ++i)
     if (ccp4_material_type(atoms[i].el) != 1)
       set_one_ccp4_type(atoms, i);
   for (size_t i = 0; i < atoms.size(); ++i)
     if (ccp4_material_type(atoms[i].el) == 1)
       set_one_ccp4_type(atoms, i);
+}
+
+std::vector<std::string> AcedrgTables::compute_ccp4_types(
+    const ChemComp& cc,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::vector<std::vector<int>>& neighbors) const {
+  std::vector<Ccp4AtomInfo> atoms = build_ccp4_atoms(cc, atom_info, neighbors);
+  assign_all_ccp4_types(atoms);
 
   std::vector<std::string> out;
   out.reserve(atoms.size());
@@ -2226,33 +2243,7 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
   std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
   std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
 
-  std::vector<Ccp4AtomInfo> atoms;
-  atoms.reserve(cc.atoms.size());
-  for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    Ccp4AtomInfo info;
-    info.el = cc.atoms[i].el;
-    info.chem_type = cc.atoms[i].el.name();
-    info.ccp4_type = info.chem_type;
-    info.bonding_idx = atom_info[i].bonding_idx;
-    info.ring_rep = atom_info[i].ring_rep;
-    info.conn_atoms = neighbors[i];
-    info.conn_atoms_no_metal.clear();
-    for (int nb : neighbors[i]) {
-      if (cc.atoms[nb].is_hydrogen())
-        info.conn_h_atoms.push_back(nb);
-      if (!cc.atoms[nb].el.is_metal())
-        info.conn_atoms_no_metal.push_back(nb);
-    }
-    // AceDRG treats metal-coordinated carbons with 4+ total neighbors as sp3 in CCP4 types.
-    if (info.el == El::C && info.bonding_idx == 2) {
-      size_t total_conn = info.conn_atoms.size();
-      if (total_conn >= 4 && total_conn > info.conn_atoms_no_metal.size())
-        info.bonding_idx = 3;
-    }
-    info.par_charge = cc.atoms[i].charge;
-    info.formal_charge = static_cast<int>(std::round(cc.atoms[i].charge));
-    atoms.emplace_back(std::move(info));
-  }
+  std::vector<Ccp4AtomInfo> atoms = build_ccp4_atoms(cc, atom_info, neighbors);
 
   // Valence-based charge calculation for atoms bonded to metals.
   // Acedrg computes ligand charges via valence bookkeeping: for non-metal atoms,
@@ -2273,13 +2264,9 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     if (std::none_of(info.conn_atoms_no_metal.begin(), info.conn_atoms_no_metal.end(),
                       [&](int nb) { return !cc.atoms[nb].is_hydrogen(); }))
       continue;
-    // Get expected valence for common elements
-    int expected_valence = 0;
-    if (info.el == El::O) expected_valence = 2;
-    else if (info.el == El::N) expected_valence = 3;
-    else if (info.el == El::S) expected_valence = 2;
-    else if (info.el == El::C) expected_valence = 4;
-    else continue;  // Skip elements we don't have valence info for
+    int expected_valence = get_expected_valence(info.el);
+    if (expected_valence == 0)
+      continue;
     // Sum bond orders to non-metal neighbors only
     float sum_bo = 0.0f;
     for (const BondInfo& bi : adjacency[i]) {
@@ -2292,12 +2279,7 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
       atoms[i].formal_charge = -rem_v;
   }
 
-  for (size_t i = 0; i < atoms.size(); ++i)
-    if (ccp4_material_type(atoms[i].el) != 1)
-      set_one_ccp4_type(atoms, i);
-  for (size_t i = 0; i < atoms.size(); ++i)
-    if (ccp4_material_type(atoms[i].el) == 1)
-      set_one_ccp4_type(atoms, i);
+  assign_all_ccp4_types(atoms);
 
   for (size_t i = 0; i < atoms.size(); ++i)
     cc.atoms[i].chem_type = atoms[i].ccp4_type;
