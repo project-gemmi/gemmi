@@ -1009,7 +1009,7 @@ void check_one_path_acedrg(
         std::vector<std::string> all_seris;
         std::vector<int> ring_atoms;
         for (const auto& it : atom_ids_in_path) {
-          all_seris.push_back(cat(it.first));
+          all_seris.push_back(std::to_string(it.first));
           all_ids.push_back(it.second);
           ring_atoms.push_back(it.first);
         }
@@ -1078,10 +1078,10 @@ void set_atoms_ring_rep_s(
     std::vector<CodAtomInfo>& atoms,
     const std::vector<RingInfo>& rings) {
   for (const auto& ring : rings) {
-    std::string size = cat(ring.atoms.size());
+    std::string size = std::to_string(ring.atoms.size());
     std::vector<std::string> all_seris;
     for (int idx : ring.atoms)
-      all_seris.push_back(cat(idx));
+      all_seris.push_back(std::to_string(idx));
     std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
     std::string rep_id = join_str(all_seris, '_');
 
