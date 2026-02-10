@@ -194,8 +194,8 @@ inline void transfer_seqres_to_mmdb(const Structure& st, mmdb::Manager* manager)
           // Find matching entity
           auto it = chain_to_entity.find(chain_id);
           if (it != chain_to_entity.end()) {
-            const Entity* entity = it->second;
-            set_mmdb_seqres(entity->full_sequence, chain->seqRes);
+            if (const Entity* entity = it->second)
+              set_mmdb_seqres(entity->full_sequence, chain->seqRes);
             // Set chain association to ensure consistency
             chain->seqRes.SetChain(chain);
           }
