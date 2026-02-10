@@ -685,6 +685,9 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
         cc.atoms.push_back(ChemComp::Atom{new_h_id, "", El::H, 0.0f, "H", "", Position()});
         cc.rt.bonds.push_back({{1, n_id}, {1, new_h_id}, BondType::Single, false,
                               NAN, NAN, NAN, NAN});
+        // Add angles for the new hydrogen with all existing neighbors
+        cc.rt.angles.push_back({{1, atom.id}, {1, n_id}, {1, new_h_id}, NAN, NAN});
+        cc.rt.angles.push_back({{1, h_neighbors[0]}, {1, n_id}, {1, new_h_id}, NAN, NAN});
         neighbors[n_id].push_back(new_h_id);
         neighbors[new_h_id].push_back(n_id);
       }
@@ -770,6 +773,10 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
         cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
         cc.rt.bonds.push_back({{1, n1.id}, {1, new_h}, BondType::Single, false,
                               NAN, NAN, NAN, NAN});
+        // Add angles for the new hydrogen with all existing neighbors
+        for (const std::string& h_id : h_ids)
+          cc.rt.angles.push_back({{1, h_id}, {1, n1.id}, {1, new_h}, NAN, NAN});
+        cc.rt.angles.push_back({{1, c1_id}, {1, n1.id}, {1, new_h}, NAN, NAN});
         break;
       }
     }
