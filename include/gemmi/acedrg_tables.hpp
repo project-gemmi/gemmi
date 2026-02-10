@@ -177,9 +177,9 @@ public:
   int fill_bond(const ChemComp& cc,
                 const std::vector<CodAtomInfo>& atom_info,
                 Restraints::Bond& bond) const;
-  void fill_angle(const ChemComp& cc,
-                            const std::vector<CodAtomInfo>& atom_info,
-                            Restraints::Angle& angle) const;
+  int fill_angle(const ChemComp& cc,
+                           const std::vector<CodAtomInfo>& atom_info,
+                           Restraints::Angle& angle) const;
 
   // Atom classification - returns info for all atoms
   std::vector<CodAtomInfo> classify_atoms(const ChemComp& cc) const;
@@ -427,7 +427,8 @@ public:
   // Angle search helpers
   CodStats search_angle_multilevel(const CodAtomInfo& a1,
                                      const CodAtomInfo& center,
-                                     const CodAtomInfo& a3) const;
+                                     const CodAtomInfo& a3,
+                                     int* out_level = nullptr) const;
   CodStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
                               const CodAtomInfo& a3, int ring_size) const;
   std::vector<double> get_metal_angles(Element metal, int coord_number) const;

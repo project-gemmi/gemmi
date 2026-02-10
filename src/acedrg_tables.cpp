@@ -2437,18 +2437,46 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
 
   // Fill angles (skipped when angle tables are not loaded)
   if (!angle_hrs_.empty()) {
-  for (auto& angle : cc.rt.angles) {
-    if (std::isnan(angle.value)) {
-      fill_angle(cc, atom_info, angle);
+  // Store the approxLevel for each angle (used in ring enforcement)
+  std::vector<int> angle_approx(cc.rt.angles.size(), 6);
+  for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
+    if (std::isnan(cc.rt.angles[i].value)) {
+      angle_approx[i] = fill_angle(cc, atom_info, cc.rt.angles[i]);
     }
   }
 
-  // AceDRG adjustment: enforce planar ring angle sum ((n-2)*180/n) for SP2 rings.
+  // AceDRG ring angle enforcement: two-round algorithm matching
+  // checkRingAngleConstraints() in AceDRG.
+  // Round 1: Pull non-fixed angles toward the target mean angle,
+  //   with strength proportional to moF[approxLevel].
+  // Round 2: Uniform shift to achieve exact ring sum.
+  // Modification factors by approxLevel (from AceDRG source):
+  static const double moF[] = {0.0, 0.25, 0.50, 0.75, 1.0, 1.0, 1.0};
+  // Track which angles are "fixed" after ring enforcement (for SP2 constraint)
+  std::vector<bool> angle_is_fixed(cc.rt.angles.size(), false);
+
   auto atom_index = cc.make_atom_index();
   std::map<int, std::vector<size_t>> rings;
   for (size_t i = 0; i < atom_info.size(); ++i)
     for (int ring_id : atom_info[i].in_rings)
       rings[ring_id].push_back(i);
+  if (verbose >= 2) {
+    std::fprintf(stderr, "    ring enforcement: %zu rings found\n", rings.size());
+    for (size_t i = 0; i < atom_info.size(); ++i) {
+      if (!atom_info[i].in_rings.empty()) {
+        std::fprintf(stderr, "      atom %s in_rings:", atom_info[i].id.c_str());
+        for (int r : atom_info[i].in_rings)
+          std::fprintf(stderr, " %d", r);
+        std::fprintf(stderr, "\n");
+      }
+    }
+    for (const auto& r : rings) {
+      std::fprintf(stderr, "    ring enforcement: ring_id=%d atoms=", r.first);
+      for (size_t idx : r.second)
+        std::fprintf(stderr, "%s ", cc.atoms[idx].id.c_str());
+      std::fprintf(stderr, "\n");
+    }
+  }
   for (const auto& ring : rings) {
     const std::vector<size_t>& ring_atoms = ring.second;
     if (ring_atoms.size() < 3)
@@ -2476,15 +2504,43 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
     if (ring_angles.size() != ring_atoms.size())
       continue;
+    int rSize = static_cast<int>(ring_atoms.size());
+    double aM = (rSize - 2) * 180.0 / rSize;
+
+    // Round 1: pull non-fixed angles toward aM
+    for (size_t idx : ring_angles) {
+      int al = std::min(angle_approx[idx], 6);
+      if (verbose >= 2) {
+        std::fprintf(stderr, "      ring angle %s-%s-%s: approx=%d moF=%.2f value=%.4f\n",
+                     cc.rt.angles[idx].id1.atom.c_str(),
+                     cc.rt.angles[idx].id2.atom.c_str(),
+                     cc.rt.angles[idx].id3.atom.c_str(),
+                     al, moF[al], cc.rt.angles[idx].value);
+      }
+      if (al == 0) {
+        angle_is_fixed[idx] = true;
+      } else {
+        double curDev = cc.rt.angles[idx].value - aM;
+        cc.rt.angles[idx].value -= moF[al] * curDev;
+      }
+    }
+
+    // Round 2: uniform shift so total sum = rSize * aM
     double sum = 0.0;
     for (size_t idx : ring_angles)
       sum += cc.rt.angles[idx].value;
-    double mean = sum / static_cast<double>(ring_angles.size());
-    double target = (static_cast<double>(ring_atoms.size()) - 2.0) *
-                    180.0 / static_cast<double>(ring_atoms.size());
-    double shift = target - mean;
-    for (size_t idx : ring_angles)
-      cc.rt.angles[idx].value += shift;
+    double aMDev = aM - sum / rSize;
+    for (size_t idx : ring_angles) {
+      cc.rt.angles[idx].value += aMDev;
+      angle_is_fixed[idx] = true;
+      if (verbose >= 2) {
+        std::fprintf(stderr, "      ring angle %s-%s-%s: final=%.6f\n",
+                     cc.rt.angles[idx].id1.atom.c_str(),
+                     cc.rt.angles[idx].id2.atom.c_str(),
+                     cc.rt.angles[idx].id3.atom.c_str(),
+                     cc.rt.angles[idx].value);
+      }
+    }
   }
 
   // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles,
@@ -2503,14 +2559,7 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
       continue;
     std::vector<size_t> fixed, free;
     for (size_t idx_ang : entry.second) {
-      const auto& ang = cc.rt.angles[idx_ang];
-      auto it1 = atom_index.find(ang.id1.atom);
-      auto it3 = atom_index.find(ang.id3.atom);
-      if (it1 == atom_index.end() || it3 == atom_index.end())
-        continue;
-      const CodAtomInfo& a1 = atom_info[it1->second];
-      const CodAtomInfo& a3 = atom_info[it3->second];
-      if (angle_ring_size(atom_info[center_idx], a1, a3) > 0)
+      if (angle_is_fixed[idx_ang])
         fixed.push_back(idx_ang);
       else
         free.push_back(idx_ang);
@@ -3208,7 +3257,8 @@ bool AcedrgTables::lookup_pep_tors(const std::string& a1,
 // ============================================================================
 
 CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
-    const CodAtomInfo& center, const CodAtomInfo& a3) const {
+    const CodAtomInfo& center, const CodAtomInfo& a3,
+    int* out_level) const {
 
   // Build lookup keys - canonicalize flanking atoms
   // Table format: ha1=center, ha2=flank_min, ha3=flank_max
@@ -3256,13 +3306,15 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   }
 
   // Helper lambda: check if vs from angle level meets threshold and return it.
-  auto try_angle = [&](const std::vector<CodStats>* vec, int min_obs, const char* level_name) -> CodStats {
+  int matched_level = -1;
+  auto try_angle = [&](const std::vector<CodStats>* vec, int min_obs, const char* level_name, int level) -> CodStats {
     if (vec && !vec->empty()) {
       CodStats vs = vec->front();
       if (vs.count >= min_obs) {
         if (verbose >= 2)
           std::fprintf(stderr, "      matched angle %s-%s-%s: level=%s\n",
                        a1.id.c_str(), center.id.c_str(), a3.id.c_str(), level_name);
+        matched_level = level;
         return vs;
       }
     }
@@ -3303,9 +3355,11 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     if (auto* p13 = find_val(*p12, a3_nb))
     if (auto* p14 = find_val(*p13, a1_type))
     if (auto* p15 = find_val(*p14, a2_type)) {
-      CodStats vs = try_angle(find_val(*p15, a3_type), min_observations_angle, "1D");
-      if (!std::isnan(vs.value))
+      CodStats vs = try_angle(find_val(*p15, a3_type), min_observations_angle, "1D", 0);
+      if (!std::isnan(vs.value)) {
+        if (out_level) *out_level = matched_level;
         return vs;
+      }
     }
 
     // Level 2D: no atom types (13 keys)
@@ -3321,9 +3375,11 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     if (auto* p10 = find_val(*p9, a3_nb2))
     if (auto* p11 = find_val(*p10, a1_nb))
     if (auto* p12 = find_val(*p11, a2_nb)) {
-      CodStats vs = try_angle(find_val(*p12, a3_nb), min_observations_angle_fallback, "2D");
-      if (!std::isnan(vs.value))
+      CodStats vs = try_angle(find_val(*p12, a3_nb), min_observations_angle_fallback, "2D", 1);
+      if (!std::isnan(vs.value)) {
+        if (out_level) *out_level = matched_level;
         return vs;
+      }
     }
 
     // Level 3D: hash + valueKey + roots + NB2 (10 keys)
@@ -3336,9 +3392,11 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     if (auto* p7 = find_val(*p6, a3_root))
     if (auto* p8 = find_val(*p7, a1_nb2))
     if (auto* p9 = find_val(*p8, a2_nb2)) {
-      CodStats vs = try_angle(find_val(*p9, a3_nb2), min_observations_angle_fallback, "3D");
-      if (!std::isnan(vs.value))
+      CodStats vs = try_angle(find_val(*p9, a3_nb2), min_observations_angle_fallback, "3D", 2);
+      if (!std::isnan(vs.value)) {
+        if (out_level) *out_level = matched_level;
         return vs;
+      }
     }
   }  // end same-hash retry loop
 
@@ -3349,18 +3407,22 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   if (auto* p4 = find_val(*p3, value_key))
   if (auto* p5 = find_val(*p4, a1_root))
   if (auto* p6 = find_val(*p5, a2_root)) {
-    CodStats vs = try_angle(find_val(*p6, a3_root), min_observations_angle_fallback, "4D");
-    if (!std::isnan(vs.value))
+    CodStats vs = try_angle(find_val(*p6, a3_root), min_observations_angle_fallback, "4D", 3);
+    if (!std::isnan(vs.value)) {
+      if (out_level) *out_level = matched_level;
       return vs;
+    }
   }
 
   // Level 5D: hash + valueKey (4 keys)
   if (auto* p = find_val(angle_idx_5d_, ha1))
   if (auto* p2 = find_val(*p, ha2))
   if (auto* p3 = find_val(*p2, ha3)) {
-    CodStats vs = try_angle(find_val(*p3, value_key), min_observations_angle_fallback, "5D");
-    if (!std::isnan(vs.value))
+    CodStats vs = try_angle(find_val(*p3, value_key), min_observations_angle_fallback, "5D", 4);
+    if (!std::isnan(vs.value)) {
+      if (out_level) *out_level = matched_level;
       return vs;
+    }
   }
 
   // Level 6D: hash only (3 keys)
@@ -3371,6 +3433,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     if (verbose >= 2)
       std::fprintf(stderr, "      matched angle %s-%s-%s: level=6D\n",
                    a1.id.c_str(), center.id.c_str(), a3.id.c_str());
+    if (out_level) *out_level = 6;
     return p3->front();
   }
 
@@ -3378,7 +3441,9 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   return CodStats();
 }
 
-void AcedrgTables::fill_angle(const ChemComp& cc,
+// Returns the AceDRG-equivalent approxLevel:
+//   0 = 1D (all types matched), 1 = 2D, 2 = 3D, 3 = 4D, 4 = 5D, 6 = 6D/HRS/fallback
+int AcedrgTables::fill_angle(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
     Restraints::Angle& angle) const {
 
@@ -3386,7 +3451,7 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
   int idx2 = cc.find_atom_index(angle.id2.atom);  // center
   int idx3 = cc.find_atom_index(angle.id3.atom);
   if (idx1 < 0 || idx2 < 0 || idx3 < 0)
-    return;
+    return 6;
 
   const CodAtomInfo& a1 = atom_info[idx1];
   const CodAtomInfo& center = atom_info[idx2];
@@ -3400,18 +3465,19 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
       // Use the most common angle for this geometry
       angle.value = ideal_angles[0];
       angle.esd = clamp_angle_sigma(3.0);
-      return;
+      return 6;
     }
   }
 
   int ring_size = angle_ring_size(center, a1, a3);
 
   // Try detailed multilevel search first
-  CodStats vs = search_angle_multilevel(a1, center, a3);
+  int level = -1;
+  CodStats vs = search_angle_multilevel(a1, center, a3, &level);
   if (vs.count >= min_observations_angle) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
-    return;
+    return level;
   }
 
   // Try HRS table
@@ -3419,7 +3485,7 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
   if (vs.count >= min_observations_angle) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
-    return;
+    return 6;
   }
 
   // Fallback based on hybridization
@@ -3442,6 +3508,7 @@ void AcedrgTables::fill_angle(const ChemComp& cc,
       break;
   }
   angle.esd = upper_angle_sigma;
+  return 6;
 }
 
 CodStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
