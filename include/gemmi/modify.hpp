@@ -1,3 +1,10 @@
+//! @file
+//! @brief Structure modification utilities (remove altlocs, hydrogens, etc).
+//!
+//! Modify various properties of the model.
+
+// For modifications that depend on entities or connectivity see polyheur.hpp.
+
 // Copyright 2017-2021 Global Phasing Ltd.
 //
 // Modify various properties of the model.

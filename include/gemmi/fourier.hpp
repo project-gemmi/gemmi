@@ -1,3 +1,8 @@
+//! @file
+//! @brief Fourier transforms between real-space maps and reciprocal-space structure factors.
+//!
+//! Fourier transform applied to map coefficients.
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // Fourier transform applied to map coefficients.
@@ -20,10 +25,16 @@
 
 namespace gemmi {
 
-// Returns angle in [0, 360). When it's negative but approximately zero,
-// printing 0.00 than 360.00 might be better, hence the second arg.
-// The default value is for similar precision as float around 360:
-// std::nextafter(360.f, 361.f) - 360.f -> 3.052e-5
+//! @brief Convert complex number to phase angle in degrees [0, 360).
+//! @tparam T Floating-point type
+//! @param v Complex number (structure factor)
+//! @param eps Threshold for treating small negative angles as zero
+//! @return Phase angle in degrees [0, 360)
+//!
+//! Returns angle in [0, 360). When it's negative but approximately zero,
+//! printing 0.00 than 360.00 might be better, hence the second arg.
+//! The default value is for similar precision as float around 360:
+//! std::nextafter(360.f, 361.f) - 360.f -> 3.052e-5
 template<typename T>
 double phase_in_angles(const std::complex<T>& v, double eps=2e-5) {
   double angle = gemmi::deg(std::arg(v));
@@ -32,7 +43,11 @@ double phase_in_angles(const std::complex<T>& v, double eps=2e-5) {
   return std::max(0., angle);  // the order matters when angle is -0.0
 }
 
-// the first arg is usually Mtz::data
+//! @brief Append F/phi data as floats (h,k,l,F,phi) to vector.
+//! @param float_data Output vector (h,k,l,F,phi for each reflection)
+//! @param asu_data Input structure factor data
+//!
+//! the first arg is usually Mtz::data
 inline void add_asu_f_phi_to_float_vector(std::vector<float>& float_data,
                                           const AsuData<std::complex<float>>& asu_data) {
   float_data.reserve(float_data.size() + asu_data.v.size() * 5);
@@ -44,11 +59,18 @@ inline void add_asu_f_phi_to_float_vector(std::vector<float>& float_data,
   }
 }
 
+//! @brief Calculate optimal FFT grid size for given reflection data.
+//! @tparam DataProxy Data accessor type
+//! @param data Reflection data
+//! @param min_size Minimum grid dimensions
+//! @param sample_rate Sampling rate (grid points per resolution shell)
+//! @return Grid size optimized for FFT and spacegroup
+//!
+//! adjust min_size by checking Miller indices in the data
 template<typename DataProxy>
 std::array<int, 3> get_size_for_hkl(const DataProxy& data,
                                     std::array<int, 3> min_size,
                                     double sample_rate) {
-  // adjust min_size by checking Miller indices in the data
   for (size_t i = 0; i < data.size(); i += data.stride()) {
     Miller hkl = data.get_hkl(i);
     for (int j = 0; j != 3; ++j) {
@@ -164,8 +186,17 @@ private:
   size_t f_col_, phi_col_;
 };
 
-// If half_l is true, grid has only data with l>=0.
-// Parameter size can be obtained from get_size_for_hkl().
+//! @brief Place F/phi data onto reciprocal grid with symmetry expansion.
+//! @tparam T Grid data type (float or double)
+//! @tparam FPhi Data proxy type
+//! @param fphi Structure factor data (F and phi)
+//! @param size Grid dimensions
+//! @param half_l Store only l>=0 (Friedel symmetry)
+//! @param axis_order Grid axis ordering
+//! @return Reciprocal grid with complex structure factors
+//!
+//! If half_l is true, grid has only data with l>=0.
+//! Parameter size can be obtained from get_size_for_hkl().
 template<typename T, typename FPhi>
 FPhiGrid<T> get_f_phi_on_grid(const FPhi& fphi,
                               std::array<int, 3> size, bool half_l,
@@ -289,6 +320,15 @@ Grid<T> transform_f_phi_grid_to_map(FPhiGrid<T>&& hkl) {
   return map;
 }
 
+//! @brief Calculate electron density map from F/phi structure factors.
+//! @tparam T Map data type (float or double)
+//! @tparam FPhi Data proxy type
+//! @param fphi Structure factor data (F and phi)
+//! @param size Grid dimensions (minimum if exact_size=false)
+//! @param sample_rate Sampling rate for grid calculation
+//! @param exact_size If true, use size exactly; if false, optimize for FFT
+//! @param order Grid axis ordering
+//! @return Real-space electron density map
 template<typename T, typename FPhi>
 Grid<T> transform_f_phi_to_map(const FPhi& fphi,
                                std::array<int, 3> size,
@@ -314,6 +354,12 @@ Grid<T> transform_f_phi_to_map2(const FPhi& fphi,
                                        sample_rate, exact, order);
 }
 
+//! @brief Calculate structure factors from real-space electron density map.
+//! @tparam T Map data type (float or double)
+//! @param map Input electron density map
+//! @param half_l Store only l>=0 (Friedel symmetry)
+//! @param use_scale Apply volume normalization factor
+//! @return Reciprocal grid with complex structure factors
 template<typename T>
 FPhiGrid<T> transform_map_to_f_phi(const Grid<T>& map, bool half_l, bool use_scale=true) {
   if (half_l && map.axis_order == AxisOrder::ZYX)

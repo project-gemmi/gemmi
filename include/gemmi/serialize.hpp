@@ -1,3 +1,10 @@
+//! @file
+//! @brief Binary serialization for Structure and related objects.
+//!
+//! Binary serialization for Structure (as well as Model, UnitCell, etc).
+//!
+//! Based on zpp::serializer, include third_party/serializer.h first.
+
 // Copyright Global Phasing Ltd.
 //
 // Binary serialization for Structure (as well as Model, UnitCell, etc).
@@ -10,12 +17,21 @@
 #include "model.hpp"
 #include "cifdoc.hpp"
 
+//! @brief Macro to define serialization functions for a struct.
+//! @param Struct The structure type to serialize
+//! @param ... Member variables to serialize
+//!
+//! Generates serialize() templates for both mutable and const references.
 #define SERIALIZE(Struct, ...) \
 template <typename Archive> \
 void serialize(Archive& archive, Struct& o) { archive(__VA_ARGS__); } \
 template <typename Archive> \
 void serialize(Archive& archive, const Struct& o) { archive(__VA_ARGS__); }
 
+//! @brief Macro to define serialization for a struct with parent class.
+//! @param Struct The derived structure type
+//! @param Parent The parent class type
+//! @param ... Additional member variables to serialize (parent is automatic)
 #define SERIALIZE_P(Struct, Parent, ...) \
 template <typename Archive> \
 void serialize(Archive& archive, Struct& o) \
@@ -24,6 +40,10 @@ template <typename Archive> \
 void serialize(Archive& archive, const Struct& o) \
  { archive(static_cast<const Parent&>(o), __VA_ARGS__); }
 
+//! @brief Macro to define serialization for a template struct.
+//! @param Struct The template structure type (e.g., Vec3_)
+//! @param Typename Template parameter keyword (typename or int)
+//! @param ... Member variables to serialize
 #define SERIALIZE_T1(Struct, Typename, ...) \
 template <typename Archive, Typename T> \
 void serialize(Archive& archive, Struct<T>& o) { archive(__VA_ARGS__); } \

@@ -1,3 +1,9 @@
+//! @file
+//! @brief Atomic form factors approximated by Gaussian sums.
+//!
+//! Calculation of atomic form factors approximated by a sum of Gaussians.
+//! Tables with numerical coefficients are in it92.hpp and c4322.hpp.
+
 // Copyright 2019 Global Phasing Ltd.
 
 // Calculation of atomic form factors approximated by a sum of Gaussians.
@@ -15,10 +21,14 @@
 
 namespace gemmi {
 
-// NOTE: the argument x must be between -88 and 88.
-// It is based on expapprox() from
-// https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
-// Relative error is below 1e-5.
+//! @brief Fast exponential approximation for float.
+//! @param x Argument (must be in [-88, 88])
+//! @return Approximation of exp(x) with relative error < 1e-5
+//!
+//! NOTE: the argument x must be between -88 and 88.
+//! It is based on expapprox() from
+//! https://github.com/jhjourdan/SIMD-math-prims/blob/master/simd_math_prims.h
+//! Relative error is below 1e-5.
 inline float unsafe_expapprox(float x) {
   static_assert(std::numeric_limits<float>::is_iec559, "float is not IEEE 754?");
   //static float zero = 0.f;  // non-const to disable optimization
@@ -34,11 +44,18 @@ inline float unsafe_expapprox(float x) {
           (-2.190619930e-3f + b * 1.3555747234e-2f))));
 }
 
-// precalculated density of an isotropic atom
+//! @brief Precalculated exponential sum for isotropic atomic density.
+//! @tparam N Number of Gaussian terms
+//! @tparam Real Floating-point type
+//!
+//! precalculated density of an isotropic atom
 template<int N, typename Real>
 struct ExpSum {
-  Real a[N], b[N];
+  Real a[N], b[N];  //!< Coefficients: density = sum(a[i] * exp(b[i] * r^2))
 
+  //! @brief Calculate density at r^2.
+  //! @param r2 Squared distance
+  //! @return Electron density
   Real calculate(Real r2) const {
     Real density = 0;
     for (int i = 0; i < N; ++i)
@@ -46,6 +63,9 @@ struct ExpSum {
     return density;
   }
 
+  //! @brief Calculate density and derivative at distance r.
+  //! @param r Distance (not squared)
+  //! @return Pair of (density, derivative)
   std::pair<Real,Real> calculate_with_derivative(Real r) const {
     Real density = 0;
     Real derivative = 0;
@@ -58,6 +78,8 @@ struct ExpSum {
   }
 };
 
+//! @brief Float specialization using fast exp approximation.
+//! @tparam N Number of Gaussian terms
 template<int N>
 struct ExpSum<N, float> {
   float a[N], b[N];
@@ -86,12 +108,19 @@ struct ExpSum<N, float> {
   }
 };
 
-// precalculated density of an anisotropic atom
+//! @brief Precalculated exponential sum for anisotropic atomic density.
+//! @tparam N Number of Gaussian terms
+//! @tparam Real Floating-point type
+//!
+//! precalculated density of an anisotropic atom
 template<int N, typename Real>
 struct ExpAnisoSum {
-  Real a[N];
-  SMat33<Real> b[N];
+  Real a[N];  //!< Amplitude coefficients
+  SMat33<Real> b[N];  //!< Symmetric 3x3 exponent matrices
 
+  //! @brief Calculate density at position r.
+  //! @param r Position vector
+  //! @return Electron density
   Real calculate(const Vec3& r) const {
     Real density = 0;
     for (int i = 0; i < N; ++i)
@@ -100,6 +129,8 @@ struct ExpAnisoSum {
   }
 };
 
+//! @brief Float specialization using fast exp approximation.
+//! @tparam N Number of Gaussian terms
 template<int N>
 struct ExpAnisoSum<N, float> {
   float a[N];
@@ -117,22 +148,37 @@ struct ExpAnisoSum<N, float> {
   }
 };
 
+//! @brief Calculate x^1.5 efficiently.
+//! @tparam Real Floating-point type
+//! @param x Value
+//! @return x^1.5 = x * sqrt(x)
 template<typename Real>
 Real pow15(Real x) { return x * std::sqrt(x); }
 
-// Gaussian coefficients with functions to calculate sf and density.
+//! @brief Gaussian coefficients for scattering factor and density calculations.
+//! @tparam N Number of Gaussian terms
+//! @tparam WithC Whether constant term c is included (0 or 1)
+//! @tparam Real Floating-point type
+//!
+//! Gaussian coefficients with functions to calculate sf and density.
 template<int N, int WithC, typename Real>
 struct GaussianCoef {
-  using coef_type = Real;
-  static const int ncoeffs = N;
-  std::array<Real, 2*N+WithC> coefs;
-  Real a(int n) const { return coefs[n]; }
-  Real b(int n) const { return coefs[N+n]; }
-  Real c() const { return WithC ? coefs[2*N] : 0; }
+  using coef_type = Real;  //!< Coefficient type
+  static const int ncoeffs = N;  //!< Number of Gaussian terms
+  std::array<Real, 2*N+WithC> coefs;  //!< Coefficient array [a1..aN, b1..bN, c]
+  Real a(int n) const { return coefs[n]; }  //!< Get amplitude coefficient a_n
+  Real b(int n) const { return coefs[N+n]; }  //!< Get exponent coefficient b_n
+  Real c() const { return WithC ? coefs[2*N] : 0; }  //!< Get constant c (if WithC=1)
 
+  //! @brief Set all coefficients.
+  //! @param c Coefficient array
   void set_coefs(const std::array<Real, 2*N+WithC>& c) { coefs = c; }
 
-  // argument: (sin(theta)/lambda)^2
+  //! @brief Calculate structure factor.
+  //! @param stol2 (sin(theta)/lambda)^2
+  //! @return Structure factor f(s)
+  //!
+  //! argument: (sin(theta)/lambda)^2
   Real calculate_sf(Real stol2) const {
     Real sf = c();
     for (int i = 0; i < N; ++i)
@@ -140,6 +186,10 @@ struct GaussianCoef {
     return sf;
   }
 
+  //! @brief Calculate electron density at distance r with isotropic B-factor.
+  //! @param r2 Squared distance from atom center
+  //! @param B Isotropic temperature factor
+  //! @return Electron density at r
   Real calculate_density_iso(Real r2, Real B) const {
     constexpr Real _4pi = Real(4 * pi());
     Real r2pi = Real(r2 * pi());
@@ -151,7 +201,12 @@ struct GaussianCoef {
     return density;
   }
 
-  // note: addend is considered only if WithC (addend is usually dispersion f')
+  //! @brief Precalculate exponential sum for fast isotropic density evaluation.
+  //! @param B Isotropic temperature factor
+  //! @param addend Additional constant to add to c (usually dispersion f')
+  //! @return Precalculated ExpSum for efficient repeated evaluation
+  //!
+  //! note: addend is considered only if WithC (addend is usually dispersion f')
   ExpSum<N+WithC,Real> precalculate_density_iso(Real B, Real addend=0) const {
     ExpSum<N+WithC,Real> prec;
     constexpr Real _4pi = Real(4 * pi());
@@ -168,6 +223,10 @@ struct GaussianCoef {
     return prec;
   }
 
+  //! @brief Calculate electron density at position r with anisotropic U tensor.
+  //! @param r Position vector from atom center
+  //! @param U Anisotropic displacement tensor
+  //! @return Electron density at r
   Real calculate_density_aniso(const Vec3& r, const SMat33<float>& U) const {
     constexpr Real pi2 = sq(pi());
     const SMat33<Real> B = U.scaled(8 * pi2);
@@ -181,6 +240,10 @@ struct GaussianCoef {
     return density;
   }
 
+  //! @brief Precalculate exponential sum for fast anisotropic density (B tensor).
+  //! @param B Anisotropic B-factor tensor (8π²U)
+  //! @param addend Additional constant to add to c (usually dispersion f')
+  //! @return Precalculated ExpAnisoSum for efficient repeated evaluation
   ExpAnisoSum<N+WithC,Real> precalculate_density_aniso_b(const SMat33<Real>& B,
                                                          Real addend=0) const {
     constexpr Real m4pi2 = Real(-4 * sq(pi()));
@@ -198,6 +261,10 @@ struct GaussianCoef {
     return prec;
   }
 
+  //! @brief Precalculate exponential sum for fast anisotropic density (U tensor).
+  //! @param U Anisotropic displacement tensor
+  //! @param addend Additional constant to add to c (usually dispersion f')
+  //! @return Precalculated ExpAnisoSum for efficient repeated evaluation
   ExpAnisoSum<N+WithC,Real> precalculate_density_aniso_u(const SMat33<float>& U,
                                                          Real addend=0) const {
     constexpr Real UtoB = 8 * sq(pi());

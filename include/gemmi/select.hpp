@@ -10,19 +10,25 @@
 
 namespace gemmi {
 
-// from http://www.ccp4.ac.uk/html/pdbcur.html
-// Specification of the selection sets:
-// either
-//     /mdl/chn/s1.i1-s2.i2/at[el]:aloc
-// or
-//     /mdl/chn/*(res).ic/at[el]:aloc
-//
-
+//! @brief Atom/residue selection using CID (coordinate ID) syntax.
+//!
+//! Based on CCP4 pdbcur selection syntax:
+//! - /mdl/chn/s1.i1-s2.i2/at[el]:aloc  (sequence range)
+//! - /mdl/chn/*(res).ic/at[el]:aloc   (residue name)
+//!
+//! Where: mdl=model, chn=chain, s=seqnum, i=icode, res=residue name,
+//!        at=atom name, el=element, aloc=altloc
+//!
+//! Example: "//A/10-20/CA" selects CA atoms in residues 10-20 of chain A.
 struct GEMMI_DLL Selection {
+  //! @brief Comma-separated list with wildcard and inversion support.
+  //!
+  //! Used for chain IDs, residue names, atom names, etc.
+  //! Supports '*' for all, '!' prefix for inversion.
   struct List {
-    bool all = true;
-    bool inverted = false;
-    std::string list;  // comma-separated
+    bool all = true;  //!< True if wildcard '*' (match all)
+    bool inverted = false;  //!< True if list is negated with '!'
+    std::string list;  //!< Comma-separated values
 
     std::string str() const {
       if (all)
@@ -38,8 +44,15 @@ struct GEMMI_DLL Selection {
     }
   };
 
+  //! @brief Single-character flag pattern for filtering.
+  //!
+  //! Used for residue_flags and atom_flags.
   struct FlagList {
-    std::string pattern;
+    std::string pattern;  //!< Pattern string (e.g., "PS" or "!W")
+
+    //! @brief Check if a flag matches the pattern.
+    //! @param flag Character flag to test
+    //! @return True if flag matches (or pattern is empty)
     bool has(char flag) const {
       if (pattern.empty())
         return true;
@@ -49,9 +62,12 @@ struct GEMMI_DLL Selection {
     }
   };
 
+  //! @brief Sequence identifier for residue range selection.
+  //!
+  //! Combines sequence number and insertion code.
   struct SequenceId {
-    int seqnum;
-    char icode;
+    int seqnum;  //!< Sequence number
+    char icode;  //!< Insertion code
 
     bool empty() const {
       return seqnum == INT_MIN || seqnum == INT_MAX;
@@ -68,10 +84,13 @@ struct GEMMI_DLL Selection {
     }
   };
 
+  //! @brief Inequality constraint on atom properties.
+  //!
+  //! Used for filtering atoms by occupancy (q) or B-factor (b).
   struct AtomInequality {
-    char property;
-    int relation;
-    double value;
+    char property;  //!< Property: 'q' (occupancy) or 'b' (B-factor)
+    int relation;  //!< Comparison: <0 (less), >0 (greater), 0 (equal)
+    double value;  //!< Threshold value
 
     bool matches(const Atom& a) const {
       double atom_value = 0.;
@@ -89,33 +108,48 @@ struct GEMMI_DLL Selection {
     std::string str() const;
   };
 
-  int mdl = 0;            // 0 = all
-  List chain_ids;
-  SequenceId from_seqid = {INT_MIN, '*'};
-  SequenceId to_seqid = {INT_MAX, '*'};
-  List residue_names;
-  List entity_types;
-  // array corresponding to enum EntityType
-  std::array<char, 6> et_flags;
-  List atom_names;
-  std::vector<char> elements;
-  List altlocs;
-  FlagList residue_flags;
-  FlagList atom_flags;
-  std::vector<AtomInequality> atom_inequalities;
+  int mdl = 0;  //!< Model number (0 = all models)
+  List chain_ids;  //!< Chain ID filter
+  SequenceId from_seqid = {INT_MIN, '*'};  //!< Start of sequence range
+  SequenceId to_seqid = {INT_MAX, '*'};  //!< End of sequence range
+  List residue_names;  //!< Residue name filter
+  List entity_types;  //!< Entity type filter
+  std::array<char, 6> et_flags;  //!< Array indexed by EntityType enum
+  List atom_names;  //!< Atom name filter
+  std::vector<char> elements;  //!< Element filter (indexed by atomic number)
+  List altlocs;  //!< Alternate location filter
+  FlagList residue_flags;  //!< Residue flag filter
+  FlagList atom_flags;  //!< Atom flag filter
+  std::vector<AtomInequality> atom_inequalities;  //!< Property constraints
 
   Selection() = default;
+
+  //! @brief Create selection from CID string.
+  //! @param cid Coordinate ID selection string
   Selection(const std::string& cid);
 
   std::string str() const;
 
+  //! @brief Check if structure matches (always true).
   bool matches(const Structure&) const { return true; }
+
+  //! @brief Check if model matches selection.
+  //! @param model Model to test
+  //! @return True if model number matches
   bool matches(const Model& model) const {
     return mdl == 0 || mdl == model.num;
   }
+
+  //! @brief Check if chain matches selection.
+  //! @param chain Chain to test
+  //! @return True if chain ID matches
   bool matches(const Chain& chain) const {
     return chain_ids.has(chain.name);
   }
+
+  //! @brief Check if residue matches selection.
+  //! @param res Residue to test
+  //! @return True if all residue criteria match
   bool matches(const Residue& res) const {
     return (entity_types.all || et_flags[(int)res.entity_type]) &&
            residue_names.has(res.name) &&
@@ -123,6 +157,9 @@ struct GEMMI_DLL Selection {
            to_seqid.compare(res.seqid) >= 0 &&
            residue_flags.has(res.flag);
   }
+  //! @brief Check if atom matches selection.
+  //! @param a Atom to test
+  //! @return True if all atom criteria match
   bool matches(const Atom& a) const {
     return atom_names.has(a.name) &&
            (elements.empty() || elements[a.element.ordinal()]) &&

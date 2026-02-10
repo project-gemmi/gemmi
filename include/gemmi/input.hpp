@@ -1,3 +1,9 @@
+//! @file
+//! @brief Input abstraction for file reading and decompression.
+//!
+//! Input abstraction.
+//! Used to decouple file reading and decompression.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Input abstraction.
@@ -14,20 +20,50 @@
 
 namespace gemmi {
 
-// base class for FileStream, MemoryStream and GzStream
+//! @brief Base class for FileStream, MemoryStream and GzStream.
+//!
+//! Provides uniform interface for reading from files, memory, or gzipped streams.
 struct AnyStream {
   virtual ~AnyStream() = default;
 
-  virtual char* gets(char* line, int size) = 0;   // for pdb, copy_line()
-  virtual int getc() = 0;                         // for copy_line()
-  virtual bool read(void* buf, size_t len) = 0;   // for ccp4, mtz
+  //! @brief Read line into buffer (for pdb, copy_line()).
+  //! @param line Output buffer
+  //! @param size Buffer size
+  //! @return Pointer to line or nullptr on EOF
+  virtual char* gets(char* line, int size) = 0;
 
-  // these are not used in GzStream because MemoryStream is used for mtz
-  virtual long tell() = 0; // temporary, for testing
-  virtual bool skip(size_t n) = 0;  // for reading mtz without data
-  virtual std::string read_rest() { return {}; }  // for mtz (appendix)
+  //! @brief Read single character (for copy_line()).
+  //! @return Character or EOF
+  virtual int getc() = 0;
 
-  size_t copy_line(char* line, int size) {        // for pdb, xds_ascii
+  //! @brief Read binary data (for ccp4, mtz).
+  //! @param buf Output buffer
+  //! @param len Number of bytes to read
+  //! @return True if successfully read len bytes
+  virtual bool read(void* buf, size_t len) = 0;
+
+  //! @brief Get current position (temporary, for testing).
+  //! @return Current position
+  //!
+  //! These are not used in GzStream because MemoryStream is used for mtz.
+  virtual long tell() = 0;
+
+  //! @brief Skip bytes (for reading mtz without data).
+  //! @param n Number of bytes to skip
+  //! @return True on success
+  virtual bool skip(size_t n) = 0;
+
+  //! @brief Read remaining data (for mtz appendix).
+  //! @return Remaining data as string
+  virtual std::string read_rest() { return {}; }
+
+  //! @brief Copy line handling overflow (for pdb, xds_ascii).
+  //! @param line Output buffer
+  //! @param size Buffer size
+  //! @return Number of characters read
+  //!
+  //! If a line is longer than size we discard the rest of it.
+  size_t copy_line(char* line, int size) {
     if (!gets(line, size))
       return 0;
     size_t len = std::strlen(line);
@@ -39,8 +75,15 @@ struct AnyStream {
   };
 };
 
+//! @brief Stream reading from FILE*.
 struct FileStream final : public AnyStream {
+  //! @brief Construct from existing FILE*.
+  //! @param f_ File pointer (not owned)
   FileStream(std::FILE* f_) : f(f_, needs_fclose{false}) {}
+
+  //! @brief Construct from path.
+  //! @param path File path (or "-" for stdin if allowed)
+  //! @param mode File mode ("rb", "r", etc.)
   FileStream(const char* path, const char* mode) : f(file_open_or(path, mode, stdin)) {}
 
   char* gets(char* line, int size) override { return std::fgets(line, size, f.get()); }
@@ -89,10 +132,14 @@ struct FileStream final : public AnyStream {
   }
 
 private:
-  fileptr_t f;
+  fileptr_t f;  //!< File pointer
 };
 
+//! @brief Stream reading from memory buffer.
 struct MemoryStream final : public AnyStream {
+  //! @brief Construct from memory buffer.
+  //! @param start_ Pointer to start of buffer
+  //! @param size Buffer size
   MemoryStream(const char* start_, size_t size)
     : start(start_), end(start_ + size), cur(start_) {}
 
@@ -134,34 +181,52 @@ struct MemoryStream final : public AnyStream {
   }
 
 private:
-  const char* const start;
-  const char* const end;
-  const char* cur;
+  const char* const start;  //!< Start of buffer
+  const char* const end;    //!< End of buffer
+  const char* cur;          //!< Current position
 };
 
+//! @brief Basic input from file path.
+//!
+//! Provides the same interface as MaybeGzipped for non-compressed files.
 class BasicInput {
 public:
+  //! @brief Construct from file path.
+  //! @param path File path (or "-" for stdin)
   explicit BasicInput(const std::string& path) : path_(path) {}
 
+  //! @brief Get file path.
+  //! @return File path
   const std::string& path() const { return path_; }
+
+  //! @brief Get base path (same as path() for non-compressed).
+  //! @return Base path
   const std::string& basepath() const { return path_; }
 
-  // Does the path stands for stdin?
-  // Each reading function needs to call it (some functions use stdin
-  // and some std::cin, so we don't try to unify it here).
+  //! @brief Check if path represents stdin.
+  //! @return True if path is "-"
+  //!
+  //! Does the path stands for stdin?
+  //! Each reading function needs to call it (some functions use stdin
+  //! and some std::cin, so we don't try to unify it here).
   bool is_stdin() const { return path() == "-"; }
 
-  // providing the same interface as MaybeGzipped
+  //! @brief Check if file is compressed.
+  //! @return False (providing the same interface as MaybeGzipped)
   bool is_compressed() const { return false; }
-  // for reading (uncompressing into memory) the whole file at once
+
+  //! @brief Uncompress file into buffer (no-op for BasicInput).
+  //! @return Empty buffer (for reading uncompressing into memory the whole file at once)
   CharArray uncompress_into_buffer(size_t=0) { return {}; }
 
+  //! @brief Create stream for reading file.
+  //! @return FileStream for the path
   std::unique_ptr<AnyStream> create_stream() {
     return std::unique_ptr<AnyStream>(new FileStream(path().c_str(), "rb"));
   }
 
 private:
-  std::string path_;
+  std::string path_;  //!< File path
 };
 
 } // namespace gemmi

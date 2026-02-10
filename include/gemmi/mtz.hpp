@@ -24,15 +24,19 @@
 
 namespace gemmi {
 
-// Unmerged MTZ files always store in-asu hkl indices and symmetry operation
-// encoded in the M/ISYM column. Here is a helper for writing such files.
+//! @brief Helper for handling hkl indices in unmerged MTZ files.
+//!
+//! Unmerged MTZ files store in-asu hkl indices with symmetry operations
+//! encoded in the M/ISYM column. This helper moves reflections to the ASU.
 struct UnmergedHklMover {
   UnmergedHklMover(const SpaceGroup* spacegroup) : asu_(spacegroup) {
     if (spacegroup)
       group_ops_ = spacegroup->operations();
   }
 
-  // Modifies hkl and returns ISYM value for M/ISYM
+  //! @brief Move reflection to asymmetric unit and compute ISYM.
+  //! @param hkl Miller indices (modified in place to ASU equivalent)
+  //! @return ISYM value for M/ISYM column
   int move_to_asu(std::array<int, 3>& hkl) {
     std::pair<Miller, int> hkl_isym = asu_.to_asu(hkl, group_ops_);
     hkl = hkl_isym.first;
@@ -44,49 +48,63 @@ private:
   GroupOps group_ops_;
 };
 
+//! @brief Metadata from MTZ file header.
+//!
+//! Contains crystallographic metadata and file format information.
+//! Base class for full Mtz structure.
 struct MtzMetadata {
-  std::string source_path;  // input file path, if known
-  bool same_byte_order = true;
-  bool indices_switched_to_original = false;
-  std::int64_t header_offset = 0;
-  std::string version_stamp;
-  std::string title;
-  int nreflections = 0;
-  std::array<int, 5> sort_order = {};
-  double min_1_d2 = NAN;
-  double max_1_d2 = NAN;
-  float valm = NAN;
-  int nsymop = 0;
-  UnitCell cell;
-  int spacegroup_number = 0;
-  std::string spacegroup_name;
-  std::vector<Op> symops;
-  const SpaceGroup* spacegroup = nullptr;
-  std::vector<std::string> history;
-  std::string appended_text;
-  // used to report non-critical problems when reading a file (also used in mtz2cif)
-  Logger logger;
+  std::string source_path;  //!< Input file path, if known
+  bool same_byte_order = true;  //!< Byte order matches system
+  bool indices_switched_to_original = false;  //!< HKL indices modified flag
+  std::int64_t header_offset = 0;  //!< Position of header in file
+  std::string version_stamp;  //!< MTZ format version
+  std::string title;  //!< Dataset title
+  int nreflections = 0;  //!< Number of reflections
+  std::array<int, 5> sort_order = {};  //!< Column sorting order
+  double min_1_d2 = NAN;  //!< Minimum 1/d^2 (max resolution)
+  double max_1_d2 = NAN;  //!< Maximum 1/d^2 (min resolution)
+  float valm = NAN;  //!< Missing value indicator
+  int nsymop = 0;  //!< Number of symmetry operations
+  UnitCell cell;  //!< Unit cell parameters
+  int spacegroup_number = 0;  //!< Space group number
+  std::string spacegroup_name;  //!< Space group name
+  std::vector<Op> symops;  //!< Symmetry operations
+  const SpaceGroup* spacegroup = nullptr;  //!< Resolved space group
+  std::vector<std::string> history;  //!< Processing history
+  std::string appended_text;  //!< Additional text from file
+  Logger logger;  //!< For reporting non-critical issues
 };
 
+//! @brief MTZ reflection file reader and writer.
+//!
+//! Main class for handling CCP4 MTZ format reflection files.
+//! Contains datasets, columns, batches, and reflection data.
 struct GEMMI_DLL Mtz : public MtzMetadata {
+  //! @brief Dataset within an MTZ file.
+  //!
+  //! Represents a single dataset with its crystallographic parameters.
   struct Dataset {
-    int id;
-    std::string project_name;
-    std::string crystal_name;
-    std::string dataset_name;
-    UnitCell cell;
-    double wavelength;  // 0 means not set
+    int id;  //!< Dataset ID number
+    std::string project_name;  //!< Project name
+    std::string crystal_name;  //!< Crystal name
+    std::string dataset_name;  //!< Dataset name
+    UnitCell cell;  //!< Unit cell for this dataset
+    double wavelength;  //!< Wavelength in Angstroms (0 = not set)
   };
 
+  //! @brief Column in an MTZ file.
+  //!
+  //! Represents a data column with its type, label, and statistics.
+  //! Provides array-like access to column values.
   struct Column {
-    int dataset_id;
-    char type;
-    std::string label;
-    float min_value = NAN;
-    float max_value = NAN;
-    std::string source;  // from COLSRC
-    Mtz* parent;
-    std::size_t idx;
+    int dataset_id;  //!< Parent dataset ID
+    char type;  //!< Column type (H/J/K=index, F=amplitude, P=phase, etc.)
+    std::string label;  //!< Column label/name
+    float min_value = NAN;  //!< Minimum value in column
+    float max_value = NAN;  //!< Maximum value in column
+    std::string source;  //!< Source info from COLSRC
+    Mtz* parent;  //!< Pointer to parent MTZ object
+    std::size_t idx;  //!< Column index
 
     Dataset& dataset() { return parent->dataset(dataset_id); }
     const Dataset& dataset() const { return parent->dataset(dataset_id); }
@@ -209,9 +227,17 @@ struct GEMMI_DLL Mtz : public MtzMetadata {
 
   // Functions to use after MTZ headers (and data) is read.
 
+  //! @brief Get high resolution limit in Angstroms.
+  //! @return High resolution (small d-spacing)
   double resolution_high() const { return std::sqrt(1.0 / max_1_d2); }
+
+  //! @brief Get low resolution limit in Angstroms.
+  //! @return Low resolution (large d-spacing)
   double resolution_low() const  { return std::sqrt(1.0 / min_1_d2); }
 
+  //! @brief Get unit cell for a dataset.
+  //! @param dataset Dataset ID (-1 for default/base cell)
+  //! @return Reference to the unit cell
   UnitCell& get_cell(int dataset=-1) {
     for (Dataset& ds : datasets)
       if (ds.id == dataset && ds.cell.is_crystal() && ds.cell.a > 0)
@@ -232,6 +258,10 @@ struct GEMMI_DLL Mtz : public MtzMetadata {
 
   UnitCellParameters get_average_cell_from_batch_headers(double* rmsd) const;
 
+  //! @brief Set space group for the MTZ file.
+  //! @param new_sg Pointer to space group object
+  //!
+  //! Updates spacegroup_number and spacegroup_name from the SpaceGroup.
   void set_spacegroup(const SpaceGroup* new_sg) {
     spacegroup = new_sg;
     spacegroup_number = new_sg ? spacegroup->ccp4 : 0;
@@ -282,6 +312,11 @@ struct GEMMI_DLL Mtz : public MtzMetadata {
     return n;
   }
 
+  //! @brief Find column by label.
+  //! @param label Column label to search for
+  //! @param ds Optional dataset to restrict search
+  //! @param type Optional column type filter ('*' = any type)
+  //! @return Pointer to column, or nullptr if not found
   Column* column_with_label(const std::string& label, const Dataset* ds=nullptr, char type='*') {
     for (Column& col : columns)
       if (col.label == label && (!ds || ds->id == col.dataset_id)

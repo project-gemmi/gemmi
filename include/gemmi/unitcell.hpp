@@ -14,15 +14,25 @@
 
 namespace gemmi {
 
+//! @brief Convert Op::Rot (integer representation) to Mat33 (double representation).
+//! @param rot Rotation matrix in integer format with denominator Op::DEN
+//! @return 3x3 matrix with double values
 inline Mat33 rot_as_mat33(const Op::Rot& rot) {
   double mult = 1.0 / Op::DEN;
   return Mat33(mult * rot[0][0], mult * rot[0][1], mult * rot[0][2],
                mult * rot[1][0], mult * rot[1][1], mult * rot[1][2],
                mult * rot[2][0], mult * rot[2][1], mult * rot[2][2]);
 }
+
+//! @brief Extract rotation part of symmetry operation as Mat33.
+//! @param op Symmetry operation
+//! @return Rotation matrix as 3x3 matrix with double values
 inline Mat33 rot_as_mat33(const Op& op) { return rot_as_mat33(op.rot); }
 
 
+//! @brief Extract translation part of symmetry operation as Vec3.
+//! @param op Symmetry operation
+//! @return Translation vector with double values
 inline Vec3 tran_as_vec3(const Op& op) {
   double mult = 1.0 / Op::DEN;
   return Vec3(mult * op.tran[0], mult * op.tran[1], mult * op.tran[2]);
@@ -46,7 +56,7 @@ struct Position : Vec3 {
 
 inline Position operator*(double d, const Position& v) { return v * d; }
 
-/// Fractional coordinates.
+/// Fractional coordinates (relative to unit cell axes).
 struct Fractional : Vec3 {
   using Vec3::Vec3;
   Fractional() = default;
@@ -57,15 +67,24 @@ struct Fractional : Vec3 {
   Fractional operator+(const Fractional& o) const {
     return Fractional(Vec3::operator+(o));
   }
+  //! @brief Wrap coordinates to range [0, 1).
+  //! @return Fractional coordinates within unit cell
   Fractional wrap_to_unit() const {
     return {x - std::floor(x), y - std::floor(y), z - std::floor(z)};
   }
+  //! @brief Wrap coordinates to range [-0.5, 0.5).
+  //! @return Fractional coordinates centered at origin
   Fractional wrap_to_zero() const {
     return {x - std::round(x), y - std::round(y), z - std::round(z)};
   }
+  //! @brief Round coordinates to nearest integer.
+  //! @return Fractional coordinates rounded to cell units
   Fractional round() const {
     return {std::round(x), std::round(y), std::round(z)};
   }
+  //! @brief Move coordinates toward zero by one unit cell if needed.
+  //!
+  //! Adjusts coordinates outside [-0.5, 0.5] range by ±1.
   void move_toward_zero_by_one() {
     if (x > 0.5) x -= 1.0; else if (x < -0.5) x += 1.0;
     if (y > 0.5) y -= 1.0; else if (y < -0.5) y += 1.0;
@@ -180,13 +199,19 @@ struct UnitCell : UnitCellParameters {
   short cs_count = 0;  // crystallographic symmetries except identity
   std::vector<FTransform> images;  // symmetry operations
 
-  // Non-crystalline (for example NMR) structures are supposed to use fake
-  // unit cell 1x1x1, but sometimes they don't. A number of non-crystalline
-  // entries in the PDB has incorrectly set unit cell or fract. matrix,
-  // that is why we check both.
+  //! @brief Check if this is a crystal structure (not NMR or similar).
+  //! @return true if unit cell parameters indicate crystalline structure
+  //!
+  //! Non-crystalline structures (for example NMPR) should use 1x1x1 unit
+  //! cell, but some entries have incorrect values. Checks both cell
+  //! parameters and matrix.
   bool is_crystal() const { return a != 1.0 && frac.mat[0][0] != 1.0; }
 
-  // compare lengths using relative tolerance rel, angles using tolerance deg
+  //! @brief Compare unit cells with specified tolerances.
+  //! @param o Other unit cell to compare with
+  //! @param rel Relative tolerance for lengths
+  //! @param deg Absolute tolerance for angles (degrees)
+  //! @return true if unit cells are similar within tolerances
   bool is_similar(const UnitCell& o, double rel, double deg) const {
     auto siml = [&](double x, double y) { return std::fabs(x - y) < rel * std::max(x, y); };
     auto sima = [&](double x, double y) { return std::fabs(x - y) < deg; };
@@ -194,6 +219,10 @@ struct UnitCell : UnitCellParameters {
            sima(alpha, o.alpha) && sima(beta, o.beta) && sima(gamma, o.gamma);
   }
 
+  //! @brief Calculate derived properties from cell parameters.
+  //!
+  //! Computes volume, reciprocal parameters, and orthogonalization/
+  //! fractionalization matrices from the six cell parameters (a,b,c,α,β,γ).
   void calculate_properties() {
     // ensure exact values for right angles
     double cos_alpha = alpha == 90. ? 0. : std::cos(rad(alpha));
@@ -246,8 +275,11 @@ struct UnitCell : UnitCellParameters {
 
   double cos_alpha() const { return alpha == 90. ? 0. : std::cos(rad(alpha)); }
 
-  /// B matrix following convention from Busing & Levy (1967), not from cctbx.
-  /// Cf. https://dials.github.io/documentation/conventions.html
+  //! @brief Calculate B matrix for diffraction calculations.
+  //! @return 3x3 B matrix
+  //!
+  //! Follows Busing & Levy (1967) convention (not cctbx).
+  //! See https://dials.github.io/documentation/conventions.html
   Mat33 calculate_matrix_B() const {
     double sin_gammar = std::sqrt(1 - cos_gammar * cos_gammar);
     double sin_betar = std::sqrt(1 - cos_betar * cos_betar);
@@ -256,10 +288,12 @@ struct UnitCell : UnitCellParameters {
                  0., 0., 1.0 / c);
   }
 
-  /// The equivalent isotropic displacement factor.
-  /// Based on Fischer & Tillmanns (1988). Acta Cryst. C44, 775-776.
-  /// The argument is a non-orthogonalized tensor U,
-  /// i.e. the one from SmallStructure::Site, but not from Atom.
+  //! @brief Calculate equivalent isotropic displacement factor.
+  //! @param ani Non-orthogonalized anisotropic displacement tensor U
+  //! @return U_eq value
+  //!
+  //! Based on Fischer & Tillmanns (1988). Acta Cryst. C44, 775-776.
+  //! Takes non-orthogonalized tensor (e.g., from SmallStructure::Site).
   double calculate_u_eq(const SMat33<double>& ani) const {
     double aar = a * ar;
     double bbr = b * br;

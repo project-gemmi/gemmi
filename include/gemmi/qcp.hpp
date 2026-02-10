@@ -1,3 +1,11 @@
+//! @file
+//! @brief Structural superposition using QCP method.
+//!
+//! Structural superposition, the QCP method.
+//!
+//! This is modified code from qcprot.c from https://theobald.brandeis.edu/qcp/
+//! The original qcprot.c file startsd with the following info and license:
+
 // Structural superposition, the QCP method.
 //
 // This is modified code from qcprot.c from https://theobald.brandeis.edu/qcp/

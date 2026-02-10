@@ -1,3 +1,6 @@
+//! @file
+//! @brief Convert Structure to PDBx/mmCIF format.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // Create cif::Document (for PDBx/mmCIF file) from Structure.
@@ -10,6 +13,10 @@
 
 namespace gemmi {
 
+//! @brief Control which mmCIF categories to write.
+//!
+//! Bitfield structure controlling which PDBx/mmCIF categories
+//! are included when converting Structure to mmCIF format.
 struct MmcifOutputGroups {
   bool atoms:1;
   bool block_name:1;
@@ -56,13 +63,35 @@ struct MmcifOutputGroups {
       software(all), group_pdb(all), auth_all(false) {}
 };
 
+//! @brief Update existing CIF block with mmCIF data from Structure.
+//! @param st Structure to convert
+//! @param block CIF block to update
+//! @param groups Categories to include (default: all)
 GEMMI_DLL void update_mmcif_block(const Structure& st, cif::Block& block,
                                   MmcifOutputGroups groups=MmcifOutputGroups(true));
+
+//! @brief Create complete mmCIF document from Structure.
+//! @param st Structure to convert
+//! @param groups Categories to include (default: all)
+//! @return CIF document with complete PDBx/mmCIF data
 GEMMI_DLL cif::Document make_mmcif_document(const Structure& st,
                                             MmcifOutputGroups groups=MmcifOutputGroups(true));
+
+//! @brief Create mmCIF block from Structure.
+//! @param st Structure to convert
+//! @param groups Categories to include (default: all)
+//! @return CIF block with PDBx/mmCIF data
 GEMMI_DLL cif::Block make_mmcif_block(const Structure& st,
                                       MmcifOutputGroups groups=MmcifOutputGroups(true));
+
+//! @brief Create mmCIF block with header data only (no atoms).
+//! @param st Structure to extract headers from
+//! @return CIF block with metadata categories
 GEMMI_DLL cif::Block make_mmcif_headers(const Structure& st);
+
+//! @brief Add minimal required mmCIF data to block.
+//! @param st Structure to convert
+//! @param block CIF block to populate
 GEMMI_DLL void add_minimal_mmcif_data(const Structure& st, cif::Block& block);
 
 // temporarily we use it in crd.cpp

@@ -1,6 +1,12 @@
+//! @file
+//! @brief Metadata from macromolecular coordinate files.
+//!
+//! Structures for storing experimental metadata from PDB/mmCIF files including
+//! software information, experimental details (diffraction, reflection statistics),
+//! crystal information, refinement statistics, TLS groups, entities, connections,
+//! secondary structure, and biological assemblies.
+
 // Copyright 2019 Global Phasing Ltd.
-//
-// Metadata from coordinate files.
 
 #ifndef GEMMI_METADATA_HPP_
 #define GEMMI_METADATA_HPP_
@@ -15,154 +21,167 @@
 
 namespace gemmi {
 
-// corresponds to the mmCIF _software category
+//! @brief Software used in structure determination.
+//!
+//! Corresponds to the mmCIF _software category.
 struct SoftwareItem {
+  //! Software classification.
   enum Classification {
     DataCollection, DataExtraction, DataProcessing, DataReduction,
     DataScaling, ModelBuilding, Phasing, Refinement, Unspecified
   };
-  std::string name;
-  std::string version;
-  std::string date;
-  std::string description;
-  std::string contact_author;
-  std::string contact_author_email;
-  Classification classification = Unspecified;
+  std::string name;                     //!< _software.name
+  std::string version;                  //!< _software.version
+  std::string date;                     //!< _software.date
+  std::string description;              //!< _software.description
+  std::string contact_author;           //!< _software.contact_author
+  std::string contact_author_email;     //!< _software.contact_author_email
+  Classification classification = Unspecified;  //!< _software.classification
 };
 
-// Information from REMARK 200/230 is significantly expanded in PDBx/mmCIF.
-// These remarks corresponds to data across 12 mmCIF categories
-// including categories _exptl, _reflns, _exptl_crystal, _diffrn and others.
-// _exptl and _reflns seem to be 1:1. Usually we have one experiment (_exptl),
-// except for a joint refinement (e.g. X-ray + neutron data).
-// Both crystal (_exptl_crystal) and reflection statistics (_reflns) can
-// be associated with multiple diffraction sets (_diffrn).
-// But if we use the PDB format, only one diffraction set per method
-// can be described.
+//! Information from REMARK 200/230 is significantly expanded in PDBx/mmCIF.
+//! These remarks corresponds to data across 12 mmCIF categories
+//! including categories _exptl, _reflns, _exptl_crystal, _diffrn and others.
+//! _exptl and _reflns seem to be 1:1. Usually we have one experiment (_exptl),
+//! except for a joint refinement (e.g. X-ray + neutron data).
+//! Both crystal (_exptl_crystal) and reflection statistics (_reflns) can
+//! be associated with multiple diffraction sets (_diffrn).
+//! But if we use the PDB format, only one diffraction set per method
+//! can be described.
 
+//! @brief Reflection statistics.
 struct ReflectionsInfo {
-  double resolution_high = NAN; // _reflns.d_resolution_high
-                                // (or _reflns_shell.d_res_high)
-  double resolution_low = NAN;  // _reflns.d_resolution_low
-  double completeness = NAN;    // _reflns.percent_possible_obs
-  double redundancy = NAN;      // _reflns.pdbx_redundancy
-  double r_merge = NAN;         // _reflns.pdbx_Rmerge_I_obs
-  double r_sym = NAN;           // _reflns.pdbx_Rsym_value
-  double mean_I_over_sigma = NAN; // _reflns.pdbx_netI_over_sigmaI
+  double resolution_high = NAN; //!< _reflns.d_resolution_high (or _reflns_shell.d_res_high)
+  double resolution_low = NAN;  //!< _reflns.d_resolution_low
+  double completeness = NAN;    //!< _reflns.percent_possible_obs
+  double redundancy = NAN;      //!< _reflns.pdbx_redundancy
+  double r_merge = NAN;         //!< _reflns.pdbx_Rmerge_I_obs
+  double r_sym = NAN;           //!< _reflns.pdbx_Rsym_value
+  double mean_I_over_sigma = NAN; //!< _reflns.pdbx_netI_over_sigmaI
 };
 
-// _exptl has no id, _exptl.method is key item and must be unique
+//! @brief Experimental information.
+//!
+//! _exptl has no id, _exptl.method is key item and must be unique.
 struct ExperimentInfo {
-  std::string method;             // _exptl.method
-  int number_of_crystals = -1;    // _exptl.crystals_number
-  int unique_reflections = -1;    // _reflns.number_obs
-  ReflectionsInfo reflections;
-  double b_wilson = NAN;          // _reflns.B_iso_Wilson_estimate
-  std::vector<ReflectionsInfo> shells;
-  std::vector<std::string> diffraction_ids;
+  std::string method;             //!< _exptl.method
+  int number_of_crystals = -1;    //!< _exptl.crystals_number
+  int unique_reflections = -1;    //!< _reflns.number_obs
+  ReflectionsInfo reflections;    //!< Overall reflection statistics
+  double b_wilson = NAN;          //!< _reflns.B_iso_Wilson_estimate
+  std::vector<ReflectionsInfo> shells;  //!< Per-shell statistics
+  std::vector<std::string> diffraction_ids;  //!< Associated diffraction IDs
 };
 
+//! @brief Diffraction experiment details.
 struct DiffractionInfo {
-  std::string id;                // _diffrn.id
-  double temperature = NAN;      // _diffrn.ambient_temp
-  std::string source;            // _diffrn_source.source
-  std::string source_type;       // _diffrn_source.type
-  std::string synchrotron;       // _diffrn_source.pdbx_synchrotron_site
-  std::string beamline;          // _diffrn_source.pdbx_synchrotron_beamline
-  std::string wavelengths;       // _diffrn_source.pdbx_wavelength
-  std::string scattering_type;   // _diffrn_radiation.pdbx_scattering_type
-  char mono_or_laue = '\0'; // _diffrn_radiation.pdbx_monochromatic_or_laue_m_l
-  std::string monochromator;     // _diffrn_radiation.monochromator
-  std::string collection_date;   // _diffrn_detector.pdbx_collection_date
-  std::string optics;            // _diffrn_detector.details
-  std::string detector;          // _diffrn_detector.detector
-  std::string detector_make;     // _diffrn_detector.type
+  std::string id;                //!< _diffrn.id
+  double temperature = NAN;      //!< _diffrn.ambient_temp
+  std::string source;            //!< _diffrn_source.source
+  std::string source_type;       //!< _diffrn_source.type
+  std::string synchrotron;       //!< _diffrn_source.pdbx_synchrotron_site
+  std::string beamline;          //!< _diffrn_source.pdbx_synchrotron_beamline
+  std::string wavelengths;       //!< _diffrn_source.pdbx_wavelength
+  std::string scattering_type;   //!< _diffrn_radiation.pdbx_scattering_type
+  char mono_or_laue = '\0';      //!< _diffrn_radiation.pdbx_monochromatic_or_laue_m_l
+  std::string monochromator;     //!< _diffrn_radiation.monochromator
+  std::string collection_date;   //!< _diffrn_detector.pdbx_collection_date
+  std::string optics;            //!< _diffrn_detector.details
+  std::string detector;          //!< _diffrn_detector.detector
+  std::string detector_make;     //!< _diffrn_detector.type
 };
 
+//! @brief Crystal information.
 struct CrystalInfo {
-  std::string id;                 // _exptl_crystal.id
-  std::string description;        // _exptl_crystal.description
-  double ph = NAN;                // _exptl_crystal_grow.pH
-  std::string ph_range;           // _exptl_crystal_grow.pdbx_pH_range
-  std::vector<DiffractionInfo> diffractions;
+  std::string id;                 //!< _exptl_crystal.id
+  std::string description;        //!< _exptl_crystal.description
+  double ph = NAN;                //!< _exptl_crystal_grow.pH
+  std::string ph_range;           //!< _exptl_crystal_grow.pdbx_pH_range
+  std::vector<DiffractionInfo> diffractions;  //!< Associated diffraction experiments
 };
 
-
+//! @brief TLS (Translation-Libration-Screw) group for refinement.
 struct TlsGroup {
+  //! @brief Selection of residues in TLS group.
   struct Selection {
-    std::string chain;
-    SeqId res_begin;
-    SeqId res_end;
-    std::string details;  // _pdbx_refine_tls_group.selection_details
+    std::string chain;    //!< Chain name
+    SeqId res_begin;      //!< First residue
+    SeqId res_end;        //!< Last residue
+    std::string details;  //!< _pdbx_refine_tls_group.selection_details
   };
-  short num_id = -1;      // id stored as number (optimization)
-  std::string id;         // _pdbx_refine_tls.id
-  std::vector<Selection> selections;
-  Position origin;        // _pdbx_refine_tls.origin_x/y/z
-  SMat33<double> T = {NAN, NAN, NAN, NAN, NAN, NAN};  // _pdbx_refine_tls.T[][]
-  SMat33<double> L = {NAN, NAN, NAN, NAN, NAN, NAN};  // _pdbx_refine_tls.L[][]
-  Mat33 S = Mat33{NAN};   // _pdbx_refine_tls.S[][]
+  short num_id = -1;      //!< id stored as number (optimization)
+  std::string id;         //!< _pdbx_refine_tls.id
+  std::vector<Selection> selections;  //!< Residue selections
+  Position origin;        //!< _pdbx_refine_tls.origin_x/y/z
+  SMat33<double> T = {NAN, NAN, NAN, NAN, NAN, NAN};  //!< _pdbx_refine_tls.T[][]
+  SMat33<double> L = {NAN, NAN, NAN, NAN, NAN, NAN};  //!< _pdbx_refine_tls.L[][]
+  Mat33 S = Mat33{NAN};   //!< _pdbx_refine_tls.S[][]
 };
 
-// RefinementInfo corresponds to REMARK 3.
-// BasicRefinementInfo is used for both total and per-bin statistics.
-// For per-bin data, each values corresponds to one _refine_ls_shell.* tag.
+//! RefinementInfo corresponds to REMARK 3.
+//! BasicRefinementInfo is used for both total and per-bin statistics.
+//! For per-bin data, each values corresponds to one _refine_ls_shell.* tag.
+
+//! @brief Basic refinement statistics (total or per-bin).
 struct BasicRefinementInfo {
-  double resolution_high = NAN; // _refine.ls_d_res_high,         _refine_ls_shell.d_res_high
-  double resolution_low = NAN;  // _refine.ls_d_res_low,          _refine_ls_shell.d_res_low
-  double completeness = NAN;    // _refine.ls_percent_reflns_obs, _refine_ls_shell.percent...
-  int reflection_count = -1;    // _refine.ls_number_reflns_obs,  _refine_ls_shell.number...
-  int work_set_count = -1;      // _refine.ls_number_reflns_R_work, _refine_ls_shell.number...
-  int rfree_set_count = -1;     // _refine.ls_number_reflns_R_free, _refine_ls_shell.number...
-  double r_all = NAN;           // _refine.ls_R_factor_obs,       _refine_ls_shell.R_factor_obs
-  double r_work = NAN;          // _refine.ls_R_factor_R_work,    _refine_ls_shell.R_factor_R_work
-  double r_free = NAN;          // _refine.ls_R_factor_R_free,    _refine_ls_shell.R_factor_R_free
-  double cc_fo_fc_work = NAN;   // _refine.correlation_coeff_Fo_to_Fc, _refine_ls_shell.corr...
-  double cc_fo_fc_free = NAN;   // _refine.correlation_coeff_Fo_to_Fc_free, _refine_ls_shell.c...
-  double fsc_work = NAN;        // _refine.pdbx_average_fsc_work, _refine_ls_shell.pdbx_fsc_work
-  double fsc_free = NAN;        // _refine.pdbx_average_fsc_free, _refine_ls_shell.pdbx_fsc_free
-  double cc_intensity_work = NAN;  // _refine.correlation_coeff_I_to_Fcsqd_work, ...
-  double cc_intensity_free = NAN;  // _refine.correlation_coeff_I_to_Fcsqd_free, ...
+  double resolution_high = NAN; //!< _refine.ls_d_res_high, _refine_ls_shell.d_res_high
+  double resolution_low = NAN;  //!< _refine.ls_d_res_low, _refine_ls_shell.d_res_low
+  double completeness = NAN;    //!< _refine.ls_percent_reflns_obs, _refine_ls_shell.percent...
+  int reflection_count = -1;    //!< _refine.ls_number_reflns_obs, _refine_ls_shell.number...
+  int work_set_count = -1;      //!< _refine.ls_number_reflns_R_work, _refine_ls_shell.number...
+  int rfree_set_count = -1;     //!< _refine.ls_number_reflns_R_free, _refine_ls_shell.number...
+  double r_all = NAN;           //!< _refine.ls_R_factor_obs, _refine_ls_shell.R_factor_obs
+  double r_work = NAN;          //!< _refine.ls_R_factor_R_work, _refine_ls_shell.R_factor_R_work
+  double r_free = NAN;          //!< _refine.ls_R_factor_R_free, _refine_ls_shell.R_factor_R_free
+  double cc_fo_fc_work = NAN;   //!< _refine.correlation_coeff_Fo_to_Fc, _refine_ls_shell.corr...
+  double cc_fo_fc_free = NAN;   //!< _refine.correlation_coeff_Fo_to_Fc_free, _refine_ls_shell.c...
+  double fsc_work = NAN;        //!< _refine.pdbx_average_fsc_work, _refine_ls_shell.pdbx_fsc_work
+  double fsc_free = NAN;        //!< _refine.pdbx_average_fsc_free, _refine_ls_shell.pdbx_fsc_free
+  double cc_intensity_work = NAN;  //!< _refine.correlation_coeff_I_to_Fcsqd_work, ...
+  double cc_intensity_free = NAN;  //!< _refine.correlation_coeff_I_to_Fcsqd_free, ...
 };
 
+//! @brief Complete refinement information (REMARK 3).
 struct RefinementInfo : BasicRefinementInfo {
+  //! @brief Restraint statistics (_refine_ls_restr).
   struct Restr {
-    std::string name;
-    int count = -1;
-    double weight = NAN;
-    std::string function;
-    double dev_ideal = NAN;
+    std::string name;      //!< Restraint type
+    int count = -1;        //!< Number of restraints
+    double weight = NAN;   //!< Weight
+    std::string function;  //!< Function type
+    double dev_ideal = NAN; //!< Deviation from ideal
 
     Restr() = default;
     explicit Restr(const std::string& name_) : name(name_) {}
   };
-  std::string id;
-  std::string cross_validation_method; // _refine.pdbx_ls_cross_valid_method
-  std::string rfree_selection_method;  // _refine.pdbx_R_Free_selection_details
-  int bin_count = -1;        // _refine_ls_shell.pdbx_total_number_of_bins_used
-  std::vector<BasicRefinementInfo> bins;
-  double mean_b = NAN;                // _refine.B_iso_mean
-  SMat33<double> aniso_b{NAN, NAN, NAN, NAN, NAN, NAN};  // _refine.aniso_B[][]
-  double luzzati_error = NAN; // _refine_analyze.Luzzati_coordinate_error_obs
-  double dpi_blow_r = NAN;            // _refine.pdbx_overall_SU_R_Blow_DPI
-  double dpi_blow_rfree = NAN;        // _refine.pdbx_overall_SU_R_free_Blow_DPI
-  double dpi_cruickshank_r = NAN;     // _refine.overall_SU_R_Cruickshank_DPI
-  double dpi_cruickshank_rfree = NAN; // _refine.pdbx_overall_SU_R_free_Cruickshank_DPI
-  std::vector<Restr> restr_stats;     // _refine_ls_restr
-  std::vector<TlsGroup> tls_groups;   // _pdbx_refine_tls
-  std::string remarks;
+  std::string id;                              //!< Refinement ID
+  std::string cross_validation_method;         //!< _refine.pdbx_ls_cross_valid_method
+  std::string rfree_selection_method;          //!< _refine.pdbx_R_Free_selection_details
+  int bin_count = -1;                          //!< _refine_ls_shell.pdbx_total_number_of_bins_used
+  std::vector<BasicRefinementInfo> bins;       //!< Per-shell statistics
+  double mean_b = NAN;                         //!< _refine.B_iso_mean
+  SMat33<double> aniso_b{NAN, NAN, NAN, NAN, NAN, NAN};  //!< _refine.aniso_B[][]
+  double luzzati_error = NAN;                  //!< _refine_analyze.Luzzati_coordinate_error_obs
+  double dpi_blow_r = NAN;                     //!< _refine.pdbx_overall_SU_R_Blow_DPI
+  double dpi_blow_rfree = NAN;                 //!< _refine.pdbx_overall_SU_R_free_Blow_DPI
+  double dpi_cruickshank_r = NAN;              //!< _refine.overall_SU_R_Cruickshank_DPI
+  double dpi_cruickshank_rfree = NAN;          //!< _refine.pdbx_overall_SU_R_free_Cruickshank_DPI
+  std::vector<Restr> restr_stats;              //!< _refine_ls_restr
+  std::vector<TlsGroup> tls_groups;            //!< _pdbx_refine_tls
+  std::string remarks;                         //!< Additional remarks
 };
 
 
+//! @brief Complete metadata from coordinate file.
 struct Metadata {
-  std::vector<std::string> authors;  // _audit_author.name
-  std::vector<ExperimentInfo> experiments;
-  std::vector<CrystalInfo> crystals;
-  std::vector<RefinementInfo> refinement;
-  std::vector<SoftwareItem> software;
-  std::string solved_by;       // _refine.pdbx_method_to_determine_struct
-  std::string starting_model;  // _refine.pdbx_starting_model
-  std::string remark_300_detail; // _struct_biol.details
+  std::vector<std::string> authors;          //!< _audit_author.name
+  std::vector<ExperimentInfo> experiments;   //!< Experimental information
+  std::vector<CrystalInfo> crystals;         //!< Crystal information
+  std::vector<RefinementInfo> refinement;    //!< Refinement statistics
+  std::vector<SoftwareItem> software;        //!< Software used
+  std::string solved_by;                     //!< _refine.pdbx_method_to_determine_struct
+  std::string starting_model;                //!< _refine.pdbx_starting_model
+  std::string remark_300_detail;             //!< _struct_biol.details
 
   bool has(double RefinementInfo::*field) const {
     return std::any_of(refinement.begin(), refinement.end(),
@@ -200,78 +219,92 @@ struct Metadata {
 };
 
 
-// Entity description.
-//
-// values corresponding to mmCIF _entity.type
+//! Entity description.
+//!
+//! values corresponding to mmCIF _entity.type
+
+//! @brief Entity type (_entity.type).
 enum class EntityType : unsigned char {
   Unknown,
   Polymer,
   NonPolymer,
-  Branched, // introduced in 2020
+  Branched, //!< introduced in 2020
   // _entity.type macrolide is in PDBx/mmCIF, but no PDB entry uses it
   //Macrolide,
   Water
 };
 
-// values corresponding to mmCIF _entity_poly.type
+//! @brief Polymer type (_entity_poly.type).
+//!
+//! values corresponding to mmCIF _entity_poly.type
 enum class PolymerType : unsigned char {
-  Unknown,       // unknown or not applicable
-  PeptideL,      // polypeptide(L) in mmCIF (168923 values in the PDB in 2017)
-  PeptideD,      // polypeptide(D) (57 values)
-  Dna,           // polydeoxyribonucleotide (9905)
-  Rna,           // polyribonucleotide (4559)
-  DnaRnaHybrid,  // polydeoxyribonucleotide/polyribonucleotide hybrid (156)
-  SaccharideD,   // polysaccharide(D) (18)
-  SaccharideL,   // polysaccharide(L) (0)
-  Pna,           // peptide nucleic acid (2)
-  CyclicPseudoPeptide,  // cyclic-pseudo-peptide (1)
-  Other,         // other (4)
+  Unknown,       //!< unknown or not applicable
+  PeptideL,      //!< polypeptide(L) in mmCIF (168923 values in the PDB in 2017)
+  PeptideD,      //!< polypeptide(D) (57 values)
+  Dna,           //!< polydeoxyribonucleotide (9905)
+  Rna,           //!< polyribonucleotide (4559)
+  DnaRnaHybrid,  //!< polydeoxyribonucleotide/polyribonucleotide hybrid (156)
+  SaccharideD,   //!< polysaccharide(D) (18)
+  SaccharideL,   //!< polysaccharide(L) (0)
+  Pna,           //!< peptide nucleic acid (2)
+  CyclicPseudoPeptide,  //!< cyclic-pseudo-peptide (1)
+  Other,         //!< other (4)
 };
 
+//! @brief Check if polymer type is polypeptide.
+//! @param pt Polymer type
+//! @return True if PeptideL or PeptideD
 inline bool is_polypeptide(PolymerType pt) {
   return pt == PolymerType::PeptideL || pt == PolymerType::PeptideD;
 }
 
+//! @brief Check if polymer type is polynucleotide.
+//! @param pt Polymer type
+//! @return True if DNA, RNA, or hybrid
 inline bool is_polynucleotide(PolymerType pt) {
   return pt == PolymerType::Dna || pt == PolymerType::Rna ||
          pt == PolymerType::DnaRnaHybrid;
 }
 
+//! @brief Entity (molecular entity in structure).
 struct Entity {
+  //! @brief Database reference.
   struct DbRef {
-    std::string db_name;
-    std::string accession_code;
-    std::string id_code;
-    std::string isoform;  // pdbx_db_isoform
-    SeqId seq_begin, seq_end;
-    SeqId db_begin, db_end;
-    SeqId::OptionalNum label_seq_begin, label_seq_end;
+    std::string db_name;          //!< Database name
+    std::string accession_code;   //!< Accession code
+    std::string id_code;          //!< ID code
+    std::string isoform;          //!< pdbx_db_isoform
+    SeqId seq_begin, seq_end;     //!< Sequence range in entity
+    SeqId db_begin, db_end;       //!< Sequence range in database
+    SeqId::OptionalNum label_seq_begin, label_seq_end;  //!< Label sequence range
   };
-  std::string name;
-  std::vector<std::string> subchains;
-  EntityType entity_type = EntityType::Unknown;
-  PolymerType polymer_type = PolymerType::Unknown;
-  // In case of microheterogeneity, PDB SEQRES has only the first residue name.
-  bool reflects_microhetero = false;
-  std::vector<DbRef> dbrefs;
-  /// List of SIFTS Uniprot ACs referenced by SiftsUnpResidue::acc_index
-  std::vector<std::string> sifts_unp_acc;
-  /// SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
-  std::vector<std::string> full_sequence;
+  std::string name;                     //!< Entity name
+  std::vector<std::string> subchains;   //!< Subchains in this entity
+  EntityType entity_type = EntityType::Unknown;      //!< Entity type
+  PolymerType polymer_type = PolymerType::Unknown;   //!< Polymer type
+  bool reflects_microhetero = false;    //!< PDB SEQRES has only first residue name for microheterogeneity
+  std::vector<DbRef> dbrefs;            //!< Database references
+  std::vector<std::string> sifts_unp_acc;  //!< SIFTS Uniprot ACs referenced by SiftsUnpResidue::acc_index
+  std::vector<std::string> full_sequence;  //!< SEQRES or entity_poly_seq with microheterogeneity as comma-separated names
 
   Entity() = default;
   explicit Entity(const std::string& name_) noexcept : name(name_) {}
+
+  //! @brief Get first monomer name from comma-separated list.
+  //! @param mon_list Comma-separated monomer names
+  //! @return First monomer name
   static std::string first_mon(const std::string& mon_list) {
     return mon_list.substr(0, mon_list.find(','));
   }
 };
 
-/// Reference to UniProt residue, based on _pdbx_sifts_xref_db.
-/// Used in Residue::sifts_unp. res==0 <=> unset.
+//! @brief Reference to UniProt residue, based on _pdbx_sifts_xref_db.
+//!
+//! Used in Residue::sifts_unp. res==0 <=> unset.
 struct SiftsUnpResidue {
-  char res = '\0';             // _pdbx_sifts_xref_db.unp_res
-  std::uint8_t acc_index = 0;  // index of Entity::sifts_unp_acc
-  std::uint16_t num = 0;       // _pdbx_sifts_xref_db.unp_num
+  char res = '\0';             //!< _pdbx_sifts_xref_db.unp_res
+  std::uint8_t acc_index = 0;  //!< index of Entity::sifts_unp_acc
+  std::uint16_t num = 0;       //!< _pdbx_sifts_xref_db.unp_num
 };
 
 // A connection. Corresponds to _struct_conn.

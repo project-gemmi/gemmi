@@ -1,3 +1,6 @@
+//! @file
+//! @brief Normalization of amplitudes F->E ("Karle" approach, similar to CCP4 ECALC).
+
 // Copyright 2023 Global Phasing Ltd.
 //
 // Normalization of amplitudes F->E ("Karle" approach, similar to CCP4 ECALC).
@@ -10,6 +13,17 @@
 
 namespace gemmi {
 
+//! @brief Calculate amplitude normalizers for converting F to E.
+//! @tparam DataProxy Reflection data proxy type
+//! @param data Reflection data
+//! @param fcol_idx Column index for F values
+//! @param binner Resolution binner
+//! @return Vector of normalizers (one per reflection)
+//!
+//! Normalizes structure factor amplitudes F to quasi-normalized structure
+//! factors E using the "Karle" approach (similar to CCP4 ECALC). The
+//! normalization accounts for systematic absences and uses smoothed
+//! statistics in resolution shells.
 template<typename DataProxy>
 std::vector<double> calculate_amplitude_normalizers(const DataProxy& data, int fcol_idx,
                                                     const Binner& binner) {

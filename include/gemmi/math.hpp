@@ -1,3 +1,8 @@
+//! @file
+//! @brief Math utilities and 3D linear algebra.
+//!
+//! Math utilities. 3D linear algebra.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Math utilities. 3D linear algebra.
@@ -13,36 +18,74 @@
 
 namespace gemmi {
 
+//! @brief Pi constant.
+//! @return Pi value
 constexpr double pi() { return 3.1415926535897932384626433832795029; }
 
-// The value used in converting between energy[eV] and wavelength[Angstrom].
-// $ units -d15 'h * c / eV / angstrom'
+//! @brief Planck constant times speed of light (h*c).
+//! @return Value used in converting between energy[eV] and wavelength[Angstrom]
+//!
+//! The value used in converting between energy[eV] and wavelength[Angstrom].
+//! $ units -d15 'h * c / eV / angstrom'
 constexpr double hc() { return 12398.4197386209; }
 
-// The Bohr radius (a0) in Angstroms.
+//! @brief Bohr radius in Angstroms.
+//! @return Bohr radius (a0) in Angstroms
+//!
+//! The Bohr radius (a0) in Angstroms.
 constexpr double bohrradius() { return 0.529177210903; }
 
-// for Mott-Bethe factor
+//! @brief Mott-Bethe factor constant.
+//! @return Constant for Mott-Bethe factor
 constexpr double mott_bethe_const() { return 1. / (2 * pi() * pi() * bohrradius()); }
 
-// Used in conversion of ADPs (atomic displacement parameters).
+//! @brief Conversion factor from U to B (atomic displacement parameters).
+//! @return 8π²
+//!
+//! Used in conversion of ADPs (atomic displacement parameters).
 constexpr double u_to_b() { return 8 * pi() * pi(); }
 
+//! @brief Convert radians to degrees.
+//! @param angle Angle in radians
+//! @return Angle in degrees
 constexpr double deg(double angle) { return 180.0 / pi() * angle; }
+
+//! @brief Convert degrees to radians.
+//! @param angle Angle in degrees
+//! @return Angle in radians
 constexpr double rad(double angle) { return pi() / 180.0 * angle; }
 
+//! @brief Square of float.
+//! @param x Value
+//! @return x²
 constexpr float sq(float x) { return x * x; }
+
+//! @brief Square of double.
+//! @param x Value
+//! @return x²
 constexpr double sq(double x) { return x * x; }
 
+//! @brief Logarithm of hyperbolic cosine.
+//! @param x Input value
+//! @return ln(cosh(x))
+//!
+//! cosh(x) would overflow for x > 710.5, so we calculate:
+//! ln(cosh(x)) = ln(e^x + e^-x) - ln(2) = ln(e^x * (1 + e^-2x)) - ln(2)
 inline double log_cosh(double x) {
-  // cosh(x) would overflow for x > 710.5, so we calculate:
-  // ln(cosh(x)) = ln(e^x + e^-x) - ln(2) = ln(e^x * (1 + e^-2x)) - ln(2)
   x = std::abs(x);
   return x - std::log(2) + std::log1p(std::exp(-2 * x));
 }
 
+//! @brief Round to nearest integer.
+//! @param d Double value
+//! @return Rounded integer
 inline int iround(double d) { return static_cast<int>(std::round(d)); }
 
+//! @brief Absolute difference between angles.
+//! @param a First angle
+//! @param b Second angle
+//! @param full Full circle (default 360.0)
+//! @return Smallest angle difference
 inline double angle_abs_diff(double a, double b, double full=360.0) {
   double d = std::fabs(a - b);
   if (d > full)
@@ -50,14 +93,21 @@ inline double angle_abs_diff(double a, double b, double full=360.0) {
   return std::min(d, full - d);
 }
 
-// similar to C++17 std::clamp()
+//! @brief Clamp value to range (similar to C++17 std::clamp()).
+//! @tparam T Value type
+//! @param v Value to clamp
+//! @param lo Lower bound
+//! @param hi Upper bound
+//! @return Clamped value
 template<class T> constexpr T clamp(T v, T lo, T hi) {
   return std::min(std::max(v, lo), hi);
 }
 
+//! @brief 3D vector template.
+//! @tparam Real Floating-point type (float or double)
 template <typename Real>
 struct Vec3_ {
-  Real x, y, z;
+  Real x, y, z;  //!< Coordinates
 
   Vec3_() : x(0), y(0), z(0) {}
   Vec3_(Real x_, Real y_, Real z_) : x(x_), y(y_), z(z_) {}

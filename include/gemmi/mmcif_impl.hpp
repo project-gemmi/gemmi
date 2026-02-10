@@ -1,3 +1,9 @@
+//! @file
+//! @brief Implementation helpers for mmCIF reading (coordinate and reflection files).
+//!
+//! Functions used in both mmcif.hpp and refln.hpp (for coordinate and
+//! reflection mmCIF files).
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // Functions used in both mmcif.hpp and refln.hpp (for coordinate and

@@ -1,3 +1,6 @@
+//! @file
+//! @brief Glob pattern matching.
+
 // Copyright Global Phasing Ltd.
 //
 // Glob pattern matching
@@ -9,7 +12,12 @@
 
 namespace gemmi {
 
-// linear-time glob matching: https://research.swtch.com/glob
+//! @brief Match string against glob pattern.
+//! @param pattern Glob pattern ('*' and '?' wildcards)
+//! @param str String to match
+//! @return True if string matches pattern
+//!
+//! Linear-time glob matching: https://research.swtch.com/glob
 inline bool glob_match(const std::string& pattern, const std::string& str) {
   size_t pat_next = 0;
   size_t str_next = std::string::npos;

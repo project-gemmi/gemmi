@@ -1,3 +1,6 @@
+//! @file
+//! @brief CCP4/MRC map format reading and writing.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // CCP4 format for maps and masks.
@@ -27,62 +30,95 @@ namespace gemmi {
 
 using std::int32_t;
 
-// options for Ccp4<>::setup
+//! @brief Setup mode for CCP4 map processing.
 enum class MapSetup {
-  Full,         // reorder and expand to the whole unit cell
-  NoSymmetry,   // reorder and resize to the whole cell, but no symmetry ops
-  ReorderOnly   // reorder axes to X, Y, Z
+  Full,         //!< Reorder and expand to the whole unit cell
+  NoSymmetry,   //!< Reorder and resize to whole cell, but no symmetry ops
+  ReorderOnly   //!< Reorder axes to X, Y, Z only
 };
 
+//! @brief Base class for CCP4 map with header access methods.
 struct Ccp4Base {
-  DataStats hstats;  // data statistics read from / written to ccp4 map
-  // stores raw headers if the grid was read from ccp4 map
-  std::vector<int32_t> ccp4_header;
-  bool same_byte_order = true;
+  DataStats hstats;  //!< Data statistics from/for ccp4 map header
+  std::vector<int32_t> ccp4_header;  //!< Raw header words (256 + extensions)
+  bool same_byte_order = true;  //!< True if file has native byte order
 
-  // methods to access info from ccp4 headers, w is word number from the spec
+  //! @brief Get pointer to header word.
+  //! @param w Word number (1-based, from CCP4 spec)
+  //! @return Pointer to word data
   void* header_word(int w) { return &ccp4_header.at(w - 1); }
-  const void* header_word(int w) const { return &ccp4_header.at(w - 1); }
+  const void* header_word(int w) const { return &ccp4_header.at(w - 1); }  //!< Const version.
 
+  //! @brief Get 32-bit integer from header.
+  //! @param w Word number (1-based)
+  //! @return Integer value with byte swapping if needed
   int32_t header_i32(int w) const {
     int32_t value = ccp4_header.at(w - 1);
     if (!same_byte_order)
       swap_four_bytes(&value);
     return value;
   }
+  //! @brief Get three consecutive 32-bit integers.
+  //! @param w First word number (1-based)
+  //! @return Array of three integers
   std::array<int, 3> header_3i32(int w) const {
     return {{ header_i32(w), header_i32(w+1), header_i32(w+2) }};
   }
+  //! @brief Get float from header.
+  //! @param w Word number (1-based)
+  //! @return Float value with byte swapping if needed
   float header_float(int w) const {
     int32_t int_value = header_i32(w);
     float f;
     std::memcpy(&f, &int_value, 4);
     return f;
   }
+  //! @brief Get string from header.
+  //! @param w First word number (1-based)
+  //! @param len String length in bytes
+  //! @return String from header
+  //! @throws Error if string extends past header end
   std::string header_str(int w, size_t len=80) const {
     if (4 * ccp4_header.size() < 4 * (w - 1) + len)
       fail("invalid end of string");
     return std::string(reinterpret_cast<const char*>(header_word(w)), len);
   }
+  //! @brief Set 32-bit integer in header.
+  //! @param w Word number (1-based)
+  //! @param value Integer value to set
   void set_header_i32(int w, int32_t value) {
     if (!same_byte_order)
       swap_four_bytes(&value);
     ccp4_header.at(w - 1) = value;
   }
+  //! @brief Set three consecutive 32-bit integers.
+  //! @param w First word number (1-based)
+  //! @param x First value
+  //! @param y Second value
+  //! @param z Third value
   void set_header_3i32(int w, int32_t x, int32_t y, int32_t z) {
     set_header_i32(w, x);
     set_header_i32(w+1, y);
     set_header_i32(w+2, z);
   }
+  //! @brief Set float in header.
+  //! @param w Word number (1-based)
+  //! @param value Float value to set
   void set_header_float(int w, float value) {
     int32_t int32_value;
     std::memcpy(&int32_value, &value, 4);
     set_header_i32(w, int32_value);
   }
+  //! @brief Set string in header.
+  //! @param w First word number (1-based)
+  //! @param str String to write
   void set_header_str(int w, const std::string& str) {
     std::memcpy(header_word(w), str.c_str(), str.size());
   }
 
+  //! @brief Get axis ordering from MAPC/MAPR/MAPS.
+  //! @return Array where pos[i] gives position of axis i (0=X, 1=Y, 2=Z)
+  //! @throws Error if MAPC/MAPR/MAPS values are invalid
   std::array<int, 3> axis_positions() const {
     if (ccp4_header.empty())
       return {{0, 1, 2}}; // assuming it's X,Y,Z
@@ -96,10 +132,15 @@ struct Ccp4Base {
     return pos;
   }
 
-  double header_rfloat(int w) const { // rounded to 5 digits
+  //! @brief Get float rounded to 5 digits.
+  //! @param w Word number (1-based)
+  //! @return Float value rounded to 5 significant digits
+  double header_rfloat(int w) const {
     return std::round(1e5 * header_float(w)) / 1e5;
   }
 
+  //! @brief Get map extent as fractional box.
+  //! @return Box in fractional coordinates
   Box<Fractional> get_extent() const {
     Box<Fractional> box;
     // cf. setup()
@@ -116,14 +157,19 @@ struct Ccp4Base {
     return box;
   }
 
-  // Skew transformation (words 25-37) is supported by CCP4 maplib and PyMOL,
-  // but it's not in the MRC format and is not supported by most programs.
-  // From maplib.html: Skew transformation is from standard orthogonal
-  // coordinate frame (as used for atoms) to orthogonal map frame, as
-  //                            Xo(map) = S * (Xo(atoms) - t)
+  //! @brief Check if map has skew transformation.
+  //! @return True if LSKFLG (word 25) is non-zero
+  //!
+  //! Skew transformation (words 25-37) is supported by CCP4 maplib and PyMOL,
+  //! but it's not in the MRC format and is not supported by most programs.
+  //! From maplib.html: Skew transformation is from standard orthogonal
+  //! coordinate frame (as used for atoms) to orthogonal map frame, as
+  //!                            Xo(map) = S * (Xo(atoms) - t)
   bool has_skew_transformation() const {
     return header_i32(25) != 0;  // LSKFLG should be 0 or 1
   }
+  //! @brief Get skew transformation from header.
+  //! @return Transform with matrix S and translation t
   Transform get_skew_transformation() const {
     return {
       // 26-34 SKWMAT
@@ -135,12 +181,18 @@ struct Ccp4Base {
     };
   }
 
-  // ORIGIN (words 50-52), used in MRC format, zeros in CCP4 format
+  //! @brief Get origin position from header.
+  //! @return Origin position from words 50-52
+  //!
+  //! ORIGIN (words 50-52), used in MRC format, zeros in CCP4 format
   Position get_origin() const {
     return Position(header_float(50), header_float(51), header_float(52));
   }
 
-  // this function assumes that the whole unit cell is covered with offset 0
+  //! @brief Prepare CCP4 header from grid metadata.
+  //! @param grid Grid metadata
+  //!
+  //! This function assumes that the whole unit cell is covered with offset 0
   void prepare_ccp4_header_except_mode_and_stats(GridMeta& grid) {
     GroupOps ops;
     if (grid.spacegroup)
@@ -179,6 +231,8 @@ struct Ccp4Base {
     }
   }
 
+  //! @brief Update header MODE and statistics.
+  //! @param mode Map mode (0, 1, 2, or 6)
   void update_header_mode_and_stats(int mode) {
     set_header_i32(4, mode);
     set_header_float(20, (float) hstats.dmin);
@@ -188,6 +242,9 @@ struct Ccp4Base {
     // labels could be modified but it's not important
   }
 
+  //! @brief Check if map covers full unit cell.
+  //! @param grid Grid metadata
+  //! @return True if map covers full cell with zero offset
   bool full_cell_(const GridMeta& grid) const {
     if (ccp4_header.empty())
       return true; // assuming it's full cell
@@ -198,6 +255,11 @@ struct Ccp4Base {
       header_i32(8) == grid.nu && header_i32(9) == grid.nv && header_i32(10) == grid.nw;
   }
 
+  //! @brief Read CCP4 header from stream.
+  //! @param grid Grid metadata to populate (or nullptr)
+  //! @param f Input stream
+  //! @param path File path for error messages
+  //! @throws Error on read failure or invalid header
   void read_ccp4_header_(GridMeta* grid, AnyStream& f, const std::string& path) {
     const size_t hsize = 256;
     ccp4_header.resize(hsize);
@@ -242,12 +304,19 @@ struct Ccp4Base {
   }
 };
 
+//! @brief CCP4/MRC map with grid data.
+//! @tparam T Grid data type (default: float)
 template<typename T=float>
 struct Ccp4 : public Ccp4Base {
-  Grid<T> grid;
+  Grid<T> grid;  //!< 3D grid of map values
 
-  /// If the header is empty, prepare it; otherwise, update only MODE
-  /// and, if update_stats==true, also DMIN, DMAX, DMEAN and RMS.
+  //! @brief Update or create CCP4 header.
+  //! @param mode Map mode (-1=auto-detect, 0/1/2/6)
+  //! @param update_stats If true, recalculate statistics
+  //! @throws Error if mode invalid or grid not set up
+  //!
+  //! If the header is empty, prepare it; otherwise, update only MODE
+  //! and, if update_stats==true, also DMIN, DMAX, DMEAN and RMS.
   void update_ccp4_header(int mode=-1, bool update_stats=true) {
     if (mode > 2 && mode != 6)
       fail("Only modes 0, 1, 2 and 6 are supported.");
@@ -268,6 +337,8 @@ struct Ccp4 : public Ccp4Base {
     update_header_mode_and_stats(mode);
   }
 
+  //! @brief Determine map mode from data type T.
+  //! @return Mode (0/1/2/6) or -1 if not standard type
   static int mode_for_data() {
     if (std::is_same<T, std::int8_t>::value)
       return 0;
@@ -280,35 +351,62 @@ struct Ccp4 : public Ccp4Base {
     return -1;
   }
 
+  //! @brief Check if map covers full unit cell.
+  //! @return True if map covers full cell with zero offset
   bool full_cell() const { return full_cell_(grid); }
 
+  //! @brief Read CCP4 header from stream.
+  //! @param f Input stream
+  //! @param path File path for error messages
   void read_ccp4_header(AnyStream& f, const std::string& path) {
     read_ccp4_header_(&grid, f, path);
     if (grid.axis_order != AxisOrder::Unknown)
       grid.calculate_spacing();
   }
 
+  //! @brief Set up map grid (reorder axes, apply symmetry).
+  //! @param default_value Value for unmapped grid points
+  //! @param mode Setup mode (Full/NoSymmetry/ReorderOnly)
   void setup(T default_value, MapSetup mode=MapSetup::Full);
+
+  //! @brief Crop map to specified extent.
+  //! @param box Fractional box to extract
+  //! @throws Error if not set up or not XYZ order
   void set_extent(const Box<Fractional>& box);
 
+  //! @brief Read CCP4 map from stream.
+  //! @param f Input stream
+  //! @param path File path for error messages
+  //! @throws Error on read failure or unsupported mode
   void read_ccp4_stream(AnyStream& f, const std::string& path);
 
+  //! @brief Read CCP4 map from file.
+  //! @param path File path
   void read_ccp4_file(const std::string& path) {
     FileStream stream(path.c_str(), "rb");
     read_ccp4_stream(stream, path);
   }
 
+  //! @brief Read CCP4 map from memory.
+  //! @param data Pointer to map data
+  //! @param size Data size in bytes
+  //! @param name Name for error messages
   void read_ccp4_from_memory(const char* data, size_t size, const std::string& name) {
     MemoryStream stream(data, size);
     read_ccp4_stream(stream, name);
   }
 
+  //! @brief Read CCP4 map from input.
+  //! @tparam Input Input type (file path, stream, etc.)
+  //! @param input Input source
   template<typename Input>
   void read_ccp4(Input&& input) {
     std::unique_ptr<AnyStream> stream = input.create_stream();
     read_ccp4_stream(*stream, input.path());
   }
 
+  //! @brief Write CCP4 map to file.
+  //! @param path Output file path
   void write_ccp4_map(const std::string& path) const;
 };
 
@@ -496,8 +594,21 @@ void Ccp4<T>::write_ccp4_map(const std::string& path) const {
     impl::write_data<std::uint16_t>(grid.data, f.get());
 }
 
+//! @brief Read CCP4 map as float grid.
+//! @param path File path
+//! @param setup If true, call setup() after reading
+//! @return CCP4 map
 GEMMI_DLL Ccp4<float> read_ccp4_map(const std::string& path, bool setup);
+
+//! @brief Read CCP4 mask as int8 grid.
+//! @param path File path
+//! @param setup If true, call setup() after reading
+//! @return CCP4 mask
 GEMMI_DLL Ccp4<int8_t> read_ccp4_mask(const std::string& path, bool setup);
+
+//! @brief Read only CCP4 header.
+//! @param path File path
+//! @return Base object with header data
 GEMMI_DLL Ccp4Base read_ccp4_header(const std::string& path);
 
 } // namespace gemmi

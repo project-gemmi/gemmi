@@ -1,3 +1,9 @@
+//! @file
+//! @brief Flood fill algorithm for finding connected regions in grids.
+//!
+//! The flood fill (scanline fill) algorithm for Grid.
+//! Assumes periodic boundary conditions in the grid and 6-way connectivity.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // The flood fill (scanline fill) algorithm for Grid.
@@ -11,19 +17,27 @@
 
 namespace gemmi {
 
-// Land is either 0 (when 1=sea, 0=land) or 1 (when 0=sea, 1=land)
+//! @brief Scanline flood fill for finding connected regions in grids.
+//! @tparam T Grid data type
+//! @tparam Land Value indicating land (0 or 1; sea is the opposite)
+//!
+//! Land is either 0 (when 1=sea, 0=land) or 1 (when 0=sea, 1=land)
 template<typename T, int Land>
 struct FloodFill {
-  Grid<T>& mask;
+  Grid<T>& mask;  //!< Grid mask to process
 
+  //! @brief Horizontal line in grid (scanline).
   struct Line {
-    int u, v, w, ulen;
-    T* ptr;
+    int u, v, w, ulen;  //!< Starting position (u,v,w) and length
+    T* ptr;  //!< Pointer to first grid point in line
   };
 
+  //! @brief Result of flood fill containing all connected points as lines.
   struct Result {
-    std::vector<Line> lines;
+    std::vector<Line> lines;  //!< All lines in connected region
 
+    //! @brief Count total points in region.
+    //! @return Total number of points
     size_t point_count() const {
       size_t n = 0;
       for (const Line& line : lines)
@@ -32,8 +46,13 @@ struct FloodFill {
     }
   };
 
+  //! @brief Get temporary marker value for current island.
+  //! @return Marker value (Land | 2)
   static constexpr T this_island() { return T(Land|2); }
 
+  //! @brief Set all points in line to specified value.
+  //! @param line Line to modify
+  //! @param value Value to set
   void set_line_values(Line& line, T value) const {
     for (int i = 0; i < std::min(line.ulen, mask.nu - line.u); ++i) {
       assert(line.ptr[i] != value);
@@ -45,12 +64,21 @@ struct FloodFill {
     }
   }
 
+  //! @brief Set all points in region to specified value.
+  //! @param r Result containing lines
+  //! @param value Value to set
   void set_volume_values(Result& r, T value) const {
     for (Line& line : r.lines)
       set_line_values(line, value);
   }
 
-  // Find all connected points with value Land. Change them to this_island().
+  //! @brief Find all points connected to seed point.
+  //! @param u Starting grid index along first axis
+  //! @param v Starting grid index along second axis
+  //! @param w Starting grid index along third axis
+  //! @return Result with all connected points (marked as this_island())
+  //!
+  //! Find all connected points with value Land. Change them to this_island().
   Result find_all_connected_points(int u, int v, int w) {
     Result r;
     T* ptr = &mask.data[mask.index_q(u, v, w)];
@@ -79,6 +107,9 @@ struct FloodFill {
     return r;
   }
 
+  //! @brief Apply function to each connected island in grid.
+  //! @tparam Func Callable taking Result reference
+  //! @param func Function to call for each island
   template<typename Func>
   void for_each_islands(Func func) {
     size_t idx = 0;
@@ -131,6 +162,11 @@ private:
   }
 };
 
+//! @brief Create binary mask from grid values above threshold.
+//! @param mask Output mask grid (will be resized)
+//! @param grid Input grid with values
+//! @param threshold Cutoff value
+//! @param negate If true, negate grid values before comparing
 inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float>& grid,
                                        double threshold, bool negate=false) {
   mask.copy_metadata_from(grid);
@@ -140,6 +176,12 @@ inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float
     mask.data[n++] = std::int8_t((negate ? -d : d) > threshold);
 }
 
+//! @brief Find connected region above threshold containing seed points.
+//! @param grid Input density grid
+//! @param seeds Seed positions (must be in high-density regions)
+//! @param threshold Density cutoff
+//! @param negate If true, negate grid values before comparing
+//! @return Binary mask (1=in region, 0=outside)
 inline Grid<std::int8_t> flood_fill_above(const Grid<float>& grid,
                                           const std::vector<Position>& seeds,
                                           double threshold,

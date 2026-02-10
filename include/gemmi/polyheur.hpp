@@ -1,7 +1,10 @@
+//! @file
+//! @brief Heuristic methods for working with chains and polymers.
+//!
+//! Provides heuristic functions for polymer classification, connectivity checking,
+//! and chain manipulation. Also includes well-defined functions such as removal of waters.
+
 // Copyright 2017-2018 Global Phasing Ltd.
-//
-// Heuristic methods for working with chains and polymers.
-// Also includes a few well-defined functions, such as removal of waters.
 
 #ifndef GEMMI_POLYHEUR_HPP_
 #define GEMMI_POLYHEUR_HPP_
@@ -12,12 +15,21 @@
 
 namespace gemmi {
 
-// A simplistic classification. It may change in the future.
-// It returns PolymerType which corresponds to _entity_poly.type,
-// but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
+//! @brief Heuristically determine polymer type from residue sequence.
+//! @param span Residue span to analyze
+//! @param ignore_entity_type If true, don't use entity type information
+//! @return PolymerType (PeptideL, Rna, Dna, DnaRnaHybrid, or Unknown)
+//!
+//! A simplistic classification. It may change in the future.
+//! It returns PolymerType which corresponds to _entity_poly.type,
+//! but here we use only PeptideL, Rna, Dna, DnaRnaHybrid and Unknown.
 GEMMI_DLL PolymerType check_polymer_type(const ConstResidueSpan& span,
                                          bool ignore_entity_type=false);
 
+//! @brief Get polymer type from entity or check heuristically.
+//! @param ent Entity (may be nullptr)
+//! @param polymer Residue span
+//! @return PolymerType from entity, or determined heuristically
 inline PolymerType get_or_check_polymer_type(const Entity* ent,
                                              const ConstResidueSpan& polymer) {
   if (ent && ent->polymer_type != PolymerType::Unknown)
@@ -25,8 +37,14 @@ inline PolymerType get_or_check_polymer_type(const Entity* ent,
   return check_polymer_type(polymer);
 }
 
+//! @brief Atom name and element pair for mainchain atoms.
 struct AtomNameElement { std::string atom_name; El el; };
 
+//! @brief Get list of mainchain atoms for a polymer type.
+//! @param ptype Polymer type
+//! @return Vector of mainchain atom specifications
+//!
+//! Returns backbone atoms: N,CA,C,O for peptides; sugar-phosphate for nucleotides.
 inline std::vector<AtomNameElement> get_mainchain_atoms(PolymerType ptype) {
   if (is_polynucleotide(ptype))
     return {{"P", El::P}, {"O5'", El::O}, {"C5'", El::C},
@@ -35,23 +53,45 @@ inline std::vector<AtomNameElement> get_mainchain_atoms(PolymerType ptype) {
   return {{"N", El::N}, {"CA", El::C}, {"C", El::C}, {"O", El::O}};
 }
 
-/// distance-based check for peptide bond
+//! @brief Distance-based check for peptide bond between two atoms.
+//! @param a1 First atom (typically C)
+//! @param a2 Second atom (typically N)
+//! @return True if atoms are within peptide bond distance (<2.0 Å)
 inline bool in_peptide_bond_distance(const Atom* a1, const Atom* a2) {
   return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.341 * 1.5);
 }
+
+//! @brief Check if two residues have a peptide bond (C to N).
+//! @param r1 First residue
+//! @param r2 Second residue
+//! @return True if peptide bond exists
 inline bool have_peptide_bond(const Residue& r1, const Residue& r2) {
   return in_peptide_bond_distance(r1.get_c(), r2.get_n());
 }
 
-/// distance-based check for phosphodiester bond between nucleotide
+//! @brief Distance-based check for phosphodiester bond between nucleotides.
+//! @param a1 First atom (typically O3')
+//! @param a2 Second atom (typically P)
+//! @return True if atoms are within nucleotide bond distance (<2.4 Å)
 inline bool in_nucleotide_bond_distance(const Atom* a1, const Atom* a2) {
   return a1 && a2 && a1->pos.dist_sq(a2->pos) < sq(1.6 * 1.5);
 }
+
+//! @brief Check if two residues have a phosphodiester bond (O3' to P).
+//! @param r1 First residue
+//! @param r2 Second residue
+//! @return True if nucleotide bond exists
 inline bool have_nucleotide_bond(const Residue& r1, const Residue& r2) {
   return in_nucleotide_bond_distance(r1.get_o3prim(), r2.get_p());
 }
 
-/// check C-N or O3'-P distance
+//! @brief Check if two residues are connected by a polymer bond.
+//! @param r1 First residue
+//! @param r2 Second residue
+//! @param ptype Polymer type
+//! @return True if residues are connected
+//!
+//! Check C-N distance for peptides or O3'-P distance for nucleotides.
 inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptype) {
   if (is_polypeptide(ptype))
     return have_peptide_bond(r1, r2);
@@ -60,7 +100,14 @@ inline bool are_connected(const Residue& r1, const Residue& r2, PolymerType ptyp
   return false;
 }
 
-/// are_connected2() is less exact, but requires only CA (or P) atoms.
+//! @brief Check residue connectivity using only CA or P atoms.
+//! @param r1 First residue
+//! @param r2 Second residue
+//! @param ptype Polymer type
+//! @return True if residues appear connected
+//!
+//! are_connected2() is less exact than are_connected(), but requires only CA (or P) atoms.
+//! Uses CA-CA distance (<5 Å) for peptides, P-P distance (<7.5 Å) for nucleotides.
 inline bool are_connected2(const Residue& r1, const Residue& r2, PolymerType ptype) {
   auto this_or_first = [](const Atom* a, const Residue& r, El el) -> const Atom* {
     if (a || r.atoms.empty())
@@ -82,7 +129,14 @@ inline bool are_connected2(const Residue& r1, const Residue& r2, PolymerType pty
   return false;
 }
 
-/// are_connected3() = are_connected() + fallback to are_connected2()
+//! @brief Check connectivity with fallback: are_connected() + are_connected2().
+//! @param r1 First residue
+//! @param r2 Second residue
+//! @param ptype Polymer type
+//! @return True if residues are connected
+//!
+//! are_connected3() = are_connected() + fallback to are_connected2().
+//! First tries exact bond distance check, falls back to CA/P distance if needed.
 inline bool are_connected3(const Residue& r1, const Residue& r2, PolymerType ptype) {
   if (is_polypeptide(ptype)) {
     if (const Atom* a1 = r1.get_c())

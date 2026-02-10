@@ -1,3 +1,6 @@
+//! @file
+//! @brief AsuData for storing reflection data.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // AsuData for storing reflection data.
@@ -14,13 +17,18 @@
 
 namespace gemmi {
 
+//! @brief Complex correlation calculator.
 struct ComplexCorrelation {
-  int n = 0;
-  double sum_xx = 0.;
-  double sum_yy = 0.;
-  std::complex<double> sum_xy = 0.;
-  std::complex<double> mean_x = 0.;
-  std::complex<double> mean_y = 0.;
+  int n = 0;  //!< Number of points
+  double sum_xx = 0.;  //!< Sum of |x-mean_x|^2
+  double sum_yy = 0.;  //!< Sum of |y-mean_y|^2
+  std::complex<double> sum_xy = 0.;  //!< Sum of (x-mean_x)*conj(y-mean_y)
+  std::complex<double> mean_x = 0.;  //!< Mean of x
+  std::complex<double> mean_y = 0.;  //!< Mean of y
+
+  //! @brief Add data point.
+  //! @param x X value (complex)
+  //! @param y Y value (complex)
   void add_point(std::complex<double> x, std::complex<double> y) {
     ++n;
     double inv_n = 1.0 / n;
@@ -33,15 +41,31 @@ struct ComplexCorrelation {
     mean_x += dx * inv_n;
     mean_y += dy * inv_n;
   }
+  //! @brief Add data point (float version).
+  //! @param x X value (complex float)
+  //! @param y Y value (complex float)
   void add_point(std::complex<float> x, std::complex<float> y) {
     add_point(std::complex<double>(x), std::complex<double>(y));
   }
+
+  //! @brief Get correlation coefficient.
+  //! @return Complex correlation coefficient
   std::complex<double> coefficient() const { return sum_xy / std::sqrt(sum_xx * sum_yy); }
+
+  //! @brief Get ratio of means.
+  //! @return |mean_y| / |mean_x|
   double mean_ratio() const { return std::abs(mean_y) / std::abs(mean_x); }
 };
 
 
-/// \pre a and b are sorted
+//! @brief Apply function to matching reflections in two sorted lists.
+//! @tparam Func Function type
+//! @tparam T HklValue type
+//! @param a First sorted vector
+//! @param b Second sorted vector
+//! @param func Function to apply to matching pairs
+//!
+//! Precondition: a and b are sorted.
 template<typename Func, typename T>
 void for_matching_reflections(const std::vector<T>& a,
                               const std::vector<T>& b,
@@ -61,7 +85,13 @@ void for_matching_reflections(const std::vector<T>& a,
   }
 }
 
-/// \pre a and b are sorted
+//! @brief Calculate correlation between reflection values.
+//! @tparam T HklValue type
+//! @param a First sorted vector
+//! @param b Second sorted vector
+//! @return Correlation object
+//!
+//! Precondition: a and b are sorted.
 template<typename T>
 Correlation calculate_hkl_value_correlation(const std::vector<T>& a,
                                             const std::vector<T>& b) {
@@ -72,7 +102,13 @@ Correlation calculate_hkl_value_correlation(const std::vector<T>& a,
   return cor;
 }
 
-/// \pre a and b are sorted
+//! @brief Calculate complex correlation between reflections.
+//! @tparam T HklValue type with complex values
+//! @param a First sorted vector
+//! @param b Second sorted vector
+//! @return ComplexCorrelation object
+//!
+//! Precondition: a and b are sorted.
 template<typename T>
 ComplexCorrelation calculate_hkl_complex_correlation(const std::vector<T>& a,
                                                      const std::vector<T>& b) {
@@ -83,7 +119,13 @@ ComplexCorrelation calculate_hkl_complex_correlation(const std::vector<T>& a,
   return cor;
 }
 
-/// \pre a and b are sorted
+//! @brief Count matching reflections with equal values.
+//! @tparam T HklValue type
+//! @param a First sorted vector
+//! @param b Second sorted vector
+//! @return Number of matching reflections with equal values
+//!
+//! Precondition: a and b are sorted.
 template<typename T>
 int count_equal_values(const std::vector<T>& a, const std::vector<T>& b) {
   int count = 0;
@@ -94,20 +136,27 @@ int count_equal_values(const std::vector<T>& a, const std::vector<T>& b) {
   return count;
 }
 
+//! @brief HKL indices with associated value.
+//! @tparam T Value type
 template<typename T>
 struct HklValue {
-  alignas(8) Miller hkl;
-  T value;
+  alignas(8) Miller hkl;  //!< Miller indices
+  T value;  //!< Associated value
 
-  bool operator<(const Miller& m) const { return hkl < m; }
-  bool operator<(const HklValue& o) const { return operator<(o.hkl); }
+  bool operator<(const Miller& m) const { return hkl < m; }  //!< Compare with Miller indices
+  bool operator<(const HklValue& o) const { return operator<(o.hkl); }  //!< Compare with another HklValue
 };
 
+//! @brief Value with standard uncertainty.
+//! @tparam T Value type
 template<typename T>
 struct ValueSigma {
-  using value_type = T;
-  T value, sigma;
+  using value_type = T;  //!< Value type
+  T value, sigma;  //!< Value and standard uncertainty
 
+  //! @brief Equality comparison.
+  //! @param o Other ValueSigma
+  //! @return True if both value and sigma are equal
   bool operator==(const ValueSigma& o) const {
     return value == o.value && sigma == o.sigma;
   }
@@ -135,24 +184,31 @@ void move_to_asu(const GroupOps& gops, const Miller& hkl, int isym,
 }
 } // namespace impl
 
+//! @brief Reflection data in asymmetric unit.
+//! @tparam T Value type
 template<typename T>
 struct AsuData {
-  std::vector<HklValue<T>> v;
-  UnitCell unit_cell_;
-  const SpaceGroup* spacegroup_ = nullptr;
-  // function defining FPhiProxy interface
-  size_t stride() const { return 1; }
-  size_t size() const { return v.size(); }
-  Miller get_hkl(size_t n) const { return v[n].hkl; }
-  double get_f(size_t n) const { return std::abs(v[n].value); }
-  double get_phi(size_t n) const { return std::arg(v[n].value); }
-  const UnitCell& unit_cell() const { return unit_cell_; }
-  const SpaceGroup* spacegroup() const { return spacegroup_; }
+  std::vector<HklValue<T>> v;  //!< HKL values
+  UnitCell unit_cell_;  //!< Unit cell
+  const SpaceGroup* spacegroup_ = nullptr;  //!< Space group pointer
+
+  // Functions defining FPhiProxy interface
+  size_t stride() const { return 1; }  //!< Get stride (always 1)
+  size_t size() const { return v.size(); }  //!< Get number of reflections
+  Miller get_hkl(size_t n) const { return v[n].hkl; }  //!< Get Miller indices
+  double get_f(size_t n) const { return std::abs(v[n].value); }  //!< Get amplitude
+  double get_phi(size_t n) const { return std::arg(v[n].value); }  //!< Get phase
+  const UnitCell& unit_cell() const { return unit_cell_; }  //!< Get unit cell
+  const SpaceGroup* spacegroup() const { return spacegroup_; }  //!< Get space group
+
+  //! @brief Ensure data is sorted by HKL.
   void ensure_sorted() {
     if (!std::is_sorted(v.begin(), v.end()))
       std::sort(v.begin(), v.end());
   }
 
+  //! @brief Move all reflections to asymmetric unit.
+  //! @param tnt_asu If true, use TNT ASU convention
   void ensure_asu(bool tnt_asu=false) {
     if (!spacegroup_)
       fail("AsuData::ensure_asu(): space group not set");
@@ -167,7 +223,11 @@ struct AsuData {
     }
   }
 
-  // load values from one column
+  //! @brief Load values from one column.
+  //! @tparam DataProxy Data proxy type
+  //! @param proxy Data proxy
+  //! @param label Column label
+  //! @param as_is If false, ensure ASU and sort
   template<typename DataProxy>
   void load_values(const DataProxy& proxy, const std::string& label,
                    bool as_is=false) {
@@ -185,7 +245,12 @@ struct AsuData {
     }
   }
 
-  // load values from two or more columns
+  //! @brief Load values from multiple columns.
+  //! @tparam N Number of columns
+  //! @tparam DataProxy Data proxy type
+  //! @param proxy Data proxy
+  //! @param labels Column labels
+  //! @param as_is If false, ensure ASU and sort
   template<int N, typename DataProxy>
   void load_values(const DataProxy& proxy, const std::array<std::string,N>& labels,
                    bool as_is=false) {
@@ -227,6 +292,14 @@ private:
   }
 };
 
+//! @brief Create AsuData from multiple columns.
+//! @tparam T Value type
+//! @tparam N Number of columns
+//! @tparam Data Data source type
+//! @param data Data source
+//! @param labels Column labels
+//! @param as_is If false, ensure ASU and sort
+//! @return AsuData object
 template<typename T, int N, typename Data>
 AsuData<T> make_asu_data(const Data& data, const std::array<std::string,N>& labels,
                          bool as_is=false) {
@@ -234,6 +307,14 @@ AsuData<T> make_asu_data(const Data& data, const std::array<std::string,N>& labe
   asu_data.template load_values<N>(data_proxy(data), labels, as_is);
   return asu_data;
 }
+
+//! @brief Create AsuData from one column.
+//! @tparam T Value type
+//! @tparam Data Data source type
+//! @param data Data source
+//! @param label Column label
+//! @param as_is If false, ensure ASU and sort
+//! @return AsuData object
 template<typename T, typename Data>
 AsuData<T> make_asu_data(const Data& data, const std::string& label, bool as_is) {
   AsuData<T> asu_data;
@@ -241,7 +322,12 @@ AsuData<T> make_asu_data(const Data& data, const std::string& label, bool as_is)
   return asu_data;
 }
 
-/// retains only points with positive SIGF and F/SIGF > cutoff
+//! @brief Discard weak reflections by sigma ratio.
+//! @tparam T Value type
+//! @param asu_data ASU data (modified in place)
+//! @param cutoff F/sigma cutoff
+//!
+//! Retains only points with positive SIGF and F/SIGF > cutoff.
 template<typename T>
 void discard_by_sigma_ratio(AsuData<ValueSigma<T>>& asu_data, double cutoff) {
   vector_remove_if(asu_data.v, [cutoff](const HklValue<ValueSigma<T>>& p) {

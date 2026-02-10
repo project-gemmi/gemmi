@@ -1,6 +1,10 @@
+//! @file
+//! @brief Statistics utilities: classes Variance, Covariance, Correlation, DataStats.
+//!
+//! Provides single-pass algorithms for calculating statistical measures from
+//! streaming data. Useful for accumulating statistics without storing all data points.
+
 // Copyright 2018 Global Phasing Ltd.
-//
-// Statistics utilities: classes Covariance, Correlation, DataStats
 
 #ifndef GEMMI_STATS_HPP_
 #define GEMMI_STATS_HPP_
@@ -11,29 +15,54 @@
 
 namespace gemmi {
 
-// popular single-pass algorithm for calculating variance and mean
+//! @brief Single-pass variance calculation using Welford's algorithm.
+//!
+//! Popular single-pass algorithm for calculating variance and mean without storing all values.
+//! Uses numerically stable update formulas. Can calculate both sample and population variance.
 struct Variance {
-  int n = 0;
-  double sum_sq = 0.;
-  double mean_x = 0.;
+  int n = 0;         //!< Number of data points
+  double sum_sq = 0.;//!< Sum of squared deviations
+  double mean_x = 0.;//!< Running mean
 
   Variance() = default;
+
+  //! @brief Construct and initialize from iterator range.
+  //! @tparam T Iterator type
+  //! @param begin Start iterator
+  //! @param end End iterator
   template <typename T> Variance(T begin, T end) : Variance() {
     for (auto i = begin; i != end; ++i)
       add_point(*i);
   }
+
+  //! @brief Add data point to accumulator.
+  //! @param x Data value
   void add_point(double x) {
     ++n;
     double dx = x - mean_x;
     mean_x += dx / n;
     sum_sq += dx * (x - mean_x);
   }
+
+  //! @brief Calculate sample variance (divides by n-1).
+  //! @return Sample variance
   double for_sample() const { return sum_sq / (n - 1); }
+
+  //! @brief Calculate population variance (divides by n).
+  //! @return Population variance
   double for_population() const { return sum_sq / n; }
 };
 
+//! @brief Single-pass covariance calculation.
+//!
+//! Extends Variance to calculate covariance between two variables.
+//! Accumulates data for both x and y, computing covariance in one pass.
 struct Covariance : Variance {
-  double mean_y = 0.;
+  double mean_y = 0.;  //!< Running mean of y values
+
+  //! @brief Add data point pair to accumulator.
+  //! @param x First variable value
+  //! @param y Second variable value
   void add_point(double x, double y) {
     ++n;
     double dx = x - mean_x;
@@ -43,13 +72,21 @@ struct Covariance : Variance {
   }
 };
 
+//! @brief Single-pass correlation and regression calculation.
+//!
+//! Calculates Pearson correlation coefficient, variances, covariance, and
+//! linear regression line (slope/intercept) in a single pass through the data.
 struct Correlation {
-  int n = 0;
-  double sum_xx = 0.;
-  double sum_yy = 0.;
-  double sum_xy = 0.;
-  double mean_x = 0.;
-  double mean_y = 0.;
+  int n = 0;          //!< Number of data points
+  double sum_xx = 0.; //!< Sum of squared x deviations
+  double sum_yy = 0.; //!< Sum of squared y deviations
+  double sum_xy = 0.; //!< Sum of cross products
+  double mean_x = 0.; //!< Running mean of x
+  double mean_y = 0.; //!< Running mean of y
+
+  //! @brief Add data point pair to accumulator.
+  //! @param x First variable value
+  //! @param y Second variable value
   void add_point(double x, double y) {
     ++n;
     double weight = (double)(n - 1) / n;
@@ -61,17 +98,43 @@ struct Correlation {
     mean_x += dx / n;
     mean_y += dy / n;
   }
+
+  //! @brief Calculate Pearson correlation coefficient.
+  //! @return Correlation coefficient (-1 to 1)
   double coefficient() const { return sum_xy / std::sqrt(sum_xx * sum_yy); }
+
+  //! @brief Calculate variance of x.
+  //! @return Variance of x
   double x_variance() const { return sum_xx / n; }
+
+  //! @brief Calculate variance of y.
+  //! @return Variance of y
   double y_variance() const { return sum_yy / n; }
+
+  //! @brief Calculate covariance.
+  //! @return Covariance of x and y
   double covariance() const { return sum_xy / n; }
+
+  //! @brief Calculate ratio of means.
+  //! @return mean_y / mean_x
   double mean_ratio() const { return mean_y / mean_x; }
-  // the regression line
+
+  //! @brief Calculate slope of regression line y = slope * x + intercept.
+  //! @return Slope
   double slope() const { return sum_xy / sum_xx; }
+
+  //! @brief Calculate intercept of regression line y = slope * x + intercept.
+  //! @return Intercept
   double intercept() const { return mean_y - slope() * mean_x; }
 };
 
-
+//! @brief Combine two correlation accumulators.
+//! @param a First correlation
+//! @param b Second correlation
+//! @return Combined correlation
+//!
+//! Merges statistics from two independent Correlation objects into a single one.
+//! Useful for parallel computation or combining statistics from different data subsets.
 inline Correlation combine_two_correlations(const Correlation& a, const Correlation& b) {
   auto sq = [](double x) { return x * x; };
   Correlation r;
@@ -87,6 +150,11 @@ inline Correlation combine_two_correlations(const Correlation& a, const Correlat
   return r;
 }
 
+//! @brief Combine multiple correlation accumulators.
+//! @param cors Vector of correlations to combine
+//! @return Combined correlation
+//!
+//! Successively combines all correlations in the vector.
 inline Correlation combine_correlations(const std::vector<Correlation>& cors) {
   Correlation result;
   for (const Correlation& cor : cors)
@@ -94,15 +162,24 @@ inline Correlation combine_correlations(const std::vector<Correlation>& cors) {
   return result;
 }
 
-
+//! @brief Summary statistics for a dataset.
+//!
+//! Contains min, max, mean, RMS, and count of NaN values.
 struct DataStats {
-  double dmin = NAN;
-  double dmax = NAN;
-  double dmean = NAN;
-  double rms = NAN;
-  size_t nan_count = 0;
+  double dmin = NAN;       //!< Minimum value
+  double dmax = NAN;       //!< Maximum value
+  double dmean = NAN;      //!< Mean value
+  double rms = NAN;        //!< Root mean square
+  size_t nan_count = 0;    //!< Number of NaN values
 };
 
+//! @brief Calculate summary statistics for a vector of data.
+//! @tparam T Data type (must be convertible to double)
+//! @param data Vector of data values
+//! @return DataStats with summary statistics
+//!
+//! Computes min, max, mean, and RMS in a single pass. NaN values are excluded
+//! from calculations and counted separately.
 template<typename T>
 DataStats calculate_data_statistics(const std::vector<T>& data) {
   DataStats stats;

@@ -1,3 +1,9 @@
+//! @file
+//! @brief Conversions between enums and mmCIF strings.
+//!
+//! Converts between enums (EntityType, PolymerType, Connection::Type,
+//! SoftwareItem::Classification) and mmCIF strings.
+
 // Copyright 2018 Global Phasing Ltd.
 //
 // Converts between enums (EntityType, PolymerType, Connection::Type,
@@ -11,6 +17,9 @@
 
 namespace gemmi {
 
+//! @brief Convert EntityType to mmCIF string.
+//! @param entity_type Entity type enum
+//! @return mmCIF string representation
 inline const char* entity_type_to_string(EntityType entity_type) {
   switch (entity_type) {
     case EntityType::Polymer: return "polymer";
@@ -21,6 +30,9 @@ inline const char* entity_type_to_string(EntityType entity_type) {
   }
 }
 
+//! @brief Convert mmCIF string to EntityType.
+//! @param t mmCIF string
+//! @return Entity type enum
 inline EntityType entity_type_from_string(const std::string& t) {
   if (t == "polymer")     return EntityType::Polymer;
   if (t == "branched")    return EntityType::Branched;
@@ -30,6 +42,9 @@ inline EntityType entity_type_from_string(const std::string& t) {
 }
 
 
+//! @brief Convert PolymerType to mmCIF string.
+//! @param polymer_type Polymer type enum
+//! @return mmCIF string representation
 inline const char* polymer_type_to_string(PolymerType polymer_type) {
   switch (polymer_type) {
     case PolymerType::PeptideL: return "polypeptide(L)";
@@ -47,6 +62,9 @@ inline const char* polymer_type_to_string(PolymerType polymer_type) {
   }
 }
 
+//! @brief Convert mmCIF string to PolymerType.
+//! @param t mmCIF string
+//! @return Polymer type enum
 inline PolymerType polymer_type_from_string(const std::string& t) {
   if (t == "polypeptide(L)")          return PolymerType::PeptideL;
   if (t == "polydeoxyribonucleotide") return PolymerType::Dna;
@@ -63,6 +81,9 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
 }
 
 
+//! @brief Convert Connection::Type to mmCIF string.
+//! @param t Connection type enum
+//! @return mmCIF string representation
 inline const char* connection_type_to_string(Connection::Type t) {
   static constexpr const char* type_ids[] = {
     "covale", "disulf", "hydrog", "metalc", "."
@@ -70,6 +91,9 @@ inline const char* connection_type_to_string(Connection::Type t) {
   return type_ids[t];
 }
 
+//! @brief Convert mmCIF string to Connection::Type.
+//! @param t mmCIF string
+//! @return Connection type enum
 inline Connection::Type connection_type_from_string(const std::string& t) {
   for (int i = 0; i != Connection::Unknown; ++i)
     if (connection_type_to_string(Connection::Type(i)) == t)
@@ -77,6 +101,9 @@ inline Connection::Type connection_type_from_string(const std::string& t) {
   return Connection::Unknown;
 }
 
+//! @brief Convert SoftwareItem::Classification to string.
+//! @param c Software classification enum
+//! @return String representation
 inline
 std::string software_classification_to_string(SoftwareItem::Classification c) {
   switch (c) {
@@ -93,6 +120,9 @@ std::string software_classification_to_string(SoftwareItem::Classification c) {
   unreachable();
 }
 
+//! @brief Convert string to SoftwareItem::Classification.
+//! @param str String representation
+//! @return Software classification enum
 inline SoftwareItem::Classification
 software_classification_from_string(const std::string& str) {
   if (iequal(str, "data collection")) return SoftwareItem::DataCollection;

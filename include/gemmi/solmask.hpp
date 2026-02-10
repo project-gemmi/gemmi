@@ -1,3 +1,8 @@
+//! @file
+//! @brief Flat bulk solvent mask calculation for refinement.
+//!
+//! Flat bulk solvent mask. With helper tools that modify data on grid.
+
 // Copyright 2021 Global Phasing Ltd.
 //
 // Flat bulk solvent mask. With helper tools that modify data on grid.
@@ -11,7 +16,13 @@
 
 namespace gemmi {
 
-enum class AtomicRadiiSet { VanDerWaals, Cctbx, Refmac, Constant };
+//! @brief Choice of atomic radii set for solvent masking.
+enum class AtomicRadiiSet {
+  VanDerWaals,  //!< Standard van der Waals radii
+  Cctbx,        //!< Radii from CCTBX (generates identical mask to cctbx)
+  Refmac,       //!< Radii from Refmac's ener_lib.cif
+  Constant      //!< Constant radius for all atoms
+};
 
 // data from cctbx/eltbx/van_der_waals_radii.py used to generate identical mask
 inline float cctbx_vdw_radius(El el) {
@@ -281,16 +292,20 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
   //printf("margin: %zu\n", std::count(mask.data.begin(), mask.data.end(), margin_value));
 }
 
+//! @brief Solvent mask calculator for bulk solvent corrections.
+//!
+//! Calculates flat bulk solvent mask on a grid by marking regions
+//! around atoms. Used in structure factor calculations and refinement.
 struct SolventMasker {
-  AtomicRadiiSet atomic_radii_set;
-  bool ignore_hydrogen;
-  bool ignore_zero_occupancy_atoms;
-  bool use_atom_occupancy = false;
-  double rprobe;
-  double rshrink;
-  double island_min_volume;
-  double constant_r;
-  double requested_spacing = 0.;
+  AtomicRadiiSet atomic_radii_set;  //!< Which atomic radii set to use
+  bool ignore_hydrogen;              //!< Skip hydrogen atoms in masking
+  bool ignore_zero_occupancy_atoms;  //!< Skip atoms with zero occupancy
+  bool use_atom_occupancy = false;   //!< Weight mask by atom occupancy
+  double rprobe;                     //!< Probe radius (typically water radius)
+  double rshrink;                    //!< Shrink radius for smoothing
+  double island_min_volume;          //!< Minimum volume for solvent islands
+  double constant_r;                 //!< Constant radius (if AtomicRadiiSet::Constant)
+  double requested_spacing = 0.;     //!< Desired grid spacing
 
   SolventMasker(AtomicRadiiSet choice, double constant_r_=0.) {
     set_radii(choice, constant_r_);

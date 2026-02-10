@@ -1,3 +1,8 @@
+//! @file
+//! @brief Place riding hydrogens from restraints.
+//!
+//! Place hydrogens according to bond lengths and angles from monomer library.
+
 // Copyright 2018-2022 Global Phasing Ltd.
 //
 // Place hydrogens according to bond lengths and angles from monomer library.
@@ -10,8 +15,14 @@
 
 namespace gemmi {
 
+//! @brief Place all hydrogens using riding positions.
+//! @param topo Topology with restraints
 GEMMI_DLL void place_hydrogens_on_all_atoms(Topo& topo);
 
+//! @brief Adjust hydrogen-heavy atom distances to restraint values.
+//! @param topo Topology with bonds
+//! @param of Which distance to use from restraints
+//! @param default_scale Scale factor if restraint distance is NaN
 inline void adjust_hydrogen_distances(Topo& topo, Restraints::DistanceOf of,
                                       double default_scale=1.) {
   for (const Topo::Bond& t : topo.bonds) {
