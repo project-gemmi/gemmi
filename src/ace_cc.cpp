@@ -916,6 +916,9 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
       continue;
     for (size_t i = 0; i + 1 < nbs.size(); ++i) {
       for (size_t j = i + 1; j < nbs.size(); ++j) {
+        // AceDRG doesn't generate angles where both flanks are metals
+        if (cc.atoms[nbs[i]].el.is_metal() && cc.atoms[nbs[j]].el.is_metal())
+          continue;
         const std::string& a1 = cc.atoms[nbs[i]].id;
         const std::string& a3 = cc.atoms[nbs[j]].id;
         std::string first = a1;
