@@ -3398,21 +3398,21 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
         return vs;
       }
     }
-  }  // end same-hash retry loop
 
-  // Level 4D: hash + valueKey + roots (7 keys)
-  if (auto* p = find_val(angle_idx_4d_, ha1))
-  if (auto* p2 = find_val(*p, ha2))
-  if (auto* p3 = find_val(*p2, ha3))
-  if (auto* p4 = find_val(*p3, value_key))
-  if (auto* p5 = find_val(*p4, a1_root))
-  if (auto* p6 = find_val(*p5, a2_root)) {
-    CodStats vs = try_angle(find_val(*p6, a3_root), min_observations_angle_fallback, "4D", 3);
-    if (!std::isnan(vs.value)) {
-      if (out_level) *out_level = matched_level;
-      return vs;
+    // Level 4D: hash + valueKey + roots (7 keys)
+    if (auto* p = find_val(angle_idx_4d_, ha1))
+    if (auto* p2 = find_val(*p, ha2))
+    if (auto* p3 = find_val(*p2, ha3))
+    if (auto* p4 = find_val(*p3, value_key))
+    if (auto* p5 = find_val(*p4, a1_root))
+    if (auto* p6 = find_val(*p5, a2_root)) {
+      CodStats vs = try_angle(find_val(*p6, a3_root), min_observations_angle_fallback, "4D", 3);
+      if (!std::isnan(vs.value)) {
+        if (out_level) *out_level = matched_level;
+        return vs;
+      }
     }
-  }
+  }  // end same-hash retry loop
 
   // Level 5D: hash + valueKey (4 keys)
   if (auto* p = find_val(angle_idx_5d_, ha1))
@@ -3469,6 +3469,13 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
     }
   }
 
+  // SP1 (linear) centers always get 180° — AceDRG skips table lookup
+  if (center.hybrid == Hybridization::SP1 && center.connectivity < 5) {
+    angle.value = 180.0;
+    angle.esd = upper_angle_sigma;
+    return 6;
+  }
+
   int ring_size = angle_ring_size(center, a1, a3);
 
   // Try detailed multilevel search first
@@ -3478,6 +3485,114 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
     return level;
+  }
+
+  // Try wildcard partial-hash search (AceDRG fallback when hash triple not found).
+  // Only used when the exact hash triple has no table entries at all.
+  // Iterate 5D entries for the center hash where one flank matches, with any other flank.
+  // Filter by matching ring_size and center hybridization. Compute weighted average.
+  {
+    int ha1 = center.hashing_value;
+    int ha2 = std::min(a1.hashing_value, a3.hashing_value);
+    int ha3 = std::max(a1.hashing_value, a3.hashing_value);
+    // Check if exact hash triple exists in tables — if so, skip wildcard
+    bool hash_triple_in_table = false;
+    if (auto* p = find_val(angle_idx_5d_, ha1))
+      if (auto* p2 = find_val(*p, ha2))
+        if (find_val(*p2, ha3))
+          hash_triple_in_table = true;
+    if (!hash_triple_in_table) {
+      std::string center_hybr = hybridization_to_string(center.hybrid);
+      std::string ring_prefix = cat(ring_size, ':');
+
+      double weighted_sum = 0.0;
+      int total_count = 0;
+      int num_entries = 0;
+
+      auto collect = [&](const std::map<std::string, std::vector<CodStats>>& vk_map) {
+        for (auto& [vk, stats_vec] : vk_map) {
+          // Check ring_size matches and center hybridization matches
+          if (vk.size() > ring_prefix.size()
+              && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
+            // Extract center hybridization (first component after ':')
+            auto sp_start = ring_prefix.size();
+            auto uscore = vk.find('_', sp_start);
+            if (uscore != std::string::npos) {
+              auto entry_center_hybr = vk.substr(sp_start, uscore - sp_start);
+              if (entry_center_hybr == center_hybr) {
+                for (auto& s : stats_vec) {
+                  if (s.count > 0) {
+                    weighted_sum += s.value * s.count;
+                    total_count += s.count;
+                    num_entries++;
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+
+      auto* center_map = find_val(angle_idx_5d_, ha1);
+      if (center_map) {
+        // Search for entries where ha2 matches one flank (iterate over all ha3')
+        if (auto* ha2_map = find_val(*center_map, ha2)) {
+          for (auto& [other_ha3, vk_map] : *ha2_map)
+            collect(vk_map);
+        }
+        // Search for entries where ha3 matches one flank (iterate over all ha2')
+        for (auto& [other_ha2, ha3_map] : *center_map) {
+          if (auto* vk_map_ptr = find_val(ha3_map, ha3))
+            collect(*vk_map_ptr);
+        }
+      }
+
+      if (total_count > 0) {
+        double avg = weighted_sum / total_count;
+        // Compute std dev across entries
+        double sigma = upper_angle_sigma;
+        if (num_entries > 1) {
+          // Re-iterate to compute std deviation (using entry values, not individual obs)
+          double sq_sum = 0.0;
+          auto compute_dev = [&](const std::map<std::string, std::vector<CodStats>>& vk_map) {
+            for (auto& [vk, stats_vec] : vk_map) {
+              if (vk.size() > ring_prefix.size()
+                  && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
+                auto sp_start = ring_prefix.size();
+                auto uscore = vk.find('_', sp_start);
+                if (uscore != std::string::npos) {
+                  auto entry_center_hybr = vk.substr(sp_start, uscore - sp_start);
+                  if (entry_center_hybr == center_hybr) {
+                    for (auto& s : stats_vec) {
+                      if (s.count > 0)
+                        sq_sum += (s.value - avg) * (s.value - avg);
+                    }
+                  }
+                }
+              }
+            }
+          };
+          if (center_map) {
+            if (auto* ha2_map = find_val(*center_map, ha2)) {
+              for (auto& [other_ha3, vk_map] : *ha2_map)
+                compute_dev(vk_map);
+            }
+            for (auto& [other_ha2, ha3_map] : *center_map) {
+              if (auto* vk_map_ptr = find_val(ha3_map, ha3))
+                compute_dev(*vk_map_ptr);
+            }
+          }
+          sigma = std::sqrt(sq_sum / num_entries);
+        }
+        angle.value = avg;
+        angle.esd = clamp_angle_sigma(sigma);
+        if (verbose >= 2)
+          std::fprintf(stderr, "      wildcard angle %s-%s-%s: value=%.3f sigma=%.3f count=%d\n",
+                       angle.id1.atom.c_str(), angle.id2.atom.c_str(),
+                       angle.id3.atom.c_str(), avg, sigma, total_count);
+        return 6;
+      }
+    }
   }
 
   // Try HRS table
