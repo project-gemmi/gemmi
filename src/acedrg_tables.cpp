@@ -239,20 +239,21 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
                     &hash1, &hash2, &hash3, value_key, a1_cod, a2_cod, a3_cod,
                     &value1, &sigma1, &count1, &value2, &sigma2, &count2) == 13) {
       AngleHRSKey key;
-      // For angles, center is always hash2, but we canonicalize flanking atoms
-      bool swap_flanks = hash1 > hash3;
-      key.hash1 = swap_flanks ? hash3 : hash1;
-      key.hash2 = hash2;
-      key.hash3 = swap_flanks ? hash1 : hash3;
+      // File format: hash1=center, hash2/hash3=flanks. Canonicalize flanks.
+      bool swap_flanks = hash2 > hash3;
+      key.hash1 = hash1;  // center stays
+      key.hash2 = swap_flanks ? hash3 : hash2;
+      key.hash3 = swap_flanks ? hash2 : hash3;
       if (swap_flanks) {
         const char* colon = std::strchr(value_key, ':');
         if (colon) {
           std::string ring_part(value_key, colon - value_key);
           std::string hp(colon + 1);
+          // Tuple format: center_flank1_flank2. Swap flanks: center_flank2_flank1
           size_t u1 = hp.find('_');
           size_t u2 = u1 != std::string::npos ? hp.find('_', u1 + 1) : std::string::npos;
-          if (u2 != std::string::npos)  // swap A_B_C → C_B_A
-            hp = cat(hp.substr(u2 + 1), '_', hp.substr(u1 + 1, u2 - u1 - 1), '_', hp.substr(0, u1));
+          if (u2 != std::string::npos)
+            hp = cat(hp.substr(0, u1), '_', hp.substr(u2 + 1), '_', hp.substr(u1 + 1, u2 - u1 - 1));
           key.value_key = cat(ring_part, ':', hp);
         } else {
           key.value_key = value_key;
@@ -260,7 +261,9 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
       } else {
         key.value_key = value_key;
       }
-      angle_hrs_[key] = CodStats(value1, sigma1, count1);
+      auto it = angle_hrs_.find(key);
+      if (it == angle_hrs_.end() || count1 > it->second.count)
+        angle_hrs_[key] = CodStats(value1, sigma1, count1);
     }
   }
 }
@@ -3208,36 +3211,36 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3) const {
 
   // Build lookup keys - canonicalize flanking atoms
-  // Table format: ha1=left_flank, ha2=center, ha3=right_flank
-  const CodAtomInfo *flank1, *flank3;
-  order_two_atoms(a1, a3, flank1, flank3);
-  int ha1 = flank1->hashing_value;
-  int ha2 = center.hashing_value;
-  int ha3 = flank3->hashing_value;
+  // Table format: ha1=center, ha2=flank_min, ha3=flank_max
+  const CodAtomInfo *flank_min, *flank_max;
+  order_two_atoms(a1, a3, flank_min, flank_max);
+  int ha1 = center.hashing_value;
+  int ha2 = flank_min->hashing_value;
+  int ha3 = flank_max->hashing_value;
 
-  // Build hybridization tuple - table uses hash order: minFlank_center_maxFlank
-  std::string h1 = hybridization_to_string(flank1->hybrid);  // min hash
-  std::string h2 = hybridization_to_string(center.hybrid);   // center
-  std::string h3 = hybridization_to_string(flank3->hybrid);  // max hash
-  std::string hybr_tuple = cat(h1, '_', h2, '_', h3);
+  // Build hybridization tuple - table format: center_flankMax_flankMin
+  std::string hc = hybridization_to_string(center.hybrid);
+  std::string hmin = hybridization_to_string(flank_min->hybrid);
+  std::string hmax = hybridization_to_string(flank_max->hybrid);
+  std::string hybr_tuple = cat(hc, '_', hmax, '_', hmin);
 
   // Build valueKey (ring:hybr_tuple)
-  int ring_val = angle_ring_size(center, *flank1, *flank3);
+  int ring_val = angle_ring_size(center, *flank_min, *flank_max);
   std::string value_key = cat(ring_val, ':', hybr_tuple);
 
-  // Get neighbor symbols - table format: a1=flank1, a2=center, a3=flank3
-  std::string a1_nb2 = flank1->nb2_symb;
-  std::string a2_nb2 = center.nb2_symb;
-  std::string a3_nb2 = flank3->nb2_symb;
-  std::string a1_root = flank1->cod_root;
-  std::string a2_root = center.cod_root;
-  std::string a3_root = flank3->cod_root;
-  std::string a1_nb = flank1->nb_symb;
-  std::string a2_nb = center.nb_symb;
-  std::string a3_nb = flank3->nb_symb;
-  std::string a1_type = flank1->cod_main;
-  std::string a2_type = center.cod_main;
-  std::string a3_type = flank3->cod_main;
+  // Get neighbor symbols - table format: a1=center, a2=flank_min, a3=flank_max
+  std::string a1_nb2 = center.nb2_symb;
+  std::string a2_nb2 = flank_min->nb2_symb;
+  std::string a3_nb2 = flank_max->nb2_symb;
+  std::string a1_root = center.cod_root;
+  std::string a2_root = flank_min->cod_root;
+  std::string a3_root = flank_max->cod_root;
+  std::string a1_nb = center.nb_symb;
+  std::string a2_nb = flank_min->nb_symb;
+  std::string a3_nb = flank_max->nb_symb;
+  std::string a1_type = center.cod_main;
+  std::string a2_type = flank_min->cod_main;
+  std::string a3_type = flank_max->cod_main;
 
   if (verbose >= 2) {
     std::fprintf(stderr,
@@ -3264,59 +3267,78 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     return CodStats();
   };
 
-  // Level 1D: exact match with atom types (16 keys)
-  if (auto* p = find_val(angle_idx_1d_, ha1))
-  if (auto* p2 = find_val(*p, ha2))
-  if (auto* p3 = find_val(*p2, ha3))
-  if (auto* p4 = find_val(*p3, value_key))
-  if (auto* p5 = find_val(*p4, a1_root))
-  if (auto* p6 = find_val(*p5, a2_root))
-  if (auto* p7 = find_val(*p6, a3_root))
-  if (auto* p8 = find_val(*p7, a1_nb2))
-  if (auto* p9 = find_val(*p8, a2_nb2))
-  if (auto* p10 = find_val(*p9, a3_nb2))
-  if (auto* p11 = find_val(*p10, a1_nb))
-  if (auto* p12 = find_val(*p11, a2_nb))
-  if (auto* p13 = find_val(*p12, a3_nb))
-  if (auto* p14 = find_val(*p13, a1_type))
-  if (auto* p15 = find_val(*p14, a2_type)) {
-    CodStats vs = try_angle(find_val(*p15, a3_type), min_observations_angle, "1D");
-    if (!std::isnan(vs.value))
-      return vs;
-  }
+  // When center and a flank share the same hash, the table may store their
+  // property columns (root, nb2, nb, type) in either order. Try both.
+  int max_attempts = (ha1 == ha2 || ha1 == ha3) ? 2 : 1;
+  for (int attempt = 0; attempt < max_attempts; ++attempt) {
+    if (attempt == 1) {
+      if (ha1 == ha2) {
+        std::swap(a1_root, a2_root);
+        std::swap(a1_nb2, a2_nb2);
+        std::swap(a1_nb, a2_nb);
+        std::swap(a1_type, a2_type);
+      } else {  // ha1 == ha3
+        std::swap(a1_root, a3_root);
+        std::swap(a1_nb2, a3_nb2);
+        std::swap(a1_nb, a3_nb);
+        std::swap(a1_type, a3_type);
+      }
+    }
 
-  // Level 2D: no atom types (13 keys)
-  if (auto* p = find_val(angle_idx_2d_, ha1))
-  if (auto* p2 = find_val(*p, ha2))
-  if (auto* p3 = find_val(*p2, ha3))
-  if (auto* p4 = find_val(*p3, value_key))
-  if (auto* p5 = find_val(*p4, a1_root))
-  if (auto* p6 = find_val(*p5, a2_root))
-  if (auto* p7 = find_val(*p6, a3_root))
-  if (auto* p8 = find_val(*p7, a1_nb2))
-  if (auto* p9 = find_val(*p8, a2_nb2))
-  if (auto* p10 = find_val(*p9, a3_nb2))
-  if (auto* p11 = find_val(*p10, a1_nb))
-  if (auto* p12 = find_val(*p11, a2_nb)) {
-    CodStats vs = try_angle(find_val(*p12, a3_nb), min_observations_angle_fallback, "2D");
-    if (!std::isnan(vs.value))
-      return vs;
-  }
+    // Level 1D: exact match with atom types (16 keys)
+    if (auto* p = find_val(angle_idx_1d_, ha1))
+    if (auto* p2 = find_val(*p, ha2))
+    if (auto* p3 = find_val(*p2, ha3))
+    if (auto* p4 = find_val(*p3, value_key))
+    if (auto* p5 = find_val(*p4, a1_root))
+    if (auto* p6 = find_val(*p5, a2_root))
+    if (auto* p7 = find_val(*p6, a3_root))
+    if (auto* p8 = find_val(*p7, a1_nb2))
+    if (auto* p9 = find_val(*p8, a2_nb2))
+    if (auto* p10 = find_val(*p9, a3_nb2))
+    if (auto* p11 = find_val(*p10, a1_nb))
+    if (auto* p12 = find_val(*p11, a2_nb))
+    if (auto* p13 = find_val(*p12, a3_nb))
+    if (auto* p14 = find_val(*p13, a1_type))
+    if (auto* p15 = find_val(*p14, a2_type)) {
+      CodStats vs = try_angle(find_val(*p15, a3_type), min_observations_angle, "1D");
+      if (!std::isnan(vs.value))
+        return vs;
+    }
 
-  // Level 3D: hash + valueKey + roots + NB2 (10 keys)
-  if (auto* p = find_val(angle_idx_3d_, ha1))
-  if (auto* p2 = find_val(*p, ha2))
-  if (auto* p3 = find_val(*p2, ha3))
-  if (auto* p4 = find_val(*p3, value_key))
-  if (auto* p5 = find_val(*p4, a1_root))
-  if (auto* p6 = find_val(*p5, a2_root))
-  if (auto* p7 = find_val(*p6, a3_root))
-  if (auto* p8 = find_val(*p7, a1_nb2))
-  if (auto* p9 = find_val(*p8, a2_nb2)) {
-    CodStats vs = try_angle(find_val(*p9, a3_nb2), min_observations_angle_fallback, "3D");
-    if (!std::isnan(vs.value))
-      return vs;
-  }
+    // Level 2D: no atom types (13 keys)
+    if (auto* p = find_val(angle_idx_2d_, ha1))
+    if (auto* p2 = find_val(*p, ha2))
+    if (auto* p3 = find_val(*p2, ha3))
+    if (auto* p4 = find_val(*p3, value_key))
+    if (auto* p5 = find_val(*p4, a1_root))
+    if (auto* p6 = find_val(*p5, a2_root))
+    if (auto* p7 = find_val(*p6, a3_root))
+    if (auto* p8 = find_val(*p7, a1_nb2))
+    if (auto* p9 = find_val(*p8, a2_nb2))
+    if (auto* p10 = find_val(*p9, a3_nb2))
+    if (auto* p11 = find_val(*p10, a1_nb))
+    if (auto* p12 = find_val(*p11, a2_nb)) {
+      CodStats vs = try_angle(find_val(*p12, a3_nb), min_observations_angle_fallback, "2D");
+      if (!std::isnan(vs.value))
+        return vs;
+    }
+
+    // Level 3D: hash + valueKey + roots + NB2 (10 keys)
+    if (auto* p = find_val(angle_idx_3d_, ha1))
+    if (auto* p2 = find_val(*p, ha2))
+    if (auto* p3 = find_val(*p2, ha3))
+    if (auto* p4 = find_val(*p3, value_key))
+    if (auto* p5 = find_val(*p4, a1_root))
+    if (auto* p6 = find_val(*p5, a2_root))
+    if (auto* p7 = find_val(*p6, a3_root))
+    if (auto* p8 = find_val(*p7, a1_nb2))
+    if (auto* p9 = find_val(*p8, a2_nb2)) {
+      CodStats vs = try_angle(find_val(*p9, a3_nb2), min_observations_angle_fallback, "3D");
+      if (!std::isnan(vs.value))
+        return vs;
+    }
+  }  // end same-hash retry loop
 
   // Level 4D: hash + valueKey + roots (7 keys)
   if (auto* p = find_val(angle_idx_4d_, ha1))
@@ -3424,23 +3446,22 @@ CodStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3, int ring_size) const {
 
   AngleHRSKey key;
-  // Loaded data has: hash1=min(flank), hash2=center, hash3=max(flank)
-  key.hash1 = std::min(a1.hashing_value, a3.hashing_value);
-  key.hash2 = center.hashing_value;
+  // Table format: hash1=center, hash2=min(flank), hash3=max(flank)
+  key.hash1 = center.hashing_value;
+  key.hash2 = std::min(a1.hashing_value, a3.hashing_value);
   key.hash3 = std::max(a1.hashing_value, a3.hashing_value);
 
-  // Build hybrid tuple - table uses hash order: first_center_third
-  // where first/third are determined by min/max of flank hash values
-  std::string h1, h2, h3;
-  h2 = hybridization_to_string(center.hybrid);
+  // Build hybrid tuple - table format: center_flankMax_flankMin
+  std::string hc = hybridization_to_string(center.hybrid);
+  std::string hmin, hmax;
   if (a1.hashing_value <= a3.hashing_value) {
-    h1 = hybridization_to_string(a1.hybrid);
-    h3 = hybridization_to_string(a3.hybrid);
+    hmin = hybridization_to_string(a1.hybrid);
+    hmax = hybridization_to_string(a3.hybrid);
   } else {
-    h1 = hybridization_to_string(a3.hybrid);
-    h3 = hybridization_to_string(a1.hybrid);
+    hmin = hybridization_to_string(a3.hybrid);
+    hmax = hybridization_to_string(a1.hybrid);
   }
-  std::string hybr_tuple = cat(h1, '_', h2, '_', h3);
+  std::string hybr_tuple = cat(hc, '_', hmax, '_', hmin);
   key.value_key = cat(ring_size, ':', hybr_tuple);
 
   auto it = angle_hrs_.find(key);
