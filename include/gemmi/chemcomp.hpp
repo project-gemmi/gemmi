@@ -361,7 +361,7 @@ struct ChemComp {
     float charge = 0;
     std::string chem_type;
     std::string acedrg_type;  // read from _chem_comp_atom.atom_type
-    Position xyz;
+    Position xyz{NAN, NAN, NAN};
 
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
@@ -619,7 +619,10 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   for (auto row : block.find("_chem_comp_atom.",
                              {"atom_id", "type_symbol", "?type_energy",
                              "?charge", "?partial_charge", "?alt_atom_id",
-                             "?atom_type"})) {
+                             "?atom_type",
+                             "?pdbx_model_Cartn_x_ideal",
+                             "?pdbx_model_Cartn_y_ideal",
+                             "?pdbx_model_Cartn_z_ideal"})) {
     ChemComp::Atom atom;
     atom.id = row.str(0);
     atom.old_id = row.has(5) ? row.str(5) : "";
@@ -627,6 +630,10 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     atom.charge = (float) cif::as_number(row.one_of(3, 4), 0.0);
     atom.chem_type = row.has(2) ? row.str(2) : "";
     atom.acedrg_type = row.has(6) ? row.str(6) : "";
+    if (row.has(7) && row.has(8) && row.has(9))
+      atom.xyz = Position(cif::as_number(row[7]),
+                          cif::as_number(row[8]),
+                          cif::as_number(row[9]));
     cc.atoms.push_back(std::move(atom));
   }
   // Also check _chem_comp_acedrg table for atom types (used by acedrg output)

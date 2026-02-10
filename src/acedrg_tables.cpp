@@ -17,6 +17,7 @@
 #include "gemmi/atox.hpp"
 #include "gemmi/fileutil.hpp"
 #include "gemmi/elem.hpp"
+#include "gemmi/calculate.hpp"  // for calculate_angle
 #include "gemmi/fail.hpp"
 #include "gemmi/util.hpp"
 #include "gemmi/read_cif.hpp"
@@ -3518,6 +3519,27 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
     if (!ideal_angles.empty()) {
       // Use the most common angle for this geometry
       angle.value = ideal_angles[0];
+      angle.esd = clamp_angle_sigma(3.0);
+      return 6;
+    }
+  }
+
+  // Non-metal high-coordination center: compute angle from ideal coordinates.
+  // AceDRG's setCoordAngs() handles connAtoms.size() >= 5, but CN=5 uses a
+  // complex geometry assignment algorithm. For CN >= 6, coordinate-based
+  // computation with snapping to 90°/180° matches AceDRG well.
+  if (!center.is_metal && center.connectivity >= 6) {
+    const Position& p1 = cc.atoms[idx1].xyz;
+    const Position& pc = cc.atoms[idx2].xyz;
+    const Position& p3 = cc.atoms[idx3].xyz;
+    if (!p1.has_nan() && !pc.has_nan() && !p3.has_nan()) {
+      double ang = deg(calculate_angle(p1, pc, p3));
+      // Snap near-standard angles (matching AceDRG setCoordAngs lines 10812-10818)
+      if (ang > 80.0 && ang < 100.0)
+        ang = 90.0;
+      else if (ang > 170.0 && ang < 190.0)
+        ang = 180.0;
+      angle.value = ang;
       angle.esd = clamp_angle_sigma(3.0);
       return 6;
     }
