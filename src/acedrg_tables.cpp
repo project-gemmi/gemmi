@@ -3523,6 +3523,33 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
     }
   }
 
+  // Metal flank — AceDRG's searchCodAnglesWithNonCenteredMetal path.
+  // AceDRG uses a separate dictionary (allOrgAnglesWithNonCenteredMetalNB.table)
+  // and falls back to defaults. The default is based on the center atom's
+  // hybridization as if metals were counted in the connectivity. Since gemmi's
+  // bonding_idx excludes metal neighbors, we recompute a virtual one using
+  // total connectivity to determine the default angle.
+  if (a1.is_metal || a3.is_metal) {
+    int bi;  // virtual bonding_idx using total connectivity
+    int tc = center.connectivity;
+    if (center.el == El::C || center.el == El::Si || center.el == El::Ge) {
+      bi = tc >= 4 ? 3 : tc == 3 ? 2 : 1;
+    } else if (center.el == El::N || center.el == El::As) {
+      bi = tc >= 3 ? 3 : tc == 2 ? (center.charge == 1.0f ? 1 : 2) : 1;
+    } else if (center.el == El::O || center.el == El::S || center.el == El::Se
+               || center.el == El::P) {
+      bi = 3;
+    } else if (center.el == El::B) {
+      bi = tc >= 4 ? 3 : tc >= 3 ? 2 : 1;
+    } else {
+      bi = center.bonding_idx;
+    }
+    // DefaultOrgAngles: [1]=180°, [2]=120°, [3]=109.47°
+    angle.value = bi >= 3 ? 109.47 : bi <= 1 ? 180.0 : 120.0;
+    angle.esd = 5.0;
+    return 6;
+  }
+
   // SP1 (linear) centers always get 180° — AceDRG skips table lookup
   if (center.hybrid == Hybridization::SP1 && center.connectivity < 5) {
     angle.value = 180.0;

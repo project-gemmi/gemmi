@@ -909,6 +909,8 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
 
   std::set<std::tuple<std::string, std::string, std::string>> seen;
   for (size_t center = 0; center < neighbors.size(); ++center) {
+    if (cc.atoms[center].el.is_metal())
+      continue;
     auto& nbs = neighbors[center];
     if (nbs.size() < 2)
       continue;
