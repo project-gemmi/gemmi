@@ -2596,6 +2596,36 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
     if (free.empty())
       continue;
+    // When free angles include both metal-flank and organic angles,
+    // treat the organic angles as fixed — their table-lookup values are
+    // more specific. Only the metal-flank defaults absorb the 360° deficit.
+    // This matches AceDRG's behavior for e.g. porphyrin nitrogens
+    // coordinated to Mg (AOH: NA with C1A-NA-C4A fixed, MG-NA angles free).
+    {
+      bool has_metal = false, has_organic = false;
+      for (size_t idx_ang : free) {
+        int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
+        int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
+        if ((i1 >= 0 && atom_info[i1].is_metal) ||
+            (i3 >= 0 && atom_info[i3].is_metal))
+          has_metal = true;
+        else
+          has_organic = true;
+      }
+      if (has_metal && has_organic) {
+        std::vector<size_t> new_free;
+        for (size_t idx_ang : free) {
+          int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
+          int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
+          if ((i1 >= 0 && atom_info[i1].is_metal) ||
+              (i3 >= 0 && atom_info[i3].is_metal))
+            new_free.push_back(idx_ang);
+          else
+            fixed.push_back(idx_ang);
+        }
+        free = new_free;
+      }
+    }
     double fixed_sum = 0.0;
     for (size_t idx_ang : fixed)
       fixed_sum += cc.rt.angles[idx_ang].value;
