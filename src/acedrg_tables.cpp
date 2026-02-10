@@ -3218,11 +3218,13 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   int ha2 = flank_min->hashing_value;
   int ha3 = flank_max->hashing_value;
 
-  // Build hybridization tuple - table format: center_flankMax_flankMin
+  // Build hybridization tuple - flanks sorted alphabetically by hybridization name
   std::string hc = hybridization_to_string(center.hybrid);
-  std::string hmin = hybridization_to_string(flank_min->hybrid);
-  std::string hmax = hybridization_to_string(flank_max->hybrid);
-  std::string hybr_tuple = cat(hc, '_', hmax, '_', hmin);
+  std::string hf1 = hybridization_to_string(flank_min->hybrid);
+  std::string hf2 = hybridization_to_string(flank_max->hybrid);
+  if (hf1 > hf2)
+    std::swap(hf1, hf2);
+  std::string hybr_tuple = cat(hc, '_', hf1, '_', hf2);
 
   // Build valueKey (ring:hybr_tuple)
   int ring_val = angle_ring_size(center, *flank_min, *flank_max);
@@ -3451,17 +3453,13 @@ CodStats AcedrgTables::search_angle_hrs(const CodAtomInfo& a1,
   key.hash2 = std::min(a1.hashing_value, a3.hashing_value);
   key.hash3 = std::max(a1.hashing_value, a3.hashing_value);
 
-  // Build hybrid tuple - table format: center_flankMax_flankMin
+  // Build hybrid tuple - flanks sorted alphabetically by hybridization name
   std::string hc = hybridization_to_string(center.hybrid);
-  std::string hmin, hmax;
-  if (a1.hashing_value <= a3.hashing_value) {
-    hmin = hybridization_to_string(a1.hybrid);
-    hmax = hybridization_to_string(a3.hybrid);
-  } else {
-    hmin = hybridization_to_string(a3.hybrid);
-    hmax = hybridization_to_string(a1.hybrid);
-  }
-  std::string hybr_tuple = cat(hc, '_', hmax, '_', hmin);
+  std::string hf1 = hybridization_to_string(a1.hybrid);
+  std::string hf2 = hybridization_to_string(a3.hybrid);
+  if (hf1 > hf2)
+    std::swap(hf1, hf2);
+  std::string hybr_tuple = cat(hc, '_', hf1, '_', hf2);
   key.value_key = cat(ring_size, ':', hybr_tuple);
 
   auto it = angle_hrs_.find(key);
