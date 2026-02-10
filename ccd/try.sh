@@ -80,6 +80,6 @@ for x in "$@"; do
   fi
 
   echo "========================${code}========================"
-  ../build/gemmi mondiff --only=atb "$acedrg_file" "$gemmi_file" ||:
+  ../build/gemmi mondiff --only=atbA "$acedrg_file" "$gemmi_file" ||:
 done
 echo "Script ended successfully!"
