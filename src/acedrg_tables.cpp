@@ -2437,11 +2437,40 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
 
   // Fill angles (skipped when angle tables are not loaded)
   if (!angle_hrs_.empty()) {
+
+  // Compute the set of angle table files needed for this molecule.
+  // AceDRG only loads files that contain hash triples for the molecule's angles,
+  // which affects the wildcard partial-hash search (it only sees entries from
+  // the loaded files). We need to replicate this behavior.
+  std::set<int> needed_angle_files;
+  for (auto& angle : cc.rt.angles) {
+    int i1 = cc.find_atom_index(angle.id1.atom);
+    int i2 = cc.find_atom_index(angle.id2.atom);
+    int i3 = cc.find_atom_index(angle.id3.atom);
+    if (i1 < 0 || i2 < 0 || i3 < 0) continue;
+    int ha1 = atom_info[i2].hashing_value;
+    int ha2 = std::min(atom_info[i1].hashing_value, atom_info[i3].hashing_value);
+    int ha3 = std::max(atom_info[i1].hashing_value, atom_info[i3].hashing_value);
+    if (auto* p = find_val(angle_file_index_, ha1)) {
+      if (auto* p2 = find_val(*p, ha2)) {
+        if (auto* p3 = find_val(*p2, ha3)) {
+          needed_angle_files.insert(*p3);
+        } else {
+          // AceDRG fallback (setOrgAngleHeadHashList22): when (ha1,ha2,ha3)
+          // is not in the index but (ha1,ha2) exists, load all files
+          // containing (ha1, *, ha3) for any ha2'.
+          for (auto& [other_ha2, ha3_map] : *p)
+            if (auto* p3f = find_val(ha3_map, ha3))
+              needed_angle_files.insert(*p3f);
+        }
+      }
+    }
+  }
   // Store the approxLevel for each angle (used in ring enforcement)
   std::vector<int> angle_approx(cc.rt.angles.size(), 6);
   for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
     if (std::isnan(cc.rt.angles[i].value)) {
-      angle_approx[i] = fill_angle(cc, atom_info, cc.rt.angles[i]);
+      angle_approx[i] = fill_angle(cc, atom_info, cc.rt.angles[i], needed_angle_files);
     }
   }
 
@@ -3418,10 +3447,34 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   if (auto* p = find_val(angle_idx_5d_, ha1))
   if (auto* p2 = find_val(*p, ha2))
   if (auto* p3 = find_val(*p2, ha3)) {
-    CodStats vs = try_angle(find_val(*p3, value_key), min_observations_angle_fallback, "5D", 4);
-    if (!std::isnan(vs.value)) {
-      if (out_level) *out_level = matched_level;
-      return vs;
+    auto* exact_vk = find_val(*p3, value_key);
+    if (exact_vk) {
+      CodStats vs = try_angle(exact_vk, min_observations_angle_fallback, "5D", 4);
+      if (!std::isnan(vs.value)) {
+        if (out_level) *out_level = matched_level;
+        return vs;
+      }
+      // Exact value_key exists but has insufficient observations.
+      // AceDRG does NOT try relaxed matching in this case — it falls through.
+    } else {
+      // Exact value_key not found: try relaxed match (AceDRG's matchRandCenterA)
+      // Find the first value_key with matching ring_size and center hybridization
+      std::string ring_prefix = cat(ring_val, ':');
+      for (auto& [vk, stats_vec] : *p3) {
+        if (vk.size() > ring_prefix.size()
+            && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
+          auto uscore = vk.find('_', ring_prefix.size());
+          if (uscore != std::string::npos
+              && vk.compare(ring_prefix.size(), uscore - ring_prefix.size(), hc) == 0) {
+            CodStats vs = try_angle(&stats_vec, min_observations_angle_fallback, "5D", 4);
+            if (!std::isnan(vs.value)) {
+              if (out_level) *out_level = matched_level;
+              return vs;
+            }
+            break;  // AceDRG uses first match only
+          }
+        }
+      }
     }
   }
 
@@ -3445,7 +3498,8 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
 //   0 = 1D (all types matched), 1 = 2D, 2 = 3D, 3 = 4D, 4 = 5D, 6 = 6D/HRS/fallback
 int AcedrgTables::fill_angle(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
-    Restraints::Angle& angle) const {
+    Restraints::Angle& angle,
+    const std::set<int>& needed_files) const {
 
   int idx1 = cc.find_atom_index(angle.id1.atom);
   int idx2 = cc.find_atom_index(angle.id2.atom);  // center
@@ -3509,28 +3563,40 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
       int total_count = 0;
       int num_entries = 0;
 
+      // AceDRG's matchRandCenterA returns the first matching value_key per map,
+      // so we break after collecting from the first match.
       auto collect = [&](const std::map<std::string, std::vector<CodStats>>& vk_map) {
         for (auto& [vk, stats_vec] : vk_map) {
-          // Check ring_size matches and center hybridization matches
           if (vk.size() > ring_prefix.size()
               && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
-            // Extract center hybridization (first component after ':')
             auto sp_start = ring_prefix.size();
             auto uscore = vk.find('_', sp_start);
-            if (uscore != std::string::npos) {
-              auto entry_center_hybr = vk.substr(sp_start, uscore - sp_start);
-              if (entry_center_hybr == center_hybr) {
-                for (auto& s : stats_vec) {
-                  if (s.count > 0) {
-                    weighted_sum += s.value * s.count;
-                    total_count += s.count;
-                    num_entries++;
-                  }
+            if (uscore != std::string::npos
+                && vk.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
+              for (auto& s : stats_vec) {
+                if (s.count > 0) {
+                  weighted_sum += s.value * s.count;
+                  total_count += s.count;
+                  num_entries++;
                 }
               }
+              break;  // first matching value_key only
             }
           }
         }
+      };
+
+      // Check if the entry at (ha1, other_ha2, other_ha3) came from a needed file.
+      // AceDRG only loads table files referenced by the molecule's angle triples,
+      // so the wildcard search only sees entries from those files.
+      auto is_in_needed_file = [&](int h1, int h2, int h3) -> bool {
+        if (needed_files.empty())
+          return true;  // no filtering when set is empty
+        if (auto* p = find_val(angle_file_index_, h1))
+          if (auto* p2 = find_val(*p, h2))
+            if (auto* p3 = find_val(*p2, h3))
+              return needed_files.count(*p3) > 0;
+        return false;
       };
 
       auto* center_map = find_val(angle_idx_5d_, ha1);
@@ -3538,12 +3604,14 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
         // Search for entries where ha2 matches one flank (iterate over all ha3')
         if (auto* ha2_map = find_val(*center_map, ha2)) {
           for (auto& [other_ha3, vk_map] : *ha2_map)
-            collect(vk_map);
+            if (is_in_needed_file(ha1, ha2, other_ha3))
+              collect(vk_map);
         }
         // Search for entries where ha3 matches one flank (iterate over all ha2')
         for (auto& [other_ha2, ha3_map] : *center_map) {
           if (auto* vk_map_ptr = find_val(ha3_map, ha3))
-            collect(*vk_map_ptr);
+            if (is_in_needed_file(ha1, other_ha2, ha3))
+              collect(*vk_map_ptr);
         }
       }
 
@@ -3560,14 +3628,13 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
                   && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
                 auto sp_start = ring_prefix.size();
                 auto uscore = vk.find('_', sp_start);
-                if (uscore != std::string::npos) {
-                  auto entry_center_hybr = vk.substr(sp_start, uscore - sp_start);
-                  if (entry_center_hybr == center_hybr) {
-                    for (auto& s : stats_vec) {
-                      if (s.count > 0)
-                        sq_sum += (s.value - avg) * (s.value - avg);
-                    }
+                if (uscore != std::string::npos
+                    && vk.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
+                  for (auto& s : stats_vec) {
+                    if (s.count > 0)
+                      sq_sum += (s.value - avg) * (s.value - avg);
                   }
+                  break;
                 }
               }
             }
@@ -3575,11 +3642,13 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
           if (center_map) {
             if (auto* ha2_map = find_val(*center_map, ha2)) {
               for (auto& [other_ha3, vk_map] : *ha2_map)
-                compute_dev(vk_map);
+                if (is_in_needed_file(ha1, ha2, other_ha3))
+                  compute_dev(vk_map);
             }
             for (auto& [other_ha2, ha3_map] : *center_map) {
               if (auto* vk_map_ptr = find_val(ha3_map, ha3))
-                compute_dev(*vk_map_ptr);
+                if (is_in_needed_file(ha1, other_ha2, ha3))
+                  compute_dev(*vk_map_ptr);
             }
           }
           sigma = std::sqrt(sq_sum / num_entries);

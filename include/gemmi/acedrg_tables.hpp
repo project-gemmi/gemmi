@@ -9,6 +9,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <set>
 #include <map>
 #include <unordered_map>
 #include <cmath>
@@ -179,7 +180,8 @@ public:
                 Restraints::Bond& bond) const;
   int fill_angle(const ChemComp& cc,
                            const std::vector<CodAtomInfo>& atom_info,
-                           Restraints::Angle& angle) const;
+                           Restraints::Angle& angle,
+                           const std::set<int>& needed_files) const;
 
   // Atom classification - returns info for all atoms
   std::vector<CodAtomInfo> classify_atoms(const ChemComp& cc) const;
