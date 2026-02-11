@@ -1,8 +1,9 @@
 This is gemmi - a project in C++11
-I'm workin on "gemmi drg" ( ./prog/dlg.cpp )  command which should reproduce part of the CCP4 Acedrg
+I'm workin on "gemmi drg" ( ./prog/drg.cpp )  command which should reproduce part of the CCP4 Acedrg
 For reference, Acedrg code is in ./acedrg/. What we implement, is reading Acedrg tables (./acedrg/tables/) and calculating bond and angle restraints for a given CCD monomer.
-We try to exactly reproduce Acedrg algos: protonation /deprotonationlogic, Acedrg atom types, etc.
-Protonation, atom types and bond restraints work fine. Nos we need to sort out angles.
+We try to exactly reproduce Acedrg algos: protonation /deprotonation logic, ccp4 atom energy types,
+Acedrg atom types, etc.
+Protonation, atom types and bond and anglerestraints work fine. Nos we need to sort out angles.
 
 The actual code is in `./include/gemmi/ace*.hpp` and `./src/ace*.cpp`.
 I have a test rig  for comparing out results against Acedrg, I'll be copy pasting differences for you.
@@ -25,7 +26,9 @@ If you think that AceDRG is wrong, write a short description that can be sent to
 
 If not sure what exact rules Acedrg is using, don't guess!!!, write a self-contained question for
 Acedrg experts. when asking question, don't list answer and expect free-text answer.
+or check in qacedrg source code in ./acedrg
 
+Don't run acedrg, instead, check acedrg ouput files mentioned above.
 The latest acedrg is installed in pythonic virtual env:
 /home/wojdyr/app/acedrg/venv
-but it's not reliable, so the one from CCP4 is better for our needs.
+but it's not reliable, the one from CCP4-9 is better for our needs.
