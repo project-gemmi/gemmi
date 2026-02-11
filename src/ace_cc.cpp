@@ -991,22 +991,17 @@ int chirality_priority(Element el) {
   return 6;
 }
 
-int torsion_neighbor_priority(Element el) {
-  if (el == El::O) return 0;
-  if (el == El::N) return 1;
-  if (el == El::S) return 2;
-  if (el == El::P) return 3;
-  if (el == El::C) return 4;
-  if (el == El::H) return 5;
-  return 6;
-}
-
 bool share_ring(const CodAtomInfo& a, const CodAtomInfo& b) {
   for (int ring_id : a.in_rings)
     for (int other_id : b.in_rings)
       if (ring_id == other_id)
         return true;
   return false;
+}
+
+bool is_oxygen_column(Element el) {
+  return el == El::O || el == El::S || el == El::Se ||
+         el == El::Te || el == El::Po;
 }
 
 int shared_ring_size(const CodAtomInfo& a, const CodAtomInfo& b) {
@@ -1057,64 +1052,6 @@ const ChemComp::Atom* pick_torsion_neighbor(
 
   // AceDRG tiebreaker: first in connAtoms = bond-table order = candidates order
   return &cc.atoms[candidates.front()];
-}
-
-const ChemComp::Atom* pick_torsion_neighbor_in_ring(
-    const ChemComp& cc,
-    const std::vector<std::vector<NeighborBond>>& adj,
-    const std::vector<CodAtomInfo>& atom_info,
-    size_t center_idx,
-    size_t other_center_idx,
-    size_t exclude_idx) {
-  std::vector<size_t> ring_candidates;
-  for (const auto& nb : adj[center_idx]) {
-    if (nb.idx == exclude_idx)
-      continue;
-    if (shared_ring_size(atom_info[nb.idx], atom_info[other_center_idx]) > 0)
-      ring_candidates.push_back(nb.idx);
-  }
-  if (ring_candidates.empty())
-    return nullptr;
-
-  bool has_non_h = false;
-  for (size_t idx : ring_candidates)
-    if (!cc.atoms[idx].is_hydrogen())
-      has_non_h = true;
-
-  size_t best = ring_candidates.front();
-  for (size_t idx : ring_candidates) {
-    if (has_non_h && cc.atoms[idx].is_hydrogen())
-      continue;
-    if (has_non_h && cc.atoms[best].is_hydrogen())
-      best = idx;
-    if (cc.atoms[idx].is_hydrogen()) {
-      if (cc.atoms[idx].id > cc.atoms[best].id)
-        best = idx;
-      continue;
-    }
-    if (cc.atoms[best].is_hydrogen()) {
-      best = idx;
-      continue;
-    }
-    int ring_idx = shared_ring_size(atom_info[center_idx], atom_info[idx]);
-    int ring_best = shared_ring_size(atom_info[center_idx], atom_info[best]);
-    if (ring_idx != ring_best) {
-      if (ring_idx < ring_best)
-        best = idx;
-      continue;
-    }
-    int p_idx = torsion_neighbor_priority(cc.atoms[idx].el);
-    int p_best = torsion_neighbor_priority(cc.atoms[best].el);
-    if (p_idx != p_best) {
-      if (p_idx < p_best)
-        best = idx;
-      continue;
-    }
-    if (idx < best)
-      best = idx;
-  }
-
-  return &cc.atoms[best];
 }
 
 // AceDRG selectOneTorFromOneBond: classify as Ring / NonH / H,
@@ -1235,6 +1172,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     for (const auto& nb : adj[i])
       if (!cc.atoms[nb.idx].is_hydrogen())
         non_h_nbs.push_back(nb.idx);
+    std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
+                     [&](size_t a, size_t b) {
+                       int pa = chirality_priority(cc.atoms[a].el);
+                       int pb = chirality_priority(cc.atoms[b].el);
+                       return pa < pb;
+                     });
     if (non_h_nbs.size() < 3)
       continue;
     chiral_centers.insert(i);
@@ -1345,90 +1288,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     size_t idx1 = it1->second;
     size_t idx2 = it2->second;
 
-    bool pep_seeded = false;
-    TorsionEntry pep_entry;
-    bool pep_forward = true;
-    size_t pep_a1 = 0;
-    size_t pep_a4 = 0;
-    int pep_priority = 9999;
-    if (adj[idx1].size() > 1 && adj[idx2].size() > 1) {
-      for (const auto& nb1 : adj[idx1]) {
-        if (nb1.idx == idx2)
-          continue;
-        for (const auto& nb2 : adj[idx2]) {
-          if (nb2.idx == idx1)
-            continue;
-          const std::string& a1 = cc.atoms[nb1.idx].id;
-          const std::string& a2 = cc.atoms[idx1].id;
-          const std::string& a3 = cc.atoms[idx2].id;
-          const std::string& a4 = cc.atoms[nb2.idx].id;
-          TorsionEntry entry;
-          bool forward = false;
-          if (tables.lookup_pep_tors(a1, a2, a3, a4, entry)) {
-            forward = true;
-          } else if (tables.lookup_pep_tors(a4, a3, a2, a1, entry)) {
-            forward = false;
-          } else {
-            continue;
-          }
-          if (entry.priority < pep_priority) {
-            pep_priority = entry.priority;
-            pep_entry = entry;
-            pep_forward = forward;
-            pep_a1 = nb1.idx;
-            pep_a4 = nb2.idx;
-            pep_seeded = true;
-          }
-        }
-      }
-    }
-
-    if (pep_seeded) {
-      std::string id_lower = to_lower(pep_entry.id);
-      double value = pep_entry.value;
-      int period = pep_entry.period;
-      double esd = 10.0;
-      if (id_lower.find("const") != std::string::npos)
-        esd = 0.0;
-      else if (id_lower.find("hh") != std::string::npos)
-        esd = 5.0;
-
-      const std::string& a1 = cc.atoms[pep_a1].id;
-      const std::string& a2 = cc.atoms[idx1].id;
-      const std::string& a3 = cc.atoms[idx2].id;
-      const std::string& a4 = cc.atoms[pep_a4].id;
-      auto is_chi2_combo = [&](const std::string& x1, const std::string& x2,
-                               const std::string& x3, const std::string& x4) {
-        return x1 == "CA" && x2 == "CB" && x3 == "CG" &&
-               (x4 == "CD" || x4 == "CD1" || x4 == "CD2");
-      };
-      bool chi2_match = is_chi2_combo(a1, a2, a3, a4) ||
-                        is_chi2_combo(a4, a3, a2, a1);
-      int sp1 = atom_info[idx1].bonding_idx;
-      int sp2 = atom_info[idx2].bonding_idx;
-      if (chi2_match && ((sp1 == 2 && sp2 == 3) || (sp1 == 3 && sp2 == 2))) {
-        period = 6;
-        value = 90.0;
-      }
-
-      if (pep_forward) {
-        cc.rt.torsions.push_back({pep_entry.id,
-                                  {1, a1},
-                                  {1, a2},
-                                  {1, a3},
-                                  {1, a4},
-                                  value, esd, period});
-      } else {
-        cc.rt.torsions.push_back({pep_entry.id,
-                                  {1, a4},
-                                  {1, a3},
-                                  {1, a2},
-                                  {1, a1},
-                                  value, esd, period});
-      }
-      continue;
-    }
-
     int ring_size = shared_ring_size(atom_info[idx1], atom_info[idx2]);
     size_t center2 = idx1;
     size_t center3 = idx2;
@@ -1485,24 +1344,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       a4 = pick_torsion_neighbor(cc, adj, atom_info, center3, center2);
     }
     ring_size = shared_ring_size(atom_info[center2], atom_info[center3]);
-    // For non-aromatic ring bonds, override aromatic terminals with
-    // same-ring atoms from pick_torsion_neighbor_in_ring.
-    // Skip for aromatic ring bonds — pick_aromatic_ring_neighbor already
-    // matches AceDRG's selectOneTorFromOneBond priority.
-    if (ring_size > 0 && !(bond_aromatic && idx1_in_ring && idx2_in_ring)) {
-      const ChemComp::Atom* ring_a1 =
-          pick_torsion_neighbor_in_ring(cc, adj, atom_info, center2, center3, center3);
-      const ChemComp::Atom* ring_a4 =
-          pick_torsion_neighbor_in_ring(cc, adj, atom_info, center3, center2, center2);
-      auto it_a1_idx = atom_index.find(a1->id);
-      auto it_a4_idx = atom_index.find(a4->id);
-      if (ring_a1 && it_a1_idx != atom_index.end() &&
-          aromatic_like[it_a1_idx->second])
-        a1 = ring_a1;
-      if (ring_a4 && it_a4_idx != atom_index.end() &&
-          aromatic_like[it_a4_idx->second])
-        a4 = ring_a4;
-    }
     if (!a1 || !a4)
       continue;
 
@@ -1512,6 +1353,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     bool sp3_3 = (h3.hybrid == Hybridization::SP3);
     bool sp2_2 = (h2.hybrid == Hybridization::SP2);
     bool sp2_3 = (h3.hybrid == Hybridization::SP2);
+    if (h2.hybrid == Hybridization::SP1 || h3.hybrid == Hybridization::SP1)
+      continue;
 
     TorsionEntry tors_entry;
     double value = 180.0;
@@ -1647,6 +1490,16 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
       esd = 20.0;
       period = 6;
+      int h_count = 0;
+      for (const auto& nb : adj[sp3_center])
+        if (nb.idx != sp2_center && cc.atoms[nb.idx].is_hydrogen())
+          ++h_count;
+      if (is_oxygen_column(cc.atoms[sp2_center].el) &&
+          h_count >= 3 &&
+          cc.atoms[sp3_term].is_hydrogen()) {
+        value = -60.0;
+        period = 3;
+      }
     } else if (!lookup_found && sp2_2 && sp2_3) {
       // Non-aromatic SP2-SP2: use 2x2 matrix
       // Ring-sharing: {0,180; 180,0}. Non-ring: {180,0; 0,180}.
@@ -1662,6 +1515,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         return false;
       };
       bool has_ring_sharing = sp2sp2_ring_sharing(center2, center3);
+      int side1_nb_count = 0;
+      int side2_nb_count = 0;
+      for (const auto& nb : adj[center2])
+        if (nb.idx != center3)
+          ++side1_nb_count;
+      for (const auto& nb : adj[center3])
+        if (nb.idx != center2)
+          ++side2_nb_count;
       static const double ring_m[2][2] = {{0,180},{180,0}};
       static const double noring_m[2][2] = {{180,0},{0,180}};
       const auto& m22 = has_ring_sharing ? ring_m : noring_m;
@@ -1689,7 +1550,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             tv.push_back(nb.idx);
         // Non-ring reordering: H-only and connectivity swap
         if (tv.empty() || has_ring_sharing) goto find_target;
-        if (tv.size() == 2) {
+        if (tv.size() == 2 && side1_nb_count == 2 && side2_nb_count == 2) {
           auto is_h_only = [&](size_t idx) {
             for (const auto& nb : adj[idx])
               if (nb.idx != center && !cc.atoms[nb.idx].is_hydrogen())
@@ -1725,7 +1586,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       int j_pos = sp2sp2_tv_pos(side2, side1, term2, false);
       if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 2)
         value = m22[i_pos][j_pos];
-      esd = 20.0;
+      bool end1_ring = share_ring(atom_info[term1], atom_info[side1]);
+      bool end2_ring = share_ring(atom_info[term2], atom_info[side2]);
+      esd = (end1_ring || end2_ring) ? 20.0 : 5.0;
       period = 2;
     }
 
@@ -1744,69 +1607,81 @@ void add_chirality_if_missing(
   if (!cc.rt.chirs.empty())
     return;
 
-  if (!atom_stereo.empty()) {
-    auto atom_index = cc.make_atom_index();
-    auto adj = build_bond_adjacency(cc, atom_index);
+  auto atom_index = cc.make_atom_index();
+  auto adj = build_bond_adjacency(cc, atom_index);
+  std::set<size_t> stereo_centers;
 
-    for (const auto& entry : atom_stereo) {
-      char stereo = lower(entry.second[0]);
-      if (stereo != 'r' && stereo != 's')
-        continue;
-      auto it = atom_index.find(entry.first);
-      if (it == atom_index.end())
-        continue;
-      size_t center = it->second;
-      if (cc.atoms[center].el != El::C)
-        continue;
+  auto stereo_sign = [&](size_t center) -> ChiralityType {
+    if (cc.atoms[center].el != El::C)
+      return ChiralityType::Both;
+    auto st_it = atom_stereo.find(cc.atoms[center].id);
+    if (st_it == atom_stereo.end() || st_it->second.empty())
+      return ChiralityType::Both;
+    char s = lower(st_it->second[0]);
+    if (s == 's')
+      return ChiralityType::Positive;
+    if (s == 'r')
+      return ChiralityType::Negative;
+    return ChiralityType::Both;
+  };
 
-      auto by_priority = [&](size_t a, size_t b) {
-        int pa = chirality_priority(cc.atoms[a].el);
-        int pb = chirality_priority(cc.atoms[b].el);
-        if (pa != pb)
-          return pa < pb;
-        bool center_in_ring = (atom_info[center].min_ring_size > 0);
-        if (center_in_ring)
-          return cc.atoms[a].id > cc.atoms[b].id;
-        return cc.atoms[a].id < cc.atoms[b].id;
-      };
+  for (size_t center = 0; center < cc.atoms.size(); ++center) {
+    if (atom_info[center].hybrid != Hybridization::SP3)
+      continue;
 
-      std::vector<size_t> non_h;
-      std::vector<size_t> h;
-      for (const auto& nb : adj[center]) {
-        if (cc.atoms[nb.idx].el == El::H)
-          h.push_back(nb.idx);
-        else
-          non_h.push_back(nb.idx);
-      }
-      std::sort(non_h.begin(), non_h.end(), by_priority);
-      std::sort(h.begin(), h.end(), by_priority);
-
-      std::vector<size_t> chosen;
-      for (size_t idx : non_h) {
-        if (chosen.size() == 3)
-          break;
-        chosen.push_back(idx);
-      }
-      for (size_t idx : h) {
-        if (chosen.size() == 3)
-          break;
-        chosen.push_back(idx);
-      }
-      if (chosen.size() < 3)
-        continue;
-
-      ChiralityType sign = (stereo == 's') ? ChiralityType::Positive
-                                           : ChiralityType::Negative;
-      cc.rt.chirs.push_back({{1, cc.atoms[center].id},
-                             {1, cc.atoms[chosen[0]].id},
-                             {1, cc.atoms[chosen[1]].id},
-                             {1, cc.atoms[chosen[2]].id},
-                             sign});
+    std::vector<size_t> non_h;
+    std::vector<size_t> h;
+    for (const auto& nb : adj[center]) {
+      if (cc.atoms[nb.idx].el == El::H)
+        h.push_back(nb.idx);
+      else
+        non_h.push_back(nb.idx);
     }
-  }
+    if (non_h.size() < 3)
+      continue;
 
-  if (!cc.rt.chirs.empty())
-    return;
+    ChiralityType sign = stereo_sign(center);
+    bool is_stereo_carbon = (sign != ChiralityType::Both && cc.atoms[center].el == El::C);
+    if (is_stereo_carbon)
+      stereo_centers.insert(center);
+
+    if (is_stereo_carbon) {
+      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
+        return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
+      });
+      std::stable_sort(h.begin(), h.end(), [&](size_t a, size_t b) {
+        return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
+      });
+    } else {
+      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
+        return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
+      });
+      std::stable_sort(h.begin(), h.end(), [&](size_t a, size_t b) {
+        return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
+      });
+      sign = ChiralityType::Both;
+    }
+
+    std::vector<size_t> chosen;
+    for (size_t idx : non_h) {
+      if (chosen.size() == 3)
+        break;
+      chosen.push_back(idx);
+    }
+    for (size_t idx : h) {
+      if (chosen.size() == 3)
+        break;
+      chosen.push_back(idx);
+    }
+    if (chosen.size() < 3)
+      continue;
+
+    cc.rt.chirs.push_back({{1, cc.atoms[center].id},
+                           {1, cc.atoms[chosen[0]].id},
+                           {1, cc.atoms[chosen[1]].id},
+                           {1, cc.atoms[chosen[2]].id},
+                           sign});
+  }
 
   std::string type = to_upper(cc.type_or_group);
   ChiralityType sign = ChiralityType::Both;
@@ -1825,14 +1700,13 @@ void add_chirality_if_missing(
       cc.find_atom("CB") == cc.atoms.end())
     return;
 
-  cc.rt.chirs.push_back({{1, "CA"}, {1, "N"}, {1, "C"}, {1, "CB"}, sign});
+  size_t ca_idx = std::distance(cc.atoms.begin(), ca);
+  if (stereo_centers.count(ca_idx) == 0)
+    cc.rt.chirs.push_back({{1, "CA"}, {1, "N"}, {1, "C"}, {1, "CB"}, sign});
 }
 
 void add_planes_if_missing(ChemComp& cc,
                            const std::vector<CodAtomInfo>& atom_info) {
-  if (!cc.rt.planes.empty())
-    return;
-
   auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
 
@@ -1892,6 +1766,20 @@ void add_planes_if_missing(ChemComp& cc,
 
   for (size_t idx = 0; idx < cc.atoms.size(); ++idx) {
     if (cc.atoms[idx].el != El::N)
+      continue;
+    if (atom_info[idx].hybrid != Hybridization::SP2)
+      continue;
+    if (atom_info[idx].min_ring_size > 0)
+      continue;
+    std::set<size_t> plane_idx;
+    plane_idx.insert(idx);
+    for (const auto& nb : adj[idx])
+      plane_idx.insert(nb.idx);
+    add_plane(plane_idx);
+  }
+
+  for (size_t idx = 0; idx < cc.atoms.size(); ++idx) {
+    if (cc.atoms[idx].el != El::C)
       continue;
     if (atom_info[idx].hybrid != Hybridization::SP2)
       continue;
