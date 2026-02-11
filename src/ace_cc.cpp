@@ -5,6 +5,7 @@
 
 #include "gemmi/ace_cc.hpp"
 #include "gemmi/acedrg_tables.hpp"
+#include "gemmi/calculate.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cctype>
@@ -1094,6 +1095,39 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
+  std::map<int, std::vector<size_t>> rings;
+  for (size_t i = 0; i < atom_info.size(); ++i)
+    for (int rid : atom_info[i].in_rings)
+      rings[rid].push_back(i);
+  std::vector<std::vector<size_t>> sugar_rings;
+  std::set<size_t> sugar_ring_atoms;
+  for (const auto& r : rings) {
+    const auto& atoms = r.second;
+    if (atoms.size() != 5 && atoms.size() != 6)
+      continue;
+    int n_o = 0, n_c = 0;
+    bool ok = true;
+    for (size_t idx : atoms) {
+      if (atom_info[idx].hybrid != Hybridization::SP3) {
+        ok = false;
+        break;
+      }
+      if (cc.atoms[idx].el == El::O)
+        ++n_o;
+      else if (cc.atoms[idx].el == El::C)
+        ++n_c;
+      else {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok || n_o != 1 || n_c != (int)atoms.size() - 1)
+      continue;
+    sugar_rings.push_back(atoms);
+    for (size_t idx : atoms)
+      sugar_ring_atoms.insert(idx);
+  }
+  bool sugar_mode = !sugar_rings.empty();
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1279,6 +1313,58 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         return i;
     return -1;
   };
+  auto build_tv_list = [&](size_t center, size_t other_center,
+                           TvMode mode = TvMode::Default) -> std::vector<size_t> {
+    size_t ring_sharing = SIZE_MAX;
+    for (const auto& nb1 : adj[center]) {
+      if (nb1.idx == other_center) continue;
+      for (const auto& nb2 : adj[other_center]) {
+        if (nb2.idx == center || nb2.idx == nb1.idx) continue;
+        if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          ring_sharing = nb1.idx;
+          goto found_rs;
+        }
+      }
+    }
+    found_rs:
+    std::vector<size_t> tv;
+    if (ring_sharing != SIZE_MAX)
+      tv.push_back(ring_sharing);
+    auto mt_it = chir_mut_table.find(center);
+    if (mt_it != chir_mut_table.end()) {
+      auto exc_it = mt_it->second.find(other_center);
+      if (exc_it != mt_it->second.end()) {
+        for (size_t a : exc_it->second)
+          if (std::find(tv.begin(), tv.end(), a) == tv.end())
+            tv.push_back(a);
+      }
+    }
+    if (chiral_centers.count(center) == 0) {
+      if (mode == TvMode::SP3SP3) {
+        for (const auto& nb : adj[center])
+          if (nb.idx != other_center &&
+              std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+              !cc.atoms[nb.idx].is_hydrogen()) {
+            tv.push_back(nb.idx);
+            break;
+          }
+      } else if (mode == TvMode::SP2SP3_SP3) {
+        for (const auto& nb : adj[center])
+          if (nb.idx != other_center &&
+              std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+              cc.atoms[nb.idx].is_hydrogen()) {
+            tv.push_back(nb.idx);
+            break;
+          }
+      }
+    }
+    for (const auto& nb : adj[center]) {
+      if (nb.idx != other_center &&
+          std::find(tv.begin(), tv.end(), nb.idx) == tv.end())
+        tv.push_back(nb.idx);
+    }
+    return tv;
+  };
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -1355,6 +1441,32 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     bool sp2_3 = (h3.hybrid == Hybridization::SP2);
     if (h2.hybrid == Hybridization::SP1 || h3.hybrid == Hybridization::SP1)
       continue;
+    if (sugar_mode &&
+        sugar_ring_atoms.count(center2) &&
+        sugar_ring_atoms.count(center3))
+      continue;
+    if (sugar_mode && sp3_2 && sp3_3) {
+      size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
+                      ? center2 : center3;
+      size_t side2 = (side1 == center2) ? center3 : center2;
+      std::vector<size_t> tv1 = build_tv_list(side1, side2, TvMode::SP3SP3);
+      std::vector<size_t> tv2 = build_tv_list(side2, side1, TvMode::SP3SP3);
+      static const double noflip_m[3][3] = {
+        {180,-60,60}, {60,180,-60}, {-60,60,180}};
+      int n1 = std::min(3, (int)tv1.size());
+      int n2 = std::min(3, (int)tv2.size());
+      for (int i = 0; i < n1; ++i) {
+        for (int j = 0; j < n2; ++j) {
+          cc.rt.torsions.push_back({"auto",
+                                    {1, cc.atoms[tv1[i]].id},
+                                    {1, cc.atoms[side1].id},
+                                    {1, cc.atoms[side2].id},
+                                    {1, cc.atoms[tv2[j]].id},
+                                    noflip_m[i][j], 10.0, 3});
+        }
+      }
+      continue;
+    }
 
     TorsionEntry tors_entry;
     double value = 180.0;
@@ -1598,6 +1710,76 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                               {1, cc.atoms[center3].id},
                               {1, a4->id},
                               value, esd, period});
+  }
+
+  if (sugar_mode) {
+    for (const auto& ring_atoms : sugar_rings) {
+      size_t o_idx = SIZE_MAX;
+      for (size_t idx : ring_atoms)
+        if (cc.atoms[idx].el == El::O) {
+          o_idx = idx;
+          break;
+        }
+      if (o_idx == SIZE_MAX)
+        continue;
+      std::set<size_t> ring_set(ring_atoms.begin(), ring_atoms.end());
+      std::vector<size_t> ring_nbs;
+      for (const auto& nb : adj[o_idx])
+        if (ring_set.count(nb.idx))
+          ring_nbs.push_back(nb.idx);
+      if (ring_nbs.size() != 2)
+        continue;
+      size_t next = (cc.atoms[ring_nbs[0]].id < cc.atoms[ring_nbs[1]].id)
+                    ? ring_nbs[0] : ring_nbs[1];
+      std::vector<size_t> seq;
+      seq.reserve(ring_atoms.size());
+      seq.push_back(o_idx);
+      seq.push_back(next);
+      size_t prev = o_idx;
+      size_t cur = next;
+      while (seq.size() < ring_atoms.size()) {
+        size_t chosen = SIZE_MAX;
+        for (const auto& nb : adj[cur]) {
+          if (!ring_set.count(nb.idx) || nb.idx == prev)
+            continue;
+          if (std::find(seq.begin(), seq.end(), nb.idx) != seq.end())
+            continue;
+          if (chosen == SIZE_MAX || cc.atoms[nb.idx].id < cc.atoms[chosen].id)
+            chosen = nb.idx;
+        }
+        if (chosen == SIZE_MAX)
+          break;
+        seq.push_back(chosen);
+        prev = cur;
+        cur = chosen;
+      }
+      if (seq.size() != ring_atoms.size())
+        continue;
+      auto add_nu = [&](int nu_idx, size_t i1, size_t i2, size_t i3, size_t i4) {
+        double value = deg(calculate_dihedral(cc.atoms[i1].xyz, cc.atoms[i2].xyz,
+                                              cc.atoms[i3].xyz, cc.atoms[i4].xyz));
+        cc.rt.torsions.push_back({cat("nu", nu_idx),
+                                  {1, cc.atoms[i1].id},
+                                  {1, cc.atoms[i2].id},
+                                  {1, cc.atoms[i3].id},
+                                  {1, cc.atoms[i4].id},
+                                  value, 10.0, 3});
+      };
+      if (seq.size() == 6) {
+        add_nu(0, seq[5], seq[0], seq[1], seq[2]);
+        add_nu(1, seq[0], seq[1], seq[2], seq[3]);
+        add_nu(2, seq[1], seq[2], seq[3], seq[4]);
+        add_nu(3, seq[2], seq[3], seq[4], seq[5]);
+        add_nu(4, seq[3], seq[4], seq[5], seq[0]);
+        add_nu(5, seq[4], seq[5], seq[0], seq[1]);
+      } else if (seq.size() == 5) {
+        add_nu(0, seq[4], seq[0], seq[1], seq[2]);
+        add_nu(1, seq[0], seq[1], seq[2], seq[3]);
+        add_nu(2, seq[1], seq[2], seq[3], seq[4]);
+        add_nu(3, seq[2], seq[3], seq[4], seq[0]);
+        add_nu(4, seq[3], seq[4], seq[0], seq[1]);
+      }
+    }
   }
 }
 
