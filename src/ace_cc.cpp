@@ -1505,7 +1505,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       value = 0.0;
       esd = 5.0;
       period = 2;
-    } else if (bond_aromatic && h2.is_aromatic && h3.is_aromatic) {
+    } else if (bond_aromatic && ring_size > 0 && h2.is_aromatic && h3.is_aromatic) {
       auto shares_ring_across = [&](size_t terminal_idx, size_t opp_center) {
         for (const auto& nb : adj[opp_center])
           if (nb.idx != center2 && nb.idx != center3 &&
