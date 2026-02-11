@@ -117,7 +117,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             printf("%s\tatom\t!\t%s\t%s\t%s\n",
                    code, a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
           else
-            printf("! atom %s (%s : %s)\n",
+            printf("M atom %s (%s : %s)\n",
                    a.id.c_str(), a.chem_type.c_str(), b->chem_type.c_str());
         }
         if (delta.check_atom_types && !a.acedrg_type.empty() && !b->acedrg_type.empty() &&
@@ -126,7 +126,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             printf("%s\tatomtype\t!\t%s\t%s\t%s\n",
                    code, a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
           else
-            printf("! atom %s acedrg_type (%s : %s)\n",
+            printf("M atom %s acedrg_type (%s : %s)\n",
                    a.id.c_str(), a.acedrg_type.c_str(), b->acedrg_type.c_str());
         }
       }
@@ -155,7 +155,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
       } else {
 #if PRINT_SINGLE_DOUBLE_DIFFS
         if (a.type != b->type)
-          printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
+          printf("M %-30s %s : %s\n", str(cc1, a).c_str(),
                  bond_type_to_string(a.type),
                  bond_type_to_string(b->type));
 #endif
@@ -169,7 +169,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
                    cc1.get_atom(a.id2.atom).chem_type.c_str(),
                    a.value, b->value, a.esd, b->esd);
           else
-            printf("! %-30s %4s %.3f : %.3f   esd %.3f : %.3f\n",
+            printf("M %-30s %4s %.3f : %.3f   esd %.3f : %.3f\n",
                    str(cc1, a).c_str(), mark(d, a.esd),
                    a.value, b->value, a.esd, b->esd);
         }
@@ -212,7 +212,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
                    cc1.get_atom(a.id3.atom).chem_type.c_str(),
                    a.value, b->value, a.esd, b->esd);
           else
-            printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+            printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
                    str(cc1, a).c_str(), mark(d, a.esd),
                    a.value, b->value, a.esd, b->esd);
         }
@@ -248,7 +248,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             printf("%s\ttorsion\t!\t%s\t%.2f\t%.2f\t%.2f\t%.2f\n", code,
                    a.str().c_str(), a.value, b->value, a.esd, b->esd);
           else
-            printf("! %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+            printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
                    str(cc1, a).c_str(), mark(d, a.esd),
                    a.value, b->value, a.esd, b->esd);
         }
@@ -274,7 +274,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             printf("%s\tchir\t!\t%s\t%s\t%s\n", code, a.str().c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
           else
-            printf("! %-30s %s : %s\n", str(cc1, a).c_str(),
+            printf("M %-30s %s : %s\n", str(cc1, a).c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
         }
         matched_chir[b - cc2.rt.chirs.begin()] = true;
@@ -294,7 +294,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             printf("%s\tchir\t!\t%s\t%s\t%s\tswapped\n", code, a.str().c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
           else
-            printf("! %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
+            printf("M %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
         }
       }
@@ -332,7 +332,7 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
         if (tsv)
           printf("%s\tplane\t!\t%s\t%.2f\t%.2f\n", code, a.str().c_str(), a.esd, b_esd);
         else
-          printf("! plane %-53s esd %.2f : %.2f\n", a.str().c_str(), a.esd, b_esd);
+          printf("M plane %-53s esd %.2f : %.2f\n", a.str().c_str(), a.esd, b_esd);
       }
       b->clear();
     }
