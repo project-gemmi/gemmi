@@ -1360,19 +1360,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     auto it_a1 = atom_index.find(a1->id);
     auto it_a4 = atom_index.find(a4->id);
-    bool a1_arom = (it_a1 != atom_index.end() &&
-                    atom_info[it_a1->second].is_aromatic);
-    bool a4_arom = (it_a4 != atom_index.end() &&
-                    atom_info[it_a4->second].is_aromatic);
     bool phospho_torsion =
         ((cc.atoms[center2].el == El::O && cc.atoms[center3].el == El::P) ||
          (cc.atoms[center2].el == El::P && cc.atoms[center3].el == El::O)) &&
         ((a1->el == El::P && a4->el == El::O) ||
          (a1->el == El::O && a4->el == El::P));
-    bool outer_non_ring = false;
-    if (it_a1 != atom_index.end() && it_a4 != atom_index.end())
-      outer_non_ring = !aromatic_like[it_a1->second] || !aromatic_like[it_a4->second];
-
     bool chi2_aromatic =
         (a1->id == "CA" &&
          ((cc.atoms[center2].id == "CB" && cc.atoms[center3].id == "CG") ||
@@ -1393,15 +1385,24 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       value = 0.0;
       esd = 5.0;
       period = 2;
-    } else if (bond_aromatic && h2.is_aromatic && h3.is_aromatic && outer_non_ring) {
-      value = 0.0;
+    } else if (bond_aromatic && h2.is_aromatic && h3.is_aromatic) {
+      // AceDRG SP2-SP2 aromatic matrix: value depends on whether each
+      // terminal shares a ring with a neighbor of the opposite center.
+      // value = (a1_ring XOR a4_ring) ? 180 : 0
+      auto shares_ring_across = [&](size_t terminal_idx, size_t opp_center) {
+        for (const auto& nb : adj[opp_center])
+          if (nb.idx != center2 && nb.idx != center3 &&
+              share_ring(atom_info[terminal_idx], atom_info[nb.idx]))
+            return true;
+        return false;
+      };
+      bool a1_ring = it_a1 != atom_index.end() &&
+                     shares_ring_across(it_a1->second, center3);
+      bool a4_ring = it_a4 != atom_index.end() &&
+                     shares_ring_across(it_a4->second, center2);
+      value = (a1_ring != a4_ring) ? 180.0 : 0.0;
       esd = 0.0;
       period = 1;
-    } else if (!lookup_found && ring_size > 0 && h2.is_aromatic && h3.is_aromatic &&
-               a1_arom && a4_arom) {
-      value = 0.0;
-      esd = 0.0;
-      period = 2;
     } else if (!lookup_found && ring_size == 5 && sp3_2 && sp3_3) {
       bool ca_n_bond =
           (cc.atoms[center2].id == "CA" && cc.atoms[center3].el == El::N) ||
