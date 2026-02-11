@@ -1150,7 +1150,8 @@ const ChemComp::Atom* pick_aromatic_ring_neighbor(
 }
 
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
-                                        const std::vector<CodAtomInfo>& atom_info) {
+                                        const std::vector<CodAtomInfo>& atom_info,
+                                        const std::map<std::string, std::string>& atom_stereo) {
   if (!cc.rt.torsions.empty())
     return;
 
@@ -1169,6 +1170,172 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         aromatic_like[it2->second] = true;
     }
   }
+
+  // Pre-compute ring bond parity (even/odd/no-flip) by traversing each ring
+  // starting from the smallest-index atom, following bond-table (adj) order.
+  // AceDRG uses this parity to select the SP3-SP3 torsion value matrix.
+  enum class RingParity { Even, Odd, NoFlip };
+  std::map<std::pair<size_t,size_t>, RingParity> bond_ring_parity;
+  {
+    int max_ring_id = 0;
+    for (size_t i = 0; i < atom_info.size(); ++i)
+      for (int rid : atom_info[i].in_rings)
+        max_ring_id = std::max(max_ring_id, rid + 1);
+    std::vector<std::vector<size_t>> rings(max_ring_id);
+    for (size_t i = 0; i < atom_info.size(); ++i)
+      for (int rid : atom_info[i].in_rings)
+        rings[rid].push_back(i);
+    for (auto& ring : rings) {
+      if (ring.empty()) continue;
+      std::set<size_t> ring_set(ring.begin(), ring.end());
+      size_t start = *std::min_element(ring.begin(), ring.end());
+      std::vector<size_t> traversal = {start};
+      size_t prev = SIZE_MAX;
+      size_t cur = start;
+      while (traversal.size() < ring.size()) {
+        bool found = false;
+        for (const auto& nb : adj[cur]) {
+          if (nb.idx != prev && ring_set.count(nb.idx) &&
+              std::find(traversal.begin(), traversal.end(), nb.idx)
+                == traversal.end()) {
+            traversal.push_back(nb.idx);
+            prev = cur;
+            cur = nb.idx;
+            found = true;
+            break;
+          }
+        }
+        if (!found) break;
+      }
+      for (size_t i = 0; i + 1 < traversal.size(); ++i) {
+        auto key = std::minmax(traversal[i], traversal[i+1]);
+        bond_ring_parity[key] = (i % 2 == 0) ? RingParity::Even
+                                              : RingParity::Odd;
+      }
+      if (traversal.size() == ring.size()) {
+        auto ckey = std::minmax(traversal.back(), traversal.front());
+        bond_ring_parity[ckey] = RingParity::NoFlip;
+      }
+    }
+  }
+
+  // Detect chiral centers and build mutTable for "both" chirality.
+  // AceDRG generates chirality for SP3 atoms with >=3 non-H neighbors.
+  // R/S carbon stereocenters get positive/negative (empty mutTable in AceDRG
+  // due to string comparison bug). All other eligible atoms get "both"
+  // chirality with populated mutTable.
+  // Chirality affects torsion neighbor ordering: chiral atoms use plain adj
+  // order (or mutTable reorder for "both"), non-chiral use first-non-H/first-H.
+  std::set<size_t> chiral_centers;
+  std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    if (atom_info[i].hybrid != Hybridization::SP3)
+      continue;
+    std::vector<size_t> non_h_nbs;
+    for (const auto& nb : adj[i])
+      if (!cc.atoms[nb.idx].is_hydrogen())
+        non_h_nbs.push_back(nb.idx);
+    if (non_h_nbs.size() < 3)
+      continue;
+    chiral_centers.insert(i);
+    // R/S carbon stereocenters get positive/negative chirality (empty mutTable).
+    // All other eligible atoms get "both" chirality with populated mutTable.
+    bool is_stereo_carbon = false;
+    if (cc.atoms[i].el == El::C) {
+      auto st_it = atom_stereo.find(cc.atoms[i].id);
+      if (st_it != atom_stereo.end()) {
+        char s = lower(st_it->second[0]);
+        if (s == 'r' || s == 's')
+          is_stereo_carbon = true;
+      }
+    }
+    if (is_stereo_carbon)
+      continue;
+    // Build mutTable for "both" chirality: legs are first 3 non-H in adj order
+    size_t a1 = non_h_nbs[0], a2 = non_h_nbs[1], a3 = non_h_nbs[2];
+    size_t missing = SIZE_MAX;
+    for (const auto& nb : adj[i])
+      if (nb.idx != a1 && nb.idx != a2 && nb.idx != a3) {
+        missing = nb.idx;
+        break;
+      }
+    auto& mt = chir_mut_table[i];
+    mt[a1] = {a3, a2};
+    mt[a2] = {a1, a3};
+    mt[a3] = {a2, a1};
+    if (missing != SIZE_MAX) {
+      mt[a1].push_back(missing);
+      mt[a2].push_back(missing);
+      mt[a3].push_back(missing);
+      mt[missing] = {a1, a2, a3};
+    }
+  }
+
+  // Torsion-value neighbor ordering mode for non-chiral atoms.
+  // SP3SP3: first non-H neighbor gets priority (AceDRG SetOneSP3SP3Bond)
+  // SP2SP3_SP3: first H neighbor gets priority (AceDRG SetOneSP2SP3Bond SP3 side)
+  enum class TvMode { Default, SP3SP3, SP2SP3_SP3 };
+
+  // Compute the position of a terminal atom in the torsion-value neighbor
+  // ordering (tV) for a given bond center. Accounts for ring-sharing priority,
+  // "both" chirality mutTable reordering, and non-chiral atom reordering.
+  auto compute_tv_position = [&](size_t center, size_t other_center,
+                                  size_t target,
+                                  TvMode mode = TvMode::Default) -> int {
+    size_t ring_sharing = SIZE_MAX;
+    for (const auto& nb1 : adj[center]) {
+      if (nb1.idx == other_center) continue;
+      for (const auto& nb2 : adj[other_center]) {
+        if (nb2.idx == center || nb2.idx == nb1.idx) continue;
+        if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          ring_sharing = nb1.idx;
+          goto found_rs;
+        }
+      }
+    }
+    found_rs:
+    std::vector<size_t> tv;
+    if (ring_sharing != SIZE_MAX)
+      tv.push_back(ring_sharing);
+    auto mt_it = chir_mut_table.find(center);
+    if (mt_it != chir_mut_table.end()) {
+      auto exc_it = mt_it->second.find(other_center);
+      if (exc_it != mt_it->second.end()) {
+        for (size_t a : exc_it->second)
+          if (std::find(tv.begin(), tv.end(), a) == tv.end())
+            tv.push_back(a);
+      }
+    }
+    // Non-chiral atom reordering: AceDRG adds a specific atom type first
+    if (chiral_centers.count(center) == 0) {
+      if (mode == TvMode::SP3SP3) {
+        for (const auto& nb : adj[center])
+          if (nb.idx != other_center &&
+              std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+              !cc.atoms[nb.idx].is_hydrogen()) {
+            tv.push_back(nb.idx);
+            break;
+          }
+      } else if (mode == TvMode::SP2SP3_SP3) {
+        for (const auto& nb : adj[center])
+          if (nb.idx != other_center &&
+              std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+              cc.atoms[nb.idx].is_hydrogen()) {
+            tv.push_back(nb.idx);
+            break;
+          }
+      }
+    }
+    for (const auto& nb : adj[center]) {
+      if (nb.idx != other_center &&
+          std::find(tv.begin(), tv.end(), nb.idx) == tv.end())
+        tv.push_back(nb.idx);
+    }
+    for (int i = 0; i < (int)tv.size(); ++i)
+      if (tv[i] == target)
+        return i;
+    return -1;
+  };
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -1360,11 +1527,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     auto it_a1 = atom_index.find(a1->id);
     auto it_a4 = atom_index.find(a4->id);
-    bool phospho_torsion =
-        ((cc.atoms[center2].el == El::O && cc.atoms[center3].el == El::P) ||
-         (cc.atoms[center2].el == El::P && cc.atoms[center3].el == El::O)) &&
-        ((a1->el == El::P && a4->el == El::O) ||
-         (a1->el == El::O && a4->el == El::P));
+    if (it_a1 == atom_index.end() || it_a4 == atom_index.end())
+      continue;
+    size_t a1_idx = it_a1->second;
+    size_t a4_idx = it_a4->second;
+
     bool chi2_aromatic =
         (a1->id == "CA" &&
          ((cc.atoms[center2].id == "CB" && cc.atoms[center3].id == "CG") ||
@@ -1375,9 +1542,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
          (cc.atoms[center3].id == "CZ" && cc.atoms[center2].id == "OH")) &&
         a4->id == "HH";
 
-    if (phospho_torsion) {
-      value = 60.0;
-    } else if (chi2_aromatic) {
+    if (chi2_aromatic) {
       value = 90.0;
       esd = 20.0;
       period = 6;
@@ -1386,9 +1551,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       esd = 5.0;
       period = 2;
     } else if (bond_aromatic && h2.is_aromatic && h3.is_aromatic) {
-      // AceDRG SP2-SP2 aromatic matrix: value depends on whether each
-      // terminal shares a ring with a neighbor of the opposite center.
-      // value = (a1_ring XOR a4_ring) ? 180 : 0
       auto shares_ring_across = [&](size_t terminal_idx, size_t opp_center) {
         for (const auto& nb : adj[opp_center])
           if (nb.idx != center2 && nb.idx != center3 &&
@@ -1396,28 +1558,173 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             return true;
         return false;
       };
-      bool a1_ring = it_a1 != atom_index.end() &&
-                     shares_ring_across(it_a1->second, center3);
-      bool a4_ring = it_a4 != atom_index.end() &&
-                     shares_ring_across(it_a4->second, center2);
+      bool a1_ring = shares_ring_across(a1_idx, center3);
+      bool a4_ring = shares_ring_across(a4_idx, center2);
       value = (a1_ring != a4_ring) ? 180.0 : 0.0;
       esd = 0.0;
       period = 1;
-    } else if (!lookup_found && ring_size == 5 && sp3_2 && sp3_3) {
-      bool ca_n_bond =
-          (cc.atoms[center2].id == "CA" && cc.atoms[center3].el == El::N) ||
-          (cc.atoms[center3].id == "CA" && cc.atoms[center2].el == El::N);
-      if (ca_n_bond) {
-        value = 60.0;
-      } else if (a1->el == El::N || a4->el == El::N) {
-        value = -60.0;
+    } else if (!lookup_found && ring_size > 0 && sp3_2 && sp3_3) {
+      // SP3-SP3 ring bond: use even/odd/no-flip matrix based on ring traversal parity
+      auto parity_key = std::minmax(center2, center3);
+      auto pit = bond_ring_parity.find(parity_key);
+      size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
+                      ? center2 : center3;
+      size_t side2 = (side1 == center2) ? center3 : center2;
+      size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
+      size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
+      int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3);
+      int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3);
+      if (pit != bond_ring_parity.end() && i_pos >= 0 && j_pos >= 0) {
+        static const double even_m[3][3] = {
+          {60,180,-60}, {-60,60,180}, {180,-60,60}};
+        static const double odd_m[3][3] = {
+          {-60,60,180}, {180,-60,60}, {60,180,-60}};
+        static const double noflip_m[3][3] = {
+          {180,-60,60}, {60,180,-60}, {-60,60,180}};
+        const auto& m = (pit->second == RingParity::Even) ? even_m
+                       : (pit->second == RingParity::Odd) ? odd_m
+                       : noflip_m;
+        value = m[i_pos][j_pos];
+      }
+    } else if (!lookup_found && sp3_2 && sp3_3 && ring_size == 0) {
+      // Non-ring SP3-SP3: always use no-flip matrix
+      size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
+                      ? center2 : center3;
+      size_t side2 = (side1 == center2) ? center3 : center2;
+      size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
+      size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
+      int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3);
+      int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3);
+      if (i_pos >= 0 && i_pos < 3 && j_pos >= 0 && j_pos < 3) {
+        static const double noflip_m[3][3] = {
+          {180,-60,60}, {60,180,-60}, {-60,60,180}};
+        value = noflip_m[i_pos][j_pos];
       }
     } else if (!lookup_found && ((sp2_2 && sp3_3) || (sp3_2 && sp2_3))) {
-      value = 0.0;
+      // SP2-SP3: tS3 uses {150,-90,30; -30,90,-150},
+      // all other cases use {0,120,-120; 180,-60,60}
+      size_t sp2_center = sp2_2 ? center2 : center3;
+      size_t sp3_center = sp2_2 ? center3 : center2;
+      size_t sp2_term = sp2_2 ? a1_idx : a4_idx;
+      size_t sp3_term = sp2_2 ? a4_idx : a1_idx;
+      // Cross-ring sharing: SP2 neighbor shares ring with SP3 neighbor
+      size_t sp2_rs = SIZE_MAX;
+      for (const auto& nb1 : adj[sp2_center]) {
+        if (nb1.idx == sp3_center) continue;
+        for (const auto& nb2 : adj[sp3_center]) {
+          if (nb2.idx == sp2_center || nb2.idx == nb1.idx) continue;
+          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+            sp2_rs = nb1.idx;
+            goto sp2sp3_found_rs;
+          }
+        }
+      }
+      sp2sp3_found_rs:
+      // SP2 side tV: [ring_sharing?] + [remaining in adj order]
+      {
+        std::vector<size_t> sp2_tv;
+        if (sp2_rs != SIZE_MAX)
+          sp2_tv.push_back(sp2_rs);
+        for (const auto& nb : adj[sp2_center])
+          if (nb.idx != sp3_center &&
+              std::find(sp2_tv.begin(), sp2_tv.end(), nb.idx) == sp2_tv.end())
+            sp2_tv.push_back(nb.idx);
+        int i_pos = -1;
+        for (int k = 0; k < (int)sp2_tv.size(); ++k)
+          if (sp2_tv[k] == sp2_term) { i_pos = k; break; }
+        // tS3: SP2's non-center neighbors share a ring with each other
+        bool is_ts3 = (sp2_rs == SIZE_MAX && sp2_tv.size() == 2 &&
+                       share_ring(atom_info[sp2_tv[0]], atom_info[sp2_tv[1]]));
+        static const double ts3_m[2][3] = {
+          {150,-90,30}, {-30,90,-150}};
+        static const double ts1_m[2][3] = {
+          {0,120,-120}, {180,-60,60}};
+        const auto& sp2sp3_m = is_ts3 ? ts3_m : ts1_m;
+        int j_pos = compute_tv_position(sp3_center, sp2_center, sp3_term,
+                                        TvMode::SP2SP3_SP3);
+        if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 3)
+          value = sp2sp3_m[i_pos][j_pos];
+      }
       esd = 20.0;
       period = 6;
     } else if (!lookup_found && sp2_2 && sp2_3) {
-      value = 180.0;
+      // Non-aromatic SP2-SP2: use 2x2 matrix
+      // Ring-sharing: {0,180; 180,0}. Non-ring: {180,0; 0,180}.
+      auto sp2sp2_ring_sharing = [&](size_t c2, size_t c3) {
+        for (const auto& nb1 : adj[c2]) {
+          if (nb1.idx == c3) continue;
+          for (const auto& nb2 : adj[c3]) {
+            if (nb2.idx == c2 || nb2.idx == nb1.idx) continue;
+            if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx]))
+              return true;
+          }
+        }
+        return false;
+      };
+      bool has_ring_sharing = sp2sp2_ring_sharing(center2, center3);
+      static const double ring_m[2][2] = {{0,180},{180,0}};
+      static const double noring_m[2][2] = {{180,0},{0,180}};
+      const auto& m22 = has_ring_sharing ? ring_m : noring_m;
+      // SP2-SP2 neighbor ordering: for non-ring case with 2 neighbors per side,
+      // AceDRG reorders by "H-only" check then connectivity tiebreaker.
+      auto sp2sp2_tv_pos = [&](size_t center, size_t other, size_t target,
+                               bool is_side1) -> int {
+        std::vector<size_t> tv;
+        // Ring-sharing atom first
+        for (const auto& nb1 : adj[center]) {
+          if (nb1.idx == other) continue;
+          for (const auto& nb2 : adj[other]) {
+            if (nb2.idx == center || nb2.idx == nb1.idx) continue;
+            if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+              tv.push_back(nb1.idx);
+              goto done_rs;
+            }
+          }
+        }
+        done_rs:
+        // Remaining in adj order
+        for (const auto& nb : adj[center])
+          if (nb.idx != other &&
+              std::find(tv.begin(), tv.end(), nb.idx) == tv.end())
+            tv.push_back(nb.idx);
+        // Non-ring reordering: H-only and connectivity swap
+        if (tv.empty() || has_ring_sharing) goto find_target;
+        if (tv.size() == 2) {
+          auto is_h_only = [&](size_t idx) {
+            for (const auto& nb : adj[idx])
+              if (nb.idx != center && !cc.atoms[nb.idx].is_hydrogen())
+                return false;
+            return true;
+          };
+          bool h0 = is_h_only(tv[0]);
+          bool h1 = is_h_only(tv[1]);
+          if (is_side1) {
+            if (h0 && !h1)
+              std::swap(tv[0], tv[1]);
+            else if ((int)adj[tv[0]].size() < (int)adj[tv[1]].size())
+              std::swap(tv[0], tv[1]);
+          } else {
+            if (h0 && (!h1 || (int)adj[tv[0]].size() < (int)adj[tv[1]].size()))
+              std::swap(tv[0], tv[1]);
+            else if (!h0 && (int)adj[tv[0]].size() < (int)adj[tv[1]].size() && !h1)
+              std::swap(tv[0], tv[1]);
+          }
+        }
+        find_target:
+        for (int i = 0; i < (int)tv.size(); ++i)
+          if (tv[i] == target)
+            return i;
+        return -1;
+      };
+      size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
+                      ? center2 : center3;
+      size_t side2 = (side1 == center2) ? center3 : center2;
+      size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
+      size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
+      int i_pos = sp2sp2_tv_pos(side1, side2, term1, true);
+      int j_pos = sp2sp2_tv_pos(side2, side1, term2, false);
+      if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 2)
+        value = m22[i_pos][j_pos];
       esd = 20.0;
       period = 2;
     }
@@ -1692,7 +1999,7 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
       if (added_h3)
         sync_n_terminal_h3_angles(cc);
       std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
-      add_torsions_from_bonds_if_missing(cc, tables, atom_info);
+      add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo);
       add_chirality_if_missing(cc, atom_stereo, atom_info);
       add_planes_if_missing(cc, atom_info);
     }
