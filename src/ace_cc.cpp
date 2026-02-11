@@ -1025,8 +1025,6 @@ const ChemComp::Atom* pick_torsion_neighbor(
     const ChemComp& cc,
     const std::vector<std::vector<NeighborBond>>& adj,
     const std::vector<CodAtomInfo>& atom_info,
-    const std::vector<bool>& ring_like,
-    bool bond_aromatic,
     size_t center_idx,
     size_t exclude_idx) {
   std::vector<size_t> candidates;
@@ -1036,132 +1034,29 @@ const ChemComp::Atom* pick_torsion_neighbor(
   if (candidates.empty())
     return nullptr;
 
-  bool prefer_ring = ring_like[center_idx];
-  if (prefer_ring) {
-    bool share_other = bond_aromatic;
-    if (share_other) {
-      std::vector<size_t> non_ring_non_h;
-      std::vector<size_t> ring_non_h;
-      for (size_t idx : candidates) {
-        if (cc.atoms[idx].is_hydrogen())
-          continue;
-        if (share_ring(atom_info[center_idx], atom_info[idx]) || ring_like[idx])
-          ring_non_h.push_back(idx);
-        else
-          non_ring_non_h.push_back(idx);
+  // AceDRG priority: non-ring non-H > ring non-H > H
+  // Separate non-H candidates into ring vs non-ring, prefer non-ring.
+  {
+    std::vector<size_t> non_ring_non_h;
+    std::vector<size_t> ring_non_h;
+    for (size_t idx : candidates) {
+      if (cc.atoms[idx].is_hydrogen()) {
+        // keep in candidates (will be filtered later)
+      } else if (atom_info[idx].min_ring_size > 0) {
+        ring_non_h.push_back(idx);
+      } else {
+        non_ring_non_h.push_back(idx);
       }
-
-      if (non_ring_non_h.size() == 1 && ring_non_h.size() == 1) {
-        Element el = cc.atoms[non_ring_non_h.front()].el;
-        if (el == El::O || el == El::N || el == El::S || el == El::P) {
-          candidates.swap(ring_non_h);
-        } else if (cc.atoms[exclude_idx].id < cc.atoms[ring_non_h.front()].id) {
-          candidates.swap(non_ring_non_h);
-        } else {
-          candidates.swap(ring_non_h);
-        }
-      } else if (!non_ring_non_h.empty()) {
-        candidates.swap(non_ring_non_h);
-      } else if (!ring_non_h.empty()) {
-        candidates.swap(ring_non_h);
-      }
-    } else {
-      std::vector<size_t> ring_candidates;
-      for (size_t idx : candidates)
-        if (share_ring(atom_info[center_idx], atom_info[idx]))
-          ring_candidates.push_back(idx);
-      if (!ring_candidates.empty())
-        candidates.swap(ring_candidates);
     }
+    if (!non_ring_non_h.empty())
+      candidates.swap(non_ring_non_h);
+    else if (!ring_non_h.empty())
+      candidates.swap(ring_non_h);
+    // else only H atoms remain — keep candidates as-is
   }
 
-  bool has_non_h = false;
-  for (size_t idx : candidates)
-    if (!cc.atoms[idx].is_hydrogen())
-      has_non_h = true;
-
-  auto better_h = [&](size_t a, size_t b) {
-    const std::string& na = cc.atoms[a].id;
-    const std::string& nb = cc.atoms[b].id;
-    bool a_is_h = (na == "H");
-    bool b_is_h = (nb == "H");
-    if (a_is_h != b_is_h)
-      return a_is_h;
-    if (!a_is_h && !b_is_h)
-      return na > nb;
-    return na < nb;
-  };
-
-  size_t best = candidates.front();
-  for (size_t idx : candidates) {
-    if (has_non_h && cc.atoms[idx].is_hydrogen())
-      continue;
-    if (has_non_h && cc.atoms[best].is_hydrogen())
-      best = idx;
-    if (cc.atoms[idx].is_hydrogen()) {
-      if (better_h(idx, best))
-        best = idx;
-      continue;
-    }
-    if (cc.atoms[best].is_hydrogen()) {
-      best = idx;
-      continue;
-    }
-    if (prefer_ring) {
-      int ring_idx = share_ring(atom_info[center_idx], atom_info[idx])
-                         ? shared_ring_size(atom_info[center_idx], atom_info[idx])
-                         : 999;
-      int ring_best = share_ring(atom_info[center_idx], atom_info[best])
-                          ? shared_ring_size(atom_info[center_idx], atom_info[best])
-                          : 999;
-      if (ring_idx != ring_best) {
-        if (ring_idx < ring_best)
-          best = idx;
-        continue;
-      }
-    }
-    if (bond_aromatic) {
-      bool idx_arom_bond = false;
-      for (const auto& nb : adj[center_idx]) {
-        if (nb.idx == idx && nb.aromatic) {
-          idx_arom_bond = true;
-          break;
-        }
-      }
-      bool best_arom_bond = false;
-      for (const auto& nb : adj[center_idx]) {
-        if (nb.idx == best && nb.aromatic) {
-          best_arom_bond = true;
-          break;
-        }
-      }
-      if (idx_arom_bond != best_arom_bond) {
-        if (!idx_arom_bond)
-          best = idx;
-        continue;
-      }
-    }
-    int p_idx = torsion_neighbor_priority(cc.atoms[idx].el);
-    int p_best = torsion_neighbor_priority(cc.atoms[best].el);
-    if (p_idx != p_best) {
-      if (p_idx < p_best)
-        best = idx;
-      continue;
-    }
-    if (cc.atoms[idx].el == El::C && cc.atoms[best].el == El::C) {
-      bool c_idx = is_carbonyl_carbon(idx, cc, adj);
-      bool c_best = is_carbonyl_carbon(best, cc, adj);
-      if (c_idx != c_best) {
-        if (c_idx)
-          best = idx;
-        continue;
-      }
-    }
-    if (cc.atoms[idx].id < cc.atoms[best].id)
-      best = idx;
-  }
-
-  return &cc.atoms[best];
+  // AceDRG tiebreaker: first in connAtoms = bond-table order = candidates order
+  return &cc.atoms[candidates.front()];
 }
 
 const ChemComp::Atom* pick_torsion_neighbor_in_ring(
@@ -1215,21 +1110,22 @@ const ChemComp::Atom* pick_torsion_neighbor_in_ring(
         best = idx;
       continue;
     }
-    if (cc.atoms[idx].id < cc.atoms[best].id)
+    if (idx < best)
       best = idx;
   }
 
   return &cc.atoms[best];
 }
 
+// AceDRG selectOneTorFromOneBond: classify as Ring / NonH / H,
+// priority NonH > Ring > H, tiebreaker = first in connAtoms (bond-table order).
 const ChemComp::Atom* pick_aromatic_ring_neighbor(
     const ChemComp& cc,
     const std::vector<std::vector<NeighborBond>>& adj,
     const std::vector<CodAtomInfo>& atom_info,
     size_t center_idx,
     size_t exclude_idx) {
-  std::vector<size_t> nonring_c;
-  std::vector<size_t> nonring_other;
+  std::vector<size_t> nonring_nonh;
   std::vector<size_t> ring_nb;
   std::vector<size_t> h;
   for (const auto& nb : adj[center_idx]) {
@@ -1237,34 +1133,17 @@ const ChemComp::Atom* pick_aromatic_ring_neighbor(
       continue;
     if (cc.atoms[nb.idx].is_hydrogen()) {
       h.push_back(nb.idx);
-    } else if (share_ring(atom_info[center_idx], atom_info[nb.idx])) {
+    } else if (atom_info[nb.idx].min_ring_size > 0) {
       ring_nb.push_back(nb.idx);
-    } else if (cc.atoms[nb.idx].el == El::C) {
-      nonring_c.push_back(nb.idx);
     } else {
-      nonring_other.push_back(nb.idx);
+      nonring_nonh.push_back(nb.idx);
     }
   }
-  auto sort_ids = [&](std::vector<size_t>& v) {
-    std::sort(v.begin(), v.end(),
-              [&](size_t a, size_t b) { return cc.atoms[a].id < cc.atoms[b].id; });
-  };
-  sort_ids(nonring_c);
-  sort_ids(nonring_other);
-  sort_ids(ring_nb);
-  sort_ids(h);
-  if (cc.atoms[center_idx].id == "CG" &&
-      cc.atoms[exclude_idx].id == "CD2") {
-    for (size_t idx : ring_nb)
-      if (cc.atoms[idx].id == "CD1")
-        return &cc.atoms[idx];
-  }
-  if (!nonring_c.empty())
-    return &cc.atoms[nonring_c.front()];
+  // tiebreaker: bond-table order (= adj iteration order, already preserved)
+  if (!nonring_nonh.empty())
+    return &cc.atoms[nonring_nonh.front()];
   if (!ring_nb.empty())
     return &cc.atoms[ring_nb.front()];
-  if (!nonring_other.empty())
-    return &cc.atoms[nonring_other.front()];
   if (!h.empty())
     return &cc.atoms[h.front()];
   return nullptr;
@@ -1435,13 +1314,15 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       a1 = pick_aromatic_ring_neighbor(cc, adj, atom_info, center2, center3);
       a4 = pick_aromatic_ring_neighbor(cc, adj, atom_info, center3, center2);
     } else {
-      a1 = pick_torsion_neighbor(cc, adj, atom_info, aromatic_like,
-                                 bond_aromatic, center2, center3);
-      a4 = pick_torsion_neighbor(cc, adj, atom_info, aromatic_like,
-                                 bond_aromatic, center3, center2);
+      a1 = pick_torsion_neighbor(cc, adj, atom_info, center2, center3);
+      a4 = pick_torsion_neighbor(cc, adj, atom_info, center3, center2);
     }
     ring_size = shared_ring_size(atom_info[center2], atom_info[center3]);
-    if (ring_size > 0) {
+    // For non-aromatic ring bonds, override aromatic terminals with
+    // same-ring atoms from pick_torsion_neighbor_in_ring.
+    // Skip for aromatic ring bonds — pick_aromatic_ring_neighbor already
+    // matches AceDRG's selectOneTorFromOneBond priority.
+    if (ring_size > 0 && !(bond_aromatic && idx1_in_ring && idx2_in_ring)) {
       const ChemComp::Atom* ring_a1 =
           pick_torsion_neighbor_in_ring(cc, adj, atom_info, center2, center3, center3);
       const ChemComp::Atom* ring_a4 =
