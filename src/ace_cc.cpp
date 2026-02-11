@@ -1128,6 +1128,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       sugar_ring_atoms.insert(idx);
   }
   bool sugar_mode = !sugar_rings.empty();
+  bool peptide_mode = ChemComp::is_peptide_group(cc.group);
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1472,9 +1473,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     double value = 180.0;
     double esd = 10.0;
     int period = 3;
-    bool lookup_found = tables.lookup_pep_tors(a1->id, cc.atoms[center2].id,
-                                               cc.atoms[center3].id, a4->id,
-                                               tors_entry);
+    bool lookup_found = false;
+    if (peptide_mode)
+      lookup_found = tables.lookup_pep_tors(a1->id, cc.atoms[center2].id,
+                                            cc.atoms[center3].id, a4->id,
+                                            tors_entry);
     if (lookup_found) {
       value = tors_entry.value;
       esd = 10.0;
