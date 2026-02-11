@@ -1095,13 +1095,13 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
-  std::map<int, std::vector<size_t>> rings;
+  std::map<int, std::vector<size_t>> ring_map;
   for (size_t i = 0; i < atom_info.size(); ++i)
     for (int rid : atom_info[i].in_rings)
-      rings[rid].push_back(i);
+      ring_map[rid].push_back(i);
   std::vector<std::vector<size_t>> sugar_rings;
   std::set<size_t> sugar_ring_atoms;
-  for (const auto& r : rings) {
+  for (const auto& r : ring_map) {
     const auto& atoms = r.second;
     if (atoms.size() != 5 && atoms.size() != 6)
       continue;
@@ -1756,8 +1756,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (seq.size() != ring_atoms.size())
         continue;
       auto add_nu = [&](int nu_idx, size_t i1, size_t i2, size_t i3, size_t i4) {
-        double value = deg(calculate_dihedral(cc.atoms[i1].xyz, cc.atoms[i2].xyz,
-                                              cc.atoms[i3].xyz, cc.atoms[i4].xyz));
+        // AceDRG getTorsion() uses opposite sign convention than calculate_dihedral().
+        double value = -deg(calculate_dihedral(cc.atoms[i1].xyz, cc.atoms[i2].xyz,
+                                               cc.atoms[i3].xyz, cc.atoms[i4].xyz));
         cc.rt.torsions.push_back({cat("nu", nu_idx),
                                   {1, cc.atoms[i1].id},
                                   {1, cc.atoms[i2].id},
