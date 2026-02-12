@@ -1207,12 +1207,23 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     for (const auto& nb : adj[i])
       if (!cc.atoms[nb.idx].is_hydrogen())
         non_h_nbs.push_back(nb.idx);
-    std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
-                     [&](size_t a, size_t b) {
-                       int pa = chirality_priority(cc.atoms[a].el);
-                       int pb = chirality_priority(cc.atoms[b].el);
-                       return pa < pb;
-                     });
+    bool has_halogen_nb = false;
+    for (size_t nb : non_h_nbs) {
+      Element e = cc.atoms[nb].el;
+      if (e == El::F || e == El::Cl || e == El::Br || e == El::I || e == El::At) {
+        has_halogen_nb = true;
+        break;
+      }
+    }
+    bool use_chiral_priority_sort = !(cc.atoms[i].el == El::C && has_halogen_nb);
+    if (use_chiral_priority_sort) {
+      std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
+                       [&](size_t a, size_t b) {
+                         int pa = chirality_priority(cc.atoms[a].el);
+                         int pb = chirality_priority(cc.atoms[b].el);
+                         return pa < pb;
+                       });
+    }
     if (non_h_nbs.size() < 3)
       continue;
     chiral_centers.insert(i);
@@ -1287,6 +1298,25 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     // Non-chiral atom reordering: AceDRG adds a specific atom type first
     if (chiral_centers.count(center) == 0) {
       if (mode == TvMode::SP3SP3) {
+        if (is_oxygen_column(cc.atoms[center].el)) {
+          for (const auto& nb : adj[center])
+            if (nb.idx != other_center &&
+                std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+                cc.atoms[nb.idx].el == El::O &&
+                (nb.type == BondType::Double || nb.type == BondType::Deloc)) {
+              tv.push_back(nb.idx);
+              break;
+            }
+          if (tv.empty() || tv[0] == ring_sharing) {
+            for (const auto& nb : adj[center])
+              if (nb.idx != other_center &&
+                  std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+                  cc.atoms[nb.idx].el == El::O) {
+                tv.push_back(nb.idx);
+                break;
+              }
+          }
+        }
         for (const auto& nb : adj[center])
           if (nb.idx != other_center &&
               std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
@@ -1342,6 +1372,25 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     if (chiral_centers.count(center) == 0) {
       if (mode == TvMode::SP3SP3) {
+        if (is_oxygen_column(cc.atoms[center].el)) {
+          for (const auto& nb : adj[center])
+            if (nb.idx != other_center &&
+                std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+                cc.atoms[nb.idx].el == El::O &&
+                (nb.type == BondType::Double || nb.type == BondType::Deloc)) {
+              tv.push_back(nb.idx);
+              break;
+            }
+          if (tv.empty() || tv[0] == ring_sharing) {
+            for (const auto& nb : adj[center])
+              if (nb.idx != other_center &&
+                  std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+                  cc.atoms[nb.idx].el == El::O) {
+                tv.push_back(nb.idx);
+                break;
+              }
+          }
+        }
         for (const auto& nb : adj[center])
           if (nb.idx != other_center &&
               std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
@@ -1705,6 +1754,34 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       bool end2_ring = share_ring(atom_info[term2], atom_info[side2]);
       esd = (end1_ring || end2_ring) ? 20.0 : 5.0;
       period = 2;
+    }
+
+    if (!lookup_found && sp3_2 && sp3_3) {
+      auto is_sulfone_oxo = [&](size_t center, size_t term) {
+        if (cc.atoms[center].el != El::S || cc.atoms[term].el != El::O)
+          return false;
+        int n_oxo = 0;
+        bool term_is_oxo = false;
+        for (const auto& nb : adj[center]) {
+          bool is_oxo = (cc.atoms[nb.idx].el == El::O &&
+                         (nb.type == BondType::Double || nb.type == BondType::Deloc));
+          if (is_oxo) {
+            ++n_oxo;
+            if (nb.idx == term)
+              term_is_oxo = true;
+          }
+        }
+        return term_is_oxo && n_oxo >= 2;
+      };
+      bool ns_sulfone_oxo = ((cc.atoms[center2].el == El::N &&
+                              is_sulfone_oxo(center3, a4_idx)) ||
+                             (cc.atoms[center3].el == El::N &&
+                              is_sulfone_oxo(center2, a1_idx)));
+      if (ns_sulfone_oxo) {
+        value = 180.0;
+        esd = 10.0;
+        period = 3;
+      }
     }
 
     cc.rt.torsions.push_back({"auto",
