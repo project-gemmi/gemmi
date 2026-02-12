@@ -1217,12 +1217,50 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     bool use_chiral_priority_sort = !(cc.atoms[i].el == El::C && has_halogen_nb);
     if (use_chiral_priority_sort) {
-      std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
-                       [&](size_t a, size_t b) {
-                         int pa = chirality_priority(cc.atoms[a].el);
-                         int pb = chirality_priority(cc.atoms[b].el);
-                         return pa < pb;
-                       });
+      if (cc.atoms[i].el == El::P) {
+        auto bond_to_center_type = [&](size_t nb_idx) {
+          for (const auto& nb : adj[i])
+            if (nb.idx == nb_idx)
+              return nb.type;
+          return BondType::Unspec;
+        };
+        auto p_nb_rank = [&](size_t nb_idx) {
+          if (cc.atoms[nb_idx].el != El::O)
+            return 3;
+          bool bridged_to_p = false;
+          for (const auto& nb2 : adj[nb_idx]) {
+            if (nb2.idx == i || cc.atoms[nb2.idx].is_hydrogen())
+              continue;
+            if (cc.atoms[nb2.idx].el == El::P) {
+              bridged_to_p = true;
+              break;
+            }
+          }
+          if (bridged_to_p)
+            return 0;
+          BondType bt = bond_to_center_type(nb_idx);
+          if (bt == BondType::Double || bt == BondType::Deloc)
+            return 2;
+          return 1;
+        };
+        std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
+                         [&](size_t a, size_t b) {
+                           int ra = p_nb_rank(a);
+                           int rb = p_nb_rank(b);
+                           if (ra != rb)
+                             return ra < rb;
+                           int pa = chirality_priority(cc.atoms[a].el);
+                           int pb = chirality_priority(cc.atoms[b].el);
+                           return pa < pb;
+                         });
+      } else {
+        std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
+                         [&](size_t a, size_t b) {
+                           int pa = chirality_priority(cc.atoms[a].el);
+                           int pb = chirality_priority(cc.atoms[b].el);
+                           return pa < pb;
+                         });
+      }
     }
     if (non_h_nbs.size() < 3)
       continue;
@@ -1261,7 +1299,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   }
 
   // Torsion-value neighbor ordering mode for non-chiral atoms.
-  // SP3SP3: first non-H neighbor gets priority (AceDRG SetOneSP3SP3Bond)
+  // SP3SP3: non-H/oxygen-column ordering.
   // SP2SP3_SP3: first H neighbor gets priority (AceDRG SetOneSP2SP3Bond SP3 side)
   enum class TvMode { Default, SP3SP3, SP2SP3_SP3 };
 
