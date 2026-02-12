@@ -1615,10 +1615,22 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         value = -60.0;
         period = 3;
       }
+      int sp2_non_h_other = 0;
+      int sp2_h_other = 0;
+      for (const auto& nb : adj[sp2_center]) {
+        if (nb.idx == sp3_center)
+          continue;
+        if (cc.atoms[nb.idx].is_hydrogen())
+          ++sp2_h_other;
+        else
+          ++sp2_non_h_other;
+      }
       if (is_oxygen_column(cc.atoms[sp2_center].el) &&
-          cc.atoms[sp2_term].el == El::C &&
-          cc.atoms[sp3_term].el == El::C &&
-          is_carbonyl_carbon(sp2_term, cc, adj)) {
+          ring_size == 0 &&
+          atom_info[sp2_term].hybrid == Hybridization::SP2 &&
+          !cc.atoms[sp3_term].is_hydrogen() &&
+          sp2_non_h_other == 1 &&
+          sp2_h_other == 0) {
         value = 180.0;
         period = 3;
       }
