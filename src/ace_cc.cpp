@@ -1615,6 +1615,13 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         value = -60.0;
         period = 3;
       }
+      if (is_oxygen_column(cc.atoms[sp2_center].el) &&
+          cc.atoms[sp2_term].el == El::C &&
+          cc.atoms[sp3_term].el == El::C &&
+          is_carbonyl_carbon(sp2_term, cc, adj)) {
+        value = 180.0;
+        period = 3;
+      }
     } else if (!lookup_found && sp2_2 && sp2_3) {
       // Non-aromatic SP2-SP2: use 2x2 matrix.
       // Ring-sharing pair is selected once globally (AceDRG tS1/tS2 logic).
