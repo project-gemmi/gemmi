@@ -1515,6 +1515,37 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           {180,-60,60}, {60,180,-60}, {-60,60,180}};
         value = noflip_m[i_pos][j_pos];
       }
+      // AceDRG: for N(P)2(H)-P bonds one branch is -60 and the other +60.
+      auto has_double_oxo = [&](size_t p_idx, size_t term_idx) {
+        if (cc.atoms[p_idx].el != El::P || cc.atoms[term_idx].el != El::O)
+          return false;
+        for (const auto& nb : adj[p_idx])
+          if (nb.idx == term_idx)
+            return nb.type == BondType::Double || nb.type == BondType::Deloc;
+        return false;
+      };
+      auto n_diphos_h = [&](size_t n_idx) {
+        if (cc.atoms[n_idx].el != El::N)
+          return false;
+        int p_cnt = 0, h_cnt = 0;
+        for (const auto& nb : adj[n_idx]) {
+          if (cc.atoms[nb.idx].el == El::P) ++p_cnt;
+          if (cc.atoms[nb.idx].is_hydrogen()) ++h_cnt;
+        }
+        return p_cnt == 2 && h_cnt >= 1;
+      };
+      size_t n_center = SIZE_MAX, p_center = SIZE_MAX;
+      size_t n_term = SIZE_MAX, p_term = SIZE_MAX;
+      if (cc.atoms[center2].el == El::N && cc.atoms[center3].el == El::P) {
+        n_center = center2; p_center = center3; n_term = a1_idx; p_term = a4_idx;
+      } else if (cc.atoms[center3].el == El::N && cc.atoms[center2].el == El::P) {
+        n_center = center3; p_center = center2; n_term = a4_idx; p_term = a1_idx;
+      }
+      if (n_center != SIZE_MAX && n_diphos_h(n_center) &&
+          cc.atoms[n_term].el == El::P &&
+          has_double_oxo(p_center, p_term)) {
+        value = (cc.atoms[p_center].id < cc.atoms[n_term].id) ? -60.0 : 60.0;
+      }
     } else if (!lookup_found && ((sp2_2 && sp3_3) || (sp3_2 && sp2_3))) {
       // SP2-SP3: tS3 uses {150,-90,30; -30,90,-150},
       // all other cases use {0,120,-120; 180,-60,60}
@@ -1559,6 +1590,18 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                         TvMode::SP2SP3_SP3);
         if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 3)
           value = sp2sp3_m[i_pos][j_pos];
+        if (i_pos == 0 && j_pos == 0 && value == 0.0 &&
+            sp2_rs != SIZE_MAX &&
+            is_oxygen_column(cc.atoms[sp2_center].el) &&
+            cc.atoms[sp3_center].el == El::C) {
+          auto pit = bond_ring_parity.find(std::minmax(center2, center3));
+          if (pit != bond_ring_parity.end()) {
+            if (pit->second == RingParity::Even)
+              value = 60.0;
+            else if (pit->second == RingParity::Odd)
+              value = -60.0;
+          }
+        }
       }
       esd = 20.0;
       period = 6;
@@ -1573,48 +1616,47 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         period = 3;
       }
     } else if (!lookup_found && sp2_2 && sp2_3) {
-      // Non-aromatic SP2-SP2: use 2x2 matrix
-      // Ring-sharing: {0,180; 180,0}. Non-ring: {180,0; 0,180}.
-      auto sp2sp2_ring_sharing = [&](size_t c2, size_t c3) {
-        for (const auto& nb1 : adj[c2]) {
-          if (nb1.idx == c3) continue;
-          for (const auto& nb2 : adj[c3]) {
-            if (nb2.idx == c2 || nb2.idx == nb1.idx) continue;
-            if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx]))
-              return true;
+      // Non-aromatic SP2-SP2: use 2x2 matrix.
+      // Ring-sharing pair is selected once globally (AceDRG tS1/tS2 logic).
+      size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
+                      ? center2 : center3;
+      size_t side2 = (side1 == center2) ? center3 : center2;
+      size_t rs1 = SIZE_MAX;
+      size_t rs2 = SIZE_MAX;
+      for (const auto& nb1 : adj[side1]) {
+        if (nb1.idx == side2) continue;
+        for (const auto& nb2 : adj[side2]) {
+          if (nb2.idx == side1 || nb2.idx == nb1.idx) continue;
+          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+            rs1 = nb1.idx;
+            rs2 = nb2.idx;
+            goto sp2sp2_found_rs;
           }
         }
-        return false;
-      };
-      bool has_ring_sharing = sp2sp2_ring_sharing(center2, center3);
+      }
+      sp2sp2_found_rs:
+      bool has_ring_sharing = (rs1 != SIZE_MAX && rs2 != SIZE_MAX);
       int side1_nb_count = 0;
       int side2_nb_count = 0;
-      for (const auto& nb : adj[center2])
-        if (nb.idx != center3)
+      for (const auto& nb : adj[side1])
+        if (nb.idx != side2)
           ++side1_nb_count;
-      for (const auto& nb : adj[center3])
-        if (nb.idx != center2)
+      for (const auto& nb : adj[side2])
+        if (nb.idx != side1)
           ++side2_nb_count;
       static const double ring_m[2][2] = {{0,180},{180,0}};
       static const double noring_m[2][2] = {{180,0},{0,180}};
-      const auto& m22 = has_ring_sharing ? ring_m : noring_m;
       // SP2-SP2 neighbor ordering: for non-ring case with 2 neighbors per side,
       // AceDRG reorders by "H-only" check then connectivity tiebreaker.
       auto sp2sp2_tv_pos = [&](size_t center, size_t other, size_t target,
                                bool is_side1) -> int {
         std::vector<size_t> tv;
-        // Ring-sharing atom first
-        for (const auto& nb1 : adj[center]) {
-          if (nb1.idx == other) continue;
-          for (const auto& nb2 : adj[other]) {
-            if (nb2.idx == center || nb2.idx == nb1.idx) continue;
-            if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
-              tv.push_back(nb1.idx);
-              goto done_rs;
-            }
-          }
+        // Ring-sharing atom from the globally selected pair.
+        if (has_ring_sharing) {
+          size_t rs = is_side1 ? rs1 : rs2;
+          if (rs != SIZE_MAX)
+            tv.push_back(rs);
         }
-        done_rs:
         // Remaining in adj order
         for (const auto& nb : adj[center])
           if (nb.idx != other &&
@@ -1649,11 +1691,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             return i;
         return -1;
       };
-      size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
-                      ? center2 : center3;
-      size_t side2 = (side1 == center2) ? center3 : center2;
       size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
       size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
+      const auto& m22 = has_ring_sharing ? ring_m : noring_m;
       int i_pos = sp2sp2_tv_pos(side1, side2, term1, true);
       int j_pos = sp2sp2_tv_pos(side2, side1, term2, false);
       if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 2)
@@ -1697,7 +1737,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         period = 3;
       }
     }
-
     cc.rt.torsions.push_back({"auto",
                               {1, a1->id},
                               {1, cc.atoms[center2].id},
