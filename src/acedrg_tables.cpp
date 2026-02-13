@@ -507,6 +507,15 @@ void AcedrgTables::load_covalent_radii(const std::string& path) {
       continue;
     if (std::strcmp(kind, "cova") != 0)
       continue;
+    bool plain_symbol = true;
+    for (const char* p = elem; *p != '\0'; ++p) {
+      if (!std::isalpha(static_cast<unsigned char>(*p))) {
+        plain_symbol = false;
+        break;
+      }
+    }
+    if (!plain_symbol)
+      continue;  // Skip oxidation-state tokens like "Pt5+".
     El el = find_element(elem);
     if (el == El::X)
       continue;
