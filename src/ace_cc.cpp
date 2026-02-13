@@ -1303,8 +1303,22 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     std::vector<size_t> tv;
     if (ring_sharing != SIZE_MAX)
       tv.push_back(ring_sharing);
+    bool use_mut_table = true;
+    // AceDRG does not apply mutTable reordering to SP2-SP3 SP3-side
+    // carbon centers substituted by halogens (e.g. CF3); use bond-order tV.
+    if (mode == TvMode::SP2SP3_SP3 && cc.atoms[center].el == El::C) {
+      for (const auto& nb : adj[center]) {
+        if (nb.idx == other_center)
+          continue;
+        Element e = cc.atoms[nb.idx].el;
+        if (e == El::F || e == El::Cl || e == El::Br || e == El::I || e == El::At) {
+          use_mut_table = false;
+          break;
+        }
+      }
+    }
     auto mt_it = chir_mut_table.find(center);
-    if (mt_it != chir_mut_table.end()) {
+    if (use_mut_table && mt_it != chir_mut_table.end()) {
       auto exc_it = mt_it->second.find(other_center);
       if (exc_it != mt_it->second.end()) {
         const auto& mut = exc_it->second;
@@ -1771,6 +1785,22 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           cc.atoms[sp3_center].el == El::C &&
           sp2_non_h_other == 1 &&
           sp2_h_other == 0) {
+        value = 180.0;
+        period = 3;
+      }
+      if (is_oxygen_column(cc.atoms[sp2_center].el) &&
+          ring_size == 0 &&
+          cc.atoms[sp3_center].el == El::P &&
+          cc.atoms[sp2_term].el == El::B &&
+          !cc.atoms[sp3_term].is_hydrogen() &&
+          sp2_non_h_other == 1 &&
+          sp2_h_other == 0 &&
+          [&]() {
+            for (const auto& nb : adj[sp3_center])
+              if (nb.idx == sp3_term)
+                return nb.type == BondType::Double || nb.type == BondType::Deloc;
+            return false;
+          }()) {
         value = 180.0;
         period = 3;
       }
