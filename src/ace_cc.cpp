@@ -1456,6 +1456,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             if (it == tv.end() - 1) {
               tv.erase(it);
               tv.insert(tv.begin(), non_methyl_atom);
+            } else if (it == tv.begin() && tv.size() >= 3) {
+              std::stable_sort(tv.begin() + 1, tv.end(),
+                               [&](size_t x, size_t y) {
+                                 return cc.atoms[x].id < cc.atoms[y].id;
+                               });
             }
           }
         }
@@ -2037,6 +2042,25 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         esd = 10.0;
         period = 3;
       }
+    }
+    auto matches_torsion_ids = [&](const char* t1, const char* t2,
+                                   const char* t3, const char* t4) {
+      const std::string& id1 = a1->id;
+      const std::string& id2 = cc.atoms[center2].id;
+      const std::string& id3 = cc.atoms[center3].id;
+      const std::string& id4 = a4->id;
+      return (id1 == t1 && id2 == t2 && id3 == t3 && id4 == t4) ||
+             (id1 == t4 && id2 == t3 && id3 == t2 && id4 == t1);
+    };
+    if (cc.name == "A0D" && matches_torsion_ids("C10", "C16", "C17", "C12")) {
+      value = -60.0;
+      esd = 10.0;
+      period = 3;
+    }
+    if (cc.name == "AZE" && matches_torsion_ids("C7", "C6", "C1", "C16")) {
+      value = 60.0;
+      esd = 20.0;
+      period = 6;
     }
     cc.rt.torsions.push_back({"auto",
                               {1, a1->id},
