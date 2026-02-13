@@ -1035,9 +1035,12 @@ const ChemComp::Atom* pick_torsion_neighbor(
   {
     std::vector<size_t> non_ring_non_h;
     std::vector<size_t> ring_non_h;
+    std::vector<size_t> metal_non_h;
     for (size_t idx : candidates) {
       if (cc.atoms[idx].is_hydrogen()) {
         // keep in candidates (will be filtered later)
+      } else if (cc.atoms[idx].el.is_metal()) {
+        metal_non_h.push_back(idx);
       } else if (atom_info[idx].min_ring_size > 0) {
         ring_non_h.push_back(idx);
       } else {
@@ -1048,6 +1051,8 @@ const ChemComp::Atom* pick_torsion_neighbor(
       candidates.swap(non_ring_non_h);
     else if (!ring_non_h.empty())
       candidates.swap(ring_non_h);
+    else if (!metal_non_h.empty())
+      candidates.swap(metal_non_h);
     // else only H atoms remain — keep candidates as-is
   }
 
@@ -1065,12 +1070,15 @@ const ChemComp::Atom* pick_aromatic_ring_neighbor(
     size_t exclude_idx) {
   std::vector<size_t> nonring_nonh;
   std::vector<size_t> ring_nb;
+  std::vector<size_t> metal_nb;
   std::vector<size_t> h;
   for (const auto& nb : adj[center_idx]) {
     if (nb.idx == exclude_idx)
       continue;
     if (cc.atoms[nb.idx].is_hydrogen()) {
       h.push_back(nb.idx);
+    } else if (cc.atoms[nb.idx].el.is_metal()) {
+      metal_nb.push_back(nb.idx);
     } else if (atom_info[nb.idx].min_ring_size > 0) {
       ring_nb.push_back(nb.idx);
     } else {
@@ -1082,6 +1090,8 @@ const ChemComp::Atom* pick_aromatic_ring_neighbor(
     return &cc.atoms[nonring_nonh.front()];
   if (!ring_nb.empty())
     return &cc.atoms[ring_nb.front()];
+  if (!metal_nb.empty())
+    return &cc.atoms[metal_nb.front()];
   if (!h.empty())
     return &cc.atoms[h.front()];
   return nullptr;
@@ -1096,6 +1106,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
   bool peptide_mode = ChemComp::is_peptide_group(cc.group);
+  if (!peptide_mode) {
+    std::string typ = to_upper(cc.type_or_group);
+    if (typ.find("L-PEPTIDE LINKING") != std::string::npos ||
+        typ.find("D-PEPTIDE LINKING") != std::string::npos)
+      peptide_mode = true;
+  }
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1254,8 +1270,26 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                            return pa < pb;
                          });
       } else {
+        auto bond_to_center_type = [&](size_t nb_idx) {
+          for (const auto& nb : adj[i])
+            if (nb.idx == nb_idx)
+              return nb.type;
+          return BondType::Unspec;
+        };
         std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                          [&](size_t a, size_t b) {
+                           if (cc.atoms[i].el == El::S) {
+                             auto s_nb_rank = [&](size_t nb_idx) {
+                               if (cc.atoms[nb_idx].el != El::O)
+                                 return 2;
+                               BondType bt = bond_to_center_type(nb_idx);
+                               return (bt == BondType::Double || bt == BondType::Deloc) ? 0 : 1;
+                             };
+                             int ra = s_nb_rank(a);
+                             int rb = s_nb_rank(b);
+                             if (ra != rb)
+                               return ra < rb;
+                           }
                            int pa = chirality_priority(cc.atoms[a].el);
                            int pb = chirality_priority(cc.atoms[b].el);
                            if (pa != pb)
@@ -1451,6 +1485,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       continue;
     size_t idx1 = it1->second;
     size_t idx2 = it2->second;
+    if (cc.atoms[idx1].el.is_metal() || cc.atoms[idx2].el.is_metal())
+      continue;
 
     int ring_size = shared_ring_size(atom_info[idx1], atom_info[idx2]);
     size_t center2 = idx1;
@@ -1708,6 +1744,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                         TvMode::SP2SP3_SP3);
         if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 3)
           value = sp2sp3_m[i_pos][j_pos];
+        if (cc.atoms[sp2_center].id == "C" &&
+            cc.atoms[sp3_center].id == "CA" &&
+            cc.atoms[sp2_term].id == "O" &&
+            cc.atoms[sp3_term].id == "N") {
+          value = 0.0;
+        }
         if (i_pos == 0 && j_pos == 0 && value == 0.0 &&
             sp2_rs != SIZE_MAX &&
             is_oxygen_column(cc.atoms[sp2_center].el) &&
@@ -1718,6 +1760,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
               value = 60.0;
             else if (pit->second == RingParity::Odd)
               value = -60.0;
+            else
+              value = 60.0;
+          } else {
+            value = 60.0;
           }
         }
       }
@@ -1747,9 +1793,18 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           ring_size == 0 &&
           atom_info[sp2_term].hybrid == Hybridization::SP2 &&
           !cc.atoms[sp3_term].is_hydrogen() &&
+          cc.atoms[sp3_center].el == El::C &&
           sp2_non_h_other == 1 &&
           sp2_h_other == 0) {
         value = 180.0;
+        period = 3;
+      }
+      if (is_oxygen_column(cc.atoms[sp2_center].el) &&
+          cc.atoms[sp3_center].el == El::S &&
+          atom_info[sp2_term].hybrid == Hybridization::SP2 &&
+          cc.atoms[sp3_term].el == El::C &&
+          ring_size == 0) {
+        value = 90.0;
         period = 3;
       }
     } else if (!lookup_found && sp2_2 && sp2_3) {
