@@ -2460,8 +2460,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
           // AceDRG fallback (setOrgAngleHeadHashList22): when (ha1,ha2,ha3)
           // is not in the index but (ha1,ha2) exists, load all files
           // containing (ha1, *, ha3) for any ha2'.
-          for (auto& [other_ha2, ha3_map] : *p)
-            if (auto* p3f = find_val(ha3_map, ha3))
+          for (auto& kv : *p)
+            if (auto* p3f = find_val(kv.second, ha3))
               needed_angle_files.insert(*p3f);
         }
       }
@@ -3491,13 +3491,13 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
       // Exact value_key not found: try relaxed match (AceDRG's matchRandCenterA)
       // Find the first value_key with matching ring_size and center hybridization
       std::string ring_prefix = cat(ring_val, ':');
-      for (auto& [vk, stats_vec] : *p3) {
-        if (vk.size() > ring_prefix.size()
-            && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
-          auto uscore = vk.find('_', ring_prefix.size());
+      for (auto& kv : *p3) {
+        if (kv.first.size() > ring_prefix.size()
+            && kv.first.compare(0, ring_prefix.size(), ring_prefix) == 0) {
+          auto uscore = kv.first.find('_', ring_prefix.size());
           if (uscore != std::string::npos
-              && vk.compare(ring_prefix.size(), uscore - ring_prefix.size(), hc) == 0) {
-            CodStats vs = try_angle(&stats_vec, min_observations_angle_fallback, "5D", 4);
+              && kv.first.compare(ring_prefix.size(), uscore - ring_prefix.size(), hc) == 0) {
+            CodStats vs = try_angle(&kv.second, min_observations_angle_fallback, "5D", 4);
             if (!std::isnan(vs.value)) {
               if (out_level) *out_level = matched_level;
               return vs;
@@ -3649,14 +3649,14 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
       // matched entry's stats to be pushed N times (N = vk_map.size()).
       auto collect = [&](const std::map<std::string, std::vector<CodStats>>& vk_map,
                         int multiplier = 1) {
-        for (auto& [vk, stats_vec] : vk_map) {
-          if (vk.size() > ring_prefix.size()
-              && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
+        for (auto& kv : vk_map) {
+          if (kv.first.size() > ring_prefix.size()
+              && kv.first.compare(0, ring_prefix.size(), ring_prefix) == 0) {
             auto sp_start = ring_prefix.size();
-            auto uscore = vk.find('_', sp_start);
+            auto uscore = kv.first.find('_', sp_start);
             if (uscore != std::string::npos
-                && vk.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
-              for (auto& s : stats_vec) {
+                && kv.first.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
+              for (auto& s : kv.second) {
                 if (s.count > 0) {
                   weighted_sum += s.value * s.count * multiplier;
                   total_count += s.count * multiplier;
@@ -3688,15 +3688,15 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
         // AceDRG quirk: inner loop over value_keys causes stats to be pushed
         // vk_map.size() times per hash triple (see codClassify.cpp:13517-13545).
         if (auto* ha2_map = find_val(*center_map, ha2)) {
-          for (auto& [other_ha3, vk_map] : *ha2_map)
-            if (is_in_needed_file(ha1, ha2, other_ha3))
-              collect(vk_map, static_cast<int>(vk_map.size()));
+          for (auto& kv3 : *ha2_map)
+            if (is_in_needed_file(ha1, ha2, kv3.first))
+              collect(kv3.second, static_cast<int>(kv3.second.size()));
         }
         // Search for entries where ha3 matches one flank (iterate over all ha2')
         // No multiplier — AceDRG's Loop 2 doesn't have the inner value_key loop.
-        for (auto& [other_ha2, ha3_map] : *center_map) {
-          if (auto* vk_map_ptr = find_val(ha3_map, ha3))
-            if (is_in_needed_file(ha1, other_ha2, ha3))
+        for (auto& kv2 : *center_map) {
+          if (auto* vk_map_ptr = find_val(kv2.second, ha3))
+            if (is_in_needed_file(ha1, kv2.first, ha3))
               collect(*vk_map_ptr);
         }
       }
@@ -3713,14 +3713,14 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
           double sq_sum = 0.0;
           auto compute_dev = [&](const std::map<std::string, std::vector<CodStats>>& vk_map,
                                 int multiplier = 1) {
-            for (auto& [vk, stats_vec] : vk_map) {
-              if (vk.size() > ring_prefix.size()
-                  && vk.compare(0, ring_prefix.size(), ring_prefix) == 0) {
+            for (auto& kv : vk_map) {
+              if (kv.first.size() > ring_prefix.size()
+                  && kv.first.compare(0, ring_prefix.size(), ring_prefix) == 0) {
                 auto sp_start = ring_prefix.size();
-                auto uscore = vk.find('_', sp_start);
+                auto uscore = kv.first.find('_', sp_start);
                 if (uscore != std::string::npos
-                    && vk.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
-                  for (auto& s : stats_vec) {
+                    && kv.first.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
+                  for (auto& s : kv.second) {
                     if (s.count > 0)
                       sq_sum += (s.value - avg) * (s.value - avg) * multiplier;
                   }
@@ -3731,13 +3731,13 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
           };
           if (center_map) {
             if (auto* ha2_map = find_val(*center_map, ha2)) {
-              for (auto& [other_ha3, vk_map] : *ha2_map)
-                if (is_in_needed_file(ha1, ha2, other_ha3))
-                  compute_dev(vk_map, static_cast<int>(vk_map.size()));
+              for (auto& kv3 : *ha2_map)
+                if (is_in_needed_file(ha1, ha2, kv3.first))
+                  compute_dev(kv3.second, static_cast<int>(kv3.second.size()));
             }
-            for (auto& [other_ha2, ha3_map] : *center_map) {
-              if (auto* vk_map_ptr = find_val(ha3_map, ha3))
-                if (is_in_needed_file(ha1, other_ha2, ha3))
+            for (auto& kv2 : *center_map) {
+              if (auto* vk_map_ptr = find_val(kv2.second, ha3))
+                if (is_in_needed_file(ha1, kv2.first, ha3))
                   compute_dev(*vk_map_ptr);
             }
           }
