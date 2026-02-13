@@ -1806,7 +1806,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                         TvMode::SP2SP3_SP3);
         if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 3)
           value = sp2sp3_m[i_pos][j_pos];
-        if (cc.atoms[sp2_center].id == "C" &&
+        if (cc.name == "AZS" &&
+            cc.atoms[sp2_center].id == "C" &&
             cc.atoms[sp3_center].id == "CA" &&
             cc.atoms[sp2_term].id == "O" &&
             cc.atoms[sp3_term].id == "N") {
