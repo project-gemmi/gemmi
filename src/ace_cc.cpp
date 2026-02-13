@@ -1153,7 +1153,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
       if (traversal.size() == ring.size()) {
         auto ckey = std::minmax(traversal.back(), traversal.front());
-        bond_ring_parity[ckey] = RingParity::NoFlip;
+        if (bond_ring_parity.find(ckey) == bond_ring_parity.end())
+          bond_ring_parity[ckey] = RingParity::NoFlip;
       }
     }
   }
@@ -1174,6 +1175,32 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     for (const auto& nb : adj[i])
       if (!cc.atoms[nb.idx].is_hydrogen())
         non_h_nbs.push_back(nb.idx);
+    std::vector<size_t> chiral_legs = non_h_nbs;
+    // AceDRG torsion ordering treats N(sp3) with 2 heavy neighbors + H
+    // as chiral-like (both) for tV ordering.
+    if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2) {
+      bool n31_like = true;
+      for (size_t nb : non_h_nbs)
+        if (cc.atoms[nb].el != El::C || atom_info[nb].hybrid != Hybridization::SP3) {
+          n31_like = false;
+          break;
+        }
+      if (n31_like) {
+        for (const auto& nb : adj[i])
+          if (cc.atoms[nb.idx].is_hydrogen()) {
+            chiral_legs.push_back(nb.idx);
+            break;
+          }
+      }
+    }
+    auto shared_ring_count = [&](size_t a, size_t b) {
+      int n = 0;
+      for (int ra : atom_info[a].in_rings)
+        for (int rb : atom_info[b].in_rings)
+          if (ra == rb)
+            ++n;
+      return n;
+    };
     bool has_halogen_nb = false;
     for (size_t nb : non_h_nbs) {
       Element e = cc.atoms[nb].el;
@@ -1210,7 +1237,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             return 2;
           return 1;
         };
-        std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
+        std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                          [&](size_t a, size_t b) {
                            int ra = p_nb_rank(a);
                            int rb = p_nb_rank(b);
@@ -1221,15 +1248,24 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                            return pa < pb;
                          });
       } else {
-        std::stable_sort(non_h_nbs.begin(), non_h_nbs.end(),
+        std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                          [&](size_t a, size_t b) {
                            int pa = chirality_priority(cc.atoms[a].el);
                            int pb = chirality_priority(cc.atoms[b].el);
-                           return pa < pb;
+                           if (pa != pb)
+                             return pa < pb;
+                           if (cc.atoms[i].el == El::N) {
+                             int sa = shared_ring_count(i, a);
+                             int sb = shared_ring_count(i, b);
+                             if (sa != sb)
+                               return sa > sb;
+                             return cc.atoms[a].id < cc.atoms[b].id;
+                           }
+                           return false;
                          });
       }
     }
-    if (non_h_nbs.size() < 3)
+    if (chiral_legs.size() < 3)
       continue;
     chiral_centers.insert(i);
     // R/S carbon stereocenters get positive/negative chirality (empty mutTable).
@@ -1246,7 +1282,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (is_stereo_carbon)
       continue;
     // Build mutTable for "both" chirality: legs are first 3 non-H in adj order
-    size_t a1 = non_h_nbs[0], a2 = non_h_nbs[1], a3 = non_h_nbs[2];
+    size_t a1 = chiral_legs[0], a2 = chiral_legs[1], a3 = chiral_legs[2];
     size_t missing = SIZE_MAX;
     for (const auto& nb : adj[i])
       if (nb.idx != a1 && nb.idx != a2 && nb.idx != a3) {
@@ -1275,15 +1311,18 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   // "both" chirality mutTable reordering, and non-chiral atom reordering.
   auto compute_tv_position = [&](size_t center, size_t other_center,
                                   size_t target,
-                                  TvMode mode = TvMode::Default) -> int {
-    size_t ring_sharing = SIZE_MAX;
-    for (const auto& nb1 : adj[center]) {
-      if (nb1.idx == other_center) continue;
-      for (const auto& nb2 : adj[other_center]) {
-        if (nb2.idx == center || nb2.idx == nb1.idx) continue;
-        if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
-          ring_sharing = nb1.idx;
-          goto found_rs;
+                                  TvMode mode = TvMode::Default,
+                                  size_t forced_ring_sharing = SIZE_MAX) -> int {
+    size_t ring_sharing = forced_ring_sharing;
+    if (ring_sharing == SIZE_MAX) {
+      for (const auto& nb1 : adj[center]) {
+        if (nb1.idx == other_center) continue;
+        for (const auto& nb2 : adj[other_center]) {
+          if (nb2.idx == center || nb2.idx == nb1.idx) continue;
+          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+            ring_sharing = nb1.idx;
+            goto found_rs;
+          }
         }
       }
     }
@@ -1295,9 +1334,31 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (mt_it != chir_mut_table.end()) {
       auto exc_it = mt_it->second.find(other_center);
       if (exc_it != mt_it->second.end()) {
-        for (size_t a : exc_it->second)
-          if (std::find(tv.begin(), tv.end(), a) == tv.end())
-            tv.push_back(a);
+        const auto& mut = exc_it->second;
+        if (tv.size() == 1) {
+          int pos = -1;
+          for (int k = 0; k < (int)mut.size(); ++k)
+            if (mut[k] == tv[0]) {
+              pos = k;
+              break;
+            }
+          if (pos == -1) {
+            for (size_t a : mut)
+              if (std::find(tv.begin(), tv.end(), a) == tv.end())
+                tv.push_back(a);
+          } else if (!mut.empty()) {
+            int n = (int)mut.size();
+            for (int k = 1; k < n; ++k) {
+              size_t a = mut[(pos + k) % n];
+              if (std::find(tv.begin(), tv.end(), a) == tv.end())
+                tv.push_back(a);
+            }
+          }
+        } else {
+          for (size_t a : mut)
+            if (std::find(tv.begin(), tv.end(), a) == tv.end())
+              tv.push_back(a);
+        }
         // AceDRG behavior for tertiary carbon centers with three carbon legs:
         // if exactly one leg is non-methyl, it is listed first in tV.
         if (cc.atoms[center].el == El::C && tv.size() >= 3) {
@@ -1513,10 +1574,23 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
                       ? center2 : center3;
       size_t side2 = (side1 == center2) ? center3 : center2;
+      size_t rs1 = SIZE_MAX, rs2 = SIZE_MAX;
+      for (const auto& nb1 : adj[side1]) {
+        if (nb1.idx == side2) continue;
+        for (const auto& nb2 : adj[side2]) {
+          if (nb2.idx == side1 || nb2.idx == nb1.idx) continue;
+          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+            rs1 = nb1.idx;
+            rs2 = nb2.idx;
+            goto sp3sp3_ring_rs_found;
+          }
+        }
+      }
+      sp3sp3_ring_rs_found:
       size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
       size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
-      int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3);
-      int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3);
+      int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3, rs1);
+      int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3, rs2);
       if (pit != bond_ring_parity.end() && i_pos >= 0 && j_pos >= 0) {
         static const double even_m[3][3] = {
           {60,180,-60}, {-60,60,180}, {180,-60,60}};
@@ -1534,10 +1608,23 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
                       ? center2 : center3;
       size_t side2 = (side1 == center2) ? center3 : center2;
+      size_t rs1 = SIZE_MAX, rs2 = SIZE_MAX;
+      for (const auto& nb1 : adj[side1]) {
+        if (nb1.idx == side2) continue;
+        for (const auto& nb2 : adj[side2]) {
+          if (nb2.idx == side1 || nb2.idx == nb1.idx) continue;
+          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+            rs1 = nb1.idx;
+            rs2 = nb2.idx;
+            goto sp3sp3_noring_rs_found;
+          }
+        }
+      }
+      sp3sp3_noring_rs_found:
       size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
       size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
-      int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3);
-      int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3);
+      int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3, rs1);
+      int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3, rs2);
       if (i_pos >= 0 && i_pos < 3 && j_pos >= 0 && j_pos < 3) {
         static const double noflip_m[3][3] = {
           {180,-60,60}, {60,180,-60}, {-60,60,180}};
