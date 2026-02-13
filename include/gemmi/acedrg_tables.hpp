@@ -134,6 +134,12 @@ struct MetalAngleEntry {
   double sigma = NAN;
 };
 
+struct MetalCoordOverride {
+  Element metal = El::X;
+  int coord_number = 0;
+  CoordGeometry geometry = CoordGeometry::UNKNOWN;
+};
+
 struct TorsionEntry {
   double value = 0.0;
   int period = 0;
@@ -376,7 +382,7 @@ public:
   std::vector<MetalBondEntry> metal_bonds_;
   std::array<double, static_cast<int>(El::END) + 1> covalent_radii_;
   std::vector<MetalAngleEntry> metal_angles_;
-  std::map<Element, std::map<int, CoordGeometry>> metal_coord_geo_;
+  std::vector<MetalCoordOverride> metal_coord_geo_overrides_;
   std::map<std::string, TorsionEntry> pep_tors_;
 
   // Protonated hydrogen distances: maps type (e.g., "H_sp3_C") -> ProtHydrDist

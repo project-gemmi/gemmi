@@ -81,6 +81,75 @@ bool desc_sort_map_key(const SortMap& a, const SortMap& b) {
   return a.nNB > b.nNB;
 }
 
+CoordGeometry default_coord_geometry(int coord_number) {
+  switch (coord_number) {
+    case 2: return CoordGeometry::LINEAR;
+    case 3: return CoordGeometry::TRIGONAL_PLANAR;
+    case 4: return CoordGeometry::TETRAHEDRAL;
+    case 5: return CoordGeometry::TRIGONAL_BIPYRAMIDAL;
+    case 6: return CoordGeometry::OCTAHEDRAL;
+    case 7: return CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
+    case 8: return CoordGeometry::SQUARE_ANTIPRISM;
+    case 9: return CoordGeometry::TRIGONAL_PRISM;
+    case 10: return CoordGeometry::SQUARE_ANTIPRISM;
+    case 11: return CoordGeometry::TRIGONAL_PRISM;
+    case 12: return CoordGeometry::UNKNOWN;
+    default: return CoordGeometry::UNKNOWN;
+  }
+}
+
+CoordGeometry parse_coord_geometry(const char* geometry_name) {
+  std::string s(geometry_name);
+  for (char& c : s)
+    if (c == '-')
+      c = '_';
+  if (s == "LINEAR")
+    return CoordGeometry::LINEAR;
+  if (s == "TRIGONAL_PLANAR")
+    return CoordGeometry::TRIGONAL_PLANAR;
+  if (s == "T_SHAPE")
+    return CoordGeometry::T_SHAPED;
+  if (s == "TETRAHEDRAL")
+    return CoordGeometry::TETRAHEDRAL;
+  if (s == "SQUARE_PLANAR")
+    return CoordGeometry::SQUARE_PLANAR;
+  if (s == "TRIGONAL_BIPYRAMID")
+    return CoordGeometry::TRIGONAL_BIPYRAMIDAL;
+  if (s == "SQUARE_PYRAMID")
+    return CoordGeometry::SQUARE_PYRAMIDAL;
+  if (s == "OCTAHEDRAL")
+    return CoordGeometry::OCTAHEDRAL;
+  if (s == "TRIGONAL_PRISM")
+    return CoordGeometry::TRIGONAL_PRISM;
+  if (s == "PENTAGONAL_BIPYRAMID")
+    return CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
+  if (s == "CAPPED_OCTAHEDRAL")
+    return CoordGeometry::CAPPED_OCTAHEDRAL;
+  if (s == "SQUARE_ANTIPROSMATIC")
+    return CoordGeometry::SQUARE_ANTIPRISM;
+  if (s == "BICAPPED_SQUARE_ANTIPRISMATIC")
+    return CoordGeometry::SQUARE_ANTIPRISM;
+  if (s == "ALL_FACE_CAPPED_TRIGONAL_PRISMATIC")
+    return CoordGeometry::TRIGONAL_PRISM;
+  if (s == "CUBOCTAHEDRON")
+    return CoordGeometry::UNKNOWN;
+  if (s == "BENT")
+    return CoordGeometry::TRIGONAL_PLANAR;
+  if (s == "PYRAMID")
+    return CoordGeometry::TRIGONAL_PLANAR;
+  if (s == "HEXAGONAL_PLANAR")
+    return CoordGeometry::OCTAHEDRAL;
+  if (s == "CAPPED_TRIGONAL_PRISM")
+    return CoordGeometry::TRIGONAL_PRISM;
+  if (s == "CUBIC")
+    return CoordGeometry::SQUARE_ANTIPRISM;
+  if (s == "HEXAGONAL_BIPYRAMID")
+    return CoordGeometry::SQUARE_ANTIPRISM;
+  if (s == "TRICAPPED_TRIGONAL_PRISMATIC")
+    return CoordGeometry::TRIGONAL_PRISM;
+  return CoordGeometry::UNKNOWN;
+}
+
 }  // namespace
 
 const char* hybridization_to_string(Hybridization h) {
@@ -314,6 +383,8 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
 }
 
 void AcedrgTables::load_metal_tables(const std::string& dir) {
+  metal_coord_geo_overrides_.clear();
+
   // Load allMetalBonds.table
   {
     std::string path = dir + "/allMetalBonds.table";
@@ -372,28 +443,25 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
 
         if (std::sscanf(line, "%7s %d %63s", metal_str, &coord, geo_str) == 3) {
           Element metal(metal_str);
-          static const struct { const char* name; CoordGeometry geo; } geo_names[] = {
-            {"LINEAR", CoordGeometry::LINEAR},
-            {"TRIGONAL_PLANAR", CoordGeometry::TRIGONAL_PLANAR},
-            {"T_SHAPED", CoordGeometry::T_SHAPED},
-            {"TETRAHEDRAL", CoordGeometry::TETRAHEDRAL},
-            {"SQUARE_PLANAR", CoordGeometry::SQUARE_PLANAR},
-            {"TRIGONAL_BIPYRAMIDAL", CoordGeometry::TRIGONAL_BIPYRAMIDAL},
-            {"SQUARE_PYRAMIDAL", CoordGeometry::SQUARE_PYRAMIDAL},
-            {"OCTAHEDRAL", CoordGeometry::OCTAHEDRAL},
-            {"TRIGONAL_PRISM", CoordGeometry::TRIGONAL_PRISM},
-            {"PENTAGONAL_BIPYRAMIDAL", CoordGeometry::PENTAGONAL_BIPYRAMIDAL},
-            {"CAPPED_OCTAHEDRAL", CoordGeometry::CAPPED_OCTAHEDRAL},
-            {"SQUARE_ANTIPRISM", CoordGeometry::SQUARE_ANTIPRISM},
-          };
-          CoordGeometry geo = CoordGeometry::UNKNOWN;
-          for (const auto& g : geo_names)
-            if (std::strcmp(geo_str, g.name) == 0) { geo = g.geo; break; }
-          metal_coord_geo_[metal][coord] = geo;
+          CoordGeometry geo = parse_coord_geometry(geo_str);
+          CoordGeometry def = default_coord_geometry(coord);
+          if (geo != CoordGeometry::UNKNOWN && geo != def) {
+            MetalCoordOverride ov;
+            ov.metal = metal;
+            ov.coord_number = coord;
+            ov.geometry = geo;
+            metal_coord_geo_overrides_.push_back(ov);
+          }
         }
       }
     }
   }
+  std::sort(metal_coord_geo_overrides_.begin(), metal_coord_geo_overrides_.end(),
+            [](const MetalCoordOverride& a, const MetalCoordOverride& b) {
+              int ae = a.metal.ordinal();
+              int be = b.metal.ordinal();
+              return ae < be || (ae == be && a.coord_number < b.coord_number);
+            });
 
   // Load metal coordination angles
   {
@@ -3799,45 +3867,78 @@ std::vector<double> AcedrgTables::get_metal_angles(Element metal,
     return angles;
   }
 
-  // Fall back to geometry defaults
-  auto geo_it = metal_coord_geo_.find(metal);
-  if (geo_it != metal_coord_geo_.end()) {
-    auto cn_it = geo_it->second.find(coord_number);
-    if (cn_it != geo_it->second.end()) {
-      switch (cn_it->second) {
-        case CoordGeometry::LINEAR:
-          angles.push_back(180.0);
-          break;
-        case CoordGeometry::TRIGONAL_PLANAR:
-          angles.push_back(120.0);
-          break;
-        case CoordGeometry::T_SHAPED:
-          angles.push_back(90.0);
-          angles.push_back(180.0);
-          break;
-        case CoordGeometry::TETRAHEDRAL:
-          angles.push_back(109.47);
-          break;
-        case CoordGeometry::SQUARE_PLANAR:
-          angles.push_back(90.0);
-          angles.push_back(180.0);
-          break;
-        case CoordGeometry::TRIGONAL_BIPYRAMIDAL:
-          angles.push_back(90.0);
-          angles.push_back(120.0);
-          angles.push_back(180.0);
-          break;
-        case CoordGeometry::SQUARE_PYRAMIDAL:
-          angles.push_back(90.0);
-          angles.push_back(180.0);
-          break;
-        case CoordGeometry::OCTAHEDRAL:
-          angles.push_back(90.0);
-          break;
-        default:
-          break;
-      }
-    }
+  // Fall back to geometry defaults with per-metal overrides.
+  CoordGeometry geometry = default_coord_geometry(coord_number);
+  auto it = std::lower_bound(metal_coord_geo_overrides_.begin(),
+                             metal_coord_geo_overrides_.end(),
+                             std::make_pair(metal.ordinal(), coord_number),
+                             [](const MetalCoordOverride& ov,
+                                const std::pair<int, int>& key) {
+                               int ov_el = ov.metal.ordinal();
+                               return ov_el < key.first ||
+                                      (ov_el == key.first && ov.coord_number < key.second);
+                             });
+  if (it != metal_coord_geo_overrides_.end() &&
+      it->metal.ordinal() == metal.ordinal() &&
+      it->coord_number == coord_number) {
+    geometry = it->geometry;
+  }
+  switch (geometry) {
+    case CoordGeometry::LINEAR:
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::TRIGONAL_PLANAR:
+      angles.push_back(120.0);
+      break;
+    case CoordGeometry::T_SHAPED:
+      angles.push_back(90.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::TETRAHEDRAL:
+      angles.push_back(109.47);
+      break;
+    case CoordGeometry::SQUARE_PLANAR:
+      angles.push_back(90.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::TRIGONAL_BIPYRAMIDAL:
+      angles.push_back(90.0);
+      angles.push_back(120.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::SQUARE_PYRAMIDAL:
+      angles.push_back(90.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::OCTAHEDRAL:
+      angles.push_back(90.0);
+      break;
+    case CoordGeometry::TRIGONAL_PRISM:
+      angles.push_back(81.793);
+      angles.push_back(135.586);
+      break;
+    case CoordGeometry::PENTAGONAL_BIPYRAMIDAL:
+      angles.push_back(72.0);
+      angles.push_back(90.0);
+      angles.push_back(144.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::CAPPED_OCTAHEDRAL:
+      angles.push_back(35.2644);
+      angles.push_back(54.7356);
+      angles.push_back(90.0);
+      angles.push_back(125.2644);
+      angles.push_back(144.7356);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::SQUARE_ANTIPRISM:
+      angles.push_back(70.5288);
+      angles.push_back(82.0655);
+      angles.push_back(109.4712);
+      angles.push_back(143.5855);
+      break;
+    default:
+      break;
   }
 
   // Ultimate fallback based on coordination number
