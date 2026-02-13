@@ -3900,23 +3900,17 @@ std::vector<double> AcedrgTables::get_metal_angles(Element metal,
       angles.push_back(120.0);
       break;
     case CoordGeometry::T_SHAPED:
+    case CoordGeometry::SQUARE_PLANAR:
+    case CoordGeometry::SQUARE_PYRAMIDAL:
       angles.push_back(90.0);
       angles.push_back(180.0);
       break;
     case CoordGeometry::TETRAHEDRAL:
       angles.push_back(109.47);
       break;
-    case CoordGeometry::SQUARE_PLANAR:
-      angles.push_back(90.0);
-      angles.push_back(180.0);
-      break;
     case CoordGeometry::TRIGONAL_BIPYRAMIDAL:
       angles.push_back(90.0);
       angles.push_back(120.0);
-      angles.push_back(180.0);
-      break;
-    case CoordGeometry::SQUARE_PYRAMIDAL:
-      angles.push_back(90.0);
       angles.push_back(180.0);
       break;
     case CoordGeometry::OCTAHEDRAL:
