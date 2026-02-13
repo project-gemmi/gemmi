@@ -1227,6 +1227,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                            int pb = chirality_priority(cc.atoms[b].el);
                            if (pa != pb)
                              return pa < pb;
+                           if (cc.atoms[i].el == El::C)
+                             return cc.atoms[a].id > cc.atoms[b].id;
                            if (cc.atoms[i].el == El::N) {
                              int sa = shared_ring_count(i, a);
                              int sb = shared_ring_count(i, b);
