@@ -86,6 +86,13 @@ std::string str(const ChemComp&, const Restraints::Torsion& a) {
   return "torsion " + a.str();
 }
 
+// Format period info compactly: "p.6" if same, "p.4:6" if different
+std::string period_str(int p1, int p2) {
+  if (p1 == p2)
+    return " p." + std::to_string(p1);
+  return " p." + std::to_string(p1) + ":" + std::to_string(p2);
+}
+
 std::string str(const ChemComp&, const Restraints::Chirality& a) {
   return "chirality " + a.str();
 }
@@ -237,29 +244,32 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
       auto b = cc2.rt.find_torsion(a.id1, a.id2, a.id3, a.id4);
       if (b == cc2.rt.torsions.end()) {
         if (tsv)
-          printf("%s\ttorsion\t-\t%s\n", code, a.str().c_str());
+          printf("%s\ttorsion\t-\t%s\t%d\n", code, a.str().c_str(), a.period);
         else
-          printf("- %s\n", str(cc1, a).c_str());
+          printf("- %s  p.%d\n", str(cc1, a).c_str(), a.period);
       } else {
         double d = std::fabs(a.value - b->value);
-        if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd) &&
+        if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd
+             || a.period != b->period) &&
             d > delta.rel * std::min(a.esd, b->esd)) {
           if (tsv)
-            printf("%s\ttorsion\t!\t%s\t%.2f\t%.2f\t%.2f\t%.2f\n", code,
-                   a.str().c_str(), a.value, b->value, a.esd, b->esd);
+            printf("%s\ttorsion\t!\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
+                   a.str().c_str(), a.value, b->value, a.esd, b->esd,
+                   a.period, b->period);
           else
-            printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f\n",
+            printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
                    str(cc1, a).c_str(), mark(d, a.esd),
-                   a.value, b->value, a.esd, b->esd);
+                   a.value, b->value, a.esd, b->esd,
+                   period_str(a.period, b->period).c_str());
         }
       }
     }
     for (const Restraints::Torsion& a : cc2.rt.torsions)
       if (cc1.rt.find_torsion(a.id1, a.id2, a.id3,a.id4) == cc1.rt.torsions.end()) {
         if (tsv)
-          printf("%s\ttorsion\t+\t%s\n", code, a.str().c_str());
+          printf("%s\ttorsion\t+\t%s\t%d\n", code, a.str().c_str(), a.period);
         else
-          printf("+ %s\n", str(cc2, a).c_str());
+          printf("+ %s  p.%d\n", str(cc2, a).c_str(), a.period);
       }
   }
 
