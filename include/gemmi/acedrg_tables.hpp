@@ -9,6 +9,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <array>
 #include <set>
 #include <map>
 #include <unordered_map>
@@ -373,7 +374,7 @@ public:
 
   // Metal bond tables
   std::vector<MetalBondEntry> metal_bonds_;
-  std::map<std::string, double> covalent_radii_;
+  std::array<double, static_cast<int>(El::END) + 1> covalent_radii_;
   std::vector<MetalAngleEntry> metal_angles_;
   std::map<Element, std::map<int, CoordGeometry>> metal_coord_geo_;
   std::map<std::string, TorsionEntry> pep_tors_;

@@ -424,6 +424,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
 }
 
 void AcedrgTables::load_covalent_radii(const std::string& path) {
+  covalent_radii_.fill(NAN);
   fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return;
@@ -438,7 +439,10 @@ void AcedrgTables::load_covalent_radii(const std::string& path) {
       continue;
     if (std::strcmp(kind, "cova") != 0)
       continue;
-    covalent_radii_[to_upper(elem)] = value;
+    El el = find_element(elem);
+    if (el == El::X)
+      continue;
+    covalent_radii_[static_cast<int>(el)] = value;
   }
 }
 
@@ -2655,12 +2659,10 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     const CodAtomInfo& metal = a1.is_metal ? a1 : a2;
     const CodAtomInfo& ligand = a1.is_metal ? a2 : a1;
 
-    std::string mkey = to_upper(metal.el.name());
-    std::string lkey = to_upper(ligand.el.name());
-    auto it_m = covalent_radii_.find(mkey);
-    auto it_l = covalent_radii_.find(lkey);
-    if (it_m != covalent_radii_.end() && it_l != covalent_radii_.end()) {
-      bond.value = it_m->second + it_l->second;
+    double mrad = covalent_radii_[metal.el.ordinal()];
+    double lrad = covalent_radii_[ligand.el.ordinal()];
+    if (!std::isnan(mrad) && !std::isnan(lrad)) {
+      bond.value = mrad + lrad;
       bond.esd = 0.04;
       source = "metal_cova";
       log_bond(source);
