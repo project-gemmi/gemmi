@@ -1036,9 +1036,10 @@ const ChemComp::Atom* pick_torsion_neighbor(
     std::vector<size_t> non_ring_non_h;
     std::vector<size_t> ring_non_h;
     std::vector<size_t> metal_non_h;
+    std::vector<size_t> h_only;
     for (size_t idx : candidates) {
       if (cc.atoms[idx].is_hydrogen()) {
-        // keep in candidates (will be filtered later)
+        h_only.push_back(idx);
       } else if (cc.atoms[idx].el.is_metal()) {
         metal_non_h.push_back(idx);
       } else if (atom_info[idx].min_ring_size > 0) {
@@ -1047,12 +1048,34 @@ const ChemComp::Atom* pick_torsion_neighbor(
         non_ring_non_h.push_back(idx);
       }
     }
+    bool n_has_pi_nonh = false;
+    if (cc.atoms[exclude_idx].el == El::N) {
+      for (const auto& nb : adj[exclude_idx]) {
+        if (nb.idx == center_idx || cc.atoms[nb.idx].is_hydrogen())
+          continue;
+        if (nb.type == BondType::Double || nb.type == BondType::Deloc) {
+          n_has_pi_nonh = true;
+          break;
+        }
+      }
+    }
+    bool prefer_h_for_ring_sp2_n =
+        cc.atoms[center_idx].el == El::C &&
+        cc.atoms[exclude_idx].el == El::N &&
+        n_has_pi_nonh &&
+        non_ring_non_h.size() == 1 &&
+        h_only.size() >= 2;
+    if (prefer_h_for_ring_sp2_n) {
+      candidates.swap(h_only);
+    } else
     if (!non_ring_non_h.empty())
       candidates.swap(non_ring_non_h);
     else if (!ring_non_h.empty())
       candidates.swap(ring_non_h);
     else if (!metal_non_h.empty())
       candidates.swap(metal_non_h);
+    else if (!h_only.empty())
+      candidates.swap(h_only);
     // else only H atoms remain — keep candidates as-is
   }
 
