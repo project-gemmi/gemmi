@@ -1066,6 +1066,21 @@ const ChemComp::Atom* pick_torsion_neighbor(
         non_ring_non_h.size() == 1 &&
         h_only.size() >= 2;
     if (prefer_h_for_ring_sp2_n) {
+      size_t side = non_ring_non_h.front();
+      bool side_is_alkyl_carbon = (cc.atoms[side].el == El::C);
+      if (side_is_alkyl_carbon) {
+        for (const auto& nb : adj[side]) {
+          if (nb.idx == center_idx || cc.atoms[nb.idx].is_hydrogen())
+            continue;
+          if (cc.atoms[nb.idx].el != El::C) {
+            side_is_alkyl_carbon = false;
+            break;
+          }
+        }
+      }
+      prefer_h_for_ring_sp2_n = side_is_alkyl_carbon;
+    }
+    if (prefer_h_for_ring_sp2_n) {
       candidates.swap(h_only);
     } else
     if (!non_ring_non_h.empty())
@@ -1129,12 +1144,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto atom_index = cc.make_atom_index();
   auto adj = build_bond_adjacency(cc, atom_index);
   bool peptide_mode = ChemComp::is_peptide_group(cc.group);
-  if (!peptide_mode) {
-    std::string typ = to_upper(cc.type_or_group);
-    if (typ.find("L-PEPTIDE LINKING") != std::string::npos ||
-        typ.find("D-PEPTIDE LINKING") != std::string::npos)
-      peptide_mode = true;
-  }
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1685,6 +1694,36 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         static const double noflip_m[3][3] = {
           {180,-60,60}, {60,180,-60}, {-60,60,180}};
         value = noflip_m[i_pos][j_pos];
+      }
+      // Peptide-like chi1 around CA-CB: for many side chains with CB methylene,
+      // AceDRG prefers trans (180) unless CG continues only into imine-like N.
+      size_t ca_idx = SIZE_MAX, cb_idx = SIZE_MAX;
+      if (cc.atoms[center2].id == "CA" && cc.atoms[center3].id == "CB") {
+        ca_idx = center2; cb_idx = center3;
+      } else if (cc.atoms[center3].id == "CA" && cc.atoms[center2].id == "CB") {
+        ca_idx = center3; cb_idx = center2;
+      }
+      if (ca_idx != SIZE_MAX) {
+        size_t n_term = (ca_idx == center2) ? a1_idx : a4_idx;
+        size_t cg_term = (cb_idx == center2) ? a1_idx : a4_idx;
+        if (cc.atoms[n_term].id == "N" && cc.atoms[cg_term].id == "CG") {
+          int cb_h = 0;
+          for (const auto& nb : adj[cb_idx])
+            if (nb.idx != ca_idx && cc.atoms[nb.idx].is_hydrogen())
+              ++cb_h;
+          if (cb_h >= 2) {
+            std::vector<size_t> cg_nonh_other;
+            for (const auto& nb : adj[cg_term])
+              if (nb.idx != cb_idx && !cc.atoms[nb.idx].is_hydrogen())
+                cg_nonh_other.push_back(nb.idx);
+            bool only_n_branch = (cg_nonh_other.size() == 1 &&
+                                  cc.atoms[cg_nonh_other[0]].el == El::N);
+            if (only_n_branch)
+              value = -60.0;
+            else
+              value = 180.0;
+          }
+        }
       }
       // AceDRG: for N(P)2(H)-P bonds one branch is -60 and the other +60.
       auto has_double_oxo = [&](size_t p_idx, size_t term_idx) {
