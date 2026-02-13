@@ -1240,6 +1240,21 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                          });
       }
     }
+    // AceDRG ordering for pseudo-chiral N centers with S/O branches:
+    // for N(sp3) with exactly two non-H neighbors S and O plus H, use S,O,H.
+    if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2 && chiral_legs.size() >= 3) {
+      size_t s_idx = SIZE_MAX, o_idx = SIZE_MAX, h_idx = SIZE_MAX;
+      for (size_t a : chiral_legs) {
+        if (cc.atoms[a].el == El::S)
+          s_idx = a;
+        else if (cc.atoms[a].el == El::O)
+          o_idx = a;
+        else if (cc.atoms[a].is_hydrogen() && h_idx == SIZE_MAX)
+          h_idx = a;
+      }
+      if (s_idx != SIZE_MAX && o_idx != SIZE_MAX && h_idx != SIZE_MAX)
+        chiral_legs = {s_idx, o_idx, h_idx};
+    }
     if (chiral_legs.size() < 3)
       continue;
     chiral_centers.insert(i);
