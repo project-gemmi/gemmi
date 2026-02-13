@@ -1185,7 +1185,13 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           n31_like = false;
           break;
         }
-      if (n31_like) {
+      bool has_sp_neighbor = false;
+      for (size_t nb : non_h_nbs)
+        if (cc.atoms[nb].el == El::S || cc.atoms[nb].el == El::P) {
+          has_sp_neighbor = true;
+          break;
+        }
+      if (n31_like || has_sp_neighbor) {
         for (const auto& nb : adj[i])
           if (cc.atoms[nb.idx].is_hydrogen()) {
             chiral_legs.push_back(nb.idx);
@@ -1535,21 +1541,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     size_t a1_idx = it_a1->second;
     size_t a4_idx = it_a4->second;
 
-    bool chi2_aromatic =
-        (a1->id == "CA" &&
-         ((cc.atoms[center2].id == "CB" && cc.atoms[center3].id == "CG") ||
-          (cc.atoms[center3].id == "CB" && cc.atoms[center2].id == "CG")) &&
-         (a4->id == "CD1" || a4->id == "CD2"));
     bool phenol_oh =
         ((cc.atoms[center2].id == "CZ" && cc.atoms[center3].id == "OH") ||
          (cc.atoms[center3].id == "CZ" && cc.atoms[center2].id == "OH")) &&
         a4->id == "HH";
 
-    if (chi2_aromatic) {
-      value = 90.0;
-      esd = 20.0;
-      period = 6;
-    } else if (phenol_oh) {
+    if (phenol_oh) {
       value = 0.0;
       esd = 5.0;
       period = 2;
@@ -1867,12 +1864,51 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         }
         return term_is_oxo && n_oxo >= 2;
       };
+      auto n_is_substituted = [&](size_t n_idx, size_t s_idx) {
+        if (cc.atoms[n_idx].el != El::N)
+          return false;
+        for (const auto& nb : adj[n_idx])
+          if (nb.idx != s_idx && !cc.atoms[nb.idx].is_hydrogen())
+            return true;
+        return false;
+      };
       bool ns_sulfone_oxo = ((cc.atoms[center2].el == El::N &&
-                              is_sulfone_oxo(center3, a4_idx)) ||
+                              is_sulfone_oxo(center3, a4_idx) &&
+                              n_is_substituted(center2, center3)) ||
                              (cc.atoms[center3].el == El::N &&
-                              is_sulfone_oxo(center2, a1_idx)));
+                              is_sulfone_oxo(center2, a1_idx) &&
+                              n_is_substituted(center3, center2)));
       if (ns_sulfone_oxo) {
         value = 180.0;
+        esd = 10.0;
+        period = 3;
+      }
+      auto is_sulfone_single_o = [&](size_t s_idx, size_t term_idx) {
+        if (cc.atoms[s_idx].el != El::S || cc.atoms[term_idx].el != El::O)
+          return false;
+        bool term_single = false;
+        int n_oxo = 0;
+        for (const auto& nb : adj[s_idx]) {
+          bool is_oxo = (cc.atoms[nb.idx].el == El::O &&
+                         (nb.type == BondType::Double || nb.type == BondType::Deloc));
+          if (is_oxo)
+            ++n_oxo;
+          if (nb.idx == term_idx)
+            term_single = !is_oxo;
+        }
+        return term_single && n_oxo >= 2;
+      };
+      size_t n_center = SIZE_MAX, s_center = SIZE_MAX;
+      size_t n_term = SIZE_MAX, s_term = SIZE_MAX;
+      if (cc.atoms[center2].el == El::N && cc.atoms[center3].el == El::S) {
+        n_center = center2; s_center = center3; n_term = a1_idx; s_term = a4_idx;
+      } else if (cc.atoms[center3].el == El::N && cc.atoms[center2].el == El::S) {
+        n_center = center3; s_center = center2; n_term = a4_idx; s_term = a1_idx;
+      }
+      if (n_center != SIZE_MAX &&
+          is_sulfone_single_o(s_center, s_term) &&
+          !cc.atoms[n_term].is_hydrogen()) {
+        value = -60.0;
         esd = 10.0;
         period = 3;
       }
