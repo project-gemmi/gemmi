@@ -1,11 +1,12 @@
 $ gemmi drg -h
 Usage:
  gemmi drg [options] INPUT.cif OUTPUT.cif
- gemmi drg [options] --output-dir=DIR INPUT1.cif [INPUT2.cif ...]
+ gemmi drg [options] -o DIR INPUT1.cif INPUT2.cif ...
 
 Fill missing restraint values (bonds, angles) in a monomer CIF file
 using COD/CSD statistical data from AceDRG tables.
 If OUTPUT.cif is -, the output is printed to stdout.
+With -o, multiple input files are processed and written to DIR.
 
 Options:
   -h, --help            Print usage and exit.

@@ -26,10 +26,11 @@ const option::Descriptor Usage[] = {
   { NoOp, 0, "", "", Arg::None,
     "Usage:"
     "\n " EXE_NAME " [options] INPUT.cif OUTPUT.cif"
-    "\n " EXE_NAME " [options] --output-dir=DIR INPUT1.cif [INPUT2.cif ...]"
+    "\n " EXE_NAME " [options] -o DIR INPUT1.cif INPUT2.cif ..."
     "\n\nFill missing restraint values (bonds, angles) in a monomer CIF file"
     "\nusing COD/CSD statistical data from AceDRG tables."
     "\nIf OUTPUT.cif is -, the output is printed to stdout."
+    "\nWith -o, multiple input files are processed and written to DIR."
     "\n\nOptions:" },
   CommonUsage[Help],
   CommonUsage[Version],
