@@ -1209,6 +1209,23 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
               return nb.type;
           return BondType::Unspec;
         };
+        auto is_pi_like_nb = [&](size_t nb_idx) {
+          for (const auto& nb : adj[nb_idx])
+            if (nb.idx != i &&
+                (nb.type == BondType::Double ||
+                 nb.type == BondType::Deloc ||
+                 nb.type == BondType::Aromatic))
+              return true;
+          return false;
+        };
+        bool center_has_pi_nonh = false;
+        if (cc.atoms[i].el == El::C) {
+          for (size_t nb_idx : non_h_nbs)
+            if (cc.atoms[nb_idx].el == El::C && is_pi_like_nb(nb_idx)) {
+              center_has_pi_nonh = true;
+              break;
+            }
+        }
         std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                          [&](size_t a, size_t b) {
                            if (cc.atoms[i].el == El::S) {
@@ -1227,7 +1244,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                            int pb = chirality_priority(cc.atoms[b].el);
                            if (pa != pb)
                              return pa < pb;
-                           if (cc.atoms[i].el == El::C)
+                           if (cc.atoms[i].el == El::C &&
+                               cc.atoms[a].el == El::C &&
+                               cc.atoms[b].el == El::C &&
+                               center_has_pi_nonh)
                              return cc.atoms[a].id > cc.atoms[b].id;
                            if (cc.atoms[i].el == El::N) {
                              int sa = shared_ring_count(i, a);
