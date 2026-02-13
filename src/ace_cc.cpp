@@ -1603,6 +1603,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           if (nb.idx != sp3_center &&
               std::find(sp2_tv.begin(), sp2_tv.end(), nb.idx) == sp2_tv.end())
             sp2_tv.push_back(nb.idx);
+        if (cc.atoms[sp2_center].el == El::N && sp2_tv.size() == 2) {
+          bool h0 = cc.atoms[sp2_tv[0]].is_hydrogen();
+          bool h1 = cc.atoms[sp2_tv[1]].is_hydrogen();
+          if (h0 && !h1)
+            std::swap(sp2_tv[0], sp2_tv[1]);
+        }
         int i_pos = -1;
         for (int k = 0; k < (int)sp2_tv.size(); ++k)
           if (sp2_tv[k] == sp2_term) { i_pos = k; break; }
