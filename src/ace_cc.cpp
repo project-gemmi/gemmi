@@ -1863,8 +1863,15 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
       if (is_oxygen_column(cc.atoms[sp2_center].el) &&
           cc.atoms[sp3_center].el == El::S &&
-          atom_info[sp2_term].hybrid == Hybridization::SP2 &&
-          cc.atoms[sp3_term].el == El::C &&
+          !cc.atoms[sp2_term].is_hydrogen() &&
+          (cc.atoms[sp3_term].el == El::C ||
+           (cc.atoms[sp3_term].el == El::O &&
+            [&]() {
+              for (const auto& nb : adj[sp3_center])
+                if (nb.idx == sp3_term)
+                  return nb.type == BondType::Double || nb.type == BondType::Deloc;
+              return false;
+            }())) &&
           ring_size == 0) {
         value = 90.0;
         period = 3;
