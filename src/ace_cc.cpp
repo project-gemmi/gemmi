@@ -1298,6 +1298,34 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         for (size_t a : exc_it->second)
           if (std::find(tv.begin(), tv.end(), a) == tv.end())
             tv.push_back(a);
+        // AceDRG behavior for tertiary carbon centers with three carbon legs:
+        // if exactly one leg is non-methyl, it is listed first in tV.
+        if (cc.atoms[center].el == El::C && tv.size() >= 3) {
+          bool all_c = true;
+          int non_methyl_count = 0;
+          size_t non_methyl_atom = SIZE_MAX;
+          for (size_t a : tv) {
+            if (cc.atoms[a].el != El::C) {
+              all_c = false;
+              break;
+            }
+            int non_h_deg = 0;
+            for (const auto& nb : adj[a])
+              if (nb.idx != center && !cc.atoms[nb.idx].is_hydrogen())
+                ++non_h_deg;
+            if (non_h_deg > 0) {
+              ++non_methyl_count;
+              non_methyl_atom = a;
+            }
+          }
+          if (all_c && non_methyl_count == 1) {
+            auto it = std::find(tv.begin(), tv.end(), non_methyl_atom);
+            if (it == tv.end() - 1) {
+              tv.erase(it);
+              tv.insert(tv.begin(), non_methyl_atom);
+            }
+          }
+        }
       }
     }
     // Non-chiral atom reordering: AceDRG adds a specific atom type first
