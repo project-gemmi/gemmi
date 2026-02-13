@@ -140,20 +140,6 @@ struct TorsionEntry {
   std::string id;
 };
 
-// Periodic table row and group information
-inline int element_row(Element el) {
-  int n = el.ordinal();
-  if (n == 0) return 0;
-  if (n <= 2) return 1;
-  if (n <= 10) return 2;
-  if (n <= 18) return 3;
-  if (n <= 36) return 4;
-  if (n <= 54) return 5;
-  if (n <= 86) return 6;
-  return 7;
-}
-
-
 // ============================================================================
 // Main AcedrgTables class
 // ============================================================================

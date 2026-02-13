@@ -6,6 +6,7 @@
 #include "gemmi/ace_cc.hpp"
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/calculate.hpp"
+#include "gemmi/ace_graph.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cctype>
@@ -21,15 +22,6 @@ int count_missing_values(const Range& range) {
   for (const auto& item : range)
     if (std::isnan(item.value)) missing++;
   return missing;
-}
-
-std::map<std::string, std::vector<std::string>> make_neighbor_names(const ChemComp& cc) {
-  std::map<std::string, std::vector<std::string>> neighbors;
-  for (const auto& bond : cc.rt.bonds) {
-    neighbors[bond.id1.atom].push_back(bond.id2.atom);
-    neighbors[bond.id2.atom].push_back(bond.id1.atom);
-  }
-  return neighbors;
 }
 
 void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
@@ -55,37 +47,6 @@ void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
       ++it;
   }
   vector_remove_if(cc.atoms, [&](const ChemComp::Atom& a) { return a.id == atom_id; });
-}
-
-// Check if two bonded atoms are in the same ring by looking for an alternative path
-bool atoms_in_same_ring(const std::string& atom1, const std::string& atom2,
-                        const std::map<std::string, std::vector<std::string>>& neighbors) {
-  // BFS from atom1 to atom2, excluding the direct bond between them
-  std::set<std::string> visited;
-  std::vector<std::string> queue;
-  visited.insert(atom1);
-  for (const std::string& nb : neighbors.at(atom1)) {
-    if (nb != atom2) {
-      queue.push_back(nb);
-      visited.insert(nb);
-    }
-  }
-  while (!queue.empty()) {
-    std::string current = queue.back();
-    queue.pop_back();
-    if (current == atom2)
-      return true;  // Found alternative path -> in same ring
-    auto it = neighbors.find(current);
-    if (it == neighbors.end())
-      continue;
-    for (const std::string& nb : it->second) {
-      if (visited.find(nb) == visited.end()) {
-        visited.insert(nb);
-        queue.push_back(nb);
-      }
-    }
-  }
-  return false;
 }
 
 void adjust_terminal_carboxylate(ChemComp& cc) {
@@ -469,7 +430,7 @@ void adjust_carboxy_asp(ChemComp& cc) {
         if (bond.type == BondType::Double && !bond.aromatic) {
           int idx = cc.find_atom_index(other);
           if (idx >= 0 && cc.atoms[idx].el == El::C) {
-            if (!atoms_in_same_ring(ac, other, neighbors)) {
+            if (!atoms_in_same_ring_by_alt_path(ac, other, neighbors)) {
               is_conjugated = true;
               break;
             }
@@ -936,42 +897,6 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
   }
 }
 
-struct NeighborBond {
-  size_t idx;
-  BondType type;
-  bool aromatic;
-};
-
-std::vector<std::vector<NeighborBond>> build_bond_adjacency(const ChemComp& cc,
-                                                            const std::map<std::string, size_t>& atom_index) {
-  std::vector<std::vector<NeighborBond>> adj(cc.atoms.size());
-  for (const auto& bond : cc.rt.bonds) {
-    auto it1 = atom_index.find(bond.id1.atom);
-    auto it2 = atom_index.find(bond.id2.atom);
-    if (it1 == atom_index.end() || it2 == atom_index.end())
-      continue;
-    size_t idx1 = it1->second;
-    size_t idx2 = it2->second;
-    bool aromatic = (bond.type == BondType::Aromatic ||
-                     bond.type == BondType::Deloc || bond.aromatic);
-    adj[idx1].push_back({idx2, bond.type, aromatic});
-    adj[idx2].push_back({idx1, bond.type, aromatic});
-  }
-  return adj;
-}
-
-bool is_carbonyl_carbon(size_t idx, const ChemComp& cc,
-                        const std::vector<std::vector<NeighborBond>>& adj) {
-  if (cc.atoms[idx].el != El::C)
-    return false;
-  for (const auto& nb : adj[idx]) {
-    if (cc.atoms[nb.idx].el == El::O &&
-        (nb.type == BondType::Double || nb.type == BondType::Deloc))
-      return true;
-  }
-  return false;
-}
-
 int element_priority(Element el) {
   if (el == El::N) return 0;
   if (el == El::C) return 1;
@@ -992,41 +917,18 @@ int chirality_priority(Element el) {
   return 6;
 }
 
-bool share_ring(const CodAtomInfo& a, const CodAtomInfo& b) {
-  for (int ring_id : a.in_rings)
-    for (int other_id : b.in_rings)
-      if (ring_id == other_id)
-        return true;
-  return false;
-}
-
 bool is_oxygen_column(Element el) {
   return el == El::O || el == El::S || el == El::Se ||
          el == El::Te || el == El::Po;
 }
 
-int shared_ring_size(const CodAtomInfo& a, const CodAtomInfo& b) {
-  if (share_ring(a, b)) {
-    int size = 999;
-    if (a.min_ring_size > 0)
-      size = std::min(size, a.min_ring_size);
-    if (b.min_ring_size > 0)
-      size = std::min(size, b.min_ring_size);
-    return size == 999 ? 1 : size;
-  }
-  return 0;
-}
-
 const ChemComp::Atom* pick_torsion_neighbor(
     const ChemComp& cc,
-    const std::vector<std::vector<NeighborBond>>& adj,
+    const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
     size_t center_idx,
     size_t exclude_idx) {
-  std::vector<size_t> candidates;
-  for (const auto& nb : adj[center_idx])
-    if (nb.idx != exclude_idx)
-      candidates.push_back(nb.idx);
+  std::vector<size_t> candidates = neighbor_indices_except(adj, center_idx, exclude_idx);
   if (candidates.empty())
     return nullptr;
 
@@ -1102,7 +1004,7 @@ const ChemComp::Atom* pick_torsion_neighbor(
 // priority NonH > Ring > H, tiebreaker = first in connAtoms (bond-table order).
 const ChemComp::Atom* pick_aromatic_ring_neighbor(
     const ChemComp& cc,
-    const std::vector<std::vector<NeighborBond>>& adj,
+    const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
     size_t center_idx,
     size_t exclude_idx) {
@@ -1110,17 +1012,15 @@ const ChemComp::Atom* pick_aromatic_ring_neighbor(
   std::vector<size_t> ring_nb;
   std::vector<size_t> metal_nb;
   std::vector<size_t> h;
-  for (const auto& nb : adj[center_idx]) {
-    if (nb.idx == exclude_idx)
-      continue;
-    if (cc.atoms[nb.idx].is_hydrogen()) {
-      h.push_back(nb.idx);
-    } else if (cc.atoms[nb.idx].el.is_metal()) {
-      metal_nb.push_back(nb.idx);
-    } else if (atom_info[nb.idx].min_ring_size > 0) {
-      ring_nb.push_back(nb.idx);
+  for (size_t idx : neighbor_indices_except(adj, center_idx, exclude_idx)) {
+    if (cc.atoms[idx].is_hydrogen()) {
+      h.push_back(idx);
+    } else if (cc.atoms[idx].el.is_metal()) {
+      metal_nb.push_back(idx);
+    } else if (atom_info[idx].min_ring_size > 0) {
+      ring_nb.push_back(idx);
     } else {
-      nonring_nonh.push_back(nb.idx);
+      nonring_nonh.push_back(idx);
     }
   }
   // tiebreaker: bond-table order (= adj iteration order, already preserved)
@@ -1141,8 +1041,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   if (!cc.rt.torsions.empty())
     return;
 
-  auto atom_index = cc.make_atom_index();
-  auto adj = build_bond_adjacency(cc, atom_index);
+  auto graph = make_ace_graph_view(cc);
+  auto& atom_index = graph.atom_index;
+  auto& adj = graph.adjacency;
   bool peptide_mode = ChemComp::is_peptide_group(cc.group);
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
@@ -1391,7 +1292,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb1.idx == other_center) continue;
         for (const auto& nb2 : adj[other_center]) {
           if (nb2.idx == center || nb2.idx == nb1.idx) continue;
-          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
             ring_sharing = nb1.idx;
             goto found_rs;
           }
@@ -1525,11 +1426,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (cc.atoms[idx1].el.is_metal() || cc.atoms[idx2].el.is_metal())
       continue;
 
-    int ring_size = shared_ring_size(atom_info[idx1], atom_info[idx2]);
+    int ring_size = shared_ring_size_from_ring_ids(atom_info[idx1].in_rings,
+                                                   atom_info[idx1].min_ring_size,
+                                                   atom_info[idx2].in_rings,
+                                                   atom_info[idx2].min_ring_size);
     size_t center2 = idx1;
     size_t center3 = idx2;
-    bool c1_carbonyl = is_carbonyl_carbon(idx1, cc, adj);
-    bool c2_carbonyl = is_carbonyl_carbon(idx2, cc, adj);
+    bool c1_carbonyl = is_carbonyl_carbon(cc, adj, idx1);
+    bool c2_carbonyl = is_carbonyl_carbon(cc, adj, idx2);
     bool idx1_in_ring = (atom_info[idx1].min_ring_size > 0 || aromatic_like[idx1]);
     bool idx2_in_ring = (atom_info[idx2].min_ring_size > 0 || aromatic_like[idx2]);
     if (c1_carbonyl != c2_carbonyl) {
@@ -1580,7 +1484,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       a1 = pick_torsion_neighbor(cc, adj, atom_info, center2, center3);
       a4 = pick_torsion_neighbor(cc, adj, atom_info, center3, center2);
     }
-    ring_size = shared_ring_size(atom_info[center2], atom_info[center3]);
+    ring_size = shared_ring_size_from_ring_ids(atom_info[center2].in_rings,
+                                               atom_info[center2].min_ring_size,
+                                               atom_info[center3].in_rings,
+                                               atom_info[center3].min_ring_size);
     if (!a1 || !a4)
       continue;
 
@@ -1628,7 +1535,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       auto shares_ring_across = [&](size_t terminal_idx, size_t opp_center) {
         for (const auto& nb : adj[opp_center])
           if (nb.idx != center2 && nb.idx != center3 &&
-              share_ring(atom_info[terminal_idx], atom_info[nb.idx]))
+              share_ring_ids(atom_info[terminal_idx].in_rings, atom_info[nb.idx].in_rings))
             return true;
         return false;
       };
@@ -1649,7 +1556,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb1.idx == side2) continue;
         for (const auto& nb2 : adj[side2]) {
           if (nb2.idx == side1 || nb2.idx == nb1.idx) continue;
-          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
             rs1 = nb1.idx;
             rs2 = nb2.idx;
             goto sp3sp3_ring_rs_found;
@@ -1683,7 +1590,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb1.idx == side2) continue;
         for (const auto& nb2 : adj[side2]) {
           if (nb2.idx == side1 || nb2.idx == nb1.idx) continue;
-          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
             rs1 = nb1.idx;
             rs2 = nb2.idx;
             goto sp3sp3_noring_rs_found;
@@ -1774,7 +1681,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb1.idx == sp3_center) continue;
         for (const auto& nb2 : adj[sp3_center]) {
           if (nb2.idx == sp2_center || nb2.idx == nb1.idx) continue;
-          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
             sp2_rs = nb1.idx;
             goto sp2sp3_found_rs;
           }
@@ -1801,7 +1708,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           if (sp2_tv[k] == sp2_term) { i_pos = k; break; }
         // tS3: SP2's non-center neighbors share a ring with each other
         bool is_ts3 = (sp2_rs == SIZE_MAX && sp2_tv.size() == 2 &&
-                       share_ring(atom_info[sp2_tv[0]], atom_info[sp2_tv[1]]));
+                       share_ring_ids(atom_info[sp2_tv[0]].in_rings, atom_info[sp2_tv[1]].in_rings));
         static const double ts3_m[2][3] = {
           {150,-90,30}, {-30,90,-150}};
         static const double ts1_m[2][3] = {
@@ -1894,7 +1801,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb1.idx == side2) continue;
         for (const auto& nb2 : adj[side2]) {
           if (nb2.idx == side1 || nb2.idx == nb1.idx) continue;
-          if (share_ring(atom_info[nb1.idx], atom_info[nb2.idx])) {
+          if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
             rs1 = nb1.idx;
             rs2 = nb2.idx;
             goto sp2sp2_found_rs;
@@ -1965,8 +1872,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       int j_pos = sp2sp2_tv_pos(side2, side1, term2, false);
       if (i_pos >= 0 && i_pos < 2 && j_pos >= 0 && j_pos < 2)
         value = m22[i_pos][j_pos];
-      bool end1_ring = share_ring(atom_info[term1], atom_info[side1]);
-      bool end2_ring = share_ring(atom_info[term2], atom_info[side2]);
+      bool end1_ring = share_ring_ids(atom_info[term1].in_rings, atom_info[side1].in_rings);
+      bool end2_ring = share_ring_ids(atom_info[term2].in_rings, atom_info[side2].in_rings);
       esd = (end1_ring || end2_ring) ? 20.0 : 5.0;
       period = 2;
     }
@@ -2078,8 +1985,8 @@ void add_chirality_if_missing(
   if (!cc.rt.chirs.empty())
     return;
 
-  auto atom_index = cc.make_atom_index();
-  auto adj = build_bond_adjacency(cc, atom_index);
+  auto graph = make_ace_graph_view(cc);
+  auto& adj = graph.adjacency;
   std::set<size_t> stereo_centers;
 
   auto stereo_sign = [&](size_t center) -> ChiralityType {
@@ -2100,14 +2007,8 @@ void add_chirality_if_missing(
     if (atom_info[center].hybrid != Hybridization::SP3)
       continue;
 
-    std::vector<size_t> non_h;
-    std::vector<size_t> h;
-    for (const auto& nb : adj[center]) {
-      if (cc.atoms[nb.idx].el == El::H)
-        h.push_back(nb.idx);
-      else
-        non_h.push_back(nb.idx);
-    }
+    std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
+    std::vector<size_t> h = hydrogen_neighbors(cc, adj, center);
     if (non_h.size() < 3)
       continue;
 
@@ -2178,8 +2079,9 @@ void add_chirality_if_missing(
 
 void add_planes_if_missing(ChemComp& cc,
                            const std::vector<CodAtomInfo>& atom_info) {
-  auto atom_index = cc.make_atom_index();
-  auto adj = build_bond_adjacency(cc, atom_index);
+  auto graph = make_ace_graph_view(cc);
+  auto& atom_index = graph.atom_index;
+  auto& adj = graph.adjacency;
 
   std::vector<std::set<Restraints::AtomId>> plane_sets;
   plane_sets.reserve(cc.rt.planes.size());
@@ -2288,35 +2190,18 @@ void add_planes_if_missing(ChemComp& cc,
 void apply_metal_charge_corrections(ChemComp& cc) {
   if (cc.atoms.empty())
     return;
-  auto atom_index = cc.make_atom_index();
-  auto adj = build_bond_adjacency(cc, atom_index);
+  auto graph = make_ace_graph_view(cc);
+  auto& adj = graph.adjacency;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     const Element& el = cc.atoms[i].el;
     if (el.is_metal() || el == El::H)
       continue;
-    // check if atom has any metal neighbor
-    bool has_metal = false;
-    bool has_non_metal_heavy = false;
-    for (const auto& nb : adj[i]) {
-      if (cc.atoms[nb.idx].el.is_metal())
-        has_metal = true;
-      else if (!cc.atoms[nb.idx].is_hydrogen())
-        has_non_metal_heavy = true;
-    }
-    if (!has_metal || !has_non_metal_heavy)
+    if (!has_metal_and_non_metal_heavy_neighbor(cc, adj, i))
       continue;
-    int expected_valence = 0;
-    if (el == El::O) expected_valence = 2;
-    else if (el == El::N) expected_valence = 3;
-    else if (el == El::S) expected_valence = 2;
-    else if (el == El::C) expected_valence = 4;
-    else if (el == El::P) expected_valence = 3;
-    else continue;
-    float sum_bo = 0.0f;
-    for (const auto& nb : adj[i]) {
-      if (!cc.atoms[nb.idx].el.is_metal())
-        sum_bo += order_of_bond_type(nb.type);
-    }
+    int expected_valence = expected_valence_for_nonmetal(el);
+    if (expected_valence == 0)
+      continue;
+    float sum_bo = sum_non_metal_bond_order(cc, adj, i);
     int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
     cc.atoms[i].charge = static_cast<float>(-rem_v);
   }

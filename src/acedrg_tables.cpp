@@ -4,6 +4,7 @@
 // Port of AceDRG codClassify system to gemmi.
 
 #include "gemmi/acedrg_tables.hpp"
+#include "gemmi/ace_graph.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -39,16 +40,6 @@ std::string prefix_before(const std::string& s, char ch) {
   return pos != std::string::npos ? s.substr(0, pos) : s;
 }
 
-// Expected valence for common non-metal elements (used in metal charge adjustment).
-int get_expected_valence(Element el) {
-  if (el == El::O) return 2;
-  if (el == El::N) return 3;
-  if (el == El::S) return 2;
-  if (el == El::C) return 4;
-  if (el == El::P) return 3;
-  return 0;
-}
-
 // Skip blank lines, comments, and empty lines when reading table files.
 bool is_skip_line(const char* line) {
   return line[0] == '\n' || line[0] == '#' || line[0] == '\0';
@@ -75,15 +66,7 @@ bool compare_no_case2(const std::string& first,
     return true;
   if (first.length() < second.length())
     return false;
-  for (size_t i = 0; i < first.length() && i < second.length(); ++i) {
-    char a = alpha_up(first[i]);
-    char b = alpha_up(second[i]);
-    if (a < b)
-      return true;
-    if (a > b)
-      return false;
-  }
-  return false;
+  return compare_no_case(first, second);
 }
 
 struct SortMap {
@@ -755,12 +738,6 @@ void AcedrgTables::load_pep_tors(const std::string& path) {
 
 namespace {
 
-struct BondInfo {
-  int neighbor_idx;
-  BondType type;
-  bool aromatic = false;
-};
-
 struct RingInfo {
   std::vector<int> atoms;
   std::string rep;
@@ -775,33 +752,8 @@ struct NB1stFam {
   int repN = 1;
 };
 
-std::vector<std::vector<BondInfo>>
-build_adjacency(const ChemComp& cc) {
-  std::vector<std::vector<BondInfo>> adj(cc.atoms.size());
-  for (const auto& bond : cc.rt.bonds) {
-    int idx1 = cc.find_atom_index(bond.id1.atom);
-    int idx2 = cc.find_atom_index(bond.id2.atom);
-    if (idx1 >= 0 && idx2 >= 0) {
-      adj[idx1].push_back({idx2, bond.type, bond.aromatic});
-      adj[idx2].push_back({idx1, bond.type, bond.aromatic});
-    }
-  }
-  return adj;
-}
-
-std::vector<std::vector<int>> build_neighbors(
-    const std::vector<std::vector<BondInfo>>& adj) {
-  std::vector<std::vector<int>> neighbors(adj.size());
-  for (size_t i = 0; i < adj.size(); ++i) {
-    neighbors[i].reserve(adj[i].size());
-    for (const auto& nb : adj[i])
-      neighbors[i].push_back(nb.neighbor_idx);
-  }
-  return neighbors;
-}
-
 void set_ring_aromaticity_from_bonds(
-    const std::vector<std::vector<BondInfo>>& adj,
+    const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atoms,
     std::vector<RingInfo>& rings,
     int verbose) {
@@ -812,7 +764,7 @@ void set_ring_aromaticity_from_bonds(
   auto count_non_mc = [&](int idx) -> int {
     int non_mc = 0;
     for (const auto& nb : adj[idx]) {
-      const auto& at = atoms[nb.neighbor_idx];
+      const auto& at = atoms[nb.idx];
       if (!at.is_metal)
         ++non_mc;
     }
@@ -1263,10 +1215,7 @@ void get_small_family(const std::string& in_str, NB1stFam& fam) {
 }
 
 bool are_in_same_ring(const CodAtomInfo& a1, const CodAtomInfo& a2) {
-  for (int ring_idx : a1.in_rings)
-    if (in_vector(ring_idx, a2.in_rings))
-      return true;
-  return false;
+  return share_ring_ids(a1.in_rings, a2.in_rings);
 }
 
 int angle_ring_size(const CodAtomInfo& center,
@@ -1772,8 +1721,9 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   }
 
   // Build adjacency and neighbor lists
-  std::vector<std::vector<BondInfo>> adj = build_adjacency(cc);
-  std::vector<std::vector<int>> neighbors = build_neighbors(adj);
+  AceGraphView graph = make_ace_graph_view(cc);
+  AceBondAdjacency& adj = graph.adjacency;
+  std::vector<std::vector<int>>& neighbors = graph.neighbors;
 
   // Connectivity counts
   for (size_t i = 0; i < atoms.size(); ++i) {
@@ -1797,20 +1747,14 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     CodAtomInfo& atom = atoms[i];
     if (atom.is_metal || atom.el == El::H)
       continue;
-    bool has_metal_neighbor = atom.connectivity > static_cast<int>(atom.conn_atoms_no_metal.size());
-    if (!has_metal_neighbor)
+    if (!has_metal_and_non_metal_heavy_neighbor(cc, adj, i))
       continue;
-    if (std::none_of(atom.conn_atoms_no_metal.begin(), atom.conn_atoms_no_metal.end(),
-                      [&](int nb) { return atoms[nb].el != El::H; }))
+    if (!has_non_hydrogen_neighbor(cc, atom.conn_atoms_no_metal))
       continue;
-    int expected_valence = get_expected_valence(atom.el);
+    int expected_valence = expected_valence_for_nonmetal(atom.el);
     if (expected_valence == 0)
       continue;
-    float sum_bo = 0.0f;
-    for (const BondInfo& bi : adj[i]) {
-      if (!atoms[bi.neighbor_idx].is_metal)
-        sum_bo += order_of_bond_type(bi.type);
-    }
+    float sum_bo = sum_non_metal_bond_order(cc, adj, i);
     int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
     atom.charge = static_cast<float>(-rem_v);
   }
@@ -1902,11 +1846,15 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
   // AceDRG excludes metal neighbors from connectivity when computing hash.
   int d3 = 8 + static_cast<int>(atom.conn_atoms_no_metal.size());
 
-  // d4: periodic row + 16
-  int d4 = 16 + element_row(atom.el);
-
-  // d5: periodic group + 24
-  int d5 = 24 + element_group(atom.el);
+  // d4/d5: periodic row/group from elem.hpp.
+  // Handle deuterium as hydrogen.
+  El el = static_cast<El>(atom.el);
+  if (el == El::D)
+    el = El::H;
+  int row = element_row(el);
+  int group = element_group(el);
+  int d4 = 16 + row;
+  int d5 = 24 + group;
 
   // Compute hash as product of primes mod HASH_SIZE
   int64_t prime_product = static_cast<int64_t>(primes[d1]) *
@@ -2257,8 +2205,9 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     return;
 
   std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
-  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
-  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+  AceGraphView graph = make_ace_graph_view(cc);
+  AceBondAdjacency& adjacency = graph.adjacency;
+  std::vector<std::vector<int>>& neighbors = graph.neighbors;
 
   std::vector<Ccp4AtomInfo> atoms = build_ccp4_atoms(cc, atom_info, neighbors);
 
@@ -2275,21 +2224,14 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     if (info.el.is_metal() || info.el == El::H || info.formal_charge != 0)
       continue;
     // Check if this atom has any metal neighbors
-    bool has_metal_neighbor = info.conn_atoms.size() > info.conn_atoms_no_metal.size();
-    if (!has_metal_neighbor)
+    if (!has_metal_and_non_metal_heavy_neighbor(cc, adjacency, i))
       continue;
-    if (std::none_of(info.conn_atoms_no_metal.begin(), info.conn_atoms_no_metal.end(),
-                      [&](int nb) { return !cc.atoms[nb].is_hydrogen(); }))
+    if (!has_non_hydrogen_neighbor(cc, info.conn_atoms_no_metal))
       continue;
-    int expected_valence = get_expected_valence(info.el);
+    int expected_valence = expected_valence_for_nonmetal(info.el);
     if (expected_valence == 0)
       continue;
-    // Sum bond orders to non-metal neighbors only
-    float sum_bo = 0.0f;
-    for (const BondInfo& bi : adjacency[i]) {
-      if (!cc.atoms[bi.neighbor_idx].el.is_metal())
-        sum_bo += order_of_bond_type(bi.type);
-    }
+    float sum_bo = sum_non_metal_bond_order(cc, adjacency, i);
     // Calculate remaining valence and set formal charge
     int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
     if (rem_v != 0)
@@ -2312,8 +2254,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
 
   // Classify atoms
   std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
-  std::vector<std::vector<BondInfo>> adjacency = build_adjacency(cc);
-  std::vector<std::vector<int>> neighbors = build_neighbors(adjacency);
+  AceGraphView graph = make_ace_graph_view(cc);
+  std::vector<std::vector<int>>& neighbors = graph.neighbors;
   std::vector<std::string> ccp4_types;
   if (!ccp4_bonds_.empty())
     ccp4_types = compute_ccp4_types(cc, atom_info, neighbors);
@@ -3535,12 +3477,33 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
   int idx1 = cc.find_atom_index(angle.id1.atom);
   int idx2 = cc.find_atom_index(angle.id2.atom);  // center
   int idx3 = cc.find_atom_index(angle.id3.atom);
-  if (idx1 < 0 || idx2 < 0 || idx3 < 0)
+  if (idx1 < 0 || idx2 < 0 || idx3 < 0) {
+    if (verbose >= 2)
+      std::fprintf(stderr, "      angle-trace %s-%s-%s route=invalid-index approx=6\n",
+                   angle.id1.atom.c_str(), angle.id2.atom.c_str(),
+                   angle.id3.atom.c_str());
     return 6;
+  }
 
   const CodAtomInfo& a1 = atom_info[idx1];
   const CodAtomInfo& center = atom_info[idx2];
   const CodAtomInfo& a3 = atom_info[idx3];
+  int ring_size = angle_ring_size(center, a1, a3);
+  auto trace_return = [&](const char* route, int approx, const CodStats* stats = nullptr) {
+    if (verbose < 2)
+      return;
+    std::fprintf(stderr,
+                 "      angle-trace %s-%s-%s route=%s approx=%d ring=%d hybr=%s "
+                 "hash=(%d,%d,%d) value=%.3f esd=%.3f",
+                 a1.id.c_str(), center.id.c_str(), a3.id.c_str(),
+                 route, approx, ring_size, hybridization_to_string(center.hybrid),
+                 a1.hashing_value, center.hashing_value, a3.hashing_value,
+                 angle.value, angle.esd);
+    if (stats)
+      std::fprintf(stderr, " stats(count=%d sigma=%.3f level=%d)",
+                   stats->count, stats->sigma, stats->level);
+    std::fprintf(stderr, "\n");
+  };
 
   // Check for metal center
   if (center.is_metal) {
@@ -3550,6 +3513,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
       // Use the most common angle for this geometry
       angle.value = ideal_angles[0];
       angle.esd = clamp_angle_sigma(3.0);
+      trace_return("metal-center-geometry", 6);
       return 6;
     }
   }
@@ -3571,6 +3535,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
         ang = 180.0;
       angle.value = ang;
       angle.esd = clamp_angle_sigma(3.0);
+      trace_return("coord-geometry-snap", 6);
       return 6;
     }
   }
@@ -3599,6 +3564,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
     // DefaultOrgAngles: [1]=180°, [2]=120°, [3]=109.47°
     angle.value = bi >= 3 ? 109.47 : bi <= 1 ? 180.0 : 120.0;
     angle.esd = 5.0;
+    trace_return("metal-flank-default", 6);
     return 6;
   }
 
@@ -3606,10 +3572,9 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
   if (center.hybrid == Hybridization::SP1 && center.connectivity < 5) {
     angle.value = 180.0;
     angle.esd = upper_angle_sigma;
+    trace_return("sp1-default", 6);
     return 6;
   }
-
-  int ring_size = angle_ring_size(center, a1, a3);
 
   // Try detailed multilevel search first
   int level = -1;
@@ -3617,6 +3582,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
   if (vs.count >= min_observations_angle) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
+    trace_return("multilevel", level, &vs);
     return level;
   }
 
@@ -3749,6 +3715,8 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
           std::fprintf(stderr, "      wildcard angle %s-%s-%s: value=%.3f sigma=%.3f count=%d\n",
                        angle.id1.atom.c_str(), angle.id2.atom.c_str(),
                        angle.id3.atom.c_str(), avg, sigma, total_count);
+        CodStats wild_stats(avg, sigma, total_count, 6);
+        trace_return("wildcard-hash", 6, &wild_stats);
         return 6;
       }
     }
@@ -3759,6 +3727,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
   if (vs.count >= min_observations_angle) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
+    trace_return("hrs", 6, &vs);
     return 6;
   }
 
@@ -3782,6 +3751,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
       break;
   }
   angle.esd = upper_angle_sigma;
+  trace_return("hybrid-fallback", 6);
   return 6;
 }
 
