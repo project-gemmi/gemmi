@@ -1328,6 +1328,96 @@ std::vector<size_t> build_tv_neighbor_order(
   return nb_order;
 }
 
+// Build the torsion-value neighbor ordering (tV) list for a center with
+// respect to the bonded atom on the other side.
+std::vector<size_t> build_tv_list_for_center(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::set<size_t>& stereo_chiral_centers,
+    const std::map<size_t, std::map<size_t, std::vector<size_t>>>& chir_mut_table,
+    size_t ctr, size_t other, TvMode mode, size_t forced_rs = SIZE_MAX) {
+  std::vector<size_t> tv;
+  size_t rs = forced_rs;
+  if (rs == SIZE_MAX)
+    rs = find_ring_sharing_pair(adj, atom_info, ctr, other).first;
+  if (rs != SIZE_MAX)
+    tv.push_back(rs);
+
+  int max_len = max_tv_len_for_center(atom_info[ctr]);
+  bool used_chiral = false;
+  bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
+                     stereo_chiral_centers.count(ctr) != 0);
+  if (atom_info[ctr].hybrid == Hybridization::SP3) {
+    bool use_chiral_mut_table = !stereo_sp3;
+    auto mit = chir_mut_table.find(ctr);
+    if (use_chiral_mut_table && mit != chir_mut_table.end()) {
+      auto mt_it = mit->second.find(other);
+      if (mt_it != mit->second.end()) {
+        used_chiral = true;
+        for (size_t cand : mt_it->second) {
+          if ((int)tv.size() >= max_len)
+            break;
+          if (cand == other || cand == rs)
+            continue;
+          if (std::find(tv.begin(), tv.end(), cand) != tv.end())
+            continue;
+          tv.push_back(cand);
+        }
+      }
+    }
+  }
+
+  if (!used_chiral) {
+    bool want_h_first = (mode == TvMode::SP2SP3_SP3 && !stereo_sp3);
+    bool want_non_h_first = (mode == TvMode::SP3_OXY &&
+                             atom_info[ctr].hybrid == Hybridization::SP3 &&
+                             rs == SIZE_MAX);
+    std::vector<size_t> nb_order =
+        build_tv_neighbor_order(cc, adj, atom_info, ctr);
+    size_t first_non_h = SIZE_MAX;
+    if (want_non_h_first && (int)tv.size() < max_len) {
+      for (size_t nb_idx : nb_order) {
+        if (nb_idx == other || nb_idx == rs)
+          continue;
+        if (!cc.atoms[nb_idx].is_hydrogen()) {
+          first_non_h = nb_idx;
+          tv.push_back(first_non_h);
+          break;
+        }
+      }
+      if (first_non_h == SIZE_MAX && !adj[ctr].empty()) {
+        first_non_h = adj[ctr][0].idx;
+        tv.push_back(first_non_h);
+      }
+    }
+    size_t first_h = SIZE_MAX;
+    if (want_h_first && (int)tv.size() < max_len) {
+      for (size_t nb_idx : nb_order) {
+        if (nb_idx == other || nb_idx == rs)
+          continue;
+        if (cc.atoms[nb_idx].is_hydrogen()) {
+          first_h = nb_idx;
+          tv.push_back(first_h);
+          break;
+        }
+      }
+    }
+
+    for (size_t nb_idx : nb_order) {
+      if ((int)tv.size() >= max_len)
+        break;
+      if (nb_idx == other || nb_idx == rs ||
+          nb_idx == first_h || nb_idx == first_non_h)
+        continue;
+      tv.push_back(nb_idx);
+    }
+  }
+
+  if ((int)tv.size() > max_len)
+    tv.resize(max_len);
+  return tv;
+}
+
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
                                         const std::vector<CodAtomInfo>& atom_info,
                                         const std::map<std::string, std::string>& atom_stereo,
@@ -1359,109 +1449,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
   auto& chir_mut_table = chiral_info.chir_mut_table;
 
-  // Build the torsion-value neighbor ordering (tV) list for a given center
-  // with respect to other_center. The order mimics AceDRG tV lists:
-  //   1) ring-sharing neighbour (if any, or forced_rs override)
-  //   2) for chiral SP3 centers: mutTable order
-  //   3) for SP2SP3_SP3 mode: first hydrogen neighbour
-  //   4) for SP3_OXY mode: first non-H (or fallback to connAtoms[0])
-  //   5) remaining neighbours in adjacency order
-  auto build_tv_list = [&](size_t ctr, size_t other, TvMode mode,
-                           size_t forced_rs = SIZE_MAX) {
-    std::vector<size_t> tv;
-    size_t rs = forced_rs;
-    if (rs == SIZE_MAX)
-      rs = find_ring_sharing_pair(adj, atom_info, ctr, other).first;
-    if (rs != SIZE_MAX)
-      tv.push_back(rs);
-
-    int max_len = max_tv_len_for_center(atom_info[ctr]);
-
-    // Chiral SP3 side: follow mutTable order (AceDRG buildChiralCluster2).
-    // For explicit R/S stereo carbons AceDRG often has empty mutTable and
-    // falls back to plain connAtoms order.
-    bool used_chiral = false;
-    bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
-                       stereo_chiral_centers.count(ctr) != 0);
-    if (atom_info[ctr].hybrid == Hybridization::SP3) {
-      bool use_chiral_mut_table = !stereo_sp3;
-      auto mit = chir_mut_table.find(ctr);
-      if (use_chiral_mut_table && mit != chir_mut_table.end()) {
-        auto mt_it = mit->second.find(other);
-        if (mt_it != mit->second.end()) {
-          used_chiral = true;
-          for (size_t cand : mt_it->second) {
-            if ((int)tv.size() >= max_len)
-              break;
-            if (cand == other || cand == rs)
-              continue;
-            if (std::find(tv.begin(), tv.end(), cand) != tv.end())
-              continue;
-            tv.push_back(cand);
-          }
-        }
-      }
-    }
-
-    if (!used_chiral) {
-      bool want_h_first = (mode == TvMode::SP2SP3_SP3 && !stereo_sp3);
-      bool want_non_h_first = (mode == TvMode::SP3_OXY &&
-                               atom_info[ctr].hybrid == Hybridization::SP3 &&
-                               rs == SIZE_MAX);
-      std::vector<size_t> nb_order =
-          build_tv_neighbor_order(cc, adj, atom_info, ctr);
-      size_t first_non_h = SIZE_MAX;
-      if (want_non_h_first && (int)tv.size() < max_len) {
-        for (size_t nb_idx : nb_order) {
-          if (nb_idx == other || nb_idx == rs)
-            continue;
-          if (!cc.atoms[nb_idx].is_hydrogen()) {
-            first_non_h = nb_idx;
-            tv.push_back(first_non_h);
-            break;
-          }
-        }
-        // AceDRG SetOneSP3OxyColumnBond fallback: if only H neighbours are
-        // available, seed tV with connAtoms[0] (can be the bonded atom).
-        if (first_non_h == SIZE_MAX && !adj[ctr].empty()) {
-          first_non_h = adj[ctr][0].idx;
-          tv.push_back(first_non_h);
-        }
-      }
-      size_t first_h = SIZE_MAX;
-      if (want_h_first && (int)tv.size() < max_len) {
-        for (size_t nb_idx : nb_order) {
-          if (nb_idx == other || nb_idx == rs)
-            continue;
-          if (cc.atoms[nb_idx].is_hydrogen()) {
-            first_h = nb_idx;
-            tv.push_back(first_h);
-            break;
-          }
-        }
-      }
-
-      for (size_t nb_idx : nb_order) {
-        if ((int)tv.size() >= max_len)
-          break;
-        if (nb_idx == other || nb_idx == rs ||
-            nb_idx == first_h || nb_idx == first_non_h)
-          continue;
-        tv.push_back(nb_idx);
-      }
-    }
-
-    if ((int)tv.size() > max_len)
-      tv.resize(max_len);
-    return tv;
-  };
-
   // Find the position of target in the tV list for a given center.
   auto compute_tv_position = [&](size_t center, size_t other_center,
                                   size_t target,
                                   TvMode mode = TvMode::Default,
                                   size_t forced_rs = SIZE_MAX) -> int {
-    auto tv = build_tv_list(center, other_center, mode, forced_rs);
+    auto tv = build_tv_list_for_center(
+        cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+        center, other_center, mode, forced_rs);
     for (int i = 0; i < (int)tv.size(); ++i)
       if (tv[i] == target)
         return i;
@@ -1533,8 +1528,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     } else if (sp2_like_12 && sp3_like_21) {
       mode21 = TvMode::SP2SP3_SP3;
     }
-    tv1_idx = build_tv_list(center2, center3, mode12);
-    tv2_idx = build_tv_list(center3, center2, mode21);
+    tv1_idx = build_tv_list_for_center(
+        cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+        center2, center3, mode12);
+    tv2_idx = build_tv_list_for_center(
+        cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+        center3, center2, mode21);
     ring_size = shared_ring_size_from_ring_ids(atom_info[center2].in_rings,
                                                atom_info[center2].min_ring_size,
                                                atom_info[center3].in_rings,
