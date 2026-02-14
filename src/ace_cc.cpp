@@ -2461,7 +2461,6 @@ void add_chirality_if_missing(
 void add_planes_if_missing(ChemComp& cc,
                            const std::vector<CodAtomInfo>& atom_info) {
   auto graph = make_ace_graph_view(cc);
-  auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
 
   std::vector<std::set<Restraints::AtomId>> plane_sets;
@@ -2523,8 +2522,6 @@ void add_planes_if_missing(ChemComp& cc,
       continue;
     if (atom_info[idx].hybrid != Hybridization::SP2)
       continue;
-    if (atom_info[idx].min_ring_size > 0)
-      continue;
     std::set<size_t> plane_idx;
     plane_idx.insert(idx);
     for (const auto& nb : adj[idx])
@@ -2537,33 +2534,10 @@ void add_planes_if_missing(ChemComp& cc,
       continue;
     if (atom_info[idx].hybrid != Hybridization::SP2)
       continue;
-    if (atom_info[idx].min_ring_size > 0)
-      continue;
     std::set<size_t> plane_idx;
     plane_idx.insert(idx);
     for (const auto& nb : adj[idx])
       plane_idx.insert(nb.idx);
-    add_plane(plane_idx);
-  }
-
-  for (size_t idx = 0; idx < cc.atoms.size(); ++idx) {
-    if (cc.atoms[idx].el != El::C)
-      continue;
-    std::vector<std::string> oxy;
-    std::vector<std::string> other;
-    for (const auto& nb : adj[idx]) {
-      if (cc.atoms[nb.idx].el == El::O)
-        oxy.push_back(cc.atoms[nb.idx].id);
-      else
-        other.push_back(cc.atoms[nb.idx].id);
-    }
-    if (oxy.size() < 2 || other.empty())
-      continue;
-    std::set<size_t> plane_idx;
-    plane_idx.insert(idx);
-    plane_idx.insert(atom_index[other.front()]);
-    for (const std::string& o : oxy)
-      plane_idx.insert(atom_index[o]);
     add_plane(plane_idx);
   }
 }
