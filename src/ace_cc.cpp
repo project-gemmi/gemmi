@@ -1053,7 +1053,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
   ChiralCenterInfo out;
   std::set<size_t> stereo_negative_centers;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    if (!is_sp3_like(atom_info[i]))
+    if (atom_info[i].hybrid != Hybridization::SP3)
       continue;
     std::vector<size_t> non_h_nbs;
     for (const auto& nb : adj[i])
@@ -1063,7 +1063,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2) {
       bool n31_like = true;
       for (size_t nb : non_h_nbs)
-        if (cc.atoms[nb].el != El::C || !is_sp3_like(atom_info[nb])) {
+        if (cc.atoms[nb].el != El::C || atom_info[nb].hybrid != Hybridization::SP3) {
           n31_like = false;
           break;
         }
@@ -1346,10 +1346,9 @@ std::vector<size_t> build_tv_list_for_center(
 
   int max_len = max_tv_len_for_center(atom_info[ctr]);
   bool used_chiral = false;
-  bool center_sp3_like = is_sp3_like(atom_info[ctr]);
-  bool stereo_sp3 = (center_sp3_like &&
+  bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
                      stereo_chiral_centers.count(ctr) != 0);
-  if (center_sp3_like) {
+  if (atom_info[ctr].hybrid == Hybridization::SP3) {
     bool use_chiral_mut_table = !stereo_sp3;
     auto mit = chir_mut_table.find(ctr);
     if (use_chiral_mut_table && mit != chir_mut_table.end()) {
@@ -1372,7 +1371,7 @@ std::vector<size_t> build_tv_list_for_center(
   if (!used_chiral) {
     bool want_h_first = (mode == TvMode::SP2SP3_SP3 && !stereo_sp3);
     bool want_non_h_first = (mode == TvMode::SP3_OXY &&
-                             center_sp3_like &&
+                             atom_info[ctr].hybrid == Hybridization::SP3 &&
                              rs == SIZE_MAX);
     std::vector<size_t> nb_order =
         build_tv_neighbor_order(cc, adj, atom_info, ctr);
@@ -1420,6 +1419,22 @@ std::vector<size_t> build_tv_list_for_center(
   return tv;
 }
 
+int compute_tv_position_for_center(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::set<size_t>& stereo_chiral_centers,
+    const std::map<size_t, std::map<size_t, std::vector<size_t>>>& chir_mut_table,
+    size_t center, size_t other_center, size_t target,
+    TvMode mode = TvMode::Default, size_t forced_rs = SIZE_MAX) {
+  auto tv = build_tv_list_for_center(
+      cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+      center, other_center, mode, forced_rs);
+  for (int i = 0; i < (int)tv.size(); ++i)
+    if (tv[i] == target)
+      return i;
+  return -1;
+}
+
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
                                         const std::vector<CodAtomInfo>& atom_info,
                                         const std::map<std::string, std::string>& atom_stereo,
@@ -1450,20 +1465,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       detect_chiral_centers_and_mut_table(cc, adj, atom_info, atom_stereo);
   auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
   auto& chir_mut_table = chiral_info.chir_mut_table;
-
-  // Find the position of target in the tV list for a given center.
-  auto compute_tv_position = [&](size_t center, size_t other_center,
-                                  size_t target,
-                                  TvMode mode = TvMode::Default,
-                                  size_t forced_rs = SIZE_MAX) -> int {
-    auto tv = build_tv_list_for_center(
-        cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        center, other_center, mode, forced_rs);
-    for (int i = 0; i < (int)tv.size(); ++i)
-      if (tv[i] == target)
-        return i;
-    return -1;
-  };
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -1606,8 +1607,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         auto [rs1, rs2] = find_ring_sharing_pair(adj, atom_info, side1, side2);
         size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
         size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
-        int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3, rs1);
-        int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3, rs2);
+        int i_pos = compute_tv_position_for_center(
+            cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+            side1, side2, term1, TvMode::SP3SP3, rs1);
+        int j_pos = compute_tv_position_for_center(
+            cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+            side2, side1, term2, TvMode::SP3SP3, rs2);
         if (pit != bond_ring_parity.end() && i_pos >= 0 && j_pos >= 0) {
           static const double even_m[3][3] = {
             {60,180,-60}, {-60,60,180}, {180,-60,60}};
@@ -1628,8 +1633,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         auto [rs1, rs2] = find_ring_sharing_pair(adj, atom_info, side1, side2);
         size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
         size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
-        int i_pos = compute_tv_position(side1, side2, term1, TvMode::SP3SP3, rs1);
-        int j_pos = compute_tv_position(side2, side1, term2, TvMode::SP3SP3, rs2);
+        int i_pos = compute_tv_position_for_center(
+            cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+            side1, side2, term1, TvMode::SP3SP3, rs1);
+        int j_pos = compute_tv_position_for_center(
+            cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+            side2, side1, term2, TvMode::SP3SP3, rs2);
         if (i_pos >= 0 && i_pos < 3 && j_pos >= 0 && j_pos < 3) {
           static const double noflip_m[3][3] = {
             {180,-60,60}, {60,180,-60}, {-60,60,180}};
@@ -1744,10 +1753,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           // AceDRG SetOneSP3OxyColumnBond(tIdx1=SP3, tIdx2=SP2-oxy):
           // row index on SP3 side (tV1), column index on SP2 side (tV2),
           // torsion = init + (row+col)*120 with init depending on ring/oxy.
-          int i_pos = compute_tv_position(sp3_center, sp2_center, sp3_term,
-                                          TvMode::SP3_OXY, sp3_rs);
-          int j_pos = compute_tv_position(sp2_center, sp3_center, sp2_term,
-                                          TvMode::Default, sp2_rs);
+          int i_pos = compute_tv_position_for_center(
+              cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+              sp3_center, sp2_center, sp3_term, TvMode::SP3_OXY, sp3_rs);
+          int j_pos = compute_tv_position_for_center(
+              cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+              sp2_center, sp3_center, sp2_term, TvMode::Default, sp2_rs);
           if (i_pos >= 0 && i_pos < 3 && j_pos >= 0 && j_pos < 3) {
             double ini_value = (sp2_rs != SIZE_MAX) ? 60.0
                            : (oxy_col_sp3 ? 90.0 : 180.0);
@@ -1756,10 +1767,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             period = 3;
           }
         } else {
-          int i_pos = compute_tv_position(sp2_center, sp3_center, sp2_term,
-                                          TvMode::Default, sp2_rs);
-          int j_pos = compute_tv_position(sp3_center, sp2_center, sp3_term,
-                                          TvMode::SP2SP3_SP3, sp3_rs);
+          int i_pos = compute_tv_position_for_center(
+              cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+              sp2_center, sp3_center, sp2_term, TvMode::Default, sp2_rs);
+          int j_pos = compute_tv_position_for_center(
+              cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+              sp3_center, sp2_center, sp3_term, TvMode::SP2SP3_SP3, sp3_rs);
           static const double ts3_m[2][3] = {{150,-90,30}, {-30,90,-150}};
           static const double ts1_m[2][3] = {{0,120,-120}, {180,-60,60}};
           std::vector<size_t> sp2_side_nbs;
@@ -2097,7 +2110,7 @@ void add_chirality_if_missing(
   };
 
   for (size_t center = 0; center < cc.atoms.size(); ++center) {
-    if (!is_sp3_like(atom_info[center]))
+    if (atom_info[center].hybrid != Hybridization::SP3)
       continue;
 
     std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
