@@ -32,3 +32,11 @@ Don't run acedrg, instead, check acedrg ouput files mentioned above.
 The latest acedrg is installed in pythonic virtual env:
 /home/wojdyr/app/acedrg/venv
 but it's not reliable, the one from CCP4-9 is better for our needs.
+
+
+see ccd/log-new9.txt for the current list of discrepancies
+the format is: acedrg_val : gemmi_val   esd acedrg_esd : gemmi_esd
+      # Example:  180.00 :   0.00   esd 5.00 : 20.00…)
+
+note:when running gemmi drg it's muuch fasterto run it with multiple inputs than in a loop
+
