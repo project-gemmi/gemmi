@@ -971,8 +971,8 @@ SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj
     "(OC2)(CCO2)(CC2O)(CC2O)(CC2O)",
     "(OC2)(CCO2)(CC2)(CC2O)(CC2O)(CC2O)"
   };
-  std::set<std::string> allowed_shapes(std::begin(k_ace_sugar_shapes),
-                                       std::end(k_ace_sugar_shapes));
+  static const std::set<std::string> allowed_shapes(
+      std::begin(k_ace_sugar_shapes), std::end(k_ace_sugar_shapes));
   std::map<int, std::vector<size_t>> ring_atoms;
   for (size_t i = 0; i < atom_info.size(); ++i)
     for (int rid : atom_info[i].in_rings)
@@ -1627,9 +1627,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         }
       } else if (!lookup_found && sp3_2 && sp3_3 && ring_size == 0) {
         // Non-ring SP3-SP3: always use no-flip matrix
-        size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
-                        ? center2 : center3;
-        size_t side2 = (side1 == center2) ? center3 : center2;
+        size_t side1 = center2;
+        size_t side2 = center3;
         auto [rs1, rs2] = find_ring_sharing_pair(adj, atom_info, side1, side2);
         size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
         size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
