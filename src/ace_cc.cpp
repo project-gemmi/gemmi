@@ -1583,8 +1583,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb_idx == other_center || nb_idx == ring_sharing ||
             nb_idx == first_h || nb_idx == first_non_h)
           continue;
-        if (first_h != SIZE_MAX && cc.atoms[nb_idx].is_hydrogen())
-          continue;  // keep only the first hydrogen per center
         tv.push_back(nb_idx);
       }
     }
@@ -1728,8 +1726,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           if ((int)tv.size() >= max_len)
             break;
           if (nb_idx == other || nb_idx == rs || nb_idx == first_h)
-            continue;
-          if (first_h != SIZE_MAX && cc.atoms[nb_idx].is_hydrogen())
             continue;
           tv.push_back(nb_idx);
         }
