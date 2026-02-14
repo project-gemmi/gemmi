@@ -1369,8 +1369,7 @@ std::vector<size_t> build_tv_list_for_center(
   }
 
   if (!used_chiral) {
-    bool want_h_first = ((mode == TvMode::SP2SP3_SP3 ||
-                          mode == TvMode::SP3SP3) && !stereo_sp3);
+    bool want_h_first = false;
     bool want_non_h_first = (mode == TvMode::SP3_OXY &&
                              atom_info[ctr].hybrid == Hybridization::SP3 &&
                              rs == SIZE_MAX);
