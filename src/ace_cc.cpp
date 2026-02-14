@@ -1504,7 +1504,10 @@ static void emit_one_torsion(
     auto pit = bond_ring_parity.find(parity_key);
     size_t side1 = center2;
     size_t side2 = center3;
-    auto [rs1, rs2] = find_ring_sharing_pair(adj, atom_info, side1, side2);
+    std::pair<size_t, size_t> rs_pair =
+        find_ring_sharing_pair(adj, atom_info, side1, side2);
+    size_t rs1 = rs_pair.first;
+    size_t rs2 = rs_pair.second;
     size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
     size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
     int i_pos = compute_tv_position_for_center(
@@ -1529,7 +1532,10 @@ static void emit_one_torsion(
     // Non-ring SP3-SP3: always use no-flip matrix
     size_t side1 = center2;
     size_t side2 = center3;
-    auto [rs1, rs2] = find_ring_sharing_pair(adj, atom_info, side1, side2);
+    std::pair<size_t, size_t> rs_pair =
+        find_ring_sharing_pair(adj, atom_info, side1, side2);
+    size_t rs1 = rs_pair.first;
+    size_t rs2 = rs_pair.second;
     size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
     size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
     int i_pos = compute_tv_position_for_center(
@@ -1636,7 +1642,10 @@ static void emit_one_torsion(
     size_t sp3_center = sp2_2 ? center3 : center2;
     size_t sp2_term = sp2_2 ? a1_idx : a4_idx;
     size_t sp3_term = sp2_2 ? a4_idx : a1_idx;
-    auto [sp2_rs, sp3_rs] = find_ring_sharing_pair(adj, atom_info, sp2_center, sp3_center);
+    std::pair<size_t, size_t> rs_pair =
+        find_ring_sharing_pair(adj, atom_info, sp2_center, sp3_center);
+    size_t sp2_rs = rs_pair.first;
+    size_t sp3_rs = rs_pair.second;
     bool oxy_col_sp2 = is_oxygen_column(cc.atoms[sp2_center].el);
     bool oxy_col_sp3 = is_oxygen_column(cc.atoms[sp3_center].el);
 
