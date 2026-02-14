@@ -152,7 +152,6 @@ struct TorsionEntry {
 // ============================================================================
 
 struct GEMMI_DLL AcedrgTables {
-public:
   AcedrgTables() = default;
 
   // Load all tables from directory

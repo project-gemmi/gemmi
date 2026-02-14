@@ -1242,7 +1242,7 @@ bool cod_class_is_aromatic(const std::string& cod_class) {
 void get_small_family(const std::string& in_str, NB1stFam& fam) {
   fam.name.clear();
   fam.NB2ndList.clear();
-  std::vector<std::string> ch_list = {",", "x"};
+  const std::string ch_list = ",x";
   std::string name_str;
   bool l_r = false;
   int n_rep = 1;
@@ -1270,7 +1270,7 @@ void get_small_family(const std::string& in_str, NB1stFam& fam) {
     } else if (c == ']') {
       name_str += c;
       l_r = false;
-    } else if (in_vector(std::string(1, c), ch_list)) {
+    } else if (ch_list.find(c) != std::string::npos) {
       name_str += c;
     } else if (std::isdigit(static_cast<unsigned char>(c))) {
       if (l_r) {
@@ -1340,8 +1340,7 @@ Hybridization hybrid_from_bonding_idx(int bonding_idx,
                                       bool is_metal_atom,
                                       int connectivity) {
   if (is_metal_atom) {
-    if (connectivity <= 4) return Hybridization::SPD5;
-    if (connectivity == 5) return Hybridization::SPD5;
+    if (connectivity <= 5) return Hybridization::SPD5;
     if (connectivity == 6) return Hybridization::SPD6;
     if (connectivity == 7) return Hybridization::SPD7;
     return Hybridization::SPD8;
@@ -3675,13 +3674,10 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
       int total_count = 0;
       int num_entries = 0;
 
-      // AceDRG's matchRandCenterA returns the first matching value_key per map,
-      // so we break after collecting from the first match.
-      // The multiplier parameter replicates an AceDRG quirk: in Loop 1
-      // (ha2 matches), AceDRG's inner loop over value_keys causes the
-      // matched entry's stats to be pushed N times (N = vk_map.size()).
-      auto collect = [&](const std::map<std::string, std::vector<CodStats>>& vk_map,
-                        int multiplier = 1) {
+      // Match the first value_key whose prefix matches ring_prefix and center_hybr,
+      // calling fn(s, multiplier) for each CodStats with s.count > 0.
+      auto for_matching_stats = [&](const std::map<std::string, std::vector<CodStats>>& vk_map,
+                                    int multiplier, auto&& fn) {
         for (auto& kv : vk_map) {
           if (kv.first.size() > ring_prefix.size()
               && kv.first.compare(0, ring_prefix.size(), ring_prefix) == 0) {
@@ -3689,13 +3685,9 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
             auto uscore = kv.first.find('_', sp_start);
             if (uscore != std::string::npos
                 && kv.first.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
-              for (auto& s : kv.second) {
-                if (s.count > 0) {
-                  weighted_sum += s.value * s.count * multiplier;
-                  total_count += s.count * multiplier;
-                  num_entries += multiplier;
-                }
-              }
+              for (auto& s : kv.second)
+                if (s.count > 0)
+                  fn(s, multiplier);
               break;  // first matching value_key only
             }
           }
@@ -3715,65 +3707,39 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
         return false;
       };
 
+      // Iterate over all matching wildcard entries. Loop 1 (ha2 matches) uses
+      // vk_map.size() as multiplier (AceDRG inner value_key loop quirk).
+      // Loop 2 (ha3 matches) uses multiplier 1.
       auto* center_map = find_val(angle_idx_5d_, ha1);
-      if (center_map) {
-        // Search for entries where ha2 matches one flank (iterate over all ha3')
-        // AceDRG quirk: inner loop over value_keys causes stats to be pushed
-        // vk_map.size() times per hash triple (see codClassify.cpp:13517-13545).
+      auto iterate_wildcard = [&](auto&& fn) {
+        if (!center_map)
+          return;
         if (auto* ha2_map = find_val(*center_map, ha2)) {
           for (auto& kv3 : *ha2_map)
             if (is_in_needed_file(ha1, ha2, kv3.first))
-              collect(kv3.second, static_cast<int>(kv3.second.size()));
+              for_matching_stats(kv3.second, static_cast<int>(kv3.second.size()), fn);
         }
-        // Search for entries where ha3 matches one flank (iterate over all ha2')
-        // No multiplier — AceDRG's Loop 2 doesn't have the inner value_key loop.
         for (auto& kv2 : *center_map) {
           if (auto* vk_map_ptr = find_val(kv2.second, ha3))
             if (is_in_needed_file(ha1, kv2.first, ha3))
-              collect(*vk_map_ptr);
+              for_matching_stats(*vk_map_ptr, 1, fn);
         }
-      }
+      };
+
+      iterate_wildcard([&](const CodStats& s, int mult) {
+        weighted_sum += s.value * s.count * mult;
+        total_count += s.count * mult;
+        num_entries += mult;
+      });
 
       if (total_count > 0) {
         double avg = weighted_sum / total_count;
-        // Compute std dev across entries
-        // With 1 entry, std dev across entries is 0 → clamped to lower_angle_sigma.
-        // AceDRG's setupTargetAngleUsingMean computes population std dev, which is 0
-        // for a single entry; the lowAngleSig=1.5 floor then applies.
         double sigma = 0.0;
         if (num_entries > 1) {
-          // Re-iterate to compute std deviation (using entry values, not individual obs)
           double sq_sum = 0.0;
-          auto compute_dev = [&](const std::map<std::string, std::vector<CodStats>>& vk_map,
-                                int multiplier = 1) {
-            for (auto& kv : vk_map) {
-              if (kv.first.size() > ring_prefix.size()
-                  && kv.first.compare(0, ring_prefix.size(), ring_prefix) == 0) {
-                auto sp_start = ring_prefix.size();
-                auto uscore = kv.first.find('_', sp_start);
-                if (uscore != std::string::npos
-                    && kv.first.compare(sp_start, uscore - sp_start, center_hybr) == 0) {
-                  for (auto& s : kv.second) {
-                    if (s.count > 0)
-                      sq_sum += (s.value - avg) * (s.value - avg) * multiplier;
-                  }
-                  break;
-                }
-              }
-            }
-          };
-          if (center_map) {
-            if (auto* ha2_map = find_val(*center_map, ha2)) {
-              for (auto& kv3 : *ha2_map)
-                if (is_in_needed_file(ha1, ha2, kv3.first))
-                  compute_dev(kv3.second, static_cast<int>(kv3.second.size()));
-            }
-            for (auto& kv2 : *center_map) {
-              if (auto* vk_map_ptr = find_val(kv2.second, ha3))
-                if (is_in_needed_file(ha1, kv2.first, ha3))
-                  compute_dev(*vk_map_ptr);
-            }
-          }
+          iterate_wildcard([&](const CodStats& s, int mult) {
+            sq_sum += (s.value - avg) * (s.value - avg) * mult;
+          });
           sigma = std::sqrt(sq_sum / num_entries);
         }
         angle.value = avg;

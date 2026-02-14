@@ -47,10 +47,8 @@ bool atoms_in_same_ring_by_alt_path(
     if (it == neighbors.end())
       continue;
     for (const std::string& nb : it->second) {
-      if (visited.find(nb) == visited.end()) {
-        visited.insert(nb);
+      if (visited.insert(nb).second)
         queue.push_back(nb);
-      }
     }
   }
   return false;
@@ -72,10 +70,6 @@ AceBondAdjacency build_bond_adjacency(
     adj[idx2].push_back({idx1, bond.type, aromatic});
   }
   return adj;
-}
-
-AceBondAdjacency build_bond_adjacency(const ChemComp& cc) {
-  return build_bond_adjacency(cc, cc.make_atom_index());
 }
 
 std::vector<std::vector<int>> build_neighbors(const AceBondAdjacency& adj) {

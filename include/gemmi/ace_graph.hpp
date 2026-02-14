@@ -36,8 +36,6 @@ bool atoms_in_same_ring_by_alt_path(
 AceBondAdjacency build_bond_adjacency(
     const ChemComp& cc, const std::map<std::string, size_t>& atom_index);
 
-AceBondAdjacency build_bond_adjacency(const ChemComp& cc);
-
 std::vector<std::vector<int>> build_neighbors(const AceBondAdjacency& adj);
 
 AceGraphView make_ace_graph_view(const ChemComp& cc);
