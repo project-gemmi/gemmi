@@ -13,6 +13,7 @@
 #include <set>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <cmath>
 #include <algorithm>
 #include "chemcomp.hpp"
@@ -248,128 +249,75 @@ struct GEMMI_DLL AcedrgTables {
                         CodStats& out) const;
 
   // Detailed indexed bond tables from allOrgBondTables/*.table
-  // Level 0: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB, a1TypeM, a2TypeM
-  using BondIdx1D = std::map<int, std::map<int,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::vector<CodStats>>>>>>>>>>>;
+  // Flattened: 8-component compound key (ha1|ha2|hybr|ring|a1nb2|a2nb2|a1nb|a2nb)
+  //   -> 2 inner map levels (a1_type_m -> a2_type_m -> vector<CodStats>)
+  using BondIdx1D = std::unordered_map<std::string,
+    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
   BondIdx1D bond_idx_1d_;
 
-  // Exact match with full COD class (a1TypeF/a2TypeF) and main types
-  using BondIdxFull = std::map<int, std::map<int,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    CodStats>>>>>>>>>>>>;
+  // Exact match with full COD class
+  // Flattened: 10-component key (ha1|..|a1_type_m|a2_type_m)
+  //   -> 2 inner levels (a1_type_f -> a2_type_f -> CodStats)
+  using BondIdxFull = std::unordered_map<std::string,
+    std::map<std::string, std::map<std::string, CodStats>>>;
   BondIdxFull bond_idx_full_;
 
-  // Levels 3-6: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, a1NB, a2NB (no atom types)
-  using BondIdx2D = std::map<int, std::map<int,
+  // Levels 3-8: 4-component key (ha1|ha2|hybr|ring)
+  //   -> 4 inner levels (a1nb2 -> a2nb2 -> a1nb -> a2nb -> vector<CodStats>)
+  using BondIdx2D = std::unordered_map<std::string,
     std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::vector<CodStats>>>>>>>>>;
+    std::vector<CodStats>>>>>>;
   BondIdx2D bond_idx_2d_;
 
-  // Level Nb2D: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2 (no nb1nb2_sp)
-  using BondNb2D = std::map<int, std::map<int,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::vector<CodStats>>>>>>>;
-  BondNb2D bond_nb2d_;
+  // Level Nb2D: 6-component key (ha1|ha2|hybr|ring|a1nb2|a2nb2)
+  using BondNb2D = std::unordered_map<std::string, std::vector<CodStats>>;
+  BondNb2D bond_nb2d_;  // populated but not read (dead data)
 
-  // Level Nb2DType: ha1, ha2, hybrComb, inRing, a1NB2, a2NB2, type1, type2 (with atom types)
-  using BondNb2DType = std::map<int, std::map<int,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::map<std::string, std::map<std::string,
-    std::vector<CodStats>>>>>>>>>;
-  BondNb2DType bond_nb2d_type_;
+  // Level Nb2DType: 8-component key (ha1|ha2|hybr|ring|a1nb2|a2nb2|root1|root2)
+  using BondNb2DType = std::unordered_map<std::string, std::vector<CodStats>>;
+  BondNb2DType bond_nb2d_type_;  // populated but not read (dead data)
 
-  // Levels 9-11: Hash+Sp fallback structures
-  // Level 9: ha1, ha2, hybrComb, inRing
-  using BondHaSp2D = std::map<int, std::map<int,
-    std::map<std::string, std::map<std::string,
-    std::vector<CodStats>>>>>;
-  BondHaSp2D bond_hasp_2d_;
+  // Levels 9-11: Hash+Sp fallback, fully flat compound keys
+  using BondHaSp2D = std::unordered_map<std::string, std::vector<CodStats>>;
+  BondHaSp2D bond_hasp_2d_;  // 4-component key (ha1|ha2|hybr|ring)
+  using BondHaSp1D = std::unordered_map<std::string, std::vector<CodStats>>;
+  BondHaSp1D bond_hasp_1d_;  // 3-component key (ha1|ha2|hybr)
+  using BondHaSp0D = std::unordered_map<std::string, std::vector<CodStats>>;
+  BondHaSp0D bond_hasp_0d_;  // 2-component key (ha1|ha2)
 
-  // Level 10: ha1, ha2, hybrComb only
-  using BondHaSp1D = std::map<int, std::map<int,
-    std::map<std::string, std::vector<CodStats>>>>;
-  BondHaSp1D bond_hasp_1d_;
+  // Bond file index: flat 2-component key (ha1|ha2) -> table file number
+  std::unordered_map<std::string, int> bond_file_index_;
 
-  // Level 11: ha1, ha2 only
-  using BondHaSp0D = std::map<int, std::map<int, std::vector<CodStats>>>;
-  BondHaSp0D bond_hasp_0d_;
-
-  // Bond file index: maps (ha1, ha2) -> table file number
-  std::map<int, std::map<int, int>> bond_file_index_;
+  // Side sets for prefix-existence checks in bond lookup
+  std::unordered_set<std::string> bond_2d_hybr_keys_;     // 3-component (ha1|ha2|hybr)
+  std::unordered_set<std::string> bond_full_4prefix_keys_; // 4-component (ha1|ha2|hybr|ring)
 
   // Atom type code mapping: coded -> full type string
   std::unordered_map<std::string, std::string> atom_type_codes_;
 
   // Detailed indexed angle tables from allOrgAngleTables/*.table
-  // Angles have 3 hashes (center, flank1, flank2)
-  using AngleTypes = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
-  using AngleNB = std::map<std::string,
-    std::map<std::string, std::map<std::string, AngleTypes>>>;
-  using AngleNB2 = std::map<std::string,
-    std::map<std::string, std::map<std::string, AngleNB>>>;
-  using AngleRoots = std::map<std::string,
-    std::map<std::string, std::map<std::string, AngleNB2>>>;
+  // Fully flat compound keys for levels 1D-4D, 6D
+  using AngleIdx1D = std::unordered_map<std::string, std::vector<CodStats>>;
+  AngleIdx1D angle_idx_1d_;   // 16-component key
+  using AngleIdx2D = std::unordered_map<std::string, std::vector<CodStats>>;
+  AngleIdx2D angle_idx_2d_;   // 13-component key
+  using AngleIdx3D = std::unordered_map<std::string, std::vector<CodStats>>;
+  AngleIdx3D angle_idx_3d_;   // 10-component key
+  using AngleIdx4D = std::unordered_map<std::string, std::vector<CodStats>>;
+  AngleIdx4D angle_idx_4d_;   // 7-component key
 
-  // Level 1D: Full detail with atom types
-  using AngleIdx1D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, AngleRoots>>>>;
-  AngleIdx1D angle_idx_1d_;
-
-  using AngleNBNoTypes = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
-  using AngleNB2NoTypes = std::map<std::string,
-    std::map<std::string, std::map<std::string, AngleNBNoTypes>>>;
-  using AngleRootsNoTypes = std::map<std::string,
-    std::map<std::string, std::map<std::string, AngleNB2NoTypes>>>;
-
-  // Level 2D: No atom types
-  using AngleIdx2D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, AngleRootsNoTypes>>>>;
-  AngleIdx2D angle_idx_2d_;
-
-  using AngleNB2Only = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
-  using AngleRootsNB2 = std::map<std::string,
-    std::map<std::string, std::map<std::string, AngleNB2Only>>>;
-
-  // Level 3D: Hash + valueKey + roots + NB2 only
-  using AngleIdx3D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, AngleRootsNB2>>>>;
-  AngleIdx3D angle_idx_3d_;
-
-  using AngleRootsOnly = std::map<std::string,
-    std::map<std::string, std::map<std::string, std::vector<CodStats>>>>;
-
-  // Level 4D: Hash + valueKey + roots
-  using AngleIdx4D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, AngleRootsOnly>>>>;
-  AngleIdx4D angle_idx_4d_;
-
-  // Level 5D: Hash + valueKey only
-  using AngleIdx5D = std::map<int, std::map<int, std::map<int,
-    std::map<std::string, std::vector<CodStats>>>>>; // 5 closes
+  // Level 5D: kept nested for wildcard iteration in fill_angle
+  using AngleIdx5D = std::unordered_map<int, std::unordered_map<int,
+    std::unordered_map<int, std::map<std::string, std::vector<CodStats>>>>>;
   AngleIdx5D angle_idx_5d_;
 
-  // Level 6D: Hash only (4 levels)
-  using AngleIdx6D = std::map<int, std::map<int, std::map<int,
-    std::vector<CodStats>>>>; // 4 closes
+  // Level 6D: flat 3-component key (ha1|ha2|ha3)
+  using AngleIdx6D = std::unordered_map<std::string, std::vector<CodStats>>;
   AngleIdx6D angle_idx_6d_;
 
-  // Angle file index: maps (ha1, ha2, ha3) -> table file number
-  std::map<int, std::map<int, std::map<int, int>>> angle_file_index_;
+  // Angle file index: kept nested for individual-level access in fill_angle
+  std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, int>>> angle_file_index_;
 
   // Element + hybridization based fallback bonds
   using ENBonds = std::map<std::string, std::map<std::string,

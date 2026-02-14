@@ -339,9 +339,9 @@ void AcedrgTables::load_bond_hrs(const std::string& path) {
       CodStats vs(value, sigma, count);
       bond_hrs_[key] = vs;
       // AceDRG levels 9-11 use the HRS table hierarchy.
-      bond_hasp_2d_[key.hash1][key.hash2][key.hybrid_pair][key.in_ring].push_back(vs);
-      bond_hasp_1d_[key.hash1][key.hash2][key.hybrid_pair].push_back(vs);
-      bond_hasp_0d_[key.hash1][key.hash2].push_back(vs);
+      bond_hasp_2d_[cat(key.hash1, '|', key.hash2, '|', key.hybrid_pair, '|', key.in_ring)].push_back(vs);
+      bond_hasp_1d_[cat(key.hash1, '|', key.hash2, '|', key.hybrid_pair)].push_back(vs);
+      bond_hasp_0d_[cat(key.hash1, '|', key.hash2)].push_back(vs);
     }
   }
 }
@@ -624,7 +624,7 @@ void AcedrgTables::load_bond_index(const std::string& path) {
     // Format: ha1 ha2 fileNum
     int ha1, ha2, file_num;
     if (std::sscanf(line, "%d %d %d", &ha1, &ha2, &file_num) == 3) {
-      bond_file_index_[ha1][ha2] = file_num;
+      bond_file_index_[cat(ha1, '|', ha2)] = file_num;
     }
   }
 }
@@ -634,9 +634,9 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
   std::set<int> loaded_files;
   int n_files = 0, n_lines = 0;
 
-  for (const auto& ha1_pair : bond_file_index_) {
-    for (const auto& ha2_pair : ha1_pair.second) {
-      int file_num = ha2_pair.second;
+  for (const auto& fi_kv : bond_file_index_) {
+    {
+      int file_num = fi_kv.second;
       if (!loaded_files.insert(file_num).second)
         continue;
 
@@ -690,28 +690,31 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
         CodStats vs(value, sigma, count);
         CodStats vs1d(value2, sigma2, count2);
 
-        // Populate 1D structure (full detail)
-        bond_idx_1d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
-                    [a1_nb][a2_nb][a1_type_m][a2_type_m].push_back(vs1d);
+        // Construct compound keys for flat lookup structures
+        auto key_4 = cat(ha1, '|', ha2, '|', hybr_comb, '|', in_ring);
+        auto key_8 = cat(key_4, '|', a1_nb2, '|', a2_nb2, '|', a1_nb, '|', a2_nb);
 
-        // Store full COD-class stats for exact matches (AceDRG uses full codClass first).
+        // Populate 1D structure (8-component key + 2 inner type levels)
+        bond_idx_1d_[key_8][a1_type_m][a2_type_m].push_back(vs1d);
+
+        // Store full COD-class stats for exact matches
         if (!a1_type_f.empty() && !a2_type_f.empty()) {
-          bond_idx_full_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
-                         [a1_nb][a2_nb][a1_type_m][a2_type_m]
-                         [a1_type_f][a2_type_f] = vs;
+          auto key_10 = cat(key_8, '|', a1_type_m, '|', a2_type_m);
+          bond_idx_full_[key_10][a1_type_f][a2_type_f] = vs;
+          bond_full_4prefix_keys_.insert(key_4);
         }
 
-        // Populate 2D structure (no atom types)
-        bond_idx_2d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
-                    [a1_nb][a2_nb].push_back(vs);
+        // Populate 2D structure (4-component key + 4 inner levels)
+        bond_idx_2d_[key_4][a1_nb2][a2_nb2][a1_nb][a2_nb].push_back(vs);
+        bond_2d_hybr_keys_.insert(cat(ha1, '|', ha2, '|', hybr_comb));
 
-        // Populate Nb2D structure (nb2 only, no nb1nb2_sp)
-        bond_nb2d_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2].push_back(vs);
+        // Populate Nb2D structure (6-component flat key)
+        bond_nb2d_[cat(key_4, '|', a1_nb2, '|', a2_nb2)].push_back(vs);
 
-        // Populate Nb2DType structure (nb2 + root types, no nb1nb2_sp)
+        // Populate Nb2DType structure (8-component flat key)
         if (!a1_root.empty() && !a2_root.empty())
-          bond_nb2d_type_[ha1][ha2][hybr_comb][in_ring][a1_nb2][a2_nb2]
-                         [a1_root][a2_root].push_back(vs1d);
+          bond_nb2d_type_[cat(key_4, '|', a1_nb2, '|', a2_nb2, '|',
+                              a1_root, '|', a2_root)].push_back(vs1d);
 
         // Levels 9-11 are populated from allOrgBondsHRS.table in load_bond_hrs().
       }
@@ -814,37 +817,41 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
 
           // Populate structures at each level with corresponding pre-computed values.
           // AceDRG keeps only the first entry for each key (no aggregation).
-          // Level 1D: full detail with atom types
+          // Level 1D: full detail with atom types (16-component flat key)
           CodStats vs1(values[1], sigmas[1], counts[1]);
-          auto& angle_1d_vec = angle_idx_1d_[ha1][ha2][ha3][value_key]
-                               [a1_root][a2_root][a3_root]
-                               [a1_nb2][a2_nb2][a3_nb2]
-                               [a1_nb][a2_nb][a3_nb]
-                               [a1_type][a2_type][a3_type];
+          auto& angle_1d_vec = angle_idx_1d_[cat(
+                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                               a1_root, '|', a2_root, '|', a3_root, '|',
+                               a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+                               a1_nb, '|', a2_nb, '|', a3_nb, '|',
+                               a1_type, '|', a2_type, '|', a3_type)];
           if (angle_1d_vec.empty())
             angle_1d_vec.push_back(vs1);
 
-          // Level 2D: no atom types
+          // Level 2D: no atom types (13-component flat key)
           CodStats vs2(values[2], sigmas[2], counts[2]);
-          auto& angle_2d_vec = angle_idx_2d_[ha1][ha2][ha3][value_key]
-                               [a1_root][a2_root][a3_root]
-                               [a1_nb2][a2_nb2][a3_nb2]
-                               [a1_nb][a2_nb][a3_nb];
+          auto& angle_2d_vec = angle_idx_2d_[cat(
+                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                               a1_root, '|', a2_root, '|', a3_root, '|',
+                               a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+                               a1_nb, '|', a2_nb, '|', a3_nb)];
           if (angle_2d_vec.empty())
             angle_2d_vec.push_back(vs2);
 
-          // Level 3D: hash + valueKey + NB2 only
+          // Level 3D: hash + valueKey + NB2 only (10-component flat key)
           CodStats vs3(values[3], sigmas[3], counts[3]);
-          auto& angle_3d_vec = angle_idx_3d_[ha1][ha2][ha3][value_key]
-                               [a1_root][a2_root][a3_root]
-                               [a1_nb2][a2_nb2][a3_nb2];
+          auto& angle_3d_vec = angle_idx_3d_[cat(
+                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                               a1_root, '|', a2_root, '|', a3_root, '|',
+                               a1_nb2, '|', a2_nb2, '|', a3_nb2)];
           if (angle_3d_vec.empty())
             angle_3d_vec.push_back(vs3);
 
-          // Level 4D: hash + valueKey + roots
+          // Level 4D: hash + valueKey + roots (7-component flat key)
           CodStats vs4(values[4], sigmas[4], counts[4]);
-          auto& angle_4d_vec = angle_idx_4d_[ha1][ha2][ha3][value_key]
-                               [a1_root][a2_root][a3_root];
+          auto& angle_4d_vec = angle_idx_4d_[cat(
+                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                               a1_root, '|', a2_root, '|', a3_root)];
           if (angle_4d_vec.empty())
             angle_4d_vec.push_back(vs4);
 
@@ -2902,13 +2909,8 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
   std::string in_ring = are_in_same_ring(a1, a2) ? "Y" : "N";
   // AceDRG: if requested ring key is missing, fall back to the other (Y/N).
   auto has_ring_key = [&](const std::string& key) -> bool {
-    auto it1 = bond_idx_full_.find(ha1);
-    if (it1 == bond_idx_full_.end()) return false;
-    auto it2 = it1->second.find(ha2);
-    if (it2 == it1->second.end()) return false;
-    auto it3 = it2->second.find(hybr_comb);
-    if (it3 == it2->second.end()) return false;
-    return it3->second.find(key) != it3->second.end();
+    return bond_full_4prefix_keys_.count(
+        cat(ha1, '|', ha2, '|', hybr_comb, '|', key)) > 0;
   };
   if (!has_ring_key(in_ring)) {
     std::string alt = (in_ring == "Y") ? "N" : "Y";
@@ -2944,20 +2946,19 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
                  a1_nb.c_str(), a2_nb.c_str(), a1_nb2.c_str(), a2_nb2.c_str(),
                  a1_type.c_str(), a2_type.c_str());
 
+  // Construct compound keys for flat lookups
+  auto key_full = cat(ha1, '|', ha2, '|', hybr_comb, '|', in_ring, '|',
+                      a1_nb2, '|', a2_nb2, '|', a1_nb, '|', a2_nb, '|',
+                      a1_type, '|', a2_type);
+  auto key_8 = cat(ha1, '|', ha2, '|', hybr_comb, '|', in_ring, '|',
+                   a1_nb2, '|', a2_nb2, '|', a1_nb, '|', a2_nb);
+  auto key_4 = cat(ha1, '|', ha2, '|', hybr_comb, '|', in_ring);
+
   // AceDRG first tries the exact full codClass match (approx level 0) before
   // entering inter-level fallback.
   bool has_a1_class_only = false;  // a1 class exists, a2 class missing
-  if (auto* p = find_val(bond_idx_full_, ha1))
-  if (auto* p2 = find_val(*p, ha2))
-  if (auto* p3 = find_val(*p2, hybr_comb))
-  if (auto* p4 = find_val(*p3, in_ring))
-  if (auto* p5 = find_val(*p4, a1_nb2))
-  if (auto* p6 = find_val(*p5, a2_nb2))
-  if (auto* p7 = find_val(*p6, a1_nb))
-  if (auto* p8 = find_val(*p7, a2_nb))
-  if (auto* p9 = find_val(*p8, a1_type))
-  if (auto* p10 = find_val(*p9, a2_type))
-  if (auto* p11 = find_val(*p10, a1_class)) {
+  if (auto* inner = find_val(bond_idx_full_, key_full))
+  if (auto* p11 = find_val(*inner, a1_class)) {
     if (auto* vs = find_val(*p11, a2_class)) {
       if (vs->count >= num_th) {
         CodStats exact = *vs;
@@ -2973,36 +2974,30 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
     }
   }
 
-
   // Pre-resolve nested map pointers for bond lookup levels.
-  auto* bond_ha = find_val(bond_idx_1d_, ha1);
-  auto* bond_ha2 = bond_ha ? find_val(*bond_ha, ha2) : nullptr;
-  auto* bond_hybr = bond_ha2 ? find_val(*bond_ha2, hybr_comb) : nullptr;
-  auto* bond_ring = bond_hybr ? find_val(*bond_hybr, in_ring) : nullptr;
-  auto* bond_nb2a = bond_ring ? find_val(*bond_ring, a1_nb2) : nullptr;
-  auto* bond_nb2b = bond_nb2a ? find_val(*bond_nb2a, a2_nb2) : nullptr;
-  auto* bond_nba = bond_nb2b ? find_val(*bond_nb2b, a1_nb) : nullptr;
-  const auto* map_1d = bond_nba ? find_val(*bond_nba, a2_nb) : nullptr;
+  const auto* map_1d = find_val(bond_idx_1d_, key_8);
+  const auto* map_nb2 = find_val(bond_idx_2d_, key_4);
 
-  // Same prefix but from bond_idx_2d_ (no atom type levels).
-  auto* bond2_ha = find_val(bond_idx_2d_, ha1);
-  auto* bond2_ha2 = bond2_ha ? find_val(*bond2_ha, ha2) : nullptr;
-  auto* bond2_hybr = bond2_ha2 ? find_val(*bond2_ha2, hybr_comb) : nullptr;
-  auto* bond2_ring = bond2_hybr ? find_val(*bond2_hybr, in_ring) : nullptr;
-  auto* bond2_nb2a = bond2_ring ? find_val(*bond2_ring, a1_nb2) : nullptr;
-  const auto* map_2d = bond2_nb2a ? find_val(*bond2_nb2a, a2_nb2) : nullptr;
+  // Derive map_2d from map_nb2's inner levels (a1_nb2 -> a2_nb2)
+  using Map2DInner = std::map<std::string, std::map<std::string, std::vector<CodStats>>>;
+  const Map2DInner* map_2d = nullptr;
+  if (map_nb2) {
+    auto it1 = map_nb2->find(a1_nb2);
+    if (it1 != map_nb2->end()) {
+      auto it2 = it1->second.find(a2_nb2);
+      if (it2 != it1->second.end())
+        map_2d = &it2->second;
+    }
+  }
 
   // Keep the signal only for level-gating compatibility with AceDRG's
-  // class-missing branches. Do not short-circuit to direct 2D stats here:
-  // AceDRG still proceeds through start-level logic in these cases.
+  // class-missing branches.
   (void) has_a1_class_only;
 
-  const auto* map_nb2 = bond2_ring;  // same as bond_idx_2d_[ha1][ha2][hybr][ring]
-
   // Determine key availability for gating (mirror AceDRG's presence checks).
-  bool has_hybr = bond2_hybr != nullptr;
-  bool has_in_ring = bond2_ring != nullptr;
-  bool has_a1_nb2 = bond2_nb2a != nullptr;
+  bool has_hybr = bond_2d_hybr_keys_.count(cat(ha1, '|', ha2, '|', hybr_comb)) > 0;
+  bool has_in_ring = map_nb2 != nullptr;
+  bool has_a1_nb2 = map_nb2 && map_nb2->count(a1_nb2) > 0;
   bool has_a2_nb2 = map_2d != nullptr;
   auto* map_2d_a1nb = map_2d ? find_val(*map_2d, a1_nb) : nullptr;
   bool has_a1_nb = map_2d_a1nb != nullptr;
@@ -3173,28 +3168,23 @@ CodStats AcedrgTables::search_bond_multilevel(const CodAtomInfo& a1,
           vs = aggregate_stats(values);
       }
     } else if (level == 9) {
-      if (auto* p = find_val(bond_hasp_2d_, ha1))
-      if (auto* p2 = find_val(*p, ha2))
-      if (auto* p3 = find_val(*p2, hybr_comb))
-      if (auto* p4 = find_val(*p3, in_ring))
-      if (!p4->empty()) {
-        values_size = static_cast<int>(p4->size());
-        vs = aggregate_stats(*p4);
+      if (auto* p = find_val(bond_hasp_2d_, key_4))
+      if (!p->empty()) {
+        values_size = static_cast<int>(p->size());
+        vs = aggregate_stats(*p);
       }
     } else if (level == 10) {
-      if (auto* p = find_val(bond_hasp_1d_, ha1))
-      if (auto* p2 = find_val(*p, ha2))
-      if (auto* p3 = find_val(*p2, hybr_comb))
-      if (!p3->empty()) {
-        values_size = static_cast<int>(p3->size());
-        vs = aggregate_stats(*p3);
+      if (auto* p = find_val(bond_hasp_1d_,
+                             cat(ha1, '|', ha2, '|', hybr_comb)))
+      if (!p->empty()) {
+        values_size = static_cast<int>(p->size());
+        vs = aggregate_stats(*p);
       }
     } else if (level == 11) {
-      if (auto* p = find_val(bond_hasp_0d_, ha1))
-      if (auto* p2 = find_val(*p, ha2))
-      if (!p2->empty()) {
-        values_size = static_cast<int>(p2->size());
-        vs = aggregate_stats(*p2);
+      if (auto* p = find_val(bond_hasp_0d_, cat(ha1, '|', ha2)))
+      if (!p->empty()) {
+        values_size = static_cast<int>(p->size());
+        vs = aggregate_stats(*p);
       }
     }
 
@@ -3485,74 +3475,54 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
       }
     }
 
-    // Level 1D: exact match with atom types (16 keys)
-    if (auto* p = find_val(angle_idx_1d_, ha1))
-    if (auto* p2 = find_val(*p, ha2))
-    if (auto* p3 = find_val(*p2, ha3))
-    if (auto* p4 = find_val(*p3, value_key))
-    if (auto* p5 = find_val(*p4, a1_root))
-    if (auto* p6 = find_val(*p5, a2_root))
-    if (auto* p7 = find_val(*p6, a3_root))
-    if (auto* p8 = find_val(*p7, a1_nb2))
-    if (auto* p9 = find_val(*p8, a2_nb2))
-    if (auto* p10 = find_val(*p9, a3_nb2))
-    if (auto* p11 = find_val(*p10, a1_nb))
-    if (auto* p12 = find_val(*p11, a2_nb))
-    if (auto* p13 = find_val(*p12, a3_nb))
-    if (auto* p14 = find_val(*p13, a1_type))
-    if (auto* p15 = find_val(*p14, a2_type)) {
-      CodStats vs = try_angle(find_val(*p15, a3_type), min_observations_angle, "1D", 0);
+    // Level 1D: exact match with atom types (16-component key)
+    {
+      auto key_1d = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                        a1_root, '|', a2_root, '|', a3_root, '|',
+                        a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+                        a1_nb, '|', a2_nb, '|', a3_nb, '|',
+                        a1_type, '|', a2_type, '|', a3_type);
+      CodStats vs = try_angle(find_val(angle_idx_1d_, key_1d),
+                              min_observations_angle, "1D", 0);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
       }
     }
 
-    // Level 2D: no atom types (13 keys)
-    if (auto* p = find_val(angle_idx_2d_, ha1))
-    if (auto* p2 = find_val(*p, ha2))
-    if (auto* p3 = find_val(*p2, ha3))
-    if (auto* p4 = find_val(*p3, value_key))
-    if (auto* p5 = find_val(*p4, a1_root))
-    if (auto* p6 = find_val(*p5, a2_root))
-    if (auto* p7 = find_val(*p6, a3_root))
-    if (auto* p8 = find_val(*p7, a1_nb2))
-    if (auto* p9 = find_val(*p8, a2_nb2))
-    if (auto* p10 = find_val(*p9, a3_nb2))
-    if (auto* p11 = find_val(*p10, a1_nb))
-    if (auto* p12 = find_val(*p11, a2_nb)) {
-      CodStats vs = try_angle(find_val(*p12, a3_nb), min_observations_angle_fallback, "2D", 1);
+    // Level 2D: no atom types (13-component key)
+    {
+      auto key_2d = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                        a1_root, '|', a2_root, '|', a3_root, '|',
+                        a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+                        a1_nb, '|', a2_nb, '|', a3_nb);
+      CodStats vs = try_angle(find_val(angle_idx_2d_, key_2d),
+                              min_observations_angle_fallback, "2D", 1);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
       }
     }
 
-    // Level 3D: hash + valueKey + roots + NB2 (10 keys)
-    if (auto* p = find_val(angle_idx_3d_, ha1))
-    if (auto* p2 = find_val(*p, ha2))
-    if (auto* p3 = find_val(*p2, ha3))
-    if (auto* p4 = find_val(*p3, value_key))
-    if (auto* p5 = find_val(*p4, a1_root))
-    if (auto* p6 = find_val(*p5, a2_root))
-    if (auto* p7 = find_val(*p6, a3_root))
-    if (auto* p8 = find_val(*p7, a1_nb2))
-    if (auto* p9 = find_val(*p8, a2_nb2)) {
-      CodStats vs = try_angle(find_val(*p9, a3_nb2), min_observations_angle_fallback, "3D", 2);
+    // Level 3D: hash + valueKey + roots + NB2 (10-component key)
+    {
+      auto key_3d = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                        a1_root, '|', a2_root, '|', a3_root, '|',
+                        a1_nb2, '|', a2_nb2, '|', a3_nb2);
+      CodStats vs = try_angle(find_val(angle_idx_3d_, key_3d),
+                              min_observations_angle_fallback, "3D", 2);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
       }
     }
 
-    // Level 4D: hash + valueKey + roots (7 keys)
-    if (auto* p = find_val(angle_idx_4d_, ha1))
-    if (auto* p2 = find_val(*p, ha2))
-    if (auto* p3 = find_val(*p2, ha3))
-    if (auto* p4 = find_val(*p3, value_key))
-    if (auto* p5 = find_val(*p4, a1_root))
-    if (auto* p6 = find_val(*p5, a2_root)) {
-      CodStats vs = try_angle(find_val(*p6, a3_root), min_observations_angle_fallback, "4D", 3);
+    // Level 4D: hash + valueKey + roots (7-component key)
+    {
+      auto key_4d = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                        a1_root, '|', a2_root, '|', a3_root);
+      CodStats vs = try_angle(find_val(angle_idx_4d_, key_4d),
+                              min_observations_angle_fallback, "4D", 3);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
@@ -3595,16 +3565,14 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     }
   }
 
-  // Level 6D: hash only (3 keys)
-  if (auto* p = find_val(angle_idx_6d_, ha1))
-  if (auto* p2 = find_val(*p, ha2))
-  if (auto* p3 = find_val(*p2, ha3))
-  if (!p3->empty()) {
+  // Level 6D: hash only (3-component key)
+  if (auto* p = find_val(angle_idx_6d_, cat(ha1, '|', ha2, '|', ha3)))
+  if (!p->empty()) {
     if (verbose >= 2)
       std::fprintf(stderr, "      matched angle %s-%s-%s: level=6D\n",
                    a1.id.c_str(), center.id.c_str(), a3.id.c_str());
     if (out_level) *out_level = 6;
-    return p3->front();
+    return p->front();
   }
 
   // No match found in detailed tables
