@@ -1932,6 +1932,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         cc.atoms[idx1].el == El::C && cc.atoms[idx2].el == El::C)
       center2 = (cc.atoms[idx1].id < cc.atoms[idx2].id) ? idx1 : idx2;
     size_t center3 = (center2 == idx1) ? idx2 : idx1;
+    if (ring_size == 0 && idx1_in_ring && !idx2_in_ring &&
+        is_sp3_like(atom_info[idx1]) && is_sp3_like(atom_info[idx2])) {
+      center2 = idx1;
+      center3 = idx2;
+    }
 
     bool bond_aromatic = (bond.type == BondType::Aromatic ||
                           bond.type == BondType::Deloc || bond.aromatic ||
