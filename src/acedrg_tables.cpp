@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <set>
+#include <unordered_set>
 #include "gemmi/atof.hpp"
 #include "gemmi/atox.hpp"
 #include "gemmi/fileutil.hpp"
@@ -833,6 +834,112 @@ struct NB1stFam {
   int repN = 1;
 };
 
+int count_non_metal_connections(const AceBondAdjacency& adj,
+                                const std::vector<CodAtomInfo>& atoms,
+                                int idx) {
+  int non_mc = 0;
+  for (const auto& nb : adj[idx])
+    if (!atoms[nb.idx].is_metal)
+      ++non_mc;
+  return non_mc;
+}
+
+// Count pi electrons for an atom in a ring.
+// mode 0 (strict): C(-1)/non_mc=2 and N(+1)/non_mc=3 give 2 pi.
+// mode 1 (permissive): those same cases give 1 pi.
+// include_c_minus2: if false, skip the C charge=-2 case (used for "all" count).
+int count_atom_pi(const AceBondAdjacency& adj,
+                  const std::vector<CodAtomInfo>& atoms,
+                  int idx, int mode, bool include_c_minus2) {
+  const auto& atom = atoms[idx];
+  int non_mc = count_non_metal_connections(adj, atoms, idx);
+  int aN = 0;
+
+  if (atom.bonding_idx == 2) {
+    if (atom.charge == 0.0f) {
+      if (atom.el == El::C) {
+        if (non_mc == 3) {
+          bool has_exo = false;
+          for (int nb : atom.conn_atoms_no_metal) {
+            if (atoms[nb].el == El::O &&
+                atoms[nb].conn_atoms_no_metal.size() == 1 &&
+                atoms[nb].charge == 0.0f) {
+              has_exo = true;
+            } else if (atoms[nb].el == El::C &&
+                       atoms[nb].conn_atoms_no_metal.size() == 3) {
+              int h_count = 0;
+              for (int nb2 : atoms[nb].conn_atoms_no_metal)
+                if (atoms[nb2].el == El::H)
+                  ++h_count;
+              if (h_count >= 2)
+                has_exo = true;
+            }
+          }
+          if (!has_exo)
+            aN = 1;
+        }
+      } else if (atom.el == El::N) {
+        if (non_mc == 2)
+          aN = 1;
+        else if (non_mc == 3)
+          aN = 2;
+      } else if (atom.el == El::B) {
+        if (non_mc == 2)
+          aN = 1;
+      } else if (atom.el == El::O || atom.el == El::S) {
+        if (non_mc == 2)
+          aN = 2;
+      } else if (atom.el == El::P) {
+        if (non_mc == 3)
+          aN = 2;
+      }
+    } else {
+      if (atom.el == El::C) {
+        if (atom.charge == -1.0f) {
+          if (non_mc == 3)
+            aN = 2;
+          else if (non_mc == 2)
+            aN = (mode == 1) ? 1 : 2;
+        } else if (include_c_minus2 && atom.charge == -2.0f) {
+          if (non_mc == 2)
+            aN = 2;
+        }
+      } else if (atom.el == El::N) {
+        if (atom.charge == -1.0f) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.charge == 1.0f) {
+          if (non_mc == 3)
+            aN = (mode == 1) ? 1 : 2;
+        }
+      } else if (atom.el == El::O) {
+        if (atom.charge == 1.0f && non_mc == 2)
+          aN = 1;
+      } else if (atom.el == El::B) {
+        if (atom.charge == -1.0f && non_mc == 3)
+          aN = 1;
+      }
+    }
+  } else if (atom.bonding_idx == 3 &&
+             (atom.el == El::N || atom.el == El::B)) {
+    if (atom.el == El::N) {
+      if (atom.charge == -1.0f) {
+        if (non_mc == 2)
+          aN = 2;
+      } else if (atom.charge == 1.0f) {
+        if (non_mc == 3)
+          aN = 1;
+      } else {
+        aN = 2;
+      }
+    } else if (atom.el == El::B) {
+      aN = 0;
+    }
+  }
+
+  return aN;
+}
+
 void set_ring_aromaticity_from_bonds(
     const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atoms,
@@ -842,122 +949,11 @@ void set_ring_aromaticity_from_bonds(
   // - Strict (mode 0): only NoMetal pi count → isAromatic (used for COD table lookup)
   // - Permissive (mode 1): NoMetal+All pi counts → isAromaticP (used for output CIF)
   // Ring must be planar (bondingIdx==2, N allowed).
-  auto count_non_mc = [&](int idx) -> int {
-    int non_mc = 0;
-    for (const auto& nb : adj[idx]) {
-      const auto& at = atoms[nb.idx];
-      if (!at.is_metal)
-        ++non_mc;
-    }
-    return non_mc;
-  };
-
-  auto is_atom_planar = [&](int idx) -> bool {
-    const auto& atom = atoms[idx];
-    if (atom.el == El::N)
-      return true;
-    return atom.bonding_idx == 2;
-  };
-
   auto is_ring_planar = [&](const RingInfo& ring) -> bool {
     for (int idx : ring.atoms)
-      if (!is_atom_planar(idx))
+      if (atoms[idx].el != El::N && atoms[idx].bonding_idx != 2)
         return false;
     return true;
-  };
-
-  // Count pi electrons for an atom in a ring.
-  // mode 0 (strict): C(-1)/non_mc=2 and N(+1)/non_mc=3 give 2 pi.
-  // mode 1 (permissive): those same cases give 1 pi.
-  // include_c_minus2: if false, skip the C charge=-2 case (used for "all" count).
-  auto count_atom_pi = [&](int idx, int mode, bool include_c_minus2) -> int {
-    const auto& atom = atoms[idx];
-    int non_mc = count_non_mc(idx);
-    int aN = 0;
-
-    if (atom.bonding_idx == 2) {
-      if (atom.charge == 0.0f) {
-        if (atom.el == El::C) {
-          if (non_mc == 3) {
-            bool has_exo = false;
-            for (int nb : atom.conn_atoms_no_metal) {
-              if (atoms[nb].el == El::O &&
-                  atoms[nb].conn_atoms_no_metal.size() == 1 &&
-                  atoms[nb].charge == 0.0f) {
-                has_exo = true;
-              } else if (atoms[nb].el == El::C &&
-                         atoms[nb].conn_atoms_no_metal.size() == 3) {
-                int h_count = 0;
-                for (int nb2 : atoms[nb].conn_atoms_no_metal)
-                  if (atoms[nb2].el == El::H)
-                    ++h_count;
-                if (h_count >= 2)
-                  has_exo = true;
-              }
-            }
-            if (!has_exo)
-              aN = 1;
-          }
-        } else if (atom.el == El::N) {
-          if (non_mc == 2)
-            aN = 1;
-          else if (non_mc == 3)
-            aN = 2;
-        } else if (atom.el == El::B) {
-          if (non_mc == 2)
-            aN = 1;
-        } else if (atom.el == El::O || atom.el == El::S) {
-          if (non_mc == 2)
-            aN = 2;
-        } else if (atom.el == El::P) {
-          if (non_mc == 3)
-            aN = 2;
-        }
-      } else {
-        if (atom.el == El::C) {
-          if (atom.charge == -1.0f) {
-            if (non_mc == 3)
-              aN = 2;
-            else if (non_mc == 2)
-              aN = (mode == 1) ? 1 : 2;
-          } else if (include_c_minus2 && atom.charge == -2.0f) {
-            if (non_mc == 2)
-              aN = 2;
-          }
-        } else if (atom.el == El::N) {
-          if (atom.charge == -1.0f) {
-            if (non_mc == 2)
-              aN = 2;
-          } else if (atom.charge == 1.0f) {
-            if (non_mc == 3)
-              aN = (mode == 1) ? 1 : 2;
-          }
-        } else if (atom.el == El::O) {
-          if (atom.charge == 1.0f && non_mc == 2)
-            aN = 1;
-        } else if (atom.el == El::B) {
-          if (atom.charge == -1.0f && non_mc == 3)
-            aN = 1;
-        }
-      }
-    } else if (atom.bonding_idx == 3 &&
-               (atom.el == El::N || atom.el == El::B)) {
-      if (atom.el == El::N) {
-        if (atom.charge == -1.0f) {
-          if (non_mc == 2)
-            aN = 2;
-        } else if (atom.charge == 1.0f) {
-          if (non_mc == 3)
-            aN = 1;
-        } else {
-          aN = 2;
-        }
-      } else if (atom.el == El::B) {
-        aN = 0;
-      }
-    }
-
-    return aN;
   };
 
   for (size_t i = 0; i < rings.size(); ++i) {
@@ -973,7 +969,7 @@ void set_ring_aromaticity_from_bonds(
     // AceDRG only checks the NoMetal pi count in strict mode.
     int pi1 = 0;
     for (int idx : ring.atoms)
-      pi1 += count_atom_pi(idx, 0, true);
+      pi1 += count_atom_pi(adj, atoms, idx, 0, true);
     if (pi1 > 0 && pi1 % 4 == 2)
       ring.is_aromatic = true;
     if (verbose >= 2) {
@@ -1019,8 +1015,8 @@ void set_ring_aromaticity_from_bonds(
     int pi1 = 0;
     int pi2 = 0;
     for (int idx : ring.atoms) {
-      pi1 += count_atom_pi(idx, 1, true);
-      pi2 += count_atom_pi(idx, 1, false);
+      pi1 += count_atom_pi(adj, atoms, idx, 1, true);
+      pi2 += count_atom_pi(adj, atoms, idx, 1, false);
     }
     if ((pi1 > 0 && pi1 % 4 == 2) || (pi2 > 0 && pi2 % 4 == 2))
       ring.is_aromatic_permissive = true;
@@ -1463,21 +1459,18 @@ void set_special_3nb_symb2(
   if (atom.ring_rep.empty())
     return;
 
-  std::vector<int> ser_num_nb123;
+  std::unordered_set<int> seen;
   std::map<std::string, int> nb3_props;
 
   for (int nb1 : neighbors[atom.index]) {
     if (atoms[nb1].is_metal)
       continue;
-    if (!in_vector(nb1, ser_num_nb123))
-      ser_num_nb123.push_back(nb1);
+    seen.insert(nb1);
     for (int nb2 : neighbors[nb1]) {
       if (atoms[nb2].is_metal)
         continue;
-      if (!in_vector(nb2, ser_num_nb123) &&
-          nb2 != atom.index) {
-        ser_num_nb123.push_back(nb2);
-      }
+      if (nb2 != atom.index)
+        seen.insert(nb2);
     }
   }
 
@@ -1490,8 +1483,7 @@ void set_special_3nb_symb2(
       for (int nb3 : neighbors[nb2]) {
         if (atoms[nb3].is_metal)
           continue;
-        if (!in_vector(nb3, ser_num_nb123) &&
-            nb3 != atom.index) {
+        if (nb3 != atom.index && seen.insert(nb3).second) {
           std::string prop = atoms[nb3].el.name();
           int deg = 0;
           for (int nbx : neighbors[nb3])
@@ -1499,7 +1491,6 @@ void set_special_3nb_symb2(
               ++deg;
           cat_to(prop, '<', deg, '>');
           nb3_props[prop] += 1;
-          ser_num_nb123.push_back(nb3);
         }
       }
     }
@@ -1607,10 +1598,10 @@ void set_atoms_nb1nb2_sp(
   }
 }
 
-void set_atoms_bonding_and_chiral_center(
+void set_atoms_bonding_idx(
     std::vector<CodAtomInfo>& atoms,
     const std::vector<std::vector<int>>& neighbors) {
-  std::map<int, std::vector<int>> num_conn_map;
+  std::vector<int> metal_conn(atoms.size(), 0);
 
   for (auto& atom : atoms) {
     int t_len = 0;
@@ -1629,8 +1620,7 @@ void set_atoms_bonding_and_chiral_center(
         t_len = 3;
     }
 
-    num_conn_map[atom.index].push_back(t_len);
-    num_conn_map[atom.index].push_back(t_m_len);
+    metal_conn[atom.index] = t_m_len;
 
     if (t_len > 4) {
       atom.bonding_idx = t_len;
@@ -1642,10 +1632,8 @@ void set_atoms_bonding_and_chiral_center(
       } else if (t_len == 2) {
         if (get_num_oxy_connect(atoms, atom, neighbors) == 1)
           atom.bonding_idx = 1;
-        else if (t_m_len == 1 || atom.charge == -1.0f)
+        else if (atom.charge == -1.0f)
           atom.bonding_idx = 2;
-        else if (t_m_len == 1 || atom.charge == -2.0f)
-          atom.bonding_idx = 1;
         else
           atom.bonding_idx = 1;
       }
@@ -1696,7 +1684,7 @@ void set_atoms_bonding_and_chiral_center(
         atom.bonding_idx = 3;
       }
     } else if (atom.el == El::P) {
-      if (t_len == 4 || t_len == 3 || t_len == 2 || t_len == 5)
+      if (t_len >= 2 && t_len <= 5)
         atom.bonding_idx = 3;
     } else if (atom.el == El::S) {
       if (t_len == 2 || t_len == 3 || t_len == 4)
@@ -1751,7 +1739,7 @@ void set_atoms_bonding_and_chiral_center(
       if (t_len == 3) {
         if (atom.charge == 0.0f) {
           if (has_sp2_nb_not_O(atom.index)) {
-            atom.bonding_idx = num_conn_map[atom.index][1] != 0 ? 3 : 2;
+            atom.bonding_idx = metal_conn[atom.index] != 0 ? 3 : 2;
           } else {
             atom.bonding_idx = 3;
           }
@@ -1841,7 +1829,7 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   }
 
   // Bonding/planarity info is needed for AceDRG ring aromaticity rules.
-  set_atoms_bonding_and_chiral_center(atoms, neighbors);
+  set_atoms_bonding_idx(atoms, neighbors);
 
   // Detect rings and populate ring representations
   std::vector<RingInfo> rings;
