@@ -1952,13 +1952,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             period = 6;
           }
         }
-        if (cc.name == "AZS" &&
-            cc.atoms[sp2_center].id == "C" &&
-            cc.atoms[sp3_center].id == "CA" &&
-            cc.atoms[sp2_term].id == "O" &&
-            cc.atoms[sp3_term].id == "N") {
-          value = 0.0;
-        }
       } else if (!lookup_found && sp2_2 && sp2_3) {
         // Non-aromatic SP2-SP2: use 2x2 matrix.
         // Ring-sharing pair is selected once globally (AceDRG tS1/tS2 logic).
@@ -2129,113 +2122,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         period = 3;
       }
     }
-    auto matches_torsion_ids = [&](const char* t1, const char* t2,
-                                   const char* t3, const char* t4) {
-      const std::string& id1 = a1->id;
-      const std::string& id2 = cc.atoms[center2].id;
-      const std::string& id3 = cc.atoms[center3].id;
-      const std::string& id4 = a4->id;
-      return (id1 == t1 && id2 == t2 && id3 == t3 && id4 == t4) ||
-             (id1 == t4 && id2 == t3 && id3 == t2 && id4 == t1);
-    };
-    if (cc.name == "A0D" && matches_torsion_ids("C10", "C16", "C17", "C12")) {
-      value = -60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "AZE" && matches_torsion_ids("C7", "C6", "C1", "C16")) {
-      value = 60.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "A15" && matches_torsion_ids("C14", "C13", "C12", "C10")) {
-      value = 150.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "A15" && matches_torsion_ids("C20", "C19", "C12", "C10")) {
-      value = -90.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "A15" && matches_torsion_ids("C9", "C10", "C12", "C13")) {
-      value = -60.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "A0L" && matches_torsion_ids("C17", "C15", "C16", "H21")) {
-      value = 180.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "A0L" && matches_torsion_ids("C17", "C15", "C18", "H24")) {
-      value = 60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "A0L" && matches_torsion_ids("C16", "C15", "C17", "H1")) {
-      value = 60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "A0P" && matches_torsion_ids("PG", "N3B", "PB", "O2B")) {
-      value = -60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "AXT" && matches_torsion_ids("C7", "C6", "C1", "C16")) {
-      value = 60.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "AXT" && matches_torsion_ids("C27", "C26", "C21", "C36")) {
-      value = 60.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "AXT" && matches_torsion_ids("C37", "C21", "C36", "H361")) {
-      value = -60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "AXT" && matches_torsion_ids("C36", "C21", "C37", "H371")) {
-      value = -60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "AY1" && matches_torsion_ids("O9", "C24", "C25", "C26")) {
-      value = 120.0;
-      esd = 20.0;
-      period = 6;
-    }
-    if (cc.name == "AY1" && matches_torsion_ids("C24", "C25", "C26", "H31")) {
-      value = 180.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "AY1" && matches_torsion_ids("C24", "C25", "C27", "H34")) {
-      value = 60.0;
-      esd = 10.0;
-      period = 3;
-    }
-    if (cc.name == "A17") {
-      auto is_id = [&](const Restraints::Torsion& t,
-                       const char* a, const char* b,
-                       const char* c, const char* d) {
-        return t.id1.atom == a && t.id2.atom == b &&
-               t.id3.atom == c && t.id4.atom == d;
-      };
-      vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& t) {
-        return is_id(t, "C21", "C22", "C20", "N30") ||
-               is_id(t, "C20", "C22", "C21", "C20") ||
-               is_id(t, "C18", "N30", "C20", "C21") ||
-               is_id(t, "C29", "C28", "C23", "C9");
-      });
-      cc.rt.torsions.push_back({"auto", {1,"N30"},{1,"C20"},{1,"C21"},{1,"C22"}, 60.0, 10.0, 3});
-      cc.rt.torsions.push_back({"auto", {1,"N30"},{1,"C20"},{1,"C22"},{1,"H22"}, 180.0, 10.0, 3});
-      cc.rt.torsions.push_back({"auto", {1,"C18"},{1,"N30"},{1,"C20"},{1,"H20"}, -120.0, 20.0, 6});
-      cc.rt.torsions.push_back({"auto", {1,"C23"},{1,"C28"},{1,"C29"},{1,"H29A"}, -90.0, 20.0, 6});
-    }
       cc.rt.torsions.push_back({"auto",
                                 {1, a1->id},
                                 {1, cc.atoms[center2].id},
@@ -2244,95 +2130,64 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                 value, esd, period});
     };
 
-    auto pick_mini_terminal = [&](size_t center, size_t other,
-                                  const std::vector<size_t>& tv,
-                                  bool prefer_ring, bool prefer_h,
-                                  size_t fallback) -> size_t {
-      std::vector<size_t> ring, nonh, metal, h;
-      for (const auto& nb : adj[center]) {
-        if (nb.idx == other)
-          continue;
-        if (atom_info[nb.idx].in_rings.size() > 0)
-          ring.push_back(nb.idx);
-        else if (cc.atoms[nb.idx].is_hydrogen())
-          h.push_back(nb.idx);
-        else if (cc.atoms[nb.idx].el.is_metal())
-          metal.push_back(nb.idx);
-        else
-          nonh.push_back(nb.idx);
-      }
-      auto in_tv = [&](size_t idx) {
-        return std::find(tv.begin(), tv.end(), idx) != tv.end();
-      };
-      auto first_in_tv = [&](const std::vector<size_t>& src) -> size_t {
-        for (size_t idx : src)
-          if (in_tv(idx))
-            return idx;
-        return SIZE_MAX;
-      };
-      if (!prefer_ring && !prefer_h) {
-        size_t a = first_in_tv(nonh);
-        if (a != SIZE_MAX) return a;
-      }
-      if (prefer_ring) {
-        size_t a = first_in_tv(ring);
-        if (a != SIZE_MAX) return a;
-      }
-      if (prefer_h) {
-        size_t a = first_in_tv(h);
-        if (a != SIZE_MAX) return a;
-      }
-      size_t a = first_in_tv(nonh);
-      if (a != SIZE_MAX) return a;
-      a = first_in_tv(ring);
-      if (a != SIZE_MAX) return a;
-      a = first_in_tv(h);
-      if (a != SIZE_MAX) return a;
-      a = first_in_tv(metal);
-      if (a != SIZE_MAX) return a;
-      return fallback;
-    };
-
     auto pick_pair = [&]() -> std::pair<size_t, size_t> {
+      size_t side1 = center2;
+      size_t side2 = center3;
+
       std::vector<size_t> r1, n1, h1, r2, n2, h2;
-      for (const auto& nb : adj[center2]) {
-        if (nb.idx == center3) continue;
-        if (atom_info[nb.idx].in_rings.size() > 0) r1.push_back(nb.idx);
-        else if (cc.atoms[nb.idx].is_hydrogen()) h1.push_back(nb.idx);
-        else if (cc.atoms[nb.idx].el.is_metal()) {}
-        else n1.push_back(nb.idx);
+      for (const auto& nb : adj[side1]) {
+        if (nb.idx == side2) continue;
+        if (!atom_info[nb.idx].in_rings.empty())
+          r1.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].is_hydrogen())
+          h1.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].el.is_metal()) {
+        } else
+          n1.push_back(nb.idx);
       }
-      for (const auto& nb : adj[center3]) {
-        if (nb.idx == center2) continue;
-        if (atom_info[nb.idx].in_rings.size() > 0) r2.push_back(nb.idx);
-        else if (cc.atoms[nb.idx].is_hydrogen()) h2.push_back(nb.idx);
-        else if (cc.atoms[nb.idx].el.is_metal()) {}
-        else n2.push_back(nb.idx);
+      for (const auto& nb : adj[side2]) {
+        if (nb.idx == side1) continue;
+        if (!atom_info[nb.idx].in_rings.empty())
+          r2.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].is_hydrogen())
+          h2.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].el.is_metal()) {
+        } else
+          n2.push_back(nb.idx);
       }
+
+      // Match AceDRG CodClassify::selectOneTorFromOneBond():
+      // classify terminals as ring/non-H/H and pick the first candidate
+      // in each class by connection order.
       if (!n1.empty() && !n2.empty())
-        return {pick_mini_terminal(center2, center3, tv1_idx, false, false, tv1_idx.front()),
-                pick_mini_terminal(center3, center2, tv2_idx, false, false, tv2_idx.front())};
+        return {n1.front(), n2.front()};
+
       if (!n1.empty() && n2.empty()) {
-        bool use_ring = !r2.empty();
-        return {pick_mini_terminal(center2, center3, tv1_idx, false, false, tv1_idx.front()),
-                pick_mini_terminal(center3, center2, tv2_idx, use_ring, !use_ring, tv2_idx.front())};
+        if (!r2.empty())
+          return {n1.front(), r2.front()};
+        if (!h2.empty())
+          return {n1.front(), h2.front()};
       }
+
       if (n1.empty() && !n2.empty()) {
-        bool use_ring = !r1.empty();
-        return {pick_mini_terminal(center2, center3, tv1_idx, use_ring, !use_ring, tv1_idx.front()),
-                pick_mini_terminal(center3, center2, tv2_idx, false, false, tv2_idx.front())};
+        if (!r1.empty())
+          return {r1.front(), n2.front()};
+        if (!h1.empty())
+          return {h1.front(), n2.front()};
       }
+
       if (!r1.empty() || !r2.empty()) {
         if (!r1.empty() && !r2.empty())
-          return {pick_mini_terminal(center2, center3, tv1_idx, true, false, tv1_idx.front()),
-                  pick_mini_terminal(center3, center2, tv2_idx, true, false, tv2_idx.front())};
+          return {r1.front(), r2.front()};
         if (!r1.empty() && !h2.empty())
-          return {pick_mini_terminal(center2, center3, tv1_idx, true, false, tv1_idx.front()),
-                  pick_mini_terminal(center3, center2, tv2_idx, false, true, tv2_idx.front())};
+          return {r1.front(), h2.front()};
         if (!h1.empty() && !r2.empty())
-          return {pick_mini_terminal(center2, center3, tv1_idx, false, true, tv1_idx.front()),
-                  pick_mini_terminal(center3, center2, tv2_idx, true, false, tv2_idx.front())};
+          return {h1.front(), r2.front()};
       }
+
+      if (!h1.empty() && !h2.empty())
+        return {h1.front(), h2.front()};
+
       return {tv1_idx.front(), tv2_idx.front()};
     };
 
