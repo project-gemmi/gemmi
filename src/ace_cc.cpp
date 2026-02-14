@@ -1082,6 +1082,66 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
   }
 
+  // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
+  // one nu torsion each (from ring geometry), while non-ring bonds keep the
+  // full torsion set. Detect similar rings up-front.
+  std::set<int> sugar_ring_ids;
+  std::map<int, std::set<size_t>> sugar_ring_sets;
+  std::set<std::pair<size_t, size_t>> sugar_ring_bonds;
+  {
+    std::map<int, std::vector<size_t>> ring_atoms;
+    for (size_t i = 0; i < atom_info.size(); ++i)
+      for (int rid : atom_info[i].in_rings)
+        ring_atoms[rid].push_back(i);
+    for (auto& kv : ring_atoms) {
+      auto& atoms = kv.second;
+      std::sort(atoms.begin(), atoms.end());
+      atoms.erase(std::unique(atoms.begin(), atoms.end()), atoms.end());
+      int n = (int)atoms.size();
+      if (n != 5 && n != 6)
+        continue;
+      std::set<size_t> rset(atoms.begin(), atoms.end());
+      int oxy = 0;
+      int carb = 0;
+      bool ok = true;
+      for (size_t idx : rset) {
+        if (atom_info[idx].is_aromatic || atom_info[idx].hybrid != Hybridization::SP3) {
+          ok = false;
+          break;
+        }
+        if (cc.atoms[idx].el == El::O)
+          ++oxy;
+        else if (cc.atoms[idx].el == El::C)
+          ++carb;
+        else {
+          ok = false;
+          break;
+        }
+        int ring_deg = 0;
+        for (const auto& nb : adj[idx])
+          if (rset.count(nb.idx))
+            ++ring_deg;
+        if (ring_deg != 2) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok || oxy != 1 || carb != n - 1)
+        continue;
+      int rid = kv.first;
+      sugar_ring_ids.insert(rid);
+      sugar_ring_sets.emplace(rid, std::move(rset));
+    }
+    for (const auto& kv : sugar_ring_sets) {
+      const auto& rset = kv.second;
+      for (size_t idx : rset)
+        for (const auto& nb : adj[idx])
+          if (rset.count(nb.idx) && idx < nb.idx)
+            sugar_ring_bonds.insert(std::make_pair(idx, nb.idx));
+    }
+  }
+  bool has_sugar_ring = !sugar_ring_bonds.empty();
+
   // Detect chiral centers and build mutTable for "both" chirality.
   // AceDRG generates chirality for SP3 atoms with >=3 non-H neighbors.
   // R/S carbon stereocenters get positive/negative (empty mutTable in AceDRG
@@ -2276,8 +2336,69 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       return {tv1_idx.front(), tv2_idx.front()};
     };
 
-    auto chosen = pick_pair();
-    emit_torsion(chosen.first, chosen.second);
+    if (has_sugar_ring) {
+      for (size_t a1_idx : tv1_idx)
+        for (size_t a4_idx : tv2_idx)
+          emit_torsion(a1_idx, a4_idx);
+    } else {
+      auto chosen = pick_pair();
+      emit_torsion(chosen.first, chosen.second);
+    }
+  }
+
+  if (has_sugar_ring) {
+    auto atom_idx = [&](const std::string& id) -> size_t {
+      auto it = atom_index.find(id);
+      return it != atom_index.end() ? it->second : SIZE_MAX;
+    };
+    auto sugar_ring_for_bond = [&](size_t b, size_t c) -> int {
+      for (int rid : atom_info[b].in_rings) {
+        auto sit = sugar_ring_sets.find(rid);
+        if (sit != sugar_ring_sets.end() && sit->second.count(c))
+          return rid;
+      }
+      return -1;
+    };
+
+    std::vector<Restraints::Torsion> nu_torsions;
+    std::set<std::pair<size_t, size_t>> selected_bonds;
+    for (const auto& tor : cc.rt.torsions) {
+      size_t a = atom_idx(tor.id1.atom);
+      size_t b = atom_idx(tor.id2.atom);
+      size_t c = atom_idx(tor.id3.atom);
+      size_t d = atom_idx(tor.id4.atom);
+      if (a == SIZE_MAX || b == SIZE_MAX || c == SIZE_MAX || d == SIZE_MAX)
+        continue;
+      auto bkey = std::minmax(b, c);
+      if (!sugar_ring_bonds.count(bkey))
+        continue;
+      int rid = sugar_ring_for_bond(b, c);
+      if (rid < 0)
+        continue;
+      const auto& rset = sugar_ring_sets[rid];
+      if (!rset.count(a) || !rset.count(d))
+        continue;
+      if (!selected_bonds.insert(bkey).second)
+        continue;
+      Restraints::Torsion nu = tor;
+      double dih = deg(calculate_dihedral(cc.atoms[a].xyz, cc.atoms[b].xyz,
+                                          cc.atoms[c].xyz, cc.atoms[d].xyz));
+      if (std::isfinite(dih))
+        nu.value = dih;
+      nu.esd = 10.0;
+      nu.period = 3;
+      nu_torsions.push_back(std::move(nu));
+    }
+
+    vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& tor) {
+      size_t b = atom_idx(tor.id2.atom);
+      size_t c = atom_idx(tor.id3.atom);
+      if (b == SIZE_MAX || c == SIZE_MAX)
+        return false;
+      auto bkey = std::minmax(b, c);
+      return selected_bonds.count(bkey) != 0;
+    });
+    cc.rt.torsions.insert(cc.rt.torsions.end(), nu_torsions.begin(), nu_torsions.end());
   }
 
 }

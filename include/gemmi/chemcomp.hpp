@@ -620,6 +620,12 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
                              {"atom_id", "type_symbol", "?type_energy",
                              "?charge", "?partial_charge", "?alt_atom_id",
                              "?atom_type",
+                             "?model_Cartn_x",
+                             "?model_Cartn_y",
+                             "?model_Cartn_z",
+                             "?x",
+                             "?y",
+                             "?z",
                              "?pdbx_model_Cartn_x_ideal",
                              "?pdbx_model_Cartn_y_ideal",
                              "?pdbx_model_Cartn_z_ideal"})) {
@@ -634,6 +640,14 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
       atom.xyz = Position(cif::as_number(row[7]),
                           cif::as_number(row[8]),
                           cif::as_number(row[9]));
+    else if (row.has(10) && row.has(11) && row.has(12))
+      atom.xyz = Position(cif::as_number(row[10]),
+                          cif::as_number(row[11]),
+                          cif::as_number(row[12]));
+    else if (row.has(13) && row.has(14) && row.has(15))
+      atom.xyz = Position(cif::as_number(row[13]),
+                          cif::as_number(row[14]),
+                          cif::as_number(row[15]));
     cc.atoms.push_back(std::move(atom));
   }
   // Also check _chem_comp_acedrg table for atom types (used by acedrg output)
