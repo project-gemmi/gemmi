@@ -2416,6 +2416,19 @@ void add_chirality_if_missing(
     if (chosen.size() < 3)
       continue;
 
+    if (is_stereo_carbon && sign != ChiralityType::Both) {
+      double vol = calculate_chiral_volume(cc.atoms[center].xyz,
+                                           cc.atoms[chosen[0]].xyz,
+                                           cc.atoms[chosen[1]].xyz,
+                                           cc.atoms[chosen[2]].xyz);
+      if (std::isfinite(vol) && std::fabs(vol) > 1e-8) {
+        bool should_be_pos = (sign == ChiralityType::Positive);
+        bool is_pos = vol > 0.0;
+        if (should_be_pos != is_pos)
+          std::swap(chosen[0], chosen[1]);
+      }
+    }
+
     cc.rt.chirs.push_back({{1, cc.atoms[center].id},
                            {1, cc.atoms[chosen[0]].id},
                            {1, cc.atoms[chosen[1]].id},
