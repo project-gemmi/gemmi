@@ -2,6 +2,9 @@
 gemmi/ace_cc.hpp
     prepare_chemcomp() — restraint generation pipeline.
 
+gemmi/ace_graph.hpp
+    Shared graph/ring helpers for AceDRG-style ChemComp processing.
+
 gemmi/acedrg_tables.hpp
     AcedrgTables - COD/CSD-based atom classification and restraint value lookup
     Port of AceDRG codClassify system to gemmi.
