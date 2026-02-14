@@ -27,20 +27,20 @@ bool atoms_in_same_ring_by_alt_path(
   if (from_it == neighbors.end())
     return false;
 
-  // BFS from atom1 to atom2, excluding the direct bond between them.
+  // Graph traversal from atom1 to atom2, excluding the direct bond between them.
   std::set<std::string> visited;
-  std::vector<std::string> queue;
+  std::vector<std::string> frontier;
   visited.insert(atom1);
   for (const std::string& nb : from_it->second) {
     if (nb != atom2) {
-      queue.push_back(nb);
+      frontier.push_back(nb);
       visited.insert(nb);
     }
   }
 
-  while (!queue.empty()) {
-    std::string current = queue.back();
-    queue.pop_back();
+  while (!frontier.empty()) {
+    std::string current = frontier.back();
+    frontier.pop_back();
     if (current == atom2)
       return true;
     auto it = neighbors.find(current);
@@ -48,7 +48,7 @@ bool atoms_in_same_ring_by_alt_path(
       continue;
     for (const std::string& nb : it->second) {
       if (visited.insert(nb).second)
-        queue.push_back(nb);
+        frontier.push_back(nb);
     }
   }
   return false;
