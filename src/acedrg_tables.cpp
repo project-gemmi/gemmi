@@ -151,6 +151,75 @@ CoordGeometry parse_coord_geometry(const char* geometry_name) {
   return CoordGeometry::UNKNOWN;
 }
 
+std::vector<double> default_angles_for_geometry(CoordGeometry geometry) {
+  std::vector<double> angles;
+  switch (geometry) {
+    case CoordGeometry::LINEAR:
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::TRIGONAL_PLANAR:
+      angles.push_back(120.0);
+      break;
+    case CoordGeometry::T_SHAPED:
+    case CoordGeometry::SQUARE_PLANAR:
+    case CoordGeometry::SQUARE_PYRAMIDAL:
+      angles.push_back(90.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::TETRAHEDRAL:
+      angles.push_back(109.47);
+      break;
+    case CoordGeometry::TRIGONAL_BIPYRAMIDAL:
+      angles.push_back(90.0);
+      angles.push_back(120.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::OCTAHEDRAL:
+      angles.push_back(90.0);
+      break;
+    case CoordGeometry::TRIGONAL_PRISM:
+      angles.push_back(81.793);
+      angles.push_back(135.586);
+      break;
+    case CoordGeometry::PENTAGONAL_BIPYRAMIDAL:
+      angles.push_back(72.0);
+      angles.push_back(90.0);
+      angles.push_back(144.0);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::CAPPED_OCTAHEDRAL:
+      angles.push_back(35.2644);
+      angles.push_back(54.7356);
+      angles.push_back(90.0);
+      angles.push_back(125.2644);
+      angles.push_back(144.7356);
+      angles.push_back(180.0);
+      break;
+    case CoordGeometry::SQUARE_ANTIPRISM:
+      angles.push_back(70.5288);
+      angles.push_back(82.0655);
+      angles.push_back(109.4712);
+      angles.push_back(143.5855);
+      break;
+    default:
+      break;
+  }
+  return angles;
+}
+
+std::vector<double> fallback_angles_for_coord_number(int coord_number) {
+  std::vector<double> angles;
+  switch (coord_number) {
+    case 2: angles.push_back(180.0); break;
+    case 3: angles.push_back(120.0); break;
+    case 4: angles.push_back(109.47); break;
+    case 5: angles.push_back(90.0); angles.push_back(120.0); break;
+    case 6: angles.push_back(90.0); break;
+    default: angles.push_back(90.0); break;
+  }
+  return angles;
+}
+
 }  // namespace
 
 const char* hybridization_to_string(Hybridization h) {
@@ -3846,69 +3915,11 @@ std::vector<double> AcedrgTables::get_metal_angles(Element metal,
       it->coord_number == coord_number) {
     geometry = it->geometry;
   }
-  switch (geometry) {
-    case CoordGeometry::LINEAR:
-      angles.push_back(180.0);
-      break;
-    case CoordGeometry::TRIGONAL_PLANAR:
-      angles.push_back(120.0);
-      break;
-    case CoordGeometry::T_SHAPED:
-    case CoordGeometry::SQUARE_PLANAR:
-    case CoordGeometry::SQUARE_PYRAMIDAL:
-      angles.push_back(90.0);
-      angles.push_back(180.0);
-      break;
-    case CoordGeometry::TETRAHEDRAL:
-      angles.push_back(109.47);
-      break;
-    case CoordGeometry::TRIGONAL_BIPYRAMIDAL:
-      angles.push_back(90.0);
-      angles.push_back(120.0);
-      angles.push_back(180.0);
-      break;
-    case CoordGeometry::OCTAHEDRAL:
-      angles.push_back(90.0);
-      break;
-    case CoordGeometry::TRIGONAL_PRISM:
-      angles.push_back(81.793);
-      angles.push_back(135.586);
-      break;
-    case CoordGeometry::PENTAGONAL_BIPYRAMIDAL:
-      angles.push_back(72.0);
-      angles.push_back(90.0);
-      angles.push_back(144.0);
-      angles.push_back(180.0);
-      break;
-    case CoordGeometry::CAPPED_OCTAHEDRAL:
-      angles.push_back(35.2644);
-      angles.push_back(54.7356);
-      angles.push_back(90.0);
-      angles.push_back(125.2644);
-      angles.push_back(144.7356);
-      angles.push_back(180.0);
-      break;
-    case CoordGeometry::SQUARE_ANTIPRISM:
-      angles.push_back(70.5288);
-      angles.push_back(82.0655);
-      angles.push_back(109.4712);
-      angles.push_back(143.5855);
-      break;
-    default:
-      break;
-  }
+  angles = default_angles_for_geometry(geometry);
 
   // Ultimate fallback based on coordination number
-  if (angles.empty()) {
-    switch (coord_number) {
-      case 2: angles.push_back(180.0); break;
-      case 3: angles.push_back(120.0); break;
-      case 4: angles.push_back(109.47); break;
-      case 5: angles.push_back(90.0); angles.push_back(120.0); break;
-      case 6: angles.push_back(90.0); break;
-      default: angles.push_back(90.0); break;
-    }
-  }
+  if (angles.empty())
+    angles = fallback_angles_for_coord_number(coord_number);
 
   return angles;
 }
