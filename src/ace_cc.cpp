@@ -1084,12 +1084,81 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
   // one nu torsion each (from ring geometry), while non-ring bonds keep the
-  // full torsion set. Detect similar rings up-front.
+  // full torsion set.
+  // Match AceDRG checkOneRingSugar()/getRStr() shape gating:
+  // only specific "(OC2)(...)" ring-shape strings are treated as sugar.
   std::map<int, std::set<size_t>> sugar_ring_sets;
   std::set<std::pair<size_t, size_t>> sugar_ring_bonds;
   bool sugar_component = (to_upper(cc.type_or_group).find("SACCHARIDE") != std::string::npos);
   {
     if (sugar_component) {
+    auto co_token = [&](size_t idx) -> std::string {
+      int nC = 0, nO = 0;
+      for (const auto& nb : adj[idx]) {
+        if (cc.atoms[nb.idx].el == El::C)
+          ++nC;
+        else if (cc.atoms[nb.idx].el == El::O)
+          ++nO;
+      }
+      if (nC == 1 && nO == 2) return "CCO2";
+      if (nC == 2 && nO == 1) return "CC2O";
+      if (nC == 1 && nO == 1) return "CCO";
+      if (nC == 2) return "CC2";
+      return "";
+    };
+    auto ring_shape = [&](const std::set<size_t>& rset, size_t o_idx, size_t start) -> std::string {
+      std::vector<size_t> order;
+      order.reserve(rset.size());
+      order.push_back(o_idx);
+      order.push_back(start);
+      size_t prev = o_idx;
+      size_t curr = start;
+      while (order.size() < rset.size()) {
+        size_t next = SIZE_MAX;
+        for (const auto& nb : adj[curr]) {
+          if (nb.idx != prev && rset.count(nb.idx)) {
+            next = nb.idx;
+            break;
+          }
+        }
+        if (next == SIZE_MAX)
+          return "";
+        order.push_back(next);
+        prev = curr;
+        curr = next;
+      }
+      bool closes = false;
+      for (const auto& nb : adj[order.back()])
+        if (nb.idx == o_idx) {
+          closes = true;
+          break;
+        }
+      if (!closes)
+        return "";
+      int o_c = 0;
+      for (const auto& nb : adj[o_idx])
+        if (cc.atoms[nb.idx].el == El::C)
+          ++o_c;
+      if (o_c != 2)
+        return "";
+      std::string s = "(OC2)";
+      for (size_t i = 1; i < order.size(); ++i) {
+        std::string t = co_token(order[i]);
+        if (t.empty())
+          return "";
+        s += "(" + t + ")";
+      }
+      return s;
+    };
+    static const char* k_ace_sugar_shapes[] = {
+      "(OC2)(CCO2)(CC2O)(CC2O)(CC2O)(CC2O)",
+      "(OC2)(CC2O)(CC2O)(CC2O)(CC2O)(CC2O)",
+      "(OC2)(CCO2)(CC2O)(CC2O)(CC2O)(CCO)",
+      "(OC2)(CCO2)(CC2O)(CC2O)(CC2O)",
+      "(OC2)(CCO2)(CC2)(CC2O)(CC2O)(CC2O)"
+    };
+    std::set<std::string> allowed_shapes(std::begin(k_ace_sugar_shapes),
+                                         std::end(k_ace_sugar_shapes));
     std::map<int, std::vector<size_t>> ring_atoms;
     for (size_t i = 0; i < atom_info.size(); ++i)
       for (int rid : atom_info[i].in_rings)
@@ -1102,19 +1171,22 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (n != 5 && n != 6)
         continue;
       std::set<size_t> rset(atoms.begin(), atoms.end());
-      int oxy = 0;
-      int carb = 0;
+      size_t oxy_idx = SIZE_MAX;
+      int oxy = 0, carb = 0, sp3 = 0;
       bool ok = true;
       for (size_t idx : rset) {
+        if (atom_info[idx].hybrid == Hybridization::SP3)
+          ++sp3;
         if (atom_info[idx].is_aromatic || atom_info[idx].hybrid != Hybridization::SP3) {
           ok = false;
           break;
         }
-        if (cc.atoms[idx].el == El::O)
+        if (cc.atoms[idx].el == El::O) {
           ++oxy;
-        else if (cc.atoms[idx].el == El::C)
+          oxy_idx = idx;
+        } else if (cc.atoms[idx].el == El::C) {
           ++carb;
-        else {
+        } else {
           ok = false;
           break;
         }
@@ -1127,7 +1199,17 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           break;
         }
       }
-      if (!ok || oxy != 1 || carb != n - 1)
+      if (!ok || sp3 != n || oxy != 1 || carb != n - 1 || oxy_idx == SIZE_MAX)
+        continue;
+      std::vector<size_t> o_ring_nbs;
+      for (const auto& nb : adj[oxy_idx])
+        if (rset.count(nb.idx))
+          o_ring_nbs.push_back(nb.idx);
+      if (o_ring_nbs.size() != 2)
+        continue;
+      std::string shape1 = ring_shape(rset, oxy_idx, o_ring_nbs[0]);
+      std::string shape2 = ring_shape(rset, oxy_idx, o_ring_nbs[1]);
+      if (allowed_shapes.count(shape1) == 0 && allowed_shapes.count(shape2) == 0)
         continue;
       sugar_ring_sets.emplace(kv.first, std::move(rset));
     }
