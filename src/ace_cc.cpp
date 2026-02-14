@@ -1360,11 +1360,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (ring_sharing != SIZE_MAX)
       tv.push_back(ring_sharing);
 
-    // Chiral SP3 side: follow mutTable order (AceDRG buildChiralCluster2)
+    // Chiral SP3 side: follow mutTable order (AceDRG buildChiralCluster2).
+    // For explicit R/S stereo carbons AceDRG often has empty mutTable and
+    // falls back to plain connAtoms order.
     bool used_chiral = false;
+    bool stereo_sp3 = (atom_info[center].hybrid == Hybridization::SP3 &&
+                       stereo_chiral_centers.count(center) != 0);
     if (atom_info[center].hybrid == Hybridization::SP3) {
-      bool use_chiral_mut_table =
-          !(mode == TvMode::SP3SP3 && stereo_chiral_centers.count(center));
+      bool use_chiral_mut_table = !stereo_sp3;
       auto mit = chir_mut_table.find(center);
       if (use_chiral_mut_table && mit != chir_mut_table.end()) {
         auto mt_it = mit->second.find(other_center);
@@ -1384,17 +1387,30 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
 
     if (!used_chiral) {
-      bool want_h_first = (mode == TvMode::SP2SP3_SP3);
+      bool want_h_first = (mode == TvMode::SP2SP3_SP3 && !stereo_sp3);
       bool want_non_h_first = (mode == TvMode::SP3_OXY &&
                                atom_info[center].hybrid == Hybridization::SP3 &&
                                ring_sharing == SIZE_MAX);
+      std::vector<size_t> nb_order;
+      nb_order.reserve(adj[center].size());
+      if (atom_info[center].hybrid == Hybridization::SP2) {
+        for (const auto& nb : adj[center])
+          if (!cc.atoms[nb.idx].is_hydrogen())
+            nb_order.push_back(nb.idx);
+        for (const auto& nb : adj[center])
+          if (cc.atoms[nb.idx].is_hydrogen())
+            nb_order.push_back(nb.idx);
+      } else {
+        for (const auto& nb : adj[center])
+          nb_order.push_back(nb.idx);
+      }
       size_t first_non_h = SIZE_MAX;
       if (want_non_h_first && (int)tv.size() < max_len) {
-        for (const auto& nb : adj[center]) {
-          if (nb.idx == other_center || nb.idx == ring_sharing)
+        for (size_t nb_idx : nb_order) {
+          if (nb_idx == other_center || nb_idx == ring_sharing)
             continue;
-          if (!cc.atoms[nb.idx].is_hydrogen()) {
-            first_non_h = nb.idx;
+          if (!cc.atoms[nb_idx].is_hydrogen()) {
+            first_non_h = nb_idx;
             tv.push_back(first_non_h);
             break;
           }
@@ -1408,26 +1424,26 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
       size_t first_h = SIZE_MAX;
       if (want_h_first && (int)tv.size() < max_len) {
-        for (const auto& nb : adj[center]) {
-          if (nb.idx == other_center || nb.idx == ring_sharing)
+        for (size_t nb_idx : nb_order) {
+          if (nb_idx == other_center || nb_idx == ring_sharing)
             continue;
-          if (cc.atoms[nb.idx].is_hydrogen()) {
-            first_h = nb.idx;
+          if (cc.atoms[nb_idx].is_hydrogen()) {
+            first_h = nb_idx;
             tv.push_back(first_h);
             break;
           }
         }
       }
 
-      for (const auto& nb : adj[center]) {
+      for (size_t nb_idx : nb_order) {
         if ((int)tv.size() >= max_len)
           break;
-        if (nb.idx == other_center || nb.idx == ring_sharing ||
-            nb.idx == first_h || nb.idx == first_non_h)
+        if (nb_idx == other_center || nb_idx == ring_sharing ||
+            nb_idx == first_h || nb_idx == first_non_h)
           continue;
-        if (first_h != SIZE_MAX && cc.atoms[nb.idx].is_hydrogen())
+        if (first_h != SIZE_MAX && cc.atoms[nb_idx].is_hydrogen())
           continue;  // keep only the first hydrogen per center
-        tv.push_back(nb.idx);
+        tv.push_back(nb_idx);
       }
     }
 
@@ -1518,9 +1534,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
       int max_len = (atom_info[ctr].hybrid == Hybridization::SP2) ? 2 : 3;
       bool used_chiral = false;
+      bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
+                         stereo_chiral_centers.count(ctr) != 0);
       if (atom_info[ctr].hybrid == Hybridization::SP3) {
-        bool use_chiral_mut_table =
-            !(mode == TvMode::SP3SP3 && stereo_chiral_centers.count(ctr));
+        bool use_chiral_mut_table = !stereo_sp3;
         auto mit = chir_mut_table.find(ctr);
         if (use_chiral_mut_table && mit != chir_mut_table.end()) {
           auto mt_it = mit->second.find(other);
@@ -1540,25 +1557,39 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
 
       if (!used_chiral) {
+        std::vector<size_t> nb_order;
+        nb_order.reserve(adj[ctr].size());
+        if (atom_info[ctr].hybrid == Hybridization::SP2) {
+          for (const auto& nb : adj[ctr])
+            if (!cc.atoms[nb.idx].is_hydrogen())
+              nb_order.push_back(nb.idx);
+          for (const auto& nb : adj[ctr])
+            if (cc.atoms[nb.idx].is_hydrogen())
+              nb_order.push_back(nb.idx);
+        } else {
+          for (const auto& nb : adj[ctr])
+            nb_order.push_back(nb.idx);
+        }
         size_t first_h = SIZE_MAX;
-        if (mode == TvMode::SP2SP3_SP3 && (int)tv.size() < max_len) {
-          for (const auto& nb : adj[ctr]) {
-            if (nb.idx == other || nb.idx == rs) continue;
-            if (cc.atoms[nb.idx].is_hydrogen()) {
-              first_h = nb.idx;
+        if (mode == TvMode::SP2SP3_SP3 && !stereo_sp3 &&
+            (int)tv.size() < max_len) {
+          for (size_t nb_idx : nb_order) {
+            if (nb_idx == other || nb_idx == rs) continue;
+            if (cc.atoms[nb_idx].is_hydrogen()) {
+              first_h = nb_idx;
               tv.push_back(first_h);
               break;
             }
           }
         }
-        for (const auto& nb : adj[ctr]) {
+        for (size_t nb_idx : nb_order) {
           if ((int)tv.size() >= max_len)
             break;
-          if (nb.idx == other || nb.idx == rs || nb.idx == first_h)
+          if (nb_idx == other || nb_idx == rs || nb_idx == first_h)
             continue;
-          if (first_h != SIZE_MAX && cc.atoms[nb.idx].is_hydrogen())
+          if (first_h != SIZE_MAX && cc.atoms[nb_idx].is_hydrogen())
             continue;
-          tv.push_back(nb.idx);
+          tv.push_back(nb_idx);
         }
       }
 
