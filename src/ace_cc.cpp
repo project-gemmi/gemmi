@@ -1091,6 +1091,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   // order (or mutTable reorder for "both"), non-chiral use first-non-H/first-H.
   std::set<size_t> chiral_centers;
   std::set<size_t> stereo_chiral_centers;
+  std::set<size_t> stereo_negative_centers;
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     if (atom_info[i].hybrid != Hybridization::SP3)
@@ -1264,15 +1265,35 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
     }
     if (is_stereo_carbon) {
+      auto st_it = atom_stereo.find(cc.atoms[i].id);
+      if (st_it != atom_stereo.end() && !st_it->second.empty() &&
+          lower(st_it->second[0]) == 'r') {
+        stereo_negative_centers.insert(i);
+      }
       stereo_chiral_centers.insert(i);
       std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                        [&](size_t a, size_t b) {
-        int pa = chirality_priority(cc.atoms[a].el);
-        int pb = chirality_priority(cc.atoms[b].el);
-        if (pa != pb)
-          return pa < pb;
-        return cc.atoms[a].id < cc.atoms[b].id;
+        return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
       });
+    }
+    // AceDRG-like CF3 pattern around sp3 carbon:
+    // prefer three halogens as chiral legs and leave O as the "missing" leg.
+    if (cc.atoms[i].el == El::C && chiral_legs.size() >= 4) {
+      std::vector<size_t> halogens;
+      bool has_oxygen = false;
+      for (size_t nb : chiral_legs) {
+        Element e = cc.atoms[nb].el;
+        if (e == El::F || e == El::Cl || e == El::Br || e == El::I || e == El::At)
+          halogens.push_back(nb);
+        if (e == El::O)
+          has_oxygen = true;
+      }
+      if (has_oxygen && halogens.size() >= 3) {
+        chiral_legs.clear();
+        chiral_legs.push_back(halogens[0]);
+        chiral_legs.push_back(halogens[1]);
+        chiral_legs.push_back(halogens[2]);
+      }
     }
     // Build mutTable for "both" chirality: legs are first 3 non-H in adj order
     size_t a1 = chiral_legs[0], a2 = chiral_legs[1], a3 = chiral_legs[2];
@@ -1283,14 +1304,24 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         break;
       }
     auto& mt = chir_mut_table[i];
-    mt[a1] = {a3, a2};
-    mt[a2] = {a1, a3};
-    mt[a3] = {a2, a1};
+    bool negative_chiral = stereo_negative_centers.count(i) != 0;
+    if (!negative_chiral) {
+      mt[a1] = {a3, a2};
+      mt[a2] = {a1, a3};
+      mt[a3] = {a2, a1};
+    } else {
+      mt[a1] = {a2, a3};
+      mt[a2] = {a3, a1};
+      mt[a3] = {a1, a2};
+    }
     if (missing != SIZE_MAX) {
       mt[a1].push_back(missing);
       mt[a2].push_back(missing);
       mt[a3].push_back(missing);
-      mt[missing] = {a1, a2, a3};
+      if (!negative_chiral)
+        mt[missing] = {a1, a2, a3};
+      else
+        mt[missing] = {a3, a2, a1};
     }
   }
 
