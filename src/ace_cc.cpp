@@ -1632,6 +1632,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     auto emit_torsion = [&](size_t a1_idx, size_t a4_idx) {
       if (a1_idx == a4_idx || a1_idx == center3 || a4_idx == center2)
         return;
+      if (cc.atoms[a1_idx].el.is_metal() || cc.atoms[a4_idx].el.is_metal())
+        return;
       const ChemComp::Atom* a1 = &cc.atoms[a1_idx];
       const ChemComp::Atom* a4 = &cc.atoms[a4_idx];
       TorsionEntry tors_entry;
@@ -1932,6 +1934,13 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       // AceDRG reorders by "H-only" check then connectivity tiebreaker.
       auto sp2sp2_tv_pos = [&](size_t center, size_t other, size_t target,
                                bool is_side1) -> int {
+        auto nonmetal_degree = [&](size_t idx) {
+          int deg = 0;
+          for (const auto& nb : adj[idx])
+            if (!cc.atoms[nb.idx].el.is_metal())
+              ++deg;
+          return deg;
+        };
         std::vector<size_t> tv;
         // Ring-sharing atom from the globally selected pair.
         if (has_ring_sharing) {
@@ -1949,7 +1958,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (tv.size() == 2 && side1_nb_count == 2 && side2_nb_count == 2) {
           auto is_h_only = [&](size_t idx) {
             for (const auto& nb : adj[idx])
-              if (nb.idx != center && !cc.atoms[nb.idx].is_hydrogen())
+              if (nb.idx != center &&
+                  !cc.atoms[nb.idx].el.is_metal() &&
+                  !cc.atoms[nb.idx].is_hydrogen())
                 return false;
             return true;
           };
@@ -1958,12 +1969,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           if (is_side1) {
             if (h0 && !h1)
               std::swap(tv[0], tv[1]);
-            else if ((int)adj[tv[0]].size() < (int)adj[tv[1]].size())
+            else if (nonmetal_degree(tv[0]) < nonmetal_degree(tv[1]))
               std::swap(tv[0], tv[1]);
           } else {
-            if (h0 && (!h1 || (int)adj[tv[0]].size() < (int)adj[tv[1]].size()))
+            if (h0 && (!h1 || nonmetal_degree(tv[0]) < nonmetal_degree(tv[1])))
               std::swap(tv[0], tv[1]);
-            else if (!h0 && (int)adj[tv[0]].size() < (int)adj[tv[1]].size() && !h1)
+            else if (!h0 && nonmetal_degree(tv[0]) < nonmetal_degree(tv[1]) && !h1)
               std::swap(tv[0], tv[1]);
           }
         }
@@ -2177,7 +2188,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                   const std::vector<size_t>& tv,
                                   bool prefer_ring, bool prefer_h,
                                   size_t fallback) -> size_t {
-      std::vector<size_t> ring, nonh, h;
+      std::vector<size_t> ring, nonh, metal, h;
       for (const auto& nb : adj[center]) {
         if (nb.idx == other)
           continue;
@@ -2185,6 +2196,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           ring.push_back(nb.idx);
         else if (cc.atoms[nb.idx].is_hydrogen())
           h.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].el.is_metal())
+          metal.push_back(nb.idx);
         else
           nonh.push_back(nb.idx);
       }
@@ -2215,6 +2228,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (a != SIZE_MAX) return a;
       a = first_in_tv(h);
       if (a != SIZE_MAX) return a;
+      a = first_in_tv(metal);
+      if (a != SIZE_MAX) return a;
       return fallback;
     };
 
@@ -2224,12 +2239,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         if (nb.idx == center3) continue;
         if (atom_info[nb.idx].in_rings.size() > 0) r1.push_back(nb.idx);
         else if (cc.atoms[nb.idx].is_hydrogen()) h1.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].el.is_metal()) {}
         else n1.push_back(nb.idx);
       }
       for (const auto& nb : adj[center3]) {
         if (nb.idx == center2) continue;
         if (atom_info[nb.idx].in_rings.size() > 0) r2.push_back(nb.idx);
         else if (cc.atoms[nb.idx].is_hydrogen()) h2.push_back(nb.idx);
+        else if (cc.atoms[nb.idx].el.is_metal()) {}
         else n2.push_back(nb.idx);
       }
       if (!n1.empty() && !n2.empty())
