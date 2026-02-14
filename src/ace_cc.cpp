@@ -904,9 +904,6 @@ struct SugarRingInfo {
 SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj,
                                  const std::vector<CodAtomInfo>& atom_info) {
   SugarRingInfo out;
-  bool sugar_component = (to_upper(cc.type_or_group).find("SACCHARIDE") != std::string::npos);
-  if (!sugar_component)
-    return out;
 
   auto co_token = [&](size_t idx) -> std::string {
     int nC = 0, nO = 0;
@@ -1045,6 +1042,10 @@ struct ChiralCenterInfo {
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
 };
 
+bool is_sp1_like(const CodAtomInfo& ai);
+bool is_sp2_like(const CodAtomInfo& ai);
+bool is_sp3_like(const CodAtomInfo& ai);
+
 ChiralCenterInfo detect_chiral_centers_and_mut_table(
     const ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
@@ -1052,7 +1053,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
   ChiralCenterInfo out;
   std::set<size_t> stereo_negative_centers;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    if (atom_info[i].hybrid != Hybridization::SP3)
+    if (!is_sp3_like(atom_info[i]))
       continue;
     std::vector<size_t> non_h_nbs;
     for (const auto& nb : adj[i])
@@ -1062,7 +1063,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2) {
       bool n31_like = true;
       for (size_t nb : non_h_nbs)
-        if (cc.atoms[nb].el != El::C || atom_info[nb].hybrid != Hybridization::SP3) {
+        if (cc.atoms[nb].el != El::C || !is_sp3_like(atom_info[nb])) {
           n31_like = false;
           break;
         }
@@ -1345,9 +1346,10 @@ std::vector<size_t> build_tv_list_for_center(
 
   int max_len = max_tv_len_for_center(atom_info[ctr]);
   bool used_chiral = false;
-  bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
+  bool center_sp3_like = is_sp3_like(atom_info[ctr]);
+  bool stereo_sp3 = (center_sp3_like &&
                      stereo_chiral_centers.count(ctr) != 0);
-  if (atom_info[ctr].hybrid == Hybridization::SP3) {
+  if (center_sp3_like) {
     bool use_chiral_mut_table = !stereo_sp3;
     auto mit = chir_mut_table.find(ctr);
     if (use_chiral_mut_table && mit != chir_mut_table.end()) {
@@ -1370,7 +1372,7 @@ std::vector<size_t> build_tv_list_for_center(
   if (!used_chiral) {
     bool want_h_first = (mode == TvMode::SP2SP3_SP3 && !stereo_sp3);
     bool want_non_h_first = (mode == TvMode::SP3_OXY &&
-                             atom_info[ctr].hybrid == Hybridization::SP3 &&
+                             center_sp3_like &&
                              rs == SIZE_MAX);
     std::vector<size_t> nb_order =
         build_tv_neighbor_order(cc, adj, atom_info, ctr);
@@ -2095,7 +2097,7 @@ void add_chirality_if_missing(
   };
 
   for (size_t center = 0; center < cc.atoms.size(); ++center) {
-    if (atom_info[center].hybrid != Hybridization::SP3)
+    if (!is_sp3_like(atom_info[center]))
       continue;
 
     std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
