@@ -1041,9 +1041,7 @@ SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj
 }
 
 struct ChiralCenterInfo {
-  std::set<size_t> chiral_centers;
   std::set<size_t> stereo_chiral_centers;
-  std::set<size_t> stereo_negative_centers;
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
 };
 
@@ -1052,6 +1050,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     const std::vector<CodAtomInfo>& atom_info,
     const std::map<std::string, std::string>& atom_stereo) {
   ChiralCenterInfo out;
+  std::set<size_t> stereo_negative_centers;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     if (atom_info[i].hybrid != Hybridization::SP3)
       continue;
@@ -1202,7 +1201,6 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     }
     if (chiral_legs.size() < 3)
       continue;
-    out.chiral_centers.insert(i);
     bool is_stereo_carbon = false;
     bool is_stereo_r = false;
     if (cc.atoms[i].el == El::C) {
@@ -1215,7 +1213,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     }
     if (is_stereo_carbon) {
       if (is_stereo_r)
-        out.stereo_negative_centers.insert(i);
+        stereo_negative_centers.insert(i);
       out.stereo_chiral_centers.insert(i);
       std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                        [&](size_t a, size_t b) {
@@ -1248,7 +1246,7 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
         break;
       }
     auto& mt = out.chir_mut_table[i];
-    bool negative_chiral = out.stereo_negative_centers.count(i) != 0;
+    bool negative_chiral = stereo_negative_centers.count(i) != 0;
     if (!negative_chiral) {
       mt[a1] = {a3, a2};
       mt[a2] = {a1, a3};
@@ -1271,28 +1269,9 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
   return out;
 }
 
-void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
-                                        const std::vector<CodAtomInfo>& atom_info,
-                                        const std::map<std::string, std::string>& atom_stereo,
-                                        const AceGraphView& graph) {
-  if (!cc.rt.torsions.empty())
-    return;
-
-  auto& atom_index = graph.atom_index;
-  auto& adj = graph.adjacency;
-  bool peptide_mode = ChemComp::is_peptide_group(cc.group);
-  auto is_sp1_like = [&](const CodAtomInfo& ai) {
-    return ai.bonding_idx > 0 ? ai.bonding_idx == 1
-                              : ai.hybrid == Hybridization::SP1;
-  };
-  auto is_sp2_like = [&](const CodAtomInfo& ai) {
-    return ai.bonding_idx > 0 ? ai.bonding_idx == 2
-                              : ai.hybrid == Hybridization::SP2;
-  };
-  auto is_sp3_like = [&](const CodAtomInfo& ai) {
-    return ai.bonding_idx > 0 ? ai.bonding_idx == 3
-                              : ai.hybrid == Hybridization::SP3;
-  };
+std::vector<bool> build_aromatic_like_mask(
+    const ChemComp& cc, const std::vector<CodAtomInfo>& atom_info,
+    const std::map<std::string, size_t>& atom_index) {
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1306,6 +1285,60 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         aromatic_like[it2->second] = true;
     }
   }
+  return aromatic_like;
+}
+
+bool is_sp1_like(const CodAtomInfo& ai) {
+  return ai.bonding_idx > 0 ? ai.bonding_idx == 1
+                            : ai.hybrid == Hybridization::SP1;
+}
+
+bool is_sp2_like(const CodAtomInfo& ai) {
+  return ai.bonding_idx > 0 ? ai.bonding_idx == 2
+                            : ai.hybrid == Hybridization::SP2;
+}
+
+bool is_sp3_like(const CodAtomInfo& ai) {
+  return ai.bonding_idx > 0 ? ai.bonding_idx == 3
+                            : ai.hybrid == Hybridization::SP3;
+}
+
+enum class TvMode { Default, SP3SP3, SP2SP3_SP3, SP3_OXY };
+
+int max_tv_len_for_center(const CodAtomInfo& ai) {
+  return is_sp2_like(ai) ? 2 : 3;
+}
+
+std::vector<size_t> build_tv_neighbor_order(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info, size_t ctr) {
+  std::vector<size_t> nb_order;
+  nb_order.reserve(adj[ctr].size());
+  if (is_sp2_like(atom_info[ctr])) {
+    for (const auto& nb : adj[ctr])
+      if (!cc.atoms[nb.idx].is_hydrogen())
+        nb_order.push_back(nb.idx);
+    for (const auto& nb : adj[ctr])
+      if (cc.atoms[nb.idx].is_hydrogen())
+        nb_order.push_back(nb.idx);
+  } else {
+    for (const auto& nb : adj[ctr])
+      nb_order.push_back(nb.idx);
+  }
+  return nb_order;
+}
+
+void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
+                                        const std::vector<CodAtomInfo>& atom_info,
+                                        const std::map<std::string, std::string>& atom_stereo,
+                                        const AceGraphView& graph) {
+  if (!cc.rt.torsions.empty())
+    return;
+
+  auto& atom_index = graph.atom_index;
+  auto& adj = graph.adjacency;
+  bool peptide_mode = ChemComp::is_peptide_group(cc.group);
+  std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
 
   // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
   std::map<std::pair<size_t, size_t>, RingParity> bond_ring_parity =
@@ -1326,13 +1359,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
   auto& chir_mut_table = chiral_info.chir_mut_table;
 
-  // Torsion-value neighbor ordering mode for non-chiral atoms.
-  // SP3SP3: ring-sharing neighbour first, then first H (if any), then the rest.
-  // SP2SP3_SP3: same H-priority rule on the SP3 side (AceDRG SetOneSP2SP3Bond).
-  // SP3_OXY: SP3 side in SetOneSP3OxyColumnBond prefers first non-H when
-  //          there is no ring-sharing pair.
-  enum class TvMode { Default, SP3SP3, SP2SP3_SP3, SP3_OXY };
-
   // Build the torsion-value neighbor ordering (tV) list for a given center
   // with respect to other_center. The order mimics AceDRG tV lists:
   //   1) ring-sharing neighbour (if any, or forced_rs override)
@@ -1349,7 +1375,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (rs != SIZE_MAX)
       tv.push_back(rs);
 
-    int max_len = is_sp2_like(atom_info[ctr]) ? 2 : 3;
+    int max_len = max_tv_len_for_center(atom_info[ctr]);
 
     // Chiral SP3 side: follow mutTable order (AceDRG buildChiralCluster2).
     // For explicit R/S stereo carbons AceDRG often has empty mutTable and
@@ -1382,19 +1408,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       bool want_non_h_first = (mode == TvMode::SP3_OXY &&
                                atom_info[ctr].hybrid == Hybridization::SP3 &&
                                rs == SIZE_MAX);
-      std::vector<size_t> nb_order;
-      nb_order.reserve(adj[ctr].size());
-      if (is_sp2_like(atom_info[ctr])) {
-        for (const auto& nb : adj[ctr])
-          if (!cc.atoms[nb.idx].is_hydrogen())
-            nb_order.push_back(nb.idx);
-        for (const auto& nb : adj[ctr])
-          if (cc.atoms[nb.idx].is_hydrogen())
-            nb_order.push_back(nb.idx);
-      } else {
-        for (const auto& nb : adj[ctr])
-          nb_order.push_back(nb.idx);
-      }
+      std::vector<size_t> nb_order =
+          build_tv_neighbor_order(cc, adj, atom_info, ctr);
       size_t first_non_h = SIZE_MAX;
       if (want_non_h_first && (int)tv.size() < max_len) {
         for (size_t nb_idx : nb_order) {
