@@ -1040,67 +1040,18 @@ SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj
   return out;
 }
 
-void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
-                                        const std::vector<CodAtomInfo>& atom_info,
-                                        const std::map<std::string, std::string>& atom_stereo,
-                                        const AceGraphView& graph) {
-  if (!cc.rt.torsions.empty())
-    return;
-
-  auto& atom_index = graph.atom_index;
-  auto& adj = graph.adjacency;
-  bool peptide_mode = ChemComp::is_peptide_group(cc.group);
-  auto is_sp1_like = [&](const CodAtomInfo& ai) {
-    return ai.bonding_idx > 0 ? ai.bonding_idx == 1
-                              : ai.hybrid == Hybridization::SP1;
-  };
-  auto is_sp2_like = [&](const CodAtomInfo& ai) {
-    return ai.bonding_idx > 0 ? ai.bonding_idx == 2
-                              : ai.hybrid == Hybridization::SP2;
-  };
-  auto is_sp3_like = [&](const CodAtomInfo& ai) {
-    return ai.bonding_idx > 0 ? ai.bonding_idx == 3
-                              : ai.hybrid == Hybridization::SP3;
-  };
-  std::vector<bool> aromatic_like(cc.atoms.size(), false);
-  for (size_t i = 0; i < atom_info.size(); ++i)
-    aromatic_like[i] = atom_info[i].is_aromatic;
-  for (const auto& bond : cc.rt.bonds) {
-    if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc || bond.aromatic) {
-      auto it1 = atom_index.find(bond.id1.atom);
-      auto it2 = atom_index.find(bond.id2.atom);
-      if (it1 != atom_index.end())
-        aromatic_like[it1->second] = true;
-      if (it2 != atom_index.end())
-        aromatic_like[it2->second] = true;
-    }
-  }
-
-  // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
-  std::map<std::pair<size_t, size_t>, RingParity> bond_ring_parity =
-      build_ring_bond_parity(adj, atom_info);
-
-  // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
-  // one nu torsion each (from ring geometry), while non-ring bonds keep the
-  // full torsion set.
-  // Match AceDRG checkOneRingSugar()/getRStr() shape gating:
-  // only specific "(OC2)(...)" ring-shape strings are treated as sugar.
-  SugarRingInfo sugar_info = detect_sugar_rings(cc, adj, atom_info);
-  auto& sugar_ring_sets = sugar_info.ring_sets;
-  auto& sugar_ring_bonds = sugar_info.ring_bonds;
-  bool has_sugar_ring = !sugar_ring_bonds.empty();
-
-  // Detect chiral centers and build mutTable for "both" chirality.
-  // AceDRG generates chirality for SP3 atoms with >=3 non-H neighbors.
-  // R/S carbon stereocenters get positive/negative (empty mutTable in AceDRG
-  // due to string comparison bug). All other eligible atoms get "both"
-  // chirality with populated mutTable.
-  // Chirality affects torsion neighbor ordering: chiral atoms use plain adj
-  // order (or mutTable reorder for "both"), non-chiral use first-non-H/first-H.
+struct ChiralCenterInfo {
   std::set<size_t> chiral_centers;
   std::set<size_t> stereo_chiral_centers;
   std::set<size_t> stereo_negative_centers;
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
+};
+
+ChiralCenterInfo detect_chiral_centers_and_mut_table(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::map<std::string, std::string>& atom_stereo) {
+  ChiralCenterInfo out;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     if (atom_info[i].hybrid != Hybridization::SP3)
       continue;
@@ -1109,8 +1060,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (!cc.atoms[nb.idx].is_hydrogen())
         non_h_nbs.push_back(nb.idx);
     std::vector<size_t> chiral_legs = non_h_nbs;
-    // AceDRG torsion ordering treats N(sp3) with 2 heavy neighbors + H
-    // as chiral-like (both) for tV ordering.
     if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2) {
       bool n31_like = true;
       for (size_t nb : non_h_nbs)
@@ -1238,8 +1187,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                          });
       }
     }
-    // AceDRG ordering for pseudo-chiral N centers with S/O branches:
-    // for N(sp3) with exactly two non-H neighbors S and O plus H, use S,O,H.
     if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2 && chiral_legs.size() >= 3) {
       size_t s_idx = SIZE_MAX, o_idx = SIZE_MAX, h_idx = SIZE_MAX;
       for (size_t a : chiral_legs) {
@@ -1255,8 +1202,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     if (chiral_legs.size() < 3)
       continue;
-    chiral_centers.insert(i);
-    // R/S stereocenters are chiral as well; include them in mutTable ordering.
+    out.chiral_centers.insert(i);
     bool is_stereo_carbon = false;
     bool is_stereo_r = false;
     if (cc.atoms[i].el == El::C) {
@@ -1269,15 +1215,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     if (is_stereo_carbon) {
       if (is_stereo_r)
-        stereo_negative_centers.insert(i);
-      stereo_chiral_centers.insert(i);
+        out.stereo_negative_centers.insert(i);
+      out.stereo_chiral_centers.insert(i);
       std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
                        [&](size_t a, size_t b) {
-        return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
-      });
+                         return chirality_priority(cc.atoms[a].el) <
+                                chirality_priority(cc.atoms[b].el);
+                       });
     }
-    // AceDRG-like CF3 pattern around sp3 carbon:
-    // prefer three halogens as chiral legs and leave O as the "missing" leg.
     if (cc.atoms[i].el == El::C && chiral_legs.size() >= 4) {
       std::vector<size_t> halogens;
       bool has_oxygen = false;
@@ -1295,7 +1240,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         chiral_legs.push_back(halogens[2]);
       }
     }
-    // Build mutTable for "both" chirality: legs are first 3 non-H in adj order
     size_t a1 = chiral_legs[0], a2 = chiral_legs[1], a3 = chiral_legs[2];
     size_t missing = SIZE_MAX;
     for (const auto& nb : adj[i])
@@ -1303,8 +1247,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         missing = nb.idx;
         break;
       }
-    auto& mt = chir_mut_table[i];
-    bool negative_chiral = stereo_negative_centers.count(i) != 0;
+    auto& mt = out.chir_mut_table[i];
+    bool negative_chiral = out.stereo_negative_centers.count(i) != 0;
     if (!negative_chiral) {
       mt[a1] = {a3, a2};
       mt[a2] = {a1, a3};
@@ -1324,6 +1268,63 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         mt[missing] = {a3, a2, a1};
     }
   }
+  return out;
+}
+
+void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
+                                        const std::vector<CodAtomInfo>& atom_info,
+                                        const std::map<std::string, std::string>& atom_stereo,
+                                        const AceGraphView& graph) {
+  if (!cc.rt.torsions.empty())
+    return;
+
+  auto& atom_index = graph.atom_index;
+  auto& adj = graph.adjacency;
+  bool peptide_mode = ChemComp::is_peptide_group(cc.group);
+  auto is_sp1_like = [&](const CodAtomInfo& ai) {
+    return ai.bonding_idx > 0 ? ai.bonding_idx == 1
+                              : ai.hybrid == Hybridization::SP1;
+  };
+  auto is_sp2_like = [&](const CodAtomInfo& ai) {
+    return ai.bonding_idx > 0 ? ai.bonding_idx == 2
+                              : ai.hybrid == Hybridization::SP2;
+  };
+  auto is_sp3_like = [&](const CodAtomInfo& ai) {
+    return ai.bonding_idx > 0 ? ai.bonding_idx == 3
+                              : ai.hybrid == Hybridization::SP3;
+  };
+  std::vector<bool> aromatic_like(cc.atoms.size(), false);
+  for (size_t i = 0; i < atom_info.size(); ++i)
+    aromatic_like[i] = atom_info[i].is_aromatic;
+  for (const auto& bond : cc.rt.bonds) {
+    if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc || bond.aromatic) {
+      auto it1 = atom_index.find(bond.id1.atom);
+      auto it2 = atom_index.find(bond.id2.atom);
+      if (it1 != atom_index.end())
+        aromatic_like[it1->second] = true;
+      if (it2 != atom_index.end())
+        aromatic_like[it2->second] = true;
+    }
+  }
+
+  // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
+  std::map<std::pair<size_t, size_t>, RingParity> bond_ring_parity =
+      build_ring_bond_parity(adj, atom_info);
+
+  // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
+  // one nu torsion each (from ring geometry), while non-ring bonds keep the
+  // full torsion set.
+  // Match AceDRG checkOneRingSugar()/getRStr() shape gating:
+  // only specific "(OC2)(...)" ring-shape strings are treated as sugar.
+  SugarRingInfo sugar_info = detect_sugar_rings(cc, adj, atom_info);
+  auto& sugar_ring_sets = sugar_info.ring_sets;
+  auto& sugar_ring_bonds = sugar_info.ring_bonds;
+  bool has_sugar_ring = !sugar_ring_bonds.empty();
+
+  ChiralCenterInfo chiral_info =
+      detect_chiral_centers_and_mut_table(cc, adj, atom_info, atom_stereo);
+  auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
+  auto& chir_mut_table = chiral_info.chir_mut_table;
 
   // Torsion-value neighbor ordering mode for non-chiral atoms.
   // SP3SP3: ring-sharing neighbour first, then first H (if any), then the rest.
