@@ -46,7 +46,7 @@ bool is_skip_line(const char* line) {
   return line[0] == '\n' || line[0] == '#' || line[0] == '\0';
 }
 
-bool compare_no_case(const std::string& first,
+bool icase_alpha_less(const std::string& first,
                      const std::string& second) {
   size_t i = 0;
   while (i < first.length() && i < second.length()) {
@@ -61,13 +61,13 @@ bool compare_no_case(const std::string& first,
   return first.length() > second.length();
 }
 
-bool compare_no_case2(const std::string& first,
+bool icase_length_less(const std::string& first,
                       const std::string& second) {
   if (first.length() > second.length())
     return true;
   if (first.length() < second.length())
     return false;
-  return compare_no_case(first, second);
+  return icase_alpha_less(first, second);
 }
 
 struct SortMap {
@@ -1151,8 +1151,8 @@ void check_one_path_acedrg(
           all_ids.push_back(it.second);
           ring_atoms.push_back(it.first);
         }
-        std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
-        std::sort(all_ids.begin(), all_ids.end(), compare_no_case);
+        std::sort(all_seris.begin(), all_seris.end(), icase_alpha_less);
+        std::sort(all_ids.begin(), all_ids.end(), icase_alpha_less);
 
         std::string rep;
         for (const auto& id : all_ids)
@@ -1220,7 +1220,7 @@ void set_atoms_ring_rep_s(
     std::vector<std::string> all_seris;
     for (int idx : ring.atoms)
       all_seris.push_back(std::to_string(idx));
-    std::sort(all_seris.begin(), all_seris.end(), compare_no_case);
+    std::sort(all_seris.begin(), all_seris.end(), icase_alpha_less);
     std::string rep_id = join_str(all_seris, '_');
 
     for (int idx : ring.atoms) {
@@ -1390,13 +1390,13 @@ void order_two_atoms(const CodAtomInfo& a1, const CodAtomInfo& a2,
     second = &a1;
     return;
   }
-  if (compare_no_case2(a1.cod_main, a2.cod_main)) {
+  if (icase_length_less(a1.cod_main, a2.cod_main)) {
     first = &a1;
     second = &a2;
-  } else if (compare_no_case2(a2.cod_main, a1.cod_main)) {
+  } else if (icase_length_less(a2.cod_main, a1.cod_main)) {
     first = &a2;
     second = &a1;
-  } else if (!compare_no_case2(a1.id, a2.id)) {
+  } else if (!icase_length_less(a1.id, a2.id)) {
     first = &a1;
     second = &a2;
   } else {
@@ -1569,7 +1569,7 @@ void set_special_3nb_symb2(
     std::string id = cat(it.second, '|', it.first);
     comps.push_back(id);
   }
-  std::sort(comps.begin(), comps.end(), compare_no_case2);
+  std::sort(comps.begin(), comps.end(), icase_length_less);
 
   if (!comps.empty()) {
     atom.cod_class += '{';
@@ -1654,7 +1654,7 @@ void set_atoms_nb1nb2_sp(
     // Sort alphabetically by the string (same order as AceDRG tables)
     std::sort(nb1_nb2_sp_set.begin(), nb1_nb2_sp_set.end(),
               [](const auto& a, const auto& b) {
-                return compare_no_case(a, b);
+                return icase_alpha_less(a, b);
               });
     // Build nb1nb2_sp in alphabetical order
     atom.nb1nb2_sp.clear();
@@ -2385,6 +2385,180 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
 // Implementation - Bond search
 // ============================================================================
 
+// Ring angle enforcement: two-round algorithm matching
+// checkRingAngleConstraints() in AceDRG.
+// Round 1: Pull non-fixed angles toward target mean, with strength
+//   proportional to moF[approxLevel].
+// Round 2: Uniform shift to achieve exact ring sum.
+static void enforce_ring_angle_constraints(
+    ChemComp& cc, const std::vector<CodAtomInfo>& atom_info,
+    const std::vector<int>& angle_approx,
+    std::vector<bool>& angle_is_fixed, int verbose) {
+  static const double moF[] = {0.0, 0.25, 0.50, 0.75, 1.0, 1.0, 1.0};
+
+  std::map<int, std::vector<size_t>> rings;
+  for (size_t i = 0; i < atom_info.size(); ++i)
+    for (int ring_id : atom_info[i].in_rings)
+      rings[ring_id].push_back(i);
+  if (verbose >= 2) {
+    std::fprintf(stderr, "    ring enforcement: %zu rings found\n", rings.size());
+    for (size_t i = 0; i < atom_info.size(); ++i) {
+      if (!atom_info[i].in_rings.empty()) {
+        std::fprintf(stderr, "      atom %s in_rings:", atom_info[i].id.c_str());
+        for (int r : atom_info[i].in_rings)
+          std::fprintf(stderr, " %d", r);
+        std::fprintf(stderr, "\n");
+      }
+    }
+    for (const auto& r : rings) {
+      std::fprintf(stderr, "    ring enforcement: ring_id=%d atoms=", r.first);
+      for (size_t idx : r.second)
+        std::fprintf(stderr, "%s ", cc.atoms[idx].id.c_str());
+      std::fprintf(stderr, "\n");
+    }
+  }
+  for (const auto& ring : rings) {
+    const std::vector<size_t>& ring_atoms = ring.second;
+    if (ring_atoms.size() < 3)
+      continue;
+    bool planar = true;
+    for (size_t idx : ring_atoms) {
+      if (atom_info[idx].bonding_idx == 3) {
+        planar = false;
+        break;
+      }
+    }
+    if (!planar)
+      continue;
+    std::set<std::string> ring_ids;
+    for (size_t idx : ring_atoms)
+      ring_ids.insert(cc.atoms[idx].id);
+    std::vector<size_t> ring_angles;
+    ring_angles.reserve(ring_atoms.size());
+    for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
+      const auto& ang = cc.rt.angles[i];
+      if (ring_ids.count(ang.id2.atom) &&
+          ring_ids.count(ang.id1.atom) &&
+          ring_ids.count(ang.id3.atom))
+        ring_angles.push_back(i);
+    }
+    if (ring_angles.size() != ring_atoms.size())
+      continue;
+    int rSize = static_cast<int>(ring_atoms.size());
+    double aM = (rSize - 2) * 180.0 / rSize;
+
+    // Round 1: pull non-fixed angles toward aM
+    for (size_t idx : ring_angles) {
+      int al = std::min(angle_approx[idx], 6);
+      if (verbose >= 2) {
+        std::fprintf(stderr, "      ring angle %s-%s-%s: approx=%d moF=%.2f value=%.4f\n",
+                     cc.rt.angles[idx].id1.atom.c_str(),
+                     cc.rt.angles[idx].id2.atom.c_str(),
+                     cc.rt.angles[idx].id3.atom.c_str(),
+                     al, moF[al], cc.rt.angles[idx].value);
+      }
+      if (al == 0) {
+        angle_is_fixed[idx] = true;
+      } else {
+        double curDev = cc.rt.angles[idx].value - aM;
+        cc.rt.angles[idx].value -= moF[al] * curDev;
+      }
+    }
+
+    // Round 2: uniform shift so total sum = rSize * aM
+    double sum = 0.0;
+    for (size_t idx : ring_angles)
+      sum += cc.rt.angles[idx].value;
+    double aMDev = aM - sum / rSize;
+    for (size_t idx : ring_angles) {
+      cc.rt.angles[idx].value += aMDev;
+      angle_is_fixed[idx] = true;
+      if (verbose >= 2) {
+        std::fprintf(stderr, "      ring angle %s-%s-%s: final=%.6f\n",
+                     cc.rt.angles[idx].id1.atom.c_str(),
+                     cc.rt.angles[idx].id2.atom.c_str(),
+                     cc.rt.angles[idx].id3.atom.c_str(),
+                     cc.rt.angles[idx].value);
+      }
+    }
+  }
+}
+
+// Enforce 360-degree sum for sp2 centers with exactly 3 angles,
+// keeping ring-fixed angles unchanged.
+static void enforce_sp2_angle_sum(
+    ChemComp& cc, const std::vector<CodAtomInfo>& atom_info,
+    const std::vector<bool>& angle_is_fixed) {
+  auto atom_index = cc.make_atom_index();
+  std::map<std::string, std::vector<size_t>> center_angles;
+  for (size_t i = 0; i < cc.rt.angles.size(); ++i)
+    center_angles[cc.rt.angles[i].id2.atom].push_back(i);
+  for (const auto& entry : center_angles) {
+    if (entry.second.size() != 3)
+      continue;
+    auto it = atom_index.find(entry.first);
+    if (it == atom_index.end())
+      continue;
+    size_t center_idx = it->second;
+    if (atom_info[center_idx].hybrid != Hybridization::SP2)
+      continue;
+    std::vector<size_t> fixed, free;
+    for (size_t idx_ang : entry.second) {
+      if (angle_is_fixed[idx_ang])
+        fixed.push_back(idx_ang);
+      else
+        free.push_back(idx_ang);
+    }
+    if (free.empty())
+      continue;
+    // When free angles include both metal-flank and organic angles,
+    // treat organic angles as fixed — their table-lookup values are more
+    // specific. Only metal-flank defaults absorb the 360° deficit.
+    {
+      bool has_metal = false, has_organic = false;
+      for (size_t idx_ang : free) {
+        int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
+        int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
+        if ((i1 >= 0 && atom_info[i1].is_metal) ||
+            (i3 >= 0 && atom_info[i3].is_metal))
+          has_metal = true;
+        else
+          has_organic = true;
+      }
+      if (has_metal && has_organic) {
+        std::vector<size_t> new_free;
+        for (size_t idx_ang : free) {
+          int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
+          int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
+          if ((i1 >= 0 && atom_info[i1].is_metal) ||
+              (i3 >= 0 && atom_info[i3].is_metal))
+            new_free.push_back(idx_ang);
+          else
+            fixed.push_back(idx_ang);
+        }
+        free = new_free;
+      }
+    }
+    double fixed_sum = 0.0;
+    for (size_t idx_ang : fixed)
+      fixed_sum += cc.rt.angles[idx_ang].value;
+    double free_sum = 0.0;
+    for (size_t idx_ang : free)
+      free_sum += cc.rt.angles[idx_ang].value;
+    double diff = (360.0 - fixed_sum - free_sum) / static_cast<double>(free.size());
+    if (std::fabs(diff) > 0.01) {
+      double new_sum = 0.0;
+      for (size_t idx_ang : free) {
+        cc.rt.angles[idx_ang].value += diff;
+        new_sum += cc.rt.angles[idx_ang].value;
+      }
+      cc.rt.angles[free[0]].value += (360.0 - fixed_sum - new_sum);
+    } else {
+      cc.rt.angles[free[0]].value += diff;
+    }
+  }
+}
+
 void AcedrgTables::fill_restraints(ChemComp& cc) const {
   if (!tables_loaded_)
     return;
@@ -2554,175 +2728,10 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
   }
 
-  // AceDRG ring angle enforcement: two-round algorithm matching
-  // checkRingAngleConstraints() in AceDRG.
-  // Round 1: Pull non-fixed angles toward the target mean angle,
-  //   with strength proportional to moF[approxLevel].
-  // Round 2: Uniform shift to achieve exact ring sum.
-  // Modification factors by approxLevel (from AceDRG source):
-  static const double moF[] = {0.0, 0.25, 0.50, 0.75, 1.0, 1.0, 1.0};
-  // Track which angles are "fixed" after ring enforcement (for SP2 constraint)
   std::vector<bool> angle_is_fixed(cc.rt.angles.size(), false);
-
-  auto atom_index = cc.make_atom_index();
-  std::map<int, std::vector<size_t>> rings;
-  for (size_t i = 0; i < atom_info.size(); ++i)
-    for (int ring_id : atom_info[i].in_rings)
-      rings[ring_id].push_back(i);
-  if (verbose >= 2) {
-    std::fprintf(stderr, "    ring enforcement: %zu rings found\n", rings.size());
-    for (size_t i = 0; i < atom_info.size(); ++i) {
-      if (!atom_info[i].in_rings.empty()) {
-        std::fprintf(stderr, "      atom %s in_rings:", atom_info[i].id.c_str());
-        for (int r : atom_info[i].in_rings)
-          std::fprintf(stderr, " %d", r);
-        std::fprintf(stderr, "\n");
-      }
-    }
-    for (const auto& r : rings) {
-      std::fprintf(stderr, "    ring enforcement: ring_id=%d atoms=", r.first);
-      for (size_t idx : r.second)
-        std::fprintf(stderr, "%s ", cc.atoms[idx].id.c_str());
-      std::fprintf(stderr, "\n");
-    }
-  }
-  for (const auto& ring : rings) {
-    const std::vector<size_t>& ring_atoms = ring.second;
-    if (ring_atoms.size() < 3)
-      continue;
-    bool planar = true;
-    for (size_t idx : ring_atoms) {
-      if (atom_info[idx].bonding_idx == 3) {
-        planar = false;
-        break;
-      }
-    }
-    if (!planar)
-      continue;
-    std::set<std::string> ring_ids;
-    for (size_t idx : ring_atoms)
-      ring_ids.insert(cc.atoms[idx].id);
-    std::vector<size_t> ring_angles;
-    ring_angles.reserve(ring_atoms.size());
-    for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
-      const auto& ang = cc.rt.angles[i];
-      if (ring_ids.count(ang.id2.atom) &&
-          ring_ids.count(ang.id1.atom) &&
-          ring_ids.count(ang.id3.atom))
-        ring_angles.push_back(i);
-    }
-    if (ring_angles.size() != ring_atoms.size())
-      continue;
-    int rSize = static_cast<int>(ring_atoms.size());
-    double aM = (rSize - 2) * 180.0 / rSize;
-
-    // Round 1: pull non-fixed angles toward aM
-    for (size_t idx : ring_angles) {
-      int al = std::min(angle_approx[idx], 6);
-      if (verbose >= 2) {
-        std::fprintf(stderr, "      ring angle %s-%s-%s: approx=%d moF=%.2f value=%.4f\n",
-                     cc.rt.angles[idx].id1.atom.c_str(),
-                     cc.rt.angles[idx].id2.atom.c_str(),
-                     cc.rt.angles[idx].id3.atom.c_str(),
-                     al, moF[al], cc.rt.angles[idx].value);
-      }
-      if (al == 0) {
-        angle_is_fixed[idx] = true;
-      } else {
-        double curDev = cc.rt.angles[idx].value - aM;
-        cc.rt.angles[idx].value -= moF[al] * curDev;
-      }
-    }
-
-    // Round 2: uniform shift so total sum = rSize * aM
-    double sum = 0.0;
-    for (size_t idx : ring_angles)
-      sum += cc.rt.angles[idx].value;
-    double aMDev = aM - sum / rSize;
-    for (size_t idx : ring_angles) {
-      cc.rt.angles[idx].value += aMDev;
-      angle_is_fixed[idx] = true;
-      if (verbose >= 2) {
-        std::fprintf(stderr, "      ring angle %s-%s-%s: final=%.6f\n",
-                     cc.rt.angles[idx].id1.atom.c_str(),
-                     cc.rt.angles[idx].id2.atom.c_str(),
-                     cc.rt.angles[idx].id3.atom.c_str(),
-                     cc.rt.angles[idx].value);
-      }
-    }
-  }
-
-  // AceDRG adjustment: enforce 360-degree sum for sp2 centers with 3 angles,
-  // keeping ring angles fixed (checkRingAngleConstraints behavior).
-  std::map<std::string, std::vector<size_t>> center_angles;
-  for (size_t i = 0; i < cc.rt.angles.size(); ++i)
-    center_angles[cc.rt.angles[i].id2.atom].push_back(i);
-  for (const auto& entry : center_angles) {
-    if (entry.second.size() != 3)
-      continue;
-    auto it = atom_index.find(entry.first);
-    if (it == atom_index.end())
-      continue;
-    size_t center_idx = it->second;
-    if (atom_info[center_idx].hybrid != Hybridization::SP2)
-      continue;
-    std::vector<size_t> fixed, free;
-    for (size_t idx_ang : entry.second) {
-      if (angle_is_fixed[idx_ang])
-        fixed.push_back(idx_ang);
-      else
-        free.push_back(idx_ang);
-    }
-    if (free.empty())
-      continue;
-    // When free angles include both metal-flank and organic angles,
-    // treat the organic angles as fixed — their table-lookup values are
-    // more specific. Only the metal-flank defaults absorb the 360° deficit.
-    // This matches AceDRG's behavior for e.g. porphyrin nitrogens
-    // coordinated to Mg (AOH: NA with C1A-NA-C4A fixed, MG-NA angles free).
-    {
-      bool has_metal = false, has_organic = false;
-      for (size_t idx_ang : free) {
-        int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
-        int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
-        if ((i1 >= 0 && atom_info[i1].is_metal) ||
-            (i3 >= 0 && atom_info[i3].is_metal))
-          has_metal = true;
-        else
-          has_organic = true;
-      }
-      if (has_metal && has_organic) {
-        std::vector<size_t> new_free;
-        for (size_t idx_ang : free) {
-          int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
-          int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
-          if ((i1 >= 0 && atom_info[i1].is_metal) ||
-              (i3 >= 0 && atom_info[i3].is_metal))
-            new_free.push_back(idx_ang);
-          else
-            fixed.push_back(idx_ang);
-        }
-        free = new_free;
-      }
-    }
-    double fixed_sum = 0.0;
-    for (size_t idx_ang : fixed)
-      fixed_sum += cc.rt.angles[idx_ang].value;
-    double free_sum = 0.0;
-    for (size_t idx_ang : free)
-      free_sum += cc.rt.angles[idx_ang].value;
-    double diff = (360.0 - fixed_sum - free_sum) / static_cast<double>(free.size());
-    if (std::fabs(diff) > 0.01) {
-      double new_sum = 0.0;
-      for (size_t idx_ang : free) {
-        cc.rt.angles[idx_ang].value += diff;
-        new_sum += cc.rt.angles[idx_ang].value;
-      }
-      cc.rt.angles[free[0]].value += (360.0 - fixed_sum - new_sum);
-    } else {
-      cc.rt.angles[free[0]].value += diff;
-    }
-  }
+  enforce_ring_angle_constraints(cc, atom_info, angle_approx,
+                                 angle_is_fixed, verbose);
+  enforce_sp2_angle_sum(cc, atom_info, angle_is_fixed);
   } // !angle_hrs_.empty()
 }
 
@@ -3350,7 +3359,7 @@ CodStats AcedrgTables::search_metal_bond(const CodAtomInfo& metal,
     if (nb >= 0 && nb < static_cast<int>(atoms.size()))
       nb_ids.push_back(atoms[nb].el.name());
   }
-  std::sort(nb_ids.begin(), nb_ids.end(), compare_no_case);
+  std::sort(nb_ids.begin(), nb_ids.end(), icase_alpha_less);
 
   std::string ligand_class;
   for (const auto& id : nb_ids)
