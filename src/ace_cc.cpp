@@ -933,6 +933,18 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
   bool peptide_mode = ChemComp::is_peptide_group(cc.group);
+  auto is_sp1_like = [&](const CodAtomInfo& ai) {
+    return ai.bonding_idx > 0 ? ai.bonding_idx == 1
+                              : ai.hybrid == Hybridization::SP1;
+  };
+  auto is_sp2_like = [&](const CodAtomInfo& ai) {
+    return ai.bonding_idx > 0 ? ai.bonding_idx == 2
+                              : ai.hybrid == Hybridization::SP2;
+  };
+  auto is_sp3_like = [&](const CodAtomInfo& ai) {
+    return ai.bonding_idx > 0 ? ai.bonding_idx == 3
+                              : ai.hybrid == Hybridization::SP3;
+  };
   std::vector<bool> aromatic_like(cc.atoms.size(), false);
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
@@ -1412,7 +1424,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     }
     found_rs:
     std::vector<size_t> tv;
-    int max_len = (atom_info[center].hybrid == Hybridization::SP2) ? 2 : 3;
+    int max_len = is_sp2_like(atom_info[center]) ? 2 : 3;
     if (ring_sharing != SIZE_MAX)
       tv.push_back(ring_sharing);
 
@@ -1449,7 +1461,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                ring_sharing == SIZE_MAX);
       std::vector<size_t> nb_order;
       nb_order.reserve(adj[center].size());
-      if (atom_info[center].hybrid == Hybridization::SP2) {
+      if (is_sp2_like(atom_info[center])) {
         for (const auto& nb : adj[center])
           if (!cc.atoms[nb.idx].is_hydrogen())
             nb_order.push_back(nb.idx);
@@ -1586,7 +1598,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (rs != SIZE_MAX)
         tv.push_back(rs);
 
-      int max_len = (atom_info[ctr].hybrid == Hybridization::SP2) ? 2 : 3;
+      int max_len = is_sp2_like(atom_info[ctr]) ? 2 : 3;
       bool used_chiral = false;
       bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
                          stereo_chiral_centers.count(ctr) != 0);
@@ -1613,7 +1625,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (!used_chiral) {
         std::vector<size_t> nb_order;
         nb_order.reserve(adj[ctr].size());
-        if (atom_info[ctr].hybrid == Hybridization::SP2) {
+        if (is_sp2_like(atom_info[ctr])) {
           for (const auto& nb : adj[ctr])
             if (!cc.atoms[nb.idx].is_hydrogen())
               nb_order.push_back(nb.idx);
@@ -1653,14 +1665,16 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     std::vector<size_t> tv1_idx, tv2_idx;
     TvMode mode12 = TvMode::Default;
     TvMode mode21 = TvMode::Default;
-    auto h12 = atom_info[center2].hybrid;
-    auto h21 = atom_info[center3].hybrid;
-    if (h12 == Hybridization::SP3 && h21 == Hybridization::SP3) {
+    bool sp3_like_12 = is_sp3_like(atom_info[center2]);
+    bool sp3_like_21 = is_sp3_like(atom_info[center3]);
+    bool sp2_like_12 = is_sp2_like(atom_info[center2]);
+    bool sp2_like_21 = is_sp2_like(atom_info[center3]);
+    if (sp3_like_12 && sp3_like_21) {
       mode12 = TvMode::SP3SP3;
       mode21 = TvMode::SP3SP3;
-    } else if (h12 == Hybridization::SP3 && h21 == Hybridization::SP2) {
+    } else if (sp3_like_12 && sp2_like_21) {
       mode12 = TvMode::SP2SP3_SP3;
-    } else if (h12 == Hybridization::SP2 && h21 == Hybridization::SP3) {
+    } else if (sp2_like_12 && sp3_like_21) {
       mode21 = TvMode::SP2SP3_SP3;
     }
     tv1_idx = build_tv_list(center2, center3, mode12);
@@ -1674,11 +1688,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
     const CodAtomInfo& h2 = atom_info[center2];
     const CodAtomInfo& h3 = atom_info[center3];
-    bool sp3_2 = (h2.hybrid == Hybridization::SP3);
-    bool sp3_3 = (h3.hybrid == Hybridization::SP3);
-    bool sp2_2 = (h2.hybrid == Hybridization::SP2);
-    bool sp2_3 = (h3.hybrid == Hybridization::SP2);
-    if (h2.hybrid == Hybridization::SP1 || h3.hybrid == Hybridization::SP1)
+    bool sp3_2 = is_sp3_like(h2);
+    bool sp3_3 = is_sp3_like(h3);
+    bool sp2_2 = is_sp2_like(h2);
+    bool sp2_3 = is_sp2_like(h3);
+    if (is_sp1_like(h2) || is_sp1_like(h3))
       continue;
 
     auto emit_torsion = [&](size_t a1_idx, size_t a4_idx) {
