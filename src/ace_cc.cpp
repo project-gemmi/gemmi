@@ -2366,14 +2366,15 @@ void add_chirality_if_missing(
 
     std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
     std::vector<size_t> h = hydrogen_neighbors(cc, adj, center);
-    if (non_h.size() < 3)
+    bool n_sp3_2h1_case = (cc.atoms[center].el == El::N &&
+                           non_h.size() == 2 && !h.empty());
+    if (non_h.size() < 3 && !n_sp3_2h1_case)
       continue;
 
     ChiralityType sign = stereo_sign(center);
     bool is_stereo_carbon = (sign != ChiralityType::Both && cc.atoms[center].el == El::C);
     if (is_stereo_carbon)
       stereo_centers.insert(center);
-
     if (is_stereo_carbon) {
       std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
         return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
@@ -2392,15 +2393,25 @@ void add_chirality_if_missing(
     }
 
     std::vector<size_t> chosen;
-    for (size_t idx : non_h) {
-      if (chosen.size() == 3)
-        break;
-      chosen.push_back(idx);
-    }
-    for (size_t idx : h) {
-      if (chosen.size() == 3)
-        break;
-      chosen.push_back(idx);
+    if (n_sp3_2h1_case) {
+      std::vector<size_t> n_non_h = non_h;
+      std::stable_sort(n_non_h.begin(), n_non_h.end(), [&](size_t a, size_t b) {
+        return cc.atoms[a].id > cc.atoms[b].id;
+      });
+      chosen.push_back(n_non_h[0]);
+      chosen.push_back(n_non_h[1]);
+      chosen.push_back(h[0]);
+    } else {
+      for (size_t idx : non_h) {
+        if (chosen.size() == 3)
+          break;
+        chosen.push_back(idx);
+      }
+      for (size_t idx : h) {
+        if (chosen.size() == 3)
+          break;
+        chosen.push_back(idx);
+      }
     }
     if (chosen.size() < 3)
       continue;
