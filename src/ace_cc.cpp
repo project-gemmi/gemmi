@@ -923,92 +923,6 @@ bool is_oxygen_column(Element el) {
          el == El::Te || el == El::Po;
 }
 
-const ChemComp::Atom* pick_torsion_neighbor(
-    const ChemComp& cc,
-    const AceBondAdjacency& adj,
-    const std::vector<CodAtomInfo>& atom_info,
-    size_t center_idx,
-    size_t exclude_idx) {
-  std::vector<size_t> tv;
-  // Ring-sharing neighbor (AceDRG torsion vector tv[0]) if present.
-  for (const auto& nb1 : adj[center_idx]) {
-    if (nb1.idx == exclude_idx)
-      continue;
-    for (const auto& nb2 : adj[exclude_idx]) {
-      if (nb2.idx == center_idx || nb2.idx == nb1.idx)
-        continue;
-      if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
-        tv.push_back(nb1.idx);
-        goto ring_found;
-      }
-    }
-  }
-ring_found:
-  std::vector<size_t> non_ring_non_h;
-  std::vector<size_t> ring_non_h;
-  std::vector<size_t> metal_non_h;
-  std::vector<size_t> h_only;
-  for (const auto& nb : adj[center_idx]) {
-    if (nb.idx == exclude_idx || (!tv.empty() && nb.idx == tv.front()))
-      continue;
-    if (cc.atoms[nb.idx].is_hydrogen())
-      h_only.push_back(nb.idx);
-    else if (cc.atoms[nb.idx].el.is_metal())
-      metal_non_h.push_back(nb.idx);
-    else if (atom_info[nb.idx].min_ring_size > 0)
-      ring_non_h.push_back(nb.idx);
-    else
-      non_ring_non_h.push_back(nb.idx);
-  }
-  // If there is exactly one hydrogen neighbor (and at least one non-H),
-  // prefer that hydrogen as torsion terminal (AceDRG often chooses unique H).
-  if (h_only.size() == 1 && (!non_ring_non_h.empty() || !ring_non_h.empty()))
-    return &cc.atoms[h_only.front()];
-  tv.insert(tv.end(), non_ring_non_h.begin(), non_ring_non_h.end());
-  tv.insert(tv.end(), ring_non_h.begin(), ring_non_h.end());
-  tv.insert(tv.end(), metal_non_h.begin(), metal_non_h.end());
-  tv.insert(tv.end(), h_only.begin(), h_only.end());
-  if (tv.empty())
-    return nullptr;
-  // Deduplicate: if first candidate equals exclude (shouldn't) or same atom, skip.
-  return &cc.atoms[tv.front()];
-}
-
-// AceDRG selectOneTorFromOneBond: classify as Ring / NonH / H,
-// priority NonH > Ring > H, tiebreaker = first in connAtoms (bond-table order).
-const ChemComp::Atom* pick_aromatic_ring_neighbor(
-    const ChemComp& cc,
-    const AceBondAdjacency& adj,
-    const std::vector<CodAtomInfo>& atom_info,
-    size_t center_idx,
-    size_t exclude_idx) {
-  std::vector<size_t> nonring_nonh;
-  std::vector<size_t> ring_nb;
-  std::vector<size_t> metal_nb;
-  std::vector<size_t> h;
-  for (size_t idx : neighbor_indices_except(adj, center_idx, exclude_idx)) {
-    if (cc.atoms[idx].is_hydrogen()) {
-      h.push_back(idx);
-    } else if (cc.atoms[idx].el.is_metal()) {
-      metal_nb.push_back(idx);
-    } else if (atom_info[idx].min_ring_size > 0) {
-      ring_nb.push_back(idx);
-    } else {
-      nonring_nonh.push_back(idx);
-    }
-  }
-  // tiebreaker: bond-table order (= adj iteration order, already preserved)
-  if (!nonring_nonh.empty())
-    return &cc.atoms[nonring_nonh.front()];
-  if (!ring_nb.empty())
-    return &cc.atoms[ring_nb.front()];
-  if (!metal_nb.empty())
-    return &cc.atoms[metal_nb.front()];
-  if (!h.empty())
-    return &cc.atoms[h.front()];
-  return nullptr;
-}
-
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
                                         const std::vector<CodAtomInfo>& atom_info,
                                         const std::map<std::string, std::string>& atom_stereo) {
@@ -1622,7 +1536,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       center2 = (cc.atoms[idx1].id == "CA") ? idx1 : idx2;
       center3 = (center2 == idx1) ? idx2 : idx1;
     } else if (idx1_in_ring && idx2_in_ring) {
-      center2 = (cc.atoms[idx1].id > cc.atoms[idx2].id) ? idx1 : idx2;
+      center2 = (cc.atoms[idx1].id < cc.atoms[idx2].id) ? idx1 : idx2;
       center3 = (center2 == idx1) ? idx2 : idx1;
     } else if (idx1_in_ring != idx2_in_ring) {
       if (cc.atoms[idx1].el == El::O || cc.atoms[idx2].el == El::O) {
@@ -1647,7 +1561,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
     if (ring_size > 0 && idx1_in_ring && idx2_in_ring &&
         cc.atoms[idx1].el == El::C && cc.atoms[idx2].el == El::C) {
-      center2 = (cc.atoms[idx1].id > cc.atoms[idx2].id) ? idx1 : idx2;
+      center2 = (cc.atoms[idx1].id < cc.atoms[idx2].id) ? idx1 : idx2;
       center3 = (center2 == idx1) ? idx2 : idx1;
     }
 
@@ -1816,9 +1730,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         // SP3-SP3 ring bond: use even/odd/no-flip matrix based on ring traversal parity
         auto parity_key = std::minmax(center2, center3);
         auto pit = bond_ring_parity.find(parity_key);
-        size_t side1 = (cc.atoms[center2].id < cc.atoms[center3].id)
-                        ? center2 : center3;
-        size_t side2 = (side1 == center2) ? center3 : center2;
+        size_t side1 = center2;
+        size_t side2 = center3;
         size_t rs1 = SIZE_MAX, rs2 = SIZE_MAX;
         for (const auto& nb1 : adj[side1]) {
           if (nb1.idx == side2) continue;
