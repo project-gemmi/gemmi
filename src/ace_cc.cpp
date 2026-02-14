@@ -1085,10 +1085,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
   // one nu torsion each (from ring geometry), while non-ring bonds keep the
   // full torsion set. Detect similar rings up-front.
-  std::set<int> sugar_ring_ids;
   std::map<int, std::set<size_t>> sugar_ring_sets;
   std::set<std::pair<size_t, size_t>> sugar_ring_bonds;
+  bool sugar_component = (to_upper(cc.type_or_group).find("SACCHARIDE") != std::string::npos);
   {
+    if (sugar_component) {
     std::map<int, std::vector<size_t>> ring_atoms;
     for (size_t i = 0; i < atom_info.size(); ++i)
       for (int rid : atom_info[i].in_rings)
@@ -1128,9 +1129,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
       if (!ok || oxy != 1 || carb != n - 1)
         continue;
-      int rid = kv.first;
-      sugar_ring_ids.insert(rid);
-      sugar_ring_sets.emplace(rid, std::move(rset));
+      sugar_ring_sets.emplace(kv.first, std::move(rset));
     }
     for (const auto& kv : sugar_ring_sets) {
       const auto& rset = kv.second;
@@ -1138,6 +1137,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         for (const auto& nb : adj[idx])
           if (rset.count(nb.idx) && idx < nb.idx)
             sugar_ring_bonds.insert(std::make_pair(idx, nb.idx));
+    }
     }
   }
   bool has_sugar_ring = !sugar_ring_bonds.empty();
