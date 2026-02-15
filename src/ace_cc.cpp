@@ -901,129 +901,75 @@ struct SugarRingInfo {
   std::set<std::pair<size_t, size_t>> ring_bonds;
 };
 
-void add_or_update_torsion(std::vector<Restraints::Torsion>& torsions,
-                          const ChemComp& cc,
-                          size_t a1, size_t a2, size_t a3, size_t a4,
-                          double value, double esd, int period) {
-  for (auto& t : torsions) {
-    if (t.id1.atom == cc.atoms[a1].id && t.id2.atom == cc.atoms[a2].id &&
-        t.id3.atom == cc.atoms[a3].id && t.id4.atom == cc.atoms[a4].id) {
-      t.value = value;
-      t.esd = esd;
-      t.period = period;
-      return;
-    }
-    if (t.id1.atom == cc.atoms[a4].id && t.id2.atom == cc.atoms[a3].id &&
-        t.id3.atom == cc.atoms[a2].id && t.id4.atom == cc.atoms[a1].id) {
-      t.value = -value;
-      t.esd = esd;
-      t.period = period;
-      return;
-    }
-  }
-  torsions.push_back({"auto",
-                      {1, cc.atoms[a1].id}, {1, cc.atoms[a2].id},
-                      {1, cc.atoms[a3].id}, {1, cc.atoms[a4].id},
-                      value, esd, period});
-}
-
-std::string co_atom_token(const ChemComp& cc, const AceBondAdjacency& adj,
-                         size_t idx) {
-  int nC = 0, nO = 0;
-  for (const auto& nb : adj[idx]) {
-    if (cc.atoms[nb.idx].el == El::C)
-      ++nC;
-    else if (cc.atoms[nb.idx].el == El::O)
-      ++nO;
-  }
-  if (nC == 1 && nO == 2)
-    return "CCO2";
-  if (nC == 2 && nO == 1)
-    return "CC2O";
-  if (nC == 1 && nO == 1)
-    return "CCO";
-  if (nC == 2)
-    return "CC2";
-  return "";
-}
-
-std::vector<size_t> build_ring_order_from_oxygen(
-    size_t o_idx, size_t start_idx, const std::set<size_t>& rset,
-    const AceBondAdjacency& adj) {
-  std::vector<size_t> order;
-  order.reserve(rset.size());
-  order.push_back(o_idx);
-  order.push_back(start_idx);
-  size_t prev = o_idx;
-  size_t curr = start_idx;
-  while (order.size() < rset.size()) {
-    size_t next = SIZE_MAX;
-    for (const auto& nb : adj[curr]) {
-      if (nb.idx != prev && rset.count(nb.idx)) {
-        next = nb.idx;
-        break;
-      }
-    }
-    if (next == SIZE_MAX)
-      return {};
-    order.push_back(next);
-    prev = curr;
-    curr = next;
-  }
-  bool closes = false;
-  for (const auto& nb : adj[order.back()]) {
-    if (nb.idx == o_idx) {
-      closes = true;
-      break;
-    }
-  }
-  if (!closes)
-    return {};
-  return order;
-}
-
-std::string ring_shape_from_order(const ChemComp& cc, const AceBondAdjacency& adj,
-                                 const std::vector<size_t>& order) {
-  std::string s = "(OC2)";
-  for (size_t i = 1; i < order.size(); ++i) {
-    std::string t = co_atom_token(cc, adj, order[i]);
-    if (t.empty())
-      return "";
-    s += "(" + t + ")";
-  }
-  return s;
-}
-
-double ring_torsion_value(const ChemComp& cc, size_t a1, size_t a2,
-                         size_t a3, size_t a4) {
-  double value = deg(calculate_dihedral(cc.atoms[a1].xyz, cc.atoms[a2].xyz,
-                                       cc.atoms[a3].xyz, cc.atoms[a4].xyz));
-  return std::isfinite(value) ? value : 0.0;
-}
-
-void add_pyranose_torsions_for_ring(
-    ChemComp& cc, const std::vector<size_t>& ring_order) {
-  if (ring_order.size() != 6)
-    return;
-  std::vector<size_t> seq = ring_order;
-  if (cc.atoms[seq[0]].el == El::O && cc.atoms[seq.back()].el != El::O)
-    std::rotate(seq.begin(), seq.end() - 1, seq.end());
-  for (size_t i = 0; i < 6; ++i) {
-    size_t a1 = seq[i];
-    size_t a2 = seq[(i + 1) % 6];
-    size_t a3 = seq[(i + 2) % 6];
-    size_t a4 = seq[(i + 3) % 6];
-    double value = ring_torsion_value(cc, a1, a2, a3, a4);
-    add_or_update_torsion(cc.rt.torsions, cc, a1, a2, a3, a4, value, 10.0, 3);
-  }
-}
-
 SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj,
                                  const std::vector<CodAtomInfo>& atom_info) {
   SugarRingInfo out;
 
-  auto is_o_candidate = [&](size_t idx) {
-    return cc.atoms[idx].el == El::O;
+  auto co_token = [&](size_t idx) -> std::string {
+    int nC = 0, nO = 0;
+    for (const auto& nb : adj[idx]) {
+      if (cc.atoms[nb.idx].el == El::C)
+        ++nC;
+      else if (cc.atoms[nb.idx].el == El::O)
+        ++nO;
+    }
+    if (nC == 1 && nO == 2) return "CCO2";
+    if (nC == 2 && nO == 1) return "CC2O";
+    if (nC == 1 && nO == 1) return "CCO";
+    if (nC == 2) return "CC2";
+    return "";
+  };
+  auto trace_ring_order = [&](const std::set<size_t>& rset, size_t o_idx,
+                             size_t start) -> std::vector<size_t> {
+    std::vector<size_t> order;
+    order.reserve(rset.size());
+    order.push_back(o_idx);
+    order.push_back(start);
+    size_t prev = o_idx;
+    size_t curr = start;
+    while (order.size() < rset.size()) {
+      size_t next = SIZE_MAX;
+      for (const auto& nb : adj[curr]) {
+        if (nb.idx != prev && rset.count(nb.idx)) {
+          next = nb.idx;
+          break;
+        }
+      }
+      if (next == SIZE_MAX)
+        return {};
+      order.push_back(next);
+      prev = curr;
+      curr = next;
+    }
+    bool closes = false;
+    for (const auto& nb : adj[order.back()]) {
+      if (nb.idx == o_idx) {
+        closes = true;
+        break;
+      }
+    }
+    if (!closes)
+      return {};
+    return order;
+  };
+  auto ring_shape = [&](const std::vector<size_t>& order) -> std::string {
+    int o_c = 0;
+    if (order.empty())
+      return "";
+    size_t o_idx = order.front();
+    for (const auto& nb : adj[o_idx])
+      if (cc.atoms[nb.idx].el == El::C)
+        ++o_c;
+    if (o_c != 2)
+      return "";
+    std::string s = "(OC2)";
+    for (size_t i = 1; i < order.size(); ++i) {
+      std::string t = co_token(order[i]);
+      if (t.empty())
+        return "";
+      s += "(" + t + ")";
+    }
+    return s;
   };
   static const char* k_ace_sugar_shapes[] = {
     "(OC2)(CCO2)(CC2O)(CC2O)(CC2O)(CC2O)",
@@ -1082,27 +1028,21 @@ SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj
         o_ring_nbs.push_back(nb.idx);
     if (o_ring_nbs.size() != 2)
       continue;
-    if (!is_o_candidate(oxy_idx))
+    std::vector<size_t> order1 = trace_ring_order(rset, oxy_idx, o_ring_nbs[0]);
+    std::vector<size_t> order2 = trace_ring_order(rset, oxy_idx, o_ring_nbs[1]);
+    std::string shape1 = ring_shape(order1);
+    std::string shape2 = ring_shape(order2);
+    if (allowed_shapes.count(shape1) == 0 && allowed_shapes.count(shape2) == 0)
       continue;
-    std::vector<size_t> order0 = build_ring_order_from_oxygen(
-        oxy_idx, o_ring_nbs[0], rset, adj);
-    std::vector<size_t> order1 = build_ring_order_from_oxygen(
-        oxy_idx, o_ring_nbs[1], rset, adj);
-    if (order0.empty() || order1.empty())
-      continue;
-    std::string shape0 = ring_shape_from_order(cc, adj, order0);
-    std::string shape1 = ring_shape_from_order(cc, adj, order1);
-    if (allowed_shapes.count(shape0) == 0 && allowed_shapes.count(shape1) == 0)
-      continue;
-    if (allowed_shapes.count(shape0) != 0)
-      out.ring_orders.emplace(kv.first, order0);
-    else
+    if (allowed_shapes.count(shape1) != 0)
       out.ring_orders.emplace(kv.first, order1);
+    else
+      out.ring_orders.emplace(kv.first, order2);
   }
   for (const auto& kv : out.ring_orders) {
     const auto& rset = kv.second;
     std::set<size_t> rset2(rset.begin(), rset.end());
-    for (size_t idx : rset2)
+    for (size_t idx : rset)
       for (const auto& nb : adj[idx])
         if (rset2.count(nb.idx) && idx < nb.idx)
           out.ring_bonds.insert(std::make_pair(idx, nb.idx));
@@ -1937,6 +1877,50 @@ static void emit_one_torsion(
                             value, esd, period});
 }
 
+double sugar_ring_torsion_value(const ChemComp& cc,
+                               size_t a1, size_t a2, size_t a3, size_t a4) {
+  double value = deg(calculate_dihedral(cc.atoms[a1].xyz, cc.atoms[a2].xyz,
+                                       cc.atoms[a3].xyz, cc.atoms[a4].xyz));
+  return std::isfinite(value) ? value : 0.0;
+}
+
+void add_sugar_ring_torsions(ChemComp& cc,
+                            const std::vector<size_t>& ring_order) {
+  if (ring_order.empty())
+    return;
+  if (ring_order.size() != 5 && ring_order.size() != 6)
+    return;
+
+  size_t n = ring_order.size();
+  size_t oxygen = SIZE_MAX;
+  for (size_t i = 0; i < n; ++i) {
+    if (cc.atoms[ring_order[i]].el == El::O) {
+      oxygen = i;
+      break;
+    }
+  }
+  if (oxygen == SIZE_MAX)
+    return;
+
+  std::vector<size_t> seq = ring_order;
+  if (oxygen != 0)
+    std::rotate(seq.begin(), seq.begin() + static_cast<long>(oxygen), seq.end());
+
+  for (size_t i = 0; i < n; ++i) {
+    size_t a1 = seq[(i + n - 1) % n];
+    size_t a2 = seq[i];
+    size_t a3 = seq[(i + 1) % n];
+    size_t a4 = seq[(i + 2) % n];
+    double value = sugar_ring_torsion_value(cc, a1, a2, a3, a4);
+    cc.rt.torsions.push_back({"auto",
+                              {1, cc.atoms[a1].id},
+                              {1, cc.atoms[a2].id},
+                              {1, cc.atoms[a3].id},
+                              {1, cc.atoms[a4].id},
+                              value, 10.0, 3});
+  }
+}
+
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
                                         const std::vector<CodAtomInfo>& atom_info,
                                         const std::map<std::string, std::string>& atom_stereo,
@@ -1967,14 +1951,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       detect_chiral_centers_and_mut_table(cc, adj, atom_info, atom_stereo);
   auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
   auto& chir_mut_table = chiral_info.chir_mut_table;
-  auto sugar_ring_for_bond = [&](size_t a, size_t b) -> int {
-    for (const auto& kv : sugar_ring_orders) {
-      std::set<size_t> rset(kv.second.begin(), kv.second.end());
-      if (rset.size() == 6 && rset.count(a) && rset.count(b))
-        return kv.first;
-    }
-    return -1;
-  };
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -2135,47 +2111,16 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   }
 
   if (has_sugar_ring) {
-    auto atom_idx = [&](const std::string& id) -> size_t {
-      auto it = atom_index.find(id);
-      return it != atom_index.end() ? it->second : SIZE_MAX;
-    };
-    std::set<std::pair<size_t, size_t>> sugar_ring_torsion_bonds;
-    for (const auto& tor : cc.rt.torsions) {
-      size_t a = atom_idx(tor.id1.atom);
-      size_t b = atom_idx(tor.id2.atom);
-      size_t c = atom_idx(tor.id3.atom);
-      size_t d = atom_idx(tor.id4.atom);
-      if (a == SIZE_MAX || b == SIZE_MAX || c == SIZE_MAX || d == SIZE_MAX)
-        continue;
-      auto bkey = std::minmax(b, c);
-      if (!sugar_ring_bonds.count(bkey))
-        continue;
-      int rid = sugar_ring_for_bond(b, c);
-      if (rid < 0)
-        continue;
-      auto it_r = sugar_ring_orders.find(rid);
-      if (it_r == sugar_ring_orders.end())
-        continue;
-      std::set<size_t> rset(it_r->second.begin(), it_r->second.end());
-      if (!rset.count(a) || !rset.count(d))
-        continue;
-      sugar_ring_torsion_bonds.insert(bkey);
-    }
-    cc.rt.torsions.erase(
-        std::remove_if(cc.rt.torsions.begin(), cc.rt.torsions.end(),
-                       [&](const Restraints::Torsion& tor) {
-                         size_t b = atom_idx(tor.id2.atom);
-                         size_t c = atom_idx(tor.id3.atom);
-                         if (b == SIZE_MAX || c == SIZE_MAX)
-                           return false;
-                         auto bkey = std::minmax(b, c);
-                         return sugar_ring_torsion_bonds.count(bkey) != 0;
-                       }),
-        cc.rt.torsions.end());
-    for (const auto& kv : sugar_ring_orders) {
-      if (kv.second.size() == 6)
-        add_pyranose_torsions_for_ring(cc, kv.second);
-    }
+    vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& tor) {
+      auto b_it = atom_index.find(tor.id2.atom);
+      auto c_it = atom_index.find(tor.id3.atom);
+      if (b_it == atom_index.end() || c_it == atom_index.end())
+        return false;
+      auto bkey = std::minmax(b_it->second, c_it->second);
+      return sugar_ring_bonds.count(bkey) != 0;
+    });
+    for (const auto& kv : sugar_ring_orders)
+      add_sugar_ring_torsions(cc, kv.second);
   }
 
 }
