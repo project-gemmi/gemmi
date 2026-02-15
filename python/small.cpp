@@ -69,8 +69,7 @@ void add_small(nb::module_& m) {
     .def(nb::init<>())
     .def_rw("name", &SmallStructure::name)
     .def_rw("cell", &SmallStructure::cell)
-    .def_ro("spacegroup", &SmallStructure::spacegroup,
-                  nb::rv_policy::reference_internal)
+    .def_rw("spacegroup", &SmallStructure::spacegroup, nb::arg().none())
     .def_rw("spacegroup_hm", &SmallStructure::spacegroup_hm)
     .def_rw("spacegroup_hall", &SmallStructure::spacegroup_hall)
     .def_rw("spacegroup_number", &SmallStructure::spacegroup_number)
