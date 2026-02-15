@@ -1083,6 +1083,24 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
 
 Residue make_residue_from_chemcomp_block(const cif::Block& block, ChemCompModel kind) {
   std::array<std::string, 3> xyz_tags;
+  if (kind == ChemCompModel::First) {
+    const cif::Item* loop_item =
+        const_cast<cif::Block&>(block).find_loop("_chem_comp_atom.atom_id").item();
+    if (loop_item && loop_item->type == cif::ItemType::Loop)
+      for (const std::string& tag : loop_item->loop.tags) {
+        std::string lctag = gemmi::to_lower(tag);
+        if (lctag == "_chem_comp_atom.x") {
+          kind = ChemCompModel::Xyz;
+          break;
+        } else if (lctag == "_chem_comp_atom.model_cartn_x") {
+          kind = ChemCompModel::Example;
+          break;
+        } else if (lctag == "_chem_comp_atom.pdbx_model_cartn_x_ideal") {
+          kind = ChemCompModel::Ideal;
+          break;
+        }
+      }
+  }
   switch (kind) {
     case ChemCompModel::Xyz:
       xyz_tags = {{"x", "y", "z"}};
@@ -1094,6 +1112,8 @@ Residue make_residue_from_chemcomp_block(const cif::Block& block, ChemCompModel 
       xyz_tags = {{"pdbx_model_Cartn_x_ideal",
                    "pdbx_model_Cartn_y_ideal",
                    "pdbx_model_Cartn_z_ideal"}};
+      break;
+    default:
       break;
   }
   Residue res;

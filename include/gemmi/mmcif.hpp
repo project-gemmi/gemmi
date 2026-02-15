@@ -39,7 +39,8 @@ inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nul
 enum class ChemCompModel {
   Xyz      = 1, // _chem_comp_atom.x, etc
   Example  = 2, // _chem_comp_atom.model_Cartn_x
-  Ideal    = 4  // _chem_comp_atom.pdbx_model_Cartn_x_ideal
+  Ideal    = 4, // _chem_comp_atom.pdbx_model_Cartn_x_ideal
+  First    = 8  // whatever comes first in the input file
 };
 
 constexpr int operator|(ChemCompModel a, ChemCompModel b) { return (int)a | (int)b; }

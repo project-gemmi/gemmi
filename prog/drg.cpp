@@ -4,6 +4,7 @@
 #include <iostream>
 #include "gemmi/read_cif.hpp"     // for read_cif_gz
 #include "gemmi/chemcomp.hpp"     // for ChemComp, make_chemcomp_from_block
+#include "gemmi/mmcif.hpp"        // for ChemCompModel, make_residue_from_chemcomp_block
 #include "gemmi/acedrg_tables.hpp"  // for AcedrgTables
 #include "gemmi/ace_cc.hpp"        // for prepare_chemcomp
 #include "gemmi/to_cif.hpp"       // for write_cif_to_stream
@@ -19,7 +20,7 @@ using namespace gemmi;
 namespace {
 
 enum OptionIndex {
-  Tables=4, Sigma, Timing, CifStyle, OutputDir, OnlyBonds
+  Tables=4, Sigma, Timing, CifStyle, OutputDir, OnlyBonds, CoordModel
 };
 
 const option::Descriptor Usage[] = {
@@ -48,12 +49,48 @@ const option::Descriptor Usage[] = {
     "  --style=STYLE  \tOutput style: default, pdbx, aligned." },
   { OnlyBonds, 0, "", "only-bonds", Arg::None,
     "  --only-bonds  \tOnly calculate bond restraints (skip angles, torsions, etc.)." },
+  { CoordModel, 0, "", "coord-model", Arg::Required,
+    "  --coord-model=KIND  \tCoordinates to use from _chem_comp_atom:"
+    "\n\t\txyz | example | ideal | first | auto (default: first)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
 std::string get_filename(const std::string& path) {
   size_t pos = path.find_last_of("/\\");
   return pos == std::string::npos ? path : path.substr(pos + 1);
+}
+
+enum class CoordModelChoice { Auto, Xyz, Example, Ideal, First };
+
+const char* coord_model_name(CoordModelChoice c) {
+  switch (c) {
+    case CoordModelChoice::Auto: return "auto";
+    case CoordModelChoice::Xyz: return "xyz";
+    case CoordModelChoice::Example: return "example";
+    case CoordModelChoice::Ideal: return "ideal";
+    case CoordModelChoice::First: return "first";
+  }
+  return "first";
+}
+
+bool apply_coord_model(const cif::Block& block, ChemComp& cc, ChemCompModel kind) {
+  Residue res = make_residue_from_chemcomp_block(block, kind);
+  if (res.atoms.empty())
+    return false;
+
+  std::map<std::string, Position> pos_by_name;
+  for (const Atom& atom : res.atoms)
+    pos_by_name[atom.name] = atom.pos;
+
+  int updated = 0;
+  for (ChemComp::Atom& atom : cc.atoms) {
+    auto it = pos_by_name.find(atom.id);
+    if (it != pos_by_name.end()) {
+      atom.xyz = it->second;
+      ++updated;
+    }
+  }
+  return updated > 0;
 }
 
 } // anonymous namespace
@@ -74,6 +111,25 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   int verbose = p.options[Verbose].count();
   bool only_bonds = p.options[OnlyBonds];
+  CoordModelChoice coord_choice = CoordModelChoice::First;
+  if (p.options[CoordModel]) {
+    std::string kind = p.options[CoordModel].arg;
+    if (kind == "auto")
+      coord_choice = CoordModelChoice::Auto;
+    else if (kind == "xyz")
+      coord_choice = CoordModelChoice::Xyz;
+    else if (kind == "example")
+      coord_choice = CoordModelChoice::Example;
+    else if (kind == "ideal")
+      coord_choice = CoordModelChoice::Ideal;
+    else if (kind == "first")
+      coord_choice = CoordModelChoice::First;
+    else {
+      std::fprintf(stderr, "ERROR: Invalid --coord-model=%s (allowed: auto|xyz|example|ideal|first)\n",
+                   kind.c_str());
+      return 1;
+    }
+  }
 
   // Get tables directory
   std::string tables_dir;
@@ -163,6 +219,30 @@ int GEMMI_MAIN(int argc, char **argv) {
         }
 
         ChemComp cc = make_chemcomp_from_block(block);
+        if (coord_choice != CoordModelChoice::Auto) {
+          bool ok = false;
+          switch (coord_choice) {
+            case CoordModelChoice::Xyz:
+              ok = apply_coord_model(block, cc, ChemCompModel::Xyz);
+              break;
+            case CoordModelChoice::Example:
+              ok = apply_coord_model(block, cc, ChemCompModel::Example);
+              break;
+            case CoordModelChoice::Ideal:
+              ok = apply_coord_model(block, cc, ChemCompModel::Ideal);
+              break;
+            case CoordModelChoice::First:
+              ok = apply_coord_model(block, cc, ChemCompModel::First);
+              break;
+            case CoordModelChoice::Auto:
+              break;
+          }
+          if (!ok) {
+            std::fprintf(stderr, "ERROR: --coord-model=%s not available for block %s in %s\n",
+                         coord_model_name(coord_choice), block.name.c_str(), input.c_str());
+            return 1;
+          }
+        }
 
         // Count missing values before processing
         int missing_bonds = 0;

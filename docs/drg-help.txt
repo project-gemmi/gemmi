@@ -20,3 +20,6 @@ Options:
   --timing              Print timing information.
   --style=STYLE         Output style: default, pdbx, aligned.
   --only-bonds          Only calculate bond restraints (skip angles, torsions, etc.).
+  --coord-model=KIND    Coordinates to use from _chem_comp_atom:
+                                                                             
+                    xyz | example | ideal | first | auto (default: first).
