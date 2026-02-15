@@ -22,4 +22,4 @@ Options:
   --only-bonds          Only calculate bond restraints (skip angles, torsions, etc.).
   --coord-model=KIND    Coordinates to use from _chem_comp_atom:
                                                                              
-                    xyz | example | ideal | first | auto (default: first).
+                    xyz | example | ideal | first | auto (default: auto).

@@ -51,7 +51,7 @@ const option::Descriptor Usage[] = {
     "  --only-bonds  \tOnly calculate bond restraints (skip angles, torsions, etc.)." },
   { CoordModel, 0, "", "coord-model", Arg::Required,
     "  --coord-model=KIND  \tCoordinates to use from _chem_comp_atom:"
-    "\n\t\txyz | example | ideal | first | auto (default: first)." },
+    "\n\t\txyz | example | ideal | first | auto (default: auto)." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -111,7 +111,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   int verbose = p.options[Verbose].count();
   bool only_bonds = p.options[OnlyBonds];
-  CoordModelChoice coord_choice = CoordModelChoice::First;
+  CoordModelChoice coord_choice = CoordModelChoice::Auto;
   if (p.options[CoordModel]) {
     std::string kind = p.options[CoordModel].arg;
     if (kind == "auto")
