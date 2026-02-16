@@ -241,13 +241,34 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
   // torsion angles
   if (delta.check_torsions) {
     for (const Restraints::Torsion& a : cc1.rt.torsions) {
-      auto b = cc2.rt.find_torsion(a.id1, a.id2, a.id3, a.id4);
-      if (b == cc2.rt.torsions.end()) {
+      auto b_exact = std::find_if(cc2.rt.torsions.begin(), cc2.rt.torsions.end(),
+                                  [&](const Restraints::Torsion& t) {
+        return t.id1 == a.id1 && t.id2 == a.id2 && t.id3 == a.id3 && t.id4 == a.id4;
+      });
+      if (b_exact == cc2.rt.torsions.end()) {
+        auto b_inv = std::find_if(cc2.rt.torsions.begin(), cc2.rt.torsions.end(),
+                                  [&](const Restraints::Torsion& t) {
+          return t.id1 == a.id4 && t.id2 == a.id3 && t.id3 == a.id2 && t.id4 == a.id1;
+        });
+        if (b_inv != cc2.rt.torsions.end()) {
+          if (tsv)
+            printf("%s\ttorsion\tI\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
+                   a.str().c_str(), b_inv->str().c_str(),
+                   a.value, b_inv->value, a.esd, b_inv->esd,
+                   a.period, b_inv->period);
+          else
+            printf("I %-30s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
+                   str(cc1, a).c_str(),
+                   a.value, b_inv->value, a.esd, b_inv->esd,
+                   period_str(a.period, b_inv->period).c_str());
+          continue;
+        }
         if (tsv)
           printf("%s\ttorsion\t-\t%s\t%d\n", code, a.str().c_str(), a.period);
         else
           printf("- %s  p.%d\n", str(cc1, a).c_str(), a.period);
       } else {
+        auto b = b_exact;
         double d = std::fabs(a.value - b->value);
         if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd
              || a.period != b->period) &&
