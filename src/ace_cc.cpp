@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cctype>
+#include <numeric>
 #include <set>
 #include <climits>
 
@@ -1296,11 +1297,11 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     if (!negative_chiral) {
       mt[a1] = {a3, a2};
       mt[a2] = {a1, a3};
-      mt[a3] = {a2, a1};
+      mt[a3] = {a1, a2};
     } else {
       mt[a1] = {a2, a3};
       mt[a2] = {a3, a1};
-      mt[a3] = {a1, a2};
+      mt[a3] = {a2, a1};
     }
     if (missing != SIZE_MAX) {
       mt[a1].push_back(missing);
@@ -1989,7 +1990,10 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
     const ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
     size_t center2, size_t center3,
-    const std::vector<Restraints::Torsion>& candidates) {
+    const std::vector<Restraints::Torsion>& candidates,
+    bool* used_path1 = nullptr) {
+  if (used_path1)
+    *used_path1 = false;
   if (candidates.empty())
     return nullptr;
   std::vector<size_t> idxR1, idxNonH1, idxH1, idxR2, idxNonH2, idxH2;
@@ -2023,6 +2027,8 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
     return nullptr;
   };
   if (!idxNonH1.empty() && !idxNonH2.empty()) {
+    if (used_path1)
+      *used_path1 = true;
     if (auto t = pick(idxNonH1[0], idxNonH2[0])) return t;
     return nullptr;
   } else if (!idxNonH1.empty() && idxNonH2.empty()) {
@@ -2112,6 +2118,71 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
   auto& chir_mut_table = chiral_info.chir_mut_table;
 
+  // TEMPORARY: detect 3-membered rings for AceDRG off-by-one bug simulation.
+  // AceDRG's getTorsion() returns seriNum (original global index) but callers
+  // use it as a vector index.  After self-referencing torsions (from 3-rings)
+  // are removed, seriNum != index, causing the wrong torsion to be picked.
+  bool has_3ring = false;
+  for (size_t ii = 0; ii < atom_info.size(); ++ii)
+    if (atom_info[ii].min_ring_size == 3) { has_3ring = true; break; }
+
+  // Per-bond tracking for the 3-ring bug simulation.
+  struct BondBugInfo {
+    std::vector<Restraints::Torsion> generated;
+    std::vector<size_t> atv1, atv2;    // AceDRG-order tv lists (for cross product)
+    bool swap_term_emit;               // whether emit loop order was swapped
+    size_t rt_idx;                     // index in cc.rt.torsions (SIZE_MAX if none)
+    size_t sel_idx1, sel_idx2;         // min/max numeric indices (AceDRG cascade sides)
+  };
+  std::vector<BondBugInfo> bug_infos;
+  // Track smallest selection key across ALL bonds for first-bond detection.
+  std::string min_sel_key;
+
+  // Build AceDRG-order tv list matching AllSystem::SetOneSP3SP3Bond flow:
+  // ring-sharing pair moved to front, then chiral mutation table ordering
+  // (with getMutList-style cyclic rotation), then H neighbors.
+  // Falls back to raw adjacency order when no chiral definition.
+  auto build_acedrg_order_tv = [&](size_t ctr, size_t other) -> std::vector<size_t> {
+    int max_len = max_tv_len_for_center(atom_info[ctr]);
+    size_t rs = find_ring_sharing_pair(adj, atom_info, ctr, other).first;
+    std::vector<size_t> tv;
+    if (rs != SIZE_MAX)
+      tv.push_back(rs);
+    bool used_chiral = false;
+    auto mit = chir_mut_table.find(ctr);
+    if (mit != chir_mut_table.end()) {
+      auto mt_it = mit->second.find(other);
+      if (mt_it != mit->second.end()) {
+        used_chiral = true;
+        std::vector<size_t> mut_filtered;
+        for (size_t cand : mt_it->second)
+          if (cand != other)
+            mut_filtered.push_back(cand);
+        append_chiral_cluster_like_acedrg(tv, mut_filtered);
+      }
+    }
+    if (!used_chiral) {
+      for (const auto& nb : adj[ctr]) {
+        if ((int)tv.size() >= max_len) break;
+        if (nb.idx == other || nb.idx == rs || cc.atoms[nb.idx].el.is_metal())
+          continue;
+        tv.push_back(nb.idx);
+      }
+    } else {
+      // Append H neighbors not already captured by the mutation table.
+      for (const auto& nb : adj[ctr]) {
+        if ((int)tv.size() >= max_len) break;
+        if (nb.idx == other || cc.atoms[nb.idx].el.is_metal()) continue;
+        if (std::find(tv.begin(), tv.end(), nb.idx) != tv.end()) continue;
+        if (cc.atoms[nb.idx].is_hydrogen())
+          tv.push_back(nb.idx);
+      }
+    }
+    if ((int)tv.size() > max_len)
+      tv.resize(max_len);
+    return tv;
+  };
+
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
     auto it2 = atom_index.find(bond.id2.atom);
@@ -2129,6 +2200,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     // so selectOneTorFromOneBond's idx1=min, idx2=max.
     size_t sel_center2 = std::min(idx1, idx2);
     size_t sel_center3 = std::max(idx1, idx2);
+    // Track the minimum selection key for first-bond detection.
+    if (has_3ring) {
+      std::string sel_key = std::to_string(sel_center2) + "_" + std::to_string(sel_center3);
+      if (min_sel_key.empty() || sel_key < min_sel_key)
+        min_sel_key = sel_key;
+    }
 
     // Match AceDRG setTorsionFromOneBond() dispatch orientation.
     bool c2_sp2 = is_sp2_like(atom_info[center2]);
@@ -2223,17 +2300,348 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (generated.empty())
       continue;
 
+    std::vector<size_t> atv1, atv2;
+    if (has_3ring) {
+      atv1 = build_acedrg_order_tv(center2, center3);
+      atv2 = build_acedrg_order_tv(center3, center2);
+    }
+
     if (has_sugar_ring) {
+      if (has_3ring)
+        bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
+                                        swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       cc.rt.torsions.insert(cc.rt.torsions.end(), generated.begin(), generated.end());
     } else if (standard_aa) {
+      if (has_3ring)
+        bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
+                                        swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       const Restraints::Torsion* chosen = select_peptide_torsion(tables, generated);
       if (chosen)
         cc.rt.torsions.push_back(*chosen);
     } else {
       const Restraints::Torsion* chosen = select_one_torsion_from_candidates(
           cc, adj, atom_info, sel_center2, sel_center3, generated);
-      if (chosen)
+      size_t rt_idx = SIZE_MAX;
+      if (chosen) {
+        rt_idx = cc.rt.torsions.size();
         cc.rt.torsions.push_back(*chosen);
+      }
+      if (has_3ring)
+        bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
+                                        swap_term_emit, rt_idx, sel_center2, sel_center3});
+    }
+  }
+
+  // TEMPORARY: apply AceDRG off-by-one bug for 3-ring compounds.
+  // AceDRG's getTorsion() returns seriNum (original global index) but callers
+  // use it as a vector index.  After self-referencing torsions (from 3-rings)
+  // are removed, seriNum != index, causing the wrong torsion to be picked.
+  // ALL cascade paths use the same buggy getTorsion.
+  //
+  // Key: AceDRG classifies atoms as Ring if inRings is non-empty (any ring size).
+  // The cascade uses full connAtoms lists (not limited TV lists).
+  // idx1 side uses chemType != "H", idx2 side uses chemType.find("H")==npos
+  // (asymmetric check — AceDRG bug).
+  if (has_3ring && !bug_infos.empty()) {
+    // Step 1: Sort bug_infos by AceDRG's TorsionSetOneBond map key order.
+    // Key = IntToStr(min_idx) + "_" + IntToStr(max_idx), string-lexicographic.
+    auto make_sel_key = [](size_t idx1, size_t idx2) -> std::string {
+      return std::to_string(idx1) + "_" + std::to_string(idx2);
+    };
+    std::vector<size_t> sorted_order(bug_infos.size());
+    std::iota(sorted_order.begin(), sorted_order.end(), 0);
+    std::sort(sorted_order.begin(), sorted_order.end(), [&](size_t a, size_t b) {
+      return make_sel_key(bug_infos[a].sel_idx1, bug_infos[a].sel_idx2) <
+             make_sel_key(bug_infos[b].sel_idx1, bug_infos[b].sel_idx2);
+    });
+
+    // Step 2: Build AceDRG cross product in CORRECT Phase 1 / Phase 2 order.
+    // AceDRG's setAllTorsions2():
+    //   Phase 1: ring-walk bonds (N-1 per ring, allRingsV string-sort order).
+    //     Uses SetOneSP3SP3Bond(flip) which has "if (tV1[i]!=tV2[j])" check
+    //     → phantom entries (a1==a4) are SKIPPED.
+    //   Phase 2: remaining bonds in CIF/allBonds order.
+    //     Uses SetOneSP3SP3Bond (no flip) → phantoms ARE included.
+    //     Only 3-ring closing bonds produce phantoms (the shared third vertex
+    //     appears in both TV lists, giving a1==a4 at position 0).
+    //
+    // Build ring walks to classify Phase 1 vs Phase 2 closing bonds.
+    int max_rid = 0;
+    for (size_t ii = 0; ii < atom_info.size(); ++ii)
+      for (int rid : atom_info[ii].in_rings)
+        max_rid = std::max(max_rid, rid + 1);
+    std::vector<std::vector<size_t>> rings_by_id(max_rid);
+    for (size_t ii = 0; ii < atom_info.size(); ++ii)
+      for (int rid : atom_info[ii].in_rings)
+        rings_by_id[rid].push_back(ii);
+
+    struct RingWalkBug {
+      std::string rep;                               // allRingsV sort key
+      std::vector<std::pair<size_t,size_t>> p1bonds; // Phase 1 walk bonds
+      std::pair<size_t,size_t> closing;              // Phase 2 closing bond
+      int size;
+    };
+    std::vector<RingWalkBug> rwalks;
+    for (auto& r_atoms : rings_by_id) {
+      if (r_atoms.size() < 3) continue;
+      std::set<size_t> rset(r_atoms.begin(), r_atoms.end());
+      size_t start = *std::min_element(r_atoms.begin(), r_atoms.end());
+      std::vector<size_t> tr = {start};
+      size_t cur = start;
+      while (tr.size() < r_atoms.size()) {
+        bool found = false;
+        for (const auto& nb : adj[cur])
+          if (rset.count(nb.idx) &&
+              std::find(tr.begin(), tr.end(), nb.idx) == tr.end()) {
+            tr.push_back(nb.idx); cur = nb.idx; found = true; break;
+          }
+        if (!found) break;
+      }
+      if (tr.size() != r_atoms.size()) continue;
+      std::vector<std::string> names;
+      for (size_t idx : tr) names.push_back(cc.atoms[idx].id);
+      std::sort(names.begin(), names.end());
+      std::string rep;
+      for (const auto& n : names) rep += n;
+      RingWalkBug rw;
+      rw.rep = std::move(rep);
+      rw.size = (int)tr.size();
+      for (size_t i = 0; i + 1 < tr.size(); ++i)
+        rw.p1bonds.push_back(std::minmax(tr[i], tr[i+1]));
+      rw.closing = std::minmax(tr.back(), tr.front());
+      rwalks.push_back(std::move(rw));
+    }
+    std::sort(rwalks.begin(), rwalks.end(),
+              [](const RingWalkBug& a, const RingWalkBug& b){ return a.rep < b.rep; });
+
+    // Collect Phase 1 bond set and 3-ring closing bond set.
+    // AceDRG Phase 1 only uses SetOneSP3SP3Bond, so only SP3-SP3 ring bonds
+    // are Phase 1. Aromatic/SP2 ring bonds are Phase 2 (CIF order).
+    std::set<std::pair<size_t,size_t>> phase1_set, closing3ring_set;
+    for (const auto& rw : rwalks) {
+      for (auto& pb : rw.p1bonds)
+        if (is_sp3_like(atom_info[pb.first]) && is_sp3_like(atom_info[pb.second]))
+          phase1_set.insert(pb);
+      if (rw.size == 3) closing3ring_set.insert(rw.closing);
+    }
+
+    // Build bug_info key→index map.
+    std::map<std::pair<size_t,size_t>, size_t> bkey_to_bi;
+    for (size_t bi = 0; bi < bug_infos.size(); ++bi)
+      bkey_to_bi[std::minmax(bug_infos[bi].sel_idx1, bug_infos[bi].sel_idx2)] = bi;
+
+    // Ordering: Phase 1 (SP3-SP3 ring walk) bonds first, then Phase 2 (CIF order).
+    std::vector<size_t> ordered_bis;
+    {
+      std::set<size_t> ordered_set;
+      for (const auto& rw : rwalks)
+        for (auto& pb : rw.p1bonds) {
+          // Only include SP3-SP3 bonds in Phase 1 ordering
+          if (!is_sp3_like(atom_info[pb.first]) || !is_sp3_like(atom_info[pb.second]))
+            continue;
+          auto it = bkey_to_bi.find(pb);
+          if (it != bkey_to_bi.end() && !ordered_set.count(it->second)) {
+            ordered_bis.push_back(it->second);
+            ordered_set.insert(it->second);
+          }
+        }
+      for (size_t bi = 0; bi < bug_infos.size(); ++bi)
+        if (!ordered_set.count(bi)) {
+          ordered_bis.push_back(bi);
+          ordered_set.insert(bi);
+        }
+    }
+
+    struct BondCPInfo {
+      std::vector<std::pair<size_t, size_t>> entries;
+      size_t global_start;
+    };
+    std::vector<BondCPInfo> bond_cps(bug_infos.size());
+    size_t global_pos = 0;
+    bool any_phantom = false;
+    for (size_t bi : ordered_bis) {
+      auto& info = bug_infos[bi];
+      auto& bcp = bond_cps[bi];
+      bcp.global_start = global_pos;
+      auto bkey = std::minmax(info.sel_idx1, info.sel_idx2);
+      bool is_phase1 = phase1_set.count(bkey) > 0;
+      bool is_3ring_closing = closing3ring_set.count(bkey) > 0;
+      // For Phase 2 3-ring closing bonds, use raw adjacency order (matches
+      // AceDRG's SetOneSP3SP3Bond without flip, which iterates connAtoms
+      // directly).  The ring-sharing vertex appears first on both sides of
+      // the bond, so the phantom entry (a1==a4) ends up at position 0.
+      // For all other bonds, use the pre-built acedrg-order atv lists.
+      std::vector<size_t> raw_tv1, raw_tv2;
+      const std::vector<size_t>* p_outer;
+      const std::vector<size_t>* p_inner;
+      if (is_3ring_closing) {
+        // AceDRG's fullAtoms map uses string-sorted atom IDs to order c1/c2.
+        size_t c1 = info.sel_idx1, c2 = info.sel_idx2;
+        if (cc.atoms[c1].id > cc.atoms[c2].id) std::swap(c1, c2);
+        for (const auto& nb : adj[c1]) if (nb.idx != c2) raw_tv1.push_back(nb.idx);
+        for (const auto& nb : adj[c2]) if (nb.idx != c1) raw_tv2.push_back(nb.idx);
+        p_outer = &raw_tv1;
+        p_inner = &raw_tv2;
+      } else {
+        p_outer = info.swap_term_emit ? &info.atv2 : &info.atv1;
+        p_inner = info.swap_term_emit ? &info.atv1 : &info.atv2;
+      }
+      for (size_t a1 : *p_outer)
+        for (size_t a4 : *p_inner) {
+          if (is_phase1 && a1 == a4) continue;  // Phase 1: no phantoms
+          bcp.entries.push_back({a1, a4});
+          if (a1 == a4) any_phantom = true;
+        }
+      global_pos += bcp.entries.size();
+    }
+
+    if (any_phantom) {
+      // Step 3: Build global phantom mask and new_to_orig mapping.
+      std::vector<bool> is_phantom(global_pos, false);
+      for (size_t bi = 0; bi < bond_cps.size(); ++bi)
+        for (size_t i = 0; i < bond_cps[bi].entries.size(); ++i)
+          if (bond_cps[bi].entries[i].first == bond_cps[bi].entries[i].second)
+            is_phantom[bond_cps[bi].global_start + i] = true;
+      std::vector<size_t> new_to_orig;
+      new_to_orig.reserve(global_pos);
+      for (size_t i = 0; i < global_pos; ++i)
+        if (!is_phantom[i])
+          new_to_orig.push_back(i);
+
+
+      // Step 4: For each bond, simulate AceDRG's cascade to find the pair
+      // it would pick, then apply the seriNum shift.
+      // AceDRG removes phantoms at the END of selectOneTorFromOneBond.
+      // The first bond processed has phantoms still present (seriNum == index).
+      // Subsequent bonds see the shortened vector (seriNum != index).
+      bool first_bond_in_map = true;
+      for (size_t si = 0; si < sorted_order.size(); ++si) {
+        size_t bi = sorted_order[si];
+        auto& info = bug_infos[bi];
+        if (info.rt_idx == SIZE_MAX)
+          continue;  // no torsion selected for this bond
+
+        std::string this_key = make_sel_key(info.sel_idx1, info.sel_idx2);
+
+        // Simulate AceDRG's cascade classification using FULL neighbor lists.
+        // AceDRG: inRings.size()!=0 → Ring; not hydrogen → nonH; else → H.
+        std::vector<size_t> nonH1, R1, H1, nonH2, R2, H2;
+        for (const auto& nb : adj[info.sel_idx1]) {
+          if (nb.idx == info.sel_idx2 || cc.atoms[nb.idx].el.is_metal()) continue;
+          if (!atom_info[nb.idx].in_rings.empty())
+            R1.push_back(nb.idx);
+          else if (!cc.atoms[nb.idx].is_hydrogen())
+            nonH1.push_back(nb.idx);
+          else
+            H1.push_back(nb.idx);
+        }
+        for (const auto& nb : adj[info.sel_idx2]) {
+          if (nb.idx == info.sel_idx1 || cc.atoms[nb.idx].el.is_metal()) continue;
+          if (!atom_info[nb.idx].in_rings.empty())
+            R2.push_back(nb.idx);
+          else if (!cc.atoms[nb.idx].is_hydrogen())
+            nonH2.push_back(nb.idx);
+          else
+            H2.push_back(nb.idx);
+        }
+
+        // Follow AceDRG's exact cascade structure (if-else-if, NOT fall-through).
+        // ALL paths use getTorsion (buggy seriNum return).
+        size_t cas_a1 = SIZE_MAX, cas_a4 = SIZE_MAX;
+        if (!nonH1.empty() && !nonH2.empty()) {
+          // Path 1: nonH+nonH
+          cas_a1 = nonH1[0]; cas_a4 = nonH2[0];
+        } else if (!nonH1.empty() && nonH2.empty()) {
+          // Paths 2-3: nonH1 present, nonH2 empty
+          if (!R2.empty()) {
+            cas_a1 = nonH1[0]; cas_a4 = R2[0];  // Path 2: nonH+R
+          } else if (!H2.empty()) {
+            cas_a1 = nonH1[0]; cas_a4 = H2[0];  // Path 3: nonH+H
+          }
+        } else if (nonH1.empty() && !nonH2.empty()) {
+          // Paths 4-5: nonH2 present, nonH1 empty
+          if (!R1.empty()) {
+            cas_a1 = R1[0]; cas_a4 = nonH2[0];  // Path 4: R+nonH
+          } else if (!H1.empty()) {
+            cas_a1 = H1[0]; cas_a4 = nonH2[0];  // Path 5: H+nonH
+          }
+        } else if (!R1.empty() || !R2.empty()) {
+          // Paths 6-8: R atoms present, no nonH on either side
+          if (!R1.empty() && !R2.empty()) {
+            cas_a1 = R1[0]; cas_a4 = R2[0];     // Path 6: R+R
+          } else if (!R1.empty() && R2.empty()) {
+            if (!H2.empty()) {
+              cas_a1 = R1[0]; cas_a4 = H2[0];   // Path 7: R+H
+            }
+          } else if (!R2.empty() && R1.empty()) {
+            if (!H1.empty()) {
+              cas_a1 = H1[0]; cas_a4 = R2[0];   // Path 8: H+R
+            }
+          }
+        } else {
+          // Path 9: H+H fallback — pick first non-other-center neighbor
+          for (const auto& nb : adj[info.sel_idx1]) {
+            if (nb.idx != info.sel_idx2) { cas_a1 = nb.idx; break; }
+          }
+          for (const auto& nb : adj[info.sel_idx2]) {
+            if (nb.idx != info.sel_idx1) { cas_a4 = nb.idx; break; }
+          }
+        }
+        if (cas_a1 == SIZE_MAX || cas_a4 == SIZE_MAX)
+          continue;
+
+        // Check if this is the very first bond in the FULL map iteration.
+        // The first bond's cascade runs with phantoms present (no shift).
+        if (first_bond_in_map && this_key == min_sel_key) {
+          first_bond_in_map = false;
+          continue;
+        }
+
+        // Find cascade pair in cross product (search both orderings since
+        // generation order center2/center3 may differ from cascade sel_idx1/sel_idx2).
+        auto& bcp = bond_cps[bi];
+        size_t cross_pos = SIZE_MAX;
+        for (size_t i = 0; i < bcp.entries.size(); ++i)
+          if ((bcp.entries[i].first == cas_a1 && bcp.entries[i].second == cas_a4) ||
+              (bcp.entries[i].first == cas_a4 && bcp.entries[i].second == cas_a1)) {
+            cross_pos = i;
+            break;
+          }
+        if (cross_pos == SIZE_MAX)
+          continue;
+
+        size_t seriNum = bcp.global_start + cross_pos;
+        if (seriNum >= new_to_orig.size())
+          continue;
+        size_t shifted_orig = new_to_orig[seriNum];
+        if (shifted_orig == bcp.global_start + cross_pos)
+          continue;
+
+        // Find the replacement torsion at the shifted position.
+        size_t r_a1 = SIZE_MAX, r_a4 = SIZE_MAX;
+        for (size_t bi2 = 0; bi2 < bug_infos.size(); ++bi2) {
+          auto& bcp2 = bond_cps[bi2];
+          if (shifted_orig >= bcp2.global_start &&
+              shifted_orig < bcp2.global_start + bcp2.entries.size()) {
+            size_t cp2 = shifted_orig - bcp2.global_start;
+            r_a1 = bcp2.entries[cp2].first;
+            r_a4 = bcp2.entries[cp2].second;
+            break;
+          }
+        }
+        if (r_a1 == SIZE_MAX)
+          continue;
+
+        const std::string& r_a1_name = cc.atoms[r_a1].id;
+        const std::string& r_a4_name = cc.atoms[r_a4].id;
+        // Search in SAME bond's generated torsions (try both orderings).
+        for (const auto& t : info.generated)
+          if ((t.id1.atom == r_a1_name && t.id4.atom == r_a4_name) ||
+              (t.id1.atom == r_a4_name && t.id4.atom == r_a1_name)) {
+            cc.rt.torsions[info.rt_idx] = t;
+            break;
+          }
+      }
     }
   }
 
