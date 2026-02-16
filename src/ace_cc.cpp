@@ -805,16 +805,6 @@ void add_angles_from_bonds_if_missing(ChemComp& cc) {
   }
 }
 
-int element_priority(Element el) {
-  if (el == El::N) return 0;
-  if (el == El::C) return 1;
-  if (el == El::O) return 2;
-  if (el == El::S) return 3;
-  if (el == El::P) return 4;
-  if (el == El::Se) return 5;
-  return 6;
-}
-
 int chirality_priority(Element el) {
   if (el == El::O) return 0;
   if (el == El::N) return 1;
@@ -1373,6 +1363,32 @@ std::vector<size_t> build_tv_neighbor_order(
   return nb_order;
 }
 
+void append_chiral_cluster_like_acedrg(std::vector<size_t>& out,
+                                       const std::vector<size_t>& mut_list) {
+  // AceDRG buildChiralCluster2/getMutList behavior:
+  // - if output is empty: append mut_list as-is.
+  // - if output has one seeded atom and it exists in mut_list:
+  //   append mut_list rotated after that atom (excluding it).
+  // - otherwise append mut_list as-is.
+  if (mut_list.empty())
+    return;
+  if (out.size() == 1) {
+    auto it = std::find(mut_list.begin(), mut_list.end(), out[0]);
+    if (it != mut_list.end()) {
+      size_t pos = (size_t)std::distance(mut_list.begin(), it);
+      for (size_t i = 1; i < mut_list.size(); ++i) {
+        size_t j = (pos + i) % mut_list.size();
+        if (std::find(out.begin(), out.end(), mut_list[j]) == out.end())
+          out.push_back(mut_list[j]);
+      }
+      return;
+    }
+  }
+  for (size_t cand : mut_list)
+    if (std::find(out.begin(), out.end(), cand) == out.end())
+      out.push_back(cand);
+}
+
 // Build the torsion-value neighbor ordering (tV) list for a center with
 // respect to the bonded atom on the other side.
 std::vector<size_t> build_tv_list_for_center(
@@ -1399,15 +1415,12 @@ std::vector<size_t> build_tv_list_for_center(
       auto mt_it = mit->second.find(other);
       if (mt_it != mit->second.end()) {
         used_chiral = true;
-        for (size_t cand : mt_it->second) {
-          if ((int)tv.size() >= max_len)
-            break;
-          if (cand == other || cand == rs)
-            continue;
-          if (std::find(tv.begin(), tv.end(), cand) != tv.end())
-            continue;
-          tv.push_back(cand);
-        }
+        std::vector<size_t> mut_filtered;
+        mut_filtered.reserve(mt_it->second.size());
+        for (size_t cand : mt_it->second)
+          if (cand != other)
+            mut_filtered.push_back(cand);
+        append_chiral_cluster_like_acedrg(tv, mut_filtered);
       }
     }
   }
@@ -1642,13 +1655,12 @@ static void emit_one_torsion(
           auto mt_it = mit->second.find(sp2_center);
           if (mt_it != mit->second.end()) {
             used_chiral = true;
-            for (size_t cand : mt_it->second) {
-              if (cand == sp2_center)
-                continue;
-              if (std::find(tV1.begin(), tV1.end(), cand) != tV1.end())
-                continue;
-              tV1.push_back(cand);
-            }
+            std::vector<size_t> mut_filtered;
+            mut_filtered.reserve(mt_it->second.size());
+            for (size_t cand : mt_it->second)
+              if (cand != sp2_center)
+                mut_filtered.push_back(cand);
+            append_chiral_cluster_like_acedrg(tV1, mut_filtered);
           }
         }
       }
@@ -1716,13 +1728,12 @@ static void emit_one_torsion(
           auto mt_it = mit->second.find(sp2_center);
           if (mt_it != mit->second.end()) {
             used_chiral = true;
-            for (size_t cand : mt_it->second) {
-              if (cand == sp2_center)
-                continue;
-              if (std::find(tv_sp3.begin(), tv_sp3.end(), cand) != tv_sp3.end())
-                continue;
-              tv_sp3.push_back(cand);
-            }
+            std::vector<size_t> mut_filtered;
+            mut_filtered.reserve(mt_it->second.size());
+            for (size_t cand : mt_it->second)
+              if (cand != sp2_center)
+                mut_filtered.push_back(cand);
+            append_chiral_cluster_like_acedrg(tv_sp3, mut_filtered);
           }
         }
       }
@@ -2014,7 +2025,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   // Match AceDRG checkOneRingSugar()/getRStr() shape gating:
   // only specific "(OC2)(...)" ring-shape strings are treated as sugar.
   SugarRingInfo sugar_info = detect_sugar_rings(cc, adj, atom_info);
-  auto& sugar_ring_sets = sugar_info.ring_sets;
   auto& sugar_ring_bonds = sugar_info.ring_bonds;
   auto& sugar_ring_seq = sugar_info.ring_seq;
   bool has_sugar_ring = !sugar_ring_bonds.empty();
