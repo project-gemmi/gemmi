@@ -240,58 +240,129 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
 
   // torsion angles
   if (delta.check_torsions) {
-    for (const Restraints::Torsion& a : cc1.rt.torsions) {
-      auto b_exact = std::find_if(cc2.rt.torsions.begin(), cc2.rt.torsions.end(),
-                                  [&](const Restraints::Torsion& t) {
-        return t.id1 == a.id1 && t.id2 == a.id2 && t.id3 == a.id3 && t.id4 == a.id4;
-      });
-      if (b_exact == cc2.rt.torsions.end()) {
-        auto b_inv = std::find_if(cc2.rt.torsions.begin(), cc2.rt.torsions.end(),
-                                  [&](const Restraints::Torsion& t) {
-          return t.id1 == a.id4 && t.id2 == a.id3 && t.id3 == a.id2 && t.id4 == a.id1;
+    if (tsv) {
+      // keep TSV output simple and stable
+      for (const Restraints::Torsion& a : cc1.rt.torsions) {
+        auto b_exact = std::find_if(cc2.rt.torsions.begin(), cc2.rt.torsions.end(),
+                                    [&](const Restraints::Torsion& t) {
+          return t.id1 == a.id1 && t.id2 == a.id2 && t.id3 == a.id3 && t.id4 == a.id4;
         });
-        if (b_inv != cc2.rt.torsions.end()) {
-          if (tsv)
+        if (b_exact == cc2.rt.torsions.end()) {
+          auto b_inv = std::find_if(cc2.rt.torsions.begin(), cc2.rt.torsions.end(),
+                                    [&](const Restraints::Torsion& t) {
+            return t.id1 == a.id4 && t.id2 == a.id3 && t.id3 == a.id2 && t.id4 == a.id1;
+          });
+          if (b_inv != cc2.rt.torsions.end()) {
             printf("%s\ttorsion\tI\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
                    a.str().c_str(), b_inv->str().c_str(),
                    a.value, b_inv->value, a.esd, b_inv->esd,
                    a.period, b_inv->period);
-          else
-            printf("I %-30s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
-                   str(cc1, a).c_str(),
-                   a.value, b_inv->value, a.esd, b_inv->esd,
-                   period_str(a.period, b_inv->period).c_str());
-          continue;
-        }
-        if (tsv)
+            continue;
+          }
           printf("%s\ttorsion\t-\t%s\t%d\n", code, a.str().c_str(), a.period);
-        else
-          printf("- %s  p.%d\n", str(cc1, a).c_str(), a.period);
-      } else {
-        auto b = b_exact;
-        double d = std::fabs(a.value - b->value);
-        if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd
-             || a.period != b->period) &&
-            d > delta.rel * std::min(a.esd, b->esd)) {
-          if (tsv)
+        } else {
+          auto b = b_exact;
+          double d = std::fabs(a.value - b->value);
+          if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd
+               || a.period != b->period) &&
+              d > delta.rel * std::min(a.esd, b->esd)) {
             printf("%s\ttorsion\t!\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
                    a.str().c_str(), a.value, b->value, a.esd, b->esd,
                    a.period, b->period);
-          else
-            printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
-                   str(cc1, a).c_str(), mark(d, a.esd),
-                   a.value, b->value, a.esd, b->esd,
-                   period_str(a.period, b->period).c_str());
+          }
         }
       }
-    }
-    for (const Restraints::Torsion& a : cc2.rt.torsions)
-      if (cc1.rt.find_torsion(a.id1, a.id2, a.id3,a.id4) == cc1.rt.torsions.end()) {
-        if (tsv)
+      for (const Restraints::Torsion& a : cc2.rt.torsions)
+        if (cc1.rt.find_torsion(a.id1, a.id2, a.id3, a.id4) == cc1.rt.torsions.end())
           printf("%s\ttorsion\t+\t%s\t%d\n", code, a.str().c_str(), a.period);
-        else
-          printf("+ %s  p.%d\n", str(cc2, a).c_str(), a.period);
+    } else {
+      // human-readable output with aggregation of +/- around the same central bond
+      std::vector<bool> matched2(cc2.rt.torsions.size(), false);
+      std::vector<const Restraints::Torsion*> missing;
+
+      for (const Restraints::Torsion& a : cc1.rt.torsions) {
+        size_t found = cc2.rt.torsions.size();
+        bool inverted = false;
+        for (size_t i = 0; i != cc2.rt.torsions.size(); ++i) {
+          if (matched2[i])
+            continue;
+          const auto& t = cc2.rt.torsions[i];
+          if (t.id1 == a.id1 && t.id2 == a.id2 && t.id3 == a.id3 && t.id4 == a.id4) {
+            found = i;
+            break;
+          }
+          if (t.id1 == a.id4 && t.id2 == a.id3 && t.id3 == a.id2 && t.id4 == a.id1) {
+            found = i;
+            inverted = true;
+            break;
+          }
+        }
+        if (found != cc2.rt.torsions.size()) {
+          matched2[found] = true;
+          const auto& b = cc2.rt.torsions[found];
+          if (inverted) {
+            printf("I %-30s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
+                   str(cc1, a).c_str(),
+                   a.value, b.value, a.esd, b.esd,
+                   period_str(a.period, b.period).c_str());
+          } else {
+            double d = std::fabs(a.value - b.value);
+            if ((d > delta.angle || std::fabs(a.esd - b.esd) > delta.angle_esd
+                 || a.period != b.period) &&
+                d > delta.rel * std::min(a.esd, b.esd)) {
+              printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
+                     str(cc1, a).c_str(), mark(d, a.esd),
+                     a.value, b.value, a.esd, b.esd,
+                     period_str(a.period, b.period).c_str());
+            }
+          }
+        } else {
+          missing.push_back(&a);
+        }
       }
+
+      std::vector<const Restraints::Torsion*> added;
+      for (size_t i = 0; i != cc2.rt.torsions.size(); ++i)
+        if (!matched2[i])
+          added.push_back(&cc2.rt.torsions[i]);
+
+      auto same_central = [](const Restraints::Torsion& t1,
+                             const Restraints::Torsion& t2) {
+        return (t1.id2 == t2.id2 && t1.id3 == t2.id3) ||
+               (t1.id2 == t2.id3 && t1.id3 == t2.id2);
+      };
+
+      std::vector<bool> added_used(added.size(), false);
+      for (const Restraints::Torsion* m : missing) {
+        size_t found = added.size();
+        bool same_order = true;
+        for (size_t j = 0; j != added.size(); ++j) {
+          if (added_used[j])
+            continue;
+          if (same_central(*m, *added[j])) {
+            found = j;
+            same_order = (m->id2 == added[j]->id2 && m->id3 == added[j]->id3);
+            break;
+          }
+        }
+        if (found != added.size()) {
+          added_used[found] = true;
+          const Restraints::Torsion& p = *added[found];
+          const Restraints::AtomId& new1 = same_order ? p.id1 : p.id4;
+          const Restraints::AtomId& new4 = same_order ? p.id4 : p.id1;
+          printf("A torsion {%s:%s}-%s-%s-{%s:%s}%s\n",
+                 m->id1.atom.c_str(), new1.atom.c_str(),
+                 m->id2.atom.c_str(), m->id3.atom.c_str(),
+                 m->id4.atom.c_str(), new4.atom.c_str(),
+                 period_str(m->period, p.period).c_str());
+        } else {
+          printf("- %s  p.%d\n", str(cc1, *m).c_str(), m->period);
+        }
+      }
+      for (size_t j = 0; j != added.size(); ++j)
+        if (!added_used[j])
+          printf("+ %s  p.%d\n", str(cc2, *added[j]).c_str(), added[j]->period);
+    }
   }
 
   // chiralities
