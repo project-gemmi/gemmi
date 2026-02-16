@@ -20,7 +20,7 @@ using namespace gemmi;
 namespace {
 
 enum OptionIndex {
-  Tables=4, Sigma, Timing, CifStyle, OutputDir, OnlyBonds, CoordModel
+  Tables=4, Sigma, Timing, CifStyle, OutputDir, NoAngles, CoordModel
 };
 
 const option::Descriptor Usage[] = {
@@ -47,8 +47,8 @@ const option::Descriptor Usage[] = {
     "  --timing  \tPrint timing information." },
   { CifStyle, 0, "", "style", Arg::CifStyle,
     "  --style=STYLE  \tOutput style: default, pdbx, aligned." },
-  { OnlyBonds, 0, "", "only-bonds", Arg::None,
-    "  --only-bonds  \tOnly calculate bond restraints (skip angles, torsions, etc.)." },
+  { NoAngles, 0, "", "no-angles", Arg::None,
+    "  --no-angles  \tSkip angle restraints (still keep bonds, torsions, chirals, planes)." },
   { CoordModel, 0, "", "coord-model", Arg::Required,
     "  --coord-model=KIND  \tCoordinates to use from _chem_comp_atom:"
     "\n\t\txyz | example | ideal | first | auto (default: auto)." },
@@ -110,7 +110,7 @@ int GEMMI_MAIN(int argc, char **argv) {
   }
 
   int verbose = p.options[Verbose].count();
-  bool only_bonds = p.options[OnlyBonds];
+  bool no_angles = p.options[NoAngles];
   CoordModelChoice coord_choice = CoordModelChoice::Auto;
   if (p.options[CoordModel]) {
     std::string kind = p.options[CoordModel].arg;
@@ -163,7 +163,7 @@ int GEMMI_MAIN(int argc, char **argv) {
     timer.start();
     AcedrgTables tables;
     tables.verbose = verbose;
-    tables.load_tables(tables_dir, only_bonds);
+    tables.load_tables(tables_dir, no_angles);
     timer.print("Tables loaded in");
 
     if (p.options[Sigma])
@@ -249,12 +249,12 @@ int GEMMI_MAIN(int argc, char **argv) {
         for (const auto& b : cc.rt.bonds)
           if (std::isnan(b.value)) missing_bonds++;
         int missing_angles = 0;
-        if (!only_bonds)
+        if (!no_angles)
           for (const auto& a : cc.rt.angles)
             if (std::isnan(a.value)) missing_angles++;
 
         timer.start();
-        prepare_chemcomp(cc, tables, atom_stereo, only_bonds);
+        prepare_chemcomp(cc, tables, atom_stereo, no_angles);
         timer.print("Restraints filled in");
 
         // Count filled values
@@ -262,7 +262,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         for (const auto& b : cc.rt.bonds)
           if (std::isnan(b.value)) remaining_bonds++;
         int remaining_angles = 0;
-        if (!only_bonds)
+        if (!no_angles)
           for (const auto& a : cc.rt.angles)
             if (std::isnan(a.value)) remaining_angles++;
 
@@ -278,7 +278,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         std::vector<std::string> acedrg_types = tables.compute_acedrg_types(cc);
 
         // Update the block with new values
-        add_chemcomp_to_block(cc, block, acedrg_types, only_bonds);
+        add_chemcomp_to_block(cc, block, acedrg_types, no_angles);
       }
 
       if (verbose)

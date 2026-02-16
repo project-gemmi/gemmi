@@ -13,7 +13,7 @@ namespace gemmi {
 
 inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block,
                                   const std::vector<std::string>& acedrg_types = {},
-                                  bool only_bonds = false) {
+                                  bool no_angles = false) {
   {
     std::vector<std::string> tags =
         {"comp_id", "atom_id", "type_symbol", "type_energy", "charge"};
@@ -67,15 +67,15 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block,
                       to_str(a.value), to_str(a.esd),
                       to_str(a.value_nucleus), to_str(a.esd_nucleus)});
   }
-  if (!only_bonds) {
-    {
-      cif::Table tab = block.find_or_add("_chem_comp_angle.",
-          {"comp_id", "atom_id_1", "atom_id_2", "atom_id_3",
-           "value_angle", "value_angle_esd"});
-      for (const Restraints::Angle& a : cc.rt.angles)
-        tab.append_row({cc.name, a.id1.atom, a.id2.atom, a.id3.atom,
-                        to_str(a.value), to_str(a.esd)});
-    }
+  if (!no_angles) {
+    cif::Table tab = block.find_or_add("_chem_comp_angle.",
+        {"comp_id", "atom_id_1", "atom_id_2", "atom_id_3",
+         "value_angle", "value_angle_esd"});
+    for (const Restraints::Angle& a : cc.rt.angles)
+      tab.append_row({cc.name, a.id1.atom, a.id2.atom, a.id3.atom,
+                      to_str(a.value), to_str(a.esd)});
+  }
+  {
     {
       cif::Table tab = block.find_or_add("_chem_comp_tor.",
           {"comp_id", "id", "atom_id_1", "atom_id_2", "atom_id_3", "atom_id_4",

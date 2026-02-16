@@ -19,7 +19,7 @@ Options:
   --sigma=NUM           Maximum sigma for bond restraints (default: 0.02).
   --timing              Print timing information.
   --style=STYLE         Output style: default, pdbx, aligned.
-  --only-bonds          Only calculate bond restraints (skip angles, torsions, etc.).
+  --no-angles           Skip angle restraints (still keep bonds, torsions, chirals, planes).
   --coord-model=KIND    Coordinates to use from _chem_comp_atom:
                                                                              
                     xyz | example | ideal | first | auto (default: auto).

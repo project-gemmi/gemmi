@@ -20,7 +20,7 @@ struct AcedrgTables;
 ///                     (needed for chirality generation).
 GEMMI_DLL void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                                 const std::map<std::string, std::string>& atom_stereo = {},
-                                bool only_bonds = false);
+                                bool no_angles = false);
 
 } // namespace gemmi
 #endif

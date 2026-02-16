@@ -2539,8 +2539,8 @@ void apply_metal_charge_corrections(ChemComp& cc) {
 
 void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                       const std::map<std::string, std::string>& atom_stereo,
-                      bool only_bonds) {
-  if (!only_bonds)
+                      bool no_angles) {
+  if (!no_angles)
     add_angles_from_bonds_if_missing(cc);
 
   // Collect all original atom names for H naming collision checks.
@@ -2562,22 +2562,22 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   apply_metal_charge_corrections(cc);
 
   int missing_bonds = count_missing_values(cc.rt.bonds);
-  int missing_angles = only_bonds ? 0 : count_missing_values(cc.rt.angles);
+  int missing_angles = no_angles ? 0 : count_missing_values(cc.rt.angles);
   bool need_fill = (missing_bonds > 0 || missing_angles > 0);
 
   if (need_fill) {
     tables.fill_restraints(cc);
-    if (!only_bonds) {
+    if (!no_angles) {
       if (added_h3)
         sync_n_terminal_h3_angles(cc);
-      std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
-      AceGraphView graph = make_ace_graph_view(cc);
-      add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph);
-      add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
-      add_planes_if_missing(cc, atom_info, graph);
     }
+    std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
+    AceGraphView graph = make_ace_graph_view(cc);
+    add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph);
+    add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
+    add_planes_if_missing(cc, atom_info, graph);
   } else {
-    if (added_h3 && !only_bonds)
+    if (added_h3 && !no_angles)
       sync_n_terminal_h3_angles(cc);
   }
 
