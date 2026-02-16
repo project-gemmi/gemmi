@@ -1476,20 +1476,55 @@ std::vector<size_t> build_tv_list_for_center(
   return tv;
 }
 
-int compute_tv_position_for_center(
+std::vector<size_t> build_tv_list_sp3sp3_like_acedrg(
     const ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
     const std::set<size_t>& stereo_chiral_centers,
     const std::map<size_t, std::map<size_t, std::vector<size_t>>>& chir_mut_table,
-    size_t center, size_t other_center, size_t target,
-    TvMode mode = TvMode::Default, size_t forced_rs = SIZE_MAX) {
-  auto tv = build_tv_list_for_center(
-      cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-      center, other_center, mode, forced_rs);
-  for (int i = 0; i < (int)tv.size(); ++i)
-    if (tv[i] == target)
-      return i;
-  return -1;
+    size_t center, size_t other, size_t rs = SIZE_MAX) {
+  std::vector<size_t> tv;
+  if (rs != SIZE_MAX)
+    tv.push_back(rs);
+
+  bool used_chiral = false;
+  bool stereo_sp3 = (atom_info[center].hybrid == Hybridization::SP3 &&
+                     stereo_chiral_centers.count(center) != 0);
+  if (atom_info[center].hybrid == Hybridization::SP3 && !stereo_sp3) {
+    auto mit = chir_mut_table.find(center);
+    if (mit != chir_mut_table.end()) {
+      auto mt_it = mit->second.find(other);
+      if (mt_it != mit->second.end()) {
+        used_chiral = true;
+        std::vector<size_t> mut_filtered;
+        mut_filtered.reserve(mt_it->second.size());
+        for (size_t cand : mt_it->second)
+          if (cand != other)
+            mut_filtered.push_back(cand);
+        append_chiral_cluster_like_acedrg(tv, mut_filtered);
+      }
+    }
+  }
+
+  if (!used_chiral) {
+    for (const auto& nb : adj[center]) {
+      if (nb.idx != other &&
+          std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+          !cc.atoms[nb.idx].is_hydrogen()) {
+        tv.push_back(nb.idx);
+        break;
+      }
+    }
+  }
+
+  for (const auto& nb : adj[center]) {
+    if (nb.idx == other ||
+        std::find(tv.begin(), tv.end(), nb.idx) != tv.end())
+      continue;
+    tv.push_back(nb.idx);
+  }
+  if (tv.size() > 3)
+    tv.resize(3);
+  return tv;
 }
 
 
@@ -1561,12 +1596,17 @@ static void emit_one_torsion(
     size_t rs2 = rs_pair.second;
     size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
     size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
-    int i_pos = compute_tv_position_for_center(
+    std::vector<size_t> tv1 = build_tv_list_sp3sp3_like_acedrg(
         cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        side1, side2, term1, TvMode::SP3SP3, rs1);
-    int j_pos = compute_tv_position_for_center(
+        side1, side2, rs1);
+    std::vector<size_t> tv2 = build_tv_list_sp3sp3_like_acedrg(
         cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        side2, side1, term2, TvMode::SP3SP3, rs2);
+        side2, side1, rs2);
+    int i_pos = -1, j_pos = -1;
+    for (int i = 0; i < (int)tv1.size(); ++i)
+      if (tv1[i] == term1) { i_pos = i; break; }
+    for (int j = 0; j < (int)tv2.size(); ++j)
+      if (tv2[j] == term2) { j_pos = j; break; }
     if (i_pos >= 0 && j_pos >= 0) {
       static const double even_m[3][3] = {
         {60,180,-60}, {-60,60,180}, {180,-60,60}};
@@ -1592,12 +1632,17 @@ static void emit_one_torsion(
     size_t rs2 = rs_pair.second;
     size_t term1 = (side1 == center2) ? a1_idx : a4_idx;
     size_t term2 = (side1 == center2) ? a4_idx : a1_idx;
-    int i_pos = compute_tv_position_for_center(
+    std::vector<size_t> tv1 = build_tv_list_sp3sp3_like_acedrg(
         cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        side1, side2, term1, TvMode::SP3SP3, rs1);
-    int j_pos = compute_tv_position_for_center(
+        side1, side2, rs1);
+    std::vector<size_t> tv2 = build_tv_list_sp3sp3_like_acedrg(
         cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        side2, side1, term2, TvMode::SP3SP3, rs2);
+        side2, side1, rs2);
+    int i_pos = -1, j_pos = -1;
+    for (int i = 0; i < (int)tv1.size(); ++i)
+      if (tv1[i] == term1) { i_pos = i; break; }
+    for (int j = 0; j < (int)tv2.size(); ++j)
+      if (tv2[j] == term2) { j_pos = j; break; }
     if (i_pos >= 0 && i_pos < 3 && j_pos >= 0 && j_pos < 3) {
       static const double noflip_m[3][3] = {
         {180,-60,60}, {60,180,-60}, {-60,60,180}};
