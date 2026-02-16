@@ -1690,10 +1690,18 @@ static void emit_one_torsion(
       std::vector<size_t> tv_sp2;
       if (sp2_rs != SIZE_MAX && sp3_rs != SIZE_MAX)
         tv_sp2.push_back(sp2_rs);
+      // Keep SP2-side ordering deterministic with heavy neighbors first.
       for (const auto& nb : adj[sp2_center]) {
         if (nb.idx == sp3_center || nb.idx == sp2_rs)
           continue;
-        tv_sp2.push_back(nb.idx);
+        if (!cc.atoms[nb.idx].is_hydrogen())
+          tv_sp2.push_back(nb.idx);
+      }
+      for (const auto& nb : adj[sp2_center]) {
+        if (nb.idx == sp3_center || nb.idx == sp2_rs)
+          continue;
+        if (cc.atoms[nb.idx].is_hydrogen())
+          tv_sp2.push_back(nb.idx);
       }
 
       std::vector<size_t> tv_sp3;
