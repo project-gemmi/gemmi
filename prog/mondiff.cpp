@@ -350,10 +350,13 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
           const Restraints::Torsion& p = *added[found];
           const Restraints::AtomId& new1 = same_order ? p.id1 : p.id4;
           const Restraints::AtomId& new4 = same_order ? p.id4 : p.id1;
-          printf("A torsion {%s:%s}-%s-%s-{%s:%s}%s\n",
-                 m->id1.atom.c_str(), new1.atom.c_str(),
+          auto end_str = [](const std::string& a, const std::string& b) {
+            return a == b ? cat('{', a, '}') : cat('{', a, ':', b, '}');
+          };
+          printf("A torsion %s-%s-%s-%s%s\n",
+                 end_str(m->id1.atom, new1.atom).c_str(),
                  m->id2.atom.c_str(), m->id3.atom.c_str(),
-                 m->id4.atom.c_str(), new4.atom.c_str(),
+                 end_str(m->id4.atom, new4.atom).c_str(),
                  period_str(m->period, p.period).c_str());
         } else {
           printf("- %s  p.%d\n", str(cc1, *m).c_str(), m->period);
