@@ -7,6 +7,7 @@
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/ace_graph.hpp"
+#include "gemmi/resinfo.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cctype>
@@ -1623,7 +1624,7 @@ static void emit_one_torsion(
       value = m[i_pos][j_pos];
     }
   } else if (!lookup_found && sp3_2 && sp3_3 && ring_size == 0) {
-    // Non-ring SP3-SP3: always use no-flip matrix
+    // Non-ring SP3-SP3: AceDRG uses the same matrix as the "even" ring case.
     size_t side1 = center2;
     size_t side2 = center3;
     std::pair<size_t, size_t> rs_pair =
@@ -1960,6 +1961,30 @@ const Restraints::Torsion* find_generated_torsion(
   return nullptr;
 }
 
+// AceDRG setPeptideTorsions: for each bond, iterate all torsion candidates,
+// look up the pep_tors table, and pick the one with the lowest priority.
+// Bonds with no table match fall back to the first generated candidate
+// (equivalent to AceDRG's tmpTors fallback which keeps first torsion per bond).
+const Restraints::Torsion* select_peptide_torsion(
+    const AcedrgTables& tables,
+    const std::vector<Restraints::Torsion>& candidates) {
+  if (candidates.empty())
+    return nullptr;
+  const Restraints::Torsion* best = nullptr;
+  int best_priority = INT_MAX;
+  TorsionEntry entry;
+  for (const auto& t : candidates) {
+    if (tables.lookup_pep_tors(t.id1.atom, t.id2.atom, t.id3.atom, t.id4.atom, entry) ||
+        tables.lookup_pep_tors(t.id4.atom, t.id3.atom, t.id2.atom, t.id1.atom, entry)) {
+      if (entry.priority < best_priority) {
+        best_priority = entry.priority;
+        best = &t;
+      }
+    }
+  }
+  return best ? best : &candidates[0];
+}
+
 const Restraints::Torsion* select_one_torsion_from_candidates(
     const ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
@@ -1969,7 +1994,7 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
     return nullptr;
   std::vector<size_t> idxR1, idxNonH1, idxH1, idxR2, idxNonH2, idxH2;
   for (const auto& nb : adj[center2]) {
-    if (nb.idx == center3)
+    if (nb.idx == center3 || cc.atoms[nb.idx].el.is_metal())
       continue;
     if (!atom_info[nb.idx].in_rings.empty())
       idxR1.push_back(nb.idx);
@@ -1979,7 +2004,7 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
       idxH1.push_back(nb.idx);
   }
   for (const auto& nb : adj[center3]) {
-    if (nb.idx == center2)
+    if (nb.idx == center2 || cc.atoms[nb.idx].el.is_metal())
       continue;
     if (!atom_info[nb.idx].in_rings.empty())
       idxR2.push_back(nb.idx);
@@ -2012,12 +2037,17 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
     if (!idxH1.empty())
       if (auto t = pick(idxH1[0], idxNonH2[0])) return t;
     return nullptr;
-  } else if (!idxR1.empty() || !idxR2.empty()) {
-    if (!idxR1.empty() && !idxR2.empty())
-      if (auto t = pick(idxR1[0], idxR2[0])) return t;
-    if (!idxR1.empty() && !idxH2.empty())
+  } else if (!idxR1.empty() && !idxR2.empty()) {
+    // AceDRG: if ring+ring fails (e.g. atoms[0]==atoms[3] in 3-ring),
+    // it does not fall through to ring+H due to its else-if structure.
+    if (auto t = pick(idxR1[0], idxR2[0])) return t;
+    return nullptr;
+  } else if (!idxR1.empty() && idxR2.empty()) {
+    if (!idxH2.empty())
       if (auto t = pick(idxR1[0], idxH2[0])) return t;
-    if (!idxH1.empty() && !idxR2.empty())
+    return nullptr;
+  } else if (idxR1.empty() && !idxR2.empty()) {
+    if (!idxH1.empty())
       if (auto t = pick(idxH1[0], idxR2[0])) return t;
     return nullptr;
   } else if (!idxH1.empty() && !idxH2.empty()) {
@@ -2055,7 +2085,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
-  bool peptide_mode = ChemComp::is_peptide_group(cc.group);
+  bool peptide_mode = to_upper(cc.type_or_group).find("PEPTIDE") != std::string::npos;
+  const ResidueInfo& ri = find_tabulated_residue(cc.name);
+  bool standard_aa = ri.is_standard() && ri.kind == ResidueKind::AA;
   std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
 
   // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
@@ -2072,7 +2104,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   SugarRingInfo sugar_info = detect_sugar_rings(cc, adj, atom_info);
   auto& sugar_ring_bonds = sugar_info.ring_bonds;
   auto& sugar_ring_seq = sugar_info.ring_seq;
-  bool has_sugar_ring = !sugar_ring_bonds.empty();
+  // AceDRG: isPeptide takes priority over sugar detection (resetSystem2).
+  bool has_sugar_ring = !peptide_mode && !sugar_ring_bonds.empty();
 
   ChiralCenterInfo chiral_info =
       detect_chiral_centers_and_mut_table(cc, adj, atom_info, atom_stereo);
@@ -2092,8 +2125,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     // Match AceDRG map-ordered bond traversal (fullAtoms map key order).
     size_t center2 = cc.atoms[idx1].id < cc.atoms[idx2].id ? idx1 : idx2;
     size_t center3 = center2 == idx1 ? idx2 : idx1;
-    size_t sel_center2 = center2;
-    size_t sel_center3 = center3;
+    // AceDRG's setupMiniTorsions sorts center indices numerically (min_max),
+    // so selectOneTorFromOneBond's idx1=min, idx2=max.
+    size_t sel_center2 = std::min(idx1, idx2);
+    size_t sel_center3 = std::max(idx1, idx2);
 
     // Match AceDRG setTorsionFromOneBond() dispatch orientation.
     bool c2_sp2 = is_sp2_like(atom_info[center2]);
@@ -2124,97 +2159,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                           bond.type == BondType::Deloc || bond.aromatic ||
                           (aromatic_like[idx1] && aromatic_like[idx2]));
 
-    // Literal AceDRG SP1 dispatch: SetOneSP1SP1Bond / SetOneSP1SP2Bond / SetOneSP1SP3Bond.
+    // AceDRG generates SP1 torsions internally but setupMiniTorsions() filters
+    // them all out (buggy check on atoms[1].bondingIdx effectively removes all
+    // SP1-centered torsions since SetOneSP1* always puts SP1 as atoms[1]).
+    // Skip SP1 bonds entirely to match AceDRG output.
     int b2 = atom_info[center2].bonding_idx;
     int b3 = atom_info[center3].bonding_idx;
-    bool c2_sp1 = (b2 == 0 || b2 == 1);
-    bool c3_sp1 = (b3 == 0 || b3 == 1);
-    if (c2_sp1 || c3_sp1) {
-      size_t sp1_center = center2;
-      size_t other_center = center3;
-      int other_bonding = b3;
-      if (!c2_sp1 && c3_sp1) {
-        sp1_center = center3;
-        other_center = center2;
-        other_bonding = b2;
-      }
-
-      size_t i1 = SIZE_MAX;
-      for (const auto& nb : adj[sp1_center]) {
-        if (nb.idx != other_center) {
-          i1 = nb.idx;
-          break;
-        }
-      }
-      if (i1 == SIZE_MAX)
-        continue;
-
-      auto emit_sp1_tor = [&](size_t a4, double val, int per) {
-        Restraints::Torsion tor{
-            "auto",
-            {1, cc.atoms[i1].id},
-            {1, cc.atoms[sp1_center].id},
-            {1, cc.atoms[other_center].id},
-            {1, cc.atoms[a4].id},
-            val, 10.0, per};
-        cc.rt.torsions.push_back(std::move(tor));
-      };
-
-      if ((other_bonding == 0 || other_bonding == 1)) {
-        size_t i2 = SIZE_MAX;
-        for (const auto& nb : adj[other_center]) {
-          if (nb.idx != sp1_center) {
-            i2 = nb.idx;
-            break;
-          }
-        }
-        if (i2 == SIZE_MAX)
-          continue;
-        emit_sp1_tor(i2, 180.0, 1);
-        continue;
-      }
-
-      std::vector<size_t> tV2;
-      for (const auto& nb : adj[other_center]) {
-        if (nb.idx != sp1_center &&
-            share_ring_ids(atom_info[i1].in_rings, atom_info[nb.idx].in_rings)) {
-          tV2.push_back(nb.idx);
-          break;
-        }
-      }
-      for (const auto& nb : adj[other_center]) {
-        if (nb.idx != sp1_center &&
-            std::find(tV2.begin(), tV2.end(), nb.idx) == tV2.end())
-          tV2.push_back(nb.idx);
-      }
-      if (tV2.empty())
-        continue;
-
-      if (other_bonding == 2) {
-        if (tV2.size() > 2)
-          continue;
-        bool ring_first = share_ring_ids(atom_info[i1].in_rings, atom_info[tV2[0]].in_rings);
-        static const double ring_v[2] = {0.0, 180.0};
-        static const double noring_v[2] = {90.0, -90.0};
-        const double* va = ring_first ? ring_v : noring_v;
-        for (size_t i = 0; i < tV2.size(); ++i)
-          emit_sp1_tor(tV2[i], va[i], 1);
-        continue;
-      }
-
-      if (other_bonding == 3) {
-        if (tV2.size() > 3)
-          continue;
-        bool ring_first = share_ring_ids(atom_info[i1].in_rings, atom_info[tV2[0]].in_rings);
-        static const double ring_v[3] = {0.0, 120.0, -120.0};
-        static const double noring_v[3] = {180.0, -60.0, 60.0};
-        const double* va = ring_first ? ring_v : noring_v;
-        for (size_t i = 0; i < tV2.size(); ++i)
-          emit_sp1_tor(tV2[i], va[i], 3);
-        continue;
-      }
+    if (b2 <= 1 || b3 <= 1)
       continue;
-    }
 
     std::vector<size_t> tv1_idx, tv2_idx;
     TvMode mode12 = TvMode::Default;
@@ -2244,8 +2196,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (tv1_idx.empty() || tv2_idx.empty())
       continue;
 
-    if (is_sp1_like(atom_info[center2]) || is_sp1_like(atom_info[center3]))
-      continue;
+
 
     std::vector<Restraints::Torsion> generated;
     generated.reserve(tv1_idx.size() * tv2_idx.size());
@@ -2274,6 +2225,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
     if (has_sugar_ring) {
       cc.rt.torsions.insert(cc.rt.torsions.end(), generated.begin(), generated.end());
+    } else if (standard_aa) {
+      const Restraints::Torsion* chosen = select_peptide_torsion(tables, generated);
+      if (chosen)
+        cc.rt.torsions.push_back(*chosen);
     } else {
       const Restraints::Torsion* chosen = select_one_torsion_from_candidates(
           cc, adj, atom_info, sel_center2, sel_center3, generated);

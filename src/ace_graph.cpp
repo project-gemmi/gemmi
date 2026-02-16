@@ -69,6 +69,16 @@ AceBondAdjacency build_bond_adjacency(
     adj[idx1].push_back({idx2, bond.type, aromatic});
     adj[idx2].push_back({idx1, bond.type, aromatic});
   }
+  // AceDRG populates connAtoms in two passes: first non-H neighbors (from
+  // CIF bond table), then H neighbors (added in H-generation).  Stable-sort
+  // to put non-H before H while keeping within-group bond-file order.
+  for (auto& nbs : adj)
+    std::stable_sort(nbs.begin(), nbs.end(),
+                     [&](const AceBondNeighbor& a, const AceBondNeighbor& b) {
+                       bool ah = cc.atoms[a.idx].is_hydrogen();
+                       bool bh = cc.atoms[b.idx].is_hydrogen();
+                       return !ah && bh;  // non-H before H
+                     });
   return adj;
 }
 
