@@ -2000,6 +2000,10 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     // Don't call cod_class_to_atom2 here — it would overwrite cod_main, cod_root,
     // nb_symb, nb2_symb, nb3_symb with permissive-aromaticity values, but these
     // fields must retain strict-aromaticity values for COD table lookups.
+    // Update atom-level is_aromatic to match the permissive cod_class.
+    // Hash was already computed with strict aromaticity (for table lookups).
+    for (auto& atom : atoms)
+      atom.is_aromatic = cod_class_is_aromatic(atom.cod_class);
   }
 
   return atoms;

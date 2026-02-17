@@ -2937,8 +2937,9 @@ void add_planes_if_missing(ChemComp& cc,
   for (const auto& plane : cc.rt.planes)
     plane_sets.emplace_back(plane.ids.begin(), plane.ids.end());
 
-  auto add_plane = [&](const std::set<size_t>& idxs) {
-    if (idxs.size() < 4)
+  auto add_plane = [&](const std::set<size_t>& idxs, size_t min_size = 4,
+                       double esd = 0.02) {
+    if (idxs.size() < min_size)
       return;
     std::set<Restraints::AtomId> ids;
     for (size_t idx : idxs)
@@ -2947,7 +2948,7 @@ void add_planes_if_missing(ChemComp& cc,
       return;
     Restraints::Plane plane;
     plane.label = cat("plan-", cc.rt.planes.size() + 1);
-    plane.esd = 0.02;
+    plane.esd = esd;
     std::vector<std::string> names;
     names.reserve(ids.size());
     for (const auto& id : ids)
@@ -2964,9 +2965,10 @@ void add_planes_if_missing(ChemComp& cc,
     for (int ring_id : atom_info[i].in_rings)
       rings[ring_id].push_back(i);
 
+  std::set<size_t> aromatic_ring_atoms;
   for (const auto& ring : rings) {
     const std::vector<size_t>& ring_atoms = ring.second;
-    if (ring_atoms.size() < 5)
+    if (ring_atoms.size() < 4)
       continue;
     bool aromatic = true;
     for (size_t idx : ring_atoms) {
@@ -2980,24 +2982,93 @@ void add_planes_if_missing(ChemComp& cc,
     std::set<size_t> plane_idx;
     for (size_t idx : ring_atoms) {
       plane_idx.insert(idx);
-      for (const auto& nb : adj[idx])
-        plane_idx.insert(nb.idx);
+      aromatic_ring_atoms.insert(idx);
+      // AceDRG: only add neighbors if the ring atom has != 4 connections
+      if (adj[idx].size() != 4) {
+        for (const auto& nb : adj[idx])
+          if (!cc.atoms[nb.idx].el.is_metal())
+            plane_idx.insert(nb.idx);
+      }
     }
     add_plane(plane_idx);
   }
 
-  // SP2 nitrogen planes first, then SP2 carbon planes (matching AceDRG order)
-  for (Element sp2_el : {El::N, El::C}) {
-    for (size_t idx = 0; idx < cc.atoms.size(); ++idx) {
-      if (cc.atoms[idx].el != sp2_el)
+  // SP2 planes for atoms not already in aromatic ring planes (AceDRG order: atom serial)
+  for (size_t idx = 0; idx < cc.atoms.size(); ++idx) {
+    if (atom_info[idx].hybrid != Hybridization::SP2)
+      continue;
+    if (cc.atoms[idx].is_hydrogen())
+      continue;
+    if (aromatic_ring_atoms.count(idx))
+      continue;
+    std::set<size_t> plane_idx;
+    plane_idx.insert(idx);
+    for (const auto& nb : adj[idx])
+      plane_idx.insert(nb.idx);
+    add_plane(plane_idx);
+  }
+
+  // Metal coordination planes (AceDRG metalMode.py logic):
+  // For each metal-nonmetal bond (M-X) where X is SP2 per metalMode rules,
+  // create a plane with M + X + X's filtered neighbors.
+  // metalMode.py uses its own hybridization:
+  //   O: always SP3 (never generates metal planes)
+  //   N: SP2 only if has an SP2 non-metal neighbor AND total connections < 4
+  //   C: SP2 if non-metal connections < 3, or non-metal == 3 with no metal
+  auto metal_mode_is_sp2 = [&](size_t x) -> bool {
+    Element el = cc.atoms[x].el;
+    if (el == El::O || el == El::P || el == El::S || el == El::Se)
+      return false;
+    int non_metal = 0, metal = 0;
+    for (const auto& nb2 : adj[x]) {
+      if (cc.atoms[nb2.idx].el.is_metal())
+        metal++;
+      else
+        non_metal++;
+    }
+    if (el == El::C || el == El::Si || el == El::Ge) {
+      if (non_metal == 3 && metal > 0) return false;  // SP3 in metalMode
+      return atom_info[x].bonding_idx == 2;
+    }
+    if (el == El::N || el == El::As) {
+      // metalMode second round: N is SP2 if has SP2 non-metal neighbor
+      // and total connections < 4
+      if (non_metal + metal >= 4) return false;
+      for (const auto& nb2 : adj[x])
+        if (!cc.atoms[nb2.idx].el.is_metal() && atom_info[nb2.idx].bonding_idx == 2)
+          return true;
+      return false;
+    }
+    return atom_info[x].bonding_idx == 2;
+  };
+  std::set<size_t> metal_indices;
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    if (cc.atoms[i].el.is_metal())
+      metal_indices.insert(i);
+  for (size_t m : metal_indices) {
+    std::set<size_t> m_neighbors;
+    for (const auto& nb : adj[m])
+      m_neighbors.insert(nb.idx);
+    for (const auto& nb : adj[m]) {
+      size_t x = nb.idx;
+      if (cc.atoms[x].el.is_metal())
         continue;
-      if (atom_info[idx].hybrid != Hybridization::SP2)
+      if (!metal_mode_is_sp2(x))
         continue;
       std::set<size_t> plane_idx;
-      plane_idx.insert(idx);
-      for (const auto& nb : adj[idx])
-        plane_idx.insert(nb.idx);
-      add_plane(plane_idx);
+      plane_idx.insert(m);
+      plane_idx.insert(x);
+      for (const auto& nb2 : adj[x]) {
+        size_t y = nb2.idx;
+        if (y == m)
+          continue;
+        if (cc.atoms[y].el.is_metal())
+          continue;
+        if (m_neighbors.count(y))
+          continue;
+        plane_idx.insert(y);
+      }
+      add_plane(plane_idx, 3, 0.06);
     }
   }
 }

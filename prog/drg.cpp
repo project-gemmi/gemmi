@@ -282,6 +282,7 @@ int GEMMI_MAIN(int argc, char **argv) {
         add_chemcomp_to_block(cc, block, acedrg_types, no_angles);
 
         // Mimic AceDRG's extra descriptor loop.
+        /*
         {
           const std::vector<std::array<const char*, 4>> rows = {{
               {cc.name.c_str(), "gemmi", GEMMI_VERSION, "dictionary generator"},
@@ -295,6 +296,7 @@ int GEMMI_MAIN(int argc, char **argv) {
           for (const auto& r : rows)
             tab.append_row({r[0], r[1], r[2], r[3]});
         }
+        */
       }
 
       if (verbose)
