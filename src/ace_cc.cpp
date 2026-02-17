@@ -2423,13 +2423,15 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
               [](const RingWalkBug& a, const RingWalkBug& b){ return a.rep < b.rep; });
 
     // Collect Phase 1 bond set and 3-ring closing bond set.
-    // AceDRG Phase 1 only uses SetOneSP3SP3Bond, so only SP3-SP3 ring bonds
-    // are Phase 1. Aromatic/SP2 ring bonds are Phase 2 (CIF order).
-    std::set<std::pair<size_t,size_t>> phase1_set, closing3ring_set;
+    // AceDRG Phase 1 processes ALL ring walk bonds (SP2-SP2, SP2-SP3, SP3-SP3).
+    // Only SP3-SP3 walk bonds use SetOneSP3SP3Bond(flip) which has a skip check
+    // for phantoms (a1==a4). SP2-SP3 walk bonds use SetOneSP2SP3Bond which has
+    // NO skip check, so they generate phantoms.
+    std::set<std::pair<size_t,size_t>> phase1_sp3sp3_set, closing3ring_set;
     for (const auto& rw : rwalks) {
       for (auto& pb : rw.p1bonds)
         if (is_sp3_like(atom_info[pb.first]) && is_sp3_like(atom_info[pb.second]))
-          phase1_set.insert(pb);
+          phase1_sp3sp3_set.insert(pb);
       if (rw.size == 3) closing3ring_set.insert(rw.closing);
     }
 
@@ -2438,15 +2440,12 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     for (size_t bi = 0; bi < bug_infos.size(); ++bi)
       bkey_to_bi[std::minmax(bug_infos[bi].sel_idx1, bug_infos[bi].sel_idx2)] = bi;
 
-    // Ordering: Phase 1 (SP3-SP3 ring walk) bonds first, then Phase 2 (CIF order).
+    // Ordering: Phase 1 (ALL ring walk) bonds first, then Phase 2 (CIF order).
     std::vector<size_t> ordered_bis;
     {
       std::set<size_t> ordered_set;
       for (const auto& rw : rwalks)
         for (auto& pb : rw.p1bonds) {
-          // Only include SP3-SP3 bonds in Phase 1 ordering
-          if (!is_sp3_like(atom_info[pb.first]) || !is_sp3_like(atom_info[pb.second]))
-            continue;
           auto it = bkey_to_bi.find(pb);
           if (it != bkey_to_bi.end() && !ordered_set.count(it->second)) {
             ordered_bis.push_back(it->second);
@@ -2472,12 +2471,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       auto& bcp = bond_cps[bi];
       bcp.global_start = global_pos;
       auto bkey = std::minmax(info.sel_idx1, info.sel_idx2);
-      bool is_phase1 = phase1_set.count(bkey) > 0;
       bool is_3ring_closing = closing3ring_set.count(bkey) > 0;
       // For Phase 2 3-ring closing bonds, use raw adjacency order (matches
       // AceDRG's SetOneSP3SP3Bond without flip, which iterates connAtoms
-      // directly).  The ring-sharing vertex appears first on both sides of
-      // the bond, so the phantom entry (a1==a4) ends up at position 0.
+      // directly).
       // For all other bonds, use the pre-built acedrg-order atv lists.
       std::vector<size_t> raw_tv1, raw_tv2;
       const std::vector<size_t>* p_outer;
@@ -2496,7 +2493,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
       for (size_t a1 : *p_outer)
         for (size_t a4 : *p_inner) {
-          if (is_phase1 && a1 == a4) continue;  // Phase 1: no phantoms
+          // Only SP3-SP3 ring walk bonds have the skip check in AceDRG
+          // (SetOneSP3SP3Bond with flip). SP2-SP3 walk bonds (SetOneSP2SP3Bond)
+          // do NOT skip, so they generate phantoms.  Closing bonds and other
+          // Phase 2 bonds also do NOT skip.
+          if (phase1_sp3sp3_set.count(bkey) > 0 && a1 == a4) continue;
           bcp.entries.push_back({a1, a4});
           if (a1 == a4) any_phantom = true;
         }

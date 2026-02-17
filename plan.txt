@@ -1,0 +1,26 @@
+Goal: Extract and generalize the AceDRG repro code paths so they become broadly useful cheminformatics utilities, with AceDRG parity kept via a thin adapter.
+
+Proposed steps (incremental):
+1) Publish generic APIs
+   - Expose a public “restraint completion” entry point that takes a ChemComp and fills bonds/angles/torsions/planes using table data, without AceDRG-specific flags.
+   - Add a “torsion override” helper that loads arbitrary torsion tables (format: id, four atoms, value, esd, period, optional priority) and applies them with reversible matching + dedup.
+   - Make atom typing/ring/aromaticity utilities public (hybridization, ring detection, aromatic flags, neighbor descriptors).
+
+2) Factor out reusable modules
+   - Split AcedrgTables into: (a) core table loader/lookups (cod/hrs/en, atom types, H distances, metal templates), (b) override tables, (c) AceDRG adapter.
+   - Keep AceDRG-parity quirks in the adapter; default APIs stay “clean”.
+
+3) Carbohydrate and metal helpers
+   - Package sugar-ring detection + nu torsion generation as a carbohydrate helper (identify furanose/pyranose, generate canonical torsions/planes, optional puckering labels).
+   - Expose metal coordination geometry defaults/overrides as a small utility (coord-number → geometry, angles; metal-ligand bond suggestions).
+
+4) Configuration & extensibility
+   - Allow runtime injection of additional override tables (paths or in-memory).
+   - Document table formats (pep/nucl-style) so users can supply their own libraries.
+
+5) Backward compatibility
+   - Keep a thin “acedrg_compat” layer that wires the generic pieces with AceDRG gating (descriptor presence, peptide/NA detection) to preserve test parity.
+
+6) Deliverables
+   - New public headers/namespaces for the generic helpers.
+   - Minimal docs/examples (C++ and Python) showing: fill_restraints(); load & apply custom torsion table; compute atom typing/aromaticity; use metal/sugar helpers.
