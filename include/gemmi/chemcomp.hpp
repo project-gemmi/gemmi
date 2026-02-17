@@ -382,6 +382,7 @@ struct ChemComp {
   std::string name;
   std::string type_or_group;  // _chem_comp.type or _chem_comp.group
   Group group = Group::Null;
+  bool has_descriptor = false;  // true if _pdbx_chem_comp_descriptor present
   bool has_coordinates = false;
   std::vector<Atom> atoms;
   std::vector<Aliasing> aliases;
@@ -616,6 +617,8 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     cc.set_group(group_col.str(0));
   else if (cif::Column type_col = block.find_values("_chem_comp.type"))
     cc.type_or_group = type_col.str(0);
+  // Presence of descriptor category (AceDRG uses it to gate torsion corrections)
+  cc.has_descriptor = block.find("_pdbx_chem_comp_descriptor.", {"comp_id"}).ok();
   for (auto row : block.find("_chem_comp_atom.",
                              {"atom_id", "type_symbol", "?type_energy",
                              "?charge", "?partial_charge", "?alt_atom_id",

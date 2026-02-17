@@ -1962,6 +1962,86 @@ const Restraints::Torsion* find_generated_torsion(
   return nullptr;
 }
 
+// AceDRG's Python layer (confirmAAandNames) checks if a compound has standard
+// AA backbone topology: atoms N, CA, C, O, OXT with correct types and bonding.
+// If yes, it passes -C flag to the C++ binary, enabling setPeptideTorsions().
+bool confirm_aa_backbone(const ChemComp& cc,
+                         const AceBondAdjacency& adj,
+                         const std::map<std::string, size_t>& atom_index) {
+  auto find = [&](const std::string& name) -> size_t {
+    auto it = atom_index.find(name);
+    return it != atom_index.end() ? it->second : SIZE_MAX;
+  };
+  size_t i_n = find("N"), i_ca = find("CA"), i_c = find("C"),
+         i_o = find("O"), i_oxt = find("OXT");
+  if (i_n == SIZE_MAX || i_ca == SIZE_MAX || i_c == SIZE_MAX ||
+      i_o == SIZE_MAX || i_oxt == SIZE_MAX)
+    return false;
+  if (cc.atoms[i_n].el != El::N || cc.atoms[i_ca].el != El::C ||
+      cc.atoms[i_c].el != El::C || cc.atoms[i_o].el != El::O ||
+      cc.atoms[i_oxt].el != El::O)
+    return false;
+  // CA must have exactly 4 bonds, bonded to N and C, exactly one H named HA
+  if (adj[i_ca].size() != 4)
+    return false;
+  bool ca_has_n = false, ca_has_c = false;
+  int ca_h_count = 0;
+  bool ca_has_ha = false;
+  for (const auto& nb : adj[i_ca]) {
+    if (nb.idx == i_n) ca_has_n = true;
+    else if (nb.idx == i_c) ca_has_c = true;
+    if (cc.atoms[nb.idx].is_hydrogen()) {
+      ca_h_count++;
+      if (cc.atoms[nb.idx].id == "HA")
+        ca_has_ha = true;
+    }
+  }
+  if (!ca_has_n || !ca_has_c || ca_h_count != 1 || !ca_has_ha)
+    return false;
+  // C must have exactly 3 bonds: CA, O, OXT
+  if (adj[i_c].size() != 3)
+    return false;
+  bool c_has_o = false, c_has_oxt = false;
+  for (const auto& nb : adj[i_c]) {
+    if (nb.idx == i_o) c_has_o = true;
+    else if (nb.idx == i_oxt) c_has_oxt = true;
+  }
+  if (!c_has_o || !c_has_oxt)
+    return false;
+  // N must have 3-4 bonds with proper H naming
+  size_t n_bonds = adj[i_n].size();
+  if (n_bonds < 3 || n_bonds > 4)
+    return false;
+  std::vector<std::string> n_h_names;
+  for (const auto& nb : adj[i_n])
+    if (cc.atoms[nb.idx].is_hydrogen())
+      n_h_names.push_back(cc.atoms[nb.idx].id);
+  if (n_bonds == 3) {
+    if (n_h_names.empty() || n_h_names.size() > 3)
+      return false;
+    bool has_h2 = std::find(n_h_names.begin(), n_h_names.end(), "H2") != n_h_names.end();
+    if (!has_h2)
+      return false;
+    if (n_h_names.size() == 1) {
+      if (n_h_names[0] != "H2")
+        return false;
+    } else {
+      bool has_h = std::find(n_h_names.begin(), n_h_names.end(), "H") != n_h_names.end();
+      if (!has_h || !has_h2)
+        return false;
+    }
+  } else {  // n_bonds == 4
+    if (n_h_names.size() != 3)
+      return false;
+    bool has_h = std::find(n_h_names.begin(), n_h_names.end(), "H") != n_h_names.end();
+    bool has_h2 = std::find(n_h_names.begin(), n_h_names.end(), "H2") != n_h_names.end();
+    bool has_h3 = std::find(n_h_names.begin(), n_h_names.end(), "H3") != n_h_names.end();
+    if (!has_h || !has_h2 || !has_h3)
+      return false;
+  }
+  return true;
+}
+
 // AceDRG setPeptideTorsions: for each bond, iterate all torsion candidates,
 // look up the pep_tors table, and pick the one with the lowest priority.
 // Bonds with no table match fall back to the first generated candidate
@@ -2091,8 +2171,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
-  bool peptide_mode = to_upper(cc.type_or_group).find("PEPTIDE") != std::string::npos;
   std::string type_upper = to_upper(cc.type_or_group);
+  bool peptide_mode = type_upper.find("PEPTIDE") != std::string::npos;
   bool nucleic_mode = (type_upper.find("DNA") != std::string::npos ||
                        type_upper.find("RNA") != std::string::npos);
   // AceDRG applies pepCorr/naCorr only when a descriptor loop is present.
@@ -2100,6 +2180,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     peptide_mode = false;
     nucleic_mode = false;
   }
+  // AceDRG's Python layer (confirmAAandNames) verifies standard backbone
+  // topology before passing -C flag to enable setPeptideTorsions().
+  if (peptide_mode && !confirm_aa_backbone(cc, adj, atom_index))
+    peptide_mode = false;
   const ResidueInfo& ri = find_tabulated_residue(cc.name);
   bool standard_aa = ri.is_standard() && ri.kind == ResidueKind::AA;
   std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
@@ -2319,7 +2403,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       cc.rt.torsions.insert(cc.rt.torsions.end(), generated.begin(), generated.end());
-    } else if (standard_aa) {
+    } else if (standard_aa || peptide_mode) {
       if (has_3ring)
         bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});

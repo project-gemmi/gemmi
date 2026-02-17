@@ -279,6 +279,23 @@ int GEMMI_MAIN(int argc, char **argv) {
 
         // Update the block with new values
         add_chemcomp_to_block(cc, block, acedrg_types, no_angles);
+
+        // Mimic AceDRG's extra descriptor loop.
+        {
+          const std::vector<std::array<const char*, 4>> rows = {{
+              {cc.name.c_str(), "acedrg", "326", "dictionary generator"},
+              {cc.name.c_str(), "acedrg_database", "12", "data source"},
+              {cc.name.c_str(), "rdkit", "2023.03.3", "Chemoinformatics tool"},
+              {cc.name.c_str(), "servalcat", "0.4.126", "optimization tool"},
+          }};
+          cif::Table tab = block.find_or_add("_acedrg_chem_comp_descriptor.",
+                                             {"comp_id", "program_name",
+                                              "program_version", "type"});
+          tab.ensure_loop();
+          tab.loop_item->loop.values.clear();  // replace any existing
+          for (const auto& r : rows)
+            tab.append_row({r[0], r[1], r[2], r[3]});
+        }
       }
 
       if (verbose)
