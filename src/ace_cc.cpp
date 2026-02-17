@@ -2092,6 +2092,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
   bool peptide_mode = to_upper(cc.type_or_group).find("PEPTIDE") != std::string::npos;
+  std::string type_upper = to_upper(cc.type_or_group);
+  bool nucleic_mode = (type_upper.find("DNA") != std::string::npos ||
+                       type_upper.find("RNA") != std::string::npos);
+  // AceDRG applies pepCorr/naCorr only when a descriptor loop is present.
+  if (!cc.has_descriptor) {
+    peptide_mode = false;
+    nucleic_mode = false;
+  }
   const ResidueInfo& ri = find_tabulated_residue(cc.name);
   bool standard_aa = ri.is_standard() && ri.kind == ResidueKind::AA;
   std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
@@ -2685,6 +2693,37 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       return selected_bonds.count(bkey) != 0;
     });
     cc.rt.torsions.insert(cc.rt.torsions.end(), nu_torsions.begin(), nu_torsions.end());
+  }
+
+  // Replace torsions with nucleic-acid-specific table entries when applicable.
+  const bool apply_nucl_tors = false;  // AceDRG does not apply nucl_tors in CCD outputs
+  if (apply_nucl_tors && nucleic_mode && !cc.rt.torsions.empty()) {
+    std::vector<Restraints::Torsion> replaced;
+    replaced.reserve(cc.rt.torsions.size());
+    std::unordered_set<std::string> seen_keys;
+    for (const auto& tor : cc.rt.torsions) {
+      std::vector<TorsionEntry> entries;
+      if (tables.lookup_nucl_tors(tor.id1.atom, tor.id2.atom, tor.id3.atom, tor.id4.atom, entries) ||
+          tables.lookup_nucl_tors(tor.id4.atom, tor.id3.atom, tor.id2.atom, tor.id1.atom, entries)) {
+        for (const auto& e : entries) {
+          Restraints::Torsion t = tor;
+          t.label = e.id;
+          t.value = e.value;
+          t.esd = e.sigma;
+          t.period = e.period;
+          std::string key = cat(t.id1.atom, '|', t.id2.atom, '|', t.id3.atom, '|',
+                                t.id4.atom, '|', t.label);
+          if (seen_keys.insert(key).second)
+            replaced.push_back(std::move(t));
+        }
+      } else {
+        std::string key = cat(tor.id1.atom, '|', tor.id2.atom, '|', tor.id3.atom, '|',
+                              tor.id4.atom, '|', tor.label);
+        if (seen_keys.insert(key).second)
+          replaced.push_back(tor);
+      }
+    }
+    cc.rt.torsions.swap(replaced);
   }
 
 }

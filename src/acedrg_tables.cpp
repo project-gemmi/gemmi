@@ -293,6 +293,8 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
   }
   load_pep_tors(tables_dir + "/pep_tors.table");
   lap("load_pep_tors");
+  load_nucl_tors(tables_dir + "/nucl_tors.table");
+  lap("load_nucl_tors");
 
   tables_loaded_ = true;
 }
@@ -891,6 +893,47 @@ void AcedrgTables::load_pep_tors(const std::string& path) {
     entry.priority = idx;
     entry.id = label;
     pep_tors_[cat(a1, '_', a2, '_', a3, '_', a4)] = std::move(entry);
+  }
+}
+
+// nucl_tors.table: four atom ids (possibly quoted), torsion name, angle, esd, period.
+// AceDRG keeps multiple entries per atom quartet; we store them all.
+void AcedrgTables::load_nucl_tors(const std::string& path) {
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  if (!f)
+    return;
+
+  auto strip_quotes = [](const std::string& s) -> std::string {
+    if (s.size() >= 2 && s.front() == '\"' && s.back() == '\"')
+      return s.substr(1, s.size() - 2);
+    return s;
+  };
+
+  char line[256];
+  while (std::fgets(line, sizeof(line), f.get())) {
+    if (is_skip_line(line))
+      continue;
+    // Format: key tors_id a1 a2 a3 a4 value esd period
+    char key[80], tors_id[64], a1[24], a2[24], a3[24], a4[24];
+    double value = 0.0, esd = 0.0;
+    int period = 0;
+    if (std::sscanf(line, "%79s %63s %23s %23s %23s %23s %lf %lf %d",
+                    key, tors_id, a1, a2, a3, a4, &value, &esd, &period) != 9)
+      continue;
+
+    std::string sa1 = strip_quotes(a1);
+    std::string sa2 = strip_quotes(a2);
+    std::string sa3 = strip_quotes(a3);
+    std::string sa4 = strip_quotes(a4);
+    std::string skey = cat(sa1, '_', sa2, '_', sa3, '_', sa4);
+
+    TorsionEntry entry;
+    entry.value = value;
+    entry.sigma = esd;
+    entry.period = period;
+    entry.id = tors_id;
+    entry.priority = 0;  // not used for nucl torsions
+    nucl_tors_[skey].push_back(std::move(entry));
   }
 }
 
@@ -3383,6 +3426,16 @@ bool AcedrgTables::lookup_pep_tors(const std::string& a1,
     TorsionEntry& out) const {
   auto it = pep_tors_.find(cat(a1, '_', a2, '_', a3, '_', a4));
   if (it == pep_tors_.end())
+    return false;
+  out = it->second;
+  return true;
+}
+
+bool AcedrgTables::lookup_nucl_tors(const std::string& a1,
+    const std::string& a2, const std::string& a3, const std::string& a4,
+    std::vector<TorsionEntry>& out) const {
+  auto it = nucl_tors_.find(cat(a1, '_', a2, '_', a3, '_', a4));
+  if (it == nucl_tors_.end())
     return false;
   out = it->second;
   return true;

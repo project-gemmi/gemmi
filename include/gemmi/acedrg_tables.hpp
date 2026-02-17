@@ -143,6 +143,7 @@ struct MetalCoordOverride {
 
 struct TorsionEntry {
   double value = 0.0;
+  double sigma = 0.0;
   int period = 0;
   int priority = 0;
   std::string id;
@@ -166,6 +167,9 @@ struct GEMMI_DLL AcedrgTables {
   bool lookup_pep_tors(const std::string& a1, const std::string& a2,
                                  const std::string& a3, const std::string& a4,
                                  TorsionEntry& out) const;
+  bool lookup_nucl_tors(const std::string& a1, const std::string& a2,
+                        const std::string& a3, const std::string& a4,
+                        std::vector<TorsionEntry>& out) const;
 
   // Individual lookups - returns match level (10=full, 4+=neighbor matched, 0-3=aggregated)
   int fill_bond(const ChemComp& cc,
@@ -331,6 +335,7 @@ struct GEMMI_DLL AcedrgTables {
   std::vector<MetalAngleEntry> metal_angles_;
   std::vector<MetalCoordOverride> metal_coord_geo_overrides_;
   std::map<std::string, TorsionEntry> pep_tors_;
+  std::map<std::string, std::vector<TorsionEntry>> nucl_tors_;
 
   // Protonated hydrogen distances: maps type (e.g., "H_sp3_C") -> ProtHydrDist
   std::map<std::string, ProtHydrDist> prot_hydr_dists_;
@@ -348,6 +353,7 @@ struct GEMMI_DLL AcedrgTables {
   void load_bond_index(const std::string& path);
   void load_bond_tables(const std::string& dir);
   void load_pep_tors(const std::string& path);
+  void load_nucl_tors(const std::string& path);
   void load_prot_hydr_dists(const std::string& path);
   void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
