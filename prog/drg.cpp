@@ -9,6 +9,7 @@
 #include "gemmi/ace_cc.hpp"        // for prepare_chemcomp
 #include "gemmi/to_cif.hpp"       // for write_cif_to_stream
 #include "gemmi/to_chemcomp.hpp"  // for add_chemcomp_to_block
+#include "gemmi/version.hpp"       // for GEMMI_VERSION
 #include "gemmi/fstream.hpp"      // for Ofstream
 
 #define GEMMI_PROG drg
@@ -283,10 +284,8 @@ int GEMMI_MAIN(int argc, char **argv) {
         // Mimic AceDRG's extra descriptor loop.
         {
           const std::vector<std::array<const char*, 4>> rows = {{
-              {cc.name.c_str(), "acedrg", "326", "dictionary generator"},
+              {cc.name.c_str(), "gemmi", GEMMI_VERSION, "dictionary generator"},
               {cc.name.c_str(), "acedrg_database", "12", "data source"},
-              {cc.name.c_str(), "rdkit", "2023.03.3", "Chemoinformatics tool"},
-              {cc.name.c_str(), "servalcat", "0.4.126", "optimization tool"},
           }};
           cif::Table tab = block.find_or_add("_acedrg_chem_comp_descriptor.",
                                              {"comp_id", "program_name",
