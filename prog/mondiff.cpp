@@ -106,6 +106,39 @@ std::string chirality_order_str(const ChemComp& cc,
                     b.id1.atom, ',', b.id2.atom, ',', b.id3.atom, ')');
 }
 
+int chirality_permutation_parity(const Restraints::Chirality& a,
+                                 const Restraints::Chirality& b) {
+  const Restraints::AtomId a_ids[3] = {a.id1, a.id2, a.id3};
+  const Restraints::AtomId b_ids[3] = {b.id1, b.id2, b.id3};
+  int perm[3] = {-1, -1, -1};
+  for (int i = 0; i != 3; ++i) {
+    for (int j = 0; j != 3; ++j)
+      if (b_ids[i] == a_ids[j]) {
+        perm[i] = j;
+        break;
+      }
+    if (perm[i] < 0)
+      return -1;
+  }
+  int inversions = 0;
+  for (int i = 0; i != 3; ++i)
+    for (int j = i + 1; j != 3; ++j)
+      if (perm[i] > perm[j])
+        ++inversions;
+  return inversions % 2;
+}
+
+bool equivalent_chirality(const Restraints::Chirality& a,
+                          const Restraints::Chirality& b) {
+  int parity = chirality_permutation_parity(a, b);
+  if (parity < 0)
+    return false;
+  if (a.sign == ChiralityType::Both || b.sign == ChiralityType::Both)
+    return a.sign == b.sign;
+  bool sign_same = a.sign == b.sign;
+  return parity == 0 ? sign_same : !sign_same;
+}
+
 const char* mark(double delta, double eps) {
   if (delta < eps) return "";
   if (delta < 2*eps) return "*";
@@ -421,11 +454,12 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
         bool same_order = a.id1 == b->id1 && a.id2 == b->id2 && a.id3 == b->id3;
         if (!same_order) {
           std::string chir = chirality_order_str(cc1, a, *b);
+          bool same_chirality = equivalent_chirality(a, *b);
           if (tsv)
             printf("%s\tchir\t!\t%s\t%s\t%s\n", code, chir.c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
           else
-            printf("M %-30s %s:%s\n", chir.c_str(),
+            printf("%c %-30s %s:%s\n", same_chirality ? 'O' : 'M', chir.c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
         } else if (a.sign != b->sign) {
           if (tsv)
