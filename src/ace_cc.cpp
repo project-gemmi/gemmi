@@ -2857,9 +2857,46 @@ void add_chirality_if_missing(
     bool is_stereo_carbon = (sign != ChiralityType::Both && cc.atoms[center].el == El::C);
     if (is_stereo_carbon)
       stereo_centers.insert(center);
-    std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
-      return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
-    });
+    auto bond_to_center_type = [&](size_t nb_idx) {
+      for (const auto& nb : adj[center])
+        if (nb.idx == nb_idx)
+          return nb.type;
+      return BondType::Unspec;
+    };
+    if (cc.atoms[center].el == El::P) {
+      auto p_nb_rank = [&](size_t nb_idx) {
+        if (cc.atoms[nb_idx].el != El::O)
+          return 3;
+        bool bridged_to_p = false;
+        for (const auto& nb2 : adj[nb_idx]) {
+          if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+            continue;
+          if (cc.atoms[nb2.idx].el == El::P) {
+            bridged_to_p = true;
+            break;
+          }
+        }
+        if (bridged_to_p)
+          return 0;
+        BondType bt = bond_to_center_type(nb_idx);
+        if (bt == BondType::Double || bt == BondType::Deloc)
+          return 2;
+        return 1;
+      };
+      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
+        int ra = p_nb_rank(a);
+        int rb = p_nb_rank(b);
+        if (ra != rb)
+          return ra < rb;
+        return chirality_priority(cc.atoms[a].el) <
+               chirality_priority(cc.atoms[b].el);
+      });
+    } else {
+      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
+        return chirality_priority(cc.atoms[a].el) <
+               chirality_priority(cc.atoms[b].el);
+      });
+    }
     std::stable_sort(h.begin(), h.end(), [&](size_t a, size_t b) {
       return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
     });
