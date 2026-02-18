@@ -3171,10 +3171,13 @@ void add_chirality_if_missing(
         sign == ChiralityType::Both &&
         chosen.size() == 3) {
       int carbon_count = 0;
+      int phosphorus_count = 0;
       int hydrogen_count = 0;
       for (size_t idx : chosen) {
         if (cc.atoms[idx].el == El::C)
           ++carbon_count;
+        else if (cc.atoms[idx].el == El::P)
+          ++phosphorus_count;
         else if (cc.atoms[idx].is_hydrogen())
           ++hydrogen_count;
       }
@@ -3209,6 +3212,11 @@ void add_chirality_if_missing(
             chosen = ordered;
         }
       }
+      if (phosphorus_count == 2 && hydrogen_count == 1 &&
+          cc.atoms[chosen[0]].el == El::P &&
+          cc.atoms[chosen[1]].el == El::P &&
+          cc.atoms[chosen[0]].id > cc.atoms[chosen[1]].id)
+        std::swap(chosen[0], chosen[1]);
     }
     if (is_stereo_carbon &&
         cc.atoms[center].el == El::C &&
