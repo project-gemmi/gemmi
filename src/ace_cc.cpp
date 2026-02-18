@@ -2964,8 +2964,48 @@ void add_chirality_if_missing(
       });
     } else {
       std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
-        return chirality_priority(cc.atoms[a].el) <
-               chirality_priority(cc.atoms[b].el);
+        Element ea = cc.atoms[a].el;
+        Element eb = cc.atoms[b].el;
+        int pa = chirality_priority(ea);
+        int pb = chirality_priority(eb);
+        if (pa != pb)
+          return pa < pb;
+        if (cc.atoms[center].el == El::C && ea == El::C && eb == El::C) {
+          auto id_desc = [&](const std::string& x, const std::string& y) {
+            if (x.size() != y.size())
+              return x.size() > y.size();
+            return x > y;
+          };
+          auto carbon_metrics = [&](size_t idx) {
+            bool has_pi_other = false;
+            int non_h_other = 0;
+            std::string max_non_h_id;
+            for (const auto& nb2 : adj[idx]) {
+              if (nb2.idx == center)
+                continue;
+              if (!cc.atoms[nb2.idx].is_hydrogen()) {
+                ++non_h_other;
+                if (max_non_h_id.empty() ||
+                    id_desc(cc.atoms[nb2.idx].id, max_non_h_id))
+                  max_non_h_id = cc.atoms[nb2.idx].id;
+              }
+              if (nb2.type == BondType::Double ||
+                  nb2.type == BondType::Deloc ||
+                  nb2.type == BondType::Aromatic)
+                has_pi_other = true;
+            }
+            return std::make_tuple(has_pi_other, non_h_other, max_non_h_id);
+          };
+          auto ma = carbon_metrics(a);
+          auto mb = carbon_metrics(b);
+          if (std::get<0>(ma) != std::get<0>(mb))
+            return std::get<0>(ma) > std::get<0>(mb);
+          if (std::get<1>(ma) != std::get<1>(mb))
+            return std::get<1>(ma) > std::get<1>(mb);
+          if (std::get<2>(ma) != std::get<2>(mb))
+            return id_desc(std::get<2>(ma), std::get<2>(mb));
+        }
+        return false;
       });
     }
     std::stable_sort(h.begin(), h.end(), [&](size_t a, size_t b) {
