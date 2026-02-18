@@ -2870,6 +2870,7 @@ void add_chirality_if_missing(
 
     ChiralityType sign = stereo_sign(center);
     bool is_stereo_carbon = (sign != ChiralityType::Both && cc.atoms[center].el == El::C);
+    bool is_stereo_s_carbon = (is_stereo_carbon && sign == ChiralityType::Positive);
     if (is_stereo_carbon)
       stereo_centers.insert(center);
     auto bond_to_center_type = [&](size_t nb_idx) {
@@ -2964,6 +2965,25 @@ void add_chirality_if_missing(
         chosen.push_back(idx);
       }
     }
+    if (cc.atoms[center].el == El::S && non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> dbl_o;
+      std::vector<size_t> sing_n;
+      for (size_t idx : non_h) {
+        Element el = cc.atoms[idx].el;
+        BondType bt = bond_to_center_type(idx);
+        if (el == El::O && (bt == BondType::Double || bt == BondType::Deloc))
+          dbl_o.push_back(idx);
+        else if (el == El::N && bt == BondType::Single)
+          sing_n.push_back(idx);
+      }
+      if (dbl_o.size() == 2 && sing_n.size() == 2) {
+        std::sort(dbl_o.begin(), dbl_o.end(),
+                  [&](size_t a, size_t b) { return cc.atoms[a].id < cc.atoms[b].id; });
+        std::sort(sing_n.begin(), sing_n.end(),
+                  [&](size_t a, size_t b) { return cc.atoms[a].id < cc.atoms[b].id; });
+        chosen = {dbl_o[0], dbl_o[1], sing_n.back()};
+      }
+    }
     if (chosen.size() < 3)
       continue;
     if (cc.atoms[center].el == El::P) {
@@ -3019,6 +3039,49 @@ void add_chirality_if_missing(
       if (has_metal_branch || protonated_terminal_oxy >= 2)
         assign_noncarbon_sign = false;
     }
+    bool force_negative_noncarbon = false;
+    if (assign_noncarbon_sign && cc.atoms[center].el == El::P) {
+      int carbon_count = 0;
+      int double_oxygen_count = 0;
+      int protonated_single_oxygen_count = 0;
+      int other_count = 0;
+      for (size_t idx : non_h) {
+        Element el = cc.atoms[idx].el;
+        BondType bt = bond_to_center_type(idx);
+        if (el == El::C) {
+          ++carbon_count;
+          continue;
+        }
+        if (el == El::O) {
+          bool has_non_h_other = false;
+          bool has_h_other = false;
+          for (const auto& nb2 : adj[idx]) {
+            if (nb2.idx == center)
+              continue;
+            if (cc.atoms[nb2.idx].is_hydrogen())
+              has_h_other = true;
+            else
+              has_non_h_other = true;
+          }
+          if (bt == BondType::Double || bt == BondType::Deloc)
+            ++double_oxygen_count;
+          else if (bt == BondType::Single && has_h_other && !has_non_h_other)
+            ++protonated_single_oxygen_count;
+          else
+            ++other_count;
+          continue;
+        }
+        ++other_count;
+      }
+      auto st_it = atom_stereo.find(cc.atoms[center].id);
+      bool stereo_n = st_it != atom_stereo.end() && !st_it->second.empty() &&
+                      lower(st_it->second[0]) == 'n';
+      force_negative_noncarbon = stereo_n &&
+                                 carbon_count == 2 &&
+                                 double_oxygen_count == 1 &&
+                                 protonated_single_oxygen_count == 1 &&
+                                 other_count == 0;
+    }
 
     if (is_stereo_carbon && sign != ChiralityType::Both) {
       double vol = calculate_chiral_volume(cc.atoms[center].xyz,
@@ -3026,10 +3089,33 @@ void add_chirality_if_missing(
                                            cc.atoms[chosen[1]].xyz,
                                            cc.atoms[chosen[2]].xyz);
       if (std::isfinite(vol) && std::fabs(vol) > 1e-8) {
-        bool should_be_pos = (sign == ChiralityType::Positive);
-        bool is_pos = vol > 0.0;
-        if (should_be_pos != is_pos)
-          std::swap(chosen[0], chosen[1]);
+        sign = (vol > 0.0) ? ChiralityType::Positive : ChiralityType::Negative;
+        if (is_stereo_s_carbon && sign == ChiralityType::Positive &&
+            std::fabs(vol) < 0.03 && h.size() == 1) {
+          bool has_oxygen = false;
+          bool has_nitrogen = false;
+          for (size_t idx : chosen) {
+            if (cc.atoms[idx].el == El::O)
+              has_oxygen = true;
+            if (cc.atoms[idx].el == El::N)
+              has_nitrogen = true;
+          }
+          if (has_oxygen && !has_nitrogen)
+            sign = ChiralityType::Negative;
+        }
+        if (sign == ChiralityType::Negative &&
+            std::fabs(vol) < 0.02 && h.size() == 1) {
+          bool all_carbon = true;
+          for (size_t idx : chosen)
+            if (cc.atoms[idx].el != El::C) {
+              all_carbon = false;
+              break;
+            }
+          if (all_carbon && cc.atoms[chosen[1]].id > cc.atoms[chosen[2]].id)
+            std::swap(chosen[1], chosen[2]);
+        }
+      } else {
+        sign = ChiralityType::Both;
       }
     } else if (assign_noncarbon_sign) {
       double vol = calculate_chiral_volume(cc.atoms[center].xyz,
@@ -3040,6 +3126,8 @@ void add_chirality_if_missing(
         sign = (vol > 0.0) ? ChiralityType::Positive : ChiralityType::Negative;
       else
         sign = ChiralityType::Both;
+      if (force_negative_noncarbon)
+        sign = ChiralityType::Negative;
     }
 
     cc.rt.chirs.push_back({{1, cc.atoms[center].id},
