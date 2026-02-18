@@ -3065,6 +3065,11 @@ void add_chirality_if_missing(
             return cc.atoms[a].id < cc.atoms[b].id;
           }
           if (ea == El::C && eb == El::C) {
+            auto id_desc = [&](const std::string& x, const std::string& y) {
+              if (x.size() != y.size())
+                return x.size() > y.size();
+              return x > y;
+            };
             auto carbon_metrics = [&](size_t idx) {
               bool has_pi_other = false;
               int non_h_other = 0;
@@ -3074,7 +3079,8 @@ void add_chirality_if_missing(
                   continue;
                 if (!cc.atoms[nb2.idx].is_hydrogen()) {
                   ++non_h_other;
-                  if (cc.atoms[nb2.idx].id > max_non_h_id)
+                  if (max_non_h_id.empty() ||
+                      id_desc(cc.atoms[nb2.idx].id, max_non_h_id))
                     max_non_h_id = cc.atoms[nb2.idx].id;
                 }
                 if (nb2.type == BondType::Double ||
@@ -3091,8 +3097,8 @@ void add_chirality_if_missing(
             if (std::get<1>(ma) != std::get<1>(mb))
               return std::get<1>(ma) > std::get<1>(mb);
             if (std::get<2>(ma) != std::get<2>(mb))
-              return std::get<2>(ma) > std::get<2>(mb);
-            return cc.atoms[a].id > cc.atoms[b].id;
+              return id_desc(std::get<2>(ma), std::get<2>(mb));
+            return id_desc(cc.atoms[a].id, cc.atoms[b].id);
           }
           return chirality_priority(ea) < chirality_priority(eb);
         };
