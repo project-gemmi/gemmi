@@ -1144,6 +1144,8 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
       }
     }
     bool use_chiral_priority_sort = !(cc.atoms[i].el == El::C && has_halogen_nb);
+    // Save bond-table order before sorting; chir_mut_table uses bond-table order for N.
+    std::vector<size_t> bt_chiral_legs = chiral_legs;
     auto bond_to_center_type = [&](size_t nb_idx) {
       for (const auto& nb : adj[i])
         if (nb.idx == nb_idx)
@@ -1285,7 +1287,10 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
         chiral_legs.push_back(halogens[2]);
       }
     }
-    size_t a1 = chiral_legs[0], a2 = chiral_legs[1], a3 = chiral_legs[2];
+    // For N: COD CIF uses bond-table order; for S/P/C: sorted order matches.
+    const std::vector<size_t>& legs_for_mt =
+        (cc.atoms[i].el == El::N) ? bt_chiral_legs : chiral_legs;
+    size_t a1 = legs_for_mt[0], a2 = legs_for_mt[1], a3 = legs_for_mt[2];
     size_t missing = SIZE_MAX;
     for (const auto& nb : adj[i])
       if (nb.idx != a1 && nb.idx != a2 && nb.idx != a3) {
@@ -1297,11 +1302,11 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     if (!negative_chiral) {
       mt[a1] = {a3, a2};
       mt[a2] = {a1, a3};
-      mt[a3] = {a1, a2};
+      mt[a3] = {a2, a1};
     } else {
       mt[a1] = {a2, a3};
       mt[a2] = {a3, a1};
-      mt[a3] = {a2, a1};
+      mt[a3] = {a1, a2};
     }
     if (missing != SIZE_MAX) {
       mt[a1].push_back(missing);
