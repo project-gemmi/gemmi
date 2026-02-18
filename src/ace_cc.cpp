@@ -1054,22 +1054,29 @@ build_ring_bond_parity(const AceBondAdjacency& adj,
 }
 
 std::map<std::pair<size_t, size_t>, RingFlip>
-build_ring_bond_flip(const AceBondAdjacency& adj,
+build_ring_bond_flip(const ChemComp& cc,
+                     const AceBondAdjacency& adj,
                      const std::vector<CodAtomInfo>& atom_info) {
+  struct RingWalk {
+    std::string rep;
+    std::vector<size_t> seq;
+  };
   std::map<int, std::vector<size_t>> ring_atoms;
   for (size_t i = 0; i < atom_info.size(); ++i)
     for (int rid : atom_info[i].in_rings)
       ring_atoms[rid].push_back(i);
 
-  std::map<std::pair<size_t, size_t>, RingFlip> flips;
+  std::vector<RingWalk> walks;
+  walks.reserve(ring_atoms.size());
   for (const auto& kv : ring_atoms) {
     const std::vector<size_t>& r_atoms = kv.second;
     if (r_atoms.size() < 3)
       continue;
     std::set<size_t> rset(r_atoms.begin(), r_atoms.end());
     std::vector<size_t> linked;
-    linked.push_back(r_atoms[0]);
-    size_t cur = r_atoms[0];
+    size_t start = *std::min_element(r_atoms.begin(), r_atoms.end());
+    linked.push_back(start);
+    size_t cur = start;
     int guard = 1;
     while (linked.size() < r_atoms.size() && guard < (int)r_atoms.size()) {
       bool advanced = false;
@@ -1087,12 +1094,28 @@ build_ring_bond_flip(const AceBondAdjacency& adj,
         break;
       ++guard;
     }
-    // Match AceDRG setAllTorsionsInOneRing(): assign flips only to traversal edges.
-    for (size_t i = 1; i < linked.size(); ++i) {
-      auto key = std::minmax(linked[i - 1], linked[i]);
+    if (linked.size() != r_atoms.size())
+      continue;
+    std::vector<std::string> names;
+    names.reserve(linked.size());
+    for (size_t idx : linked)
+      names.push_back(cc.atoms[idx].id);
+    std::sort(names.begin(), names.end());
+    std::string rep;
+    for (const auto& n : names)
+      rep += n;
+    walks.push_back({std::move(rep), std::move(linked)});
+  }
+  std::sort(walks.begin(), walks.end(),
+            [](const RingWalk& a, const RingWalk& b) { return a.rep < b.rep; });
+
+  std::map<std::pair<size_t, size_t>, RingFlip> flips;
+  for (const RingWalk& rw : walks) {
+    for (size_t i = 0; i + 1 < rw.seq.size(); ++i) {
+      auto key = std::minmax(rw.seq[i], rw.seq[i + 1]);
       if (flips.find(key) != flips.end())
         continue;
-      flips[key] = (i % 2 == 1) ? RingFlip::Even : RingFlip::Odd;
+      flips[key] = (i % 2 == 0) ? RingFlip::Even : RingFlip::Odd;
     }
   }
   return flips;
@@ -2361,7 +2384,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   std::map<std::pair<size_t, size_t>, RingParity> bond_ring_parity =
       build_ring_bond_parity(adj, atom_info);
   std::map<std::pair<size_t, size_t>, RingFlip> bond_ring_flip =
-      build_ring_bond_flip(adj, atom_info);
+      build_ring_bond_flip(cc, adj, atom_info);
 
   // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
   // one nu torsion each (from ring geometry), while non-ring bonds keep the
