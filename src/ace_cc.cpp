@@ -2848,8 +2848,23 @@ void add_chirality_if_missing(
 
     std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
     std::vector<size_t> h = hydrogen_neighbors(cc, adj, center);
-    bool n_sp3_2h1_case = (cc.atoms[center].el == El::N &&
-                           non_h.size() == 2 && !h.empty());
+    bool n_sp3_2h1_case = false;
+    if (cc.atoms[center].el == El::N && non_h.size() == 2 && !h.empty()) {
+      bool n31_like = true;
+      for (size_t nb : non_h)
+        if (cc.atoms[nb].el != El::C || atom_info[nb].hybrid != Hybridization::SP3) {
+          n31_like = false;
+          break;
+        }
+      bool has_sp_neighbor = false;
+      for (size_t nb : non_h)
+        if (cc.atoms[nb].el == El::S || cc.atoms[nb].el == El::P ||
+            cc.atoms[nb].el == El::N || cc.atoms[nb].el == El::O) {
+          has_sp_neighbor = true;
+          break;
+        }
+      n_sp3_2h1_case = n31_like || has_sp_neighbor;
+    }
     if (non_h.size() < 3 && !n_sp3_2h1_case)
       continue;
 
@@ -2904,7 +2919,18 @@ void add_chirality_if_missing(
       sign = ChiralityType::Both;
 
     std::vector<size_t> chosen;
-    if (n_sp3_2h1_case) {
+    if (cc.atoms[center].el == El::C) {
+      std::vector<size_t> halogens;
+      for (size_t nb : non_h)
+        if (is_halogen(cc.atoms[nb].el))
+          halogens.push_back(nb);
+      if (halogens.size() >= 3) {
+        chosen.push_back(halogens[0]);
+        chosen.push_back(halogens[1]);
+        chosen.push_back(halogens[2]);
+      }
+    }
+    if (chosen.empty() && n_sp3_2h1_case) {
       std::vector<size_t> n_non_h = non_h;
       std::stable_sort(n_non_h.begin(), n_non_h.end(), [&](size_t a, size_t b) {
         return cc.atoms[a].id > cc.atoms[b].id;
@@ -2912,7 +2938,7 @@ void add_chirality_if_missing(
       chosen.push_back(n_non_h[0]);
       chosen.push_back(n_non_h[1]);
       chosen.push_back(h[0]);
-    } else {
+    } else if (chosen.empty()) {
       for (size_t idx : non_h) {
         if (chosen.size() == 3)
           break;
@@ -2926,6 +2952,31 @@ void add_chirality_if_missing(
     }
     if (chosen.size() < 3)
       continue;
+    if (cc.atoms[center].el == El::P) {
+      auto p_chosen_rank = [&](size_t nb_idx) {
+        if (cc.atoms[nb_idx].el != El::O)
+          return 3;
+        bool has_non_h_other = false;
+        bool has_p_other = false;
+        for (const auto& nb2 : adj[nb_idx]) {
+          if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+            continue;
+          has_non_h_other = true;
+          if (cc.atoms[nb2.idx].el == El::P) {
+            has_p_other = true;
+            break;
+          }
+        }
+        if (has_p_other)
+          return 0;
+        if (has_non_h_other)
+          return 1;
+        return 2;
+      };
+      std::stable_sort(chosen.begin(), chosen.end(), [&](size_t a, size_t b) {
+        return p_chosen_rank(a) < p_chosen_rank(b);
+      });
+    }
 
     if (is_stereo_carbon && sign != ChiralityType::Both) {
       double vol = calculate_chiral_volume(cc.atoms[center].xyz,
