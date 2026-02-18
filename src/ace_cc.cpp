@@ -1603,7 +1603,7 @@ std::vector<size_t> build_tv_list_for_center(
   bool stereo_sp3 = (atom_info[ctr].hybrid == Hybridization::SP3 &&
                      stereo_chiral_centers.count(ctr) != 0);
   if (atom_info[ctr].hybrid == Hybridization::SP3) {
-    bool use_chiral_mut_table = !stereo_sp3;
+    bool use_chiral_mut_table = !stereo_sp3 && cc.atoms[ctr].el != El::P;
     auto mit = chir_mut_table.find(ctr);
     if (use_chiral_mut_table && mit != chir_mut_table.end()) {
       auto mt_it = mit->second.find(other);
