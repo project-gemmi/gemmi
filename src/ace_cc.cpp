@@ -2992,6 +2992,7 @@ void add_chirality_if_missing(
             bool has_pi_other = false;
             bool has_hetero_other = false;
             int non_h_other = 0;
+            int second_shell_hetero = 0;
             int second_shell_non_h = 0;
             std::string max_non_h_id;
             for (const auto& nb2 : adj[idx]) {
@@ -3003,8 +3004,11 @@ void add_chirality_if_missing(
                   has_hetero_other = true;
                 int nb2_non_h = 0;
                 for (const auto& nb3 : adj[nb2.idx])
-                  if (nb3.idx != idx && !cc.atoms[nb3.idx].is_hydrogen())
+                  if (nb3.idx != idx && !cc.atoms[nb3.idx].is_hydrogen()) {
                     ++nb2_non_h;
+                    if (cc.atoms[nb3.idx].el != El::C)
+                      ++second_shell_hetero;
+                  }
                 second_shell_non_h += nb2_non_h;
                 if (max_non_h_id.empty() ||
                     id_desc(cc.atoms[nb2.idx].id, max_non_h_id))
@@ -3016,19 +3020,25 @@ void add_chirality_if_missing(
                 has_pi_other = true;
             }
             return std::make_tuple(has_pi_other, has_hetero_other,
-                                   non_h_other, second_shell_non_h,
+                                   non_h_other, second_shell_hetero,
+                                   second_shell_non_h,
                                    max_non_h_id);
           };
           auto ma = carbon_metrics(a);
           auto mb = carbon_metrics(b);
           if (std::get<2>(ma) != std::get<2>(mb))
             return std::get<2>(ma) > std::get<2>(mb);
-          if (std::get<3>(ma) != std::get<3>(mb))
-            return std::get<3>(ma) > std::get<3>(mb);
           if (std::get<1>(ma) != std::get<1>(mb))
             return std::get<1>(ma) > std::get<1>(mb);
           if (std::get<0>(ma) != std::get<0>(mb))
             return std::get<0>(ma) > std::get<0>(mb);
+          bool plain_carbon_branches =
+              !std::get<1>(ma) && !std::get<1>(mb) &&
+              !std::get<0>(ma) && !std::get<0>(mb);
+          if (plain_carbon_branches && std::get<3>(ma) != std::get<3>(mb))
+            return std::get<3>(ma) > std::get<3>(mb);
+          if (plain_carbon_branches && std::get<4>(ma) != std::get<4>(mb))
+            return std::get<4>(ma) > std::get<4>(mb);
         }
         return false;
       });
@@ -3155,6 +3165,28 @@ void add_chirality_if_missing(
         });
         chosen = {nitrogens[0], carbons[0], carbons[1]};
         force_negative_cationic_n = true;
+      }
+    }
+    if (cc.atoms[center].el == El::C && non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> oxygens;
+      std::vector<size_t> carbons;
+      for (size_t idx : non_h) {
+        if (cc.atoms[idx].el == El::O)
+          oxygens.push_back(idx);
+        else if (cc.atoms[idx].el == El::C)
+          carbons.push_back(idx);
+      }
+      if (oxygens.size() == 2 && carbons.size() == 2) {
+        auto carbon_has_oxygen_branch = [&](size_t c_idx) {
+          for (const auto& nb2 : adj[c_idx])
+            if (nb2.idx != center && cc.atoms[nb2.idx].el == El::O)
+              return true;
+          return false;
+        };
+        bool c0_oxy = carbon_has_oxygen_branch(carbons[0]);
+        bool c1_oxy = carbon_has_oxygen_branch(carbons[1]);
+        if (c0_oxy != c1_oxy)
+          chosen = {oxygens[0], oxygens[1], c0_oxy ? carbons[0] : carbons[1]};
       }
     }
     if (cc.atoms[center].el == El::S && non_h.size() == 4 && chosen.size() >= 3) {
