@@ -3000,10 +3000,10 @@ void add_chirality_if_missing(
           };
           auto ma = carbon_metrics(a);
           auto mb = carbon_metrics(b);
-          if (std::get<0>(ma) != std::get<0>(mb))
-            return std::get<0>(ma) > std::get<0>(mb);
           if (std::get<1>(ma) != std::get<1>(mb))
             return std::get<1>(ma) > std::get<1>(mb);
+          if (std::get<0>(ma) != std::get<0>(mb))
+            return std::get<0>(ma) > std::get<0>(mb);
         }
         return false;
       });
