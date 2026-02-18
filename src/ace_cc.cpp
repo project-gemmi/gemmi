@@ -3217,6 +3217,12 @@ void add_chirality_if_missing(
           cc.atoms[chosen[1]].el == El::P &&
           cc.atoms[chosen[0]].id > cc.atoms[chosen[1]].id)
         std::swap(chosen[0], chosen[1]);
+      if (carbon_count == 2 &&
+          cc.atoms[chosen[0]].el == El::S &&
+          cc.atoms[chosen[1]].el == El::C &&
+          cc.atoms[chosen[2]].el == El::C &&
+          branch_non_h_count(chosen[2]) > branch_non_h_count(chosen[1]))
+        std::swap(chosen[1], chosen[2]);
     }
     if (is_stereo_carbon &&
         cc.atoms[center].el == El::C &&
