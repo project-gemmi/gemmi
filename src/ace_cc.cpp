@@ -3167,6 +3167,36 @@ void add_chirality_if_missing(
         force_negative_cationic_n = true;
       }
     }
+    if (cc.atoms[center].el == El::N &&
+        sign == ChiralityType::Both &&
+        chosen.size() == 3) {
+      int carbon_count = 0;
+      int hydrogen_count = 0;
+      for (size_t idx : chosen) {
+        if (cc.atoms[idx].el == El::C)
+          ++carbon_count;
+        else if (cc.atoms[idx].is_hydrogen())
+          ++hydrogen_count;
+      }
+      if (carbon_count == 2 && hydrogen_count == 1 &&
+          cc.atoms[chosen[0]].el == El::C &&
+          cc.atoms[chosen[1]].el == El::C) {
+        auto carbon_score = [&](size_t idx) {
+          int non_h_other = 0;
+          int hetero_other = 0;
+          for (const auto& nb2 : adj[idx]) {
+            if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+              continue;
+            ++non_h_other;
+            if (cc.atoms[nb2.idx].el != El::C)
+              ++hetero_other;
+          }
+          return std::make_pair(non_h_other, hetero_other);
+        };
+        if (carbon_score(chosen[0]) < carbon_score(chosen[1]))
+          std::swap(chosen[0], chosen[1]);
+      }
+    }
     if (is_stereo_carbon &&
         cc.atoms[center].el == El::C &&
         non_h.size() == 4 && chosen.size() >= 3) {
