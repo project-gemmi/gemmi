@@ -3167,6 +3167,91 @@ void add_chirality_if_missing(
         force_negative_cationic_n = true;
       }
     }
+    if (is_stereo_carbon &&
+        cc.atoms[center].el == El::C &&
+        non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> oxygens;
+      std::vector<size_t> carbons;
+      for (size_t idx : non_h) {
+        if (cc.atoms[idx].el == El::O)
+          oxygens.push_back(idx);
+        else if (cc.atoms[idx].el == El::C)
+          carbons.push_back(idx);
+      }
+      if (oxygens.size() == 1 && carbons.size() == 3) {
+        auto carbon_rank = [&](size_t idx) {
+          bool has_triple_other = false;
+          bool has_hetero_other = false;
+          bool has_pi_other = false;
+          int non_h_other = 0;
+          int second_shell_non_h = 0;
+          for (const auto& nb2 : adj[idx]) {
+            if (nb2.idx == center)
+              continue;
+            if (!cc.atoms[nb2.idx].is_hydrogen()) {
+              ++non_h_other;
+              if (cc.atoms[nb2.idx].el != El::C)
+                has_hetero_other = true;
+              for (const auto& nb3 : adj[nb2.idx])
+                if (nb3.idx != idx && !cc.atoms[nb3.idx].is_hydrogen())
+                  ++second_shell_non_h;
+            }
+            if (nb2.type == BondType::Double ||
+                nb2.type == BondType::Deloc ||
+                nb2.type == BondType::Aromatic ||
+                nb2.type == BondType::Triple)
+              has_pi_other = true;
+            if (nb2.type == BondType::Triple)
+              has_triple_other = true;
+          }
+          return std::make_tuple(has_triple_other, has_hetero_other,
+                                 has_pi_other, non_h_other,
+                                 second_shell_non_h,
+                                 cc.atoms[idx].id);
+        };
+        bool any_triple = false;
+        for (size_t c_idx : carbons)
+          if (std::get<0>(carbon_rank(c_idx))) {
+            any_triple = true;
+            break;
+          }
+        std::stable_sort(carbons.begin(), carbons.end(), [&](size_t a, size_t b) {
+          auto ma = carbon_rank(a);
+          auto mb = carbon_rank(b);
+          if (std::get<1>(ma) != std::get<1>(mb))
+            return std::get<1>(ma) > std::get<1>(mb);
+          if (any_triple) {
+            if (std::get<0>(ma) != std::get<0>(mb))
+              return std::get<0>(ma) > std::get<0>(mb);
+            if (std::get<2>(ma) != std::get<2>(mb))
+              return std::get<2>(ma) > std::get<2>(mb);
+            if (std::get<3>(ma) != std::get<3>(mb))
+              return std::get<3>(ma) > std::get<3>(mb);
+          } else {
+            if (std::get<3>(ma) != std::get<3>(mb))
+              return std::get<3>(ma) > std::get<3>(mb);
+            if (std::get<4>(ma) != std::get<4>(mb))
+              return std::get<4>(ma) > std::get<4>(mb);
+            if (std::get<2>(ma) != std::get<2>(mb))
+              return std::get<2>(ma) > std::get<2>(mb);
+          }
+          return std::get<5>(ma) < std::get<5>(mb);
+        });
+        size_t c1 = carbons[0];
+        size_t c2 = carbons[1];
+        double vol = calculate_chiral_volume(cc.atoms[center].xyz,
+                                             cc.atoms[oxygens[0]].xyz,
+                                             cc.atoms[c1].xyz,
+                                             cc.atoms[c2].xyz);
+        if (std::isfinite(vol) && std::fabs(vol) > 1e-8) {
+          ChiralityType vol_sign = (vol > 0.0) ? ChiralityType::Positive
+                                               : ChiralityType::Negative;
+          if (vol_sign != sign)
+            std::swap(c1, c2);
+        }
+        chosen = {oxygens[0], c1, c2};
+      }
+    }
     if (cc.atoms[center].el == El::C && non_h.size() == 4 && chosen.size() >= 3) {
       std::vector<size_t> oxygens;
       std::vector<size_t> carbons;
