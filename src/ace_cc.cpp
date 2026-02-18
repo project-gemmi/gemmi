@@ -2915,7 +2915,21 @@ void add_chirality_if_missing(
     std::stable_sort(h.begin(), h.end(), [&](size_t a, size_t b) {
       return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
     });
-    if (!is_stereo_carbon)
+    bool assign_noncarbon_sign = false;
+    if (!is_stereo_carbon &&
+        (cc.atoms[center].el == El::P || cc.atoms[center].el == El::S)) {
+      int terminal_oxygen_count = 0;
+      for (const auto& nb : adj[center]) {
+        if (cc.atoms[nb.idx].el != El::O)
+          continue;
+        // AceDRG's "one-bond O" check uses total O degree, so O-H does not
+        // count as terminal here.
+        if (adj[nb.idx].size() == 1)
+          ++terminal_oxygen_count;
+      }
+      assign_noncarbon_sign = terminal_oxygen_count <= 1;
+    }
+    if (!is_stereo_carbon && !assign_noncarbon_sign)
       sign = ChiralityType::Both;
 
     std::vector<size_t> chosen;
@@ -2977,6 +2991,34 @@ void add_chirality_if_missing(
         return p_chosen_rank(a) < p_chosen_rank(b);
       });
     }
+    if (assign_noncarbon_sign) {
+      bool has_metal_branch = false;
+      int protonated_terminal_oxy = 0;
+      for (size_t idx : chosen) {
+        bool has_non_h_other = false;
+        bool has_h_other = false;
+        bool has_metal_other = false;
+        for (const auto& nb2 : adj[idx]) {
+          if (nb2.idx == center)
+            continue;
+          if (cc.atoms[nb2.idx].is_hydrogen()) {
+            has_h_other = true;
+          } else {
+            has_non_h_other = true;
+            if (cc.atoms[nb2.idx].el.is_metal())
+              has_metal_other = true;
+          }
+        }
+        if (has_metal_other)
+          has_metal_branch = true;
+        if (cc.atoms[idx].el == El::O &&
+            bond_to_center_type(idx) == BondType::Single &&
+            has_h_other && !has_non_h_other)
+          ++protonated_terminal_oxy;
+      }
+      if (has_metal_branch || protonated_terminal_oxy >= 2)
+        assign_noncarbon_sign = false;
+    }
 
     if (is_stereo_carbon && sign != ChiralityType::Both) {
       double vol = calculate_chiral_volume(cc.atoms[center].xyz,
@@ -2989,6 +3031,15 @@ void add_chirality_if_missing(
         if (should_be_pos != is_pos)
           std::swap(chosen[0], chosen[1]);
       }
+    } else if (assign_noncarbon_sign) {
+      double vol = calculate_chiral_volume(cc.atoms[center].xyz,
+                                           cc.atoms[chosen[0]].xyz,
+                                           cc.atoms[chosen[1]].xyz,
+                                           cc.atoms[chosen[2]].xyz);
+      if (std::isfinite(vol) && std::fabs(vol) > 1e-8)
+        sign = (vol > 0.0) ? ChiralityType::Positive : ChiralityType::Negative;
+      else
+        sign = ChiralityType::Both;
     }
 
     cc.rt.chirs.push_back({{1, cc.atoms[center].id},

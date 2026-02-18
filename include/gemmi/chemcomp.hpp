@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <cmath>
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "fail.hpp"  // for fail, unreachable
@@ -639,18 +640,20 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     atom.charge = (float) cif::as_number(row.one_of(3, 4), 0.0);
     atom.chem_type = row.has(2) ? row.str(2) : "";
     atom.acedrg_type = row.has(6) ? row.str(6) : "";
-    if (row.has(7) && row.has(8) && row.has(9))
-      atom.xyz = Position(cif::as_number(row[7]),
-                          cif::as_number(row[8]),
-                          cif::as_number(row[9]));
-    else if (row.has(10) && row.has(11) && row.has(12))
-      atom.xyz = Position(cif::as_number(row[10]),
-                          cif::as_number(row[11]),
-                          cif::as_number(row[12]));
-    else if (row.has(13) && row.has(14) && row.has(15))
-      atom.xyz = Position(cif::as_number(row[13]),
-                          cif::as_number(row[14]),
-                          cif::as_number(row[15]));
+    auto set_xyz_if_finite = [&](int ix, int iy, int iz) {
+      if (!row.has(ix) || !row.has(iy) || !row.has(iz))
+        return false;
+      double x = cif::as_number(row[ix]);
+      double y = cif::as_number(row[iy]);
+      double z = cif::as_number(row[iz]);
+      if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+        return false;
+      atom.xyz = Position(x, y, z);
+      return true;
+    };
+    if (!set_xyz_if_finite(7, 8, 9) &&
+        !set_xyz_if_finite(10, 11, 12))
+      set_xyz_if_finite(13, 14, 15);
     cc.atoms.push_back(std::move(atom));
   }
   // Also check _chem_comp_acedrg table for atom types (used by acedrg output)
