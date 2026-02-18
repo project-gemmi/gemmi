@@ -2992,6 +2992,7 @@ void add_chirality_if_missing(
             bool has_pi_other = false;
             bool has_hetero_other = false;
             int non_h_other = 0;
+            int second_shell_non_h = 0;
             std::string max_non_h_id;
             for (const auto& nb2 : adj[idx]) {
               if (nb2.idx == center)
@@ -3000,6 +3001,11 @@ void add_chirality_if_missing(
                 ++non_h_other;
                 if (cc.atoms[nb2.idx].el != El::C)
                   has_hetero_other = true;
+                int nb2_non_h = 0;
+                for (const auto& nb3 : adj[nb2.idx])
+                  if (nb3.idx != idx && !cc.atoms[nb3.idx].is_hydrogen())
+                    ++nb2_non_h;
+                second_shell_non_h += nb2_non_h;
                 if (max_non_h_id.empty() ||
                     id_desc(cc.atoms[nb2.idx].id, max_non_h_id))
                   max_non_h_id = cc.atoms[nb2.idx].id;
@@ -3010,12 +3016,15 @@ void add_chirality_if_missing(
                 has_pi_other = true;
             }
             return std::make_tuple(has_pi_other, has_hetero_other,
-                                   non_h_other, max_non_h_id);
+                                   non_h_other, second_shell_non_h,
+                                   max_non_h_id);
           };
           auto ma = carbon_metrics(a);
           auto mb = carbon_metrics(b);
           if (std::get<2>(ma) != std::get<2>(mb))
             return std::get<2>(ma) > std::get<2>(mb);
+          if (std::get<3>(ma) != std::get<3>(mb))
+            return std::get<3>(ma) > std::get<3>(mb);
           if (std::get<1>(ma) != std::get<1>(mb))
             return std::get<1>(ma) > std::get<1>(mb);
           if (std::get<0>(ma) != std::get<0>(mb))
