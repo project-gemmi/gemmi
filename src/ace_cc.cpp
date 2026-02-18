@@ -3021,6 +3021,86 @@ void add_chirality_if_missing(
         chosen = {sulfur[0], oxygens[0], oxygens[1]};
       }
     }
+    if (cc.atoms[center].el == El::S && non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> dbl_o;
+      std::vector<size_t> rem;
+      for (size_t idx : non_h) {
+        BondType bt = bond_to_center_type(idx);
+        if (cc.atoms[idx].el == El::O &&
+            (bt == BondType::Double || bt == BondType::Deloc))
+          dbl_o.push_back(idx);
+        else
+          rem.push_back(idx);
+      }
+      bool rem_has_n = false;
+      for (size_t idx : rem)
+        if (cc.atoms[idx].el == El::N) {
+          rem_has_n = true;
+          break;
+        }
+      if (dbl_o.size() == 2 && rem.size() == 2 && !rem_has_n) {
+        auto better_rem = [&](size_t a, size_t b) {
+          Element ea = cc.atoms[a].el;
+          Element eb = cc.atoms[b].el;
+          auto cls = [&](Element e) {
+            if (is_halogen(e)) return 0;
+            if (e == El::O) return 1;
+            if (e == El::C) return 2;
+            return 3;
+          };
+          int ca = cls(ea), cb = cls(eb);
+          if (ca != cb)
+            return ca < cb;
+          if (ea == El::O && eb == El::O) {
+            auto has_non_h_other = [&](size_t idx) {
+              for (const auto& nb2 : adj[idx])
+                if (nb2.idx != center && !cc.atoms[nb2.idx].is_hydrogen())
+                  return true;
+              return false;
+            };
+            bool ah = has_non_h_other(a);
+            bool bh = has_non_h_other(b);
+            if (ah != bh)
+              return ah > bh;
+            return cc.atoms[a].id < cc.atoms[b].id;
+          }
+          if (ea == El::C && eb == El::C) {
+            auto carbon_metrics = [&](size_t idx) {
+              bool has_pi_other = false;
+              int non_h_other = 0;
+              std::string max_non_h_id;
+              for (const auto& nb2 : adj[idx]) {
+                if (nb2.idx == center)
+                  continue;
+                if (!cc.atoms[nb2.idx].is_hydrogen()) {
+                  ++non_h_other;
+                  if (cc.atoms[nb2.idx].id > max_non_h_id)
+                    max_non_h_id = cc.atoms[nb2.idx].id;
+                }
+                if (nb2.type == BondType::Double ||
+                    nb2.type == BondType::Deloc ||
+                    nb2.type == BondType::Aromatic)
+                  has_pi_other = true;
+              }
+              return std::make_tuple(has_pi_other, non_h_other, max_non_h_id);
+            };
+            auto ma = carbon_metrics(a);
+            auto mb = carbon_metrics(b);
+            if (std::get<0>(ma) != std::get<0>(mb))
+              return std::get<0>(ma) > std::get<0>(mb);
+            if (std::get<1>(ma) != std::get<1>(mb))
+              return std::get<1>(ma) > std::get<1>(mb);
+            if (std::get<2>(ma) != std::get<2>(mb))
+              return std::get<2>(ma) > std::get<2>(mb);
+            return cc.atoms[a].id > cc.atoms[b].id;
+          }
+          return chirality_priority(ea) < chirality_priority(eb);
+        };
+        if (better_rem(rem[1], rem[0]))
+          std::swap(rem[0], rem[1]);
+        chosen = {rem[0], dbl_o[0], dbl_o[1]};
+      }
+    }
     if (chosen.size() < 3)
       continue;
     if (cc.atoms[center].el == El::P) {
