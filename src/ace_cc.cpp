@@ -2227,8 +2227,19 @@ bool confirm_aa_backbone(const ChemComp& cc,
       return false;
     bool has_h = std::find(n_h_names.begin(), n_h_names.end(), "H") != n_h_names.end();
     bool has_h2 = std::find(n_h_names.begin(), n_h_names.end(), "H2") != n_h_names.end();
-    bool has_h3 = std::find(n_h_names.begin(), n_h_names.end(), "H3") != n_h_names.end();
-    if (!has_h || !has_h2 || !has_h3)
+    if (!has_h || !has_h2)
+      return false;
+    std::string third_h;
+    for (const std::string& hname : n_h_names)
+      if (hname != "H" && hname != "H2") {
+        third_h = hname;
+        break;
+      }
+    if (third_h.empty())
+      return false;
+    if (third_h != "H3" &&
+        !(third_h.size() > 1 && third_h[0] == 'H' &&
+          std::isdigit(static_cast<unsigned char>(third_h[1]))))
       return false;
   }
   return true;
