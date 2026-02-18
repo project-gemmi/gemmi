@@ -2274,6 +2274,26 @@ bool select_peptide_torsion(
   return true;
 }
 
+void apply_peptide_tmpchi2_override(
+    Restraints::Torsion& tor,
+    const std::map<std::string, size_t>& atom_index,
+    const std::vector<CodAtomInfo>& atom_info) {
+  std::string key = cat(tor.id1.atom, '_', tor.id2.atom, '_', tor.id3.atom, '_',
+                        tor.id4.atom);
+  if (key != "CA_CB_CG_CD" && key != "CA_CB_CG_CD1" && key != "CA_CB_CG_CD2")
+    return;
+  auto it2 = atom_index.find(tor.id2.atom);
+  auto it3 = atom_index.find(tor.id3.atom);
+  if (it2 == atom_index.end() || it3 == atom_index.end())
+    return;
+  int b2 = atom_info[it2->second].bonding_idx;
+  int b3 = atom_info[it3->second].bonding_idx;
+  if ((b2 == 2 && b3 == 3) || (b2 == 3 && b3 == 2)) {
+    tor.period = 6;
+    tor.value = 90.0;
+  }
+}
+
 const Restraints::Torsion* select_one_torsion_from_candidates(
     const ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
@@ -2616,8 +2636,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       Restraints::Torsion chosen;
-      if (select_peptide_torsion(tables, generated, chosen))
+      if (select_peptide_torsion(tables, generated, chosen)) {
+        apply_peptide_tmpchi2_override(chosen, atom_index, atom_info);
         cc.rt.torsions.push_back(std::move(chosen));
+      }
     } else {
       const Restraints::Torsion* chosen = select_one_torsion_from_candidates(
           cc, adj, atom_info, sel_center2, sel_center3, generated);
