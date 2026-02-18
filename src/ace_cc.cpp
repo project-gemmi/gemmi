@@ -3202,6 +3202,16 @@ void add_chirality_if_missing(
         chosen.push_back(idx);
       }
     }
+    if (cc.atoms[center].el == El::As && non_h.size() > 4 && chosen.size() >= 3) {
+      std::vector<size_t> oxy;
+      for (size_t idx : non_h)
+        if (cc.atoms[idx].el == El::O)
+          oxy.push_back(idx);
+      if (oxy.size() >= 3) {
+        sort_neighbors_by_rdkit_cip_rank(oxy, cip_ranks);
+        chosen = {oxy[0], oxy[1], oxy[2]};
+      }
+    }
     if (cc.atoms[center].el == El::B && non_h.size() == 4 && chosen.size() >= 3) {
       std::vector<size_t> oxy_single;
       for (size_t idx : non_h)
