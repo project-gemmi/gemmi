@@ -3636,6 +3636,49 @@ void add_chirality_if_missing(
                                            cc.atoms[chosen[2]].xyz);
       if (std::isfinite(vol) && std::fabs(vol) > 1e-8) {
         sign = (vol > 0.0) ? ChiralityType::Positive : ChiralityType::Negative;
+        auto chosen_stereo_label = [&](size_t idx) {
+          auto st_it = atom_stereo.find(cc.atoms[idx].id);
+          if (st_it == atom_stereo.end() || st_it->second.empty())
+            return '\0';
+          char s = lower(st_it->second[0]);
+          if (s == 'r' || s == 's')
+            return s;
+          return '\0';
+        };
+        if (sign == ChiralityType::Positive &&
+            !is_stereo_s_carbon &&
+            non_h.size() == 4 &&
+            cc.atoms[chosen[0]].el == El::C &&
+            cc.atoms[chosen[1]].el == El::C &&
+            cc.atoms[chosen[2]].el == El::C &&
+            chosen_stereo_label(chosen[0]) == '\0' &&
+            chosen_stereo_label(chosen[1]) == '\0' &&
+            chosen_stereo_label(chosen[2]) == '\0') {
+          sign = ChiralityType::Negative;
+        }
+        if (sign == ChiralityType::Positive &&
+            !is_stereo_s_carbon &&
+            cc.atoms[chosen[0]].el == El::O &&
+            cc.atoms[chosen[1]].el == El::C &&
+            cc.atoms[chosen[2]].el == El::C) {
+          char s1 = chosen_stereo_label(chosen[1]);
+          char s2 = chosen_stereo_label(chosen[2]);
+          if ((s1 == 'r' && s2 == 's') || (s1 == 's' && s2 == 'r'))
+            sign = ChiralityType::Negative;
+        }
+        if (sign == ChiralityType::Positive &&
+            is_stereo_s_carbon &&
+            non_h.size() == 3 &&
+            h.size() == 1 &&
+            std::fabs(vol) < 0.02 &&
+            cc.atoms[chosen[0]].el == El::C &&
+            cc.atoms[chosen[1]].el == El::C &&
+            cc.atoms[chosen[2]].el == El::C &&
+            chosen_stereo_label(chosen[0]) == '\0' &&
+            chosen_stereo_label(chosen[1]) == '\0' &&
+            chosen_stereo_label(chosen[2]) == '\0') {
+          sign = ChiralityType::Negative;
+        }
         if (is_stereo_s_carbon && sign == ChiralityType::Positive &&
             std::fabs(vol) < 0.03 && h.size() == 1) {
           bool has_oxygen = false;
@@ -3674,6 +3717,32 @@ void add_chirality_if_missing(
         sign = ChiralityType::Both;
       if (force_negative_noncarbon)
         sign = ChiralityType::Negative;
+      if (cc.atoms[center].el == El::S &&
+          sign == ChiralityType::Positive &&
+          cc.atoms[chosen[0]].el == El::O &&
+          cc.atoms[chosen[1]].el == El::C &&
+          cc.atoms[chosen[2]].el == El::C &&
+          (bond_to_center_type(chosen[0]) == BondType::Double ||
+           bond_to_center_type(chosen[0]) == BondType::Deloc)) {
+        bool carbon_has_pi = false;
+        for (size_t c_idx : {chosen[1], chosen[2]}) {
+          for (const auto& nb2 : adj[c_idx]) {
+            if (nb2.idx == center)
+              continue;
+            if (nb2.type == BondType::Double ||
+                nb2.type == BondType::Deloc ||
+                nb2.type == BondType::Aromatic ||
+                nb2.type == BondType::Triple) {
+              carbon_has_pi = true;
+              break;
+            }
+          }
+          if (carbon_has_pi)
+            break;
+        }
+        if (carbon_has_pi)
+          sign = ChiralityType::Negative;
+      }
     }
     if (force_negative_cationic_n)
       sign = ChiralityType::Negative;
