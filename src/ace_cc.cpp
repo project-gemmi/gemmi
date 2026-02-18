@@ -2901,6 +2901,27 @@ void add_chirality_if_missing(
         continue;
     }
     if (cc.atoms[center].el == El::P) {
+      int n_c = 0, n_metal = 0, n_other = 0;
+      bool all_single = true;
+      for (size_t idx : non_h) {
+        Element el = cc.atoms[idx].el;
+        if (el == El::C)
+          ++n_c;
+        else if (el.is_metal())
+          ++n_metal;
+        else
+          ++n_other;
+        if (bond_to_center_type(idx) != BondType::Single)
+          all_single = false;
+      }
+      // AceDRG omits chirality for trigonal phosphines.
+      if (all_single && non_h.size() == 3 && n_c == 3 && n_metal == 0 && n_other == 0)
+        continue;
+      // AceDRG omits chirality for phosphines bound to one metal and three carbons.
+      if (all_single && non_h.size() == 4 && n_c == 3 && n_metal == 1 && n_other == 0)
+        continue;
+    }
+    if (cc.atoms[center].el == El::P) {
       auto p_nb_rank = [&](size_t nb_idx) {
         if (cc.atoms[nb_idx].el != El::O)
           return 3;
@@ -2953,6 +2974,14 @@ void add_chirality_if_missing(
     }
     if (!is_stereo_carbon && !assign_noncarbon_sign)
       sign = ChiralityType::Both;
+    bool force_negative_cationic_n = false;
+    auto branch_non_h_count = [&](size_t idx) {
+      int count = 0;
+      for (const auto& nb2 : adj[idx])
+        if (nb2.idx != center && !cc.atoms[nb2.idx].is_hydrogen())
+          ++count;
+      return count;
+    };
 
     std::vector<size_t> chosen;
     if (cc.atoms[center].el == El::C) {
@@ -2986,6 +3015,70 @@ void add_chirality_if_missing(
         chosen.push_back(idx);
       }
     }
+    if (cc.atoms[center].el == El::B && non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> oxy_single;
+      for (size_t idx : non_h)
+        if (cc.atoms[idx].el == El::O && bond_to_center_type(idx) == BondType::Single)
+          oxy_single.push_back(idx);
+      if (oxy_single.size() == 4) {
+        std::vector<size_t> branched;
+        std::vector<size_t> terminal;
+        for (size_t idx : oxy_single) {
+          bool has_non_h_other = false;
+          for (const auto& nb2 : adj[idx])
+            if (nb2.idx != center && !cc.atoms[nb2.idx].is_hydrogen()) {
+              has_non_h_other = true;
+              break;
+            }
+          (has_non_h_other ? branched : terminal).push_back(idx);
+        }
+        if (branched.size() >= 2 && !terminal.empty())
+          chosen = {branched[0], branched[1], terminal[0]};
+      }
+    }
+    if (cc.atoms[center].el == El::As && non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> dbl_o;
+      std::vector<size_t> sing_o;
+      for (size_t idx : non_h) {
+        if (cc.atoms[idx].el != El::O)
+          continue;
+        BondType bt = bond_to_center_type(idx);
+        if (bt == BondType::Double || bt == BondType::Deloc)
+          dbl_o.push_back(idx);
+        else if (bt == BondType::Single)
+          sing_o.push_back(idx);
+      }
+      if (dbl_o.size() == 1 && sing_o.size() >= 2)
+        chosen = {dbl_o[0], sing_o[0], sing_o[1]};
+    }
+    if (cc.atoms[center].el == El::N &&
+        cc.atoms[center].charge > 0 &&
+        non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> carbons;
+      std::vector<size_t> nitrogens;
+      bool all_single = true;
+      for (size_t idx : non_h) {
+        Element el = cc.atoms[idx].el;
+        if (el == El::C)
+          carbons.push_back(idx);
+        else if (el == El::N)
+          nitrogens.push_back(idx);
+        if (bond_to_center_type(idx) != BondType::Single)
+          all_single = false;
+      }
+      if (all_single && carbons.size() == 4) {
+        std::stable_sort(carbons.begin(), carbons.end(), [&](size_t a, size_t b) {
+          return branch_non_h_count(a) > branch_non_h_count(b);
+        });
+        chosen = {carbons[0], carbons[1], carbons[2]};
+      } else if (all_single && carbons.size() == 3 && nitrogens.size() == 1) {
+        std::stable_sort(carbons.begin(), carbons.end(), [&](size_t a, size_t b) {
+          return branch_non_h_count(a) > branch_non_h_count(b);
+        });
+        chosen = {nitrogens[0], carbons[0], carbons[1]};
+        force_negative_cationic_n = true;
+      }
+    }
     if (cc.atoms[center].el == El::S && non_h.size() == 4 && chosen.size() >= 3) {
       std::vector<size_t> dbl_o;
       std::vector<size_t> sing_n;
@@ -3013,6 +3106,25 @@ void add_chirality_if_missing(
           sulfur.push_back(idx);
         else if (cc.atoms[idx].el == El::O)
           oxygens.push_back(idx);
+      }
+      if (sulfur.size() == 2 && oxygens.size() == 2) {
+        size_t single_o = SIZE_MAX;
+        int n_double_o = 0;
+        for (size_t o_idx : oxygens) {
+          BondType bt = bond_to_center_type(o_idx);
+          if (bt == BondType::Single)
+            single_o = o_idx;
+          if (bt == BondType::Double || bt == BondType::Deloc)
+            ++n_double_o;
+        }
+        if (single_o != SIZE_MAX && n_double_o == 1) {
+          std::sort(sulfur.begin(), sulfur.end(), [&](size_t a, size_t b) {
+            return cc.atoms[a].id < cc.atoms[b].id;
+          });
+          chosen = {sulfur[0], sulfur[1], single_o};
+          assign_noncarbon_sign = false;
+          sign = ChiralityType::Both;
+        }
       }
       if (sulfur.size() == 1 && oxygens.size() == 3) {
         auto p_oxygen_rank = [&](size_t o_idx) {
@@ -3273,6 +3385,8 @@ void add_chirality_if_missing(
       if (force_negative_noncarbon)
         sign = ChiralityType::Negative;
     }
+    if (force_negative_cationic_n)
+      sign = ChiralityType::Negative;
 
     cc.rt.chirs.push_back({{1, cc.atoms[center].id},
                            {1, cc.atoms[chosen[0]].id},
