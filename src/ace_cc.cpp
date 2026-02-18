@@ -819,6 +819,165 @@ int chirality_priority(Element el) {
   return 8;
 }
 
+int rdkit_twice_bond_type(BondType bt) {
+  switch (bt) {
+    case BondType::Single:
+      return 2;
+    case BondType::Double:
+      return 4;
+    case BondType::Triple:
+      return 6;
+    case BondType::Aromatic:
+    case BondType::Deloc:
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+int rdkit_cip_bond_count(const ChemComp& cc, const AceBondAdjacency& adj,
+                         const AceBondNeighbor& nb) {
+  if (nb.type == BondType::Double && cc.atoms[nb.idx].el == El::P) {
+    size_t deg = adj[nb.idx].size();
+    if (deg == 3 || deg == 4)
+      return 1;
+  }
+  return rdkit_twice_bond_type(nb.type);
+}
+
+struct CipSortableRef {
+  std::vector<int>* entry = nullptr;
+  size_t atom_idx = 0;
+  unsigned curr_rank = 0;
+};
+
+bool cip_ref_less(const CipSortableRef& a, const CipSortableRef& b) {
+  return *a.entry < *b.entry;
+}
+
+void find_cip_tied_segments(std::vector<CipSortableRef>& sorted,
+                            std::vector<std::pair<size_t, size_t>>& segments,
+                            unsigned& num_ranks) {
+  segments.clear();
+  num_ranks = static_cast<unsigned>(sorted.size());
+  if (sorted.empty())
+    return;
+  CipSortableRef* current = &sorted[0];
+  unsigned running_rank = 0;
+  current->curr_rank = running_rank;
+  bool in_equal = false;
+  for (size_t i = 1; i < sorted.size(); ++i) {
+    CipSortableRef& next = sorted[i];
+    if (*current->entry == *next.entry) {
+      next.curr_rank = running_rank;
+      --num_ranks;
+      if (!in_equal) {
+        in_equal = true;
+        segments.push_back(std::make_pair(i - 1, size_t(0)));
+      }
+    } else {
+      ++running_rank;
+      next.curr_rank = running_rank;
+      current = &next;
+      if (in_equal) {
+        segments.back().second = i - 1;
+        in_equal = false;
+      }
+    }
+  }
+  if (in_equal)
+    segments.back().second = sorted.size() - 1;
+}
+
+std::vector<unsigned> compute_rdkit_legacy_cip_ranks(
+    const ChemComp& cc, const AceBondAdjacency& adj) {
+  size_t n = cc.atoms.size();
+  std::vector<unsigned> ranks(n, 0);
+  if (n == 0)
+    return ranks;
+
+  std::vector<std::vector<int>> cip_entries(n);
+  std::vector<CipSortableRef> sorted;
+  sorted.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    cip_entries[i].reserve(16);
+    int atomic_num = cc.atoms[i].el.atomic_number() % 128;
+    int mass = 512;
+    unsigned long invariant = static_cast<unsigned long>(atomic_num);
+    invariant = (invariant << 10) | static_cast<unsigned long>(mass);
+    invariant = (invariant << 10);  // atom map number is absent in CCD input
+    cip_entries[i].push_back(static_cast<int>(invariant));
+    sorted.push_back({&cip_entries[i], i, 0});
+  }
+
+  std::sort(sorted.begin(), sorted.end(), cip_ref_less);
+  std::vector<std::pair<size_t, size_t>> needs_sorting;
+  unsigned num_ranks = 0;
+  find_cip_tied_segments(sorted, needs_sorting, num_ranks);
+  for (size_t i = 0; i < sorted.size(); ++i)
+    ranks[sorted[i].atom_idx] = sorted[i].curr_rank;
+
+  for (size_t i = 0; i < n; ++i) {
+    cip_entries[i][0] = cc.atoms[i].el.atomic_number();
+    cip_entries[i].push_back(static_cast<int>(ranks[i]));
+  }
+
+  const size_t cip_rank_index = 2;  // seedWithInvars == false in RDKit
+  std::vector<std::vector<std::pair<int, size_t>>> weighted_neighbors(n);
+  for (size_t i = 0; i < n; ++i) {
+    weighted_neighbors[i].reserve(adj[i].size());
+    for (const auto& nb : adj[i])
+      weighted_neighbors[i].push_back(
+          std::make_pair(rdkit_cip_bond_count(cc, adj, nb), nb.idx));
+  }
+
+  unsigned max_iterations = static_cast<unsigned>(n / 2 + 1);
+  unsigned iter = 0;
+  int last_num_ranks = -1;
+  while (!needs_sorting.empty() && iter < max_iterations &&
+         (last_num_ranks < 0 ||
+          static_cast<unsigned>(last_num_ranks) < num_ranks)) {
+    for (size_t i = 0; i < n; ++i) {
+      std::vector<std::pair<int, size_t>>& neighbors = weighted_neighbors[i];
+      if (neighbors.size() > 1) {
+        std::sort(neighbors.begin(), neighbors.end(),
+                  [&](const std::pair<int, size_t>& a,
+                      const std::pair<int, size_t>& b) {
+                    return ranks[a.second] > ranks[b.second];
+                  });
+      }
+      std::vector<int>& cip = cip_entries[i];
+      for (const std::pair<int, size_t>& nb : neighbors)
+        if (nb.first > 0)
+          cip.insert(cip.end(), nb.first, static_cast<int>(ranks[nb.second] + 1));
+      // AceDRG uses RDKit's getTotalNumHs(false). With explicit-H atom graphs
+      // (the path used here), that contributes zero.
+    }
+
+    last_num_ranks = static_cast<int>(num_ranks);
+    for (const std::pair<size_t, size_t>& seg : needs_sorting)
+      std::sort(sorted.begin() + seg.first, sorted.begin() + seg.second + 1, cip_ref_less);
+    find_cip_tied_segments(sorted, needs_sorting, num_ranks);
+    for (size_t i = 0; i < sorted.size(); ++i)
+      ranks[sorted[i].atom_idx] = sorted[i].curr_rank;
+
+    if (static_cast<unsigned>(last_num_ranks) != num_ranks) {
+      for (size_t i = 0; i < n; ++i) {
+        cip_entries[i].resize(cip_rank_index + 1);
+        cip_entries[i][cip_rank_index] = static_cast<int>(ranks[i]);
+      }
+    }
+    ++iter;
+  }
+  return ranks;
+}
+
+void sort_neighbors_by_rdkit_cip_rank(std::vector<size_t>& neighbors,
+                                      const std::vector<unsigned>& cip_ranks) {
+  std::stable_sort(neighbors.begin(), neighbors.end(),
+                   [&](size_t a, size_t b) { return cip_ranks[a] > cip_ranks[b]; });
+}
+
 bool is_oxygen_column(Element el) {
   return el == El::O || el == El::S || el == El::Se ||
          el == El::Te || el == El::Po;
@@ -2828,6 +2987,7 @@ void add_chirality_if_missing(
     return;
 
   auto& adj = graph.adjacency;
+  std::vector<unsigned> cip_ranks = compute_rdkit_legacy_cip_ranks(cc, adj);
   std::set<size_t> stereo_centers;
 
   auto stereo_sign = [&](size_t center) -> ChiralityType {
@@ -2946,106 +3106,8 @@ void add_chirality_if_missing(
       if (all_single && non_h.size() == 4 && n_c == 3 && n_metal == 1 && n_other == 0)
         continue;
     }
-    if (cc.atoms[center].el == El::P) {
-      auto p_nb_rank = [&](size_t nb_idx) {
-        if (cc.atoms[nb_idx].el != El::O)
-          return 3;
-        bool bridged_to_p = false;
-        for (const auto& nb2 : adj[nb_idx]) {
-          if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
-            continue;
-          if (cc.atoms[nb2.idx].el == El::P) {
-            bridged_to_p = true;
-            break;
-          }
-        }
-        if (bridged_to_p)
-          return 0;
-        BondType bt = bond_to_center_type(nb_idx);
-        if (bt == BondType::Double || bt == BondType::Deloc)
-          return 2;
-        return 1;
-      };
-      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
-        int ra = p_nb_rank(a);
-        int rb = p_nb_rank(b);
-        if (ra != rb)
-          return ra < rb;
-        return chirality_priority(cc.atoms[a].el) <
-               chirality_priority(cc.atoms[b].el);
-      });
-    } else {
-      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
-        Element ea = cc.atoms[a].el;
-        Element eb = cc.atoms[b].el;
-        int pa = chirality_priority(ea);
-        int pb = chirality_priority(eb);
-        if (pa != pb)
-          return pa < pb;
-        if (cc.atoms[center].el == El::C && ea == El::C && eb == El::C) {
-          auto id_desc = [&](const std::string& x, const std::string& y) {
-            if (x.size() != y.size())
-              return x.size() > y.size();
-            return x > y;
-          };
-          auto carbon_metrics = [&](size_t idx) {
-            bool has_pi_other = false;
-            bool has_hetero_other = false;
-            int non_h_other = 0;
-            int second_shell_hetero = 0;
-            int second_shell_non_h = 0;
-            std::string max_non_h_id;
-            for (const auto& nb2 : adj[idx]) {
-              if (nb2.idx == center)
-                continue;
-              if (!cc.atoms[nb2.idx].is_hydrogen()) {
-                ++non_h_other;
-                if (cc.atoms[nb2.idx].el != El::C)
-                  has_hetero_other = true;
-                int nb2_non_h = 0;
-                for (const auto& nb3 : adj[nb2.idx])
-                  if (nb3.idx != idx && !cc.atoms[nb3.idx].is_hydrogen()) {
-                    ++nb2_non_h;
-                    if (cc.atoms[nb3.idx].el != El::C)
-                      ++second_shell_hetero;
-                  }
-                second_shell_non_h += nb2_non_h;
-                if (max_non_h_id.empty() ||
-                    id_desc(cc.atoms[nb2.idx].id, max_non_h_id))
-                  max_non_h_id = cc.atoms[nb2.idx].id;
-              }
-              if (nb2.type == BondType::Double ||
-                  nb2.type == BondType::Deloc ||
-                  nb2.type == BondType::Aromatic)
-                has_pi_other = true;
-            }
-            return std::make_tuple(has_pi_other, has_hetero_other,
-                                   non_h_other, second_shell_hetero,
-                                   second_shell_non_h,
-                                   max_non_h_id);
-          };
-          auto ma = carbon_metrics(a);
-          auto mb = carbon_metrics(b);
-          if (std::get<2>(ma) != std::get<2>(mb))
-            return std::get<2>(ma) > std::get<2>(mb);
-          if (std::get<1>(ma) != std::get<1>(mb))
-            return std::get<1>(ma) > std::get<1>(mb);
-          if (std::get<0>(ma) != std::get<0>(mb))
-            return std::get<0>(ma) > std::get<0>(mb);
-          bool plain_carbon_branches =
-              !std::get<1>(ma) && !std::get<1>(mb) &&
-              !std::get<0>(ma) && !std::get<0>(mb);
-          if (plain_carbon_branches && std::get<3>(ma) != std::get<3>(mb))
-            return std::get<3>(ma) > std::get<3>(mb);
-          if (plain_carbon_branches && std::get<4>(ma) != std::get<4>(mb))
-            return std::get<4>(ma) > std::get<4>(mb);
-        }
-        return false;
-      });
-    }
-    std::stable_sort(h.begin(), h.end(), [&](size_t a, size_t b) {
-      return chirality_priority(cc.atoms[a].el) < chirality_priority(cc.atoms[b].el);
-    });
+    sort_neighbors_by_rdkit_cip_rank(non_h, cip_ranks);
+    sort_neighbors_by_rdkit_cip_rank(h, cip_ranks);
     bool assign_noncarbon_sign = false;
     if (!is_stereo_carbon &&
         (cc.atoms[center].el == El::P || cc.atoms[center].el == El::S)) {
@@ -3084,13 +3146,8 @@ void add_chirality_if_missing(
       }
     }
     if (chosen.empty() && n_sp3_2h1_case) {
-      std::vector<size_t> n_non_h = non_h;
-      std::stable_sort(n_non_h.begin(), n_non_h.end(), [&](size_t a, size_t b) {
-        return cc.atoms[a].id > cc.atoms[b].id;
-      });
-      chosen.push_back(n_non_h[0]);
-      chosen.push_back(n_non_h[1]);
-      chosen.push_back(h[0]);
+      if (non_h.size() >= 2 && !h.empty())
+        chosen = {non_h[0], non_h[1], h[0]};
     } else if (chosen.empty()) {
       for (size_t idx : non_h) {
         if (chosen.size() == 3)
