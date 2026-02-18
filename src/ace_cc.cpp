@@ -1721,6 +1721,65 @@ std::vector<size_t> build_tv_list_sp3sp3_like_acedrg(
   return tv;
 }
 
+std::pair<std::vector<size_t>, std::vector<size_t>> build_tv_lists_sp2sp2_like_acedrg(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    size_t center1, size_t center2) {
+  std::vector<size_t> tv1, tv2;
+  size_t s1 = SIZE_MAX, s2 = SIZE_MAX;
+  for (const auto& nb1 : adj[center1]) {
+    if (nb1.idx == center2)
+      continue;
+    for (const auto& nb2 : adj[center2]) {
+      if (nb2.idx == center1 || nb1.idx == nb2.idx)
+        continue;
+      if (share_ring_ids(atom_info[nb1.idx].in_rings, atom_info[nb2.idx].in_rings)) {
+        s1 = nb1.idx;
+        s2 = nb2.idx;
+        tv1.push_back(s1);
+        tv2.push_back(s2);
+        break;
+      }
+    }
+    if (s1 != SIZE_MAX && s2 != SIZE_MAX)
+      break;
+  }
+
+  for (const auto& nb : adj[center1])
+    if (nb.idx != center2 && nb.idx != s1)
+      tv1.push_back(nb.idx);
+  for (const auto& nb : adj[center2])
+    if (nb.idx != center1 && nb.idx != s2)
+      tv2.push_back(nb.idx);
+
+  if (s1 == SIZE_MAX && s2 == SIZE_MAX && tv1.size() == 2 && tv2.size() == 2) {
+    auto h_only_excluding = [&](size_t idx, size_t excl) {
+      for (const auto& nb : adj[idx])
+        if (nb.idx != excl && !cc.atoms[nb.idx].is_hydrogen())
+          return false;
+      return true;
+    };
+    auto degree = [&](size_t idx) { return adj[idx].size(); };
+
+    bool h0 = h_only_excluding(tv1[0], center1);
+    bool h1 = h_only_excluding(tv1[1], center1);
+    if (h0 && !h1)
+      std::swap(tv1[0], tv1[1]);
+    else if (degree(tv1[0]) < degree(tv1[1]))
+      std::swap(tv1[0], tv1[1]);
+
+    h0 = h_only_excluding(tv2[0], center2);
+    h1 = h_only_excluding(tv2[1], center2);
+    if (h0) {
+      if (!h1 || degree(tv2[0]) < degree(tv2[1]))
+        std::swap(tv2[0], tv2[1]);
+    } else if (degree(tv2[0]) < degree(tv2[1]) && !h1) {
+      std::swap(tv2[0], tv2[1]);
+    }
+  }
+  return {std::move(tv1), std::move(tv2)};
+}
+
 
 static void emit_one_torsion(
     ChemComp& cc, const AceBondAdjacency& adj,
@@ -2583,20 +2642,26 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     bool sp3_like_21 = is_sp3_like(atom_info[center3]);
     bool sp2_like_12 = is_sp2_like(atom_info[center2]);
     bool sp2_like_21 = is_sp2_like(atom_info[center3]);
-    if (sp3_like_12 && sp3_like_21) {
-      mode12 = TvMode::SP3SP3;
-      mode21 = TvMode::SP3SP3;
-    } else if (sp3_like_12 && sp2_like_21) {
-      mode12 = TvMode::SP2SP3_SP3;
-    } else if (sp2_like_12 && sp3_like_21) {
-      mode21 = TvMode::SP2SP3_SP3;
+    if (sp2_like_12 && sp2_like_21) {
+      auto tvs = build_tv_lists_sp2sp2_like_acedrg(cc, adj, atom_info, center2, center3);
+      tv1_idx = std::move(tvs.first);
+      tv2_idx = std::move(tvs.second);
+    } else {
+      if (sp3_like_12 && sp3_like_21) {
+        mode12 = TvMode::SP3SP3;
+        mode21 = TvMode::SP3SP3;
+      } else if (sp3_like_12 && sp2_like_21) {
+        mode12 = TvMode::SP2SP3_SP3;
+      } else if (sp2_like_12 && sp3_like_21) {
+        mode21 = TvMode::SP2SP3_SP3;
+      }
+      tv1_idx = build_tv_list_for_center(
+          cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+          center2, center3, mode12);
+      tv2_idx = build_tv_list_for_center(
+          cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
+          center3, center2, mode21);
     }
-    tv1_idx = build_tv_list_for_center(
-        cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        center2, center3, mode12);
-    tv2_idx = build_tv_list_for_center(
-        cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
-        center3, center2, mode21);
     ring_size = shared_ring_size_from_ring_ids(atom_info[center2].in_rings,
                                                atom_info[center2].min_ring_size,
                                                atom_info[center3].in_rings,
