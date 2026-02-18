@@ -2980,6 +2980,7 @@ void add_chirality_if_missing(
           };
           auto carbon_metrics = [&](size_t idx) {
             bool has_pi_other = false;
+            bool has_hetero_other = false;
             int non_h_other = 0;
             std::string max_non_h_id;
             for (const auto& nb2 : adj[idx]) {
@@ -2987,6 +2988,8 @@ void add_chirality_if_missing(
                 continue;
               if (!cc.atoms[nb2.idx].is_hydrogen()) {
                 ++non_h_other;
+                if (cc.atoms[nb2.idx].el != El::C)
+                  has_hetero_other = true;
                 if (max_non_h_id.empty() ||
                     id_desc(cc.atoms[nb2.idx].id, max_non_h_id))
                   max_non_h_id = cc.atoms[nb2.idx].id;
@@ -2996,10 +2999,13 @@ void add_chirality_if_missing(
                   nb2.type == BondType::Aromatic)
                 has_pi_other = true;
             }
-            return std::make_tuple(has_pi_other, non_h_other, max_non_h_id);
+            return std::make_tuple(has_pi_other, has_hetero_other,
+                                   non_h_other, max_non_h_id);
           };
           auto ma = carbon_metrics(a);
           auto mb = carbon_metrics(b);
+          if (std::get<2>(ma) != std::get<2>(mb))
+            return std::get<2>(ma) > std::get<2>(mb);
           if (std::get<1>(ma) != std::get<1>(mb))
             return std::get<1>(ma) > std::get<1>(mb);
           if (std::get<0>(ma) != std::get<0>(mb))
