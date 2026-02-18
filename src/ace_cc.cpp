@@ -880,7 +880,7 @@ void find_cip_tied_segments(std::vector<CipSortableRef>& sorted,
       next.curr_rank = running_rank;
       current = &next;
       if (in_equal) {
-        segments.back().second = i - 1;
+        segments.back().second = i;
         in_equal = false;
       }
     }
@@ -3420,29 +3420,12 @@ void add_chirality_if_missing(
         }
       }
       if (sulfur.size() == 1 && oxygens.size() == 3) {
-        auto p_oxygen_rank = [&](size_t o_idx) {
-          bool bridged_to_p = false;
-          for (const auto& nb2 : adj[o_idx]) {
-            if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
-              continue;
-            if (cc.atoms[nb2.idx].el == El::P) {
-              bridged_to_p = true;
-              break;
-            }
-          }
-          if (bridged_to_p)
-            return 0;
-          BondType bt = bond_to_center_type(o_idx);
-          if (bt == BondType::Double || bt == BondType::Deloc)
-            return 2;
-          return 1;
-        };
         std::stable_sort(oxygens.begin(), oxygens.end(), [&](size_t a, size_t b) {
-          int ra = p_oxygen_rank(a);
-          int rb = p_oxygen_rank(b);
+          unsigned ra = cip_ranks[a];
+          unsigned rb = cip_ranks[b];
           if (ra != rb)
-            return ra < rb;
-          return cc.atoms[a].id < cc.atoms[b].id;
+            return ra > rb;
+          return false;
         });
         chosen = {sulfur[0], oxygens[0], oxygens[1]};
       }
