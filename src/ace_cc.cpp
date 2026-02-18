@@ -1620,7 +1620,11 @@ std::vector<size_t> build_tv_list_for_center(
   }
 
   if (!used_chiral) {
-    bool want_h_first = false;
+    bool want_h_first = (mode == TvMode::SP2SP3_SP3 &&
+                         atom_info[ctr].hybrid == Hybridization::SP3 &&
+                         stereo_chiral_centers.count(ctr) == 0 &&
+                         !is_oxygen_column(cc.atoms[other].el) &&
+                         rs == SIZE_MAX);
     bool want_non_h_first = (mode == TvMode::SP3_OXY &&
                              atom_info[ctr].hybrid == Hybridization::SP3 &&
                              rs == SIZE_MAX);
@@ -2304,46 +2308,6 @@ bool confirm_aa_backbone(const ChemComp& cc,
   return true;
 }
 
-// AceDRG setPeptideTorsionIdxFromOneBond: choose lowest-priority pep_tors
-// match; if the match is found in reverse, emit the reversed atom order.
-// Bonds with no table match fall back to first generated torsion.
-bool select_peptide_torsion(
-    const AcedrgTables& tables,
-    const std::vector<Restraints::Torsion>& candidates,
-    Restraints::Torsion& out) {
-  if (candidates.empty())
-    return false;
-  int best_priority = INT_MAX;
-  bool found = false;
-  TorsionEntry entry;
-  for (const auto& t : candidates) {
-    if (tables.lookup_pep_tors(t.id1.atom, t.id2.atom, t.id3.atom, t.id4.atom, entry) &&
-        entry.priority < best_priority) {
-      out = t;
-      out.label = entry.id.empty() ? out.label : entry.id;
-      out.value = entry.value;
-      out.period = entry.period;
-      best_priority = entry.priority;
-      found = true;
-    }
-    if (tables.lookup_pep_tors(t.id4.atom, t.id3.atom, t.id2.atom, t.id1.atom, entry) &&
-        entry.priority < best_priority) {
-      out = t;
-      std::swap(out.id1, out.id4);
-      std::swap(out.id2, out.id3);
-      out.label = entry.id.empty() ? out.label : entry.id;
-      out.value = entry.value;
-      out.period = entry.period;
-      best_priority = entry.priority;
-      found = true;
-    }
-  }
-  if (found)
-    return true;
-  out = candidates[0];
-  return true;
-}
-
 void apply_peptide_tmpchi2_override(
     Restraints::Torsion& tor,
     const std::map<std::string, size_t>& atom_index,
@@ -2362,6 +2326,186 @@ void apply_peptide_tmpchi2_override(
     tor.period = 6;
     tor.value = 90.0;
   }
+}
+
+void set_peptide_torsion_idx_from_one_bond_like_acedrg(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const AcedrgTables& tables,
+    const std::map<std::string, size_t>& atom_index,
+    const std::vector<CodAtomInfo>& atom_info,
+    size_t idx1, size_t idx2,
+    std::vector<Restraints::Torsion>& chi_tors,
+    std::vector<Restraints::Torsion>& hh_tors,
+    std::vector<Restraints::Torsion>& cst_tors) {
+  int best_priority = 10;
+  bool found = false;
+  Restraints::Torsion best;
+  for (const auto& nb1 : adj[idx1]) {
+    size_t a1 = nb1.idx;
+    for (const auto& nb2 : adj[idx2]) {
+      size_t a4 = nb2.idx;
+      if (a1 == idx2 || a4 == idx1)
+        continue;
+      TorsionEntry entry;
+      bool forward = true;
+      if (!tables.lookup_pep_tors(cc.atoms[a1].id, cc.atoms[idx1].id,
+                                  cc.atoms[idx2].id, cc.atoms[a4].id, entry)) {
+        if (!tables.lookup_pep_tors(cc.atoms[a4].id, cc.atoms[idx2].id,
+                                    cc.atoms[idx1].id, cc.atoms[a1].id, entry))
+          continue;
+        forward = false;
+      }
+      Restraints::Torsion tor;
+      if (forward) {
+        tor.id1 = {1, cc.atoms[a1].id};
+        tor.id2 = {1, cc.atoms[idx1].id};
+        tor.id3 = {1, cc.atoms[idx2].id};
+        tor.id4 = {1, cc.atoms[a4].id};
+      } else {
+        tor.id1 = {1, cc.atoms[a4].id};
+        tor.id2 = {1, cc.atoms[idx2].id};
+        tor.id3 = {1, cc.atoms[idx1].id};
+        tor.id4 = {1, cc.atoms[a1].id};
+      }
+      tor.label = entry.id;
+      tor.value = entry.value;
+      tor.period = entry.period;
+      apply_peptide_tmpchi2_override(tor, atom_index, atom_info);
+      if (entry.priority < best_priority) {
+        best_priority = entry.priority;
+        best = tor;
+        found = true;
+      }
+    }
+  }
+  if (!found)
+    return;
+  if (best.label.find("chi") != std::string::npos) {
+    chi_tors.push_back(std::move(best));
+  } else if (best.label.find("hh") != std::string::npos) {
+    hh_tors.push_back(std::move(best));
+  } else if (best.label.find("CONST") != std::string::npos) {
+    best.esd = 0.0;
+    cst_tors.push_back(std::move(best));
+  }
+}
+
+std::vector<Restraints::Torsion> set_peptide_torsions_like_acedrg(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const AcedrgTables& tables,
+    const std::map<std::string, size_t>& atom_index,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::vector<Restraints::Torsion>& all_torsions) {
+  std::vector<Restraints::Torsion> chi_tors, hh_tors, cst_tors;
+  for (const auto& bond : cc.rt.bonds) {
+    auto it1 = atom_index.find(bond.id1.atom);
+    auto it2 = atom_index.find(bond.id2.atom);
+    if (it1 == atom_index.end() || it2 == atom_index.end())
+      continue;
+    size_t b1 = it1->second;
+    size_t b2 = it2->second;
+    std::vector<size_t> pos;
+    if (adj[b1].size() > 1)
+      pos.push_back(b1);
+    if (adj[b2].size() > 1)
+      pos.push_back(b2);
+    if (pos.size() != 2)
+      continue;
+    if (cc.atoms[pos[1]].id < cc.atoms[pos[0]].id)
+      std::swap(pos[0], pos[1]);
+    set_peptide_torsion_idx_from_one_bond_like_acedrg(
+        cc, adj, tables, atom_index, atom_info,
+        pos[0], pos[1], chi_tors, hh_tors, cst_tors);
+  }
+
+  std::vector<Restraints::Torsion> mini_torsions;
+  std::map<std::string, size_t> map_id_ser;
+  std::vector<std::string> done_bonds;
+  auto torsion_id = [](const Restraints::Torsion& t) {
+    return cat(t.id1.atom, '_', t.id2.atom, '_', t.id3.atom, '_', t.id4.atom);
+  };
+  auto bond_id = [](const Restraints::Torsion& t) {
+    return cat(t.id2.atom, '_', t.id3.atom);
+  };
+
+  if (!chi_tors.empty()) {
+    std::map<std::string, size_t> sorted_ids;
+    for (size_t i = 0; i < chi_tors.size(); ++i)
+      sorted_ids[chi_tors[i].label] = i;
+    for (const auto& kv : sorted_ids) {
+      const auto& tor = chi_tors[kv.second];
+      map_id_ser[torsion_id(tor)] = mini_torsions.size();
+      done_bonds.push_back(bond_id(tor));
+      mini_torsions.push_back(tor);
+    }
+  }
+
+  for (size_t i = 0; i < cst_tors.size(); ++i) {
+    Restraints::Torsion tor = cst_tors[i];
+    tor.label = cat("CONST_", i + 1);
+    tor.esd = 0.0;
+    map_id_ser[torsion_id(tor)] = mini_torsions.size();
+    done_bonds.push_back(bond_id(tor));
+    mini_torsions.push_back(std::move(tor));
+  }
+
+  for (size_t i = 0; i < hh_tors.size(); ++i) {
+    Restraints::Torsion tor = hh_tors[i];
+    tor.label = cat(tor.label, i + 1);
+    map_id_ser[torsion_id(tor)] = mini_torsions.size();
+    done_bonds.push_back(bond_id(tor));
+    mini_torsions.push_back(std::move(tor));
+  }
+
+  std::vector<Restraints::Torsion> tmp_tors;
+  for (const auto& tor : all_torsions) {
+    std::string bid12 = cat(tor.id2.atom, '_', tor.id3.atom);
+    std::string bid21 = cat(tor.id3.atom, '_', tor.id2.atom);
+    std::string tid12 = torsion_id(tor);
+    std::string tid21 = cat(tor.id4.atom, '_', tor.id3.atom, '_', tor.id2.atom, '_',
+                            tor.id1.atom);
+    auto it12 = map_id_ser.find(tid12);
+    if (it12 != map_id_ser.end()) {
+      mini_torsions[it12->second].period = tor.period;
+      continue;
+    }
+    auto it21 = map_id_ser.find(tid21);
+    if (it21 != map_id_ser.end()) {
+      mini_torsions[it21->second].period = tor.period;
+      continue;
+    }
+    if (std::find(done_bonds.begin(), done_bonds.end(), bid12) == done_bonds.end() &&
+        std::find(done_bonds.begin(), done_bonds.end(), bid21) == done_bonds.end())
+      tmp_tors.push_back(tor);
+  }
+
+  std::map<std::string, std::vector<Restraints::Torsion>> map_tors2;
+  std::map<std::string, int> map_tor_hi;
+  for (const auto& tor : tmp_tors) {
+    auto it2 = atom_index.find(tor.id2.atom);
+    auto it3 = atom_index.find(tor.id3.atom);
+    if (it2 == atom_index.end() || it3 == atom_index.end())
+      continue;
+    int z2 = Element(cc.atoms[it2->second].el).atomic_number();
+    int z3 = Element(cc.atoms[it3->second].el).atomic_number();
+    if (z2 <= 0 || z3 <= 0)
+      continue;
+    int av = z2 + z3;
+    std::string bid = cat(tor.id2.atom, '_', tor.id3.atom);
+    auto h = map_tor_hi.find(bid);
+    if (h == map_tor_hi.end()) {
+      map_tor_hi[bid] = av;
+      map_tors2[bid].push_back(tor);
+    } else if (av > h->second) {
+      map_tors2[bid].clear();
+      map_tor_hi[bid] = av;
+      map_tors2[bid].push_back(tor);
+    }
+  }
+  for (const auto& kv : map_tors2)
+    for (const auto& tor : kv.second)
+      mini_torsions.push_back(tor);
+  return mini_torsions;
 }
 
 const Restraints::Torsion* select_one_torsion_from_candidates(
@@ -2484,6 +2628,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     peptide_mode = false;
   const ResidueInfo& ri = find_tabulated_residue(cc.name);
   bool standard_aa = ri.is_standard() && ri.kind == ResidueKind::AA;
+  bool use_peptide_torsions = standard_aa || peptide_mode;
   std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
 
   // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
@@ -2525,6 +2670,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     size_t sel_idx1, sel_idx2;         // min/max numeric indices (AceDRG cascade sides)
   };
   std::vector<BondBugInfo> bug_infos;
+  std::vector<Restraints::Torsion> peptide_all_torsions;
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -2647,15 +2793,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         bug_infos.push_back(BondBugInfo{generated, tv1_idx, tv2_idx,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       cc.rt.torsions.insert(cc.rt.torsions.end(), generated.begin(), generated.end());
-    } else if (standard_aa || peptide_mode) {
-      if (has_3ring)
-        bug_infos.push_back(BondBugInfo{generated, tv1_idx, tv2_idx,
-                                        swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
-      Restraints::Torsion chosen;
-      if (select_peptide_torsion(tables, generated, chosen)) {
-        apply_peptide_tmpchi2_override(chosen, atom_index, atom_info);
-        cc.rt.torsions.push_back(std::move(chosen));
-      }
+    } else if (use_peptide_torsions) {
+      peptide_all_torsions.insert(peptide_all_torsions.end(),
+                                  generated.begin(), generated.end());
     } else {
       const Restraints::Torsion* chosen = select_one_torsion_from_candidates(
           cc, adj, atom_info, sel_center2, sel_center3, generated);
@@ -2668,6 +2808,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         bug_infos.push_back(BondBugInfo{generated, tv1_idx, tv2_idx,
                                         swap_term_emit, rt_idx, sel_center2, sel_center3});
     }
+  }
+
+  if (use_peptide_torsions) {
+    cc.rt.torsions = set_peptide_torsions_like_acedrg(
+        cc, adj, tables, atom_index, atom_info, peptide_all_torsions);
   }
 
   // TEMPORARY: apply AceDRG off-by-one bug for 3-ring compounds.
