@@ -3450,29 +3450,6 @@ void add_chirality_if_missing(
     if (chosen.size() < 3)
       continue;
     if (cc.atoms[center].el == El::P) {
-      auto p_chosen_rank = [&](size_t nb_idx) {
-        if (cc.atoms[nb_idx].el != El::O)
-          return 3;
-        bool has_non_h_other = false;
-        bool has_p_other = false;
-        for (const auto& nb2 : adj[nb_idx]) {
-          if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
-            continue;
-          has_non_h_other = true;
-          if (cc.atoms[nb2.idx].el == El::P) {
-            has_p_other = true;
-            break;
-          }
-        }
-        if (has_p_other)
-          return 0;
-        if (has_non_h_other)
-          return 1;
-        return 2;
-      };
-      std::stable_sort(chosen.begin(), chosen.end(), [&](size_t a, size_t b) {
-        return p_chosen_rank(a) < p_chosen_rank(b);
-      });
       int sulfur_idx = -1;
       int sulfur_count = 0;
       int oxygen_count = 0;
