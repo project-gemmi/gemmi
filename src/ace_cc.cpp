@@ -2849,7 +2849,7 @@ void add_chirality_if_missing(
     std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
     std::vector<size_t> h = hydrogen_neighbors(cc, adj, center);
     bool n_sp3_2h1_case = false;
-    if (cc.atoms[center].el == El::N && non_h.size() == 2 && !h.empty()) {
+    if (cc.atoms[center].el == El::N && non_h.size() == 2 && h.size() == 1) {
       bool n31_like = true;
       for (size_t nb : non_h)
         if (cc.atoms[nb].el != El::C || atom_info[nb].hybrid != Hybridization::SP3) {
@@ -2879,6 +2879,27 @@ void add_chirality_if_missing(
           return nb.type;
       return BondType::Unspec;
     };
+    if (cc.atoms[center].el == El::S && non_h.size() == 4) {
+      int n_c = 0, n_n = 0, n_o = 0, n_other = 0;
+      bool all_single = true;
+      for (size_t idx : non_h) {
+        Element el = cc.atoms[idx].el;
+        if (el == El::C)
+          ++n_c;
+        else if (el == El::N)
+          ++n_n;
+        else if (el == El::O)
+          ++n_o;
+        else
+          ++n_other;
+        if (bond_to_center_type(idx) != BondType::Single)
+          all_single = false;
+      }
+      // AceDRG does not emit chirality for sulfamates/sulfamides with
+      // S(single)-{C,N,O,O} neighbors.
+      if (all_single && n_c == 1 && n_n == 1 && n_o == 2 && n_other == 0)
+        continue;
+    }
     if (cc.atoms[center].el == El::P) {
       auto p_nb_rank = [&](size_t nb_idx) {
         if (cc.atoms[nb_idx].el != El::O)
