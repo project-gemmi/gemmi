@@ -2857,12 +2857,25 @@ void add_chirality_if_missing(
           break;
         }
       bool has_sp_neighbor = false;
-      for (size_t nb : non_h)
+      for (size_t nb : non_h) {
         if (cc.atoms[nb].el == El::S || cc.atoms[nb].el == El::P ||
-            cc.atoms[nb].el == El::N || cc.atoms[nb].el == El::O) {
+            cc.atoms[nb].el == El::O) {
           has_sp_neighbor = true;
           break;
         }
+        if (cc.atoms[nb].el == El::N) {
+          bool n_has_h = false;
+          for (const auto& nb2 : adj[nb])
+            if (nb2.idx != center && cc.atoms[nb2.idx].is_hydrogen()) {
+              n_has_h = true;
+              break;
+            }
+          if (n_has_h) {
+            has_sp_neighbor = true;
+            break;
+          }
+        }
+      }
       n_sp3_2h1_case = n31_like || has_sp_neighbor;
     }
     if (non_h.size() < 3 && !n_sp3_2h1_case)
