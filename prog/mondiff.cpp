@@ -97,6 +97,15 @@ std::string str(const ChemComp&, const Restraints::Chirality& a) {
   return "chirality " + a.str();
 }
 
+std::string chirality_order_str(const ChemComp& cc,
+                                const Restraints::Chirality& a,
+                                const Restraints::Chirality& b) {
+  return gemmi::cat("chirality ", a.id_ctr.atom, '_',
+                    cc.get_atom(a.id_ctr.atom).el.uname(),
+                    '(', a.id1.atom, ',', a.id2.atom, ',', a.id3.atom, ':',
+                    b.id1.atom, ',', b.id2.atom, ',', b.id3.atom, ')');
+}
+
 const char* mark(double delta, double eps) {
   if (delta < eps) return "";
   if (delta < 2*eps) return "*";
@@ -371,8 +380,17 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
   // chiralities
   if (delta.check_chirs) {
     std::vector<bool> matched_chir(cc2.rt.chirs.size(), false);
+    auto find_unmatched = [&](auto pred) {
+      for (size_t i = 0; i != cc2.rt.chirs.size(); ++i)
+        if (!matched_chir[i] && pred(cc2.rt.chirs[i]))
+          return cc2.rt.chirs.begin() + i;
+      return cc2.rt.chirs.end();
+    };
     for (const Restraints::Chirality& a : cc1.rt.chirs) {
-      auto b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id2, a.id3);
+      auto b = find_unmatched([&](const Restraints::Chirality& t) {
+        return t.id_ctr == a.id_ctr &&
+               t.id1 == a.id1 && t.id2 == a.id2 && t.id3 == a.id3;
+      });
       if (b != cc2.rt.chirs.end()) {
         if (a.sign != b->sign) {
           if (tsv)
@@ -385,7 +403,13 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
         matched_chir[b - cc2.rt.chirs.begin()] = true;
         continue;
       }
-      b = cc2.rt.find_chir(a.id_ctr, a.id1, a.id3, a.id2);
+      b = find_unmatched([&](const Restraints::Chirality& t) {
+        if (t.id_ctr != a.id_ctr)
+          return false;
+        std::set<Restraints::AtomId> a_ids = {a.id1, a.id2, a.id3};
+        std::set<Restraints::AtomId> b_ids = {t.id1, t.id2, t.id3};
+        return a_ids == b_ids;
+      });
       if (b == cc2.rt.chirs.end()) {
         if (tsv)
           printf("%s\tchir\t-\t%s\t%s\n", code, a.str().c_str(),
@@ -394,12 +418,21 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
           printf("- %s  %s\n", str(cc1, a).c_str(), chirality_to_string(a.sign));
       } else {
         matched_chir[b - cc2.rt.chirs.begin()] = true;
-        if (b->sign == ChiralityType::Both || b->sign == a.sign) {
+        bool same_order = a.id1 == b->id1 && a.id2 == b->id2 && a.id3 == b->id3;
+        if (!same_order) {
+          std::string chir = chirality_order_str(cc1, a, *b);
           if (tsv)
-            printf("%s\tchir\t!\t%s\t%s\t%s\tswapped\n", code, a.str().c_str(),
+            printf("%s\tchir\t!\t%s\t%s\t%s\n", code, chir.c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
           else
-            printf("M %-30s %s : %s (atom order swapped)\n", str(cc1, a).c_str(),
+            printf("M %-30s %s:%s\n", chir.c_str(),
+                   chirality_to_string(a.sign), chirality_to_string(b->sign));
+        } else if (a.sign != b->sign) {
+          if (tsv)
+            printf("%s\tchir\t!\t%s\t%s\t%s\n", code, a.str().c_str(),
+                   chirality_to_string(a.sign), chirality_to_string(b->sign));
+          else
+            printf("M %-30s %s : %s\n", str(cc1, a).c_str(),
                    chirality_to_string(a.sign), chirality_to_string(b->sign));
         }
       }
