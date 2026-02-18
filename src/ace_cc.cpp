@@ -926,9 +926,12 @@ std::vector<unsigned> compute_rdkit_legacy_cip_ranks(
   std::vector<std::vector<std::pair<int, size_t>>> weighted_neighbors(n);
   for (size_t i = 0; i < n; ++i) {
     weighted_neighbors[i].reserve(adj[i].size());
-    for (const auto& nb : adj[i])
+    for (const auto& nb : adj[i]) {
+      if (cc.atoms[i].el.is_metal() || cc.atoms[nb.idx].el.is_metal())
+        continue;
       weighted_neighbors[i].push_back(
           std::make_pair(rdkit_cip_bond_count(cc, adj, nb), nb.idx));
+    }
   }
 
   unsigned max_iterations = static_cast<unsigned>(n / 2 + 1);
