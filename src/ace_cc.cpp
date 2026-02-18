@@ -2234,28 +2234,44 @@ bool confirm_aa_backbone(const ChemComp& cc,
   return true;
 }
 
-// AceDRG setPeptideTorsions: for each bond, iterate all torsion candidates,
-// look up the pep_tors table, and pick the one with the lowest priority.
-// Bonds with no table match fall back to the first generated candidate
-// (equivalent to AceDRG's tmpTors fallback which keeps first torsion per bond).
-const Restraints::Torsion* select_peptide_torsion(
+// AceDRG setPeptideTorsionIdxFromOneBond: choose lowest-priority pep_tors
+// match; if the match is found in reverse, emit the reversed atom order.
+// Bonds with no table match fall back to first generated torsion.
+bool select_peptide_torsion(
     const AcedrgTables& tables,
-    const std::vector<Restraints::Torsion>& candidates) {
+    const std::vector<Restraints::Torsion>& candidates,
+    Restraints::Torsion& out) {
   if (candidates.empty())
-    return nullptr;
-  const Restraints::Torsion* best = nullptr;
+    return false;
   int best_priority = INT_MAX;
+  bool found = false;
   TorsionEntry entry;
   for (const auto& t : candidates) {
-    if (tables.lookup_pep_tors(t.id1.atom, t.id2.atom, t.id3.atom, t.id4.atom, entry) ||
-        tables.lookup_pep_tors(t.id4.atom, t.id3.atom, t.id2.atom, t.id1.atom, entry)) {
-      if (entry.priority < best_priority) {
-        best_priority = entry.priority;
-        best = &t;
-      }
+    if (tables.lookup_pep_tors(t.id1.atom, t.id2.atom, t.id3.atom, t.id4.atom, entry) &&
+        entry.priority < best_priority) {
+      out = t;
+      out.label = entry.id.empty() ? out.label : entry.id;
+      out.value = entry.value;
+      out.period = entry.period;
+      best_priority = entry.priority;
+      found = true;
+    }
+    if (tables.lookup_pep_tors(t.id4.atom, t.id3.atom, t.id2.atom, t.id1.atom, entry) &&
+        entry.priority < best_priority) {
+      out = t;
+      std::swap(out.id1, out.id4);
+      std::swap(out.id2, out.id3);
+      out.label = entry.id.empty() ? out.label : entry.id;
+      out.value = entry.value;
+      out.period = entry.period;
+      best_priority = entry.priority;
+      found = true;
     }
   }
-  return best ? best : &candidates[0];
+  if (found)
+    return true;
+  out = candidates[0];
+  return true;
 }
 
 const Restraints::Torsion* select_one_torsion_from_candidates(
@@ -2599,9 +2615,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       if (has_3ring)
         bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
-      const Restraints::Torsion* chosen = select_peptide_torsion(tables, generated);
-      if (chosen)
-        cc.rt.torsions.push_back(*chosen);
+      Restraints::Torsion chosen;
+      if (select_peptide_torsion(tables, generated, chosen))
+        cc.rt.torsions.push_back(std::move(chosen));
     } else {
       const Restraints::Torsion* chosen = select_one_torsion_from_candidates(
           cc, adj, atom_info, sel_center2, sel_center3, generated);
