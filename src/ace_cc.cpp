@@ -3193,8 +3193,21 @@ void add_chirality_if_missing(
           }
           return std::make_pair(non_h_other, hetero_other);
         };
-        if (carbon_score(chosen[0]) < carbon_score(chosen[1]))
+        auto c0 = carbon_score(chosen[0]);
+        auto c1 = carbon_score(chosen[1]);
+        if (c0 < c1) {
           std::swap(chosen[0], chosen[1]);
+        } else if (c0 == c1) {
+          std::vector<size_t> ordered;
+          for (const auto& nb : adj[center])
+            if (std::find(chosen.begin(), chosen.end(), nb.idx) != chosen.end())
+              ordered.push_back(nb.idx);
+          if (ordered.size() == 3 &&
+              cc.atoms[ordered[0]].el == El::C &&
+              cc.atoms[ordered[1]].el == El::C &&
+              cc.atoms[ordered[2]].is_hydrogen())
+            chosen = ordered;
+        }
       }
     }
     if (is_stereo_carbon &&
