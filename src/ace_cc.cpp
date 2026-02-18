@@ -2525,8 +2525,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     size_t sel_idx1, sel_idx2;         // min/max numeric indices (AceDRG cascade sides)
   };
   std::vector<BondBugInfo> bug_infos;
-  // Track smallest selection key across ALL bonds for first-bond detection.
-  std::string min_sel_key;
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -2545,13 +2543,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     // so selectOneTorFromOneBond's idx1=min, idx2=max.
     size_t sel_center2 = std::min(idx1, idx2);
     size_t sel_center3 = std::max(idx1, idx2);
-    // Track the minimum selection key for first-bond detection.
-    if (has_3ring) {
-      std::string sel_key = std::to_string(sel_center2) + "_" + std::to_string(sel_center3);
-      if (min_sel_key.empty() || sel_key < min_sel_key)
-        min_sel_key = sel_key;
-    }
-
     // Match AceDRG setTorsionFromOneBond() dispatch orientation.
     bool c2_sp2 = is_sp2_like(atom_info[center2]);
     bool c3_sp2 = is_sp2_like(atom_info[center3]);
@@ -2845,6 +2836,9 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       // AceDRG removes phantoms at the END of selectOneTorFromOneBond.
       // The first bond processed has phantoms still present (seriNum == index).
       // Subsequent bonds see the shortened vector (seriNum != index).
+      std::string min_sel_key = make_sel_key(
+          bug_infos[sorted_order[0]].sel_idx1,
+          bug_infos[sorted_order[0]].sel_idx2);
       bool first_bond_in_map = true;
       for (size_t si = 0; si < sorted_order.size(); ++si) {
         size_t bi = sorted_order[si];
