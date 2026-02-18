@@ -3037,8 +3037,12 @@ void add_planes_if_missing(ChemComp& cc,
     std::set<Restraints::AtomId> ids;
     for (size_t idx : idxs)
       ids.insert({1, cc.atoms[idx].id});
-    if (in_vector(ids, plane_sets))
-      return;
+    for (size_t i = 0; i < plane_sets.size(); ++i)
+      if (plane_sets[i] == ids) {
+        if (i < cc.rt.planes.size() && cc.rt.planes[i].esd < esd)
+          cc.rt.planes[i].esd = esd;
+        return;
+      }
     Restraints::Plane plane;
     plane.label = cat("plan-", cc.rt.planes.size() + 1);
     plane.esd = esd;
