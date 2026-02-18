@@ -3335,6 +3335,13 @@ void add_chirality_if_missing(
         });
         size_t c1 = carbons[0];
         size_t c2 = carbons[1];
+        bool oxygen_has_non_h_other = false;
+        for (const auto& nb2 : adj[oxygens[0]]) {
+          if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+            continue;
+          oxygen_has_non_h_other = true;
+          break;
+        }
         double vol = calculate_chiral_volume(cc.atoms[center].xyz,
                                              cc.atoms[oxygens[0]].xyz,
                                              cc.atoms[c1].xyz,
@@ -3342,7 +3349,7 @@ void add_chirality_if_missing(
         if (std::isfinite(vol) && std::fabs(vol) > 1e-8) {
           ChiralityType vol_sign = (vol > 0.0) ? ChiralityType::Positive
                                                : ChiralityType::Negative;
-          if (vol_sign != sign)
+          if (vol_sign != sign && !oxygen_has_non_h_other)
             std::swap(c1, c2);
         }
         chosen = {oxygens[0], c1, c2};
