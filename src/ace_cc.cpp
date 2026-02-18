@@ -3449,6 +3449,54 @@ void add_chirality_if_missing(
         chosen.erase(chosen.begin() + sulfur_idx);
         chosen.insert(chosen.begin(), sulfur);
       }
+      if (cc.atoms[chosen[0]].el == El::O &&
+          cc.atoms[chosen[1]].el == El::O &&
+          cc.atoms[chosen[2]].el == El::O) {
+        auto branch_rank = [&](size_t o_idx) {
+          bool has_p_other = false;
+          bool has_metal_other = false;
+          bool has_h_other = false;
+          bool has_non_metal_other = false;
+          for (const auto& nb2 : adj[o_idx]) {
+            if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+              continue;
+            if (!cc.atoms[nb2.idx].el.is_metal())
+              has_non_metal_other = true;
+            if (cc.atoms[nb2.idx].el == El::P)
+              has_p_other = true;
+            if (cc.atoms[nb2.idx].el.is_metal())
+              has_metal_other = true;
+          }
+          for (const auto& nb2 : adj[o_idx])
+            if (nb2.idx != center && cc.atoms[nb2.idx].is_hydrogen())
+              has_h_other = true;
+          BondType bt = bond_to_center_type(o_idx);
+          if (has_p_other)
+            return 0;
+          if (bt == BondType::Single && has_h_other)
+            return 1;
+          if (bt == BondType::Single && has_non_metal_other && !has_metal_other)
+            return 1;
+          if (has_metal_other)
+            return 2;
+          if (bt == BondType::Double || bt == BondType::Deloc)
+            return 3;
+          return 1;
+        };
+        bool any_metal = false;
+        for (size_t idx : chosen)
+          for (const auto& nb2 : adj[idx])
+            if (nb2.idx != center && !cc.atoms[nb2.idx].is_hydrogen() &&
+                cc.atoms[nb2.idx].el.is_metal()) {
+              any_metal = true;
+              break;
+            }
+        if (any_metal) {
+          std::stable_sort(chosen.begin(), chosen.end(), [&](size_t a, size_t b) {
+            return branch_rank(a) < branch_rank(b);
+          });
+        }
+      }
     }
     if (assign_noncarbon_sign) {
       bool has_metal_branch = false;
