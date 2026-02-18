@@ -3107,6 +3107,45 @@ void add_chirality_if_missing(
         continue;
     }
     sort_neighbors_by_rdkit_cip_rank(non_h, cip_ranks);
+    if (cc.atoms[center].el == El::C || cc.atoms[center].el == El::N) {
+      auto stereo_label_rank = [&](size_t idx) {
+        if (cc.atoms[idx].el != El::C)
+          return 0;
+        auto st_it = atom_stereo.find(cc.atoms[idx].id);
+        if (st_it == atom_stereo.end() || st_it->second.empty())
+          return 0;
+        char s = lower(st_it->second[0]);
+        if (s == 'r')
+          return 2;
+        if (s == 's')
+          return 1;
+        return 0;
+      };
+      auto branch_stereo_rank = [&](size_t idx) {
+        int rank = stereo_label_rank(idx);
+        if (rank == 2)
+          return rank;
+        for (const auto& nb2 : adj[idx]) {
+          if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+            continue;
+          rank = std::max(rank, stereo_label_rank(nb2.idx));
+          if (rank == 2)
+            break;
+        }
+        return rank;
+      };
+      std::stable_sort(non_h.begin(), non_h.end(), [&](size_t a, size_t b) {
+        unsigned ra = cip_ranks[a];
+        unsigned rb = cip_ranks[b];
+        if (ra != rb)
+          return ra > rb;
+        int sa = branch_stereo_rank(a);
+        int sb = branch_stereo_rank(b);
+        if (sa != sb)
+          return sa > sb;
+        return false;
+      });
+    }
     sort_neighbors_by_rdkit_cip_rank(h, cip_ranks);
     bool assign_noncarbon_sign = false;
     if (!is_stereo_carbon &&
