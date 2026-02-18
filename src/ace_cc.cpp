@@ -2519,7 +2519,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   // Per-bond tracking for the 3-ring bug simulation.
   struct BondBugInfo {
     std::vector<Restraints::Torsion> generated;
-    std::vector<size_t> atv1, atv2;    // AceDRG-order tv lists (for cross product)
+    std::vector<size_t> atv1, atv2;    // exact per-bond TV lists used for emission
     bool swap_term_emit;               // whether emit loop order was swapped
     size_t rt_idx;                     // index in cc.rt.torsions (SIZE_MAX if none)
     size_t sel_idx1, sel_idx2;         // min/max numeric indices (AceDRG cascade sides)
@@ -2527,51 +2527,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   std::vector<BondBugInfo> bug_infos;
   // Track smallest selection key across ALL bonds for first-bond detection.
   std::string min_sel_key;
-
-  // Build AceDRG-order tv list matching AllSystem::SetOneSP3SP3Bond flow:
-  // ring-sharing pair moved to front, then chiral mutation table ordering
-  // (with getMutList-style cyclic rotation), then H neighbors.
-  // Falls back to raw adjacency order when no chiral definition.
-  auto build_acedrg_order_tv = [&](size_t ctr, size_t other) -> std::vector<size_t> {
-    int max_len = max_tv_len_for_center(atom_info[ctr]);
-    size_t rs = find_ring_sharing_pair(adj, atom_info, ctr, other).first;
-    std::vector<size_t> tv;
-    if (rs != SIZE_MAX)
-      tv.push_back(rs);
-    bool used_chiral = false;
-    auto mit = chir_mut_table.find(ctr);
-    if (mit != chir_mut_table.end()) {
-      auto mt_it = mit->second.find(other);
-      if (mt_it != mit->second.end()) {
-        used_chiral = true;
-        std::vector<size_t> mut_filtered;
-        for (size_t cand : mt_it->second)
-          if (cand != other)
-            mut_filtered.push_back(cand);
-        append_chiral_cluster_like_acedrg(tv, mut_filtered);
-      }
-    }
-    if (!used_chiral) {
-      for (const auto& nb : adj[ctr]) {
-        if ((int)tv.size() >= max_len) break;
-        if (nb.idx == other || nb.idx == rs || cc.atoms[nb.idx].el.is_metal())
-          continue;
-        tv.push_back(nb.idx);
-      }
-    } else {
-      // Append H neighbors not already captured by the mutation table.
-      for (const auto& nb : adj[ctr]) {
-        if ((int)tv.size() >= max_len) break;
-        if (nb.idx == other || cc.atoms[nb.idx].el.is_metal()) continue;
-        if (std::find(tv.begin(), tv.end(), nb.idx) != tv.end()) continue;
-        if (cc.atoms[nb.idx].is_hydrogen())
-          tv.push_back(nb.idx);
-      }
-    }
-    if ((int)tv.size() > max_len)
-      tv.resize(max_len);
-    return tv;
-  };
 
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
@@ -2696,20 +2651,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (generated.empty())
       continue;
 
-    std::vector<size_t> atv1, atv2;
-    if (has_3ring) {
-      atv1 = build_acedrg_order_tv(center2, center3);
-      atv2 = build_acedrg_order_tv(center3, center2);
-    }
-
     if (has_sugar_ring) {
       if (has_3ring)
-        bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
+        bug_infos.push_back(BondBugInfo{generated, tv1_idx, tv2_idx,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       cc.rt.torsions.insert(cc.rt.torsions.end(), generated.begin(), generated.end());
     } else if (standard_aa || peptide_mode) {
       if (has_3ring)
-        bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
+        bug_infos.push_back(BondBugInfo{generated, tv1_idx, tv2_idx,
                                         swap_term_emit, SIZE_MAX, sel_center2, sel_center3});
       Restraints::Torsion chosen;
       if (select_peptide_torsion(tables, generated, chosen)) {
@@ -2725,7 +2674,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         cc.rt.torsions.push_back(*chosen);
       }
       if (has_3ring)
-        bug_infos.push_back(BondBugInfo{generated, atv1, atv2,
+        bug_infos.push_back(BondBugInfo{generated, tv1_idx, tv2_idx,
                                         swap_term_emit, rt_idx, sel_center2, sel_center3});
     }
   }
@@ -2812,17 +2761,16 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     std::sort(rwalks.begin(), rwalks.end(),
               [](const RingWalkBug& a, const RingWalkBug& b){ return a.rep < b.rep; });
 
-    // Collect Phase 1 bond set and 3-ring closing bond set.
+    // Collect Phase 1 SP3-SP3 bond set.
     // AceDRG Phase 1 processes ALL ring walk bonds (SP2-SP2, SP2-SP3, SP3-SP3).
     // Only SP3-SP3 walk bonds use SetOneSP3SP3Bond(flip) which has a skip check
     // for phantoms (a1==a4). SP2-SP3 walk bonds use SetOneSP2SP3Bond which has
     // NO skip check, so they generate phantoms.
-    std::set<std::pair<size_t,size_t>> phase1_sp3sp3_set, closing3ring_set;
+    std::set<std::pair<size_t,size_t>> phase1_sp3sp3_set;
     for (const auto& rw : rwalks) {
       for (auto& pb : rw.p1bonds)
         if (is_sp3_like(atom_info[pb.first]) && is_sp3_like(atom_info[pb.second]))
           phase1_sp3sp3_set.insert(pb);
-      if (rw.size == 3) closing3ring_set.insert(rw.closing);
     }
 
     // Build bug_info key→index map.
@@ -2861,26 +2809,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       auto& bcp = bond_cps[bi];
       bcp.global_start = global_pos;
       auto bkey = std::minmax(info.sel_idx1, info.sel_idx2);
-      bool is_3ring_closing = closing3ring_set.count(bkey) > 0;
-      // For Phase 2 3-ring closing bonds, use raw adjacency order (matches
-      // AceDRG's SetOneSP3SP3Bond without flip, which iterates connAtoms
-      // directly).
-      // For all other bonds, use the pre-built acedrg-order atv lists.
-      std::vector<size_t> raw_tv1, raw_tv2;
       const std::vector<size_t>* p_outer;
       const std::vector<size_t>* p_inner;
-      if (is_3ring_closing) {
-        // AceDRG's fullAtoms map uses string-sorted atom IDs to order c1/c2.
-        size_t c1 = info.sel_idx1, c2 = info.sel_idx2;
-        if (cc.atoms[c1].id > cc.atoms[c2].id) std::swap(c1, c2);
-        for (const auto& nb : adj[c1]) if (nb.idx != c2) raw_tv1.push_back(nb.idx);
-        for (const auto& nb : adj[c2]) if (nb.idx != c1) raw_tv2.push_back(nb.idx);
-        p_outer = &raw_tv1;
-        p_inner = &raw_tv2;
-      } else {
-        p_outer = info.swap_term_emit ? &info.atv2 : &info.atv1;
-        p_inner = info.swap_term_emit ? &info.atv1 : &info.atv2;
-      }
+      p_outer = info.swap_term_emit ? &info.atv2 : &info.atv1;
+      p_inner = info.swap_term_emit ? &info.atv1 : &info.atv2;
       for (size_t a1 : *p_outer)
         for (size_t a4 : *p_inner) {
           // Only SP3-SP3 ring walk bonds have the skip check in AceDRG
