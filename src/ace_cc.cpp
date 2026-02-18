@@ -3274,6 +3274,47 @@ void add_chirality_if_missing(
           chosen = {oxygens[0], oxygens[1], c0_oxy ? carbons[0] : carbons[1]};
       }
     }
+    if (cc.atoms[center].el == El::C && non_h.size() == 4 && chosen.size() >= 3) {
+      std::vector<size_t> heavy_halogens;
+      std::vector<size_t> phosphorus;
+      for (size_t idx : non_h) {
+        Element el = cc.atoms[idx].el;
+        if (el == El::Br || el == El::I || el == El::At)
+          heavy_halogens.push_back(idx);
+        else if (cc.atoms[idx].el == El::P)
+          phosphorus.push_back(idx);
+      }
+      if (heavy_halogens.size() == 2 && phosphorus.size() == 2) {
+        auto p_bridge_score = [&](size_t p_idx) {
+          int bridged_o_to_p = 0;
+          int non_h_other = 0;
+          for (const auto& nb2 : adj[p_idx]) {
+            if (nb2.idx == center || cc.atoms[nb2.idx].is_hydrogen())
+              continue;
+            ++non_h_other;
+            if (cc.atoms[nb2.idx].el != El::O)
+              continue;
+            for (const auto& nb3 : adj[nb2.idx]) {
+              if (nb3.idx == p_idx || cc.atoms[nb3.idx].is_hydrogen())
+                continue;
+              if (cc.atoms[nb3.idx].el == El::P) {
+                ++bridged_o_to_p;
+                break;
+              }
+            }
+          }
+          return std::make_tuple(bridged_o_to_p, non_h_other, cc.atoms[p_idx].id);
+        };
+        auto p0 = p_bridge_score(phosphorus[0]);
+        auto p1 = p_bridge_score(phosphorus[1]);
+        size_t picked_p = phosphorus[0];
+        if (std::get<0>(p1) > std::get<0>(p0) ||
+            (std::get<0>(p1) == std::get<0>(p0) &&
+             std::get<1>(p1) > std::get<1>(p0)))
+          picked_p = phosphorus[1];
+        chosen = {heavy_halogens[0], heavy_halogens[1], picked_p};
+      }
+    }
     if (cc.atoms[center].el == El::S && non_h.size() == 4 && chosen.size() >= 3) {
       std::vector<size_t> dbl_o;
       std::vector<size_t> sing_n;
