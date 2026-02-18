@@ -3002,8 +3002,6 @@ void add_chirality_if_missing(
             return std::get<0>(ma) > std::get<0>(mb);
           if (std::get<1>(ma) != std::get<1>(mb))
             return std::get<1>(ma) > std::get<1>(mb);
-          if (std::get<2>(ma) != std::get<2>(mb))
-            return id_desc(std::get<2>(ma), std::get<2>(mb));
         }
         return false;
       });
