@@ -2850,6 +2850,16 @@ void add_chirality_if_missing(
 
     std::vector<size_t> non_h = non_hydrogen_neighbors(cc, adj, center);
     std::vector<size_t> h = hydrogen_neighbors(cc, adj, center);
+    if (cc.atoms[center].el == El::C) {
+      bool has_metal_neighbor = false;
+      for (size_t nb : non_h)
+        if (cc.atoms[nb].el.is_metal()) {
+          has_metal_neighbor = true;
+          break;
+        }
+      if (has_metal_neighbor)
+        continue;
+    }
     bool n_sp3_2h1_case = false;
     if (cc.atoms[center].el == El::N && non_h.size() == 2 && h.size() == 1) {
       bool n31_like = true;
