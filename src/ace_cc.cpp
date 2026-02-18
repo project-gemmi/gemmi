@@ -811,10 +811,12 @@ int chirality_priority(Element el) {
   if (el == El::O) return 0;
   if (el == El::N) return 1;
   if (el == El::S) return 2;
-  if (el == El::P) return 3;
-  if (el == El::C) return 4;
-  if (el == El::H) return 5;
-  return 6;
+  if (el == El::Br || el == El::I || el == El::At) return 3;
+  if (el == El::P) return 4;
+  if (el == El::F || el == El::Cl) return 5;
+  if (el == El::C) return 6;
+  if (el == El::H) return 7;
+  return 8;
 }
 
 bool is_oxygen_column(Element el) {
