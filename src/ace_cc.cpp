@@ -2208,6 +2208,10 @@ static void emit_one_torsion(
                            share_ring_ids(atom_info[sp2_side_nbs[0]].in_rings,
                                           atom_info[sp2_side_nbs[1]].in_rings));
       bool is_ts3 = (sp2_rs == SIZE_MAX && has_ts3_ring);
+      if (is_ts3 && tv_sp3.size() == 2 &&
+          !cc.atoms[tv_sp3[0]].is_hydrogen() && cc.atoms[tv_sp3[1]].is_hydrogen()) {
+        std::swap(tv_sp3[0], tv_sp3[1]);
+      }
       const auto& sp2sp3_m = is_ts3 ? ts3_m : ts1_m;
       int i_pos = -1, j_pos = -1;
       bool normal_shape = tv_sp2.size() <= tv_sp3.size();
