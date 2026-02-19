@@ -1670,7 +1670,7 @@ std::vector<size_t> build_tv_list_for_center(
         std::vector<size_t> mut_filtered;
         mut_filtered.reserve(mt_it->second.size());
         for (size_t cand : mt_it->second)
-          if (cand != other)
+          if (cand != other && !cc.atoms[cand].el.is_metal())
             mut_filtered.push_back(cand);
         append_chiral_cluster_like_acedrg(tv, mut_filtered);
       }
@@ -1765,6 +1765,7 @@ std::vector<size_t> build_tv_list_sp3sp3_like_acedrg(
     for (const auto& nb : adj[center]) {
       if (nb.idx != other &&
           std::find(tv.begin(), tv.end(), nb.idx) == tv.end() &&
+          !cc.atoms[nb.idx].el.is_metal() &&
           !cc.atoms[nb.idx].is_hydrogen()) {
         tv.push_back(nb.idx);
         break;
@@ -1774,6 +1775,7 @@ std::vector<size_t> build_tv_list_sp3sp3_like_acedrg(
 
   for (const auto& nb : adj[center]) {
     if (nb.idx == other ||
+        cc.atoms[nb.idx].el.is_metal() ||
         std::find(tv.begin(), tv.end(), nb.idx) != tv.end())
       continue;
     tv.push_back(nb.idx);
