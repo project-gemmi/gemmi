@@ -2065,7 +2065,8 @@ static void emit_one_torsion(
       bool used_chiral = false;
       bool stereo_sp3 = (atom_info[sp3_center].hybrid == Hybridization::SP3 &&
                          stereo_chiral_centers.count(sp3_center) != 0);
-      if (atom_info[sp3_center].hybrid == Hybridization::SP3 && !stereo_sp3) {
+      if (atom_info[sp3_center].hybrid == Hybridization::SP3 &&
+          !stereo_sp3 && cc.atoms[sp3_center].el != El::P) {
         auto mit = chir_mut_table.find(sp3_center);
         if (mit != chir_mut_table.end()) {
           auto mt_it = mit->second.find(sp2_center);
@@ -2209,6 +2210,8 @@ static void emit_one_torsion(
           continue;
         tv_sp3.push_back(nb.idx);
       }
+      if (sp3_rs == SIZE_MAX && cc.atoms[sp3_center].el == El::P)
+        std::stable_sort(tv_sp3.begin(), tv_sp3.end());
 
       static const double ts3_m[2][3] = {{150,-90,30}, {-30,90,-150}};
       static const double ts1_m[2][3] = {{0,120,-120}, {180,-60,60}};
