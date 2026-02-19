@@ -2876,6 +2876,18 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     }
   }
 
+  // AceDRG special case: hypervalent phosphorus hydrides (e.g. PF6H-like
+  // species) use the generic P-H target instead of sparse multilevel stats.
+  bool p_h_pair = ((a1.el == El::P && (a2.el == El::H || a2.el == El::D)) ||
+                   (a2.el == El::P && (a1.el == El::H || a1.el == El::D)));
+  if (p_h_pair && (a1.bonding_idx >= 5 || a2.bonding_idx >= 5)) {
+    bond.value = 1.433;
+    bond.esd = 0.02;
+    source = "P-H_generic";
+    log_bond(source);
+    return 0;
+  }
+
   // Try both multilevel and HRS
   bool same_ring = are_in_same_ring(a1, a2);
   CodStats vs_ml = search_bond_multilevel(a1, a2);

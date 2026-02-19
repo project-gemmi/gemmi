@@ -100,6 +100,7 @@ enum class CalcFlag : signed char {
 /// options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
+  bool check_non_ascii = false;
   bool ignore_ter = false; // ignores TER records completely
   bool split_chain_on_ter = false;
   bool skip_remarks = false;
@@ -903,6 +904,7 @@ struct Structure {
 
   CoorFormat input_format = CoorFormat::Unknown;
   bool has_d_fraction = false;  // uses Refmac's ccp4_deuterium_fraction
+  int non_ascii_line = 0;  // first PDB line with non-ASCII bytes, or 0
   /// in input PDB file: y = TER records were read, e = errors were detected
   char ter_status = '\0';
 

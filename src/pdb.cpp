@@ -878,6 +878,12 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
   };
   while (size_t len = line_reader.copy_line(line, options.max_line_length+1)) {
     ++line_num;
+    if (options.check_non_ascii && st.non_ascii_line == 0)
+      for (size_t i = 0; i < len; ++i)
+        if (static_cast<unsigned char>(line[i]) >= 0x80) {
+          st.non_ascii_line = line_num;
+          break;
+        }
     if (is_record_type4(line, "ATOM") || is_record_type4(line, "HETATM")) {
       if (len < 55)
         wrong("The line is too short to be correct:\n" + std::string(line));

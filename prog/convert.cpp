@@ -310,6 +310,10 @@ void convert(gemmi::Structure& st,
   if (st.models.empty())
     gemmi::fail("No atoms in the input (", format_as_string(st.input_format), ") file. "
                 "Wrong file format?");
+  if (st.non_ascii_line != 0)
+    std::cerr << "WARNING: non-ASCII byte found in the PDB input on line "
+              << st.non_ascii_line
+              << ".\nWARNING: The fixed-column PDB format may be misinterpreted." << std::endl;
   if (st.ter_status == 'e')
     std::cerr << "WARNING: TER records in the input PDB are clearly where they shouldn't be."
                  "\nWARNING: Ignoring all TER records." << std::endl;
@@ -593,21 +597,23 @@ int GEMMI_MAIN(int argc, char **argv) {
               << "..." << std::endl;
   try {
     gemmi::Structure st;
-    if (p.options[OldPdb]) {
+    if (in_type == CoorFormat::ChemComp) {
+      int which = 7;
+      // chemcomp:m or chemcomp:i
+      if (p.options[FormatIn].arg && std::strlen(p.options[FormatIn].arg) > 9)
+        // cf. ChemCompModel
+        which = p.options[FormatIn].arg[9] == 'i' ? 4 : 2;
+      st = gemmi::read_structure_from_chemcomp_gz(input, nullptr, which);
+    } else if (in_type == CoorFormat::Pdb || p.options[OldPdb] ||
+               (in_type == CoorFormat::Detect &&
+                gemmi::coor_format_from_ext_gz(input) == CoorFormat::Pdb)) {
       gemmi::PdbReadOptions options;
-      options.max_line_length = 72;
+      options.check_non_ascii = true;
+      if (p.options[OldPdb])
+        options.max_line_length = 72;
       st = gemmi::read_pdb_gz(input, options);
     } else {
-      if (in_type == CoorFormat::ChemComp) {
-        int which = 7;
-        // chemcomp:m or chemcomp:i
-        if (p.options[FormatIn].arg && std::strlen(p.options[FormatIn].arg) > 9)
-          // cf. ChemCompModel
-          which = p.options[FormatIn].arg[9] == 'i' ? 4 : 2;
-        st = gemmi::read_structure_from_chemcomp_gz(input, nullptr, which);
-      } else {
-        st = gemmi::read_structure_gz(input, in_type);
-      }
+      st = gemmi::read_structure_gz(input, in_type);
     }
     convert(st, output, out_type, p.options);
   } catch (std::runtime_error& e) {
