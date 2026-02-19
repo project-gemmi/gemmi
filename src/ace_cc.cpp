@@ -2134,11 +2134,15 @@ static void emit_one_torsion(
       for (const auto& nb : adj[sp2_center]) {
         if (nb.idx == sp3_center || nb.idx == sp2_rs)
           continue;
+        if (cc.atoms[nb.idx].el.is_metal())
+          continue;
         if (!cc.atoms[nb.idx].is_hydrogen())
           tv_sp2.push_back(nb.idx);
       }
       for (const auto& nb : adj[sp2_center]) {
         if (nb.idx == sp3_center || nb.idx == sp2_rs)
+          continue;
+        if (cc.atoms[nb.idx].el.is_metal())
           continue;
         if (cc.atoms[nb.idx].is_hydrogen())
           tv_sp2.push_back(nb.idx);
@@ -2168,11 +2172,15 @@ static void emit_one_torsion(
       if (!used_chiral) {
         int h_count = 0;
         for (const auto& nb : adj[sp3_center])
-          if (nb.idx != sp2_center && cc.atoms[nb.idx].is_hydrogen())
+          if (nb.idx != sp2_center &&
+              !cc.atoms[nb.idx].el.is_metal() &&
+              cc.atoms[nb.idx].is_hydrogen())
             ++h_count;
         if (!cc.atoms[sp2_center].is_hydrogen() && h_count == 2) {
           for (const auto& nb : adj[sp3_center]) {
             if (nb.idx == sp2_center)
+              continue;
+            if (cc.atoms[nb.idx].el.is_metal())
               continue;
             if (cc.atoms[nb.idx].is_hydrogen()) {
               tv_sp3.push_back(nb.idx);
@@ -2181,6 +2189,8 @@ static void emit_one_torsion(
           }
           for (const auto& nb : adj[sp3_center]) {
             if (nb.idx == sp2_center)
+              continue;
+            if (cc.atoms[nb.idx].el.is_metal())
               continue;
             if (!cc.atoms[nb.idx].is_hydrogen() &&
                 std::find(tv_sp3.begin(), tv_sp3.end(), nb.idx) == tv_sp3.end()) {
@@ -2192,6 +2202,8 @@ static void emit_one_torsion(
       }
       for (const auto& nb : adj[sp3_center]) {
         if (nb.idx == sp2_center)
+          continue;
+        if (cc.atoms[nb.idx].el.is_metal())
           continue;
         if (std::find(tv_sp3.begin(), tv_sp3.end(), nb.idx) != tv_sp3.end())
           continue;
