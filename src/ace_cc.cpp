@@ -3144,7 +3144,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
           continue;
 
         // Find the replacement torsion at the shifted position.
-        size_t r_a1 = SIZE_MAX, r_a4 = SIZE_MAX;
+        size_t r_a1 = SIZE_MAX, r_a4 = SIZE_MAX, src_bi = SIZE_MAX;
         for (size_t bi2 = 0; bi2 < bug_infos.size(); ++bi2) {
           auto& bcp2 = bond_cps[bi2];
           if (shifted_orig >= bcp2.global_start &&
@@ -3152,21 +3152,27 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
             size_t cp2 = shifted_orig - bcp2.global_start;
             r_a1 = bcp2.entries[cp2].first;
             r_a4 = bcp2.entries[cp2].second;
+            src_bi = bi2;
             break;
           }
         }
-        if (r_a1 == SIZE_MAX)
+        if (r_a1 == SIZE_MAX || src_bi == SIZE_MAX)
           continue;
 
         const std::string& r_a1_name = cc.atoms[r_a1].id;
         const std::string& r_a4_name = cc.atoms[r_a4].id;
-        // Search in SAME bond's generated torsions (try both orderings).
-        for (const auto& t : info.generated)
-          if ((t.id1.atom == r_a1_name && t.id4.atom == r_a4_name) ||
-              (t.id1.atom == r_a4_name && t.id4.atom == r_a1_name)) {
-            cc.rt.torsions[info.rt_idx] = t;
-            break;
-          }
+        auto try_apply = [&](const std::vector<Restraints::Torsion>& src) {
+          for (const auto& t : src)
+            if ((t.id1.atom == r_a1_name && t.id4.atom == r_a4_name) ||
+                (t.id1.atom == r_a4_name && t.id4.atom == r_a1_name)) {
+              cc.rt.torsions[info.rt_idx] = t;
+              return true;
+            }
+          return false;
+        };
+        // Prefer the actual shifted source bond; fall back to same-bond lookup.
+        if (!try_apply(bug_infos[src_bi].generated))
+          (void)try_apply(info.generated);
       }
     }
   }
