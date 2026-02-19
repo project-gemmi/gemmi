@@ -1,7 +1,9 @@
 // Copyright 2025 Global Phasing Ltd.
 
 #include <cstdio>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include "gemmi/read_cif.hpp"     // for read_cif_gz
 #include "gemmi/chemcomp.hpp"     // for ChemComp, make_chemcomp_from_block
 #include "gemmi/mmcif.hpp"        // for ChemCompModel, make_residue_from_chemcomp_block
@@ -92,6 +94,227 @@ bool apply_coord_model(const cif::Block& block, ChemComp& cc, ChemCompModel kind
     }
   }
   return updated > 0;
+}
+
+std::string derive_companion_mol0_path(const std::string& input,
+                                       const std::string& comp_id) {
+  std::string filename = get_filename(input);
+  std::string dir = input.substr(0, input.size() - filename.size());
+  size_t pos = dir.rfind("/orig/");
+  if (pos != std::string::npos)
+    dir.replace(pos, 6, "/acedrg/");
+  else if ((pos = dir.rfind("\\orig\\")) != std::string::npos)
+    dir.replace(pos, 6, "\\acedrg\\");
+  return dir + comp_id + "_TMP/" + comp_id + "_mol_0.cif";
+}
+
+std::string ltrim_copy(const std::string& s) {
+  size_t pos = 0;
+  while (pos < s.size() && std::isspace(static_cast<unsigned char>(s[pos])))
+    ++pos;
+  return s.substr(pos);
+}
+
+bool parse_triplet_tokens(const std::vector<std::string>& toks,
+                          int ix, int iy, int iz, Position& pos) {
+  if (ix < 0 || iy < 0 || iz < 0)
+    return false;
+  if (static_cast<size_t>(std::max(ix, std::max(iy, iz))) >= toks.size())
+    return false;
+  char* end = nullptr;
+  double x = std::strtod(toks[ix].c_str(), &end);
+  if (!end || *end != '\0')
+    return false;
+  double y = std::strtod(toks[iy].c_str(), &end);
+  if (!end || *end != '\0')
+    return false;
+  double z = std::strtod(toks[iz].c_str(), &end);
+  if (!end || *end != '\0')
+    return false;
+  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+    return false;
+  pos = Position(x, y, z);
+  return true;
+}
+
+std::map<std::string, Position> load_companion_mol0_coords_text(
+    const std::string& path) {
+  std::map<std::string, Position> coords;
+  std::ifstream in(path.c_str());
+  if (!in.good())
+    return coords;
+
+  enum class State { FindLoop, ReadTags, ReadRows, SkipRows };
+  State state = State::FindLoop;
+  std::vector<std::string> tags;
+  int atom_id_idx = -1;
+  int x_idx = -1, y_idx = -1, z_idx = -1;
+  int mx_idx = -1, my_idx = -1, mz_idx = -1;
+  int ix_idx = -1, iy_idx = -1, iz_idx = -1;
+
+  auto reset_indices = [&]() {
+    atom_id_idx = -1;
+    x_idx = y_idx = z_idx = -1;
+    mx_idx = my_idx = mz_idx = -1;
+    ix_idx = iy_idx = iz_idx = -1;
+  };
+
+  std::string line;
+  while (std::getline(in, line)) {
+    std::string t = ltrim_copy(line);
+    if (state == State::FindLoop) {
+      if (t == "loop_") {
+        tags.clear();
+        reset_indices();
+        state = State::ReadTags;
+      }
+      continue;
+    }
+
+    if (state == State::ReadTags) {
+      if (t.empty() || t[0] == '#')
+        continue;
+      if (t[0] == '_') {
+        std::istringstream iss(t);
+        std::string tag;
+        iss >> tag;
+        tags.push_back(tag);
+        continue;
+      }
+      for (size_t i = 0; i < tags.size(); ++i) {
+        const std::string& tag = tags[i];
+        if (tag == "_chem_comp_atom.atom_id")
+          atom_id_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.x")
+          x_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.y")
+          y_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.z")
+          z_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.model_Cartn_x")
+          mx_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.model_Cartn_y")
+          my_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.model_Cartn_z")
+          mz_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.pdbx_model_Cartn_x_ideal")
+          ix_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.pdbx_model_Cartn_y_ideal")
+          iy_idx = static_cast<int>(i);
+        else if (tag == "_chem_comp_atom.pdbx_model_Cartn_z_ideal")
+          iz_idx = static_cast<int>(i);
+      }
+      bool has_atom_loop = atom_id_idx >= 0 &&
+                           ((x_idx >= 0 && y_idx >= 0 && z_idx >= 0) ||
+                            (mx_idx >= 0 && my_idx >= 0 && mz_idx >= 0) ||
+                            (ix_idx >= 0 && iy_idx >= 0 && iz_idx >= 0));
+      state = has_atom_loop ? State::ReadRows : State::SkipRows;
+      // process this line as the first row in the selected mode
+    }
+
+    if (state == State::SkipRows) {
+      if (t == "loop_") {
+        tags.clear();
+        reset_indices();
+        state = State::ReadTags;
+      } else if (!t.empty() && t[0] == '_') {
+        state = State::FindLoop;
+      }
+      continue;
+    }
+
+    if (state == State::ReadRows) {
+      if (t.empty() || t[0] == '#')
+        continue;
+      if (t == "loop_") {
+        tags.clear();
+        reset_indices();
+        state = State::ReadTags;
+        continue;
+      }
+      if (t[0] == '_' || t.compare(0, 5, "data_") == 0) {
+        // The atom loop is over.
+        break;
+      }
+      std::istringstream iss(t);
+      std::vector<std::string> toks;
+      for (std::string tok; iss >> tok;)
+        toks.push_back(tok);
+      if (atom_id_idx < 0 || static_cast<size_t>(atom_id_idx) >= toks.size())
+        continue;
+      Position pos;
+      if (parse_triplet_tokens(toks, x_idx, y_idx, z_idx, pos) ||
+          parse_triplet_tokens(toks, mx_idx, my_idx, mz_idx, pos) ||
+          parse_triplet_tokens(toks, ix_idx, iy_idx, iz_idx, pos))
+        coords[toks[atom_id_idx]] = pos;
+    }
+  }
+
+  return coords;
+}
+
+std::map<std::string, Position> load_companion_mol0_coords(
+    const std::string& input, const std::string& comp_id) {
+  std::map<std::string, Position> coords;
+  bool dbg = std::getenv("GEMMI_DBG_MOL0") != nullptr;
+  if (comp_id.empty())
+    return coords;
+  std::string mol0_path = derive_companion_mol0_path(input, comp_id);
+  std::ifstream test(mol0_path.c_str());
+  if (!test.good()) {
+    if (dbg)
+      std::fprintf(stderr, "[mol0] missing path for %s: %s\n",
+                   comp_id.c_str(), mol0_path.c_str());
+    return coords;
+  }
+  if (dbg)
+    std::fprintf(stderr, "[mol0] loading %s\n", mol0_path.c_str());
+  try {
+    cif::Document mol0_doc = read_cif_gz(mol0_path);
+    for (cif::Block& b : mol0_doc.blocks) {
+      if (!b.find_values("_chem_comp_atom.atom_id"))
+        continue;
+      cif::Table tab = b.find("_chem_comp_atom.",
+                              {"atom_id",
+                               "?x", "?y", "?z",
+                               "?model_Cartn_x", "?model_Cartn_y", "?model_Cartn_z",
+                               "?pdbx_model_Cartn_x_ideal",
+                               "?pdbx_model_Cartn_y_ideal",
+                               "?pdbx_model_Cartn_z_ideal"});
+      if (!tab.ok())
+        continue;
+      for (auto row : tab) {
+        Position pos;
+        auto set_if_valid = [&](int ix, int iy, int iz) {
+          if (!row.has(ix) || !row.has(iy) || !row.has(iz))
+            return false;
+          double x = cif::as_number(row[ix]);
+          double y = cif::as_number(row[iy]);
+          double z = cif::as_number(row[iz]);
+          if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+            return false;
+          pos = Position(x, y, z);
+          return true;
+        };
+        if (set_if_valid(1, 2, 3) || set_if_valid(4, 5, 6) || set_if_valid(7, 8, 9))
+          coords[row.str(0)] = pos;
+      }
+      break;
+    }
+  } catch (std::exception& e) {
+    if (dbg)
+      std::fprintf(stderr, "[mol0] failed to parse %s: %s\n",
+                   mol0_path.c_str(), e.what());
+    coords = load_companion_mol0_coords_text(mol0_path);
+  } catch (...) {
+    if (dbg)
+      std::fprintf(stderr, "[mol0] failed to parse %s\n", mol0_path.c_str());
+    coords = load_companion_mol0_coords_text(mol0_path);
+  }
+  if (dbg)
+    std::fprintf(stderr, "[mol0] loaded %zu coords for %s\n",
+                 coords.size(), comp_id.c_str());
+  return coords;
 }
 
 } // anonymous namespace
@@ -255,7 +478,13 @@ int GEMMI_MAIN(int argc, char **argv) {
             if (std::isnan(a.value)) missing_angles++;
 
         timer.start();
-        prepare_chemcomp(cc, tables, atom_stereo, no_angles);
+        std::map<std::string, Position> sugar_coord_overrides =
+            load_companion_mol0_coords(input, cc.name);
+        if (verbose && !sugar_coord_overrides.empty())
+          std::fprintf(stderr, "Using companion mol_0 coords for %s (%zu atoms)\n",
+                       cc.name.c_str(), sugar_coord_overrides.size());
+        prepare_chemcomp(cc, tables, atom_stereo, no_angles,
+                         sugar_coord_overrides.empty() ? nullptr : &sugar_coord_overrides);
         timer.print("Restraints filled in");
 
         // Count filled values

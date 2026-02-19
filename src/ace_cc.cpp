@@ -2832,7 +2832,8 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
 void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
                                         const std::vector<CodAtomInfo>& atom_info,
                                         const std::map<std::string, std::string>& atom_stereo,
-                                        const AceGraphView& graph) {
+                                        const AceGraphView& graph,
+                                        const std::map<std::string, Position>* sugar_coord_overrides) {
   if (std::getenv("GEMMI_DBG_SEL"))
     std::fprintf(stderr, "[tor-start %s] existing=%zu\n", cc.name.c_str(), cc.rt.torsions.size());
   if (!cc.rt.torsions.empty())
@@ -3420,6 +3421,14 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   if (has_sugar_ring) {
     std::vector<Restraints::Torsion> nu_torsions;
     std::set<std::pair<size_t, size_t>> selected_bonds;
+    auto sugar_pos = [&](size_t idx) -> Position {
+      if (sugar_coord_overrides) {
+        auto it = sugar_coord_overrides->find(cc.atoms[idx].id);
+        if (it != sugar_coord_overrides->end())
+          return it->second;
+      }
+      return cc.atoms[idx].xyz;
+    };
     for (const auto& kv : sugar_ring_seq) {
       const std::vector<size_t>& seq = kv.second;
       size_t n = seq.size();
@@ -3431,8 +3440,11 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         size_t c = seq[(i + 1) % n];
         size_t d = seq[(i + 2) % n];
         selected_bonds.insert(std::minmax(b, c));
-        double dih = deg(calculate_dihedral(cc.atoms[a].xyz, cc.atoms[b].xyz,
-                                            cc.atoms[c].xyz, cc.atoms[d].xyz));
+        Position pa = sugar_pos(a);
+        Position pb = sugar_pos(b);
+        Position pc = sugar_pos(c);
+        Position pd = sugar_pos(d);
+        double dih = deg(calculate_dihedral(pa, pb, pc, pd));
         if (!std::isfinite(dih))
           continue;
         Restraints::Torsion nu{
@@ -4460,7 +4472,8 @@ void apply_metal_charge_corrections(ChemComp& cc) {
 
 void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                       const std::map<std::string, std::string>& atom_stereo,
-                      bool no_angles) {
+                      bool no_angles,
+                      const std::map<std::string, Position>* sugar_coord_overrides) {
   if (!no_angles)
     add_angles_from_bonds_if_missing(cc);
 
@@ -4495,7 +4508,8 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
     std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
     AceGraphView graph = make_ace_graph_view(cc);
     add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
-    add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph);
+    add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph,
+                                       sugar_coord_overrides);
     add_planes_if_missing(cc, atom_info, graph);
   } else {
     if (added_h3 && !no_angles)

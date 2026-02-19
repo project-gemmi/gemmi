@@ -321,7 +321,12 @@ static void add_acedrg_tables(nb::module_& m) {
   m.def("hybridization_from_string", &hybridization_from_string,
         nb::arg("s"),
         "Convert string to Hybridization enum.");
-  m.def("prepare_chemcomp", &prepare_chemcomp,
+  m.def("prepare_chemcomp",
+        [](ChemComp& chemcomp, const AcedrgTables& tables,
+           const std::map<std::string, std::string>& atom_stereo,
+           bool only_bonds) {
+          prepare_chemcomp(chemcomp, tables, atom_stereo, only_bonds, nullptr);
+        },
         nb::arg("chemcomp"), nb::arg("tables"),
         nb::arg("atom_stereo") = std::map<std::string, std::string>{},
         nb::arg("only_bonds") = false,
