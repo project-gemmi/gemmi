@@ -1284,6 +1284,62 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     const std::vector<CodAtomInfo>& atom_info,
     const std::map<std::string, std::string>& atom_stereo) {
   ChiralCenterInfo out;
+  // Prefer explicitly listed/generated chirality rows when available.
+  // AceDRG torsion code uses inChirals[0] and its mutTable directly.
+  if (!cc.rt.chirs.empty()) {
+    auto atom_index = cc.make_atom_index();
+    for (size_t i = 0; i < cc.atoms.size(); ++i) {
+      auto st_it = atom_stereo.find(cc.atoms[i].id);
+      if (st_it == atom_stereo.end() || st_it->second.empty())
+        continue;
+      char s = lower(st_it->second[0]);
+      if ((s == 'r' || s == 's') && cc.atoms[i].el == El::C)
+        out.stereo_chiral_centers.insert(i);
+    }
+    for (const auto& chir : cc.rt.chirs) {
+      auto c_it = atom_index.find(chir.id_ctr.atom);
+      auto a1_it = atom_index.find(chir.id1.atom);
+      auto a2_it = atom_index.find(chir.id2.atom);
+      auto a3_it = atom_index.find(chir.id3.atom);
+      if (c_it == atom_index.end() || a1_it == atom_index.end() ||
+          a2_it == atom_index.end() || a3_it == atom_index.end())
+        continue;
+      size_t center = c_it->second;
+      if (out.chir_mut_table.count(center) != 0)
+        continue;  // AceDRG uses the first chiral record for a center.
+      size_t a1 = a1_it->second;
+      size_t a2 = a2_it->second;
+      size_t a3 = a3_it->second;
+      size_t missing = SIZE_MAX;
+      for (const auto& nb : adj[center])
+        if (nb.idx != a1 && nb.idx != a2 && nb.idx != a3) {
+          missing = nb.idx;
+          break;
+        }
+      bool negative = (chir.sign == ChiralityType::Negative);
+      auto& mt = out.chir_mut_table[center];
+      if (!negative) {
+        mt[a1] = {a3, a2};
+        mt[a2] = {a1, a3};
+        mt[a3] = {a2, a1};
+      } else {
+        mt[a1] = {a2, a3};
+        mt[a2] = {a3, a1};
+        mt[a3] = {a1, a2};
+      }
+      if (missing != SIZE_MAX) {
+        mt[a1].push_back(missing);
+        mt[a2].push_back(missing);
+        mt[a3].push_back(missing);
+        if (!negative)
+          mt[missing] = {a1, a2, a3};
+        else
+          mt[missing] = {a3, a2, a1};
+      }
+    }
+    return out;
+  }
+
   std::set<size_t> stereo_negative_centers;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     if (atom_info[i].hybrid != Hybridization::SP3)
@@ -4192,8 +4248,8 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
     }
     std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
     AceGraphView graph = make_ace_graph_view(cc);
-    add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph);
     add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
+    add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph);
     add_planes_if_missing(cc, atom_info, graph);
   } else {
     if (added_h3 && !no_angles)
