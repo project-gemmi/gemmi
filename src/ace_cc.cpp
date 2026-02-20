@@ -1545,6 +1545,18 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     return out;
   }
 
+  // AceDRG torsion generation uses inChirals loaded from CIF chirality rows.
+  // For CCD inputs without _chem_comp_chir, keep mutation table empty.
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    auto st_it = atom_stereo.find(cc.atoms[i].id);
+    if (st_it == atom_stereo.end() || st_it->second.empty())
+      continue;
+    char s = lower(st_it->second[0]);
+    if ((s == 'r' || s == 's') && cc.atoms[i].el == El::C)
+      out.stereo_chiral_centers.insert(i);
+  }
+  return out;
+
   std::set<size_t> stereo_negative_centers;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     if (atom_info[i].hybrid != Hybridization::SP3)
