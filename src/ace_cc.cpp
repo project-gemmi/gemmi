@@ -474,8 +474,7 @@ bool apply_carborone_template_bonds(ChemComp& cc,
     return false;
 
   CarboroneGraph target;
-  std::vector<int> cc_to_local;
-  build_carborone_graph(cc, target_idx, target, &cc_to_local);
+  build_carborone_graph(cc, target_idx, target, nullptr);
   if (target.elem_syms.empty())
     return false;
 
@@ -491,31 +490,6 @@ bool apply_carborone_template_bonds(ChemComp& cc,
     std::vector<int> t2s;
     if (!match_carborone_graphs(target, *templ, t2s))
       continue;
-    for (auto& bond : cc.rt.bonds) {
-      int idx1 = cc.find_atom_index(bond.id1.atom);
-      int idx2 = cc.find_atom_index(bond.id2.atom);
-      if (idx1 < 0 || idx2 < 0)
-        continue;
-      if ((size_t) idx1 >= cc_to_local.size() || (size_t) idx2 >= cc_to_local.size())
-        continue;
-      int l1 = cc_to_local[(size_t) idx1];
-      int l2 = cc_to_local[(size_t) idx2];
-      if (l1 < 0 || l2 < 0)
-        continue;
-      int s1 = t2s[(size_t) l1];
-      int s2 = t2s[(size_t) l2];
-      if (s1 < 0 || s2 < 0)
-        continue;
-      const Position& p1 = templ->xyz[(size_t) s1];
-      const Position& p2 = templ->xyz[(size_t) s2];
-      if (p1.has_nan() || p2.has_nan())
-        continue;
-      double d = p1.dist(p2);
-      if (!(d > 0.0))
-        continue;
-      bond.value = d;
-      bond.value_nucleus = d;
-    }
     return true;
   }
   return false;
@@ -652,6 +626,8 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
   const AceBondAdjacency& initial_adj = initial_graph.adjacency;
   std::set<size_t> cb_atoms = collect_carborane_cluster_atoms(cc, initial_adj);
   std::set<size_t> cb_match_atoms = collect_carborone_match_atoms(cc, initial_adj);
+  const std::set<size_t>& cb_restraint_atoms =
+      cb_match_atoms.empty() ? cb_atoms : cb_match_atoms;
   if (cb_atoms.empty())
     return;
 
@@ -733,31 +709,46 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
     added_h.emplace_back(center_id, h_id);
   }
 
-  bool matched_template = apply_carborone_template_bonds(cc, cb_match_atoms, tables_dir);
-  if (!matched_template) {
-    // Fallback for unseen clusters: use current CB geometry for B/C bonds.
-    for (auto& bond : cc.rt.bonds) {
-      int idx1 = cc.find_atom_index(bond.id1.atom);
-      int idx2 = cc.find_atom_index(bond.id2.atom);
-      if (idx1 < 0 || idx2 < 0)
-        continue;
-      Element el1 = cc.atoms[(size_t) idx1].el;
-      Element el2 = cc.atoms[(size_t) idx2].el;
-      if (el1 == El::H || el2 == El::H)
-        continue;
-      if ((el1 != El::B && el1 != El::C) || (el2 != El::B && el2 != El::C))
-        continue;
-      if (!cb_atoms.count((size_t) idx1) || !cb_atoms.count((size_t) idx2))
-        continue;
-      const Position& p1 = cc.atoms[(size_t) idx1].xyz;
-      const Position& p2 = cc.atoms[(size_t) idx2].xyz;
-      if (p1.has_nan() || p2.has_nan())
-        continue;
-      double d = p1.dist(p2);
-      if (!(d > 0.0))
-        continue;
-      bond.value = d;
-      bond.value_nucleus = d;
+  // Keep template matching in place for cluster recognition parity, but use
+  // the same fixed CB restraints as AceDRG in mixed-carborane mode.
+  (void) apply_carborone_template_bonds(cc, cb_match_atoms, tables_dir);
+  for (auto& bond : cc.rt.bonds) {
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 < 0 || idx2 < 0)
+      continue;
+    bool in1 = cb_restraint_atoms.count((size_t) idx1) != 0;
+    bool in2 = cb_restraint_atoms.count((size_t) idx2) != 0;
+    if (!in1 && !in2)
+      continue;
+    Element el1 = cc.atoms[(size_t) idx1].el;
+    Element el2 = cc.atoms[(size_t) idx2].el;
+    if (el1 == El::H || el2 == El::H) {
+      bond.type = BondType::Single;
+      bond.aromatic = false;
+      bond.value = 1.10;
+      bond.esd = 0.01;
+      bond.value_nucleus = 1.10;
+      bond.esd_nucleus = 0.01;
+      continue;
+    }
+    if (!in1 || !in2)
+      continue;
+    if (el1.is_metal() || el2.is_metal()) {
+      bond.type = BondType::Single;
+      bond.aromatic = false;
+      bond.value = 2.10;
+      bond.esd = 0.01;
+      bond.value_nucleus = 2.10;
+      bond.esd_nucleus = 0.01;
+    } else if ((el1 == El::B || el1 == El::C) &&
+               (el2 == El::B || el2 == El::C)) {
+      bond.type = BondType::Single;
+      bond.aromatic = false;
+      bond.value = 1.55;
+      bond.esd = 0.01;
+      bond.value_nucleus = 1.55;
+      bond.esd_nucleus = 0.01;
     }
   }
 
