@@ -219,6 +219,11 @@ void add_software(Metadata& meta, SoftwareItem::Classification type, const std::
     size_t sep = item.name.find(' ');
     if (sep != std::string::npos) {
       size_t ver_start = item.name.find_first_not_of(" (", sep + 1);
+      if (ver_start == std::string::npos) {
+        item.name.resize(sep);
+        item.classification = type;
+        continue;
+      }
       item.version = item.name.substr(ver_start);
       item.name.resize(sep);
       if (!item.version.empty() && item.version.back() == ')') {
