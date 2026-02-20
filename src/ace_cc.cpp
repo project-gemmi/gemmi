@@ -1259,7 +1259,15 @@ SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj
     bool ok2 = allowed_shapes.count(shape2) != 0;
     if (!ok1 && !ok2)
       continue;
-    out.ring_seq[kv.first] = ok1 ? seq1 : seq2;
+    if (ok1 && ok2) {
+      // AceDRG getRStr(): when both O-neighbour starts are CC2O-like,
+      // it keeps the second neighbour encountered in O connAtoms order.
+      std::string t1 = co_token(o_ring_nbs[0]);
+      std::string t2 = co_token(o_ring_nbs[1]);
+      out.ring_seq[kv.first] = (t1 == "CC2O" && t2 == "CC2O") ? seq2 : seq1;
+    } else {
+      out.ring_seq[kv.first] = ok1 ? seq1 : seq2;
+    }
     out.ring_sets.emplace(kv.first, std::move(rset));
   }
   for (const auto& kv : out.ring_sets) {
