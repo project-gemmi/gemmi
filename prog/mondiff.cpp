@@ -3,6 +3,7 @@
 // Compare two CIF files with monomer restraints.
 
 #include <stdio.h>
+#include <cmath>
 #include <cstdlib>
 #include <set>
 #include <gemmi/chemcomp.hpp>  // for make_chemcomp_from_block
@@ -83,7 +84,11 @@ std::string str(const ChemComp& cc, const Restraints::Angle& a) {
 }
 
 std::string str(const ChemComp&, const Restraints::Torsion& a) {
-  return "torsion " + a.str();
+  return gemmi::cat("torsion ", a.label, ' ', a.str());
+}
+
+double torsion_diff(double v1, double v2, int period) {
+  return std::fabs(std::remainder(v1 - v2, 360.0 / std::max(period, 1)));
 }
 
 // Format period info compactly: "p.6" if same, "p.4:6" if different
@@ -295,28 +300,30 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             return t.id1 == a.id4 && t.id2 == a.id3 && t.id3 == a.id2 && t.id4 == a.id1;
           });
           if (b_inv != cc2.rt.torsions.end()) {
-            printf("%s\ttorsion\tI\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
-                   a.str().c_str(), b_inv->str().c_str(),
+            printf("%s\ttorsion\tI\t%s\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
+                   a.label.c_str(), a.str().c_str(),
+                   b_inv->label.c_str(), b_inv->str().c_str(),
                    a.value, b_inv->value, a.esd, b_inv->esd,
                    a.period, b_inv->period);
             continue;
           }
-          printf("%s\ttorsion\t-\t%s\t%d\n", code, a.str().c_str(), a.period);
+          printf("%s\ttorsion\t-\t%s\t%s\t%d\n", code, a.label.c_str(), a.str().c_str(), a.period);
         } else {
           auto b = b_exact;
           double d = std::fabs(a.value - b->value);
           if ((d > delta.angle || std::fabs(a.esd - b->esd) > delta.angle_esd
                || a.period != b->period) &&
               d > delta.rel * std::min(a.esd, b->esd)) {
-            printf("%s\ttorsion\t!\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
-                   a.str().c_str(), a.value, b->value, a.esd, b->esd,
+            printf("%s\ttorsion\t!\t%s\t%s\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\n", code,
+                   a.label.c_str(), b->label.c_str(), a.str().c_str(),
+                   a.value, b->value, a.esd, b->esd,
                    a.period, b->period);
           }
         }
       }
       for (const Restraints::Torsion& a : cc2.rt.torsions)
         if (cc1.rt.find_torsion(a.id1, a.id2, a.id3, a.id4) == cc1.rt.torsions.end())
-          printf("%s\ttorsion\t+\t%s\t%d\n", code, a.str().c_str(), a.period);
+          printf("%s\ttorsion\t+\t%s\t%s\t%d\n", code, a.label.c_str(), a.str().c_str(), a.period);
     } else {
       // human-readable output with aggregation of +/- around the same central bond
       std::vector<bool> matched2(cc2.rt.torsions.size(), false);
@@ -352,8 +359,9 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
             if ((d > delta.angle || std::fabs(a.esd - b.esd) > delta.angle_esd
                  || a.period != b.period) &&
                 d > delta.rel * std::min(a.esd, b.esd)) {
+              double dp = torsion_diff(a.value, b.value, a.period);
               printf("M %-30s %4s %6.2f : %6.2f   esd %.2f : %.2f%s\n",
-                     str(cc1, a).c_str(), mark(d, a.esd),
+                     str(cc1, a).c_str(), mark(dp, a.esd),
                      a.value, b.value, a.esd, b.esd,
                      period_str(a.period, b.period).c_str());
             }
@@ -395,7 +403,8 @@ void compare_chemcomps(const ChemComp& cc1, const ChemComp& cc2,
           auto end_str = [](const std::string& a, const std::string& b) {
             return a == b ? cat('{', a, '}') : cat('{', a, ':', b, '}');
           };
-          printf("A torsion %s-%s-%s-%s%s\n",
+          printf("A torsion %s:%s %s-%s-%s-%s%s\n",
+                 m->label.c_str(), p.label.c_str(),
                  end_str(m->id1.atom, new1.atom).c_str(),
                  m->id2.atom.c_str(), m->id3.atom.c_str(),
                  end_str(m->id4.atom, new4.atom).c_str(),
