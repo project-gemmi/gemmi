@@ -7,14 +7,19 @@
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/calculate.hpp"
 #include "gemmi/ace_graph.hpp"
+#include "gemmi/cif.hpp"
 #include "gemmi/resinfo.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <numeric>
+#include <sstream>
 #include <set>
+#include <map>
+#include <unordered_map>
 #include <climits>
 
 namespace gemmi {
@@ -74,10 +79,6 @@ bool has_carborane_seed(const ChemComp& cc, const AceBondAdjacency& adj) {
   return false;
 }
 
-bool is_carborane_cluster_element(Element el) {
-  return el == El::B || el == El::C || el.is_metal();
-}
-
 std::set<size_t> collect_carborane_cluster_atoms(const ChemComp& cc,
                                                  const AceBondAdjacency& adj) {
   std::vector<size_t> seeds;
@@ -102,11 +103,422 @@ std::set<size_t> collect_carborane_cluster_atoms(const ChemComp& cc,
       Element el = cc.atoms[nb.idx].el;
       if (el == El::H)
         continue;
-      if (is_carborane_cluster_element(el))
+      if (el == El::B || el == El::C || el.is_metal())
         stack.push_back(nb.idx);
     }
   }
   return out;
+}
+
+std::set<size_t> collect_carborone_match_atoms(const ChemComp& cc,
+                                                const AceBondAdjacency& adj) {
+  std::vector<int> b_neighbors(cc.atoms.size(), 0);
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    for (const auto& nb : adj[i])
+      if (cc.atoms[nb.idx].el == El::B)
+        ++b_neighbors[i];
+
+  std::vector<size_t> seeds;
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    if (cc.atoms[i].el == El::H)
+      continue;
+    if (b_neighbors[i] >= 4)
+      seeds.push_back(i);
+  }
+  std::set<size_t> out;
+  std::vector<size_t> stack = seeds;
+  while (!stack.empty()) {
+    size_t idx = stack.back();
+    stack.pop_back();
+    if (!out.insert(idx).second)
+      continue;
+    for (const auto& nb : adj[idx]) {
+      Element el = cc.atoms[nb.idx].el;
+      if (el == El::H)
+        continue;
+      // Keep cage-like traversal broad enough for hetero/metal vertices, but
+      // avoid pulling in ordinary side-chain carbons.
+      if (el == El::B || el.is_metal() || b_neighbors[nb.idx] >= 2)
+        stack.push_back(nb.idx);
+    }
+  }
+  return out;
+}
+
+struct CarboroneGraph {
+  std::vector<std::string> atom_ids;
+  std::vector<std::string> elem_syms;
+  std::vector<Position> xyz;
+  std::vector<std::vector<int>> edge_w;
+  std::vector<std::vector<int>> neighbors;
+};
+
+struct CarboroneDb {
+  bool list_loaded = false;
+  std::map<std::string, std::vector<std::string>> by_pair;
+  std::map<std::string, std::vector<std::string>> by_class0;
+  std::vector<std::string> all_names;
+  std::map<std::string, CarboroneGraph> templates;
+};
+
+std::string upper_copy(std::string s) {
+  for (char& c : s)
+    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  return s;
+}
+
+std::string join_path(const std::string& dir, const std::string& name) {
+  if (dir.empty())
+    return name;
+  if (dir.back() == '/')
+    return dir + name;
+  return dir + "/" + name;
+}
+
+int carborone_weight_from_symbol(const std::string& sym_u) {
+  if (sym_u == "B")
+    return 2;
+  if (sym_u == "C")
+    return 3;
+  if (sym_u == "N")
+    return 4;
+  if (sym_u == "O")
+    return 5;
+  if (sym_u == "S")
+    return 6;
+  if (sym_u == "SE")
+    return 7;
+  if (sym_u == "P")
+    return 8;
+  if (sym_u == "AS" || sym_u == "SI" || sym_u == "GA" ||
+      sym_u == "GI" || sym_u == "IN")
+    return 9;
+  return 1;
+}
+
+void build_carborone_graph(const ChemComp& cc,
+                           const std::vector<size_t>& atom_indices,
+                           CarboroneGraph& out,
+                           std::vector<int>* global_to_local) {
+  out = CarboroneGraph();
+  std::vector<int> idx_to_local(cc.atoms.size(), -1);
+  for (size_t idx : atom_indices) {
+    if (idx >= cc.atoms.size() || cc.atoms[idx].el == El::H)
+      continue;
+    int local = static_cast<int>(out.atom_ids.size());
+    idx_to_local[idx] = local;
+    out.atom_ids.push_back(cc.atoms[idx].id);
+    out.elem_syms.push_back(upper_copy(cc.atoms[idx].el.uname()));
+    out.xyz.push_back(cc.atoms[idx].xyz);
+  }
+  size_t n = out.atom_ids.size();
+  out.edge_w.assign(n, std::vector<int>(n, 0));
+  for (const auto& bond : cc.rt.bonds) {
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 < 0 || idx2 < 0)
+      continue;
+    if ((size_t) idx1 >= idx_to_local.size() || (size_t) idx2 >= idx_to_local.size())
+      continue;
+    int l1 = idx_to_local[(size_t) idx1];
+    int l2 = idx_to_local[(size_t) idx2];
+    if (l1 < 0 || l2 < 0 || l1 == l2)
+      continue;
+    int w = carborone_weight_from_symbol(out.elem_syms[(size_t) l1]) +
+            carborone_weight_from_symbol(out.elem_syms[(size_t) l2]);
+    out.edge_w[(size_t) l1][(size_t) l2] = w;
+    out.edge_w[(size_t) l2][(size_t) l1] = w;
+  }
+  out.neighbors.assign(n, std::vector<int>());
+  for (size_t i = 0; i < n; ++i)
+    for (size_t j = 0; j < n; ++j)
+      if (out.edge_w[i][j] != 0)
+        out.neighbors[i].push_back((int) j);
+  if (global_to_local)
+    *global_to_local = std::move(idx_to_local);
+}
+
+std::vector<std::string> ordered_carborone_elements(const std::map<std::string, int>& counts) {
+  std::vector<std::string> out;
+  if (counts.count("B"))
+    out.push_back("B");
+  if (counts.count("C"))
+    out.push_back("C");
+  for (const auto& kv : counts)
+    if (kv.first != "B" && kv.first != "C")
+      out.push_back(kv.first);
+  return out;
+}
+
+void carborone_class_ids(const CarboroneGraph& graph,
+                         std::string& class0,
+                         std::string& class1) {
+  std::map<std::string, int> elem_counts;
+  std::map<std::string, std::map<int, int>> elem_conn_counts;
+  for (size_t i = 0; i < graph.elem_syms.size(); ++i) {
+    const std::string& sym = graph.elem_syms[i];
+    elem_counts[sym] += 1;
+    elem_conn_counts[sym][(int) graph.neighbors[i].size()] += 1;
+  }
+  std::vector<std::string> ordered = ordered_carborone_elements(elem_counts);
+  class0.clear();
+  class1.clear();
+  for (const std::string& sym : ordered)
+    class0 += cat("[", sym, elem_counts[sym], "]");
+  for (const std::string& sym : ordered)
+    for (const auto& kv : elem_conn_counts[sym])
+      class1 += cat("[", sym, kv.first, "_", kv.second, "]");
+}
+
+CarboroneDb& get_carborone_db(const std::string& tables_dir) {
+  static std::map<std::string, CarboroneDb> cache;
+  CarboroneDb& db = cache[tables_dir];
+  if (db.list_loaded)
+    return db;
+  db.list_loaded = true;
+
+  std::ifstream fin(join_path(tables_dir, "CarboroneSamples.list").c_str());
+  if (!fin)
+    return db;
+
+  std::set<std::string> seen_names;
+  std::string line;
+  while (std::getline(fin, line)) {
+    std::istringstream iss(line);
+    std::string class0, class1, name;
+    if (!(iss >> class0 >> class1 >> name))
+      continue;
+    class0 = upper_copy(class0);
+    class1 = upper_copy(class1);
+    db.by_pair[class0 + "\t" + class1].push_back(name);
+    db.by_class0[class0].push_back(name);
+    if (seen_names.insert(name).second)
+      db.all_names.push_back(name);
+  }
+  return db;
+}
+
+const CarboroneGraph* get_carborone_template(CarboroneDb& db,
+                                             const std::string& tables_dir,
+                                             const std::string& name) {
+  auto found = db.templates.find(name);
+  if (found != db.templates.end())
+    return found->second.atom_ids.empty() ? nullptr : &found->second;
+
+  CarboroneGraph graph;
+  std::string path = join_path(join_path(tables_dir, "CarboroneSamples"),
+                               name + ".cif");
+  try {
+    cif::Document doc = cif::read_file(path);
+    if (!doc.blocks.empty()) {
+      ChemComp tcc = make_chemcomp_from_block(doc.blocks[0]);
+      std::vector<size_t> idx;
+      idx.reserve(tcc.atoms.size());
+      for (size_t i = 0; i < tcc.atoms.size(); ++i)
+        if (tcc.atoms[i].el != El::H)
+          idx.push_back(i);
+      build_carborone_graph(tcc, idx, graph, nullptr);
+    }
+  } catch (...) {
+  }
+
+  db.templates[name] = graph;
+  auto it = db.templates.find(name);
+  return it->second.atom_ids.empty() ? nullptr : &it->second;
+}
+
+std::vector<std::string> collect_carborone_candidates(const CarboroneDb& db,
+                                                      const std::string& class0,
+                                                      const std::string& class1) {
+  std::vector<std::string> out;
+  std::set<std::string> seen;
+  auto append_unique = [&](const std::vector<std::string>& src) {
+    for (const std::string& s : src)
+      if (seen.insert(s).second)
+        out.push_back(s);
+  };
+
+  auto it_pair = db.by_pair.find(class0 + "\t" + class1);
+  if (it_pair != db.by_pair.end())
+    append_unique(it_pair->second);
+
+  if (out.empty()) {
+    auto it0 = db.by_class0.find(class0);
+    if (it0 != db.by_class0.end())
+      append_unique(it0->second);
+  }
+
+  if (out.empty())
+    append_unique(db.all_names);
+  return out;
+}
+
+bool backtrack_carborone_match(const CarboroneGraph& target,
+                               const CarboroneGraph& templ,
+                               const std::vector<std::vector<int>>& candidates,
+                               const std::vector<int>& order,
+                               int depth,
+                               std::vector<int>& t2s,
+                               std::vector<int>& s2t) {
+  if (depth == (int) order.size())
+    return true;
+  int t = order[(size_t) depth];
+  for (int s : candidates[(size_t) t]) {
+    if (s2t[(size_t) s] != -1)
+      continue;
+    bool ok = true;
+    for (size_t t2 = 0; t2 < t2s.size(); ++t2) {
+      int s2 = t2s[t2];
+      if (s2 == -1)
+        continue;
+      if (target.edge_w[(size_t) t][t2] != templ.edge_w[(size_t) s][(size_t) s2]) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok)
+      continue;
+    for (size_t u = 0; u < t2s.size() && ok; ++u) {
+      if (t2s[u] != -1 || u == (size_t) t)
+        continue;
+      int w = target.edge_w[(size_t) t][u];
+      if (w == 0)
+        continue;
+      bool found = false;
+      for (int su : candidates[u]) {
+        if (s2t[(size_t) su] != -1)
+          continue;
+        if (templ.edge_w[(size_t) s][(size_t) su] == w) {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        ok = false;
+    }
+    if (!ok)
+      continue;
+    t2s[(size_t) t] = s;
+    s2t[(size_t) s] = t;
+    if (backtrack_carborone_match(target, templ, candidates, order, depth + 1, t2s, s2t))
+      return true;
+    t2s[(size_t) t] = -1;
+    s2t[(size_t) s] = -1;
+  }
+  return false;
+}
+
+bool match_carborone_graphs(const CarboroneGraph& target,
+                            const CarboroneGraph& templ,
+                            std::vector<int>& t2s_out) {
+  const size_t n = target.elem_syms.size();
+  if (n == 0 || templ.elem_syms.size() != n)
+    return false;
+
+  std::vector<std::vector<int>> target_inc_w(n), templ_inc_w(n);
+  for (size_t i = 0; i < n; ++i) {
+    for (int nb : target.neighbors[i])
+      target_inc_w[i].push_back(target.edge_w[i][(size_t) nb]);
+    std::sort(target_inc_w[i].begin(), target_inc_w[i].end());
+    for (int nb : templ.neighbors[i])
+      templ_inc_w[i].push_back(templ.edge_w[i][(size_t) nb]);
+    std::sort(templ_inc_w[i].begin(), templ_inc_w[i].end());
+  }
+
+  std::vector<std::vector<int>> candidates(n);
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < n; ++j) {
+      if (target.elem_syms[i] != templ.elem_syms[j])
+        continue;
+      if (target.neighbors[i].size() != templ.neighbors[j].size())
+        continue;
+      if (target_inc_w[i] != templ_inc_w[j])
+        continue;
+      candidates[i].push_back((int) j);
+    }
+    if (candidates[i].empty())
+      return false;
+  }
+
+  std::vector<int> order(n);
+  for (size_t i = 0; i < n; ++i)
+    order[i] = (int) i;
+  std::sort(order.begin(), order.end(),
+            [&](int a, int b) {
+              size_t ca = candidates[(size_t) a].size();
+              size_t cb = candidates[(size_t) b].size();
+              if (ca != cb)
+                return ca < cb;
+              return target.neighbors[(size_t) a].size() > target.neighbors[(size_t) b].size();
+            });
+
+  std::vector<int> t2s(n, -1), s2t(n, -1);
+  if (!backtrack_carborone_match(target, templ, candidates, order, 0, t2s, s2t))
+    return false;
+  t2s_out = std::move(t2s);
+  return true;
+}
+
+bool apply_carborone_template_bonds(ChemComp& cc,
+                                    const std::set<size_t>& cb_atoms,
+                                    const std::string& tables_dir) {
+  if (tables_dir.empty() || cb_atoms.empty())
+    return false;
+
+  std::vector<size_t> target_idx;
+  target_idx.reserve(cb_atoms.size());
+  for (size_t idx : cb_atoms)
+    if (idx < cc.atoms.size() && cc.atoms[idx].el != El::H)
+      target_idx.push_back(idx);
+  if (target_idx.size() < 3)
+    return false;
+
+  CarboroneGraph target;
+  std::vector<int> cc_to_local;
+  build_carborone_graph(cc, target_idx, target, &cc_to_local);
+  if (target.elem_syms.empty())
+    return false;
+
+  std::string class0, class1;
+  carborone_class_ids(target, class0, class1);
+
+  CarboroneDb& db = get_carborone_db(tables_dir);
+  std::vector<std::string> candidates = collect_carborone_candidates(db, class0, class1);
+  for (const std::string& name : candidates) {
+    const CarboroneGraph* templ = get_carborone_template(db, tables_dir, name);
+    if (!templ)
+      continue;
+    std::vector<int> t2s;
+    if (!match_carborone_graphs(target, *templ, t2s))
+      continue;
+    for (auto& bond : cc.rt.bonds) {
+      int idx1 = cc.find_atom_index(bond.id1.atom);
+      int idx2 = cc.find_atom_index(bond.id2.atom);
+      if (idx1 < 0 || idx2 < 0)
+        continue;
+      if ((size_t) idx1 >= cc_to_local.size() || (size_t) idx2 >= cc_to_local.size())
+        continue;
+      int l1 = cc_to_local[(size_t) idx1];
+      int l2 = cc_to_local[(size_t) idx2];
+      if (l1 < 0 || l2 < 0)
+        continue;
+      int s1 = t2s[(size_t) l1];
+      int s2 = t2s[(size_t) l2];
+      if (s1 < 0 || s2 < 0)
+        continue;
+      const Position& p1 = templ->xyz[(size_t) s1];
+      const Position& p2 = templ->xyz[(size_t) s2];
+      if (p1.has_nan() || p2.has_nan())
+        continue;
+      double d = p1.dist(p2);
+      if (!(d > 0.0))
+        continue;
+      bond.value = d;
+      bond.value_nucleus = d;
+    }
+    return true;
+  }
+  return false;
 }
 
 bool is_carborane_h_center(const ChemComp& cc, const AceBondAdjacency& adj, size_t idx) {
@@ -234,10 +646,12 @@ void apply_carborane_mode(ChemComp& cc, bool no_angles) {
   }
 }
 
-void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles) {
+void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
+                                const std::string& tables_dir) {
   AceGraphView initial_graph = make_ace_graph_view(cc);
   const AceBondAdjacency& initial_adj = initial_graph.adjacency;
   std::set<size_t> cb_atoms = collect_carborane_cluster_atoms(cc, initial_adj);
+  std::set<size_t> cb_match_atoms = collect_carborone_match_atoms(cc, initial_adj);
   if (cb_atoms.empty())
     return;
 
@@ -319,29 +733,32 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles) {
     added_h.emplace_back(center_id, h_id);
   }
 
-  // AceDRG's CB path rewrites intra-cluster bond values from geometry.
-  for (auto& bond : cc.rt.bonds) {
-    int idx1 = cc.find_atom_index(bond.id1.atom);
-    int idx2 = cc.find_atom_index(bond.id2.atom);
-    if (idx1 < 0 || idx2 < 0)
-      continue;
-    Element el1 = cc.atoms[(size_t) idx1].el;
-    Element el2 = cc.atoms[(size_t) idx2].el;
-    if (el1 == El::H || el2 == El::H)
-      continue;
-    if ((el1 != El::B && el1 != El::C) || (el2 != El::B && el2 != El::C))
-      continue;
-    if (!cb_atoms.count((size_t) idx1) || !cb_atoms.count((size_t) idx2))
-      continue;
-    const Position& p1 = cc.atoms[(size_t) idx1].xyz;
-    const Position& p2 = cc.atoms[(size_t) idx2].xyz;
-    if (p1.has_nan() || p2.has_nan())
-      continue;
-    double d = p1.dist(p2);
-    if (!(d > 0.0))
-      continue;
-    bond.value = d;
-    bond.value_nucleus = d;
+  bool matched_template = apply_carborone_template_bonds(cc, cb_match_atoms, tables_dir);
+  if (!matched_template) {
+    // Fallback for unseen clusters: use current CB geometry for B/C bonds.
+    for (auto& bond : cc.rt.bonds) {
+      int idx1 = cc.find_atom_index(bond.id1.atom);
+      int idx2 = cc.find_atom_index(bond.id2.atom);
+      if (idx1 < 0 || idx2 < 0)
+        continue;
+      Element el1 = cc.atoms[(size_t) idx1].el;
+      Element el2 = cc.atoms[(size_t) idx2].el;
+      if (el1 == El::H || el2 == El::H)
+        continue;
+      if ((el1 != El::B && el1 != El::C) || (el2 != El::B && el2 != El::C))
+        continue;
+      if (!cb_atoms.count((size_t) idx1) || !cb_atoms.count((size_t) idx2))
+        continue;
+      const Position& p1 = cc.atoms[(size_t) idx1].xyz;
+      const Position& p2 = cc.atoms[(size_t) idx2].xyz;
+      if (p1.has_nan() || p2.has_nan())
+        continue;
+      double d = p1.dist(p2);
+      if (!(d > 0.0))
+        continue;
+      bond.value = d;
+      bond.value_nucleus = d;
+    }
   }
 
   std::set<std::string> h_center_ids;
@@ -5145,7 +5562,7 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   }
 
   if (has_cb_seed)
-    apply_mixed_carborane_mode(cc, no_angles);
+    apply_mixed_carborane_mode(cc, no_angles, tables.tables_dir_);
 
   tables.assign_ccp4_types(cc);
 }
