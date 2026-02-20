@@ -1488,7 +1488,6 @@ struct ChiralCenterInfo {
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
 };
 
-bool is_sp1_like(const CodAtomInfo& ai);
 bool is_sp2_like(const CodAtomInfo& ai);
 bool is_sp3_like(const CodAtomInfo& ai);
 
@@ -1806,10 +1805,6 @@ std::vector<bool> build_aromatic_like_mask(
     }
   }
   return aromatic_like;
-}
-
-bool is_sp1_like(const CodAtomInfo& ai) {
-  return ai.bonding_idx == 1;
 }
 
 bool is_sp2_like(const CodAtomInfo& ai) {
