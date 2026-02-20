@@ -1272,6 +1272,210 @@ SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj
   return out;
 }
 
+bool is_pyranose_ring_like_acedrg(const ChemComp& cc, const AceBondAdjacency& adj,
+                                  const std::vector<CodAtomInfo>& atom_info,
+                                  const std::vector<size_t>& ring_atoms,
+                                  const std::set<size_t>& ring_set) {
+  std::map<std::string, int> fmt;
+  fmt["O"] = 0;
+  fmt["C"] = 0;
+  fmt["connectC"] = 0;
+  fmt["connectO"] = 0;
+
+  for (size_t idx : ring_atoms) {
+    if (cc.atoms[idx].el == El::C && atom_info[idx].bonding_idx == 3) {
+      ++fmt["C"];
+      int iCO = 0;
+      for (const auto& nb : adj[idx]) {
+        if (ring_set.count(nb.idx) != 0)
+          continue;
+        if (cc.atoms[nb.idx].el == El::O)
+          ++iCO;
+        else if (cc.atoms[nb.idx].el == El::C)
+          ++fmt["connectC"];
+      }
+      if (iCO > 1)
+        break;
+      if (iCO == 1)
+        ++fmt["connectO"];
+    } else if (cc.atoms[idx].el == El::O) {
+      if (adj[idx].size() == 2) {
+        int iOC = 0;
+        for (const auto& nb : adj[idx])
+          if (cc.atoms[nb.idx].el == El::C && ring_set.count(nb.idx) != 0)
+            ++iOC;
+        if (iOC == 2)
+          ++fmt["O"];
+        else
+          break;
+      }
+    } else {
+      break;
+    }
+
+    if (fmt["O"] == 1 && fmt["C"] == 5 && fmt["connectO"] > 1)
+      return true;
+  }
+  return false;
+}
+
+int find_torsion_index_like_acedrg(const ChemComp& cc,
+                                   const std::vector<Restraints::Torsion>& torsions,
+                                   size_t a1, size_t a2, size_t a3, size_t a4) {
+  const std::string& n1 = cc.atoms[a1].id;
+  const std::string& n2 = cc.atoms[a2].id;
+  const std::string& n3 = cc.atoms[a3].id;
+  const std::string& n4 = cc.atoms[a4].id;
+  for (size_t i = 0; i < torsions.size(); ++i) {
+    const Restraints::Torsion& t = torsions[i];
+    if ((t.id1.atom == n1 && t.id2.atom == n2 && t.id3.atom == n3 && t.id4.atom == n4) ||
+        (t.id1.atom == n4 && t.id2.atom == n3 && t.id3.atom == n2 && t.id4.atom == n1))
+      return (int) i;
+  }
+  return -1;
+}
+
+void set_torsion_around_one_bond_in_ring_like_acedrg(
+    ChemComp& cc, const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info,
+    std::vector<Restraints::Torsion>& torsions,
+    size_t r_at1, size_t r_at2, size_t r_at3, size_t r_at4, double v_init) {
+  int n_t = find_torsion_index_like_acedrg(cc, torsions, r_at1, r_at2, r_at3, r_at4);
+  if (n_t < 0 || n_t >= (int)torsions.size())
+    return;
+  torsions[(size_t)n_t].value = v_init;
+
+  if (adj[r_at3].size() <= 2 || atom_info[r_at3].bonding_idx != 3)
+    return;
+
+  int n = 1;
+  int n3 = 1;
+  for (const auto& nb : adj[r_at3]) {
+    size_t i_nb = nb.idx;
+    if (i_nb == r_at2)
+      continue;
+    if (i_nb != r_at4) {
+      int n_nt = find_torsion_index_like_acedrg(cc, torsions, r_at1, r_at2, r_at3, i_nb);
+      if (n_nt >= 0 && n_nt < (int)torsions.size()) {
+        double val = v_init + n * 120.0;
+        if (val > 180.01)
+          val -= 360.0;
+        torsions[(size_t)n_nt].value = val;
+      }
+      ++n;
+    }
+
+    int n2 = 1;
+    for (const auto& nb2 : adj[r_at2]) {
+      size_t i_nb2 = nb2.idx;
+      if (i_nb2 == r_at3 || i_nb2 == r_at1)
+        continue;
+      int n_nbt = find_torsion_index_like_acedrg(cc, torsions, i_nb2, r_at2, r_at3, i_nb);
+      if (n_nbt >= 0 && n_t < (int)torsions.size()) {
+        double v_init2 = v_init + n2 * 120.0;
+        if (v_init2 > 180.0)
+          v_init2 -= 360.0;
+        double val = (i_nb == r_at4) ? v_init2 : (v_init2 + n3 * 120.0);
+        if (val > 180.0)
+          val -= 360.0;
+        torsions[(size_t)n_nbt].value = val;
+      }
+      ++n2;
+    }
+    n3 = n;
+  }
+}
+
+void apply_pyranose_chair_torsions_like_acedrg(
+    ChemComp& cc, const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info) {
+  if (cc.rt.torsions.empty())
+    return;
+
+  std::map<int, std::vector<size_t>> ring_atoms;
+  for (size_t i = 0; i < atom_info.size(); ++i)
+    for (int rid : atom_info[i].in_rings)
+      ring_atoms[rid].push_back(i);
+
+  for (const auto& kv : ring_atoms) {
+    std::vector<size_t> atoms = kv.second;
+    std::sort(atoms.begin(), atoms.end());
+    atoms.erase(std::unique(atoms.begin(), atoms.end()), atoms.end());
+    if (atoms.size() != 6)
+      continue;
+
+    std::set<size_t> rset(atoms.begin(), atoms.end());
+    if (!is_pyranose_ring_like_acedrg(cc, adj, atom_info, atoms, rset))
+      continue;
+
+    std::map<size_t, std::vector<size_t>> ring_link;
+    for (size_t idx : atoms) {
+      for (const auto& nb : adj[idx]) {
+        if (rset.count(nb.idx) != 0)
+          ring_link[idx].push_back(nb.idx);
+      }
+      if (ring_link[idx].size() != 2) {
+        ring_link.clear();
+        break;
+      }
+    }
+    if (ring_link.empty())
+      continue;
+
+    size_t o_idx = SIZE_MAX;
+    for (size_t idx : atoms)
+      if (cc.atoms[idx].el == El::O) {
+        o_idx = idx;
+        break;
+      }
+    if (o_idx == SIZE_MAX || adj[o_idx].size() != 2)
+      continue;
+
+    size_t it1 = adj[o_idx][0].idx;
+    size_t it2 = adj[o_idx][1].idx;
+    bool l_conn_o = false;
+    for (size_t inb1 = 0; inb1 < adj[it1].size() && inb1 < cc.atoms.size(); ++inb1) {
+      if (cc.atoms[inb1].el == El::O && inb1 != o_idx) {
+        l_conn_o = true;
+        break;
+      }
+    }
+    size_t i1 = l_conn_o ? it1 : it2;
+    size_t i2 = l_conn_o ? it2 : it1;
+
+    auto next_ring = [&](size_t center, size_t prev) {
+      auto it = ring_link.find(center);
+      if (it == ring_link.end())
+        return SIZE_MAX;
+      for (size_t idx : it->second)
+        if (idx != prev)
+          return idx;
+      return SIZE_MAX;
+    };
+
+    size_t i3 = next_ring(i1, o_idx);
+    if (i3 == SIZE_MAX)
+      continue;
+    size_t i5 = next_ring(i3, i1);
+    if (i5 == SIZE_MAX)
+      continue;
+    size_t i4 = next_ring(i2, o_idx);
+    if (i4 == SIZE_MAX)
+      continue;
+
+    set_torsion_around_one_bond_in_ring_like_acedrg(
+        cc, adj, atom_info, cc.rt.torsions, i2, o_idx, i1, i3, -60.0);
+    set_torsion_around_one_bond_in_ring_like_acedrg(
+        cc, adj, atom_info, cc.rt.torsions, o_idx, i1, i3, i5, 60.0);
+    set_torsion_around_one_bond_in_ring_like_acedrg(
+        cc, adj, atom_info, cc.rt.torsions, i1, i3, i5, i4, -60.0);
+    set_torsion_around_one_bond_in_ring_like_acedrg(
+        cc, adj, atom_info, cc.rt.torsions, i3, i5, i4, i2, 60.0);
+    set_torsion_around_one_bond_in_ring_like_acedrg(
+        cc, adj, atom_info, cc.rt.torsions, i5, i4, i2, o_idx, -60.0);
+    set_torsion_around_one_bond_in_ring_like_acedrg(
+        cc, adj, atom_info, cc.rt.torsions, i4, i2, o_idx, i1, 60.0);
+  }
+}
+
 struct ChiralCenterInfo {
   std::set<size_t> stereo_chiral_centers;
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
@@ -3417,6 +3621,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
       }
     }
   }
+
+  // AceDRG runs setPyranoseChairComf() for each pyranose ring and rewrites
+  // torsion targets around ring bonds before sugar-ring nu-torsion handling.
+  apply_pyranose_chair_torsions_like_acedrg(cc, adj, atom_info);
 
   if (has_sugar_ring) {
     std::vector<Restraints::Torsion> nu_torsions;
