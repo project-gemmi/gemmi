@@ -29,6 +29,143 @@ int count_missing_values(const Range& range) {
   return missing;
 }
 
+bool is_carborane_mode_component(const ChemComp& cc, const AceBondAdjacency& adj) {
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    int b_neighbors = 0;
+    for (const auto& nb : adj[i])
+      if (cc.atoms[nb.idx].el == El::B)
+        ++b_neighbors;
+    if (b_neighbors >= 4)
+      return true;
+  }
+  return false;
+}
+
+bool is_carborane_h_center(const ChemComp& cc, const AceBondAdjacency& adj, size_t idx) {
+  const Element el = cc.atoms[idx].el;
+  if (el != El::B && el != El::C)
+    return false;
+  bool has_h = false;
+  int non_h = 0;
+  for (const auto& nb : adj[idx]) {
+    const Element nb_el = cc.atoms[nb.idx].el;
+    if (nb_el == El::H) {
+      has_h = true;
+      continue;
+    }
+    if (nb_el != El::B && nb_el != El::C)
+      return false;
+    ++non_h;
+  }
+  return !has_h && non_h == 5;
+}
+
+void apply_carborane_mode(ChemComp& cc, bool no_angles) {
+  AceGraphView initial_graph = make_ace_graph_view(cc);
+  const AceBondAdjacency& initial_adj = initial_graph.adjacency;
+
+  // AceDRG adds one H to each 5-connected B/C center, in first-appearance
+  // order from the bond list.
+  std::vector<size_t> h_centers;
+  std::set<size_t> seen_centers;
+  for (const auto& bond : cc.rt.bonds) {
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 >= 0 &&
+        seen_centers.insert((size_t) idx1).second &&
+        is_carborane_h_center(cc, initial_adj, (size_t) idx1))
+      h_centers.push_back((size_t) idx1);
+    if (idx2 >= 0 &&
+        seen_centers.insert((size_t) idx2).second &&
+        is_carborane_h_center(cc, initial_adj, (size_t) idx2))
+      h_centers.push_back((size_t) idx2);
+  }
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    if (seen_centers.insert(i).second &&
+        is_carborane_h_center(cc, initial_adj, i))
+      h_centers.push_back(i);
+  }
+
+  size_t h_serial = cc.atoms.size();
+  for (size_t center_idx : h_centers) {
+    std::string center_id = cc.atoms[center_idx].id;
+    std::string h_id = cat("H", h_serial++);
+    while (cc.find_atom(h_id) != cc.atoms.end())
+      h_id = cat("H", h_serial++);
+    cc.atoms.push_back(ChemComp::Atom{h_id, "", El::H, 0.0f, "H", "", Position()});
+    cc.rt.bonds.push_back({
+      {1, center_id},
+      {1, h_id},
+      BondType::Single,
+      false,
+      1.10, 0.01, 1.10, 0.01
+    });
+  }
+
+  for (auto& bond : cc.rt.bonds) {
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 < 0 || idx2 < 0)
+      continue;
+    Element el1 = cc.atoms[(size_t) idx1].el;
+    Element el2 = cc.atoms[(size_t) idx2].el;
+    if (el1 == El::H || el2 == El::H) {
+      bond.type = BondType::Single;
+      bond.aromatic = false;
+      bond.value = 1.10;
+      bond.esd = 0.01;
+      bond.value_nucleus = 1.10;
+      bond.esd_nucleus = 0.01;
+    } else if ((el1 == El::B || el1 == El::C) &&
+               (el2 == El::B || el2 == El::C)) {
+      bond.type = BondType::Single;
+      bond.aromatic = false;
+      bond.value = 1.55;
+      bond.esd = 0.01;
+      bond.value_nucleus = 1.55;
+      bond.esd_nucleus = 0.01;
+    }
+  }
+
+  cc.rt.torsions.clear();
+  cc.rt.chirs.clear();
+  cc.rt.planes.clear();
+
+  if (no_angles)
+    return;
+
+  cc.rt.angles.clear();
+  AceGraphView graph = make_ace_graph_view(cc);
+  const AceBondAdjacency& adj = graph.adjacency;
+  for (const auto& bond : cc.rt.bonds) {
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 < 0 || idx2 < 0)
+      continue;
+    size_t h_idx = SIZE_MAX;
+    size_t c_idx = SIZE_MAX;
+    if (cc.atoms[(size_t) idx1].el == El::H) {
+      h_idx = (size_t) idx1;
+      c_idx = (size_t) idx2;
+    } else if (cc.atoms[(size_t) idx2].el == El::H) {
+      h_idx = (size_t) idx2;
+      c_idx = (size_t) idx1;
+    } else {
+      continue;
+    }
+    for (const auto& nb : adj[c_idx]) {
+      if (nb.idx == h_idx || cc.atoms[nb.idx].el == El::H)
+        continue;
+      cc.rt.angles.push_back({
+        {1, cc.atoms[h_idx].id},
+        {1, cc.atoms[c_idx].id},
+        {1, cc.atoms[nb.idx].id},
+        118.0, 3.0
+      });
+    }
+  }
+}
+
 void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
   auto is_id = [&](const Restraints::AtomId& id) { return id.atom == atom_id; };
   vector_remove_if(cc.rt.bonds, [&](const Restraints::Bond& b) {
@@ -4696,6 +4833,15 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                       const std::map<std::string, std::string>& atom_stereo,
                       bool no_angles,
                       const std::map<std::string, Position>* sugar_coord_overrides) {
+  {
+    AceGraphView graph = make_ace_graph_view(cc);
+    if (is_carborane_mode_component(cc, graph.adjacency)) {
+      apply_carborane_mode(cc, no_angles);
+      tables.assign_ccp4_types(cc);
+      return;
+    }
+  }
+
   if (!no_angles)
     add_angles_from_bonds_if_missing(cc);
 
