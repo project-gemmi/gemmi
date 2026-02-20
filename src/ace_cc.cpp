@@ -319,6 +319,31 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles) {
     added_h.emplace_back(center_id, h_id);
   }
 
+  // AceDRG's CB path rewrites intra-cluster bond values from geometry.
+  for (auto& bond : cc.rt.bonds) {
+    int idx1 = cc.find_atom_index(bond.id1.atom);
+    int idx2 = cc.find_atom_index(bond.id2.atom);
+    if (idx1 < 0 || idx2 < 0)
+      continue;
+    Element el1 = cc.atoms[(size_t) idx1].el;
+    Element el2 = cc.atoms[(size_t) idx2].el;
+    if (el1 == El::H || el2 == El::H)
+      continue;
+    if ((el1 != El::B && el1 != El::C) || (el2 != El::B && el2 != El::C))
+      continue;
+    if (!cb_atoms.count((size_t) idx1) || !cb_atoms.count((size_t) idx2))
+      continue;
+    const Position& p1 = cc.atoms[(size_t) idx1].xyz;
+    const Position& p2 = cc.atoms[(size_t) idx2].xyz;
+    if (p1.has_nan() || p2.has_nan())
+      continue;
+    double d = p1.dist(p2);
+    if (!(d > 0.0))
+      continue;
+    bond.value = d;
+    bond.value_nucleus = d;
+  }
+
   std::set<std::string> h_center_ids;
   for (const auto& it : added_h)
     h_center_ids.insert(it.first);
