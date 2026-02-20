@@ -1340,9 +1340,8 @@ void set_torsion_around_one_bond_in_ring_like_acedrg(
     std::vector<Restraints::Torsion>& torsions,
     size_t r_at1, size_t r_at2, size_t r_at3, size_t r_at4, double v_init) {
   int n_t = find_torsion_index_like_acedrg(cc, torsions, r_at1, r_at2, r_at3, r_at4);
-  if (n_t < 0 || n_t >= (int)torsions.size())
-    return;
-  torsions[(size_t)n_t].value = v_init;
+  if (n_t >= 0 && n_t < (int)torsions.size())
+    torsions[(size_t)n_t].value = v_init;
 
   if (adj[r_at3].size() <= 2 || atom_info[r_at3].bonding_idx != 3)
     return;
@@ -1370,7 +1369,7 @@ void set_torsion_around_one_bond_in_ring_like_acedrg(
       if (i_nb2 == r_at3 || i_nb2 == r_at1)
         continue;
       int n_nbt = find_torsion_index_like_acedrg(cc, torsions, i_nb2, r_at2, r_at3, i_nb);
-      if (n_nbt >= 0 && n_t < (int)torsions.size()) {
+      if (n_nbt >= 0 && n_nbt < (int)torsions.size()) {
         double v_init2 = v_init + n2 * 120.0;
         if (v_init2 > 180.0)
           v_init2 -= 360.0;
