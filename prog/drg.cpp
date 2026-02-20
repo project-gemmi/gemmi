@@ -115,6 +115,16 @@ std::string ltrim_copy(const std::string& s) {
   return s.substr(pos);
 }
 
+std::string dequote_token(std::string tok) {
+  if (tok.size() >= 2) {
+    char q0 = tok.front();
+    char q1 = tok.back();
+    if ((q0 == '"' || q0 == '\'') && q1 == q0)
+      return tok.substr(1, tok.size() - 2);
+  }
+  return tok;
+}
+
 bool parse_triplet_tokens(const std::vector<std::string>& toks,
                           int ix, int iy, int iz, Position& pos) {
   if (ix < 0 || iy < 0 || iz < 0)
@@ -246,7 +256,7 @@ std::map<std::string, Position> load_companion_mol0_coords_text(
       if (parse_triplet_tokens(toks, x_idx, y_idx, z_idx, pos) ||
           parse_triplet_tokens(toks, mx_idx, my_idx, mz_idx, pos) ||
           parse_triplet_tokens(toks, ix_idx, iy_idx, iz_idx, pos))
-        coords[toks[atom_id_idx]] = pos;
+        coords[dequote_token(toks[atom_id_idx])] = pos;
     }
   }
 
