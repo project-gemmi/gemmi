@@ -489,3 +489,192 @@ The `logging` argument above is described in the next section.
 
 TBC
 
+.. _chemistry-gemmi-drg-overview:
+
+gemmi drg: high-level overview
+===============================
+
+This section is a conceptual overview of `gemmi drg` capabilities.
+API-level documentation will be added separately.
+
+`gemmi drg` generates monomer restraint dictionaries by combining
+chemical rules with statistical knowledge derived from AceDRG tables.
+
+Workflow and data sources
+-------------------------
+
+At a high level, `gemmi drg`:
+
+* reads a monomer definition (typically a CCD-like CIF),
+* builds a molecular graph (atoms, bonds, valence context),
+* consults AceDRG-derived tables for bond/angle targets and sigmas,
+* emits restraint categories suitable for refinement workflows.
+
+Input expectations and normalization
+------------------------------------
+
+Input is typically a CCD-style component definition with atom and bond
+information. In practice, `gemmi drg` must also normalize chemistry before
+table lookup, because small differences in protonation state or local bond
+annotation can move an atom into a different type bucket.
+
+Normalization includes:
+
+* protonation/deprotonation rules aligned with AceDRG behavior where
+  feasible,
+* selected functional-group corrections used to stabilize atom typing,
+* graph cleanup steps that make downstream typing and fallback selection
+  deterministic.
+
+Core pipeline
+-------------
+
+Given a monomer CIF, the current implementation performs these stages:
+
+* chemistry normalization, including protonation/deprotonation handling
+  and selected functional-group corrections,
+* atom-environment derivation and atom typing (both AceDRG-style
+  signatures and CCP4-compatible energy types),
+* bond and angle assignment from AceDRG-style reference statistics,
+  with progressively broader fallback levels,
+* inference of missing stereochemical categories from topology, including
+  torsions, chiral centers and planarity restraints.
+
+Restraint assignment strategy
+-----------------------------
+
+Bond/angle assignment is driven by hierarchical matching. Conceptually, it
+tries the most specific local environment first, then relaxes constraints
+in controlled steps until a statistically supported target is found.
+
+The fallback ladder typically keeps as much chemistry context as possible:
+
+* exact or near-exact AceDRG-like environment match,
+* reduced environment match (less specific but still chemically close),
+* compatibility fallback via CCP4 energy types,
+* broader generic classes only when specific statistics are unavailable.
+
+This order is important: it improves robustness on unusual ligands while
+still favoring AceDRG-like targets whenever data are available.
+
+Ring aromaticity and fused-ring context
+---------------------------------------
+
+Ring handling is central to output quality and compatibility. It affects
+both atom typing and the final restraint lookup.
+
+This area received substantial tuning to match AceDRG conventions:
+
+* ring membership and aromaticity are propagated into environment labels,
+* fused systems are treated as connected ring networks, not isolated
+  independent rings,
+* shared atoms in fused systems can keep mixed labels such as `[5a,6a]`,
+* these labels are used directly in AceDRG signatures and therefore
+  influence which bond/angle statistics are selected.
+
+Fallback selection also tries to preserve ring/aromatic context as long as
+possible before dropping to broader generic classes. Small differences in
+ring/aromatic labeling can cascade into different types and restraints,
+so matching AceDRG behavior here is important for practical parity.
+
+Special chemistry handling
+--------------------------
+
+Some chemistries need dedicated logic beyond generic rules. For example,
+carborane-like systems have specialized handling aimed at reproducing
+AceDRG-like typing and restraint targets more closely.
+
+Output restraint categories
+---------------------------
+
+The generated dictionary includes standard geometric restraint families used
+in crystallographic refinement:
+
+* bond restraints (target distances + sigmas),
+* angle restraints (target angles + sigmas),
+* torsion restraints (including automatically inferred torsions),
+* chirality restraints,
+* planarity restraints.
+
+These categories are generated from the molecular graph and assigned types,
+not from a single hard-coded template per residue.
+
+Compatibility focus and scope
+-----------------------------
+
+A major goal of this implementation is practical compatibility with
+AceDRG output and conventions (not only broad chemical plausibility).
+In particular, substantial effort has been invested in matching
+AceDRG-like behavior for atom typing, protonation logic, and restraint
+selection in edge-case chemistries.
+
+The produced restraint values are refinement targets (ideal values and
+sigmas/esds). They are empirical/statistical restraints, not a QM
+geometry optimization.
+
+For background on AceDRG algorithms, see:
+`Long et al. (2017), Acta Cryst. D73, 112-122 <https://doi.org/10.1107/S2059798317000067>`_.
+For the project rationale and compatibility goals, see
+`Gemmi discussion #401 <https://github.com/project-gemmi/gemmi/discussions/401>`_.
+
+Atom typing: CCP4 energy types
+------------------------------
+
+One key concept in restraint generation is the CCP4 "energy type"
+(`_chem_comp_atom.type_energy`). This is a chemistry-aware atom class
+used by monomer-library restraint tables.
+
+These types are not elements. They encode local environment features
+such as hydrogen count, local bonding pattern and ring/aromatic context.
+Examples include `CH3`, `CH2`, `CR6`, `N31`, `N32`, `O2`, `OH1`, `OC`,
+and `S3`.
+
+How these are used in `gemmi drg`:
+
+* they provide a compact, robust way to look up bond/angle targets in
+  the CCP4 energetic library (`ener_lib.cif`),
+* they serve as a compatibility bridge and fallback key when specific
+  AceDRG-style signatures are unavailable or too sparse,
+* they help keep restraint assignment stable for unusual or weakly
+  represented local environments.
+
+Compared with other atom-typing schemes:
+
+* vs element-only or simple hybridization labels, CCP4 energy types are
+  more chemically specific,
+* vs modern molecular-mechanics force-field atom types, they are usually
+  coarser and tuned for crystallographic restraint assignment rather than
+  full potential-energy modeling,
+* vs AceDRG statistical environment typing, they are simpler and less
+  expressive, but still valuable for compatibility and stable fallback
+  behavior.
+
+AceDRG environment signatures
+-----------------------------
+
+AceDRG environment types are explicit local-neighborhood signatures.
+Examples from AceDRG tables include `C(C)(H)3`, `N(CC)`, `O(C)(H)`,
+`S(CC)(O)3`, `P(CC)3(O)`, and ring/aromatic-aware forms such as
+`C(C[6a]C[6a]2)` and `N(C[6a]C[6a]2)`.
+
+More complex "full" signatures can be substantially richer, for example:
+
+* `C[5a,6a](C[5a,6a]C[6a]N[5a])(N[5a]C[5a]C[5])(N[6a]C[6a]){1|C<4>,1|N<2>,1|N<3>,1|O<2>,3|H<1>}`,
+* `N[5a](C[5a,6a]C[5a,6a]N[6a])(C[5]C[5]O[5]H)(C[5a]N[5a]H){1|H<1>,1|O<2>,2|C<3>,2|C<4>}`.
+
+In `allAtomTypesFromMolsCoded.list`, these labels are paired with coded
+keys (for example `240_652_0    C(C)(H)3`).
+
+How to read complex signatures
+------------------------------
+
+A full AceDRG signature can contain several layers of context:
+
+* center token (for example `C[5a,6a]`) describes the central atom and
+  ring/aromatic context,
+* parenthesized groups encode key bonded-neighbor environments,
+* optional brace blocks (for example `{1|C<4>,1|N<2>,...}`) summarize
+  additional counted local features used to disambiguate similar motifs.
+
+This expressiveness is one reason AceDRG signatures can separate subtle
+chemical environments better than simpler type systems.

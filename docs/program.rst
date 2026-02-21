@@ -1074,6 +1074,8 @@ drg
 
 Fills missing restraint values (bond lengths and angles) in a monomer CIF file
 using statistical data from COD/CSD, as provided by AceDRG tables.
+For methodology, compatibility goals, and atom-typing details, see
+:ref:`chemistry-gemmi-drg-overview`.
 
 .. literalinclude:: drg-help.txt
    :language: console
