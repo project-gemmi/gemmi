@@ -136,6 +136,7 @@ void add_mol(nb::module_& m) {
     .def_rw("assemblies", &Structure::assemblies)
     .def_rw("meta", &Structure::meta)
     .def_rw("has_d_fraction", &Structure::has_d_fraction)
+    .def_rw("non_ascii_line", &Structure::non_ascii_line)
     .def_rw("has_origx", &Structure::has_origx)
     .def_ro("origx", &Structure::origx)
     .def_rw("info", &Structure::info)
