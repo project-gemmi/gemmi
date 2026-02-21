@@ -522,9 +522,23 @@ Normalization includes:
 
 * protonation/deprotonation rules aligned with AceDRG behavior where
   feasible,
-* selected functional-group corrections used to stabilize atom typing,
+* selected functional-group corrections used to stabilize atom typing and
+  avoid type drift from equivalent input representations,
 * graph cleanup steps that make downstream typing and fallback selection
   deterministic.
+
+These functional-group corrections are intentionally pragmatic rather than
+fully general pKa modeling. Current examples include:
+
+* oxoacid normalization (for phosphate/sulfate-like motifs), including
+  deterministic O-H deprotonation in qualifying local patterns,
+* carboxylate normalization (side-chain and terminal forms), including
+  removal of acidic hydrogens where AceDRG would represent a deprotonated
+  carboxylate,
+* amine/guanidinium normalization, including AceDRG-style protonation and
+  hydrogen completion for selected terminal or resonance-stabilized motifs,
+* selected special cases such as PF6-like phosphorus environments and
+  metal-adjacent non-metal charge correction used by downstream typing.
 
 Core pipeline
 -------------
@@ -547,15 +561,73 @@ Bond/angle assignment is driven by hierarchical matching. Conceptually, it
 tries the most specific local environment first, then relaxes constraints
 in controlled steps until a statistically supported target is found.
 
-The fallback ladder typically keeps as much chemistry context as possible:
+Bond-table matching levels
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* exact or near-exact AceDRG-like environment match,
-* reduced environment match (less specific but still chemically close),
-* compatibility fallback via CCP4 energy types,
-* broader generic classes only when specific statistics are unavailable.
+For bonds, matching is keyed by progressively simpler context:
 
-This order is important: it improves robustness on unusual ligands while
-still favoring AceDRG-like targets whenever data are available.
+* atom hashes, hybridization pair and same-ring flag,
+* neighbor descriptors (`nb2` and `nb1nb2`-style summaries),
+* atom-type descriptors (`cod_main`) and full COD class for exact matching.
+
+The level sequence mirrors AceDRG-style logic:
+
+* level 0: exact full COD-class match (most specific),
+* levels 1-2: type-relaxed matches/aggregates,
+* levels 3-6: neighborhood-relaxed matches/aggregates,
+* levels 7-8: broader `nb2`-level aggregation,
+* levels 9-11: hash/hybrid/ring summaries from HRS-style hierarchy.
+
+The search does not always start at level 0. It computes a dynamic start
+level from key availability, skipping levels that cannot match for the
+current atom pair.
+
+Angle-table matching levels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For angles, keys are centered on the middle atom hash plus sorted flank
+hashes, ring-size/hybridization value key, and then progressively reduced
+context (roots, neighbor summaries, atom types).
+
+The lookup ladder is:
+
+* 1D: full key including types (approx level 0),
+* 2D: no type component (approx 1),
+* 3D: no `nb` component (approx 2),
+* 4D: roots-only beyond hash/value key (approx 3),
+* 5D: hash + value key (approx 4),
+* 6D: hash-only summary (approx 6).
+
+When center/flank hashes are equal, an additional swapped-center pass is
+used to reproduce AceDRG table-orientation behavior. There is also a
+wildcard partial-hash fallback used only when the exact hash triple has
+no loaded table entries.
+
+Thresholding and final fallbacks
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Acceptance is thresholded by observation support (defaults are AceDRG-like;
+for many paths the default minimum is 3 observations).
+
+In particular:
+
+* bond level 0 uses observation count from the matched record,
+* bond levels 1-8 use the number of contributing entries in the aggregate,
+* bond levels 9-11 (HRS hierarchy) accept presence of compatible entries,
+* angle 1D-5D paths are accepted only when count threshold is met,
+* angle wildcard/HRS paths are used only after specific keyed paths fail.
+
+If type-specific statistical matching fails:
+
+* bonds fall back through HRS/element-hybrid routes, then CCP4 `ener_lib`
+  compatibility lookup,
+* angles fall back through HRS and then geometry defaults based on center
+  hybridization/coordination (with dedicated metal and high-coordination
+  handling).
+
+This ordering keeps as much chemistry context as possible before using broad
+fallbacks. It improves robustness on unusual ligands while still favoring
+AceDRG-like targets whenever data are available.
 
 Ring aromaticity and fused-ring context
 ---------------------------------------
@@ -571,6 +643,14 @@ This area received substantial tuning to match AceDRG conventions:
 * shared atoms in fused systems can keep mixed labels such as `[5a,6a]`,
 * these labels are used directly in AceDRG signatures and therefore
   influence which bond/angle statistics are selected.
+
+For aromaticity assignment, the implementation follows AceDRG's
+electron-counting logic based on a Huckel-like `4n+2` criterion on
+ring pi-electron totals, with AceDRG-style strict/permissive phases:
+
+* a strict phase (used for primary statistical-table lookup),
+* a permissive phase (used for output typing in edge cases),
+* plus AceDRG-specific ring exceptions for selected 5-member systems.
 
 Fallback selection also tries to preserve ring/aromatic context as long as
 possible before dropping to broader generic classes. Small differences in
