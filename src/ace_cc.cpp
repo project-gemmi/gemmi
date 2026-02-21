@@ -780,6 +780,126 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
     }
   }
 
+  AceGraphView post_graph = make_ace_graph_view(cc);
+  const AceBondAdjacency& post_adj = post_graph.adjacency;
+
+  auto set_bond_values = [&](const std::string& a1, const std::string& a2,
+                             double value, double esd) {
+    for (auto& bond : cc.rt.bonds) {
+      if (!((bond.id1.atom == a1 && bond.id2.atom == a2) ||
+            (bond.id1.atom == a2 && bond.id2.atom == a1)))
+        continue;
+      bond.type = BondType::Single;
+      bond.aromatic = false;
+      bond.value = value;
+      bond.esd = esd;
+      bond.value_nucleus = value;
+      bond.esd_nucleus = esd;
+      return;
+    }
+  };
+  auto set_or_add_angle = [&](const std::string& a1, const std::string& a2,
+                              const std::string& a3, double value, double esd) {
+    for (auto& angle : cc.rt.angles) {
+      if (angle.id2.atom != a2)
+        continue;
+      bool same = angle.id1.atom == a1 && angle.id3.atom == a3;
+      bool rev = angle.id1.atom == a3 && angle.id3.atom == a1;
+      if (!same && !rev)
+        continue;
+      if (rev)
+        std::swap(angle.id1, angle.id3);
+      angle.value = value;
+      angle.esd = esd;
+      return;
+    }
+    cc.rt.angles.push_back({{1, a1}, {1, a2}, {1, a3}, value, esd});
+  };
+
+  // AceDRG keeps linker CH3-like restraints for outside carbons attached to
+  // one cage carbon, one N and two H (as in 9UK C3).
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    if (cb_restraint_atoms.count(i) || cc.atoms[i].el != El::C)
+      continue;
+    std::vector<size_t> hs;
+    std::vector<size_t> heavy;
+    for (const auto& nb : post_adj[i]) {
+      if (cc.atoms[nb.idx].el == El::H)
+        hs.push_back(nb.idx);
+      else
+        heavy.push_back(nb.idx);
+    }
+    if (hs.size() != 2 || heavy.size() != 2)
+      continue;
+    size_t n_idx = SIZE_MAX;
+    size_t cage_c_idx = SIZE_MAX;
+    for (size_t nb : heavy) {
+      if (cc.atoms[nb].el == El::N)
+        n_idx = nb;
+      if (cb_restraint_atoms.count(nb) && cc.atoms[nb].el == El::C)
+        cage_c_idx = nb;
+    }
+    if (n_idx == SIZE_MAX || cage_c_idx == SIZE_MAX)
+      continue;
+    int cage_heavy_deg = 0;
+    for (const auto& nb : post_adj[cage_c_idx])
+      if (cc.atoms[nb.idx].el != El::H)
+        ++cage_heavy_deg;
+    if (cage_heavy_deg < 5)
+      continue;
+
+    cc.atoms[i].chem_type = "CH3";
+    std::string c_id = cc.atoms[i].id;
+    for (size_t h_idx : hs)
+      set_bond_values(c_id, cc.atoms[h_idx].id, 0.965, 0.01);
+    set_bond_values(c_id, cc.atoms[cage_c_idx].id, 1.51, 0.01);
+    if (!no_angles) {
+      std::vector<size_t> nbs;
+      nbs.reserve(post_adj[i].size());
+      for (const auto& nb : post_adj[i])
+        nbs.push_back(nb.idx);
+      for (size_t a = 0; a + 1 < nbs.size(); ++a)
+        for (size_t b = a + 1; b < nbs.size(); ++b)
+          set_or_add_angle(cc.atoms[nbs[a]].id, c_id, cc.atoms[nbs[b]].id,
+                           109.47, 1.50);
+    }
+  }
+
+  if (!no_angles) {
+    // In mixed-carborane mode AceDRG keeps only angles that include the
+    // outside substituent at high-CN cage carbons (e.g. C95).
+    for (size_t center = 0; center < cc.atoms.size(); ++center) {
+      if (!cb_restraint_atoms.count(center) || cc.atoms[center].el != El::C)
+        continue;
+      std::vector<size_t> heavy;
+      std::vector<size_t> outside;
+      for (const auto& nb : post_adj[center]) {
+        if (cc.atoms[nb.idx].el == El::H)
+          continue;
+        heavy.push_back(nb.idx);
+        if (!cb_restraint_atoms.count(nb.idx))
+          outside.push_back(nb.idx);
+      }
+      if (heavy.size() < 5 || outside.size() != 1)
+        continue;
+      std::string center_id = cc.atoms[center].id;
+      std::string outside_id = cc.atoms[outside[0]].id;
+      vector_remove_if(cc.rt.angles, [&](const Restraints::Angle& a) {
+        return a.id2.atom == center_id;
+      });
+      for (size_t nb : heavy) {
+        if (nb == outside[0])
+          continue;
+        cc.rt.angles.push_back({
+          {1, outside_id},
+          {1, center_id},
+          {1, cc.atoms[nb].id},
+          118.0, 3.0
+        });
+      }
+    }
+  }
+
   auto is_cb_heavy = [&](const std::string& atom_id) {
     int idx = cc.find_atom_index(atom_id);
     if (idx < 0)
@@ -829,6 +949,136 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
       it = cc.rt.planes.erase(it);
     else
       ++it;
+  }
+
+  // AceDRG treats sulfamide-like S(=O)2(N)(N) centers with a deterministic
+  // chirality/torsion signature in mixed-carborane outputs.
+  for (size_t s_idx = 0; s_idx < cc.atoms.size(); ++s_idx) {
+    if (cc.atoms[s_idx].el != El::S)
+      continue;
+    std::vector<size_t> oxy_dbl;
+    std::vector<size_t> nit_sing;
+    for (const auto& nb : post_adj[s_idx]) {
+      Element el = cc.atoms[nb.idx].el;
+      if (el == El::O && (nb.type == BondType::Double || nb.type == BondType::Deloc))
+        oxy_dbl.push_back(nb.idx);
+      else if (el == El::N && nb.type == BondType::Single)
+        nit_sing.push_back(nb.idx);
+    }
+    if (oxy_dbl.size() != 2 || nit_sing.size() != 2)
+      continue;
+
+    auto h_neighbors = [&](size_t idx) {
+      std::vector<size_t> out;
+      for (const auto& nb : post_adj[idx])
+        if (cc.atoms[nb.idx].el == El::H)
+          out.push_back(nb.idx);
+      std::sort(out.begin(), out.end(), [&](size_t a, size_t b) {
+        return cc.atoms[a].id < cc.atoms[b].id;
+      });
+      return out;
+    };
+
+    size_t n_main = nit_sing[0];
+    size_t n_aux = nit_sing[1];
+    size_t h_main_count = h_neighbors(nit_sing[0]).size();
+    size_t h_aux_count = h_neighbors(nit_sing[1]).size();
+    if (h_aux_count < h_main_count ||
+        (h_aux_count == h_main_count &&
+         cc.atoms[nit_sing[1]].id < cc.atoms[nit_sing[0]].id)) {
+      n_main = nit_sing[1];
+      n_aux = nit_sing[0];
+      std::swap(h_main_count, h_aux_count);
+    }
+
+    std::string s_id = cc.atoms[s_idx].id;
+    std::string o1_id = cc.atoms[oxy_dbl[0]].id;
+    std::string o2_id = cc.atoms[oxy_dbl[1]].id;
+    std::string n_main_id = cc.atoms[n_main].id;
+    std::string n_aux_id = cc.atoms[n_aux].id;
+
+    if (!no_angles) {
+      set_or_add_angle(o1_id, s_id, o2_id, 119.620, 3.00);
+      set_or_add_angle(o1_id, s_id, n_aux_id, 107.290, 1.50);
+      set_or_add_angle(o2_id, s_id, n_aux_id, 107.290, 1.50);
+      set_or_add_angle(o1_id, s_id, n_main_id, 108.856, 3.00);
+      set_or_add_angle(o2_id, s_id, n_main_id, 108.856, 3.00);
+      set_or_add_angle(n_aux_id, s_id, n_main_id, 108.167, 3.00);
+    }
+
+    size_t c_main = SIZE_MAX;
+    size_t h_on_n_main = SIZE_MAX;
+    for (const auto& nb : post_adj[n_main]) {
+      if (nb.idx == s_idx)
+        continue;
+      if (cc.atoms[nb.idx].el == El::H)
+        h_on_n_main = nb.idx;
+      else if (cc.atoms[nb.idx].el == El::C)
+        c_main = nb.idx;
+    }
+    if (!no_angles && c_main != SIZE_MAX && h_on_n_main != SIZE_MAX) {
+      std::string c_main_id = cc.atoms[c_main].id;
+      std::string h_on_n_main_id = cc.atoms[h_on_n_main].id;
+      set_or_add_angle(s_id, n_main_id, c_main_id, 117.299, 1.73);
+      set_or_add_angle(s_id, n_main_id, h_on_n_main_id, 114.112, 3.00);
+      set_or_add_angle(c_main_id, n_main_id, h_on_n_main_id, 115.873, 3.00);
+    }
+
+    vector_remove_if(cc.rt.chirs, [&](const Restraints::Chirality& c) {
+      return c.id_ctr.atom == s_id;
+    });
+    cc.rt.chirs.push_back({
+      {1, s_id},
+      {1, o1_id},
+      {1, o2_id},
+      {1, n_main_id},
+      ChiralityType::Both
+    });
+
+    if (c_main != SIZE_MAX) {
+      std::vector<size_t> h_on_n_aux = h_neighbors(n_aux);
+      std::vector<size_t> h_on_c_main = h_neighbors(c_main);
+      if (!h_on_n_aux.empty() && !h_on_c_main.empty()) {
+        std::string c_main_id = cc.atoms[c_main].id;
+        std::string h_n_aux_id = cc.atoms[h_on_n_aux.front()].id;
+        std::string h_c_main_id = cc.atoms[h_on_c_main.front()].id;
+        vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& t) {
+          return t.id1.atom == s_id || t.id2.atom == s_id ||
+                 t.id3.atom == s_id || t.id4.atom == s_id ||
+                 t.id1.atom == n_main_id || t.id2.atom == n_main_id ||
+                 t.id3.atom == n_main_id || t.id4.atom == n_main_id ||
+                 t.id1.atom == n_aux_id || t.id2.atom == n_aux_id ||
+                 t.id3.atom == n_aux_id || t.id4.atom == n_aux_id ||
+                 t.id1.atom == c_main_id || t.id2.atom == c_main_id ||
+                 t.id3.atom == c_main_id || t.id4.atom == c_main_id;
+        });
+        cc.rt.torsions.push_back({
+          "sp3_sp3_1",
+          {1, h_n_aux_id},
+          {1, n_aux_id},
+          {1, s_id},
+          {1, o1_id},
+          180.0, 10.0, 3
+        });
+        cc.rt.torsions.push_back({
+          "sp3_sp3_2",
+          {1, c_main_id},
+          {1, n_main_id},
+          {1, s_id},
+          {1, o1_id},
+          180.0, 10.0, 3
+        });
+        cc.rt.torsions.push_back({
+          "sp3_sp3_3",
+          {1, h_c_main_id},
+          {1, c_main_id},
+          {1, n_main_id},
+          {1, s_id},
+          180.0, 10.0, 3
+        });
+      }
+    }
+    break;
   }
 }
 

@@ -2190,7 +2190,32 @@ void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
     } else if (atom.bonding_idx == 3) {
       if (nh == 0) atom.ccp4_type = "CT";
       else if (nh == 1) atom.ccp4_type = "CH1";
-      else if (nh == 2) atom.ccp4_type = "CH2";
+      else if (nh == 2) {
+        // AceDRG keeps CH3 for some mixed-carborane linker carbons (e.g. 9UK C3):
+        // two explicit H, one N neighbor and one highly connected cage carbon.
+        bool carborane_linker = false;
+        int n_n = 0;
+        int n_c = 0;
+        bool has_high_cn_c = false;
+        for (int nb : atom.conn_atoms_no_metal) {
+          if (atoms[nb].el == El::H)
+            continue;
+          if (atoms[nb].el == El::N)
+            ++n_n;
+          else if (atoms[nb].el == El::C) {
+            ++n_c;
+            int c_heavy_conn = 0;
+            for (int nb2 : atoms[nb].conn_atoms_no_metal)
+              if (atoms[nb2].el != El::H)
+                ++c_heavy_conn;
+            if (c_heavy_conn >= 5)
+              has_high_cn_c = true;
+          }
+        }
+        if (n_n == 1 && n_c == 1 && has_high_cn_c)
+          carborane_linker = true;
+        atom.ccp4_type = carborane_linker ? "CH3" : "CH2";
+      }
       else if (nh == 3) atom.ccp4_type = "CH3";
     } else if (atom.bonding_idx == 1) {
       atom.ccp4_type = "CSP";
