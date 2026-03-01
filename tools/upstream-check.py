@@ -13,7 +13,7 @@ TAGGED_REPOS = {
     'taocpp/PEGTL': '2.8.3',
     'cxong/tinydir': '1.2.6',
     'fastfloat/fast_float': 'v8.0.2',
-    'madler/zlib': 'v1.3.1',
+    'madler/zlib': 'v1.3.2',
     'LLNL/shroud': 'v0.13.0',
 }
 
