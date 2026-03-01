@@ -1,5 +1,6 @@
 library: gemmi
 namespace: gemmi
+cxx_header: gemmi/symmetry.hpp gemmi/ccp4.hpp gemmi/mtz.hpp
 format:
   C_prefix: ge_
   F_filename_suffix: f90

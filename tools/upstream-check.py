@@ -14,7 +14,7 @@ TAGGED_REPOS = {
     'cxong/tinydir': '1.2.6',
     'fastfloat/fast_float': 'v8.0.2',
     'madler/zlib': 'v1.3.2',
-    'LLNL/shroud': 'v0.13.0',
+    'LLNL/shroud': 'v0.14.0',
 }
 
 NOT_TAGGED_REPOS = {
