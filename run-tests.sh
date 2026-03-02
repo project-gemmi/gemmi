@@ -164,7 +164,7 @@ if [ $1 = M -o $1 = a ]; then
         echo Testing mask for $code ...
         pdb="${PDB_DIR}/structures/divided/pdb/${code:1:2}/pdb${code}.ent.gz"
         zcat $pdb > /tmp/file.pdb
-        mmtbx.python -m mmtbx.command_line.mask /tmp/file.pdb
+        $CCP4/libexec/python3 -m mmtbx.command_line.mask /tmp/file.pdb
         $PYTHON examples/maskcheck.py mask.ccp4 /tmp/file.pdb
         /bin/rm mask.ccp4
     done
