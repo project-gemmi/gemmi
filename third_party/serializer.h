@@ -2256,12 +2256,11 @@ auto serialize(Archive & archive, Container & container)
             detail::container_nonconst_value_type_t<Container>;
 
         // Create just enough storage properly aligned for one item.
-        std::aligned_storage_t<sizeof(item_type), alignof(item_type)>
-            storage;
+        alignas(item_type) unsigned char storage[sizeof(item_type)];
 
         // Create the object at the storage.
         std::unique_ptr<item_type, void (*)(item_type *)> object(
-            access::placement_new<item_type>(std::addressof(storage)),
+            access::placement_new<item_type>(storage),
             [](auto pointer) { access::destruct(*pointer); });
 
         // Serialize the object.
@@ -2599,11 +2598,11 @@ auto serialize(Archive & archive, std::optional<Type> & optional)
 #endif
     } else {
         // The object storage.
-        std::aligned_storage_t<sizeof(Type), alignof(Type)> storage;
+        alignas(Type) unsigned char storage[sizeof(Type)];
 
         // Create the object at the storage.
         std::unique_ptr<Type, void (*)(Type *)> object(
-            access::placement_new<Type>(std::addressof(storage)),
+            access::placement_new<Type>(storage),
             [](auto pointer) { access::destruct(*pointer); });
 
         // Load the object.
@@ -2697,11 +2696,11 @@ auto serialize(Archive & archive, std::variant<Types...> & variant)
             return archive(*std::get_if<Types>(&variant));
         } else {
             // The object storage.
-            std::aligned_storage_t<sizeof(Types), alignof(Types)> storage;
+            alignas(Types) unsigned char storage[sizeof(Types)];
 
             // Create the object at the storage.
             std::unique_ptr<Types, void (*)(Types *)> object(
-                access::placement_new<Types>(std::addressof(storage)),
+                access::placement_new<Types>(storage),
                 [](auto pointer) { access::destruct(*pointer); });
 
             // Load the object.
