@@ -16,6 +16,9 @@ BUILD_DIR="$(pwd)"
 if [ -z "${PYTHON-}" ]; then
     PYTHON=`grep '^_\?Python_EXECUTABLE:' $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
 fi
+if [ -z "${PYTHON-}" ]; then
+    PYTHON=python3
+fi
 
 # Build all, except when we called with an option to avoid full compilation:
 #  G - only build the program,
