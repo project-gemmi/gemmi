@@ -35,18 +35,17 @@ function count_atoms_with_iterators(st) {
 }
 
 
-test('counts atom occupancies', () => {
-  Gemmi().then((gemmi) => {
-    const path = '../tests/3dg1_final.cif';
-    const result = 40.5;
-    const buffer = fs.readFileSync(path);
-    const st = gemmi.read_structure(buffer, path);
-    // no WASM memory allocations in this function
-    const heap_length = gemmi.HEAPU8.length;
-    expect(count_atoms_with_indices(st)).toBe(result);
-    expect(count_atoms_with_iterators(st)).toBe(result);
-    expect(st.at(0).count_occupancies(null)).toBe(result);
-    expect(gemmi.HEAPU8.length).toBe(heap_length);
-    st.delete();
-  });
+test('counts atom occupancies', async () => {
+  const gemmi = await Gemmi();
+  const path = '../tests/3dg1_final.cif';
+  const result = 40.5;
+  const buffer = fs.readFileSync(path);
+  const st = gemmi.read_structure(buffer, path);
+  // no WASM memory allocations in this function
+  const heap_length = gemmi.HEAPU8.length;
+  expect(count_atoms_with_indices(st)).toBe(result);
+  expect(count_atoms_with_iterators(st)).toBe(result);
+  expect(st.at(0).count_occupancies(null)).toBe(result);
+  expect(gemmi.HEAPU8.length).toBe(heap_length);
+  st.delete();
 });

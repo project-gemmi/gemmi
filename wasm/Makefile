@@ -1,11 +1,10 @@
-# currently using Emscripten 3.1.56
+# currently using Emscripten 5.0.2
 CXX = em++
 
 INCLUDE = -I../include
 
 COMMON_FLAGS = \
   -Wall -Wextra -std=c++20 \
-  -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 \
   -s STRICT=1 \
   -s DISABLE_EXCEPTION_CATCHING=0
 
@@ -25,7 +24,7 @@ LINK_FLAGS = \
 all: gemmi.js
 
 debug: FLAGS = -g -O0 $(COMMON_FLAGS)
-debug: LINK_FLAGS += -s SAFE_HEAP=1 --embind-emit-tsd gemmi.d.ts
+debug: LINK_FLAGS += -s SAFE_HEAP=1 -s ASSERTIONS=2
 debug: gemmi.js
 
 GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o sprintf.o symmetry.o json.o
