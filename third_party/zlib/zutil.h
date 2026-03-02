@@ -293,7 +293,11 @@ local void z_once(z_once_t *state, void (*init)(void)) {
 
 #else   /* no atomics */
 
-#warning zlib not thread-safe
+#ifdef _MSC_VER
+#  pragma message("warning: zlib not thread-safe")
+#else
+#  warning zlib not thread-safe
+#endif
 
 typedef struct z_once_s {
     volatile int begun;
