@@ -146,7 +146,7 @@ SERIALIZE(Model, o.num, o.chains)
 SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.ncs, o.entities, o.connections, o.cispeps, o.mod_residues,
           o.helices, o.sheets, o.assemblies, o.conect_map, o.meta,
-          o.input_format, o.has_d_fraction, o.ter_status,
+          o.input_format, o.has_d_fraction, o.non_ascii_line, o.ter_status,
           o.has_origx, o.origx, o.info, o.shortened_ccd_codes,
           o.raw_remarks, o.resolution)
 
