@@ -82,6 +82,21 @@ bool rule_stats_changed(const AceRuleStats& before, const AceRuleStats& after) {
   return std::fabs(before.charge_sum - after.charge_sum) > 1e-6;
 }
 
+void trace_phase_delta(const char* phase, const AceRuleStats& before, const AceRuleStats& after) {
+  if (!ace_trace_mode())
+    return;
+  std::fprintf(stderr,
+               "[ace-phase %s] atoms %+d bonds %+d angles %+d torsions %+d chirs %+d planes %+d charge %+0.3f\n",
+               phase,
+               after.atom_count - before.atom_count,
+               after.bond_count - before.bond_count,
+               after.angle_count - before.angle_count,
+               after.torsion_count - before.torsion_count,
+               after.chir_count - before.chir_count,
+               after.plane_count - before.plane_count,
+               after.charge_sum - before.charge_sum);
+}
+
 std::string canonical_bond_key(const Restraints::Bond& bond) {
   return Restraints::lexicographic_str(bond.id1.atom, bond.id2.atom);
 }
@@ -123,6 +138,7 @@ void cleanup_and_validate_restraints(ChemComp& cc, const char* stage) {
 
   int invalid = 0;
   int duplicate_atoms = 0;
+  int duplicate_plane_atoms = 0;
   {
     std::unordered_map<std::string, int> atom_counts;
     for (const auto& atom : cc.atoms)
@@ -133,6 +149,18 @@ void cleanup_and_validate_restraints(ChemComp& cc, const char* stage) {
   }
 
   cc.remove_nonmatching_restraints();
+  for (auto& plane : cc.rt.planes) {
+    std::unordered_set<std::string> seen;
+    std::vector<Restraints::AtomId> uniq;
+    uniq.reserve(plane.ids.size());
+    for (const auto& id : plane.ids) {
+      if (seen.insert(id.atom).second)
+        uniq.push_back(id);
+      else
+        ++duplicate_plane_atoms;
+    }
+    plane.ids.swap(uniq);
+  }
   for (const auto& plane : cc.rt.planes)
     for (const auto& id : plane.ids)
       if (!has_atom(id.atom))
@@ -193,9 +221,26 @@ void cleanup_and_validate_restraints(ChemComp& cc, const char* stage) {
     return !seen_planes.insert(canonical_plane_key(plane)).second;
   });
 
-  if (ace_strict_mode() && (invalid > 0 || duplicate_atoms > 0))
-    fail("ACE strict validation failed at ", stage, ": invalid=", invalid,
-         ", duplicate_atom_ids=", duplicate_atoms);
+  if (ace_strict_mode()) {
+    bool strict_fail = (invalid > 0 || duplicate_atoms > 0 || duplicate_plane_atoms > 0);
+    bool final_stage = std::string(stage) == "final";
+    int nan_bond = 0;
+    int nan_angle = 0;
+    if (final_stage) {
+      for (const auto& b : cc.rt.bonds)
+        if (std::isnan(b.value))
+          ++nan_bond;
+      for (const auto& a : cc.rt.angles)
+        if (std::isnan(a.value))
+          ++nan_angle;
+      strict_fail = strict_fail || nan_bond > 0 || nan_angle > 0;
+    }
+    if (strict_fail)
+      fail("ACE strict validation failed at ", stage, ": invalid=", invalid,
+           ", duplicate_atom_ids=", duplicate_atoms,
+           ", duplicate_plane_atom_ids=", duplicate_plane_atoms,
+           ", nan_bonds=", nan_bond, ", nan_angles=", nan_angle);
+  }
 }
 
 bool is_carborane_mode_component(const ChemComp& cc, const AceBondAdjacency& adj) {
@@ -5911,6 +5956,7 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                       const std::map<std::string, std::string>& atom_stereo,
                       bool no_angles,
                       const std::map<std::string, Position>* sugar_coord_overrides) {
+  AceRuleStats phase0 = collect_rule_stats(cc);
   bool has_cb_seed = false;
   if (maybe_apply_carborane_mode(cc, tables, no_angles, has_cb_seed))
     return;
@@ -5918,6 +5964,8 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   if (!no_angles)
     add_angles_from_bonds_if_missing(cc);
   cleanup_and_validate_restraints(cc, "post-angle-seed");
+  AceRuleStats phase1 = collect_rule_stats(cc);
+  trace_phase_delta("angle-seed", phase0, phase1);
 
   std::set<std::string> used_names = collect_used_atom_names(cc);
 
@@ -5925,12 +5973,18 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
 
   bool added_h3 = add_n_terminal_h3(cc);
   cleanup_and_validate_restraints(cc, "post-chemical-adjustments");
+  AceRuleStats phase2 = collect_rule_stats(cc);
+  trace_phase_delta("chem-rules", phase1, phase2);
 
   apply_charge_corrections(cc);
+  AceRuleStats phase3 = collect_rule_stats(cc);
+  trace_phase_delta("charge-fix", phase2, phase3);
 
   if (has_missing_restraint_values(cc, no_angles))
     tables.fill_restraints(cc);
   cleanup_and_validate_restraints(cc, "post-fill");
+  AceRuleStats phase4 = collect_rule_stats(cc);
+  trace_phase_delta("fill", phase3, phase4);
 
   if (added_h3 && !no_angles)
     sync_n_terminal_h3_angles(cc);
@@ -5951,8 +6005,12 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
     add_mixed_carborane_torsions(cc);
 
   cleanup_and_validate_restraints(cc, "final");
+  AceRuleStats phase5 = collect_rule_stats(cc);
+  trace_phase_delta("derived-restraints", phase4, phase5);
 
   tables.assign_ccp4_types(cc);
+  AceRuleStats phase6 = collect_rule_stats(cc);
+  trace_phase_delta("final-typing", phase5, phase6);
 }
 
 } // namespace gemmi
