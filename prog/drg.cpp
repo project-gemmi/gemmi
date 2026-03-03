@@ -520,22 +520,18 @@ int GEMMI_MAIN(int argc, char **argv) {
         // Update the block with new values
         add_chemcomp_to_block(cc, block, acedrg_types, no_angles);
 
-        // Mimic AceDRG's extra descriptor loop.
-        /*
+        // Replace AceDRG's extra descriptor loop with standard mmCIF software info.
+        block.find_mmcif_category("_acedrg_chem_comp_descriptor.").erase();
         {
-          const std::vector<std::array<const char*, 4>> rows = {{
-              {cc.name.c_str(), "gemmi", GEMMI_VERSION, "dictionary generator"},
-              {cc.name.c_str(), "acedrg_database", "12", "data source"},
-          }};
-          cif::Table tab = block.find_or_add("_acedrg_chem_comp_descriptor.",
-                                             {"comp_id", "program_name",
-                                              "program_version", "type"});
+          cif::Table tab = block.find_or_add("_software.",
+                                             {"name", "version", "type", "description"});
           tab.ensure_loop();
           tab.loop_item->loop.values.clear();  // replace any existing
-          for (const auto& r : rows)
-            tab.append_row({r[0], r[1], r[2], r[3]});
+          tab.append_row({"gemmi", GEMMI_VERSION, "program",
+                          cif::quote("dictionary generator")});
+          tab.append_row({"acedrg_database", "12", "data",
+                          cif::quote("data source")});
         }
-        */
       }
 
       if (verbose)
