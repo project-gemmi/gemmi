@@ -5809,17 +5809,9 @@ void apply_metal_charge_corrections(ChemComp& cc) {
   auto graph = make_ace_graph_view(cc);
   auto& adj = graph.adjacency;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    const Element& el = cc.atoms[i].el;
-    if (el.is_metal() || el == El::H)
-      continue;
-    if (!has_metal_and_non_metal_heavy_neighbor(cc, adj, i))
-      continue;
-    int expected_valence = expected_valence_for_nonmetal(el);
-    if (expected_valence == 0)
-      continue;
-    float sum_bo = sum_non_metal_bond_order(cc, adj, i);
-    int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
-    cc.atoms[i].charge = static_cast<float>(-rem_v);
+    int formal_charge = 0;
+    if (compute_metal_neighbor_valence_charge(cc, adj, i, formal_charge))
+      cc.atoms[i].charge = static_cast<float>(formal_charge);
   }
 }
 

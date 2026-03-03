@@ -5,7 +5,7 @@
 #include "gemmi/ace_graph.hpp"
 
 #include <algorithm>
-#include <set>
+#include <cmath>
 #include "gemmi/calculate.hpp"
 
 namespace gemmi {
@@ -18,40 +18,6 @@ make_neighbor_names(const ChemComp& cc) {
     neighbors[bond.id2.atom].push_back(bond.id1.atom);
   }
   return neighbors;
-}
-
-bool atoms_in_same_ring_by_alt_path(
-    const std::string& atom1, const std::string& atom2,
-    const std::map<std::string, std::vector<std::string>>& neighbors) {
-  auto from_it = neighbors.find(atom1);
-  if (from_it == neighbors.end())
-    return false;
-
-  // Graph traversal from atom1 to atom2, excluding the direct bond between them.
-  std::set<std::string> visited;
-  std::vector<std::string> frontier;
-  visited.insert(atom1);
-  for (const std::string& nb : from_it->second) {
-    if (nb != atom2) {
-      frontier.push_back(nb);
-      visited.insert(nb);
-    }
-  }
-
-  while (!frontier.empty()) {
-    std::string current = frontier.back();
-    frontier.pop_back();
-    if (current == atom2)
-      return true;
-    auto it = neighbors.find(current);
-    if (it == neighbors.end())
-      continue;
-    for (const std::string& nb : it->second) {
-      if (visited.insert(nb).second)
-        frontier.push_back(nb);
-    }
-  }
-  return false;
 }
 
 AceBondAdjacency build_bond_adjacency(
@@ -195,6 +161,23 @@ float sum_non_metal_bond_order(
       sum_bo += order_of_bond_type(nb.type);
   }
   return sum_bo;
+}
+
+bool compute_metal_neighbor_valence_charge(
+    const ChemComp& cc, const AceBondAdjacency& adj, size_t idx,
+    int& out_charge) {
+  const Element el = cc.atoms[idx].el;
+  if (el.is_metal() || el == El::H)
+    return false;
+  if (!has_metal_and_non_metal_heavy_neighbor(cc, adj, idx))
+    return false;
+  int expected_valence = expected_valence_for_nonmetal(el);
+  if (expected_valence == 0)
+    return false;
+  float sum_bo = sum_non_metal_bond_order(cc, adj, idx);
+  int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
+  out_charge = -rem_v;
+  return true;
 }
 
 bool has_non_hydrogen_neighbor(

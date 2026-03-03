@@ -2106,16 +2106,11 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
     CodAtomInfo& atom = work_atoms[i];
     if (atom.is_metal || atom.el == El::H)
       continue;
-    if (!has_metal_and_non_metal_heavy_neighbor(cc, adj, i))
-      continue;
     if (!has_non_hydrogen_neighbor(cc, atom.conn_atoms_no_metal))
       continue;
-    int expected_valence = expected_valence_for_nonmetal(atom.el);
-    if (expected_valence == 0)
-      continue;
-    float sum_bo = sum_non_metal_bond_order(cc, adj, i);
-    int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
-    atom.charge = static_cast<float>(-rem_v);
+    int formal_charge = 0;
+    if (compute_metal_neighbor_valence_charge(cc, adj, i, formal_charge))
+      atom.charge = static_cast<float>(formal_charge);
   }
 
   // Bonding/planarity info is needed for AceDRG ring aromaticity rules.
@@ -2599,19 +2594,12 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
     // Skip metals, hydrogens, and atoms already charged
     if (info.el.is_metal() || info.el == El::H || info.formal_charge != 0)
       continue;
-    // Check if this atom has any metal neighbors
-    if (!has_metal_and_non_metal_heavy_neighbor(cc, adjacency, i))
-      continue;
     if (!has_non_hydrogen_neighbor(cc, info.conn_atoms_no_metal))
       continue;
-    int expected_valence = expected_valence_for_nonmetal(info.el);
-    if (expected_valence == 0)
-      continue;
-    float sum_bo = sum_non_metal_bond_order(cc, adjacency, i);
-    // Calculate remaining valence and set formal charge
-    int rem_v = expected_valence - static_cast<int>(std::round(sum_bo));
-    if (rem_v != 0)
-      atoms[i].formal_charge = -rem_v;
+    int formal_charge = 0;
+    if (compute_metal_neighbor_valence_charge(cc, adjacency, i, formal_charge) &&
+        formal_charge != 0)
+      atoms[i].formal_charge = formal_charge;
   }
 
   assign_all_ccp4_types(atoms);

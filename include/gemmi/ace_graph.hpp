@@ -29,10 +29,6 @@ struct AceGraphView {
 std::map<std::string, std::vector<std::string>>
 make_neighbor_names(const ChemComp& cc);
 
-bool atoms_in_same_ring_by_alt_path(
-    const std::string& atom1, const std::string& atom2,
-    const std::map<std::string, std::vector<std::string>>& neighbors);
-
 AceBondAdjacency build_bond_adjacency(
     const ChemComp& cc, const std::map<std::string, size_t>& atom_index);
 
@@ -67,6 +63,10 @@ bool has_metal_and_non_metal_heavy_neighbor(
 
 float sum_non_metal_bond_order(
     const ChemComp& cc, const AceBondAdjacency& adj, size_t idx);
+
+bool compute_metal_neighbor_valence_charge(
+    const ChemComp& cc, const AceBondAdjacency& adj, size_t idx,
+    int& out_charge);
 
 bool has_non_hydrogen_neighbor(
     const ChemComp& cc, const std::vector<int>& neighbor_indices);
