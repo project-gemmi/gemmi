@@ -19,6 +19,7 @@
 #include <numeric>
 #include <sstream>
 #include <array>
+#include <functional>
 #include <set>
 #include <map>
 #include <unordered_map>
@@ -40,6 +41,45 @@ bool ace_strict_mode() {
   if (const char* env = std::getenv("GEMMI_ACE_STRICT"))
     return env[0] != '\0' && env[0] != '0';
   return false;
+}
+
+bool ace_trace_mode() {
+  if (const char* env = std::getenv("GEMMI_ACE_TRACE"))
+    return env[0] != '\0' && env[0] != '0';
+  return false;
+}
+
+struct AceRuleStats {
+  int atom_count = 0;
+  int bond_count = 0;
+  int angle_count = 0;
+  int torsion_count = 0;
+  int chir_count = 0;
+  int plane_count = 0;
+  double charge_sum = 0.0;
+};
+
+AceRuleStats collect_rule_stats(const ChemComp& cc) {
+  AceRuleStats s;
+  s.atom_count = static_cast<int>(cc.atoms.size());
+  s.bond_count = static_cast<int>(cc.rt.bonds.size());
+  s.angle_count = static_cast<int>(cc.rt.angles.size());
+  s.torsion_count = static_cast<int>(cc.rt.torsions.size());
+  s.chir_count = static_cast<int>(cc.rt.chirs.size());
+  s.plane_count = static_cast<int>(cc.rt.planes.size());
+  for (const auto& atom : cc.atoms)
+    s.charge_sum += atom.charge;
+  return s;
+}
+
+bool rule_stats_changed(const AceRuleStats& before, const AceRuleStats& after) {
+  if (before.atom_count != after.atom_count) return true;
+  if (before.bond_count != after.bond_count) return true;
+  if (before.angle_count != after.angle_count) return true;
+  if (before.torsion_count != after.torsion_count) return true;
+  if (before.chir_count != after.chir_count) return true;
+  if (before.plane_count != after.plane_count) return true;
+  return std::fabs(before.charge_sum - after.charge_sum) > 1e-6;
 }
 
 std::string canonical_bond_key(const Restraints::Bond& bond) {
@@ -5760,18 +5800,44 @@ std::set<std::string> collect_used_atom_names(const ChemComp& cc) {
 }
 
 void apply_chemical_adjustments(ChemComp& cc, std::set<std::string>& used_names) {
-  adjust_oxoacid_group(cc, El::P, 3, true);   // phosphate
-  adjust_oxoacid_group(cc, El::S, 4, false);  // sulfate
-  adjust_nitro_group(cc);
-  adjust_single_bond_oxide(cc);
-  adjust_hexafluorophosphate(cc);
-  adjust_carboxy_asp(cc);
-  adjust_terminal_carboxylate(cc);
   auto n_neighbors = make_neighbor_names(cc);
-  adjust_guanidinium_group(cc, used_names, n_neighbors);
-  adjust_amino_ter_amine(cc, used_names, n_neighbors);
-  adjust_terminal_amine(cc, used_names, n_neighbors);
-  adjust_protonated_amide_n(cc, used_names, n_neighbors);
+  struct AceChemRule {
+    const char* name;
+    std::function<void()> apply;
+  };
+  std::vector<AceChemRule> rules;
+  rules.push_back({"oxoacid_phosphate", [&] { adjust_oxoacid_group(cc, El::P, 3, true); }});
+  rules.push_back({"oxoacid_sulfate", [&] { adjust_oxoacid_group(cc, El::S, 4, false); }});
+  rules.push_back({"nitro_group", [&] { adjust_nitro_group(cc); }});
+  rules.push_back({"single_bond_oxide", [&] { adjust_single_bond_oxide(cc); }});
+  rules.push_back({"hexafluorophosphate", [&] { adjust_hexafluorophosphate(cc); }});
+  rules.push_back({"carboxy_asp", [&] { adjust_carboxy_asp(cc); }});
+  rules.push_back({"terminal_carboxylate", [&] { adjust_terminal_carboxylate(cc); }});
+  rules.push_back({"guanidinium", [&] { adjust_guanidinium_group(cc, used_names, n_neighbors); }});
+  rules.push_back({"amino_ter_amine", [&] { adjust_amino_ter_amine(cc, used_names, n_neighbors); }});
+  rules.push_back({"terminal_amine", [&] { adjust_terminal_amine(cc, used_names, n_neighbors); }});
+  rules.push_back({"protonated_amide_n", [&] { adjust_protonated_amide_n(cc, used_names, n_neighbors); }});
+
+  bool trace = ace_trace_mode();
+  for (const AceChemRule& rule : rules) {
+    AceRuleStats before = trace ? collect_rule_stats(cc) : AceRuleStats();
+    rule.apply();
+    if (trace) {
+      AceRuleStats after = collect_rule_stats(cc);
+      if (rule_stats_changed(before, after)) {
+        std::fprintf(stderr,
+                     "[ace-rule %s] atoms %+d bonds %+d angles %+d torsions %+d chirs %+d planes %+d charge %+0.3f\n",
+                     rule.name,
+                     after.atom_count - before.atom_count,
+                     after.bond_count - before.bond_count,
+                     after.angle_count - before.angle_count,
+                     after.torsion_count - before.torsion_count,
+                     after.chir_count - before.chir_count,
+                     after.plane_count - before.plane_count,
+                     after.charge_sum - before.charge_sum);
+      }
+    }
+  }
 }
 
 void add_mixed_carborane_torsions(ChemComp& cc) {
