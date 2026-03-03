@@ -241,6 +241,24 @@ struct GEMMI_DLL AcedrgTables {
     double sigma = NAN;
   };
 
+  // Non-centered metal angles (allOrgAnglesWithNonCenteredMetalNB.table)
+  struct NonCenMetalKey {
+    std::string id1, idNB1, id2, idNB2, id3, idNB3;
+    bool operator<(const NonCenMetalKey& o) const {
+      return std::tie(id1, idNB1, id2, idNB2, id3, idNB3)
+           < std::tie(o.id1, o.idNB1, o.id2, o.idNB2, o.id3, o.idNB3);
+    }
+  };
+  struct NonCenMetalKey5 {
+    std::string id1, idNB1, id2, idNB2, id3;
+    bool operator<(const NonCenMetalKey5& o) const {
+      return std::tie(id1, idNB1, id2, idNB2, id3)
+           < std::tie(o.id1, o.idNB1, o.id2, o.idNB2, o.id3);
+    }
+  };
+  std::map<NonCenMetalKey, CodStats> noncen_metal_angles_;
+  std::map<NonCenMetalKey5, std::vector<std::pair<std::string, CodStats>>> noncen_metal_by5_;
+
   std::map<std::string, std::map<std::string, std::map<std::string, Ccp4BondEntry>>> ccp4_bonds_;
 
   void load_ccp4_bonds(const std::string& path);
@@ -376,6 +394,7 @@ struct GEMMI_DLL AcedrgTables {
   CodStats search_angle_multilevel(const CodAtomInfo& a1,
                                      const CodAtomInfo& center,
                                      const CodAtomInfo& a3,
+                                     int min_obs,
                                      int* out_level = nullptr) const;
   CodStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
                               const CodAtomInfo& a3, int ring_size) const;

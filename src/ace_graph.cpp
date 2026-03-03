@@ -65,7 +65,7 @@ AceBondAdjacency build_bond_adjacency(
     size_t idx1 = it1->second;
     size_t idx2 = it2->second;
     bool aromatic = (bond.type == BondType::Aromatic ||
-                     bond.type == BondType::Deloc || bond.aromatic);
+                     bond.type == BondType::Deloc);
     adj[idx1].push_back({idx2, bond.type, aromatic});
     adj[idx2].push_back({idx1, bond.type, aromatic});
   }

@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <sstream>
 #include <set>
 #include <unordered_set>
 #include "gemmi/atof.hpp"
@@ -80,6 +81,11 @@ bool desc_sort_map_key(const SortMap& a, const SortMap& b) {
   if (a.key.length() != b.key.length())
     return a.key.length() > b.key.length();
   return a.nNB > b.nNB;
+}
+
+// AceDRG desSortMapKey: length-only descending.
+bool desc_sort_map_key_len(const SortMap& a, const SortMap& b) {
+  return a.key.length() > b.key.length();
 }
 
 CoordGeometry default_coord_geometry(int coord_number) {
@@ -456,6 +462,8 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
 
 void AcedrgTables::load_metal_tables(const std::string& dir) {
   metal_coord_geo_overrides_.clear();
+  noncen_metal_angles_.clear();
+  noncen_metal_by5_.clear();
 
   // Load allMetalBonds.table
   {
@@ -558,6 +566,33 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
           entry.sigma = sigma;
           metal_angles_.push_back(entry);
         }
+      }
+    }
+  }
+
+  // Load non-centered metal angles
+  {
+    std::string path = dir + "/allOrgAnglesWithNonCenteredMetalNB.table";
+    fileptr_t f4(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    if (f4) {
+      char line[512];
+      while (std::fgets(line, sizeof(line), f4.get())) {
+        if (is_skip_line(line))
+          continue;
+        std::istringstream iss(line);
+        std::string id1, nb1, id2, nb2, id3, nb3;
+        double val, sig;
+        int count;
+        if (!(iss >> id1 >> nb1 >> id2 >> nb2 >> id3 >> nb3 >> val >> sig >> count))
+          continue;
+        CodStats stats;
+        stats.value = val;
+        stats.sigma = (sig < 0.0001) ? 3.0 : sig;
+        stats.count = count;
+        NonCenMetalKey key{id1, nb1, id2, nb2, id3, nb3};
+        noncen_metal_angles_[key] = stats;
+        NonCenMetalKey5 key5{id1, nb1, id2, nb2, id3};
+        noncen_metal_by5_[key5].push_back({nb3, stats});
       }
     }
   }
@@ -964,12 +999,11 @@ int count_non_metal_connections(const AceBondAdjacency& adj,
 }
 
 // Count pi electrons for an atom in a ring.
-// mode 0 (strict): C(-1)/non_mc=2 and N(+1)/non_mc=3 give 2 pi.
-// mode 1 (permissive): those same cases give 1 pi.
-// include_c_minus2: if false, skip the C charge=-2 case (used for "all" count).
+// mode 0 (strict) vs mode 1 (permissive) matches AceDRG.
+// use_all=true corresponds to setPiForOneAtomAll (vs NoMetal).
 int count_atom_pi(const AceBondAdjacency& adj,
                   const std::vector<CodAtomInfo>& atoms,
-                  int idx, int mode, bool include_c_minus2) {
+                  int idx, int mode, bool use_all) {
   const auto& atom = atoms[idx];
   int non_mc = count_non_metal_connections(adj, atoms, idx);
   int aN = 0;
@@ -1018,8 +1052,8 @@ int count_atom_pi(const AceBondAdjacency& adj,
           if (non_mc == 3)
             aN = 2;
           else if (non_mc == 2)
-            aN = (mode == 1) ? 1 : 2;
-        } else if (include_c_minus2 && atom.charge == -2.0f) {
+            aN = use_all ? 1 : (mode == 1 ? 1 : 2);
+        } else if (!use_all && atom.charge == -2.0f) {
           if (non_mc == 2)
             aN = 2;
         }
@@ -1029,7 +1063,7 @@ int count_atom_pi(const AceBondAdjacency& adj,
             aN = 2;
         } else if (atom.charge == 1.0f) {
           if (non_mc == 3)
-            aN = (mode == 1) ? 1 : 2;
+            aN = use_all ? 1 : (mode == 1 ? 1 : 2);
         }
       } else if (atom.el == El::O) {
         if (atom.charge == 1.0f && non_mc == 2)
@@ -1067,10 +1101,10 @@ void set_ring_aromaticity_from_bonds(
   // AceDRG has two-phase aromaticity:
   // - Strict (mode 0): only NoMetal pi count → isAromatic (used for COD table lookup)
   // - Permissive (mode 1): NoMetal+All pi counts → isAromaticP (used for output CIF)
-  // Ring must be planar (bondingIdx==2, N allowed).
+  // Ring must be planar: AceDRG requires all atoms bondingIdx==2.
   auto is_ring_planar = [&](const RingInfo& ring) -> bool {
     for (int idx : ring.atoms)
-      if (atoms[idx].el != El::N && atoms[idx].bonding_idx != 2)
+      if (atoms[idx].bonding_idx != 2)
         return false;
     return true;
   };
@@ -1088,7 +1122,7 @@ void set_ring_aromaticity_from_bonds(
     // AceDRG only checks the NoMetal pi count in strict mode.
     int pi1 = 0;
     for (int idx : ring.atoms)
-      pi1 += count_atom_pi(adj, atoms, idx, 0, true);
+      pi1 += count_atom_pi(adj, atoms, idx, 0, false);
     if (pi1 > 0 && pi1 % 4 == 2)
       ring.is_aromatic = true;
     if (verbose >= 2) {
@@ -1134,11 +1168,17 @@ void set_ring_aromaticity_from_bonds(
     int pi1 = 0;
     int pi2 = 0;
     for (int idx : ring.atoms) {
-      pi1 += count_atom_pi(adj, atoms, idx, 1, true);
-      pi2 += count_atom_pi(adj, atoms, idx, 1, false);
+      pi1 += count_atom_pi(adj, atoms, idx, 1, false);  // NoMetal
+      pi2 += count_atom_pi(adj, atoms, idx, 1, true);   // All
     }
     if ((pi1 > 0 && pi1 % 4 == 2) || (pi2 > 0 && pi2 % 4 == 2))
       ring.is_aromatic_permissive = true;
+    if (verbose >= 2) {
+      std::fprintf(stderr,
+                   "    ring %zu (size=%zu): pi1m1=%d pi2m1=%d aromaticP=%d\n",
+                   (&ring - &rings[0]), ring.atoms.size(), pi1, pi2,
+                   ring.is_aromatic_permissive ? 1 : 0);
+    }
   }
 }
 
@@ -1499,7 +1539,7 @@ void set_atom_cod_class_name_new2(
     std::vector<std::string> t_str_list;
     std::map<std::string, int> comps;
     for (int nb : neighbors[atom.index]) {
-      if (nb == ori_atom.index || atoms[nb].is_metal)
+      if (nb == ori_atom.index)
         continue;
       std::string nb_type = atoms[nb].el.name();
       if (!atoms[nb].ring_rep_s.empty())
@@ -1514,7 +1554,7 @@ void set_atom_cod_class_name_new2(
       sm.val = it.second;
       sorted.push_back(sm);
     }
-    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key);
+    std::sort(sorted.begin(), sorted.end(), desc_sort_map_key_len);
     for (const auto& sm : sorted) {
       std::string s1 = cat(sm.key, sm.val);
       std::string s2;
@@ -1539,15 +1579,12 @@ void set_atom_cod_class_name_new2(
     int low_lev = lev - 1;
     std::map<std::string, std::vector<int>> id_map;
     for (int nb : neighbors[atom.index]) {
-      if (atoms[nb].is_metal)
-        continue;
       CodAtomInfo nb_atom = atoms[nb];
       set_atom_cod_class_name_new2(nb_atom, ori_atom, low_lev, atoms, neighbors);
       auto& entry = id_map[nb_atom.cod_class];
       if (entry.empty()) {
         entry.push_back(1);
-        entry.push_back((int)std::count_if(neighbors[nb].begin(), neighbors[nb].end(),
-                                           [&](int nb2) { return !atoms[nb2].is_metal; }));
+        entry.push_back(static_cast<int>(neighbors[nb].size()));
       } else {
         entry[0] += 1;
       }
@@ -1581,12 +1618,8 @@ void set_special_3nb_symb2(
   std::map<std::string, int> nb3_props;
 
   for (int nb1 : neighbors[atom.index]) {
-    if (atoms[nb1].is_metal)
-      continue;
     seen.insert(nb1);
     for (int nb2 : neighbors[nb1]) {
-      if (atoms[nb2].is_metal)
-        continue;
       if (nb2 != atom.index)
         seen.insert(nb2);
     }
@@ -1599,14 +1632,9 @@ void set_special_3nb_symb2(
       if (atoms[nb2].ring_rep.empty())
         continue;
       for (int nb3 : neighbors[nb2]) {
-        if (atoms[nb3].is_metal)
-          continue;
         if (nb3 != atom.index && seen.insert(nb3).second) {
           std::string prop = atoms[nb3].el.name();
-          int deg = 0;
-          for (int nbx : neighbors[nb3])
-            if (!atoms[nbx].is_metal)
-              ++deg;
+          int deg = static_cast<int>(neighbors[nb3].size());
           cat_to(prop, '<', deg, '>');
           nb3_props[prop] += 1;
         }
@@ -1687,13 +1715,9 @@ void set_atoms_nb1nb2_sp(
   for (auto& atom : atoms) {
     std::vector<std::string> nb1_nb2_sp_set;
     for (int nb1 : neighbors[atom.index]) {
-      if (atoms[nb1].is_metal)
-        continue;
       std::string nb1_main = atoms[nb1].cod_root;
       std::vector<int> nb2_sp_set;
       for (int nb2 : neighbors[nb1]) {
-        if (atoms[nb2].is_metal)
-          continue;
         nb2_sp_set.push_back(atoms[nb2].bonding_idx);
       }
       std::sort(nb2_sp_set.begin(), nb2_sp_set.end(), std::greater<int>());
@@ -1718,8 +1742,22 @@ void set_atoms_nb1nb2_sp(
 
 void set_atoms_bonding_idx(
     std::vector<CodAtomInfo>& atoms,
-    const std::vector<std::vector<int>>& neighbors) {
+    const std::vector<std::vector<int>>& neighbors,
+    const AceBondAdjacency& adj) {
   std::vector<int> metal_conn(atoms.size(), 0);
+
+  auto has_pi_bond = [&](size_t idx) {
+    for (const auto& nb : adj[idx]) {
+      if (atoms[nb.idx].is_metal)
+        continue;
+      if (nb.type == BondType::Double ||
+          nb.type == BondType::Triple ||
+          nb.type == BondType::Aromatic ||
+          nb.type == BondType::Deloc)
+        return true;
+    }
+    return false;
+  };
 
   for (auto& atom : atoms) {
     int t_len = 0;
@@ -1744,7 +1782,10 @@ void set_atoms_bonding_idx(
       atom.bonding_idx = t_len;
     } else if (atom.el == El::C || atom.el == El::Si || atom.el == El::Ge) {
       if (t_len == 4) {
-        atom.bonding_idx = 3;
+        if (has_pi_bond(atom.index))
+          atom.bonding_idx = 2;
+        else
+          atom.bonding_idx = 3;
       } else if (t_len == 3) {
         atom.bonding_idx = 2;
       } else if (t_len == 2) {
@@ -1912,26 +1953,121 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   AceBondAdjacency& adj = graph.adjacency;
   std::vector<std::vector<int>>& neighbors = graph.neighbors;
 
-  // Connectivity counts
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    atoms[i].connectivity = static_cast<int>(neighbors[i].size());
-    atoms[i].conn_atoms_no_metal.clear();
-    int metal_conn = 0;
-    for (int nb : neighbors[i]) {
-      if (atoms[nb].is_metal) {
-        ++metal_conn;
-      } else {
-        atoms[i].conn_atoms_no_metal.push_back(nb);
+  std::vector<CodAtomInfo> work_atoms = atoms;
+  std::vector<std::vector<int>> work_neighbors = neighbors;
+  std::vector<std::vector<int>> full_neighbors = neighbors;
+  const size_t orig_size = atoms.size();
+
+  std::vector<int> b_neighbors(cc.atoms.size(), 0);
+  for (size_t i = 0; i < cc.atoms.size(); ++i)
+    for (const auto& nb : adj[i])
+      if (cc.atoms[nb.idx].el == El::B)
+        ++b_neighbors[i];
+
+  auto has_carborane_seed = [&]() {
+    for (size_t i = 0; i < cc.atoms.size(); ++i) {
+      const Element el = cc.atoms[i].el;
+      if (el == El::H)
+        continue;
+      if (b_neighbors[i] >= 4)
+        return true;
+    }
+    return false;
+  };
+
+  auto collect_carborane_cluster_atoms = [&]() {
+    std::vector<size_t> seeds;
+    for (size_t i = 0; i < cc.atoms.size(); ++i) {
+      if (cc.atoms[i].el == El::H)
+        continue;
+      if (b_neighbors[i] >= 4)
+        seeds.push_back(i);
+    }
+    std::set<size_t> out;
+    std::vector<size_t> stack = seeds;
+    while (!stack.empty()) {
+      size_t idx = stack.back();
+      stack.pop_back();
+      if (!out.insert(idx).second)
+        continue;
+      for (const auto& nb : adj[idx]) {
+        Element el = cc.atoms[nb.idx].el;
+        if (el == El::H)
+          continue;
+        if (el == El::B ||
+            ((el == El::C || el.is_metal()) && b_neighbors[nb.idx] >= 2))
+          stack.push_back(nb.idx);
       }
     }
-    atoms[i].metal_connectivity = metal_conn;
+    return out;
+  };
+
+  if (has_carborane_seed()) {
+    std::set<size_t> cb_atoms = collect_carborane_cluster_atoms();
+    for (size_t i = 0; i < orig_size; ++i) {
+      if (cb_atoms.count(i))
+        continue;
+      if (cc.atoms[i].el == El::H)
+        continue;
+      std::vector<int> to_remove;
+      for (int nb : work_neighbors[i]) {
+        if (cb_atoms.count(static_cast<size_t>(nb)) == 0)
+          continue;
+        to_remove.push_back(nb);
+        CodAtomInfo h;
+        h.index = static_cast<int>(work_atoms.size());
+        h.id = cat("HCB", h.index);
+        h.el = El::H;
+        h.is_metal = false;
+        h.charge = 0.0f;
+        h.par_charge = 0.0f;
+        work_atoms.push_back(h);
+        work_neighbors.emplace_back();
+        work_neighbors[i].push_back(h.index);
+        work_neighbors[h.index].push_back(static_cast<int>(i));
+      }
+      if (!to_remove.empty()) {
+        auto& nbs = work_neighbors[i];
+        vector_remove_if(nbs, [&](int nb) {
+          return cb_atoms.count(static_cast<size_t>(nb)) != 0;
+        });
+      }
+    }
+  }
+
+  // For non-metal atoms, ignore metal neighbors in COD class/nb-symbol generation.
+  // Keep metal connectivity from full_neighbors for bonding_idx heuristics.
+  if (work_neighbors.size() != full_neighbors.size())
+    full_neighbors.resize(work_neighbors.size());
+  for (size_t i = 0; i < work_atoms.size(); ++i) {
+    if (work_atoms[i].is_metal)
+      continue;
+    auto& nbs = work_neighbors[i];
+    vector_remove_if(nbs, [&](int nb) {
+      return work_atoms[nb].is_metal;
+    });
+  }
+
+  // Connectivity counts
+  for (size_t i = 0; i < work_atoms.size(); ++i) {
+    work_atoms[i].connectivity = static_cast<int>(work_neighbors[i].size());
+    work_atoms[i].conn_atoms_no_metal.clear();
+    int metal_conn = 0;
+    for (int nb : full_neighbors[i]) {
+      if (work_atoms[nb].is_metal) {
+        ++metal_conn;
+      } else {
+        work_atoms[i].conn_atoms_no_metal.push_back(nb);
+      }
+    }
+    work_atoms[i].metal_connectivity = metal_conn;
   }
 
   // AceDRG adjusts charges for atoms bonded to metals via valence bookkeeping.
   // Use non-metal bond orders to recompute charge for such atoms so that
   // bonding_idx and aromaticity match AceDRG behavior (e.g., AIV N2).
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    CodAtomInfo& atom = atoms[i];
+  for (size_t i = 0; i < work_atoms.size(); ++i) {
+    CodAtomInfo& atom = work_atoms[i];
     if (atom.is_metal || atom.el == El::H)
       continue;
     if (!has_metal_and_non_metal_heavy_neighbor(cc, adj, i))
@@ -1947,42 +2083,36 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   }
 
   // Bonding/planarity info is needed for AceDRG ring aromaticity rules.
-  set_atoms_bonding_idx(atoms, neighbors);
+  set_atoms_bonding_idx(work_atoms, work_neighbors, adj);
 
   // Detect rings and populate ring representations
   std::vector<RingInfo> rings;
-  detect_rings_acedrg(neighbors, atoms, rings);
-  set_ring_aromaticity_from_bonds(adj, atoms, rings, verbose);
-  set_atoms_ring_rep_s(atoms, rings);
+  detect_rings_acedrg(work_neighbors, work_atoms, rings);
+  set_ring_aromaticity_from_bonds(adj, work_atoms, rings, verbose);
+  set_atoms_ring_rep_s(work_atoms, rings);
 
   // Build COD class names (AceDRG style)
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    set_atom_cod_class_name_new2(atoms[i], atoms[i], 2, atoms, neighbors);
-    set_special_3nb_symb2(atoms[i], atoms, neighbors);
-    cod_class_to_atom2(atoms[i].cod_class, atoms[i]);
+  for (size_t i = 0; i < work_atoms.size(); ++i) {
+    set_atom_cod_class_name_new2(work_atoms[i], work_atoms[i], 2, work_atoms, work_neighbors);
+    set_special_3nb_symb2(work_atoms[i], work_atoms, work_neighbors);
+    cod_class_to_atom2(work_atoms[i].cod_class, work_atoms[i]);
   }
 
   // Hybridization and NB1/NB2_SP
-  set_atoms_nb1nb2_sp(atoms, neighbors);
+  set_atoms_nb1nb2_sp(work_atoms, work_neighbors);
 
   // Ring props from codClass and hash codes
-  for (auto& atom : atoms) {
+  for (auto& atom : work_atoms) {
     atom.min_ring_size = get_min_ring2_from_cod_class(atom.cod_class);
     atom.is_aromatic = cod_class_is_aromatic(atom.cod_class);
     atom.hybrid = hybrid_from_bonding_idx(atom.bonding_idx, atom.is_metal,
                                           atom.connectivity);
     compute_hash(atom);
     // Store no-charge variant for COD table lookup consistency.
-    // cod_class itself doesn't encode charges (it's based on ring aromaticity and
-    // neighbor topology). The charge-sensitive fields are bonding_idx/hybrid/nb1nb2_sp,
-    // but those are used separately in lookups. For now, cod_class_no_charge equals
-    // cod_class since the COD class string format doesn't include charge info.
     atom.cod_class_no_charge = atom.cod_class;
   }
 
   // Phase 2: Rebuild codClass with permissive aromaticity for output.
-  // AceDRG's reDoAtomCodClassNames() sets isAromatic = isAromaticP after lookups.
-  // cod_class_no_charge (used for table lookups) retains the strict version.
   bool has_permissive_diff = false;
   for (const auto& ring : rings)
     if (ring.is_aromatic_permissive != ring.is_aromatic)
@@ -1990,23 +2120,19 @@ std::vector<CodAtomInfo> AcedrgTables::classify_atoms(const ChemComp& cc) const 
   if (has_permissive_diff) {
     for (auto& ring : rings)
       ring.is_aromatic = ring.is_aromatic_permissive;
-    for (auto& atom : atoms)
+    for (auto& atom : work_atoms)
       atom.ring_rep_s.clear();
-    set_atoms_ring_rep_s(atoms, rings);
-    for (size_t i = 0; i < atoms.size(); ++i) {
-      set_atom_cod_class_name_new2(atoms[i], atoms[i], 2, atoms, neighbors);
-      set_special_3nb_symb2(atoms[i], atoms, neighbors);
+    set_atoms_ring_rep_s(work_atoms, rings);
+    for (size_t i = 0; i < work_atoms.size(); ++i) {
+      set_atom_cod_class_name_new2(work_atoms[i], work_atoms[i], 2, work_atoms, work_neighbors);
+      set_special_3nb_symb2(work_atoms[i], work_atoms, work_neighbors);
     }
-    // Don't call cod_class_to_atom2 here — it would overwrite cod_main, cod_root,
-    // nb_symb, nb2_symb, nb3_symb with permissive-aromaticity values, but these
-    // fields must retain strict-aromaticity values for COD table lookups.
-    // Update atom-level is_aromatic to match the permissive cod_class.
-    // Hash was already computed with strict aromaticity (for table lookups).
-    for (auto& atom : atoms)
+    for (auto& atom : work_atoms)
       atom.is_aromatic = cod_class_is_aromatic(atom.cod_class);
   }
 
-  return atoms;
+  work_atoms.resize(orig_size);
+  return work_atoms;
 }
 
 // AceDrg hash used in *HRS.table files
@@ -2033,9 +2159,8 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
     default: d2 = 7; break;
   }
 
-  // d3: non-metal connectivity + 8
-  // AceDRG excludes metal neighbors from connectivity when computing hash.
-  int d3 = 8 + static_cast<int>(atom.conn_atoms_no_metal.size());
+  // d3: total connectivity + 8 (AceDRG uses connAtoms size, including metals)
+  int d3 = 8 + atom.connectivity;
 
   // d4/d5: periodic row/group from elem.hpp.
   // Handle deuterium as hydrogen.
@@ -2191,30 +2316,29 @@ void set_org_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
       if (nh == 0) atom.ccp4_type = "CT";
       else if (nh == 1) atom.ccp4_type = "CH1";
       else if (nh == 2) {
-        // AceDRG keeps CH3 for some mixed-carborane linker carbons (e.g. 9UK C3):
-        // two explicit H, one N neighbor and one highly connected cage carbon.
-        bool carborane_linker = false;
-        int n_n = 0;
-        int n_c = 0;
-        bool has_high_cn_c = false;
+        // AceDRG treats some carborane-linker carbons as CH3 even with two H
+        // (e.g., B8B C1): two heavy neighbors, one is a high-degree cage carbon.
+        bool cage_linker = false;
+        int heavy_conn = 0;
         for (int nb : atom.conn_atoms_no_metal) {
           if (atoms[nb].el == El::H)
             continue;
-          if (atoms[nb].el == El::N)
-            ++n_n;
-          else if (atoms[nb].el == El::C) {
-            ++n_c;
-            int c_heavy_conn = 0;
-            for (int nb2 : atoms[nb].conn_atoms_no_metal)
-              if (atoms[nb2].el != El::H)
-                ++c_heavy_conn;
-            if (c_heavy_conn >= 5)
-              has_high_cn_c = true;
+          ++heavy_conn;
+          if (atoms[nb].el != El::C)
+            continue;
+          int heavy_deg = 0;
+          bool has_b = false;
+          for (int nb2 : atoms[nb].conn_atoms_no_metal) {
+            if (atoms[nb2].el == El::H)
+              continue;
+            ++heavy_deg;
+            if (atoms[nb2].el == El::B)
+              has_b = true;
           }
+          if (heavy_deg >= 5 && has_b)
+            cage_linker = true;
         }
-        if (n_n == 1 && n_c == 1 && has_high_cn_c)
-          carborane_linker = true;
-        atom.ccp4_type = carborane_linker ? "CH3" : "CH2";
+        atom.ccp4_type = (cage_linker && heavy_conn == 2) ? "CH3" : "CH2";
       }
       else if (nh == 3) atom.ccp4_type = "CH3";
     } else if (atom.bonding_idx == 1) {
@@ -2581,13 +2705,34 @@ static void enforce_sp2_angle_sum(
     size_t center_idx = it->second;
     if (atom_info[center_idx].hybrid != Hybridization::SP2)
       continue;
+    // AceDRG skips sp2-sum enforcement when a metal-flank SP2 center has
+    // no fixed angles (e.g., corrin N21/N24 with all-free angles).
     std::vector<size_t> fixed, free;
+    bool center_has_metal = (atom_info[center_idx].metal_connectivity > 0);
     for (size_t idx_ang : entry.second) {
-      if (angle_is_fixed[idx_ang])
+      bool is_fixed = angle_is_fixed[idx_ang];
+      if (!is_fixed) {
+        int i1 = cc.find_atom_index(cc.rt.angles[idx_ang].id1.atom);
+        int i3 = cc.find_atom_index(cc.rt.angles[idx_ang].id3.atom);
+        if (center_has_metal && i1 >= 0 && i3 >= 0) {
+          int ring = angle_ring_size(atom_info[center_idx],
+                                     atom_info[i1], atom_info[i3]);
+          if (ring > 0 &&
+              (atom_info[i1].bonding_idx == 2 ||
+               atom_info[i3].bonding_idx == 2)) {
+            is_fixed = true;
+          }
+        }
+      } else {
+        (void)0;
+      }
+      if (is_fixed)
         fixed.push_back(idx_ang);
       else
         free.push_back(idx_ang);
     }
+    if (center_has_metal && fixed.empty())
+      continue;
     if (free.empty())
       continue;
     // When free angles include both metal-flank and organic angles,
@@ -3488,7 +3633,7 @@ bool AcedrgTables::lookup_nucl_tors(const std::string& a1,
 
 CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
     const CodAtomInfo& center, const CodAtomInfo& a3,
-    int* out_level) const {
+    int min_obs, int* out_level) const {
 
   // Build lookup keys - canonicalize flanking atoms
   // Table format: ha1=center, ha2=flank_min, ha3=flank_max
@@ -3537,10 +3682,11 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
 
   // Helper lambda: check if vs from angle level meets threshold and return it.
   int matched_level = -1;
-  auto try_angle = [&](const std::vector<CodStats>* vec, int min_obs, const char* level_name, int level) -> CodStats {
+  int min_obs_eff = (min_obs >= 0 ? min_obs : min_observations_angle_fallback);
+  auto try_angle = [&](const std::vector<CodStats>* vec, int min_obs_local, const char* level_name, int level) -> CodStats {
     if (vec && !vec->empty()) {
       CodStats vs = vec->front();
-      if (vs.count >= min_obs) {
+      if (vs.count >= min_obs_local) {
         if (verbose >= 2)
           std::fprintf(stderr, "      matched angle %s-%s-%s: level=%s\n",
                        a1.id.c_str(), center.id.c_str(), a3.id.c_str(), level_name);
@@ -3577,7 +3723,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                         a1_nb, '|', a2_nb, '|', a3_nb, '|',
                         a1_type, '|', a2_type, '|', a3_type);
       CodStats vs = try_angle(find_val(angle_idx_1d_, key_1d),
-                              min_observations_angle, "1D", 0);
+                              min_obs_eff, "1D", 0);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
@@ -3591,7 +3737,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                         a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
                         a1_nb, '|', a2_nb, '|', a3_nb);
       CodStats vs = try_angle(find_val(angle_idx_2d_, key_2d),
-                              min_observations_angle_fallback, "2D", 1);
+                              min_obs_eff, "2D", 1);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
@@ -3604,7 +3750,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
                         a1_root, '|', a2_root, '|', a3_root, '|',
                         a1_nb2, '|', a2_nb2, '|', a3_nb2);
       CodStats vs = try_angle(find_val(angle_idx_3d_, key_3d),
-                              min_observations_angle_fallback, "3D", 2);
+                              min_obs_eff, "3D", 2);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
@@ -3616,7 +3762,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
       auto key_4d = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
                         a1_root, '|', a2_root, '|', a3_root);
       CodStats vs = try_angle(find_val(angle_idx_4d_, key_4d),
-                              min_observations_angle_fallback, "4D", 3);
+                              min_obs_eff, "4D", 3);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
@@ -3630,7 +3776,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
   if (auto* p3 = find_val(*p2, ha3)) {
     auto* exact_vk = find_val(*p3, value_key);
     if (exact_vk) {
-      CodStats vs = try_angle(exact_vk, min_observations_angle_fallback, "5D", 4);
+      CodStats vs = try_angle(exact_vk, min_obs_eff, "5D", 4);
       if (!std::isnan(vs.value)) {
         if (out_level) *out_level = matched_level;
         return vs;
@@ -3647,7 +3793,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
           auto uscore = kv.first.find('_', ring_prefix.size());
           if (uscore != std::string::npos
               && kv.first.compare(ring_prefix.size(), uscore - ring_prefix.size(), hc) == 0) {
-            CodStats vs = try_angle(&kv.second, min_observations_angle_fallback, "5D", 4);
+            CodStats vs = try_angle(&kv.second, min_obs_eff, "5D", 4);
             if (!std::isnan(vs.value)) {
               if (out_level) *out_level = matched_level;
               return vs;
@@ -3754,7 +3900,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
   // total connectivity to determine the default angle.
   if (a1.is_metal || a3.is_metal) {
     int bi;  // virtual bonding_idx using total connectivity
-    int tc = center.connectivity;
+    int tc = center.connectivity + center.metal_connectivity;
     if (center.el == El::C || center.el == El::Si || center.el == El::Ge) {
       bi = tc >= 4 ? 3 : tc == 3 ? 2 : 1;
     } else if (center.el == El::N || center.el == El::As) {
@@ -3783,9 +3929,13 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
   }
 
   // Try detailed multilevel search first
+  int min_obs = min_observations_angle;
+  if (a1.el == El::As || center.el == El::As || a3.el == El::As ||
+      a1.el == El::Ge || center.el == El::Ge || a3.el == El::Ge)
+    min_obs = 1;
   int level = -1;
-  CodStats vs = search_angle_multilevel(a1, center, a3, &level);
-  if (vs.count >= min_observations_angle) {
+  CodStats vs = search_angle_multilevel(a1, center, a3, min_obs, &level);
+  if (vs.count >= min_obs) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
     trace_return("multilevel", level, &vs);
@@ -3897,7 +4047,7 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
 
   // Try HRS table
   vs = search_angle_hrs(a1, center, a3, ring_size);
-  if (vs.count >= min_observations_angle) {
+  if (vs.count >= min_obs) {
     angle.value = vs.value;
     angle.esd = clamp_angle_sigma(vs.sigma);
     trace_return("hrs", 6, &vs);
