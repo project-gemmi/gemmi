@@ -2,8 +2,12 @@
 
 import contextlib
 import os
+import subprocess
+import tempfile
 import unittest
 import gemmi
+
+TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 
 
 @contextlib.contextmanager
@@ -332,6 +336,53 @@ class TestAcePrepareChemComp(unittest.TestCase):
         with temp_env('GEMMI_ACE_TRACE', '1'):
             self.prepare(cc)
         self.assertEqual(len(cc.rt.bonds), 1)
+
+
+class TestAceDrgBatch(unittest.TestCase):
+    def test_drg_batch_strict_regression_pack(self):
+        gemmi_bin = os.path.join(TOP_DIR, 'build', 'gemmi')
+        tables_dir = os.path.join(TOP_DIR, 'acedrg', 'tables')
+        if not os.path.isfile(gemmi_bin):
+            self.skipTest('build/gemmi is not available')
+        if not os.path.isdir(tables_dir):
+            self.skipTest('acedrg tables directory is not available')
+
+        rel_inputs = [
+            'ccd/orig/ALA.cif',
+            'ccd/orig/ATP.cif',
+            'ccd/orig/CYS.cif',
+            'ccd/orig/HEM.cif',
+            'ccd/orig/HIS.cif',
+            'ccd/orig/SEC.cif',
+            'ccd/orig/TRP.cif',
+            'ccd/orig/TYR.cif',
+        ]
+        inputs = [os.path.join(TOP_DIR, p) for p in rel_inputs]
+        for path in inputs:
+            if not os.path.isfile(path):
+                self.skipTest(f'missing test input: {path}')
+
+        with tempfile.TemporaryDirectory(prefix='gemmi-ace-batch-') as out_dir:
+            env = os.environ.copy()
+            env['GEMMI_ACE_STRICT'] = '1'
+            env['ACEDRG_TABLES'] = tables_dir
+            subprocess.run(
+                [gemmi_bin, 'drg', '--output-dir', out_dir] + inputs,
+                cwd=TOP_DIR,
+                env=env,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            for input_path in inputs:
+                out_path = os.path.join(out_dir, os.path.basename(input_path))
+                self.assertTrue(os.path.isfile(out_path), out_path)
+                with open(out_path, encoding='utf-8') as f:
+                    text = f.read()
+                self.assertIn('_chem_comp_bond.atom_id_1', text, out_path)
+                self.assertIn('_chem_comp_angle.atom_id_1', text, out_path)
 
 
 if __name__ == '__main__':
