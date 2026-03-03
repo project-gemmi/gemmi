@@ -27,6 +27,19 @@ def temp_env(var, value):
             os.environ.pop(var, None)
 
 
+@contextlib.contextmanager
+def silence_c_stderr():
+    stderr_fd = 2
+    saved = os.dup(stderr_fd)
+    try:
+        with open(os.devnull, 'w', encoding='utf-8') as devnull:
+            os.dup2(devnull.fileno(), stderr_fd)
+            yield
+    finally:
+        os.dup2(saved, stderr_fd)
+        os.close(saved)
+
+
 class TestAcePrepareChemComp(unittest.TestCase):
     @staticmethod
     def make_atom(atom_id, el, chem_type, charge=0.0):
@@ -334,7 +347,8 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
 
         with temp_env('GEMMI_ACE_TRACE', '1'):
-            self.prepare(cc)
+            with silence_c_stderr():
+                self.prepare(cc)
         self.assertEqual(len(cc.rt.bonds), 1)
 
 
