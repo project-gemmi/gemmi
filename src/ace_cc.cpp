@@ -5815,23 +5815,8 @@ void add_planes_if_missing(ChemComp& cc,
   }
 }
 
-void apply_metal_charge_corrections(ChemComp& cc) {
-  if (cc.atoms.empty())
-    return;
-  auto graph = make_ace_graph_view(cc);
-  auto& adj = graph.adjacency;
-  for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    int formal_charge = 0;
-    if (compute_metal_neighbor_valence_charge(cc, adj, i, formal_charge))
-      cc.atoms[i].charge = static_cast<float>(formal_charge);
-  }
-}
-
-void apply_valence_charge_corrections(ChemComp& cc) {
-  if (cc.atoms.empty())
-    return;
-  auto graph = make_ace_graph_view(cc);
-  auto& adj = graph.adjacency;
+void apply_valence_charge_corrections_with_graph(ChemComp& cc,
+                                                 const AceBondAdjacency& adj) {
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     ChemComp::Atom& atom = cc.atoms[i];
     if (atom.el != El::N)
@@ -5854,31 +5839,38 @@ void apply_valence_charge_corrections(ChemComp& cc) {
   }
 }
 
-}  // namespace
-
-void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
-                      const std::map<std::string, std::string>& atom_stereo,
-                      bool no_angles,
-                      const std::map<std::string, Position>* sugar_coord_overrides) {
-  bool has_cb_seed = false;
-  {
-    AceGraphView graph = make_ace_graph_view(cc);
-    has_cb_seed = has_carborane_seed(cc, graph.adjacency);
-    if (is_carborane_mode_component(cc, graph.adjacency)) {
-      apply_carborane_mode(cc, no_angles);
-      tables.assign_ccp4_types(cc);
-      return;
-    }
+void apply_charge_corrections(ChemComp& cc) {
+  if (cc.atoms.empty())
+    return;
+  auto graph = make_ace_graph_view(cc);
+  auto& adj = graph.adjacency;
+  apply_valence_charge_corrections_with_graph(cc, adj);
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    int formal_charge = 0;
+    if (compute_metal_neighbor_valence_charge(cc, adj, i, formal_charge))
+      cc.atoms[i].charge = static_cast<float>(formal_charge);
   }
+}
 
-  if (!no_angles)
-    add_angles_from_bonds_if_missing(cc);
+bool maybe_apply_carborane_mode(ChemComp& cc, const AcedrgTables& tables,
+                                bool no_angles, bool& has_cb_seed) {
+  AceGraphView graph = make_ace_graph_view(cc);
+  has_cb_seed = has_carborane_seed(cc, graph.adjacency);
+  if (!is_carborane_mode_component(cc, graph.adjacency))
+    return false;
+  apply_carborane_mode(cc, no_angles);
+  tables.assign_ccp4_types(cc);
+  return true;
+}
 
-  // Collect all original atom names for H naming collision checks.
+std::set<std::string> collect_used_atom_names(const ChemComp& cc) {
   std::set<std::string> used_names;
   for (const auto& atom : cc.atoms)
     used_names.insert(atom.id);
+  return used_names;
+}
 
+void apply_chemical_adjustments(ChemComp& cc, std::set<std::string>& used_names) {
   adjust_oxoacid_group(cc, El::P, 3, true);   // phosphate
   adjust_oxoacid_group(cc, El::S, 4, false);  // sulfate
   adjust_nitro_group(cc);
@@ -5891,17 +5883,95 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   adjust_amino_ter_amine(cc, used_names, n_neighbors);
   adjust_terminal_amine(cc, used_names, n_neighbors);
   adjust_protonated_amide_n(cc, used_names, n_neighbors);
+}
+
+void add_mixed_carborane_torsions(ChemComp& cc) {
+  auto torsion_exists = [&](const std::string& a1, const std::string& a2,
+                            const std::string& a3, const std::string& a4) {
+    for (const auto& tor : cc.rt.torsions) {
+      bool same = tor.id1.atom == a1 && tor.id2.atom == a2 &&
+                  tor.id3.atom == a3 && tor.id4.atom == a4;
+      bool rev = tor.id1.atom == a4 && tor.id2.atom == a3 &&
+                 tor.id3.atom == a2 && tor.id4.atom == a1;
+      if (same || rev)
+        return true;
+    }
+    return false;
+  };
+  std::vector<std::vector<size_t>> bond_adj(cc.atoms.size());
+  for (const auto& bond : cc.rt.bonds) {
+    int i1 = cc.find_atom_index(bond.id1.atom);
+    int i2 = cc.find_atom_index(bond.id2.atom);
+    if (i1 < 0 || i2 < 0)
+      continue;
+    bond_adj[(size_t) i1].push_back((size_t) i2);
+    bond_adj[(size_t) i2].push_back((size_t) i1);
+  }
+  for (size_t n_idx = 0; n_idx < cc.atoms.size(); ++n_idx) {
+    if (cc.atoms[n_idx].el != El::N)
+      continue;
+    size_t s_idx = SIZE_MAX;
+    std::vector<size_t> c_neighbors;
+    for (size_t nb_idx : bond_adj[n_idx]) {
+      Element el = cc.atoms[nb_idx].el;
+      if (el == El::S)
+        s_idx = nb_idx;
+      else if (el == El::C)
+        c_neighbors.push_back(nb_idx);
+    }
+    if (s_idx == SIZE_MAX || c_neighbors.empty())
+      continue;
+    std::string n_id = cc.atoms[n_idx].id;
+    std::string s_id = cc.atoms[s_idx].id;
+    for (size_t c2_idx : c_neighbors) {
+      std::string c2_id = cc.atoms[c2_idx].id;
+      for (size_t nb2_idx : bond_adj[c2_idx]) {
+        if (nb2_idx == n_idx || cc.atoms[nb2_idx].el != El::C)
+          continue;
+        std::string c1_id = cc.atoms[nb2_idx].id;
+        if (!torsion_exists(c1_id, c2_id, n_id, s_id)) {
+          cc.rt.torsions.push_back({
+            "sp3_sp3_3",
+            {1, c1_id},
+            {1, c2_id},
+            {1, n_id},
+            {1, s_id},
+            180.0, 10.0, 3
+          });
+        }
+      }
+    }
+  }
+}
+
+bool has_missing_restraint_values(const ChemComp& cc, bool no_angles) {
+  int missing_bonds = count_missing_values(cc.rt.bonds);
+  int missing_angles = no_angles ? 0 : count_missing_values(cc.rt.angles);
+  return missing_bonds > 0 || missing_angles > 0;
+}
+
+}  // namespace
+
+void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
+                      const std::map<std::string, std::string>& atom_stereo,
+                      bool no_angles,
+                      const std::map<std::string, Position>* sugar_coord_overrides) {
+  bool has_cb_seed = false;
+  if (maybe_apply_carborane_mode(cc, tables, no_angles, has_cb_seed))
+    return;
+
+  if (!no_angles)
+    add_angles_from_bonds_if_missing(cc);
+
+  std::set<std::string> used_names = collect_used_atom_names(cc);
+
+  apply_chemical_adjustments(cc, used_names);
 
   bool added_h3 = add_n_terminal_h3(cc);
 
-  apply_valence_charge_corrections(cc);
-  apply_metal_charge_corrections(cc);
+  apply_charge_corrections(cc);
 
-  int missing_bonds = count_missing_values(cc.rt.bonds);
-  int missing_angles = no_angles ? 0 : count_missing_values(cc.rt.angles);
-  bool need_fill = (missing_bonds > 0 || missing_angles > 0);
-
-  if (need_fill)
+  if (has_missing_restraint_values(cc, no_angles))
     tables.fill_restraints(cc);
 
   if (added_h3 && !no_angles)
@@ -5919,64 +5989,8 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   if (has_cb_seed)
     apply_mixed_carborane_mode(cc, no_angles, tables.tables_dir_);
 
-  if (has_cb_seed) {
-    auto torsion_exists = [&](const std::string& a1, const std::string& a2,
-                              const std::string& a3, const std::string& a4) {
-      for (const auto& tor : cc.rt.torsions) {
-        bool same = tor.id1.atom == a1 && tor.id2.atom == a2 &&
-                    tor.id3.atom == a3 && tor.id4.atom == a4;
-        bool rev = tor.id1.atom == a4 && tor.id2.atom == a3 &&
-                   tor.id3.atom == a2 && tor.id4.atom == a1;
-        if (same || rev)
-          return true;
-      }
-      return false;
-    };
-    std::vector<std::vector<size_t>> bond_adj(cc.atoms.size());
-    for (const auto& bond : cc.rt.bonds) {
-      int i1 = cc.find_atom_index(bond.id1.atom);
-      int i2 = cc.find_atom_index(bond.id2.atom);
-      if (i1 < 0 || i2 < 0)
-        continue;
-      bond_adj[(size_t) i1].push_back((size_t) i2);
-      bond_adj[(size_t) i2].push_back((size_t) i1);
-    }
-    for (size_t n_idx = 0; n_idx < cc.atoms.size(); ++n_idx) {
-      if (cc.atoms[n_idx].el != El::N)
-        continue;
-      size_t s_idx = SIZE_MAX;
-      std::vector<size_t> c_neighbors;
-      for (size_t nb_idx : bond_adj[n_idx]) {
-        Element el = cc.atoms[nb_idx].el;
-        if (el == El::S)
-          s_idx = nb_idx;
-        else if (el == El::C)
-          c_neighbors.push_back(nb_idx);
-      }
-      if (s_idx == SIZE_MAX || c_neighbors.empty())
-        continue;
-      std::string n_id = cc.atoms[n_idx].id;
-      std::string s_id = cc.atoms[s_idx].id;
-      for (size_t c2_idx : c_neighbors) {
-        std::string c2_id = cc.atoms[c2_idx].id;
-        for (size_t nb2_idx : bond_adj[c2_idx]) {
-          if (nb2_idx == n_idx || cc.atoms[nb2_idx].el != El::C)
-            continue;
-          std::string c1_id = cc.atoms[nb2_idx].id;
-          if (!torsion_exists(c1_id, c2_id, n_id, s_id)) {
-            cc.rt.torsions.push_back({
-              "sp3_sp3_3",
-              {1, c1_id},
-              {1, c2_id},
-              {1, n_id},
-              {1, s_id},
-              180.0, 10.0, 3
-            });
-          }
-        }
-      }
-    }
-  }
+  if (has_cb_seed)
+    add_mixed_carborane_torsions(cc);
 
   tables.assign_ccp4_types(cc);
 }
