@@ -8,6 +8,7 @@
 #include "gemmi/calculate.hpp"
 #include "gemmi/ace_graph.hpp"
 #include "gemmi/cif.hpp"
+#include "gemmi/fail.hpp"
 #include "gemmi/resinfo.hpp"
 #include <algorithm>
 #include <cmath>
@@ -17,6 +18,7 @@
 #include <fstream>
 #include <numeric>
 #include <sstream>
+#include <array>
 #include <set>
 #include <map>
 #include <unordered_map>
@@ -32,6 +34,128 @@ int count_missing_values(const Range& range) {
   for (const auto& item : range)
     if (std::isnan(item.value)) missing++;
   return missing;
+}
+
+bool ace_strict_mode() {
+  if (const char* env = std::getenv("GEMMI_ACE_STRICT"))
+    return env[0] != '\0' && env[0] != '0';
+  return false;
+}
+
+std::string canonical_bond_key(const Restraints::Bond& bond) {
+  return Restraints::lexicographic_str(bond.id1.atom, bond.id2.atom);
+}
+
+std::string canonical_angle_key(const Restraints::Angle& angle) {
+  const std::string& a = angle.id1.atom;
+  const std::string& c = angle.id3.atom;
+  return a < c ? cat(a, '|', angle.id2.atom, '|', c)
+               : cat(c, '|', angle.id2.atom, '|', a);
+}
+
+std::string canonical_torsion_atoms(const Restraints::Torsion& tor) {
+  std::string fwd = cat(tor.id1.atom, '|', tor.id2.atom, '|', tor.id3.atom, '|', tor.id4.atom);
+  std::string rev = cat(tor.id4.atom, '|', tor.id3.atom, '|', tor.id2.atom, '|', tor.id1.atom);
+  return fwd < rev ? fwd : rev;
+}
+
+std::string canonical_chirality_key(const Restraints::Chirality& chir) {
+  std::array<std::string, 3> refs = {{chir.id1.atom, chir.id2.atom, chir.id3.atom}};
+  std::sort(refs.begin(), refs.end());
+  return cat(chir.id_ctr.atom, '|', refs[0], '|', refs[1], '|', refs[2], '|',
+             static_cast<int>(chir.sign));
+}
+
+std::string canonical_plane_key(const Restraints::Plane& plane) {
+  std::vector<std::string> atoms;
+  atoms.reserve(plane.ids.size());
+  for (const auto& id : plane.ids)
+    atoms.push_back(id.atom);
+  std::sort(atoms.begin(), atoms.end());
+  return cat(plane.label, '|', join_str(atoms, ","));
+}
+
+void cleanup_and_validate_restraints(ChemComp& cc, const char* stage) {
+  std::map<std::string, size_t> atom_index = cc.make_atom_index();
+  auto has_atom = [&](const std::string& id) {
+    return atom_index.find(id) != atom_index.end();
+  };
+
+  int invalid = 0;
+  int duplicate_atoms = 0;
+  {
+    std::unordered_map<std::string, int> atom_counts;
+    for (const auto& atom : cc.atoms)
+      ++atom_counts[atom.id];
+    for (const auto& kv : atom_counts)
+      if (kv.second > 1)
+        duplicate_atoms += kv.second - 1;
+  }
+
+  cc.remove_nonmatching_restraints();
+  for (const auto& plane : cc.rt.planes)
+    for (const auto& id : plane.ids)
+      if (!has_atom(id.atom))
+        ++invalid;
+  vector_remove_if(cc.rt.planes, [](const Restraints::Plane& plane) {
+    return plane.ids.size() < 3;
+  });
+
+  std::unordered_set<std::string> seen_bonds;
+  vector_remove_if(cc.rt.bonds, [&](const Restraints::Bond& bond) {
+    if (!has_atom(bond.id1.atom) || !has_atom(bond.id2.atom)) {
+      ++invalid;
+      return true;
+    }
+    return !seen_bonds.insert(canonical_bond_key(bond)).second;
+  });
+
+  std::unordered_set<std::string> seen_angles;
+  vector_remove_if(cc.rt.angles, [&](const Restraints::Angle& angle) {
+    if (!has_atom(angle.id1.atom) || !has_atom(angle.id2.atom) || !has_atom(angle.id3.atom)) {
+      ++invalid;
+      return true;
+    }
+    return !seen_angles.insert(canonical_angle_key(angle)).second;
+  });
+
+  std::unordered_set<std::string> seen_torsions;
+  vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& tor) {
+    if (!has_atom(tor.id1.atom) || !has_atom(tor.id2.atom) ||
+        !has_atom(tor.id3.atom) || !has_atom(tor.id4.atom)) {
+      ++invalid;
+      return true;
+    }
+    std::string key = cat(canonical_torsion_atoms(tor), '|', tor.label, '|', tor.period);
+    return !seen_torsions.insert(key).second;
+  });
+
+  std::unordered_set<std::string> seen_chirs;
+  vector_remove_if(cc.rt.chirs, [&](const Restraints::Chirality& chir) {
+    if (!has_atom(chir.id_ctr.atom) || !has_atom(chir.id1.atom) ||
+        !has_atom(chir.id2.atom) || !has_atom(chir.id3.atom)) {
+      ++invalid;
+      return true;
+    }
+    return !seen_chirs.insert(canonical_chirality_key(chir)).second;
+  });
+
+  std::unordered_set<std::string> seen_planes;
+  vector_remove_if(cc.rt.planes, [&](const Restraints::Plane& plane) {
+    bool ok = true;
+    for (const auto& id : plane.ids)
+      if (!has_atom(id.atom))
+        ok = false;
+    if (!ok) {
+      ++invalid;
+      return true;
+    }
+    return !seen_planes.insert(canonical_plane_key(plane)).second;
+  });
+
+  if (ace_strict_mode() && (invalid > 0 || duplicate_atoms > 0))
+    fail("ACE strict validation failed at ", stage, ": invalid=", invalid,
+         ", duplicate_atom_ids=", duplicate_atoms);
 }
 
 bool is_carborane_mode_component(const ChemComp& cc, const AceBondAdjacency& adj) {
@@ -5727,17 +5851,20 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
 
   if (!no_angles)
     add_angles_from_bonds_if_missing(cc);
+  cleanup_and_validate_restraints(cc, "post-angle-seed");
 
   std::set<std::string> used_names = collect_used_atom_names(cc);
 
   apply_chemical_adjustments(cc, used_names);
 
   bool added_h3 = add_n_terminal_h3(cc);
+  cleanup_and_validate_restraints(cc, "post-chemical-adjustments");
 
   apply_charge_corrections(cc);
 
   if (has_missing_restraint_values(cc, no_angles))
     tables.fill_restraints(cc);
+  cleanup_and_validate_restraints(cc, "post-fill");
 
   if (added_h3 && !no_angles)
     sync_n_terminal_h3_angles(cc);
@@ -5756,6 +5883,8 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
 
   if (has_cb_seed)
     add_mixed_carborane_torsions(cc);
+
+  cleanup_and_validate_restraints(cc, "final");
 
   tables.assign_ccp4_types(cc);
 }

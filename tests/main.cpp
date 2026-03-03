@@ -10,6 +10,8 @@
 #include <gemmi/it92.hpp>
 #include <gemmi/util.hpp>  // for is_in_list
 #include <gemmi/asudata.hpp>  // for ComplexCorrelation
+#include <gemmi/ace_cc.hpp>
+#include <gemmi/acedrg_tables.hpp>
 #include <linalg.h>
 
 static double draw() { return 10.0 * std::rand() / RAND_MAX - 5; }
@@ -182,4 +184,97 @@ TEST_CASE("vector_Vec3") {
   const double* x1 = &vec[1].x;
   auto offset = x1 - x0;
   CHECK_EQ(offset, 3);
+}
+
+TEST_CASE("prepare_chemcomp cleans invalid restraint references") {
+  gemmi::ChemComp cc;
+  cc.name = "TINV";
+  cc.type_or_group = "non-polymer";
+  cc.group = gemmi::ChemComp::Group::NonPolymer;
+  cc.atoms.push_back({"C1", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+  cc.atoms.push_back({"C2", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+  cc.atoms.push_back({"C3", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+
+  cc.rt.bonds.push_back({{1, "C1"}, {1, "C2"}, gemmi::BondType::Single, false,
+                         1.50, 0.02, NAN, NAN});
+  cc.rt.angles.push_back({{1, "C1"}, {1, "C2"}, {1, "X"}, 120.0, 3.0});
+  cc.rt.torsions.push_back({"auto", {1, "C1"}, {1, "C2"}, {1, "X"}, {1, "C3"},
+                            180.0, 10.0, 3});
+  cc.rt.chirs.push_back({{1, "X"}, {1, "C1"}, {1, "C2"}, {1, "C3"},
+                         gemmi::ChiralityType::Positive});
+  cc.rt.planes.push_back({"p", {{1, "C1"}, {1, "X"}, {1, "C2"}}, 0.02});
+
+  gemmi::AcedrgTables tables;
+  gemmi::prepare_chemcomp(cc, tables, {}, true, nullptr);
+
+  auto has_atom = [&](const std::string& id) { return cc.find_atom(id) != cc.atoms.end(); };
+  for (const auto& b : cc.rt.bonds) {
+    CHECK(has_atom(b.id1.atom));
+    CHECK(has_atom(b.id2.atom));
+  }
+  for (const auto& a : cc.rt.angles) {
+    CHECK(has_atom(a.id1.atom));
+    CHECK(has_atom(a.id2.atom));
+    CHECK(has_atom(a.id3.atom));
+  }
+  for (const auto& t : cc.rt.torsions) {
+    CHECK(has_atom(t.id1.atom));
+    CHECK(has_atom(t.id2.atom));
+    CHECK(has_atom(t.id3.atom));
+    CHECK(has_atom(t.id4.atom));
+  }
+  for (const auto& ch : cc.rt.chirs) {
+    CHECK(has_atom(ch.id_ctr.atom));
+    CHECK(has_atom(ch.id1.atom));
+    CHECK(has_atom(ch.id2.atom));
+    CHECK(has_atom(ch.id3.atom));
+  }
+  for (const auto& p : cc.rt.planes)
+    for (const auto& id : p.ids)
+      CHECK(has_atom(id.atom));
+}
+
+TEST_CASE("prepare_chemcomp deduplicates restraints centrally") {
+  gemmi::ChemComp cc;
+  cc.name = "TDED";
+  cc.type_or_group = "non-polymer";
+  cc.group = gemmi::ChemComp::Group::NonPolymer;
+  cc.atoms.push_back({"C1", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+  cc.atoms.push_back({"C2", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+  cc.atoms.push_back({"C3", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+  cc.atoms.push_back({"C4", "", gemmi::El::C, 0.0f, "C", "", gemmi::Position()});
+
+  cc.rt.bonds.push_back({{1, "C1"}, {1, "C2"}, gemmi::BondType::Single, false,
+                         1.50, 0.02, NAN, NAN});
+  cc.rt.bonds.push_back({{1, "C2"}, {1, "C1"}, gemmi::BondType::Single, false,
+                         1.50, 0.02, NAN, NAN});
+  cc.rt.bonds.push_back({{1, "C2"}, {1, "C3"}, gemmi::BondType::Single, false,
+                         1.50, 0.02, NAN, NAN});
+  cc.rt.bonds.push_back({{1, "C3"}, {1, "C4"}, gemmi::BondType::Single, false,
+                         1.50, 0.02, NAN, NAN});
+
+  cc.rt.angles.push_back({{1, "C1"}, {1, "C2"}, {1, "C3"}, 120.0, 3.0});
+  cc.rt.angles.push_back({{1, "C3"}, {1, "C2"}, {1, "C1"}, 120.0, 3.0});
+
+  cc.rt.torsions.push_back({"dup", {1, "C1"}, {1, "C2"}, {1, "C3"}, {1, "C4"},
+                            180.0, 10.0, 3});
+  cc.rt.torsions.push_back({"dup", {1, "C4"}, {1, "C3"}, {1, "C2"}, {1, "C1"},
+                            180.0, 10.0, 3});
+
+  cc.rt.chirs.push_back({{1, "C2"}, {1, "C1"}, {1, "C3"}, {1, "C4"},
+                         gemmi::ChiralityType::Positive});
+  cc.rt.chirs.push_back({{1, "C2"}, {1, "C3"}, {1, "C1"}, {1, "C4"},
+                         gemmi::ChiralityType::Positive});
+
+  cc.rt.planes.push_back({"pl", {{1, "C1"}, {1, "C2"}, {1, "C3"}}, 0.02});
+  cc.rt.planes.push_back({"pl", {{1, "C3"}, {1, "C2"}, {1, "C1"}}, 0.02});
+
+  gemmi::AcedrgTables tables;
+  gemmi::prepare_chemcomp(cc, tables, {}, true, nullptr);
+
+  CHECK_EQ(cc.rt.bonds.size(), 3);
+  CHECK_EQ(cc.rt.angles.size(), 1);
+  CHECK_EQ(cc.rt.torsions.size(), 1);
+  CHECK_EQ(cc.rt.chirs.size(), 1);
+  CHECK_EQ(cc.rt.planes.size(), 1);
 }
