@@ -1357,9 +1357,7 @@ BondType get_bond_type(const ChemComp& cc, const std::string& a, const std::stri
 bool atom_has_unsaturated_bond(const ChemComp& cc, const std::string& atom_id) {
   for (const auto& bond : cc.rt.bonds) {
     if (bond.id1.atom == atom_id || bond.id2.atom == atom_id) {
-      if (bond.type == BondType::Double ||
-          bond.type == BondType::Aromatic ||
-          bond.type == BondType::Deloc)
+      if (bond.type == BondType::Double || is_aromatic_or_deloc(bond.type))
         return true;
     }
   }
@@ -1904,8 +1902,7 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names,
   for (const auto& bond : cc.rt.bonds) {
     bool unsat = (bond.type == BondType::Double ||
                   bond.type == BondType::Triple ||
-                  bond.type == BondType::Aromatic ||
-                  bond.type == BondType::Deloc);
+                  is_aromatic_or_deloc(bond.type));
     if (unsat) {
       has_unsat_bond[bond.id1.atom] = true;
       has_unsat_bond[bond.id2.atom] = true;
@@ -2958,8 +2955,8 @@ void apply_pyranose_chair_torsions_like_acedrg(
     size_t it1 = adj[o_idx][0].idx;
     size_t it2 = adj[o_idx][1].idx;
     bool l_conn_o = false;
-    for (size_t inb1 = 0; inb1 < adj[it1].size() && inb1 < cc.atoms.size(); ++inb1) {
-      if (cc.atoms[inb1].el == El::O && inb1 != o_idx) {
+    for (const auto& nb : adj[it1]) {
+      if (cc.atoms[nb.idx].el == El::O && nb.idx != o_idx) {
         l_conn_o = true;
         break;
       }
@@ -3007,12 +3004,8 @@ struct ChiralCenterInfo {
   std::map<size_t, std::map<size_t, std::vector<size_t>>> chir_mut_table;
 };
 
-bool is_sp2_like(const CodAtomInfo& ai);
-bool is_sp3_like(const CodAtomInfo& ai);
-
 ChiralCenterInfo detect_chiral_centers_and_mut_table(
     const ChemComp& cc, const AceBondAdjacency& adj,
-    const std::vector<CodAtomInfo>& atom_info,
     const std::map<std::string, std::string>& atom_stereo) {
   ChiralCenterInfo out;
   // Prefer explicitly listed/generated chirality rows when available.
@@ -3080,229 +3073,6 @@ ChiralCenterInfo detect_chiral_centers_and_mut_table(
     char s = lower(st_it->second[0]);
     if ((s == 'r' || s == 's') && cc.atoms[i].el == El::C)
       out.stereo_chiral_centers.insert(i);
-  }
-  return out;
-
-  std::set<size_t> stereo_negative_centers;
-  for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    if (atom_info[i].hybrid != Hybridization::SP3)
-      continue;
-    std::vector<size_t> non_h_nbs;
-    for (const auto& nb : adj[i])
-      if (!cc.atoms[nb.idx].is_hydrogen())
-        non_h_nbs.push_back(nb.idx);
-    std::vector<size_t> chiral_legs = non_h_nbs;
-    if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2) {
-      bool n31_like = true;
-      for (size_t nb : non_h_nbs)
-        if (cc.atoms[nb].el != El::C || atom_info[nb].hybrid != Hybridization::SP3) {
-          n31_like = false;
-          break;
-        }
-      bool has_sp_neighbor = false;
-      for (size_t nb : non_h_nbs)
-        if (cc.atoms[nb].el == El::S || cc.atoms[nb].el == El::P) {
-          has_sp_neighbor = true;
-          break;
-        }
-      if (n31_like || has_sp_neighbor) {
-        for (const auto& nb : adj[i])
-          if (cc.atoms[nb.idx].is_hydrogen()) {
-            chiral_legs.push_back(nb.idx);
-            break;
-          }
-      }
-    }
-    auto shared_ring_count = [&](size_t a, size_t b) {
-      int n = 0;
-      for (int ra : atom_info[a].in_rings)
-        for (int rb : atom_info[b].in_rings)
-          if (ra == rb)
-            ++n;
-      return n;
-    };
-    bool has_halogen_nb = false;
-    for (size_t nb : non_h_nbs) {
-      Element e = cc.atoms[nb].el;
-      if (is_halogen(e)) {
-        has_halogen_nb = true;
-        break;
-      }
-    }
-    bool use_chiral_priority_sort = !(cc.atoms[i].el == El::C && has_halogen_nb);
-    // Save bond-table order before sorting; chir_mut_table uses bond-table order for N.
-    std::vector<size_t> bt_chiral_legs = chiral_legs;
-    auto bond_to_center_type = [&](size_t nb_idx) {
-      for (const auto& nb : adj[i])
-        if (nb.idx == nb_idx)
-          return nb.type;
-      return BondType::Unspec;
-    };
-    if (use_chiral_priority_sort) {
-      if (cc.atoms[i].el == El::P) {
-        auto p_nb_rank = [&](size_t nb_idx) {
-          if (cc.atoms[nb_idx].el != El::O)
-            return 3;
-          bool bridged_to_p = false;
-          for (const auto& nb2 : adj[nb_idx]) {
-            if (nb2.idx == i || cc.atoms[nb2.idx].is_hydrogen())
-              continue;
-            if (cc.atoms[nb2.idx].el == El::P) {
-              bridged_to_p = true;
-              break;
-            }
-          }
-          if (bridged_to_p)
-            return 0;
-          BondType bt = bond_to_center_type(nb_idx);
-          if (bt == BondType::Double || bt == BondType::Deloc)
-            return 2;
-          return 1;
-        };
-        std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
-                         [&](size_t a, size_t b) {
-                           int ra = p_nb_rank(a);
-                           int rb = p_nb_rank(b);
-                           if (ra != rb)
-                             return ra < rb;
-                           int pa = chirality_priority(cc.atoms[a].el);
-                           int pb = chirality_priority(cc.atoms[b].el);
-                           return pa < pb;
-                         });
-      } else {
-        auto is_pi_like_nb = [&](size_t nb_idx) {
-          for (const auto& nb : adj[nb_idx])
-            if (nb.idx != i &&
-                (nb.type == BondType::Double ||
-                 nb.type == BondType::Deloc ||
-                 nb.type == BondType::Aromatic))
-              return true;
-          return false;
-        };
-        bool center_has_pi_nonh = false;
-        if (cc.atoms[i].el == El::C) {
-          for (size_t nb_idx : non_h_nbs)
-            if (cc.atoms[nb_idx].el == El::C && is_pi_like_nb(nb_idx)) {
-              center_has_pi_nonh = true;
-              break;
-            }
-        }
-        std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
-                         [&](size_t a, size_t b) {
-                           if (cc.atoms[i].el == El::S) {
-                             auto s_nb_rank = [&](size_t nb_idx) {
-                               if (cc.atoms[nb_idx].el != El::O)
-                                 return 2;
-                               BondType bt = bond_to_center_type(nb_idx);
-                               return (bt == BondType::Double || bt == BondType::Deloc) ? 0 : 1;
-                             };
-                             int ra = s_nb_rank(a);
-                             int rb = s_nb_rank(b);
-                             if (ra != rb)
-                               return ra < rb;
-                           }
-                           int pa = chirality_priority(cc.atoms[a].el);
-                           int pb = chirality_priority(cc.atoms[b].el);
-                           if (pa != pb)
-                             return pa < pb;
-                           if (cc.atoms[i].el == El::C &&
-                               cc.atoms[a].el == El::C &&
-                               cc.atoms[b].el == El::C &&
-                               center_has_pi_nonh)
-                             return cc.atoms[a].id > cc.atoms[b].id;
-                           if (cc.atoms[i].el == El::N) {
-                             int sa = shared_ring_count(i, a);
-                             int sb = shared_ring_count(i, b);
-                             if (sa != sb)
-                               return sa > sb;
-                             return cc.atoms[a].id < cc.atoms[b].id;
-                           }
-                           return false;
-                         });
-      }
-    }
-    if (cc.atoms[i].el == El::N && non_h_nbs.size() == 2 && chiral_legs.size() >= 3) {
-      size_t s_idx = SIZE_MAX, o_idx = SIZE_MAX, h_idx = SIZE_MAX;
-      for (size_t a : chiral_legs) {
-        if (cc.atoms[a].el == El::S)
-          s_idx = a;
-        else if (cc.atoms[a].el == El::O)
-          o_idx = a;
-        else if (cc.atoms[a].is_hydrogen() && h_idx == SIZE_MAX)
-          h_idx = a;
-      }
-      if (s_idx != SIZE_MAX && o_idx != SIZE_MAX && h_idx != SIZE_MAX)
-        chiral_legs = {s_idx, o_idx, h_idx};
-    }
-    if (chiral_legs.size() < 3)
-      continue;
-    bool is_stereo_carbon = false;
-    bool is_stereo_r = false;
-    if (cc.atoms[i].el == El::C) {
-      auto st_it = atom_stereo.find(cc.atoms[i].id);
-      if (st_it != atom_stereo.end() && !st_it->second.empty()) {
-        char s = lower(st_it->second[0]);
-        is_stereo_carbon = (s == 'r' || s == 's');
-        is_stereo_r = (s == 'r');
-      }
-    }
-    if (is_stereo_carbon) {
-      if (is_stereo_r)
-        stereo_negative_centers.insert(i);
-      out.stereo_chiral_centers.insert(i);
-      std::stable_sort(chiral_legs.begin(), chiral_legs.end(),
-                       [&](size_t a, size_t b) {
-                         return chirality_priority(cc.atoms[a].el) <
-                                chirality_priority(cc.atoms[b].el);
-                       });
-    }
-    if (cc.atoms[i].el == El::C && chiral_legs.size() >= 4) {
-      std::vector<size_t> halogens;
-      bool has_oxygen = false;
-      for (size_t nb : chiral_legs) {
-        Element e = cc.atoms[nb].el;
-        if (is_halogen(e))
-          halogens.push_back(nb);
-        if (e == El::O)
-          has_oxygen = true;
-      }
-      if (has_oxygen && halogens.size() >= 3) {
-        chiral_legs.clear();
-        chiral_legs.push_back(halogens[0]);
-        chiral_legs.push_back(halogens[1]);
-        chiral_legs.push_back(halogens[2]);
-      }
-    }
-    // For N: COD CIF uses bond-table order; for S/P/C: sorted order matches.
-    const std::vector<size_t>& legs_for_mt =
-        (cc.atoms[i].el == El::N) ? bt_chiral_legs : chiral_legs;
-    size_t a1 = legs_for_mt[0], a2 = legs_for_mt[1], a3 = legs_for_mt[2];
-    size_t missing = SIZE_MAX;
-    for (const auto& nb : adj[i])
-      if (nb.idx != a1 && nb.idx != a2 && nb.idx != a3) {
-        missing = nb.idx;
-        break;
-      }
-    auto& mt = out.chir_mut_table[i];
-    bool negative_chiral = stereo_negative_centers.count(i) != 0;
-    if (!negative_chiral) {
-      mt[a1] = {a3, a2};
-      mt[a2] = {a1, a3};
-      mt[a3] = {a2, a1};
-    } else {
-      mt[a1] = {a2, a3};
-      mt[a2] = {a3, a1};
-      mt[a3] = {a1, a2};
-    }
-    if (missing != SIZE_MAX) {
-      mt[a1].push_back(missing);
-      mt[a2].push_back(missing);
-      mt[a3].push_back(missing);
-      if (!negative_chiral)
-        mt[missing] = {a1, a2, a3};
-      else
-        mt[missing] = {a3, a2, a1};
-    }
   }
   return out;
 }
@@ -4627,7 +4397,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                  has_sugar_ring ? 1 : 0, sugar_ring_bonds.size());
 
   ChiralCenterInfo chiral_info =
-      detect_chiral_centers_and_mut_table(cc, adj, atom_info, atom_stereo);
+      detect_chiral_centers_and_mut_table(cc, adj, atom_stereo);
   auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
   auto& chir_mut_table = chiral_info.chir_mut_table;
 
@@ -4675,8 +4445,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
                                                    atom_info[center3].in_rings,
                                                    atom_info[center3].min_ring_size);
 
-    bool bond_aromatic = (bond.type == BondType::Aromatic ||
-                          bond.type == BondType::Deloc ||
+    bool bond_aromatic = (is_aromatic_or_deloc(bond.type) ||
                           (aromatic_like[idx1] && aromatic_like[idx2]));
 
     // AceDRG generates SP1 torsions internally but setupMiniTorsions() filters
@@ -5194,10 +4963,8 @@ void add_chirality_if_missing(
                 if (nb3.idx != idx && !cc.atoms[nb3.idx].is_hydrogen())
                   ++second_shell_non_h;
             }
-            if (nb2.type == BondType::Double ||
-                nb2.type == BondType::Deloc ||
-                nb2.type == BondType::Aromatic ||
-                nb2.type == BondType::Triple)
+            if (nb2.type == BondType::Double || nb2.type == BondType::Triple ||
+                is_aromatic_or_deloc(nb2.type))
               has_pi_other = true;
             if (nb2.type == BondType::Triple)
               has_triple_other = true;
@@ -5618,10 +5385,8 @@ void add_chirality_if_missing(
           for (const auto& nb2 : adj[c_idx]) {
             if (nb2.idx == center)
               continue;
-            if (nb2.type == BondType::Double ||
-                nb2.type == BondType::Deloc ||
-                nb2.type == BondType::Aromatic ||
-                nb2.type == BondType::Triple) {
+            if (nb2.type == BondType::Double || nb2.type == BondType::Triple ||
+                is_aromatic_or_deloc(nb2.type)) {
               carbon_has_pi = true;
               break;
             }

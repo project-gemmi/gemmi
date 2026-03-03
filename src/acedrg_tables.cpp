@@ -1773,10 +1773,8 @@ void set_atoms_bonding_idx(
     for (const auto& nb : adj[idx]) {
       if (atoms[nb.idx].is_metal)
         continue;
-      if (nb.type == BondType::Double ||
-          nb.type == BondType::Triple ||
-          nb.type == BondType::Aromatic ||
-          nb.type == BondType::Deloc)
+      if (nb.type == BondType::Double || nb.type == BondType::Triple ||
+          is_aromatic_or_deloc(nb.type))
         return true;
     }
     return false;
@@ -2178,7 +2176,7 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
   }
 
   // d3: total connectivity + 8 (AceDRG uses connAtoms size, including metals)
-  int d3 = 8 + atom.connectivity;
+  int d3 = std::min(8 + atom.connectivity, 49);
 
   // d4/d5: periodic row/group from elem.hpp.
   // Handle deuterium as hydrogen.
@@ -2187,8 +2185,8 @@ void AcedrgTables::compute_hash(CodAtomInfo& atom) const {
     el = El::H;
   int row = element_row(el);
   int group = element_group(el);
-  int d4 = 16 + row;
-  int d5 = 24 + group;
+  int d4 = std::min(16 + row, 49);
+  int d5 = std::min(24 + group, 49);
 
   // Compute hash as product of primes mod HASH_SIZE
   int64_t prime_product = static_cast<int64_t>(primes[d1]) *
