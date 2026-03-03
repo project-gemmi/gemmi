@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include "gemmi/calculate.hpp"
 
 namespace gemmi {
 
@@ -30,8 +29,7 @@ AceBondAdjacency build_bond_adjacency(
       continue;
     size_t idx1 = it1->second;
     size_t idx2 = it2->second;
-    bool aromatic = (bond.type == BondType::Aromatic ||
-                     bond.type == BondType::Deloc);
+    bool aromatic = is_aromatic_or_deloc(bond.type);
     adj[idx1].push_back({idx2, bond.type, aromatic});
     adj[idx2].push_back({idx1, bond.type, aromatic});
   }
@@ -137,6 +135,10 @@ int expected_valence_for_nonmetal(Element el) {
   if (el == El::S) return 2;
   if (el == El::C) return 4;
   if (el == El::P) return 3;
+  if (el == El::Si) return 4;
+  if (el == El::Ge) return 4;
+  if (el == El::As) return 3;
+  if (el == El::Se) return 2;
   return 0;
 }
 

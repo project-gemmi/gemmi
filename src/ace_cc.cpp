@@ -1772,8 +1772,21 @@ void adjust_carboxy_asp(ChemComp& cc) {
           has_unspec_o = true;
         if (bt == BondType::Double || bt == BondType::Deloc)
           carbonyl_o = nid;
-        else
-          single_o.push_back(nid);
+        else {
+          // Ester O has a heavy non-H neighbor besides the carboxyl C
+          bool is_ester_o = false;
+          for (const std::string& o_nb : neighbors[nid]) {
+            if (o_nb == atom.id)
+              continue;
+            int o_nb_idx = cc.find_atom_index(o_nb);
+            if (o_nb_idx >= 0 && !cc.atoms[o_nb_idx].is_hydrogen()) {
+              is_ester_o = true;
+              break;
+            }
+          }
+          if (!is_ester_o)
+            single_o.push_back(nid);
+        }
       } else if (el == El::C) {
         alpha_c.push_back(nid);
       }
@@ -1884,9 +1897,8 @@ std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& 
   return {};
 }
 
-void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
-
-  auto neighbors = make_neighbor_names(cc);
+void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names,
+                               std::map<std::string, std::vector<std::string>>& neighbors) {
 
   std::map<std::string, bool> has_unsat_bond;
   for (const auto& bond : cc.rt.bonds) {
@@ -1908,8 +1920,7 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
     for (const auto& bond : cc.rt.bonds) {
       if (bond.id1.atom != c_id && bond.id2.atom != c_id)
         continue;
-      if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc ||
-          bond.type == BondType::Triple)
+      if (is_aromatic_or_deloc(bond.type) || bond.type == BondType::Triple)
         return false;
       if (bond.type == BondType::Double) {
         const std::string& other = (bond.id1.atom == c_id) ? bond.id2.atom
@@ -1930,7 +1941,8 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
   for (auto& atom : cc.atoms) {
     if (atom.el != El::C)
       continue;
-    const auto& nb = neighbors[atom.id];
+    std::string c_id = atom.id;  // save before potential reallocation
+    const auto& nb = neighbors[c_id];
     std::vector<std::string> n_neighbors;
     for (const std::string& nid : nb) {
       int idx = cc.find_atom_index(nid);
@@ -2028,7 +2040,7 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
         cc.rt.bonds.push_back({{1, n_id}, {1, new_h_id}, BondType::Single, false,
                               NAN, NAN, NAN, NAN});
         // Add angles for the new hydrogen with all existing neighbors
-        cc.rt.angles.push_back({{1, atom.id}, {1, n_id}, {1, new_h_id}, NAN, NAN});
+        cc.rt.angles.push_back({{1, c_id}, {1, n_id}, {1, new_h_id}, NAN, NAN});
         cc.rt.angles.push_back({{1, h_neighbors[0]}, {1, n_id}, {1, new_h_id}, NAN, NAN});
         neighbors[n_id].push_back(new_h_id);
         neighbors[new_h_id].push_back(n_id);
@@ -2037,8 +2049,8 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names) {
   }
 }
 
-void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
-  auto neighbors = make_neighbor_names(cc);
+void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names,
+                             std::map<std::string, std::vector<std::string>>& neighbors) {
 
   for (auto& n1 : cc.atoms) {
     if (n1.el != El::N)
@@ -2118,8 +2130,8 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
   }
 }
 
-void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
-  auto neighbors = make_neighbor_names(cc);
+void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names,
+                            std::map<std::string, std::vector<std::string>>& neighbors) {
 
   for (auto& n_atom : cc.atoms) {
     if (n_atom.el != El::N)
@@ -2176,8 +2188,8 @@ void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
   }
 }
 
-void adjust_protonated_amide_n(ChemComp& cc, std::set<std::string>& used_names) {
-  auto neighbors = make_neighbor_names(cc);
+void adjust_protonated_amide_n(ChemComp& cc, std::set<std::string>& used_names,
+                                std::map<std::string, std::vector<std::string>>& neighbors) {
 
   auto is_carbonyl = [&](const std::string& c_id) {
     int c_idx = cc.find_atom_index(c_id);
@@ -3302,7 +3314,7 @@ std::vector<bool> build_aromatic_like_mask(
   for (size_t i = 0; i < atom_info.size(); ++i)
     aromatic_like[i] = atom_info[i].is_aromatic;
   for (const auto& bond : cc.rt.bonds) {
-    if (bond.type == BondType::Aromatic || bond.type == BondType::Deloc) {
+    if (is_aromatic_or_deloc(bond.type)) {
       auto it1 = atom_index.find(bond.id1.atom);
       auto it2 = atom_index.find(bond.id2.atom);
       if (it1 != atom_index.end())
@@ -5874,10 +5886,11 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   adjust_hexafluorophosphate(cc);
   adjust_carboxy_asp(cc);
   adjust_terminal_carboxylate(cc);
-  adjust_guanidinium_group(cc, used_names);
-  adjust_amino_ter_amine(cc, used_names);
-  adjust_terminal_amine(cc, used_names);
-  adjust_protonated_amide_n(cc, used_names);
+  auto n_neighbors = make_neighbor_names(cc);
+  adjust_guanidinium_group(cc, used_names, n_neighbors);
+  adjust_amino_ter_amine(cc, used_names, n_neighbors);
+  adjust_terminal_amine(cc, used_names, n_neighbors);
+  adjust_protonated_amide_n(cc, used_names, n_neighbors);
 
   bool added_h3 = add_n_terminal_h3(cc);
 

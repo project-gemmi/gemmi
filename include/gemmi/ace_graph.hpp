@@ -26,6 +26,10 @@ struct AceGraphView {
   std::vector<std::vector<int>> neighbors;
 };
 
+inline bool is_aromatic_or_deloc(BondType type) {
+  return type == BondType::Aromatic || type == BondType::Deloc;
+}
+
 std::map<std::string, std::vector<std::string>>
 make_neighbor_names(const ChemComp& cc);
 

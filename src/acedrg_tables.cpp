@@ -276,8 +276,6 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
   bond_idx_1d_.clear();
   bond_idx_full_.clear();
   bond_idx_2d_.clear();
-  bond_nb2d_.clear();
-  bond_nb2d_type_.clear();
   bond_hasp_2d_.clear();
   bond_hasp_1d_.clear();
   bond_hasp_0d_.clear();
@@ -757,9 +755,6 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
         std::string a2_type_f = p2 ? *p2 : std::string();
         std::string a1_type_m = prefix_before(a1_type_f, '{');
         std::string a2_type_m = prefix_before(a2_type_f, '{');
-        std::string a1_root = prefix_before(a1_type_m, '(');
-        std::string a2_root = prefix_before(a2_type_m, '(');
-
         CodStats vs(value, sigma, count);
         CodStats vs1d(value2, sigma2, count2);
 
@@ -780,14 +775,6 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
         // Populate 2D structure (4-component key + 4 inner levels)
         bond_idx_2d_[key_4][a1_nb2][a2_nb2][a1_nb][a2_nb].push_back(vs);
         bond_2d_hybr_keys_.insert(cat(ha1, '|', ha2, '|', hybr_comb));
-
-        // Populate Nb2D structure (6-component flat key)
-        bond_nb2d_[cat(key_4, '|', a1_nb2, '|', a2_nb2)].push_back(vs);
-
-        // Populate Nb2DType structure (8-component flat key)
-        if (!a1_root.empty() && !a2_root.empty())
-          bond_nb2d_type_[cat(key_4, '|', a1_nb2, '|', a2_nb2, '|',
-                              a1_root, '|', a2_root)].push_back(vs1d);
 
         // Levels 9-11 are populated from allOrgBondsHRS.table in load_bond_hrs().
       }

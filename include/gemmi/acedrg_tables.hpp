@@ -292,14 +292,6 @@ struct GEMMI_DLL AcedrgTables {
     std::vector<CodStats>>>>>>;
   BondIdx2D bond_idx_2d_;
 
-  // Level Nb2D: 6-component key (ha1|ha2|hybr|ring|a1nb2|a2nb2)
-  using BondNb2D = std::unordered_map<std::string, std::vector<CodStats>>;
-  BondNb2D bond_nb2d_;  // populated but not read (dead data)
-
-  // Level Nb2DType: 8-component key (ha1|ha2|hybr|ring|a1nb2|a2nb2|root1|root2)
-  using BondNb2DType = std::unordered_map<std::string, std::vector<CodStats>>;
-  BondNb2DType bond_nb2d_type_;  // populated but not read (dead data)
-
   // Levels 9-11: Hash+Sp fallback, fully flat compound keys
   using BondHaSp2D = std::unordered_map<std::string, std::vector<CodStats>>;
   BondHaSp2D bond_hasp_2d_;  // 4-component key (ha1|ha2|hybr|ring)
