@@ -1,7 +1,26 @@
 #!/usr/bin/env python
 
+import contextlib
+import os
 import unittest
 import gemmi
+
+
+@contextlib.contextmanager
+def temp_env(var, value):
+    had = var in os.environ
+    old = os.environ.get(var)
+    if value is None:
+        os.environ.pop(var, None)
+    else:
+        os.environ[var] = value
+    try:
+        yield
+    finally:
+        if had:
+            os.environ[var] = old
+        else:
+            os.environ.pop(var, None)
 
 
 class TestAcePrepareChemComp(unittest.TestCase):
@@ -267,6 +286,52 @@ class TestAcePrepareChemComp(unittest.TestCase):
         self.prepare(cc)
         atoms = {a.id: a for a in cc.atoms}
         self.assertAlmostEqual(atoms['O1'].charge, -1.0)
+
+    def test_prepare_chemcomp_strict_fails_on_duplicate_plane_atom_ids(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TPLN'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        cc.atoms.append(self.make_atom('C1', 'C', 'C'))
+        cc.atoms.append(self.make_atom('C2', 'C', 'C'))
+        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+
+        p = gemmi.Restraints.Plane()
+        p.label = 'p'
+        p.ids = [
+            gemmi.Restraints.AtomId('C1'),
+            gemmi.Restraints.AtomId('C1'),
+            gemmi.Restraints.AtomId('C2'),
+        ]
+        p.esd = 0.02
+        cc.rt.planes.append(p)
+
+        with temp_env('GEMMI_ACE_STRICT', '1'):
+            with self.assertRaisesRegex(RuntimeError, 'ACE strict validation failed at post-angle-seed'):
+                self.prepare(cc)
+
+    def test_prepare_chemcomp_strict_fails_on_final_nan_bond_value(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TNAN'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        cc.atoms.append(self.make_atom('X1', 'X', ''))
+        cc.atoms.append(self.make_atom('X2', 'X', ''))
+        cc.rt.bonds.append(self.make_bond('X1', 'X2', gemmi.BondType.Single, float('nan'), 0.02))
+
+        with temp_env('GEMMI_ACE_STRICT', '1'):
+            with self.assertRaisesRegex(RuntimeError, 'ACE strict validation failed at final'):
+                self.prepare(cc)
+
+    def test_prepare_chemcomp_trace_mode_smoke(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TTRC'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        cc.atoms.append(self.make_atom('C1', 'C', 'C'))
+        cc.atoms.append(self.make_atom('C2', 'C', 'C'))
+        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+
+        with temp_env('GEMMI_ACE_TRACE', '1'):
+            self.prepare(cc)
+        self.assertEqual(len(cc.rt.bonds), 1)
 
 
 if __name__ == '__main__':
