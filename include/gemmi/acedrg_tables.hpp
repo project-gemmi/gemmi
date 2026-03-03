@@ -177,8 +177,7 @@ struct GEMMI_DLL AcedrgTables {
                 Restraints::Bond& bond) const;
   int fill_angle(const ChemComp& cc,
                            const std::vector<CodAtomInfo>& atom_info,
-                           Restraints::Angle& angle,
-                           const std::set<int>& needed_files) const;
+                           Restraints::Angle& angle) const;
 
   // Atom classification - returns info for all atoms
   std::vector<CodAtomInfo> classify_atoms(const ChemComp& cc) const;

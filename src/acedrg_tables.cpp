@@ -2925,39 +2925,11 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
   // Fill angles (skipped when angle tables are not loaded)
   if (!angle_hrs_.empty()) {
 
-  // Compute the set of angle table files needed for this molecule.
-  // AceDRG only loads files that contain hash triples for the molecule's angles,
-  // which affects the wildcard partial-hash search (it only sees entries from
-  // the loaded files). We need to replicate this behavior.
-  std::set<int> needed_angle_files;
-  for (auto& angle : cc.rt.angles) {
-    int i1 = cc.find_atom_index(angle.id1.atom);
-    int i2 = cc.find_atom_index(angle.id2.atom);
-    int i3 = cc.find_atom_index(angle.id3.atom);
-    if (i1 < 0 || i2 < 0 || i3 < 0) continue;
-    int ha1 = atom_info[i2].hashing_value;
-    int ha2 = std::min(atom_info[i1].hashing_value, atom_info[i3].hashing_value);
-    int ha3 = std::max(atom_info[i1].hashing_value, atom_info[i3].hashing_value);
-    if (auto* p = find_val(angle_file_index_, ha1)) {
-      if (auto* p2 = find_val(*p, ha2)) {
-        if (auto* p3 = find_val(*p2, ha3)) {
-          needed_angle_files.insert(*p3);
-        } else {
-          // AceDRG fallback (setOrgAngleHeadHashList22): when (ha1,ha2,ha3)
-          // is not in the index but (ha1,ha2) exists, load all files
-          // containing (ha1, *, ha3) for any ha2'.
-          for (auto& kv : *p)
-            if (auto* p3f = find_val(kv.second, ha3))
-              needed_angle_files.insert(*p3f);
-        }
-      }
-    }
-  }
   // Store the approxLevel for each angle (used in ring enforcement)
   std::vector<int> angle_approx(cc.rt.angles.size(), 6);
   for (size_t i = 0; i < cc.rt.angles.size(); ++i) {
     if (std::isnan(cc.rt.angles[i].value)) {
-      angle_approx[i] = fill_angle(cc, atom_info, cc.rt.angles[i], needed_angle_files);
+      angle_approx[i] = fill_angle(cc, atom_info, cc.rt.angles[i]);
     }
   }
 
@@ -3832,8 +3804,7 @@ CodStats AcedrgTables::search_angle_multilevel(const CodAtomInfo& a1,
 //   0 = 1D (all types matched), 1 = 2D, 2 = 3D, 3 = 4D, 4 = 5D, 6 = 6D/HRS/fallback
 int AcedrgTables::fill_angle(const ChemComp& cc,
     const std::vector<CodAtomInfo>& atom_info,
-    Restraints::Angle& angle,
-    const std::set<int>& needed_files) const {
+    Restraints::Angle& angle) const {
 
   int idx1 = cc.find_atom_index(angle.id1.atom);
   int idx2 = cc.find_atom_index(angle.id2.atom);  // center
@@ -4009,19 +3980,6 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
         }
       };
 
-      // Check if the entry at (ha1, other_ha2, other_ha3) came from a needed file.
-      // AceDRG only loads table files referenced by the molecule's angle triples,
-      // so the wildcard search only sees entries from those files.
-      auto is_in_needed_file = [&](int h1, int h2, int h3) -> bool {
-        if (needed_files.empty())
-          return true;  // no filtering when set is empty
-        if (auto* p = find_val(angle_file_index_, h1))
-          if (auto* p2 = find_val(*p, h2))
-            if (auto* p3 = find_val(*p2, h3))
-              return needed_files.count(*p3) > 0;
-        return false;
-      };
-
       // Iterate over all matching wildcard entries. Loop 1 (ha2 matches) uses
       // vk_map.size() as multiplier (AceDRG inner value_key loop quirk).
       // Loop 2 (ha3 matches) uses multiplier 1.
@@ -4031,13 +3989,11 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
           return;
         if (auto* ha2_map = find_val(*center_map, ha2)) {
           for (auto& kv3 : *ha2_map)
-            if (is_in_needed_file(ha1, ha2, kv3.first))
-              for_matching_stats(kv3.second, static_cast<int>(kv3.second.size()), fn);
+            for_matching_stats(kv3.second, static_cast<int>(kv3.second.size()), fn);
         }
         for (auto& kv2 : *center_map) {
           if (auto* vk_map_ptr = find_val(kv2.second, ha3))
-            if (is_in_needed_file(ha1, kv2.first, ha3))
-              for_matching_stats(*vk_map_ptr, 1, fn);
+            for_matching_stats(*vk_map_ptr, 1, fn);
         }
       };
 
