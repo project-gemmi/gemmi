@@ -1378,6 +1378,7 @@ bool has_carboxylic_acid_neighbor(const ChemComp& cc,
       continue;
     int o_count = 0;
     bool has_double_o = false;
+    bool has_ester_o = false;
     for (const auto& bond : cc.rt.bonds) {
       if (bond.id1.atom != c_neighbor && bond.id2.atom != c_neighbor)
         continue;
@@ -1385,11 +1386,26 @@ bool has_carboxylic_acid_neighbor(const ChemComp& cc,
       int other_idx = cc.find_atom_index(other);
       if (other_idx >= 0 && cc.atoms[other_idx].el == El::O) {
         ++o_count;
-        if (bond.type == BondType::Double || bond.type == BondType::Deloc)
+        if (bond.type == BondType::Double || bond.type == BondType::Deloc) {
           has_double_o = true;
+        } else {
+          // Check if this single-bond O is an ester oxygen (bonded to a heavy atom).
+          auto o_it = neighbors.find(other);
+          if (o_it != neighbors.end()) {
+            for (const std::string& o_nb : o_it->second) {
+              if (o_nb == c_neighbor)
+                continue;
+              int o_nb_idx = cc.find_atom_index(o_nb);
+              if (o_nb_idx >= 0 && cc.atoms[o_nb_idx].el != El::H) {
+                has_ester_o = true;
+                break;
+              }
+            }
+          }
+        }
       }
     }
-    if (o_count >= 2 && has_double_o)
+    if (o_count >= 2 && has_double_o && !has_ester_o)
       return true;
   }
   return false;
@@ -1712,11 +1728,12 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
     if (cc.find_atom(new_h) != cc.atoms.end())
       continue;
 
+    std::string atom_id = atom.id;  // save before potential reallocation
     cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-    cc.rt.bonds.push_back({{1, atom.id}, {1, new_h}, BondType::Single, false,
+    cc.rt.bonds.push_back({{1, atom_id}, {1, new_h}, BondType::Single, false,
                           NAN, NAN, NAN, NAN});
-    for (const std::string& nb : neighbors[atom.id]) {
-      cc.rt.angles.push_back({{1, nb}, {1, atom.id}, {1, new_h}, NAN, NAN});
+    for (const std::string& nb : neighbors[atom_id]) {
+      cc.rt.angles.push_back({{1, nb}, {1, atom_id}, {1, new_h}, NAN, NAN});
     }
   }
 }
@@ -2072,16 +2089,17 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names) {
 
       if (has_carbonyl && has_amide_n) {
         n1.charge = 1.0f;
-        std::string new_h = acedrg_h_name(used_names, n1.id, h_ids);
+        std::string n1_id = n1.id;  // save before potential reallocation
+        std::string new_h = acedrg_h_name(used_names, n1_id, h_ids);
         if (new_h.empty())
           break;
         cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-        cc.rt.bonds.push_back({{1, n1.id}, {1, new_h}, BondType::Single, false,
+        cc.rt.bonds.push_back({{1, n1_id}, {1, new_h}, BondType::Single, false,
                               NAN, NAN, NAN, NAN});
         // Add angles for the new hydrogen with all existing neighbors
         for (const std::string& h_id : h_ids)
-          cc.rt.angles.push_back({{1, h_id}, {1, n1.id}, {1, new_h}, NAN, NAN});
-        cc.rt.angles.push_back({{1, c1_id}, {1, n1.id}, {1, new_h}, NAN, NAN});
+          cc.rt.angles.push_back({{1, h_id}, {1, n1_id}, {1, new_h}, NAN, NAN});
+        cc.rt.angles.push_back({{1, c1_id}, {1, n1_id}, {1, new_h}, NAN, NAN});
         break;
       }
     }
@@ -2129,19 +2147,20 @@ void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names) {
       continue;
 
     n_atom.charge = 1.0f;
+    std::string n_atom_id = n_atom.id;  // save before potential reallocation
 
-    std::string new_h = acedrg_h_name(used_names, n_atom.id, h_ids);
+    std::string new_h = acedrg_h_name(used_names, n_atom_id, h_ids);
     if (new_h.empty())
       continue;
 
     cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-    cc.rt.bonds.push_back({{1, n_atom.id}, {1, new_h}, BondType::Single, false,
+    cc.rt.bonds.push_back({{1, n_atom_id}, {1, new_h}, BondType::Single, false,
                           NAN, NAN, NAN, NAN});
 
     for (const std::string& h_id : h_ids) {
-      cc.rt.angles.push_back({{1, h_id}, {1, n_atom.id}, {1, new_h}, NAN, NAN});
+      cc.rt.angles.push_back({{1, h_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
     }
-    cc.rt.angles.push_back({{1, alpha_carbon_id}, {1, n_atom.id}, {1, new_h}, NAN, NAN});
+    cc.rt.angles.push_back({{1, alpha_carbon_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
   }
 }
 
@@ -2228,15 +2247,16 @@ void adjust_protonated_amide_n(ChemComp& cc, std::set<std::string>& used_names) 
       continue;
 
     n_atom.charge = 1.0f;
-    std::string new_h = acedrg_h_name(used_names, n_atom.id, h_ids);
+    std::string n_atom_id = n_atom.id;  // save before potential reallocation
+    std::string new_h = acedrg_h_name(used_names, n_atom_id, h_ids);
     if (new_h.empty())
       continue;
     cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-    cc.rt.bonds.push_back({{1, n_atom.id}, {1, new_h}, BondType::Single, false,
+    cc.rt.bonds.push_back({{1, n_atom_id}, {1, new_h}, BondType::Single, false,
                            NAN, NAN, NAN, NAN});
     for (const std::string& h_id : h_ids)
-      cc.rt.angles.push_back({{1, h_id}, {1, n_atom.id}, {1, new_h}, NAN, NAN});
-    cc.rt.angles.push_back({{1, c_id}, {1, n_atom.id}, {1, new_h}, NAN, NAN});
+      cc.rt.angles.push_back({{1, h_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
+    cc.rt.angles.push_back({{1, c_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
   }
 }
 
