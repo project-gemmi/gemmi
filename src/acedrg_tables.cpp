@@ -265,6 +265,42 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
     }
   };
 
+  tables_loaded_ = false;
+  digit_keys_.clear();
+  linked_hash_.clear();
+  bond_hrs_.clear();
+  angle_hrs_.clear();
+  noncen_metal_angles_.clear();
+  noncen_metal_by5_.clear();
+  ccp4_bonds_.clear();
+  bond_idx_1d_.clear();
+  bond_idx_full_.clear();
+  bond_idx_2d_.clear();
+  bond_nb2d_.clear();
+  bond_nb2d_type_.clear();
+  bond_hasp_2d_.clear();
+  bond_hasp_1d_.clear();
+  bond_hasp_0d_.clear();
+  bond_file_index_.clear();
+  bond_2d_hybr_keys_.clear();
+  bond_full_4prefix_keys_.clear();
+  atom_type_codes_.clear();
+  angle_idx_1d_.clear();
+  angle_idx_2d_.clear();
+  angle_idx_3d_.clear();
+  angle_idx_4d_.clear();
+  angle_idx_5d_.clear();
+  angle_idx_6d_.clear();
+  angle_file_index_.clear();
+  en_bonds_.clear();
+  metal_bonds_.clear();
+  covalent_radii_.fill(NAN);
+  metal_angles_.clear();
+  metal_coord_geo_overrides_.clear();
+  pep_tors_.clear();
+  nucl_tors_.clear();
+  prot_hydr_dists_.clear();
+
   tables_dir_ = tables_dir;
 
   load_hash_codes(tables_dir + "/allOrgLinkedHashCode.table");
@@ -3025,16 +3061,6 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
     const CodAtomInfo& metal = a1.is_metal ? a1 : a2;
     const CodAtomInfo& ligand = a1.is_metal ? a2 : a1;
 
-    double mrad = covalent_radii_[metal.el.ordinal()];
-    double lrad = covalent_radii_[ligand.el.ordinal()];
-    if (!std::isnan(mrad) && !std::isnan(lrad)) {
-      bond.value = mrad + lrad;
-      bond.esd = 0.04;
-      source = "metal_cova";
-      log_bond(source);
-      return 10;
-    }
-
     CodStats vs = search_metal_bond(metal, ligand, atom_info);
     if (vs.count > 0) {
       bond.value = vs.value;
@@ -3043,6 +3069,16 @@ int AcedrgTables::fill_bond(const ChemComp& cc,
       source = "metal";
       log_bond(source, vs.count);
       return 10;  // metal bond - treat as high-specificity match
+    }
+
+    double mrad = covalent_radii_[metal.el.ordinal()];
+    double lrad = covalent_radii_[ligand.el.ordinal()];
+    if (!std::isnan(mrad) && !std::isnan(lrad)) {
+      bond.value = mrad + lrad;
+      bond.esd = 0.04;
+      source = "metal_cova";
+      log_bond(source);
+      return 10;
     }
   }
 
@@ -3862,8 +3898,24 @@ int AcedrgTables::fill_angle(const ChemComp& cc,
     std::vector<double> ideal_angles = get_metal_angles(center.el,
                                                         center.connectivity);
     if (!ideal_angles.empty()) {
-      // Use the most common angle for this geometry
-      angle.value = ideal_angles[0];
+      const Position& p1 = cc.atoms[idx1].xyz;
+      const Position& pc = cc.atoms[idx2].xyz;
+      const Position& p3 = cc.atoms[idx3].xyz;
+      if (!p1.has_nan() && !pc.has_nan() && !p3.has_nan()) {
+        double observed = deg(calculate_angle(p1, pc, p3));
+        size_t best_idx = 0;
+        double best_delta = std::fabs(observed - ideal_angles[0]);
+        for (size_t i = 1; i < ideal_angles.size(); ++i) {
+          double delta = std::fabs(observed - ideal_angles[i]);
+          if (delta < best_delta) {
+            best_delta = delta;
+            best_idx = i;
+          }
+        }
+        angle.value = ideal_angles[best_idx];
+      } else {
+        angle.value = ideal_angles[0];
+      }
       angle.esd = clamp_angle_sigma(3.0);
       trace_return("metal-center-geometry", 6);
       return 6;

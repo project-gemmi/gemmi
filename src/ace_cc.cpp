@@ -1557,8 +1557,20 @@ void sync_n_terminal_h3_angles(ChemComp& cc) {
   };
 
   if (cc.find_atom("CA") != cc.atoms.end()) {
-    copy_angle("CA", "H3", "CA", "H");
-    copy_angle("CA", "H3", "CA", "H2");
+    Restraints::Angle* ca_h3 = find_angle(cc, "N", "CA", "H3");
+    if (ca_h3) {
+      Restraints::Angle* ca_h = find_angle(cc, "N", "CA", "H");
+      Restraints::Angle* ca_h2 = find_angle(cc, "N", "CA", "H2");
+      const Restraints::Angle* src = nullptr;
+      if (ca_h && !std::isnan(ca_h->value))
+        src = ca_h;
+      else if (ca_h2 && !std::isnan(ca_h2->value))
+        src = ca_h2;
+      if (src) {
+        ca_h3->value = src->value;
+        ca_h3->esd = src->esd;
+      }
+    }
   }
   copy_angle("H", "H3", "H", "H2");
   copy_angle("H2", "H3", "H", "H2");
@@ -6268,22 +6280,20 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   int missing_angles = no_angles ? 0 : count_missing_values(cc.rt.angles);
   bool need_fill = (missing_bonds > 0 || missing_angles > 0);
 
-  if (need_fill) {
+  if (need_fill)
     tables.fill_restraints(cc);
-    if (!no_angles) {
-      if (added_h3)
-        sync_n_terminal_h3_angles(cc);
-    }
-    std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
-    AceGraphView graph = make_ace_graph_view(cc);
-    add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
-    add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph,
-                                       sugar_coord_overrides);
-    add_planes_if_missing(cc, atom_info, graph);
-  } else {
-    if (added_h3 && !no_angles)
-      sync_n_terminal_h3_angles(cc);
-  }
+
+  if (added_h3 && !no_angles)
+    sync_n_terminal_h3_angles(cc);
+
+  // Always run the add-if-missing steps. Existing bond/angle values may be
+  // complete while chirality/torsion/plane restraints are still absent.
+  std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
+  AceGraphView graph = make_ace_graph_view(cc);
+  add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
+  add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph,
+                                     sugar_coord_overrides);
+  add_planes_if_missing(cc, atom_info, graph);
 
   if (has_cb_seed)
     apply_mixed_carborane_mode(cc, no_angles, tables.tables_dir_);
