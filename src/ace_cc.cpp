@@ -4301,6 +4301,7 @@ void set_peptide_torsion_idx_from_one_bond_like_acedrg(
       }
       tor.label = entry.id;
       tor.value = entry.value;
+      tor.esd = entry.sigma;
       tor.period = entry.period;
       apply_peptide_tmpchi2_override(tor, atom_index, atom_info);
       if (entry.priority < best_priority) {
