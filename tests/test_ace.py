@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import contextlib
+import math
 import os
 import subprocess
 import tempfile
@@ -397,6 +398,78 @@ class TestAceDrgBatch(unittest.TestCase):
                     text = f.read()
                 self.assertIn('_chem_comp_bond.atom_id_1', text, out_path)
                 self.assertIn('_chem_comp_angle.atom_id_1', text, out_path)
+
+
+class TestAcePreparedChemCompInvariants(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tables = gemmi.AcedrgTables()
+        cls.tables_dir = os.path.join(TOP_DIR, 'acedrg', 'tables')
+        if not os.path.isdir(cls.tables_dir):
+            raise unittest.SkipTest('acedrg tables directory is not available')
+        cls.tables.load_tables(cls.tables_dir)
+
+    @staticmethod
+    def _prepare_from_ccd(comp_id):
+        path = os.path.join(TOP_DIR, 'ccd', 'orig', f'{comp_id}.cif')
+        if not os.path.isfile(path):
+            raise unittest.SkipTest(f'missing test input: {path}')
+        doc = gemmi.cif.read(path)
+        cc = gemmi.make_chemcomp_from_block(doc.sole_block())
+        return path, cc
+
+    @staticmethod
+    def _assert_restraint_integrity(cc, source):
+        atom_ids = [a.id for a in cc.atoms]
+        atom_set = set(atom_ids)
+        assert len(atom_ids) == len(atom_set), f'duplicate atom ids in {source}'
+
+        for b in cc.rt.bonds:
+            assert b.id1.atom in atom_set and b.id2.atom in atom_set, source
+            assert math.isfinite(b.value), source
+        for ang in cc.rt.angles:
+            assert ang.id1.atom in atom_set and ang.id2.atom in atom_set and ang.id3.atom in atom_set, source
+            assert math.isfinite(ang.value), source
+        for tor in cc.rt.torsions:
+            assert tor.id1.atom in atom_set and tor.id2.atom in atom_set, source
+            assert tor.id3.atom in atom_set and tor.id4.atom in atom_set, source
+        for chir in cc.rt.chirs:
+            assert chir.id_ctr.atom in atom_set and chir.id1.atom in atom_set, source
+            assert chir.id2.atom in atom_set and chir.id3.atom in atom_set, source
+        for plane in cc.rt.planes:
+            plane_atoms = [aid.atom for aid in plane.ids]
+            assert len(plane_atoms) == len(set(plane_atoms)), source
+            for atom in plane_atoms:
+                assert atom in atom_set, source
+
+    def test_prepare_chemcomp_invariants_on_representative_pack(self):
+        for comp_id in ['ALA', 'ATP', 'CYS', 'HEM', 'HIS', 'SEC', 'TRP', 'TYR']:
+            path, cc = self._prepare_from_ccd(comp_id)
+            gemmi.prepare_chemcomp(cc, self.tables)
+            self._assert_restraint_integrity(cc, path)
+
+    def test_prepare_chemcomp_common_motif_charge_sanity(self):
+        # Amino-acid zwitterion pattern in free CCD monomer.
+        _, ala = self._prepare_from_ccd('ALA')
+        gemmi.prepare_chemcomp(ala, self.tables)
+        ala_atoms = {a.id: a for a in ala.atoms}
+        self.assertLessEqual(ala_atoms['OXT'].charge, -0.5)
+        self.assertGreaterEqual(ala_atoms['N'].charge, 0.5)
+
+        # Phosphate-rich ATP should carry multiple negatively charged oxygens.
+        _, atp = self._prepare_from_ccd('ATP')
+        gemmi.prepare_chemcomp(atp, self.tables)
+        atp_neg_o = [
+            a.id for a in atp.atoms
+            if a.el == gemmi.Element('O') and a.charge <= -0.5
+        ]
+        self.assertGreaterEqual(len(atp_neg_o), 3)
+
+        # Aspartate sidechain carboxylate oxygen should be deprotonated.
+        _, asp = self._prepare_from_ccd('ASP')
+        gemmi.prepare_chemcomp(asp, self.tables)
+        asp_atoms = {a.id: a for a in asp.atoms}
+        self.assertLessEqual(asp_atoms['OD2'].charge, -0.5)
 
 
 if __name__ == '__main__':
