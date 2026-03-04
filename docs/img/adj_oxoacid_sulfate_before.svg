@@ -5,22 +5,19 @@ xmlns:cml="http://www.xml-cml.org/schema" x="0" y="0" width="200px" height="200p
 <title> - Open Babel Depiction</title>
 <rect x="0" y="0" width="100" height="100" fill="white"/>
 <g transform="translate(0,0)">
-<svg width="100" height="100" x="0" y="0" viewBox="0 0 180 160"
+<svg width="100" height="100" x="0" y="0" viewBox="0 0 160 160"
 font-family="sans-serif" stroke="rgb(0,0,0)" stroke-width="2"  stroke-linecap="round">
-<line x1="46.5" y1="56.6" x2="53.5" y2="68.7" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="73.0" y1="80.0" x2="87.0" y2="80.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="103.0" y1="93.0" x2="103.0" y2="107.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="97.0" y1="93.0" x2="97.0" y2="107.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="113.0" y1="77.0" x2="127.0" y2="77.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="113.0" y1="83.0" x2="127.0" y2="83.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="100.0" y1="67.0" x2="100.0" y2="53.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<text x="26.000000" y="53.358984" fill="rgb(0,0,0)" stroke-width="0" font-weight="bold" font-size="16" >R</text>
-<text x="38.000000" y="57.038984" fill="rgb(0,0,0)" stroke-width="0" font-weight="bold" font-size="13" >1</text>
-<text x="54.000000" y="88.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
-<text x="94.000000" y="88.000000" fill="rgb(178,178,0)" stroke-width="0" font-weight="bold" font-size="16" >S</text>
-<text x="94.000000" y="128.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
-<text x="134.000000" y="88.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
-<text x="94.000000" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >OH</text>
+<line x1="77.0" y1="107.0" x2="77.0" y2="93.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="83.0" y1="107.0" x2="83.0" y2="93.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="93.0" y1="77.0" x2="107.0" y2="77.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="93.0" y1="83.0" x2="107.0" y2="83.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="80.0" y1="67.0" x2="80.0" y2="53.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="67.0" y1="80.0" x2="53.0" y2="80.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<text x="74.000000" y="128.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
+<text x="74.000000" y="88.000000" fill="rgb(178,178,0)" stroke-width="0" font-weight="bold" font-size="16" >S</text>
+<text x="114.000000" y="88.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
+<text x="74.000000" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >OH</text>
+<text x="22.000000" y="88.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >HO</text>
 </svg>
 </g>
 <text font-size="18.000000" fill ="black" font-family="sans-serif"

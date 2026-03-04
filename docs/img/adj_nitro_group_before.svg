@@ -7,16 +7,16 @@ xmlns:cml="http://www.xml-cml.org/schema" x="0" y="0" width="200px" height="200p
 <g transform="translate(0,0)">
 <svg width="100" height="100" x="0" y="0" viewBox="0 0 149.282 140"
 font-family="sans-serif" stroke="rgb(0,0,0)" stroke-width="2"  stroke-linecap="round">
-<line x1="98.0" y1="93.5" x2="85.9" y2="86.5" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="71.6" y1="67.0" x2="71.6" y2="53.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="77.6" y1="67.0" x2="77.6" y2="53.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="64.9" y1="89.1" x2="52.8" y2="96.1" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<line x1="61.9" y1="83.9" x2="49.8" y2="90.9" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<text x="105.282032" y="108.000000" fill="rgb(0,0,0)" stroke-width="0" font-weight="bold" font-size="16" >R</text>
-<text x="117.282032" y="111.680000" fill="rgb(0,0,0)" stroke-width="0" font-weight="bold" font-size="13" >1</text>
-<text x="68.641016" y="88.000000" fill="rgb(12,12,255)" stroke-width="0" font-weight="bold" font-size="16" >N</text>
-<text x="68.641016" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
-<text x="34.000000" y="108.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
+<line x1="84.4" y1="50.9" x2="96.5" y2="43.9" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="87.4" y1="56.1" x2="99.5" y2="49.1" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="63.4" y1="53.5" x2="51.3" y2="46.5" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<line x1="74.6" y1="73.0" x2="74.6" y2="87.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
+<text x="79.441016" y="55.968000" fill="rgb(12,12,255)" stroke-width="0" font-weight="bold" font-size="16" >+</text>
+<text x="68.641016" y="68.000000" fill="rgb(12,12,255)" stroke-width="0" font-weight="bold" font-size="16" >N</text>
+<text x="103.282032" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
+<text x="22.000000" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >HO</text>
+<text x="70.641016" y="108.000000" fill="rgb(102,102,102)" stroke-width="0" font-weight="bold" font-size="16" >CH</text>
+<text x="94.641016" y="111.680000" fill="rgb(102,102,102)" stroke-width="0" font-weight="bold" font-size="13" >3</text>
 </svg>
 </g>
 <text font-size="18.000000" fill ="black" font-family="sans-serif"

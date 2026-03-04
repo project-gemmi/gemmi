@@ -20,17 +20,18 @@ import subprocess
 import sys
 
 PAIRS = [
-    ("oxoacid_phosphate", "COP(=O)(O)O", "COP(=O)([O-])[O-]"),
-    ("oxoacid_sulfate", "[*]OS(=O)(=O)O", "[*]OS(=O)(=O)[O-]"),
-    ("nitro_group", "[*][N](=O)=O", "[*][N+](=O)[O-]"),
+    ("oxoacid_phosphate", "OP(=O)(O)*", "OP(=O)([O-])*"),
+    ("oxoacid_sulfate", "O=S(=O)(O)O", "O=S(=O)([O-])O"),
+    ("oxoacid_sulfite", "OS(=O)O", "O=S(=O)[O-]"),
+    ("nitro_group", "[N+](=O)(O)C", "[N+](=O)([O-])C"),
     ("single_bond_oxide", "C[N+](C)(C)O", "C[N+](C)(C)[O-]"),
     ("hexafluorophosphate", "F[P](F)(F)(F)(F)F", "[H][P](F)(F)(F)(F)(F)F"),
-    ("carboxy_asp", "[NH3+]C(C(=O)[O-])CC(=O)O", "[NH3+]C(C(=O)[O-])CC(=O)[O-]"),
-    ("terminal_carboxylate", "[NH3+]CC(=O)O", "[NH3+]CC(=O)[O-]"),
-    ("guanidinium", "[*]N=C(N)N", "[*]N=C([NH2+])N"),
-    ("amino_ter_amine", "O=C(NC)C[NH2]", "O=C(NC)C[NH3+]"),
-    ("terminal_amine", "[*]C[NH2]", "[*]C[NH3+]"),
-    ("protonated_amide_n", "[*]C(=O)N", "[*]C(=O)[NH2+]"),
+    ("carboxy_asp", "O=C(O)C(*)", "O=C([O-])C(*)"),
+    ("terminal_carboxylate", "O=C(O)CN(*)", "O=C([O-])CN(*)"),
+    ("guanidinium", "CNC(=N)N", "CNC(=[NH2+])N"),
+    ("amino_ter_amine", "NCC(=O)N(*)", "[NH3+]CC(=O)N(*)"),
+    ("terminal_amine", "CCCCCCN", "CCCCCC[NH3+]"),
+    ("protonated_amide_n", "CCC(=O)N", "CCC(=O)[NH2+]"),
     ("add_n_terminal_h3", "[*]C([NH2+])C(=O)[O-]", "[*]C([NH3+])C(=O)[O-]"),
 ]
 

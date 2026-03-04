@@ -598,5 +598,128 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         self.assertAlmostEqual(bb.esd_nucleus, bb.esd, places=6)
 
 
+class TestChemicalAdjustmentRules(unittest.TestCase):
+    """Tests for apply_chemical_adjustments() using CCD examples from chemistry.rst."""
+
+    @staticmethod
+    def _load_ccd(comp_id):
+        path = os.path.join(CCD_TEST_DIR, f'{comp_id}.cif')
+        if not os.path.isfile(path):
+            raise unittest.SkipTest(f'missing test input: {path}')
+        doc = gemmi.cif.read(path)
+        return gemmi.make_chemcomp_from_block(doc.sole_block())
+
+    def _atom_ids(self, cc):
+        return {a.id for a in cc.atoms}
+
+    def _charge_of(self, cc, atom_id):
+        for a in cc.atoms:
+            if a.id == atom_id:
+                return a.charge
+        self.fail(f'atom {atom_id} not found')
+
+    def _bond_type(self, cc, a1, a2):
+        for b in cc.rt.bonds:
+            if {b.id1.atom, b.id2.atom} == {a1, a2}:
+                return b.type
+        return None
+
+    def test_adj_oxoacid_phosphate_atp(self):
+        """ATP: phosphate O-H deprotonation removes 4 H, charges 4 O.
+        Matches CCP4 monomer library reference (43 atoms, same charges)."""
+        cc = self._load_ccd('ATP')
+        cc.apply_chemical_adjustments()
+        atom_ids = self._atom_ids(cc)
+        self.assertEqual(len(cc.atoms), 43)
+        for h_id in ['HOA2', 'HOB2', 'HOG2', 'HOG3']:
+            self.assertNotIn(h_id, atom_ids)
+        for o_id in ['O2A', 'O2B', 'O2G', 'O3G']:
+            self.assertAlmostEqual(self._charge_of(cc, o_id), -1.0, places=1)
+
+    def test_adj_oxoacid_sulfate_0sg(self):
+        """0SG: sulfate O-H deprotonation removes 2 H, charges 2 O.
+        Matches CCP4 monomer library reference (120 atoms, same charges)."""
+        cc = self._load_ccd('0SG')
+        cc.apply_chemical_adjustments()
+        atom_ids = self._atom_ids(cc)
+        self.assertEqual(len(cc.atoms), 120)
+        for h_id in ['H29', 'H31']:
+            self.assertNotIn(h_id, atom_ids)
+        for o_id in ['O10', 'O14']:
+            self.assertAlmostEqual(self._charge_of(cc, o_id), -1.0, places=1)
+
+    def test_adj_nitro_group_ne5(self):
+        """NE5: nitro group N26(=O27)(=O28) → N26(+1)(-O27)(-1)(=O28)."""
+        cc = self._load_ccd('NE5')
+        cc.apply_chemical_adjustments()
+        self.assertAlmostEqual(self._charge_of(cc, 'N26'), 1.0, places=1)
+        self.assertAlmostEqual(self._charge_of(cc, 'O27'), -1.0, places=1)
+        self.assertEqual(self._bond_type(cc, 'O27', 'N26'), gemmi.BondType.Single)
+        self.assertEqual(self._bond_type(cc, 'N26', 'O28'), gemmi.BondType.Double)
+
+    def test_adj_hexafluorophosphate_a9j(self):
+        """A9J: PF6 gets an H added (P1-H bond)."""
+        cc = self._load_ccd('A9J')
+        atoms_before = self._atom_ids(cc)
+        cc.apply_chemical_adjustments()
+        atoms_after = self._atom_ids(cc)
+        added = atoms_after - atoms_before
+        self.assertEqual(len(added), 1)
+        h_id = added.pop()
+        for a in cc.atoms:
+            if a.id == h_id:
+                self.assertEqual(a.el, gemmi.Element('H'))
+        self.assertIsNotNone(self._bond_type(cc, 'P1', h_id))
+
+    def test_adj_carboxy_asp(self):
+        """ASP: sidechain carboxylate HD2 removed, OD2 charged; also HXT/OXT.
+        Matches CCP4 monomer library reference (15 atoms, same charges)."""
+        cc = self._load_ccd('ASP')
+        cc.apply_chemical_adjustments()
+        atom_ids = self._atom_ids(cc)
+        self.assertEqual(len(cc.atoms), 15)
+        self.assertNotIn('HD2', atom_ids)
+        self.assertNotIn('HXT', atom_ids)
+        self.assertAlmostEqual(self._charge_of(cc, 'OD2'), -1.0, places=1)
+        self.assertAlmostEqual(self._charge_of(cc, 'OXT'), -1.0, places=1)
+        self.assertAlmostEqual(self._charge_of(cc, 'N'), 1.0, places=1)
+
+    def test_adj_terminal_carboxylate_a0g(self):
+        """A0G: terminal carboxylate HXT removed, OXT charged.
+        Matches CCP4 monomer library reference (11 atoms, same charges)."""
+        cc = self._load_ccd('A0G')
+        self.assertIn('HXT', self._atom_ids(cc))
+        cc.apply_chemical_adjustments()
+        self.assertEqual(len(cc.atoms), 11)
+        self.assertNotIn('HXT', self._atom_ids(cc))
+        self.assertAlmostEqual(self._charge_of(cc, 'OXT'), -1.0, places=1)
+
+    def test_adj_guanidinium_00l(self):
+        """00L: guanidinium C=N gets H added, both N charged +1.
+        Matches CCP4 monomer library reference (86 atoms, same charges)."""
+        cc = self._load_ccd('00L')
+        atoms_before = self._atom_ids(cc)
+        cc.apply_chemical_adjustments()
+        atoms_after = self._atom_ids(cc)
+        self.assertEqual(len(cc.atoms), 86)
+        added = atoms_after - atoms_before
+        self.assertEqual(len(added), 2)
+        self.assertAlmostEqual(self._charge_of(cc, 'NH1'), 1.0, places=1)
+        self.assertAlmostEqual(self._charge_of(cc, 'N3'), 1.0, places=1)
+
+    def test_adj_amino_ter_amine_00k(self):
+        """00K: amino_ter_amine protonates N3, adds H.
+        Note: CCP4 reference also protonates NZ (lysine-like terminal amine),
+        but our terminal_amine rule does not reach it because the carboxylic
+        acid is too far from NZ's alpha carbon."""
+        cc = self._load_ccd('00K')
+        atoms_before = self._atom_ids(cc)
+        cc.apply_chemical_adjustments()
+        atoms_after = self._atom_ids(cc)
+        added = atoms_after - atoms_before
+        self.assertEqual(len(added), 1)
+        self.assertAlmostEqual(self._charge_of(cc, 'N3'), 1.0, places=1)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -432,20 +432,16 @@ statistical lookup and typing. It can change:
 It is intentionally rule-based and motif-driven; it is not a general pKa
 predictor or tautomer enumerator.
 
-Applied order
--------------
+apply_chemical_adjustments()
+----------------------------
 
 Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
-where possible, examples below are chosen to match motifs from
-`acedrg/tables/funSmi.table` (for example `PO3R`/`PO4`, `SO4`,
-`CARBOXY-ASP`, `NITROMETHANE1`, `AMINO-TER`, `NH-ARG`).
-Rules without a direct `funSmi.table` entry are documented as implementation
-special-cases.
+examples below show representative components.
 
 Acid/oxoacid deprotonation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-`oxoacid_phosphate` (step 1)
+`oxoacid_phosphate` (step 1, SMARTS: ``OP(=O)(O)(*)`` / ``O=P(O)(O)O``)
 
    .. list-table::
       :widths: 45 10 45
@@ -463,9 +459,8 @@ Acid/oxoacid deprotonation
    For phosphate motifs of the form R-O-PO3, this rule deprotonates
    phosphoryl oxygens (AceDRG-style doubly deprotonated representation).
    The alkoxy R-O part is not deprotonated by this rule.
-   (Related `funSmi.table` entries: `PO3R`, `PO4`.)
 
-`oxoacid_sulfate` (step 2)
+`oxoacid_sulfate` (step 2, SMARTS: ``O=S(=O)(O)O``)
 
    .. list-table::
       :widths: 45 10 45
@@ -480,9 +475,25 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `0SG <https://www.rcsb.org/ligand/0SG>`_
-   (Related `funSmi.table` entry: `SO4`.)
 
-`single_bond_oxide` (step 4)
+`oxoacid_sulfite` (step 3, SMARTS: ``OS(=O)O``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_oxoacid_sulfite_before.svg
+            :alt: oxoacid_sulfite before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_oxoacid_sulfite_after.svg
+            :alt: oxoacid_sulfite after
+            :width: 100%
+
+   This rule currently follows AceDRG-style sulfite handling by deprotonating
+   one hydroxyl oxygen in matching sulfate-like tri-oxygen sulfur motifs.
+
+`single_bond_oxide` (step 5, SMARTS: ``[O]-[*]`` + internal constraints)
 
    .. list-table::
       :widths: 45 10 45
@@ -497,11 +508,12 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: (CCD example pending confirmation)
+   Oxygen must be neutral, have no hydrogen neighbors, and have exactly one
+   heavy single-bond neighbor.
    This is not general alcohol deprotonation. It normalizes pre-existing
    single-bond oxide-like oxygens that are already non-protonated in the graph.
-   This is an implementation special-case (no direct `funSmi.table` motif).
 
-`carboxy_asp` (step 6)
+`carboxy_asp` (step 7, SMARTS: ``O=C(O)C(*)`` / ``O=C(O)c(*)`` / ``O=C(O)CN(*)`` / ``O=C(O)C(N)(*)`` / ``O=C(O)CN``)
 
    .. list-table::
       :widths: 45 10 45
@@ -516,9 +528,8 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `ASP <https://www.rcsb.org/ligand/ASP>`_
-   (Related `funSmi.table` entry: `CARBOXY-ASP`.)
 
-`terminal_carboxylate` (step 7)
+`terminal_carboxylate` (step 8, SMARTS: ``O=C(O)CN(*)`` with `OXT`/`HXT` naming context)
 
    .. list-table::
       :widths: 45 10 45
@@ -535,12 +546,11 @@ Acid/oxoacid deprotonation
    Example: `A0G <https://www.rcsb.org/ligand/A0G>`_
    Unlike `carboxy_asp`, this rule targets the terminal carboxylate motif
    identified via `OXT`/`HXT` context.
-   (Related `funSmi.table` entries: `CARBOXY-TER`, `CARBOXY-AMINO-TERS`.)
 
 Resonance normalization
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-`nitro_group` (step 3)
+`nitro_group` (step 4, SMARTS: ``[N+](=O)(O)C``)
 
    .. list-table::
       :widths: 45 10 45
@@ -558,12 +568,11 @@ Resonance normalization
    Shown as charge-separated nitro resonance (`R-N+(=O)-O-`).
    The exact AceDRG representation (formal charges vs valence-only
    representation) is under review.
-   (Related `funSmi.table` entry: `NITROMETHANE1`.)
 
-Targeted special-case handling
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Targeted handling
+^^^^^^^^^^^^^^^^^
 
-`hexafluorophosphate` (step 5)
+`hexafluorophosphate` (step 6, SMARTS: ``F[P](F)(F)(F)(F)F``)
 
    .. list-table::
       :widths: 45 10 45
@@ -578,12 +587,11 @@ Targeted special-case handling
             :width: 100%
 
    Example: `A9J <https://www.rcsb.org/ligand/A9J>`_
-   This is an implementation special-case (outside `funSmi.table` motifs).
 
 Cationic nitrogen completion/protonation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-`guanidinium` (step 8)
+`guanidinium` (step 9, SMARTS: ``CNC(=N)N``)
 
    .. list-table::
       :widths: 45 10 45
@@ -598,9 +606,8 @@ Cationic nitrogen completion/protonation
             :width: 100%
 
    Example: `00L <https://www.rcsb.org/ligand/00L>`_
-   (Related `funSmi.table` entry: `NH-ARG`.)
 
-`amino_ter_amine` (step 9)
+`amino_ter_amine` (step 10, SMARTS: ``NCC(=O)N(*)``)
 
    .. list-table::
       :widths: 45 10 45
@@ -615,9 +622,8 @@ Cationic nitrogen completion/protonation
             :width: 100%
 
    Example: `00K <https://www.rcsb.org/ligand/00K>`_
-   (Related `funSmi.table` entry: `AMINO-TER`.)
 
-`terminal_amine` (step 10)
+`terminal_amine` (step 11, SMARTS: ``[*]C[NH2]``)
 
     .. list-table::
        :widths: 45 10 45
@@ -632,11 +638,10 @@ Cationic nitrogen completion/protonation
              :width: 100%
 
    Example: (CCD example pending confirmation)
-   Current expectation is context-dependent protonation of terminal amine-like
-   motifs; a concrete CCD example for this rule is still being validated.
-   (Related `funSmi.table` entry candidates include `NH-LYS`.)
+   Current implementation applies context-dependent protonation of terminal
+   amine-like motifs.
 
-`protonated_amide_n` (step 11)
+`protonated_amide_n` (step 12, SMARTS: ``CCC(=O)N``)
 
     .. list-table::
        :widths: 45 10 45
@@ -650,14 +655,13 @@ Cationic nitrogen completion/protonation
              :alt: protonated_amide_n after
              :width: 100%
 
-    CCD example and typical motif behavior are under review.
-    This may be an implementation rule beyond direct `funSmi.table` motifs.
+    Example: (CCD example pending confirmation)
 
 The order is part of behavior: earlier edits can affect pattern matching in
 later steps.
 
-Interaction with `prepare_chemcomp()`
--------------------------------------
+prepare_chemcomp()
+------------------
 
 `prepare_chemcomp()` is the full restraint-preparation pipeline. The order
 below is important because later stages depend on graph/charge edits made
@@ -694,7 +698,6 @@ Execution order
       :class: borderless
 
       * - .. figure:: img/adj_add_n_terminal_h3_before.svg
-            :alt: add_n_terminal_h3 before
             :width: 100%
         - ➡
         - .. figure:: img/adj_add_n_terminal_h3_after.svg
@@ -708,8 +711,6 @@ Execution order
    values with existing N-H/N-H2 geometry;
 7. add missing chirality, torsion and plane restraints;
 8. if the carborane-seed flag is set, apply mixed carborane post-processing:
-
-   `apply_mixed_carborane_mode()` plus mixed-mode torsion additions on the
    cluster-local part.
    Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
 9. assign CCP4 atom types.
@@ -717,25 +718,30 @@ Execution order
 Python example:
 
 .. doctest::
+  :skipif: ccp4_path is None
 
-    >>> import gemmi
     >>> import os
     >>> path = '../tests/ccd/ASP.cif'
     >>> block = gemmi.cif.read(path).sole_block()
     >>> cc = gemmi.make_chemcomp_from_block(block)
     >>> tables = gemmi.AcedrgTables()
-    >>> ccp4 = os.environ.get('CCP4')
-    >>> if ccp4:
-    ...     tables.load_tables(os.path.join(ccp4, 'share', 'acedrg', 'tables'))
-    ...     before = {a.id for a in cc.atoms}
-    ...     gemmi.prepare_chemcomp(cc, tables)
-    ...     after = {a.id for a in cc.atoms}
-    ...     sorted(before - after)
-    ...     sorted(after - before)
-    ...     atoms = {a.id: a for a in cc.atoms}
-    ...     atoms['N'].charge
-    ...     atoms['OD2'].charge
-    ...     atoms['OXT'].charge
+    >>> tables.load_tables(ccp4_path + '/share/acedrg/tables')
+    >>> before = {a.id for a in cc.atoms}
+    >>> gemmi.prepare_chemcomp(cc, tables)
+    >>> after = {a.id for a in cc.atoms}
+    >>> removed = sorted(before - after)
+    >>> added = sorted(after - before)
+    >>> atoms = {a.id: a for a in cc.atoms}
+    >>> removed
+    ['HD2', 'HXT']
+    >>> added
+    ['H3']
+    >>> atoms['N'].charge
+    1.0
+    >>> atoms['OD2'].charge
+    -1.0
+    >>> atoms['OXT'].charge
+    -1.0
 
 .. _monlib:
 
