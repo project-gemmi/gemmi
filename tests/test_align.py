@@ -201,6 +201,5 @@ class TestAlignment(unittest.TestCase):
         self.assertEqual(len(assigned), 50,
                          f'Expected 50 residues but got {len(assigned)}')
 
-
 if __name__ == '__main__':
     unittest.main()
