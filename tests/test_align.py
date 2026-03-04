@@ -159,6 +159,40 @@ class TestAlignment(unittest.TestCase):
         self.assertEqual(len(assigned), 10)
 
 
+    def test_assign_sequences_resolves_unknown_polymer_type(self):
+        """An entity with PolymerType.Unknown should have its type resolved
+        from chain content before alignment, so that it can be matched to
+        the correct FASTA sequence.  On main (before the fix), Unknown
+        entities are never processed because none of the three polymer-type
+        passes (PeptideL, Rna, Dna) match Unknown."""
+        st = gemmi.Structure()
+        model = gemmi.Model('1')
+
+        # Protein chain with standard amino acids
+        protein_residues = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE',
+                            'MET', 'PHE', 'TRP']
+        _make_peptide_chain(model, 'A', 'Axp', protein_residues)
+        st.add_model(model)
+
+        # Entity deliberately set to Unknown (as happens when
+        # setup_entities() wasn't called or detection was incomplete)
+        ent = gemmi.Entity('1')
+        ent.entity_type = gemmi.EntityType.Polymer
+        ent.polymer_type = gemmi.PolymerType.Unknown
+        ent.subchains = ['Axp']
+        st.entities.append(ent)
+
+        fasta = 'GAVLIMFW'  # matches the 8 residues exactly
+        st.assign_best_sequences([fasta])
+
+        assigned = st.entities[0].full_sequence
+        self.assertTrue(len(assigned) > 0,
+                        'Entity with Unknown polymer_type got no sequence '
+                        'assigned — type resolution is not working')
+        self.assertEqual(len(assigned), 8)
+        expected = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE', 'MET', 'PHE', 'TRP']
+        self.assertEqual(assigned, expected)
+
     def test_assign_sequences_many_trailing_cations(self):
         """Ensure a long protein chain with several cations (Zn, Ca) appended to the 
         end of a polymer subchain still has proper sequence assignment."""
