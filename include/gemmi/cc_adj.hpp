@@ -1,3 +1,7 @@
+// Copyright 2026 Global Phasing Ltd.
+//
+// Chemical-adjustment helpers used by ace_cc pipeline.
+
 #ifndef GEMMI_CC_ADJ_HPP_
 #define GEMMI_CC_ADJ_HPP_
 
