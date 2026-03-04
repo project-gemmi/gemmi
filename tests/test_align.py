@@ -193,6 +193,66 @@ class TestAlignment(unittest.TestCase):
         expected = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE', 'MET', 'PHE', 'TRP']
         self.assertEqual(assigned, expected)
 
+    def test_assign_sequences_connectivity_aware_gap_penalties(self):
+        """Gap penalties should be based on backbone connectivity.
+
+        When there is a break in the backbone (large CA-CA distance,
+        simulating missing/unmodeled residues), gap opening at that
+        position should be free (good_gapo=0) so that extra FASTA
+        residues align into the break.
+
+        We build a 6-residue chain in two segments separated by a
+        large gap (50 A between segment CAs), then provide a 10-residue
+        FASTA with 4 extra residues that belong in the break."""
+        st = gemmi.Structure()
+        model = gemmi.Model('1')
+        chain = model.add_chain('A')
+
+        # Segment 1: residues 1-3, closely spaced (3.8 A apart -> connected)
+        seg1 = ['GLY', 'ALA', 'VAL']
+        # Segment 2: residues 4-6, closely spaced but far from segment 1
+        seg2 = ['LEU', 'ILE', 'MET']
+        seg1_x_start = 0.0
+        seg2_x_start = 50.0  # 50 A away -> CA-CA >> 5 A -> disconnected
+        spacing = 3.8
+        seqid_counter = 0
+        for seg_names, x_start in [(seg1, seg1_x_start),
+                                    (seg2, seg2_x_start)]:
+            for j, name in enumerate(seg_names):
+                seqid_counter += 1
+                res = gemmi.Residue()
+                res.name = name
+                res.seqid = gemmi.SeqId(str(seqid_counter))
+                res.entity_type = gemmi.EntityType.Polymer
+                res.subchain = 'Axp'
+                x = x_start + j * spacing
+                for aname, el_str, dx in [('N', 'N', -1.3),
+                                           ('CA', 'C', 0.0),
+                                           ('C', 'C', 1.3)]:
+                    atom = gemmi.Atom()
+                    atom.name = aname
+                    atom.element = gemmi.Element(el_str)
+                    atom.pos = gemmi.Position(x + dx, 0, 0)
+                    res.add_atom(atom)
+                chain.add_residue(res)
+        st.add_model(model)
+        ent = gemmi.Entity('1')
+        ent.entity_type = gemmi.EntityType.Polymer
+        ent.polymer_type = gemmi.PolymerType.PeptideL
+        ent.subchains = ['Axp']
+        st.entities.append(ent)
+        # FASTA: GAV + PFYW (4 unmodeled residues in the break) + LIM = 10
+        fasta = 'GAVPFYWLIM'
+        st.assign_best_sequences([fasta])
+
+        assigned = st.entities[0].full_sequence
+        self.assertEqual(len(assigned), 10,
+                         f'Expected 10-residue FASTA assigned across the '
+                         f'backbone break, got {len(assigned)}: {assigned}')
+        expected = ['GLY', 'ALA', 'VAL', 'PRO', 'PHE', 'TYR', 'TRP',
+                    'LEU', 'ILE', 'MET']
+        self.assertEqual(assigned, expected)
+
     def test_assign_sequences_many_trailing_cations(self):
         """Ensure a long protein chain with several cations (Zn, Ca) appended to the 
         end of a polymer subchain still has proper sequence assignment."""
