@@ -10,7 +10,6 @@
 #include <functional>
 #include <map>
 #include <set>
-#include <unordered_set>
 
 namespace gemmi {
 namespace {
@@ -52,6 +51,275 @@ bool rule_stats_changed(const AceRuleStats& before, const AceRuleStats& after) {
   if (before.chir_count != after.chir_count) return true;
   if (before.plane_count != after.plane_count) return true;
   return std::fabs(before.charge_sum - after.charge_sum) > 1e-6;
+}
+
+enum class SmartsBond {
+  Any,
+  Single,
+  Double
+};
+
+struct SmartsNode {
+  bool wildcard = false;
+  bool aromatic = false;
+  El element = El::X;
+  int h_count = -1;   // -1 = not specified
+  int degree = -1;     // -1 = not specified (total connections incl. H)
+};
+
+struct SmartsEdge {
+  int a = -1;
+  int b = -1;
+  SmartsBond bond = SmartsBond::Single;
+};
+
+struct SmartsPattern {
+  std::vector<SmartsNode> nodes;
+  std::vector<SmartsEdge> edges;
+  std::vector<std::vector<std::pair<int, SmartsBond>>> adj;
+};
+
+bool atom_has_aromatic_bond(const AceBondAdjacency& adj, size_t idx) {
+  for (const AceBondNeighbor& nb : adj[idx])
+    if (nb.type == BondType::Aromatic || nb.type == BondType::Deloc)
+      return true;
+  return false;
+}
+
+bool parse_smarts_atom(const std::string& s, size_t& pos, SmartsNode& out) {
+  if (pos >= s.size())
+    return false;
+  if (s[pos] == '*') {
+    out.wildcard = true;
+    ++pos;
+    return true;
+  }
+  auto set_symbol = [&](const std::string& symbol, bool aromatic) {
+    out.wildcard = false;
+    out.aromatic = aromatic;
+    out.element = Element(symbol).elem;
+    return out.element != El::X;
+  };
+  if (s[pos] == '[') {
+    size_t end = s.find(']', pos + 1);
+    if (end == std::string::npos)
+      return false;
+    std::string body = s.substr(pos + 1, end - pos - 1);
+    pos = end + 1;
+    size_t i = 0;
+    while (i < body.size() && !std::isalpha(static_cast<unsigned char>(body[i])))
+      ++i;
+    if (i >= body.size())
+      return false;
+    bool aromatic = std::islower(static_cast<unsigned char>(body[i]));
+    std::string sym(1, static_cast<char>(std::toupper(static_cast<unsigned char>(body[i]))));
+    ++i;
+    if (i < body.size() && std::islower(static_cast<unsigned char>(body[i])) && !aromatic) {
+      sym.push_back(body[i]);
+      ++i;
+    }
+    if (!set_symbol(sym, aromatic))
+      return false;
+    // Parse optional H-count and degree constraints
+    while (i < body.size()) {
+      char bc = body[i];
+      if (bc == 'H') {
+        ++i;
+        if (i < body.size() && std::isdigit(static_cast<unsigned char>(body[i]))) {
+          out.h_count = body[i] - '0';
+          ++i;
+        } else {
+          out.h_count = 1;
+        }
+      } else if (bc == 'X') {
+        ++i;
+        if (i < body.size() && std::isdigit(static_cast<unsigned char>(body[i]))) {
+          out.degree = body[i] - '0';
+          ++i;
+        }
+      } else {
+        ++i;  // skip unrecognized
+      }
+    }
+    return true;
+  }
+  if (std::isalpha(static_cast<unsigned char>(s[pos]))) {
+    bool aromatic = std::islower(static_cast<unsigned char>(s[pos]));
+    std::string sym(1, static_cast<char>(std::toupper(static_cast<unsigned char>(s[pos]))));
+    ++pos;
+    if (!aromatic && pos < s.size() &&
+        std::islower(static_cast<unsigned char>(s[pos])) &&
+        s[pos] != 'c' && s[pos] != 'n' && s[pos] != 'o' && s[pos] != 's' &&
+        s[pos] != 'p') {
+      sym.push_back(s[pos]);
+      ++pos;
+    }
+    return set_symbol(sym, aromatic);
+  }
+  return false;
+}
+
+bool parse_smarts_subset(const std::string& s, SmartsPattern& out) {
+  out = SmartsPattern{};
+  std::vector<int> branch_stack;
+  int current = -1;
+  SmartsBond pending = SmartsBond::Single;
+  size_t pos = 0;
+  while (pos < s.size()) {
+    char c = s[pos];
+    if (std::isspace(static_cast<unsigned char>(c))) {
+      ++pos;
+      continue;
+    }
+    if (c == '(') {
+      if (current < 0)
+        return false;
+      branch_stack.push_back(current);
+      ++pos;
+      continue;
+    }
+    if (c == ')') {
+      if (branch_stack.empty())
+        return false;
+      current = branch_stack.back();
+      branch_stack.pop_back();
+      ++pos;
+      continue;
+    }
+    if (c == '=') {
+      pending = SmartsBond::Double;
+      ++pos;
+      continue;
+    }
+    if (c == '-') {
+      pending = SmartsBond::Single;
+      ++pos;
+      continue;
+    }
+    if (c == '~') {
+      pending = SmartsBond::Any;
+      ++pos;
+      continue;
+    }
+    SmartsNode node;
+    size_t before = pos;
+    if (!parse_smarts_atom(s, pos, node))
+      return false;
+    if (pos == before)
+      return false;
+    int node_id = static_cast<int>(out.nodes.size());
+    out.nodes.push_back(node);
+    if (current >= 0)
+      out.edges.push_back({current, node_id, pending});
+    current = node_id;
+    pending = SmartsBond::Single;
+  }
+  if (!branch_stack.empty())
+    return false;
+  out.adj.assign(out.nodes.size(), {});
+  for (const SmartsEdge& e : out.edges) {
+    out.adj[e.a].push_back({e.b, e.bond});
+    out.adj[e.b].push_back({e.a, e.bond});
+  }
+  return !out.nodes.empty();
+}
+
+int count_h_neighbors(const ChemComp& cc, const AceBondAdjacency& adj, size_t idx) {
+  int n = 0;
+  for (const AceBondNeighbor& nb : adj[idx])
+    if (cc.atoms[nb.idx].el == El::H)
+      ++n;
+  return n;
+}
+
+bool smarts_node_matches(const SmartsNode& p, const ChemComp& cc,
+                         const AceBondAdjacency& adj, size_t atom_idx) {
+  const ChemComp::Atom& a = cc.atoms[atom_idx];
+  if (!p.wildcard && a.el != p.element)
+    return false;
+  if (p.aromatic && !atom_has_aromatic_bond(adj, atom_idx))
+    return false;
+  if (p.h_count >= 0 && count_h_neighbors(cc, adj, atom_idx) != p.h_count)
+    return false;
+  if (p.degree >= 0 && static_cast<int>(adj[atom_idx].size()) != p.degree)
+    return false;
+  return true;
+}
+
+bool smarts_bond_matches(SmartsBond p, BondType bt) {
+  if (p == SmartsBond::Any)
+    return true;
+  if (p == SmartsBond::Single)
+    return bt == BondType::Single;
+  return bt == BondType::Double || bt == BondType::Deloc;
+}
+
+BondType find_cc_bond_type(const AceBondAdjacency& adj, size_t a, size_t b) {
+  for (const AceBondNeighbor& nb : adj[a])
+    if (nb.idx == b)
+      return nb.type;
+  return BondType::Unspec;
+}
+
+std::vector<std::vector<int>> match_smarts_subset(const ChemComp& cc,
+                                                  const std::string& pattern_text) {
+  SmartsPattern p;
+  if (!parse_smarts_subset(pattern_text, p))
+    return {};
+  AceGraphView gv = make_ace_graph_view(cc);
+  const size_t n = p.nodes.size();
+  std::vector<std::vector<int>> results;
+  std::vector<int> map_p2c(n, -1);
+  std::vector<char> used(cc.atoms.size(), 0);
+
+  std::vector<int> order(n);
+  for (size_t i = 0; i < n; ++i)
+    order[i] = static_cast<int>(i);
+  std::sort(order.begin(), order.end(), [&](int a, int b) {
+    const SmartsNode& na = p.nodes[a];
+    const SmartsNode& nb = p.nodes[b];
+    int sa = (na.wildcard ? 0 : 4) + (na.aromatic ? 2 : 0) +
+             static_cast<int>(p.adj[a].size());
+    int sb = (nb.wildcard ? 0 : 4) + (nb.aromatic ? 2 : 0) +
+             static_cast<int>(p.adj[b].size());
+    return sa > sb;
+  });
+
+  std::function<void(size_t)> dfs = [&](size_t depth) {
+    if (depth == n) {
+      results.push_back(map_p2c);
+      return;
+    }
+    int pi = order[depth];
+    for (size_t ci = 0; ci < cc.atoms.size(); ++ci) {
+      if (used[ci])
+        continue;
+      if (!smarts_node_matches(p.nodes[pi], cc, gv.adjacency, ci))
+        continue;
+      bool ok = true;
+      for (const auto& nb : p.adj[pi]) {
+        int pj = nb.first;
+        int cj = map_p2c[pj];
+        if (cj < 0)
+          continue;
+        BondType bt = find_cc_bond_type(gv.adjacency, ci, static_cast<size_t>(cj));
+        if (bt == BondType::Unspec || !smarts_bond_matches(nb.second, bt)) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok)
+        continue;
+      map_p2c[pi] = static_cast<int>(ci);
+      used[ci] = 1;
+      dfs(depth + 1);
+      used[ci] = 0;
+      map_p2c[pi] = -1;
+    }
+  };
+
+  dfs(0);
+  return results;
 }
 
 void remove_atom_by_id(ChemComp& cc, const std::string& atom_id) {
@@ -356,99 +624,96 @@ void adjust_oxoacid_group(ChemComp& cc, Element central_el,
     remove_atom_by_id(cc, h_id);
 }
 
-void adjust_nitro_group(ChemComp& cc) {
+void adjust_so3_group(ChemComp& cc) {
   auto neighbors = make_neighbor_names(cc);
-  for (auto& n_atom : cc.atoms) {
-    if (n_atom.el != El::N)
+  std::vector<std::string> h_to_remove;
+  for (const auto& atom : cc.atoms) {
+    if (atom.el != El::S)
       continue;
-    std::vector<std::string> o_neighbors;
-    int c_single = 0;
-    bool other = false;
-    for (const std::string& nb : neighbors[n_atom.id]) {
-      int idx = cc.find_atom_index(nb);
-      if (idx < 0)
-        continue;
-      Element el = cc.atoms[idx].el;
-      BondType bt = get_bond_type(cc, n_atom.id, nb);
-      if (el == El::O) {
-        if (bt == BondType::Double || bt == BondType::Deloc)
-          o_neighbors.push_back(nb);
-        else
-          other = true;
-      } else if (el == El::C) {
-        if (bt == BondType::Single)
-          ++c_single;
-        else
-          other = true;
-      } else {
-        other = true;
+    const auto& nb = neighbors[atom.id];
+    if (nb.size() != 3)
+      continue;
+    int o_count = 0;
+    std::vector<std::string> protonated_o;
+    for (const std::string& nid : nb) {
+      int idx = cc.find_atom_index(nid);
+      if (idx < 0 || cc.atoms[idx].el != El::O) {
+        o_count = -999;
+        break;
+      }
+      ++o_count;
+      std::string h_id;
+      int h_count = 0;
+      for (const std::string& onb : neighbors[nid]) {
+        int hidx = cc.find_atom_index(onb);
+        if (hidx >= 0 && cc.atoms[hidx].el == El::H) {
+          h_id = onb;
+          ++h_count;
+        }
+      }
+      if (h_count == 1)
+        protonated_o.push_back(nid);
+    }
+    if (o_count != 3 || protonated_o.size() != 2)
+      continue;
+    std::sort(protonated_o.begin(), protonated_o.end());
+    const std::string& target_o = protonated_o.front();
+    int o_idx = cc.find_atom_index(target_o);
+    if (o_idx < 0)
+      continue;
+    cc.atoms[o_idx].charge = -1.0f;
+    for (const std::string& onb : neighbors[target_o]) {
+      int hidx = cc.find_atom_index(onb);
+      if (hidx >= 0 && cc.atoms[hidx].el == El::H) {
+        h_to_remove.push_back(onb);
+        break;
       }
     }
-    if (other || c_single != 1 || o_neighbors.size() != 2)
-      continue;
+  }
+  for (const std::string& h_id : h_to_remove)
+    remove_atom_by_id(cc, h_id);
+}
 
-    std::string o_single = (o_neighbors[0] < o_neighbors[1]) ? o_neighbors[0] : o_neighbors[1];
+void adjust_nitro_group(ChemComp& cc) {
+  // Match R-N(=O)=O: nitrogen with two double-bonded terminal oxygens
+  std::set<int> processed;
+  for (const auto& m : match_smarts_subset(cc, "[NX3](=[OX1])=[OX1]")) {
+    int ni = m[0];
+    if (!processed.insert(ni).second)
+      continue;
+    int o1i = m[1], o2i = m[2];
+    // Pick lexicographically smaller O for the single-bond assignment
+    if (cc.atoms[o1i].id > cc.atoms[o2i].id)
+      std::swap(o1i, o2i);
     for (auto& bond : cc.rt.bonds) {
-      if ((bond.id1.atom == n_atom.id && bond.id2.atom == o_single) ||
-          (bond.id2.atom == n_atom.id && bond.id1.atom == o_single)) {
+      if ((bond.id1.atom == cc.atoms[ni].id && bond.id2.atom == cc.atoms[o1i].id) ||
+          (bond.id2.atom == cc.atoms[ni].id && bond.id1.atom == cc.atoms[o1i].id)) {
         bond.type = BondType::Single;
         break;
       }
     }
-    int o_idx = cc.find_atom_index(o_single);
-    if (o_idx >= 0)
-      cc.atoms[o_idx].charge = -1.0f;
-    n_atom.charge = 1.0f;
+    cc.atoms[o1i].charge = -1.0f;
+    cc.atoms[ni].charge = 1.0f;
   }
 }
 
 void adjust_single_bond_oxide(ChemComp& cc) {
-  auto neighbors = make_neighbor_names(cc);
-  for (auto& atom : cc.atoms) {
-    if (atom.el != El::O)
-      continue;
-    if (std::fabs(atom.charge) > 0.5f)
-      continue;
-    int n_h = 0, n_heavy = 0;
-    std::string heavy_id;
-    for (const std::string& nb : neighbors[atom.id]) {
-      int idx = cc.find_atom_index(nb);
-      if (idx < 0)
-        continue;
-      if (cc.atoms[idx].el == El::H) {
-        ++n_h;
-      } else {
-        ++n_heavy;
-        heavy_id = nb;
-      }
-    }
-    if (n_h != 0 || n_heavy != 1)
-      continue;
-    if (get_bond_type(cc, atom.id, heavy_id) != BondType::Single)
-      continue;
-    atom.charge = -1.0f;
+  // Terminal oxygen with no H, one single-bonded heavy neighbor
+  for (const auto& m : match_smarts_subset(cc, "[OH0X1]-*")) {
+    int oi = m[0];
+    if (std::fabs(cc.atoms[oi].charge) <= 0.5f)
+      cc.atoms[oi].charge = -1.0f;
   }
 }
 
 void adjust_hexafluorophosphate(ChemComp& cc) {
-  auto neighbors = make_neighbor_names(cc);
-  for (auto& atom : cc.atoms) {
-    if (atom.el != El::P)
+  // PF6 with no hydrogen: [PH0](F)(F)(F)(F)(F)F
+  std::set<int> processed;
+  for (const auto& m : match_smarts_subset(cc, "[PH0](F)(F)(F)(F)(F)F")) {
+    int pi = m[0];
+    if (!processed.insert(pi).second)
       continue;
-    int f_count = 0;
-    bool has_h = false;
-    for (const std::string& nb : neighbors[atom.id]) {
-      int idx = cc.find_atom_index(nb);
-      if (idx < 0)
-        continue;
-      Element el = cc.atoms[idx].el;
-      if (el == El::F)
-        ++f_count;
-      else if (el == El::H)
-        has_h = true;
-    }
-    if (f_count != 6 || has_h)
-      continue;
+    std::string p_id = cc.atoms[pi].id;
     std::string new_h = "H";
     if (cc.find_atom(new_h) != cc.atoms.end()) {
       for (int i = 1; i < 100; ++i) {
@@ -459,43 +724,75 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
     }
     if (cc.find_atom(new_h) != cc.atoms.end())
       continue;
-    std::string atom_id = atom.id;
+    auto neighbors = make_neighbor_names(cc);
     cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-    cc.rt.bonds.push_back({{1, atom_id}, {1, new_h}, BondType::Single, false, NAN, NAN, NAN, NAN});
-    for (const std::string& nb : neighbors[atom_id])
-      cc.rt.angles.push_back({{1, nb}, {1, atom_id}, {1, new_h}, NAN, NAN});
+    cc.rt.bonds.push_back({{1, p_id}, {1, new_h}, BondType::Single, false, NAN, NAN, NAN, NAN});
+    for (const std::string& nb : neighbors[p_id])
+      cc.rt.angles.push_back({{1, nb}, {1, p_id}, {1, new_h}, NAN, NAN});
   }
 }
 
 void adjust_carboxy_asp(ChemComp& cc) {
   auto neighbors = make_neighbor_names(cc);
   std::set<std::string> matched_atoms;
-  for (const auto& atom : cc.atoms) {
-    if (atom.el != El::C)
-      continue;
-    std::vector<std::string> o_neighbors;
-    std::string c_neighbor;
-    bool ok = true;
-    for (const std::string& nid : neighbors[atom.id]) {
-      int idx = cc.find_atom_index(nid);
-      if (idx < 0)
-        continue;
-      if (cc.atoms[idx].el == El::O)
-        o_neighbors.push_back(nid);
-      else if (cc.atoms[idx].el == El::C)
-        c_neighbor = nid;
-      else
-        ok = false;
+  auto collect_from_pattern = [&](const std::string& smarts) {
+    SmartsPattern p;
+    if (!parse_smarts_subset(smarts, p))
+      return;
+    for (const std::vector<int>& m : match_smarts_subset(cc, smarts)) {
+      for (size_t i = 0; i < p.nodes.size(); ++i) {
+        if (p.nodes[i].wildcard || p.nodes[i].element != El::O)
+          continue;
+        int oi = m[i];
+        if (oi < 0)
+          continue;
+        for (const auto& e1 : p.adj[i]) {
+          int cpat = e1.first;
+          if (e1.second != SmartsBond::Single || p.nodes[cpat].element != El::C)
+            continue;
+          bool has_double_o = false;
+          for (const auto& e2 : p.adj[cpat]) {
+            if (e2.second == SmartsBond::Double &&
+                p.nodes[e2.first].element == El::O) {
+              has_double_o = true;
+              break;
+            }
+          }
+          if (has_double_o)
+            matched_atoms.insert(cc.atoms[oi].id);
+        }
+      }
     }
-    if (!ok || o_neighbors.size() != 2 || c_neighbor.empty())
-      continue;
-    bool c_is_sp3 = true;
-    if (atom_has_unsaturated_bond(cc, c_neighbor))
-      c_is_sp3 = false;
-    if (!c_is_sp3)
-      continue;
-    matched_atoms.insert(o_neighbors[0]);
-    matched_atoms.insert(o_neighbors[1]);
+  };
+  collect_from_pattern("O=C(O)C(*)");
+  collect_from_pattern("O=C(O)c(*)");
+  collect_from_pattern("O=C(O)CN(*)");
+  collect_from_pattern("O=C(O)C(N)(*)");
+  collect_from_pattern("O=C(O)CN");
+
+  if (matched_atoms.empty()) {
+    for (const auto& atom : cc.atoms) {
+      if (atom.el != El::C)
+        continue;
+      std::vector<std::string> o_neighbors;
+      std::string c_neighbor;
+      bool ok = true;
+      for (const std::string& nid : neighbors[atom.id]) {
+        int idx = cc.find_atom_index(nid);
+        if (idx < 0)
+          continue;
+        if (cc.atoms[idx].el == El::O)
+          o_neighbors.push_back(nid);
+        else if (cc.atoms[idx].el == El::C)
+          c_neighbor = nid;
+        else
+          ok = false;
+      }
+      if (!ok || o_neighbors.size() != 2 || c_neighbor.empty())
+        continue;
+      matched_atoms.insert(o_neighbors[0]);
+      matched_atoms.insert(o_neighbors[1]);
+    }
   }
 
   std::vector<std::string> h_to_remove;
@@ -855,6 +1152,7 @@ void apply_chemical_adjustments(ChemComp& cc) {
   std::vector<AceChemRule> rules;
   rules.push_back({"oxoacid_phosphate", [&] { adjust_oxoacid_group(cc, El::P, 3, true); }});
   rules.push_back({"oxoacid_sulfate", [&] { adjust_oxoacid_group(cc, El::S, 4, false); }});
+  rules.push_back({"oxoacid_sulfite", [&] { adjust_so3_group(cc); }});
   rules.push_back({"nitro_group", [&] { adjust_nitro_group(cc); }});
   rules.push_back({"single_bond_oxide", [&] { adjust_single_bond_oxide(cc); }});
   rules.push_back({"hexafluorophosphate", [&] { adjust_hexafluorophosphate(cc); }});
