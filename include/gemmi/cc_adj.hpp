@@ -10,9 +10,9 @@
 namespace gemmi {
 
 // Chemical normalization pass used by prepare_chemcomp().
-void apply_chemical_adjustments(ChemComp& cc);
-bool add_n_terminal_h3(ChemComp& cc);
-void sync_n_terminal_h3_angles(ChemComp& cc);
+GEMMI_DLL void apply_chemical_adjustments(ChemComp& cc);
+GEMMI_DLL bool add_n_terminal_h3(ChemComp& cc);
+GEMMI_DLL void sync_n_terminal_h3_angles(ChemComp& cc);
 
 } // namespace gemmi
 
