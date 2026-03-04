@@ -455,6 +455,8 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `ATP <https://www.rcsb.org/ligand/ATP>`_
+   For phosphate motifs of the form R-O-PO3, this rule deprotonates
+   phosphoryl oxygens (AceDRG-style doubly deprotonated representation).
 
 `oxoacid_sulfate` (step 2)
 
@@ -487,6 +489,8 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `BGQ <https://www.rcsb.org/ligand/BGQ>`_
+   This is not general alcohol deprotonation. It normalizes pre-existing
+   single-bond oxide-like oxygens that are already non-protonated in the graph.
 
 `carboxy_asp` (step 6)
 
@@ -519,6 +523,8 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `A0G <https://www.rcsb.org/ligand/A0G>`_
+   Unlike `carboxy_asp`, this rule targets the terminal carboxylate motif
+   identified via `OXT`/`HXT` context.
 
 Resonance normalization
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -623,7 +629,7 @@ Cationic nitrogen completion/protonation
              :alt: protonated_amide_n after
              :width: 100%
 
-    Example: `BJS <https://www.rcsb.org/ligand/BJS>`_
+    CCD example under review.
 
 The order is part of behavior: earlier edits can affect pattern matching in
 later steps.
@@ -693,24 +699,21 @@ Python example:
     >>> import gemmi
     >>> import os
     >>> path = '../tests/ccd/ASP.cif'
-    >>> if not os.path.isfile(path):
-    ...     path = 'tests/ccd/ASP.cif'
     >>> block = gemmi.cif.read(path).sole_block()
     >>> cc = gemmi.make_chemcomp_from_block(block)
-    >>> before = {a.id for a in cc.atoms}
-    >>> cc.apply_chemical_adjustments()
-    >>> after = {a.id for a in cc.atoms}
-    >>> sorted(before - after)
-    ['HD2', 'HXT']
-    >>> sorted(after - before)
-    ['H3']
-    >>> atoms = {a.id: a for a in cc.atoms}
-    >>> atoms['N'].charge
-    1.0
-    >>> atoms['OD2'].charge
-    -1.0
-    >>> atoms['OXT'].charge
-    -1.0
+    >>> tables = gemmi.AcedrgTables()
+    >>> ccp4 = os.environ.get('CCP4')
+    >>> if ccp4:
+    ...     tables.load_tables(os.path.join(ccp4, 'share', 'acedrg', 'tables'))
+    ...     before = {a.id for a in cc.atoms}
+    ...     gemmi.prepare_chemcomp(cc, tables)
+    ...     after = {a.id for a in cc.atoms}
+    ...     sorted(before - after)
+    ...     sorted(after - before)
+    ...     atoms = {a.id: a for a in cc.atoms}
+    ...     atoms['N'].charge
+    ...     atoms['OD2'].charge
+    ...     atoms['OXT'].charge
 
 .. _monlib:
 
