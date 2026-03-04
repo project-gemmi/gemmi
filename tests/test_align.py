@@ -104,9 +104,8 @@ class TestAlignment(unittest.TestCase):
 
 
     def test_assign_sequences_ignores_cations(self):
-        """Cations (Ca, Zn, etc.) that are part of the polymer subchain
-        (as happens in real PDB files from refinement) should be filtered
-        out during alignment and not prevent FASTA assignment."""
+        """Cations (Ca, Zn, etc.) that are part of the polymer subchain should be 
+        filtered out during alignment to not prevent FASTA assignment."""
         st = gemmi.Structure()
         model = gemmi.Model('1')
         protein_residues = ['ALA'] * 10  # 10-residue polyalanine
@@ -158,13 +157,10 @@ class TestAlignment(unittest.TestCase):
         # The full FASTA should be assigned as the SEQRES
         self.assertEqual(len(assigned), 10)
 
-
     def test_assign_sequences_resolves_unknown_polymer_type(self):
         """An entity with PolymerType.Unknown should have its type resolved
         from chain content before alignment, so that it can be matched to
-        the correct FASTA sequence.  On main (before the fix), Unknown
-        entities are never processed because none of the three polymer-type
-        passes (PeptideL, Rna, Dna) match Unknown."""
+        the correct FASTA sequence."""
         st = gemmi.Structure()
         model = gemmi.Model('1')
 
@@ -195,11 +191,6 @@ class TestAlignment(unittest.TestCase):
 
     def test_assign_sequences_connectivity_aware_gap_penalties(self):
         """Gap penalties should be based on backbone connectivity.
-
-        When there is a break in the backbone (large CA-CA distance,
-        simulating missing/unmodeled residues), gap opening at that
-        position should be free (good_gapo=0) so that extra FASTA
-        residues align into the break.
 
         We build a 6-residue chain in two segments separated by a
         large gap (50 A between segment CAs), then provide a 10-residue
