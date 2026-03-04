@@ -1,5 +1,4 @@
 #!/bin/bash
-:q
 
 # I use this script for building, testing and updating docs.
 

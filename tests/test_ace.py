@@ -720,6 +720,47 @@ class TestChemicalAdjustmentRules(unittest.TestCase):
         self.assertEqual(len(added), 1)
         self.assertAlmostEqual(self._charge_of(cc, 'N3'), 1.0, places=1)
 
+    def test_adj_single_bond_oxide_h1t(self):
+        """H1T: single_bond_oxide charges terminal single-bonded oxygens -1.
+        H1T is a vanadate compound — 14 terminal oxygens get charge -1.
+        CCP4 reference additionally charges 6 bridging oxygens to -2."""
+        cc = self._load_ccd('H1T')
+        cc.apply_chemical_adjustments()
+        self.assertEqual(len(cc.atoms), 27)
+        charged_oxygens = ['O01', 'O02', 'O03', 'O04', 'O05', 'O06',
+                           'O08', 'O09', 'O10', 'O11', 'O12', 'O13',
+                           'O14', 'O19']
+        for o_id in charged_oxygens:
+            self.assertAlmostEqual(self._charge_of(cc, o_id), -1.0, places=1)
+
+    def test_adj_terminal_amine_lys(self):
+        """LYS: terminal_amine protonates N and NZ, terminal_carboxylate
+        deprotonates OXT. Matches CCP4 monomer library reference."""
+        cc = self._load_ccd('LYS')
+        atoms_before = self._atom_ids(cc)
+        cc.apply_chemical_adjustments()
+        atoms_after = self._atom_ids(cc)
+        self.assertEqual(len(cc.atoms), 25)
+        self.assertNotIn('HXT', atoms_after)
+        self.assertIn('H3', atoms_after - atoms_before)
+        self.assertAlmostEqual(self._charge_of(cc, 'N'), 1.0, places=1)
+        self.assertAlmostEqual(self._charge_of(cc, 'NZ'), 1.0, places=1)
+        self.assertAlmostEqual(self._charge_of(cc, 'OXT'), -1.0, places=1)
+
+    def test_adj_protonated_amide_n_bjs(self):
+        """BJS: protonated_amide_n adds H to amide N28, charges N28 +1.
+        Matches CCP4 monomer library reference (90 atoms, same charges)."""
+        cc = self._load_ccd('BJS')
+        atoms_before = self._atom_ids(cc)
+        cc.apply_chemical_adjustments()
+        atoms_after = self._atom_ids(cc)
+        self.assertEqual(len(cc.atoms), 90)
+        added = atoms_after - atoms_before
+        self.assertEqual(len(added), 1)
+        h_id = added.pop()
+        self.assertAlmostEqual(self._charge_of(cc, 'N28'), 1.0, places=1)
+        self.assertIsNotNone(self._bond_type(cc, 'N28', h_id))
+
 
 if __name__ == '__main__':
     unittest.main()

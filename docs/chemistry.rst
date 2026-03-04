@@ -507,7 +507,7 @@ Acid/oxoacid deprotonation
             :alt: single_bond_oxide after
             :width: 100%
 
-   Example: (CCD example pending confirmation)
+   Example: `H1T <https://www.rcsb.org/ligand/H1T>`_
    Oxygen must be neutral, have no hydrogen neighbors, and have exactly one
    heavy single-bond neighbor.
    This is not general alcohol deprotonation. It normalizes pre-existing
@@ -637,7 +637,7 @@ Cationic nitrogen completion/protonation
              :alt: terminal_amine after
              :width: 100%
 
-   Example: (CCD example pending confirmation)
+   Example: `LYS <https://www.rcsb.org/ligand/LYS>`_
    Current implementation applies context-dependent protonation of terminal
    amine-like motifs.
 
@@ -655,7 +655,7 @@ Cationic nitrogen completion/protonation
              :alt: protonated_amide_n after
              :width: 100%
 
-    Example: (CCD example pending confirmation)
+    Example: `BJS <https://www.rcsb.org/ligand/BJS>`_
 
 The order is part of behavior: earlier edits can affect pattern matching in
 later steps.
