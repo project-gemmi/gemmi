@@ -6,11 +6,15 @@
 #define GEMMI_ACE_GRAPH_HPP_
 
 #include <map>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "gemmi/chemcomp.hpp"
 
 namespace gemmi {
+
+struct CodAtomInfo;
 
 struct AceBondNeighbor {
   size_t idx;
@@ -74,6 +78,46 @@ bool compute_metal_neighbor_valence_charge(
 
 bool has_non_hydrogen_neighbor(
     const ChemComp& cc, const std::vector<int>& neighbor_indices);
+
+void add_angles_from_bonds_if_missing(ChemComp& cc);
+
+std::vector<unsigned> compute_rdkit_legacy_cip_ranks(
+    const ChemComp& cc, const AceBondAdjacency& adj);
+
+void sort_neighbors_by_rdkit_cip_rank(
+    std::vector<size_t>& neighbors, const std::vector<unsigned>& cip_ranks);
+
+bool is_oxygen_column(Element el);
+
+std::pair<size_t, size_t> find_ring_sharing_pair(
+    const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info,
+    size_t side1, size_t side2);
+
+enum class RingParity { Even, Odd, NoFlip };
+enum class RingFlip { Even, Odd };
+
+std::map<std::pair<size_t, size_t>, RingParity>
+build_ring_bond_parity(const AceBondAdjacency& adj,
+                       const std::vector<CodAtomInfo>& atom_info);
+
+std::map<std::pair<size_t, size_t>, RingFlip>
+build_ring_bond_flip(const ChemComp& cc,
+                     const AceBondAdjacency& adj,
+                     const std::vector<CodAtomInfo>& atom_info);
+
+struct SugarRingInfo {
+  std::map<int, std::set<size_t>> ring_sets;
+  std::set<std::pair<size_t, size_t>> ring_bonds;
+  std::map<int, std::vector<size_t>> ring_seq;
+};
+
+SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj,
+                                 const std::vector<CodAtomInfo>& atom_info);
+
+bool is_pyranose_ring_like_acedrg(const ChemComp& cc, const AceBondAdjacency& adj,
+                                  const std::vector<CodAtomInfo>& atom_info,
+                                  const std::vector<size_t>& ring_atoms,
+                                  const std::set<size_t>& ring_set);
 
 }  // namespace gemmi
 
