@@ -489,7 +489,7 @@ Acid/oxoacid deprotonation
             :alt: single_bond_oxide after
             :width: 100%
 
-   Example: `BGQ <https://www.rcsb.org/ligand/BGQ>`_
+   Example: (CCD example pending confirmation)
    This is not general alcohol deprotonation. It normalizes pre-existing
    single-bond oxide-like oxygens that are already non-protonated in the graph.
 
@@ -545,8 +545,9 @@ Resonance normalization
             :width: 100%
 
    Example: `NE5 <https://www.rcsb.org/ligand/NE5>`_
-   Shown as charge-separated nitro resonance (`R-N+(=O)-O-`); exact
-   representation details in AceDRG outputs are under review.
+   Shown as charge-separated nitro resonance (`R-N+(=O)-O-`).
+   The exact AceDRG representation (formal charges vs valence-only
+   representation) is under review.
 
 Targeted special-case handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -617,7 +618,9 @@ Cationic nitrogen completion/protonation
              :alt: terminal_amine after
              :width: 100%
 
-   Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
+   Example: (CCD example pending confirmation)
+   Current expectation is context-dependent protonation of terminal amine-like
+   motifs; a concrete CCD example for this rule is still being validated.
 
 `protonated_amide_n` (step 11)
 
