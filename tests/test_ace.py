@@ -427,6 +427,7 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         for tor in cc.rt.torsions:
             assert tor.id1.atom in atom_set and tor.id2.atom in atom_set, source
             assert tor.id3.atom in atom_set and tor.id4.atom in atom_set, source
+            assert math.isfinite(tor.esd), source
         for chir in cc.rt.chirs:
             assert chir.id_ctr.atom in atom_set and chir.id1.atom in atom_set, source
             assert chir.id2.atom in atom_set and chir.id3.atom in atom_set, source
