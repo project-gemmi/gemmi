@@ -93,6 +93,29 @@ std::pair<size_t, size_t> find_ring_sharing_pair(
     const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info,
     size_t side1, size_t side2);
 
+struct RingInfo {
+  std::vector<int> atoms;
+  std::string rep;
+  std::string s_rep;
+  bool is_aromatic = false;
+  bool is_aromatic_permissive = false;
+};
+
+void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
+                         std::vector<CodAtomInfo>& atoms,
+                         std::vector<RingInfo>& rings);
+
+void set_ring_aromaticity_from_bonds(const AceBondAdjacency& adj,
+                                     const std::vector<CodAtomInfo>& atoms,
+                                     std::vector<RingInfo>& rings,
+                                     int verbose = 0);
+
+void set_atoms_ring_rep_s(std::vector<CodAtomInfo>& atoms,
+                          const std::vector<RingInfo>& rings);
+
+void append_ring_annotation(std::string& s,
+                            const std::map<std::string, std::string>& ring_rep_s);
+
 enum class RingParity { Even, Odd, NoFlip };
 enum class RingFlip { Even, Odd };
 

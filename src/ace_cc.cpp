@@ -16,8 +16,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
-#include <sstream>
+#include "gemmi/fileutil.hpp"
 #include <array>
 #include <set>
 #include <map>
@@ -561,19 +560,20 @@ CarboroneDb& get_carborone_db(const std::string& tables_dir) {
     return db;
   db.list_loaded = true;
 
-  std::ifstream fin(join_path(tables_dir, "CarboroneSamples.list").c_str());
-  if (!fin)
+  std::string path = join_path(tables_dir, "CarboroneSamples.list");
+  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  if (!f)
     return db;
 
   std::set<std::string> seen_names;
-  std::string line;
-  while (std::getline(fin, line)) {
-    std::istringstream iss(line);
-    std::string class0, class1, name;
-    if (!(iss >> class0 >> class1 >> name))
+  char buf[256];
+  while (std::fgets(buf, sizeof(buf), f.get())) {
+    char c0[64], c1[64], nm[64];
+    if (std::sscanf(buf, "%63s %63s %63s", c0, c1, nm) != 3)
       continue;
-    class0 = upper_copy(class0);
-    class1 = upper_copy(class1);
+    std::string class0 = upper_copy(c0);
+    std::string class1 = upper_copy(c1);
+    std::string name(nm);
     db.by_pair[cat(class0, '\t', class1)].push_back(name);
     db.by_class0[class0].push_back(name);
     if (seen_names.insert(name).second)

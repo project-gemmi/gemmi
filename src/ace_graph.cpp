@@ -5,8 +5,11 @@
 #include "gemmi/ace_graph.hpp"
 #include "gemmi/acedrg_tables.hpp"
 
+#include "gemmi/util.hpp"
+
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <set>
 #include <tuple>
 
@@ -719,6 +722,379 @@ bool is_pyranose_ring_like_acedrg(const ChemComp& cc, const AceBondAdjacency& ad
       return true;
   }
   return false;
+}
+
+// ============================================================================
+// Ring detection and aromaticity (moved from acedrg_tables.cpp)
+// ============================================================================
+
+namespace {
+
+bool icase_alpha_less(const std::string& first,
+                     const std::string& second) {
+  size_t i = 0;
+  while (i < first.length() && i < second.length()) {
+    char a = alpha_up(first[i]);
+    char b = alpha_up(second[i]);
+    if (a < b)
+      return true;
+    if (a > b)
+      return false;
+    ++i;
+  }
+  return first.length() > second.length();
+}
+
+int count_non_metal_connections(const AceBondAdjacency& adj,
+                                const std::vector<CodAtomInfo>& atoms,
+                                int idx) {
+  int non_mc = 0;
+  for (const auto& nb : adj[idx])
+    if (!atoms[nb.idx].is_metal)
+      ++non_mc;
+  return non_mc;
+}
+
+// Count pi electrons for an atom in a ring.
+// mode 0 (strict) vs mode 1 (permissive) matches AceDRG.
+// use_all=true corresponds to setPiForOneAtomAll (vs NoMetal).
+int count_atom_pi(const AceBondAdjacency& adj,
+                  const std::vector<CodAtomInfo>& atoms,
+                  int idx, int mode, bool use_all) {
+  const auto& atom = atoms[idx];
+  int non_mc = count_non_metal_connections(adj, atoms, idx);
+  int aN = 0;
+
+  if (atom.bonding_idx == 2) {
+    if (atom.charge == 0.0f) {
+      if (atom.el == El::C) {
+        if (non_mc == 3) {
+          bool has_exo = false;
+          for (int nb : atom.conn_atoms_no_metal) {
+            if (atoms[nb].el == El::O &&
+                atoms[nb].conn_atoms_no_metal.size() == 1 &&
+                atoms[nb].charge == 0.0f) {
+              has_exo = true;
+            } else if (atoms[nb].el == El::C &&
+                       atoms[nb].conn_atoms_no_metal.size() == 3) {
+              int h_count = 0;
+              for (int nb2 : atoms[nb].conn_atoms_no_metal)
+                if (atoms[nb2].el == El::H)
+                  ++h_count;
+              if (h_count >= 2)
+                has_exo = true;
+            }
+          }
+          if (!has_exo)
+            aN = 1;
+        }
+      } else if (atom.el == El::N) {
+        if (non_mc == 2)
+          aN = 1;
+        else if (non_mc == 3)
+          aN = 2;
+      } else if (atom.el == El::B) {
+        if (non_mc == 2)
+          aN = 1;
+      } else if (atom.el == El::O || atom.el == El::S) {
+        if (non_mc == 2)
+          aN = 2;
+      } else if (atom.el == El::P) {
+        if (non_mc == 3)
+          aN = 2;
+      }
+    } else {
+      if (atom.el == El::C) {
+        if (atom.charge == -1.0f) {
+          if (non_mc == 3)
+            aN = 2;
+          else if (non_mc == 2)
+            aN = use_all ? 1 : (mode == 1 ? 1 : 2);
+        } else if (!use_all && atom.charge == -2.0f) {
+          if (non_mc == 2)
+            aN = 2;
+        }
+      } else if (atom.el == El::N) {
+        if (atom.charge == -1.0f) {
+          if (non_mc == 2)
+            aN = 2;
+        } else if (atom.charge == 1.0f) {
+          if (non_mc == 3)
+            aN = use_all ? 1 : (mode == 1 ? 1 : 2);
+        }
+      } else if (atom.el == El::O) {
+        if (atom.charge == 1.0f && non_mc == 2)
+          aN = 1;
+      } else if (atom.el == El::B) {
+        if (atom.charge == -1.0f && non_mc == 3)
+          aN = 1;
+      }
+    }
+  } else if (atom.bonding_idx == 3 &&
+             (atom.el == El::N || atom.el == El::B)) {
+    if (atom.el == El::N) {
+      if (atom.charge == -1.0f) {
+        if (non_mc == 2)
+          aN = 2;
+      } else if (atom.charge == 1.0f) {
+        if (non_mc == 3)
+          aN = 1;
+      } else {
+        aN = 2;
+      }
+    } else if (atom.el == El::B) {
+      aN = 0;
+    }
+  }
+
+  return aN;
+}
+
+void check_one_path_acedrg(
+    const std::vector<std::vector<int>>& neighbors,
+    std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings,
+    std::map<std::string, int>& ring_index,
+    int ori_idx, int cur_idx, int prev_idx, int cur_lev, int max_ring,
+    std::map<int, std::string>& seen_atom_ids,
+    std::map<int, std::string>& atom_ids_in_path) {
+  if (cur_lev >= max_ring)
+    return;
+
+  bool path_collision = false;
+  for (int nb : neighbors[cur_idx]) {
+    if (nb != ori_idx && nb != prev_idx &&
+        seen_atom_ids.find(nb) != seen_atom_ids.end()) {
+      path_collision = true;
+      break;
+    }
+  }
+
+  if (!path_collision) {
+    for (int nb : neighbors[cur_idx]) {
+      if (nb == ori_idx && nb != prev_idx && cur_lev > 2 && atoms[nb].el != El::H) {
+        atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
+        std::vector<std::string> all_ids;
+        std::vector<std::string> all_seris;
+        std::vector<int> ring_atoms;
+        for (const auto& it : atom_ids_in_path) {
+          all_seris.push_back(std::to_string(it.first));
+          all_ids.push_back(it.second);
+          ring_atoms.push_back(it.first);
+        }
+        std::sort(all_seris.begin(), all_seris.end(), icase_alpha_less);
+        std::sort(all_ids.begin(), all_ids.end(), icase_alpha_less);
+
+        std::string rep;
+        for (const auto& id : all_ids)
+          rep += id;
+
+        std::string s_rep = join_str(all_seris, '_');
+
+        atoms[ori_idx].ring_rep[rep] = static_cast<int>(atom_ids_in_path.size());
+
+        if (ring_index.find(s_rep) == ring_index.end()) {
+          RingInfo ring;
+          ring.atoms = ring_atoms;
+          ring.rep = rep;
+          ring.s_rep = s_rep;
+          ring.is_aromatic = true;
+          for (int idx : ring_atoms)
+            if (!atoms[idx].is_aromatic)
+              ring.is_aromatic = false;
+
+          int idx = static_cast<int>(rings.size());
+          ring_index[s_rep] = idx;
+          rings.push_back(ring);
+          for (int atom_idx : ring_atoms)
+            atoms[atom_idx].in_rings.push_back(idx);
+        }
+
+        atom_ids_in_path.erase(cur_idx);
+        path_collision = true;
+        break;
+      }
+    }
+  }
+
+  if (!path_collision) {
+    int next_lev = cur_lev + 1;
+    seen_atom_ids[cur_idx] = atoms[cur_idx].id;
+    if (next_lev < max_ring) {
+      if (cur_lev == 1) {
+        seen_atom_ids.clear();
+        atom_ids_in_path.clear();
+        seen_atom_ids[cur_idx] = atoms[cur_idx].id;
+        atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
+      }
+      atom_ids_in_path[cur_idx] = atoms[cur_idx].id;
+      for (int nb : neighbors[cur_idx]) {
+        if (nb != prev_idx && !atoms[nb].is_metal) {
+          check_one_path_acedrg(neighbors, atoms, rings, ring_index,
+                                ori_idx, nb, cur_idx, next_lev, max_ring,
+                                seen_atom_ids, atom_ids_in_path);
+        }
+      }
+      atom_ids_in_path.erase(cur_idx);
+      seen_atom_ids.erase(cur_idx);
+    }
+    atom_ids_in_path.erase(cur_idx);
+    seen_atom_ids.erase(cur_idx);
+  }
+}
+
+void build_ring_size_map(const std::map<std::string, std::string>& ring_rep_s,
+                         std::map<std::string, int>& size_map) {
+  for (const auto& it : ring_rep_s) {
+    const std::string& ring_str = it.second;
+    size_map[ring_str] += 1;
+  }
+}
+
+}  // anonymous namespace
+
+void detect_rings_acedrg(
+    const std::vector<std::vector<int>>& neighbors,
+    std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings) {
+  rings.clear();
+  std::map<std::string, int> ring_index;
+
+  for (size_t i = 0; i < atoms.size(); ++i) {
+    if (atoms[i].is_metal || atoms[i].el == El::H)
+      continue;
+    std::map<int, std::string> seen;
+    std::map<int, std::string> path;
+    check_one_path_acedrg(neighbors, atoms, rings, ring_index,
+                          static_cast<int>(i), static_cast<int>(i), -999,
+                          1, 7, seen, path);
+  }
+}
+
+void set_ring_aromaticity_from_bonds(
+    const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings,
+    int verbose) {
+  // AceDRG has two-phase aromaticity:
+  // - Strict (mode 0): only NoMetal pi count → isAromatic (used for COD table lookup)
+  // - Permissive (mode 1): NoMetal+All pi counts → isAromaticP (used for output CIF)
+  // Ring must be planar: AceDRG requires all atoms bondingIdx==2.
+  auto is_ring_planar = [&](const RingInfo& ring) -> bool {
+    for (int idx : ring.atoms)
+      if (atoms[idx].bonding_idx != 2)
+        return false;
+    return true;
+  };
+
+  for (size_t i = 0; i < rings.size(); ++i) {
+    RingInfo& ring = rings[i];
+    ring.is_aromatic = false;
+
+    if (!is_ring_planar(ring))
+      continue;
+
+    int pi1 = 0;
+    for (int idx : ring.atoms)
+      pi1 += count_atom_pi(adj, atoms, idx, 0, false);
+    if (pi1 > 0 && pi1 % 4 == 2)
+      ring.is_aromatic = true;
+    if (verbose >= 2) {
+      std::fprintf(stderr, "    ring %zu (size=%zu): pi1=%d aromatic=%d atoms:",
+                   i, ring.atoms.size(), pi1, ring.is_aromatic ? 1 : 0);
+      for (int idx : ring.atoms)
+        std::fprintf(stderr, " %s", atoms[idx].id.c_str());
+      std::fprintf(stderr, "\n");
+    }
+  }
+
+  // AceDRG pyrole rule: if there are exactly 4 five-member rings with 4C+1N
+  // and they are planar, mark them aromatic even if pi-count failed.
+  std::vector<size_t> pyrole_rings;
+  for (size_t i = 0; i < rings.size(); ++i) {
+    const RingInfo& ring = rings[i];
+    if (ring.atoms.size() != 5)
+      continue;
+    int num_c = 0;
+    int num_n = 0;
+    for (int idx : ring.atoms) {
+      if (atoms[idx].el == El::C)
+        ++num_c;
+      else if (atoms[idx].el == El::N)
+        ++num_n;
+    }
+    if (num_c == 4 && num_n == 1)
+      pyrole_rings.push_back(i);
+  }
+  if (pyrole_rings.size() == 4) {
+    for (size_t i : pyrole_rings) {
+      if (is_ring_planar(rings[i]))
+        rings[i].is_aromatic = true;
+    }
+  }
+
+  for (auto& ring : rings) {
+    ring.is_aromatic_permissive = ring.is_aromatic;
+    if (ring.is_aromatic)
+      continue;
+    if (!is_ring_planar(ring))
+      continue;
+    int pi1 = 0;
+    int pi2 = 0;
+    for (int idx : ring.atoms) {
+      pi1 += count_atom_pi(adj, atoms, idx, 1, false);  // NoMetal
+      pi2 += count_atom_pi(adj, atoms, idx, 1, true);   // All
+    }
+    if ((pi1 > 0 && pi1 % 4 == 2) || (pi2 > 0 && pi2 % 4 == 2))
+      ring.is_aromatic_permissive = true;
+    if (verbose >= 2) {
+      std::fprintf(stderr,
+                   "    ring %zu (size=%zu): pi1m1=%d pi2m1=%d aromaticP=%d\n",
+                   (&ring - &rings[0]), ring.atoms.size(), pi1, pi2,
+                   ring.is_aromatic_permissive ? 1 : 0);
+    }
+  }
+}
+
+void set_atoms_ring_rep_s(
+    std::vector<CodAtomInfo>& atoms,
+    const std::vector<RingInfo>& rings) {
+  for (const auto& ring : rings) {
+    std::string size = std::to_string(ring.atoms.size());
+    std::vector<std::string> all_seris;
+    for (int idx : ring.atoms)
+      all_seris.push_back(std::to_string(idx));
+    std::sort(all_seris.begin(), all_seris.end(), icase_alpha_less);
+    std::string rep_id = join_str(all_seris, '_');
+
+    for (int idx : ring.atoms) {
+      if (ring.is_aromatic)
+        atoms[idx].ring_rep_s[rep_id] = size + "a";
+      else
+        atoms[idx].ring_rep_s[rep_id] = size;
+    }
+  }
+}
+
+// Append ring size annotation like "[5a,6a]" to string s.
+void append_ring_annotation(std::string& s,
+                            const std::map<std::string, std::string>& ring_rep_s) {
+  std::map<std::string, int> size_map;
+  build_ring_size_map(ring_rep_s, size_map);
+  s += '[';
+  int i = 0;
+  int j = static_cast<int>(size_map.size());
+  for (const auto& it : size_map) {
+    const std::string& size = it.first;
+    if (it.second >= 3)
+      cat_to(s, it.second, 'x', size);
+    else if (it.second == 2)
+      cat_to(s, size, ',', size);
+    else
+      s.append(size);
+    s += (i != j - 1) ? ',' : ']';
+    ++i;
+  }
 }
 
 }  // namespace gemmi
