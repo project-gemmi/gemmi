@@ -435,7 +435,7 @@ predictor or tautomer enumerator.
 Applied order
 -------------
 
-Rules are applied in a fixed order:
+Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
 
 Acid/oxoacid deprotonation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -631,25 +631,60 @@ later steps.
 Interaction with `prepare_chemcomp()`
 -------------------------------------
 
-`prepare_chemcomp()` calls `apply_chemical_adjustments()` as one stage of the
-full restraint-generation pipeline. Immediately after this phase, it may also
-add/synchronize the third N-terminal hydrogen via `add_n_terminal_h3()` and
-`sync_n_terminal_h3_angles()` when the local motif matches:
+`prepare_chemcomp()` is the full restraint-preparation pipeline. The order
+below is important because later stages depend on graph/charge edits made
+earlier.
 
+Execution order
+^^^^^^^^^^^^^^^
 
-.. list-table::
-   :widths: 45 10 45
-   :class: borderless
+`prepare_chemcomp()` follows this control flow:
 
-   * - .. figure:: img/adj_add_n_terminal_h3_before.svg
-         :alt: add_n_terminal_h3 before
-         :width: 100%
-     - ➡
-     - .. figure:: img/adj_add_n_terminal_h3_after.svg
-         :alt: add_n_terminal_h3 after
-         :width: 100%
+0. detect carborane branches before the standard path:
 
-Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
+   * full carborane mode (early return): enabled when the component has at
+     least one non-hydrogen atom with 4+ boron neighbors, and all
+     non-hydrogen atoms are only B/C/metal. In this case,
+     `apply_carborane_mode()` is used, CCP4 types are assigned, and the
+     function returns immediately.
+     Example: `1KW <https://www.rcsb.org/ligand/1KW>`_.
+   * otherwise continue with the standard path, but keep a carborane-seed flag
+     for possible mixed-mode post-processing.
+     Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
+
+1. seed missing angles from existing bonds (unless `--no-angles`);
+2. run `apply_chemical_adjustments()`;
+3. run `add_n_terminal_h3()` (may add `H3` and corresponding N-centered angles);
+
+   `add_n_terminal_h3()` adds the third proton only for matching
+   N-terminus-like motifs. `sync_n_terminal_h3_angles()` is run later (after
+   table fill) to keep the newly added H3 angles consistent with sibling
+   N-H/N-H2 restraints.
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_add_n_terminal_h3_before.svg
+            :alt: add_n_terminal_h3 before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_add_n_terminal_h3_after.svg
+            :alt: add_n_terminal_h3 after
+            :width: 100%
+
+   Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
+4. run charge corrections;
+5. fill missing bond/angle values from AceDRG tables;
+6. if `H3` was added, run `sync_n_terminal_h3_angles()` to align H3-angle
+   values with existing N-H/N-H2 geometry;
+7. add missing chirality, torsion and plane restraints;
+8. if the carborane-seed flag is set, apply mixed carborane post-processing:
+
+   `apply_mixed_carborane_mode()` plus mixed-mode torsion additions on the
+   cluster-local part.
+   Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
+9. assign CCP4 atom types.
 
 Python example:
 
