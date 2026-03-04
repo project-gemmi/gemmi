@@ -111,7 +111,7 @@ class TestAlignment(unittest.TestCase):
         model = gemmi.Model('1')
         protein_residues = ['ALA'] * 10  # 10-residue polyalanine
         chain = _make_peptide_chain(model, 'A', 'Axp', protein_residues)
-        # Cations inside the polymer subchain (the real-world problematic case)
+        # Cations inside the polymer subchain
         _make_cation_residue(chain, 'Zn', 11, 'Axp')
         _make_cation_residue(chain, 'Ca', 12, 'Axp')  # calcium
         st.add_model(model)
