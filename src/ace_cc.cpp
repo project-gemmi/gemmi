@@ -23,6 +23,7 @@
 #include <map>
 #include <unordered_map>
 #include <climits>
+#include <cstring>
 
 namespace gemmi {
 
@@ -94,6 +95,81 @@ void trace_phase_delta(const char* phase, const AceRuleStats& before, const AceR
                after.chir_count - before.chir_count,
                after.plane_count - before.plane_count,
                after.charge_sum - before.charge_sum);
+}
+
+bool dbg_env_matches(const char* var, const std::string& name) {
+  const char* env = std::getenv(var);
+  if (!env)
+    return false;
+  return (env[0] == '1' && env[1] == '\0') ||
+         std::string(env).find(name) != std::string::npos;
+}
+
+bool torsion_exists(const ChemComp& cc,
+                    const std::string& a1, const std::string& a2,
+                    const std::string& a3, const std::string& a4) {
+  for (const auto& tor : cc.rt.torsions) {
+    bool same = tor.id1.atom == a1 && tor.id2.atom == a2 &&
+                tor.id3.atom == a3 && tor.id4.atom == a4;
+    bool rev = tor.id1.atom == a4 && tor.id2.atom == a3 &&
+               tor.id3.atom == a2 && tor.id4.atom == a1;
+    if (same || rev)
+      return true;
+  }
+  return false;
+}
+
+// Build simple adjacency list from bond records.
+std::vector<std::vector<size_t>> build_bond_adj(const ChemComp& cc) {
+  std::vector<std::vector<size_t>> bond_adj(cc.atoms.size());
+  for (const auto& bond : cc.rt.bonds) {
+    int i1 = cc.find_atom_index(bond.id1.atom);
+    int i2 = cc.find_atom_index(bond.id2.atom);
+    if (i1 < 0 || i2 < 0)
+      continue;
+    bond_adj[(size_t) i1].push_back((size_t) i2);
+    bond_adj[(size_t) i2].push_back((size_t) i1);
+  }
+  return bond_adj;
+}
+
+// Add N-S torsions (C1-C2-N-S pattern) if missing.
+void add_ns_torsions(ChemComp& cc, const std::vector<std::vector<size_t>>& bond_adj) {
+  for (size_t n_idx = 0; n_idx < cc.atoms.size(); ++n_idx) {
+    if (cc.atoms[n_idx].el != El::N)
+      continue;
+    size_t s_idx = SIZE_MAX;
+    std::vector<size_t> c_neighbors;
+    for (size_t nb_idx : bond_adj[n_idx]) {
+      Element el = cc.atoms[nb_idx].el;
+      if (el == El::S)
+        s_idx = nb_idx;
+      else if (el == El::C)
+        c_neighbors.push_back(nb_idx);
+    }
+    if (s_idx == SIZE_MAX || c_neighbors.empty())
+      continue;
+    std::string n_id = cc.atoms[n_idx].id;
+    std::string s_id = cc.atoms[s_idx].id;
+    for (size_t c2_idx : c_neighbors) {
+      std::string c2_id = cc.atoms[c2_idx].id;
+      for (size_t nb2_idx : bond_adj[c2_idx]) {
+        if (nb2_idx == n_idx || cc.atoms[nb2_idx].el != El::C)
+          continue;
+        std::string c1_id = cc.atoms[nb2_idx].id;
+        if (!torsion_exists(cc, c1_id, c2_id, n_id, s_id)) {
+          cc.rt.torsions.push_back({
+            "sp3_sp3_3",
+            {1, c1_id},
+            {1, c2_id},
+            {1, n_id},
+            {1, s_id},
+            180.0, 10.0, 3
+          });
+        }
+      }
+    }
+  }
 }
 
 std::string canonical_bond_key(const Restraints::Bond& bond) {
@@ -222,7 +298,7 @@ void cleanup_and_validate_restraints(ChemComp& cc, const char* stage) {
 
   if (ace_strict_mode()) {
     bool strict_fail = (invalid > 0 || duplicate_atoms > 0 || duplicate_plane_atoms > 0);
-    bool final_stage = std::string(stage) == "final";
+    bool final_stage = std::strcmp(stage, "final") == 0;
     int nan_bond = 0;
     int nan_angle = 0;
     if (final_stage) {
@@ -1165,15 +1241,7 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
     cc.rt.torsions.push_back({id, {1, a1}, {1, a2}, {1, a3}, {1, a4}, value, esd, period});
   };
 
-  std::vector<std::vector<size_t>> bond_adj(cc.atoms.size());
-  for (const auto& bond : cc.rt.bonds) {
-    int i1 = cc.find_atom_index(bond.id1.atom);
-    int i2 = cc.find_atom_index(bond.id2.atom);
-    if (i1 < 0 || i2 < 0)
-      continue;
-    bond_adj[(size_t) i1].push_back((size_t) i2);
-    bond_adj[(size_t) i2].push_back((size_t) i1);
-  }
+  std::vector<std::vector<size_t>> bond_adj = build_bond_adj(cc);
 
   for (const auto& lk : cb_linkers) {
     if (lk.linker == SIZE_MAX || lk.outside == SIZE_MAX || lk.cage == SIZE_MAX)
@@ -1282,54 +1350,7 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles,
     }
   }
 
-  auto torsion_exists = [&](const std::string& a1, const std::string& a2,
-                            const std::string& a3, const std::string& a4) {
-    for (const auto& tor : cc.rt.torsions) {
-      bool same = tor.id1.atom == a1 && tor.id2.atom == a2 &&
-                  tor.id3.atom == a3 && tor.id4.atom == a4;
-      bool rev = tor.id1.atom == a4 && tor.id2.atom == a3 &&
-                 tor.id3.atom == a2 && tor.id4.atom == a1;
-      if (same || rev)
-        return true;
-    }
-    return false;
-  };
-
-  for (size_t n_idx = 0; n_idx < cc.atoms.size(); ++n_idx) {
-    if (cc.atoms[n_idx].el != El::N)
-      continue;
-    size_t s_idx = SIZE_MAX;
-    std::vector<size_t> c_neighbors;
-    for (size_t nb_idx : bond_adj[n_idx]) {
-      Element el = cc.atoms[nb_idx].el;
-      if (el == El::S)
-        s_idx = nb_idx;
-      else if (el == El::C)
-        c_neighbors.push_back(nb_idx);
-    }
-    if (s_idx == SIZE_MAX || c_neighbors.empty())
-      continue;
-    std::string n_id = cc.atoms[n_idx].id;
-    std::string s_id = cc.atoms[s_idx].id;
-    for (size_t c2_idx : c_neighbors) {
-      std::string c2_id = cc.atoms[c2_idx].id;
-      for (size_t nb2_idx : bond_adj[c2_idx]) {
-        if (nb2_idx == n_idx || cc.atoms[nb2_idx].el != El::C)
-          continue;
-        std::string c1_id = cc.atoms[nb2_idx].id;
-        if (!torsion_exists(c1_id, c2_id, n_id, s_id)) {
-          cc.rt.torsions.push_back({
-            "sp3_sp3_3",
-            {1, c1_id},
-            {1, c2_id},
-            {1, n_id},
-            {1, s_id},
-            180.0, 10.0, 3
-          });
-        }
-      }
-    }
-  }
+  add_ns_torsions(cc, bond_adj);
 
   vector_remove_if(cc.rt.chirs, [&](const Restraints::Chirality& c) {
     return is_cb_heavy(c.id_ctr.atom) &&
@@ -1813,11 +1834,7 @@ int max_tv_len_for_center(const CodAtomInfo& ai) {
   return is_sp2_like(ai) ? 2 : 3;
 }
 
-std::vector<size_t> build_tv_neighbor_order(
-    const ChemComp& cc, const AceBondAdjacency& adj,
-    const std::vector<CodAtomInfo>& atom_info, size_t ctr) {
-  (void)cc;
-  (void)atom_info;
+std::vector<size_t> build_tv_neighbor_order(const AceBondAdjacency& adj, size_t ctr) {
   std::vector<size_t> nb_order;
   nb_order.reserve(adj[ctr].size());
   for (const auto& nb : adj[ctr])
@@ -1897,7 +1914,7 @@ std::vector<size_t> build_tv_list_for_center(
                              atom_info[ctr].hybrid == Hybridization::SP3 &&
                              rs == SIZE_MAX);
     std::vector<size_t> nb_order =
-        build_tv_neighbor_order(cc, adj, atom_info, ctr);
+        build_tv_neighbor_order(adj, ctr);
     size_t first_non_h = SIZE_MAX;
     if (want_non_h_first && (int)tv.size() < max_len) {
       for (size_t nb_idx : nb_order) {
@@ -2129,22 +2146,19 @@ void emit_one_torsion(
     std::vector<size_t> tv2 = build_tv_list_sp3sp3_like_acedrg(
         cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
         side2, side1, rs2);
-    if (const char* env = std::getenv("GEMMI_DBG_SP3")) {
-      std::string v(env);
-      if (v == "1" || v.find(cc.name) != std::string::npos) {
-        std::fprintf(stderr, "[sp3 %s ring=%d rs=%s/%s] %s-%s term=%s/%s tv1=",
-                     cc.name.c_str(), ring_size, cc.atoms[center2].id.c_str(),
-                     rs1 != SIZE_MAX ? cc.atoms[rs1].id.c_str() : "-",
-                     rs2 != SIZE_MAX ? cc.atoms[rs2].id.c_str() : "-",
-                     cc.atoms[center3].id.c_str(), cc.atoms[term1].id.c_str(),
-                     cc.atoms[term2].id.c_str());
-        for (size_t i = 0; i < tv1.size(); ++i)
-          std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv1[i]].id.c_str());
-        std::fprintf(stderr, " tv2=");
-        for (size_t i = 0; i < tv2.size(); ++i)
-          std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv2[i]].id.c_str());
-        std::fprintf(stderr, "\n");
-      }
+    if (dbg_env_matches("GEMMI_DBG_SP3", cc.name)) {
+      std::fprintf(stderr, "[sp3 %s ring=%d rs=%s/%s] %s-%s term=%s/%s tv1=",
+                   cc.name.c_str(), ring_size, cc.atoms[center2].id.c_str(),
+                   rs1 != SIZE_MAX ? cc.atoms[rs1].id.c_str() : "-",
+                   rs2 != SIZE_MAX ? cc.atoms[rs2].id.c_str() : "-",
+                   cc.atoms[center3].id.c_str(), cc.atoms[term1].id.c_str(),
+                   cc.atoms[term2].id.c_str());
+      for (size_t i = 0; i < tv1.size(); ++i)
+        std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv1[i]].id.c_str());
+      std::fprintf(stderr, " tv2=");
+      for (size_t i = 0; i < tv2.size(); ++i)
+        std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv2[i]].id.c_str());
+      std::fprintf(stderr, "\n");
     }
     int i_pos = -1, j_pos = -1;
     for (int i = 0; i < (int)tv1.size(); ++i)
@@ -2182,22 +2196,19 @@ void emit_one_torsion(
     std::vector<size_t> tv2 = build_tv_list_sp3sp3_like_acedrg(
         cc, adj, atom_info, stereo_chiral_centers, chir_mut_table,
         side2, side1, rs2);
-    if (const char* env = std::getenv("GEMMI_DBG_SP3")) {
-      std::string v(env);
-      if (v == "1" || v.find(cc.name) != std::string::npos) {
-        std::fprintf(stderr, "[sp3 %s ring=%d rs=%s/%s] %s-%s term=%s/%s tv1=",
-                     cc.name.c_str(), ring_size, cc.atoms[center2].id.c_str(),
-                     rs1 != SIZE_MAX ? cc.atoms[rs1].id.c_str() : "-",
-                     rs2 != SIZE_MAX ? cc.atoms[rs2].id.c_str() : "-",
-                     cc.atoms[center3].id.c_str(), cc.atoms[term1].id.c_str(),
-                     cc.atoms[term2].id.c_str());
-        for (size_t i = 0; i < tv1.size(); ++i)
-          std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv1[i]].id.c_str());
-        std::fprintf(stderr, " tv2=");
-        for (size_t i = 0; i < tv2.size(); ++i)
-          std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv2[i]].id.c_str());
-        std::fprintf(stderr, "\n");
-      }
+    if (dbg_env_matches("GEMMI_DBG_SP3", cc.name)) {
+      std::fprintf(stderr, "[sp3 %s ring=%d rs=%s/%s] %s-%s term=%s/%s tv1=",
+                   cc.name.c_str(), ring_size, cc.atoms[center2].id.c_str(),
+                   rs1 != SIZE_MAX ? cc.atoms[rs1].id.c_str() : "-",
+                   rs2 != SIZE_MAX ? cc.atoms[rs2].id.c_str() : "-",
+                   cc.atoms[center3].id.c_str(), cc.atoms[term1].id.c_str(),
+                   cc.atoms[term2].id.c_str());
+      for (size_t i = 0; i < tv1.size(); ++i)
+        std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv1[i]].id.c_str());
+      std::fprintf(stderr, " tv2=");
+      for (size_t i = 0; i < tv2.size(); ++i)
+        std::fprintf(stderr, "%s%s", i ? "," : "", cc.atoms[tv2[i]].id.c_str());
+      std::fprintf(stderr, "\n");
     }
     int i_pos = -1, j_pos = -1;
     for (int i = 0; i < (int)tv1.size(); ++i)
@@ -2237,10 +2248,7 @@ void emit_one_torsion(
       sp3_term = sp2_2 ? a4_idx : a1_idx;
     }
     bool dbg_sp23 = false;
-    if (const char* env = std::getenv("GEMMI_DBG_SP23")) {
-      std::string v(env);
-      dbg_sp23 = (v == "1" || v.find(cc.name) != std::string::npos);
-    }
+    dbg_sp23 = dbg_env_matches("GEMMI_DBG_SP23", cc.name);
     std::pair<size_t, size_t> rs_pair =
         find_ring_sharing_pair(adj, atom_info, sp2_center, sp3_center);
     size_t sp2_rs = rs_pair.first;
@@ -2489,10 +2497,7 @@ void emit_one_torsion(
     // Non-aromatic SP2-SP2: use 2x2 matrix.
     // Ring-sharing pair is selected once globally (AceDRG tS1/tS2 logic).
     bool dbg_sp2 = false;
-    if (const char* env = std::getenv("GEMMI_DBG_SP2")) {
-      std::string v(env);
-      dbg_sp2 = (v == "1" || v.find(cc.name) != std::string::npos);
-    }
+    dbg_sp2 = dbg_env_matches("GEMMI_DBG_SP2", cc.name);
     size_t side1 = center2;
     size_t side2 = center3;
     // DictCifFile::SetOneSP2SP2Bond() does not exclude nb1==nb2 when
@@ -2545,8 +2550,8 @@ void emit_one_torsion(
             std::find(tv.begin(), tv.end(), nb.idx) == tv.end())
           tv.push_back(nb.idx);
       // Non-ring reordering: H-only and connectivity swap
-      if (tv.empty() || has_ring_sharing) goto find_target;
-      if (tv.size() == 2 && side1_nb_count == 2 && side2_nb_count == 2) {
+      if (!tv.empty() && !has_ring_sharing &&
+          tv.size() == 2 && side1_nb_count == 2 && side2_nb_count == 2) {
         auto is_h_only = [&](size_t idx) {
           for (const auto& nb : adj[idx])
             if (nb.idx != center &&
@@ -2569,7 +2574,6 @@ void emit_one_torsion(
             std::swap(tv[0], tv[1]);
         }
       }
-      find_target:
       if (dbg_sp2) {
         std::fprintf(stderr, "[sp2 %s] %s-%s side%d target=%s tv=",
                      cc.name.c_str(), cc.atoms[center].id.c_str(),
@@ -2942,10 +2946,7 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
     const std::vector<Restraints::Torsion>& candidates,
     bool* used_path1 = nullptr) {
   bool dbg_sel = false;
-  if (const char* env = std::getenv("GEMMI_DBG_SEL")) {
-    std::string v(env);
-    dbg_sel = v == "1" || v.find(cc.name) != std::string::npos;
-  }
+  dbg_sel = dbg_env_matches("GEMMI_DBG_SEL", cc.name);
   if (dbg_sel) {
     std::fprintf(stderr, "[tor-sel %s] bond %s-%s cand=%zu\n", cc.name.c_str(),
                  cc.atoms[center2].id.c_str(), cc.atoms[center3].id.c_str(), candidates.size());
@@ -3228,18 +3229,15 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (generated.empty())
       continue;
 
-    if (const char* env = std::getenv("GEMMI_DBG_SEL")) {
-      std::string v(env);
-      if (v == "1" || v.find(cc.name) != std::string::npos) {
-        std::fprintf(stderr, "[tor-gen %s] bond %s-%s generated=%zu\n",
-                     cc.name.c_str(), cc.atoms[center2].id.c_str(),
-                     cc.atoms[center3].id.c_str(), generated.size());
-        for (const auto& t : generated)
-          std::fprintf(stderr, "  cand %s-%s-%s-%s val=%.2f esd=%.2f p.%d\n",
-                       t.id1.atom.c_str(), t.id2.atom.c_str(),
-                       t.id3.atom.c_str(), t.id4.atom.c_str(),
-                       t.value, t.esd, t.period);
-      }
+    if (dbg_env_matches("GEMMI_DBG_SEL", cc.name)) {
+      std::fprintf(stderr, "[tor-gen %s] bond %s-%s generated=%zu\n",
+                   cc.name.c_str(), cc.atoms[center2].id.c_str(),
+                   cc.atoms[center3].id.c_str(), generated.size());
+      for (const auto& t : generated)
+        std::fprintf(stderr, "  cand %s-%s-%s-%s val=%.2f esd=%.2f p.%d\n",
+                     t.id1.atom.c_str(), t.id2.atom.c_str(),
+                     t.id3.atom.c_str(), t.id4.atom.c_str(),
+                     t.value, t.esd, t.period);
     }
 
     if (has_sugar_ring) {
@@ -4339,62 +4337,7 @@ bool maybe_apply_carborane_mode(ChemComp& cc, const AcedrgTables& tables,
 }
 
 void add_mixed_carborane_torsions(ChemComp& cc) {
-  auto torsion_exists = [&](const std::string& a1, const std::string& a2,
-                            const std::string& a3, const std::string& a4) {
-    for (const auto& tor : cc.rt.torsions) {
-      bool same = tor.id1.atom == a1 && tor.id2.atom == a2 &&
-                  tor.id3.atom == a3 && tor.id4.atom == a4;
-      bool rev = tor.id1.atom == a4 && tor.id2.atom == a3 &&
-                 tor.id3.atom == a2 && tor.id4.atom == a1;
-      if (same || rev)
-        return true;
-    }
-    return false;
-  };
-  std::vector<std::vector<size_t>> bond_adj(cc.atoms.size());
-  for (const auto& bond : cc.rt.bonds) {
-    int i1 = cc.find_atom_index(bond.id1.atom);
-    int i2 = cc.find_atom_index(bond.id2.atom);
-    if (i1 < 0 || i2 < 0)
-      continue;
-    bond_adj[(size_t) i1].push_back((size_t) i2);
-    bond_adj[(size_t) i2].push_back((size_t) i1);
-  }
-  for (size_t n_idx = 0; n_idx < cc.atoms.size(); ++n_idx) {
-    if (cc.atoms[n_idx].el != El::N)
-      continue;
-    size_t s_idx = SIZE_MAX;
-    std::vector<size_t> c_neighbors;
-    for (size_t nb_idx : bond_adj[n_idx]) {
-      Element el = cc.atoms[nb_idx].el;
-      if (el == El::S)
-        s_idx = nb_idx;
-      else if (el == El::C)
-        c_neighbors.push_back(nb_idx);
-    }
-    if (s_idx == SIZE_MAX || c_neighbors.empty())
-      continue;
-    std::string n_id = cc.atoms[n_idx].id;
-    std::string s_id = cc.atoms[s_idx].id;
-    for (size_t c2_idx : c_neighbors) {
-      std::string c2_id = cc.atoms[c2_idx].id;
-      for (size_t nb2_idx : bond_adj[c2_idx]) {
-        if (nb2_idx == n_idx || cc.atoms[nb2_idx].el != El::C)
-          continue;
-        std::string c1_id = cc.atoms[nb2_idx].id;
-        if (!torsion_exists(c1_id, c2_id, n_id, s_id)) {
-          cc.rt.torsions.push_back({
-            "sp3_sp3_3",
-            {1, c1_id},
-            {1, c2_id},
-            {1, n_id},
-            {1, s_id},
-            180.0, 10.0, 3
-          });
-        }
-      }
-    }
-  }
+  add_ns_torsions(cc, build_bond_adj(cc));
 }
 
 bool has_missing_restraint_values(const ChemComp& cc, bool no_angles) {
