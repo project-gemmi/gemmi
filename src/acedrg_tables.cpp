@@ -16,6 +16,11 @@
 #include <sstream>
 #include <set>
 #include <unordered_set>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <dirent.h>
+#endif
 #include "gemmi/atof.hpp"
 #include "gemmi/atox.hpp"
 #include "gemmi/fileutil.hpp"
@@ -86,6 +91,64 @@ bool desc_sort_map_key(const SortMap& a, const SortMap& b) {
 // AceDRG desSortMapKey: length-only descending.
 bool desc_sort_map_key_len(const SortMap& a, const SortMap& b) {
   return a.key.length() > b.key.length();
+}
+
+std::vector<int> list_numeric_table_ids(const std::string& dir) {
+  std::vector<int> ids;
+#ifdef _WIN32
+  std::string pattern = dir + "\\*.table";
+  _finddata_t entry;
+  intptr_t handle = _findfirst(pattern.c_str(), &entry);
+  if (handle == -1)
+    return ids;
+  do {
+    std::string name(entry.name);
+    if (name.size() <= 6 || name.substr(name.size() - 6) != ".table")
+      continue;
+    std::string stem = name.substr(0, name.size() - 6);
+    if (stem.empty())
+      continue;
+    bool all_digits = true;
+    for (char c : stem)
+      if (!std::isdigit(static_cast<unsigned char>(c))) {
+        all_digits = false;
+        break;
+      }
+    if (!all_digits)
+      continue;
+    int id = std::atoi(stem.c_str());
+    if (id > 0)
+      ids.push_back(id);
+  } while (_findnext(handle, &entry) == 0);
+  _findclose(handle);
+#else
+  DIR* d = opendir(dir.c_str());
+  if (!d)
+    return ids;
+  while (dirent* ent = readdir(d)) {
+    std::string name(ent->d_name);
+    if (name.size() <= 6 || name.substr(name.size() - 6) != ".table")
+      continue;
+    std::string stem = name.substr(0, name.size() - 6);
+    if (stem.empty())
+      continue;
+    bool all_digits = true;
+    for (char c : stem)
+      if (!std::isdigit(static_cast<unsigned char>(c))) {
+        all_digits = false;
+        break;
+      }
+    if (!all_digits)
+      continue;
+    int id = std::atoi(stem.c_str());
+    if (id > 0)
+      ids.push_back(id);
+  }
+  closedir(d);
+#endif
+  std::sort(ids.begin(), ids.end());
+  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+  return ids;
 }
 
 CoordGeometry default_coord_geometry(int coord_number) {
@@ -784,11 +847,9 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
 void AcedrgTables::load_angle_tables(const std::string& dir) {
   // Load all numbered angle table files from allOrgAngleTables.
   // We intentionally ignore angle_idx.table and read full angle statistics.
-  constexpr int kMinAngleTableId = 1;
-  constexpr int kMaxAngleTableId = 5000;
   int n_files = 0, n_lines = 0;
 
-  for (int file_num = kMinAngleTableId; file_num <= kMaxAngleTableId; ++file_num) {
+  for (int file_num : list_numeric_table_ids(dir)) {
     std::string path = cat(dir, '/', file_num, ".table");
     fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
     if (!f)
