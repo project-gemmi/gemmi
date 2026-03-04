@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate chemical-adjustment SVG examples with OpenBabel.
 
-This script writes the 22 files used in docs/chemistry.rst:
+This script writes the SVG files used in docs/chemistry.rst:
   docs/img/adj_<rule>_before.svg
   docs/img/adj_<rule>_after.svg
 
@@ -31,6 +31,7 @@ PAIRS = [
     ("amino_ter_amine", "[*]C[NH2]", "[*]C[NH3+]"),
     ("terminal_amine", "[*]C[NH2]", "[*]C[NH3+]"),
     ("protonated_amide_n", "[*]C(=O)N", "[*]C(=O)[NH2+]"),
+    ("add_n_terminal_h3", "[*]C([NH2+])C(=O)[O-]", "[*]C([NH3+])C(=O)[O-]"),
 ]
 
 

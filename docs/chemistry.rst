@@ -414,7 +414,7 @@ show how to access `ChemComp`'s atoms and bonds.
 .. _chemcomp-chemical-adjustments:
 
 Chemical adjustments
---------------------
+====================
 
 Gemmi's `ChemComp` normalization for `gemmi drg` is performed by
 `apply_chemical_adjustments()` (declared in `gemmi/cc_adj.hpp`,
@@ -432,28 +432,15 @@ statistical lookup and typing. It can change:
 It is intentionally rule-based and motif-driven; it is not a general pKa
 predictor or tautomer enumerator.
 
-Rule groups
-^^^^^^^^^^^
-
-The current rules fall into four practical groups:
-
-* acid/oxoacid deprotonation:
-  `oxoacid_phosphate`, `oxoacid_sulfate`, `single_bond_oxide`,
-  `carboxy_asp`, `terminal_carboxylate`;
-* resonance normalization:
-  `nitro_group`;
-* cationic nitrogen completion/protonation:
-  `guanidinium`, `amino_ter_amine`, `terminal_amine`,
-  `protonated_amide_n`;
-* targeted special-case handling:
-  `hexafluorophosphate`.
-
 Applied order
-^^^^^^^^^^^^^
+-------------
 
 Rules are applied in a fixed order:
 
-1. `oxoacid_phosphate`
+Acid/oxoacid deprotonation
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`oxoacid_phosphate` (step 1)
 
    .. list-table::
       :widths: 45 10 45
@@ -469,7 +456,7 @@ Rules are applied in a fixed order:
 
    Example: `ATP <https://www.rcsb.org/ligand/ATP>`_
 
-2. `oxoacid_sulfate`
+`oxoacid_sulfate` (step 2)
 
    .. list-table::
       :widths: 45 10 45
@@ -485,23 +472,7 @@ Rules are applied in a fixed order:
 
    Example: `0SG <https://www.rcsb.org/ligand/0SG>`_
 
-3. `nitro_group`
-
-   .. list-table::
-      :widths: 45 10 45
-      :class: borderless
-
-      * - .. figure:: img/adj_nitro_group_before.svg
-            :alt: nitro_group before
-            :width: 100%
-        - ➡
-        - .. figure:: img/adj_nitro_group_after.svg
-            :alt: nitro_group after
-            :width: 100%
-
-   Example: `NE5 <https://www.rcsb.org/ligand/NE5>`_
-
-4. `single_bond_oxide`
+`single_bond_oxide` (step 4)
 
    .. list-table::
       :widths: 45 10 45
@@ -517,23 +488,7 @@ Rules are applied in a fixed order:
 
    Example: `BGQ <https://www.rcsb.org/ligand/BGQ>`_
 
-5. `hexafluorophosphate`
-
-   .. list-table::
-      :widths: 45 10 45
-      :class: borderless
-
-      * - .. figure:: img/adj_hexafluorophosphate_before.svg
-            :alt: hexafluorophosphate before
-            :width: 100%
-        - ➡
-        - .. figure:: img/adj_hexafluorophosphate_after.svg
-            :alt: hexafluorophosphate after
-            :width: 100%
-
-   Example: `A9J <https://www.rcsb.org/ligand/A9J>`_
-
-6. `carboxy_asp`
+`carboxy_asp` (step 6)
 
    .. list-table::
       :widths: 45 10 45
@@ -549,7 +504,7 @@ Rules are applied in a fixed order:
 
    Example: `ASP <https://www.rcsb.org/ligand/ASP>`_
 
-7. `terminal_carboxylate`
+`terminal_carboxylate` (step 7)
 
    .. list-table::
       :widths: 45 10 45
@@ -565,7 +520,48 @@ Rules are applied in a fixed order:
 
    Example: `A0G <https://www.rcsb.org/ligand/A0G>`_
 
-8. `guanidinium`
+Resonance normalization
+^^^^^^^^^^^^^^^^^^^^^^^
+
+`nitro_group` (step 3)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_nitro_group_before.svg
+            :alt: nitro_group before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_nitro_group_after.svg
+            :alt: nitro_group after
+            :width: 100%
+
+   Example: `NE5 <https://www.rcsb.org/ligand/NE5>`_
+
+Targeted special-case handling
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`hexafluorophosphate` (step 5)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_hexafluorophosphate_before.svg
+            :alt: hexafluorophosphate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_hexafluorophosphate_after.svg
+            :alt: hexafluorophosphate after
+            :width: 100%
+
+   Example: `A9J <https://www.rcsb.org/ligand/A9J>`_
+
+Cationic nitrogen completion/protonation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`guanidinium` (step 8)
 
    .. list-table::
       :widths: 45 10 45
@@ -581,7 +577,7 @@ Rules are applied in a fixed order:
 
    Example: `00L <https://www.rcsb.org/ligand/00L>`_
 
-9. `amino_ter_amine`
+`amino_ter_amine` (step 9)
 
    .. list-table::
       :widths: 45 10 45
@@ -597,7 +593,7 @@ Rules are applied in a fixed order:
 
    Example: `00K <https://www.rcsb.org/ligand/00K>`_
 
-10. `terminal_amine`
+`terminal_amine` (step 10)
 
     .. list-table::
        :widths: 45 10 45
@@ -613,7 +609,7 @@ Rules are applied in a fixed order:
 
    Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
 
-11. `protonated_amide_n`
+`protonated_amide_n` (step 11)
 
     .. list-table::
        :widths: 45 10 45
@@ -629,17 +625,31 @@ Rules are applied in a fixed order:
 
     Example: `BJS <https://www.rcsb.org/ligand/BJS>`_
 
-
 The order is part of behavior: earlier edits can affect pattern matching in
 later steps.
 
 Interaction with `prepare_chemcomp()`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------------
 
 `prepare_chemcomp()` calls `apply_chemical_adjustments()` as one stage of the
 full restraint-generation pipeline. Immediately after this phase, it may also
 add/synchronize the third N-terminal hydrogen via `add_n_terminal_h3()` and
-`sync_n_terminal_h3_angles()` when the local motif matches.
+`sync_n_terminal_h3_angles()` when the local motif matches:
+
+
+.. list-table::
+   :widths: 45 10 45
+   :class: borderless
+
+   * - .. figure:: img/adj_add_n_terminal_h3_before.svg
+         :alt: add_n_terminal_h3 before
+         :width: 100%
+     - ➡
+     - .. figure:: img/adj_add_n_terminal_h3_after.svg
+         :alt: add_n_terminal_h3 after
+         :width: 100%
+
+Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
 
 Python example:
 
