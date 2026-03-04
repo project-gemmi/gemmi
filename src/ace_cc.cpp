@@ -2066,14 +2066,12 @@ std::string acedrg_h_name(const ChemComp& cc, const std::string& n_id,
   std::string h_root = (root.size() == 2) ? "H" + root.substr(1) : "H";
 
   if (h_root.size() >= 2 && used_names.find(h_root) == used_names.end()) {
-    used_names.insert(h_root);
     return h_root;
   }
   if (h_root == "H" && !h_on_n.empty()) {
     // Prefer numeric suffix if the atom already has H neighbors (AceDRG uses H23
     // rather than plain H in such cases).
   } else if (used_names.find(h_root) == used_names.end()) {
-    used_names.insert(h_root);
     return h_root;
   }
   int idx_max = 0;
@@ -2096,14 +2094,12 @@ std::string acedrg_h_name(const ChemComp& cc, const std::string& n_id,
   int start = (idx_max > 0) ? idx_max + 1 : 2;
   std::string cand = cat(h_root, start);
   if (used_names.find(cand) == used_names.end()) {
-    used_names.insert(cand);
     return cand;
   }
 
   for (int n = 2; n < 10000; ++n) {
     cand = cat(h_root, n);
     if (used_names.find(cand) == used_names.end()) {
-      used_names.insert(cand);
       return cand;
     }
   }
