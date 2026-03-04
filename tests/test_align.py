@@ -31,7 +31,7 @@ def _make_cation_residue(chain, name, seqid, subchain_id):
     """Helper: add a cation residue to a chain as part of the polymer.
 
     In many real PDB files (e.g. from refinement software), cation
-    residues like ZN and CA end up inside the polymer subchain.  The
+    residues like Zn and Ca end up inside the polymer subchain.  The
     alignment code must filter them out."""
     res = gemmi.Residue()
     res.name = name
@@ -104,7 +104,7 @@ class TestAlignment(unittest.TestCase):
 
 
     def test_assign_sequences_ignores_cations(self):
-        """Cations (CA, ZN, etc.) that are part of the polymer subchain
+        """Cations (Ca, Zn, etc.) that are part of the polymer subchain
         (as happens in real PDB files from refinement) should be filtered
         out during alignment and not prevent FASTA assignment."""
         st = gemmi.Structure()
@@ -112,8 +112,8 @@ class TestAlignment(unittest.TestCase):
         protein_residues = ['ALA'] * 10  # 10-residue polyalanine
         chain = _make_peptide_chain(model, 'A', 'Axp', protein_residues)
         # Cations inside the polymer subchain (the real-world problematic case)
-        _make_cation_residue(chain, 'ZN', 11, 'Axp')
-        _make_cation_residue(chain, 'CA', 12, 'Axp')  # calcium
+        _make_cation_residue(chain, 'Zn', 11, 'Axp')
+        _make_cation_residue(chain, 'Ca', 12, 'Axp')  # calcium
         st.add_model(model)
 
         # Set up entity manually to have known polymer_type
@@ -141,7 +141,7 @@ class TestAlignment(unittest.TestCase):
         protein_residues = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE', 'MET']
         chain = _make_peptide_chain(model, 'A', 'Axp', protein_residues)
         # Cation inside the polymer subchain (realistic PDB scenario)
-        _make_cation_residue(chain, 'ZN', 7, 'Axp')
+        _make_cation_residue(chain, 'Zn', 7, 'Axp')
         st.add_model(model)
 
         ent = gemmi.Entity('1')
@@ -227,14 +227,14 @@ class TestAlignment(unittest.TestCase):
             self.assertAlmostEqual(s.transform.vec.y, 17.0, places=1)
 
     def test_assign_sequences_many_trailing_cations(self):
-        """Ensure a long protein chain with several cations (ZN, CA) appended to the 
+        """Ensure a long protein chain with several cations (Zn, Ca) appended to the 
         end of a polymer subchain still has proper sequence assignment."""
         st = gemmi.Structure()
         model = gemmi.Model('1')
         protein_residues = ['ALA'] * 50
         chain = _make_peptide_chain(model, 'A', 'Axp', protein_residues)
         # Append multiple cations as part of the polymer subchain
-        for j, ion in enumerate(['ZN', 'ZN', 'CA', 'CA', 'CA']):
+        for j, ion in enumerate(['Zn', 'Zn', 'Ca', 'Ca', 'Ca']):
             _make_cation_residue(chain, ion, 51 + j, 'Axp')
         st.add_model(model)
 
