@@ -3576,32 +3576,34 @@ ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */
   // Build type key: H_sp[1|2|3][_arom]_ELEM
   // Examples: H_sp3_C, H_sp2_arom_C, H_sp2_N
   std::string hybr;
+  bool has_typed_key = true;
   switch (heavy_atom.hybrid) {
     case Hybridization::SP1: hybr = "sp1"; break;
     case Hybridization::SP2: hybr = heavy_atom.is_aromatic ? "sp2_arom" : "sp2"; break;
     case Hybridization::SP3: hybr = "sp3"; break;
-    default: return ProtHydrDist();
+    default: has_typed_key = false; break;
   }
 
-  std::string type_key = cat("H_", hybr, '_', heavy_atom.el.name());
-
-  auto it = prot_hydr_dists_.find(type_key);
-  if (it != prot_hydr_dists_.end()) {
-    if (verbose >= 2)
-      std::fprintf(stderr, "      prot_hydr_dists: found %s -> electron=%.4f nucleus=%.4f\n",
-                   type_key.c_str(), it->second.electron_val, it->second.nucleus_val);
-    return it->second;
-  }
-
-  // Try without aromatic qualifier if sp2_arom not found
-  if (heavy_atom.is_aromatic && heavy_atom.hybrid == Hybridization::SP2) {
-    type_key = std::string("H_sp2_") + heavy_atom.el.name();
-    it = prot_hydr_dists_.find(type_key);
+  if (has_typed_key) {
+    std::string type_key = cat("H_", hybr, '_', heavy_atom.el.name());
+    auto it = prot_hydr_dists_.find(type_key);
     if (it != prot_hydr_dists_.end()) {
       if (verbose >= 2)
-        std::fprintf(stderr, "      prot_hydr_dists: found %s (fallback from arom) -> electron=%.4f nucleus=%.4f\n",
+        std::fprintf(stderr, "      prot_hydr_dists: found %s -> electron=%.4f nucleus=%.4f\n",
                      type_key.c_str(), it->second.electron_val, it->second.nucleus_val);
       return it->second;
+    }
+
+    // Try without aromatic qualifier if sp2_arom not found.
+    if (heavy_atom.is_aromatic && heavy_atom.hybrid == Hybridization::SP2) {
+      type_key = std::string("H_sp2_") + heavy_atom.el.name();
+      it = prot_hydr_dists_.find(type_key);
+      if (it != prot_hydr_dists_.end()) {
+        if (verbose >= 2)
+          std::fprintf(stderr, "      prot_hydr_dists: found %s (fallback from arom) -> electron=%.4f nucleus=%.4f\n",
+                       type_key.c_str(), it->second.electron_val, it->second.nucleus_val);
+        return it->second;
+      }
     }
   }
 
