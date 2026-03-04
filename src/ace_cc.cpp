@@ -2051,8 +2051,14 @@ void adjust_carboxy_asp(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
-std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& n_id,
+std::string acedrg_h_name(const ChemComp& cc, const std::string& n_id,
                           const std::vector<std::string>& h_on_n) {
+  // Keep naming deterministic from the current atom set only.
+  // Removed atoms do not reserve names forever.
+  std::set<std::string> used_names;
+  for (const auto& atom : cc.atoms)
+    used_names.insert(atom.id);
+
   std::string root;
   for (char c : n_id)
     if (std::isalpha(static_cast<unsigned char>(c)))
@@ -2104,7 +2110,21 @@ std::string acedrg_h_name(std::set<std::string>& used_names, const std::string& 
   return {};
 }
 
-void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names,
+void add_hydrogen_with_restraints(ChemComp& cc,
+                                  std::map<std::string, std::vector<std::string>>& neighbors,
+                                  const std::string& center_id,
+                                  const std::string& new_h_id,
+                                  const std::vector<std::string>& angle_flanks) {
+  cc.atoms.push_back(ChemComp::Atom{new_h_id, "", El::H, 0.0f, "H", "", Position()});
+  cc.rt.bonds.push_back({{1, center_id}, {1, new_h_id}, BondType::Single, false,
+                        NAN, NAN, NAN, NAN});
+  for (const std::string& flank_id : angle_flanks)
+    cc.rt.angles.push_back({{1, flank_id}, {1, center_id}, {1, new_h_id}, NAN, NAN});
+  neighbors[center_id].push_back(new_h_id);
+  neighbors[new_h_id].push_back(center_id);
+}
+
+void adjust_guanidinium_group(ChemComp& cc,
                                std::map<std::string, std::vector<std::string>>& neighbors) {
 
   std::map<std::string, bool> has_unsat_bond;
@@ -2238,24 +2258,17 @@ void adjust_guanidinium_group(ChemComp& cc, std::set<std::string>& used_names,
 
         cc.atoms[n_idx].charge = 1.0f;
 
-        std::string new_h_id = acedrg_h_name(used_names, n_id, h_neighbors);
+        std::string new_h_id = acedrg_h_name(cc, n_id, h_neighbors);
         if (new_h_id.empty())
           continue;
 
-        cc.atoms.push_back(ChemComp::Atom{new_h_id, "", El::H, 0.0f, "H", "", Position()});
-        cc.rt.bonds.push_back({{1, n_id}, {1, new_h_id}, BondType::Single, false,
-                              NAN, NAN, NAN, NAN});
-        // Add angles for the new hydrogen with all existing neighbors
-        cc.rt.angles.push_back({{1, c_id}, {1, n_id}, {1, new_h_id}, NAN, NAN});
-        cc.rt.angles.push_back({{1, h_neighbors[0]}, {1, n_id}, {1, new_h_id}, NAN, NAN});
-        neighbors[n_id].push_back(new_h_id);
-        neighbors[new_h_id].push_back(n_id);
+        add_hydrogen_with_restraints(cc, neighbors, n_id, new_h_id, {c_id, h_neighbors[0]});
       }
     }
   }
 }
 
-void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names,
+void adjust_amino_ter_amine(ChemComp& cc,
                              std::map<std::string, std::vector<std::string>>& neighbors) {
 
   for (auto& n1 : cc.atoms) {
@@ -2320,23 +2333,19 @@ void adjust_amino_ter_amine(ChemComp& cc, std::set<std::string>& used_names,
       if (has_carbonyl && has_amide_n) {
         n1.charge = 1.0f;
         std::string n1_id = n1.id;  // save before potential reallocation
-        std::string new_h = acedrg_h_name(used_names, n1_id, h_ids);
+        std::string new_h = acedrg_h_name(cc, n1_id, h_ids);
         if (new_h.empty())
           break;
-        cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-        cc.rt.bonds.push_back({{1, n1_id}, {1, new_h}, BondType::Single, false,
-                              NAN, NAN, NAN, NAN});
-        // Add angles for the new hydrogen with all existing neighbors
-        for (const std::string& h_id : h_ids)
-          cc.rt.angles.push_back({{1, h_id}, {1, n1_id}, {1, new_h}, NAN, NAN});
-        cc.rt.angles.push_back({{1, c1_id}, {1, n1_id}, {1, new_h}, NAN, NAN});
+        std::vector<std::string> angle_flanks = h_ids;
+        angle_flanks.push_back(c1_id);
+        add_hydrogen_with_restraints(cc, neighbors, n1_id, new_h, angle_flanks);
         break;
       }
     }
   }
 }
 
-void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names,
+void adjust_terminal_amine(ChemComp& cc,
                             std::map<std::string, std::vector<std::string>>& neighbors) {
 
   for (auto& n_atom : cc.atoms) {
@@ -2379,22 +2388,17 @@ void adjust_terminal_amine(ChemComp& cc, std::set<std::string>& used_names,
     n_atom.charge = 1.0f;
     std::string n_atom_id = n_atom.id;  // save before potential reallocation
 
-    std::string new_h = acedrg_h_name(used_names, n_atom_id, h_ids);
+    std::string new_h = acedrg_h_name(cc, n_atom_id, h_ids);
     if (new_h.empty())
       continue;
 
-    cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-    cc.rt.bonds.push_back({{1, n_atom_id}, {1, new_h}, BondType::Single, false,
-                          NAN, NAN, NAN, NAN});
-
-    for (const std::string& h_id : h_ids) {
-      cc.rt.angles.push_back({{1, h_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
-    }
-    cc.rt.angles.push_back({{1, alpha_carbon_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
+    std::vector<std::string> angle_flanks = h_ids;
+    angle_flanks.push_back(alpha_carbon_id);
+    add_hydrogen_with_restraints(cc, neighbors, n_atom_id, new_h, angle_flanks);
   }
 }
 
-void adjust_protonated_amide_n(ChemComp& cc, std::set<std::string>& used_names,
+void adjust_protonated_amide_n(ChemComp& cc,
                                 std::map<std::string, std::vector<std::string>>& neighbors) {
 
   auto is_carbonyl = [&](const std::string& c_id) {
@@ -2478,15 +2482,12 @@ void adjust_protonated_amide_n(ChemComp& cc, std::set<std::string>& used_names,
 
     n_atom.charge = 1.0f;
     std::string n_atom_id = n_atom.id;  // save before potential reallocation
-    std::string new_h = acedrg_h_name(used_names, n_atom_id, h_ids);
+    std::string new_h = acedrg_h_name(cc, n_atom_id, h_ids);
     if (new_h.empty())
       continue;
-    cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
-    cc.rt.bonds.push_back({{1, n_atom_id}, {1, new_h}, BondType::Single, false,
-                           NAN, NAN, NAN, NAN});
-    for (const std::string& h_id : h_ids)
-      cc.rt.angles.push_back({{1, h_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
-    cc.rt.angles.push_back({{1, c_id}, {1, n_atom_id}, {1, new_h}, NAN, NAN});
+    std::vector<std::string> angle_flanks = h_ids;
+    angle_flanks.push_back(c_id);
+    add_hydrogen_with_restraints(cc, neighbors, n_atom_id, new_h, angle_flanks);
   }
 }
 
@@ -5838,14 +5839,7 @@ bool maybe_apply_carborane_mode(ChemComp& cc, const AcedrgTables& tables,
   return true;
 }
 
-std::set<std::string> collect_used_atom_names(const ChemComp& cc) {
-  std::set<std::string> used_names;
-  for (const auto& atom : cc.atoms)
-    used_names.insert(atom.id);
-  return used_names;
-}
-
-void apply_chemical_adjustments(ChemComp& cc, std::set<std::string>& used_names) {
+void apply_chemical_adjustments(ChemComp& cc) {
   auto n_neighbors = make_neighbor_names(cc);
   struct AceChemRule {
     const char* name;
@@ -5859,10 +5853,10 @@ void apply_chemical_adjustments(ChemComp& cc, std::set<std::string>& used_names)
   rules.push_back({"hexafluorophosphate", [&] { adjust_hexafluorophosphate(cc); }});
   rules.push_back({"carboxy_asp", [&] { adjust_carboxy_asp(cc); }});
   rules.push_back({"terminal_carboxylate", [&] { adjust_terminal_carboxylate(cc); }});
-  rules.push_back({"guanidinium", [&] { adjust_guanidinium_group(cc, used_names, n_neighbors); }});
-  rules.push_back({"amino_ter_amine", [&] { adjust_amino_ter_amine(cc, used_names, n_neighbors); }});
-  rules.push_back({"terminal_amine", [&] { adjust_terminal_amine(cc, used_names, n_neighbors); }});
-  rules.push_back({"protonated_amide_n", [&] { adjust_protonated_amide_n(cc, used_names, n_neighbors); }});
+  rules.push_back({"guanidinium", [&] { adjust_guanidinium_group(cc, n_neighbors); }});
+  rules.push_back({"amino_ter_amine", [&] { adjust_amino_ter_amine(cc, n_neighbors); }});
+  rules.push_back({"terminal_amine", [&] { adjust_terminal_amine(cc, n_neighbors); }});
+  rules.push_back({"protonated_amide_n", [&] { adjust_protonated_amide_n(cc, n_neighbors); }});
 
   bool trace = ace_trace_mode();
   for (const AceChemRule& rule : rules) {
@@ -5968,9 +5962,7 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   AceRuleStats phase1 = collect_rule_stats(cc);
   trace_phase_delta("angle-seed", phase0, phase1);
 
-  std::set<std::string> used_names = collect_used_atom_names(cc);
-
-  apply_chemical_adjustments(cc, used_names);
+  apply_chemical_adjustments(cc);
 
   bool added_h3 = add_n_terminal_h3(cc);
   cleanup_and_validate_restraints(cc, "post-chemical-adjustments");

@@ -352,6 +352,59 @@ class TestAcePrepareChemComp(unittest.TestCase):
                 self.prepare(cc)
         self.assertEqual(len(cc.rt.bonds), 1)
 
+    def test_prepare_chemcomp_reuses_deleted_h_name(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'THREUSE'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+
+        for atom_id, el, chem_type in [
+            ('N', 'N', 'N'),
+            ('CA', 'C', 'C'),
+            ('C', 'C', 'C'),
+            ('O', 'O', 'O'),
+            ('OXT', 'O', 'O'),
+            ('H', 'H', 'H'),
+            ('H2', 'H', 'H'),
+            ('HXT', 'H', 'H'),
+            ('P1', 'P', 'P'),
+            ('OP1', 'O', 'O'),
+            ('OP2', 'O', 'O'),
+            ('OP3', 'O', 'O'),
+            ('OP4', 'O', 'O'),
+            ('H3', 'H', 'H'),
+        ]:
+            cc.atoms.append(self.make_atom(atom_id, el, chem_type))
+
+        for a1, a2, btype, value in [
+            ('N', 'CA', gemmi.BondType.Single, 1.47),
+            ('N', 'H', gemmi.BondType.Single, 1.01),
+            ('N', 'H2', gemmi.BondType.Single, 1.01),
+            ('CA', 'C', gemmi.BondType.Single, 1.53),
+            ('C', 'O', gemmi.BondType.Double, 1.24),
+            ('C', 'OXT', gemmi.BondType.Single, 1.31),
+            ('OXT', 'HXT', gemmi.BondType.Single, 0.98),
+            ('P1', 'OP1', gemmi.BondType.Single, 1.52),
+            ('P1', 'OP2', gemmi.BondType.Single, 1.52),
+            ('P1', 'OP3', gemmi.BondType.Single, 1.52),
+            ('P1', 'OP4', gemmi.BondType.Single, 1.52),
+            ('OP1', 'H3', gemmi.BondType.Single, 0.98),
+        ]:
+            cc.rt.bonds.append(self.make_bond(a1, a2, btype, value, 0.02))
+
+        self.prepare(cc)
+
+        atom_ids = {a.id for a in cc.atoms}
+        self.assertNotIn('HXT', atom_ids)
+        self.assertIn('H3', atom_ids)
+        self.assertNotIn('H4', atom_ids)
+
+        n_h3_bond = any(
+            (b.id1.atom == 'N' and b.id2.atom == 'H3') or
+            (b.id2.atom == 'N' and b.id1.atom == 'H3')
+            for b in cc.rt.bonds
+        )
+        self.assertTrue(n_h3_bond)
+
 
 class TestAceDrgBatch(unittest.TestCase):
     @classmethod
@@ -422,8 +475,8 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
             assert b.id1.atom in atom_set and b.id2.atom in atom_set, source
             assert math.isfinite(b.value), source
             assert math.isfinite(b.esd), source
-            if math.isfinite(b.value_nucleus):
-                assert math.isfinite(b.esd_nucleus), source
+            assert math.isfinite(b.value_nucleus), source
+            assert math.isfinite(b.esd_nucleus), source
         for ang in cc.rt.angles:
             assert ang.id1.atom in atom_set and ang.id2.atom in atom_set and ang.id3.atom in atom_set, source
             assert math.isfinite(ang.value), source
