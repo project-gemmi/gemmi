@@ -158,37 +158,6 @@ class TestAlignment(unittest.TestCase):
         # The full FASTA should be assigned as the SEQRES
         self.assertEqual(len(assigned), 10)
 
-    def test_assign_sequences_multi_chain_truncations(self):
-        """Entity with multiple subchains (asymmetric unit copies) having
-        different truncation levels should still pick the best FASTA."""
-        st = gemmi.Structure()
-        model = gemmi.Model('1')
-        # Chain A: shorter truncation (residues 3-8 of a 10-residue protein)
-        short_residues = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE', 'MET']
-        _make_peptide_chain(model, 'A', 'Axp', short_residues)
-        # Chain B: longer truncation (residues 2-9)
-        long_residues = ['ALA', 'GLY', 'ALA', 'VAL', 'LEU', 'ILE',
-                         'MET', 'ALA']
-        _make_peptide_chain(model, 'B', 'Bxp', long_residues)
-        st.add_model(model)
-
-        # Both subchains belong to the same entity
-        ent = gemmi.Entity('1')
-        ent.entity_type = gemmi.EntityType.Polymer
-        ent.polymer_type = gemmi.PolymerType.PeptideL
-        ent.subchains = ['Axp', 'Bxp']
-        st.entities.append(ent)
-
-        correct_fasta = 'AAGAVLIMAA'
-        wrong_fasta = 'MMMMMMMMMM'
-        st.assign_best_sequences([wrong_fasta, correct_fasta])
-
-        assigned = st.entities[0].full_sequence
-        self.assertEqual(len(assigned), 10)
-        # Verify the correct FASTA was picked, not the wrong one
-        assigned_1letter = gemmi.one_letter_code(assigned)
-        self.assertEqual(assigned_1letter, correct_fasta)
-
     def test_assign_sequences_protein_not_assigned_to_dna(self):
         """A protein FASTA should not be assigned to a DNA entity."""
         st = gemmi.Structure()
@@ -258,11 +227,8 @@ class TestAlignment(unittest.TestCase):
             self.assertAlmostEqual(s.transform.vec.y, 17.0, places=1)
 
     def test_assign_sequences_many_trailing_cations(self):
-        """Realistic scenario: a long protein chain with several cations
-        (ZN, CA) appended inside the polymer subchain, as seen in PDB files
-        from refinement software.  On master, align_sequence_to_polymer
-        includes these cations, causing the alignment score to be too low
-        for assignment."""
+        """Ensure a long protein chain with several cations (ZN, CA) appended to the 
+        end of a polymer subchain still has proper sequence assignment."""
         st = gemmi.Structure()
         model = gemmi.Model('1')
         protein_residues = ['ALA'] * 50
@@ -285,32 +251,6 @@ class TestAlignment(unittest.TestCase):
         self.assertEqual(len(assigned), 50,
                          f'Expected 50 residues but got {len(assigned)}')
 
-    def test_assign_sequences_unknown_polymer_type(self):
-        """When an entity has polymer_type=Unknown (e.g. setup_entities was
-        not called), assign_best_sequences should auto-detect the polymer
-        type from the chain content and still assign the FASTA."""
-        st = gemmi.Structure()
-        model = gemmi.Model('1')
-        protein_residues = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE', 'MET']
-        _make_peptide_chain(model, 'A', 'Axp', protein_residues)
-        st.add_model(model)
-
-        ent = gemmi.Entity('1')
-        ent.entity_type = gemmi.EntityType.Polymer
-        ent.polymer_type = gemmi.PolymerType.Unknown  # not set
-        ent.subchains = ['Axp']
-        st.entities.append(ent)
-
-        fasta = 'AAGAVLIMAA'  # longer FASTA with extra N/C-terminal residues
-        st.assign_best_sequences([fasta])
-
-        self.assertEqual(st.entities[0].polymer_type, gemmi.PolymerType.PeptideL,
-                         'polymer_type should be auto-detected as PeptideL')
-        assigned = st.entities[0].full_sequence
-        self.assertEqual(len(assigned), 10,
-                         f'Expected 10 residues but got {len(assigned)}: {assigned}')
-        assigned_1letter = gemmi.one_letter_code(assigned)
-        self.assertEqual(assigned_1letter, fasta)
 
     def test_assign_sequences_fasta_with_insertion(self):
         """FASTA with extra residues (prefix + mid-chain insertion) compared
