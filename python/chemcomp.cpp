@@ -4,6 +4,7 @@
 #include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/ace_cc.hpp"
+#include "gemmi/cc_adj.hpp"
 
 #include "common.h"
 #include <nanobind/stl/bind_vector.h>
@@ -196,6 +197,9 @@ void add_chemcomp(nb::module_& m) {
         auto it = self.find_atom(atom_id);
         return it != self.atoms.end() ? &*it : nullptr;
     }, nb::rv_policy::reference_internal)
+    .def("apply_chemical_adjustments", &apply_chemical_adjustments,
+         "Apply ChemComp normalization rules used by gemmi drg.\n"
+         "This mutates atoms, bonds and selected charges/protonation states.")
     .def("remove_hydrogens", &ChemComp::remove_hydrogens)
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
@@ -290,7 +294,7 @@ static void add_acedrg_tables(nb::module_& m) {
     .def("fill_angle",
          [](const AcedrgTables& self, const ChemComp& cc, Restraints::Angle& angle) {
            auto atom_info = self.classify_atoms(cc);
-           self.fill_angle(cc, atom_info, angle, {});
+           self.fill_angle(cc, atom_info, angle);
          },
          nb::arg("chemcomp"), nb::arg("angle"),
          "Fill a single angle value using COD/CSD statistics.")

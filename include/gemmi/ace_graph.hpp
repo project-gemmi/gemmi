@@ -6,11 +6,15 @@
 #define GEMMI_ACE_GRAPH_HPP_
 
 #include <map>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "gemmi/chemcomp.hpp"
 
 namespace gemmi {
+
+struct CodAtomInfo;
 
 struct AceBondNeighbor {
   size_t idx;
@@ -26,12 +30,12 @@ struct AceGraphView {
   std::vector<std::vector<int>> neighbors;
 };
 
+inline bool is_aromatic_or_deloc(BondType type) {
+  return type == BondType::Aromatic || type == BondType::Deloc;
+}
+
 std::map<std::string, std::vector<std::string>>
 make_neighbor_names(const ChemComp& cc);
-
-bool atoms_in_same_ring_by_alt_path(
-    const std::string& atom1, const std::string& atom2,
-    const std::map<std::string, std::vector<std::string>>& neighbors);
 
 AceBondAdjacency build_bond_adjacency(
     const ChemComp& cc, const std::map<std::string, size_t>& atom_index);
@@ -68,8 +72,75 @@ bool has_metal_and_non_metal_heavy_neighbor(
 float sum_non_metal_bond_order(
     const ChemComp& cc, const AceBondAdjacency& adj, size_t idx);
 
+bool compute_metal_neighbor_valence_charge(
+    const ChemComp& cc, const AceBondAdjacency& adj, size_t idx,
+    int& out_charge);
+
 bool has_non_hydrogen_neighbor(
     const ChemComp& cc, const std::vector<int>& neighbor_indices);
+
+void add_angles_from_bonds_if_missing(ChemComp& cc);
+
+std::vector<unsigned> compute_rdkit_legacy_cip_ranks(
+    const ChemComp& cc, const AceBondAdjacency& adj);
+
+void sort_neighbors_by_rdkit_cip_rank(
+    std::vector<size_t>& neighbors, const std::vector<unsigned>& cip_ranks);
+
+bool is_oxygen_column(Element el);
+
+std::pair<size_t, size_t> find_ring_sharing_pair(
+    const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info,
+    size_t side1, size_t side2);
+
+struct RingInfo {
+  std::vector<int> atoms;
+  std::string rep;
+  std::string s_rep;
+  bool is_aromatic = false;
+  bool is_aromatic_permissive = false;
+};
+
+void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
+                         std::vector<CodAtomInfo>& atoms,
+                         std::vector<RingInfo>& rings);
+
+void set_ring_aromaticity_from_bonds(const AceBondAdjacency& adj,
+                                     const std::vector<CodAtomInfo>& atoms,
+                                     std::vector<RingInfo>& rings,
+                                     int verbose = 0);
+
+void set_atoms_ring_rep_s(std::vector<CodAtomInfo>& atoms,
+                          const std::vector<RingInfo>& rings);
+
+void append_ring_annotation(std::string& s,
+                            const std::map<std::string, std::string>& ring_rep_s);
+
+enum class RingParity { Even, Odd, NoFlip };
+enum class RingFlip { Even, Odd };
+
+std::map<std::pair<size_t, size_t>, RingParity>
+build_ring_bond_parity(const AceBondAdjacency& adj,
+                       const std::vector<CodAtomInfo>& atom_info);
+
+std::map<std::pair<size_t, size_t>, RingFlip>
+build_ring_bond_flip(const ChemComp& cc,
+                     const AceBondAdjacency& adj,
+                     const std::vector<CodAtomInfo>& atom_info);
+
+struct SugarRingInfo {
+  std::map<int, std::set<size_t>> ring_sets;
+  std::set<std::pair<size_t, size_t>> ring_bonds;
+  std::map<int, std::vector<size_t>> ring_seq;
+};
+
+SugarRingInfo detect_sugar_rings(const ChemComp& cc, const AceBondAdjacency& adj,
+                                 const std::vector<CodAtomInfo>& atom_info);
+
+bool is_pyranose_ring_like_acedrg(const ChemComp& cc, const AceBondAdjacency& adj,
+                                  const std::vector<CodAtomInfo>& atom_info,
+                                  const std::vector<size_t>& ring_atoms,
+                                  const std::set<size_t>& ring_set);
 
 }  // namespace gemmi
 

@@ -54,6 +54,9 @@ gemmi/c4322.hpp
 gemmi/calculate.hpp
     Calculate various properties of the model.
 
+gemmi/cc_adj.hpp
+    Chemical-adjustment helpers used by ace_cc pipeline.
+
 gemmi/ccp4.hpp
     CCP4 format for maps and masks.
 

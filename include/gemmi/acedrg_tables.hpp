@@ -177,8 +177,7 @@ struct GEMMI_DLL AcedrgTables {
                 Restraints::Bond& bond) const;
   int fill_angle(const ChemComp& cc,
                            const std::vector<CodAtomInfo>& atom_info,
-                           Restraints::Angle& angle,
-                           const std::set<int>& needed_files) const;
+                           Restraints::Angle& angle) const;
 
   // Atom classification - returns info for all atoms
   std::vector<CodAtomInfo> classify_atoms(const ChemComp& cc) const;
@@ -241,6 +240,24 @@ struct GEMMI_DLL AcedrgTables {
     double sigma = NAN;
   };
 
+  // Non-centered metal angles (allOrgAnglesWithNonCenteredMetalNB.table)
+  struct NonCenMetalKey {
+    std::string id1, idNB1, id2, idNB2, id3, idNB3;
+    bool operator<(const NonCenMetalKey& o) const {
+      return std::tie(id1, idNB1, id2, idNB2, id3, idNB3)
+           < std::tie(o.id1, o.idNB1, o.id2, o.idNB2, o.id3, o.idNB3);
+    }
+  };
+  struct NonCenMetalKey5 {
+    std::string id1, idNB1, id2, idNB2, id3;
+    bool operator<(const NonCenMetalKey5& o) const {
+      return std::tie(id1, idNB1, id2, idNB2, id3)
+           < std::tie(o.id1, o.idNB1, o.id2, o.idNB2, o.id3);
+    }
+  };
+  std::map<NonCenMetalKey, CodStats> noncen_metal_angles_;
+  std::map<NonCenMetalKey5, std::vector<std::pair<std::string, CodStats>>> noncen_metal_by5_;
+
   std::map<std::string, std::map<std::string, std::map<std::string, Ccp4BondEntry>>> ccp4_bonds_;
 
   void load_ccp4_bonds(const std::string& path);
@@ -273,14 +290,6 @@ struct GEMMI_DLL AcedrgTables {
     std::map<std::string, std::map<std::string,
     std::vector<CodStats>>>>>>;
   BondIdx2D bond_idx_2d_;
-
-  // Level Nb2D: 6-component key (ha1|ha2|hybr|ring|a1nb2|a2nb2)
-  using BondNb2D = std::unordered_map<std::string, std::vector<CodStats>>;
-  BondNb2D bond_nb2d_;  // populated but not read (dead data)
-
-  // Level Nb2DType: 8-component key (ha1|ha2|hybr|ring|a1nb2|a2nb2|root1|root2)
-  using BondNb2DType = std::unordered_map<std::string, std::vector<CodStats>>;
-  BondNb2DType bond_nb2d_type_;  // populated but not read (dead data)
 
   // Levels 9-11: Hash+Sp fallback, fully flat compound keys
   using BondHaSp2D = std::unordered_map<std::string, std::vector<CodStats>>;
@@ -320,9 +329,6 @@ struct GEMMI_DLL AcedrgTables {
   using AngleIdx6D = std::unordered_map<std::string, std::vector<CodStats>>;
   AngleIdx6D angle_idx_6d_;
 
-  // Angle file index: kept nested for individual-level access in fill_angle
-  std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, int>>> angle_file_index_;
-
   // Element + hybridization based fallback bonds
   using ENBonds = std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
@@ -339,6 +345,8 @@ struct GEMMI_DLL AcedrgTables {
 
   // Protonated hydrogen distances: maps type (e.g., "H_sp3_C") -> ProtHydrDist
   std::map<std::string, ProtHydrDist> prot_hydr_dists_;
+  // Element-level fallback (e.g., "C") matching AceDRG tHDistMap[1] fallback.
+  std::map<std::string, ProtHydrDist> prot_hydr_dists_by_elem_;
 
   // Internal helper functions
 
@@ -355,7 +363,6 @@ struct GEMMI_DLL AcedrgTables {
   void load_pep_tors(const std::string& path);
   void load_nucl_tors(const std::string& path);
   void load_prot_hydr_dists(const std::string& path);
-  void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
 
  private:
@@ -376,6 +383,7 @@ struct GEMMI_DLL AcedrgTables {
   CodStats search_angle_multilevel(const CodAtomInfo& a1,
                                      const CodAtomInfo& center,
                                      const CodAtomInfo& a3,
+                                     int min_obs,
                                      int* out_level = nullptr) const;
   CodStats search_angle_hrs(const CodAtomInfo& a1, const CodAtomInfo& center,
                               const CodAtomInfo& a3, int ring_size) const;

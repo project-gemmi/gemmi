@@ -25,8 +25,7 @@ then, to compare it against acedrg:
 If you think that AceDRG is wrong, write a short description that can be sent to Acedrg developers.
 
 If not sure what exact rules Acedrg is using, don't guess!!!, write a self-contained question for
-Acedrg experts. when asking question, don't list answer and expect free-text answer.
-or check in qacedrg source code in ./acedrg
+Acedrg experts, or check in acedrg source code in ./acedrg
 
 Don't run acedrg, instead, check acedrg ouput files mentioned above.
 The latest acedrg is installed in pythonic virtual env:
@@ -35,8 +34,8 @@ but it's not reliable, the one from CCP4-9 is better for our needs.
 (ccp4-9 acedrg is in PATH after sourcing ~/ccp4/ccp4-9/bin/ccp4.setup-sh)
 
 
-see ccd/log-new9.txt for the current list of discrepancies
-the format is: acedrg_val : gemmi_val   esd acedrg_esd : gemmi_esd
+when a list of discrepancies is generated the format is:
+acedrg_val : gemmi_val   esd acedrg_esd : gemmi_esd
       # Example:  180.00 :   0.00   esd 5.00 : 20.00…)
 
 note:when running gemmi drg it's muuch faster to run it with multiple inputs than in a loop

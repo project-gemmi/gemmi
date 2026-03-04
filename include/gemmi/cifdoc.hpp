@@ -1178,8 +1178,10 @@ inline bool is_text_field(const std::string& val) {
 }
 
 inline std::string quote(std::string v) {
+  if (v.empty())
+    return "''";
   if (std::all_of(v.begin(), v.end(), [](char c) { return char_table(c) == 1; })
-      && !v.empty() && !is_null(v))
+      && !is_null(v))
     return v;
   char q = ';';
   if (std::memchr(v.c_str(), '\n', v.size()) == nullptr) {

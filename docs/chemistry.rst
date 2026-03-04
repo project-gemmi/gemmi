@@ -411,6 +411,338 @@ This class is not fully documented yet.
 The examples in :ref:`graph_analysis`
 show how to access `ChemComp`'s atoms and bonds.
 
+.. _chemcomp-chemical-adjustments:
+
+Chemical adjustments
+====================
+
+Gemmi's `ChemComp` normalization for `gemmi drg` is performed by
+`apply_chemical_adjustments()` (declared in `gemmi/cc_adj.hpp`,
+implemented in `src/cc_adj.cpp`).
+
+This is a deterministic local-graph normalization stage run before
+statistical lookup and typing. It can change:
+
+* formal charges,
+* protonation state (add/remove hydrogens),
+* selected bond orders (for resonance-style normalization),
+* affected restraints around edited atoms (bonds/angles tied to added or
+  removed hydrogens).
+
+It is intentionally rule-based and motif-driven; it is not a general pKa
+predictor or tautomer enumerator.
+
+apply_chemical_adjustments()
+----------------------------
+
+Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
+examples below show representative components.
+
+Acid/oxoacid deprotonation
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`oxoacid_phosphate` (step 1, SMARTS: ``OP(=O)(O)(*)`` / ``O=P(O)(O)O``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_oxoacid_phosphate_before.svg
+            :alt: oxoacid_phosphate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_oxoacid_phosphate_after.svg
+            :alt: oxoacid_phosphate after
+            :width: 100%
+
+   Example: `ATP <https://www.rcsb.org/ligand/ATP>`_
+   For phosphate motifs of the form R-O-PO3, this rule deprotonates
+   phosphoryl oxygens (AceDRG-style doubly deprotonated representation).
+   The alkoxy R-O part is not deprotonated by this rule.
+
+`oxoacid_sulfate` (step 2, SMARTS: ``O=S(=O)(O)O``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_oxoacid_sulfate_before.svg
+            :alt: oxoacid_sulfate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_oxoacid_sulfate_after.svg
+            :alt: oxoacid_sulfate after
+            :width: 100%
+
+   Example: `0SG <https://www.rcsb.org/ligand/0SG>`_
+
+`oxoacid_sulfite` (step 3, SMARTS: ``OS(=O)O``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_oxoacid_sulfite_before.svg
+            :alt: oxoacid_sulfite before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_oxoacid_sulfite_after.svg
+            :alt: oxoacid_sulfite after
+            :width: 100%
+
+   This rule currently follows AceDRG-style sulfite handling by deprotonating
+   one hydroxyl oxygen in matching sulfate-like tri-oxygen sulfur motifs.
+
+`single_bond_oxide` (step 5, SMARTS: ``[O]-[*]`` + internal constraints)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_single_bond_oxide_before.svg
+            :alt: single_bond_oxide before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_single_bond_oxide_after.svg
+            :alt: single_bond_oxide after
+            :width: 100%
+
+   Example: (CCD example pending confirmation)
+   Oxygen must be neutral, have no hydrogen neighbors, and have exactly one
+   heavy single-bond neighbor.
+   This is not general alcohol deprotonation. It normalizes pre-existing
+   single-bond oxide-like oxygens that are already non-protonated in the graph.
+
+`carboxy_asp` (step 7, SMARTS: ``O=C(O)C(*)`` / ``O=C(O)c(*)`` / ``O=C(O)CN(*)`` / ``O=C(O)C(N)(*)`` / ``O=C(O)CN``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_carboxy_asp_before.svg
+            :alt: carboxy_asp before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_carboxy_asp_after.svg
+            :alt: carboxy_asp after
+            :width: 100%
+
+   Example: `ASP <https://www.rcsb.org/ligand/ASP>`_
+
+`terminal_carboxylate` (step 8, SMARTS: ``O=C(O)CN(*)`` with `OXT`/`HXT` naming context)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_terminal_carboxylate_before.svg
+            :alt: terminal_carboxylate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_terminal_carboxylate_after.svg
+            :alt: terminal_carboxylate after
+            :width: 100%
+
+   Example: `A0G <https://www.rcsb.org/ligand/A0G>`_
+   Unlike `carboxy_asp`, this rule targets the terminal carboxylate motif
+   identified via `OXT`/`HXT` context.
+
+Resonance normalization
+^^^^^^^^^^^^^^^^^^^^^^^
+
+`nitro_group` (step 4, SMARTS: ``[N+](=O)(O)C``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_nitro_group_before.svg
+            :alt: nitro_group before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_nitro_group_after.svg
+            :alt: nitro_group after
+            :width: 100%
+
+   Example: `NE5 <https://www.rcsb.org/ligand/NE5>`_
+   Shown as charge-separated nitro resonance (`R-N+(=O)-O-`).
+   The exact AceDRG representation (formal charges vs valence-only
+   representation) is under review.
+
+Targeted handling
+^^^^^^^^^^^^^^^^^
+
+`hexafluorophosphate` (step 6, SMARTS: ``F[P](F)(F)(F)(F)F``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_hexafluorophosphate_before.svg
+            :alt: hexafluorophosphate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_hexafluorophosphate_after.svg
+            :alt: hexafluorophosphate after
+            :width: 100%
+
+   Example: `A9J <https://www.rcsb.org/ligand/A9J>`_
+
+Cationic nitrogen completion/protonation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`guanidinium` (step 9, SMARTS: ``CNC(=N)N``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_guanidinium_before.svg
+            :alt: guanidinium before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_guanidinium_after.svg
+            :alt: guanidinium after
+            :width: 100%
+
+   Example: `00L <https://www.rcsb.org/ligand/00L>`_
+
+`amino_ter_amine` (step 10, SMARTS: ``NCC(=O)N(*)``)
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_amino_ter_amine_before.svg
+            :alt: amino_ter_amine before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_amino_ter_amine_after.svg
+            :alt: amino_ter_amine after
+            :width: 100%
+
+   Example: `00K <https://www.rcsb.org/ligand/00K>`_
+
+`terminal_amine` (step 11, SMARTS: ``[*]C[NH2]``)
+
+    .. list-table::
+       :widths: 45 10 45
+       :class: borderless
+
+       * - .. figure:: img/adj_terminal_amine_before.svg
+             :alt: terminal_amine before
+             :width: 100%
+         - ➡
+         - .. figure:: img/adj_terminal_amine_after.svg
+             :alt: terminal_amine after
+             :width: 100%
+
+   Example: (CCD example pending confirmation)
+   Current implementation applies context-dependent protonation of terminal
+   amine-like motifs.
+
+`protonated_amide_n` (step 12, SMARTS: ``CCC(=O)N``)
+
+    .. list-table::
+       :widths: 45 10 45
+       :class: borderless
+
+       * - .. figure:: img/adj_protonated_amide_n_before.svg
+             :alt: protonated_amide_n before
+             :width: 100%
+         - ➡
+         - .. figure:: img/adj_protonated_amide_n_after.svg
+             :alt: protonated_amide_n after
+             :width: 100%
+
+    Example: (CCD example pending confirmation)
+
+The order is part of behavior: earlier edits can affect pattern matching in
+later steps.
+
+prepare_chemcomp()
+------------------
+
+`prepare_chemcomp()` is the full restraint-preparation pipeline. The order
+below is important because later stages depend on graph/charge edits made
+earlier.
+
+Execution order
+^^^^^^^^^^^^^^^
+
+`prepare_chemcomp()` follows this control flow:
+
+0. detect carborane branches before the standard path:
+
+   * full carborane mode (early return): enabled when the component has at
+     least one non-hydrogen atom with 4+ boron neighbors, and all
+     non-hydrogen atoms are only B/C/metal. In this case,
+     `apply_carborane_mode()` is used, CCP4 types are assigned, and the
+     function returns immediately.
+     Example: `1KW <https://www.rcsb.org/ligand/1KW>`_.
+   * otherwise continue with the standard path, but keep a carborane-seed flag
+     for possible mixed-mode post-processing.
+     Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
+
+1. seed missing angles from existing bonds (unless `--no-angles`);
+2. run `apply_chemical_adjustments()`;
+3. run `add_n_terminal_h3()` (may add `H3` and corresponding N-centered angles);
+
+   `add_n_terminal_h3()` adds the third proton only for matching
+   N-terminus-like motifs. `sync_n_terminal_h3_angles()` is run later (after
+   table fill) to keep the newly added H3 angles consistent with sibling
+   N-H/N-H2 restraints.
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_add_n_terminal_h3_before.svg
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_add_n_terminal_h3_after.svg
+            :alt: add_n_terminal_h3 after
+            :width: 100%
+
+   Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
+4. run charge corrections;
+5. fill missing bond/angle values from AceDRG tables;
+6. if `H3` was added, run `sync_n_terminal_h3_angles()` to align H3-angle
+   values with existing N-H/N-H2 geometry;
+7. add missing chirality, torsion and plane restraints;
+8. if the carborane-seed flag is set, apply mixed carborane post-processing:
+   cluster-local part.
+   Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
+9. assign CCP4 atom types.
+
+Python example:
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+    >>> import os
+    >>> path = '../tests/ccd/ASP.cif'
+    >>> block = gemmi.cif.read(path).sole_block()
+    >>> cc = gemmi.make_chemcomp_from_block(block)
+    >>> tables = gemmi.AcedrgTables()
+    >>> tables.load_tables(ccp4_path + '/share/acedrg/tables')
+    >>> before = {a.id for a in cc.atoms}
+    >>> gemmi.prepare_chemcomp(cc, tables)
+    >>> after = {a.id for a in cc.atoms}
+    >>> removed = sorted(before - after)
+    >>> added = sorted(after - before)
+    >>> atoms = {a.id: a for a in cc.atoms}
+    >>> removed
+    ['HD2', 'HXT']
+    >>> added
+    ['H3']
+    >>> atoms['N'].charge
+    1.0
+    >>> atoms['OD2'].charge
+    -1.0
+    >>> atoms['OXT'].charge
+    -1.0
+
 .. _monlib:
 
 Monomer library
@@ -517,6 +849,9 @@ Input is typically a CCD-style component definition with atom and bond
 information. In practice, `gemmi drg` must also normalize chemistry before
 table lookup, because small differences in protonation state or local bond
 annotation can move an atom into a different type bucket.
+
+For details on the ChemComp-level rule set, see
+:ref:`chemcomp-chemical-adjustments`.
 
 Normalization includes:
 

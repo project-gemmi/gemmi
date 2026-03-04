@@ -677,8 +677,9 @@ inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
     double esd = row.has(7) ? cif::as_number(row[7]) : NAN;
     double dist_nucl = row.has(8) ? cif::as_number(row[8]) : NAN;
     double esd_nucl = row.has(9) ? cif::as_number(row[9]) : NAN;
+    BondType bt = bond_type_from_string(row.one_of(2, 3));
     cc.rt.bonds.push_back({{1, row.str(0)}, {1, row.str(1)},
-                          bond_type_from_string(row.one_of(2, 3)),
+                          bt,
                           aromatic_flag, dist, esd, dist_nucl, esd_nucl});
   }
   for (auto row : block.find("_chem_comp_angle.",

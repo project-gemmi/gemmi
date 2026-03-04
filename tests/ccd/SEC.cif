@@ -1,0 +1,118 @@
+data_SEC
+_chem_comp.id SEC
+_chem_comp.name SELENOCYSTEINE
+_chem_comp.type "L-PEPTIDE LINKING"
+_chem_comp.pdbx_type ATOMP
+_chem_comp.formula "C3 H7 N O2 Se"
+_chem_comp.mon_nstd_parent_comp_id ?
+_chem_comp.pdbx_synonyms ?
+_chem_comp.pdbx_formal_charge 0
+_chem_comp.pdbx_initial_date 1999-07-08
+_chem_comp.pdbx_modified_date 2023-11-03
+_chem_comp.pdbx_ambiguous_flag N
+_chem_comp.pdbx_release_status REL
+_chem_comp.pdbx_replaced_by ?
+_chem_comp.pdbx_replaces ?
+_chem_comp.formula_weight 168.053
+_chem_comp.one_letter_code U
+_chem_comp.three_letter_code SEC
+_chem_comp.pdbx_model_coordinates_details ?
+_chem_comp.pdbx_model_coordinates_missing_flag N
+_chem_comp.pdbx_ideal_coordinates_details Corina
+_chem_comp.pdbx_ideal_coordinates_missing_flag N
+_chem_comp.pdbx_model_coordinates_db_code ?
+_chem_comp.pdbx_subcomponent_list ?
+_chem_comp.pdbx_processing_site RCSB
+
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.pdbx_backbone_atom_flag
+_chem_comp_atom.pdbx_n_terminal_atom_flag
+_chem_comp_atom.pdbx_c_terminal_atom_flag
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+SEC N N N 0 1 N N N Y Y N 38.770 10.663 52.598 -0.783 1.676 -0.339 N SEC 1
+SEC CA CA C 0 1 N N R Y N N 38.352 11.626 51.586 -0.938 0.217 -0.405 CA SEC 2
+SEC CB CB C 0 1 N N N N N N 38.574 11.050 50.186 0.042 -0.445 0.565 CB SEC 3
+SEC SE SE SE 0 0 N N N N N N 38.291 12.371 48.883 1.879 -0.092 -0.020 SE SEC 4
+SEC C C C 0 1 N N N Y N Y 36.864 11.874 51.824 -2.349 -0.156 -0.027 C SEC 5
+SEC O O O 0 1 N N N Y N Y 36.018 11.106 51.371 -3.030 0.619 0.602 O SEC 6
+SEC OXT OXT O 0 1 N Y N Y N Y 36.557 12.878 52.638 -2.848 -1.348 -0.389 OXT SEC 7
+SEC H HN1 H 0 1 N N N Y Y N 38.621 11.049 53.508 -1.373 2.134 -1.017 H SEC 8
+SEC H2 HN2 H 0 1 N Y N Y Y N 38.235 9.824 52.500 -0.969 2.018 0.592 H2 SEC 9
+SEC HA HA H 0 1 N N N Y N N 38.908 12.569 51.692 -0.732 -0.125 -1.419 HA SEC 10
+SEC HB2 HB1 H 0 1 N N N N N N 39.606 10.678 50.107 -0.105 -0.037 1.565 HB2 SEC 11
+SEC HB3 HB2 H 0 1 N N N N N N 37.871 10.220 50.020 -0.134 -1.521 0.582 HB3 SEC 12
+SEC HE HE H 0 1 N N N N N N 38.508 11.801 47.556 2.691 -0.839 1.084 HE SEC 13
+SEC HXT HXT H 0 1 N Y N Y N Y 35.620 12.886 52.792 -3.757 -1.542 -0.123 HXT SEC 14
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+SEC N CA SING N N 1
+SEC N H SING N N 2
+SEC N H2 SING N N 3
+SEC CA CB SING N N 4
+SEC CA C SING N N 5
+SEC CA HA SING N N 6
+SEC CB SE SING N N 7
+SEC CB HB2 SING N N 8
+SEC CB HB3 SING N N 9
+SEC SE HE SING N N 10
+SEC C O DOUB N N 11
+SEC C OXT SING N N 12
+SEC OXT HXT SING N N 13
+
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+SEC SMILES ACDLabs 12.01 "O=C(O)C(N)C[SeH]"
+SEC InChI InChI 1.03 "InChI=1S/C3H7NO2Se/c4-2(1-7)3(5)6/h2,7H,1,4H2,(H,5,6)/t2-/m0/s1"
+SEC InChIKey InChI 1.03 ZKZBPNGNEQAJSX-REOHCLBHSA-N
+SEC SMILES_CANONICAL CACTVS 3.370 "N[C@@H](C[SeH])C(O)=O"
+SEC SMILES CACTVS 3.370 "N[CH](C[SeH])C(O)=O"
+SEC SMILES_CANONICAL "OpenEye OEToolkits" 1.7.6 "C([C@@H](C(=O)O)N)[SeH]"
+SEC SMILES "OpenEye OEToolkits" 1.7.6 "C(C(C(=O)O)N)[SeH]"
+
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+SEC "SYSTEMATIC NAME" ACDLabs 12.01 3-selanyl-L-alanine
+SEC "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.7.6 "(2R)-2-azanyl-3-selanyl-propanoic acid"
+
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+SEC "Create component" 1999-07-08 RCSB
+SEC "Modify descriptor" 2011-06-04 RCSB
+SEC "Other modification" 2014-01-14 RCSB
+SEC "Modify one letter code" 2014-07-17 RCSB
+SEC "Modify backbone" 2023-11-03 PDBE
