@@ -2069,26 +2069,30 @@ std::string acedrg_h_name(const ChemComp& cc, const std::string& n_id,
     return h_root;
   }
   if (h_root == "H" && !h_on_n.empty()) {
-    // Prefer numeric suffix if the atom already has H neighbors (AceDRG uses H23
-    // rather than plain H in such cases).
+    // Prefer numeric suffix when the center already has H neighbors.
   } else if (used_names.find(h_root) == used_names.end()) {
     return h_root;
   }
-  int idx_max = 0;
-  for (const std::string& h : h_on_n) {
+
+  auto numeric_suffix = [](const std::string& h) -> int {
     size_t d = 0;
     for (; d < h.size(); ++d)
       if (std::isdigit(static_cast<unsigned char>(h[d])))
         break;
-    if (d < h.size()) {
-      const std::string suffix = h.substr(d);
-      if (std::all_of(suffix.begin(), suffix.end(),
-                      [](char c) { return std::isdigit(static_cast<unsigned char>(c)); })) {
-        int val = std::stoi(suffix);
-        if (val > idx_max)
-          idx_max = val;
-      }
-    }
+    if (d >= h.size())
+      return 0;
+    const std::string suffix = h.substr(d);
+    if (!std::all_of(suffix.begin(), suffix.end(),
+                     [](char c) { return std::isdigit(static_cast<unsigned char>(c)); }))
+      return 0;
+    return std::stoi(suffix);
+  };
+
+  int idx_max = 0;
+  for (const std::string& h : h_on_n) {
+    int val = numeric_suffix(h);
+    if (val > idx_max)
+      idx_max = val;
   }
 
   int start = (idx_max > 0) ? idx_max + 1 : 2;
@@ -2122,44 +2126,6 @@ void add_hydrogen_with_restraints(ChemComp& cc,
 
 void adjust_guanidinium_group(ChemComp& cc,
                                std::map<std::string, std::vector<std::string>>& neighbors) {
-
-  std::map<std::string, bool> has_unsat_bond;
-  for (const auto& bond : cc.rt.bonds) {
-    bool unsat = (bond.type == BondType::Double ||
-                  bond.type == BondType::Triple ||
-                  is_aromatic_or_deloc(bond.type));
-    if (unsat) {
-      has_unsat_bond[bond.id1.atom] = true;
-      has_unsat_bond[bond.id2.atom] = true;
-    }
-  }
-
-  auto is_carbonyl_like = [&](const std::string& c_id) {
-    int c_idx = cc.find_atom_index(c_id);
-    if (c_idx < 0 || cc.atoms[c_idx].el != El::C)
-      return false;
-    bool has_double_hetero = false;
-    for (const auto& bond : cc.rt.bonds) {
-      if (bond.id1.atom != c_id && bond.id2.atom != c_id)
-        continue;
-      if (is_aromatic_or_deloc(bond.type) || bond.type == BondType::Triple)
-        return false;
-      if (bond.type == BondType::Double) {
-        const std::string& other = (bond.id1.atom == c_id) ? bond.id2.atom
-                                                           : bond.id1.atom;
-        int idx = cc.find_atom_index(other);
-        if (idx < 0)
-          continue;
-        Element el = cc.atoms[idx].el;
-        if (el == El::O || el == El::S || el == El::Se)
-          has_double_hetero = true;
-        else
-          return false;
-      }
-    }
-    return has_double_hetero;
-  };
-
   for (auto& atom : cc.atoms) {
     if (atom.el != El::C)
       continue;

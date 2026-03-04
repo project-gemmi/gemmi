@@ -472,6 +472,28 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         return path, cc
 
     @staticmethod
+    def _make_atom(atom_id, elem, chem_type, charge=0.0):
+        atom = gemmi.ChemComp.Atom()
+        atom.id = atom_id
+        atom.el = gemmi.Element(elem)
+        atom.chem_type = chem_type
+        atom.charge = charge
+        return atom
+
+    @staticmethod
+    def _make_nan_bond(a1, a2):
+        b = gemmi.Restraints.Bond()
+        b.id1 = gemmi.Restraints.AtomId(a1)
+        b.id2 = gemmi.Restraints.AtomId(a2)
+        b.type = gemmi.BondType.Single
+        b.aromatic = False
+        b.value = float('nan')
+        b.esd = float('nan')
+        b.value_nucleus = float('nan')
+        b.esd_nucleus = float('nan')
+        return b
+
+    @staticmethod
     def _assert_restraint_integrity(cc, source):
         atom_ids = [a.id for a in cc.atoms]
         atom_set = set(atom_ids)
@@ -531,37 +553,17 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         asp_atoms = {a.id: a for a in asp.atoms}
         self.assertLessEqual(asp_atoms['OD2'].charge, -0.5)
 
-    def test_prepare_chemcomp_a_proton_hydrogen_element_fallback_sets_nucleus(self):
+    def test_prepare_chemcomp_proton_hydrogen_element_fallback_sets_nucleus(self):
         cc = gemmi.ChemComp()
         cc.name = 'TPF6H'
         cc.group = gemmi.ChemComp.Group.NonPolymer
 
-        def add_atom(atom_id, elem, chem_type):
-            atom = gemmi.ChemComp.Atom()
-            atom.id = atom_id
-            atom.el = gemmi.Element(elem)
-            atom.chem_type = chem_type
-            atom.charge = 0.0
-            cc.atoms.append(atom)
-
-        def add_bond(a1, a2):
-            b = gemmi.Restraints.Bond()
-            b.id1 = gemmi.Restraints.AtomId(a1)
-            b.id2 = gemmi.Restraints.AtomId(a2)
-            b.type = gemmi.BondType.Single
-            b.aromatic = False
-            b.value = float('nan')
-            b.esd = float('nan')
-            b.value_nucleus = float('nan')
-            b.esd_nucleus = float('nan')
-            cc.rt.bonds.append(b)
-
-        add_atom('P1', 'P', 'P')
+        cc.atoms.append(self._make_atom('P1', 'P', 'P'))
         for i in range(1, 7):
-            add_atom(f'F{i}', 'F', 'F')
-            add_bond('P1', f'F{i}')
-        add_atom('H1', 'H', 'H')
-        add_bond('P1', 'H1')
+            cc.atoms.append(self._make_atom(f'F{i}', 'F', 'F'))
+            cc.rt.bonds.append(self._make_nan_bond('P1', f'F{i}'))
+        cc.atoms.append(self._make_atom('H1', 'H', 'H'))
+        cc.rt.bonds.append(self._make_nan_bond('P1', 'H1'))
 
         gemmi.prepare_chemcomp(cc, self.tables, {}, True)
 
@@ -575,35 +577,14 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         self.assertAlmostEqual(ph.value_nucleus, 1.284, places=3)
         self.assertAlmostEqual(ph.esd_nucleus, 0.02, places=3)
 
-    def test_prepare_chemcomp_b_non_h_bonds_mirror_nucleus_terms(self):
+    def test_prepare_chemcomp_non_h_bonds_mirror_nucleus_terms(self):
         cc = gemmi.ChemComp()
         cc.name = 'TMIRROR'
         cc.group = gemmi.ChemComp.Group.NonPolymer
 
-        c1 = gemmi.ChemComp.Atom()
-        c1.id = 'C1'
-        c1.el = gemmi.Element('C')
-        c1.chem_type = 'C'
-        c1.charge = 0.0
-        cc.atoms.append(c1)
-
-        c2 = gemmi.ChemComp.Atom()
-        c2.id = 'C2'
-        c2.el = gemmi.Element('C')
-        c2.chem_type = 'C'
-        c2.charge = 0.0
-        cc.atoms.append(c2)
-
-        b = gemmi.Restraints.Bond()
-        b.id1 = gemmi.Restraints.AtomId('C1')
-        b.id2 = gemmi.Restraints.AtomId('C2')
-        b.type = gemmi.BondType.Single
-        b.aromatic = False
-        b.value = float('nan')
-        b.esd = float('nan')
-        b.value_nucleus = float('nan')
-        b.esd_nucleus = float('nan')
-        cc.rt.bonds.append(b)
+        cc.atoms.append(self._make_atom('C1', 'C', 'C'))
+        cc.atoms.append(self._make_atom('C2', 'C', 'C'))
+        cc.rt.bonds.append(self._make_nan_bond('C1', 'C2'))
 
         gemmi.prepare_chemcomp(cc, self.tables, {}, True)
 
