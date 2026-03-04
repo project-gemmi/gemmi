@@ -16,7 +16,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
-#include <numeric>
 #include <sstream>
 #include <array>
 #include <functional>
@@ -499,7 +498,7 @@ CarboroneDb& get_carborone_db(const std::string& tables_dir) {
       continue;
     class0 = upper_copy(class0);
     class1 = upper_copy(class1);
-    db.by_pair[class0 + "\t" + class1].push_back(name);
+    db.by_pair[cat(class0, '\t', class1)].push_back(name);
     db.by_class0[class0].push_back(name);
     if (seen_names.insert(name).second)
       db.all_names.push_back(name);
@@ -3524,7 +3523,7 @@ std::pair<std::vector<size_t>, std::vector<size_t>> build_tv_lists_sp2sp2_like_a
 }
 
 
-static void emit_one_torsion(
+void emit_one_torsion(
     ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
     const AcedrgTables& tables,
@@ -4468,32 +4467,38 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
       *used_path1 = true;
     if (auto t = pick(idxNonH1[0], idxNonH2[0])) return t;
     return nullptr;
-  } else if (!idxNonH1.empty() && idxNonH2.empty()) {
+  }
+  if (!idxNonH1.empty() && idxNonH2.empty()) {
     if (!idxR2.empty())
       if (auto t = pick(idxNonH1[0], idxR2[0])) return t;
     if (!idxH2.empty())
       if (auto t = pick(idxNonH1[0], idxH2[0])) return t;
     return nullptr;
-  } else if (idxNonH1.empty() && !idxNonH2.empty()) {
+  }
+  if (idxNonH1.empty() && !idxNonH2.empty()) {
     if (!idxR1.empty())
       if (auto t = pick(idxR1[0], idxNonH2[0])) return t;
     if (!idxH1.empty())
       if (auto t = pick(idxH1[0], idxNonH2[0])) return t;
     return nullptr;
-  } else if (!idxR1.empty() && !idxR2.empty()) {
+  }
+  if (!idxR1.empty() && !idxR2.empty()) {
     // AceDRG: if ring+ring fails (e.g. atoms[0]==atoms[3] in 3-ring),
     // it does not fall through to ring+H due to its else-if structure.
     if (auto t = pick(idxR1[0], idxR2[0])) return t;
     return nullptr;
-  } else if (!idxR1.empty() && idxR2.empty()) {
+  }
+  if (!idxR1.empty() && idxR2.empty()) {
     if (!idxH2.empty())
       if (auto t = pick(idxR1[0], idxH2[0])) return t;
     return nullptr;
-  } else if (idxR1.empty() && !idxR2.empty()) {
+  }
+  if (idxR1.empty() && !idxR2.empty()) {
     if (!idxH1.empty())
       if (auto t = pick(idxH1[0], idxR2[0])) return t;
     return nullptr;
-  } else if (!idxH1.empty() && !idxH2.empty()) {
+  }
+  if (!idxH1.empty() && !idxH2.empty()) {
     if (auto t = pick(idxH1[0], idxH2[0])) return t;
     return nullptr;
   }
