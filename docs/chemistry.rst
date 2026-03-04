@@ -436,6 +436,11 @@ Applied order
 -------------
 
 Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
+where possible, examples below are chosen to match motifs from
+`acedrg/tables/funSmi.table` (for example `PO3R`/`PO4`, `SO4`,
+`CARBOXY-ASP`, `NITROMETHANE1`, `AMINO-TER`, `NH-ARG`).
+Rules without a direct `funSmi.table` entry are documented as implementation
+special-cases.
 
 Acid/oxoacid deprotonation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -458,6 +463,7 @@ Acid/oxoacid deprotonation
    For phosphate motifs of the form R-O-PO3, this rule deprotonates
    phosphoryl oxygens (AceDRG-style doubly deprotonated representation).
    The alkoxy R-O part is not deprotonated by this rule.
+   (Related `funSmi.table` entries: `PO3R`, `PO4`.)
 
 `oxoacid_sulfate` (step 2)
 
@@ -474,6 +480,7 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `0SG <https://www.rcsb.org/ligand/0SG>`_
+   (Related `funSmi.table` entry: `SO4`.)
 
 `single_bond_oxide` (step 4)
 
@@ -492,6 +499,7 @@ Acid/oxoacid deprotonation
    Example: (CCD example pending confirmation)
    This is not general alcohol deprotonation. It normalizes pre-existing
    single-bond oxide-like oxygens that are already non-protonated in the graph.
+   This is an implementation special-case (no direct `funSmi.table` motif).
 
 `carboxy_asp` (step 6)
 
@@ -508,6 +516,7 @@ Acid/oxoacid deprotonation
             :width: 100%
 
    Example: `ASP <https://www.rcsb.org/ligand/ASP>`_
+   (Related `funSmi.table` entry: `CARBOXY-ASP`.)
 
 `terminal_carboxylate` (step 7)
 
@@ -526,6 +535,7 @@ Acid/oxoacid deprotonation
    Example: `A0G <https://www.rcsb.org/ligand/A0G>`_
    Unlike `carboxy_asp`, this rule targets the terminal carboxylate motif
    identified via `OXT`/`HXT` context.
+   (Related `funSmi.table` entries: `CARBOXY-TER`, `CARBOXY-AMINO-TERS`.)
 
 Resonance normalization
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -548,6 +558,7 @@ Resonance normalization
    Shown as charge-separated nitro resonance (`R-N+(=O)-O-`).
    The exact AceDRG representation (formal charges vs valence-only
    representation) is under review.
+   (Related `funSmi.table` entry: `NITROMETHANE1`.)
 
 Targeted special-case handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -567,6 +578,7 @@ Targeted special-case handling
             :width: 100%
 
    Example: `A9J <https://www.rcsb.org/ligand/A9J>`_
+   This is an implementation special-case (outside `funSmi.table` motifs).
 
 Cationic nitrogen completion/protonation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -586,6 +598,7 @@ Cationic nitrogen completion/protonation
             :width: 100%
 
    Example: `00L <https://www.rcsb.org/ligand/00L>`_
+   (Related `funSmi.table` entry: `NH-ARG`.)
 
 `amino_ter_amine` (step 9)
 
@@ -602,7 +615,7 @@ Cationic nitrogen completion/protonation
             :width: 100%
 
    Example: `00K <https://www.rcsb.org/ligand/00K>`_
-   This motif is context-dependent and the concrete CCD example is under review.
+   (Related `funSmi.table` entry: `AMINO-TER`.)
 
 `terminal_amine` (step 10)
 
@@ -621,6 +634,7 @@ Cationic nitrogen completion/protonation
    Example: (CCD example pending confirmation)
    Current expectation is context-dependent protonation of terminal amine-like
    motifs; a concrete CCD example for this rule is still being validated.
+   (Related `funSmi.table` entry candidates include `NH-LYS`.)
 
 `protonated_amide_n` (step 11)
 
@@ -637,6 +651,7 @@ Cationic nitrogen completion/protonation
              :width: 100%
 
     CCD example and typical motif behavior are under review.
+    This may be an implementation rule beyond direct `funSmi.table` motifs.
 
 The order is part of behavior: earlier edits can affect pattern matching in
 later steps.
