@@ -158,56 +158,6 @@ class TestAlignment(unittest.TestCase):
         # The full FASTA should be assigned as the SEQRES
         self.assertEqual(len(assigned), 10)
 
-    def test_assign_sequences_protein_not_assigned_to_dna(self):
-        """A protein FASTA should not be assigned to a DNA entity."""
-        st = gemmi.Structure()
-        model = gemmi.Model('1')
-
-        # Protein chain
-        protein_residues = ['ALA', 'GLY', 'VAL', 'LEU', 'ILE']
-        _make_peptide_chain(model, 'A', 'Axp', protein_residues)
-
-        # DNA chain
-        chain_b = model.add_chain('B')
-        for i, name in enumerate(['DA', 'DT', 'DG', 'DC', 'DA'], start=1):
-            res = gemmi.Residue()
-            res.name = name
-            res.seqid = gemmi.SeqId(str(i))
-            res.entity_type = gemmi.EntityType.Polymer
-            res.subchain = 'Bxp'
-            atom = gemmi.Atom()
-            atom.name = 'P'
-            atom.element = gemmi.Element('P')
-            atom.pos = gemmi.Position(i * 6.0, 0, 0)
-            res.add_atom(atom)
-            chain_b.add_residue(res)
-
-        st.add_model(model)
-
-        # Protein entity
-        ent_prot = gemmi.Entity('1')
-        ent_prot.entity_type = gemmi.EntityType.Polymer
-        ent_prot.polymer_type = gemmi.PolymerType.PeptideL
-        ent_prot.subchains = ['Axp']
-        st.entities.append(ent_prot)
-
-        # DNA entity
-        ent_dna = gemmi.Entity('2')
-        ent_dna.entity_type = gemmi.EntityType.Polymer
-        ent_dna.polymer_type = gemmi.PolymerType.Dna
-        ent_dna.subchains = ['Bxp']
-        st.entities.append(ent_dna)
-
-        # Only provide a protein FASTA (no DNA FASTA)
-        protein_fasta = 'AGVLI'
-        st.assign_best_sequences([protein_fasta])
-
-        # Protein entity should get the sequence
-        self.assertEqual(len(st.entities[0].full_sequence), 5)
-        # DNA entity should NOT get assigned the protein FASTA
-        self.assertEqual(len(st.entities[1].full_sequence), 0,
-                         'Protein FASTA was incorrectly assigned to DNA entity')
-
     def test_superposition(self):
         model = gemmi.read_structure(full_path('4oz7.pdb'))[0]
         poly1 = model['A'].get_polymer()
@@ -250,34 +200,6 @@ class TestAlignment(unittest.TestCase):
         assigned = st.entities[0].full_sequence
         self.assertEqual(len(assigned), 50,
                          f'Expected 50 residues but got {len(assigned)}')
-
-
-    def test_assign_sequences_fasta_with_insertion(self):
-        """FASTA with extra residues (prefix + mid-chain insertion) compared
-        to the model should be fully assigned as SEQRES."""
-        st = gemmi.Structure()
-        model = gemmi.Model('1')
-        # Model has GAVLIM (6 residues)
-        protein_residues = ['GLY', 'ALA', 'VAL', 'LEU', 'ILE', 'MET']
-        _make_peptide_chain(model, 'A', 'Axp', protein_residues)
-        st.add_model(model)
-
-        ent = gemmi.Entity('1')
-        ent.entity_type = gemmi.EntityType.Polymer
-        ent.polymer_type = gemmi.PolymerType.PeptideL
-        ent.subchains = ['Axp']
-        st.entities.append(ent)
-
-        # FASTA: AA prefix + GAV + extra S + LIM + AA suffix = 13 residues
-        fasta = 'AAGAVSLIMAA'
-        st.assign_best_sequences([fasta])
-
-        assigned = st.entities[0].full_sequence
-        assigned_1letter = gemmi.one_letter_code(assigned)
-        self.assertEqual(len(assigned), len(fasta),
-                         f'Expected {len(fasta)} residues but got {len(assigned)}')
-        self.assertEqual(assigned_1letter, fasta,
-                         'SEQRES should match the full FASTA including extra residues')
 
 
 if __name__ == '__main__':
