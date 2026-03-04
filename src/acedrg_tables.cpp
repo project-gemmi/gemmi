@@ -289,7 +289,6 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
   angle_idx_4d_.clear();
   angle_idx_5d_.clear();
   angle_idx_6d_.clear();
-  angle_file_index_.clear();
   en_bonds_.clear();
   metal_bonds_.clear();
   covalent_radii_.fill(NAN);
@@ -326,8 +325,6 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
   load_bond_tables(tables_dir + "/allOrgBondTables");
   lap("load_bond_tables");
   if (!skip_angles) {
-    load_angle_index(tables_dir + "/allOrgAngleTables/angle_idx.table");
-    lap("load_angle_index");
     load_angle_tables(tables_dir + "/allOrgAngleTables");
     lap("load_angle_tables");
   }
@@ -784,146 +781,122 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
     std::fprintf(stderr, "    bond tables: %d files, %d lines\n", n_files, n_lines);
 }
 
-void AcedrgTables::load_angle_index(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
-  if (!f)
-    return; // Optional file
-
-  char line[512];
-  while (std::fgets(line, sizeof(line), f.get())) {
-    if (is_skip_line(line))
-      continue;
-
-    // Format: ha1 ha2 ha3 fileNum
-    int ha1, ha2, ha3, file_num;
-    if (std::sscanf(line, "%d %d %d %d", &ha1, &ha2, &ha3, &file_num) == 4) {
-      angle_file_index_[ha1][ha2][ha3] = file_num;
-    }
-  }
-}
-
 void AcedrgTables::load_angle_tables(const std::string& dir) {
-  // Load each angle table file referenced in the index
-  std::set<int> loaded_files;
+  // Load all numbered angle table files from allOrgAngleTables.
+  // We intentionally ignore angle_idx.table and read full angle statistics.
+  constexpr int kMinAngleTableId = 1;
+  constexpr int kMaxAngleTableId = 5000;
   int n_files = 0, n_lines = 0;
 
-  for (const auto& ha1_pair : angle_file_index_) {
-    for (const auto& ha2_pair : ha1_pair.second) {
-      for (const auto& ha3_pair : ha2_pair.second) {
-        int file_num = ha3_pair.second;
-        if (!loaded_files.insert(file_num).second)
-          continue;
+  for (int file_num = kMinAngleTableId; file_num <= kMaxAngleTableId; ++file_num) {
+    std::string path = cat(dir, '/', file_num, ".table");
+    fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    if (!f)
+      continue;
+    ++n_files;
 
-        std::string path = cat(dir, '/', file_num, ".table");
-        fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
-        if (!f)
-          continue;
-        ++n_files;
+    char line[1024];
+    while (std::fgets(line, sizeof(line), f.get())) {
+      if (is_skip_line(line))
+        continue;
 
-        char line[1024];
-        while (std::fgets(line, sizeof(line), f.get())) {
-          if (is_skip_line(line))
-            continue;
+      // 34-column format:
+      // 1-3: ha1 ha2 ha3
+      // 4: valueKey (ring:hybr_tuple, e.g. "0:SP2_SP2_SP3")
+      // 5-7: a1_root a2_root a3_root
+      // 8-10: a1_nb2 a2_nb2 a3_nb2
+      // 11-13: a1_nb a2_nb a3_nb
+      // 14-16: a1_code a2_code a3_code
+      // 17-34: 6 sets of value sigma count
+      const char* p = line;
+      int ha1 = simple_atoi(p, &p);
+      int ha2 = simple_atoi(p, &p);
+      int ha3 = simple_atoi(p, &p);
+      const char* s;
+      s = skip_blank(p); p = skip_word(s); std::string value_key(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a1_root(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a2_root(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a3_root(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a1_nb2(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a2_nb2(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a3_nb2(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a1_nb(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a2_nb(s, p);
+      s = skip_blank(p); p = skip_word(s); std::string a3_nb(s, p);
+      s = skip_blank(p); p = skip_word(s);
+      const char* code1_s = s; const char* code1_e = p;
+      s = skip_blank(p); p = skip_word(s);
+      const char* code2_s = s; const char* code2_e = p;
+      s = skip_blank(p); p = skip_word(s);
+      if (s == p)  // not enough fields
+        continue;
+      const char* code3_s = s; const char* code3_e = p;
 
-          // 34-column format:
-          // 1-3: ha1 ha2 ha3
-          // 4: valueKey (ring:hybr_tuple, e.g. "0:SP2_SP2_SP3")
-          // 5-7: a1_root a2_root a3_root
-          // 8-10: a1_nb2 a2_nb2 a3_nb2
-          // 11-13: a1_nb a2_nb a3_nb
-          // 14-16: a1_code a2_code a3_code
-          // 17-34: 6 sets of value sigma count
-          const char* p = line;
-          int ha1 = simple_atoi(p, &p);
-          int ha2 = simple_atoi(p, &p);
-          int ha3 = simple_atoi(p, &p);
-          const char* s;
-          s = skip_blank(p); p = skip_word(s); std::string value_key(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a1_root(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a2_root(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a3_root(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a1_nb2(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a2_nb2(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a3_nb2(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a1_nb(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a2_nb(s, p);
-          s = skip_blank(p); p = skip_word(s); std::string a3_nb(s, p);
-          s = skip_blank(p); p = skip_word(s);
-          const char* code1_s = s; const char* code1_e = p;
-          s = skip_blank(p); p = skip_word(s);
-          const char* code2_s = s; const char* code2_e = p;
-          s = skip_blank(p); p = skip_word(s);
-          if (s == p)  // not enough fields
-            continue;
-          const char* code3_s = s; const char* code3_e = p;
-
-          // Read 6 sets of value/sigma/count
-          double values[6], sigmas[6];
-          int counts[6];
-          for (int lvl = 0; lvl < 6; ++lvl) {
-            values[lvl] = fast_atof(p, &p);
-            sigmas[lvl] = fast_atof(p, &p);
-            counts[lvl] = simple_atoi(p, &p);
-          }
-
-          ++n_lines;
-          // Get main atom types (before '{') from codes
-          auto* q1 = find_val(atom_type_codes_, std::string(code1_s, code1_e));
-          auto* q2 = find_val(atom_type_codes_, std::string(code2_s, code2_e));
-          auto* q3 = find_val(atom_type_codes_, std::string(code3_s, code3_e));
-          std::string a1_type = q1 ? prefix_before(*q1, '{') : std::string();
-          std::string a2_type = q2 ? prefix_before(*q2, '{') : std::string();
-          std::string a3_type = q3 ? prefix_before(*q3, '{') : std::string();
-
-          // Populate structures at each level with corresponding pre-computed values.
-          // AceDRG keeps only the first entry for each key (no aggregation).
-          // Level 1D: full detail with atom types (16-component flat key)
-          CodStats vs1(values[1], sigmas[1], counts[1]);
-          auto& angle_1d_vec = angle_idx_1d_[cat(
-                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                               a1_root, '|', a2_root, '|', a3_root, '|',
-                               a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
-                               a1_nb, '|', a2_nb, '|', a3_nb, '|',
-                               a1_type, '|', a2_type, '|', a3_type)];
-          if (angle_1d_vec.empty())
-            angle_1d_vec.push_back(vs1);
-
-          // Level 2D: no atom types (13-component flat key)
-          CodStats vs2(values[2], sigmas[2], counts[2]);
-          auto& angle_2d_vec = angle_idx_2d_[cat(
-                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                               a1_root, '|', a2_root, '|', a3_root, '|',
-                               a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
-                               a1_nb, '|', a2_nb, '|', a3_nb)];
-          if (angle_2d_vec.empty())
-            angle_2d_vec.push_back(vs2);
-
-          // Level 3D: hash + valueKey + NB2 only (10-component flat key)
-          CodStats vs3(values[3], sigmas[3], counts[3]);
-          auto& angle_3d_vec = angle_idx_3d_[cat(
-                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                               a1_root, '|', a2_root, '|', a3_root, '|',
-                               a1_nb2, '|', a2_nb2, '|', a3_nb2)];
-          if (angle_3d_vec.empty())
-            angle_3d_vec.push_back(vs3);
-
-          // Level 4D: hash + valueKey + roots (7-component flat key)
-          CodStats vs4(values[4], sigmas[4], counts[4]);
-          auto& angle_4d_vec = angle_idx_4d_[cat(
-                               ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                               a1_root, '|', a2_root, '|', a3_root)];
-          if (angle_4d_vec.empty())
-            angle_4d_vec.push_back(vs4);
-
-          // Level 5D: hash + valueKey only
-          CodStats vs5(values[5], sigmas[5], counts[5]);
-          auto& angle_5d_vec = angle_idx_5d_[ha1][ha2][ha3][value_key];
-          if (angle_5d_vec.empty())
-            angle_5d_vec.push_back(vs5);
-
-          // Level 6D: hash only (leave empty for 34-column data)
-        }
+      // Read 6 sets of value/sigma/count
+      double values[6], sigmas[6];
+      int counts[6];
+      for (int lvl = 0; lvl < 6; ++lvl) {
+        values[lvl] = fast_atof(p, &p);
+        sigmas[lvl] = fast_atof(p, &p);
+        counts[lvl] = simple_atoi(p, &p);
       }
+
+      ++n_lines;
+      // Get main atom types (before '{') from codes
+      auto* q1 = find_val(atom_type_codes_, std::string(code1_s, code1_e));
+      auto* q2 = find_val(atom_type_codes_, std::string(code2_s, code2_e));
+      auto* q3 = find_val(atom_type_codes_, std::string(code3_s, code3_e));
+      std::string a1_type = q1 ? prefix_before(*q1, '{') : std::string();
+      std::string a2_type = q2 ? prefix_before(*q2, '{') : std::string();
+      std::string a3_type = q3 ? prefix_before(*q3, '{') : std::string();
+
+      // Populate structures at each level with corresponding pre-computed values.
+      // AceDRG keeps only the first entry for each key (no aggregation).
+      // Level 1D: full detail with atom types (16-component flat key)
+      CodStats vs1(values[1], sigmas[1], counts[1]);
+      auto& angle_1d_vec = angle_idx_1d_[cat(
+                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                           a1_root, '|', a2_root, '|', a3_root, '|',
+                           a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+                           a1_nb, '|', a2_nb, '|', a3_nb, '|',
+                           a1_type, '|', a2_type, '|', a3_type)];
+      if (angle_1d_vec.empty())
+        angle_1d_vec.push_back(vs1);
+
+      // Level 2D: no atom types (13-component flat key)
+      CodStats vs2(values[2], sigmas[2], counts[2]);
+      auto& angle_2d_vec = angle_idx_2d_[cat(
+                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                           a1_root, '|', a2_root, '|', a3_root, '|',
+                           a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+                           a1_nb, '|', a2_nb, '|', a3_nb)];
+      if (angle_2d_vec.empty())
+        angle_2d_vec.push_back(vs2);
+
+      // Level 3D: hash + valueKey + NB2 only (10-component flat key)
+      CodStats vs3(values[3], sigmas[3], counts[3]);
+      auto& angle_3d_vec = angle_idx_3d_[cat(
+                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                           a1_root, '|', a2_root, '|', a3_root, '|',
+                           a1_nb2, '|', a2_nb2, '|', a3_nb2)];
+      if (angle_3d_vec.empty())
+        angle_3d_vec.push_back(vs3);
+
+      // Level 4D: hash + valueKey + roots (7-component flat key)
+      CodStats vs4(values[4], sigmas[4], counts[4]);
+      auto& angle_4d_vec = angle_idx_4d_[cat(
+                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                           a1_root, '|', a2_root, '|', a3_root)];
+      if (angle_4d_vec.empty())
+        angle_4d_vec.push_back(vs4);
+
+      // Level 5D: hash + valueKey only
+      CodStats vs5(values[5], sigmas[5], counts[5]);
+      auto& angle_5d_vec = angle_idx_5d_[ha1][ha2][ha3][value_key];
+      if (angle_5d_vec.empty())
+        angle_5d_vec.push_back(vs5);
+
+      // Level 6D: hash only (leave empty for 34-column data)
     }
   }
   if (verbose >= 1)

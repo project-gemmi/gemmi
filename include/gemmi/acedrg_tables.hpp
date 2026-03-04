@@ -329,9 +329,6 @@ struct GEMMI_DLL AcedrgTables {
   using AngleIdx6D = std::unordered_map<std::string, std::vector<CodStats>>;
   AngleIdx6D angle_idx_6d_;
 
-  // Angle file index: kept nested for individual-level access in fill_angle
-  std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, int>>> angle_file_index_;
-
   // Element + hybridization based fallback bonds
   using ENBonds = std::map<std::string, std::map<std::string,
     std::map<std::string, std::map<std::string,
@@ -364,7 +361,6 @@ struct GEMMI_DLL AcedrgTables {
   void load_pep_tors(const std::string& path);
   void load_nucl_tors(const std::string& path);
   void load_prot_hydr_dists(const std::string& path);
-  void load_angle_index(const std::string& path);
   void load_angle_tables(const std::string& dir);
 
  private:
