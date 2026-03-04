@@ -3,8 +3,6 @@
 import contextlib
 import math
 import os
-import subprocess
-import tempfile
 import unittest
 import gemmi
 
@@ -356,14 +354,15 @@ class TestAcePrepareChemComp(unittest.TestCase):
 
 
 class TestAceDrgBatch(unittest.TestCase):
-    def test_drg_batch_strict_regression_pack(self):
-        gemmi_bin = os.path.join(TOP_DIR, 'build', 'gemmi')
+    @classmethod
+    def setUpClass(cls):
+        cls.tables = gemmi.AcedrgTables()
         tables_dir = os.path.join(TOP_DIR, 'acedrg', 'tables')
-        if not os.path.isfile(gemmi_bin):
-            self.skipTest('build/gemmi is not available')
         if not os.path.isdir(tables_dir):
-            self.skipTest('acedrg tables directory is not available')
+            raise unittest.SkipTest('acedrg tables directory is not available')
+        cls.tables.load_tables(tables_dir)
 
+    def test_drg_batch_strict_regression_pack(self):
         rel_inputs = [
             'tests/ccd/ALA.cif',
             'tests/ccd/ATP.cif',
@@ -379,27 +378,20 @@ class TestAceDrgBatch(unittest.TestCase):
             if not os.path.isfile(path):
                 self.skipTest(f'missing test input: {path}')
 
-        with tempfile.TemporaryDirectory(prefix='gemmi-ace-batch-') as out_dir:
-            env = os.environ.copy()
-            env['GEMMI_ACE_STRICT'] = '1'
-            env['ACEDRG_TABLES'] = tables_dir
-            subprocess.run(
-                [gemmi_bin, 'drg', '--output-dir', out_dir] + inputs,
-                cwd=TOP_DIR,
-                env=env,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-
+        with temp_env('GEMMI_ACE_STRICT', '1'):
             for input_path in inputs:
-                out_path = os.path.join(out_dir, os.path.basename(input_path))
-                self.assertTrue(os.path.isfile(out_path), out_path)
-                with open(out_path, encoding='utf-8') as f:
-                    text = f.read()
-                self.assertIn('_chem_comp_bond.atom_id_1', text, out_path)
-                self.assertIn('_chem_comp_angle.atom_id_1', text, out_path)
+                doc = gemmi.cif.read(input_path)
+                cc = gemmi.make_chemcomp_from_block(doc.sole_block())
+                gemmi.prepare_chemcomp(cc, self.tables)
+                acedrg_types = self.tables.compute_acedrg_types(cc)
+
+                out_doc = gemmi.cif.Document()
+                out_block = out_doc.add_new_block('comp_' + cc.name)
+                gemmi.add_chemcomp_to_block(cc, out_block, acedrg_types, False)
+                text = out_doc.as_string()
+
+                self.assertIn('_chem_comp_bond.atom_id_1', text, input_path)
+                self.assertIn('_chem_comp_angle.atom_id_1', text, input_path)
 
 
 class TestAcePreparedChemCompInvariants(unittest.TestCase):
