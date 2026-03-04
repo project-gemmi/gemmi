@@ -411,6 +411,262 @@ This class is not fully documented yet.
 The examples in :ref:`graph_analysis`
 show how to access `ChemComp`'s atoms and bonds.
 
+.. _chemcomp-chemical-adjustments:
+
+Chemical adjustments
+--------------------
+
+Gemmi's `ChemComp` normalization for `gemmi drg` is performed by
+`apply_chemical_adjustments()` (declared in `gemmi/cc_adj.hpp`,
+implemented in `src/cc_adj.cpp`).
+
+This is a deterministic local-graph normalization stage run before
+statistical lookup and typing. It can change:
+
+* formal charges,
+* protonation state (add/remove hydrogens),
+* selected bond orders (for resonance-style normalization),
+* affected restraints around edited atoms (bonds/angles tied to added or
+  removed hydrogens).
+
+It is intentionally rule-based and motif-driven; it is not a general pKa
+predictor or tautomer enumerator.
+
+Rule groups
+^^^^^^^^^^^
+
+The current rules fall into four practical groups:
+
+* acid/oxoacid deprotonation:
+  `oxoacid_phosphate`, `oxoacid_sulfate`, `single_bond_oxide`,
+  `carboxy_asp`, `terminal_carboxylate`;
+* resonance normalization:
+  `nitro_group`;
+* cationic nitrogen completion/protonation:
+  `guanidinium`, `amino_ter_amine`, `terminal_amine`,
+  `protonated_amide_n`;
+* targeted special-case handling:
+  `hexafluorophosphate`.
+
+Applied order
+^^^^^^^^^^^^^
+
+Rules are applied in a fixed order:
+
+1. `oxoacid_phosphate`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_oxoacid_phosphate_before.svg
+            :alt: oxoacid_phosphate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_oxoacid_phosphate_after.svg
+            :alt: oxoacid_phosphate after
+            :width: 100%
+
+   Example: `ATP <https://www.rcsb.org/ligand/ATP>`_
+
+2. `oxoacid_sulfate`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_oxoacid_sulfate_before.svg
+            :alt: oxoacid_sulfate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_oxoacid_sulfate_after.svg
+            :alt: oxoacid_sulfate after
+            :width: 100%
+
+   Example: `0SG <https://www.rcsb.org/ligand/0SG>`_
+
+3. `nitro_group`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_nitro_group_before.svg
+            :alt: nitro_group before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_nitro_group_after.svg
+            :alt: nitro_group after
+            :width: 100%
+
+   Example: `NE5 <https://www.rcsb.org/ligand/NE5>`_
+
+4. `single_bond_oxide`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_single_bond_oxide_before.svg
+            :alt: single_bond_oxide before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_single_bond_oxide_after.svg
+            :alt: single_bond_oxide after
+            :width: 100%
+
+   Example: `BGQ <https://www.rcsb.org/ligand/BGQ>`_
+
+5. `hexafluorophosphate`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_hexafluorophosphate_before.svg
+            :alt: hexafluorophosphate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_hexafluorophosphate_after.svg
+            :alt: hexafluorophosphate after
+            :width: 100%
+
+   Example: `A9J <https://www.rcsb.org/ligand/A9J>`_
+
+6. `carboxy_asp`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_carboxy_asp_before.svg
+            :alt: carboxy_asp before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_carboxy_asp_after.svg
+            :alt: carboxy_asp after
+            :width: 100%
+
+   Example: `ASP <https://www.rcsb.org/ligand/ASP>`_
+
+7. `terminal_carboxylate`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_terminal_carboxylate_before.svg
+            :alt: terminal_carboxylate before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_terminal_carboxylate_after.svg
+            :alt: terminal_carboxylate after
+            :width: 100%
+
+   Example: `A0G <https://www.rcsb.org/ligand/A0G>`_
+
+8. `guanidinium`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_guanidinium_before.svg
+            :alt: guanidinium before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_guanidinium_after.svg
+            :alt: guanidinium after
+            :width: 100%
+
+   Example: `00L <https://www.rcsb.org/ligand/00L>`_
+
+9. `amino_ter_amine`
+
+   .. list-table::
+      :widths: 45 10 45
+      :class: borderless
+
+      * - .. figure:: img/adj_amino_ter_amine_before.svg
+            :alt: amino_ter_amine before
+            :width: 100%
+        - ➡
+        - .. figure:: img/adj_amino_ter_amine_after.svg
+            :alt: amino_ter_amine after
+            :width: 100%
+
+   Example: `00K <https://www.rcsb.org/ligand/00K>`_
+
+10. `terminal_amine`
+
+    .. list-table::
+       :widths: 45 10 45
+       :class: borderless
+
+       * - .. figure:: img/adj_terminal_amine_before.svg
+             :alt: terminal_amine before
+             :width: 100%
+         - ➡
+         - .. figure:: img/adj_terminal_amine_after.svg
+             :alt: terminal_amine after
+             :width: 100%
+
+   Example: `ALA <https://www.rcsb.org/ligand/ALA>`_
+
+11. `protonated_amide_n`
+
+    .. list-table::
+       :widths: 45 10 45
+       :class: borderless
+
+       * - .. figure:: img/adj_protonated_amide_n_before.svg
+             :alt: protonated_amide_n before
+             :width: 100%
+         - ➡
+         - .. figure:: img/adj_protonated_amide_n_after.svg
+             :alt: protonated_amide_n after
+             :width: 100%
+
+    Example: `BJS <https://www.rcsb.org/ligand/BJS>`_
+
+
+The order is part of behavior: earlier edits can affect pattern matching in
+later steps.
+
+Interaction with `prepare_chemcomp()`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`prepare_chemcomp()` calls `apply_chemical_adjustments()` as one stage of the
+full restraint-generation pipeline. Immediately after this phase, it may also
+add/synchronize the third N-terminal hydrogen via `add_n_terminal_h3()` and
+`sync_n_terminal_h3_angles()` when the local motif matches.
+
+Python example:
+
+.. doctest::
+
+    >>> import gemmi
+    >>> import os
+    >>> path = '../tests/ccd/ASP.cif'
+    >>> if not os.path.isfile(path):
+    ...     path = 'tests/ccd/ASP.cif'
+    >>> block = gemmi.cif.read(path).sole_block()
+    >>> cc = gemmi.make_chemcomp_from_block(block)
+    >>> before = {a.id for a in cc.atoms}
+    >>> cc.apply_chemical_adjustments()
+    >>> after = {a.id for a in cc.atoms}
+    >>> sorted(before - after)
+    ['HD2', 'HXT']
+    >>> sorted(after - before)
+    ['H3']
+    >>> atoms = {a.id: a for a in cc.atoms}
+    >>> atoms['N'].charge
+    1.0
+    >>> atoms['OD2'].charge
+    -1.0
+    >>> atoms['OXT'].charge
+    -1.0
+
 .. _monlib:
 
 Monomer library
@@ -517,6 +773,9 @@ Input is typically a CCD-style component definition with atom and bond
 information. In practice, `gemmi drg` must also normalize chemistry before
 table lookup, because small differences in protonation state or local bond
 annotation can move an atom into a different type bucket.
+
+For details on the ChemComp-level rule set, see
+:ref:`chemcomp-chemical-adjustments`.
 
 Normalization includes:
 
