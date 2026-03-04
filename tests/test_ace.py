@@ -11,6 +11,16 @@ TESTS_DIR = os.path.dirname(__file__)
 CCD_TEST_DIR = os.path.join(TESTS_DIR, 'ccd')
 
 
+def resolve_acedrg_tables_from_ccp4():
+    ccp4 = os.environ.get('CCP4')
+    if not ccp4:
+        raise unittest.SkipTest('CCP4 environment variable is not set')
+    tables_dir = os.path.join(ccp4, 'share', 'acedrg', 'tables')
+    if not os.path.isdir(tables_dir):
+        raise unittest.SkipTest(f'AceDRG tables directory is not available: {tables_dir}')
+    return tables_dir
+
+
 @contextlib.contextmanager
 def temp_env(var, value):
     had = var in os.environ
@@ -410,9 +420,7 @@ class TestAceDrgBatch(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tables = gemmi.AcedrgTables()
-        tables_dir = os.path.join(TOP_DIR, 'acedrg', 'tables')
-        if not os.path.isdir(tables_dir):
-            raise unittest.SkipTest('acedrg tables directory is not available')
+        tables_dir = resolve_acedrg_tables_from_ccp4()
         cls.tables.load_tables(tables_dir)
 
     def test_drg_batch_strict_regression_pack(self):
@@ -451,9 +459,7 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tables = gemmi.AcedrgTables()
-        cls.tables_dir = os.path.join(TOP_DIR, 'acedrg', 'tables')
-        if not os.path.isdir(cls.tables_dir):
-            raise unittest.SkipTest('acedrg tables directory is not available')
+        cls.tables_dir = resolve_acedrg_tables_from_ccp4()
         cls.tables.load_tables(cls.tables_dir)
 
     @staticmethod
@@ -524,6 +530,91 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         gemmi.prepare_chemcomp(asp, self.tables)
         asp_atoms = {a.id: a for a in asp.atoms}
         self.assertLessEqual(asp_atoms['OD2'].charge, -0.5)
+
+    def test_prepare_chemcomp_a_proton_hydrogen_element_fallback_sets_nucleus(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TPF6H'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+
+        def add_atom(atom_id, elem, chem_type):
+            atom = gemmi.ChemComp.Atom()
+            atom.id = atom_id
+            atom.el = gemmi.Element(elem)
+            atom.chem_type = chem_type
+            atom.charge = 0.0
+            cc.atoms.append(atom)
+
+        def add_bond(a1, a2):
+            b = gemmi.Restraints.Bond()
+            b.id1 = gemmi.Restraints.AtomId(a1)
+            b.id2 = gemmi.Restraints.AtomId(a2)
+            b.type = gemmi.BondType.Single
+            b.aromatic = False
+            b.value = float('nan')
+            b.esd = float('nan')
+            b.value_nucleus = float('nan')
+            b.esd_nucleus = float('nan')
+            cc.rt.bonds.append(b)
+
+        add_atom('P1', 'P', 'P')
+        for i in range(1, 7):
+            add_atom(f'F{i}', 'F', 'F')
+            add_bond('P1', f'F{i}')
+        add_atom('H1', 'H', 'H')
+        add_bond('P1', 'H1')
+
+        gemmi.prepare_chemcomp(cc, self.tables, {}, True)
+
+        ph = None
+        for b in cc.rt.bonds:
+            if {b.id1.atom, b.id2.atom} == {'P1', 'H1'}:
+                ph = b
+                break
+        self.assertIsNotNone(ph)
+        self.assertAlmostEqual(ph.value, 1.433, places=3)
+        self.assertAlmostEqual(ph.value_nucleus, 1.284, places=3)
+        self.assertAlmostEqual(ph.esd_nucleus, 0.02, places=3)
+
+    def test_prepare_chemcomp_b_non_h_bonds_mirror_nucleus_terms(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TMIRROR'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+
+        c1 = gemmi.ChemComp.Atom()
+        c1.id = 'C1'
+        c1.el = gemmi.Element('C')
+        c1.chem_type = 'C'
+        c1.charge = 0.0
+        cc.atoms.append(c1)
+
+        c2 = gemmi.ChemComp.Atom()
+        c2.id = 'C2'
+        c2.el = gemmi.Element('C')
+        c2.chem_type = 'C'
+        c2.charge = 0.0
+        cc.atoms.append(c2)
+
+        b = gemmi.Restraints.Bond()
+        b.id1 = gemmi.Restraints.AtomId('C1')
+        b.id2 = gemmi.Restraints.AtomId('C2')
+        b.type = gemmi.BondType.Single
+        b.aromatic = False
+        b.value = float('nan')
+        b.esd = float('nan')
+        b.value_nucleus = float('nan')
+        b.esd_nucleus = float('nan')
+        cc.rt.bonds.append(b)
+
+        gemmi.prepare_chemcomp(cc, self.tables, {}, True)
+
+        self.assertEqual(len(cc.rt.bonds), 1)
+        bb = cc.rt.bonds[0]
+        self.assertTrue(math.isfinite(bb.value))
+        self.assertTrue(math.isfinite(bb.esd))
+        self.assertTrue(math.isfinite(bb.value_nucleus))
+        self.assertTrue(math.isfinite(bb.esd_nucleus))
+        self.assertAlmostEqual(bb.value_nucleus, bb.value, places=6)
+        self.assertAlmostEqual(bb.esd_nucleus, bb.esd, places=6)
 
 
 if __name__ == '__main__':
