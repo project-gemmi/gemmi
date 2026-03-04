@@ -9,6 +9,8 @@ import unittest
 import gemmi
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
+TESTS_DIR = os.path.dirname(__file__)
+CCD_TEST_DIR = os.path.join(TESTS_DIR, 'ccd')
 
 
 @contextlib.contextmanager
@@ -363,14 +365,14 @@ class TestAceDrgBatch(unittest.TestCase):
             self.skipTest('acedrg tables directory is not available')
 
         rel_inputs = [
-            'ccd/orig/ALA.cif',
-            'ccd/orig/ATP.cif',
-            'ccd/orig/CYS.cif',
-            'ccd/orig/HEM.cif',
-            'ccd/orig/HIS.cif',
-            'ccd/orig/SEC.cif',
-            'ccd/orig/TRP.cif',
-            'ccd/orig/TYR.cif',
+            'tests/ccd/ALA.cif',
+            'tests/ccd/ATP.cif',
+            'tests/ccd/CYS.cif',
+            'tests/ccd/HEM.cif',
+            'tests/ccd/HIS.cif',
+            'tests/ccd/SEC.cif',
+            'tests/ccd/TRP.cif',
+            'tests/ccd/TYR.cif',
         ]
         inputs = [os.path.join(TOP_DIR, p) for p in rel_inputs]
         for path in inputs:
@@ -411,7 +413,7 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
 
     @staticmethod
     def _prepare_from_ccd(comp_id):
-        path = os.path.join(TOP_DIR, 'ccd', 'orig', f'{comp_id}.cif')
+        path = os.path.join(CCD_TEST_DIR, f'{comp_id}.cif')
         if not os.path.isfile(path):
             raise unittest.SkipTest(f'missing test input: {path}')
         doc = gemmi.cif.read(path)

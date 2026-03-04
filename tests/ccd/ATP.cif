@@ -1,0 +1,181 @@
+data_ATP
+_chem_comp.id ATP
+_chem_comp.name "ADENOSINE-5'-TRIPHOSPHATE"
+_chem_comp.type NON-POLYMER
+_chem_comp.pdbx_type HETAIN
+_chem_comp.formula "C10 H16 N5 O13 P3"
+_chem_comp.mon_nstd_parent_comp_id ?
+_chem_comp.pdbx_synonyms ?
+_chem_comp.pdbx_formal_charge 0
+_chem_comp.pdbx_initial_date 1999-07-08
+_chem_comp.pdbx_modified_date 2011-06-04
+_chem_comp.pdbx_ambiguous_flag N
+_chem_comp.pdbx_release_status REL
+_chem_comp.pdbx_replaced_by ?
+_chem_comp.pdbx_replaces ?
+_chem_comp.formula_weight 507.181
+_chem_comp.one_letter_code ?
+_chem_comp.three_letter_code ATP
+_chem_comp.pdbx_model_coordinates_details ?
+_chem_comp.pdbx_model_coordinates_missing_flag N
+_chem_comp.pdbx_ideal_coordinates_details ?
+_chem_comp.pdbx_ideal_coordinates_missing_flag N
+_chem_comp.pdbx_model_coordinates_db_code 1B0U
+_chem_comp.pdbx_subcomponent_list ?
+_chem_comp.pdbx_processing_site EBI
+
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+ATP PG PG P 0 1 N N N 46.107 45.182 56.950 1.200 -0.226 -6.850 PG ATP 1
+ATP O1G O1G O 0 1 N N N 45.779 46.330 56.052 1.740 1.140 -6.672 O1G ATP 2
+ATP O2G O2G O 0 1 N N N 47.382 44.497 56.626 2.123 -1.036 -7.891 O2G ATP 3
+ATP O3G O3G O 0 1 N N N 45.972 45.530 58.375 -0.302 -0.139 -7.421 O3G ATP 4
+ATP PB PB P 0 1 N N R 43.911 43.740 55.655 0.255 -0.130 -4.446 PB ATP 5
+ATP O1B O1B O 0 1 N N N 42.975 42.722 55.986 0.810 1.234 -4.304 O1B ATP 6
+ATP O2B O2B O 0 1 N N N 43.603 44.767 54.678 -1.231 -0.044 -5.057 O2B ATP 7
+ATP O3B O3B O 0 1 N N N 45.041 44.015 56.738 1.192 -0.990 -5.433 O3B ATP 8
+ATP PA PA P 0 1 N N R 45.228 42.669 53.257 -0.745 0.068 -2.071 PA ATP 9
+ATP O1A O1A O 0 1 N N N 46.380 43.396 52.788 -2.097 0.143 -2.669 O1A ATP 10
+ATP O2A O2A O 0 1 N N N 44.183 42.190 52.351 -0.125 1.549 -1.957 O2A ATP 11
+ATP O3A O3A O 0 1 N N N 44.917 42.716 54.789 0.203 -0.840 -3.002 O3A ATP 12
+ATP "O5'" O5* O 0 1 N N N 46.172 41.568 53.302 -0.844 -0.587 -0.604 "O5'" ATP 13
+ATP "C5'" C5* C 0 1 N N N 46.609 40.422 53.542 -1.694 0.260 0.170 "C5'" ATP 14
+ATP "C4'" C4* C 0 1 N N R 46.520 38.989 53.364 -1.831 -0.309 1.584 "C4'" ATP 15
+ATP "O4'" O4* O 0 1 N N N 46.785 38.908 51.948 -0.542 -0.355 2.234 "O4'" ATP 16
+ATP "C3'" C3* C 0 1 N N S 47.808 38.874 54.112 -2.683 0.630 2.465 "C3'" ATP 17
+ATP "O3'" O3* O 0 1 N N N 47.713 38.357 55.423 -4.033 0.165 2.534 "O3'" ATP 18
+ATP "C2'" C2* C 0 1 N N R 48.719 38.116 53.139 -2.011 0.555 3.856 "C2'" ATP 19
+ATP "O2'" O2* O 0 1 N N N 48.632 36.737 53.425 -2.926 0.043 4.827 "O2'" ATP 20
+ATP "C1'" C1* C 0 1 N N R 48.133 38.409 51.721 -0.830 -0.418 3.647 "C1'" ATP 21
+ATP N9 N9 N 0 1 Y N N 48.846 39.464 50.986 0.332 0.015 4.425 N9 ATP 22
+ATP C8 C8 C 0 1 Y N N 48.616 40.842 50.945 1.302 0.879 4.012 C8 ATP 23
+ATP N7 N7 N 0 1 Y N N 49.425 41.489 50.165 2.184 1.042 4.955 N7 ATP 24
+ATP C5 C5 C 0 1 Y N N 50.232 40.470 49.664 1.833 0.300 6.033 C5 ATP 25
+ATP C6 C6 C 0 1 Y N N 51.308 40.466 48.731 2.391 0.077 7.303 C6 ATP 26
+ATP N6 N6 N 0 1 N N N 51.721 41.568 48.129 3.564 0.706 7.681 N6 ATP 27
+ATP N1 N1 N 0 1 Y N N 51.912 39.274 48.447 1.763 -0.747 8.135 N1 ATP 28
+ATP C2 C2 C 0 1 Y N N 51.493 38.151 49.029 0.644 -1.352 7.783 C2 ATP 29
+ATP N3 N3 N 0 1 Y N N 50.491 38.016 49.900 0.088 -1.178 6.602 N3 ATP 30
+ATP C4 C4 C 0 1 Y N N 49.892 39.253 50.171 0.644 -0.371 5.704 C4 ATP 31
+ATP HOG2 2HOG H 0 0 N N N 47.590 43.767 57.197 2.100 -0.546 -8.725 HOG2 ATP 32
+ATP HOG3 3HOG H 0 0 N N N 46.180 44.800 58.946 -0.616 -1.048 -7.522 HOG3 ATP 33
+ATP HOB2 2HOB H 0 0 N N N 44.228 45.447 54.456 -1.554 -0.952 -5.132 HOB2 ATP 34
+ATP HOA2 2HOA H 0 0 N N N 43.423 41.710 52.660 0.752 1.455 -1.563 HOA2 ATP 35
+ATP "H5'1" 1H5* H 0 0 N N N 47.666 40.570 53.221 -2.678 0.312 -0.296 "H5'1" ATP 36
+ATP "H5'2" 2H5* H 0 0 N N N 46.587 40.459 54.656 -1.263 1.259 0.221 "H5'2" ATP 37
+ATP "H4'" H4* H 0 1 N N N 45.665 38.327 53.639 -2.275 -1.304 1.550 "H4'" ATP 38
+ATP "H3'" H3* H 0 1 N N N 48.234 39.870 54.375 -2.651 1.649 2.078 "H3'" ATP 39
+ATP "HO3'" *HO3 H 0 0 N N N 48.532 38.283 55.898 -4.515 0.788 3.094 "HO3'" ATP 40
+ATP "H2'" H2* H 0 1 N N N 49.788 38.422 53.212 -1.646 1.537 4.157 "H2'" ATP 41
+ATP "HO2'" *HO2 H 0 0 N N N 49.196 36.267 52.822 -3.667 0.662 4.867 "HO2'" ATP 42
+ATP "H1'" H1* H 0 1 N N N 48.203 37.474 51.117 -1.119 -1.430 3.931 "H1'" ATP 43
+ATP H8 H8 H 0 1 N N N 47.836 41.390 51.499 1.334 1.357 3.044 H8 ATP 44
+ATP HN61 1HN6 H 0 0 N N N 52.491 41.565 47.460 3.938 0.548 8.562 HN61 ATP 45
+ATP HN62 2HN6 H 0 0 N N N 51.940 42.252 48.852 4.015 1.303 7.064 HN62 ATP 46
+ATP H2 H2 H 0 1 N N N 52.036 37.229 48.759 0.166 -2.014 8.490 H2 ATP 47
+
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+ATP PG O1G DOUB N N 1
+ATP PG O2G SING N N 2
+ATP PG O3G SING N N 3
+ATP PG O3B SING N N 4
+ATP O2G HOG2 SING N N 5
+ATP O3G HOG3 SING N N 6
+ATP PB O1B DOUB N N 7
+ATP PB O2B SING N N 8
+ATP PB O3B SING N N 9
+ATP PB O3A SING N N 10
+ATP O2B HOB2 SING N N 11
+ATP PA O1A DOUB N N 12
+ATP PA O2A SING N N 13
+ATP PA O3A SING N N 14
+ATP PA "O5'" SING N N 15
+ATP O2A HOA2 SING N N 16
+ATP "O5'" "C5'" SING N N 17
+ATP "C5'" "C4'" SING N N 18
+ATP "C5'" "H5'1" SING N N 19
+ATP "C5'" "H5'2" SING N N 20
+ATP "C4'" "O4'" SING N N 21
+ATP "C4'" "C3'" SING N N 22
+ATP "C4'" "H4'" SING N N 23
+ATP "O4'" "C1'" SING N N 24
+ATP "C3'" "O3'" SING N N 25
+ATP "C3'" "C2'" SING N N 26
+ATP "C3'" "H3'" SING N N 27
+ATP "O3'" "HO3'" SING N N 28
+ATP "C2'" "O2'" SING N N 29
+ATP "C2'" "C1'" SING N N 30
+ATP "C2'" "H2'" SING N N 31
+ATP "O2'" "HO2'" SING N N 32
+ATP "C1'" N9 SING N N 33
+ATP "C1'" "H1'" SING N N 34
+ATP N9 C8 SING Y N 35
+ATP N9 C4 SING Y N 36
+ATP C8 N7 DOUB Y N 37
+ATP C8 H8 SING N N 38
+ATP N7 C5 SING Y N 39
+ATP C5 C6 SING Y N 40
+ATP C5 C4 DOUB Y N 41
+ATP C6 N6 SING N N 42
+ATP C6 N1 DOUB Y N 43
+ATP N6 HN61 SING N N 44
+ATP N6 HN62 SING N N 45
+ATP N1 C2 SING Y N 46
+ATP C2 N3 DOUB Y N 47
+ATP C2 H2 SING N N 48
+ATP N3 C4 SING Y N 49
+
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+ATP SMILES ACDLabs 10.04 "O=P(O)(O)OP(=O)(O)OP(=O)(O)OCC3OC(n2cnc1c(ncnc12)N)C(O)C3O"
+ATP SMILES_CANONICAL CACTVS 3.341 "Nc1ncnc2n(cnc12)[C@@H]3O[C@H](CO[P@](O)(=O)O[P@@](O)(=O)O[P](O)(O)=O)[C@@H](O)[C@H]3O"
+ATP SMILES CACTVS 3.341 "Nc1ncnc2n(cnc12)[CH]3O[CH](CO[P](O)(=O)O[P](O)(=O)O[P](O)(O)=O)[CH](O)[CH]3O"
+ATP SMILES_CANONICAL "OpenEye OEToolkits" 1.5.0 "c1nc(c2c(n1)n(cn2)[C@H]3[C@@H]([C@@H]([C@H](O3)CO[P@@](=O)(O)O[P@](=O)(O)OP(=O)(O)O)O)O)N"
+ATP SMILES "OpenEye OEToolkits" 1.5.0 "c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=O)(O)O)O)O)N"
+ATP InChI InChI 1.03 "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"
+ATP InChIKey InChI 1.03 ZKHQWZAMYRWXGA-KQYNXXCUSA-N
+
+loop_
+_pdbx_chem_comp_identifier.comp_id
+_pdbx_chem_comp_identifier.type
+_pdbx_chem_comp_identifier.program
+_pdbx_chem_comp_identifier.program_version
+_pdbx_chem_comp_identifier.identifier
+ATP "SYSTEMATIC NAME" ACDLabs 10.04 "adenosine 5'-(tetrahydrogen triphosphate)"
+ATP "SYSTEMATIC NAME" "OpenEye OEToolkits" 1.5.0 "[[(2R,3S,4R,5R)-5-(6-aminopurin-9-yl)-3,4-dihydroxy-oxolan-2-yl]methoxy-hydroxy-phosphoryl] phosphono hydrogen phosphate"
+
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+ATP "Create component" 1999-07-08 EBI
+ATP "Modify descriptor" 2011-06-04 RCSB
