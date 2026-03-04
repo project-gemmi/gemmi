@@ -421,9 +421,13 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         for b in cc.rt.bonds:
             assert b.id1.atom in atom_set and b.id2.atom in atom_set, source
             assert math.isfinite(b.value), source
+            assert math.isfinite(b.esd), source
+            if math.isfinite(b.value_nucleus):
+                assert math.isfinite(b.esd_nucleus), source
         for ang in cc.rt.angles:
             assert ang.id1.atom in atom_set and ang.id2.atom in atom_set and ang.id3.atom in atom_set, source
             assert math.isfinite(ang.value), source
+            assert math.isfinite(ang.esd), source
         for tor in cc.rt.torsions:
             assert tor.id1.atom in atom_set and tor.id2.atom in atom_set, source
             assert tor.id3.atom in atom_set and tor.id4.atom in atom_set, source
@@ -434,6 +438,8 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         for plane in cc.rt.planes:
             plane_atoms = [aid.atom for aid in plane.ids]
             assert len(plane_atoms) == len(set(plane_atoms)), source
+            assert len(plane_atoms) >= 3, source
+            assert math.isfinite(plane.esd), source
             for atom in plane_atoms:
                 assert atom in atom_set, source
 
