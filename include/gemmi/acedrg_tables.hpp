@@ -345,6 +345,8 @@ struct GEMMI_DLL AcedrgTables {
 
   // Protonated hydrogen distances: maps type (e.g., "H_sp3_C") -> ProtHydrDist
   std::map<std::string, ProtHydrDist> prot_hydr_dists_;
+  // Element-level fallback (e.g., "C") matching AceDRG tHDistMap[1] fallback.
+  std::map<std::string, ProtHydrDist> prot_hydr_dists_by_elem_;
 
   // Internal helper functions
 

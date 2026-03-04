@@ -524,6 +524,8 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
   fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
   if (!f)
     return; // Optional file
+  prot_hydr_dists_.clear();
+  prot_hydr_dists_by_elem_.clear();
 
   char line[512];
   while (std::fgets(line, sizeof(line), f.get())) {
@@ -536,15 +538,33 @@ void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
 
     char h_elem[16], heavy_elem[16], type_key[64];
     double nucleus_val, nucleus_sigma, v1, s1, electron_val, electron_sigma;
+    double nucleus_val_elem, nucleus_sigma_elem, electron_val_elem, electron_sigma_elem;
 
     // Format: H  C  H_sp3_C  1.092  0.010  1.093107  0.003875  0.988486  0.005251  ...
     // Column 4-5: nucleus distance (ener_lib-like)
     // Column 6-7: refined nucleus distance
     // Column 8-9: electron distance (X-ray) - this is what acedrg uses for value_dist
-    if (std::sscanf(line, "%15s %15s %63s %lf %lf %lf %lf %lf %lf",
+    if (std::sscanf(line, "%15s %15s %63s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                     h_elem, heavy_elem, type_key,
                     &nucleus_val, &nucleus_sigma, &v1, &s1,
-                    &electron_val, &electron_sigma) == 9) {
+                    &electron_val, &electron_sigma,
+                    &nucleus_val_elem, &nucleus_sigma_elem,
+                    &electron_val_elem, &electron_sigma_elem) == 13) {
+      ProtHydrDist& phd = prot_hydr_dists_[type_key];
+      phd.electron_val = electron_val;
+      phd.electron_sigma = electron_sigma;
+      phd.nucleus_val = nucleus_val;
+      phd.nucleus_sigma = nucleus_sigma;
+
+      ProtHydrDist& phd_elem = prot_hydr_dists_by_elem_[heavy_elem];
+      phd_elem.electron_val = electron_val_elem;
+      phd_elem.electron_sigma = electron_sigma_elem;
+      phd_elem.nucleus_val = nucleus_val_elem;
+      phd_elem.nucleus_sigma = nucleus_sigma_elem;
+    } else if (std::sscanf(line, "%15s %15s %63s %lf %lf %lf %lf %lf %lf",
+                           h_elem, heavy_elem, type_key,
+                           &nucleus_val, &nucleus_sigma, &v1, &s1,
+                           &electron_val, &electron_sigma) == 9) {
       ProtHydrDist& phd = prot_hydr_dists_[type_key];
       phd.electron_val = electron_val;
       phd.electron_sigma = electron_sigma;
@@ -2937,8 +2957,13 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
     }
   }
 
-  // Populate value_nucleus/esd_nucleus for X-H bonds from prot_hydr_dists
+  // AceDRG behavior:
+  // 1) Default nucleus terms mirror electron terms.
+  // 2) For X-H bonds, override nucleus terms from prot_hydr_dists when available.
   for (auto& bond : cc.rt.bonds) {
+    bond.value_nucleus = bond.value;
+    bond.esd_nucleus = bond.esd;
+
     int idx1 = cc.find_atom_index(bond.id1.atom);
     int idx2 = cc.find_atom_index(bond.id2.atom);
     if (idx1 < 0 || idx2 < 0)
@@ -2951,7 +2976,8 @@ void AcedrgTables::fill_restraints(ChemComp& cc) const {
       ProtHydrDist phd = search_prot_hydr_dist(h_atom, heavy_atom);
       if (!std::isnan(phd.nucleus_val)) {
         bond.value_nucleus = phd.nucleus_val;
-        bond.esd_nucleus = phd.nucleus_sigma;
+        if (std::isfinite(phd.nucleus_sigma))
+          bond.esd_nucleus = phd.nucleus_sigma;
       }
     }
   }
@@ -3577,6 +3603,15 @@ ProtHydrDist AcedrgTables::search_prot_hydr_dist(const CodAtomInfo& /* h_atom */
                      type_key.c_str(), it->second.electron_val, it->second.nucleus_val);
       return it->second;
     }
+  }
+
+  // AceDRG fallback: use element-only proton distances when typed lookup fails.
+  auto ie = prot_hydr_dists_by_elem_.find(heavy_atom.el.name());
+  if (ie != prot_hydr_dists_by_elem_.end()) {
+    if (verbose >= 2)
+      std::fprintf(stderr, "      prot_hydr_dists: found by element %s -> electron=%.4f nucleus=%.4f\n",
+                   heavy_atom.el.name(), ie->second.electron_val, ie->second.nucleus_val);
+    return ie->second;
   }
 
   return ProtHydrDist();
