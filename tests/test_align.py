@@ -158,23 +158,6 @@ class TestAlignment(unittest.TestCase):
         # The full FASTA should be assigned as the SEQRES
         self.assertEqual(len(assigned), 10)
 
-    def test_superposition(self):
-        model = gemmi.read_structure(full_path('4oz7.pdb'))[0]
-        poly1 = model['A'].get_polymer()
-        poly2 = model['B'].get_polymer()
-        ptype = poly1.check_polymer_type()
-        S = gemmi.SupSelect
-        s1 = gemmi.calculate_superposition(poly1, poly2, ptype, S.CaP)
-        s2 = gemmi.calculate_superposition(poly1, poly2, ptype, S.MainChain)
-        s3 = gemmi.calculate_superposition(poly1, poly2, ptype, S.All)
-        self.assertEqual(s1.count, 10)
-        self.assertEqual(s2.count, 39)
-        self.assertEqual(s3.count, 77)
-        self.assertAlmostEqual(s1.rmsd, 0.146, places=3)
-        self.assertAlmostEqual(s2.rmsd, 0.174, places=3)
-        self.assertAlmostEqual(s3.rmsd, 0.400, places=3)
-        for s in [s1, s2, s3]:
-            self.assertAlmostEqual(s.transform.vec.y, 17.0, places=1)
 
     def test_assign_sequences_many_trailing_cations(self):
         """Ensure a long protein chain with several cations (Zn, Ca) appended to the 
@@ -200,6 +183,24 @@ class TestAlignment(unittest.TestCase):
         assigned = st.entities[0].full_sequence
         self.assertEqual(len(assigned), 50,
                          f'Expected 50 residues but got {len(assigned)}')
+
+    def test_superposition(self):
+        model = gemmi.read_structure(full_path('4oz7.pdb'))[0]
+        poly1 = model['A'].get_polymer()
+        poly2 = model['B'].get_polymer()
+        ptype = poly1.check_polymer_type()
+        S = gemmi.SupSelect
+        s1 = gemmi.calculate_superposition(poly1, poly2, ptype, S.CaP)
+        s2 = gemmi.calculate_superposition(poly1, poly2, ptype, S.MainChain)
+        s3 = gemmi.calculate_superposition(poly1, poly2, ptype, S.All)
+        self.assertEqual(s1.count, 10)
+        self.assertEqual(s2.count, 39)
+        self.assertEqual(s3.count, 77)
+        self.assertAlmostEqual(s1.rmsd, 0.146, places=3)
+        self.assertAlmostEqual(s2.rmsd, 0.174, places=3)
+        self.assertAlmostEqual(s3.rmsd, 0.400, places=3)
+        for s in [s1, s2, s3]:
+            self.assertAlmostEqual(s.transform.vec.y, 17.0, places=1)
 
 if __name__ == '__main__':
     unittest.main()
