@@ -13,14 +13,16 @@ font-family="sans-serif" stroke="rgb(0,0,0)" stroke-width="2"  stroke-linecap="r
 <line x1="97.0" y1="93.0" x2="97.0" y2="107.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
 <line x1="113.0" y1="80.0" x2="127.0" y2="80.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
 <line x1="100.0" y1="67.0" x2="100.0" y2="53.0" opacity="1.0" stroke="rgb(0,0,0)"  stroke-width="2.0"/>
-<text x="26.000000" y="53.358984" fill="rgb(0,0,0)" stroke-width="0" font-weight="bold" font-size="16" >R</text>
-<text x="38.000000" y="57.038984" fill="rgb(0,0,0)" stroke-width="0" font-weight="bold" font-size="13" >1</text>
+<text x="14.000000" y="53.358984" fill="rgb(102,102,102)" stroke-width="0" font-weight="bold" font-size="16" >H</text>
+<text x="26.000000" y="57.038984" fill="rgb(102,102,102)" stroke-width="0" font-weight="bold" font-size="13" >3</text>
+<text x="32.500000" y="53.358984" fill="rgb(102,102,102)" stroke-width="0" font-weight="bold" font-size="16" >C</text>
 <text x="54.000000" y="88.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
 <text x="94.000000" y="88.000000" fill="rgb(255,127,0)" stroke-width="0" font-weight="bold" font-size="16" >P</text>
 <text x="94.000000" y="128.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
 <text x="144.800000" y="65.888000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >_</text>
 <text x="134.000000" y="88.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
-<text x="94.000000" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >OH</text>
+<text x="104.800000" y="25.888000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >_</text>
+<text x="94.000000" y="48.000000" fill="rgb(255,12,12)" stroke-width="0" font-weight="bold" font-size="16" >O</text>
 </svg>
 </g>
 <text font-size="18.000000" fill ="black" font-family="sans-serif"

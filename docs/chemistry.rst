@@ -457,6 +457,7 @@ Acid/oxoacid deprotonation
    Example: `ATP <https://www.rcsb.org/ligand/ATP>`_
    For phosphate motifs of the form R-O-PO3, this rule deprotonates
    phosphoryl oxygens (AceDRG-style doubly deprotonated representation).
+   The alkoxy R-O part is not deprotonated by this rule.
 
 `oxoacid_sulfate` (step 2)
 
@@ -544,6 +545,8 @@ Resonance normalization
             :width: 100%
 
    Example: `NE5 <https://www.rcsb.org/ligand/NE5>`_
+   Shown as charge-separated nitro resonance (`R-N+(=O)-O-`); exact
+   representation details in AceDRG outputs are under review.
 
 Targeted special-case handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -598,6 +601,7 @@ Cationic nitrogen completion/protonation
             :width: 100%
 
    Example: `00K <https://www.rcsb.org/ligand/00K>`_
+   This motif is context-dependent and the concrete CCD example is under review.
 
 `terminal_amine` (step 10)
 
@@ -629,7 +633,7 @@ Cationic nitrogen completion/protonation
              :alt: protonated_amide_n after
              :width: 100%
 
-    CCD example under review.
+    CCD example and typical motif behavior are under review.
 
 The order is part of behavior: earlier edits can affect pattern matching in
 later steps.
