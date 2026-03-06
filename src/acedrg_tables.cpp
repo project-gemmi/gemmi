@@ -5,6 +5,7 @@
 
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/ace_graph.hpp"
+#include "gemmi/ener_lib.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -2160,23 +2161,17 @@ void set_one_ccp4_type(std::vector<Ccp4AtomInfo>& atoms, size_t idx) {
 
 void AcedrgTables::load_ccp4_bonds(const std::string& path) {
   try {
-    cif::Document doc = read_cif_gz(path);
-    if (doc.blocks.empty())
-      return;
-    for (const auto& row : doc.blocks[0].find("_lib_bond.",
-                    {"atom_type_1", "atom_type_2", "type",
-                     "length", "value_esd"})) {
-      std::string type1 = row.str(0);
-      std::string type2 = row.str(1);
-      std::string order = row.str(2);
-      double length = cif::as_number(row[3], NAN);
-      double sigma = cif::as_number(row[4], NAN);
-      if (type1.empty() || order.empty() || std::isnan(length))
+    EnerLib ener;
+    ener.read(read_cif_gz(path));
+    for (const auto& kv : ener.bonds) {
+      const std::string& type1 = kv.first;
+      const EnerLib::Bond& bond = kv.second;
+      if (type1.empty() || std::isnan(bond.length))
         continue;
-      std::string order_key = to_upper(order);
+      std::string order_key = to_upper(bond_type_to_string(bond.type));
       if (order_key.size() > 4)
         order_key.resize(4);
-      ccp4_bonds_[type1][type2][order_key] = {length, sigma};
+      ccp4_bonds_[type1][bond.atom_type_2][order_key] = {bond.length, bond.value_esd};
     }
   } catch (std::exception&) {
     return;
