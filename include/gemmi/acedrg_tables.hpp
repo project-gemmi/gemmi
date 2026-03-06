@@ -204,6 +204,7 @@ struct GEMMI_DLL AcedrgTables {
   static constexpr int HASH_SIZE = 1000;
   // Table directory
   std::string tables_dir_;
+  std::string database_version_;
   bool tables_loaded_ = false;
 
   // Hash code tables

@@ -362,6 +362,29 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
   prot_hydr_dists_.clear();
 
   tables_dir_ = tables_dir;
+  database_version_.clear();
+
+  // read DATABASE_VERSION from manifest.txt
+  {
+    fileptr_t f(std::fopen((tables_dir + "/manifest.txt").c_str(), "r"),
+                needs_fclose{true});
+    if (f) {
+      char line[256];
+      while (std::fgets(line, sizeof(line), f.get())) {
+        const char* p = skip_blank(line);
+        if (std::strncmp(p, "DATABASE_VERSION:", 17) == 0) {
+          p = skip_blank(p + 17);
+          // trim trailing whitespace
+          std::string ver(p);
+          while (!ver.empty() && (ver.back() == '\n' || ver.back() == '\r'
+                                  || ver.back() == ' '))
+            ver.pop_back();
+          database_version_ = ver;
+          break;
+        }
+      }
+    }
+  }
 
   load_hash_codes(tables_dir + "/allOrgLinkedHashCode.table");
   lap("load_hash_codes");

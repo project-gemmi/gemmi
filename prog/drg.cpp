@@ -529,8 +529,9 @@ int GEMMI_MAIN(int argc, char **argv) {
           tab.loop_item->loop.values.clear();  // replace any existing
           tab.append_row({"gemmi", GEMMI_VERSION, "program",
                           cif::quote("dictionary generator")});
-          tab.append_row({"acedrg_database", "12", "data",
-                          cif::quote("data source")});
+          tab.append_row({"acedrg_database",
+                          tables.database_version_.empty() ? "?" : tables.database_version_,
+                          "data", cif::quote("data source")});
         }
       }
 
