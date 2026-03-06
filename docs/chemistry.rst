@@ -799,7 +799,9 @@ Currently, there is no clear advantage to one approach over the other.
   the links between monomers.
 * `EnerLib ener_lib` -- data from `$CLIBD_MON/ener_lib.cif`.
 
-Example: reading the CCP4 monomer library (Refmac dictionary):
+`read_monomer_lib()` takes a monomer directory path, a list of residue names,
+and an optional :ref:`Logger <logger>` argument.
+Example -- reading the CCP4 monomer library (Refmac dictionary):
 
 .. doctest::
   :skipif: ccp4_path is None
@@ -819,6 +821,9 @@ EnerLib
 `ener_lib.cif` (the same schema used in CCP4 monomer-library and
 AceDRG-tables layouts).
 It is attached to `MonLib` as `MonLib.ener_lib`.
+
+The atom types here are :ref:`CCP4 energy types <energy-types>`
+described further below.
 
 Loaded categories:
 
@@ -843,9 +848,6 @@ Reading only `ener_lib.cif` into `EnerLib` (Python):
   >>> ener.read(os.path.join(monlib_path, 'ener_lib.cif'))
   >>> len(ener.atoms) > 0
   True
-
-The `logging` argument in the MonLib example above is described
-in the next section.
 
 `MonLib` can be used to prepare :ref:`Topology <topology>`.
 
@@ -1060,6 +1062,8 @@ For background on AceDRG algorithms, see:
 For the project rationale and compatibility goals, see
 `Gemmi discussion #401 <https://github.com/project-gemmi/gemmi/discussions/401>`_.
 
+.. _energy-types:
+
 Atom typing: CCP4 energy types
 ------------------------------
 
@@ -1069,28 +1073,114 @@ used by monomer-library restraint tables.
 
 These types are not elements. They encode local environment features
 such as hydrogen count, local bonding pattern and ring/aromatic context.
-Examples include `CH3`, `CH2`, `CR6`, `N31`, `N32`, `O2`, `OH1`, `OC`,
-and `S3`.
+The full list of non-element types from `ener_lib.cif`
+(metals and other elements use their element symbol directly):
 
-How these are used in `gemmi drg`:
+**Carbon sp** --
+``CSP`` (triple bond or two double bonds),
+``CSP1`` (triple bond + 1H).
 
-* they provide a compact, robust way to look up bond/angle targets in
-  the CCP4 energetic library (`ener_lib.cif`),
-* they serve as a compatibility bridge and fallback key when specific
-  AceDRG-style signatures are unavailable or too sparse,
-* they help keep restraint assignment stable for unusual or weakly
-  represented local environments.
+**Carbon sp2** --
+``C`` (no H, carbonyl C),
+``C1`` (1H),
+``C2`` (2H),
+``CR15`` (1H in 5-ring),
+``CR16`` (1H in 6-ring),
+``CR5`` (no H in 5-ring),
+``CR6`` (no H in 6-ring),
+``CR1`` (between two pyrrole units),
+``CR1H`` (CR1 + 1H),
+``CR55`` (between 5-5 rings),
+``CR56`` (between 5-6 rings),
+``CR66`` (between 6-6 rings).
 
-Compared with other atom-typing schemes:
+**Carbon sp3** --
+``CH1`` (1H),
+``CH2`` (2H),
+``CH3`` (3H),
+``CT`` (no H).
 
-* vs element-only or simple hybridization labels, CCP4 energy types are
-  more chemically specific,
-* vs modern molecular-mechanics force-field atom types, they are usually
-  coarser and tuned for crystallographic restraint assignment rather than
-  full potential-energy modeling,
-* vs AceDRG statistical environment typing, they are simpler and less
-  expressive, but still valuable for compatibility and stable fallback
-  behavior.
+**Nitrogen sp** --
+``NSP``/``NS`` (no H, triple bond),
+``NSP1``/``NS1`` (1H, triple bond).
+
+**Nitrogen sp2, 3 bonds** --
+``NH0`` (no H),
+``NH1`` (1H, main-chain N),
+``NH2`` (2H),
+``NC1`` (1H, charged),
+``NC2`` (2H, charged),
+``NPA``/``NPB`` (no H, heme).
+**Nitrogen sp2, 2 bonds** --
+``N20`` (no H),
+``N21`` (1H).
+**Nitrogen sp2, ring** --
+``NRD5`` (lone pair, 5-ring),
+``NRD6`` (lone pair, 6-ring),
+``NR15`` (1H, 5-ring),
+``NR16`` (1H, 6-ring),
+``NR5`` (3 non-H bonds, 5-ring),
+``NR6`` (3 non-H bonds, 6-ring),
+``NR55`` (between 5-5 rings),
+``NR56`` (between 5-6 rings),
+``NR66`` (between 6-6 rings).
+
+**Nitrogen sp3, 4 bonds** --
+``NT`` (no H),
+``NT1`` (1H),
+``NT2`` (2H),
+``NT3`` (3H),
+``NT4`` (4H).
+**Nitrogen sp3, 3 bonds** --
+``N``/``N30`` (no H),
+``N31`` (1H),
+``N32`` (2H),
+``N33`` (3H).
+
+**Oxygen sp2** --
+``O`` (no charge, main-chain O),
+``OC`` (charged),
+``OP`` (charged, bonded to P),
+``OS`` (charged, bonded to S),
+``OB`` (charged, bonded to B).
+**Oxygen sp3** --
+``O2`` (2 bonds),
+``OC2`` (2 bonds, charged),
+``OH1`` (alcohol),
+``OH2`` (water).
+
+**Phosphorus** --
+``P`` (4 bonds),
+``P1`` (3 bonds).
+
+**Sulfur** --
+``S`` (no H),
+``SH1`` (1H),
+``S1`` (1 double bond),
+``S2`` (2 bonds),
+``S3`` (3 bonds, sulphoxide).
+
+**Silicon** --
+``SI`` (tetragonal),
+``SI1`` (other).
+
+**Hydrogen** --
+``H`` (generic),
+plus specific subtypes: ``HCH``, ``HCR``, ``HNC1``, ``HNC2``,
+``HNH1``, ``HNH2``, ``HNR5``, ``HNR6``, ``HOH1``, ``HOH2``, ``HSH1``.
+
+Historically, energy types were also used to look up ideal bond lengths
+and angles. In practice this turned out to be too complex for too little gain.
+Currently, their main purpose is to provide hydrogen-bonding type,
+van der Waals radii, and ionic radii -- i.e. parameters for
+non-bonding interactions.
+
+AceDRG environment types (described :ref:`below <acedrg-env-signatures>`)
+are far richer, but there are around 800 000 of them.
+In principle they could also be used for non-bonding interaction analysis,
+but this has not been done yet.
+
+.. _acedrg-env-signatures:
 
 AceDRG environment signatures
 -----------------------------
