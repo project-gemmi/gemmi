@@ -108,6 +108,9 @@ gemmi/eig3.hpp
 gemmi/elem.hpp
     Elements from the periodic table.
 
+gemmi/ener_lib.hpp
+    Data from CCP4 ener_lib.cif used by monlib and related helpers.
+
 gemmi/enumstr.hpp
     Converts between enums (EntityType, PolymerType, Connection::Type,
     SoftwareItem::Classification) and mmCIF strings.

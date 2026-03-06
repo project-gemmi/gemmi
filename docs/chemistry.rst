@@ -799,10 +799,7 @@ Currently, there is no clear advantage to one approach over the other.
   the links between monomers.
 * `EnerLib ener_lib` -- data from `$CLIBD_MON/ener_lib.cif`.
 
-TBC
-
-For now, here is an example of how to read the CCP4 monomer library
-(Refmac dictionary):
+Example: reading the CCP4 monomer library (Refmac dictionary):
 
 .. doctest::
   :skipif: ccp4_path is None
@@ -813,6 +810,38 @@ For now, here is an example of how to read the CCP4 monomer library
   >>> resnames = ['LEU', 'VAL', 'HIS', 'SER', 'ASN', 'HOH']
   >>> monlib = gemmi.MonLib()
   >>> monlib.read_monomer_lib(monlib_path, resnames, logging=sys.stderr)
+  True
+
+EnerLib
+-------
+
+`EnerLib` is the in-memory representation of selected data from
+`ener_lib.cif` (the same schema used in CCP4 monomer-library and
+AceDRG-tables layouts).
+It is attached to `MonLib` as `MonLib.ener_lib`.
+
+Loaded categories:
+
+* `_lib_atom` -> atom-type properties (`element`, `hb_type`, `vdw_radius`,
+  `vdwh_radius`, `ion_radius`, `valency`, `sp`),
+* `_lib_bond` -> bond-type entries (`atom_type_1`, `atom_type_2`, bond order,
+  length, esd).
+
+How it is used:
+
+* `MonLib.read_monomer_lib()` reads `ener_lib.cif` and populates `ener_lib`,
+* `MonLib.find_ideal_distance()` consults it to estimate ideal distances
+  between atoms, including metal-aware radius handling and fallback tiers
+  when exact type-pair entries are missing.
+
+Reading only `ener_lib.cif` into `EnerLib` (Python):
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> ener = gemmi.EnerLib()
+  >>> ener.read(os.path.join(os.environ['CCP4'], 'lib', 'data', 'monomers', 'ener_lib.cif'))
+  >>> len(ener.atoms) > 0
   True
 
 The `logging` argument above is described in the next section.

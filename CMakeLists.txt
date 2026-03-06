@@ -215,7 +215,7 @@ add_library(gemmi_cpp
             src/ace_cc.cpp src/cc_adj.cpp src/ace_graph.cpp src/acedrg_tables.cpp src/align.cpp src/assembly.cpp src/calculate.cpp src/ccp4.cpp
             src/crd.cpp src/ddl.cpp src/eig3.cpp src/flat.cpp src/fprime.cpp src/gz.cpp
             src/intensit.cpp src/json.cpp src/mmcif.cpp src/mmread_gz.cpp
-            src/monlib.cpp src/mtz.cpp src/mtz2cif.cpp
+            src/monlib.cpp src/ener_lib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp
             src/resinfo.cpp src/riding_h.cpp
             src/select.cpp src/sprintf.cpp src/dssp.cpp src/symmetry.cpp

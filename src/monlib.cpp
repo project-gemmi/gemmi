@@ -442,20 +442,6 @@ void ChemMod::apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const {
     }
 }
 
-void EnerLib::read(const cif::Document& doc) {
-  cif::Block& block = const_cast<cif::Block&>(doc.blocks[0]);
-  for (const auto& row : block.find("_lib_atom.",
-                  {"type", "hb_type", "vdw_radius", "vdwh_radius",
-                   "ion_radius", "element", "valency", "sp"}))
-    atoms.emplace(row[0], Atom{Element(row[5]), row[1][0], cif::as_number(row[2]),
-                               cif::as_number(row[3]), cif::as_number(row[4]),
-                               cif::as_int(row[6], -1), cif::as_int(row[7], -1)});
-  for (const auto& row : block.find("_lib_bond.",
-                  {"atom_type_1", "atom_type_2", "type", "length", "value_esd"}))
-    bonds.emplace(row.str(0), Bond{row.str(1), bond_type_from_string(row[2]),
-                               cif::as_number(row[3]), cif::as_number(row[4])});
-}
-
 std::string MonLib::relative_monomer_path(const std::string& code) {
   std::string path;
   if (!code.empty()) {

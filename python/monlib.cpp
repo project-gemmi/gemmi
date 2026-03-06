@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/monlib.hpp"
+#include "gemmi/read_cif.hpp"
 
 #include "common.h"
 #include <nanobind/stl/bind_map.h>
@@ -78,6 +79,10 @@ void add_monlib(nb::module_& m) {
     .def_ro("sp", &EnerLib::Atom::sp)
   ;
   enerlib
+    .def(nb::init<>())
+    .def("read", [](EnerLib& self, const std::string& path) {
+      self.read(read_cif_gz(path));
+    }, nb::arg("path"))
     .def_ro("atoms", &EnerLib::atoms)
   ;
   nb::class_<MonLib>(m, "MonLib")

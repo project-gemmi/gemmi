@@ -11,6 +11,7 @@
 #include <vector>
 #include "cifdoc.hpp"
 #include "elem.hpp"       // for Element
+#include "ener_lib.hpp"   // for EnerLib
 #include "fail.hpp"       // for fail, unreachable
 #include "model.hpp"      // for Residue, Atom
 #include "chemcomp.hpp"   // for ChemComp
@@ -77,30 +78,6 @@ struct GEMMI_DLL ChemMod {
   cif::Block block;  // temporary, until we have ChemMod->Block function
 
   void apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const;
-};
-
-struct EnerLib {
-  enum class RadiusType {Vdw, Vdwh, Ion};
-  struct Atom {
-    Element element;
-    char hb_type;
-    double vdw_radius;
-    double vdwh_radius;
-    double ion_radius;
-    int valency;
-    int sp;
-  };
-  struct Bond {
-    std::string atom_type_2;
-    BondType type;
-    double length;
-    double value_esd;
-  };
-
-  EnerLib() {}
-  void read(const cif::Document& doc);
-  std::map<std::string, Atom> atoms; // type->Atom
-  std::multimap<std::string, Bond> bonds; // atom_type_1->Bond
 };
 
 struct GEMMI_DLL MonLib {
