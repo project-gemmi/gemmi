@@ -10,10 +10,11 @@
 
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/cifdoc.hpp"
+#include "gemmi/fail.hpp"  // for GEMMI_DLL
 
 namespace gemmi {
 
-struct EnerLib {
+struct GEMMI_DLL EnerLib {
   enum class RadiusType {Vdw, Vdwh, Ion};
   struct Atom {
     Element element;
