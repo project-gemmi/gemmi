@@ -1,1 +1,0 @@
-ccd/AGENTS.md

@@ -182,7 +182,13 @@ bool is_double(const char* p) {
 
 template<size_t N>
 bool same_str(const std::string& s, const char (&literal)[N]) {
-  return s.size() == N - 1 && std::strcmp(s.c_str(), literal) == 0;
+  return s.size() == N - 1 && std::memcmp(s.c_str(), literal, N - 1) == 0;
+}
+
+template<size_t N1, size_t N2>
+bool same_str(const std::string& s, const char (&literal1)[N1],
+              const char (&literal2)[N2]) {
+  return same_str(s, literal1) || same_str(s, literal2);
 }
 
 bool is_tls_item(const std::string& key) {
@@ -320,10 +326,12 @@ void read_remark3_line(const char* line, Metadata& meta,
       ref_info.rfree_set_count = atoi(value);
     } else if (same_str(key, "TOTAL NUMBER OF BINS USED")) {
       ref_info.bin_count = std::atoi(value);
-    } else if (same_str(key, "BIN RESOLUTION RANGE HIGH       (A)")) {
+    } else if (same_str(key, "BIN RESOLUTION RANGE HIGH       (A)",
+                               "BIN RESOLUTION RANGE HIGH")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().resolution_high = fast_atof(value);
-    } else if (same_str(key, "BIN RESOLUTION RANGE LOW        (A)")) {
+    } else if (same_str(key, "BIN RESOLUTION RANGE LOW        (A)",
+                               "BIN RESOLUTION RANGE LOW")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().resolution_low = fast_atof(value);
     } else if (same_str(key, "BIN COMPLETENESS (WORKING+TEST) (%)")) {
@@ -335,7 +343,8 @@ void read_remark3_line(const char* line, Metadata& meta,
     } else if (same_str(key, "BIN R VALUE          (WORKING+TEST)")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().r_all = fast_atof(value);
-    } else if (same_str(key, "REFLECTIONS IN BIN    (WORKING SET)")) {
+    } else if (same_str(key, "REFLECTIONS IN BIN    (WORKING SET)",
+                               "REFLECTION IN BIN     (WORKING SET)")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().work_set_count = std::atoi(value);
     } else if (same_str(key, "BIN R VALUE           (WORKING SET)")) {
@@ -344,7 +353,8 @@ void read_remark3_line(const char* line, Metadata& meta,
     } else if (same_str(key, "BIN FREE R VALUE")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().r_free = fast_atof(value);
-    } else if (same_str(key, "BIN FREE R VALUE TEST SET COUNT")) {
+    } else if (same_str(key, "BIN FREE R VALUE TEST SET COUNT",
+                               "BIN FREE R VALUE SET COUNT")) {
       if (!ref_info.bins.empty())
         ref_info.bins.back().rfree_set_count = std::atoi(value);
     } else if (same_str(key, "FROM WILSON PLOT           (A**2)")) {
