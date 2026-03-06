@@ -561,7 +561,7 @@ CarboroneDb& get_carborone_db(const std::string& tables_dir) {
   db.list_loaded = true;
 
   std::string path = join_path(tables_dir, "CarboroneSamples.list");
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return db;
 

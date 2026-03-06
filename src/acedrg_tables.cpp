@@ -366,8 +366,7 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
 
   // read DATABASE_VERSION from manifest.txt
   {
-    fileptr_t f(std::fopen((tables_dir + "/manifest.txt").c_str(), "r"),
-                needs_fclose{true});
+    fileptr_t f = file_open_or_null((tables_dir + "/manifest.txt").c_str(), "r");
     if (f) {
       char line[256];
       while (std::fgets(line, sizeof(line), f.get())) {
@@ -423,7 +422,7 @@ void AcedrgTables::load_tables(const std::string& tables_dir, bool skip_angles) 
 }
 
 void AcedrgTables::load_hash_codes(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return; // Optional file
 
@@ -517,7 +516,7 @@ void AcedrgTables::load_angle_hrs(const std::string& path) {
 }
 
 void AcedrgTables::load_en_bonds(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return; // Optional file
 
@@ -544,7 +543,7 @@ void AcedrgTables::load_en_bonds(const std::string& path) {
 }
 
 void AcedrgTables::load_prot_hydr_dists(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return; // Optional file
   prot_hydr_dists_.clear();
@@ -605,7 +604,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
   // Load allMetalBonds.table
   {
     std::string path = dir + "/allMetalBonds.table";
-    fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    fileptr_t f = file_open_or_null(path.c_str(), "r");
     if (!f)
       return;
 
@@ -648,7 +647,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
   // Load metal coordination geometry
   {
     std::string path = dir + "/allMetalDefCoordGeos.table";
-    fileptr_t f2(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    fileptr_t f2 = file_open_or_null(path.c_str(), "r");
     if (f2) {
       char line[512];
       while (std::fgets(line, sizeof(line), f2.get())) {
@@ -683,7 +682,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
   // Load metal coordination angles
   {
     std::string path = dir + "/allMetalCoordGeoAngles.table";
-    fileptr_t f3(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    fileptr_t f3 = file_open_or_null(path.c_str(), "r");
     if (f3) {
       char line[512];
       while (std::fgets(line, sizeof(line), f3.get())) {
@@ -710,7 +709,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
   // Load non-centered metal angles
   {
     std::string path = dir + "/allOrgAnglesWithNonCenteredMetalNB.table";
-    fileptr_t f4(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    fileptr_t f4 = file_open_or_null(path.c_str(), "r");
     if (f4) {
       char line[512];
       while (std::fgets(line, sizeof(line), f4.get())) {
@@ -737,7 +736,7 @@ void AcedrgTables::load_metal_tables(const std::string& dir) {
 
 void AcedrgTables::load_covalent_radii(const std::string& path) {
   covalent_radii_.fill(NAN);
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return;
 
@@ -768,7 +767,7 @@ void AcedrgTables::load_covalent_radii(const std::string& path) {
 }
 
 void AcedrgTables::load_atom_type_codes(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return; // Optional file
 
@@ -786,7 +785,7 @@ void AcedrgTables::load_atom_type_codes(const std::string& path) {
 }
 
 void AcedrgTables::load_bond_index(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return; // Optional file
 
@@ -815,7 +814,7 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
         continue;
 
       std::string path = cat(dir, '/', file_num, ".table");
-      fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+      fileptr_t f = file_open_or_null(path.c_str(), "r");
       if (!f)
         continue;
       ++n_files;
@@ -894,7 +893,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
 
   for (int file_num : list_numeric_table_ids(dir)) {
     std::string path = cat(dir, '/', file_num, ".table");
-    fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+    fileptr_t f = file_open_or_null(path.c_str(), "r");
     if (!f)
       continue;
     ++n_files;
@@ -1008,7 +1007,7 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
 }
 
 void AcedrgTables::load_pep_tors(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return;
 
@@ -1034,7 +1033,7 @@ void AcedrgTables::load_pep_tors(const std::string& path) {
 // nucl_tors.table: four atom ids (possibly quoted), torsion name, angle, esd, period.
 // AceDRG keeps multiple entries per atom quartet; we store them all.
 void AcedrgTables::load_nucl_tors(const std::string& path) {
-  fileptr_t f(std::fopen(path.c_str(), "r"), needs_fclose{true});
+  fileptr_t f = file_open_or_null(path.c_str(), "r");
   if (!f)
     return;
 

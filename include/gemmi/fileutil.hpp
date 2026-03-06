@@ -61,6 +61,19 @@ inline fileptr_t file_open(const char* path, const char* mode) {
   return fileptr_t(file, needs_fclose{true});
 }
 
+// like file_open() but returns null fileptr_t instead of throwing
+inline fileptr_t file_open_or_null(const char* path, const char* mode) {
+  std::FILE* file;
+#if defined(_WIN32) && !defined(GEMMI_USE_FOPEN)
+  std::wstring wpath = UTF8_to_wchar(path);
+  std::wstring wmode = UTF8_to_wchar(mode);
+  file = ::_wfopen(wpath.c_str(), wmode.c_str());
+#else
+  file = std::fopen(path, mode);
+#endif
+  return fileptr_t(file, needs_fclose{true});
+}
+
 // helper function for treating "-" as stdin or stdout
 inline fileptr_t file_open_or(const char* path, const char* mode,
                               std::FILE* dash_stream) {
