@@ -78,12 +78,25 @@ void add_monlib(nb::module_& m) {
     .def_ro("valency", &EnerLib::Atom::valency)
     .def_ro("sp", &EnerLib::Atom::sp)
   ;
+  nb::class_<EnerLib::Bond>(enerlib, "Bond")
+    .def_ro("atom_type_2", &EnerLib::Bond::atom_type_2)
+    .def_ro("type", &EnerLib::Bond::type)
+    .def_ro("length", &EnerLib::Bond::length)
+    .def_ro("value_esd", &EnerLib::Bond::value_esd)
+  ;
   enerlib
     .def(nb::init<>())
     .def("read", [](EnerLib& self, const std::string& path) {
       self.read(read_cif_gz(path));
     }, nb::arg("path"))
     .def_ro("atoms", &EnerLib::atoms)
+    .def("find_bonds", [](const EnerLib& self, const std::string& atom_type) {
+      std::vector<EnerLib::Bond> result;
+      auto range = self.bonds.equal_range(atom_type);
+      for (auto it = range.first; it != range.second; ++it)
+        result.push_back(it->second);
+      return result;
+    }, nb::arg("atom_type"), "Get bond entries for the given atom type.")
   ;
   nb::class_<MonLib>(m, "MonLib")
     .def(nb::init<>())

@@ -840,15 +840,14 @@ Reading only `ener_lib.cif` into `EnerLib` (Python):
   :skipif: ccp4_path is None
 
   >>> ener = gemmi.EnerLib()
-  >>> ener.read(os.path.join(os.environ['CCP4'], 'lib', 'data', 'monomers', 'ener_lib.cif'))
+  >>> ener.read(os.path.join(monlib_path, 'ener_lib.cif'))
   >>> len(ener.atoms) > 0
   True
 
-The `logging` argument above is described in the next section.
+The `logging` argument in the MonLib example above is described
+in the next section.
 
 `MonLib` can be used to prepare :ref:`Topology <topology>`.
-
-TBC
 
 .. _chemistry-gemmi-drg-overview:
 
