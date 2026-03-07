@@ -469,8 +469,9 @@ void spread_terminal_children(ChemComp& cc,
     for (size_t i = 0; i != terminals.size(); ++i) {
       size_t term = terminals[i];
       double dist = 1.5;
-      if (auto bond = cc.rt.find_bond(cc.atoms[center].id, cc.atoms[term].id);
-          bond != cc.rt.bonds.end()) {
+      std::vector<Restraints::Bond>::const_iterator bond =
+          cc.rt.find_bond(cc.atoms[center].id, cc.atoms[term].id);
+      if (bond != cc.rt.bonds.end()) {
         double value = std::isfinite(bond->value) ? bond->value : bond->value_nucleus;
         if (std::isfinite(value))
           dist = value;
