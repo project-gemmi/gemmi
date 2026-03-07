@@ -349,6 +349,32 @@ class TestAcePrepareChemComp(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'ACE strict validation failed at final'):
                 self.prepare(cc)
 
+    def test_prepare_chemcomp_options_override_env_modes(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TOPTS'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        cc.atoms.append(self.make_atom('C1', 'C', 'C'))
+        cc.atoms.append(self.make_atom('C2', 'C', 'C'))
+        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+
+        p = gemmi.Restraints.Plane()
+        p.label = 'p'
+        p.ids = [
+            gemmi.Restraints.AtomId('C1'),
+            gemmi.Restraints.AtomId('C1'),
+            gemmi.Restraints.AtomId('C2'),
+        ]
+        p.esd = 0.02
+        cc.rt.planes.append(p)
+
+        options = gemmi.PrepareChemcompOptions()
+        options.no_angles = True
+        options.strict_mode = gemmi.PrepareOverride.Disable
+
+        with temp_env('GEMMI_ACE_STRICT', '1'):
+            gemmi.prepare_chemcomp(cc, gemmi.AcedrgTables(), options)
+        self.assertEqual(len(cc.rt.bonds), 1)
+
     def test_prepare_chemcomp_trace_mode_smoke(self):
         cc = gemmi.ChemComp()
         cc.name = 'TTRC'

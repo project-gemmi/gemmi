@@ -12,12 +12,25 @@
 namespace gemmi {
 
 struct AcedrgTables;
+enum class PrepareOverride { Auto, Disable, Enable };
+
+struct PrepareChemcompOptions {
+  std::map<std::string, std::string> atom_stereo;
+  bool no_angles = false;
+  const std::map<std::string, Position>* sugar_coord_overrides = nullptr;
+  PrepareOverride strict_mode = PrepareOverride::Auto;
+  PrepareOverride compat_mode = PrepareOverride::Auto;
+  PrepareOverride trace_mode = PrepareOverride::Auto;
+};
 
 /// Run the full restraint-generation pipeline on a ChemComp:
 /// chemical-group adjustments, protonation, fill_restraints,
 /// torsion/chirality/plane generation, and CCP4 type assignment.
 /// \param atom_stereo  maps atom names to pdbx_stereo_config strings
 ///                     (needed for chirality generation).
+GEMMI_DLL void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
+                                const PrepareChemcompOptions& options);
+
 GEMMI_DLL void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                                 const std::map<std::string, std::string>& atom_stereo = {},
                                 bool no_angles = false,

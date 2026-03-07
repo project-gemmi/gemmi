@@ -25,6 +25,7 @@ static void add_acedrg_tables(nb::module_& m);
 void add_chemcomp(nb::module_& m) {
   nb::class_<ChemComp> chemcomp(m, "ChemComp");
   nb::class_<ChemComp::Atom> chemcompatom(chemcomp, "Atom");
+  nb::class_<PrepareChemcompOptions> prepare_options(m, "PrepareChemcompOptions");
 
   nb::class_<Restraints> restraints(m, "Restraints");
   nb::class_<Restraints::Bond> restraintsbond(restraints, "Bond");
@@ -168,6 +169,17 @@ void add_chemcomp(nb::module_& m) {
       .value("Furanose",   ChemComp::Group::Furanose)
       .value("NonPolymer", ChemComp::Group::NonPolymer)
       .value("Null",       ChemComp::Group::Null);
+  nb::enum_<PrepareOverride>(m, "PrepareOverride")
+      .value("Auto", PrepareOverride::Auto)
+      .value("Disable", PrepareOverride::Disable)
+      .value("Enable", PrepareOverride::Enable);
+  prepare_options
+    .def(nb::init<>())
+    .def_rw("atom_stereo", &PrepareChemcompOptions::atom_stereo)
+    .def_rw("no_angles", &PrepareChemcompOptions::no_angles)
+    .def_rw("strict_mode", &PrepareChemcompOptions::strict_mode)
+    .def_rw("compat_mode", &PrepareChemcompOptions::compat_mode)
+    .def_rw("trace_mode", &PrepareChemcompOptions::trace_mode);
   chemcompatom
     .def(nb::init<>())
     .def_rw("id", &ChemComp::Atom::id)
@@ -339,4 +351,12 @@ static void add_acedrg_tables(nb::module_& m) {
         "torsion/chirality/plane generation, and CCP4 type assignment.\n"
         "atom_stereo maps atom names to pdbx_stereo_config strings.\n"
         "If only_bonds is True, only bond restraints are calculated.");
+  m.def("prepare_chemcomp",
+        [](ChemComp& chemcomp, const AcedrgTables& tables,
+           const PrepareChemcompOptions& options) {
+          prepare_chemcomp(chemcomp, tables, options);
+        },
+        nb::arg("chemcomp"), nb::arg("tables"), nb::arg("options"),
+        "Run the full restraint-generation pipeline using explicit options.\n"
+        "This can override strict/compat/trace behavior without relying on env vars.");
 }

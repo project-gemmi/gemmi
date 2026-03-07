@@ -27,6 +27,17 @@ namespace gemmi {
 
 namespace {
 
+thread_local const PrepareChemcompOptions* active_prepare_options = nullptr;
+
+struct ActivePrepareOptionsGuard {
+  const PrepareChemcompOptions* previous;
+  explicit ActivePrepareOptionsGuard(const PrepareChemcompOptions& options)
+      : previous(active_prepare_options) {
+    active_prepare_options = &options;
+  }
+  ~ActivePrepareOptionsGuard() { active_prepare_options = previous; }
+};
+
 template <typename Range>
 int count_missing_values(const Range& range) {
   int missing = 0;
@@ -35,22 +46,35 @@ int count_missing_values(const Range& range) {
   return missing;
 }
 
-bool ace_strict_mode() {
-  if (const char* env = std::getenv("GEMMI_ACE_STRICT"))
+bool env_flag_enabled(const char* name) {
+  if (const char* env = std::getenv(name))
     return env[0] != '\0' && env[0] != '0';
   return false;
+}
+
+bool option_flag(const PrepareOverride* setting, const char* env_name) {
+  if (setting) {
+    if (*setting == PrepareOverride::Enable)
+      return true;
+    if (*setting == PrepareOverride::Disable)
+      return false;
+  }
+  return env_flag_enabled(env_name);
+}
+
+bool ace_strict_mode() {
+  return option_flag(active_prepare_options ? &active_prepare_options->strict_mode : nullptr,
+                     "GEMMI_ACE_STRICT");
 }
 
 bool ace_compat_mode() {
-  if (const char* env = std::getenv("GEMMI_ACE_COMPAT"))
-    return env[0] != '\0' && env[0] != '0';
-  return false;
+  return option_flag(active_prepare_options ? &active_prepare_options->compat_mode : nullptr,
+                     "GEMMI_ACE_COMPAT");
 }
 
 bool ace_trace_mode() {
-  if (const char* env = std::getenv("GEMMI_ACE_TRACE"))
-    return env[0] != '\0' && env[0] != '0';
-  return false;
+  return option_flag(active_prepare_options ? &active_prepare_options->trace_mode : nullptr,
+                     "GEMMI_ACE_TRACE");
 }
 
 struct AceRuleStats {
@@ -4443,16 +4467,15 @@ void harmonize_group_with_type(ChemComp& cc) {
 }  // namespace
 
 void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
-                      const std::map<std::string, std::string>& atom_stereo,
-                      bool no_angles,
-                      const std::map<std::string, Position>* sugar_coord_overrides) {
+                      const PrepareChemcompOptions& options) {
+  ActivePrepareOptionsGuard options_guard(options);
   harmonize_group_with_type(cc);
   AceRuleStats phase0 = collect_rule_stats(cc);
   bool has_cb_seed = false;
-  if (maybe_apply_carborane_mode(cc, tables, no_angles, has_cb_seed))
+  if (maybe_apply_carborane_mode(cc, tables, options.no_angles, has_cb_seed))
     return;
 
-  if (!no_angles)
+  if (!options.no_angles)
     add_angles_from_bonds_if_missing(cc);
   cleanup_and_validate_restraints(cc, "post-angle-seed");
   AceRuleStats phase1 = collect_rule_stats(cc);
@@ -4469,26 +4492,26 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   AceRuleStats phase3 = collect_rule_stats(cc);
   trace_phase_delta("charge-fix", phase2, phase3);
 
-  if (has_missing_restraint_values(cc, no_angles))
+  if (has_missing_restraint_values(cc, options.no_angles))
     tables.fill_restraints(cc);
   cleanup_and_validate_restraints(cc, "post-fill");
   AceRuleStats phase4 = collect_rule_stats(cc);
   trace_phase_delta("fill", phase3, phase4);
 
-  if (added_h3 && !no_angles)
+  if (added_h3 && !options.no_angles)
     sync_n_terminal_h3_angles(cc);
 
   // Always run the add-if-missing steps. Existing bond/angle values may be
   // complete while chirality/torsion/plane restraints are still absent.
   std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
   AceGraphView graph = make_ace_graph_view(cc);
-  add_chirality_if_missing(cc, atom_stereo, atom_info, graph);
-  add_torsions_from_bonds_if_missing(cc, tables, atom_info, atom_stereo, graph,
-                                     sugar_coord_overrides);
+  add_chirality_if_missing(cc, options.atom_stereo, atom_info, graph);
+  add_torsions_from_bonds_if_missing(cc, tables, atom_info, options.atom_stereo, graph,
+                                     options.sugar_coord_overrides);
   add_planes_if_missing(cc, atom_info, graph);
 
   if (has_cb_seed)
-    apply_mixed_carborane_mode(cc, no_angles, tables.tables_dir_);
+    apply_mixed_carborane_mode(cc, options.no_angles, tables.tables_dir_);
 
   if (has_cb_seed)
     add_mixed_carborane_torsions(cc);
@@ -4500,6 +4523,17 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   tables.assign_ccp4_types(cc);
   AceRuleStats phase6 = collect_rule_stats(cc);
   trace_phase_delta("final-typing", phase5, phase6);
+}
+
+void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
+                      const std::map<std::string, std::string>& atom_stereo,
+                      bool no_angles,
+                      const std::map<std::string, Position>* sugar_coord_overrides) {
+  PrepareChemcompOptions options;
+  options.atom_stereo = atom_stereo;
+  options.no_angles = no_angles;
+  options.sugar_coord_overrides = sugar_coord_overrides;
+  prepare_chemcomp(cc, tables, options);
 }
 
 } // namespace gemmi

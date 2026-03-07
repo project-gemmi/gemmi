@@ -667,6 +667,11 @@ prepare_chemcomp()
 below is important because later stages depend on graph/charge edits made
 earlier.
 
+The function now also has an explicit options object,
+`PrepareChemcompOptions`, which makes the runtime controls part of the API
+instead of relying only on environment variables. The legacy overload is still
+available.
+
 Execution order
 ^^^^^^^^^^^^^^^
 
@@ -742,6 +747,70 @@ Python example:
     -1.0
     >>> atoms['OXT'].charge
     -1.0
+
+Explicit options
+^^^^^^^^^^^^^^^^
+
+`PrepareChemcompOptions` currently exposes:
+
+* `atom_stereo` -- maps atom names to `pdbx_stereo_config` strings used by
+  chirality generation,
+* `no_angles` -- skips the initial angle-seeding pass,
+* `strict_mode`, `compat_mode`, `trace_mode` -- tri-state overrides with
+  values `PrepareOverride.Auto`, `PrepareOverride.Disable`, or
+  `PrepareOverride.Enable`.
+
+In `Auto` mode, the corresponding environment variable is still consulted
+(`GEMMI_ACE_STRICT`, `GEMMI_ACE_COMPAT`, `GEMMI_ACE_TRACE`). `Enable` and
+`Disable` override the environment explicitly for that call.
+
+Mode semantics
+""""""""""""""
+
+`strict_mode`
+    Enables extra validation checks during the pipeline. At present, this
+    mainly checks for invalid restraint references, duplicate atom ids in
+    planes, and NaN bond/angle targets at the final stage. In strict mode,
+    such conditions raise an exception instead of being tolerated or silently
+    cleaned up.
+
+`compat_mode`
+    Enables AceDRG-like behavior in places where Gemmi now has a more
+    chemistry-first default.
+
+    Current effects:
+
+    * peptide mode is gated by the canonical-AA-backbone test
+      (`N`, `CA`, `C`, `O`, `OXT` and associated bonding / H naming),
+    * torsion candidate selection uses the older AceDRG-like selector instead
+      of Gemmi's scored selector,
+    * pyranose chair torsion rewriting is always applied, instead of only when
+      coordinates are incomplete.
+
+    With `compat_mode` disabled, Gemmi prefers chemically reasonable defaults
+    over matching AceDRG quirks.
+
+`trace_mode`
+    Emits phase-by-phase summaries to stderr. The trace reports how many atoms,
+    bonds, angles, torsions, chiralities and planes were added or removed in
+    each pipeline phase, plus net charge changes. This is intended for
+    debugging and regression analysis rather than normal use.
+
+Python example:
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+    >>> import gemmi
+    >>> path = '../tests/ccd/ASP.cif'
+    >>> block = gemmi.cif.read(path).sole_block()
+    >>> cc = gemmi.make_chemcomp_from_block(block)
+    >>> tables = gemmi.AcedrgTables()
+    >>> tables.load_tables(ccp4_path + '/share/acedrg/tables')
+    >>> options = gemmi.PrepareChemcompOptions()
+    >>> options.compat_mode = gemmi.PrepareOverride.Disable
+    >>> options.strict_mode = gemmi.PrepareOverride.Disable
+    >>> gemmi.prepare_chemcomp(cc, tables, options)
 
 .. _monlib:
 
