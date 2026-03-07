@@ -133,6 +133,57 @@ double placement_contact_score(const ChemComp& cc, const Position& pos, size_t s
   return score;
 }
 
+bool plane_from_positions(const std::vector<Position>& positions,
+                          Position& centroid, Vec3& normal) {
+  if (positions.size() < 3)
+    return false;
+  centroid = Position();
+  for (const Position& pos : positions)
+    centroid += pos;
+  centroid /= static_cast<double>(positions.size());
+
+  Vec3 accum(0, 0, 0);
+  for (size_t i = 0; i != positions.size(); ++i) {
+    const Position& a = positions[i];
+    const Position& b = positions[(i + 1) % positions.size()];
+    accum.x += (a.y - b.y) * (a.z + b.z);
+    accum.y += (a.z - b.z) * (a.x + b.x);
+    accum.z += (a.x - b.x) * (a.y + b.y);
+  }
+  if (accum.length_sq() < 1e-8)
+    return false;
+  normal = accum.normalized();
+  return true;
+}
+
+void enforce_plane_restraints(ChemComp& cc,
+                              const std::map<std::string, size_t>& atom_index) {
+  for (const Restraints::Plane& plane : cc.rt.planes) {
+    std::vector<size_t> indices;
+    std::vector<Position> positions;
+    indices.reserve(plane.ids.size());
+    positions.reserve(plane.ids.size());
+    for (const Restraints::AtomId& atom_id : plane.ids) {
+      auto it = atom_index.find(atom_id.atom);
+      if (it == atom_index.end())
+        continue;
+      size_t idx = it->second;
+      if (!atom_has_finite_xyz(cc.atoms[idx]))
+        continue;
+      indices.push_back(idx);
+      positions.push_back(cc.atoms[idx].xyz);
+    }
+    Position centroid;
+    Vec3 normal;
+    if (!plane_from_positions(positions, centroid, normal))
+      continue;
+    for (size_t idx : indices) {
+      Vec3 delta = cc.atoms[idx].xyz - centroid;
+      cc.atoms[idx].xyz -= Position(normal * delta.dot(normal));
+    }
+  }
+}
+
 std::vector<size_t> shortest_path_excluding_edge(const std::vector<std::vector<size_t>>& adjacency,
                                                  size_t start, size_t goal,
                                                  size_t ban_a, size_t ban_b) {
@@ -489,6 +540,7 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   }
 
   spread_terminal_children(cc, adjacency, atom_index);
+  enforce_plane_restraints(cc, atom_index);
 
   int placed = count_finite();
   cc.has_coordinates = placed > 0;
