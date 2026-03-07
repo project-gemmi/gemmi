@@ -4,6 +4,8 @@
 
 #include "gemmi/ener_lib.hpp"
 
+#include <algorithm>
+
 namespace gemmi {
 
 void EnerLib::read(const cif::Document& doc) {
@@ -16,8 +18,9 @@ void EnerLib::read(const cif::Document& doc) {
                                cif::as_int(row[6], -1), cif::as_int(row[7], -1)});
   for (const auto& row : block.find("_lib_bond.",
                   {"atom_type_1", "atom_type_2", "type", "length", "value_esd"}))
-    bonds.emplace(row.str(0), Bond{row.str(1), bond_type_from_string(row[2]),
-                                   cif::as_number(row[3]), cif::as_number(row[4])});
+    bonds.push_back(Bond{row.str(0), row.str(1), bond_type_from_string(row[2]),
+                         cif::as_number(row[3]), cif::as_number(row[4])});
+  std::sort(bonds.begin(), bonds.end());
 }
 
 }  // namespace gemmi

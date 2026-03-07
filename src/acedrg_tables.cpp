@@ -2163,9 +2163,8 @@ void AcedrgTables::load_ccp4_bonds(const std::string& path) {
   try {
     EnerLib ener;
     ener.read(read_cif_gz(path));
-    for (const auto& kv : ener.bonds) {
-      const std::string& type1 = kv.first;
-      const EnerLib::Bond& bond = kv.second;
+    for (const EnerLib::Bond& bond : ener.bonds) {
+      const std::string& type1 = bond.atom_type_1;
       if (type1.empty() || std::isnan(bond.length))
         continue;
       std::string order_key = to_upper(bond_type_to_string(bond.type));

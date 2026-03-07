@@ -1,10 +1,13 @@
 // Copyright 2018 Global Phasing Ltd.
 
+#include <algorithm>
+
 #include "gemmi/monlib.hpp"
 #include "gemmi/read_cif.hpp"
 
 #include "common.h"
 #include <nanobind/stl/bind_map.h>
+#include <nanobind/stl/bind_vector.h>
 #include <nanobind/stl/map.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>  // for MonLib::match_link
@@ -15,9 +18,11 @@ using namespace gemmi;
 using monomers_type = std::map<std::string, ChemComp>;
 using links_type = std::map<std::string, ChemLink>;
 using modifications_type = std::map<std::string, ChemMod>;
+using ener_bonds_type = std::vector<EnerLib::Bond>;
 NB_MAKE_OPAQUE(monomers_type)
 NB_MAKE_OPAQUE(links_type)
 NB_MAKE_OPAQUE(modifications_type)
+NB_MAKE_OPAQUE(ener_bonds_type)
 
 void add_monlib(nb::module_& m) {
   nb::class_<ChemMod> chemmod(m, "ChemMod");
@@ -27,6 +32,7 @@ void add_monlib(nb::module_& m) {
   nb::bind_map<monomers_type, rv_ri>(m, "ChemCompMap");
   nb::bind_map<links_type, rv_ri>(m, "ChemLinkMap");
   nb::bind_map<modifications_type, rv_ri>(m, "ChemModMap");
+  nb::bind_vector<ener_bonds_type, rv_ri>(m, "EnerLibBonds");
 
   nb::class_<ChemLink::Side>(chemlink, "Side")
     .def(nb::init<>())
@@ -79,6 +85,7 @@ void add_monlib(nb::module_& m) {
     .def_ro("sp", &EnerLib::Atom::sp)
   ;
   nb::class_<EnerLib::Bond>(enerlib, "Bond")
+    .def_ro("atom_type_1", &EnerLib::Bond::atom_type_1)
     .def_ro("atom_type_2", &EnerLib::Bond::atom_type_2)
     .def_ro("type", &EnerLib::Bond::type)
     .def_ro("length", &EnerLib::Bond::length)
@@ -90,11 +97,12 @@ void add_monlib(nb::module_& m) {
       self.read(read_cif_gz(path));
     }, nb::arg("path"))
     .def_ro("atoms", &EnerLib::atoms)
+    .def_ro("bonds", &EnerLib::bonds)
     .def("find_bonds", [](const EnerLib& self, const std::string& atom_type) {
       std::vector<EnerLib::Bond> result;
-      auto range = self.bonds.equal_range(atom_type);
+      auto range = std::equal_range(self.bonds.begin(), self.bonds.end(), atom_type);
       for (auto it = range.first; it != range.second; ++it)
-        result.push_back(it->second);
+        result.push_back(*it);
       return result;
     }, nb::arg("atom_type"), "Get bond entries for the given atom type.")
   ;

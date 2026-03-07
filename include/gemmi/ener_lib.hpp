@@ -5,8 +5,9 @@
 #ifndef GEMMI_ENER_LIB_HPP_
 #define GEMMI_ENER_LIB_HPP_
 
-#include <map>
+//:#include <map>
 #include <string>
+#include <vector>
 
 #include "gemmi/chemcomp.hpp"
 #include "gemmi/cifdoc.hpp"
@@ -26,17 +27,32 @@ struct GEMMI_DLL EnerLib {
     int sp;
   };
   struct Bond {
+    std::string atom_type_1;
     std::string atom_type_2;
     BondType type;
     double length;
     double value_esd;
+
+    bool operator<(const Bond& o) const {
+      if (atom_type_1 != o.atom_type_1)
+        return atom_type_1 < o.atom_type_1;
+      return atom_type_2 < o.atom_type_2;
+    }
   };
 
   EnerLib() {}
   void read(const cif::Document& doc);
   std::map<std::string, Atom> atoms; // type->Atom
-  std::multimap<std::string, Bond> bonds; // atom_type_1->Bond
+  std::vector<Bond> bonds;
 };
+
+inline bool operator<(const EnerLib::Bond& lhs, const std::string& rhs) {
+  return lhs.atom_type_1 < rhs;
+}
+
+inline bool operator<(const std::string& lhs, const EnerLib::Bond& rhs) {
+  return lhs < rhs.atom_type_1;
+}
 
 }  // namespace gemmi
 

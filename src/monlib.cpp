@@ -1,5 +1,7 @@
 // Copyright 2018-2023 Global Phasing Ltd.
 
+#include <algorithm>
+
 #include <gemmi/monlib.hpp>
 #include <gemmi/calculate.hpp>  // for calculate_chiral_volume
 #include <gemmi/modify.hpp>     // for rename_atom_names
@@ -569,14 +571,14 @@ double MonLib::find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2)
   // otherwise, look for defined distance or use average of distances
   double r[2] = {0, 0};
   for (int j = 0; j < 2; ++j) {
-    auto range = ener_lib.bonds.equal_range(types[j]);
+    auto range = std::equal_range(ener_lib.bonds.begin(), ener_lib.bonds.end(), types[j]);
     for (auto i = range.first; i != range.second; ++i)
-      if (i->second.atom_type_2 == types[1-j] && !std::isnan(i->second.length))
-        return i->second.length;
-      else if (i->second.atom_type_2.empty() && i->second.type == BondType::Single)
-        r[j] = i->second.length / 2;
+      if (i->atom_type_2 == types[1-j] && !std::isnan(i->length))
+        return i->length;
+      else if (i->atom_type_2.empty() && i->type == BondType::Single)
+        r[j] = i->length / 2;
     if ((r[j] == 0 || std::isnan(r[j])) && range.first != range.second)
-      r[j] = range.first->second.length / 2;
+      r[j] = range.first->length / 2;
     if (r[j] == 0 || std::isnan(r[j]))
       r[j] = (j==0 ? cra1 : cra2).atom->element.covalent_r();
   }
