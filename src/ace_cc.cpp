@@ -3311,8 +3311,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   }
 
   // Replace torsions with nucleic-acid-specific table entries when applicable.
-  const bool apply_nucl_tors = false;  // AceDRG does not apply nucl_tors in CCD outputs
-  if (apply_nucl_tors && nucleic_mode && !cc.rt.torsions.empty()) {
+  if (nucleic_mode && !cc.rt.torsions.empty()) {
     std::vector<Restraints::Torsion> replaced;
     replaced.reserve(cc.rt.torsions.size());
     std::unordered_set<std::string> seen_keys;
