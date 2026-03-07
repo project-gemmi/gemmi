@@ -3132,8 +3132,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   if (ace_compat_mode() && peptide_mode && !confirm_aa_backbone(cc, adj, atom_index))
     peptide_mode = false;
   const ResidueInfo& ri = find_tabulated_residue(cc.name);
-  bool standard_aa = ri.is_standard() && ri.kind == ResidueKind::AA;
-  bool use_peptide_torsions = standard_aa || peptide_mode;
+  bool amino_acid_like = ri.is_amino_acid();
+  bool use_peptide_torsions = amino_acid_like || peptide_mode;
   std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
 
   // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
