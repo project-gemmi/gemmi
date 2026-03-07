@@ -79,6 +79,13 @@ class TestAcePrepareChemComp(unittest.TestCase):
         tables = gemmi.AcedrgTables()
         gemmi.prepare_chemcomp(cc, tables, {}, True)
 
+    @staticmethod
+    def torsion_keys(cc):
+        return {
+            (t.id1.atom, t.id2.atom, t.id3.atom, t.id4.atom, round(t.value, 3), t.period)
+            for t in cc.rt.torsions
+        }
+
     def test_prepare_chemcomp_cleans_invalid_restraint_refs(self):
         cc = gemmi.ChemComp()
         cc.name = 'TINV'
@@ -440,6 +447,105 @@ class TestAcePrepareChemComp(unittest.TestCase):
             for b in cc.rt.bonds
         )
         self.assertTrue(n_h3_bond)
+
+    def test_prepare_chemcomp_compat_disables_peptide_mode_without_canonical_backbone(self):
+        def build(group):
+            cc = gemmi.ChemComp()
+            cc.name = 'TPEP'
+            cc.group = group
+            for atom_id, el, chem_type in [
+                ('N', 'N', 'N'),
+                ('H', 'H', 'H'),
+                ('H2', 'H', 'H'),
+                ('CA', 'C', 'C'),
+                ('HX', 'H', 'H'),
+                ('CB', 'C', 'C'),
+                ('HB1', 'H', 'H'),
+                ('HB2', 'H', 'H'),
+                ('HB3', 'H', 'H'),
+                ('C', 'C', 'C'),
+                ('O', 'O', 'O'),
+                ('OXT', 'O', 'O'),
+                ('HXT', 'H', 'H'),
+            ]:
+                cc.atoms.append(self.make_atom(atom_id, el, chem_type))
+
+            for a1, a2, bond_type, value in [
+                ('N', 'H', gemmi.BondType.Single, 1.00),
+                ('N', 'H2', gemmi.BondType.Single, 1.00),
+                ('N', 'CA', gemmi.BondType.Single, 1.46),
+                ('CA', 'HX', gemmi.BondType.Single, 1.00),
+                ('CA', 'CB', gemmi.BondType.Single, 1.53),
+                ('CA', 'C', gemmi.BondType.Single, 1.53),
+                ('CB', 'HB1', gemmi.BondType.Single, 1.00),
+                ('CB', 'HB2', gemmi.BondType.Single, 1.00),
+                ('CB', 'HB3', gemmi.BondType.Single, 1.00),
+                ('C', 'O', gemmi.BondType.Double, 1.24),
+                ('C', 'OXT', gemmi.BondType.Single, 1.31),
+                ('OXT', 'HXT', gemmi.BondType.Single, 1.00),
+            ]:
+                cc.rt.bonds.append(self.make_bond(a1, a2, bond_type, value, 0.02))
+            return cc
+
+        default_peptide = build(gemmi.ChemComp.Group.Peptide)
+        compat_peptide = build(gemmi.ChemComp.Group.Peptide)
+        compat_nonpoly = build(gemmi.ChemComp.Group.NonPolymer)
+
+        default_options = gemmi.PrepareChemcompOptions()
+        default_options.compat_mode = gemmi.PrepareOverride.Disable
+        gemmi.prepare_chemcomp(default_peptide, gemmi.AcedrgTables(), default_options)
+
+        compat_options = gemmi.PrepareChemcompOptions()
+        compat_options.compat_mode = gemmi.PrepareOverride.Enable
+        gemmi.prepare_chemcomp(compat_peptide, gemmi.AcedrgTables(), compat_options)
+        gemmi.prepare_chemcomp(compat_nonpoly, gemmi.AcedrgTables(), compat_options)
+
+        default_keys = self.torsion_keys(default_peptide)
+        compat_keys = self.torsion_keys(compat_peptide)
+        nonpoly_keys = self.torsion_keys(compat_nonpoly)
+
+        self.assertIn(('C', 'CA', 'CB', 'HB1', 180.0, 3), default_keys)
+        self.assertIn(('N', 'CA', 'CB', 'HB1', 60.0, 3), compat_keys)
+        self.assertNotEqual(default_keys, compat_keys)
+        self.assertEqual(compat_keys, nonpoly_keys)
+
+    def test_prepare_chemcomp_sugar_ring_torsions_require_ring_coordinates(self):
+        path = os.path.join(CCD_TEST_DIR, '0SG.cif')
+        if not os.path.isfile(path):
+            raise unittest.SkipTest(f'missing test input: {path}')
+
+        def prepare_with_optional_nan(atom_id=None):
+            doc = gemmi.cif.read(path)
+            cc = gemmi.make_chemcomp_from_block(doc.sole_block())
+            if atom_id is not None:
+                for atom in cc.atoms:
+                    if atom.id == atom_id:
+                        atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+                        break
+            options = gemmi.PrepareChemcompOptions()
+            options.compat_mode = gemmi.PrepareOverride.Disable
+            gemmi.prepare_chemcomp(cc, gemmi.AcedrgTables(), options)
+            return self.torsion_keys(cc)
+
+        full_keys = prepare_with_optional_nan()
+        missing_keys = prepare_with_optional_nan('C45')
+
+        ring_torsions = {
+            ('C47', 'O6', 'C43', 'C44', -55.293, 3),
+            ('O6', 'C43', 'C44', 'C45', 57.508, 3),
+            ('C43', 'C44', 'C45', 'C46', -62.221, 3),
+            ('C44', 'C45', 'C46', 'C47', 63.637, 3),
+            ('C45', 'C46', 'C47', 'O6', -59.666, 3),
+            ('C46', 'C47', 'O6', 'C43', 56.320, 3),
+        }
+
+        self.assertTrue(ring_torsions.issubset(full_keys))
+        self.assertIn(('C47', 'O6', 'C43', 'C44', -55.293, 3), missing_keys)
+        self.assertIn(('C46', 'C47', 'O6', 'C43', 56.320, 3), missing_keys)
+        self.assertNotIn(('O6', 'C43', 'C44', 'C45', 57.508, 3), missing_keys)
+        self.assertNotIn(('C43', 'C44', 'C45', 'C46', -62.221, 3), missing_keys)
+        self.assertNotIn(('C44', 'C45', 'C46', 'C47', 63.637, 3), missing_keys)
+        self.assertNotIn(('C45', 'C46', 'C47', 'O6', -59.666, 3), missing_keys)
 
 
 class TestAceDrgBatch(unittest.TestCase):
