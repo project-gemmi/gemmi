@@ -3124,10 +3124,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
-  std::string type_upper = to_upper(cc.type_or_group);
-  bool peptide_mode = type_upper.find("PEPTIDE") != std::string::npos;
-  bool nucleic_mode = (type_upper.find("DNA") != std::string::npos ||
-                       type_upper.find("RNA") != std::string::npos);
+  ChemComp::Group group = cc.group != ChemComp::Group::Null
+                        ? cc.group : ChemComp::read_group(cc.type_or_group);
+  bool peptide_mode = ChemComp::is_peptide_group(group);
+  bool nucleic_mode = ChemComp::is_nucleotide_group(group);
   bool backbone_like_peptide = confirm_aa_backbone(cc, adj, atom_index);
   if (ace_compat_mode() && peptide_mode && !backbone_like_peptide)
     peptide_mode = false;
@@ -4169,11 +4169,12 @@ void add_chirality_if_missing(
                            sign});
   }
 
-  std::string type = to_upper(cc.type_or_group);
   ChiralityType sign = ChiralityType::Both;
-  if (type.find("L-PEPTIDE") != std::string::npos)
+  ChemComp::Group group = cc.group != ChemComp::Group::Null
+                        ? cc.group : ChemComp::read_group(cc.type_or_group);
+  if (group == ChemComp::Group::Peptide || group == ChemComp::Group::PPeptide)
     sign = ChiralityType::Positive;
-  else if (type.find("D-PEPTIDE") != std::string::npos)
+  else if (group == ChemComp::Group::MPeptide)
     sign = ChiralityType::Negative;
   if (sign == ChiralityType::Both)
     return;
