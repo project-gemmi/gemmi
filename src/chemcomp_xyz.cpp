@@ -1,6 +1,7 @@
 // Copyright 2026 Global Phasing Ltd.
 
 #include "gemmi/chemcomp_xyz.hpp"
+#include "gemmi/calculate.hpp"
 #include "gemmi/math.hpp"
 #include <algorithm>
 #include <cmath>
@@ -181,6 +182,45 @@ void enforce_plane_restraints(ChemComp& cc,
       Vec3 delta = cc.atoms[idx].xyz - centroid;
       cc.atoms[idx].xyz -= Position(normal * delta.dot(normal));
     }
+  }
+}
+
+bool reflect_across_plane(Position& pos, const Position& p1, const Position& p2,
+                          const Position& p3) {
+  Vec3 n = (p2 - p1).cross(p3 - p1);
+  if (n.length_sq() < 1e-8)
+    return false;
+  n = n.normalized();
+  double signed_dist = (pos - p1).dot(n);
+  pos -= Position(2.0 * signed_dist * n);
+  return true;
+}
+
+void enforce_chirality_restraints(ChemComp& cc,
+                                  const std::map<std::string, size_t>& atom_index) {
+  for (const Restraints::Chirality& chir : cc.rt.chirs) {
+    if (chir.sign == ChiralityType::Both)
+      continue;
+    auto ctr_it = atom_index.find(chir.id_ctr.atom);
+    auto a1_it = atom_index.find(chir.id1.atom);
+    auto a2_it = atom_index.find(chir.id2.atom);
+    auto a3_it = atom_index.find(chir.id3.atom);
+    if (ctr_it == atom_index.end() || a1_it == atom_index.end() ||
+        a2_it == atom_index.end() || a3_it == atom_index.end())
+      continue;
+    size_t ctr = ctr_it->second;
+    size_t a1 = a1_it->second;
+    size_t a2 = a2_it->second;
+    size_t a3 = a3_it->second;
+    if (!atom_has_finite_xyz(cc.atoms[ctr]) || !atom_has_finite_xyz(cc.atoms[a1]) ||
+        !atom_has_finite_xyz(cc.atoms[a2]) || !atom_has_finite_xyz(cc.atoms[a3]))
+      continue;
+    double vol = calculate_chiral_volume(cc.atoms[ctr].xyz, cc.atoms[a1].xyz,
+                                         cc.atoms[a2].xyz, cc.atoms[a3].xyz);
+    if (!std::isfinite(vol) || !chir.is_wrong(vol))
+      continue;
+    reflect_across_plane(cc.atoms[a3].xyz, cc.atoms[ctr].xyz,
+                         cc.atoms[a1].xyz, cc.atoms[a2].xyz);
   }
 }
 
@@ -541,6 +581,7 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
 
   spread_terminal_children(cc, adjacency, atom_index);
   enforce_plane_restraints(cc, atom_index);
+  enforce_chirality_restraints(cc, atom_index);
 
   int placed = count_finite();
   cc.has_coordinates = placed > 0;

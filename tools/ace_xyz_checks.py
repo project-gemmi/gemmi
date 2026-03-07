@@ -159,6 +159,71 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
             dist = abs((atom.xyz - atoms[0].xyz).dot(normal))
             self.assertLess(dist, 1e-6)
 
+    def test_generate_chemcomp_xyz_enforces_chirality(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TCHR'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        for atom_id, el, chem_type in [
+            ('CTR', 'C', 'C'),
+            ('A1', 'O', 'O'),
+            ('A2', 'N', 'N'),
+            ('A3', 'C', 'C'),
+            ('H1', 'H', 'H'),
+        ]:
+            atom = gemmi.ChemComp.Atom()
+            atom.id = atom_id
+            atom.el = gemmi.Element(el)
+            atom.chem_type = chem_type
+            cc.atoms.append(atom)
+
+        def atom_id(name):
+            return gemmi.Restraints.AtomId(name)
+
+        def add_bond(a1, a2, value):
+            bond = gemmi.Restraints.Bond()
+            bond.id1 = atom_id(a1)
+            bond.id2 = atom_id(a2)
+            bond.type = gemmi.BondType.Single
+            bond.value = value
+            bond.esd = 0.02
+            cc.rt.bonds.append(bond)
+
+        def add_angle(a1, a2, a3, value):
+            angle = gemmi.Restraints.Angle()
+            angle.id1 = atom_id(a1)
+            angle.id2 = atom_id(a2)
+            angle.id3 = atom_id(a3)
+            angle.value = value
+            angle.esd = 2.0
+            cc.rt.angles.append(angle)
+
+        for other, dist in [('A1', 1.43), ('A2', 1.47), ('A3', 1.53), ('H1', 1.00)]:
+            add_bond('CTR', other, dist)
+        add_angle('A1', 'CTR', 'A2', 109.5)
+        add_angle('A1', 'CTR', 'A3', 109.5)
+        add_angle('A2', 'CTR', 'A3', 109.5)
+        add_angle('A1', 'CTR', 'H1', 109.5)
+        add_angle('A2', 'CTR', 'H1', 109.5)
+        add_angle('A3', 'CTR', 'H1', 109.5)
+
+        chir = gemmi.Restraints.Chirality()
+        chir.id_ctr = atom_id('CTR')
+        chir.id1 = atom_id('A1')
+        chir.id2 = atom_id('A2')
+        chir.id3 = atom_id('A3')
+        chir.sign = gemmi.ChiralityType.Positive
+        cc.rt.chirs.append(chir)
+
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, 5)
+
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        v1 = pos['A1'] - pos['CTR']
+        v2 = pos['A2'] - pos['CTR']
+        v3 = pos['A3'] - pos['CTR']
+        vol = v1.dot(v2.cross(v3))
+        self.assertGreater(vol, 0.0)
+
     def test_drg_only_xyz_on_prepared_file(self):
         gemmi_bin = REPO_ROOT / 'build' / 'gemmi'
         source = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ALA.cif'
