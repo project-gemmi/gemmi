@@ -107,9 +107,9 @@ struct Restraints {
     static const char* what() { return "torsion"; }
     std::string label;
     AtomId id1, id2, id3, id4;
-    double value;
-    double esd;
-    int period;
+    double value = NAN;
+    double esd = 0.0;
+    int period = 0;
     std::string str() const {
       return cat(id1.atom, '-', id2.atom, '-', id3.atom, '-', id4.atom);
     }

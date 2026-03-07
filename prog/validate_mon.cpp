@@ -114,6 +114,8 @@ void print_outliers(const Topo& topo, const std::string& name, double z_score) {
   for (const Topo::Torsion& t : topo.torsions) {
     if (!check_esd(name, t.restr))
       continue;
+    if (t.restr->esd == 0.0)
+      continue;
     double value = gemmi::deg(t.calculate());
     double full = 360. / std::max(1, t.restr->period);
     if (gemmi::angle_abs_diff(value, t.restr->value, full) > z_score * t.restr->esd)
@@ -308,8 +310,8 @@ void check_monomer(const cif::Block& block, double z_score) {
   check_bond_angle_consistency(cc);
   check_repeated_atoms_in_restraints(cc);
   if (z_score != +INFINITY) {
-    // check consistency of _chem_comp_atom.x/y/z with restraints
-    gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block, gemmi::ChemCompModel::Xyz);
+    // check consistency of the first available chemcomp coordinate model with restraints
+    gemmi::Residue res = gemmi::make_residue_from_chemcomp_block(block, gemmi::ChemCompModel::First);
     Topo topo;
     topo.apply_restraints(cc.rt, res, nullptr, gemmi::Asu::Same, '\0', '\0', false);
     print_outliers(topo, cc.name, z_score);

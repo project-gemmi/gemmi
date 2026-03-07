@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include "chemcomp.hpp"  // for ChemComp
+#include "chemcomp_xyz.hpp"
 
 namespace gemmi {
 

@@ -359,4 +359,9 @@ static void add_acedrg_tables(nb::module_& m) {
         nb::arg("chemcomp"), nb::arg("tables"), nb::arg("options"),
         "Run the full restraint-generation pipeline using explicit options.\n"
         "This can override strict/compat/trace behavior without relying on env vars.");
+  m.def("generate_chemcomp_xyz_from_restraints",
+        &generate_chemcomp_xyz_from_restraints,
+        nb::arg("chemcomp"),
+        "Generate a deterministic idealized conformer from ChemComp bond/angle/torsion restraints.\n"
+        "Returns the number of atoms assigned finite coordinates.");
 }

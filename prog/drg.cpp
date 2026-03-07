@@ -23,7 +23,7 @@ using namespace gemmi;
 namespace {
 
 enum OptionIndex {
-  Tables=4, Sigma, Timing, CifStyle, OutputDir, NoAngles, CoordModel
+  Tables=4, Sigma, Timing, CifStyle, OutputDir, NoAngles, CoordModel, OnlyXyz
 };
 
 const option::Descriptor Usage[] = {
@@ -55,6 +55,8 @@ const option::Descriptor Usage[] = {
   { CoordModel, 0, "", "coord-model", Arg::Required,
     "  --coord-model=KIND  \tCoordinates to use from _chem_comp_atom:"
     "\n\t\txyz | example | ideal | first | auto (default: auto)." },
+  { OnlyXyz, 0, "", "only-xyz", Arg::None,
+    "  --only-xyz  \tDo not fill restraints; only generate/update ideal coordinates." },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -94,6 +96,50 @@ bool apply_coord_model(const cif::Block& block, ChemComp& cc, ChemCompModel kind
     }
   }
   return updated > 0;
+}
+
+void add_chemcomp_atom_to_block_with_ideal_coords(const ChemComp& cc,
+                                                  cif::Block& block,
+                                                  const std::vector<std::string>& acedrg_types) {
+  block.find_mmcif_category("_chem_comp_atom.").erase();
+  std::vector<std::string> tags =
+      {"comp_id", "atom_id", "type_symbol", "type_energy", "charge"};
+  bool use_external_types = !acedrg_types.empty() && acedrg_types.size() == cc.atoms.size();
+  bool has_stored_types = false;
+  if (!use_external_types) {
+    for (const ChemComp::Atom& a : cc.atoms)
+      if (!a.acedrg_type.empty()) {
+        has_stored_types = true;
+        break;
+      }
+  }
+  bool has_acedrg_type = use_external_types || has_stored_types;
+  if (has_acedrg_type)
+    tags.push_back("atom_type");
+  tags.push_back("pdbx_model_Cartn_x_ideal");
+  tags.push_back("pdbx_model_Cartn_y_ideal");
+  tags.push_back("pdbx_model_Cartn_z_ideal");
+  cif::Table tab = block.find_or_add("_chem_comp_atom.", tags);
+  tab.ensure_loop();
+  size_t pos = tab.length();
+  cif::Loop& loop = tab.loop_item->loop;
+  loop.values.resize(loop.values.size() + loop.width() * cc.atoms.size(), ".");
+  size_t idx = 0;
+  for (const ChemComp::Atom& a : cc.atoms) {
+    cif::Table::Row row = tab[pos++];
+    size_t col = 0;
+    row[col++] = cc.name;
+    row[col++] = a.id;
+    row[col++] = a.el.name();
+    row[col++] = cif::quote(a.chem_type);
+    row[col++] = std::to_string(iround(a.charge));
+    if (has_acedrg_type)
+      row[col++] = use_external_types ? acedrg_types[idx] : a.acedrg_type;
+    row[col++] = to_str(a.xyz.x);
+    row[col++] = to_str(a.xyz.y);
+    row[col++] = to_str(a.xyz.z);
+    ++idx;
+  }
 }
 
 std::string derive_companion_mol0_path(const std::string& input,
@@ -345,6 +391,7 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   int verbose = p.options[Verbose].count();
   bool no_angles = p.options[NoAngles];
+  bool only_xyz = p.options[OnlyXyz];
   CoordModelChoice coord_choice = CoordModelChoice::Auto;
   if (p.options[CoordModel]) {
     std::string kind = p.options[CoordModel].arg;
@@ -367,41 +414,44 @@ int GEMMI_MAIN(int argc, char **argv) {
 
   // Get tables directory
   std::string tables_dir;
-  if (p.options[Tables]) {
-    tables_dir = p.options[Tables].arg;
-  } else {
-    // Try ACEDRG_TABLES environment variable
-    const char* env = std::getenv("ACEDRG_TABLES");
-    if (env) {
-      tables_dir = env;
+  if (!only_xyz) {
+    if (p.options[Tables]) {
+      tables_dir = p.options[Tables].arg;
     } else {
-      // Fallback to $CCP4/share/acedrg/tables
-      const char* ccp4 = std::getenv("CCP4");
-      if (ccp4)
-        tables_dir = std::string(ccp4) + "/share/acedrg/tables";
+      // Try ACEDRG_TABLES environment variable
+      const char* env = std::getenv("ACEDRG_TABLES");
+      if (env) {
+        tables_dir = env;
+      } else {
+        // Fallback to $CCP4/share/acedrg/tables
+        const char* ccp4 = std::getenv("CCP4");
+        if (ccp4)
+          tables_dir = std::string(ccp4) + "/share/acedrg/tables";
+      }
     }
-  }
 
-  if (tables_dir.empty()) {
-    std::fprintf(stderr, "ERROR: No tables directory specified.\n"
-                         "Use --tables=DIR or set ACEDRG_TABLES or CCP4 environment variable.\n");
-    return 1;
+    if (tables_dir.empty()) {
+      std::fprintf(stderr, "ERROR: No tables directory specified.\n"
+                           "Use --tables=DIR or set ACEDRG_TABLES or CCP4 environment variable.\n");
+      return 1;
+    }
   }
 
   Timer timer(p.options[Timing]);
 
   try {
-    // Load tables
-    if (verbose)
-      std::fprintf(stderr, "Loading tables from %s ...\n", tables_dir.c_str());
-    timer.start();
     AcedrgTables tables;
-    tables.verbose = verbose;
-    tables.load_tables(tables_dir, no_angles);
-    timer.print("Tables loaded in");
+    if (!only_xyz) {
+      if (verbose)
+        std::fprintf(stderr, "Loading tables from %s ...\n", tables_dir.c_str());
+      timer.start();
+      tables.verbose = verbose;
+      tables.load_tables(tables_dir, no_angles);
+      timer.print("Tables loaded in");
 
-    if (p.options[Sigma])
-      tables.lower_bond_sigma = std::strtod(p.options[Sigma].arg, nullptr);
+      if (p.options[Sigma])
+        tables.lower_bond_sigma = std::strtod(p.options[Sigma].arg, nullptr);
+    }
 
     // Build list of (input, output) pairs
     std::vector<std::pair<std::string, std::string>> files;
@@ -478,51 +528,69 @@ int GEMMI_MAIN(int argc, char **argv) {
           }
         }
 
-        // Count missing values before processing
+        int filled_bonds = 0;
         int missing_bonds = 0;
-        for (const auto& b : cc.rt.bonds)
-          if (std::isnan(b.value)) missing_bonds++;
+        int filled_angles = 0;
         int missing_angles = 0;
-        if (!no_angles)
-          for (const auto& a : cc.rt.angles)
-            if (std::isnan(a.value)) missing_angles++;
+        if (!only_xyz) {
+          for (const auto& b : cc.rt.bonds)
+            if (std::isnan(b.value)) missing_bonds++;
+          if (!no_angles)
+            for (const auto& a : cc.rt.angles)
+              if (std::isnan(a.value)) missing_angles++;
 
-        timer.start();
-        std::map<std::string, Position> sugar_coord_overrides =
-            load_companion_mol0_coords(input, cc.name);
-        if (verbose && !sugar_coord_overrides.empty())
-          std::fprintf(stderr, "Using companion mol_0 coords for %s (%zu atoms)\n",
-                       cc.name.c_str(), sugar_coord_overrides.size());
-        prepare_chemcomp(cc, tables, atom_stereo, no_angles,
-                         sugar_coord_overrides.empty() ? nullptr : &sugar_coord_overrides);
-        timer.print("Restraints filled in");
+          timer.start();
+          std::map<std::string, Position> sugar_coord_overrides =
+              load_companion_mol0_coords(input, cc.name);
+          if (verbose && !sugar_coord_overrides.empty())
+            std::fprintf(stderr, "Using companion mol_0 coords for %s (%zu atoms)\n",
+                         cc.name.c_str(), sugar_coord_overrides.size());
+          prepare_chemcomp(cc, tables, atom_stereo, no_angles,
+                           sugar_coord_overrides.empty() ? nullptr : &sugar_coord_overrides);
+          timer.print("Restraints filled in");
 
-        // Count filled values
-        int remaining_bonds = 0;
-        for (const auto& b : cc.rt.bonds)
-          if (std::isnan(b.value)) remaining_bonds++;
-        int remaining_angles = 0;
-        if (!no_angles)
-          for (const auto& a : cc.rt.angles)
-            if (std::isnan(a.value)) remaining_angles++;
+          int remaining_bonds = 0;
+          for (const auto& b : cc.rt.bonds)
+            if (std::isnan(b.value)) remaining_bonds++;
+          int remaining_angles = 0;
+          if (!no_angles)
+            for (const auto& a : cc.rt.angles)
+              if (std::isnan(a.value)) remaining_angles++;
 
-        int filled_bonds = missing_bonds - remaining_bonds;
-        int filled_angles = missing_angles - remaining_angles;
+          filled_bonds = missing_bonds - remaining_bonds;
+          filled_angles = missing_angles - remaining_angles;
+        }
 
-        if (verbose)
-          std::fprintf(stderr, "  Filled %d/%d bonds, %d/%d angles.\n",
-                       filled_bonds, missing_bonds, filled_angles, missing_angles);
+        if (only_xyz) {
+          cc.has_coordinates = false;
+          for (ChemComp::Atom& atom : cc.atoms)
+            atom.xyz = Position(NAN, NAN, NAN);
+        }
+        int placed_atoms = generate_chemcomp_xyz_from_restraints(cc);
+        cc.has_coordinates = placed_atoms > 0;
+
+        if (verbose) {
+          if (only_xyz)
+            std::fprintf(stderr, "  Generated ideal coordinates for %d atoms.\n", placed_atoms);
+          else
+            std::fprintf(stderr, "  Filled %d/%d bonds, %d/%d angles.\n",
+                         filled_bonds, missing_bonds, filled_angles, missing_angles);
+        }
         filled_count += filled_bonds + filled_angles;
 
-        // Compute acedrg_types on the processed form.
-        std::vector<std::string> acedrg_types = tables.compute_acedrg_types(cc);
+        // Compute acedrg_types on the processed form when tables are available.
+        std::vector<std::string> acedrg_types;
+        if (!only_xyz)
+          acedrg_types = tables.compute_acedrg_types(cc);
 
         // Update the block with new values
-        add_chemcomp_to_block(cc, block, acedrg_types, no_angles);
+        if (!only_xyz)
+          add_chemcomp_to_block(cc, block, acedrg_types, no_angles);
+        add_chemcomp_atom_to_block_with_ideal_coords(cc, block, acedrg_types);
 
-        // Replace AceDRG's extra descriptor loop with standard mmCIF software info.
-        block.find_mmcif_category("_acedrg_chem_comp_descriptor.").erase();
-        {
+        if (!only_xyz) {
+          // Replace AceDRG's extra descriptor loop with standard mmCIF software info.
+          block.find_mmcif_category("_acedrg_chem_comp_descriptor.").erase();
           cif::Table tab = block.find_or_add("_software.",
                                              {"name", "version", "type", "description"});
           tab.ensure_loop();

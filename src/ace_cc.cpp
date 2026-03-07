@@ -2884,6 +2884,7 @@ std::vector<Restraints::Torsion> set_peptide_torsions_like_acedrg(
   for (size_t i = 0; i < hh_tors.size(); ++i) {
     Restraints::Torsion tor = hh_tors[i];
     tor.label = cat(tor.label, i + 1);
+    tor.esd = 0.0;
     map_id_ser[torsion_id(tor)] = mini_torsions.size();
     done_bonds.push_back(bond_id(tor));
     mini_torsions.push_back(std::move(tor));
@@ -4464,7 +4465,7 @@ void harmonize_group_with_type(ChemComp& cc) {
     cc.group = ChemComp::read_group(cc.type_or_group);
 }
 
-}  // namespace
+}
 
 void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                       const PrepareChemcompOptions& options) {
