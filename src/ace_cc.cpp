@@ -4401,12 +4401,55 @@ bool has_missing_restraint_values(const ChemComp& cc, bool no_angles) {
   return missing_bonds > 0 || missing_angles > 0;
 }
 
+void harmonize_group_with_type(ChemComp& cc) {
+  if (cc.group != ChemComp::Group::Null)
+    return;
+  if (!cc.type_or_group.empty()) {
+    ChemComp::Group parsed = ChemComp::read_group(cc.type_or_group);
+    if (parsed != ChemComp::Group::Null) {
+      cc.group = parsed;
+      return;
+    }
+    std::string type = to_upper(cc.type_or_group);
+    if (type.find("PEPTIDE") != std::string::npos) {
+      if (type.find("D-PEPTIDE") != std::string::npos ||
+          type.find("M-PEPTIDE") != std::string::npos)
+        cc.group = ChemComp::Group::MPeptide;
+      else if (type.find("P-PEPTIDE") != std::string::npos)
+        cc.group = ChemComp::Group::PPeptide;
+      else
+        cc.group = ChemComp::Group::Peptide;
+      return;
+    }
+    if (type.find("DNA") != std::string::npos && type.find("RNA") != std::string::npos) {
+      cc.group = ChemComp::Group::DnaRna;
+      return;
+    }
+    if (type.find("DNA") != std::string::npos) {
+      cc.group = ChemComp::Group::Dna;
+      return;
+    }
+    if (type.find("RNA") != std::string::npos) {
+      cc.group = ChemComp::Group::Rna;
+      return;
+    }
+    if (type.find("NON-POLYMER") != std::string::npos) {
+      cc.group = ChemComp::Group::NonPolymer;
+      return;
+    }
+  }
+  const ResidueInfo& ri = find_tabulated_residue(cc.name);
+  if (ri.kind == ResidueKind::AA)
+    cc.group = ChemComp::Group::Peptide;
+}
+
 }  // namespace
 
 void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
                       const std::map<std::string, std::string>& atom_stereo,
                       bool no_angles,
                       const std::map<std::string, Position>* sugar_coord_overrides) {
+  harmonize_group_with_type(cc);
   AceRuleStats phase0 = collect_rule_stats(cc);
   bool has_cb_seed = false;
   if (maybe_apply_carborane_mode(cc, tables, no_angles, has_cb_seed))

@@ -17,10 +17,15 @@ Items completed in Gemmi:
 5. Made pyranose chair enforcement conditional on coordinate completeness.  
    With complete coordinates, coordinate-driven torsions are kept.
 
+6. Added explicit compatibility mode switch.  
+   `GEMMI_ACE_COMPAT=1` now enables the AceDRG-like peptide gate, torsion candidate
+   selector, and pyranose-chair behavior; default mode stays chemistry-first.
+
+7. Harmonized output group inference with type metadata.  
+   When `cc.group` is missing, infer it from `type_or_group` (and residue-class fallback)
+   to keep group labeling consistent with torsion mode intent.
+
 Remaining candidates:
 
-1. Revisit output group labeling policy vs torsion mode policy.  
-   Ensure `_chem_comp.group` and torsion-mode decisions remain chemically consistent.
-
-2. Split explicit "compatibility mode" from default chemistry-first mode.  
-   Keep strict AceDRG-emulation behavior behind a dedicated switch where still needed.
+1. Review whether any other `*_like_acedrg` branches should be compat-only.  
+   Keep default behavior chemistry-driven unless strict emulation is requested.
