@@ -279,16 +279,11 @@ std::vector<std::vector<size_t>> detect_small_cycles(const std::vector<std::vect
   return cycles;
 }
 
-bool seed_cycle_coordinates(ChemComp& cc, const std::vector<std::vector<size_t>>& adjacency,
-                            const std::vector<size_t>& cycle, double x_shift) {
-  if (cycle.size() < 5 || cycle.size() > 6)
-    return false;
-  for (size_t idx : cycle)
-    if (atom_has_finite_xyz(cc.atoms[idx]))
-      return false;
-
+bool order_cycle_nodes(const std::vector<std::vector<size_t>>& adjacency,
+                       const std::vector<size_t>& cycle,
+                       std::vector<size_t>& ordered) {
   std::unordered_set<size_t> ring_set(cycle.begin(), cycle.end());
-  std::vector<size_t> ordered;
+  ordered.clear();
   ordered.push_back(*std::min_element(cycle.begin(), cycle.end()));
   while (ordered.size() < cycle.size()) {
     size_t cur = ordered.back();
@@ -305,6 +300,20 @@ bool seed_cycle_coordinates(ChemComp& cc, const std::vector<std::vector<size_t>>
     ordered.push_back(next);
   }
   if (ordered.size() != cycle.size())
+    return false;
+  return true;
+}
+
+bool seed_cycle_coordinates(ChemComp& cc, const std::vector<std::vector<size_t>>& adjacency,
+                            const std::vector<size_t>& cycle, double x_shift) {
+  if (cycle.size() < 5 || cycle.size() > 6)
+    return false;
+  for (size_t idx : cycle)
+    if (atom_has_finite_xyz(cc.atoms[idx]))
+      return false;
+
+  std::vector<size_t> ordered;
+  if (!order_cycle_nodes(adjacency, cycle, ordered))
     return false;
 
   double mean_bond = 0.0;
@@ -328,6 +337,66 @@ bool seed_cycle_coordinates(ChemComp& cc, const std::vector<std::vector<size_t>>
                                         radius * std::sin(angle), 0.0);
   }
   return true;
+}
+
+void regularize_small_cycles(ChemComp& cc,
+                             const std::vector<std::vector<size_t>>& adjacency,
+                             const std::vector<std::vector<size_t>>& small_cycles) {
+  for (const std::vector<size_t>& cycle : small_cycles) {
+    if (cycle.size() < 5 || cycle.size() > 6)
+      continue;
+    std::vector<size_t> ordered;
+    if (!order_cycle_nodes(adjacency, cycle, ordered))
+      continue;
+    std::vector<Position> positions;
+    positions.reserve(ordered.size());
+    for (size_t idx : ordered) {
+      if (!atom_has_finite_xyz(cc.atoms[idx])) {
+        positions.clear();
+        break;
+      }
+      positions.push_back(cc.atoms[idx].xyz);
+    }
+    if (positions.size() != ordered.size())
+      continue;
+
+    Position centroid;
+    Vec3 normal;
+    if (!plane_from_positions(positions, centroid, normal))
+      continue;
+
+    double mean_bond = 0.0;
+    int n_bonds = 0;
+    for (size_t i = 0; i != ordered.size(); ++i) {
+      auto bond = cc.rt.find_bond(cc.atoms[ordered[i]].id,
+                                  cc.atoms[ordered[(i + 1) % ordered.size()]].id);
+      if (bond != cc.rt.bonds.end()) {
+        double value = std::isfinite(bond->value) ? bond->value : bond->value_nucleus;
+        if (std::isfinite(value)) {
+          mean_bond += value;
+          ++n_bonds;
+        }
+      }
+    }
+    if (n_bonds == 0)
+      continue;
+    mean_bond /= n_bonds;
+    double radius = mean_bond / (2.0 * std::sin(pi() / ordered.size()));
+
+    Vec3 u = positions[0] - centroid;
+    u -= u.dot(normal) * normal;
+    if (u.length_sq() < 1e-8)
+      continue;
+    u = u.normalized();
+    Vec3 v = normal.cross(u).normalized();
+
+    double phase = 0.0;
+    for (size_t i = 0; i != ordered.size(); ++i) {
+      double angle = phase + 2.0 * pi() * i / ordered.size();
+      cc.atoms[ordered[i]].xyz = centroid + Position(radius * (std::cos(angle) * u +
+                                                                std::sin(angle) * v));
+    }
+  }
 }
 
 Position position_from_axis_angle(const Position& anchor, const Position& center,
@@ -580,6 +649,7 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   }
 
   spread_terminal_children(cc, adjacency, atom_index);
+  regularize_small_cycles(cc, adjacency, small_cycles);
   enforce_plane_restraints(cc, atom_index);
   enforce_chirality_restraints(cc, atom_index);
 

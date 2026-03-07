@@ -224,6 +224,51 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         vol = v1.dot(v2.cross(v3))
         self.assertGreater(vol, 0.0)
 
+    def test_generate_chemcomp_xyz_regularizes_small_ring(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TRNG'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        for i in range(5):
+            atom = gemmi.ChemComp.Atom()
+            atom.id = f'C{i+1}'
+            atom.el = gemmi.Element('C')
+            atom.chem_type = 'C'
+            cc.atoms.append(atom)
+
+        def atom_id(name):
+            return gemmi.Restraints.AtomId(name)
+
+        def add_bond(a1, a2, value):
+            bond = gemmi.Restraints.Bond()
+            bond.id1 = atom_id(a1)
+            bond.id2 = atom_id(a2)
+            bond.type = gemmi.BondType.Single
+            bond.value = value
+            bond.esd = 0.02
+            cc.rt.bonds.append(bond)
+
+        def add_angle(a1, a2, a3, value):
+            angle = gemmi.Restraints.Angle()
+            angle.id1 = atom_id(a1)
+            angle.id2 = atom_id(a2)
+            angle.id3 = atom_id(a3)
+            angle.value = value
+            angle.esd = 2.0
+            cc.rt.angles.append(angle)
+
+        ring = [f'C{i+1}' for i in range(5)]
+        for i in range(5):
+            add_bond(ring[i], ring[(i + 1) % 5], 1.45)
+        for i in range(5):
+            add_angle(ring[i - 1], ring[i], ring[(i + 1) % 5], 108.0)
+
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, 5)
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        for i in range(5):
+            self.assertAlmostEqual(
+                pos[ring[i]].dist(pos[ring[(i + 1) % 5]]), 1.45, places=5)
+
     def test_drg_only_xyz_on_prepared_file(self):
         gemmi_bin = REPO_ROOT / 'build' / 'gemmi'
         source = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ALA.cif'
