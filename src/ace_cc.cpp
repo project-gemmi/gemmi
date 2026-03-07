@@ -42,6 +42,12 @@ bool ace_strict_mode() {
   return false;
 }
 
+bool ace_compat_mode() {
+  if (const char* env = std::getenv("GEMMI_ACE_COMPAT"))
+    return env[0] != '\0' && env[0] != '0';
+  return false;
+}
+
 bool ace_trace_mode() {
   if (const char* env = std::getenv("GEMMI_ACE_TRACE"))
     return env[0] != '\0' && env[0] != '0';
@@ -2634,6 +2640,82 @@ void emit_one_torsion(
     cc.rt.torsions.push_back(std::move(tor));
 }
 
+bool confirm_aa_backbone(const ChemComp& cc,
+                         const AceBondAdjacency& adj,
+                         const std::map<std::string, size_t>& atom_index) {
+  auto find = [&](const std::string& name) -> size_t {
+    auto it = atom_index.find(name);
+    return it != atom_index.end() ? it->second : SIZE_MAX;
+  };
+  size_t i_n = find("N"), i_ca = find("CA"), i_c = find("C"),
+         i_o = find("O"), i_oxt = find("OXT");
+  if (i_n == SIZE_MAX || i_ca == SIZE_MAX || i_c == SIZE_MAX ||
+      i_o == SIZE_MAX || i_oxt == SIZE_MAX)
+    return false;
+  if (cc.atoms[i_n].el != El::N || cc.atoms[i_ca].el != El::C ||
+      cc.atoms[i_c].el != El::C || cc.atoms[i_o].el != El::O ||
+      cc.atoms[i_oxt].el != El::O)
+    return false;
+  if (adj[i_ca].size() != 4)
+    return false;
+  bool ca_has_n = false, ca_has_c = false;
+  int ca_h_count = 0;
+  bool ca_has_ha = false;
+  for (const auto& nb : adj[i_ca]) {
+    if (nb.idx == i_n) ca_has_n = true;
+    else if (nb.idx == i_c) ca_has_c = true;
+    if (cc.atoms[nb.idx].is_hydrogen()) {
+      ca_h_count++;
+      if (cc.atoms[nb.idx].id == "HA")
+        ca_has_ha = true;
+    }
+  }
+  if (!ca_has_n || !ca_has_c || ca_h_count != 1 || !ca_has_ha)
+    return false;
+  if (adj[i_c].size() != 3)
+    return false;
+  bool c_has_o = false, c_has_oxt = false;
+  for (const auto& nb : adj[i_c]) {
+    if (nb.idx == i_o) c_has_o = true;
+    else if (nb.idx == i_oxt) c_has_oxt = true;
+  }
+  if (!c_has_o || !c_has_oxt)
+    return false;
+  size_t n_bonds = adj[i_n].size();
+  if (n_bonds < 3 || n_bonds > 4)
+    return false;
+  std::vector<std::string> n_h_names;
+  for (const auto& nb : adj[i_n])
+    if (cc.atoms[nb.idx].is_hydrogen())
+      n_h_names.push_back(cc.atoms[nb.idx].id);
+  if (n_bonds == 3) {
+    if (n_h_names.empty() || n_h_names.size() > 3)
+      return false;
+    bool has_h2 = std::find(n_h_names.begin(), n_h_names.end(), "H2") != n_h_names.end();
+    if (!has_h2)
+      return false;
+    if (n_h_names.size() == 1) {
+      if (n_h_names[0] != "H2")
+        return false;
+    } else {
+      bool has_h = std::find(n_h_names.begin(), n_h_names.end(), "H") != n_h_names.end();
+      if (!has_h || !has_h2)
+        return false;
+    }
+  } else {
+    if (n_h_names.size() != 3)
+      return false;
+    bool has_h = std::find(n_h_names.begin(), n_h_names.end(), "H") != n_h_names.end();
+    bool has_h2 = std::find(n_h_names.begin(), n_h_names.end(), "H2") != n_h_names.end();
+    if (!has_h || !has_h2)
+      return false;
+    bool has_h3 = std::find(n_h_names.begin(), n_h_names.end(), "H3") != n_h_names.end();
+    if (!has_h3)
+      return false;
+  }
+  return true;
+}
+
 void apply_peptide_tmpchi2_override(
     Restraints::Torsion& tor,
     const std::map<std::string, size_t>& atom_index,
@@ -2835,18 +2917,114 @@ std::vector<Restraints::Torsion> set_peptide_torsions_like_acedrg(
   return mini_torsions;
 }
 
-const Restraints::Torsion* select_one_torsion_from_candidates(
+const Restraints::Torsion* select_one_torsion_from_candidates_compat(
     const ChemComp& cc, const AceBondAdjacency& adj,
     const std::vector<CodAtomInfo>& atom_info,
     size_t center2, size_t center3,
     const std::vector<Restraints::Torsion>& candidates,
-    bool* used_path1 = nullptr) {
-  bool dbg_sel = false;
-  dbg_sel = dbg_env_matches("GEMMI_DBG_SEL", cc.name);
-  if (dbg_sel) {
-    std::fprintf(stderr, "[tor-sel %s] bond %s-%s cand=%zu\n", cc.name.c_str(),
-                 cc.atoms[center2].id.c_str(), cc.atoms[center3].id.c_str(), candidates.size());
+    bool* used_path1) {
+  if (used_path1)
+    *used_path1 = false;
+  if (candidates.empty())
+    return nullptr;
+  std::vector<size_t> idxR1, idxNonH1, idxH1, idxR2, idxNonH2, idxH2;
+  for (const auto& nb : adj[center2]) {
+    if (nb.idx == center3 || cc.atoms[nb.idx].el.is_metal())
+      continue;
+    if (!atom_info[nb.idx].in_rings.empty())
+      idxR1.push_back(nb.idx);
+    else if (!cc.atoms[nb.idx].is_hydrogen())
+      idxNonH1.push_back(nb.idx);
+    else
+      idxH1.push_back(nb.idx);
   }
+  for (const auto& nb : adj[center3]) {
+    if (nb.idx == center2 || cc.atoms[nb.idx].el.is_metal())
+      continue;
+    if (!atom_info[nb.idx].in_rings.empty())
+      idxR2.push_back(nb.idx);
+    else if (!cc.atoms[nb.idx].is_hydrogen())
+      idxNonH2.push_back(nb.idx);
+    else
+      idxH2.push_back(nb.idx);
+  }
+  const std::string& a2 = cc.atoms[center2].id;
+  const std::string& a3 = cc.atoms[center3].id;
+  auto pick = [&](size_t a1, size_t a4) -> const Restraints::Torsion* {
+    for (const auto& t : candidates) {
+      if ((t.id1.atom == cc.atoms[a1].id && t.id2.atom == a2 &&
+           t.id3.atom == a3 && t.id4.atom == cc.atoms[a4].id) ||
+          (t.id1.atom == cc.atoms[a4].id && t.id2.atom == a3 &&
+           t.id3.atom == a2 && t.id4.atom == cc.atoms[a1].id)) {
+        if (t.id1.atom != t.id4.atom)
+          return &t;
+      }
+    }
+    return nullptr;
+  };
+  if (!idxNonH1.empty() && !idxNonH2.empty()) {
+    if (used_path1)
+      *used_path1 = true;
+    return pick(idxNonH1[0], idxNonH2[0]);
+  }
+  if (!idxNonH1.empty() && idxNonH2.empty()) {
+    if (!idxR2.empty())
+      if (auto t = pick(idxNonH1[0], idxR2[0])) return t;
+    if (!idxH2.empty())
+      if (auto t = pick(idxNonH1[0], idxH2[0])) return t;
+    return nullptr;
+  }
+  if (idxNonH1.empty() && !idxNonH2.empty()) {
+    if (!idxR1.empty())
+      if (auto t = pick(idxR1[0], idxNonH2[0])) return t;
+    if (!idxH1.empty())
+      if (auto t = pick(idxH1[0], idxNonH2[0])) return t;
+    return nullptr;
+  }
+  if (!idxR1.empty() && !idxR2.empty()) {
+    if (auto t = pick(idxR1[0], idxR2[0])) return t;
+    return nullptr;
+  }
+  if (!idxR1.empty() && idxR2.empty()) {
+    if (!idxH2.empty())
+      if (auto t = pick(idxR1[0], idxH2[0])) return t;
+    return nullptr;
+  }
+  if (idxR1.empty() && !idxR2.empty()) {
+    if (!idxH1.empty())
+      if (auto t = pick(idxH1[0], idxR2[0])) return t;
+    return nullptr;
+  }
+  if (!idxH1.empty() && !idxH2.empty()) {
+    if (auto t = pick(idxH1[0], idxH2[0])) return t;
+    return nullptr;
+  }
+  if (adj[center2].size() > 1 && adj[center3].size() > 1) {
+    size_t c1 = SIZE_MAX, c2 = SIZE_MAX;
+    for (const auto& nb : adj[center2]) {
+      if (nb.idx != center3) {
+        c1 = nb.idx;
+        break;
+      }
+    }
+    for (const auto& nb : adj[center3]) {
+      if (nb.idx != center2) {
+        c2 = nb.idx;
+        break;
+      }
+    }
+    if (c1 != SIZE_MAX && c2 != SIZE_MAX)
+      return pick(c1, c2);
+  }
+  return nullptr;
+}
+
+const Restraints::Torsion* select_one_torsion_from_candidates_scored(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    size_t center2, size_t center3,
+    const std::vector<Restraints::Torsion>& candidates,
+    bool* used_path1) {
   if (used_path1)
     *used_path1 = false;
   if (candidates.empty())
@@ -2906,10 +3084,32 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
       best_key = std::move(key);
     }
   }
+  return best;
+}
+
+const Restraints::Torsion* select_one_torsion_from_candidates(
+    const ChemComp& cc, const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atom_info,
+    size_t center2, size_t center3,
+    const std::vector<Restraints::Torsion>& candidates,
+    bool* used_path1 = nullptr) {
+  bool dbg_sel = dbg_env_matches("GEMMI_DBG_SEL", cc.name);
+  if (dbg_sel) {
+    std::fprintf(stderr, "[tor-sel %s] bond %s-%s cand=%zu mode=%s\n",
+                 cc.name.c_str(),
+                 cc.atoms[center2].id.c_str(), cc.atoms[center3].id.c_str(),
+                 candidates.size(),
+                 ace_compat_mode() ? "compat" : "scored");
+  }
+  const Restraints::Torsion* best = ace_compat_mode()
+      ? select_one_torsion_from_candidates_compat(cc, adj, atom_info, center2, center3,
+                                                  candidates, used_path1)
+      : select_one_torsion_from_candidates_scored(cc, adj, atom_info, center2, center3,
+                                                  candidates, used_path1);
   if (dbg_sel && best)
-    std::fprintf(stderr, "    -> pick %s-%s-%s-%s score=%d\n",
+    std::fprintf(stderr, "    -> pick %s-%s-%s-%s\n",
                  best->id1.atom.c_str(), best->id2.atom.c_str(),
-                 best->id3.atom.c_str(), best->id4.atom.c_str(), best_score);
+                 best->id3.atom.c_str(), best->id4.atom.c_str());
   return best;
 }
 
@@ -2929,6 +3129,8 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   bool peptide_mode = type_upper.find("PEPTIDE") != std::string::npos;
   bool nucleic_mode = (type_upper.find("DNA") != std::string::npos ||
                        type_upper.find("RNA") != std::string::npos);
+  if (ace_compat_mode() && peptide_mode && !confirm_aa_backbone(cc, adj, atom_index))
+    peptide_mode = false;
   const ResidueInfo& ri = find_tabulated_residue(cc.name);
   bool standard_aa = ri.is_standard() && ri.kind == ResidueKind::AA;
   bool use_peptide_torsions = standard_aa || peptide_mode;
@@ -3105,15 +3307,15 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         cc, adj, tables, atom_index, atom_info, peptide_all_torsions);
   }
 
-  // Apply chair defaults only when coordinates are incomplete.
-  // With complete coordinates we keep coordinate-driven torsion targets.
-  bool have_complete_coords = true;
-  for (const auto& atom : cc.atoms)
-    if (!std::isfinite(atom.xyz.x) || !std::isfinite(atom.xyz.y) || !std::isfinite(atom.xyz.z)) {
-      have_complete_coords = false;
-      break;
-    }
-  if (!have_complete_coords)
+  bool apply_pyranose_chair = ace_compat_mode();
+  if (!apply_pyranose_chair) {
+    for (const auto& atom : cc.atoms)
+      if (!std::isfinite(atom.xyz.x) || !std::isfinite(atom.xyz.y) || !std::isfinite(atom.xyz.z)) {
+        apply_pyranose_chair = true;
+        break;
+      }
+  }
+  if (apply_pyranose_chair)
     apply_pyranose_chair_torsions_like_acedrg(cc, adj, atom_info);
 
   if (has_sugar_ring) {
