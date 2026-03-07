@@ -10,7 +10,6 @@
 #include "gemmi/cc_adj.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/fail.hpp"
-#include "gemmi/resinfo.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cctype>
@@ -3129,11 +3128,10 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   bool peptide_mode = type_upper.find("PEPTIDE") != std::string::npos;
   bool nucleic_mode = (type_upper.find("DNA") != std::string::npos ||
                        type_upper.find("RNA") != std::string::npos);
-  if (ace_compat_mode() && peptide_mode && !confirm_aa_backbone(cc, adj, atom_index))
+  bool backbone_like_peptide = confirm_aa_backbone(cc, adj, atom_index);
+  if (ace_compat_mode() && peptide_mode && !backbone_like_peptide)
     peptide_mode = false;
-  const ResidueInfo& ri = find_tabulated_residue(cc.name);
-  bool amino_acid_like = ri.is_amino_acid();
-  bool use_peptide_torsions = amino_acid_like || peptide_mode;
+  bool use_peptide_torsions = peptide_mode || backbone_like_peptide;
   std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
 
   // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
@@ -4438,9 +4436,6 @@ void harmonize_group_with_type(ChemComp& cc) {
       return;
     }
   }
-  const ResidueInfo& ri = find_tabulated_residue(cc.name);
-  if (ri.kind == ResidueKind::AA)
-    cc.group = ChemComp::Group::Peptide;
 }
 
 }  // namespace
