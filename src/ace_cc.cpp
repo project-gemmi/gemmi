@@ -3112,54 +3112,135 @@ const Restraints::Torsion* select_one_torsion_from_candidates(
   return best;
 }
 
-void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
-                                        const std::vector<CodAtomInfo>& atom_info,
-                                        const std::map<std::string, std::string>& atom_stereo,
-                                        const AceGraphView& graph,
-                                        const std::map<std::string, Position>* sugar_coord_overrides) {
-  if (std::getenv("GEMMI_DBG_SEL"))
-    std::fprintf(stderr, "[tor-start %s] existing=%zu\n", cc.name.c_str(), cc.rt.torsions.size());
-  if (!cc.rt.torsions.empty())
+struct TorsionModeFlags {
+  bool peptide_mode = false;
+  bool nucleic_mode = false;
+  bool backbone_like_peptide = false;
+  bool use_peptide_torsions = false;
+};
+
+TorsionModeFlags determine_torsion_modes(const ChemComp& cc,
+                                         const AceBondAdjacency& adj,
+                                         const std::map<std::string, size_t>& atom_index) {
+  TorsionModeFlags flags;
+  flags.peptide_mode = ChemComp::is_peptide_group(cc.group);
+  flags.nucleic_mode = ChemComp::is_nucleotide_group(cc.group);
+  flags.backbone_like_peptide = confirm_aa_backbone(cc, adj, atom_index);
+  if (ace_compat_mode() && flags.peptide_mode && !flags.backbone_like_peptide)
+    flags.peptide_mode = false;
+  flags.use_peptide_torsions = flags.peptide_mode || flags.backbone_like_peptide;
+  return flags;
+}
+
+bool should_apply_pyranose_chair(const ChemComp& cc) {
+  if (ace_compat_mode())
+    return true;
+  for (const auto& atom : cc.atoms)
+    if (!std::isfinite(atom.xyz.x) || !std::isfinite(atom.xyz.y) || !std::isfinite(atom.xyz.z))
+      return true;
+  return false;
+}
+
+void apply_sugar_ring_nu_torsions(
+    ChemComp& cc,
+    const std::map<std::string, size_t>& atom_index,
+    const std::map<int, std::vector<size_t>>& sugar_ring_seq,
+    const std::map<std::string, Position>* sugar_coord_overrides) {
+  std::vector<Restraints::Torsion> nu_torsions;
+  std::set<std::pair<size_t, size_t>> selected_bonds;
+  auto sugar_pos = [&](size_t idx) -> Position {
+    if (sugar_coord_overrides) {
+      auto it = sugar_coord_overrides->find(cc.atoms[idx].id);
+      if (it != sugar_coord_overrides->end())
+        return it->second;
+    }
+    return cc.atoms[idx].xyz;
+  };
+  for (const auto& kv : sugar_ring_seq) {
+    const std::vector<size_t>& seq = kv.second;
+    size_t n = seq.size();
+    if (n != 5 && n != 6)
+      continue;
+    for (size_t i = 0; i < n; ++i) {
+      size_t a = seq[(i + n - 1) % n];
+      size_t b = seq[i];
+      size_t c = seq[(i + 1) % n];
+      size_t d = seq[(i + 2) % n];
+      selected_bonds.insert(std::minmax(b, c));
+      Position pa = sugar_pos(a);
+      Position pb = sugar_pos(b);
+      Position pc = sugar_pos(c);
+      Position pd = sugar_pos(d);
+      double dih = deg(calculate_dihedral(pa, pb, pc, pd));
+      if (!std::isfinite(dih))
+        continue;
+      Restraints::Torsion nu{
+          "auto",
+          {1, cc.atoms[a].id},
+          {1, cc.atoms[b].id},
+          {1, cc.atoms[c].id},
+          {1, cc.atoms[d].id},
+          dih, 10.0, 3};
+      nu_torsions.push_back(std::move(nu));
+    }
+  }
+
+  vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& tor) {
+    auto itb = atom_index.find(tor.id2.atom);
+    auto itc = atom_index.find(tor.id3.atom);
+    size_t b = itb != atom_index.end() ? itb->second : SIZE_MAX;
+    size_t c = itc != atom_index.end() ? itc->second : SIZE_MAX;
+    if (b == SIZE_MAX || c == SIZE_MAX)
+      return false;
+    auto bkey = std::minmax(b, c);
+    return selected_bonds.count(bkey) != 0;
+  });
+  cc.rt.torsions.insert(cc.rt.torsions.end(), nu_torsions.begin(), nu_torsions.end());
+}
+
+void apply_nucleic_torsion_overrides(ChemComp& cc, const AcedrgTables& tables) {
+  if (cc.rt.torsions.empty())
     return;
+  std::vector<Restraints::Torsion> replaced;
+  replaced.reserve(cc.rt.torsions.size());
+  std::unordered_set<std::string> seen_keys;
+  for (const auto& tor : cc.rt.torsions) {
+    std::vector<TorsionEntry> entries;
+    if (tables.lookup_nucl_tors(tor.id1.atom, tor.id2.atom, tor.id3.atom, tor.id4.atom, entries) ||
+        tables.lookup_nucl_tors(tor.id4.atom, tor.id3.atom, tor.id2.atom, tor.id1.atom, entries)) {
+      for (const auto& e : entries) {
+        Restraints::Torsion t = tor;
+        t.label = e.id;
+        t.value = e.value;
+        t.esd = e.sigma;
+        t.period = e.period;
+        std::string key = cat(t.id1.atom, '|', t.id2.atom, '|', t.id3.atom, '|',
+                              t.id4.atom, '|', t.label);
+        if (seen_keys.insert(key).second)
+          replaced.push_back(std::move(t));
+      }
+    } else {
+      std::string key = cat(tor.id1.atom, '|', tor.id2.atom, '|', tor.id3.atom, '|',
+                            tor.id4.atom, '|', tor.label);
+      if (seen_keys.insert(key).second)
+        replaced.push_back(tor);
+    }
+  }
+  cc.rt.torsions.swap(replaced);
+}
 
-  auto& atom_index = graph.atom_index;
-  auto& adj = graph.adjacency;
-  ChemComp::Group group = cc.group;
-  bool peptide_mode = ChemComp::is_peptide_group(group);
-  bool nucleic_mode = ChemComp::is_nucleotide_group(group);
-  bool backbone_like_peptide = confirm_aa_backbone(cc, adj, atom_index);
-  if (ace_compat_mode() && peptide_mode && !backbone_like_peptide)
-    peptide_mode = false;
-  bool use_peptide_torsions = peptide_mode || backbone_like_peptide;
-  std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
-
-  // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
-  std::map<std::pair<size_t, size_t>, RingParity> bond_ring_parity =
-      build_ring_bond_parity(adj, atom_info);
-  std::map<std::pair<size_t, size_t>, RingFlip> bond_ring_flip =
-      build_ring_bond_flip(cc, adj, atom_info);
-
-  // AceDRG has a dedicated sugar-ring mode: ring bonds are represented by
-  // one nu torsion each (from ring geometry), while non-ring bonds keep the
-  // full torsion set.
-  // Match AceDRG checkOneRingSugar()/getRStr() shape gating:
-  // only specific "(OC2)(...)" ring-shape strings are treated as sugar.
-  SugarRingInfo sugar_info = detect_sugar_rings(cc, adj, atom_info);
-  auto& sugar_ring_bonds = sugar_info.ring_bonds;
-  auto& sugar_ring_seq = sugar_info.ring_seq;
-  // AceDRG: isPeptide takes priority over sugar detection (resetSystem2).
-  bool has_sugar_ring = !peptide_mode && !sugar_ring_bonds.empty();
-  if (std::getenv("GEMMI_DBG_SEL"))
-    std::fprintf(stderr, "[tor-start %s] sugar=%d rings=%zu\n", cc.name.c_str(),
-                 has_sugar_ring ? 1 : 0, sugar_ring_bonds.size());
-
-  ChiralCenterInfo chiral_info =
-      detect_chiral_centers_and_mut_table(cc, adj, atom_stereo);
-  auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
-  auto& chir_mut_table = chiral_info.chir_mut_table;
-
-  std::vector<Restraints::Torsion> peptide_all_torsions;
-
+void generate_torsions_from_bonds(
+    ChemComp& cc, const AcedrgTables& tables,
+    const std::vector<CodAtomInfo>& atom_info,
+    const std::map<std::string, size_t>& atom_index,
+    const AceBondAdjacency& adj,
+    const std::vector<bool>& aromatic_like,
+    const std::map<std::pair<size_t, size_t>, RingParity>& bond_ring_parity,
+    const std::map<std::pair<size_t, size_t>, RingFlip>& bond_ring_flip,
+    bool peptide_mode, bool use_peptide_torsions, bool has_sugar_ring,
+    const std::set<size_t>& stereo_chiral_centers,
+    const std::map<size_t, std::map<size_t, std::vector<size_t>>>& chir_mut_table,
+    std::vector<Restraints::Torsion>& peptide_all_torsions) {
   for (const auto& bond : cc.rt.bonds) {
     auto it1 = atom_index.find(bond.id1.atom);
     auto it2 = atom_index.find(bond.id2.atom);
@@ -3248,8 +3329,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
     if (tv1_idx.empty() || tv2_idx.empty())
       continue;
 
-
-
     std::vector<Restraints::Torsion> generated;
     generated.reserve(tv1_idx.size() * tv2_idx.size());
     bool oxy_c2_sp2 = c2_sp2 && is_oxygen_column(cc.atoms[center2].el);
@@ -3298,106 +3377,62 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
         cc.rt.torsions.push_back(*chosen);
     }
   }
+}
 
-  if (use_peptide_torsions) {
+void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables,
+                                        const std::vector<CodAtomInfo>& atom_info,
+                                        const std::map<std::string, std::string>& atom_stereo,
+                                        const AceGraphView& graph,
+                                        const std::map<std::string, Position>* sugar_coord_overrides) {
+  if (std::getenv("GEMMI_DBG_SEL"))
+    std::fprintf(stderr, "[tor-start %s] existing=%zu\n", cc.name.c_str(), cc.rt.torsions.size());
+  if (!cc.rt.torsions.empty())
+    return;
+
+  auto& atom_index = graph.atom_index;
+  auto& adj = graph.adjacency;
+  TorsionModeFlags mode = determine_torsion_modes(cc, adj, atom_index);
+  std::vector<bool> aromatic_like = build_aromatic_like_mask(cc, atom_info, atom_index);
+
+  // Pre-compute ring parity used in SP3-SP3 torsion matrix selection.
+  std::map<std::pair<size_t, size_t>, RingParity> bond_ring_parity =
+      build_ring_bond_parity(adj, atom_info);
+  std::map<std::pair<size_t, size_t>, RingFlip> bond_ring_flip =
+      build_ring_bond_flip(cc, adj, atom_info);
+
+  SugarRingInfo sugar_info = detect_sugar_rings(cc, adj, atom_info);
+  auto& sugar_ring_bonds = sugar_info.ring_bonds;
+  auto& sugar_ring_seq = sugar_info.ring_seq;
+  bool has_sugar_ring = !mode.peptide_mode && !sugar_ring_bonds.empty();
+  if (std::getenv("GEMMI_DBG_SEL"))
+    std::fprintf(stderr, "[tor-start %s] sugar=%d rings=%zu\n", cc.name.c_str(),
+                 has_sugar_ring ? 1 : 0, sugar_ring_bonds.size());
+
+  ChiralCenterInfo chiral_info =
+      detect_chiral_centers_and_mut_table(cc, adj, atom_stereo);
+  auto& stereo_chiral_centers = chiral_info.stereo_chiral_centers;
+  auto& chir_mut_table = chiral_info.chir_mut_table;
+
+  std::vector<Restraints::Torsion> peptide_all_torsions;
+  generate_torsions_from_bonds(cc, tables, atom_info, atom_index, adj,
+                               aromatic_like, bond_ring_parity, bond_ring_flip,
+                               mode.peptide_mode, mode.use_peptide_torsions,
+                               has_sugar_ring, stereo_chiral_centers, chir_mut_table,
+                               peptide_all_torsions);
+
+  if (mode.use_peptide_torsions) {
     cc.rt.torsions = set_peptide_torsions_like_acedrg(
         cc, adj, tables, atom_index, atom_info, peptide_all_torsions);
   }
 
-  bool apply_pyranose_chair = ace_compat_mode();
-  if (!apply_pyranose_chair) {
-    for (const auto& atom : cc.atoms)
-      if (!std::isfinite(atom.xyz.x) || !std::isfinite(atom.xyz.y) || !std::isfinite(atom.xyz.z)) {
-        apply_pyranose_chair = true;
-        break;
-      }
-  }
-  if (apply_pyranose_chair)
+  if (should_apply_pyranose_chair(cc))
     apply_pyranose_chair_torsions_like_acedrg(cc, adj, atom_info);
 
-  if (has_sugar_ring) {
-    std::vector<Restraints::Torsion> nu_torsions;
-    std::set<std::pair<size_t, size_t>> selected_bonds;
-    auto sugar_pos = [&](size_t idx) -> Position {
-      if (sugar_coord_overrides) {
-        auto it = sugar_coord_overrides->find(cc.atoms[idx].id);
-        if (it != sugar_coord_overrides->end())
-          return it->second;
-      }
-      return cc.atoms[idx].xyz;
-    };
-    for (const auto& kv : sugar_ring_seq) {
-      const std::vector<size_t>& seq = kv.second;
-      size_t n = seq.size();
-      if (n != 5 && n != 6)
-        continue;
-      for (size_t i = 0; i < n; ++i) {
-        size_t a = seq[(i + n - 1) % n];
-        size_t b = seq[i];
-        size_t c = seq[(i + 1) % n];
-        size_t d = seq[(i + 2) % n];
-        selected_bonds.insert(std::minmax(b, c));
-        Position pa = sugar_pos(a);
-        Position pb = sugar_pos(b);
-        Position pc = sugar_pos(c);
-        Position pd = sugar_pos(d);
-        double dih = deg(calculate_dihedral(pa, pb, pc, pd));
-        if (!std::isfinite(dih))
-          continue;
-        Restraints::Torsion nu{
-            "auto",
-            {1, cc.atoms[a].id},
-            {1, cc.atoms[b].id},
-            {1, cc.atoms[c].id},
-            {1, cc.atoms[d].id},
-            dih, 10.0, 3};
-        nu_torsions.push_back(std::move(nu));
-      }
-    }
+  if (has_sugar_ring)
+    apply_sugar_ring_nu_torsions(cc, atom_index, sugar_ring_seq, sugar_coord_overrides);
 
-    vector_remove_if(cc.rt.torsions, [&](const Restraints::Torsion& tor) {
-      auto itb = atom_index.find(tor.id2.atom);
-      auto itc = atom_index.find(tor.id3.atom);
-      size_t b = itb != atom_index.end() ? itb->second : SIZE_MAX;
-      size_t c = itc != atom_index.end() ? itc->second : SIZE_MAX;
-      if (b == SIZE_MAX || c == SIZE_MAX)
-        return false;
-      auto bkey = std::minmax(b, c);
-      return selected_bonds.count(bkey) != 0;
-    });
-    cc.rt.torsions.insert(cc.rt.torsions.end(), nu_torsions.begin(), nu_torsions.end());
-  }
-
-  // Replace torsions with nucleic-acid-specific table entries when applicable.
-  if (nucleic_mode && !cc.rt.torsions.empty()) {
-    std::vector<Restraints::Torsion> replaced;
-    replaced.reserve(cc.rt.torsions.size());
-    std::unordered_set<std::string> seen_keys;
-    for (const auto& tor : cc.rt.torsions) {
-      std::vector<TorsionEntry> entries;
-      if (tables.lookup_nucl_tors(tor.id1.atom, tor.id2.atom, tor.id3.atom, tor.id4.atom, entries) ||
-          tables.lookup_nucl_tors(tor.id4.atom, tor.id3.atom, tor.id2.atom, tor.id1.atom, entries)) {
-        for (const auto& e : entries) {
-          Restraints::Torsion t = tor;
-          t.label = e.id;
-          t.value = e.value;
-          t.esd = e.sigma;
-          t.period = e.period;
-          std::string key = cat(t.id1.atom, '|', t.id2.atom, '|', t.id3.atom, '|',
-                                t.id4.atom, '|', t.label);
-          if (seen_keys.insert(key).second)
-            replaced.push_back(std::move(t));
-        }
-      } else {
-        std::string key = cat(tor.id1.atom, '|', tor.id2.atom, '|', tor.id3.atom, '|',
-                              tor.id4.atom, '|', tor.label);
-        if (seen_keys.insert(key).second)
-          replaced.push_back(tor);
-      }
-    }
-    cc.rt.torsions.swap(replaced);
-  }
-
+  if (mode.nucleic_mode)
+    apply_nucleic_torsion_overrides(cc, tables);
 }
 
 void add_chirality_if_missing(
