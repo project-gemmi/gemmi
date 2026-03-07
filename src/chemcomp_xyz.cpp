@@ -46,6 +46,13 @@ Position arbitrary_position_from_angle_local(const Position& x2,
   return x3 + Position(dist * (-std::cos(theta) * e1 + std::sin(theta) * e2));
 }
 
+Vec3 get_vector_to_line(const Position& point,
+                        const Position& point_on_the_line,
+                        const Vec3& unit_vector) {
+  Vec3 ap = point_on_the_line - point;
+  return ap - ap.dot(unit_vector) * unit_vector;
+}
+
 std::pair<Position, Position> trilaterate_local(const Position& p1, double r1sq,
                                                 const Position& p2, double r2sq,
                                                 const Position& p3, double r3sq) {
@@ -77,8 +84,30 @@ std::pair<Position, Position> position_from_two_angles_local(const Position& p1,
   return trilaterate_local(p1, d14sq, p2, d24sq, p3, d34sq);
 }
 
+double calculate_tetrahedral_delta(double theta0, double theta1, double theta2) {
+  double x = std::cos(theta1);
+  double y = (std::cos(theta2) - x * std::cos(theta0)) / std::sin(theta0);
+  double z2 = 1 - x * x - y * y;
+  double z = std::sqrt(std::max(0.0, z2));
+  return std::asin(z);
+}
+
+double angle_in_triangle(double a, double b, double c) {
+  return std::acos((a * a + c * c - b * b) / (2 * a * c));
+}
+
+double cone_theta_from_hh_angle(double hh_angle) {
+  double c = (std::cos(hh_angle) + 0.5) / 1.5;
+  c = std::max(0.0, std::min(1.0, c));
+  return std::acos(-std::sqrt(c));
+}
+
 bool atom_has_finite_xyz(const ChemComp::Atom& atom) {
   return std::isfinite(atom.xyz.x) && std::isfinite(atom.xyz.y) && std::isfinite(atom.xyz.z);
+}
+
+bool is_heavy_atom(const ChemComp::Atom& atom) {
+  return !atom.is_hydrogen();
 }
 
 double default_angle_for_center(const std::vector<std::vector<size_t>>& adjacency,
@@ -456,6 +485,339 @@ void spread_terminal_children(ChemComp& cc,
   }
 }
 
+double get_bond_dist_or_default(const ChemComp& cc,
+                                const std::vector<std::vector<size_t>>& adjacency,
+                                const std::vector<std::vector<double>>& bond_dist,
+                                size_t a, size_t b) {
+  for (size_t i = 0; i != adjacency[a].size(); ++i)
+    if (adjacency[a][i] == b)
+      return std::isfinite(bond_dist[a][i]) ? bond_dist[a][i] : 1.5;
+  return 1.5;
+}
+
+const Restraints::Angle* find_angle_by_indices(const ChemComp& cc,
+                                               const std::map<std::string, size_t>& atom_index,
+                                               size_t a, size_t center, size_t b) {
+  return find_angle_restraint(cc, atom_index, a, center, b);
+}
+
+const Restraints::Bond* find_bond_by_indices(const ChemComp& cc, size_t a, size_t b) {
+  return cc.rt.find_bond(cc.atoms[a].id, cc.atoms[b].id) != cc.rt.bonds.end()
+             ? &*cc.rt.find_bond(cc.atoms[a].id, cc.atoms[b].id)
+             : nullptr;
+}
+
+const Restraints::Torsion* find_torsion_with_hydrogen(const ChemComp& cc,
+                                                      const std::map<std::string, size_t>& atom_index,
+                                                      size_t h_idx, size_t center_idx,
+                                                      size_t heavy_idx,
+                                                      size_t* tau_end_idx,
+                                                      int* period) {
+  for (const auto& tor : cc.rt.torsions) {
+    auto it1 = atom_index.find(tor.id1.atom);
+    auto it2 = atom_index.find(tor.id2.atom);
+    auto it3 = atom_index.find(tor.id3.atom);
+    auto it4 = atom_index.find(tor.id4.atom);
+    if (it1 == atom_index.end() || it2 == atom_index.end() ||
+        it3 == atom_index.end() || it4 == atom_index.end())
+      continue;
+    size_t i1 = it1->second;
+    size_t i2 = it2->second;
+    size_t i3 = it3->second;
+    size_t i4 = it4->second;
+    if (i1 == h_idx && i2 == center_idx && i3 == heavy_idx && is_heavy_atom(cc.atoms[i4])) {
+      if (tau_end_idx) *tau_end_idx = i4;
+      if (period) *period = tor.period;
+      return &tor;
+    }
+    if (i4 == h_idx && i3 == center_idx && i2 == heavy_idx && is_heavy_atom(cc.atoms[i1])) {
+      if (tau_end_idx) *tau_end_idx = i1;
+      if (period) *period = tor.period;
+      return &tor;
+    }
+  }
+  return nullptr;
+}
+
+const Restraints::Plane* find_plane_with_atoms(const ChemComp& cc,
+                                               const std::map<std::string, size_t>& atom_index,
+                                               size_t center_idx,
+                                               size_t h_idx,
+                                               size_t heavy_idx,
+                                               size_t* other_idx) {
+  for (const auto& plane : cc.rt.planes) {
+    bool has_center = false;
+    bool has_h = false;
+    bool has_heavy = false;
+    size_t found_other = SIZE_MAX;
+    for (const auto& atom_id : plane.ids) {
+      auto it = atom_index.find(atom_id.atom);
+      if (it == atom_index.end())
+        continue;
+      size_t idx = it->second;
+      if (idx == center_idx)
+        has_center = true;
+      else if (idx == h_idx)
+        has_h = true;
+      else if (idx == heavy_idx)
+        has_heavy = true;
+      else if (is_heavy_atom(cc.atoms[idx]) && atom_has_finite_xyz(cc.atoms[idx]))
+        found_other = idx;
+    }
+    if (has_center && has_h && has_heavy && found_other != SIZE_MAX) {
+      if (other_idx) *other_idx = found_other;
+      return &plane;
+    }
+  }
+  return nullptr;
+}
+
+const Restraints::Chirality* find_chirality_for_center(const ChemComp& cc,
+                                                       const std::map<std::string, size_t>& atom_index,
+                                                       size_t center_idx) {
+  for (const auto& chir : cc.rt.chirs) {
+    auto it = atom_index.find(chir.id_ctr.atom);
+    if (it != atom_index.end() && it->second == center_idx)
+      return &chir;
+  }
+  return nullptr;
+}
+
+double missing_angle_2h_tetrahedral_chemcomp(const ChemComp& cc,
+                                             const std::map<std::string, size_t>& atom_index,
+                                             size_t center_idx,
+                                             const std::vector<size_t>& hs,
+                                             double alpha, double theta) {
+  if (hs.size() == 1)
+    return 2 * pi() - alpha - theta;
+  if (hs.size() == 2) {
+    if (const auto* hh = find_angle_by_indices(cc, atom_index, hs[0], center_idx, hs[1])) {
+      double xh = std::cos(alpha);
+      double zh = std::sin(0.5 * hh->radians());
+      double yh = std::sqrt(std::max(0.0, 1 - xh * xh - zh * zh));
+      double st = std::sin(theta);
+      double ct = std::cos(theta);
+      Vec3 ah(xh, -yh * st, zh * st);
+      return std::acos((ct * ah.x + st * ah.y) / ah.length());
+    }
+  }
+  return 0.0;
+}
+
+void place_hydrogens_from_restraints(ChemComp& cc,
+                                     const std::map<std::string, size_t>& atom_index,
+                                     const std::vector<std::vector<size_t>>& adjacency,
+                                     const std::vector<std::vector<double>>& bond_dist) {
+  for (size_t center = 0; center != cc.atoms.size(); ++center) {
+    if (!is_heavy_atom(cc.atoms[center]) || !atom_has_finite_xyz(cc.atoms[center]))
+      continue;
+
+    std::vector<size_t> known;
+    std::vector<size_t> hs;
+    for (size_t nb : adjacency[center]) {
+      if (cc.atoms[nb].is_hydrogen())
+        hs.push_back(nb);
+      else if (atom_has_finite_xyz(cc.atoms[nb]))
+        known.push_back(nb);
+    }
+    if (hs.empty())
+      continue;
+
+    for (size_t h : hs)
+      cc.atoms[h].xyz = Position(NAN, NAN, NAN);
+
+    auto h_dist = [&](size_t h) {
+      return get_bond_dist_or_default(cc, adjacency, bond_dist, center, h);
+    };
+
+    if (known.empty()) {
+      cc.atoms[hs[0]].xyz = cc.atoms[center].xyz + Position(h_dist(hs[0]), 0, 0);
+      if (hs.size() > 1) {
+        double theta = pi();
+        if (const auto* ang = find_angle_by_indices(cc, atom_index, hs[1], center, hs[0]))
+          theta = ang->radians();
+        cc.atoms[hs[1]].xyz = cc.atoms[center].xyz +
+                              Position(h_dist(hs[1]) * std::cos(theta),
+                                       h_dist(hs[1]) * std::sin(theta), 0);
+      }
+      if (hs.size() > 2) {
+        double theta0 = rad(109.47122);
+        double theta1 = rad(109.47122);
+        if (const auto* ang0 = find_angle_by_indices(cc, atom_index, hs[2], center, hs[0]))
+          theta0 = ang0->radians();
+        if (const auto* ang1 = find_angle_by_indices(cc, atom_index, hs[2], center, hs[1]))
+          theta1 = ang1->radians();
+        auto pos = position_from_two_angles_local(cc.atoms[center].xyz,
+                                                  cc.atoms[hs[0]].xyz, cc.atoms[hs[1]].xyz,
+                                                  h_dist(hs[2]), theta0, theta1);
+        cc.atoms[hs[2]].xyz = pos.first;
+        if (hs.size() == 4)
+          cc.atoms[hs[3]].xyz = pos.second;
+      }
+      continue;
+    }
+
+    if (known.size() == 1) {
+      size_t heavy = known[0];
+      size_t h0 = hs[0];
+      const auto* angle = find_angle_by_indices(cc, atom_index, h0, center, heavy);
+      if (!angle)
+        continue;
+      double theta = angle->radians();
+      if (hs.size() == 3) {
+        double hh_sum = 0.0;
+        int hh_count = 0;
+        for (size_t i = 0; i != hs.size(); ++i)
+          for (size_t j = i + 1; j != hs.size(); ++j)
+            if (const auto* hh = find_angle_by_indices(cc, atom_index, hs[i], center, hs[j])) {
+              hh_sum += hh->radians();
+              ++hh_count;
+            }
+        if (hh_count > 0)
+          theta = cone_theta_from_hh_angle(hh_sum / hh_count);
+      }
+      double tau = 0.0;
+      int period = 0;
+      size_t tau_end = SIZE_MAX;
+      if (find_plane_with_atoms(cc, atom_index, center, h0, heavy, &tau_end))
+        tau = 0.0;
+      else if (const auto* tor = find_torsion_with_hydrogen(cc, atom_index, h0, center, heavy,
+                                                            &tau_end, &period))
+        tau = rad(tor->value);
+
+      if (tau_end != SIZE_MAX)
+        cc.atoms[h0].xyz = position_from_angle_and_torsion_local(
+            cc.atoms[tau_end].xyz, cc.atoms[heavy].xyz, cc.atoms[center].xyz,
+            h_dist(h0), theta, tau);
+      else
+        cc.atoms[h0].xyz = arbitrary_position_from_angle_local(
+            cc.atoms[heavy].xyz, cc.atoms[center].xyz, h_dist(h0), theta);
+      if (!atom_has_finite_xyz(cc.atoms[h0]))
+        continue;
+      if (hs.size() == 2) {
+        Vec3 axis = (cc.atoms[heavy].xyz - cc.atoms[center].xyz).normalized();
+        Vec3 perpendicular = get_vector_to_line(cc.atoms[h0].xyz, cc.atoms[center].xyz, axis);
+        cc.atoms[hs[1]].xyz = cc.atoms[h0].xyz + Position(2 * perpendicular);
+      } else if (hs.size() == 3) {
+        int idx = 0;
+        for (int i : {1, 2}) {
+          size_t tau_tmp = SIZE_MAX;
+          if (find_torsion_with_hydrogen(cc, atom_index, hs[i], center, heavy, &tau_tmp, &period)) {
+            idx = i;
+            cc.atoms[hs[i]].xyz = cc.atoms[h0].xyz;
+          }
+        }
+        Vec3 axis = (cc.atoms[heavy].xyz - cc.atoms[center].xyz).normalized();
+        Vec3 v1 = cc.atoms[h0].xyz - cc.atoms[center].xyz;
+        Vec3 v2 = rotate_about_axis(v1, axis, rad(120));
+        Vec3 v3 = rotate_about_axis(v1, axis, rad(-120));
+        cc.atoms[hs[(idx + 1) % 3]].xyz = cc.atoms[center].xyz + Position(v2);
+        cc.atoms[hs[(idx + 2) % 3]].xyz = cc.atoms[center].xyz + Position(v3);
+      }
+      continue;
+    }
+
+    if (known.size() == 2) {
+      if (hs.size() >= 3)
+        continue;
+      const auto* ang1 = find_angle_by_indices(cc, atom_index, hs[0], center, known[0]);
+      const auto* ang2 = find_angle_by_indices(cc, atom_index, hs[0], center, known[1]);
+      const auto* ang3 = find_angle_by_indices(cc, atom_index, known[0], center, known[1]);
+      double theta1 = ang1 ? ang1->radians() : 0.0;
+      double theta2 = ang2 ? ang2->radians() : 0.0;
+      double theta3 = ang3 ? ang3->radians() : 0.0;
+      if (!ang3) {
+        const Restraints::Bond* aptr = find_bond_by_indices(cc, center, known[1]);
+        const Restraints::Bond* bptr = find_bond_by_indices(cc, known[0], known[1]);
+        const Restraints::Bond* cptr = find_bond_by_indices(cc, known[0], center);
+        if (!aptr || !bptr || !cptr)
+          continue;
+        double av = std::isfinite(aptr->value) ? aptr->value : aptr->value_nucleus;
+        double bv = std::isfinite(bptr->value) ? bptr->value : bptr->value_nucleus;
+        double cv = std::isfinite(cptr->value) ? cptr->value : cptr->value_nucleus;
+        theta3 = angle_in_triangle(av, bv, cv);
+      }
+      if (theta1 == 0.0 && known[0] < cc.atoms.size() && cc.atoms[known[0]].el.is_metal())
+        theta1 = missing_angle_2h_tetrahedral_chemcomp(cc, atom_index, center, hs, theta2, theta3);
+      if (theta2 == 0.0 && known[1] < cc.atoms.size() && cc.atoms[known[1]].el.is_metal())
+        theta2 = missing_angle_2h_tetrahedral_chemcomp(cc, atom_index, center, hs, theta1, theta3);
+      if (theta1 == 0.0 || theta2 == 0.0)
+        continue;
+
+      if (theta1 + theta2 + theta3 > rad(357.0)) {
+        Vec3 v12 = cc.atoms[known[0]].xyz - cc.atoms[center].xyz;
+        Vec3 v13 = cc.atoms[known[1]].xyz - cc.atoms[center].xyz;
+        double cur_theta3 = v12.angle(v13);
+        double ratio = (2 * pi() - cur_theta3) / (theta1 + theta2);
+        Vec3 axis = v13.cross(v12).normalized();
+        Vec3 v14 = rotate_about_axis(v12, axis, theta1 * ratio);
+        cc.atoms[hs[0]].xyz = cc.atoms[center].xyz +
+                              Position(h_dist(hs[0]) / v14.length() * v14);
+        continue;
+      }
+
+      double hh_half = 0.0;
+      if (hs.size() == 2)
+        if (const auto* hh = find_angle_by_indices(cc, atom_index, hs[0], center, hs[1]))
+          hh_half = 0.5 * hh->radians();
+      if (hh_half == 0.0)
+        hh_half = calculate_tetrahedral_delta(theta3, theta1, theta2);
+
+      double c0 = std::cos(theta3);
+      double c1 = std::cos(theta1);
+      double c2 = std::cos(theta2);
+      double den = 1 / (1 - c0 * c0);
+      double a = den * (c1 - c0 * c2);
+      double b = den * (c2 - c0 * c1);
+      Vec3 u10 = (cc.atoms[known[0]].xyz - cc.atoms[center].xyz).normalized();
+      Vec3 u20 = (cc.atoms[known[1]].xyz - cc.atoms[center].xyz).normalized();
+      Vec3 v = u10.cross(u20);
+      if (std::isnan(v.x))
+        continue;
+      Vec3 d = a * u10 + b * u20;
+      double dist_sin = h_dist(hs[0]) * std::sin(hh_half);
+      double dist_cos = h_dist(hs[0]) * std::cos(hh_half);
+      Vec3 v0s = v.changed_magnitude(dist_sin);
+      Vec3 d0c = d.changed_magnitude(dist_cos);
+      cc.atoms[hs[0]].xyz = cc.atoms[center].xyz + Position(d0c + v0s);
+      Position other_pos = cc.atoms[center].xyz + Position(d0c - v0s);
+
+      if (hs.size() == 1) {
+        const auto* chir = find_chirality_for_center(cc, atom_index, center);
+        if (chir && chir->sign != ChiralityType::Both) {
+          double vol = calculate_chiral_volume(cc.atoms[center].xyz,
+                                               cc.atoms[known[0]].xyz,
+                                               cc.atoms[known[1]].xyz,
+                                               cc.atoms[hs[0]].xyz);
+          if (chir->is_wrong(vol))
+            cc.atoms[hs[0]].xyz = other_pos;
+        }
+      } else {
+        cc.atoms[hs[1]].xyz = other_pos;
+      }
+      continue;
+    }
+
+    if (hs.size() > 1)
+      continue;
+    Vec3 u10 = (cc.atoms[known[0]].xyz - cc.atoms[center].xyz).normalized();
+    Vec3 u20 = (cc.atoms[known[1]].xyz - cc.atoms[center].xyz).normalized();
+    Vec3 u30 = (cc.atoms[known[2]].xyz - cc.atoms[center].xyz).normalized();
+    auto cos_tetrahedral = [&](size_t n) {
+      const auto* angle = find_angle_by_indices(cc, atom_index, known[n], center, hs[0]);
+      return angle ? std::cos(angle->radians()) : -1.0 / 3.0;
+    };
+    SMat33<double> m{1., 1., 1., u10.dot(u20), u10.dot(u30), u20.dot(u30)};
+    Vec3 rhs(cos_tetrahedral(0), cos_tetrahedral(1), cos_tetrahedral(2));
+    double det = m.determinant();
+    if (std::fabs(det) < 1e-12)
+      continue;
+    Vec3 abc = m.inverse_(det).multiply(rhs);
+    Vec3 h_dir = abc.x * u10 + abc.y * u20 + abc.z * u30;
+    cc.atoms[hs[0]].xyz = cc.atoms[center].xyz + Position(h_dir.changed_magnitude(h_dist(hs[0])));
+  }
+}
+
 } // namespace
 
 int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
@@ -495,10 +857,10 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
     return rad(default_angle_for_center(adjacency, center));
   };
 
-  auto count_finite = [&]() {
+  auto count_finite = [&](bool heavy_only) {
     int count = 0;
     for (const auto& atom : cc.atoms)
-      if (atom_has_finite_xyz(atom))
+      if ((!heavy_only || is_heavy_atom(atom)) && atom_has_finite_xyz(atom))
         ++count;
     return count;
   };
@@ -523,6 +885,8 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   };
 
   auto try_place = [&](size_t target) {
+    if (!is_heavy_atom(cc.atoms[target]))
+      return false;
     if (atom_has_finite_xyz(cc.atoms[target]))
       return false;
     for (size_t i = 0; i != adjacency[target].size(); ++i) {
@@ -589,10 +953,14 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   };
 
   int component = 0;
-  while (count_finite() < static_cast<int>(n)) {
+  int heavy_count = 0;
+  for (const auto& atom : cc.atoms)
+    if (is_heavy_atom(atom))
+      ++heavy_count;
+  while (count_finite(true) < heavy_count) {
     size_t seed = SIZE_MAX;
     for (size_t i = 0; i != n; ++i)
-      if (!atom_has_finite_xyz(cc.atoms[i])) {
+      if (is_heavy_atom(cc.atoms[i]) && !atom_has_finite_xyz(cc.atoms[i])) {
         seed = i;
         break;
       }
@@ -652,8 +1020,9 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   regularize_small_cycles(cc, adjacency, small_cycles);
   enforce_plane_restraints(cc, atom_index);
   enforce_chirality_restraints(cc, atom_index);
+  place_hydrogens_from_restraints(cc, atom_index, adjacency, bond_dist);
 
-  int placed = count_finite();
+  int placed = count_finite(false);
   cc.has_coordinates = placed > 0;
   return placed;
 }

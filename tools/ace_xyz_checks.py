@@ -269,6 +269,59 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
             self.assertAlmostEqual(
                 pos[ring[i]].dist(pos[ring[(i + 1) % 5]]), 1.45, places=5)
 
+    def test_generate_chemcomp_xyz_places_methyl_hydrogens_symmetrically(self):
+        cc = gemmi.ChemComp()
+        cc.name = 'TMET'
+        cc.group = gemmi.ChemComp.Group.NonPolymer
+        for atom_id, el in [('C0', 'C'), ('C1', 'C'), ('H1', 'H'), ('H2', 'H'), ('H3', 'H')]:
+            atom = gemmi.ChemComp.Atom()
+            atom.id = atom_id
+            atom.el = gemmi.Element(el)
+            atom.chem_type = el
+            cc.atoms.append(atom)
+
+        def atom_id(name):
+            return gemmi.Restraints.AtomId(name)
+
+        def add_bond(a1, a2, value):
+            bond = gemmi.Restraints.Bond()
+            bond.id1 = atom_id(a1)
+            bond.id2 = atom_id(a2)
+            bond.type = gemmi.BondType.Single
+            bond.value = value
+            bond.esd = 0.02
+            cc.rt.bonds.append(bond)
+
+        def add_angle(a1, a2, a3, value):
+            angle = gemmi.Restraints.Angle()
+            angle.id1 = atom_id(a1)
+            angle.id2 = atom_id(a2)
+            angle.id3 = atom_id(a3)
+            angle.value = value
+            angle.esd = 2.0
+            cc.rt.angles.append(angle)
+
+        add_bond('C0', 'C1', 1.53)
+        for h in ('H1', 'H2', 'H3'):
+            add_bond('C1', h, 1.09)
+            add_angle('C0', 'C1', h, 109.5)
+        add_angle('H1', 'C1', 'H2', 109.5)
+        add_angle('H1', 'C1', 'H3', 109.5)
+        add_angle('H2', 'C1', 'H3', 109.5)
+
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, 5)
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(
+            math.degrees(gemmi.calculate_angle(pos['H1'], pos['C1'], pos['H2'])),
+            109.5, places=3)
+        self.assertAlmostEqual(
+            math.degrees(gemmi.calculate_angle(pos['H1'], pos['C1'], pos['H3'])),
+            109.5, places=3)
+        self.assertAlmostEqual(
+            math.degrees(gemmi.calculate_angle(pos['H2'], pos['C1'], pos['H3'])),
+            109.5, places=3)
+
     def test_drg_only_xyz_on_prepared_file(self):
         gemmi_bin = REPO_ROOT / 'build' / 'gemmi'
         source = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ALA.cif'
