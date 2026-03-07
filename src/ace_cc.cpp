@@ -3073,11 +3073,6 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
   bool peptide_mode = type_upper.find("PEPTIDE") != std::string::npos;
   bool nucleic_mode = (type_upper.find("DNA") != std::string::npos ||
                        type_upper.find("RNA") != std::string::npos);
-  // AceDRG applies pepCorr/naCorr only when a descriptor loop is present.
-  if (!cc.has_descriptor) {
-    peptide_mode = false;
-    nucleic_mode = false;
-  }
   // AceDRG's Python layer (confirmAAandNames) verifies standard backbone
   // topology before passing -C flag to enable setPeptideTorsions().
   if (peptide_mode && !confirm_aa_backbone(cc, adj, atom_index))
