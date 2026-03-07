@@ -3124,8 +3124,7 @@ void add_torsions_from_bonds_if_missing(ChemComp& cc, const AcedrgTables& tables
 
   auto& atom_index = graph.atom_index;
   auto& adj = graph.adjacency;
-  ChemComp::Group group = cc.group != ChemComp::Group::Null
-                        ? cc.group : ChemComp::read_group(cc.type_or_group);
+  ChemComp::Group group = cc.group;
   bool peptide_mode = ChemComp::is_peptide_group(group);
   bool nucleic_mode = ChemComp::is_nucleotide_group(group);
   bool backbone_like_peptide = confirm_aa_backbone(cc, adj, atom_index);
@@ -4170,8 +4169,7 @@ void add_chirality_if_missing(
   }
 
   ChiralityType sign = ChiralityType::Both;
-  ChemComp::Group group = cc.group != ChemComp::Group::Null
-                        ? cc.group : ChemComp::read_group(cc.type_or_group);
+  ChemComp::Group group = cc.group;
   if (group == ChemComp::Group::Peptide || group == ChemComp::Group::PPeptide)
     sign = ChiralityType::Positive;
   else if (group == ChemComp::Group::MPeptide)
@@ -4403,40 +4401,8 @@ bool has_missing_restraint_values(const ChemComp& cc, bool no_angles) {
 void harmonize_group_with_type(ChemComp& cc) {
   if (cc.group != ChemComp::Group::Null)
     return;
-  if (!cc.type_or_group.empty()) {
-    ChemComp::Group parsed = ChemComp::read_group(cc.type_or_group);
-    if (parsed != ChemComp::Group::Null) {
-      cc.group = parsed;
-      return;
-    }
-    std::string type = to_upper(cc.type_or_group);
-    if (type.find("PEPTIDE") != std::string::npos) {
-      if (type.find("D-PEPTIDE") != std::string::npos ||
-          type.find("M-PEPTIDE") != std::string::npos)
-        cc.group = ChemComp::Group::MPeptide;
-      else if (type.find("P-PEPTIDE") != std::string::npos)
-        cc.group = ChemComp::Group::PPeptide;
-      else
-        cc.group = ChemComp::Group::Peptide;
-      return;
-    }
-    if (type.find("DNA") != std::string::npos && type.find("RNA") != std::string::npos) {
-      cc.group = ChemComp::Group::DnaRna;
-      return;
-    }
-    if (type.find("DNA") != std::string::npos) {
-      cc.group = ChemComp::Group::Dna;
-      return;
-    }
-    if (type.find("RNA") != std::string::npos) {
-      cc.group = ChemComp::Group::Rna;
-      return;
-    }
-    if (type.find("NON-POLYMER") != std::string::npos) {
-      cc.group = ChemComp::Group::NonPolymer;
-      return;
-    }
-  }
+  if (!cc.type_or_group.empty())
+    cc.group = ChemComp::read_group(cc.type_or_group);
 }
 
 }  // namespace
