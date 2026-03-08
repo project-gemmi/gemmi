@@ -269,6 +269,18 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
             self.assertAlmostEqual(
                 pos[ring[i]].dist(pos[ring[(i + 1) % 5]]), 1.45, places=5)
 
+    def test_generate_chemcomp_xyz_preserves_abp_sugar_branch(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ABP.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertLess(pos["C2'"].dist(pos["O2'"]), 2.0)
+        self.assertLess(pos["C3'"].dist(pos["C2'"]), 2.0)
+        self.assertLess(pos["C2'"].dist(pos["C1'"]), 2.0)
+
     def test_generate_chemcomp_xyz_places_methyl_hydrogens_symmetrically(self):
         cc = gemmi.ChemComp()
         cc.name = 'TMET'
