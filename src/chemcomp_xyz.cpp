@@ -1486,6 +1486,157 @@ void regrow_trivalent_junction_atoms(ChemComp& cc,
   }
 }
 
+double bond_z_for_indices(const ChemComp& cc,
+                          const std::vector<std::vector<size_t>>& adjacency,
+                          const std::vector<std::vector<double>>& bond_dist,
+                          size_t a, size_t b) {
+  std::vector<Restraints::Bond>::const_iterator bond = cc.rt.find_bond(cc.atoms[a].id,
+                                                                       cc.atoms[b].id);
+  if (bond == cc.rt.bonds.end())
+    return 0.0;
+  double target = std::isfinite(bond->value) ? bond->value : bond->value_nucleus;
+  double esd = std::isfinite(bond->esd) && bond->esd > 0 ? bond->esd : 0.02;
+  if (!std::isfinite(target) || esd <= 0 ||
+      !atom_has_finite_xyz(cc.atoms[a]) || !atom_has_finite_xyz(cc.atoms[b]))
+    return 0.0;
+  return std::fabs(cc.atoms[a].xyz.dist(cc.atoms[b].xyz) - target) / esd;
+}
+
+double heavy_bond_score(const ChemComp& cc,
+                        const std::vector<std::vector<size_t>>& adjacency,
+                        const std::vector<std::vector<double>>& bond_dist) {
+  double score = 0.0;
+  for (size_t a = 0; a != cc.atoms.size(); ++a)
+    if (is_heavy_atom(cc.atoms[a]))
+      for (size_t b : adjacency[a])
+        if (a < b && is_heavy_atom(cc.atoms[b])) {
+          double z = std::min(100.0, bond_z_for_indices(cc, adjacency, bond_dist, a, b));
+          score += z * z;
+        }
+  return score;
+}
+
+std::vector<size_t> heavy_component_excluding_edge(const ChemComp& cc,
+                                                   const std::vector<std::vector<size_t>>& adjacency,
+                                                   size_t start, size_t ban_a, size_t ban_b) {
+  std::vector<size_t> out;
+  std::vector<bool> seen(cc.atoms.size(), false);
+  std::queue<size_t> q;
+  q.push(start);
+  seen[start] = true;
+  while (!q.empty()) {
+    size_t cur = q.front();
+    q.pop();
+    out.push_back(cur);
+    for (size_t nb : adjacency[cur]) {
+      if (!is_heavy_atom(cc.atoms[nb]) || seen[nb] ||
+          (cur == ban_a && nb == ban_b) || (cur == ban_b && nb == ban_a))
+        continue;
+      seen[nb] = true;
+      q.push(nb);
+    }
+  }
+  return out;
+}
+
+Position target_position_for_cut_fragment(const ChemComp& cc,
+                                          const std::map<std::string, size_t>& atom_index,
+                                          const std::vector<std::vector<size_t>>& adjacency,
+                                          const std::vector<std::vector<double>>& bond_dist,
+                                          size_t anchor, size_t moved) {
+  double dist = get_bond_dist_or_default(cc, adjacency, bond_dist, anchor, moved);
+  for (size_t ref : adjacency[anchor]) {
+    if (ref == moved || !is_heavy_atom(cc.atoms[ref]) || !atom_has_finite_xyz(cc.atoms[ref]))
+      continue;
+    const Restraints::Angle* angle = find_angle_restraint(cc, atom_index, ref, anchor, moved);
+    if (angle && std::isfinite(angle->value)) {
+      Position pos = arbitrary_position_from_angle_local(cc.atoms[ref].xyz,
+                                                         cc.atoms[anchor].xyz,
+                                                         dist, rad(angle->value));
+      if (std::isfinite(pos.x) && std::isfinite(pos.y) && std::isfinite(pos.z))
+        return pos;
+    }
+  }
+  Vec3 dir = cc.atoms[moved].xyz - cc.atoms[anchor].xyz;
+  if (dir.length_sq() < 1e-8)
+    dir = Vec3(1, 0, 0);
+  else
+    dir = dir.normalized();
+  return cc.atoms[anchor].xyz + Position(dist * dir);
+}
+
+bool rescue_bad_heavy_fragments(ChemComp& cc,
+                                const std::map<std::string, size_t>& atom_index,
+                                const std::vector<std::vector<size_t>>& adjacency,
+                                const std::vector<std::vector<double>>& bond_dist) {
+  int heavy_total = 0;
+  for (const ChemComp::Atom& atom : cc.atoms)
+    if (is_heavy_atom(atom))
+      ++heavy_total;
+  if (heavy_total < 4)
+    return false;
+
+  bool changed = false;
+  for (int iter = 0; iter != 8; ++iter) {
+    double base_score = heavy_bond_score(cc, adjacency, bond_dist);
+    double best_score = base_score;
+    std::vector<size_t> best_component;
+    Vec3 best_shift(0, 0, 0);
+
+    for (size_t a = 0; a != cc.atoms.size(); ++a)
+      if (is_heavy_atom(cc.atoms[a]) && atom_has_finite_xyz(cc.atoms[a]))
+        for (size_t b : adjacency[a]) {
+          if (a >= b || !is_heavy_atom(cc.atoms[b]) || !atom_has_finite_xyz(cc.atoms[b]))
+            continue;
+          if (bond_z_for_indices(cc, adjacency, bond_dist, a, b) < 10.0)
+            continue;
+
+          std::vector<size_t> comp_a = heavy_component_excluding_edge(cc, adjacency, a, a, b);
+          std::vector<size_t> comp_b = heavy_component_excluding_edge(cc, adjacency, b, a, b);
+          if (comp_a.size() + comp_b.size() != (size_t) heavy_total)
+            continue;
+
+          const std::vector<size_t>* moved_comp = &comp_a;
+          size_t moved = a;
+          size_t anchor = b;
+          if (comp_b.size() < comp_a.size()) {
+            moved_comp = &comp_b;
+            moved = b;
+            anchor = a;
+          }
+          if (moved_comp->empty() || moved_comp->size() == (size_t) heavy_total)
+            continue;
+
+          Position target = target_position_for_cut_fragment(cc, atom_index, adjacency, bond_dist,
+                                                             anchor, moved);
+          if (!std::isfinite(target.x) || !std::isfinite(target.y) || !std::isfinite(target.z))
+            continue;
+          Vec3 shift = target - cc.atoms[moved].xyz;
+          if (shift.length_sq() < 1e-8)
+            continue;
+
+          for (size_t idx : *moved_comp)
+            cc.atoms[idx].xyz += Position(shift);
+          double score = heavy_bond_score(cc, adjacency, bond_dist);
+          for (size_t idx : *moved_comp)
+            cc.atoms[idx].xyz -= Position(shift);
+
+          if (score + 1e-6 < best_score) {
+            best_score = score;
+            best_component = *moved_comp;
+            best_shift = shift;
+          }
+        }
+
+    if (best_component.empty())
+      break;
+    for (size_t idx : best_component)
+      cc.atoms[idx].xyz += Position(best_shift);
+    changed = true;
+  }
+  return changed;
+}
+
 } // namespace
 
 int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
@@ -1758,6 +1909,7 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   regrow_trivalent_junction_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_bridge_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_terminal_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
+  rescue_bad_heavy_fragments(cc, atom_index, adjacency, bond_dist);
   int heavy_placed = count_finite(true);
   if (heavy_placed > 0)
     refine_chemcomp_xyz(cc);

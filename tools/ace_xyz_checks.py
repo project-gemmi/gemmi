@@ -316,6 +316,30 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertAlmostEqual(pos['C03'].dist(pos['N04']), 1.3951, delta=0.05)
         self.assertAlmostEqual(pos['N04'].dist(pos['C05']), 1.3524, delta=0.05)
 
+    def test_generate_chemcomp_xyz_rescues_a7y_fragment_attachment(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A7Y.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(pos['C41'].dist(pos['C38']), 1.4865, delta=0.05)
+        self.assertAlmostEqual(pos['C38'].dist(pos['C39']), 1.4179, delta=0.05)
+        self.assertAlmostEqual(pos['C38'].dist(pos['N37']), 1.3222, delta=0.05)
+
+    def test_generate_chemcomp_xyz_rescues_awi_fragment_attachment(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'AWI.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(pos['C1'].dist(pos['O22']), 1.3841, delta=0.05)
+        self.assertAlmostEqual(pos['C1'].dist(pos['C6']), 1.3874, delta=0.05)
+        self.assertAlmostEqual(pos['O22'].dist(pos['C23']), 1.4239, delta=0.05)
+
     def test_generate_chemcomp_xyz_places_methyl_hydrogens_symmetrically(self):
         cc = gemmi.ChemComp()
         cc.name = 'TMET'
