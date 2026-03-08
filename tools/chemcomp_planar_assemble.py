@@ -29,7 +29,7 @@ def parse_args():
 def choose_fragments(cc, core_atoms):
     graph = bond_graph(cc, set(core_atoms))
     frags = dedup_fragments(plane_fragments(cc, core_atoms) + cycle_fragments(graph))
-    deg = dict((atom, len(graph[atom])) for atom in graph)
+    bad_planes = []
     # Prefer cycles and small articulation planes. Drop broad plane supersets that are just ring+few extras.
     out = []
     cycle_sets = [set(f['atoms']) for f in frags if f['kind'] == 'cycle']
@@ -44,9 +44,24 @@ def choose_fragments(cc, core_atoms):
                     break
             if drop:
                 continue
+            local_pos, _bonds, adj, _angles = embed_fragment(cc, frag)
+            ids = frag['atoms']
+            bad = False
+            for i, a in enumerate(ids):
+                for b in ids[i + 1:]:
+                    if b in adj[a]:
+                        continue
+                    if (local_pos[a] - local_pos[b]).length() < 0.2:
+                        bad = True
+                        break
+                if bad:
+                    break
+            if bad:
+                bad_planes.append(frag)
+                continue
         out.append(frag)
     out.sort(key=lambda f: (f['kind'] != 'cycle', -len(f['atoms']), f['label']))
-    return out
+    return out, bad_planes
 
 
 def fragment_edges(fragments):
@@ -217,7 +232,117 @@ def place_terminal_leaves(core_atoms, positions, core_adj, core_angles, core_bon
     return positions
 
 
-def assemble_fragments(cc, fragments, full_core_atoms=None):
+def place_bridge_planes(planes, positions, core_adj, core_angles, core_bonds):
+    added = True
+    while added:
+        added = False
+        for plane in planes:
+            for atom in plane['atoms']:
+                if atom in positions:
+                    continue
+                placed_nbs = [nb for nb in core_adj[atom] if nb in positions]
+                if len(placed_nbs) >= 2:
+                    a, b = placed_nbs[:2]
+                    da = core_bonds.get(tuple(sorted((atom, a))))
+                    db = core_bonds.get(tuple(sorted((atom, b))))
+                    if da is None or db is None:
+                        continue
+                    dvec = positions[b] - positions[a]
+                    d = dvec.length()
+                    if d < EPS:
+                        continue
+                    x = (da * da - db * db + d * d) / (2.0 * d)
+                    y_sq = max(0.0, da * da - x * x)
+                    y = math.sqrt(y_sq)
+                    ex = dvec * (1.0 / d)
+                    ey = ex.perp()
+                    cands = [positions[a] + ex * x + ey * y,
+                             positions[a] + ex * x - ey * y]
+                    best = None
+                    best_score = None
+                    for cand in cands:
+                        score = 0.0
+                        for ref in core_adj[atom]:
+                            if ref in positions:
+                                target = core_angles.get((ref, atom, a))
+                                if target is not None:
+                                    actual = angle_between(positions[ref] - cand, positions[a] - cand)
+                                    score += abs(actual - target)
+                        if best_score is None or score < best_score:
+                            best_score = score
+                            best = cand
+                    if best is not None:
+                        positions[atom] = best
+                        added = True
+                elif len(placed_nbs) == 1:
+                    center = placed_nbs[0]
+                    refs = [nb for nb in core_adj[center] if nb in positions and nb != atom]
+                    if not refs:
+                        continue
+                    d = core_bonds.get(tuple(sorted((atom, center))))
+                    if d is None:
+                        continue
+                    best = None
+                    best_score = None
+                    for ref in refs:
+                        theta = get_angle(core_angles, ref, center, atom)
+                        base = (positions[ref] - positions[center]).normalized()
+                        for sign in (1.0, -1.0):
+                            cand = positions[center] + rotate(base, sign * theta) * d
+                            score = 0.0
+                            for nb in core_adj[atom]:
+                                if nb in positions and nb != center:
+                                    target = core_bonds.get(tuple(sorted((atom, nb))))
+                                    if target is not None:
+                                        score += abs((cand - positions[nb]).length() - target)
+                            for nb in core_adj[center]:
+                                if nb in positions and nb != atom:
+                                    target = core_angles.get((nb, center, atom))
+                                    if target is not None:
+                                        actual = angle_between(positions[nb] - positions[center],
+                                                               cand - positions[center])
+                                        score += abs(actual - target)
+                            if best_score is None or score < best_score:
+                                best_score = score
+                                best = cand
+                    if best is not None:
+                        positions[atom] = best
+                        added = True
+    return positions
+
+
+def attach_pending_fragments(fragments, placed_frags, local, global_pos, core_adj, core_angles, core_bonds):
+    by_label = {f['label']: f for f in fragments}
+    changed = True
+    while changed:
+        changed = False
+        for frag in fragments:
+            nb_label = frag['label']
+            if nb_label in placed_frags:
+                continue
+            overlap = sorted(atom for atom in frag['atoms'] if atom in global_pos and atom in local[nb_label])
+            if not overlap:
+                continue
+            local_pos = local[nb_label]
+            fn = None
+            if len(overlap) >= 2:
+                fn = best_transform(local_pos, global_pos, overlap)
+            else:
+                shared = overlap[0]
+                fn = one_overlap_transform(shared, by_label[nb_label], local_pos,
+                                           global_pos, core_adj, core_angles, core_bonds)
+            if fn is None:
+                continue
+            for atom, pos in local_pos.items():
+                if atom in global_pos:
+                    continue
+                global_pos[atom] = fn(pos)
+            placed_frags.add(nb_label)
+            changed = True
+    return global_pos, placed_frags
+
+
+def assemble_fragments(cc, fragments, full_core_atoms=None, bridge_planes=None):
     by_label = {f['label']: f for f in fragments}
     edges = fragment_edges(fragments)
     core_atoms = sorted(full_core_atoms if full_core_atoms is not None
@@ -264,6 +389,10 @@ def assemble_fragments(cc, fragments, full_core_atoms=None):
                 global_pos[atom] = fn(pos)
             placed_frags.add(nb_label)
             q.append(nb_label)
+    if bridge_planes:
+        global_pos = place_bridge_planes(bridge_planes, global_pos, core_adj, core_angles, core_bonds)
+        global_pos, placed_frags = attach_pending_fragments(fragments, placed_frags, local, global_pos,
+                                                            core_adj, core_angles, core_bonds)
     global_pos = place_terminal_leaves(core_atoms, global_pos, core_adj, core_angles, core_bonds)
     return global_pos, placed_frags, edges, local
 
@@ -302,11 +431,13 @@ def main():
             print('  no planar core\n')
             continue
         core = cores[min(args.core_index, len(cores) - 1)]
-        fragments = choose_fragments(cc, core['atoms'])
-        pos, placed_frags, edges, _local = assemble_fragments(cc, fragments, core['atoms'])
+        fragments, bridge_planes = choose_fragments(cc, core['atoms'])
+        pos, placed_frags, edges, _local = assemble_fragments(cc, fragments, core['atoms'], bridge_planes)
         print('  fragments={} placed-fragments={} placed-atoms={}/{}'.format(
             len(fragments), len(placed_frags), len(pos), len(core['atoms'])))
         print('  placed fragment labels: {}'.format(', '.join(sorted(placed_frags))))
+        if bridge_planes:
+            print('  bridge planes: {}'.format(', '.join(p['label'] for p in bridge_planes)))
         bond_res, angle_res = summarize(cc, core['atoms'], pos)
         for diff, a, b, actual, target in bond_res[:5]:
             print('    bond  {:>8} {:>8}  {:.4f} vs {:.4f}'.format(a, b, actual, target))
