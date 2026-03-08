@@ -124,6 +124,16 @@ bool atom_has_finite_xyz(const ChemComp::Atom& atom) {
   return std::isfinite(atom.xyz.x) && std::isfinite(atom.xyz.y) && std::isfinite(atom.xyz.z);
 }
 
+double get_bond_dist_or_default(const ChemComp& cc,
+                                const std::vector<std::vector<size_t>>& adjacency,
+                                const std::vector<std::vector<double>>& bond_dist,
+                                size_t a, size_t b);
+
+double angle_rad_or_default(const ChemComp& cc,
+                            const std::map<std::string, size_t>& atom_index,
+                            const std::vector<std::vector<size_t>>& adjacency,
+                            size_t a, size_t center, size_t b);
+
 bool is_heavy_atom(const ChemComp::Atom& atom) {
   return !atom.is_hydrogen();
 }
@@ -423,6 +433,229 @@ bool seed_cycle_coordinates(ChemComp& cc, const std::vector<std::vector<size_t>>
     cc.atoms[ordered[i]].xyz = Position(x_shift + radius * std::cos(angle),
                                         radius * std::sin(angle), 0.0);
   }
+  return true;
+}
+
+std::vector<size_t> connected_fragment_from_seed(const std::vector<std::vector<size_t>>& adjacency,
+                                                 const std::vector<bool>& in_fragment,
+                                                 size_t seed) {
+  std::vector<size_t> out;
+  if (seed >= adjacency.size() || !in_fragment[seed])
+    return out;
+  std::vector<bool> seen(adjacency.size(), false);
+  std::queue<size_t> q;
+  q.push(seed);
+  seen[seed] = true;
+  while (!q.empty()) {
+    size_t cur = q.front();
+    q.pop();
+    out.push_back(cur);
+    for (size_t nb : adjacency[cur])
+      if (in_fragment[nb] && !seen[nb]) {
+        seen[nb] = true;
+        q.push(nb);
+      }
+  }
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+std::vector<std::vector<size_t>> detect_plane_fragments(
+    const ChemComp& cc,
+    const std::map<std::string, size_t>& atom_index,
+    const std::vector<std::vector<size_t>>& adjacency) {
+  std::vector<std::vector<size_t> > raw;
+  for (const Restraints::Plane& plane : cc.rt.planes) {
+    std::vector<bool> in_fragment(cc.atoms.size(), false);
+    std::vector<size_t> atoms;
+    for (const Restraints::AtomId& atom_id : plane.ids) {
+      std::map<std::string, size_t>::const_iterator it = atom_index.find(atom_id.atom);
+      if (it == atom_index.end())
+        continue;
+      size_t idx = it->second;
+      if (!is_heavy_atom(cc.atoms[idx]))
+        continue;
+      in_fragment[idx] = true;
+      atoms.push_back(idx);
+    }
+    if (atoms.size() < 4 || atoms.size() > 12)
+      continue;
+    std::vector<size_t> frag = connected_fragment_from_seed(adjacency, in_fragment, atoms[0]);
+    if (frag.size() != atoms.size())
+      continue;
+    raw.push_back(frag);
+  }
+
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (size_t i = 0; i != raw.size() && !changed; ++i) {
+      std::set<size_t> aset(raw[i].begin(), raw[i].end());
+      for (size_t j = i + 1; j != raw.size(); ++j) {
+        int overlap = 0;
+        for (size_t idx : raw[j])
+          if (aset.count(idx))
+            ++overlap;
+        if (overlap < 2)
+          continue;
+        aset.insert(raw[j].begin(), raw[j].end());
+        raw[i].assign(aset.begin(), aset.end());
+        raw.erase(raw.begin() + j);
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  std::set<std::vector<size_t> > unique;
+  for (size_t i = 0; i != raw.size(); ++i) {
+    const std::vector<size_t>& frag = raw[i];
+    if (frag.size() < 4 || frag.size() > 12)
+      continue;
+    std::vector<bool> in_fragment(cc.atoms.size(), false);
+    for (size_t idx : frag)
+      in_fragment[idx] = true;
+    int edges = 0;
+    for (size_t idx : frag) {
+      int local_degree = 0;
+      for (size_t nb : adjacency[idx])
+        if (in_fragment[nb])
+          ++local_degree;
+      if (local_degree == 0) {
+        edges = -1;
+        break;
+      }
+      edges += local_degree;
+    }
+    if (edges < 2 * ((int) frag.size() - 1))
+      continue;
+    unique.insert(frag);
+  }
+  return std::vector<std::vector<size_t> >(unique.begin(), unique.end());
+}
+
+bool seed_plane_fragment_coordinates(ChemComp& cc,
+                                     const std::map<std::string, size_t>& atom_index,
+                                     const std::vector<std::vector<size_t>>& adjacency,
+                                     const std::vector<std::vector<double>>& bond_dist,
+                                     const std::vector<size_t>& fragment,
+                                     double x_shift) {
+  if (fragment.size() < 4 || fragment.size() > 12)
+    return false;
+  for (size_t idx : fragment)
+    if (atom_has_finite_xyz(cc.atoms[idx]))
+      return false;
+
+  std::set<size_t> frag_set(fragment.begin(), fragment.end());
+  size_t seed = fragment[0];
+  size_t second = SIZE_MAX;
+  for (size_t nb : adjacency[seed])
+    if (frag_set.count(nb)) {
+      second = nb;
+      break;
+    }
+  if (second == SIZE_MAX)
+    return false;
+
+  cc.atoms[seed].xyz = Position(x_shift, 0, 0);
+  cc.atoms[second].xyz = Position(x_shift + get_bond_dist_or_default(cc, adjacency, bond_dist, seed, second),
+                                  0, 0);
+
+  size_t third = SIZE_MAX;
+  for (size_t nb : adjacency[second])
+    if (nb != seed && frag_set.count(nb)) {
+      third = nb;
+      break;
+    }
+  if (third != SIZE_MAX) {
+    Position pos = arbitrary_position_from_angle_local(
+        cc.atoms[seed].xyz, cc.atoms[second].xyz,
+        get_bond_dist_or_default(cc, adjacency, bond_dist, second, third),
+        angle_rad_or_default(cc, atom_index, adjacency, seed, second, third));
+    cc.atoms[third].xyz = Position(pos.x, pos.y, 0.0);
+  }
+
+  bool progress = true;
+  while (progress) {
+    progress = false;
+    for (size_t target : fragment) {
+      if (atom_has_finite_xyz(cc.atoms[target]))
+        continue;
+      std::vector<size_t> placed_neighbors;
+      for (size_t nb : adjacency[target])
+        if (frag_set.count(nb) && atom_has_finite_xyz(cc.atoms[nb]))
+          placed_neighbors.push_back(nb);
+      if (placed_neighbors.empty())
+        continue;
+
+      bool placed = false;
+      for (size_t i = 0; i != placed_neighbors.size() && !placed; ++i) {
+        size_t center = placed_neighbors[i];
+        std::vector<size_t> anchors;
+        for (size_t nb : adjacency[center])
+          if (nb != target && frag_set.count(nb) && atom_has_finite_xyz(cc.atoms[nb]))
+            anchors.push_back(nb);
+        if (anchors.size() >= 2) {
+          size_t a = anchors[0];
+          size_t b = anchors[1];
+          std::pair<Position, Position> pair = position_from_two_angles_local(
+              cc.atoms[center].xyz, cc.atoms[a].xyz, cc.atoms[b].xyz,
+              get_bond_dist_or_default(cc, adjacency, bond_dist, center, target),
+              angle_rad_or_default(cc, atom_index, adjacency, a, center, target),
+              angle_rad_or_default(cc, atom_index, adjacency, b, center, target));
+          Position options[3] = {pair.first, pair.second,
+                                 trilaterate_in_plane(cc.atoms[center].xyz,
+                                                      std::pow(get_bond_dist_or_default(
+                                                                   cc, adjacency, bond_dist, center, target), 2),
+                                                      cc.atoms[a].xyz,
+                                                      distance_sq_from_angle(
+                                                          get_bond_dist_or_default(cc, adjacency, bond_dist, center, target),
+                                                          cc.atoms[center].xyz.dist(cc.atoms[a].xyz),
+                                                          angle_rad_or_default(cc, atom_index, adjacency, a, center, target)),
+                                                      cc.atoms[b].xyz,
+                                                      distance_sq_from_angle(
+                                                          get_bond_dist_or_default(cc, adjacency, bond_dist, center, target),
+                                                          cc.atoms[center].xyz.dist(cc.atoms[b].xyz),
+                                                          angle_rad_or_default(cc, atom_index, adjacency, b, center, target)))};
+          double best_score = INFINITY;
+          Position best(NAN, NAN, NAN);
+          for (int k = 0; k != 3; ++k) {
+            Position pos = Position(options[k].x, options[k].y, 0.0);
+            if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z))
+              continue;
+            double score = placement_contact_score(cc, pos, target, center);
+            if (score < best_score) {
+              best_score = score;
+              best = pos;
+            }
+          }
+          if (std::isfinite(best.x)) {
+            cc.atoms[target].xyz = best;
+            placed = true;
+          }
+        } else if (!anchors.empty()) {
+          size_t anchor = anchors[0];
+          Position pos = arbitrary_position_from_angle_local(
+              cc.atoms[anchor].xyz, cc.atoms[center].xyz,
+              get_bond_dist_or_default(cc, adjacency, bond_dist, center, target),
+              angle_rad_or_default(cc, atom_index, adjacency, anchor, center, target));
+          cc.atoms[target].xyz = Position(pos.x, pos.y, 0.0);
+          placed = atom_has_finite_xyz(cc.atoms[target]);
+        }
+      }
+      if (!placed) {
+        size_t center = placed_neighbors[0];
+        cc.atoms[target].xyz = cc.atoms[center].xyz +
+                               Position(get_bond_dist_or_default(cc, adjacency, bond_dist, center, target), 0, 0);
+        placed = atom_has_finite_xyz(cc.atoms[target]);
+      }
+      progress = placed || progress;
+    }
+  }
+
+  for (size_t idx : fragment)
+    if (!atom_has_finite_xyz(cc.atoms[idx]))
+      return false;
   return true;
 }
 
@@ -1303,6 +1536,15 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
     atom.xyz = Position(NAN, NAN, NAN);
 
   std::vector<std::vector<size_t>> small_cycles = detect_small_cycles(adjacency);
+  std::vector<std::vector<size_t>> plane_fragments =
+      detect_plane_fragments(cc, atom_index, adjacency);
+  std::vector<int> plane_membership(n, 0);
+  for (const Restraints::Plane& plane : cc.rt.planes)
+    for (const Restraints::AtomId& atom_id : plane.ids) {
+      std::map<std::string, size_t>::const_iterator it = atom_index.find(atom_id.atom);
+      if (it != atom_index.end() && is_heavy_atom(cc.atoms[it->second]))
+        ++plane_membership[it->second];
+    }
   std::vector<bool> ring_atom(n, false);
   for (const std::vector<size_t>& cycle : small_cycles)
     for (size_t idx : cycle)
@@ -1404,6 +1646,56 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
       }
     if (seed == SIZE_MAX)
       break;
+
+    bool seeded_plane = false;
+    int best_plane_score = -1;
+    size_t best_plane = SIZE_MAX;
+    for (size_t fi = 0; fi != plane_fragments.size(); ++fi) {
+      const std::vector<size_t>& fragment = plane_fragments[fi];
+      bool all_unplaced = true;
+      int score = 0;
+      for (size_t idx : fragment) {
+        if (atom_has_finite_xyz(cc.atoms[idx])) {
+          all_unplaced = false;
+          break;
+        }
+        if (plane_membership[idx] > 1)
+          score += plane_membership[idx] - 1;
+      }
+      if (all_unplaced && plane_fragments.size() <= 3 && fragment.size() <= 6 &&
+          score > best_plane_score) {
+        best_plane_score = score;
+        best_plane = fi;
+      }
+    }
+    if (plane_fragments.size() <= 3) {
+      if (best_plane != SIZE_MAX && best_plane_score > 0 &&
+          seed_plane_fragment_coordinates(cc, atom_index, adjacency, bond_dist,
+                                          plane_fragments[best_plane], component * 8.0)) {
+        seeded_plane = true;
+      } else {
+        for (const std::vector<size_t>& fragment : plane_fragments) {
+          if (std::find(fragment.begin(), fragment.end(), seed) != fragment.end() &&
+              seed_plane_fragment_coordinates(cc, atom_index, adjacency, bond_dist,
+                                              fragment, component * 8.0)) {
+            seeded_plane = true;
+            break;
+          }
+        }
+      }
+    }
+    if (seeded_plane) {
+      bool progress = true;
+      while (progress) {
+        progress = false;
+        for (size_t i = 0; i != n; ++i)
+          progress = place_bridge_heavy_atom(cc, atom_index, adjacency, bond_dist, i) || progress;
+        for (size_t i = 0; i != n; ++i)
+          progress = try_place(i) || progress;
+      }
+      ++component;
+      continue;
+    }
 
     bool seeded_cycle = false;
     for (const auto& cycle : small_cycles) {
