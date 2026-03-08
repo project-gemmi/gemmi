@@ -23,6 +23,10 @@ def parse_args():
     parser.add_argument('inputs', nargs='+', help='Chemcomp CIF files.')
     parser.add_argument('--core-index', type=int, default=0, help='Which planar core to inspect.')
     parser.add_argument('--min-size', type=int, default=4, help='Minimum planar core size.')
+    parser.add_argument('--bond-z-limit', type=float, default=10.0,
+                        help='Fail threshold for worst bond Z (default: 10).')
+    parser.add_argument('--summary-only', action='store_true',
+                        help='Print only the compact status summary.')
     return parser.parse_args(), repo_root
 
 
@@ -399,12 +403,19 @@ def assemble_fragments(cc, fragments, full_core_atoms=None, bridge_planes=None):
 
 def summarize(cc, core_atoms, positions):
     aset = set(core_atoms)
-    bonds, adjacency, angles = build_restraint_maps(cc, core_atoms)
+    _bonds, adjacency, angles = build_restraint_maps(cc, core_atoms)
     bond_res = []
-    for (a, b), target in bonds.items():
-        if a in positions and b in positions:
+    max_bond_z = 0.0
+    for bond in cc.rt.bonds:
+        a = bond.id1.atom
+        b = bond.id2.atom
+        if a in aset and b in aset and a in positions and b in positions:
+            target = bond.value if math.isfinite(bond.value) else bond.value_nucleus
             actual = (positions[a] - positions[b]).length()
-            bond_res.append((abs(actual - target), a, b, actual, target))
+            diff = abs(actual - target)
+            z = diff / bond.esd if bond.esd > 0 else 0.0
+            max_bond_z = max(max_bond_z, z)
+            bond_res.append((diff, z, a, b, actual, target))
     angle_res = []
     seen = set()
     for (a, c, b), target in angles.items():
@@ -416,7 +427,8 @@ def summarize(cc, core_atoms, positions):
             angle_res.append((abs(actual - math.degrees(target)), a, c, b, actual, math.degrees(target)))
     bond_res.sort(reverse=True)
     angle_res.sort(reverse=True)
-    return bond_res, angle_res
+    missing = sorted(a for a in core_atoms if a not in positions)
+    return bond_res, angle_res, max_bond_z, missing
 
 
 def main():
@@ -433,16 +445,23 @@ def main():
         core = cores[min(args.core_index, len(cores) - 1)]
         fragments, bridge_planes = choose_fragments(cc, core['atoms'])
         pos, placed_frags, edges, _local = assemble_fragments(cc, fragments, core['atoms'], bridge_planes)
+        bond_res, angle_res, max_bond_z, missing = summarize(cc, core['atoms'], pos)
+        status = 'PASS' if not missing and max_bond_z <= args.bond_z_limit else 'FAIL'
+        print('  status={}  worst_bond_z={:.2f}  missing={}/{}'.format(
+            status, max_bond_z, len(missing), len(core['atoms'])))
         print('  fragments={} placed-fragments={} placed-atoms={}/{}'.format(
             len(fragments), len(placed_frags), len(pos), len(core['atoms'])))
         print('  placed fragment labels: {}'.format(', '.join(sorted(placed_frags))))
         if bridge_planes:
             print('  bridge planes: {}'.format(', '.join(p['label'] for p in bridge_planes)))
-        bond_res, angle_res = summarize(cc, core['atoms'], pos)
-        for diff, a, b, actual, target in bond_res[:5]:
-            print('    bond  {:>8} {:>8}  {:.4f} vs {:.4f}'.format(a, b, actual, target))
-        for diff, a, c, b, actual, target in angle_res[:5]:
-            print('    angle {:>8} {:>8} {:>8}  {:.2f} vs {:.2f}'.format(a, c, b, actual, target))
+        if missing:
+            print('  missing atoms: {}'.format(', '.join(missing)))
+        if not args.summary_only:
+            for diff, z, a, b, actual, target in bond_res[:5]:
+                print('    bond  {:>8} {:>8}  {:.4f} vs {:.4f}  z={:.2f}'.format(
+                    a, b, actual, target, z))
+            for diff, a, c, b, actual, target in angle_res[:5]:
+                print('    angle {:>8} {:>8} {:>8}  {:.2f} vs {:.2f}'.format(a, c, b, actual, target))
         print()
 
 
