@@ -281,6 +281,19 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertLess(pos["C3'"].dist(pos["C2'"]), 2.0)
         self.assertLess(pos["C2'"].dist(pos["C1'"]), 2.0)
 
+    def test_generate_chemcomp_xyz_preserves_alb_amide_bridges(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ALB.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(pos['C21'].dist(pos['N6']), 1.3376, delta=0.15)
+        self.assertAlmostEqual(pos['C22'].dist(pos['N6']), 1.4549, delta=0.15)
+        self.assertAlmostEqual(pos['C24'].dist(pos['N7']), 1.3376, delta=0.15)
+        self.assertAlmostEqual(pos['C25'].dist(pos['N7']), 1.4553, delta=0.15)
+
     def test_generate_chemcomp_xyz_places_methyl_hydrogens_symmetrically(self):
         cc = gemmi.ChemComp()
         cc.name = 'TMET'

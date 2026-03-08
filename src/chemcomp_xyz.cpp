@@ -70,6 +70,24 @@ std::pair<Position, Position> trilaterate_local(const Position& p1, double r1sq,
                         p1 + Position(x * ex + y * ey - z * ez));
 }
 
+Position trilaterate_in_plane(const Position& p1, double r1sq,
+                              const Position& p2, double r2sq,
+                              const Position& p3, double r3sq) {
+  Vec3 ex = (p2 - p1).normalized();
+  double i = ex.dot(p3 - p1);
+  Vec3 eyv = Vec3(p3) - p1 - i * ex;
+  if (eyv.length_sq() < 1e-8)
+    return Position(NAN, NAN, NAN);
+  Vec3 ey = eyv.normalized();
+  double d = (p2 - p1).length();
+  double j = ey.dot(p3 - p1);
+  if (std::fabs(d) < 1e-8 || std::fabs(j) < 1e-8)
+    return Position(NAN, NAN, NAN);
+  double x = (r1sq - r2sq + d * d) / (2 * d);
+  double y = (r1sq - r3sq + i * i + j * j) / (2 * j) - x * i / j;
+  return p1 + Position(x * ex + y * ey);
+}
+
 std::pair<Position, Position> position_from_two_angles_local(const Position& p1,
                                                              const Position& p2,
                                                              const Position& p3,
@@ -161,6 +179,23 @@ double placement_contact_score(const ChemComp& cc, const Position& pos, size_t s
     score += 1.0 / std::max(1e-6, pos.dist_sq(cc.atoms[i].xyz));
   }
   return score;
+}
+
+double distance_sq_from_angle(double d12, double d13, double angle123) {
+  return d12 * d12 + d13 * d13 - 2.0 * d12 * d13 * std::cos(angle123);
+}
+
+bool atom_in_plane_restraint(const ChemComp& cc,
+                             const std::map<std::string, size_t>& atom_index,
+                             size_t idx) {
+  for (const Restraints::Plane& plane : cc.rt.planes) {
+    for (const Restraints::AtomId& atom_id : plane.ids) {
+      std::map<std::string, size_t>::const_iterator it = atom_index.find(atom_id.atom);
+      if (it != atom_index.end() && it->second == idx)
+        return true;
+    }
+  }
+  return false;
 }
 
 bool plane_from_positions(const std::vector<Position>& positions,
@@ -920,6 +955,179 @@ bool place_terminal_heavy_atom(ChemComp& cc,
   return atom_has_finite_xyz(cc.atoms[target]);
 }
 
+bool place_bridge_heavy_atom(ChemComp& cc,
+                             const std::map<std::string, size_t>& atom_index,
+                             const std::vector<std::vector<size_t>>& adjacency,
+                             const std::vector<std::vector<double>>& bond_dist,
+                             size_t target) {
+  if (atom_has_finite_xyz(cc.atoms[target]) || !is_heavy_atom(cc.atoms[target]))
+    return false;
+  std::vector<size_t> centers;
+  for (size_t nb : adjacency[target])
+    if (is_heavy_atom(cc.atoms[nb]) && atom_has_finite_xyz(cc.atoms[nb]))
+      centers.push_back(nb);
+  if (centers.size() < 2)
+    return false;
+
+  Position best_pos(NAN, NAN, NAN);
+  double best_score = INFINITY;
+
+  for (size_t ia = 0; ia != centers.size(); ++ia) {
+    for (size_t ib = ia + 1; ib != centers.size(); ++ib) {
+      size_t a = centers[ia];
+      size_t b = centers[ib];
+      double da = get_bond_dist_or_default(cc, adjacency, bond_dist, target, a);
+      double db = get_bond_dist_or_default(cc, adjacency, bond_dist, target, b);
+      for (size_t anchor : adjacency[a]) {
+        if (anchor == target || anchor == b || !is_heavy_atom(cc.atoms[anchor]) ||
+            !atom_has_finite_xyz(cc.atoms[anchor]))
+          continue;
+        double theta = angle_rad_or_default(cc, atom_index, adjacency, anchor, a, target);
+        double dc = cc.atoms[a].xyz.dist(cc.atoms[anchor].xyz);
+        double dct_sq = distance_sq_from_angle(da, dc, theta);
+        if (!(dct_sq > 1e-8))
+          continue;
+        std::pair<Position, Position> pair = trilaterate_local(cc.atoms[a].xyz, da * da,
+                                                               cc.atoms[b].xyz, db * db,
+                                                               cc.atoms[anchor].xyz, dct_sq);
+        Position planar = trilaterate_in_plane(cc.atoms[a].xyz, da * da,
+                                               cc.atoms[b].xyz, db * db,
+                                               cc.atoms[anchor].xyz, dct_sq);
+        Position options[3] = {pair.first, pair.second, planar};
+        for (int k = 0; k != 3; ++k) {
+          const Position& pos = options[k];
+          if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z))
+            continue;
+          double score = placement_contact_score(cc, pos, target, a) +
+                         placement_contact_score(cc, pos, target, b);
+          for (size_t other : centers) {
+            if (other == a || other == b)
+              continue;
+            double d = pos.dist(cc.atoms[other].xyz);
+            double want = get_bond_dist_or_default(cc, adjacency, bond_dist, target, other);
+            score += 10.0 * std::fabs(d - want);
+          }
+          if (score < best_score) {
+            best_score = score;
+            best_pos = pos;
+          }
+        }
+      }
+      for (size_t anchor : adjacency[b]) {
+        if (anchor == target || anchor == a || !is_heavy_atom(cc.atoms[anchor]) ||
+            !atom_has_finite_xyz(cc.atoms[anchor]))
+          continue;
+        double theta = angle_rad_or_default(cc, atom_index, adjacency, anchor, b, target);
+        double dc = cc.atoms[b].xyz.dist(cc.atoms[anchor].xyz);
+        double dct_sq = distance_sq_from_angle(db, dc, theta);
+        if (!(dct_sq > 1e-8))
+          continue;
+        std::pair<Position, Position> pair = trilaterate_local(cc.atoms[a].xyz, da * da,
+                                                               cc.atoms[b].xyz, db * db,
+                                                               cc.atoms[anchor].xyz, dct_sq);
+        Position planar = trilaterate_in_plane(cc.atoms[a].xyz, da * da,
+                                               cc.atoms[b].xyz, db * db,
+                                               cc.atoms[anchor].xyz, dct_sq);
+        Position options[3] = {pair.first, pair.second, planar};
+        for (int k = 0; k != 3; ++k) {
+          const Position& pos = options[k];
+          if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z))
+            continue;
+          double score = placement_contact_score(cc, pos, target, a) +
+                         placement_contact_score(cc, pos, target, b);
+          for (size_t other : centers) {
+            if (other == a || other == b)
+              continue;
+            double d = pos.dist(cc.atoms[other].xyz);
+            double want = get_bond_dist_or_default(cc, adjacency, bond_dist, target, other);
+            score += 10.0 * std::fabs(d - want);
+          }
+          if (score < best_score) {
+            best_score = score;
+            best_pos = pos;
+          }
+        }
+      }
+    }
+  }
+  if (!std::isfinite(best_pos.x))
+    return false;
+  cc.atoms[target].xyz = best_pos;
+  return true;
+}
+
+bool place_trivalent_junction_atom(ChemComp& cc,
+                                   const std::map<std::string, size_t>& atom_index,
+                                   const std::vector<std::vector<size_t>>& adjacency,
+                                   const std::vector<std::vector<double>>& bond_dist,
+                                   size_t target) {
+  if (atom_has_finite_xyz(cc.atoms[target]) || !is_heavy_atom(cc.atoms[target]))
+    return false;
+  std::vector<size_t> centers;
+  for (size_t nb : adjacency[target])
+    if (is_heavy_atom(cc.atoms[nb]) && atom_has_finite_xyz(cc.atoms[nb]))
+      centers.push_back(nb);
+  if (centers.size() != 3)
+    return false;
+  double d1 = get_bond_dist_or_default(cc, adjacency, bond_dist, target, centers[0]);
+  double d2 = get_bond_dist_or_default(cc, adjacency, bond_dist, target, centers[1]);
+  double d3 = get_bond_dist_or_default(cc, adjacency, bond_dist, target, centers[2]);
+  std::pair<Position, Position> pair = trilaterate_local(cc.atoms[centers[0]].xyz, d1 * d1,
+                                                         cc.atoms[centers[1]].xyz, d2 * d2,
+                                                         cc.atoms[centers[2]].xyz, d3 * d3);
+  Position planar = trilaterate_in_plane(cc.atoms[centers[0]].xyz, d1 * d1,
+                                         cc.atoms[centers[1]].xyz, d2 * d2,
+                                         cc.atoms[centers[2]].xyz, d3 * d3);
+  Position best_pos(NAN, NAN, NAN);
+  double best_score = INFINITY;
+  Position options[3] = {pair.first, pair.second, planar};
+  for (int k = 0; k != 3; ++k) {
+    const Position& pos = options[k];
+    if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z))
+      continue;
+    double score = placement_contact_score(cc, pos, target, centers[0]);
+    for (size_t i = 0; i != centers.size(); ++i) {
+      for (size_t j = i + 1; j != centers.size(); ++j) {
+        const Restraints::Angle* ang =
+            find_angle_restraint(cc, atom_index, centers[i], target, centers[j]);
+        if (ang && std::isfinite(ang->value)) {
+          double actual = calculate_angle(cc.atoms[centers[i]].xyz, pos, cc.atoms[centers[j]].xyz);
+          score += 5.0 * std::fabs(deg(actual) - ang->value);
+        }
+      }
+    }
+    for (const Restraints::Plane& plane : cc.rt.planes) {
+      bool has_target = false;
+      std::vector<Position> others;
+      for (const Restraints::AtomId& atom_id : plane.ids) {
+        std::map<std::string, size_t>::const_iterator it = atom_index.find(atom_id.atom);
+        if (it == atom_index.end())
+          continue;
+        if (it->second == target) {
+          has_target = true;
+        } else if (atom_has_finite_xyz(cc.atoms[it->second])) {
+          others.push_back(cc.atoms[it->second].xyz);
+        }
+      }
+      if (!has_target || others.size() < 3)
+        continue;
+      Position centroid;
+      Vec3 normal;
+      if (!plane_from_positions(others, centroid, normal))
+        continue;
+      score += 20.0 * std::fabs((pos - centroid).dot(normal));
+    }
+    if (score < best_score) {
+      best_score = score;
+      best_pos = pos;
+    }
+  }
+  if (!std::isfinite(best_pos.x))
+    return false;
+  cc.atoms[target].xyz = best_pos;
+  return true;
+}
+
 void regrow_terminal_heavy_atoms(ChemComp& cc,
                                  const std::map<std::string, size_t>& atom_index,
                                  const std::vector<std::vector<size_t>>& adjacency,
@@ -961,6 +1169,86 @@ void regrow_terminal_heavy_atoms(ChemComp& cc,
     progress = false;
     for (size_t idx : targets)
       progress = place_terminal_heavy_atom(cc, atom_index, adjacency, bond_dist, idx) || progress;
+  }
+}
+
+void regrow_bridge_heavy_atoms(ChemComp& cc,
+                               const std::map<std::string, size_t>& atom_index,
+                               const std::vector<std::vector<size_t>>& adjacency,
+                               const std::vector<std::vector<double>>& bond_dist,
+                               const std::vector<bool>& ring_atom) {
+  std::vector<size_t> targets;
+  for (size_t i = 0; i != cc.atoms.size(); ++i) {
+    if (!is_heavy_atom(cc.atoms[i]) || ring_atom[i])
+      continue;
+    int heavy_n = 0;
+    int hydrogen_n = 0;
+    bool anchored = false;
+    for (size_t nb : adjacency[i]) {
+      if (is_heavy_atom(cc.atoms[nb])) {
+        ++heavy_n;
+        for (size_t anchor : adjacency[nb]) {
+          if (anchor != i && is_heavy_atom(cc.atoms[anchor]) &&
+              atom_has_finite_xyz(cc.atoms[anchor])) {
+            anchored = true;
+            break;
+          }
+        }
+      } else if (cc.atoms[nb].is_hydrogen()) {
+        ++hydrogen_n;
+      }
+    }
+    if (heavy_n == 2 && hydrogen_n == 1 && anchored)
+      targets.push_back(i);
+  }
+  for (size_t idx : targets)
+    cc.atoms[idx].xyz = Position(NAN, NAN, NAN);
+  bool progress = true;
+  while (progress) {
+    progress = false;
+    for (size_t idx : targets)
+      progress = place_bridge_heavy_atom(cc, atom_index, adjacency, bond_dist, idx) || progress;
+  }
+}
+
+void regrow_trivalent_junction_atoms(ChemComp& cc,
+                                     const std::map<std::string, size_t>& atom_index,
+                                     const std::vector<std::vector<size_t>>& adjacency,
+                                     const std::vector<std::vector<double>>& bond_dist,
+                                     const std::vector<bool>& ring_atom) {
+  std::vector<size_t> targets;
+  for (size_t i = 0; i != cc.atoms.size(); ++i) {
+    if (!is_heavy_atom(cc.atoms[i]) || ring_atom[i] || !atom_in_plane_restraint(cc, atom_index, i))
+      continue;
+    int heavy_n = 0;
+    int hydrogen_n = 0;
+    double max_bond_error = 0.0;
+    bool has_terminal_heavy_neighbor = false;
+    for (size_t nb : adjacency[i]) {
+      if (is_heavy_atom(cc.atoms[nb])) {
+        ++heavy_n;
+        if (adjacency[nb].size() == 1)
+          has_terminal_heavy_neighbor = true;
+        if (atom_has_finite_xyz(cc.atoms[i]) && atom_has_finite_xyz(cc.atoms[nb])) {
+          double want = get_bond_dist_or_default(cc, adjacency, bond_dist, i, nb);
+          max_bond_error = std::max(max_bond_error,
+                                    std::fabs(cc.atoms[i].xyz.dist(cc.atoms[nb].xyz) - want));
+        }
+      } else if (cc.atoms[nb].is_hydrogen()) {
+        ++hydrogen_n;
+      }
+    }
+    if (heavy_n == 3 && hydrogen_n == 0 && !has_terminal_heavy_neighbor &&
+        max_bond_error > 0.5)
+      targets.push_back(i);
+  }
+  for (size_t idx : targets)
+    cc.atoms[idx].xyz = Position(NAN, NAN, NAN);
+  bool progress = true;
+  while (progress) {
+    progress = false;
+    for (size_t idx : targets)
+      progress = place_trivalent_junction_atom(cc, atom_index, adjacency, bond_dist, idx) || progress;
   }
 }
 
@@ -1130,6 +1418,8 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
       while (progress) {
         progress = false;
         for (size_t i = 0; i != n; ++i)
+          progress = place_bridge_heavy_atom(cc, atom_index, adjacency, bond_dist, i) || progress;
+        for (size_t i = 0; i != n; ++i)
           progress = try_place(i) || progress;
       }
       ++component;
@@ -1161,6 +1451,8 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
     while (progress) {
       progress = false;
       for (size_t i = 0; i != n; ++i)
+        progress = place_bridge_heavy_atom(cc, atom_index, adjacency, bond_dist, i) || progress;
+      for (size_t i = 0; i != n; ++i)
         progress = try_place(i) || progress;
     }
     ++component;
@@ -1170,6 +1462,8 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   regularize_small_cycles(cc, adjacency, small_cycles);
   enforce_plane_restraints(cc, atom_index);
   enforce_chirality_restraints(cc, atom_index, adjacency, ring_atom);
+  regrow_trivalent_junction_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
+  regrow_bridge_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_terminal_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   place_hydrogens_from_restraints(cc, atom_index, adjacency, bond_dist);
 
