@@ -23,6 +23,10 @@ def parse_args():
     parser.add_argument('--top', type=int, default=20, help='Number of worst files to print.')
     parser.add_argument('--threshold', type=float, default=1.0,
                         help='Per-file pass threshold in ESD units (default: 1.0).')
+    parser.add_argument('--bond-z-mid', type=float, default=5.0,
+                        help='Mid catastrophic bond threshold in ESD units (default: 5.0).')
+    parser.add_argument('--bond-z-high', type=float, default=10.0,
+                        help='High catastrophic bond threshold in ESD units (default: 10.0).')
     parser.add_argument('--verbose', action='store_true', help='Print one line per file.')
     return parser.parse_args(), repo_root
 
@@ -38,6 +42,9 @@ class GeometryStats:
         self.max_z = 0.0
         self.worst = []
         self.kind_counts = {}
+        self.worst_bond_z = 0.0
+        self.bonds_over_mid = 0
+        self.bonds_over_high = 0
 
     def add(self, kind: str, label: str, z: float, detail: str):
         if not math.isfinite(z):
@@ -46,6 +53,8 @@ class GeometryStats:
         self.kind_counts[kind] = self.kind_counts.get(kind, 0) + 1
         if z > self.max_z:
             self.max_z = z
+        if kind == 'bond' and z > self.worst_bond_z:
+            self.worst_bond_z = z
         self.worst.append((z, kind, label, detail))
 
     def top(self, n: int):
@@ -118,7 +127,7 @@ def chirality_label(chir) -> str:
     return f'{chir.id_ctr.atom},{chir.id1.atom},{chir.id2.atom},{chir.id3.atom}'
 
 
-def evaluate_component(gemmi, path: Path):
+def evaluate_component(gemmi, path: Path, bond_z_mid: float, bond_z_high: float):
     cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
     for atom in cc.atoms:
         atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
@@ -137,6 +146,11 @@ def evaluate_component(gemmi, path: Path):
         actual = a1.xyz.dist(a2.xyz)
         z = abs(actual - target) / bond.esd if bond.esd > 0 else float('inf')
         stats.add('bond', bond_label(bond), z, f'{actual:.4f} vs {target:.4f}')
+        if math.isfinite(z):
+            if z > bond_z_mid:
+                stats.bonds_over_mid += 1
+            if z > bond_z_high:
+                stats.bonds_over_high += 1
 
     for angle in cc.rt.angles:
         a1 = atoms.get(angle.id1.atom)
@@ -213,12 +227,18 @@ def evaluate_component(gemmi, path: Path):
     }
 
 
-def summarize(results, threshold: float, top_n: int):
+def summarize(results, threshold: float, top_n: int,
+              bond_z_mid: float, bond_z_high: float):
     processed = len(results)
     fully_placed = sum(1 for r in results if r['placed'] == r['atoms'])
     complete = sum(1 for r in results if not r['missing'])
     within = sum(1 for r in results if r['placed'] == r['atoms'] and not r['missing'] and r['stats'].max_z < threshold)
     max_zs = [r['stats'].max_z for r in results if math.isfinite(r['stats'].max_z)]
+    worst_bond_zs = [r['stats'].worst_bond_z for r in results if math.isfinite(r['stats'].worst_bond_z)]
+    bond_mid_ok = sum(1 for r in results if r['stats'].bonds_over_mid == 0)
+    bond_high_ok = sum(1 for r in results if r['stats'].bonds_over_high == 0)
+    total_bonds_over_mid = sum(r['stats'].bonds_over_mid for r in results)
+    total_bonds_over_high = sum(r['stats'].bonds_over_high for r in results)
     kind_counts = {}
     for r in results:
         for kind, count in r['stats'].kind_counts.items():
@@ -228,18 +248,35 @@ def summarize(results, threshold: float, top_n: int):
     print(f'Fully placed:    {fully_placed}')
     print(f'Complete eval:   {complete}')
     print(f'All diffs < {threshold:g} esd: {within}')
+    print(f'No bonds > {bond_z_mid:g} esd: {bond_mid_ok}')
+    print(f'No bonds > {bond_z_high:g} esd: {bond_high_ok}')
     if max_zs:
         print(f'Max-z median:    {statistics.median(max_zs):.3f}')
         print(f'Max-z mean:      {statistics.fmean(max_zs):.3f}')
         print(f'Max-z worst:     {max(max_zs):.3f}')
+    if worst_bond_zs:
+        print(f'Worst bond z median: {statistics.median(worst_bond_zs):.3f}')
+        print(f'Worst bond z mean:   {statistics.fmean(worst_bond_zs):.3f}')
+        print(f'Worst bond z max:    {max(worst_bond_zs):.3f}')
+    print(f'Bonds > {bond_z_mid:g} esd: {total_bonds_over_mid}')
+    print(f'Bonds > {bond_z_high:g} esd: {total_bonds_over_high}')
     if kind_counts:
         print('Restraints:      ' + ', '.join(f'{kind}={kind_counts[kind]}' for kind in sorted(kind_counts)))
 
-    ranked = sorted(results, key=lambda r: (r['stats'].max_z, len(r['missing'])), reverse=True)
+    ranked = sorted(results,
+                    key=lambda r: (r['stats'].bonds_over_high,
+                                   r['stats'].worst_bond_z,
+                                   r['stats'].bonds_over_mid,
+                                   r['stats'].max_z,
+                                   len(r['missing'])),
+                    reverse=True)
     print(f'\nWorst {min(top_n, len(ranked))} files:')
     for r in ranked[:top_n]:
         missing_note = f", missing={len(r['missing'])}" if r['missing'] else ''
-        print(f"{r['code']:>6}  max_z={r['stats'].max_z:8.3f}  placed={r['placed']:>3}/{r['atoms']:<3}{missing_note}  {r['path']}")
+        print(f"{r['code']:>6}  max_z={r['stats'].max_z:8.3f}  worst_bond_z={r['stats'].worst_bond_z:8.3f}  "
+              f"bond>{bond_z_mid:g}={r['stats'].bonds_over_mid:>3}  "
+              f"bond>{bond_z_high:g}={r['stats'].bonds_over_high:>3}  "
+              f"placed={r['placed']:>3}/{r['atoms']:<3}{missing_note}  {r['path']}")
         for z, kind, label, detail in r['stats'].top(3):
             print(f'        {kind:<9} z={z:8.3f}  {label}  {detail}')
         if r['missing']:
@@ -261,13 +298,17 @@ def main():
 
     results = []
     for path in paths:
-        result = evaluate_component(gemmi, path)
+        result = evaluate_component(gemmi, path, args.bond_z_mid, args.bond_z_high)
         results.append(result)
         if args.verbose:
             status = 'OK' if result['placed'] == result['atoms'] and not result['missing'] and result['stats'].max_z < args.threshold else 'WARN'
-            print(f"{status} {result['code']}: max_z={result['stats'].max_z:.3f} placed={result['placed']}/{result['atoms']} missing={len(result['missing'])}")
+            print(f"{status} {result['code']}: max_z={result['stats'].max_z:.3f} "
+                  f"worst_bond_z={result['stats'].worst_bond_z:.3f} "
+                  f"bond>{args.bond_z_mid:g}={result['stats'].bonds_over_mid} "
+                  f"bond>{args.bond_z_high:g}={result['stats'].bonds_over_high} "
+                  f"placed={result['placed']}/{result['atoms']} missing={len(result['missing'])}")
 
-    summarize(results, args.threshold, args.top)
+    summarize(results, args.threshold, args.top, args.bond_z_mid, args.bond_z_high)
     return 0
 
 
