@@ -68,7 +68,8 @@ gemmi/chemcomp.hpp
     monomer library, or from PDB CCD.
 
 gemmi/chemcomp_xyz.hpp
-    Generate idealized ChemComp coordinates from restraint dictionaries.
+    Generate idealized ChemComp coordinates from restraint dictionaries,
+    and refine them against bond and angle restraints.
 
 gemmi/cif.hpp
     CIF parser (based on PEGTL) with pluggable actions,

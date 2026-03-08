@@ -13,6 +13,10 @@ namespace gemmi {
 /// restraints. Returns the number of atoms assigned finite coordinates.
 GEMMI_DLL int generate_chemcomp_xyz_from_restraints(ChemComp& cc);
 
+/// Refine monomer coordinates against bond and angle restraints
+/// using Levenberg-Marquardt least squares. Returns final WSSR.
+GEMMI_DLL double refine_chemcomp_xyz(ChemComp& cc);
+
 } // namespace gemmi
 
 #endif

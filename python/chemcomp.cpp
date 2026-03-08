@@ -364,4 +364,9 @@ static void add_acedrg_tables(nb::module_& m) {
         nb::arg("chemcomp"),
         "Generate a deterministic idealized conformer from ChemComp bond/angle/torsion restraints.\n"
         "Returns the number of atoms assigned finite coordinates.");
+  m.def("refine_chemcomp_xyz",
+        &refine_chemcomp_xyz,
+        nb::arg("chemcomp"),
+        "Refine monomer coordinates against bond and angle restraints\n"
+        "using Levenberg-Marquardt least squares. Returns final WSSR.");
 }

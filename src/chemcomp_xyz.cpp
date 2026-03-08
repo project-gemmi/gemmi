@@ -2,6 +2,7 @@
 
 #include "gemmi/chemcomp_xyz.hpp"
 #include "gemmi/calculate.hpp"
+#include "gemmi/levmar.hpp"
 #include "gemmi/math.hpp"
 #include <algorithm>
 #include <cmath>
@@ -1757,11 +1758,187 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   regrow_trivalent_junction_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_bridge_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_terminal_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
+  int heavy_placed = count_finite(true);
+  if (heavy_placed > 0)
+    refine_chemcomp_xyz(cc);
+
   place_hydrogens_from_restraints(cc, atom_index, adjacency, bond_dist);
 
   int placed = count_finite(false);
   cc.has_coordinates = placed > 0;
+
   return placed;
+}
+
+namespace {
+
+struct ChemCompRefineTarget {
+  ChemComp& cc;
+  std::vector<size_t> atom_indices;
+  std::vector<int> param_offset;  // -1 if atom is not refined
+
+  struct Point {
+    enum Type { Bond, Angle };
+    Type type;
+    size_t idx1, idx2, idx3;  // atom indices (idx3 unused for bonds)
+    double target_value;       // ideal distance or angle (radians)
+    double weight;             // 1/esd
+
+    double get_y() const { return target_value; }
+    double get_weight() const { return weight; }
+  };
+
+  std::vector<Point> points;
+
+  ChemCompRefineTarget(ChemComp& cc_) : cc(cc_), param_offset(cc_.atoms.size(), -1) {
+    for (size_t i = 0; i < cc.atoms.size(); ++i) {
+      if (atom_has_finite_xyz(cc.atoms[i]) && is_heavy_atom(cc.atoms[i])) {
+        param_offset[i] = static_cast<int>(atom_indices.size() * 3);
+        atom_indices.push_back(i);
+      }
+    }
+
+    std::map<std::string, size_t> atom_index;
+    for (size_t i = 0; i < cc.atoms.size(); ++i)
+      atom_index[cc.atoms[i].id] = i;
+
+    for (const auto& bond : cc.rt.bonds) {
+      auto it1 = atom_index.find(bond.id1.atom);
+      auto it2 = atom_index.find(bond.id2.atom);
+      if (it1 == atom_index.end() || it2 == atom_index.end())
+        continue;
+      size_t i1 = it1->second, i2 = it2->second;
+      if (param_offset[i1] < 0 || param_offset[i2] < 0)
+        continue;
+      double value = std::isfinite(bond.value) ? bond.value : bond.value_nucleus;
+      if (!std::isfinite(value) || value <= 0)
+        continue;
+      double esd = std::isfinite(bond.esd) ? bond.esd : 0.02;
+      if (esd <= 0)
+        esd = 0.02;
+      points.push_back({Point::Bond, i1, i2, 0, value, 1.0 / esd});
+    }
+
+    for (const auto& angle : cc.rt.angles) {
+      auto it1 = atom_index.find(angle.id1.atom);
+      auto it2 = atom_index.find(angle.id2.atom);
+      auto it3 = atom_index.find(angle.id3.atom);
+      if (it1 == atom_index.end() || it2 == atom_index.end() || it3 == atom_index.end())
+        continue;
+      size_t i1 = it1->second, i2 = it2->second, i3 = it3->second;
+      if (param_offset[i1] < 0 || param_offset[i2] < 0 || param_offset[i3] < 0)
+        continue;
+      if (!std::isfinite(angle.value))
+        continue;
+      double target_rad = rad(angle.value);
+      double esd = std::isfinite(angle.esd) && angle.esd > 0 ? angle.esd : 1.0;
+      double weight = 1.0 / rad(esd);
+      points.push_back({Point::Angle, i1, i2, i3, target_rad, weight});
+    }
+  }
+
+  std::vector<double> get_parameters() const {
+    std::vector<double> params(atom_indices.size() * 3);
+    for (size_t i = 0; i < atom_indices.size(); ++i) {
+      const Position& p = cc.atoms[atom_indices[i]].xyz;
+      params[i * 3 + 0] = p.x;
+      params[i * 3 + 1] = p.y;
+      params[i * 3 + 2] = p.z;
+    }
+    return params;
+  }
+
+  void set_parameters(const std::vector<double>& p) {
+    for (size_t i = 0; i < atom_indices.size(); ++i) {
+      Position& pos = cc.atoms[atom_indices[i]].xyz;
+      pos.x = p[i * 3 + 0];
+      pos.y = p[i * 3 + 1];
+      pos.z = p[i * 3 + 2];
+    }
+  }
+
+  double compute_value(const Point& p) const {
+    if (p.type == Point::Bond) {
+      return cc.atoms[p.idx1].xyz.dist(cc.atoms[p.idx2].xyz);
+    } else {
+      return calculate_angle(cc.atoms[p.idx1].xyz, cc.atoms[p.idx2].xyz,
+                             cc.atoms[p.idx3].xyz);
+    }
+  }
+
+  double compute_value_and_derivatives(const Point& p, std::vector<double>& dy_da) const {
+    std::fill(dy_da.begin(), dy_da.end(), 0.0);
+
+    if (p.type == Point::Bond) {
+      const Position& p1 = cc.atoms[p.idx1].xyz;
+      const Position& p2 = cc.atoms[p.idx2].xyz;
+      Vec3 delta = p2 - p1;
+      double d = delta.length();
+      if (d < 1e-15)
+        return d;
+      Vec3 grad = delta * (1.0 / d);  // dd/dr2
+      int off1 = param_offset[p.idx1];
+      int off2 = param_offset[p.idx2];
+      // dd/dr1 = -grad
+      dy_da[off1 + 0] = -grad.x;
+      dy_da[off1 + 1] = -grad.y;
+      dy_da[off1 + 2] = -grad.z;
+      // dd/dr2 = +grad
+      dy_da[off2 + 0] = grad.x;
+      dy_da[off2 + 1] = grad.y;
+      dy_da[off2 + 2] = grad.z;
+      return d;
+    } else {
+      // Angle p.idx1 - p.idx2 - p.idx3
+      const Position& r1 = cc.atoms[p.idx1].xyz;
+      const Position& r2 = cc.atoms[p.idx2].xyz;
+      const Position& r3 = cc.atoms[p.idx3].xyz;
+      Vec3 u = r1 - r2;
+      Vec3 v = r3 - r2;
+      double lu = u.length();
+      double lv = v.length();
+      if (lu < 1e-15 || lv < 1e-15)
+        return 0.0;
+      double cos_theta = u.dot(v) / (lu * lv);
+      cos_theta = std::max(-1.0, std::min(1.0, cos_theta));
+      double theta = std::acos(cos_theta);
+      double sin_theta = std::sin(theta);
+      if (sin_theta < 1e-10)
+        sin_theta = 1e-10;
+
+      // dtheta/dr1 = (cos_theta * u/lu - v/lv) / (lu * sin_theta)
+      Vec3 dtheta_dr1 = (cos_theta / lu * u - v / lv) * (1.0 / (lu * sin_theta));
+      // dtheta/dr3 = (cos_theta * v/lv - u/lu) / (lv * sin_theta)
+      Vec3 dtheta_dr3 = (cos_theta / lv * v - u / lu) * (1.0 / (lv * sin_theta));
+      // dtheta/dr2 = -(dtheta/dr1 + dtheta/dr3)
+      Vec3 dtheta_dr2 = -(dtheta_dr1 + dtheta_dr3);
+
+      int off1 = param_offset[p.idx1];
+      int off2 = param_offset[p.idx2];
+      int off3 = param_offset[p.idx3];
+      dy_da[off1 + 0] = dtheta_dr1.x;
+      dy_da[off1 + 1] = dtheta_dr1.y;
+      dy_da[off1 + 2] = dtheta_dr1.z;
+      dy_da[off2 + 0] = dtheta_dr2.x;
+      dy_da[off2 + 1] = dtheta_dr2.y;
+      dy_da[off2 + 2] = dtheta_dr2.z;
+      dy_da[off3 + 0] = dtheta_dr3.x;
+      dy_da[off3 + 1] = dtheta_dr3.y;
+      dy_da[off3 + 2] = dtheta_dr3.z;
+      return theta;
+    }
+  }
+};
+
+} // namespace
+
+double refine_chemcomp_xyz(ChemComp& cc) {
+  ChemCompRefineTarget target(cc);
+  if (target.atom_indices.empty() || target.points.empty())
+    return 0.0;
+  LevMar levmar;
+  levmar.eval_limit = 200;
+  return levmar.fit(target);
 }
 
 } // namespace gemmi
