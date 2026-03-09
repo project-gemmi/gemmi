@@ -15,19 +15,19 @@ namespace gemmi {
 
 namespace {
 
-std::set<size_t> collect_carborane_cluster_atoms(const ChemComp& cc,
-                                                  const AceBondAdjacency& adj) {
-  std::vector<int> b_neighbors(cc.atoms.size(), 0);
-  for (size_t i = 0; i < cc.atoms.size(); ++i)
-    for (const auto& nb : adj[i])
-      if (cc.atoms[nb.idx].el == El::B)
-        ++b_neighbors[i];
-
+template<typename Pred>
+std::set<size_t> collect_carborane_atoms(const ChemComp& cc,
+                                         const AceBondAdjacency& adj,
+                                         Pred should_expand) {
   std::vector<size_t> seeds;
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
     if (cc.atoms[i].el == El::H)
       continue;
-    if (b_neighbors[i] >= 4)
+    int b_count = 0;
+    for (const auto& nb : adj[i])
+      if (cc.atoms[nb.idx].el == El::B)
+        ++b_count;
+    if (b_count >= 4)
       seeds.push_back(i);
   }
   std::set<size_t> out;
@@ -39,13 +39,18 @@ std::set<size_t> collect_carborane_cluster_atoms(const ChemComp& cc,
       continue;
     for (const auto& nb : adj[idx]) {
       Element el = cc.atoms[nb.idx].el;
-      if (el == El::H)
-        continue;
-      if (el == El::B || el == El::C || el.is_metal())
+      if (el != El::H && should_expand(el, nb.idx))
         stack.push_back(nb.idx);
     }
   }
   return out;
+}
+
+std::set<size_t> collect_carborane_cluster_atoms(const ChemComp& cc,
+                                                  const AceBondAdjacency& adj) {
+  return collect_carborane_atoms(cc, adj, [](Element el, size_t) {
+    return el == El::B || el == El::C || el.is_metal();
+  });
 }
 
 std::set<size_t> collect_carborone_match_atoms(const ChemComp& cc,
@@ -55,30 +60,9 @@ std::set<size_t> collect_carborone_match_atoms(const ChemComp& cc,
     for (const auto& nb : adj[i])
       if (cc.atoms[nb.idx].el == El::B)
         ++b_neighbors[i];
-
-  std::vector<size_t> seeds;
-  for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    if (cc.atoms[i].el == El::H)
-      continue;
-    if (b_neighbors[i] >= 4)
-      seeds.push_back(i);
-  }
-  std::set<size_t> out;
-  std::vector<size_t> stack = seeds;
-  while (!stack.empty()) {
-    size_t idx = stack.back();
-    stack.pop_back();
-    if (!out.insert(idx).second)
-      continue;
-    for (const auto& nb : adj[idx]) {
-      Element el = cc.atoms[nb.idx].el;
-      if (el == El::H)
-        continue;
-      if (el == El::B || el.is_metal() || b_neighbors[nb.idx] >= 2)
-        stack.push_back(nb.idx);
-    }
-  }
-  return out;
+  return collect_carborane_atoms(cc, adj, [&](Element el, size_t idx) {
+    return el == El::B || el.is_metal() || b_neighbors[idx] >= 2;
+  });
 }
 
 struct CarboroneGraph {
@@ -472,7 +456,7 @@ void apply_mixed_carborane_mode(ChemComp& cc, bool no_angles, const std::string&
   for (const auto& bond : cc.rt.bonds) {
     int idx1 = cc.find_atom_index(bond.id1.atom), idx2 = cc.find_atom_index(bond.id2.atom);
     if (idx1 < 0 || idx2 < 0 || cc.atoms[(size_t) idx1].el == El::H || cc.atoms[(size_t) idx2].el == El::H) continue;
-    if ((cb_atoms.count((size_t) idx1) != 0) != (cb_atoms.count((size_t) idx2) != 0)) {
+    if (cb_atoms.count((size_t) idx1) != cb_atoms.count((size_t) idx2)) {
       broken_atoms.insert((size_t) idx1); broken_atoms.insert((size_t) idx2);
       reserved_tmp_h_ids.insert(cat("H", ++tmp_h_serial));
     }

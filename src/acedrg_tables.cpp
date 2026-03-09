@@ -170,55 +170,35 @@ CoordGeometry default_coord_geometry(int coord_number) {
 }
 
 CoordGeometry parse_coord_geometry(const char* geometry_name) {
+  static const std::map<std::string, CoordGeometry> mapping = {
+    {"LINEAR", CoordGeometry::LINEAR},
+    {"TRIGONAL_PLANAR", CoordGeometry::TRIGONAL_PLANAR},
+    {"T_SHAPE", CoordGeometry::T_SHAPED},
+    {"TETRAHEDRAL", CoordGeometry::TETRAHEDRAL},
+    {"SQUARE_PLANAR", CoordGeometry::SQUARE_PLANAR},
+    {"TRIGONAL_BIPYRAMID", CoordGeometry::TRIGONAL_BIPYRAMIDAL},
+    {"SQUARE_PYRAMID", CoordGeometry::SQUARE_PYRAMIDAL},
+    {"OCTAHEDRAL", CoordGeometry::OCTAHEDRAL},
+    {"TRIGONAL_PRISM", CoordGeometry::TRIGONAL_PRISM},
+    {"PENTAGONAL_BIPYRAMID", CoordGeometry::PENTAGONAL_BIPYRAMIDAL},
+    {"CAPPED_OCTAHEDRAL", CoordGeometry::CAPPED_OCTAHEDRAL},
+    {"SQUARE_ANTIPROSMATIC", CoordGeometry::SQUARE_ANTIPRISM},
+    {"BICAPPED_SQUARE_ANTIPRISMATIC", CoordGeometry::SQUARE_ANTIPRISM},
+    {"ALL_FACE_CAPPED_TRIGONAL_PRISMATIC", CoordGeometry::TRIGONAL_PRISM},
+    {"BENT", CoordGeometry::TRIGONAL_PLANAR},
+    {"PYRAMID", CoordGeometry::TRIGONAL_PLANAR},
+    {"HEXAGONAL_PLANAR", CoordGeometry::OCTAHEDRAL},
+    {"CAPPED_TRIGONAL_PRISM", CoordGeometry::TRIGONAL_PRISM},
+    {"CUBIC", CoordGeometry::SQUARE_ANTIPRISM},
+    {"HEXAGONAL_BIPYRAMID", CoordGeometry::SQUARE_ANTIPRISM},
+    {"TRICAPPED_TRIGONAL_PRISMATIC", CoordGeometry::TRIGONAL_PRISM},
+  };
   std::string s(geometry_name);
   for (char& c : s)
     if (c == '-')
       c = '_';
-  if (s == "LINEAR")
-    return CoordGeometry::LINEAR;
-  if (s == "TRIGONAL_PLANAR")
-    return CoordGeometry::TRIGONAL_PLANAR;
-  if (s == "T_SHAPE")
-    return CoordGeometry::T_SHAPED;
-  if (s == "TETRAHEDRAL")
-    return CoordGeometry::TETRAHEDRAL;
-  if (s == "SQUARE_PLANAR")
-    return CoordGeometry::SQUARE_PLANAR;
-  if (s == "TRIGONAL_BIPYRAMID")
-    return CoordGeometry::TRIGONAL_BIPYRAMIDAL;
-  if (s == "SQUARE_PYRAMID")
-    return CoordGeometry::SQUARE_PYRAMIDAL;
-  if (s == "OCTAHEDRAL")
-    return CoordGeometry::OCTAHEDRAL;
-  if (s == "TRIGONAL_PRISM")
-    return CoordGeometry::TRIGONAL_PRISM;
-  if (s == "PENTAGONAL_BIPYRAMID")
-    return CoordGeometry::PENTAGONAL_BIPYRAMIDAL;
-  if (s == "CAPPED_OCTAHEDRAL")
-    return CoordGeometry::CAPPED_OCTAHEDRAL;
-  if (s == "SQUARE_ANTIPROSMATIC")
-    return CoordGeometry::SQUARE_ANTIPRISM;
-  if (s == "BICAPPED_SQUARE_ANTIPRISMATIC")
-    return CoordGeometry::SQUARE_ANTIPRISM;
-  if (s == "ALL_FACE_CAPPED_TRIGONAL_PRISMATIC")
-    return CoordGeometry::TRIGONAL_PRISM;
-  if (s == "CUBOCTAHEDRON")
-    return CoordGeometry::UNKNOWN;
-  if (s == "BENT")
-    return CoordGeometry::TRIGONAL_PLANAR;
-  if (s == "PYRAMID")
-    return CoordGeometry::TRIGONAL_PLANAR;
-  if (s == "HEXAGONAL_PLANAR")
-    return CoordGeometry::OCTAHEDRAL;
-  if (s == "CAPPED_TRIGONAL_PRISM")
-    return CoordGeometry::TRIGONAL_PRISM;
-  if (s == "CUBIC")
-    return CoordGeometry::SQUARE_ANTIPRISM;
-  if (s == "HEXAGONAL_BIPYRAMID")
-    return CoordGeometry::SQUARE_ANTIPRISM;
-  if (s == "TRICAPPED_TRIGONAL_PRISMATIC")
-    return CoordGeometry::TRIGONAL_PRISM;
-  return CoordGeometry::UNKNOWN;
+  auto it = mapping.find(s);
+  return it != mapping.end() ? it->second : CoordGeometry::UNKNOWN;
 }
 
 std::vector<double> default_angles_for_geometry(CoordGeometry geometry) {
