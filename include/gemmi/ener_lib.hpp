@@ -5,7 +5,6 @@
 #ifndef GEMMI_ENER_LIB_HPP_
 #define GEMMI_ENER_LIB_HPP_
 
-//:#include <map>
 #include <string>
 #include <vector>
 

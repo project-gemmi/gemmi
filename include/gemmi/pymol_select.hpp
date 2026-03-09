@@ -65,35 +65,20 @@ struct NotNode : Node {
 
 // --- Property Nodes ---
 
-struct ChainNode : Node {
+template<char (gemmi::FlatAtom::*Field)[8]>
+struct GlobMatchNode : Node {
     std::vector<std::string> names;
-    explicit ChainNode(std::vector<std::string> v) : names(std::move(v)) {}
+    explicit GlobMatchNode(std::vector<std::string> v) : names(std::move(v)) {}
     bool match(const gemmi::FlatAtom& a) const override {
         for (const auto& n : names)
-            if (glob_match(n, a.chain_id)) return true;
+            if (glob_match(n, a.*Field)) return true;
         return false;
     }
 };
 
-struct ResnNode : Node {
-    std::vector<std::string> names;
-    explicit ResnNode(std::vector<std::string> v) : names(std::move(v)) {}
-    bool match(const gemmi::FlatAtom& a) const override {
-        for (const auto& n : names)
-            if (glob_match(n, a.residue_name)) return true;
-        return false;
-    }
-};
-
-struct AtomNameNode : Node {
-    std::vector<std::string> names;
-    explicit AtomNameNode(std::vector<std::string> v) : names(std::move(v)) {}
-    bool match(const gemmi::FlatAtom& a) const override {
-        for (const auto& n : names)
-            if (glob_match(n, a.atom_name)) return true;
-        return false;
-    }
-};
+using ChainNode = GlobMatchNode<&gemmi::FlatAtom::chain_id>;
+using ResnNode = GlobMatchNode<&gemmi::FlatAtom::residue_name>;
+using AtomNameNode = GlobMatchNode<&gemmi::FlatAtom::atom_name>;
 
 struct AltLocNode : Node {
     char alt;
