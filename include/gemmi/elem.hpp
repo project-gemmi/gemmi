@@ -382,6 +382,7 @@ struct Element {
   float vdw_r() const { return vdw_radius(elem); }
   bool is_metal() const { return gemmi::is_metal(elem); }
   bool is_halogen() const { return element_group(elem) == 17; }
+  bool is_chalcogen() const { return element_group(elem) == 16; }
   // return name such as Mg (not MG)
   const char* name() const { return element_name(elem); }
   // return uppercase name such as MG

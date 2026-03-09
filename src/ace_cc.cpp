@@ -624,7 +624,7 @@ std::vector<size_t> build_tv_list_for_center(
     bool want_h_first = (mode == TvMode::SP2SP3_SP3 &&
                          atom_info[ctr].hybrid == Hybridization::SP3 &&
                          stereo_chiral_centers.count(ctr) == 0 &&
-                         !is_oxygen_column(cc.atoms[other].el) &&
+                         !cc.atoms[other].el.is_chalcogen() &&
                          rs == SIZE_MAX);
     bool want_non_h_first = (mode == TvMode::SP3_OXY &&
                              atom_info[ctr].hybrid == Hybridization::SP3 &&
@@ -969,8 +969,8 @@ void emit_one_torsion(
         find_ring_sharing_pair(adj, atom_info, sp2_center, sp3_center);
     size_t sp2_rs = rs_pair.first;
     size_t sp3_rs = rs_pair.second;
-    bool oxy_col_sp2 = is_oxygen_column(cc.atoms[sp2_center].el);
-    bool oxy_col_sp3 = is_oxygen_column(cc.atoms[sp3_center].el);
+    bool oxy_col_sp2 = cc.atoms[sp2_center].el.is_chalcogen();
+    bool oxy_col_sp3 = cc.atoms[sp3_center].el.is_chalcogen();
 
     auto normalize_acedrg_angle = [](double ang) {
       if (ang > 360.0)
@@ -1975,8 +1975,8 @@ void generate_torsions_from_bonds(
     bool c3_sp2 = is_sp2_like(atom_info[center3]);
     bool c2_sp3 = is_sp3_like(atom_info[center2]);
     bool c3_sp3 = is_sp3_like(atom_info[center3]);
-    bool c2_oxy_sp2 = c2_sp2 && is_oxygen_column(cc.atoms[center2].el);
-    bool c3_oxy_sp2 = c3_sp2 && is_oxygen_column(cc.atoms[center3].el);
+    bool c2_oxy_sp2 = c2_sp2 && cc.atoms[center2].el.is_chalcogen();
+    bool c3_oxy_sp2 = c3_sp2 && cc.atoms[center3].el.is_chalcogen();
     if ((c2_oxy_sp2 && c3_sp3) || (c3_oxy_sp2 && c2_sp3)) {
       // SetOneSP3OxyColumnBond(tIdx1=sp3, tIdx2=sp2-oxy)
       if (c2_oxy_sp2 && c3_sp3)
@@ -2043,8 +2043,8 @@ void generate_torsions_from_bonds(
 
     std::vector<Restraints::Torsion> generated;
     generated.reserve(tv1_idx.size() * tv2_idx.size());
-    bool oxy_c2_sp2 = c2_sp2 && is_oxygen_column(cc.atoms[center2].el);
-    bool oxy_c3_sp2 = c3_sp2 && is_oxygen_column(cc.atoms[center3].el);
+    bool oxy_c2_sp2 = c2_sp2 && cc.atoms[center2].el.is_chalcogen();
+    bool oxy_c3_sp2 = c3_sp2 && cc.atoms[center3].el.is_chalcogen();
     bool plain_sp2sp3 = ((c2_sp2 && c3_sp3) || (c2_sp3 && c3_sp2)) &&
                         !oxy_c2_sp2 && !oxy_c3_sp2;
     bool swap_term_emit = plain_sp2sp3 && tv1_idx.size() > tv2_idx.size();

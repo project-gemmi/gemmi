@@ -87,8 +87,6 @@ std::vector<unsigned> compute_rdkit_legacy_cip_ranks(
 void sort_neighbors_by_rdkit_cip_rank(
     std::vector<size_t>& neighbors, const std::vector<unsigned>& cip_ranks);
 
-bool is_oxygen_column(Element el);
-
 std::pair<size_t, size_t> find_ring_sharing_pair(
     const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info,
     size_t side1, size_t side2);

@@ -393,10 +393,6 @@ void sort_neighbors_by_rdkit_cip_rank(std::vector<size_t>& neighbors,
                    [&](size_t a, size_t b) { return cip_ranks[a] > cip_ranks[b]; });
 }
 
-bool is_oxygen_column(Element el) {
-  return el == El::O || el == El::S || el == El::Se ||
-         el == El::Te || el == El::Po;
-}
 
 std::pair<size_t, size_t> find_ring_sharing_pair(
     const AceBondAdjacency& adj, const std::vector<CodAtomInfo>& atom_info,
@@ -410,6 +406,31 @@ std::pair<size_t, size_t> find_ring_sharing_pair(
     }
   }
   return {SIZE_MAX, SIZE_MAX};
+}
+
+std::vector<size_t> traverse_ring(const AceBondAdjacency& adj,
+                                  const std::vector<size_t>& ring_atoms) {
+  std::set<size_t> rset(ring_atoms.begin(), ring_atoms.end());
+  size_t start = *std::min_element(ring_atoms.begin(), ring_atoms.end());
+  std::vector<size_t> traversal = {start};
+  size_t prev = SIZE_MAX;
+  size_t cur = start;
+  while (traversal.size() < ring_atoms.size()) {
+    bool found = false;
+    for (const auto& nb : adj[cur]) {
+      if (nb.idx != prev && rset.count(nb.idx) &&
+          std::find(traversal.begin(), traversal.end(), nb.idx) == traversal.end()) {
+        traversal.push_back(nb.idx);
+        prev = cur;
+        cur = nb.idx;
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+      break;
+  }
+  return traversal;
 }
 
 std::map<std::pair<size_t, size_t>, RingParity>
@@ -427,26 +448,7 @@ build_ring_bond_parity(const AceBondAdjacency& adj,
   for (auto& ring : rings) {
     if (ring.empty())
       continue;
-    std::set<size_t> ring_set(ring.begin(), ring.end());
-    size_t start = *std::min_element(ring.begin(), ring.end());
-    std::vector<size_t> traversal = {start};
-    size_t prev = SIZE_MAX;
-    size_t cur = start;
-    while (traversal.size() < ring.size()) {
-      bool found = false;
-      for (const auto& nb : adj[cur]) {
-        if (nb.idx != prev && ring_set.count(nb.idx) &&
-            std::find(traversal.begin(), traversal.end(), nb.idx) == traversal.end()) {
-          traversal.push_back(nb.idx);
-          prev = cur;
-          cur = nb.idx;
-          found = true;
-          break;
-        }
-      }
-      if (!found)
-        break;
-    }
+    std::vector<size_t> traversal = traverse_ring(adj, ring);
     for (size_t i = 0; i + 1 < traversal.size(); ++i) {
       auto key = std::minmax(traversal[i], traversal[i + 1]);
       bond_ring_parity[key] = (i % 2 == 0) ? RingParity::Even : RingParity::Odd;
@@ -479,28 +481,7 @@ build_ring_bond_flip(const ChemComp& cc,
     const std::vector<size_t>& r_atoms = kv.second;
     if (r_atoms.size() < 3)
       continue;
-    std::set<size_t> rset(r_atoms.begin(), r_atoms.end());
-    std::vector<size_t> linked;
-    size_t start = *std::min_element(r_atoms.begin(), r_atoms.end());
-    linked.push_back(start);
-    size_t cur = start;
-    int guard = 1;
-    while (linked.size() < r_atoms.size() && guard < (int)r_atoms.size()) {
-      bool advanced = false;
-      for (const auto& nb : adj[cur]) {
-        if (rset.count(nb.idx) == 0)
-          continue;
-        if (std::find(linked.begin(), linked.end(), nb.idx) != linked.end())
-          continue;
-        linked.push_back(nb.idx);
-        cur = nb.idx;
-        advanced = true;
-        break;
-      }
-      if (!advanced)
-        break;
-      ++guard;
-    }
+    std::vector<size_t> linked = traverse_ring(adj, r_atoms);
     if (linked.size() != r_atoms.size())
       continue;
     std::vector<std::string> names;
