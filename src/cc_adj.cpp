@@ -2,6 +2,7 @@
 
 #include "gemmi/cc_adj.hpp"
 #include "gemmi/ace_graph.hpp"
+#include "ace_internal.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -13,45 +14,6 @@
 
 namespace gemmi {
 namespace {
-
-bool ace_trace_mode() {
-  if (const char* env = std::getenv("GEMMI_ACE_TRACE"))
-    return env[0] != '\0' && env[0] != '0';
-  return false;
-}
-
-struct AceRuleStats {
-  int atom_count = 0;
-  int bond_count = 0;
-  int angle_count = 0;
-  int torsion_count = 0;
-  int chir_count = 0;
-  int plane_count = 0;
-  double charge_sum = 0.0;
-};
-
-AceRuleStats collect_rule_stats(const ChemComp& cc) {
-  AceRuleStats s;
-  s.atom_count = static_cast<int>(cc.atoms.size());
-  s.bond_count = static_cast<int>(cc.rt.bonds.size());
-  s.angle_count = static_cast<int>(cc.rt.angles.size());
-  s.torsion_count = static_cast<int>(cc.rt.torsions.size());
-  s.chir_count = static_cast<int>(cc.rt.chirs.size());
-  s.plane_count = static_cast<int>(cc.rt.planes.size());
-  for (const auto& atom : cc.atoms)
-    s.charge_sum += atom.charge;
-  return s;
-}
-
-bool rule_stats_changed(const AceRuleStats& before, const AceRuleStats& after) {
-  if (before.atom_count != after.atom_count) return true;
-  if (before.bond_count != after.bond_count) return true;
-  if (before.angle_count != after.angle_count) return true;
-  if (before.torsion_count != after.torsion_count) return true;
-  if (before.chir_count != after.chir_count) return true;
-  if (before.plane_count != after.plane_count) return true;
-  return std::fabs(before.charge_sum - after.charge_sum) > 1e-6;
-}
 
 enum class SmartsBond {
   Any,
@@ -262,11 +224,11 @@ BondType find_cc_bond_type(const AceBondAdjacency& adj, size_t a, size_t b) {
 }
 
 std::vector<std::vector<int>> match_smarts_subset(const ChemComp& cc,
+                                                  const AceGraphView& gv,
                                                   const std::string& pattern_text) {
   SmartsPattern p;
   if (!parse_smarts_subset(pattern_text, p))
     return {};
-  AceGraphView gv = make_ace_graph_view(cc);
   const size_t n = p.nodes.size();
   std::vector<std::vector<int>> results;
   std::vector<int> map_p2c(n, -1);
@@ -674,10 +636,10 @@ void adjust_so3_group(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
-void adjust_nitro_group(ChemComp& cc) {
+void adjust_nitro_group(ChemComp& cc, const AceGraphView& gv) {
   // Match R-N(=O)=O: nitrogen with two double-bonded terminal oxygens
   std::set<int> processed;
-  for (const auto& m : match_smarts_subset(cc, "[NX3](=[OX1])=[OX1]")) {
+  for (const auto& m : match_smarts_subset(cc, gv, "[NX3](=[OX1])=[OX1]")) {
     int ni = m[0];
     if (!processed.insert(ni).second)
       continue;
@@ -697,19 +659,19 @@ void adjust_nitro_group(ChemComp& cc) {
   }
 }
 
-void adjust_single_bond_oxide(ChemComp& cc) {
+void adjust_single_bond_oxide(ChemComp& cc, const AceGraphView& gv) {
   // Terminal oxygen with no H, one single-bonded heavy neighbor
-  for (const auto& m : match_smarts_subset(cc, "[OH0X1]-*")) {
+  for (const auto& m : match_smarts_subset(cc, gv, "[OH0X1]-*")) {
     int oi = m[0];
     if (std::fabs(cc.atoms[oi].charge) <= 0.5f)
       cc.atoms[oi].charge = -1.0f;
   }
 }
 
-void adjust_hexafluorophosphate(ChemComp& cc) {
+void adjust_hexafluorophosphate(ChemComp& cc, const AceGraphView& gv) {
   // PF6 with no hydrogen: [PH0](F)(F)(F)(F)(F)F
   std::set<int> processed;
-  for (const auto& m : match_smarts_subset(cc, "[PH0](F)(F)(F)(F)(F)F")) {
+  for (const auto& m : match_smarts_subset(cc, gv, "[PH0](F)(F)(F)(F)(F)F")) {
     int pi = m[0];
     if (!processed.insert(pi).second)
       continue;
@@ -724,22 +686,21 @@ void adjust_hexafluorophosphate(ChemComp& cc) {
     }
     if (cc.find_atom(new_h) != cc.atoms.end())
       continue;
-    auto neighbors = make_neighbor_names(cc);
     cc.atoms.push_back({new_h, "", El::H, 0.0f, "H", "", Position()});
     cc.rt.bonds.push_back({{1, p_id}, {1, new_h}, BondType::Single, false, NAN, NAN, NAN, NAN});
-    for (const std::string& nb : neighbors[p_id])
-      cc.rt.angles.push_back({{1, nb}, {1, p_id}, {1, new_h}, NAN, NAN});
+    for (const auto& nb : gv.adjacency[pi])
+      cc.rt.angles.push_back({{1, cc.atoms[nb.idx].id}, {1, p_id}, {1, new_h}, NAN, NAN});
   }
 }
 
-void adjust_carboxy_asp(ChemComp& cc) {
+void adjust_carboxy_asp(ChemComp& cc, const AceGraphView& gv) {
   auto neighbors = make_neighbor_names(cc);
   std::set<std::string> matched_atoms;
   auto collect_from_pattern = [&](const std::string& smarts) {
     SmartsPattern p;
     if (!parse_smarts_subset(smarts, p))
       return;
-    for (const std::vector<int>& m : match_smarts_subset(cc, smarts)) {
+    for (const std::vector<int>& m : match_smarts_subset(cc, gv, smarts)) {
       for (size_t i = 0; i < p.nodes.size(); ++i) {
         if (p.nodes[i].wildcard || p.nodes[i].element != El::O)
           continue;
@@ -1144,6 +1105,7 @@ void adjust_protonated_amide_n(ChemComp& cc,
 } // namespace
 
 void apply_chemical_adjustments(ChemComp& cc) {
+  auto gv = make_ace_graph_view(cc);
   auto n_neighbors = make_neighbor_names(cc);
   struct AceChemRule {
     const char* name;
@@ -1153,10 +1115,10 @@ void apply_chemical_adjustments(ChemComp& cc) {
   rules.push_back({"oxoacid_phosphate", [&] { adjust_oxoacid_group(cc, El::P, 3, true); }});
   rules.push_back({"oxoacid_sulfate", [&] { adjust_oxoacid_group(cc, El::S, 4, false); }});
   rules.push_back({"oxoacid_sulfite", [&] { adjust_so3_group(cc); }});
-  rules.push_back({"nitro_group", [&] { adjust_nitro_group(cc); }});
-  rules.push_back({"single_bond_oxide", [&] { adjust_single_bond_oxide(cc); }});
-  rules.push_back({"hexafluorophosphate", [&] { adjust_hexafluorophosphate(cc); }});
-  rules.push_back({"carboxy_asp", [&] { adjust_carboxy_asp(cc); }});
+  rules.push_back({"nitro_group", [&] { adjust_nitro_group(cc, gv); }});
+  rules.push_back({"single_bond_oxide", [&] { adjust_single_bond_oxide(cc, gv); }});
+  rules.push_back({"hexafluorophosphate", [&] { adjust_hexafluorophosphate(cc, gv); }});
+  rules.push_back({"carboxy_asp", [&] { adjust_carboxy_asp(cc, gv); }});
   rules.push_back({"terminal_carboxylate", [&] { adjust_terminal_carboxylate(cc); }});
   rules.push_back({"guanidinium", [&] { adjust_guanidinium_group(cc, n_neighbors); }});
   rules.push_back({"amino_ter_amine", [&] { adjust_amino_ter_amine(cc, n_neighbors); }});
