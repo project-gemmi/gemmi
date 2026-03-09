@@ -956,49 +956,29 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
 
       // Populate structures at each level with corresponding pre-computed values.
       // AceDRG keeps only the first entry for each key (no aggregation).
-      // Level 1D: full detail with atom types (16-component flat key)
-      CodStats vs1(values[1], sigmas[1], counts[1]);
-      auto& angle_1d_vec = angle_idx_1d_[cat(
-                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                           a1_root, '|', a2_root, '|', a3_root, '|',
-                           a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
-                           a1_nb, '|', a2_nb, '|', a3_nb, '|',
-                           a1_type, '|', a2_type, '|', a3_type)];
-      if (angle_1d_vec.empty())
-        angle_1d_vec.push_back(vs1);
-
-      // Level 2D: no atom types (13-component flat key)
-      CodStats vs2(values[2], sigmas[2], counts[2]);
-      auto& angle_2d_vec = angle_idx_2d_[cat(
-                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                           a1_root, '|', a2_root, '|', a3_root, '|',
-                           a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
-                           a1_nb, '|', a2_nb, '|', a3_nb)];
-      if (angle_2d_vec.empty())
-        angle_2d_vec.push_back(vs2);
-
-      // Level 3D: hash + valueKey + NB2 only (10-component flat key)
-      CodStats vs3(values[3], sigmas[3], counts[3]);
-      auto& angle_3d_vec = angle_idx_3d_[cat(
-                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                           a1_root, '|', a2_root, '|', a3_root, '|',
-                           a1_nb2, '|', a2_nb2, '|', a3_nb2)];
-      if (angle_3d_vec.empty())
-        angle_3d_vec.push_back(vs3);
-
-      // Level 4D: hash + valueKey + roots (7-component flat key)
-      CodStats vs4(values[4], sigmas[4], counts[4]);
-      auto& angle_4d_vec = angle_idx_4d_[cat(
-                           ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                           a1_root, '|', a2_root, '|', a3_root)];
-      if (angle_4d_vec.empty())
-        angle_4d_vec.push_back(vs4);
-
-      // Level 5D: hash + valueKey only
-      CodStats vs5(values[5], sigmas[5], counts[5]);
+      // Levels 1D-4D: flat string keys with decreasing specificity.
+      std::string base_key = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+                                 a1_root, '|', a2_root, '|', a3_root);
+      std::string keys[4] = {
+        cat(base_key, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+            a1_nb, '|', a2_nb, '|', a3_nb, '|',
+            a1_type, '|', a2_type, '|', a3_type),
+        cat(base_key, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
+            a1_nb, '|', a2_nb, '|', a3_nb),
+        cat(base_key, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2),
+        base_key,
+      };
+      AngleIdx1D* maps[4] = {&angle_idx_1d_, &angle_idx_2d_,
+                              &angle_idx_3d_, &angle_idx_4d_};
+      for (int lvl = 0; lvl < 4; ++lvl) {
+        auto& vec = (*maps[lvl])[keys[lvl]];
+        if (vec.empty())
+          vec.push_back(CodStats(values[lvl + 1], sigmas[lvl + 1], counts[lvl + 1]));
+      }
+      // Level 5D: nested int-keyed map (different structure)
       auto& angle_5d_vec = angle_idx_5d_[ha1][ha2][ha3][value_key];
       if (angle_5d_vec.empty())
-        angle_5d_vec.push_back(vs5);
+        angle_5d_vec.push_back(CodStats(values[5], sigmas[5], counts[5]));
 
       // Level 6D: hash only (leave empty for 34-column data)
     }
