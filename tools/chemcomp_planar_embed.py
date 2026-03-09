@@ -100,6 +100,71 @@ def choose_seed_bond(adjacency, bonds):
     return best
 
 
+def canonical_cycle(cycle):
+    seq = cycle[:]
+    n = len(seq)
+    rots = []
+    for i in range(n):
+        rots.append(tuple(seq[i:] + seq[:i]))
+    rev = list(reversed(seq))
+    for i in range(n):
+        rots.append(tuple(rev[i:] + rev[:i]))
+    return min(rots)
+
+
+def find_cycles(adjacency, max_len=8):
+    found = set()
+
+    def dfs(start, cur, path, seen):
+        for nb in adjacency[cur]:
+            if nb == start and len(path) >= 3:
+                found.add(canonical_cycle(path[:]))
+                continue
+            if nb in seen or len(path) >= max_len:
+                continue
+            dfs(start, nb, path + [nb], seen | {nb})
+
+    for start in sorted(adjacency):
+        dfs(start, start, [start], {start})
+    return sorted(found, key=lambda cyc: (-len(cyc), cyc))
+
+
+def cycle_angle_constraints(cycles):
+    extra = {}
+    for cyc in cycles:
+        n = len(cyc)
+        if n < 3:
+            continue
+        target = math.radians((n - 2.0) * 180.0 / n)
+        for i, center in enumerate(cyc):
+            a = cyc[i - 1]
+            b = cyc[(i + 1) % n]
+            extra[(a, center, b)] = target
+            extra[(b, center, a)] = target
+    return extra
+
+
+def seed_cycle_layout(cycle, bonds):
+    pos = {}
+    n = len(cycle)
+    if n < 3:
+        return pos
+    edge_lengths = []
+    perimeter = 0.0
+    for i, a in enumerate(cycle):
+        b = cycle[(i + 1) % n]
+        d = bonds.get(tuple(sorted((a, b))), 1.39)
+        edge_lengths.append(d)
+        perimeter += d
+    radius = perimeter / (2.0 * math.pi)
+    arc = 0.0
+    for i, atom in enumerate(cycle):
+        theta = 2.0 * math.pi * (arc / perimeter)
+        pos[atom] = Vec2(radius * math.cos(theta), radius * math.sin(theta))
+        arc += edge_lengths[i]
+    return pos
+
+
 def angle_between(v1, v2):
     d = max(-1.0, min(1.0, v1.normalized().dot(v2.normalized())))
     return math.acos(d)
@@ -125,20 +190,23 @@ def circle_intersections(p1, r1, p2, r2):
     return [base + ey * y, base - ey * y]
 
 
-def score_candidate(atom, cand, placed, adjacency, bonds, angles):
+def score_candidate(atom, cand, placed, adjacency, bonds, angles,
+                    bond_weight=20.0, angle_weight=6.0):
     score = 0.0
     for nb in adjacency[atom]:
         if nb not in placed:
             continue
         dist = (cand - placed[nb]).length()
         target = bonds[tuple(sorted((atom, nb)))]
-        score += 20.0 * abs(dist - target)
+        diff = dist - target
+        score += bond_weight * diff * diff
     placed_nbs = [nb for nb in adjacency[atom] if nb in placed]
     for i, a in enumerate(placed_nbs):
         for b in placed_nbs[i + 1:]:
             actual = angle_between(placed[a] - cand, placed[b] - cand)
             target = get_angle(angles, a, atom, b)
-            score += abs(actual - target)
+            diff = actual - target
+            score += angle_weight * diff * diff
     return score
 
 
@@ -163,33 +231,37 @@ def place_from_one_neighbor(atom, nb, placed, adjacency, bonds, angles):
 
 def embed_core(core_atoms, bonds, adjacency, angles):
     placed = {}
-    seed = choose_seed_bond(adjacency, bonds)
-    if seed is None:
-        return placed
-    a, b = seed
-    dab = bonds[tuple(sorted((a, b)))]
-    placed[a] = Vec2(0.0, 0.0)
-    placed[b] = Vec2(dab, 0.0)
+    cycles = find_cycles(adjacency)
+    if cycles:
+        placed.update(seed_cycle_layout(list(cycles[0]), bonds))
+    else:
+        seed = choose_seed_bond(adjacency, bonds)
+        if seed is None:
+            return placed
+        a, b = seed
+        dab = bonds[tuple(sorted((a, b)))]
+        placed[a] = Vec2(0.0, 0.0)
+        placed[b] = Vec2(dab, 0.0)
 
-    # Try to place one seed neighbor to fix orientation.
-    seed_candidates = []
-    for center, anchor in ((a, b), (b, a)):
-        for nb in adjacency[center]:
-            if nb == anchor or nb in placed:
-                continue
-            theta = get_angle(angles, anchor, center, nb)
-            d = bonds[tuple(sorted((center, nb)))]
-            base = (placed[anchor] - placed[center]).normalized()
-            c = math.cos(theta)
-            s = math.sin(theta)
-            rot = Vec2(base.x * c - base.y * s, base.x * s + base.y * c)
-            seed_candidates.append((nb, placed[center] + rot * d))
-            break
+        # Try to place one seed neighbor to fix orientation.
+        seed_candidates = []
+        for center, anchor in ((a, b), (b, a)):
+            for nb in adjacency[center]:
+                if nb == anchor or nb in placed:
+                    continue
+                theta = get_angle(angles, anchor, center, nb)
+                d = bonds[tuple(sorted((center, nb)))]
+                base = (placed[anchor] - placed[center]).normalized()
+                c = math.cos(theta)
+                s = math.sin(theta)
+                rot = Vec2(base.x * c - base.y * s, base.x * s + base.y * c)
+                seed_candidates.append((nb, placed[center] + rot * d))
+                break
+            if seed_candidates:
+                break
         if seed_candidates:
-            break
-    if seed_candidates:
-        nb, pos = seed_candidates[0]
-        placed[nb] = pos
+            nb, pos = seed_candidates[0]
+            placed[nb] = pos
 
     improved = True
     while improved and len(placed) < len(core_atoms):
@@ -216,7 +288,7 @@ def embed_core(core_atoms, bonds, adjacency, angles):
             best = min(candidates, key=lambda cand: score_candidate(atom, cand, placed, adjacency, bonds, angles))
             placed[atom] = best
             improved = True
-    return placed
+    return placed, cycles
 
 
 def relax_bonds(core_atoms, placed, bonds, steps=200, step_size=0.25):
@@ -245,6 +317,119 @@ def relax_bonds(core_atoms, placed, bonds, steps=200, step_size=0.25):
                 continue
             placed[a] = placed[a] + force[a]
             moved += force[a].length()
+        if moved < 1e-6:
+            break
+    return placed
+
+
+def refine_angles(core_atoms, placed, adjacency, bonds, angles, steps=80, blend=1.0):
+    names = [a for a in core_atoms if a in placed]
+    if len(names) < 3:
+        return placed
+    fixed = set(names[:2])
+    for _ in range(steps):
+        moved = 0.0
+        for center in names:
+            if center in fixed:
+                continue
+            nbs = [nb for nb in adjacency[center] if nb in placed]
+            if len(nbs) < 2:
+                continue
+            current_score = score_candidate(center, placed[center], placed, adjacency, bonds, angles)
+            candidates = []
+            for i, a in enumerate(nbs):
+                for b in nbs[i + 1:]:
+                    da = bonds[tuple(sorted((center, a)))]
+                    db = bonds[tuple(sorted((center, b)))]
+                    candidates.extend(circle_intersections(placed[a], da, placed[b], db))
+            if not candidates:
+                continue
+            best = min(candidates,
+                       key=lambda cand: score_candidate(center, cand, placed, adjacency, bonds, angles))
+            best_score = score_candidate(center, best, placed, adjacency, bonds, angles)
+            if best_score + 1e-6 >= current_score:
+                continue
+            pos = placed[center] * (1.0 - blend) + best * blend
+            new_score = score_candidate(center, pos, placed, adjacency, bonds, angles)
+            if new_score + 1e-6 >= current_score:
+                continue
+            moved += (pos - placed[center]).length()
+            placed[center] = pos
+        if moved < 1e-6:
+            break
+    return placed
+
+
+def total_energy(core_atoms, placed, bonds, angles, bond_weight=80.0, angle_weight=1.0):
+    names = [a for a in core_atoms if a in placed]
+    placed_atoms = set(names)
+    energy = 0.0
+    for (a, b), target in bonds.items():
+        if a in placed_atoms and b in placed_atoms:
+            actual = (placed[a] - placed[b]).length()
+            diff = actual - target
+            energy += bond_weight * diff * diff
+    seen = set()
+    for (a, c, b), target in angles.items():
+        if (b, c, a) in seen:
+            continue
+        seen.add((a, c, b))
+        if a in placed_atoms and b in placed_atoms and c in placed_atoms:
+            actual = angle_between(placed[a] - placed[c], placed[b] - placed[c])
+            diff = actual - target
+            energy += angle_weight * diff * diff
+    return energy
+
+
+def optimize_layout(core_atoms, placed, bonds, angles, steps=120, delta=1e-3, step_size=0.02):
+    names = [a for a in core_atoms if a in placed]
+    if len(names) < 3:
+        return placed
+    fixed = set(names[:2])
+    current = total_energy(core_atoms, placed, bonds, angles)
+    for _ in range(steps):
+        moved = 0.0
+        grads = {}
+        for atom in names:
+            if atom in fixed:
+                continue
+            base = placed[atom]
+            placed[atom] = Vec2(base.x + delta, base.y)
+            ex1 = total_energy(core_atoms, placed, bonds, angles)
+            placed[atom] = Vec2(base.x - delta, base.y)
+            ex2 = total_energy(core_atoms, placed, bonds, angles)
+            gx = (ex1 - ex2) / (2.0 * delta)
+            placed[atom] = Vec2(base.x, base.y + delta)
+            ey1 = total_energy(core_atoms, placed, bonds, angles)
+            placed[atom] = Vec2(base.x, base.y - delta)
+            ey2 = total_energy(core_atoms, placed, bonds, angles)
+            gy = (ey1 - ey2) / (2.0 * delta)
+            placed[atom] = base
+            grads[atom] = Vec2(gx, gy)
+        if not grads:
+            break
+        improved = False
+        trial_step = step_size
+        while trial_step > 1e-5:
+            trial = {}
+            old = {}
+            for atom, grad in grads.items():
+                old[atom] = placed[atom]
+                trial[atom] = placed[atom] - grad * trial_step
+            for atom, pos in trial.items():
+                placed[atom] = pos
+            new_energy = total_energy(core_atoms, placed, bonds, angles)
+            if new_energy < current:
+                for atom, pos in trial.items():
+                    moved += (pos - old[atom]).length()
+                current = new_energy
+                improved = True
+                break
+            for atom in trial:
+                placed[atom] = old[atom]
+            trial_step *= 0.5
+        if not improved:
+            break
         if moved < 1e-6:
             break
     return placed
@@ -286,10 +471,16 @@ def main():
         idx = min(args.core_index, len(cores) - 1)
         core = cores[idx]
         bonds, adjacency, angles = build_restraint_maps(cc, core['atoms'])
-        placed = embed_core(core['atoms'], bonds, adjacency, angles)
+        placed, cycles = embed_core(core['atoms'], bonds, adjacency, angles)
+        cycle_angles = cycle_angle_constraints(cycles)
+        all_angles = dict(angles)
+        for key, value in cycle_angles.items():
+            all_angles.setdefault(key, value)
         placed = relax_bonds(core['atoms'], placed, bonds)
+        placed = refine_angles(core['atoms'], placed, adjacency, bonds, all_angles)
+        placed = optimize_layout(core['atoms'], placed, bonds, all_angles)
         print('  core atoms={} placed={} planes={}'.format(len(core['atoms']), len(placed), len(core['planes'])))
-        bond_res, angle_res = summarize_embedding(core['atoms'], placed, bonds, angles)
+        bond_res, angle_res = summarize_embedding(core['atoms'], placed, bonds, all_angles)
         for diff, a, b, actual, target in bond_res[:5]:
             print('    bond  {:>8} {:>8}  {:.4f} vs {:.4f}'.format(a, b, actual, target))
         for diff, a, c, b, actual, target in angle_res[:5]:
