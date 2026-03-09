@@ -2,7 +2,7 @@
 
 #include "gemmi/cc_adj.hpp"
 #include "gemmi/ace_graph.hpp"
-#include "ace_internal.hpp"
+#include "gemmi/ace_internal.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>

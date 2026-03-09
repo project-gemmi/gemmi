@@ -1,11 +1,11 @@
 // Copyright 2026 Global Phasing Ltd.
 // Shared internal helpers for AceDRG-style processing.
 
-#ifndef GEMMI_SRC_ACE_INTERNAL_HPP_
-#define GEMMI_SRC_ACE_INTERNAL_HPP_
+#ifndef GEMMI_ACE_INTERNAL_HPP_
+#define GEMMI_ACE_INTERNAL_HPP_
 
-#include "gemmi/chemcomp.hpp"
-#include "gemmi/ace_cc.hpp"
+#include "chemcomp.hpp"
+#include "ace_cc.hpp"
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>

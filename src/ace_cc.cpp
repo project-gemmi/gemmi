@@ -8,8 +8,8 @@
 #include "gemmi/calculate.hpp"
 #include "gemmi/ace_graph.hpp"
 #include "gemmi/cc_adj.hpp"
-#include "ace_internal.hpp"
-#include "ace_carborane.hpp"
+#include "gemmi/ace_internal.hpp"
+#include "gemmi/ace_carborane.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/fail.hpp"
 #include <algorithm>

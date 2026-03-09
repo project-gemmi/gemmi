@@ -1,7 +1,7 @@
 // Copyright 2026 Global Phasing Ltd.
 // Internal carborane processing for AceDRG-style pipeline.
 
-#include "ace_carborane.hpp"
+#include "gemmi/ace_carborane.hpp"
 #include "gemmi/ace_graph.hpp"
 #include "gemmi/cif.hpp"
 #include "gemmi/fileutil.hpp"
@@ -358,7 +358,8 @@ bool apply_carborone_template_bonds(ChemComp& cc,
   std::vector<std::string> candidates = collect_carborone_candidates(db, class0, class1);
   for (const std::string& name : candidates) {
     const CarboroneGraph* templ = get_carborone_template(db, tables_dir, name);
-    if (templ && match_carborone_graphs(target, *templ, (std::vector<int>&)std::vector<int>()))
+    std::vector<int> dummy;
+    if (templ && match_carborone_graphs(target, *templ, dummy))
       return true;
   }
   return false;
@@ -379,6 +380,20 @@ bool is_carborane_h_center(const ChemComp& cc, const AceBondAdjacency& adj, size
 }
 
 } // namespace
+
+bool has_carborane_seed(const ChemComp& cc, const AceBondAdjacency& adj) {
+  for (size_t i = 0; i < cc.atoms.size(); ++i) {
+    if (cc.atoms[i].el == El::H)
+      continue;
+    int b_count = 0;
+    for (const auto& nb : adj[i])
+      if (cc.atoms[nb.idx].el == El::B)
+        ++b_count;
+    if (b_count >= 4)
+      return true;
+  }
+  return false;
+}
 
 bool is_carborane_mode_component(const ChemComp& cc, const AceBondAdjacency& adj) {
   for (size_t i = 0; i < cc.atoms.size(); ++i) {
