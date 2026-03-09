@@ -14,6 +14,8 @@
 
 namespace gemmi {
 
+double refine_chemcomp_xyz(ChemComp& cc);
+
 namespace {
 
 Position position_from_angle_and_torsion_local(const Position& x1,
@@ -400,6 +402,82 @@ bool order_cycle_nodes(const std::vector<std::vector<size_t>>& adjacency,
   if (ordered.size() != cycle.size())
     return false;
   return true;
+}
+
+bool edge_in_cycle_order(const std::vector<size_t>& ordered, size_t a, size_t b) {
+  for (size_t i = 0; i != ordered.size(); ++i) {
+    size_t u = ordered[i];
+    size_t v = ordered[(i + 1) % ordered.size()];
+    if ((u == a && v == b) || (u == b && v == a))
+      return true;
+  }
+  return false;
+}
+
+bool orient_cycle_on_edge(const std::vector<size_t>& ordered,
+                          size_t a, size_t b,
+                          std::vector<size_t>& oriented) {
+  for (int rev = 0; rev != 2; ++rev) {
+    std::vector<size_t> work = ordered;
+    if (rev)
+      std::reverse(work.begin(), work.end());
+    for (size_t i = 0; i != work.size(); ++i) {
+      if (work[i] == a && work[(i + 1) % work.size()] == b) {
+        oriented.clear();
+        for (size_t k = 0; k != work.size(); ++k)
+          oriented.push_back(work[(i + k) % work.size()]);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+double cycle_mean_bond(const ChemComp& cc, const std::vector<size_t>& ordered) {
+  double sum = 0.0;
+  int count = 0;
+  for (size_t i = 0; i != ordered.size(); ++i) {
+    auto bond = cc.rt.find_bond(cc.atoms[ordered[i]].id,
+                                cc.atoms[ordered[(i + 1) % ordered.size()]].id);
+    if (bond != cc.rt.bonds.end()) {
+      double value = std::isfinite(bond->value) ? bond->value : bond->value_nucleus;
+      if (std::isfinite(value)) {
+        sum += value;
+        ++count;
+      }
+    }
+  }
+  return count > 0 ? sum / count : 1.4;
+}
+
+std::vector<Position> fused_cycle_layout(const ChemComp& cc,
+                                         const std::vector<size_t>& ordered,
+                                         double sign) {
+  std::vector<Position> pos(ordered.size(), Position(NAN, NAN, NAN));
+  if (ordered.size() < 5 || ordered.size() > 6)
+    return pos;
+  double edge = 0.0;
+  auto bond = cc.rt.find_bond(cc.atoms[ordered[0]].id, cc.atoms[ordered[1]].id);
+  if (bond != cc.rt.bonds.end()) {
+    edge = std::isfinite(bond->value) ? bond->value : bond->value_nucleus;
+  }
+  if (!std::isfinite(edge) || edge <= 0.0)
+    edge = cycle_mean_bond(cc, ordered);
+  pos[0] = Position(-0.5 * edge, 0, 0);
+  pos[1] = Position(0.5 * edge, 0, 0);
+  Vec3 dir = (pos[1] - pos[0]).normalized();
+  double exterior = 2.0 * pi() / ordered.size();
+  Position cur = pos[1];
+  for (size_t i = 2; i != ordered.size(); ++i) {
+    auto ebond = cc.rt.find_bond(cc.atoms[ordered[i - 1]].id, cc.atoms[ordered[i]].id);
+    double dist = ebond != cc.rt.bonds.end() ?
+        (std::isfinite(ebond->value) ? ebond->value : ebond->value_nucleus) :
+        cycle_mean_bond(cc, ordered);
+    dir = rotate_about_axis(dir, Vec3(0, 0, 1), sign * exterior);
+    cur += Position(dist * dir);
+    pos[i] = cur;
+  }
+  return pos;
 }
 
 bool seed_cycle_coordinates(ChemComp& cc, const std::vector<std::vector<size_t>>& adjacency,
@@ -1205,6 +1283,53 @@ bool place_bridge_heavy_atom(ChemComp& cc,
 
   Position best_pos(NAN, NAN, NAN);
   double best_score = INFINITY;
+  auto score_candidate = [&](const Position& pos, size_t a, size_t b) {
+    double score = placement_contact_score(cc, pos, target, a) +
+                   placement_contact_score(cc, pos, target, b);
+    for (size_t other : centers) {
+      if (other == a || other == b)
+        continue;
+      double d = pos.dist(cc.atoms[other].xyz);
+      double want = get_bond_dist_or_default(cc, adjacency, bond_dist, target, other);
+      score += 10.0 * std::fabs(d - want);
+    }
+    for (size_t center_idx : centers) {
+      for (size_t anchor : adjacency[center_idx]) {
+        if (anchor == target || !is_heavy_atom(cc.atoms[anchor]) ||
+            !atom_has_finite_xyz(cc.atoms[anchor]))
+          continue;
+        const Restraints::Angle* ang =
+            find_angle_restraint(cc, atom_index, anchor, center_idx, target);
+        if (ang && std::isfinite(ang->value)) {
+          double actual = deg(calculate_angle(cc.atoms[anchor].xyz,
+                                              cc.atoms[center_idx].xyz, pos));
+          score += 5.0 * std::fabs(actual - ang->value);
+        }
+      }
+    }
+    for (const Restraints::Plane& plane : cc.rt.planes) {
+      bool has_target = false;
+      std::vector<Position> others;
+      for (const Restraints::AtomId& atom_id : plane.ids) {
+        std::map<std::string, size_t>::const_iterator it = atom_index.find(atom_id.atom);
+        if (it == atom_index.end())
+          continue;
+        if (it->second == target) {
+          has_target = true;
+        } else if (atom_has_finite_xyz(cc.atoms[it->second])) {
+          others.push_back(cc.atoms[it->second].xyz);
+        }
+      }
+      if (!has_target || others.size() < 3)
+        continue;
+      Position centroid;
+      Vec3 normal;
+      if (!plane_from_positions(others, centroid, normal))
+        continue;
+      score += 20.0 * std::fabs((pos - centroid).dot(normal));
+    }
+    return score;
+  };
 
   for (size_t ia = 0; ia != centers.size(); ++ia) {
     for (size_t ib = ia + 1; ib != centers.size(); ++ib) {
@@ -1232,15 +1357,7 @@ bool place_bridge_heavy_atom(ChemComp& cc,
           const Position& pos = options[k];
           if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z))
             continue;
-          double score = placement_contact_score(cc, pos, target, a) +
-                         placement_contact_score(cc, pos, target, b);
-          for (size_t other : centers) {
-            if (other == a || other == b)
-              continue;
-            double d = pos.dist(cc.atoms[other].xyz);
-            double want = get_bond_dist_or_default(cc, adjacency, bond_dist, target, other);
-            score += 10.0 * std::fabs(d - want);
-          }
+          double score = score_candidate(pos, a, b);
           if (score < best_score) {
             best_score = score;
             best_pos = pos;
@@ -1267,15 +1384,7 @@ bool place_bridge_heavy_atom(ChemComp& cc,
           const Position& pos = options[k];
           if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z))
             continue;
-          double score = placement_contact_score(cc, pos, target, a) +
-                         placement_contact_score(cc, pos, target, b);
-          for (size_t other : centers) {
-            if (other == a || other == b)
-              continue;
-            double d = pos.dist(cc.atoms[other].xyz);
-            double want = get_bond_dist_or_default(cc, adjacency, bond_dist, target, other);
-            score += 10.0 * std::fabs(d - want);
-          }
+          double score = score_candidate(pos, a, b);
           if (score < best_score) {
             best_score = score;
             best_pos = pos;
@@ -1516,6 +1625,22 @@ double heavy_bond_score(const ChemComp& cc,
   return score;
 }
 
+std::pair<double, std::pair<size_t, size_t> > worst_heavy_bond(
+    const ChemComp& cc,
+    const std::vector<std::vector<size_t>>& adjacency,
+    const std::vector<std::vector<double>>& bond_dist) {
+  std::pair<double, std::pair<size_t, size_t> > best(0.0, std::make_pair(SIZE_MAX, SIZE_MAX));
+  for (size_t a = 0; a != cc.atoms.size(); ++a)
+    if (is_heavy_atom(cc.atoms[a]) && atom_has_finite_xyz(cc.atoms[a]))
+      for (size_t b : adjacency[a])
+        if (a < b && is_heavy_atom(cc.atoms[b]) && atom_has_finite_xyz(cc.atoms[b])) {
+          double z = bond_z_for_indices(cc, adjacency, bond_dist, a, b);
+          if (z > best.first)
+            best = std::make_pair(z, std::make_pair(a, b));
+        }
+  return best;
+}
+
 std::vector<size_t> heavy_component_excluding_edge(const ChemComp& cc,
                                                    const std::vector<std::vector<size_t>>& adjacency,
                                                    size_t start, size_t ban_a, size_t ban_b) {
@@ -1537,6 +1662,126 @@ std::vector<size_t> heavy_component_excluding_edge(const ChemComp& cc,
     }
   }
   return out;
+}
+
+std::vector<size_t> shortest_heavy_path_excluding_edge(
+    const ChemComp& cc,
+    const std::vector<std::vector<size_t>>& adjacency,
+    size_t start, size_t goal, size_t ban_a, size_t ban_b) {
+  std::vector<int> parent((int) adjacency.size(), -1);
+  std::queue<size_t> q;
+  q.push(start);
+  parent[start] = (int) start;
+  while (!q.empty()) {
+    size_t cur = q.front();
+    q.pop();
+    if (cur == goal)
+      break;
+    for (size_t nb : adjacency[cur]) {
+      if (!is_heavy_atom(cc.atoms[nb]))
+        continue;
+      if ((cur == ban_a && nb == ban_b) || (cur == ban_b && nb == ban_a))
+        continue;
+      if (parent[nb] != -1)
+        continue;
+      parent[nb] = (int) cur;
+      q.push(nb);
+    }
+  }
+  if (parent[goal] == -1)
+    return std::vector<size_t>();
+  std::vector<size_t> path;
+  for (size_t cur = goal; cur != start; cur = (size_t) parent[cur])
+    path.push_back(cur);
+  path.push_back(start);
+  std::reverse(path.begin(), path.end());
+  return path;
+}
+
+std::vector<Position> snapshot_positions(const ChemComp& cc) {
+  std::vector<Position> saved;
+  saved.reserve(cc.atoms.size());
+  for (const ChemComp::Atom& atom : cc.atoms)
+    saved.push_back(atom.xyz);
+  return saved;
+}
+
+void restore_positions(ChemComp& cc, const std::vector<Position>& saved) {
+  for (size_t i = 0; i != cc.atoms.size() && i != saved.size(); ++i)
+    cc.atoms[i].xyz = saved[i];
+}
+
+bool rescue_bad_macrocycle_closure(ChemComp& cc,
+                                   const std::vector<std::vector<size_t>>& adjacency,
+                                   const std::vector<std::vector<double>>& bond_dist) {
+  std::pair<double, std::pair<size_t, size_t> > worst =
+      worst_heavy_bond(cc, adjacency, bond_dist);
+  double worst_before = worst.first;
+  if (worst_before < 10.0 || worst.second.first == SIZE_MAX)
+    return false;
+
+  size_t a = worst.second.first;
+  size_t b = worst.second.second;
+  std::vector<size_t> path =
+      shortest_heavy_path_excluding_edge(cc, adjacency, a, b, a, b);
+  if (path.size() < 8 || path.size() > 24)
+    return false;
+
+  std::vector<size_t> cycle = path;
+  double perimeter = 0.0;
+  std::vector<double> edges;
+  edges.reserve(cycle.size());
+  for (size_t i = 0; i != cycle.size(); ++i) {
+    size_t u = cycle[i];
+    size_t v = cycle[(i + 1) % cycle.size()];
+    double target = get_bond_dist_or_default(cc, adjacency, bond_dist, u, v);
+    if (!std::isfinite(target))
+      target = 1.45;
+    edges.push_back(target);
+    perimeter += target;
+  }
+  if (perimeter <= 0.0)
+    return false;
+
+  double before_score = heavy_bond_score(cc, adjacency, bond_dist);
+  double radius = perimeter / (2.0 * pi());
+  for (double edge : edges)
+    radius = std::max(radius, edge / 1.9);
+
+  Position centroid(0, 0, 0);
+  for (size_t idx : cycle)
+    centroid += cc.atoms[idx].xyz;
+  centroid /= (double) cycle.size();
+
+  std::vector<Position> saved = snapshot_positions(cc);
+  std::vector<double> angles(1, 0.0);
+  double accum = 0.0;
+  for (size_t i = 0; i + 1 < edges.size(); ++i) {
+    double x = std::max(-1.0, std::min(1.0, edges[i] / (2.0 * radius)));
+    accum += 2.0 * std::asin(x);
+    angles.push_back(accum);
+  }
+  for (size_t i = 0; i != cycle.size(); ++i)
+    cc.atoms[cycle[i]].xyz = Position(centroid.x + radius * std::cos(angles[i]),
+                                      centroid.y + radius * std::sin(angles[i]),
+                                      centroid.z);
+
+  try {
+    refine_chemcomp_xyz(cc);
+  } catch (...) {
+    restore_positions(cc, saved);
+    return false;
+  }
+  double after_score = heavy_bond_score(cc, adjacency, bond_dist);
+  double worst_after = worst_heavy_bond(cc, adjacency, bond_dist).first;
+  bool keep = after_score + 1e-6 < before_score;
+  if (!keep && worst_after + 1.0 < worst_before)
+    keep = true;
+  if (!keep) {
+    restore_positions(cc, saved);
+    return false;
+  }
+  return true;
 }
 
 Position target_position_for_cut_fragment(const ChemComp& cc,
@@ -1909,7 +2154,10 @@ int generate_chemcomp_xyz_from_restraints(ChemComp& cc) {
   regrow_trivalent_junction_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_bridge_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
   regrow_terminal_heavy_atoms(cc, atom_index, adjacency, bond_dist, ring_atom);
-  rescue_bad_heavy_fragments(cc, atom_index, adjacency, bond_dist);
+  bool macrocycle_rescued = false;
+  macrocycle_rescued = rescue_bad_macrocycle_closure(cc, adjacency, bond_dist);
+  if (!macrocycle_rescued)
+    rescue_bad_heavy_fragments(cc, atom_index, adjacency, bond_dist);
   int heavy_placed = count_finite(true);
   if (heavy_placed > 0)
     refine_chemcomp_xyz(cc);

@@ -305,6 +305,17 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertAlmostEqual(pos['C6'].dist(pos['N']), 1.3537, delta=0.10)
         self.assertLess(pos['C6'].dist(pos['N']), 2.0)
 
+    def test_generate_chemcomp_xyz_preserves_a6x_planar_bridge(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A6X.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(pos['C23'].dist(pos['N10']), 1.4608, delta=0.10)
+        self.assertAlmostEqual(pos['N10'].dist(pos['C01']), 1.3211, delta=0.10)
+
     def test_generate_chemcomp_xyz_preserves_a4w_planar_linker(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A4W.cif'
         cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
@@ -339,6 +350,18 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertAlmostEqual(pos['C1'].dist(pos['O22']), 1.3841, delta=0.05)
         self.assertAlmostEqual(pos['C1'].dist(pos['C6']), 1.3874, delta=0.05)
         self.assertAlmostEqual(pos['O22'].dist(pos['C23']), 1.4239, delta=0.05)
+
+    def test_generate_chemcomp_xyz_rescues_a4u_macrocycle_closure(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A4U.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(pos['C47'].dist(pos['C48']), 1.1979, delta=0.10)
+        self.assertAlmostEqual(pos['C48'].dist(pos['C03']), 1.4347, delta=0.10)
+        self.assertAlmostEqual(pos['C46'].dist(pos['C47']), 1.4229, delta=0.10)
 
     def test_generate_chemcomp_xyz_places_methyl_hydrogens_symmetrically(self):
         cc = gemmi.ChemComp()
