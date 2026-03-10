@@ -13,6 +13,7 @@ namespace gemmi {
 namespace {
 
 enum class SmartsBond {
+  Implicit,  // default bond: single for aliphatic, aromatic for aromatic atoms
   Any,
   Single,
   Double
@@ -115,7 +116,7 @@ bool parse_smarts_subset(const std::string& s, SmartsPattern& out) {
   out = SmartsPattern{};
   std::vector<int> branch_stack;
   int current = -1;
-  SmartsBond pending = SmartsBond::Single;
+  SmartsBond pending = SmartsBond::Implicit;
   size_t pos = 0;
   while (pos < s.size()) {
     char c = s[pos];
@@ -162,7 +163,7 @@ bool parse_smarts_subset(const std::string& s, SmartsPattern& out) {
     if (current >= 0)
       out.edges.push_back({current, node_id, pending});
     current = node_id;
-    pending = SmartsBond::Single;
+    pending = SmartsBond::Implicit;
   }
   if (!branch_stack.empty())
     return false;
@@ -199,12 +200,18 @@ bool smarts_node_matches(const SmartsNode& p, const ChemComp& cc,
   return true;
 }
 
-bool smarts_bond_matches(SmartsBond p, BondType bt) {
+bool smarts_bond_matches(SmartsBond p, BondType bt,
+                         bool both_aromatic) {
   if (p == SmartsBond::Any)
     return true;
   if (p == SmartsBond::Single)
     return bt == BondType::Single;
-  return bt == BondType::Double || bt == BondType::Deloc;
+  if (p == SmartsBond::Double)
+    return bt == BondType::Double || bt == BondType::Deloc;
+  // Implicit: aromatic bond if both atoms are aromatic, otherwise single
+  if (both_aromatic)
+    return is_aromatic_or_deloc(bt);
+  return bt == BondType::Single;
 }
 
 BondType find_cc_bond_type(const AceBondAdjacency& adj, size_t a, size_t b) {
@@ -257,7 +264,8 @@ std::vector<SmartsMatch> match_smarts(const ChemComp& cc, const std::string& pat
         if (cj < 0)
           continue;
         BondType bt = find_cc_bond_type(gv.adjacency, ci, static_cast<size_t>(cj));
-        if (bt == BondType::Unspec || !smarts_bond_matches(nb.second, bt)) {
+        bool both_arom = p.nodes[pi].aromatic == 1 && p.nodes[pj].aromatic == 1;
+        if (bt == BondType::Unspec || !smarts_bond_matches(nb.second, bt, both_arom)) {
           ok = false;
           break;
         }

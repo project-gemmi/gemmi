@@ -7,7 +7,7 @@
 
 #include <string>
 #include <vector>
-#include "gemmi/chemcomp.hpp"
+#include "chemcomp.hpp"
 
 namespace gemmi {
 

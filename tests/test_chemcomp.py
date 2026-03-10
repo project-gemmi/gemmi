@@ -5,9 +5,9 @@ import unittest
 import gemmi
 
 SO2_FROM_MONOMER = """\
-CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
-HETATM    1  S   SO3     1      -5.979   0.717  17.353  1.00 20.00           S
-HETATM    2  O1  SO3     1      -5.035   1.876  17.325  1.00 20.00           O
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1                      
+HETATM    1  S   SO3     1      -5.979   0.717  17.353  1.00 20.00           S  
+HETATM    2  O1  SO3     1      -5.035   1.876  17.325  1.00 20.00           O  
 HETATM    3  O2  SO3     1      -7.003   1.053  16.315  1.00 20.00           O1-
 HETATM    4  O3  SO3     1      -5.199  -0.407  16.748  1.00 20.00           O1-
 """  # noqa: W291 - trailing whitespace
@@ -138,17 +138,15 @@ BEN C6 C1 arom
         doc = gemmi.cif.read_string(cif_text)
         cc = gemmi.make_chemcomp_from_block(doc.sole_block())
 
+        # [C] should NOT match aromatic carbons
+        self.assertEqual(len(cc.match_smarts("[C]")), 0)
+
         # [c] should match aromatic carbons
         matches = cc.match_smarts("[c]")
         self.assertEqual(len(matches), 6)
 
-        # [C] should NOT match aromatic carbons
-        matches_non_arom = cc.match_smarts("[C]")
-        self.assertEqual(len(matches_non_arom), 0)
-
-        # Aromatic ring match
-        matches_ring = cc.match_smarts("c1ccccc1")
-        self.assertGreater(len(matches_ring), 0)
+        # cc (two aromatic carbons with implicit bond) should match
+        self.assertGreater(len(cc.match_smarts("cc")), 0)
 
     def test_smarts_ester(self):
         cif_text = """

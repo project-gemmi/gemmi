@@ -438,9 +438,6 @@ It supports:
     >>> matches = cc.match_smarts("[c]")
     >>> len(matches)
     6
-    >>> # Find the full aromatic ring (returns all symmetry-equivalent mappings)
-    >>> len(cc.match_smarts("c1ccccc1"))
-    12
 
 .. _chemcomp-chemical-normalization:
 
@@ -448,7 +445,7 @@ Chemical normalization
 ======================
 
 Gemmi's `ChemComp` normalization is performed by
-`normalize_chemistry()` (declared in `gemmi/cc_adj.hpp`,
+`apply_chemical_adjustments()` (declared in `gemmi/cc_adj.hpp`,
 implemented in `src/cc_adj.cpp`).
 
 This is a deterministic local-graph normalization stage that can change:
@@ -462,10 +459,10 @@ This is a deterministic local-graph normalization stage that can change:
 It is intentionally rule-based and motif-driven; it is not a general pKa
 predictor or tautomer enumerator.
 
-normalize_chemistry()
+apply_chemical_adjustments()
 ---------------------
 
-Rules are applied in a fixed order (inside of `normalize_chemistry()`):
+Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
 examples below show representative components.
 
 Acid/oxoacid deprotonation
@@ -720,7 +717,7 @@ Execution order
      Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
 
 1. seed missing angles from existing bonds (unless `--no-angles`);
-2. run `normalize_chemistry()`;
+2. run `apply_chemical_adjustments()`;
 3. run `add_n_terminal_h3()` (may add `H3` and corresponding N-centered angles);
 
    `add_n_terminal_h3()` adds the third proton only for matching

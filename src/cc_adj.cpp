@@ -813,7 +813,7 @@ void adjust_protonated_amide_n(ChemComp& cc,
 
 } // namespace
 
-void normalize_chemcomp(ChemComp& cc) {
+void apply_chemical_adjustments(ChemComp& cc) {
   auto gv = make_ace_graph_view(cc);
   auto n_neighbors = make_neighbor_names(cc);
   struct AceChemRule {
