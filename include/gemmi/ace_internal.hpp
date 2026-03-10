@@ -1,4 +1,5 @@
 // Copyright 2026 Global Phasing Ltd.
+//
 // Shared internal helpers for AceDRG-style processing.
 
 #ifndef GEMMI_ACE_INTERNAL_HPP_

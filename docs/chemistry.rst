@@ -460,7 +460,7 @@ It is intentionally rule-based and motif-driven; it is not a general pKa
 predictor or tautomer enumerator.
 
 apply_chemical_adjustments()
----------------------
+----------------------------
 
 Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
 examples below show representative components.

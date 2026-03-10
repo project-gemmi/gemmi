@@ -3128,7 +3128,7 @@ bool maybe_apply_carborane_mode(ChemComp& cc, const AcedrgTables& tables,
                                 bool no_angles, bool& has_cb_seed) {
   AceGraphView graph = make_ace_graph_view(cc);
   has_cb_seed = has_carborane_seed(cc, graph.adjacency);
-  if (!is_carborane_mode_component(cc, graph.adjacency))
+  if (!has_carborane_seed(cc, graph.adjacency))
     return false;
   apply_carborane_mode(cc, no_angles);
   tables.assign_ccp4_types(cc);

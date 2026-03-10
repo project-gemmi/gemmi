@@ -379,17 +379,6 @@ bool has_carborane_seed(const ChemComp& cc, const AceBondAdjacency& adj) {
   return false;
 }
 
-bool is_carborane_mode_component(const ChemComp& cc, const AceBondAdjacency& adj) {
-  for (size_t i = 0; i < cc.atoms.size(); ++i) {
-    if (cc.atoms[i].el == El::H) continue;
-    int b_count = 0;
-    for (const auto& nb : adj[i])
-      if (cc.atoms[nb.idx].el == El::B)
-        ++b_count;
-    if (b_count >= 4) return true;
-  }
-  return false;
-}
 
 void apply_carborane_mode(ChemComp& cc, bool no_angles) {
   AceGraphView initial_graph = make_ace_graph_view(cc);

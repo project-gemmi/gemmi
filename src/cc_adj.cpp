@@ -368,7 +368,7 @@ void adjust_so3_group(ChemComp& cc) {
     remove_atom_by_id(cc, h_id);
 }
 
-void adjust_nitro_group(ChemComp& cc, const AceGraphView& gv) {
+void adjust_nitro_group(ChemComp& cc) {
   // Match R-N(=O)=O: nitrogen with two double-bonded terminal oxygens
   std::set<int> processed;
   for (const auto& m : match_smarts(cc, "[NX3](=[OX1])=[OX1]")) {
@@ -391,7 +391,7 @@ void adjust_nitro_group(ChemComp& cc, const AceGraphView& gv) {
   }
 }
 
-void adjust_single_bond_oxide(ChemComp& cc, const AceGraphView& gv) {
+void adjust_single_bond_oxide(ChemComp& cc) {
   // Terminal oxygen with no H, one single-bonded heavy neighbor
   for (const auto& m : match_smarts(cc, "[OH0X1]-*")) {
     int oi = m[0];
@@ -425,7 +425,7 @@ void adjust_hexafluorophosphate(ChemComp& cc, const AceGraphView& gv) {
   }
 }
 
-void adjust_carboxy_asp(ChemComp& cc, const AceGraphView& gv) {
+void adjust_carboxy_asp(ChemComp& cc) {
   auto neighbors = make_neighbor_names(cc);
   std::set<std::string> matched_atoms;
   auto collect_from_pattern = [&](const std::string& smarts) {
@@ -824,10 +824,10 @@ void apply_chemical_adjustments(ChemComp& cc) {
   rules.push_back({"oxoacid_phosphate", [&] { adjust_oxoacid_group(cc, El::P, 3, true); }});
   rules.push_back({"oxoacid_sulfate", [&] { adjust_oxoacid_group(cc, El::S, 4, false); }});
   rules.push_back({"oxoacid_sulfite", [&] { adjust_so3_group(cc); }});
-  rules.push_back({"nitro_group", [&] { adjust_nitro_group(cc, gv); }});
-  rules.push_back({"single_bond_oxide", [&] { adjust_single_bond_oxide(cc, gv); }});
+  rules.push_back({"nitro_group", [&] { adjust_nitro_group(cc); }});
+  rules.push_back({"single_bond_oxide", [&] { adjust_single_bond_oxide(cc); }});
   rules.push_back({"hexafluorophosphate", [&] { adjust_hexafluorophosphate(cc, gv); }});
-  rules.push_back({"carboxy_asp", [&] { adjust_carboxy_asp(cc, gv); }});
+  rules.push_back({"carboxy_asp", [&] { adjust_carboxy_asp(cc); }});
   rules.push_back({"terminal_carboxylate", [&] { adjust_terminal_carboxylate(cc); }});
   rules.push_back({"guanidinium", [&] { adjust_guanidinium_group(cc, n_neighbors); }});
   rules.push_back({"amino_ter_amine", [&] { adjust_amino_ter_amine(cc, n_neighbors); }});
