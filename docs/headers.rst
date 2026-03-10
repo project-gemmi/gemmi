@@ -15,6 +15,9 @@ gemmi/acedrg_tables.hpp
     AcedrgTables - COD/CSD-based atom classification and restraint value lookup
     Port of AceDRG codClassify system to gemmi.
 
+gemmi/ccp4ener.hpp
+    CCP4 atom energy-type assignment for ChemComp.
+
 gemmi/addends.hpp
     Addends to scattering form factors used in DensityCalculator
     and StructureFactorCalculator.

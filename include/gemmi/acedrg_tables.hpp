@@ -17,6 +17,7 @@
 #include <cmath>
 #include <algorithm>
 #include "chemcomp.hpp"
+#include "ccp4ener.hpp"
 #include "elem.hpp"
 #include "fail.hpp"
 
@@ -148,10 +149,6 @@ struct TorsionEntry {
   int priority = 0;
   std::string id;
 };
-
-// Assign CCP4 atom energy types (_chem_comp_atom.type_energy) in-place.
-// This uses local graph analysis only and does not require AceDRG tables.
-GEMMI_DLL void assign_chemcomp_ccp4_types(ChemComp& cc);
 
 // ============================================================================
 // Main AcedrgTables class
