@@ -12,7 +12,7 @@ TAGGED_REPOS = {
     'scikit-build/scikit-build-core': 'v0.11.5',
     'taocpp/PEGTL': '2.8.3',
     'cxong/tinydir': '1.2.6',
-    'fastfloat/fast_float': 'v8.2.3',
+    'fastfloat/fast_float': 'v8.2.4',
     'madler/zlib': 'v1.3.2',
     'LLNL/shroud': 'v0.14.0',
 }
