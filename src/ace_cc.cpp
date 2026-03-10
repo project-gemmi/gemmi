@@ -3169,7 +3169,7 @@ void prepare_chemcomp(ChemComp& cc, const AcedrgTables& tables,
   AceRuleStats phase1 = collect_rule_stats(cc);
   trace_phase_delta("angle-seed", phase0, phase1);
 
-  apply_chemical_adjustments(cc);
+  normalize_chemcomp(cc);
 
   bool added_h3 = add_n_terminal_h3(cc);
   cleanup_and_validate_restraints(cc, "post-chemical-adjustments");

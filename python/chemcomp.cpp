@@ -210,9 +210,11 @@ void add_chemcomp(nb::module_& m) {
         auto it = self.find_atom(atom_id);
         return it != self.atoms.end() ? &*it : nullptr;
     }, nb::rv_policy::reference_internal)
-    .def("apply_chemical_adjustments", &apply_chemical_adjustments,
-         "Apply ChemComp normalization rules used by gemmi drg.\n"
-         "This mutates atoms, bonds and selected charges/protonation states.")
+    .def("normalize_chemistry", &normalize_chemcomp,
+         "Apply ChemComp normalization rules (protonation, resonance, etc.).\n"
+         "This mutates atoms, bonds and selected charges.")
+    .def("apply_chemical_adjustments", &normalize_chemcomp,
+         "(Deprecated alias for normalize_chemistry)")
     .def("remove_hydrogens", &ChemComp::remove_hydrogens)
     .def("match_smarts", [](const ChemComp& self, const std::string& pattern) {
         return match_smarts(self, pattern);

@@ -442,17 +442,16 @@ It supports:
     >>> len(cc.match_smarts("c1ccccc1"))
     12
 
-.. _chemcomp-chemical-adjustments:
+.. _chemcomp-chemical-normalization:
 
-Chemical adjustments
-====================
+Chemical normalization
+======================
 
-Gemmi's `ChemComp` normalization for `gemmi drg` is performed by
-`apply_chemical_adjustments()` (declared in `gemmi/cc_adj.hpp`,
+Gemmi's `ChemComp` normalization is performed by
+`normalize_chemistry()` (declared in `gemmi/cc_adj.hpp`,
 implemented in `src/cc_adj.cpp`).
 
-This is a deterministic local-graph normalization stage run before
-statistical lookup and typing. It can change:
+This is a deterministic local-graph normalization stage that can change:
 
 * formal charges,
 * protonation state (add/remove hydrogens),
@@ -463,10 +462,10 @@ statistical lookup and typing. It can change:
 It is intentionally rule-based and motif-driven; it is not a general pKa
 predictor or tautomer enumerator.
 
-apply_chemical_adjustments()
-----------------------------
+normalize_chemistry()
+---------------------
 
-Rules are applied in a fixed order (inside of `apply_chemical_adjustments()`):
+Rules are applied in a fixed order (inside of `normalize_chemistry()`):
 examples below show representative components.
 
 Acid/oxoacid deprotonation
@@ -721,7 +720,7 @@ Execution order
      Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
 
 1. seed missing angles from existing bonds (unless `--no-angles`);
-2. run `apply_chemical_adjustments()`;
+2. run `normalize_chemistry()`;
 3. run `add_n_terminal_h3()` (may add `H3` and corresponding N-centered angles);
 
    `add_n_terminal_h3()` adds the third proton only for matching
@@ -981,7 +980,7 @@ table lookup, because small differences in protonation state or local bond
 annotation can move an atom into a different type bucket.
 
 For details on the ChemComp-level rule set, see
-:ref:`chemcomp-chemical-adjustments`.
+:ref:`chemcomp-chemical-normalization`.
 
 Normalization includes:
 
