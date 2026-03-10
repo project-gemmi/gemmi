@@ -30,8 +30,11 @@ struct AceGraphView {
   std::vector<std::vector<int>> neighbors;
 };
 
-inline bool is_aromatic_or_deloc(BondType type) {
-  return type == BondType::Aromatic || type == BondType::Deloc;
+inline bool atom_has_aromatic_bond(const AceBondAdjacency& adj, size_t idx) {
+  for (const AceBondNeighbor& nb : adj[idx])
+    if (is_aromatic_or_deloc(nb.type))
+      return true;
+  return false;
 }
 
 std::map<std::string, std::vector<std::string>>

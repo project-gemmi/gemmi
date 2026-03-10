@@ -21,6 +21,9 @@ namespace gemmi {
 enum class BondType {
   Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
 };
+inline bool is_aromatic_or_deloc(BondType type) {
+  return type == BondType::Aromatic || type == BondType::Deloc;
+}
 enum class ChiralityType { Positive, Negative, Both };
 
 struct Restraints {
