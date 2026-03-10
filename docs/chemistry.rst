@@ -411,6 +411,37 @@ This class is not fully documented yet.
 The examples in :ref:`graph_analysis`
 show how to access `ChemComp`'s atoms and bonds.
 
+.. _chemcomp-smarts:
+
+SMARTS Matching
+---------------
+
+Gemmi includes a lightweight SMARTS-subset matcher that can be used to find
+functional groups or specific motifs within a `ChemComp`.
+
+It supports:
+
+* Atomic symbols (e.g. `C`, `[N]`, `[Fe]`) and wildcards (`*`).
+* Aromaticity (`[c]`, `[n]`, etc.).
+* Bond types: single (`-`), double (`=`), and any (`~`).
+* Connectivity and H-count constraints (e.g. `[CX4]`, `[OH1]`).
+* Branching using parentheses.
+
+.. doctest::
+
+    >>> # Match aromatic carbons in benzene
+    >>> benzene_cif = "data_comp_BEN\nloop_\n_chem_comp_atom.atom_id\n_chem_comp_atom.type_symbol\n" + \
+    ...               "\n".join(f"C{i} C" for i in range(1,7)) + \
+    ...               "\nloop_\n_chem_comp_bond.atom_id_1\n_chem_comp_bond.atom_id_2\n_chem_comp_bond.value_order\n" + \
+    ...               "\n".join(f"C{i} C{i%6+1} arom" for i in range(1,7))
+    >>> cc = gemmi.make_chemcomp_from_block(gemmi.cif.read_string(benzene_cif).sole_block())
+    >>> matches = cc.match_smarts("[c]")
+    >>> len(matches)
+    6
+    >>> # Find the full aromatic ring (returns all symmetry-equivalent mappings)
+    >>> len(cc.match_smarts("c1ccccc1"))
+    12
+
 .. _chemcomp-chemical-adjustments:
 
 Chemical adjustments

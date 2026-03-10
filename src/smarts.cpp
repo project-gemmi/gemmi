@@ -20,7 +20,7 @@ enum class SmartsBond {
 
 struct SmartsNode {
   bool wildcard = false;
-  bool aromatic = false;
+  int aromatic = -1;  // -1: don't care, 0: aliphatic, 1: aromatic
   El element = El::X;
   int h_count = -1;   // -1 = not specified
   int degree = -1;     // -1 = not specified (total connections incl. H)
@@ -43,12 +43,13 @@ bool parse_smarts_atom(const std::string& s, size_t& pos, SmartsNode& out) {
     return false;
   if (s[pos] == '*') {
     out.wildcard = true;
+    out.aromatic = -1;
     ++pos;
     return true;
   }
   auto set_symbol = [&](const std::string& symbol, bool aromatic) {
     out.wildcard = false;
-    out.aromatic = aromatic;
+    out.aromatic = aromatic ? 1 : 0;
     out.element = Element(symbol).elem;
     return out.element != El::X;
   };
@@ -186,8 +187,11 @@ bool smarts_node_matches(const SmartsNode& p, const ChemComp& cc,
   const ChemComp::Atom& a = cc.atoms[atom_idx];
   if (!p.wildcard && a.el != p.element)
     return false;
-  if (p.aromatic && !atom_has_aromatic_bond(adj, atom_idx))
-    return false;
+  if (p.aromatic != -1) {
+    bool atom_is_arom = atom_has_aromatic_bond(adj, atom_idx);
+    if ((p.aromatic == 1) != atom_is_arom)
+      return false;
+  }
   if (p.h_count >= 0 && count_h_neighbors(cc, adj, atom_idx) != p.h_count)
     return false;
   if (p.degree >= 0 && static_cast<int>(adj[atom_idx].size()) != p.degree)
@@ -228,9 +232,9 @@ std::vector<SmartsMatch> match_smarts(const ChemComp& cc, const std::string& pat
   std::sort(order.begin(), order.end(), [&](int a, int b) {
     const SmartsNode& na = p.nodes[a];
     const SmartsNode& nb = p.nodes[b];
-    int sa = (na.wildcard ? 0 : 4) + (na.aromatic ? 2 : 0) +
+    int sa = (na.wildcard ? 0 : 4) + (na.aromatic != -1 ? 2 : 0) +
              static_cast<int>(p.adj[a].size());
-    int sb = (nb.wildcard ? 0 : 4) + (nb.aromatic ? 2 : 0) +
+    int sb = (nb.wildcard ? 0 : 4) + (nb.aromatic != -1 ? 2 : 0) +
              static_cast<int>(p.adj[b].size());
     return sa > sb;
   });

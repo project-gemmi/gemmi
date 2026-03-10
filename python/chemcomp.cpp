@@ -5,6 +5,7 @@
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/ace_cc.hpp"
 #include "gemmi/cc_adj.hpp"
+#include "gemmi/smarts.hpp"
 
 #include "common.h"
 #include <nanobind/stl/bind_vector.h>
@@ -213,6 +214,9 @@ void add_chemcomp(nb::module_& m) {
          "Apply ChemComp normalization rules used by gemmi drg.\n"
          "This mutates atoms, bonds and selected charges/protonation states.")
     .def("remove_hydrogens", &ChemComp::remove_hydrogens)
+    .def("match_smarts", [](const ChemComp& self, const std::string& pattern) {
+        return match_smarts(self, pattern);
+    }, nb::arg("pattern"), "Find matches of a SMARTS pattern in the ChemComp.")
     ;
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
   m.def("add_chemcomp_to_block", &add_chemcomp_to_block);

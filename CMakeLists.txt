@@ -218,7 +218,7 @@ add_library(gemmi_cpp
             src/monlib.cpp src/ener_lib.cpp src/mtz.cpp src/mtz2cif.cpp
             src/pdb.cpp src/polyheur.cpp src/read_cif.cpp
             src/resinfo.cpp src/riding_h.cpp
-            src/select.cpp src/sprintf.cpp src/dssp.cpp src/symmetry.cpp
+            src/select.cpp src/smarts.cpp src/sprintf.cpp src/dssp.cpp src/symmetry.cpp
             src/to_json.cpp src/to_mmcif.cpp src/to_pdb.cpp src/topo.cpp
             src/xds_ascii.cpp)
 add_library(gemmi::gemmi_cpp ALIAS gemmi_cpp)
