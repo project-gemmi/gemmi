@@ -108,6 +108,20 @@ class TestChemComp(unittest.TestCase):
         self.assertEqual([aid.atom for aid in result],
                          ['FE', 'ND', 'C4D', 'C3D', 'C2D', 'CMD'])
 
+    def test_assign_chemcomp_ccp4_types_without_tables(self):
+        path = os.path.join(os.path.dirname(__file__), 'ccd', 'ALA.cif')
+        block = gemmi.cif.read(path).sole_block()
+        cc = gemmi.make_chemcomp_from_block(block)
+
+        gemmi.assign_chemcomp_ccp4_types(cc)
+
+        atom_types = {atom.id: atom.chem_type for atom in cc.atoms}
+        self.assertEqual(atom_types['N'], 'N32')
+        self.assertEqual(atom_types['CA'], 'CH1')
+        self.assertEqual(atom_types['CB'], 'CH3')
+        self.assertEqual(atom_types['C'], 'C')
+        self.assertEqual(atom_types['O'], 'O')
+
 class TestSmarts(unittest.TestCase):
     def test_smarts_benzene(self):
         cif_text = """

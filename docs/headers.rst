@@ -1,9 +1,15 @@
 
+gemmi/ace_carborane.hpp
+    Internal carborane processing for AceDRG-style pipeline.
+
 gemmi/ace_cc.hpp
     prepare_chemcomp() — restraint generation pipeline.
 
 gemmi/ace_graph.hpp
     Shared graph/ring helpers for AceDRG-style ChemComp processing.
+
+gemmi/ace_internal.hpp
+    Shared internal helpers for AceDRG-style processing.
 
 gemmi/acedrg_tables.hpp
     AcedrgTables - COD/CSD-based atom classification and restraint value lookup
@@ -296,6 +302,9 @@ gemmi/sfcalc.hpp
 gemmi/small.hpp
     Representation of a small molecule or inorganic crystal.
     Flat list of atom sites. Minimal functionality.
+
+gemmi/smarts.hpp
+    Lightweight SMARTS-subset matcher for ChemComp.
 
 gemmi/smcif.hpp
     Read small molecule CIF file into SmallStructure (from small.hpp).

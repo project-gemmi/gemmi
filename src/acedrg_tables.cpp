@@ -2213,11 +2213,12 @@ std::vector<std::string> AcedrgTables::compute_ccp4_types(
   return out;
 }
 
-void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
+void assign_chemcomp_ccp4_types(ChemComp& cc) {
   if (cc.atoms.empty())
     return;
 
-  std::vector<CodAtomInfo> atom_info = classify_atoms(cc);
+  AcedrgTables tables;
+  std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
   AceGraphView graph = make_ace_graph_view(cc);
   AceBondAdjacency& adjacency = graph.adjacency;
   std::vector<std::vector<int>>& neighbors = graph.neighbors;
@@ -2248,6 +2249,10 @@ void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
 
   for (size_t i = 0; i < atoms.size(); ++i)
     cc.atoms[i].chem_type = atoms[i].ccp4_type;
+}
+
+void AcedrgTables::assign_ccp4_types(ChemComp& cc) const {
+  assign_chemcomp_ccp4_types(cc);
 }
 
 // ============================================================================

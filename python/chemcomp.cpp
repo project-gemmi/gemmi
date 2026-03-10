@@ -340,6 +340,11 @@ static void add_acedrg_tables(nb::module_& m) {
   m.def("hybridization_from_string", &hybridization_from_string,
         nb::arg("s"),
         "Convert string to Hybridization enum.");
+  m.def("assign_chemcomp_ccp4_types",
+        &assign_chemcomp_ccp4_types,
+        nb::arg("chemcomp"),
+        "Assign CCP4 energy types (_chem_comp_atom.type_energy) in-place.\n"
+        "This uses local graph analysis only and does not require AceDRG tables.");
   m.def("prepare_chemcomp",
         [](ChemComp& chemcomp, const AcedrgTables& tables,
            const std::map<std::string, std::string>& atom_stereo,

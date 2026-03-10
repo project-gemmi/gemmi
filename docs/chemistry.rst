@@ -716,7 +716,7 @@ Execution order
      for possible mixed-mode post-processing.
      Example: `9UK <https://www.rcsb.org/ligand/9UK>`_.
 
-1. seed missing angles from existing bonds (unless `--no-angles`);
+1. seed missing angles from existing bonds (unless `no_angles=false`);
 2. run `apply_chemical_adjustments()`;
 3. run `add_n_terminal_h3()` (may add `H3` and corresponding N-centered angles);
 
@@ -1166,6 +1166,21 @@ Atom typing: CCP4 energy types
 One key concept in restraint generation is the CCP4 "energy type"
 (`_chem_comp_atom.type_energy`). This is a chemistry-aware atom class
 used by monomer-library restraint tables.
+
+Gemmi can assign these types directly, without loading AceDRG tables:
+
+.. doctest::
+
+  >>> import os
+  >>> path = '../tests/ccd/ALA.cif'
+  >>> cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(path).sole_block())
+  >>> gemmi.assign_chemcomp_ccp4_types(cc)
+  >>> {a.id: a.chem_type for a in cc.atoms if a.id in ('N', 'CA', 'CB')}
+  {'N': 'N32', 'CA': 'CH1', 'CB': 'CH3'}
+
+The assignment uses the current `ChemComp` graph as-is. If you want
+normalization, hydrogen completion or peptide-specific adjustments first,
+run :ref:`prepare_chemcomp() <chemistry-gemmi-drg-overview>` instead.
 
 These types are not elements. They encode local environment features
 such as hydrogen count, local bonding pattern and ring/aromatic context.

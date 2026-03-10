@@ -149,6 +149,10 @@ struct TorsionEntry {
   std::string id;
 };
 
+// Assign CCP4 atom energy types (_chem_comp_atom.type_energy) in-place.
+// This uses local graph analysis only and does not require AceDRG tables.
+GEMMI_DLL void assign_chemcomp_ccp4_types(ChemComp& cc);
+
 // ============================================================================
 // Main AcedrgTables class
 // ============================================================================
@@ -162,7 +166,7 @@ struct GEMMI_DLL AcedrgTables {
   // Process a ChemComp - fill all missing restraint values
   void fill_restraints(ChemComp& cc) const;
 
-  // Assign CCP4 atom energy types (type_energy) following AceDRG rules
+  // Convenience wrapper around assign_chemcomp_ccp4_types().
   void assign_ccp4_types(ChemComp& cc) const;
   bool lookup_pep_tors(const std::string& a1, const std::string& a2,
                                  const std::string& a3, const std::string& a4,
