@@ -316,6 +316,19 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertAlmostEqual(pos['C23'].dist(pos['N10']), 1.4608, delta=0.10)
         self.assertAlmostEqual(pos['N10'].dist(pos['C01']), 1.3211, delta=0.10)
 
+    def test_generate_chemcomp_xyz_preserves_a1v_planar_chain(self):
+        path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A1V.cif'
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        for atom in cc.atoms:
+            atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+        placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
+        self.assertEqual(placed, len(cc.atoms))
+        pos = {atom.id: atom.xyz for atom in cc.atoms}
+        self.assertAlmostEqual(pos['C10'].dist(pos['N09']), 1.3858, delta=0.10)
+        self.assertAlmostEqual(pos['N09'].dist(pos['C08']), 1.3072, delta=0.10)
+        self.assertAlmostEqual(pos['C11'].dist(pos['S12']), 1.7059, delta=0.12)
+        self.assertAlmostEqual(pos['S12'].dist(pos['C08']), 1.7235, delta=0.12)
+
     def test_generate_chemcomp_xyz_preserves_a4w_planar_linker(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A4W.cif'
         cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
