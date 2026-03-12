@@ -53,6 +53,9 @@ void add_meta(nb::module_& m) {
         return "<gemmi.ResidueId " + self.str() + ">";
     })
     .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
+    .def("__hash__", [](const ResidueId& self) {
+        return nb::hash(nb::make_tuple(self.seqid.str(), self.segment, self.name));
+    })
     ;
 
   nb::class_<AtomAddress>(m, "AtomAddress")
@@ -70,6 +73,14 @@ void add_meta(nb::module_& m) {
         return cat("<gemmi.AtomAddress ", self.str(), '>');
     })
     .def(nb::self == nb::self, nb::sig("def __eq__(self, arg: object, /) -> bool"))
+    .def("__hash__", [](const AtomAddress& self) {
+        return nb::hash(nb::make_tuple(self.chain_name,
+                                       self.res_id.seqid.str(),
+                                       self.res_id.segment,
+                                       self.res_id.name,
+                                       self.atom_name,
+                                       self.altloc));
+    })
     // NOLINTEND(misc-redundant-expression)
     ;
 
