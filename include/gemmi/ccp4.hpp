@@ -20,8 +20,35 @@
 #include "input.hpp"     // for AnyStream, FileStream
 #include "grid.hpp"
 
-#include "third_party/half.hpp"
-using float16_type = half_float::half;
+#if __has_include(<stdfloat>)
+# include <stdfloat>
+#endif
+#ifdef __STDCPP_FLOAT16_T__
+using float16_type = std::float16_t;
+#else
+// Minimal IEEE 754 binary16 type for reading CCP4 mode-12 maps.
+struct float16_type {
+  std::uint16_t bits;
+  operator float() const {
+    std::uint32_t sign = (bits >> 15) & 1;
+    std::uint32_t exp = (bits >> 10) & 0x1F;
+    std::uint32_t mant = bits & 0x3FF;
+    float result;
+    if (exp == 0) {  // subnormal or zero
+      result = std::ldexp(static_cast<float>(mant), -24);
+    } else if (exp == 31) {  // inf or nan
+      std::uint32_t f = (sign << 31) | 0x7F800000u | (mant << 13);
+      std::memcpy(&result, &f, 4);
+      return result;
+    } else {
+      result = std::ldexp(static_cast<float>(mant + 1024), static_cast<int>(exp) - 25);
+    }
+    return sign ? -result : result;
+  }
+  bool operator!=(float16_type o) const { return bits != o.bits; }
+  bool operator==(float16_type o) const { return bits == o.bits; }
+};
+#endif
 
 namespace gemmi {
 
@@ -321,7 +348,7 @@ To translate_map_point(From f) { return static_cast<To>(f); }
 template<> inline
 std::int8_t translate_map_point<float,std::int8_t>(float f) { return f != 0; }
 template<> inline
-std::int8_t translate_map_point<float16_type,std::int8_t>(float16_type f) { return f != (float16_type)0; }
+std::int8_t translate_map_point<float16_type,std::int8_t>(float16_type f) { return static_cast<float>(f) != 0; }
 
 template<typename TFile, typename TMem>
 void read_data(AnyStream& f, std::vector<TMem>& content) {
