@@ -1,10 +1,12 @@
 # currently using Emscripten 5.0.2
-CXX = em++
+SHELL = /bin/bash
+EMSDK_ENV ?= $(HOME)/local/emsdk/emsdk_env.sh
+CXX = . $(EMSDK_ENV) >/dev/null && em++
 
 INCLUDE = -I../include
 
 COMMON_FLAGS = \
-  -Wall -Wextra -std=c++20 \
+  -Wall -Wextra -std=c++26 \
   -s STRICT=1 \
   -s DISABLE_EXCEPTION_CATCHING=0
 
@@ -27,9 +29,9 @@ debug: FLAGS = -g -O0 $(COMMON_FLAGS)
 debug: LINK_FLAGS += -s SAFE_HEAP=1 -s ASSERTIONS=2
 debug: gemmi.js
 
-GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o sprintf.o symmetry.o json.o
+GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o select.o sprintf.o symmetry.o json.o monlib.o read_cif.o
 
-BINDING_OBJS = gemmi.o cell.o mol.o mtz_fft.o
+BINDING_OBJS = gemmi.o cell.o mol.o map.o mtz_fft.o
 
 gemmi.js: $(GEMMI_OBJS) $(BINDING_OBJS)
 	$(CXX) $(FLAGS) $(LINK_FLAGS) $(GEMMI_OBJS) $(BINDING_OBJS) -o $@
