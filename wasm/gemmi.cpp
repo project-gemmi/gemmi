@@ -9,5 +9,5 @@ EMSCRIPTEN_BINDINGS(Gemmi) {
   add_mol();
   add_map();
   add_mtz_fft();
-  EM_ASM( finalize_gemmi(); );
+  EM_ASM( if (typeof finalize_gemmi === 'function') finalize_gemmi(); );
 }

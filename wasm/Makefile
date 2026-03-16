@@ -16,6 +16,7 @@ LINK_FLAGS = \
   --pre-js pre.js \
   --post-js post.js \
   --no-entry \
+  --emit-tsd gemmi.d.ts \
   -lembind \
   -s EXPORTED_RUNTIME_METHODS=writeArrayToMemory,HEAPU8 \
   -s INCOMING_MODULE_JS_API=print,printErr,setStatus,onRuntimeInitialized \

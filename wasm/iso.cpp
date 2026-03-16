@@ -1,6 +1,7 @@
 // Copyright Global Phasing Ltd.
 
 #include "common.h"
+#include "iso.h"
 #include "isosurface_tables.h"
 
 #include <array>
@@ -10,14 +11,101 @@
 
 namespace {
 
-using Size3 = std::array<int, 3>;
-
-constexpr std::array<Size3, 8> kCubeVerts = {{
+constexpr std::array<gemmi_wasm::Size3, 8> kCubeVerts = {{
   {0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0},
   {0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1},
 }};
 
 }  // namespace
+
+namespace gemmi_wasm {
+
+bool calculate_isosurface(const Size3& dims,
+                          const std::vector<float>& values,
+                          const std::vector<float>& points,
+                          double isolevel,
+                          const std::string& method,
+                          std::vector<float>& vertices,
+                          std::vector<uint32_t>& segments,
+                          std::string& error) {
+  error.clear();
+  vertices.clear();
+  segments.clear();
+  if (dims[0] <= 0 || dims[1] <= 0 || dims[2] <= 0) {
+    error = "Grid dimensions are zero along at least one edge";
+    return false;
+  }
+  const size_t point_count = static_cast<size_t>(dims[0]) * dims[1] * dims[2];
+  if (values.size() != point_count || points.size() != point_count * 3u) {
+    error = "isosurface: array size mismatch";
+    return false;
+  }
+
+  const bool snap = method == "snapped MC";
+  const auto& seg_offsets = method == "squarish" ?
+    kSegTable2Offsets : kSegTableOffsets;
+  const int* seg_data = method == "squarish" ?
+    kSegTable2Data.data() : kSegTableData.data();
+
+  std::array<int, 8> vert_offsets;
+  for (int i = 0; i < 8; ++i) {
+    const auto& v = kCubeVerts[i];
+    vert_offsets[i] = v[0] + dims[2] * (v[1] + dims[1] * v[2]);
+  }
+
+  std::array<float, 8> vertex_values;
+  std::array<size_t, 8> point_offsets;
+  std::array<uint32_t, 12> vlist = {};
+  uint32_t vertex_count = 0;
+
+  for (int x = 0; x < dims[0] - 1; ++x) {
+    for (int y = 0; y < dims[1] - 1; ++y) {
+      for (int z = 0; z < dims[2] - 1; ++z) {
+        const int offset0 = z + dims[2] * (y + dims[1] * x);
+        int cubeindex = 0;
+        for (int i = 0; i < 8; ++i) {
+          const int point_index = offset0 + vert_offsets[i];
+          cubeindex |= (values[point_index] < isolevel) ? 1 << i : 0;
+        }
+        if (cubeindex == 0 || cubeindex == 255)
+          continue;
+
+        for (int i = 0; i < 8; ++i) {
+          const size_t point_index = static_cast<size_t>(offset0 + vert_offsets[i]);
+          vertex_values[i] = values[point_index];
+          point_offsets[i] = point_index * 3u;
+        }
+
+        const int edge_mask = kEdgeTable[cubeindex];
+        for (int i = 0; i < 12; ++i) {
+          if ((edge_mask & (1 << i)) == 0)
+            continue;
+          const auto& edge = kEdgeIndex[i];
+          double mu = (isolevel - vertex_values[edge[0]]) /
+                      (vertex_values[edge[1]] - vertex_values[edge[0]]);
+          if (snap) {
+            if (mu > 0.85)
+              mu = 1.0;
+            else if (mu < 0.15)
+              mu = 0.0;
+          }
+          const size_t p1 = point_offsets[edge[0]];
+          const size_t p2 = point_offsets[edge[1]];
+          vertices.push_back(points[p1] + (points[p2] - points[p1]) * mu);
+          vertices.push_back(points[p1 + 1] + (points[p2 + 1] - points[p1 + 1]) * mu);
+          vertices.push_back(points[p1 + 2] + (points[p2 + 2] - points[p1 + 2]) * mu);
+          vlist[i] = vertex_count++;
+        }
+
+        for (int i = seg_offsets[cubeindex]; i < seg_offsets[cubeindex + 1]; ++i)
+          segments.push_back(vlist[seg_data[i]]);
+      }
+    }
+  }
+  return true;
+}
+
+}  // namespace gemmi_wasm
 
 class Isosurface {
 public:
@@ -39,82 +127,9 @@ public:
   }
 
   bool calculate(double isolevel, const std::string& method) {
-    last_error_.clear();
-    vertices_.clear();
-    segments_.clear();
-    if (dims_[0] <= 0 || dims_[1] <= 0 || dims_[2] <= 0) {
-      last_error_ = "Grid dimensions are zero along at least one edge";
-      return false;
-    }
-    const size_t point_count =
-        static_cast<size_t>(dims_[0]) * dims_[1] * dims_[2];
-    if (values_.size() != point_count || points_.size() != point_count * 3u) {
-      last_error_ = "isosurface: array size mismatch";
-      return false;
-    }
-
-    const bool snap = method == "snapped MC";
-    const auto& seg_offsets = method == "squarish" ?
-      gemmi_wasm::kSegTable2Offsets : gemmi_wasm::kSegTableOffsets;
-    const int* seg_data = method == "squarish" ?
-      gemmi_wasm::kSegTable2Data.data() : gemmi_wasm::kSegTableData.data();
-
-    std::array<int, 8> vert_offsets;
-    for (int i = 0; i < 8; ++i) {
-      const auto& v = kCubeVerts[i];
-      vert_offsets[i] = v[0] + dims_[2] * (v[1] + dims_[1] * v[2]);
-    }
-
-    std::array<float, 8> vertex_values;
-    std::array<size_t, 8> point_offsets;
-    std::array<uint32_t, 12> vlist = {};
-    uint32_t vertex_count = 0;
-
-    for (int x = 0; x < dims_[0] - 1; ++x) {
-      for (int y = 0; y < dims_[1] - 1; ++y) {
-        for (int z = 0; z < dims_[2] - 1; ++z) {
-          const int offset0 = z + dims_[2] * (y + dims_[1] * x);
-          int cubeindex = 0;
-          for (int i = 0; i < 8; ++i) {
-            const int point_index = offset0 + vert_offsets[i];
-            cubeindex |= (values_[point_index] < isolevel) ? 1 << i : 0;
-          }
-          if (cubeindex == 0 || cubeindex == 255)
-            continue;
-
-          for (int i = 0; i < 8; ++i) {
-            const size_t point_index = static_cast<size_t>(offset0 + vert_offsets[i]);
-            vertex_values[i] = values_[point_index];
-            point_offsets[i] = point_index * 3u;
-          }
-
-          const int edge_mask = gemmi_wasm::kEdgeTable[cubeindex];
-          for (int i = 0; i < 12; ++i) {
-            if ((edge_mask & (1 << i)) == 0)
-              continue;
-            const auto& edge = gemmi_wasm::kEdgeIndex[i];
-            double mu = (isolevel - vertex_values[edge[0]]) /
-                        (vertex_values[edge[1]] - vertex_values[edge[0]]);
-            if (snap) {
-              if (mu > 0.85)
-                mu = 1.0;
-              else if (mu < 0.15)
-                mu = 0.0;
-            }
-            const size_t p1 = point_offsets[edge[0]];
-            const size_t p2 = point_offsets[edge[1]];
-            vertices_.push_back(points_[p1] + (points_[p2] - points_[p1]) * mu);
-            vertices_.push_back(points_[p1 + 1] + (points_[p2 + 1] - points_[p1 + 1]) * mu);
-            vertices_.push_back(points_[p1 + 2] + (points_[p2 + 2] - points_[p1 + 2]) * mu);
-            vlist[i] = vertex_count++;
-          }
-
-          for (int i = seg_offsets[cubeindex]; i < seg_offsets[cubeindex + 1]; ++i)
-            segments_.push_back(vlist[seg_data[i]]);
-        }
-      }
-    }
-    return true;
+    return gemmi_wasm::calculate_isosurface(dims_, values_, points_, isolevel,
+                                            method, vertices_, segments_,
+                                            last_error_);
   }
 
   em::val vertices() const {
@@ -128,7 +143,7 @@ public:
   std::string get_last_error() const { return last_error_; }
 
 private:
-  Size3 dims_ = {0, 0, 0};
+  gemmi_wasm::Size3 dims_ = {0, 0, 0};
   std::vector<float> points_;
   std::vector<float> values_;
   std::vector<float> vertices_;
