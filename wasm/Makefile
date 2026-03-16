@@ -31,7 +31,7 @@ debug: gemmi.js
 
 GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o select.o sprintf.o symmetry.o json.o monlib.o read_cif.o
 
-BINDING_OBJS = gemmi.o cell.o mol.o map.o mtz_fft.o
+BINDING_OBJS = gemmi.o cell.o iso.o mol.o map.o mtz_fft.o
 
 gemmi.js: $(GEMMI_OBJS) $(BINDING_OBJS)
 	$(CXX) $(FLAGS) $(LINK_FLAGS) $(GEMMI_OBJS) $(BINDING_OBJS) -o $@

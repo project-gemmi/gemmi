@@ -5,6 +5,7 @@
 
 EMSCRIPTEN_BINDINGS(Gemmi) {
   add_cell();
+  add_iso();
   add_mol();
   add_map();
   add_mtz_fft();
