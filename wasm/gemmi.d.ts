@@ -1,82 +1,115 @@
+// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
+declare namespace RuntimeExports {
+    function writeArrayToMemory(array: any, buffer: any): void;
+    let HEAPU8: any;
+}
+interface WasmModule {
+}
 
-export interface UnitCell {
+type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
+export interface ClassHandle {
+  isAliasOf(other: ClassHandle): boolean;
+  delete(): void;
+  deleteLater(): this;
+  isDeleted(): boolean;
+  // @ts-ignore - If targeting lower than ESNext, this symbol might not exist.
+  [Symbol.dispose](): void;
+  clone(): this;
+}
+export interface UnitCellParameters extends ClassHandle {
   a: number;
   b: number;
   c: number;
   alpha: number;
   beta: number;
   gamma: number;
-  delete(): void;
 }
 
-export interface Structure {
-  readonly name: string;
-  readonly cell: UnitCell;
+export interface UnitCell extends UnitCellParameters {
+  volume: number;
+  is_crystal(): boolean;
+  fractionalize(_0: Position): Fractional;
+  orthogonalize(_0: Fractional): Position;
+}
+
+export interface Isosurface extends ClassHandle {
+  readonly last_error: string;
+  resize_input(_0: number): void;
+  set_size(_0: number, _1: number, _2: number): void;
+  calculate(_0: number, _1: EmbindString): boolean;
+  input_points(): any;
+  input_values(): any;
+  vertices(): any;
+  segments(): any;
+}
+
+export interface Structure extends ClassHandle {
+  cell: UnitCell;
   readonly length: number;
-  at(index: number): Model;
-  delete(): void;
+  get name(): string;
+  set name(value: EmbindString);
+  at(_0: number): Model | null;
 }
 
-export interface Model {
-  readonly num: number;
+export interface Model extends ClassHandle {
+  num: number;
   readonly length: number;
-  at(index: number): Chain;
-  count_occupancies(_0: any): number;
-  delete(): void;
+  at(_0: number): Chain | null;
+  count_occupancies(_0: Selection | null): number;
 }
 
-export interface Chain {
-  readonly name: string;
+export interface Chain extends ClassHandle {
   readonly length: number;
-  at(index: number): Residue;
-  delete(): void;
+  get name(): string;
+  set name(value: EmbindString);
+  at(_0: number): Residue | null;
 }
 
-export interface Residue {
+export interface ResidueId extends ClassHandle {
   readonly seqid_string: string;
-  readonly segment: string;
-  readonly name: string;
-  readonly subchain: string;
-  readonly entity_type_string: string;
+  get segment(): string;
+  set segment(value: EmbindString);
+  get name(): string;
+  set name(value: EmbindString);
+}
+
+export interface Residue extends ResidueId {
   readonly length: number;
-  at(index: number): Atom;
-  delete(): void;
+  get subchain(): string;
+  set subchain(value: EmbindString);
+  readonly entity_type_string: string;
+  at(_0: number): Atom | null;
 }
 
-export type Position = [number, number, number];
-
-export interface Atom {
-  readonly name: string;
-  readonly altloc: number;
-  readonly charge: number;
+export interface Atom extends ClassHandle {
+  altloc: number;
+  charge: number;
+  serial: number;
+  occ: number;
+  b_iso: number;
+  pos: Position;
+  get name(): string;
+  set name(value: EmbindString);
   readonly element_uname: string;
-  readonly serial: number;
-  readonly pos: Position;
-  readonly occ: number;
-  readonly b_iso: number;
-  delete(): void;
 }
 
-export interface Selection {
-  delete(): void;
+export interface Selection extends ClassHandle {
 }
 
-export interface BondInfo {
-  add_monomer_cif(cif_text: string): void;
-  get_bond_lines(st: Structure): void;
+export interface BondInfo extends ClassHandle {
+  get_bond_lines(_0: Structure): void;
   bond_data_ptr(): number;
   bond_data_size(): number;
-  delete(): void;
+  add_monomer_cif(_0: EmbindString): void;
 }
 
-export interface SelectionResult {
-  set_atom_indices(st: Structure, cid: string, model_index: number): void;
+export interface SelectionResult extends ClassHandle {
   atom_data_ptr(): number;
   atom_data_size(): number;
-  delete(): void;
+  set_atom_indices(_0: Structure, _1: EmbindString, _2: number): void;
 }
 
-export interface Ccp4Map {
+export interface Ccp4Map extends ClassHandle {
   readonly cell: UnitCell;
   readonly nx: number;
   readonly ny: number;
@@ -85,36 +118,88 @@ export interface Ccp4Map {
   readonly rms: number;
   readonly last_error: string;
   read(_0: boolean): boolean;
-  data(): Float32Array;
-  delete(): void;
+  extract_isosurface(_0: number, _1: number, _2: number, _3: number, _4: number, _5: EmbindString): boolean;
+  data(): any;
+  isosurface_vertices(): any;
+  isosurface_segments(): any;
 }
 
-export interface Mtz {
+export interface Dsn6Map extends ClassHandle {
+  readonly cell: UnitCell;
+  readonly nx: number;
+  readonly ny: number;
+  readonly nz: number;
+  readonly mean: number;
+  readonly rms: number;
+  readonly last_error: string;
+  read(): boolean;
+  extract_isosurface(_0: number, _1: number, _2: number, _3: number, _4: number, _5: EmbindString): boolean;
+  data(): any;
+  isosurface_vertices(): any;
+  isosurface_segments(): any;
+}
+
+export interface Mtz extends ClassHandle {
   readonly cell: UnitCell;
   readonly nx: number;
   readonly ny: number;
   readonly nz: number;
   readonly rmsd: number;
   readonly last_error: string;
-  read(_0: number, _1: number): boolean;
+  read(): boolean;
   calculate_map(_0: boolean): any;
-  calculate_map_from_labels(_0: string, _1: string): any;
-  delete(): void;
+  calculate_map_from_labels(_0: EmbindString, _1: EmbindString): any;
 }
 
-export interface Module {
-  read_structure(buf: string|ArrayBuffer, name: string, format?: string): Structure;
-  get_residue_names(st: Structure): string;
+export type Fractional = [ number, number, number ];
+
+export type Position = [ number, number, number ];
+
+interface EmbindModule {
+  UnitCellParameters: {};
+  UnitCell: {
+    new(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number): UnitCell;
+  };
+  Isosurface: {
+    new(): Isosurface;
+  };
+  Structure: {
+    new(): Structure;
+  };
+  Model: {
+    new(): Model;
+  };
+  Chain: {
+    new(): Chain;
+  };
+  ResidueId: {};
+  Residue: {
+    new(): Residue;
+  };
+  Atom: {
+    new(): Atom;
+  };
   Selection: {
-    new (): Selection;
+    new(): Selection;
   };
   BondInfo: {
-    new (): BondInfo;
+    new(): BondInfo;
   };
   SelectionResult: {
-    new (): SelectionResult;
+    new(): SelectionResult;
   };
-  readCcp4Map(map_buf: string|ArrayBuffer, expand_symmetry?: boolean): Ccp4Map;
-  readMtz(mtz_buf: string|ArrayBuffer): Mtz;
-  HEAPU8: Uint8Array;
+  Ccp4Map: {
+    new(_0: EmbindString): Ccp4Map;
+  };
+  Dsn6Map: {
+    new(_0: EmbindString): Dsn6Map;
+  };
+  Mtz: {
+    new(_0: EmbindString): Mtz;
+  };
+  get_residue_names(_0: Structure): string;
+  _read_structure(_0: EmbindString, _1: EmbindString, _2: EmbindString): Structure;
 }
+
+export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;
+export default function MainModuleFactory (options?: unknown): Promise<MainModule>;
