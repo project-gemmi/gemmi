@@ -108,6 +108,9 @@ gemmi/dirwalk.hpp
     in alphabetical order. Wraps the tinydir library (as we cannot yet
     depend on C++17 <filesystem>).
 
+gemmi/dsn6.hpp
+    DSN6/BRIX density map format.
+
 gemmi/dssp.hpp
     DSSP (Define Secondary Structure of Proteins) implementation.
 
@@ -175,6 +178,9 @@ gemmi/intensit.hpp
 gemmi/interop.hpp
     Interoperability between Model (MX) and SmallStructure (SX).
 
+gemmi/isosurface.hpp
+    Marching-cubes isosurface extraction from 3D grids.
+
 gemmi/it92.hpp
     X-ray scattering factor coefficients from International Tables
     for Crystallography Volume C, edition from 1992 or later.
@@ -197,6 +203,10 @@ gemmi/logger.hpp
 
 gemmi/math.hpp
     Math utilities. 3D linear algebra.
+
+gemmi/mc_tables.hpp
+    Marching cubes lookup tables.
+    Generated from gemmimol/src/isosurface.ts
 
 gemmi/metadata.hpp
     Metadata from coordinate files.
