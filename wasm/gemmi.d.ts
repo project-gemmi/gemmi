@@ -139,6 +139,20 @@ export interface Dsn6Map extends ClassHandle {
   isosurface_segments(): any;
 }
 
+export interface MtzMap extends ClassHandle {
+  readonly cell: UnitCell;
+  readonly nx: number;
+  readonly ny: number;
+  readonly nz: number;
+  readonly mean: number;
+  readonly rms: number;
+  readonly last_error: string;
+  extract_isosurface(_0: number, _1: number, _2: number, _3: number, _4: number, _5: EmbindString): boolean;
+  data(): any;
+  isosurface_vertices(): any;
+  isosurface_segments(): any;
+}
+
 export interface Mtz extends ClassHandle {
   readonly cell: UnitCell;
   readonly nx: number;
@@ -147,6 +161,8 @@ export interface Mtz extends ClassHandle {
   readonly rmsd: number;
   readonly last_error: string;
   read(): boolean;
+  calculate_wasm_map(_0: boolean): MtzMap | null;
+  calculate_wasm_map_from_labels(_0: EmbindString, _1: EmbindString): MtzMap | null;
   calculate_map(_0: boolean): any;
   calculate_map_from_labels(_0: EmbindString, _1: EmbindString): any;
 }
@@ -194,6 +210,7 @@ interface EmbindModule {
   Dsn6Map: {
     new(_0: EmbindString): Dsn6Map;
   };
+  MtzMap: {};
   Mtz: {
     new(_0: EmbindString): Mtz;
   };
