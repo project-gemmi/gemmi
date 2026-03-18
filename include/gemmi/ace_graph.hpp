@@ -114,9 +114,9 @@ struct AceAromaticAtom {
   bool is_metal = false;
 };
 
-void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
-                         std::vector<CodAtomInfo>& atoms,
-                         std::vector<RingInfo>& rings);
+GEMMI_DLL void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
+                                   std::vector<CodAtomInfo>& atoms,
+                                   std::vector<RingInfo>& rings);
 
 GEMMI_DLL void set_ring_aromaticity_from_bonds(
     const AceBondAdjacency& adj,
