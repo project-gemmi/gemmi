@@ -8,6 +8,7 @@
 #include <cmath>      // for ceil
 #include <cstdint>    // for int16_t, uint16_t
 #include <stdexcept>
+#include "fileutil.hpp" // for read_file_into_buffer
 #include "grid.hpp"
 #include "stats.hpp"
 
@@ -110,6 +111,14 @@ inline DataStats read_dsn6_from_memory(const char* buf, size_t size,
   }
 
   return calculate_data_statistics(grid.data);
+}
+
+/// Reads a DSN6/BRIX map from a file. Returns the grid.
+inline Grid<float> read_dsn6_map(const std::string& path) {
+  CharArray buf = read_file_into_buffer(path);
+  Grid<float> grid;
+  read_dsn6_from_memory(buf.data(), buf.size(), grid);
+  return grid;
 }
 
 }  // namespace gemmi

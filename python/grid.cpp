@@ -20,10 +20,11 @@ bool operator>(const std::complex<float>& a, const std::complex<float>& b) {
 #include <nanobind/stl/vector.h>  // for find_blobs_by_flood_fill, ...
 
 #include "gemmi/grid.hpp"
-#include "gemmi/floodfill.hpp"  // for flood_fill_above
-#include "gemmi/solmask.hpp"  // for SolventMasker, mask_points_in_constant_radius
-#include "gemmi/blob.hpp"     // for Blob, find_blobs_by_flood_fill
-#include "gemmi/asumask.hpp"  // for MaskedGrid
+#include "gemmi/floodfill.hpp"   // for flood_fill_above
+#include "gemmi/isosurface.hpp"  // for IsoSurface, extract_isosurface
+#include "gemmi/solmask.hpp"     // for SolventMasker, mask_points_in_constant_radius
+#include "gemmi/blob.hpp"        // for Blob, find_blobs_by_flood_fill
+#include "gemmi/asumask.hpp"     // for MaskedGrid
 
 using namespace gemmi;
 
@@ -369,4 +370,28 @@ void add_grid(nb::module_& m) {
     .def("str", &AsuBrick::str)
     ;
   m.def("find_asu_brick", &find_asu_brick);
+
+  // from isosurface.hpp
+  nb::enum_<IsoMethod>(m, "IsoMethod")
+    .value("MarchingCubes", IsoMethod::MarchingCubes)
+    .value("SnappedMC", IsoMethod::SnappedMC)
+    .value("Squarish", IsoMethod::Squarish);
+
+  nb::class_<IsoSurface>(m, "IsoSurface")
+    .def_ro("vertices", &IsoSurface::vertices,
+            "Flat list of vertex coordinates (x1,y1,z1, x2,y2,z2, ...).")
+    .def_ro("triangles", &IsoSurface::triangles,
+            "Flat list of triangle vertex indices (i1,i2,i3, ...).")
+    .def_prop_ro("vertex_count", [](const IsoSurface& self) {
+        return self.vertices.size() / 3;
+    })
+    .def_prop_ro("triangle_count", [](const IsoSurface& self) {
+        return self.triangles.size() / 3;
+    })
+    ;
+
+  m.def("extract_isosurface", &extract_isosurface<float>,
+        nb::arg("grid"), nb::arg("center"), nb::arg("radius"),
+        nb::arg("isolevel"), nb::arg("method")=IsoMethod::MarchingCubes,
+        "Extract isosurface from a FloatGrid within a sphere.");
 }

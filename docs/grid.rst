@@ -15,11 +15,11 @@ rectangular grid (but note that the spacing in different directions may differ).
 The data may represent electron density, a mask of the protein area,
 or any other scalar data.
 
-In Gemmi such a data is stored in a class called Grid.
+In Gemmi such data is stored in a class called Grid.
 Actually, it is a set of classes for storing
 different types of data: floating point numbers, integers or boolean masks.
 
-Grid dimension are given in variables nu, nv, nw.
+Grid dimensions are given in variables nu, nv, nw.
 The data layout is Fortran-style contiguous, i.e. point (1,1,1) is followed
 by (2,1,1).
 
@@ -31,67 +31,53 @@ Grid classes also store:
 If the symmetry is not set (or is set to P1)
 we effectively have a box with periodic boundary conditions (PBC).
 
-C++
-~~~
+In C++, the `gemmi/grid.hpp` header defines
+`template<typename T=float> struct Grid;`, which stores the dimensions
+`nu`, `nv`, `nw` and the data vector. In Python, the corresponding classes are
+`FloatGrid` (for maps) and `Int8Grid` (for masks).
 
-The `gemmi/grid.hpp` header defines::
-
-  template<typename T=float> struct Grid;
-
-which stores dimensions and data::
-
-  int nu, nv, nw;
-  std::vector<T> data;
-
-To specify the grid size use function `set_size()`
-or `set_size_from_spacing()`. They both check that the size
-is compatible with the space group (so it is better to call
-these functions after setting `Grid::spacegroup`.
+To specify the grid size use `set_size()` or `set_size_from_spacing()`.
+They both check that the size is compatible with the space group, so it is
+better to call them after setting `Grid::spacegroup`.
 The latter function additionally ensures that the size is FFT-friendly.
 
-The data point can be accessed with::
+The data points are accessed with `get_value()` and `set_value()`.
+In Python, the constructor may take grid dimensions or a NumPy array.
+Alternatively, you may create an empty grid and set the size later on.
 
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/grid.hpp>
+
+  template<typename T=float> struct Grid;
+  int nu, nv, nw;
+  std::vector<T> data;
   T Grid<T>::get_value(int u, int v, int w) const
   void Grid<T>::set_value(int u, int v, int w, T x)
 
-(This class has a number of other functions that are not documented yet.
-The majority of Gemmi users use it from Python, so that's also where most of
-the documentation effort goes.)
+.. tab:: Python
 
-Python
-~~~~~~
+ .. doctest::
 
-In Python we have classes FloatGrid (for maps), Int8Grid (for masks).
-(We will add other classes such and ComplexGrid when we see
-a use for it.)
+   >>> import gemmi
+   >>> grid = gemmi.FloatGrid(12, 12, 12)
+   >>> grid.nu, grid.nv, grid.nw
+   (12, 12, 12)
 
-The constructor may take grid dimensions or a NumPy array as an argument:
+ .. doctest::
+   :skipif: numpy is None
 
-.. doctest::
+   >>> grid2 = gemmi.FloatGrid(numpy.zeros((30, 31, 32), dtype=numpy.float32))
+   >>> grid2.nu, grid2.nv, grid2.nw
+   (30, 31, 32)
 
-  >>> import gemmi
-  >>> grid = gemmi.FloatGrid(12, 12, 12)
-  >>> grid.nu, grid.nv, grid.nw
-  (12, 12, 12)
+ .. doctest::
 
-.. doctest::
-  :skipif: numpy is None
-
-  >>> grid2 = gemmi.FloatGrid(numpy.zeros((30, 31, 32), dtype=numpy.float32))
-  >>> grid2.nu, grid2.nv, grid2.nw
-  (30, 31, 32)
-
-Alternatively, you may set (or change) the size later on:
-
-.. doctest::
-
-  >>> grid3 = gemmi.FloatGrid()
-  >>> # grid3.spacegroup = ...
-  >>> grid3.set_size(12, 12, 12)
-
-The advantage of calling `set_size()` after a space group was set
-is that this function checks if the size is compatible with the space group
-(a symmetry operation cannot map a node to a point between nodes).
+   >>> grid3 = gemmi.FloatGrid()
+   >>> # grid3.spacegroup = ...
+   >>> grid3.set_size(12, 12, 12)
 
 If a unit cell is assigned to the grid (it will be discussed
 :ref:`later <grid_cell>`), you can request the size that gives approximately
@@ -110,8 +96,6 @@ You can create a copy of a grid with:
   >>> grid.clone()
   <gemmi.FloatGrid(12, 12, 12)>
 
-Values are accessed with functions get_value() and set_value():
-
 .. doctest::
 
   >>> grid.set_value(1, 1, 1, 7.0)
@@ -121,8 +105,8 @@ Values are accessed with functions get_value() and set_value():
   >>> grid.get_value(-11, 13, 25)
   7.0
 
-The data can be also accessed as a NumPy array (Fortran-style contiguous),
-without copying the data, through the `array` property:
+The data can also be accessed as a NumPy array (Fortran-style contiguous),
+without copying, through the `array` property:
 
 .. doctest::
   :skipif: numpy is None or sys.platform == 'win32'
@@ -366,9 +350,9 @@ using the `order` argument:
 * order=1 -- trilinear interpolation (default),
 * order=3 -- tricubic interpolation.
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
   T Grid<T>::interpolate_value(const Fractional& fctr, int order=1) const
   T Grid<T>::interpolate_value(const Position& ctr, int order=1) const
@@ -377,9 +361,9 @@ using the `order` argument:
   // There is also a function that calculates derivatives:
   std::array<double,4> Grid<T>::tricubic_interpolation_der(double x, double y, double z) const
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
 
   >>> # trilinear interpolation
   >>> grid.interpolate_value(gemmi.Fractional(1/24, 1/24, 1/24))
@@ -822,9 +806,9 @@ that use the word number (as in the format description from
 or `ccp-em <https://www.ccpem.ac.uk/mrc_format/mrc2014.php>`_)
 as the first argument.
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
     int32_t header_i32(int w) const;
     float header_float(int w) const;
@@ -835,14 +819,14 @@ as the first argument.
     void set_header_float(int w, float value);
     void set_header_str(int w, const std::string& str);
 
-For example::
+ For example::
 
     int mode = map.header_i32(4);
     float x = map.header_float(11);
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
 
     >>> m.header_float(20), m.header_float(21)  # dmin, dmax
     (-0.5310382843017578, 2.3988280296325684)
@@ -895,15 +879,15 @@ a partial setup.
   cell repeat (periodic boundary conditions, PBC) when extending the map.
 * MapSetup.ReorderOnly -- only reorders axes to X, Y, Z.
 
-**C++**
+.. tab:: C++
 
-::
+ ::
 
     map.setup(NAN);
 
-**Python**
+.. tab:: Python
 
-.. doctest::
+ .. doctest::
 
     >>> m.setup(float('nan'))
     >>> # the grid dimensions were 8x6x10, now they are:
@@ -1029,8 +1013,8 @@ the box that contains real data with `get_nonzero_extent()`:
 Map from Grid
 -------------
 
-To write grid data as a ccp4 file: create a new Ccp4 class,
-set the grid, call `update_ccp4_header()` and write the file.
+To write grid data as a CCP4 file, create a new `Ccp4` object,
+assign the grid, call `update_ccp4_header()`, and write the file.
 
 .. doctest::
   :skipif: numpy is None
@@ -1047,11 +1031,82 @@ Maps are often calculated from map coefficients --
 shows how to calculate such a map and write it to a file.
 
 
+DSN6/BRIX maps
+==============
+
+Gemmi can also read density maps in the DSN6/BRIX format.
+Unlike `read_ccp4_map()`, which returns a `Ccp4` wrapper with access to the
+file header, `read_dsn6_map()` returns the grid itself
+(`Grid<float>` in C++, `FloatGrid` in Python).
+The returned grid has unit-cell and sampling information taken from the file,
+so it can be used with the same grid methods as a map read from CCP4.
+
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/dsn6.hpp>
+
+  gemmi::Grid<float> grid = gemmi::read_dsn6_map(path);
+
+.. tab:: Python
+
+ ::
+
+    grid = gemmi.read_dsn6_map(path)
+
+
+.. _isosurface:
+
+Isosurface extraction
+=====================
+
+Gemmi provides marching-cubes isosurface extraction for 3D grids.
+This is useful for turning a map into a triangle mesh for visualization,
+for example for displaying electron density around a site of interest.
+
+The function `extract_isosurface()` takes a grid, a center point in Cartesian
+coordinates, a radius in Angstroms, an isolevel, and an optional method.
+It returns an `IsoSurface` object containing two flat arrays:
+`vertices` with *x*, *y*, *z* triples and `triangles` with vertex-index triples.
+It works with any `Grid`, including data read from CCP4 or DSN6/BRIX maps.
+
+Three methods are available through the `IsoMethod` enum:
+
+- `MarchingCubes` -- standard marching cubes (default),
+- `SnappedMC` -- vertices close to grid nodes are snapped to them,
+- `Squarish` -- an alternative lookup table that favors squarish faces.
+
+.. tab:: C++
+
+ ::
+
+  #include <gemmi/isosurface.hpp>
+
+  gemmi::Position center(10.0, 20.0, 30.0);
+  gemmi::IsoSurface iso = gemmi::extract_isosurface(grid, center,
+                                                    /*radius=*/8.0,
+                                                    /*isolevel=*/1.5);
+  // iso.vertices: flat vector of floats (x1,y1,z1, x2,y2,z2, ...)
+  // iso.triangles: flat vector of triangle vertex indices
+
+.. tab:: Python
+
+ ::
+
+    center = gemmi.Position(10, 20, 30)
+    iso = gemmi.extract_isosurface(grid, center, radius=8.0, isolevel=1.5)
+    # iso.vertices: list of floats [x1,y1,z1, x2,y2,z2, ...]
+    # iso.triangles: list of ints [i1,i2,i3, ...]
+    # iso.vertex_count: number of vertices (len(vertices) / 3)
+    # iso.triangle_count: number of triangles (len(triangles) / 3)
+
+
 Examples
---------
+========
 
 mapslicer
-~~~~~~~~~
+---------
 
 A short code that draws a contour plot similar to mapslicer plots
 (see Fig. 3 in `this CCP4 paper <http://dx.doi.org/10.1107/S0907444902016116>`_
@@ -1067,7 +1122,7 @@ To keep the example short we assume that the lattice vectors are orthogonal.
     :scale: 100
 
 maskdiff
-~~~~~~~~
+--------
 
 A tiny utility that compares two masks (maps with 0/1 values)
 of the same size, printing a summary of matches and mismatches:
@@ -1089,7 +1144,7 @@ Here is the script:
    :lines: 3-
 
 Q-Q difference
-~~~~~~~~~~~~~~
+--------------
 
 A script that generates a Q-Q difference plot, as described in the
 `2012 paper <https://journals.iucr.org/d/issues/2012/04/00/dz5235/index.html>`_

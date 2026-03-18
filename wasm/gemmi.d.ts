@@ -109,7 +109,7 @@ export interface SelectionResult extends ClassHandle {
   set_atom_indices(_0: Structure, _1: EmbindString, _2: number): void;
 }
 
-export interface Ccp4Map extends ClassHandle {
+export interface MapData extends ClassHandle {
   readonly cell: UnitCell;
   readonly nx: number;
   readonly ny: number;
@@ -117,26 +117,18 @@ export interface Ccp4Map extends ClassHandle {
   readonly mean: number;
   readonly rms: number;
   readonly last_error: string;
-  read(_0: boolean): boolean;
   extract_isosurface(_0: number, _1: number, _2: number, _3: number, _4: number, _5: EmbindString): boolean;
   data(): any;
   isosurface_vertices(): any;
   isosurface_segments(): any;
 }
 
-export interface Dsn6Map extends ClassHandle {
-  readonly cell: UnitCell;
-  readonly nx: number;
-  readonly ny: number;
-  readonly nz: number;
-  readonly mean: number;
-  readonly rms: number;
-  readonly last_error: string;
+export interface Ccp4Map extends MapData {
+  read(_0: boolean): boolean;
+}
+
+export interface Dsn6Map extends MapData {
   read(): boolean;
-  extract_isosurface(_0: number, _1: number, _2: number, _3: number, _4: number, _5: EmbindString): boolean;
-  data(): any;
-  isosurface_vertices(): any;
-  isosurface_segments(): any;
 }
 
 export interface MtzMap extends ClassHandle {
@@ -204,6 +196,7 @@ interface EmbindModule {
   SelectionResult: {
     new(): SelectionResult;
   };
+  MapData: {};
   Ccp4Map: {
     new(_0: EmbindString): Ccp4Map;
   };

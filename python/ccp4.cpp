@@ -1,6 +1,7 @@
 // Copyright 2018 Global Phasing Ltd.
 
 #include "gemmi/ccp4.hpp"
+#include "gemmi/dsn6.hpp"
 #include "gemmi/util.hpp"  // for cat
 #include "common.h"
 #include <nanobind/stl/string.h>
@@ -65,4 +66,7 @@ void add_ccp4(nb::module_& m) {
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
   m.def("read_ccp4_header", &read_ccp4_header,
         nb::arg("path"), nb::rv_policy::move);
+  m.def("read_dsn6_map", &read_dsn6_map,
+        nb::arg("path"), nb::rv_policy::move,
+        "Reads a DSN6/BRIX density map file, returning FloatGrid.");
 }
