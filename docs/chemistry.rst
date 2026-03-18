@@ -16,22 +16,21 @@ Elements
 When working with molecular structures, it is good to have basic data
 from the periodic table at hand.
 
-**C++**
+.. tab:: C++
 
-.. literalinclude:: code/elem.cpp
+ .. literalinclude:: code/elem.cpp
 
+.. tab:: Python
 
-**Python**
+ .. doctest::
 
-.. doctest::
-
-    >>> import gemmi
-    >>> gemmi.Element('Mg').weight
-    24.305
-    >>> gemmi.Element(118).name
-    'Og'
-    >>> gemmi.Element('Mo').atomic_number
-    42
+  >>> import gemmi
+  >>> gemmi.Element('Mg').weight
+  24.305
+  >>> gemmi.Element(118).name
+  'Og'
+  >>> gemmi.Element('Mo').atomic_number
+  42
 
 .. _covalent_radius:
 
