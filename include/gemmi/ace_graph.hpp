@@ -1,6 +1,7 @@
 // Copyright 2026 Global Phasing Ltd.
 //
-// Shared graph/ring helpers for AceDRG-style ChemComp processing.
+// Shared graph/ring helpers for ChemComp processing, including
+// reusable AceDRG-style ring aromaticity assignment.
 
 #ifndef GEMMI_ACE_GRAPH_HPP_
 #define GEMMI_ACE_GRAPH_HPP_
@@ -102,14 +103,32 @@ struct RingInfo {
   bool is_aromatic_permissive = false;
 };
 
+// Minimal per-atom input needed for AceDRG-style ring aromaticity assignment.
+// conn_atoms_no_metal should contain all non-metal bonded neighbors, including H.
+struct AceAromaticAtom {
+  std::string id;
+  Element el = El::X;
+  std::vector<int> conn_atoms_no_metal;
+  float charge = 0.0f;
+  int bonding_idx = 0;
+  bool is_metal = false;
+};
+
 void detect_rings_acedrg(const std::vector<std::vector<int>>& neighbors,
                          std::vector<CodAtomInfo>& atoms,
                          std::vector<RingInfo>& rings);
 
-void set_ring_aromaticity_from_bonds(const AceBondAdjacency& adj,
-                                     const std::vector<CodAtomInfo>& atoms,
-                                     std::vector<RingInfo>& rings,
-                                     int verbose = 0);
+GEMMI_DLL void set_ring_aromaticity_from_bonds(
+    const AceBondAdjacency& adj,
+    const std::vector<AceAromaticAtom>& atoms,
+    std::vector<RingInfo>& rings,
+    int verbose = 0);
+
+GEMMI_DLL void set_ring_aromaticity_from_bonds(
+    const AceBondAdjacency& adj,
+    const std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings,
+    int verbose = 0);
 
 void set_atoms_ring_rep_s(std::vector<CodAtomInfo>& atoms,
                           const std::vector<RingInfo>& rings);

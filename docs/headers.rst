@@ -6,7 +6,8 @@ gemmi/ace_cc.hpp
     prepare_chemcomp() — restraint generation pipeline.
 
 gemmi/ace_graph.hpp
-    Shared graph/ring helpers for AceDRG-style ChemComp processing.
+    Shared graph/ring helpers for ChemComp processing, including
+    reusable AceDRG-style ring aromaticity assignment.
 
 gemmi/ace_internal.hpp
     Shared internal helpers for AceDRG-style processing.

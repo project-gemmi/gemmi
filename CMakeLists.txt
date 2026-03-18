@@ -375,7 +375,8 @@ endif()
 #add_executable(c_test EXCLUDE_FROM_ALL fortran/c_test.c)
 #target_link_libraries(c_test PRIVATE cgemmi)
 
-add_executable(cpptest EXCLUDE_FROM_ALL tests/main.cpp tests/cif.cpp tests/windowsh.cpp)
+add_executable(cpptest EXCLUDE_FROM_ALL
+               tests/main.cpp tests/cif.cpp tests/ace_graph.cpp tests/windowsh.cpp)
 target_compile_definitions(cpptest PRIVATE USE_STD_SNPRINTF=1)
 target_link_libraries(cpptest PRIVATE gemmi_cpp)
 target_include_directories(cpptest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party")

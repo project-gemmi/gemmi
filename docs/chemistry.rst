@@ -1104,18 +1104,134 @@ This area received substantial tuning to match AceDRG conventions:
 * these labels are used directly in AceDRG signatures and therefore
   influence which bond/angle statistics are selected.
 
-For aromaticity assignment, the implementation follows AceDRG's
-electron-counting logic based on a Huckel-like `4n+2` criterion on
-ring pi-electron totals, with AceDRG-style strict/permissive phases:
+The current implementation follows the AceDRG workflow quite closely.
+Ring membership is first detected from the molecular graph and then folded
+back into per-atom labels:
 
-* a strict phase (used for primary statistical-table lookup),
-* a permissive phase (used for output typing in edge cases),
-* plus AceDRG-specific ring exceptions for selected 5-member systems.
+* the ring search is AceDRG-style and currently enumerates rings up to
+  6 atoms,
+* each detected ring contributes a size marker such as `5`, `6`,
+  `5a` or `6a` to every atom that belongs to it,
+* if an atom belongs to multiple rings, the markers are combined and
+  sorted into a bracketed annotation such as `[5a,6a]`,
+* repeated memberships of the same size are preserved, so a fused atom can
+  also end up with forms such as `[5a,5a]` or `3x6a`.
 
-Fallback selection also tries to preserve ring/aromatic context as long as
-possible before dropping to broader generic classes. Small differences in
-ring/aromatic labeling can cascade into different types and restraints,
-so matching AceDRG behavior here is important for practical parity.
+These annotations are not cosmetic. They are injected directly into AceDRG
+environment signatures for both the center atom and its neighbors. For
+example, a plain `C` can become `C[6a]`, and a neighboring atom description
+inside a larger signature can likewise carry `[5a,6a]`. This means that
+fused-ring context changes the COD class, which in turn changes which
+statistical bond and angle records are considered compatible.
+
+This is what is meant by treating fused systems as connected ring networks
+rather than isolated rings. The code still detects individual rings, but it
+does not stop there and type each atom as if it belonged to only one of them.
+Instead, every atom accumulates the full set of ring memberships coming from
+all rings that pass through it:
+
+* an atom on a simple monocycle typically gets a single label such as `[6]`
+  or `[6a]`,
+* an atom shared by two fused aromatic 6-rings can carry `[6a,6a]`,
+* an atom at a 5/6 fusion can carry `[5a,6a]`,
+* if the same size occurs three times, the display is compacted to forms such
+  as `3x6a`.
+
+So for a fused bicyclic or polycyclic system, the shared atoms explicitly
+remember that they sit at a junction, and the adjacent atoms "see" that
+junction when their neighborhood signatures are built. In practice this means:
+
+* the center atom type is influenced by the whole local fused network,
+  not just by one arbitrarily chosen ring,
+* neighbor descriptors also retain the mixed fused annotation,
+* two atoms that are both formally aromatic carbons may still get different
+  AceDRG signatures if one sits in a simple phenyl-like ring and the other
+  sits at a fused 5/6 or 6/6 junction.
+
+This is important because restraint lookup is keyed by these signatures.
+Treating fused systems as disconnected monocycles would collapse distinct
+environments together and would tend to select less specific bond and angle
+statistics for bridge and fusion atoms.
+
+From Python, ring aromaticity can be inspected directly:
+
+.. doctest::
+
+  >>> benzene_cif = '''\
+  ... data_comp_BEN
+  ... loop_
+  ... _chem_comp_atom.atom_id
+  ... _chem_comp_atom.type_symbol
+  ... C1 C
+  ... C2 C
+  ... C3 C
+  ... C4 C
+  ... C5 C
+  ... C6 C
+  ... H1 H
+  ... H2 H
+  ... H3 H
+  ... H4 H
+  ... H5 H
+  ... H6 H
+  ... loop_
+  ... _chem_comp_bond.atom_id_1
+  ... _chem_comp_bond.atom_id_2
+  ... _chem_comp_bond.value_order
+  ... C1 C2 arom
+  ... C2 C3 arom
+  ... C3 C4 arom
+  ... C4 C5 arom
+  ... C5 C6 arom
+  ... C6 C1 arom
+  ... C1 H1 sing
+  ... C2 H2 sing
+  ... C3 H3 sing
+  ... C4 H4 sing
+  ... C5 H5 sing
+  ... C6 H6 sing
+  ... '''
+  >>> cc = gemmi.make_chemcomp_from_block(gemmi.cif.read_string(benzene_cif).sole_block())
+  >>> rings = gemmi.find_ace_rings(cc)
+  >>> [(len(r.atoms), r.is_aromatic) for r in rings]
+  [(6, True)]
+
+For aromaticity assignment, the implementation uses AceDRG-style
+electron counting with a `Huckel (4n+2) rule
+<https://goldbook.iupac.org/terms/view/H02867>`_ like criterion on ring
+pi-electron totals, but with several important details:
+
+* aromaticity annotations present in the input dictionary are not used for
+  this step; AceDRG-style ring aromaticity is recomputed from the molecular
+  graph and local atom properties,
+* a ring is only eligible if all of its atoms pass the AceDRG planarity
+  gate, which in practice means `bonding_idx == 2` for every atom in the
+  ring,
+* this "planarity" is not taken from Cartesian coordinates; it is the
+  AceDRG internal sp2-like classification derived from bond orders, charges,
+  and local graph environment,
+* the strict phase counts pi electrons using the AceDRG non-metal view of
+  the local environment,
+* the permissive phase retries with AceDRG's broader bookkeeping used for
+  edge cases, while still preserving the same ring list and fused context,
+* there is also an AceDRG special case for porphyrin-like systems:
+  when exactly four planar 5-member rings each contain 4 C and 1 N,
+  they are marked aromatic even if the initial strict pi count fails.
+
+The distinction between the two phases matters:
+
+* strict aromaticity is used while building the primary COD classes for
+  statistical lookup,
+* if the permissive pass changes any ring labels, the COD classes are
+  rebuilt for output typing,
+* however, the strict classification is still retained for the table-lookup
+  path so that statistics are matched in the same way as AceDRG.
+
+Fallback selection also tries to preserve ring and aromatic context as long
+as possible before dropping to broader generic classes. Small differences in
+labels such as `[6]` vs `[6a]`, or `[5a]` vs `[5a,6a]`, can cascade into
+different atom types and therefore different restraints, so matching
+AceDRG behavior here is important for practical parity.
 
 Special chemistry handling
 --------------------------

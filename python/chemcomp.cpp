@@ -2,12 +2,14 @@
 
 #include "gemmi/chemcomp.hpp"    // for ChemComp
 #include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
+#include "gemmi/ace_graph.hpp"
 #include "gemmi/acedrg_tables.hpp"
 #include "gemmi/ace_cc.hpp"
 #include "gemmi/cc_adj.hpp"
 #include "gemmi/smarts.hpp"
 
 #include "common.h"
+#include <algorithm>
 #include <nanobind/stl/bind_vector.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>  // for find_shortest_path
@@ -23,10 +25,31 @@ NB_MAKE_OPAQUE(std::vector<ChemComp::Atom>)
 
 static void add_acedrg_tables(nb::module_& m);
 
+static std::vector<RingInfo> find_ace_rings_from_chemcomp(const ChemComp& cc,
+                                                          int verbose) {
+  AcedrgTables tables;
+  std::vector<CodAtomInfo> atom_info = tables.classify_atoms(cc);
+  AceGraphView graph = make_ace_graph_view(cc);
+  for (size_t i = 0; i < atom_info.size(); ++i) {
+    if (atom_info[i].is_metal)
+      continue;
+    auto& nbs = graph.neighbors[i];
+    nbs.erase(std::remove_if(nbs.begin(), nbs.end(), [&](int nb) {
+      return atom_info[nb].is_metal;
+    }), nbs.end());
+  }
+
+  std::vector<RingInfo> rings;
+  detect_rings_acedrg(graph.neighbors, atom_info, rings);
+  set_ring_aromaticity_from_bonds(graph.adjacency, atom_info, rings, verbose);
+  return rings;
+}
+
 void add_chemcomp(nb::module_& m) {
   nb::class_<ChemComp> chemcomp(m, "ChemComp");
   nb::class_<ChemComp::Atom> chemcompatom(chemcomp, "Atom");
   nb::class_<PrepareChemcompOptions> prepare_options(m, "PrepareChemcompOptions");
+  nb::class_<RingInfo> ringinfo(m, "RingInfo");
 
   nb::class_<Restraints> restraints(m, "Restraints");
   nb::class_<Restraints::Bond> restraintsbond(restraints, "Bond");
@@ -217,8 +240,22 @@ void add_chemcomp(nb::module_& m) {
         return match_smarts(self, pattern);
     }, nb::arg("pattern"), "Find matches of a SMARTS pattern in the ChemComp.")
     ;
+  ringinfo
+    .def(nb::init<>())
+    .def_ro("atoms", &RingInfo::atoms)
+    .def_rw("rep", &RingInfo::rep)
+    .def_rw("s_rep", &RingInfo::s_rep)
+    .def_ro("is_aromatic", &RingInfo::is_aromatic)
+    .def_ro("is_aromatic_permissive", &RingInfo::is_aromatic_permissive)
+    .def("__repr__", [](const RingInfo& self) {
+        return "<gemmi.RingInfo size=" + std::to_string(self.atoms.size()) +
+               " aromatic=" + std::to_string(self.is_aromatic) + ">";
+    });
   m.def("make_chemcomp_from_block", &make_chemcomp_from_block);
   m.def("add_chemcomp_to_block", &add_chemcomp_to_block);
+  m.def("find_ace_rings", &find_ace_rings_from_chemcomp,
+        nb::arg("chemcomp"), nb::arg("verbose") = 0,
+        "Detect AceDRG-style rings in a ChemComp and assign ring aromaticity.");
 
   add_acedrg_tables(m);
 }

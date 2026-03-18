@@ -1,6 +1,7 @@
 // Copyright 2026 Global Phasing Ltd.
 //
-// Shared graph/ring helpers for AceDRG-style ChemComp processing.
+// Shared graph/ring helpers for ChemComp processing, including
+// reusable AceDRG-style ring aromaticity assignment.
 
 #include "gemmi/ace_graph.hpp"
 #include "gemmi/acedrg_tables.hpp"
@@ -726,8 +727,9 @@ bool icase_alpha_less(const std::string& first,
   return first.length() > second.length();
 }
 
+template<typename Atom>
 int count_non_metal_connections(const AceBondAdjacency& adj,
-                                const std::vector<CodAtomInfo>& atoms,
+                                const std::vector<Atom>& atoms,
                                 int idx) {
   int non_mc = 0;
   for (const auto& nb : adj[idx])
@@ -739,8 +741,9 @@ int count_non_metal_connections(const AceBondAdjacency& adj,
 // Count pi electrons for an atom in a ring.
 // mode 0 (strict) vs mode 1 (permissive) matches AceDRG.
 // use_all=true corresponds to setPiForOneAtomAll (vs NoMetal).
+template<typename Atom>
 int count_atom_pi(const AceBondAdjacency& adj,
-                  const std::vector<CodAtomInfo>& atoms,
+                  const std::vector<Atom>& atoms,
                   int idx, int mode, bool use_all) {
   const auto& atom = atoms[idx];
   int non_mc = count_non_metal_connections(adj, atoms, idx);
@@ -932,35 +935,11 @@ void build_ring_size_map(const std::map<std::string, std::string>& ring_rep_s,
   }
 }
 
-}  // anonymous namespace
-
-void detect_rings_acedrg(
-    const std::vector<std::vector<int>>& neighbors,
-    std::vector<CodAtomInfo>& atoms,
-    std::vector<RingInfo>& rings) {
-  rings.clear();
-  std::map<std::string, int> ring_index;
-
-  for (size_t i = 0; i < atoms.size(); ++i) {
-    if (atoms[i].is_metal || atoms[i].el == El::H)
-      continue;
-    std::map<int, std::string> seen;
-    std::map<int, std::string> path;
-    check_one_path_acedrg(neighbors, atoms, rings, ring_index,
-                          static_cast<int>(i), static_cast<int>(i), -999,
-                          1, 7, seen, path);
-  }
-}
-
-void set_ring_aromaticity_from_bonds(
-    const AceBondAdjacency& adj,
-    const std::vector<CodAtomInfo>& atoms,
-    std::vector<RingInfo>& rings,
-    int verbose) {
-  // AceDRG has two-phase aromaticity:
-  // - Strict (mode 0): only NoMetal pi count → isAromatic (used for COD table lookup)
-  // - Permissive (mode 1): NoMetal+All pi counts → isAromaticP (used for output CIF)
-  // Ring must be planar: AceDRG requires all atoms bondingIdx==2.
+template<typename Atom>
+void set_ring_aromaticity_impl(const AceBondAdjacency& adj,
+                               const std::vector<Atom>& atoms,
+                               std::vector<RingInfo>& rings,
+                               int verbose) {
   auto is_ring_planar = [&](const RingInfo& ring) -> bool {
     for (int idx : ring.atoms)
       if (atoms[idx].bonding_idx != 2)
@@ -1035,6 +1014,43 @@ void set_ring_aromaticity_from_bonds(
                    ring.is_aromatic_permissive ? 1 : 0);
     }
   }
+}
+
+}  // anonymous namespace
+
+void detect_rings_acedrg(
+    const std::vector<std::vector<int>>& neighbors,
+    std::vector<CodAtomInfo>& atoms,
+    std::vector<RingInfo>& rings) {
+  rings.clear();
+  std::map<std::string, int> ring_index;
+
+  for (size_t i = 0; i < atoms.size(); ++i) {
+    if (atoms[i].is_metal || atoms[i].el == El::H)
+      continue;
+    std::map<int, std::string> seen;
+    std::map<int, std::string> path;
+    check_one_path_acedrg(neighbors, atoms, rings, ring_index,
+                          static_cast<int>(i), static_cast<int>(i), -999,
+                          1, 7, seen, path);
+  }
+}
+
+void set_ring_aromaticity_from_bonds(const AceBondAdjacency& adj,
+                                     const std::vector<AceAromaticAtom>& atoms,
+                                     std::vector<RingInfo>& rings,
+                                     int verbose) {
+  // AceDRG has two-phase aromaticity:
+  // - Strict (mode 0): only NoMetal pi count → isAromatic (used for COD table lookup)
+  // - Permissive (mode 1): NoMetal+All pi counts → isAromaticP (used for output CIF)
+  set_ring_aromaticity_impl(adj, atoms, rings, verbose);
+}
+
+void set_ring_aromaticity_from_bonds(const AceBondAdjacency& adj,
+                                     const std::vector<CodAtomInfo>& atoms,
+                                     std::vector<RingInfo>& rings,
+                                     int verbose) {
+  set_ring_aromaticity_impl(adj, atoms, rings, verbose);
 }
 
 void set_atoms_ring_rep_s(

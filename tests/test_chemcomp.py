@@ -201,5 +201,50 @@ O2 C3 sing
         self.assertEqual(cc.atoms[matches_o2[0][0]].id, "O2")
 
 
+class TestAceRings(unittest.TestCase):
+    def test_find_ace_rings_benzene(self):
+        cif_text = """
+data_comp_BEN
+loop_
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+C1 C
+C2 C
+C3 C
+C4 C
+C5 C
+C6 C
+H1 H
+H2 H
+H3 H
+H4 H
+H5 H
+H6 H
+loop_
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+C1 C2 arom
+C2 C3 arom
+C3 C4 arom
+C4 C5 arom
+C5 C6 arom
+C6 C1 arom
+C1 H1 sing
+C2 H2 sing
+C3 H3 sing
+C4 H4 sing
+C5 H5 sing
+C6 H6 sing
+"""
+        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read_string(cif_text).sole_block())
+        rings = gemmi.find_ace_rings(cc)
+
+        self.assertEqual(len(rings), 1)
+        self.assertEqual(len(rings[0].atoms), 6)
+        self.assertTrue(rings[0].is_aromatic)
+        self.assertTrue(rings[0].is_aromatic_permissive)
+
+
 if __name__ == '__main__':
     unittest.main()
