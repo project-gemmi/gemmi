@@ -46,7 +46,7 @@ AceBondAdjacency build_bond_adjacency(
 
 std::vector<std::vector<int>> build_neighbors(const AceBondAdjacency& adj);
 
-AceGraphView make_ace_graph_view(const ChemComp& cc);
+GEMMI_DLL AceGraphView make_ace_graph_view(const ChemComp& cc);
 
 std::vector<size_t> neighbor_indices_except(
     const AceBondAdjacency& adj, size_t center_idx, size_t exclude_idx);
