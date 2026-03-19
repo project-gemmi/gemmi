@@ -43,6 +43,16 @@ export interface Isosurface extends ClassHandle {
   segments(): any;
 }
 
+export interface ResidueSsValue<T extends number> {
+  value: T;
+}
+export type ResidueSs = ResidueSsValue<0>|ResidueSsValue<1>|ResidueSsValue<2>;
+
+export interface ResidueStrandSenseValue<T extends number> {
+  value: T;
+}
+export type ResidueStrandSense = ResidueStrandSenseValue<0>|ResidueStrandSenseValue<1>|ResidueStrandSenseValue<2>|ResidueStrandSenseValue<-1>;
+
 export interface Structure extends ClassHandle {
   cell: UnitCell;
   readonly length: number;
@@ -74,9 +84,13 @@ export interface ResidueId extends ClassHandle {
 }
 
 export interface Residue extends ResidueId {
+  ss_from_file: ResidueSs;
+  strand_sense_from_file: ResidueStrandSense;
   readonly length: number;
   get subchain(): string;
   set subchain(value: EmbindString);
+  readonly ss_from_file_string: string;
+  readonly strand_sense_from_file_string: string;
   readonly entity_type_string: string;
   at(_0: number): Atom | null;
 }
@@ -171,6 +185,8 @@ interface EmbindModule {
   Isosurface: {
     new(): Isosurface;
   };
+  ResidueSs: {Coil: ResidueSsValue<0>, Helix: ResidueSsValue<1>, Strand: ResidueSsValue<2>};
+  ResidueStrandSense: {NotStrand: ResidueStrandSenseValue<0>, Parallel: ResidueStrandSenseValue<1>, First: ResidueStrandSenseValue<2>, Antiparallel: ResidueStrandSenseValue<-1>};
   Structure: {
     new(): Structure;
   };

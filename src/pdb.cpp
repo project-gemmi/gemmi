@@ -1257,6 +1257,7 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
     read_metadata_from_remarks(st);
 
   restore_full_ccd_codes(st);
+  assign_residue_ss_from_file(st);
 }
 
 std::vector<Op> read_remark_290(const std::vector<std::string>& raw_remarks) {

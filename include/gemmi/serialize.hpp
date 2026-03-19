@@ -137,7 +137,8 @@ SERIALIZE(Atom, o.name, o.altloc, o.charge, o.element, o.calc_flag,
 
 SERIALIZE_P(Residue, ResidueId,
             o.subchain, o.entity_id, o.label_seq, o.entity_type,
-            o.het_flag, o.flag, o.sifts_unp, o.group_idx, o.atoms)
+            o.het_flag, o.flag, o.ss_from_file, o.strand_sense_from_file,
+            o.sifts_unp, o.group_idx, o.atoms)
 
 SERIALIZE(Chain, o.name, o.residues)
 

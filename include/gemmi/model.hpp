@@ -97,6 +97,21 @@ enum class CalcFlag : signed char {
   NotSet=0, NoHydrogen, Determined, Calculated, Dummy
 };
 
+enum class ResidueSs : unsigned char {
+  Coil,
+  Helix,
+  Strand
+};
+
+// File-derived sheet strand sense. First distinguishes the first strand in
+// a sheet from residues that are not annotated as strands.
+enum class ResidueStrandSense : signed char {
+  NotStrand = 0,
+  Parallel = 1,
+  First = 2,
+  Antiparallel = -1
+};
+
 /// options affecting how pdb file is read
 struct PdbReadOptions {
   int max_line_length = 0;
@@ -192,6 +207,8 @@ struct Residue : public ResidueId {
   EntityType entity_type = EntityType::Unknown;
   char het_flag = '\0';   // 'A' = ATOM, 'H' = HETATM, 0 = unspecified
   char flag = '\0';       // custom flag
+  ResidueSs ss_from_file = ResidueSs::Coil;
+  ResidueStrandSense strand_sense_from_file = ResidueStrandSense::NotStrand;
   SiftsUnpResidue sifts_unp;  // UniProt reference from SIFTS
   short group_idx = 0;        // ignore - internal variable
   std::vector<Atom> atoms;
@@ -208,6 +225,8 @@ struct Residue : public ResidueId {
     res.entity_type = entity_type;
     res.het_flag = het_flag;
     res.flag = flag;
+    res.ss_from_file = ss_from_file;
+    res.strand_sense_from_file = strand_sense_from_file;
     res.sifts_unp = sifts_unp;
     return res;
   }
@@ -1100,6 +1119,45 @@ inline void Structure::setup_cell_images() {
   const SpaceGroup* sg = find_spacegroup();
   cell.set_cell_images_from_spacegroup(sg);
   cell.add_ncs_images_to_cs_images(ncs);
+}
+
+inline void assign_residue_ss_from_file(Structure& st) {
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        res.ss_from_file = ResidueSs::Coil;
+  for (Model& model : st.models)
+    for (Chain& chain : model.chains)
+      for (Residue& res : chain.residues)
+        res.strand_sense_from_file = ResidueStrandSense::NotStrand;
+
+  auto mark_range = [&](const AtomAddress& start, const AtomAddress& end,
+                        ResidueSs ss,
+                        ResidueStrandSense sense) {
+    if (start.chain_name != end.chain_name)
+      return;
+    SeqId first = start.res_id.seqid;
+    SeqId last = end.res_id.seqid;
+    if (last < first)
+      std::swap(first, last);
+    for (Model& model : st.models)
+      if (Chain* chain = model.find_chain(start.chain_name))
+        for (Residue& res : chain->residues)
+          if (first <= res.seqid && res.seqid <= last) {
+            res.ss_from_file = ss;
+            res.strand_sense_from_file = sense;
+          }
+  };
+
+  for (const Helix& helix : st.helices)
+    mark_range(helix.start, helix.end, ResidueSs::Helix,
+               ResidueStrandSense::NotStrand);
+  for (const Sheet& sheet : st.sheets)
+    for (const Sheet::Strand& strand : sheet.strands)
+      mark_range(strand.start, strand.end, ResidueSs::Strand,
+                 strand.sense == 1 ? ResidueStrandSense::Parallel :
+                 strand.sense == -1 ? ResidueStrandSense::Antiparallel :
+                 ResidueStrandSense::First);
 }
 
 } // namespace gemmi

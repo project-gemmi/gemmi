@@ -99,6 +99,17 @@ void add_mol(nb::module_& m) {
     .value("Mmjson", CoorFormat::Mmjson)
     .value("ChemComp", CoorFormat::ChemComp);
 
+  nb::enum_<ResidueSs>(m, "ResidueSs")
+    .value("Coil", ResidueSs::Coil)
+    .value("Helix", ResidueSs::Helix)
+    .value("Strand", ResidueSs::Strand);
+
+  nb::enum_<ResidueStrandSense>(m, "ResidueStrandSense")
+    .value("NotStrand", ResidueStrandSense::NotStrand)
+    .value("First", ResidueStrandSense::First)
+    .value("Parallel", ResidueStrandSense::Parallel)
+    .value("Antiparallel", ResidueStrandSense::Antiparallel);
+
   nb::bind_map<info_map_type, rv_ri>(m, "InfoMap");
 
   nb::class_<CRA>(m, "CRA")
@@ -460,6 +471,8 @@ void add_mol(nb::module_& m) {
     .def_rw("entity_type", &Residue::entity_type)
     .def_rw("het_flag", &Residue::het_flag)
     .def_rw("flag", &Residue::flag)
+    .def_rw("ss_from_file", &Residue::ss_from_file)
+    .def_rw("strand_sense_from_file", &Residue::strand_sense_from_file)
     .def_prop_ro("sifts_unp", [](const Residue& self) {
         return nb::make_tuple(self.sifts_unp.res,
                               self.sifts_unp.acc_index,

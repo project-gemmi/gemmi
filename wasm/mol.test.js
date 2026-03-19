@@ -49,3 +49,31 @@ test('counts atom occupancies', async () => {
   expect(gemmi.HEAPU8.length).toBe(heap_length);
   st.delete();
 });
+
+test('exposes residue secondary structure from file', async () => {
+  const gemmi = await Gemmi();
+  const path = '../tests/1orc.pdb';
+  const buffer = fs.readFileSync(path);
+  const st = gemmi.read_structure(buffer, path);
+  const chain = st.at(0).at(0);
+  const bySeqid = new Map();
+  for (let i = 0; i < chain.length; ++i) {
+    const res = chain.at(i);
+    bySeqid.set(res.seqid_string, res);
+  }
+
+  expect(bySeqid.get('7').ss_from_file).toBe(gemmi.ResidueSs.Helix);
+  expect(bySeqid.get('7').ss_from_file_string).toBe('Helix');
+  expect(bySeqid.get('7').strand_sense_from_file)
+    .toBe(gemmi.ResidueStrandSense.NotStrand);
+  expect(bySeqid.get('15').ss_from_file).toBe(gemmi.ResidueSs.Coil);
+  expect(bySeqid.get('39').ss_from_file).toBe(gemmi.ResidueSs.Strand);
+  expect(bySeqid.get('39').strand_sense_from_file)
+    .toBe(gemmi.ResidueStrandSense.First);
+  expect(bySeqid.get('50').strand_sense_from_file)
+    .toBe(gemmi.ResidueStrandSense.Antiparallel);
+  expect(bySeqid.get('56C').strand_sense_from_file_string)
+    .toBe('Antiparallel');
+
+  st.delete();
+});

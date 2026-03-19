@@ -1062,6 +1062,7 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
 
   st.helices = read_helices(block);
   st.sheets = read_sheets(block);
+  assign_residue_ss_from_file(st);
   read_connectivity(block, st);
   read_prot_cis(block, st);
   read_struct_mod_residue(block, st);

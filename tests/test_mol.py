@@ -473,6 +473,26 @@ class TestMol(unittest.TestCase):
                                                  gemmi.PolymerType.Unknown)
         self.assertEqual(result.cigar_str(), '2I64M5I')
 
+    def test_residue_ss_from_file(self):
+        st = gemmi.read_structure(full_path('1orc.pdb'))
+        A = st[0]['A']
+
+        self.assertEqual(A['7'][0].ss_from_file, gemmi.ResidueSs.Helix)
+        self.assertEqual(A['7'][0].strand_sense_from_file,
+                         gemmi.ResidueStrandSense.NotStrand)
+        self.assertEqual(A['15'][0].ss_from_file, gemmi.ResidueSs.Coil)
+        self.assertEqual(A['15'][0].strand_sense_from_file,
+                         gemmi.ResidueStrandSense.NotStrand)
+        self.assertEqual(A['39'][0].ss_from_file, gemmi.ResidueSs.Strand)
+        self.assertEqual(A['39'][0].strand_sense_from_file,
+                         gemmi.ResidueStrandSense.First)
+        self.assertEqual(A['50'][0].ss_from_file, gemmi.ResidueSs.Strand)
+        self.assertEqual(A['50'][0].strand_sense_from_file,
+                         gemmi.ResidueStrandSense.Antiparallel)
+        self.assertEqual(A['56C'][0].ss_from_file, gemmi.ResidueSs.Strand)
+        self.assertEqual(A['56C'][0].strand_sense_from_file,
+                         gemmi.ResidueStrandSense.Antiparallel)
+
     def write_and_read(self, st, via_cif):
         if via_cif:
             st.setup_entities()

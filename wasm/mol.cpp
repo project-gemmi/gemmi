@@ -67,6 +67,32 @@ std::string get_entity_type_string(const gemmi::Residue& res) {
   return entity_type_to_string(res.entity_type);
 }
 
+std::string get_residue_ss_string(const gemmi::Residue& res) {
+  switch (res.ss_from_file) {
+    case gemmi::ResidueSs::Coil:
+      return "Coil";
+    case gemmi::ResidueSs::Helix:
+      return "Helix";
+    case gemmi::ResidueSs::Strand:
+      return "Strand";
+  }
+  return "";
+}
+
+std::string get_residue_strand_sense_string(const gemmi::Residue& res) {
+  switch (res.strand_sense_from_file) {
+    case gemmi::ResidueStrandSense::NotStrand:
+      return "NotStrand";
+    case gemmi::ResidueStrandSense::Parallel:
+      return "Parallel";
+    case gemmi::ResidueStrandSense::First:
+      return "First";
+    case gemmi::ResidueStrandSense::Antiparallel:
+      return "Antiparallel";
+  }
+  return "";
+}
+
 std::string get_residue_names(gemmi::Structure& st) {
   auto names = st.models.at(0).get_all_residue_names();
   std::string result;
@@ -180,6 +206,19 @@ struct SelectionResult {
 };
 
 void add_mol() {
+  em::enum_<gemmi::ResidueSs>("ResidueSs")
+    .value("Coil", gemmi::ResidueSs::Coil)
+    .value("Helix", gemmi::ResidueSs::Helix)
+    .value("Strand", gemmi::ResidueSs::Strand)
+    ;
+
+  em::enum_<gemmi::ResidueStrandSense>("ResidueStrandSense")
+    .value("NotStrand", gemmi::ResidueStrandSense::NotStrand)
+    .value("Parallel", gemmi::ResidueStrandSense::Parallel)
+    .value("First", gemmi::ResidueStrandSense::First)
+    .value("Antiparallel", gemmi::ResidueStrandSense::Antiparallel)
+    ;
+
   wrap_children<gemmi::Structure>()
     .property("name", &gemmi::Structure::name)
     .property("cell", &gemmi::Structure::cell)
@@ -203,6 +242,10 @@ void add_mol() {
 
   wrap_children<gemmi::Residue, em::base<gemmi::ResidueId>>()
     .property("subchain", &gemmi::Residue::subchain)
+    .property("ss_from_file", &gemmi::Residue::ss_from_file)
+    .property("ss_from_file_string", &get_residue_ss_string)
+    .property("strand_sense_from_file", &gemmi::Residue::strand_sense_from_file)
+    .property("strand_sense_from_file_string", &get_residue_strand_sense_string)
     .property("entity_type_string", &get_entity_type_string)
     ;
 
