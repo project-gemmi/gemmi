@@ -17,6 +17,7 @@ GEMMI is a C++ library (currently, C++14) accompanied by:
 * Fortran 2003+ interface (in progress),
 * partial WebAssembly bindings,
 * online [tools](https://project-gemmi.github.io/wasm/)
+  molecular viewer [GemmiMOL](https://gemmimol.github.io/)
   and little data viz [projects](https://project-gemmi.github.io/pdb-stats/).
 
 Documentation: http://gemmi.readthedocs.io/en/latest/
