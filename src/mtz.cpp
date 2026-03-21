@@ -896,11 +896,13 @@ void Mtz::write_to_stream(Write write) const {
   }
   int pos = 0;
   for (const Batch& batch : batches) {
-    if (pos == 0)
+    if (pos == 0) {
       std::memcpy(buf, "BATCH ", 6);  // NOLINT(bugprone-not-null-terminated-result)
-    pos += 6;
+      pos = 6;
+    }
     snprintf_z(buf + pos, 7, "%6d", batch.number);
-    if (pos > 72 || &batch == &batches.back()) {
+    pos += 6;
+    if (pos + 6 > 80 || &batch == &batches.back()) {
       std::memset(buf + pos, ' ', 80 - pos);
       if (write(buf, 80, 1) != 1)
         fail("Writing MTZ file failed");
