@@ -1679,6 +1679,20 @@ The vast majority of connections is intramolecular, so usually you get 1_555:
   >>> st.cell.find_nearest_image(pos1, pos2, con.asu)
   <gemmi.NearestImage 1_555 in distance 2.03>
 
+For viewer-style rendering of nearby crystallographic copies of a structure
+there are two convenience functions in `gemmi/assembly.hpp`:
+
+.. doctest::
+
+  >>> structure = gemmi.read_structure('../tests/4oz7.pdb')
+  >>> point = gemmi.Selection('B/208').copy_model_selection(structure[0])[0][0][0].pos
+  >>> images = gemmi.get_nearby_sym_ops(structure, point, 3.0)
+  >>> [im.symmetry_code() for im in images]
+  ['4_355', '3_545']
+  >>> image_structure = gemmi.get_sym_image(structure, images[0])
+  >>> image_structure[0].count_atom_sites() == structure[0].count_atom_sites()
+  True
+
 The section about :ref:`AtomAddress <atom_address>`
 has an example that shows how to create a new connection.
 

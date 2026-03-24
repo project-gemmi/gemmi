@@ -144,11 +144,27 @@ SERIALIZE(Chain, o.name, o.residues)
 
 SERIALIZE(Model, o.num, o.chains)
 
+SERIALIZE(Restraints::AtomId, o.comp, o.atom)
+SERIALIZE(Restraints::Bond, o.id1, o.id2, o.type, o.aromatic,
+          o.value, o.esd, o.value_nucleus, o.esd_nucleus,
+          o.stereo_config, o.ordinal)
+SERIALIZE(Restraints::Angle, o.id1, o.id2, o.id3, o.value, o.esd)
+SERIALIZE(Restraints::Torsion, o.label, o.id1, o.id2, o.id3, o.id4,
+          o.value, o.esd, o.period)
+SERIALIZE(Restraints::Chirality, o.id_ctr, o.id1, o.id2, o.id3, o.sign)
+SERIALIZE(Restraints::Plane, o.label, o.ids, o.esd)
+SERIALIZE(Restraints, o.bonds, o.angles, o.torsions, o.chirs, o.planes)
+SERIALIZE(ChemComp::Atom, o.id, o.old_id, o.el, o.charge,
+          o.chem_type, o.acedrg_type, o.xyz)
+SERIALIZE(ChemComp::Aliasing, o.group, o.related)
+SERIALIZE(ChemComp, o.name, o.type_or_group, o.group, o.has_coordinates,
+          o.atoms, o.aliases, o.rt)
+
 SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.ncs, o.entities, o.connections, o.cispeps, o.mod_residues,
           o.helices, o.sheets, o.assemblies, o.conect_map, o.meta,
           o.input_format, o.has_d_fraction, o.non_ascii_line, o.ter_status,
-          o.has_origx, o.origx, o.info, o.shortened_ccd_codes,
+          o.has_origx, o.origx, o.info, o.chemcomps, o.shortened_ccd_codes,
           o.raw_remarks, o.resolution)
 
 

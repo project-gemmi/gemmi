@@ -23,6 +23,7 @@
 #include "span.hpp"      // for Span, MutableVectorSpan
 #include "seqid.hpp"
 #include "util.hpp"      // for join_str, vector_move_extend, in_vector
+#include "chemcomp.hpp"
 
 namespace gemmi {
 
@@ -933,6 +934,8 @@ struct Structure {
 
   /// Minimal metadata with keys being mmcif tags: _entry.id, _cell.Z_PDB, ...
   std::map<std::string, std::string> info;
+  /// ChemComp data embedded in coordinate mmCIF, keyed by _chem_comp.id.
+  std::map<std::string, ChemComp> chemcomps;
   /// Mapping of long (4+) CCD codes (residue names) to PDB-compatible ones
   std::vector<std::pair<std::string,std::string>> shortened_ccd_codes;
   /// original REMARK records stored if the file was read from the PDB format

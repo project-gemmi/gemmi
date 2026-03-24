@@ -22,7 +22,9 @@
 using namespace gemmi;
 
 using info_map_type = std::map<std::string, std::string>;
+using chemcomp_map_type = std::map<std::string, ChemComp>;
 NB_MAKE_OPAQUE(info_map_type)
+NB_MAKE_OPAQUE(chemcomp_map_type)
 
 namespace {
 
@@ -111,6 +113,7 @@ void add_mol(nb::module_& m) {
     .value("Antiparallel", ResidueStrandSense::Antiparallel);
 
   nb::bind_map<info_map_type, rv_ri>(m, "InfoMap");
+  nb::bind_map<chemcomp_map_type, rv_ri>(m, "ChemCompMap");
 
   nb::class_<CRA>(m, "CRA")
     .def_rw("chain", &CRA::chain, nb::arg().none())
@@ -151,6 +154,7 @@ void add_mol(nb::module_& m) {
     .def_rw("has_origx", &Structure::has_origx)
     .def_ro("origx", &Structure::origx)
     .def_rw("info", &Structure::info)
+    .def_rw("chemcomps", &Structure::chemcomps)
     .def_rw("raw_remarks", &Structure::raw_remarks)
     .def("find_spacegroup", &Structure::find_spacegroup, nb::rv_policy::reference)
     .def("get_entity",
@@ -592,6 +596,10 @@ void add_mol(nb::module_& m) {
   m.def("merge_atoms_in_expanded_model", &merge_atoms_in_expanded_model,
         nb::arg("model"), nb::arg("cell"), nb::arg("max_dist")=0.2,
         nb::arg("compare_serial")=true);
+  m.def("get_nearby_sym_ops", &get_nearby_sym_ops,
+        nb::arg("structure"), nb::arg("pos"), nb::arg("radius"));
+  m.def("get_sym_image", &get_sym_image,
+        nb::arg("structure"), nb::arg("image"));
 
   // select.hpp
   nb::class_<FilterProxy<Selection, Model>> pySelectionModelsProxy(m, "SelectionModelsProxy");

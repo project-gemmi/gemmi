@@ -10,6 +10,27 @@ namespace gemmi {
 
 namespace {
 
+bool get_crystallographic_cell(const Structure& st, UnitCell& cell) {
+  if (!st.cell.is_crystal())
+    return false;
+  if (const SpaceGroup* sg = st.find_spacegroup()) {
+    cell = st.cell;
+    cell.set_cell_images_from_spacegroup(sg);
+    return true;
+  }
+  return false;
+}
+
+Transform transform_from_image(const UnitCell& cell, const NearestImage& image) {
+  FTransform ftransform;
+  if (image.sym_idx > 0)
+    ftransform = cell.images.at(static_cast<size_t>(image.sym_idx - 1));
+  ftransform.vec.x += image.pbc_shift[0];
+  ftransform.vec.y += image.pbc_shift[1];
+  ftransform.vec.z += image.pbc_shift[2];
+  return cell.orth.combine(ftransform.combine(cell.frac));
+}
+
 bool any_subchain_matches(const Chain& chain, const Assembly::Gen& gen) {
   const std::string* prev_subchain = nullptr;
   for (const Residue& res : chain.residues)
@@ -461,6 +482,76 @@ void split_chains_by_segments(Model& model, HowToNameCopiedChain how) {
   for (Chain& chain : model.chains)
     vector_move_extend(new_chains, split_chain_by_segments(chain, namegen));
   model.chains = std::move(new_chains);
+}
+
+std::vector<NearestImage> get_nearby_sym_ops(const Structure& st,
+                                             const Position& pos,
+                                             double radius) {
+  if (radius < 0)
+    fail("get_nearby_sym_ops(): radius must be non-negative");
+  std::vector<NearestImage> images;
+  if (st.models.empty())
+    return images;
+  UnitCell cell;
+  if (!get_crystallographic_cell(st, cell))
+    return images;
+
+  const Model& model = st.first_model();
+  const double screening_dist_sq = sq(radius + 3.0);
+  const double exact_dist_sq = sq(radius);
+  const int max_image_idx = static_cast<int>(cell.images.size());
+
+  for (int image_idx = 0; image_idx <= max_image_idx; ++image_idx) {
+    NearestImage best_image;
+    best_image.dist_sq = INFINITY;
+    bool found = false;
+    for (const Chain& chain : model.chains)
+      for (const Residue& res : chain.residues) {
+        if (res.atoms.empty())
+          continue;
+        NearestImage screening = cell.find_nearest_pbc_image(pos,
+                                                             res.atoms.front().pos,
+                                                             image_idx);
+        if (screening.same_asu() || screening.dist_sq > screening_dist_sq)
+          continue;
+        NearestImage residue_best;
+        residue_best.dist_sq = INFINITY;
+        bool residue_hit = false;
+        for (const Atom& atom : res.atoms) {
+          NearestImage candidate = cell.find_nearest_pbc_image(pos, atom.pos, image_idx);
+          if (!candidate.same_asu() && candidate.dist_sq <= exact_dist_sq &&
+              candidate.dist_sq < residue_best.dist_sq) {
+            residue_best = candidate;
+            residue_hit = true;
+          }
+        }
+        if (residue_hit && residue_best.dist_sq < best_image.dist_sq) {
+          best_image = residue_best;
+          found = true;
+        }
+      }
+    if (found)
+      images.push_back(best_image);
+  }
+
+  std::sort(images.begin(), images.end(), [](const NearestImage& a, const NearestImage& b) {
+      return std::tie(a.dist_sq, a.sym_idx, a.pbc_shift[0], a.pbc_shift[1], a.pbc_shift[2]) <
+             std::tie(b.dist_sq, b.sym_idx, b.pbc_shift[0], b.pbc_shift[1], b.pbc_shift[2]);
+  });
+  return images;
+}
+
+Structure get_sym_image(const Structure& st, const NearestImage& image) {
+  if (image.same_asu())
+    fail("get_sym_image(): identity image is not allowed");
+  UnitCell cell;
+  if (!get_crystallographic_cell(st, cell))
+    fail("get_sym_image(): structure has no crystallographic symmetry");
+  if (image.sym_idx < 0 || image.sym_idx > static_cast<int>(cell.images.size()))
+    fail("get_sym_image(): invalid symmetry image index");
+  Structure image_st = st;
+  transform_pos_and_adp(image_st, transform_from_image(cell, image));
+  return image_st;
 }
 
 } // namespace gemmi

@@ -122,6 +122,23 @@ class TestChemComp(unittest.TestCase):
         self.assertEqual(atom_types['C'], 'C')
         self.assertEqual(atom_types['O'], 'O')
 
+    def test_coord_cif_embedded_chemcomp_bonds(self):
+        st = gemmi.read_structure(full_path('5i55.cif'))
+
+        self.assertIn('ACT', st.chemcomps)
+        act = st.chemcomps['ACT']
+        self.assertEqual(act.name, 'ACT')
+        self.assertEqual(act.type_or_group, 'non-polymer')
+        self.assertEqual(len(act.rt.bonds), 6)
+
+        bond = act.rt.bonds[0]
+        self.assertEqual(bond.id1.atom, 'C')
+        self.assertEqual(bond.id2.atom, 'O')
+        self.assertEqual(bond.type, gemmi.BondType.Double)
+        self.assertFalse(bond.aromatic)
+        self.assertEqual(bond.stereo_config, 'N')
+        self.assertEqual(bond.ordinal, 1)
+
 class TestSmarts(unittest.TestCase):
     def test_smarts_benzene(self):
         cif_text = """

@@ -29,7 +29,6 @@ void add_monlib(nb::module_& m) {
   nb::class_<ChemLink> chemlink(m, "ChemLink");
   nb::class_<EnerLib> enerlib(m, "EnerLib");
 
-  nb::bind_map<monomers_type, rv_ri>(m, "ChemCompMap");
   nb::bind_map<links_type, rv_ri>(m, "ChemLinkMap");
   nb::bind_map<modifications_type, rv_ri>(m, "ChemModMap");
   nb::bind_vector<ener_bonds_type, rv_ri>(m, "EnerLibBonds");

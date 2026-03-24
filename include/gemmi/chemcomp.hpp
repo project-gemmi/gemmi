@@ -7,16 +7,20 @@
 #define GEMMI_CHEMCOMP_HPP_
 
 #include <string>
+#include <map>
 #include <vector>
 #include <cmath>
 #include "cifdoc.hpp"
 #include "elem.hpp"  // for Element
 #include "fail.hpp"  // for fail, unreachable
 #include "numb.hpp"  // for as_number
+#include "unitcell.hpp" // for Position
 #include "util.hpp"  // for istarts_with, join_str
-#include "model.hpp" // for Residue, Atom
 
 namespace gemmi {
+
+struct Atom;
+struct Residue;
 
 enum class BondType {
   Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
@@ -45,24 +49,9 @@ struct Restraints {
 
     // altloc2 is needed only in rare case when we have a link between
     // atoms with different altloc (example: 2e7z).
-    Atom* get_from(Residue& res1, Residue* res2, char alt, char altloc2) const {
-      Residue* residue = &res1;
-      if (comp == 2 && res2 != nullptr) {
-        residue = res2;
-        if (altloc2 != '\0')
-          alt = altloc2;
-      }
-      Atom* a = residue->find_atom(atom, alt, El::X, false);
-      // Special case: microheterogeneity may have shared atoms only in
-      // the first residue. Example: in 1ejg N is shared between PRO and SER.
-      if (a == nullptr && alt != '\0' && residue->group_idx > 0)
-        a = (residue - residue->group_idx)->find_atom(atom, alt, El::X, false);
-      return a;
-    }
+    Atom* get_from(Residue& res1, Residue* res2, char alt, char altloc2) const;
     const Atom* get_from(const Residue& res1, const Residue* res2,
-                         char alt, char alt2) const {
-      return get_from(const_cast<Residue&>(res1), const_cast<Residue*>(res2), alt, alt2);
-    }
+                         char alt, char alt2) const;
   };
 
   static std::string lexicographic_str(const std::string& name1,
@@ -81,6 +70,8 @@ struct Restraints {
     double esd;
     double value_nucleus;
     double esd_nucleus;
+    std::string stereo_config;
+    int ordinal = 0;
     std::string str() const { return cat(id1.atom, '-', id2.atom); }
     std::string lexicographic_str() const {
       return Restraints::lexicographic_str(id1.atom, id2.atom);

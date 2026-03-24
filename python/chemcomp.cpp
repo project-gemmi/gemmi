@@ -1,5 +1,6 @@
 // Copyright 2018 Global Phasing Ltd.
 
+#include "gemmi/model.hpp"       // for Atom, Residue
 #include "gemmi/chemcomp.hpp"    // for ChemComp
 #include "gemmi/to_chemcomp.hpp" // for add_chemcomp_to_block
 #include "gemmi/ace_graph.hpp"
@@ -111,6 +112,8 @@ void add_chemcomp(nb::module_& m) {
     .def_rw("esd", &Restraints::Bond::esd)
     .def_rw("value_nucleus", &Restraints::Bond::value_nucleus)
     .def_rw("esd_nucleus", &Restraints::Bond::esd_nucleus)
+    .def_rw("stereo_config", &Restraints::Bond::stereo_config)
+    .def_rw("ordinal", &Restraints::Bond::ordinal)
     .def("lexicographic_str", &Restraints::Bond::lexicographic_str)
     .def("__repr__", [](const Restraints::Bond& self) {
         return "<gemmi.Restraints.Bond " + self.str() + ">";
@@ -221,6 +224,7 @@ void add_chemcomp(nb::module_& m) {
   chemcomp
     .def(nb::init<>())
     .def_rw("name", &ChemComp::name)
+    .def_rw("type_or_group", &ChemComp::type_or_group)
     .def_rw("group", &ChemComp::group)
     .def_ro("atoms", &ChemComp::atoms)
     .def_ro("rt", &ChemComp::rt)

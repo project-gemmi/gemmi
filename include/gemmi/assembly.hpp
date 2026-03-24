@@ -125,5 +125,14 @@ GEMMI_DLL void expand_ncs(Structure& st, HowToNameCopiedChain how, double merge_
 /// HowToNameCopiedChain::Dup adds segment name to chain name
 GEMMI_DLL void split_chains_by_segments(Model& model, HowToNameCopiedChain how);
 
+/// Finds nearby crystallographic symmetry images for viewer use.
+/// The search uses only the first model and returns non-identity images.
+GEMMI_DLL std::vector<NearestImage> get_nearby_sym_ops(const Structure& st,
+                                                       const Position& pos,
+                                                       double radius);
+
+/// Returns a copy of the structure transformed to the requested symmetry image.
+GEMMI_DLL Structure get_sym_image(const Structure& st, const NearestImage& image);
+
 } // namespace gemmi
 #endif

@@ -11,6 +11,7 @@ COMMON_FLAGS = \
   -s DISABLE_EXCEPTION_CATCHING=0
 
 FLAGS = -O3 -flto $(COMMON_FLAGS)
+DEPFLAGS = -MMD -MP
 
 LINK_FLAGS = \
   --pre-js pre.js \
@@ -30,7 +31,7 @@ debug: FLAGS = -g -O0 $(COMMON_FLAGS)
 debug: LINK_FLAGS += -s SAFE_HEAP=1 -s ASSERTIONS=2
 debug: gemmi.js
 
-GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o select.o sprintf.o symmetry.o json.o monlib.o read_cif.o
+GEMMI_OBJS = mmcif.o mtz.o pdb.o polyheur.o resinfo.o select.o sprintf.o symmetry.o json.o monlib.o read_cif.o assembly.o
 
 BINDING_OBJS = gemmi.o cell.o iso.o mol.o map.o mtz_fft.o
 
@@ -46,15 +47,17 @@ mtz.js: mtz_fft.cpp cell.o mtz.o symmetry.o
 	-s EXPORT_NAME=GemmiMtz $^ -o $@
 
 $(GEMMI_OBJS): %.o: ../src/%.cpp
-	$(CXX) $(INCLUDE) $(FLAGS) -c $< -o $@
+	$(CXX) $(INCLUDE) $(FLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(BINDING_OBJS): %.o: %.cpp
-	$(CXX) $(INCLUDE) $(FLAGS) -c $< -o $@
+	$(CXX) $(INCLUDE) $(FLAGS) $(DEPFLAGS) -c $< -o $@
 
 %.o: %.cpp
-	$(CXX) $(INCLUDE) $(FLAGS) -c $<
+	$(CXX) $(INCLUDE) $(FLAGS) $(DEPFLAGS) -c $<
 
 clean:
-	rm -f *.o gemmi.js mtz.js *.wasm
+	rm -f *.o *.d gemmi.js mtz.js *.wasm
 
 .PHONY: clean all debug
+
+-include $(GEMMI_OBJS:.o=.d) $(BINDING_OBJS:.o=.d)

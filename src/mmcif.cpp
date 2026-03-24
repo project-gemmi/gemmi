@@ -2,6 +2,7 @@
 
 #include <gemmi/mmcif.hpp>   // for string_to_int
 #include <array>
+#include <cmath>             // for NAN
 #include <unordered_map>
 #include <gemmi/mmcif_impl.hpp> // for set_cell_from_mmcif
 #include <gemmi/atox.hpp>    // for string_to_int
@@ -87,6 +88,38 @@ inline ResidueId make_resid(const std::string& name,
                             const std::string& seqid,
                             const std::string* icode) {
   return ResidueId{make_seqid(seqid, icode), {}, name};
+}
+
+void read_chemcomp_info(cif::Block& block, Structure& st) {
+  for (auto row : block.find("_chem_comp.", {"id", "?type"})) {
+    ChemComp& cc = st.chemcomps[row.str(0)];
+    cc.name = row.str(0);
+    if (row.has2(1))
+      cc.type_or_group = row.str(1);
+  }
+  for (auto row : block.find("_chem_comp_bond.",
+                             {"comp_id", "atom_id_1", "atom_id_2",
+                              "?type", "?value_order",
+                              "?aromatic", "?pdbx_aromatic_flag",
+                              "?pdbx_stereo_config", "?pdbx_ordinal",
+                              "?value_dist", "?value_dist_esd",
+                              "?value_dist_nucleus", "?value_dist_nucleus_esd"})) {
+    ChemComp& cc = st.chemcomps[row.str(0)];
+    if (cc.name.empty())
+      cc.name = row.str(0);
+    std::string aromatic_flag = row.one_of(5, 6);
+    std::string bond_type = row.one_of(3, 4);
+    cc.rt.bonds.push_back({{1, row.str(1)}, {1, row.str(2)},
+                           bond_type_from_string(bond_type),
+                           !aromatic_flag.empty() &&
+                             (aromatic_flag[0] | 0x20) == 'y',
+                           row.has2(9) ? cif::as_number(row[9]) : NAN,
+                           row.has2(10) ? cif::as_number(row[10]) : NAN,
+                           row.has2(11) ? cif::as_number(row[11]) : NAN,
+                           row.has2(12) ? cif::as_number(row[12]) : NAN,
+                           row.has2(7) ? row.str(7) : "",
+                           row.has2(8) ? cif::as_int(row[8]) : 0});
+  }
 }
 
 std::vector<Helix> read_helices(cif::Block& block) {
@@ -1068,6 +1101,7 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
   read_struct_mod_residue(block, st);
   st.assemblies = read_assemblies(block);
   read_sifts_unp(block, st);
+  read_chemcomp_info(block, st);
 
   cif::Table chem_comp_table = block.find("_chem_comp.", {"id", "three_letter_code"});
   if (chem_comp_table.ok()) {

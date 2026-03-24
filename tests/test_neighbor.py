@@ -22,6 +22,20 @@ ATOM    635  SG  CYS A  85      42.948   6.483  17.913  0.48 23.86           S
 ATOM   2293  SG  CYS B  85      42.948   6.483  17.913  0.52 23.86           S
 """
 
+FRAGMENT_SCREENING_HIT = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1           1
+HETATM    1  C1  LIG A   1       3.200   0.500   0.000  1.00 20.00           C
+HETATM    2  C2  LIG A   1       0.000   0.500   0.000  1.00 20.00           C
+END
+"""
+
+FRAGMENT_SCREENING_MISS = """\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1           1
+HETATM    1  C1  LIG A   1       3.200   0.500   0.000  1.00 20.00           C
+HETATM    2  C2  LIG A   1       3.100   0.500   0.000  1.00 20.00           C
+END
+"""
+
 class TestNeighborSearch(unittest.TestCase):
     def test_5a11(self, use_populate=True):
         st = gemmi.read_pdb_string(FRAGMENT_5A11)
@@ -86,6 +100,47 @@ class TestNeighborSearch(unittest.TestCase):
             self.assertAlmostEqual(image2.dist(), 2.9710496, delta=1e-6)
             image3 = st.cell.find_nearest_pbc_image(point, point, 3)
             self.assertEqual(image3.symmetry_code(), '4_355')
+
+    def test_get_nearby_sym_ops(self):
+        st = gemmi.read_structure(full_path('4oz7.pdb'))
+        point = gemmi.Selection('B/208').copy_model_selection(st[0])[0][0][0].pos
+        images = gemmi.get_nearby_sym_ops(st, point, 3.0)
+        self.assertEqual([im.symmetry_code() for im in images], ['4_355', '3_545'])
+        self.assertAlmostEqual(images[0].dist(),
+                               st.cell.find_nearest_pbc_image(point, point, 3).dist(),
+                               delta=1e-6)
+        self.assertAlmostEqual(images[1].dist(),
+                               st.cell.find_nearest_pbc_image(point, point, 2).dist(),
+                               delta=1e-6)
+
+        atom = st[0].sole_residue('B', gemmi.SeqId(208, ' '))[0]
+        image_st = gemmi.get_sym_image(st, images[0])
+        image_atom = image_st[0].sole_residue('B', gemmi.SeqId(208, ' '))[0]
+        expected = st.cell.orthogonalize(
+            st.cell.fract_image(images[0], st.cell.fractionalize(atom.pos)))
+        self.assertLess(image_atom.pos.dist(expected), 1e-6)
+        self.assertEqual(image_st.spacegroup_hm, st.spacegroup_hm)
+
+    def test_get_nearby_sym_ops_screening(self):
+        st = gemmi.read_pdb_string(FRAGMENT_SCREENING_HIT)
+        point = gemmi.Position(0, 10.9, 0)
+        images = gemmi.get_nearby_sym_ops(st, point, 1.0)
+        self.assertEqual([im.symmetry_code() for im in images], ['1_565'])
+        self.assertEqual(images[0].sym_idx, 0)
+        self.assertFalse(images[0].same_asu())
+
+        atom = st[0].sole_residue('A', gemmi.SeqId(1, ' '))[1]
+        image_st = gemmi.get_sym_image(st, images[0])
+        image_atom = image_st[0].sole_residue('A', gemmi.SeqId(1, ' '))[1]
+        expected = st.cell.orthogonalize(
+            st.cell.fract_image(images[0], st.cell.fractionalize(atom.pos)))
+        self.assertLess(image_atom.pos.dist(expected), 1e-6)
+
+    def test_get_nearby_sym_ops_screening_miss(self):
+        st = gemmi.read_pdb_string(FRAGMENT_SCREENING_MISS)
+        point = gemmi.Position(0, 10.9, 0)
+        images = gemmi.get_nearby_sym_ops(st, point, 1.0)
+        self.assertEqual(len(images), 0)
 
 
 class TestContactSearch(unittest.TestCase):

@@ -16,6 +16,24 @@ export interface ClassHandle {
   [Symbol.dispose](): void;
   clone(): this;
 }
+export interface NearestImage extends ClassHandle {
+  sym_idx: number;
+  readonly pbc_shift_x: number;
+  readonly pbc_shift_y: number;
+  readonly pbc_shift_z: number;
+  same_asu(): boolean;
+  dist(): number;
+  symmetry_code(_0: boolean): string;
+}
+
+export interface NearestImageVector extends ClassHandle, Iterable<NearestImage> {
+  push_back(_0: NearestImage): void;
+  resize(_0: number, _1: NearestImage): void;
+  size(): number;
+  get(_0: number): NearestImage | undefined;
+  set(_0: number, _1: NearestImage): boolean;
+}
+
 export interface UnitCellParameters extends ClassHandle {
   a: number;
   b: number;
@@ -178,6 +196,12 @@ export type Fractional = [ number, number, number ];
 export type Position = [ number, number, number ];
 
 interface EmbindModule {
+  NearestImage: {
+    new(): NearestImage;
+  };
+  NearestImageVector: {
+    new(): NearestImageVector;
+  };
   UnitCellParameters: {};
   UnitCell: {
     new(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number): UnitCell;
@@ -212,6 +236,7 @@ interface EmbindModule {
   SelectionResult: {
     new(): SelectionResult;
   };
+  get_sym_image(_0: Structure, _1: NearestImage): Structure;
   MapData: {};
   Ccp4Map: {
     new(_0: EmbindString): Ccp4Map;
@@ -223,7 +248,9 @@ interface EmbindModule {
   Mtz: {
     new(_0: EmbindString): Mtz;
   };
+  get_nearby_sym_ops(_0: Structure, _1: Position, _2: number): NearestImageVector;
   get_residue_names(_0: Structure): string;
+  get_missing_monomer_names(_0: Structure): string;
   _read_structure(_0: EmbindString, _1: EmbindString, _2: EmbindString): Structure;
 }
 

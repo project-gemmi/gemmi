@@ -2,7 +2,9 @@
 
 #include "common.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <gemmi/model.hpp>
+#include <gemmi/assembly.hpp> // for get_nearby_sym_ops, get_sym_image
 #include <gemmi/select.hpp>   // for Selection
 #include <gemmi/mmread.hpp>   // for read_structure_from_memory
 #include <gemmi/polyheur.hpp> // for setup_entities
@@ -67,6 +69,103 @@ std::string get_entity_type_string(const gemmi::Residue& res) {
   return entity_type_to_string(res.entity_type);
 }
 
+const gemmi::ChemComp* find_chemcomp(const gemmi::Structure& st,
+                                     const gemmi::MonLib& monlib,
+                                     const gemmi::Residue& res) {
+  auto st_it = st.chemcomps.find(res.name);
+  if (st_it != st.chemcomps.end())
+    return &st_it->second;
+  auto mon_it = monlib.monomers.find(res.name);
+  return mon_it != monlib.monomers.end() ? &mon_it->second : nullptr;
+}
+
+const gemmi::ChemComp::Aliasing* find_polymer_aliasing(const gemmi::ChemComp& cc,
+                                                       gemmi::PolymerType polymer_type) {
+  for (const gemmi::ChemComp::Aliasing& aliasing : cc.aliases)
+    if ((gemmi::is_polypeptide(polymer_type) &&
+         gemmi::ChemComp::is_peptide_group(aliasing.group)) ||
+        (gemmi::is_polynucleotide(polymer_type) &&
+         gemmi::ChemComp::is_nucleotide_group(aliasing.group)))
+      return &aliasing;
+  return nullptr;
+}
+
+std::string remap_polymer_atom_name(const std::string& atom_name,
+                                    const gemmi::ChemComp::Aliasing* aliasing) {
+  if (aliasing)
+    if (const std::string* ptr = aliasing->name_from_alias(atom_name))
+      return *ptr;
+  return atom_name;
+}
+
+template<typename It>
+It residue_group_end(It it, It end) {
+  It next = it + 1;
+  while (next != end && next->group_key() == it->group_key())
+    ++next;
+  return next;
+}
+
+template<typename AddBond>
+void add_inferred_polymer_bonds(gemmi::Structure& st, gemmi::Model& model,
+                                const gemmi::MonLib& monlib, AddBond&& add_bond) {
+  for (gemmi::Chain& chain : model.chains)
+    for (gemmi::ResidueSpan sub : chain.subchains()) {
+      const gemmi::Entity* ent = st.get_entity_of(sub);
+      gemmi::PolymerType polymer_type = gemmi::get_or_check_polymer_type(ent, sub);
+      if (!gemmi::is_polypeptide(polymer_type) &&
+          !gemmi::is_polynucleotide(polymer_type))
+        continue;
+      if (sub.size() < 2)
+        continue;
+      auto prev_begin = sub.begin();
+      auto prev_end = residue_group_end(prev_begin, sub.end());
+      while (prev_end != sub.end()) {
+        auto group_begin = prev_end;
+        auto group_end = residue_group_end(group_begin, sub.end());
+        for (auto ri = group_begin; ri != group_end; ++ri) {
+          const gemmi::ChemComp* cc2 = find_chemcomp(st, monlib, *ri);
+          const gemmi::ChemComp::Aliasing* alias2 = nullptr;
+          if (cc2 && ((gemmi::is_polypeptide(polymer_type) &&
+                       !gemmi::ChemComp::is_peptide_group(cc2->group)) ||
+                      (gemmi::is_polynucleotide(polymer_type) &&
+                       !gemmi::ChemComp::is_nucleotide_group(cc2->group))))
+            alias2 = find_polymer_aliasing(*cc2, polymer_type);
+          std::string atom2_name = gemmi::is_polypeptide(polymer_type)
+                                 ? remap_polymer_atom_name("N", alias2)
+                                 : remap_polymer_atom_name("P", alias2);
+          gemmi::El atom2_el = gemmi::is_polypeptide(polymer_type) ? gemmi::El::N
+                                                                   : gemmi::El::P;
+          for (auto prev_ri = prev_begin; prev_ri != prev_end; ++prev_ri) {
+            const gemmi::ChemComp* cc1 = find_chemcomp(st, monlib, *prev_ri);
+            const gemmi::ChemComp::Aliasing* alias1 = nullptr;
+            if (cc1 && ((gemmi::is_polypeptide(polymer_type) &&
+                         !gemmi::ChemComp::is_peptide_group(cc1->group)) ||
+                        (gemmi::is_polynucleotide(polymer_type) &&
+                         !gemmi::ChemComp::is_nucleotide_group(cc1->group))))
+              alias1 = find_polymer_aliasing(*cc1, polymer_type);
+            std::string atom1_name = gemmi::is_polypeptide(polymer_type)
+                                   ? remap_polymer_atom_name("C", alias1)
+                                   : remap_polymer_atom_name("O3'", alias1);
+            gemmi::El atom1_el = gemmi::is_polypeptide(polymer_type) ? gemmi::El::C
+                                                                     : gemmi::El::O;
+            for (const gemmi::Atom& a1 : prev_ri->atoms)
+              if (a1.name == atom1_name && a1.element == atom1_el)
+                for (const gemmi::Atom& a2 : ri->atoms)
+                  if (a2.name == atom2_name && a2.element == atom2_el &&
+                      (a2.altloc == a1.altloc || a2.altloc == '\0' || a1.altloc == '\0') &&
+                      (gemmi::is_polypeptide(polymer_type)
+                        ? gemmi::in_peptide_bond_distance(&a1, &a2)
+                        : gemmi::in_nucleotide_bond_distance(&a1, &a2)))
+                    add_bond(&a1, &a2, static_cast<int>(gemmi::BondType::Single));
+          }
+        }
+        prev_begin = group_begin;
+        prev_end = group_end;
+      }
+    }
+}
+
 std::string get_residue_ss_string(const gemmi::Residue& res) {
   switch (res.ss_from_file) {
     case gemmi::ResidueSs::Coil:
@@ -104,6 +203,19 @@ std::string get_residue_names(gemmi::Structure& st) {
   return result;
 }
 
+std::string get_missing_monomer_names(gemmi::Structure& st) {
+  auto names = st.models.at(0).get_all_residue_names();
+  std::string result;
+  for (size_t i = 0; i < names.size(); ++i) {
+    if (st.chemcomps.find(names[i]) != st.chemcomps.end())
+      continue;
+    if (!result.empty())
+      result += ',';
+    result += names[i];
+  }
+  return result;
+}
+
 // Wrapper that holds MonLib and the bond list result buffer.
 // After calling get_bond_lines(), use bond_data_ptr/bond_data_size
 // to read [idx1, idx2, bond_type, ...] triples from WASM memory.
@@ -127,25 +239,41 @@ struct BondInfo {
       atom_idx[cra.atom] = idx++;
 
     bond_data.clear();
+    std::unordered_set<uint64_t> seen_pairs;
 
-    // 1. intra-residue bonds from monomer library
+    auto add_bond = [&](const gemmi::Atom* a1, const gemmi::Atom* a2, int bond_type) {
+      auto it1 = atom_idx.find(a1);
+      auto it2 = atom_idx.find(a2);
+      if (it1 == atom_idx.end() || it2 == atom_idx.end())
+        return;
+      uint32_t i1 = static_cast<uint32_t>(it1->second);
+      uint32_t i2 = static_cast<uint32_t>(it2->second);
+      if (i2 < i1)
+        std::swap(i1, i2);
+      uint64_t key = (uint64_t(i1) << 32) | i2;
+      if (!seen_pairs.insert(key).second)
+        return;
+      bond_data.push_back(static_cast<int32_t>(i1));
+      bond_data.push_back(static_cast<int32_t>(i2));
+      bond_data.push_back(bond_type);
+    };
+
+    // 1. intra-residue bonds from embedded chem_comp data or monomer library
     for (gemmi::Chain& chain : model.chains)
       for (gemmi::Residue& res : chain.residues) {
-        auto it = monlib.monomers.find(res.name);
-        if (it == monlib.monomers.end())
+        const gemmi::ChemComp* cc = find_chemcomp(st, monlib, res);
+        if (!cc)
           continue;
         std::string altlocs;
         add_distinct_altlocs(res, altlocs);
         if (altlocs.empty())
           altlocs += '*';
-        for (const gemmi::Restraints::Bond& bond : it->second.rt.bonds)
+        for (const gemmi::Restraints::Bond& bond : cc->rt.bonds)
           for (char alt : altlocs) {
             const gemmi::Atom* a1 = res.find_atom(bond.id1.atom, alt);
             const gemmi::Atom* a2 = res.find_atom(bond.id2.atom, alt);
             if (a1 && a2) {
-              bond_data.push_back(atom_idx[a1]);
-              bond_data.push_back(atom_idx[a2]);
-              bond_data.push_back(static_cast<int>(bond.type));
+              add_bond(a1, a2, static_cast<int>(bond.type));
               if (!a1->altloc && !a2->altloc)
                 break;
             }
@@ -154,21 +282,20 @@ struct BondInfo {
 
     // 2. inter-residue bonds from _struct_conn / LINK / SSBOND records
     for (const gemmi::Connection& conn : st.connections) {
+      if (conn.asu == gemmi::Asu::Different)
+        continue;  // explicit bonds to symmetry images are ignored for now
       const gemmi::Atom* a1 = model.find_atom(conn.partner1);
       const gemmi::Atom* a2 = model.find_atom(conn.partner2);
       if (a1 && a2) {
-        auto it1 = atom_idx.find(a1);
-        auto it2 = atom_idx.find(a2);
-        if (it1 != atom_idx.end() && it2 != atom_idx.end()) {
-          bond_data.push_back(it1->second);
-          bond_data.push_back(it2->second);
-          int bt = (conn.type == gemmi::Connection::MetalC)
-                       ? static_cast<int>(gemmi::BondType::Metal)
-                       : static_cast<int>(gemmi::BondType::Single);
-          bond_data.push_back(bt);
-        }
+        int bt = (conn.type == gemmi::Connection::MetalC)
+                     ? static_cast<int>(gemmi::BondType::Metal)
+                     : static_cast<int>(gemmi::BondType::Single);
+        add_bond(a1, a2, bt);
       }
     }
+
+    // 3. inferred polymer links between residues (for example peptide bonds)
+    add_inferred_polymer_bonds(st, model, monlib, add_bond);
   }
 
   uintptr_t bond_data_ptr() const {
@@ -288,6 +415,10 @@ void add_mol() {
     ;
 
   em::function("get_residue_names", &get_residue_names, em::allow_raw_pointers());
+  em::function("get_missing_monomer_names", &get_missing_monomer_names,
+               em::allow_raw_pointers());
+  em::function("get_nearby_sym_ops", &gemmi::get_nearby_sym_ops);
+  em::function("get_sym_image", &gemmi::get_sym_image);
 
   // wrapped in post.js to add default value
   em::function("_read_structure", &read_structure);
