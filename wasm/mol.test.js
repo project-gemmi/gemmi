@@ -282,6 +282,78 @@ sym1 covale A GLY 1 CA A ALA 2 CB A 1 A 2 1_555 18_555
   st.delete();
 });
 
+test('matches cross-symmetry bonds by nearest image, not reported_sym', async () => {
+  const gemmi = await Gemmi();
+  const cifText = `data_symm_link
+_cell.length_a 10
+_cell.length_b 10
+_cell.length_c 10
+_cell.angle_alpha 90
+_cell.angle_beta 90
+_cell.angle_gamma 90
+_symmetry.space_group_name_H-M 'P 1'
+
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_asym_id
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 C CA . GLY A 1 1 0 9.8 0 1 20 A 1 GLY 1
+ATOM 2 C CB . ALA A 1 2 0 0.2 0 1 20 A 2 ALA 1
+
+loop_
+_struct_conn.id
+_struct_conn.conn_type_id
+_struct_conn.ptnr1_label_asym_id
+_struct_conn.ptnr1_label_comp_id
+_struct_conn.ptnr1_label_seq_id
+_struct_conn.ptnr1_label_atom_id
+_struct_conn.ptnr2_label_asym_id
+_struct_conn.ptnr2_label_comp_id
+_struct_conn.ptnr2_label_seq_id
+_struct_conn.ptnr2_label_atom_id
+_struct_conn.ptnr1_auth_asym_id
+_struct_conn.ptnr1_auth_seq_id
+_struct_conn.ptnr2_auth_asym_id
+_struct_conn.ptnr2_auth_seq_id
+_struct_conn.ptnr1_symmetry
+_struct_conn.ptnr2_symmetry
+sym1 covale A GLY 1 CA A ALA 2 CB A 1 A 2 18_555 1_555
+`;
+  const st = gemmi.read_structure(Buffer.from(cifText), 'symm-link-nearest.cif');
+  const point = get_atom_position(st, '1', 'CA');
+  const images = gemmi.get_nearby_sym_ops(st, point, 1.0);
+  expect(get_image_codes(images)).toEqual(['1_565']);
+
+  const crossSymBonds = new gemmi.CrossSymBonds();
+  const image0 = images.get(0);
+  crossSymBonds.find(st, image0);
+  const bonds = get_bonds(gemmi, crossSymBonds);
+  const caIdx = find_atom_index(st, '1', 'CA');
+  const cbIdx = find_atom_index(st, '2', 'CB');
+  expectBondBetween(bonds, caIdx, cbIdx, 1);
+
+  if (typeof image0.delete === 'function')
+    image0.delete();
+  crossSymBonds.delete();
+  images.delete();
+  st.delete();
+});
+
 test('lists monomer names missing chemcomp data', async () => {
   const gemmi = await Gemmi();
   const cif_path = '../tests/5i55.cif';

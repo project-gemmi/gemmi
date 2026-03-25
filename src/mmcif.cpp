@@ -250,7 +250,7 @@ void read_connectivity(cif::Block& block, Structure& st) {
         c.asu = Asu::Same;
       } else {
         c.asu = Asu::Different;
-        size_t sep1 = s2.find('_');
+        size_t sep1 = s1.find('_');
         size_t sep2 = s2.find('_');
         if (sep1 != std::string::npos && sep1 + 4 == s1.size() &&
             sep2 != std::string::npos && sep2 + 4 == s2.size()) {

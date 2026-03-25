@@ -73,7 +73,7 @@ const gemmi::ChemComp* find_chemcomp(const gemmi::Structure& st,
                                      const gemmi::MonLib& monlib,
                                      const gemmi::Residue& res) {
   auto st_it = st.chemcomps.find(res.name);
-  if (st_it != st.chemcomps.end())
+  if (st_it != st.chemcomps.end() && !st_it->second.atoms.empty())
     return &st_it->second;
   auto mon_it = monlib.monomers.find(res.name);
   return mon_it != monlib.monomers.end() ? &mon_it->second : nullptr;
@@ -207,7 +207,8 @@ std::string get_missing_monomer_names(gemmi::Structure& st) {
   auto names = st.models.at(0).get_all_residue_names();
   std::string result;
   for (size_t i = 0; i < names.size(); ++i) {
-    if (st.chemcomps.find(names[i]) != st.chemcomps.end())
+    auto it = st.chemcomps.find(names[i]);
+    if (it != st.chemcomps.end() && !it->second.atoms.empty())
       continue;
     if (!result.empty())
       result += ',';
@@ -296,6 +297,55 @@ struct BondInfo {
 
     // 3. inferred polymer links between residues (for example peptide bonds)
     add_inferred_polymer_bonds(st, model, monlib, add_bond);
+  }
+
+  uintptr_t bond_data_ptr() const {
+    return reinterpret_cast<uintptr_t>(bond_data.data());
+  }
+  size_t bond_data_size() const { return bond_data.size(); }
+};
+
+// Returns bond lines for struct_conn records with asu=Different
+// that match the given symmetry image.
+// The returned data is [idx1, idx2, bond_type, ...] where idx1 is an atom
+// index in model1 (the original) and idx2 is an atom index in model2 (sym image).
+struct CrossSymBonds {
+  std::vector<int32_t> bond_data;
+
+  void find(const gemmi::Structure& st, const gemmi::NearestImage& image) {
+    const gemmi::Model& model = st.models.at(0);
+    // build atom index map
+    std::unordered_map<const gemmi::Atom*, int> atom_idx;
+    int idx = 0;
+    for (auto cra : model.all())
+      atom_idx[cra.atom] = idx++;
+
+    bond_data.clear();
+    for (const gemmi::Connection& conn : st.connections) {
+      if (conn.asu != gemmi::Asu::Different)
+        continue;
+      const gemmi::Atom* a1 = model.find_atom(conn.partner1);
+      const gemmi::Atom* a2 = model.find_atom(conn.partner2);
+      if (!a1 || !a2)
+        continue;
+      gemmi::NearestImage conn_image =
+          st.cell.find_nearest_image(a1->pos, a2->pos, conn.asu);
+      if (conn_image.sym_idx != image.sym_idx ||
+          conn_image.pbc_shift[0] != image.pbc_shift[0] ||
+          conn_image.pbc_shift[1] != image.pbc_shift[1] ||
+          conn_image.pbc_shift[2] != image.pbc_shift[2])
+        continue;
+      auto it1 = atom_idx.find(a1);
+      auto it2 = atom_idx.find(a2);
+      if (it1 == atom_idx.end() || it2 == atom_idx.end())
+        continue;
+      int bt = (conn.type == gemmi::Connection::MetalC)
+                   ? static_cast<int>(gemmi::BondType::Metal)
+                   : static_cast<int>(gemmi::BondType::Single);
+      bond_data.push_back(it1->second);
+      bond_data.push_back(it2->second);
+      bond_data.push_back(bt);
+    }
   }
 
   uintptr_t bond_data_ptr() const {
@@ -404,6 +454,13 @@ void add_mol() {
     .function("get_bond_lines", &BondInfo::get_bond_lines, em::allow_raw_pointers())
     .function("bond_data_ptr", &BondInfo::bond_data_ptr)
     .function("bond_data_size", &BondInfo::bond_data_size)
+    ;
+
+  em::class_<CrossSymBonds>("CrossSymBonds")
+    .constructor<>()
+    .function("find", &CrossSymBonds::find)
+    .function("bond_data_ptr", &CrossSymBonds::bond_data_ptr)
+    .function("bond_data_size", &CrossSymBonds::bond_data_size)
     ;
 
   em::class_<SelectionResult>("SelectionResult")

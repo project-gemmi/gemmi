@@ -135,6 +135,12 @@ export interface BondInfo extends ClassHandle {
   add_monomer_cif(_0: EmbindString): void;
 }
 
+export interface CrossSymBonds extends ClassHandle {
+  find(_0: Structure, _1: NearestImage): void;
+  bond_data_ptr(): number;
+  bond_data_size(): number;
+}
+
 export interface SelectionResult extends ClassHandle {
   atom_data_ptr(): number;
   atom_data_size(): number;
@@ -232,6 +238,9 @@ interface EmbindModule {
   };
   BondInfo: {
     new(): BondInfo;
+  };
+  CrossSymBonds: {
+    new(): CrossSymBonds;
   };
   SelectionResult: {
     new(): SelectionResult;
