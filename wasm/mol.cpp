@@ -1,12 +1,16 @@
 // Copyright Global Phasing Ltd.
 
 #include "common.h"
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 #include <gemmi/model.hpp>
 #include <gemmi/assembly.hpp> // for get_nearby_sym_ops, get_sym_image
 #include <gemmi/select.hpp>   // for Selection
 #include <gemmi/mmread.hpp>   // for read_structure_from_memory
+#include <gemmi/to_cif.hpp>   // for cif::write_cif_to_stream
+#include <gemmi/to_mmcif.hpp> // for make_mmcif_document
+#include <gemmi/to_pdb.hpp>   // for make_pdb_string
 #include <gemmi/polyheur.hpp> // for setup_entities
 #include <gemmi/enumstr.hpp>  // for entity_type_to_string
 #include <gemmi/calculate.hpp> // for count_occupancies
@@ -59,6 +63,10 @@ decltype(auto) wrap_children() {
 
 std::string element_uname(const gemmi::Atom& atom) {
   return atom.element.uname();
+}
+
+bool atom_is_metal(const gemmi::Atom& atom) {
+  return atom.element.is_metal();
 }
 
 std::string get_seqid_string(const gemmi::ResidueId& res) {
@@ -215,6 +223,17 @@ std::string get_missing_monomer_names(gemmi::Structure& st) {
     result += names[i];
   }
   return result;
+}
+
+std::string make_mmcif_string(const gemmi::Structure& st) {
+  gemmi::cif::Document doc = gemmi::make_mmcif_document(st);
+  std::ostringstream os;
+  gemmi::cif::write_cif_to_stream(os, doc);
+  return os.str();
+}
+
+std::string make_pdb_string_default(const gemmi::Structure& st) {
+  return gemmi::make_pdb_string(st);
 }
 
 // Wrapper that holds MonLib and the bond list result buffer.
@@ -438,6 +457,7 @@ void add_mol() {
     .property("altloc", &gemmi::Atom::altloc)
     .property("charge", &gemmi::Atom::charge)
     .property("element_uname", &element_uname)
+    .property("is_metal", &atom_is_metal)
     .property("serial", &gemmi::Atom::serial)
     .property("pos", &gemmi::Atom::pos)
     .property("occ", &gemmi::Atom::occ)
@@ -476,6 +496,8 @@ void add_mol() {
                em::allow_raw_pointers());
   em::function("get_nearby_sym_ops", &gemmi::get_nearby_sym_ops);
   em::function("get_sym_image", &gemmi::get_sym_image);
+  em::function("make_pdb_string", &make_pdb_string_default);
+  em::function("make_mmcif_string", &make_mmcif_string);
 
   // wrapped in post.js to add default value
   em::function("_read_structure", &read_structure);
