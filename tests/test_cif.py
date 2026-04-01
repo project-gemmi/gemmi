@@ -222,7 +222,10 @@ class TestBlock(unittest.TestCase):
     def test_mmcif_file(self):
         path = os.path.join(os.path.dirname(__file__), '5i55.cif')
         block = cif.read(path).sole_block()
-        self.assertEqual(len(block.get_mmcif_category_names()), 54)
+        categories = block.get_mmcif_category_names()
+        self.assertEqual(len(categories), 60)
+        self.assertIn('_chem_comp_atom.', categories)
+        self.assertIn('_chem_comp_bond.', categories)
         entry_cat = block.get_mmcif_category('_entry')
         self.assertEqual(entry_cat, {'id': ['5I55']})
         drw_cat = block.get_mmcif_category('_diffrn_radiation_wavelength.')
