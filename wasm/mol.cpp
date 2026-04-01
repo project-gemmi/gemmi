@@ -65,6 +65,13 @@ std::string element_uname(const gemmi::Atom& atom) {
   return atom.element.uname();
 }
 
+void set_element(gemmi::Atom& atom, const std::string& element) {
+  gemmi::Element parsed(element);
+  if (parsed == gemmi::El::X && element != "X" && element != "x")
+    gemmi::fail("unknown element: " + element);
+  atom.element = parsed;
+}
+
 bool atom_is_metal(const gemmi::Atom& atom) {
   return atom.element.is_metal();
 }
@@ -73,15 +80,55 @@ std::string get_seqid_string(const gemmi::ResidueId& res) {
   return res.seqid.str();
 }
 
+char get_seqid_icode(const std::string& icode) {
+  if (icode.size() > 1)
+    gemmi::fail("insertion code must be empty or one character");
+  return icode.empty() ? ' ' : icode[0];
+}
+
+void set_seqid(gemmi::ResidueId& res, int num, const std::string& icode) {
+  res.seqid = gemmi::SeqId(num, get_seqid_icode(icode));
+}
+
+void set_seqid_string(gemmi::ResidueId& res, const std::string& seqid) {
+  char* endptr;
+  long num = std::strtol(seqid.c_str(), &endptr, 10);
+  if (endptr == seqid.c_str() || (*endptr != '\0' && endptr[1] != '\0'))
+    throw std::invalid_argument("Not a seqid: " + seqid);
+  res.seqid.num = static_cast<int>(num);
+  res.seqid.icode = *endptr == '\0' ? ' ' : *endptr;
+}
+
+void structure_add_model(gemmi::Structure& st, const gemmi::Model& model) {
+  st.models.push_back(model);
+}
+
+void model_add_chain(gemmi::Model& model, const gemmi::Chain& chain) {
+  model.chains.push_back(chain);
+}
+
+void chain_add_residue(gemmi::Chain& chain, const gemmi::Residue& residue) {
+  chain.residues.push_back(residue);
+}
+
+void residue_add_atom(gemmi::Residue& residue, const gemmi::Atom& atom) {
+  residue.atoms.push_back(atom);
+}
+
 std::string get_entity_type_string(const gemmi::Residue& res) {
   return entity_type_to_string(res.entity_type);
+}
+
+bool has_chemcomp_data(const gemmi::ChemComp& cc) {
+  return !cc.atoms.empty() || !cc.rt.bonds.empty() || !cc.aliases.empty() ||
+         !cc.type_or_group.empty();
 }
 
 const gemmi::ChemComp* find_chemcomp(const gemmi::Structure& st,
                                      const gemmi::MonLib& monlib,
                                      const gemmi::Residue& res) {
   auto st_it = st.chemcomps.find(res.name);
-  if (st_it != st.chemcomps.end() && !st_it->second.atoms.empty())
+  if (st_it != st.chemcomps.end() && has_chemcomp_data(st_it->second))
     return &st_it->second;
   auto mon_it = monlib.monomers.find(res.name);
   return mon_it != monlib.monomers.end() ? &mon_it->second : nullptr;
@@ -216,7 +263,7 @@ std::string get_missing_monomer_names(gemmi::Structure& st) {
   std::string result;
   for (size_t i = 0; i < names.size(); ++i) {
     auto it = st.chemcomps.find(names[i]);
-    if (it != st.chemcomps.end() && !it->second.atoms.empty())
+    if (it != st.chemcomps.end() && has_chemcomp_data(it->second))
       continue;
     if (!result.empty())
       result += ',';
@@ -401,6 +448,14 @@ struct SelectionResult {
   size_t atom_data_size() const { return atom_data.size(); }
 };
 
+void selection_remove_selected(gemmi::Selection& sel, gemmi::Structure& st) {
+  sel.remove_selected(st);
+}
+
+void selection_remove_not_selected(gemmi::Selection& sel, gemmi::Structure& st) {
+  sel.remove_not_selected(st);
+}
+
 void add_mol() {
   em::enum_<gemmi::ResidueSs>("ResidueSs")
     .value("Coil", gemmi::ResidueSs::Coil)
@@ -418,22 +473,27 @@ void add_mol() {
   wrap_children<gemmi::Structure>()
     .property("name", &gemmi::Structure::name)
     .property("cell", &gemmi::Structure::cell)
+    .function("add_model", &structure_add_model)
     ;
 
   wrap_children<gemmi::Model>()
     .property("num", &gemmi::Model::num)
+    .function("add_chain", &model_add_chain)
     .function("count_occupancies", &gemmi::count_occupancies<gemmi::Model>,
               em::allow_raw_pointers())
     ;
 
   wrap_children<gemmi::Chain>()
     .property("name", &gemmi::Chain::name)
+    .function("add_residue", &chain_add_residue)
     ;
 
   em::class_<gemmi::ResidueId>("ResidueId")
-    .property("seqid_string", &get_seqid_string)
+    .property("seqid_string", &get_seqid_string, &set_seqid_string)
     .property("segment", &gemmi::ResidueId::segment)
     .property("name", &gemmi::ResidueId::name)
+    .function("set_seqid", &set_seqid)
+    .function("set_seqid_string", &set_seqid_string)
     ;
 
   wrap_children<gemmi::Residue, em::base<gemmi::ResidueId>>()
@@ -443,6 +503,7 @@ void add_mol() {
     .property("strand_sense_from_file", &gemmi::Residue::strand_sense_from_file)
     .property("strand_sense_from_file_string", &get_residue_strand_sense_string)
     .property("entity_type_string", &get_entity_type_string)
+    .function("add_atom", &residue_add_atom)
     ;
 
   em::value_array<gemmi::Position>("Position")
@@ -456,16 +517,22 @@ void add_mol() {
     .property("name", &gemmi::Atom::name)
     .property("altloc", &gemmi::Atom::altloc)
     .property("charge", &gemmi::Atom::charge)
-    .property("element_uname", &element_uname)
+    .property("element_uname", &element_uname, &set_element)
     .property("is_metal", &atom_is_metal)
     .property("serial", &gemmi::Atom::serial)
     .property("pos", &gemmi::Atom::pos)
     .property("occ", &gemmi::Atom::occ)
     .property("b_iso", &gemmi::Atom::b_iso)
+    .function("set_element", &set_element)
     ;
 
   em::class_<gemmi::Selection>("Selection")
     .constructor<>()
+    .constructor<const std::string&>()
+    .function("remove_selected", &selection_remove_selected,
+              em::allow_raw_pointers())
+    .function("remove_not_selected", &selection_remove_not_selected,
+              em::allow_raw_pointers())
     ;
 
   em::class_<BondInfo>("BondInfo")

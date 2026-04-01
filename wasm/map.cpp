@@ -1,6 +1,7 @@
 // Copyright Global Phasing Ltd.
 
 #include "common.h"
+#include "blob_search.h"
 #include <gemmi/ccp4.hpp>
 #include <gemmi/dsn6.hpp>
 #include <gemmi/isosurface.hpp>
@@ -49,6 +50,14 @@ struct MapData {
   double get_rms() const { return stats.rms; }
   std::string get_last_error() const { return last_error; }
   gemmi::UnitCell get_cell() const { return grid.unit_cell; }
+  blob_wasm::BlobSearchResult* find_blobs(double cutoff, double min_volume,
+                                          double min_score, double min_peak,
+                                          bool negate, gemmi::Structure* st,
+                                          int model_index, double mask_radius,
+                                          bool mask_waters) const {
+    return blob_wasm::find_blobs(grid, cutoff, min_volume, min_score, min_peak,
+                                 negate, st, model_index, mask_radius, mask_waters);
+  }
 };
 
 bool has_valid_header_stats(const gemmi::DataStats& stats) {
@@ -118,11 +127,22 @@ private:
 };
 
 void add_map() {
+  em::class_<blob_wasm::BlobSearchResult>("BlobSearchResult")
+    .constructor<>()
+    .function("size", &blob_wasm::BlobSearchResult::size)
+    .function("centroids", &blob_wasm::BlobSearchResult::centroids)
+    .function("peak_positions", &blob_wasm::BlobSearchResult::peak_positions)
+    .function("scores", &blob_wasm::BlobSearchResult::scores)
+    .function("volumes", &blob_wasm::BlobSearchResult::volumes)
+    .function("peak_values", &blob_wasm::BlobSearchResult::peak_values)
+    ;
+
   em::class_<MapData>("MapData")
     .function("data", &MapData::data)
     .function("extract_isosurface", &MapData::extract_isosurface)
     .function("isosurface_vertices", &MapData::isosurface_vertices)
     .function("isosurface_segments", &MapData::isosurface_segments)
+    .function("find_blobs", &MapData::find_blobs, em::allow_raw_pointers())
     .property("nx", &MapData::get_nx)
     .property("ny", &MapData::get_ny)
     .property("nz", &MapData::get_nz)

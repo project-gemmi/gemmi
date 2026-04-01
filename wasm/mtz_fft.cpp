@@ -1,6 +1,7 @@
 // Copyright 2019 Global Phasing Ltd.
 
 #include "common.h"
+#include "blob_search.h"
 
 #define POCKETFFT_CACHE_SIZE 0
 #define POCKETFFT_NO_MULTITHREADING
@@ -88,6 +89,14 @@ public:
   double get_rms() const { return stats_.rms; }
   std::string get_last_error() const { return last_error_; }
   gemmi::UnitCell get_cell() const { return grid_.unit_cell; }
+  blob_wasm::BlobSearchResult* find_blobs(double cutoff, double min_volume,
+                                          double min_score, double min_peak,
+                                          bool negate, gemmi::Structure* st,
+                                          int model_index, double mask_radius,
+                                          bool mask_waters) const {
+    return blob_wasm::find_blobs(grid_, cutoff, min_volume, min_score, min_peak,
+                                 negate, st, model_index, mask_radius, mask_waters);
+  }
 
 private:
   gemmi::Grid<float> grid_;
@@ -203,6 +212,7 @@ void add_mtz_fft() {
     .function("extract_isosurface", &MtzMap::extract_isosurface)
     .function("isosurface_vertices", &MtzMap::isosurface_vertices)
     .function("isosurface_segments", &MtzMap::isosurface_segments)
+    .function("find_blobs", &MtzMap::find_blobs, em::allow_raw_pointers())
     .property("nx", &MtzMap::get_nx)
     .property("ny", &MtzMap::get_ny)
     .property("nz", &MtzMap::get_nz)

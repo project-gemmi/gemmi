@@ -16,6 +16,18 @@ HETATM    2  C2  LIG A   1       3.100   0.500   0.000  1.00 20.00           C
 END
 `;
 
+const SELECTION_PDB = `\
+CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1           1
+ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 20.00           N
+ATOM      2  CA  ALA A   1       1.200   0.000   0.000  1.00 20.00           C
+ATOM      3  N   GLY A   2       2.400   0.000   0.000  1.00 20.00           N
+ATOM      4  CA  GLY A   2       3.600   0.000   0.000  1.00 20.00           C
+ATOM      5  N   SER B   1       0.000   3.000   0.000  1.00 20.00           N
+ATOM      6  CA  SER B   1       1.200   3.000   0.000  1.00 20.00           C
+TER
+END
+`;
+
 function count_atoms_with_indices(st) {
   let occ_sum = 0.0;
   for (let model_idx = 0; model_idx < st.length; ++model_idx) {
@@ -113,6 +125,20 @@ function expectPositionClose(actual, expected, epsilon = 1e-6) {
   expect(Math.abs(actual[2] - expected[2])).toBeLessThan(epsilon);
 }
 
+function find_atom(st, predicate) {
+  for (let model of st) {
+    for (let chain of model) {
+      for (let residue of chain) {
+        for (let atom of residue) {
+          if (predicate(atom, residue, chain, model))
+            return atom;
+        }
+      }
+    }
+  }
+  throw new Error('atom not found');
+}
+
 function get_image_codes(images) {
   const codes = [];
   for (let i = 0; i < images.size(); ++i) {
@@ -164,6 +190,127 @@ test('exposes residue secondary structure from file', async () => {
     .toBe(gemmi.ResidueStrandSense.Antiparallel);
   expect(bySeqid.get('56C').strand_sense_from_file_string)
     .toBe('Antiparallel');
+
+  st.delete();
+});
+
+test('exposes atom metal classification', async () => {
+  const gemmi = await Gemmi();
+  const path = '../tests/4oz7.pdb';
+  const buffer = fs.readFileSync(path);
+  const st = gemmi.read_structure(buffer, path);
+
+  const copper = find_atom(st, (atom) => atom.element_uname === 'CU');
+  const carbon = find_atom(st, (atom, residue) =>
+    residue.name === 'ALA' && atom.name === 'CA');
+
+  expect(copper.is_metal).toBe(true);
+  expect(carbon.is_metal).toBe(false);
+
+  st.delete();
+});
+
+test('removes selected atoms, residues and chains by CID', async () => {
+  const gemmi = await Gemmi();
+
+  const atomStructure = gemmi.read_structure(Buffer.from(SELECTION_PDB), 'selection-atom.pdb');
+  const atomSelection = new gemmi.Selection('//A/1/N');
+  atomSelection.remove_selected(atomStructure);
+  expect(count_atoms_with_iterators(atomStructure)).toBe(5);
+  expect(atomStructure.at(0).at(0).at(0).length).toBe(1);
+  expect(atomStructure.at(0).at(0).at(0).at(0).name).toBe('CA');
+  atomSelection.delete();
+  atomStructure.delete();
+
+  const residueStructure = gemmi.read_structure(Buffer.from(SELECTION_PDB), 'selection-residue.pdb');
+  const residueSelection = new gemmi.Selection('//A/2');
+  residueSelection.remove_selected(residueStructure);
+  expect(count_atoms_with_iterators(residueStructure)).toBe(4);
+  expect(residueStructure.at(0).at(0).length).toBe(1);
+  expect(residueStructure.at(0).at(0).at(0).name).toBe('ALA');
+  residueSelection.delete();
+  residueStructure.delete();
+
+  const chainStructure = gemmi.read_structure(Buffer.from(SELECTION_PDB), 'selection-chain.pdb');
+  const chainSelection = new gemmi.Selection('//A');
+  chainSelection.remove_selected(chainStructure);
+  expect(chainStructure.at(0).length).toBe(1);
+  expect(chainStructure.at(0).at(0).name).toBe('B');
+  expect(count_atoms_with_iterators(chainStructure)).toBe(2);
+  chainSelection.delete();
+  chainStructure.delete();
+});
+
+test('keeps only selected chains with remove_not_selected', async () => {
+  const gemmi = await Gemmi();
+  const st = gemmi.read_structure(Buffer.from(SELECTION_PDB), 'selection-keep.pdb');
+  const sel = new gemmi.Selection('//B');
+
+  sel.remove_not_selected(st);
+  expect(st.at(0).length).toBe(1);
+  expect(st.at(0).at(0).name).toBe('B');
+  expect(st.at(0).at(0).length).toBe(1);
+  expect(count_atoms_with_iterators(st)).toBe(2);
+
+  sel.delete();
+  st.delete();
+});
+
+test('builds structure hierarchy with append methods and writable setters', async () => {
+  const gemmi = await Gemmi();
+
+  const st = new gemmi.Structure();
+  const model = new gemmi.Model();
+  const chain = new gemmi.Chain();
+  const water = new gemmi.Residue();
+  const oxygen = new gemmi.Atom();
+  const metalResidue = new gemmi.Residue();
+  const zinc = new gemmi.Atom();
+
+  model.num = 7;
+  chain.name = 'Z';
+
+  water.name = 'HOH';
+  water.seqid_string = '101B';
+  oxygen.name = 'O';
+  oxygen.element_uname = 'O';
+  oxygen.pos = [1.0, 2.0, 3.0];
+  water.add_atom(oxygen);
+
+  metalResidue.name = 'ZN';
+  metalResidue.set_seqid(102, 'A');
+  zinc.name = 'ZN';
+  zinc.set_element('zn');
+  zinc.pos = [4.0, 5.0, 6.0];
+  zinc.charge = 2;
+  metalResidue.add_atom(zinc);
+
+  chain.add_residue(water);
+  chain.add_residue(metalResidue);
+  model.add_chain(chain);
+  st.add_model(model);
+
+  oxygen.delete();
+  zinc.delete();
+  water.delete();
+  metalResidue.delete();
+  chain.delete();
+  model.delete();
+
+  expect(st.length).toBe(1);
+  expect(st.at(0).num).toBe(7);
+  expect(st.at(0).length).toBe(1);
+  expect(st.at(0).at(0).name).toBe('Z');
+  expect(st.at(0).at(0).length).toBe(2);
+  expect(st.at(0).at(0).at(0).seqid_string).toBe('101B');
+  expect(st.at(0).at(0).at(0).at(0).element_uname).toBe('O');
+  expectPositionClose(st.at(0).at(0).at(0).at(0).pos, [1.0, 2.0, 3.0]);
+  expect(st.at(0).at(0).at(1).seqid_string).toBe('102A');
+  expect(st.at(0).at(0).at(1).at(0).element_uname).toBe('ZN');
+  expectPositionClose(st.at(0).at(0).at(1).at(0).pos, [4.0, 5.0, 6.0]);
+  expect(st.at(0).at(0).at(1).at(0).charge).toBe(2);
+  expect(st.at(0).at(0).at(1).at(0).is_metal).toBe(true);
+  expect(count_atoms_with_iterators(st)).toBe(2);
 
   st.delete();
 });
