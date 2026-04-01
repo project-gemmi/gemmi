@@ -47,6 +47,7 @@ bool calculate_map_grid(const Mtz& mtz,
 
     out_grid.set_unit_cell(zyx_grid.unit_cell);
     out_grid.set_size(zyx_grid.nw, zyx_grid.nv, zyx_grid.nu);
+    out_grid.spacegroup = zyx_grid.spacegroup;
     for (int x = 0; x < out_grid.nu; ++x)
       for (int y = 0; y < out_grid.nv; ++y)
         for (int z = 0; z < out_grid.nw; ++z)
