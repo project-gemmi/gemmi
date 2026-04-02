@@ -307,6 +307,30 @@ struct ModRes {
   std::string details;
 };
 
+// Binding/catalytic site annotation from SITE or _struct_site.
+struct StructSite {
+  struct Member {
+    int residue_num = -1;  // _struct_site_gen.pdbx_num_res
+    std::string label_comp_id;
+    std::string label_asym_id;
+    SeqId::OptionalNum label_seq;
+    std::string label_atom_id;
+    char label_alt_id = '\0';
+    AtomAddress auth;
+    std::string symmetry;
+    std::string details;
+  };
+  std::string name;
+  std::string evidence_code;
+  AtomAddress residue;  // residue-level auth_* from _struct_site
+  int residue_count = -1;  // _struct_site.pdbx_num_residues
+  std::string details;
+  std::vector<Member> members;
+
+  StructSite() = default;
+  explicit StructSite(const std::string& name_) noexcept : name(name_) {}
+};
+
 // Secondary structure. PDBx/mmCIF stores helices and sheets separately.
 
 // mmCIF spec defines 32 possible values for _struct_conf.conf_type_id -

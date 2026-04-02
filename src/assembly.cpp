@@ -266,6 +266,24 @@ void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
   if (mapping.how == HowToNameCopiedChain::Dup)
     return;
 
+  // sites
+  std::vector<StructSite> new_sites;
+  new_sites.reserve(st.sites.size() * mapping.chain_maps.size());
+  for (const StructSite& site : st.sites) {
+    bool first = true;
+    for (const ChainMap& chain_map : mapping.chain_maps) {
+      new_sites.push_back(site);
+      StructSite& new_site = new_sites.back();
+      if (!first && !chain_map.id.empty())
+        cat_to(new_site.name, '.', chain_map.id);
+      update_address(new_site.residue, chain_map);
+      for (StructSite::Member& member : new_site.members)
+        update_address(member.auth, chain_map);
+      first = false;
+    }
+  }
+  st.sites = std::move(new_sites);
+
   // cispeps
   std::vector<CisPep> new_cispeps;
   new_cispeps.reserve(st.cispeps.size() * mapping.chain_maps.size());

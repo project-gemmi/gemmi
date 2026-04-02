@@ -48,6 +48,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     DEF_BIT_PROPERTY(assembly)
     DEF_BIT_PROPERTY(conn)
     DEF_BIT_PROPERTY(cis)
+    DEF_BIT_PROPERTY(struct_site)
     DEF_BIT_PROPERTY(scale)
     DEF_BIT_PROPERTY(atom_type)
     DEF_BIT_PROPERTY(entity_poly_seq)

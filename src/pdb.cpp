@@ -766,6 +766,89 @@ void process_conn(Structure& st, const std::vector<std::string>& conn_records) {
   }
 }
 
+bool set_site_residue_from_description(StructSite& site) {
+  if (!site.residue.chain_name.empty() || site.details.empty())
+    return false;
+  std::vector<std::string> tokens = split_str_multi(site.details);
+  if (tokens.size() < 7 || to_lower(tokens[0]) != "binding" ||
+      to_lower(tokens[1]) != "site" || to_lower(tokens[2]) != "for" ||
+      to_lower(tokens[3]) != "residue")
+    return false;
+  site.residue.res_id.name = tokens[4];
+  site.residue.chain_name = tokens[5];
+  try {
+    site.residue.res_id.seqid = SeqId(tokens[6]);
+  } catch (std::invalid_argument&) {
+    site.residue = AtomAddress{};
+    return false;
+  }
+  return true;
+}
+
+void read_site_remarks(Structure& st) {
+  StructSite* site = nullptr;
+  std::string* continuation = nullptr;
+  for (const std::string& remark : st.raw_remarks) {
+    if (remark.size() <= 10 || read_int(remark.c_str() + 7, 3) != 800)
+      continue;
+    std::string text = trim_str(remark.substr(10));
+    bool new_key = starts_with(text, "SITE_IDENTIFIER:") ||
+                   starts_with(text, "EVIDENCE_CODE:") ||
+                   starts_with(text, "SITE_DESCRIPTION:");
+    if (continuation != nullptr && !text.empty() && text != "SITE" && !new_key) {
+      if (!continuation->empty())
+        *continuation += ' ';
+      *continuation += text;
+      if (site)
+        set_site_residue_from_description(*site);
+      continue;
+    }
+    continuation = nullptr;
+    if (text.empty() || text == "SITE")
+      continue;
+    if (starts_with(text, "SITE_IDENTIFIER:")) {
+      site = &impl::find_or_add(st.sites, trim_str(text.substr(16)));
+    } else if (site != nullptr && starts_with(text, "EVIDENCE_CODE:")) {
+      site->evidence_code = trim_str(text.substr(14));
+    } else if (site != nullptr && starts_with(text, "SITE_DESCRIPTION:")) {
+      site->details = trim_str(text.substr(17));
+      continuation = &site->details;
+      set_site_residue_from_description(*site);
+    }
+  }
+}
+
+void process_sites(Structure& st, const std::vector<std::string>& site_records) {
+  for (const std::string& record : site_records) {
+    if (record.length() < 17)
+      continue;
+    StructSite& site = impl::find_or_add(st.sites, read_string(record.c_str() + 11, 3));
+    int num_res = read_int(record.c_str() + 15, 2);
+    if (num_res > 0)
+      site.residue_count = std::max(site.residue_count, num_res);
+    for (int i = 0; i != 4; ++i) {
+      int offset = 18 + 11 * i;
+      if ((size_t) offset >= record.length())
+        break;
+      std::string res_name = read_string(record.c_str() + offset, 3);
+      if (res_name.empty())
+        continue;
+      site.members.emplace_back();
+      StructSite::Member& member = site.members.back();
+      member.residue_num = (int) site.members.size();
+      member.auth.chain_name = read_string(record.c_str() + offset + 4, 2);
+      char seq_id[6] = {' ', ' ', ' ', ' ', ' ', '\0'};
+      if ((size_t) offset + 5 < record.length())
+        std::memcpy(seq_id, record.c_str() + offset + 5,
+                    std::min((size_t) 5, record.length() - offset - 5));
+      member.auth.res_id = read_res_id(seq_id, record.c_str() + offset);
+    }
+  }
+  for (StructSite& site : st.sites)
+    if (site.residue_count < 0 && !site.members.empty())
+      site.residue_count = (int) site.members.size();
+}
+
 // move initials after comma, as in mmCIF (A.-B.DOE -> DOE, A.-B.), see
 // https://www.wwpdb.org/documentation/file-format-content/format33/sect2.html#AUTHOR
 void change_author_name_format_to_mmcif(std::string& name) {
@@ -881,6 +964,7 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
   st.name = path_basename(source, {".gz", ".pdb"});
   Transform matrix;
   std::vector<std::string> conn_records;
+  std::vector<std::string> site_records;
   std::unordered_map<ResidueId, int> resmap;
   Model *model = nullptr;
   Chain *chain = nullptr;
@@ -1049,6 +1133,9 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
                is_record_type4(line, "LINK") ||
                is_record_type4(line, "CISPEP")) {
       conn_records.emplace_back(line);
+
+    } else if (is_record_type4(line, "SITE")) {
+      site_records.emplace_back(line);
 
     } else if (is_record_type3(line, "TER") && !options.ignore_ter) { // finishes polymer chains
       if (!chain || st.ter_status == 'e')
@@ -1249,6 +1336,9 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
   st.setup_cell_images();
 
   process_conn(st, conn_records);
+  if (!options.skip_remarks)
+    read_site_remarks(st);
+  process_sites(st, site_records);
 
   for (std::string& name : st.meta.authors)
     change_author_name_format_to_mmcif(name);

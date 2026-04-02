@@ -118,6 +118,76 @@ void write_multiline(std::ostream& os, const char* record_name,
   }
 }
 
+void write_prefixed_multiline(std::ostream& os, const char* first_prefix,
+                              const char* cont_prefix,
+                              const std::string& text) {
+  if (text.empty())
+    return;
+  char buf[88];
+  int first_len = (int) std::strlen(first_prefix);
+  int cont_len = (int) std::strlen(cont_prefix);
+  const char* start = text.c_str();
+  const char* end = find_last_break(start, 80 - first_len);
+  WRITELN("%s%.*s", first_prefix, static_cast<int>(end - start), start);
+  while (*end != '\0') {
+    start = end;
+    end = find_last_break(start, 80 - cont_len);
+    WRITELN("%s%.*s", cont_prefix, static_cast<int>(end - start), start);
+  }
+}
+
+std::string site_details_or_fallback(const StructSite& site) {
+  if (!site.details.empty())
+    return site.details;
+  if (!site.residue.chain_name.empty() && !site.residue.res_id.name.empty() &&
+      site.residue.res_id.seqid.num)
+    return cat("binding site for residue ", site.residue.res_id.name, ' ',
+               site.residue.chain_name, ' ', site.residue.res_id.seqid.str());
+  return std::string();
+}
+
+void write_site_remarks(const Structure& st, std::ostream& os) {
+  if (st.sites.empty())
+    return;
+  char buf[88];
+  WRITE("%-80s", "REMARK 800");
+  WRITE("%-80s", "REMARK 800 SITE");
+  for (const StructSite& site : st.sites) {
+    WRITE("%-80s", "REMARK 800");
+    WRITELN("REMARK 800 SITE_IDENTIFIER: %s", site.name.c_str());
+    if (!site.evidence_code.empty())
+      WRITELN("REMARK 800 EVIDENCE_CODE: %s", site.evidence_code.c_str());
+    std::string details = site_details_or_fallback(site);
+    if (!details.empty())
+      write_prefixed_multiline(os, "REMARK 800 SITE_DESCRIPTION: ",
+                               "REMARK 800  ", details);
+  }
+}
+
+void write_site_records(const Structure& st, std::ostream& os) {
+  char buf[88];
+  for (const StructSite& site : st.sites) {
+    int total = site.residue_count > 0 ? site.residue_count : (int) site.members.size();
+    int counter = 0;
+    for (size_t i = 0; i < site.members.size(); i += 4) {
+      int n = snprintf_z(buf, 82, "SITE %5d %3.3s%3d", ++counter,
+                         site.name.c_str(), total);
+      for (size_t j = i; j < site.members.size() && j < i + 4; ++j) {
+        const StructSite::Member& member = site.members[j];
+        std::array<char,8> seq = write_seq_id(member.auth.res_id.seqid);
+        n += snprintf_z(buf + n, 82 - n, " %3.3s%2s%5s",
+                        member.auth.res_id.name.c_str(),
+                        member.auth.chain_name.c_str(),
+                        member.auth.res_id.seqid.num ? seq.data() : "");
+      }
+      if (n < 80)
+        std::memset(buf + n, ' ', 80 - n);
+      buf[80] = '\n';
+      os.write(buf, 81);
+    }
+  }
+}
+
 void write_ncs_op(const NcsOp& op, std::ostream& os) {
   char buf[88];
   for (int i = 0; i < 3; ++i) {
@@ -206,6 +276,7 @@ void write_remarks(const Structure& st, std::ostream& os) {
       }
     }
   }
+  write_site_remarks(st, os);
 }
 
 void write_chain_atoms(const Chain& chain, std::ostream& os,
@@ -639,6 +710,9 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
           counter = 0;
       }
     }
+
+    if (!opt.minimal_file && !st.sites.empty())
+      write_site_records(st, os);
   }
 
   // CRYST1

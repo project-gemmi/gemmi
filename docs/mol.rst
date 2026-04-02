@@ -284,7 +284,8 @@ We support the following extensions (by default):
 
 Gemmi interprets more PDB records than most programs and libraries,
 but supporting all the records is not a goal.
-The records that are interpreted can be converted from/to mmCIF:
+The following interpreted records can also be converted between PDB
+and mmCIF, unless noted otherwise:
 
 - HEADER
 - TITLE
@@ -298,6 +299,7 @@ The records that are interpreted can be converted from/to mmCIF:
 - REMARK 290 (partly-read, but not by default)
 - REMARK 300 (read-only)
 - REMARK 350
+- REMARK 800 / SITE
 - DBREF/DBREF1/DBREF2
 - SEQRES
 - MODRES
@@ -717,7 +719,8 @@ When a structure is read from the PDB format, **REMARK** records are stored
 in `Structure.raw_remarks`. A subset of them
 (as listed :ref:`above <supported_records>`) is parsed and interpreted,
 but a much smaller subset can be generated -- currently, only
-REMARK 2 (from `Structure.resolution`) and 350 (from `Structure.assemblies`).
+REMARK 2 (from `Structure.resolution`), 350 (from `Structure.assemblies`)
+and 800 (from `Structure.sites`).
 When writing a PDB file, if `raw_remarks` are present, they are copied
 to the file and no other REMARKs are added.
 To avoid copying REMARKs from the input, remove them before writing a file:
@@ -1158,6 +1161,9 @@ the `Structure` has the following properties:
 * `connections` (C++ type: `vector<Connection>`) -- list of connections
   corresponding to the _struct_conn category in mmCIF, or to the pdb records
   LINK and SSBOND,
+* `sites` (C++ type: `vector<StructSite>`) -- binding or catalytic site
+  annotations corresponding to mmCIF categories _struct_site and
+  _struct_site_gen, or to the PDB SITE records and REMARK 800 text,
 * `assemblies` (C++ type: `vector<Assembly>`) -- list of biological
   assemblies defined in the REMARK 350 in pdb, or in corresponding mmCIF
   categories (_pdbx_struct_assembly, _pdbx_struct_assembly_gen,
@@ -1696,6 +1702,64 @@ there are two convenience functions in `gemmi/assembly.hpp`:
 The section about :ref:`AtomAddress <atom_address>`
 has an example that shows how to create a new connection.
 
+Site annotation
+---------------
+
+Binding or catalytic site annotations are stored in `Structure.sites`.
+They are read from PDB SITE records together with matching REMARK 800 text,
+or from mmCIF categories _struct_site and _struct_site_gen.
+
+Each `StructSite` contains:
+
+* `name` -- site identifier such as `AC1`,
+* `evidence_code` and `details` -- text from REMARK 800 or _struct_site,
+* `residue` -- an auth-style residue-level address for the central site,
+* `members` -- residues (and optionally atoms) that belong to the site.
+
+When the input is mmCIF, each member may also have label identifiers
+(`label_comp_id`, `label_asym_id`, `label_seq`, `label_atom_id`)
+and symmetry code.
+
+.. doctest::
+
+  >>> st = gemmi.read_structure('../tests/5moo_header.pdb')
+  >>> [site.name for site in st.sites]
+  ['AC1', 'AC2', 'AC3']
+  >>> site = st.sites[0]
+  >>> site
+  <gemmi.StructSite AC1 with 6 members>
+  >>> site.evidence_code
+  'SOFTWARE'
+  >>> site.residue
+  <gemmi.AtomAddress A/CA 301/>
+  >>> site.members[0]
+  <gemmi.StructSite.Member #1 A/GLU 70/>
+
+The Python bindings also allow creating and appending site annotations:
+
+.. doctest::
+
+  >>> site = gemmi.StructSite()
+  >>> site.name = 'ZZ1'
+  >>> site.evidence_code = 'Software'
+  >>> site.residue = gemmi.AtomAddress('A', gemmi.SeqId('301'), 'CA', '')
+  >>> member = gemmi.StructSite.Member()
+  >>> member.residue_num = 1
+  >>> member.auth = gemmi.AtomAddress('A', gemmi.SeqId('70'), 'GLU', '')
+  >>> site.members.append(member)
+  >>> st.sites.append(site)
+  >>> list(st.make_mmcif_block().find_values('_struct_site.id'))[-1]
+  'ZZ1'
+
+To omit site annotations from generated mmCIF output, disable the
+`struct_site` group:
+
+.. doctest::
+
+  >>> groups = gemmi.MmcifOutputGroups(True, struct_site=False)
+  >>> list(st.make_mmcif_block(groups).find_values('_struct_site.id'))
+  []
+
 Assembly
 --------
 
@@ -1712,6 +1776,7 @@ Class Assembly has a list of generators and couple of properties:
 
 .. doctest::
 
+  >>> st = gemmi.read_structure('../tests/4oz7.pdb')
   >>> for assembly in st.assemblies:
   ...   print(assembly.name)
   1

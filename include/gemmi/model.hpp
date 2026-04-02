@@ -916,6 +916,7 @@ struct Structure {
   std::vector<Connection> connections;
   std::vector<CisPep> cispeps;
   std::vector<ModRes> mod_residues;
+  std::vector<StructSite> sites;
   std::vector<Helix> helices;
   std::vector<Sheet> sheets;
   std::vector<Assembly> assemblies;
@@ -1065,6 +1066,7 @@ struct Structure {
     st.connections = connections;
     st.cispeps = cispeps;
     st.mod_residues = mod_residues;
+    st.sites = sites;
     st.helices = helices;
     st.sheets = sheets;
     st.assemblies = assemblies;

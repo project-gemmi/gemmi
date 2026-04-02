@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
 #include "common.h"
+#include "meta.h"
 #include <nanobind/operators.h>
 #include <nanobind/stl/bind_vector.h>
 #include <nanobind/stl/string.h>
@@ -10,7 +11,6 @@
 #include "gemmi/metadata.hpp"
 #include "gemmi/enumstr.hpp"
 #include "gemmi/sprintf.hpp"
-#include "meta.h"
 
 using namespace gemmi;
 
@@ -181,6 +181,41 @@ void add_meta(nb::module_& m) {
     .def_rw("mod_id", &ModRes::mod_id)
     .def_rw("details", &ModRes::details)
     ;
+
+  nb::class_<StructSite> site(m, "StructSite");
+  nb::class_<StructSite::Member>(site, "Member")
+    .def(nb::init<>())
+    .def_rw("residue_num", &StructSite::Member::residue_num)
+    .def_rw("label_comp_id", &StructSite::Member::label_comp_id)
+    .def_rw("label_asym_id", &StructSite::Member::label_asym_id)
+    .def_rw("label_seq", &StructSite::Member::label_seq, nb::arg().none())
+    .def_rw("label_atom_id", &StructSite::Member::label_atom_id)
+    .def_rw("label_alt_id", &StructSite::Member::label_alt_id)
+    .def_rw("auth", &StructSite::Member::auth)
+    .def_rw("symmetry", &StructSite::Member::symmetry)
+    .def_rw("details", &StructSite::Member::details)
+    .def("__repr__", [](const StructSite::Member& self) {
+        return cat("<gemmi.StructSite.Member #", std::to_string(self.residue_num),
+                   ' ', self.auth.str(), '>');
+    })
+    ;
+  nb::bind_vector<std::vector<StructSite::Member>, rv_ri>(site, "MemberList");
+
+  site
+    .def(nb::init<>())
+    .def(nb::init<const std::string&>())
+    .def_rw("name", &StructSite::name)
+    .def_rw("evidence_code", &StructSite::evidence_code)
+    .def_rw("residue", &StructSite::residue)
+    .def_rw("residue_count", &StructSite::residue_count)
+    .def_rw("details", &StructSite::details)
+    .def_rw("members", &StructSite::members)
+    .def("__repr__", [](const StructSite& self) {
+        return cat("<gemmi.StructSite ", self.name, " with ",
+                   std::to_string(self.members.size()), " members>");
+    })
+    ;
+  nb::bind_vector<std::vector<StructSite>, rv_ri>(m, "StructSiteList");
 
   nb::class_<Helix> helix(m, "Helix");
   nb::enum_<Helix::HelixClass>(helix, "HelixClass")

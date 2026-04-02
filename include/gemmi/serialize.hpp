@@ -130,6 +130,11 @@ SERIALIZE(Assembly::Operator, o.name, o.type, o.transform)
 SERIALIZE(Assembly::Gen, o.chains, o.subchains, o.operators)
 
 SERIALIZE(ResidueId, o.seqid, o.segment, o.name)
+SERIALIZE(StructSite::Member, o.residue_num, o.label_comp_id, o.label_asym_id,
+          o.label_seq, o.label_atom_id, o.label_alt_id, o.auth,
+          o.symmetry, o.details)
+SERIALIZE(StructSite, o.name, o.evidence_code, o.residue, o.residue_count,
+          o.details, o.members)
 
 SERIALIZE(Atom, o.name, o.altloc, o.charge, o.element, o.calc_flag,
           o.flag, o.tls_group_id, o.serial, o.fraction, o.pos,
@@ -162,7 +167,7 @@ SERIALIZE(ChemComp, o.name, o.type_or_group, o.group, o.has_coordinates,
 
 SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.ncs, o.entities, o.connections, o.cispeps, o.mod_residues,
-          o.helices, o.sheets, o.assemblies, o.conect_map, o.meta,
+          o.sites, o.helices, o.sheets, o.assemblies, o.conect_map, o.meta,
           o.input_format, o.has_d_fraction, o.non_ascii_line, o.ter_status,
           o.has_origx, o.origx, o.info, o.chemcomps, o.shortened_ccd_codes,
           o.raw_remarks, o.resolution)

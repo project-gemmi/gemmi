@@ -113,7 +113,7 @@ inline void assign_serial_numbers(Structure& st, bool numbered_ter=false) {
 
 /// Helper function for processing (usually: changing) names and numbers
 /// in AtomAddress instances in metadata:
-/// Connection, CisPep, Helix, Sheet::Strand.
+/// Connection, CisPep, StructSite, Helix, Sheet::Strand.
 /// Other fields are not updated here, in particular: ModRes, Entity::DbRef,
 /// Entity::full_sequence, TlsGroup::Selection.
 template<typename Func>
@@ -125,6 +125,11 @@ void process_addresses(Structure& st, Func func) {
   for (CisPep& cispep : st.cispeps) {
     func(cispep.partner_c);
     func(cispep.partner_n);
+  }
+  for (StructSite& site : st.sites) {
+    func(site.residue);
+    for (StructSite::Member& member : site.members)
+      func(member.auth);
   }
   for (Helix& helix : st.helices) {
     func(helix.start);
@@ -180,6 +185,10 @@ inline void rename_residues(Structure& st, const std::string& old_name,
       rid.name = new_name;
   };
   process_addresses(st, [&](AtomAddress& aa) { update(aa.res_id); });
+  for (StructSite& site : st.sites)
+    for (StructSite::Member& member : site.members)
+      if (member.label_comp_id == old_name)
+        member.label_comp_id = new_name;
   for (ModRes& modres : st.mod_residues)
     update(modres.res_id);
   for (Entity& ent : st.entities)

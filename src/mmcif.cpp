@@ -346,6 +346,68 @@ void read_struct_mod_residue(cif::Block& block, Structure& st) {
   }
 }
 
+void read_struct_sites(cif::Block& block, Structure& st) {
+  for (auto row : block.find("_struct_site.",
+                             {"id", "?pdbx_evidence_code",
+                              "?pdbx_auth_asym_id", "?pdbx_auth_comp_id",
+                              "?pdbx_auth_seq_id", "?pdbx_auth_ins_code",
+                              "?pdbx_num_residues", "?details"})) {
+    StructSite& site = impl::find_or_add(st.sites, row.str(0));
+    copy_string(row, 1, site.evidence_code);
+    if (row.has2(2))
+      site.residue.chain_name = row.str(2);
+    if (row.has2(3))
+      site.residue.res_id.name = row.str(3);
+    if (row.has2(4))
+      site.residue.res_id.seqid = make_seqid(row.str(4), row.ptr_at(5));
+    if (row.has2(6))
+      site.residue_count = cif::as_int(row[6], -1);
+    copy_string(row, 7, site.details);
+  }
+
+  for (auto row : block.find("_struct_site_gen.",
+                             {"site_id", "?pdbx_num_res",
+                              "?label_comp_id", "?label_asym_id",
+                              "?label_seq_id", "?pdbx_auth_ins_code",
+                              "?auth_comp_id", "?auth_asym_id",
+                              "?auth_seq_id", "?label_atom_id",
+                              "?label_alt_id", "?auth_atom_id",
+                              "?symmetry", "?details"})) {
+    StructSite& site = impl::find_or_add(st.sites, row.str(0));
+    site.members.emplace_back();
+    StructSite::Member& member = site.members.back();
+    if (row.has2(1))
+      member.residue_num = cif::as_int(row[1], -1);
+    copy_string(row, 2, member.label_comp_id);
+    copy_string(row, 3, member.label_asym_id);
+    if (row.has2(4))
+      member.label_seq = cif::as_int(row[4], SeqId::OptionalNum::None);
+    copy_string(row, 9, member.label_atom_id);
+    if (row.has2(10))
+      member.label_alt_id = cif::as_char(row[10], '\0');
+    if (row.has2(11))
+      member.auth.atom_name = row.str(11);
+    if (member.label_alt_id != '\0' && !member.auth.atom_name.empty())
+      member.auth.altloc = member.label_alt_id;
+    copy_string(row, 12, member.symmetry);
+    copy_string(row, 13, member.details);
+    if (row.has2(6))
+      member.auth.res_id.name = row.str(6);
+    else if (row.has2(2))
+      member.auth.res_id.name = row.str(2);
+    if (row.has2(7))
+      member.auth.chain_name = row.str(7);
+    if (row.has2(8))
+      member.auth.res_id.seqid = make_seqid(row.str(8), row.ptr_at(5));
+    else if (!st.models.empty() && row.has2(3) && row.has2(4))
+      set_part_of_address_from_label(member.auth, st.models[0], row.str(3), row.str(4));
+  }
+
+  for (StructSite& site : st.sites)
+    if (site.residue_count < 0 && !site.members.empty())
+      site.residue_count = (int) site.members.size();
+}
+
 // Operation expression is an item type used for *.oper_expression.
 // Here, to keep it simple, we ignore products such as "(2)(3)".
 // We parse "3", "1,3,5", "one,two", "(3)", "(a)", "(1-60)", "(2,3-8,XY)", etc
@@ -1099,6 +1161,7 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
   read_connectivity(block, st);
   read_prot_cis(block, st);
   read_struct_mod_residue(block, st);
+  read_struct_sites(block, st);
   st.assemblies = read_assemblies(block);
   read_sifts_unp(block, st);
   read_chemcomp_info(block, st);

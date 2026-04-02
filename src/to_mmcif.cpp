@@ -58,6 +58,47 @@ inline std::string qchain(const std::string& s) {
   return cif::quote(s);
 }
 
+struct SiteRef {
+  const Chain* chain = nullptr;
+  const Residue* residue = nullptr;
+  const Atom* atom = nullptr;
+};
+
+SiteRef find_site_ref(const Model& model, const AtomAddress& addr) {
+  const_CRA cra = model.find_cra(addr, true);
+  return {cra.chain, cra.residue, cra.atom};
+}
+
+SiteRef find_site_ref(const Model& model, const StructSite::Member& member) {
+  if (!member.auth.chain_name.empty()) {
+    const_CRA cra = model.find_cra(member.auth, true);
+    if (cra.residue)
+      return {cra.chain, cra.residue, cra.atom};
+  }
+  if (!member.label_asym_id.empty())
+    for (const Chain& chain : model.chains)
+      if (ConstResidueSpan sub = chain.get_subchain(member.label_asym_id))
+        for (const Residue& res : sub)
+          if ((!member.label_seq || res.label_seq == member.label_seq) &&
+              (member.label_comp_id.empty() || res.name == member.label_comp_id)) {
+            const Atom* atom = nullptr;
+            if (!member.label_atom_id.empty())
+              atom = res.find_atom(member.label_atom_id, member.label_alt_id);
+            return {&chain, &res, atom};
+          }
+  return {};
+}
+
+std::string site_details_or_fallback(const StructSite& site) {
+  if (!site.details.empty())
+    return site.details;
+  if (!site.residue.chain_name.empty() && !site.residue.res_id.name.empty() &&
+      site.residue.res_id.seqid.num)
+    return cat("binding site for residue ", site.residue.res_id.name, ' ',
+               site.residue.chain_name, ' ', site.residue.res_id.seqid.str());
+  return std::string();
+}
+
 
 void add_cif_atoms(const Structure& st, cif::Block& block,
                    bool use_group_pdb, bool auth_all) {
@@ -454,6 +495,94 @@ void write_cispeps(const Structure& st, cif::Block& block) {
     v.emplace_back(pdbx_icode(cispep.partner_n.res_id));  // pdbx_PDB_ins_code_2
     v.emplace_back(1, cispep.only_altloc ? cispep.only_altloc : '.');
     v.emplace_back(number_or_qmark(cispep.reported_angle));
+  }
+}
+
+void write_struct_sites(const Structure& st, cif::Block& block) {
+  cif::Loop& site_loop = block.init_mmcif_loop("_struct_site.",
+      {"id", "pdbx_evidence_code", "pdbx_auth_asym_id",
+       "pdbx_auth_comp_id", "pdbx_auth_seq_id", "pdbx_auth_ins_code",
+       "pdbx_num_residues", "details"});
+  bool use_auth_atom_id = false;
+  for (const StructSite& site : st.sites)
+    for (const StructSite::Member& member : site.members)
+      if (!member.auth.atom_name.empty())
+        use_auth_atom_id = true;
+  cif::Loop& gen_loop = block.init_mmcif_loop("_struct_site_gen.",
+      {"id", "site_id", "pdbx_num_res", "label_comp_id",
+       "label_asym_id", "label_seq_id", "pdbx_auth_ins_code",
+       "auth_comp_id", "auth_asym_id", "auth_seq_id",
+       "label_atom_id", "label_alt_id", "symmetry", "details"});
+  if (use_auth_atom_id)
+    gen_loop.tags.insert(gen_loop.tags.begin() + 10, "_struct_site_gen.auth_atom_id");
+
+  int row_id = 0;
+  for (const StructSite& site : st.sites) {
+    SiteRef site_ref;
+    if (!st.models.empty() && !site.residue.chain_name.empty())
+      site_ref = find_site_ref(st.models[0], site.residue);
+    const Residue* site_res = site_ref.residue;
+    const Chain* site_chain = site_ref.chain;
+    std::string auth_chain = !site.residue.chain_name.empty() ? site.residue.chain_name
+                                                              : (site_chain ? site_chain->name : "");
+    std::string auth_comp = !site.residue.res_id.name.empty() ? site.residue.res_id.name
+                                                              : (site_res ? site_res->name : "");
+    SeqId auth_seq = site.residue.res_id.seqid;
+    if (!auth_seq.num && site_res)
+      auth_seq = site_res->seqid;
+    int site_size = site.residue_count > 0 ? site.residue_count : (int) site.members.size();
+    site_loop.add_values({string_or_qmark(site.name),
+                          string_or_qmark(site.evidence_code),
+                          string_or_qmark(auth_chain),
+                          string_or_qmark(auth_comp),
+                          auth_seq.num.str(),
+                          pdbx_icode(auth_seq),
+                          int_or_qmark(site_size),
+                          string_or_qmark(site_details_or_fallback(site))});
+
+    int ordinal = 0;
+    for (const StructSite::Member& member : site.members) {
+      ++ordinal;
+      SiteRef ref;
+      if (!st.models.empty())
+        ref = find_site_ref(st.models[0], member);
+      const Residue* res = ref.residue;
+      const Chain* chain = ref.chain;
+      const Atom* atom = ref.atom;
+      std::string label_comp = res ? res->name : member.label_comp_id;
+      std::string label_asym = res ? res->subchain : member.label_asym_id;
+      SeqId::OptionalNum label_seq = res ? res->label_seq : member.label_seq;
+      std::string row_auth_comp = !member.auth.res_id.name.empty() ? member.auth.res_id.name
+                                                                   : (!label_comp.empty() ? label_comp : (res ? res->name : ""));
+      std::string row_auth_chain = !member.auth.chain_name.empty() ? member.auth.chain_name
+                                                                   : (chain ? chain->name : "");
+      SeqId row_auth_seq = member.auth.res_id.seqid;
+      if (!row_auth_seq.num && res)
+        row_auth_seq = res->seqid;
+      std::string label_atom = !member.label_atom_id.empty() ? member.label_atom_id
+                                                             : (!member.auth.atom_name.empty() && atom ? atom->name : "");
+      char label_alt = member.label_alt_id ? member.label_alt_id
+                                           : (!member.auth.atom_name.empty() && atom ? atom->altloc_or('\0') : '\0');
+      std::vector<std::string> values = {
+        std::to_string(++row_id),
+        string_or_qmark(site.name),
+        std::to_string(member.residue_num != -1 ? member.residue_num : ordinal),
+        string_or_qmark(label_comp),
+        string_or_dot(label_asym),
+        label_seq.str('.'),
+        pdbx_icode(row_auth_seq),
+        string_or_qmark(row_auth_comp),
+        string_or_qmark(row_auth_chain),
+        row_auth_seq.num.str()
+      };
+      if (use_auth_atom_id)
+        values.push_back(string_or_qmark(member.auth.atom_name));
+      values.push_back(string_or_dot(label_atom));
+      values.emplace_back(1, label_alt ? label_alt : '?');
+      values.push_back(string_or_qmark(member.symmetry.empty() ? "1_555" : member.symmetry));
+      values.push_back(string_or_qmark(member.details));
+      gen_loop.add_values(values);
+    }
   }
 }
 
@@ -1158,6 +1287,9 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         loop.values.push_back(string_or_qmark(modres.mod_id));
     }
   }
+
+  if (groups.struct_site && !st.sites.empty())
+    write_struct_sites(st, block);
 
   // _atom_sites (SCALE)
   if (groups.scale && (nontrivial_origx || st.cell.explicit_matrices)) {
