@@ -19,6 +19,19 @@ fi
 if [ -z "${PYTHON-}" ]; then
     PYTHON=python3
 fi
+if [ -z "${CXX-}" ]; then
+    CXX=`grep '^CMAKE_CXX_COMPILER:' $BUILD_DIR/CMakeCache.txt | cut -d= -f2`
+fi
+if [ -z "${CXX-}" ]; then
+    CXX=c++
+fi
+if grep -q '^BUILD_SHARED_LIBS:BOOL=ON' $BUILD_DIR/CMakeCache.txt; then
+    GEMMI_CPP_LIB=$BUILD_DIR/libgemmi_cpp.so
+    GEMMI_CPP_RPATH="-Wl,-rpath=$BUILD_DIR"
+else
+    GEMMI_CPP_LIB=$BUILD_DIR/libgemmi_cpp.a
+    GEMMI_CPP_RPATH=
+fi
 
 # Build all, except when we called with an option to avoid full compilation:
 #  G - only build the program,
@@ -40,7 +53,7 @@ if [ $# != 0 ] && [ $1 = n ]; then
     shift
 else
     (cd $BUILD_DIR && make -j all check)
-    ./tools/cmp-size.py build/gemmi build/libgemmi_cpp.so build/py/gemmi/gemmi_ext*
+    ./tools/cmp-size.py build/gemmi $GEMMI_CPP_LIB build/py/gemmi/gemmi_ext*
     ./tools/docs-help.sh
 fi
 
@@ -88,9 +101,11 @@ fi
 
 if [ $1 = m -o $1 = a ]; then
     echo 'Creating, compiling and removing test_mmdb{1,2}.cpp'
+    mmdb_lto=`sed -n 's/^CXX_FLAGS = //p' $BUILD_DIR/CMakeFiles/gemmi_cpp.dir/flags.make |
+              tr ' ' '\n' | grep '^-flto' | tr '\n' ' ' ||:`
     echo 'Example 1: gemmi -> mmdb'
-    cmd1="c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb1.cpp \
-        -lmmdb2 -Lbuild -lgemmi_cpp -lz -Wl,-rpath=build -o test_mmdb1"
+    cmd1="$CXX $mmdb_lto -O -Wall -Wextra -pedantic -Wshadow -Iinclude \
+        test_mmdb1.cpp -lmmdb2 $GEMMI_CPP_LIB -lz $GEMMI_CPP_RPATH -o test_mmdb1"
     awk '/Example 1/,/^}/' include/gemmi/mmdb.hpp > test_mmdb1.cpp
     ${cmd1}
     echo "Converting tests/1orc.pdb to /tmp/example1.pdb"
@@ -99,8 +114,8 @@ if [ $1 = m -o $1 = a ]; then
     awk '/Example 2/,/^}/' include/gemmi/mmdb.hpp > test_mmdb2.cpp
     echo "Converting tests/1orc.pdb to /tmp/example1.pdb"
     ./test_mmdb1 tests/1orc.pdb /tmp/example1.pdb
-    cmd2="c++ -O -Wall -Wextra -pedantic -Wshadow -Iinclude test_mmdb2.cpp \
-        -lmmdb2 -Lbuild -lgemmi_cpp -lz -Wl,-rpath=build -o test_mmdb2"
+    cmd2="$CXX $mmdb_lto -O -Wall -Wextra -pedantic -Wshadow -Iinclude \
+        test_mmdb2.cpp -lmmdb2 $GEMMI_CPP_LIB -lz $GEMMI_CPP_RPATH -o test_mmdb2"
     ${cmd2}
     echo "Converting tests/1orc.pdb to /tmp/example2.pdb"
     ./test_mmdb2 tests/1orc.pdb /tmp/example2.pdb

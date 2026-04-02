@@ -229,7 +229,7 @@ a gzipped file (uncompressing it on the fly) or from a memory buffer.
 
 This is done by using polymorphic input classes with virtual methods
 for reading bytes or words or lines. Gemmi supports both text-based file formats
-(PDB, CIF, XDS ACII, mmJSON) and binary ones (MRC/CCP4, MTZ).
+(PDB, CIF, XDS ASCII, mmJSON) and binary ones (MRC/CCP4, MTZ).
 As a side note: initially, for the first few years of development,
 gemmi was a header-only library. As the library grew, this became
 less and less practical, and gemmi started a gradual transition to a conventional

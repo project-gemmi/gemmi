@@ -103,15 +103,17 @@ class TestNeighborSearch(unittest.TestCase):
 
     def test_get_nearby_sym_ops(self):
         st = gemmi.read_structure(full_path('4oz7.pdb'))
-        point = gemmi.Selection('B/208').copy_model_selection(st[0])[0][0][0].pos
+        point = gemmi.Selection(
+            'B/208').copy_model_selection(st[0])[0][0][0].pos
         images = gemmi.get_nearby_sym_ops(st, point, 3.0)
-        self.assertEqual([im.symmetry_code() for im in images], ['4_355', '3_545'])
-        self.assertAlmostEqual(images[0].dist(),
-                               st.cell.find_nearest_pbc_image(point, point, 3).dist(),
-                               delta=1e-6)
-        self.assertAlmostEqual(images[1].dist(),
-                               st.cell.find_nearest_pbc_image(point, point, 2).dist(),
-                               delta=1e-6)
+        self.assertEqual([im.symmetry_code()
+                         for im in images], ['4_355', '3_545'])
+        self.assertAlmostEqual(
+            images[0].dist(), st.cell.find_nearest_pbc_image(
+                point, point, 3).dist(), delta=1e-6)
+        self.assertAlmostEqual(
+            images[1].dist(), st.cell.find_nearest_pbc_image(
+                point, point, 2).dist(), delta=1e-6)
 
         atom = st[0].sole_residue('B', gemmi.SeqId(208, ' '))[0]
         image_st = gemmi.get_sym_image(st, images[0])

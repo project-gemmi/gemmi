@@ -40,13 +40,23 @@ def run_obabel(smiles, out_path):
     cmd = ["obabel", f"-:{smiles}", "-O", out_path]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
-        msg = proc.stderr.strip() or proc.stdout.strip() or "unknown OpenBabel error"
+        msg = (
+            proc.stderr.strip()
+            or proc.stdout.strip()
+            or "unknown OpenBabel error"
+        )
         raise RuntimeError(f"OpenBabel failed for {smiles!r}: {msg}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate adjustment SVGs with OpenBabel")
-    parser.add_argument("--out-dir", default="docs/img", help="output directory for SVG files")
+    parser = argparse.ArgumentParser(
+        description="Generate adjustment SVGs with OpenBabel"
+    )
+    parser.add_argument(
+        "--out-dir",
+        default="docs/img",
+        help="output directory for SVG files",
+    )
     args = parser.parse_args()
 
     if shutil.which("obabel") is None:

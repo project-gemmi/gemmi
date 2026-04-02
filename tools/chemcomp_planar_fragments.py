@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-import sys
-from collections import defaultdict, deque
+from collections import defaultdict
 from pathlib import Path
 
 from chemcomp_planar_cores import detect_planar_cores, load_gemmi
@@ -11,10 +10,15 @@ from chemcomp_planar_cores import detect_planar_cores, load_gemmi
 def parse_args():
     repo_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
-        description='Decompose planar cores into overlapping plane/ring fragments and articulation graph.')
+        description=(
+            'Decompose planar cores into overlapping plane/ring '
+            'fragments and articulation graph.'
+        ))
     parser.add_argument('inputs', nargs='+', help='Chemcomp CIF files.')
-    parser.add_argument('--core-index', type=int, default=0, help='Which planar core to inspect.')
-    parser.add_argument('--min-size', type=int, default=4, help='Minimum planar core size.')
+    parser.add_argument('--core-index', type=int, default=0,
+                        help='Which planar core to inspect.')
+    parser.add_argument('--min-size', type=int, default=4,
+                        help='Minimum planar core size.')
     return parser.parse_args(), repo_root
 
 
@@ -75,14 +79,17 @@ def plane_fragments(cc, core_atoms):
                 ids.append(name)
                 seen.add(name)
         if len(ids) >= 3:
-            frags.append({'kind': 'plane', 'label': plane.label, 'atoms': sorted(ids)})
+            frags.append(
+                {'kind': 'plane', 'label': plane.label, 'atoms': sorted(ids)})
     return frags
 
 
 def cycle_fragments(core_graph):
     frags = []
     for idx, cyc in enumerate(find_cycles(core_graph), 1):
-        frags.append({'kind': 'cycle', 'label': 'cycle-{}'.format(idx), 'atoms': list(cyc)})
+        frags.append({'kind': 'cycle',
+                      'label': 'cycle-{}'.format(idx),
+                      'atoms': list(cyc)})
     return frags
 
 
@@ -137,7 +144,8 @@ def main():
     gemmi = load_gemmi(repo_root)
     for item in args.inputs:
         path = Path(item)
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         _, cores = detect_planar_cores(cc, args.min_size)
         print('{}  {}'.format(cc.name, path))
         if not cores:
@@ -146,15 +154,29 @@ def main():
         core = cores[min(args.core_index, len(cores) - 1)]
         core_atoms = core['atoms']
         core_graph = bond_graph(cc, set(core_atoms))
-        fragments = dedup_fragments(plane_fragments(cc, core_atoms) + cycle_fragments(core_graph))
+        fragments = dedup_fragments(
+            plane_fragments(
+                cc,
+                core_atoms)
+            + cycle_fragments(core_graph))
         arts = articulation_atoms(fragments)
         edges = fragment_graph(fragments)
         leaves = boundary_atoms(core_atoms, core_graph, fragments)
-        print('  core atoms={} fragments={} articulation={} fragment-edges={}'.format(
-            len(core_atoms), len(fragments), len(arts), len(edges)))
+        print(
+            '  core atoms={} fragments={} articulation={} '
+            'fragment-edges={}'.format(
+                len(core_atoms), len(fragments), len(arts), len(edges)
+            )
+        )
         print('  fragments:')
         for frag in fragments:
-            print('    {:<8} {:<10} {}'.format(frag['kind'], frag['label'], ' '.join(sorted(frag['atoms']))))
+            print(
+                '    {:<8} {:<10} {}'.format(
+                    frag['kind'],
+                    frag['label'],
+                    ' '.join(
+                        sorted(
+                            frag['atoms']))))
         if arts:
             print('  articulation atoms:')
             for atom, labs in arts.items():
@@ -166,7 +188,9 @@ def main():
         if leaves:
             print('  boundary/leaves:')
             for atom, deg, labs in leaves:
-                print('    {} deg={} fragments={}'.format(atom, deg, ', '.join(labs)))
+                print(
+                    '    {} deg={} fragments={}'.format(
+                        atom, deg, ', '.join(labs)))
         print()
 
 

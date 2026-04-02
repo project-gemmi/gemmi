@@ -365,7 +365,8 @@ class TestMol(unittest.TestCase):
 
     def test_5moo_header(self):
         st = gemmi.read_structure(full_path('5moo_header.pdb'))
-        self.assertEqual([site.name for site in st.sites], ['AC1', 'AC2', 'AC3'])
+        self.assertEqual([site.name for site in st.sites],
+                         ['AC1', 'AC2', 'AC3'])
         self.assertEqual(st.sites[0].residue.res_id.name, 'CA')
         self.assertEqual(st.sites[0].residue.chain_name, 'A')
         self.assertEqual(st.sites[0].residue.res_id.seqid.num, 301)
@@ -376,10 +377,10 @@ class TestMol(unittest.TestCase):
         self.assertEqual(refine['pdbx_starting_model'], ['4I8H'] * 2)
         self.assertEqual(list(block.find_values('_diffrn.ambient_temp')),
                          ['295', '295'])
-        self.assertEqual(block.get_mmcif_category('_struct_site')['pdbx_auth_comp_id'],
-                         ['CA', 'WOT', 'SO4'])
-        self.assertEqual(block.get_mmcif_category('_struct_site_gen')['site_id'][:3],
-                         ['AC1', 'AC1', 'AC1'])
+        self.assertEqual(block.get_mmcif_category('_struct_site')[
+                         'pdbx_auth_comp_id'], ['CA', 'WOT', 'SO4'])
+        self.assertEqual(block.get_mmcif_category('_struct_site_gen')[
+                         'site_id'][:3], ['AC1', 'AC1', 'AC1'])
 
     def test_struct_site_in_5i55(self):
         st = gemmi.read_structure(full_path('5i55.cif'))
@@ -401,8 +402,10 @@ class TestMol(unittest.TestCase):
         self.assertEqual(ac2.members[-1].label_seq, None)
 
         block = st.make_mmcif_document().sole_block()
-        self.assertEqual(block.get_mmcif_category('_struct_site')['id'], ['AC1', 'AC2'])
-        self.assertEqual(block.get_mmcif_category('_struct_site_gen')['site_id'].count('AC2'), 7)
+        self.assertEqual(block.get_mmcif_category(
+            '_struct_site')['id'], ['AC1', 'AC2'])
+        self.assertEqual(block.get_mmcif_category(
+            '_struct_site_gen')['site_id'].count('AC2'), 7)
 
     def test_python_struct_site_api(self):
         st = gemmi.read_structure(full_path('5moo_header.pdb'))
@@ -430,9 +433,12 @@ class TestMol(unittest.TestCase):
 
         block = st.make_mmcif_block()
         self.assertEqual(list(block.find_values('_struct_site.id'))[-1], 'ZZ1')
-        self.assertEqual(list(block.find_values('_struct_site_gen.site_id')).count('ZZ1'), 1)
+        self.assertEqual(list(block.find_values(
+            '_struct_site_gen.site_id')).count('ZZ1'), 1)
 
-        block = st.make_mmcif_block(gemmi.MmcifOutputGroups(True, struct_site=False))
+        block = st.make_mmcif_block(
+            gemmi.MmcifOutputGroups(
+                True, struct_site=False))
         self.assertEqual(list(block.find_values('_struct_site.id')), [])
 
     def check_1pfe(self, st):
@@ -647,8 +653,9 @@ class TestMol(unittest.TestCase):
             expected = [line.rstrip() for line in f if line.startswith('SITE')]
         st = gemmi.read_structure(path, merge_chain_parts=False)
         self.assertEqual(len(st.sites), 5)
-        out_lines = [line.rstrip() for line in self.write_and_read(st, via_cif=True)
-                     if line.startswith('SITE')]
+        out_lines = [
+            line.rstrip() for line in self.write_and_read(
+                st, via_cif=True) if line.startswith('SITE')]
         self.assertEqual(expected, out_lines)
 
     @unittest.skipIf(PDB is None, "BioPython not installed.")

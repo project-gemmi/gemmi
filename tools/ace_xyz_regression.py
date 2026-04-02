@@ -18,12 +18,18 @@ def load_gemmi(repo_root: Path):
 def parse_args():
     repo_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
-        description="Generate ChemComp XYZ from restraints and validate with `gemmi validate -m`.")
+        description=(
+            "Generate ChemComp XYZ from restraints and "
+            "validate with `gemmi validate -m`."
+        ))
     parser.add_argument(
         "--components",
         nargs="*",
         default=None,
-        help="Component codes to test. If omitted, scan all CIFs under --ccd-dir.")
+        help=(
+            "Component codes to test. If omitted, "
+            "scan all CIFs under --ccd-dir."
+        ))
     parser.add_argument(
         "--ccd-dir",
         default=str(repo_root / "tests" / "ccd"),
@@ -45,7 +51,10 @@ def parse_args():
         "--mode",
         choices=["raw", "prepare"],
         default="prepare",
-        help="`prepare`: run prepare_chemcomp first (recommended); `raw`: use CIF restraints as-is.")
+        help=(
+            "`prepare`: run prepare_chemcomp first (recommended); "
+            "`raw`: use CIF restraints as-is."
+        ))
     parser.add_argument(
         "--tables-dir",
         default=os.environ.get("GEMMI_ACEDRG_TABLES") or (
@@ -77,7 +86,9 @@ def build_tables(gemmi, mode: str, tables_dir: str | None):
     tables = gemmi.AcedrgTables()
     if mode == "prepare":
         if not tables_dir:
-            raise SystemExit("--mode=prepare requires --tables-dir or CCP4/GEMMI_ACEDRG_TABLES")
+            raise SystemExit(
+                "--mode=prepare requires --tables-dir or "
+                "CCP4/GEMMI_ACEDRG_TABLES")
         tables.load_tables(tables_dir)
     return tables
 
@@ -117,7 +128,12 @@ def run_component(gemmi, gemmi_bin: Path, source: Path, mode: str,
     gemmi.add_chemcomp_to_block(cc, out_block, [], False)
     generated.write_text(out_doc.as_string(), encoding="utf-8")
 
-    cmd = [str(gemmi_bin), "validate", "-m", f"--z-score={z_score}", str(generated)]
+    cmd = [
+        str(gemmi_bin),
+        "validate",
+        "-m",
+        f"--z-score={z_score}",
+        str(generated)]
     proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
     output = (proc.stdout + proc.stderr).strip()
     ok = proc.returncode == 0 and output == "" and placed == len(cc.atoms)
@@ -156,7 +172,9 @@ def main():
             results.append(result)
             if args.verbose or not result["ok"]:
                 status = "OK" if result["ok"] else "FAIL"
-                print(f"{status} {result['component']}: placed {result['placed']}/{result['atoms']}")
+                print(
+                    f"{status} {result['component']}: "
+                    f"placed {result['placed']}/{result['atoms']}")
                 if result["output"]:
                     print(result["output"])
                 if not result["ok"]:

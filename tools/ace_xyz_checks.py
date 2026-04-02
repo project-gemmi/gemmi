@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import gemmi  # type: ignore
 import math
 import os
 import subprocess
@@ -11,8 +12,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / 'build' / 'py'))
 
-import gemmi  # type: ignore
-
 
 def resolve_acedrg_tables_from_ccp4() -> str:
     ccp4 = os.environ.get('CCP4')
@@ -20,7 +19,8 @@ def resolve_acedrg_tables_from_ccp4() -> str:
         raise unittest.SkipTest('CCP4 environment variable is not set')
     tables_dir = Path(ccp4) / 'share' / 'acedrg' / 'tables'
     if not tables_dir.is_dir():
-        raise unittest.SkipTest(f'AceDRG tables directory is not available: {tables_dir}')
+        raise unittest.SkipTest(
+            f'AceDRG tables directory is not available: {tables_dir}')
     return str(tables_dir)
 
 
@@ -86,15 +86,40 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertTrue(cc.has_coordinates)
 
         positions = {atom.id: atom.xyz for atom in cc.atoms}
-        self.assertAlmostEqual(positions['A1'].dist(positions['A2']), 1.50, places=5)
-        self.assertAlmostEqual(positions['A2'].dist(positions['A3']), 1.40, places=5)
-        self.assertAlmostEqual(positions['A3'].dist(positions['A4']), 1.30, places=5)
-        self.assertAlmostEqual(math.degrees(gemmi.calculate_angle(positions['A1'], positions['A2'], positions['A3'])),
-                               112.0, places=4)
-        self.assertAlmostEqual(math.degrees(gemmi.calculate_angle(positions['A2'], positions['A3'], positions['A4'])),
-                               121.0, places=4)
-        self.assertAlmostEqual(math.degrees(gemmi.calculate_dihedral(positions['A1'], positions['A2'], positions['A3'], positions['A4'])),
-                               60.0, places=4)
+        self.assertAlmostEqual(
+            positions['A1'].dist(
+                positions['A2']), 1.50, places=5)
+        self.assertAlmostEqual(
+            positions['A2'].dist(
+                positions['A3']), 1.40, places=5)
+        self.assertAlmostEqual(
+            positions['A3'].dist(
+                positions['A4']), 1.30, places=5)
+        self.assertAlmostEqual(
+            math.degrees(
+                gemmi.calculate_angle(
+                    positions['A1'],
+                    positions['A2'],
+                    positions['A3'])),
+            112.0,
+            places=4)
+        self.assertAlmostEqual(
+            math.degrees(
+                gemmi.calculate_angle(
+                    positions['A2'],
+                    positions['A3'],
+                    positions['A4'])),
+            121.0,
+            places=4)
+        self.assertAlmostEqual(
+            math.degrees(
+                gemmi.calculate_dihedral(
+                    positions['A1'],
+                    positions['A2'],
+                    positions['A3'],
+                    positions['A4'])),
+            60.0,
+            places=4)
 
     def test_generate_chemcomp_xyz_enforces_plane_restraint(self):
         cc = gemmi.ChemComp()
@@ -197,7 +222,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
             angle.esd = 2.0
             cc.rt.angles.append(angle)
 
-        for other, dist in [('A1', 1.43), ('A2', 1.47), ('A3', 1.53), ('H1', 1.00)]:
+        for other, dist in [('A1', 1.43), ('A2', 1.47),
+                            ('A3', 1.53), ('H1', 1.00)]:
             add_bond('CTR', other, dist)
         add_angle('A1', 'CTR', 'A2', 109.5)
         add_angle('A1', 'CTR', 'A3', 109.5)
@@ -271,7 +297,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_preserves_abp_sugar_branch(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ABP.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -283,7 +310,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_preserves_alb_amide_bridges(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ALB.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -296,7 +324,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_preserves_a6e_planar_articulation(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A6E.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -307,7 +336,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_preserves_a6x_planar_bridge(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A6X.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -318,7 +348,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_preserves_a1v_planar_chain(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A1V.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -331,7 +362,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_preserves_a4w_planar_linker(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A4W.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -342,7 +374,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_rescues_a7y_fragment_attachment(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A7Y.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -354,7 +387,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_rescues_awi_fragment_attachment(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'AWI.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -366,7 +400,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
 
     def test_generate_chemcomp_xyz_rescues_a4u_macrocycle_closure(self):
         path = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'A4U.cif'
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         for atom in cc.atoms:
             atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
         placed = gemmi.generate_chemcomp_xyz_from_restraints(cc)
@@ -380,7 +415,8 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         cc = gemmi.ChemComp()
         cc.name = 'TMET'
         cc.group = gemmi.ChemComp.Group.NonPolymer
-        for atom_id, el in [('C0', 'C'), ('C1', 'C'), ('H1', 'H'), ('H2', 'H'), ('H3', 'H')]:
+        for atom_id, el in [('C0', 'C'), ('C1', 'C'),
+                            ('H1', 'H'), ('H2', 'H'), ('H3', 'H')]:
             atom = gemmi.ChemComp.Atom()
             atom.id = atom_id
             atom.el = gemmi.Element(el)
@@ -420,19 +456,36 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
         self.assertEqual(placed, 5)
         pos = {atom.id: atom.xyz for atom in cc.atoms}
         self.assertAlmostEqual(
-            math.degrees(gemmi.calculate_angle(pos['H1'], pos['C1'], pos['H2'])),
-            109.5, places=3)
+            math.degrees(
+                gemmi.calculate_angle(
+                    pos['H1'],
+                    pos['C1'],
+                    pos['H2'])),
+            109.5,
+            places=3)
         self.assertAlmostEqual(
-            math.degrees(gemmi.calculate_angle(pos['H1'], pos['C1'], pos['H3'])),
-            109.5, places=3)
+            math.degrees(
+                gemmi.calculate_angle(
+                    pos['H1'],
+                    pos['C1'],
+                    pos['H3'])),
+            109.5,
+            places=3)
         self.assertAlmostEqual(
-            math.degrees(gemmi.calculate_angle(pos['H2'], pos['C1'], pos['H3'])),
-            109.5, places=3)
+            math.degrees(
+                gemmi.calculate_angle(
+                    pos['H2'],
+                    pos['C1'],
+                    pos['H3'])),
+            109.5,
+            places=3)
 
     def test_drg_only_xyz_on_prepared_file(self):
         gemmi_bin = REPO_ROOT / 'build' / 'gemmi'
         source = REPO_ROOT / 'ccd' / 'gemmi' / 'a' / 'ALA.cif'
-        self.assertTrue(gemmi_bin.is_file(), msg=f'missing gemmi executable: {gemmi_bin}')
+        self.assertTrue(
+            gemmi_bin.is_file(),
+            msg=f'missing gemmi executable: {gemmi_bin}')
         self.assertTrue(source.is_file(), msg=f'missing prepared CIF: {source}')
 
         with tempfile.TemporaryDirectory(prefix='drg_only_xyz_') as tmpdir:
@@ -440,23 +493,37 @@ class TestChemCompCoordinateGeneration(unittest.TestCase):
             proc = subprocess.run(
                 [str(gemmi_bin), 'drg', '--only-xyz', str(source), str(out)],
                 text=True, capture_output=True, check=False)
+            proc_msg = (
+                'drg --only-xyz failed:\n'
+                f'STDOUT:\n{proc.stdout}\n'
+                f'STDERR:\n{proc.stderr}'
+            )
             self.assertEqual(
                 proc.returncode, 0,
-                msg=f'drg --only-xyz failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}')
+                msg=proc_msg)
 
             validate = subprocess.run(
-                [str(gemmi_bin), 'validate', '-m', '-v', '--z-score=2', str(out)],
+                [
+                    str(gemmi_bin), 'validate', '-m', '-v',
+                    '--z-score=2', str(out),
+                ],
                 text=True, capture_output=True, check=False)
             combined = (validate.stdout + validate.stderr).strip()
+            validate_msg = (
+                'validate -m failed:\n'
+                f'STDOUT:\n{validate.stdout}\n'
+                f'STDERR:\n{validate.stderr}'
+            )
             self.assertEqual(
                 validate.returncode, 0,
-                msg=f'validate -m failed:\nSTDOUT:\n{validate.stdout}\nSTDERR:\n{validate.stderr}')
+                msg=validate_msg)
             self.assertNotIn('[atom.xyz]', combined, msg=combined)
             self.assertIn('OK', combined, msg=combined)
 
     def test_prepare_xyz_regression_harness(self):
         raise unittest.SkipTest(
-            'prepare-mode raw embedding is still exploratory; use ace_xyz_regression.py manually')
+            'prepare-mode raw embedding is still exploratory; '
+            'use ace_xyz_regression.py manually')
 
 
 if __name__ == '__main__':

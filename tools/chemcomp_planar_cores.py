@@ -2,7 +2,7 @@
 
 import argparse
 import sys
-from collections import Counter, defaultdict, deque
+from collections import defaultdict, deque
 from pathlib import Path
 
 
@@ -15,11 +15,24 @@ def load_gemmi(repo_root: Path):
 def parse_args():
     repo_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
-        description='Detect merged planar heavy-atom cores from chemcomp plane restraints.')
-    parser.add_argument('inputs', nargs='+', help='Chemcomp CIF files or directories.')
-    parser.add_argument('--recursive', action='store_true', help='Recurse into directories.')
-    parser.add_argument('--min-size', type=int, default=4, help='Minimum heavy-atom core size.')
-    parser.add_argument('--show-all', action='store_true', help='Show all plane-derived components, not only largest ones.')
+        description=(
+            'Detect merged planar heavy-atom cores '
+            'from chemcomp plane restraints.'
+        ))
+    parser.add_argument(
+        'inputs',
+        nargs='+',
+        help='Chemcomp CIF files or directories.')
+    parser.add_argument(
+        '--recursive',
+        action='store_true',
+        help='Recurse into directories.')
+    parser.add_argument('--min-size', type=int, default=4,
+                        help='Minimum heavy-atom core size.')
+    parser.add_argument(
+        '--show-all',
+        action='store_true',
+        help='Show all plane-derived components, not only largest ones.')
     return parser.parse_args(), repo_root
 
 
@@ -134,7 +147,10 @@ def detect_planar_cores(cc, min_size):
             'articulation': articulation,
             'anchors': anchors,
             'inner_bonds': sorted(inner_bonds),
-            'plane_membership': {a: sorted(set(plane_membership[a])) for a in atoms},
+            'plane_membership': {
+                a: sorted(set(plane_membership[a]))
+                for a in atoms
+            },
         })
     cores.sort(key=lambda c: (-len(c['atoms']), -len(c['planes']), c['atoms']))
     return groups, cores
@@ -142,15 +158,26 @@ def detect_planar_cores(cc, min_size):
 
 def summarize_core(core):
     lines = []
-    lines.append('  core atoms={:d} planes={:d} bonds={:d} articulation={:d} anchors={:d}'.format(
-        len(core['atoms']), len(core['planes']), len(core['inner_bonds']),
-        len(core['articulation']), len(core['anchors'])))
+    lines.append(
+        (
+            '  core atoms={:d} planes={:d} bonds={:d} '
+            'articulation={:d} anchors={:d}'
+        ).format(
+            len(
+                core['atoms']), len(
+                core['planes']), len(
+                    core['inner_bonds']), len(
+                        core['articulation']), len(
+                            core['anchors'])))
     lines.append('    atoms: ' + ' '.join(core['atoms']))
     lines.append('    planes: ' + ' '.join(core['planes']))
     if core['articulation']:
         lines.append('    articulation: ' + ' '.join(core['articulation']))
         for atom in core['articulation']:
-            lines.append('      {} <= {}'.format(atom, ', '.join(core['plane_membership'][atom])))
+            lines.append(
+                '      {} <= {}'.format(
+                    atom, ', '.join(
+                        core['plane_membership'][atom])))
     if core['anchors']:
         lines.append('    anchors:')
         for atom, outside in core['anchors']:

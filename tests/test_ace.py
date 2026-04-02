@@ -17,7 +17,9 @@ def resolve_acedrg_tables_from_ccp4():
         raise unittest.SkipTest('CCP4 environment variable is not set')
     tables_dir = os.path.join(ccp4, 'share', 'acedrg', 'tables')
     if not os.path.isdir(tables_dir):
-        raise unittest.SkipTest(f'AceDRG tables directory is not available: {tables_dir}')
+        raise unittest.SkipTest(
+            f'AceDRG tables directory is not available: {tables_dir}'
+        )
     return tables_dir
 
 
@@ -82,7 +84,14 @@ class TestAcePrepareChemComp(unittest.TestCase):
     @staticmethod
     def torsion_keys(cc):
         return {
-            (t.id1.atom, t.id2.atom, t.id3.atom, t.id4.atom, round(t.value, 3), t.period)
+            (
+                t.id1.atom,
+                t.id2.atom,
+                t.id3.atom,
+                t.id4.atom,
+                round(t.value, 3),
+                t.period,
+            )
             for t in cc.rt.torsions
         }
 
@@ -94,7 +103,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.atoms.append(self.make_atom('C2', 'C', 'C'))
         cc.atoms.append(self.make_atom('C3', 'C', 'C'))
 
-        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02)
+        )
 
         a = gemmi.Restraints.Angle()
         a.id1 = gemmi.Restraints.AtomId('C1')
@@ -163,10 +174,18 @@ class TestAcePrepareChemComp(unittest.TestCase):
         for atom_id in ('C1', 'C2', 'C3', 'C4'):
             cc.atoms.append(self.make_atom(atom_id, 'C', 'C'))
 
-        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
-        cc.rt.bonds.append(self.make_bond('C2', 'C1', gemmi.BondType.Single, 1.50, 0.02))
-        cc.rt.bonds.append(self.make_bond('C2', 'C3', gemmi.BondType.Single, 1.50, 0.02))
-        cc.rt.bonds.append(self.make_bond('C3', 'C4', gemmi.BondType.Single, 1.50, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('C2', 'C1', gemmi.BondType.Single, 1.50, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('C2', 'C3', gemmi.BondType.Single, 1.50, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('C3', 'C4', gemmi.BondType.Single, 1.50, 0.02)
+        )
 
         a1 = gemmi.Restraints.Angle()
         a1.id1 = gemmi.Restraints.AtomId('C1')
@@ -254,9 +273,15 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.atoms.append(self.make_atom('O1', 'O', 'O'))
         cc.atoms.append(self.make_atom('O2', 'O', 'O'))
 
-        cc.rt.bonds.append(self.make_bond('N1', 'C1', gemmi.BondType.Single, 1.45, 0.02))
-        cc.rt.bonds.append(self.make_bond('N1', 'O1', gemmi.BondType.Double, 1.22, 0.02))
-        cc.rt.bonds.append(self.make_bond('N1', 'O2', gemmi.BondType.Double, 1.22, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('N1', 'C1', gemmi.BondType.Single, 1.45, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('N1', 'O1', gemmi.BondType.Double, 1.22, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('N1', 'O2', gemmi.BondType.Double, 1.22, 0.02)
+        )
 
         self.prepare(cc)
         atoms = {a.id: a for a in cc.atoms}
@@ -293,13 +318,27 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.atoms.append(self.make_atom('OXT', 'O', 'O'))
         cc.atoms.append(self.make_atom('HXT', 'H', 'H'))
 
-        cc.rt.bonds.append(self.make_bond('N', 'H', gemmi.BondType.Single, 1.0, 0.02))
-        cc.rt.bonds.append(self.make_bond('N', 'H2', gemmi.BondType.Single, 1.0, 0.02))
-        cc.rt.bonds.append(self.make_bond('N', 'CA', gemmi.BondType.Single, 1.46, 0.02))
-        cc.rt.bonds.append(self.make_bond('CA', 'C', gemmi.BondType.Single, 1.53, 0.02))
-        cc.rt.bonds.append(self.make_bond('C', 'O', gemmi.BondType.Double, 1.24, 0.02))
-        cc.rt.bonds.append(self.make_bond('C', 'OXT', gemmi.BondType.Single, 1.32, 0.02))
-        cc.rt.bonds.append(self.make_bond('OXT', 'HXT', gemmi.BondType.Single, 1.0, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('N', 'H', gemmi.BondType.Single, 1.0, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('N', 'H2', gemmi.BondType.Single, 1.0, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('N', 'CA', gemmi.BondType.Single, 1.46, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('CA', 'C', gemmi.BondType.Single, 1.53, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('C', 'O', gemmi.BondType.Double, 1.24, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('C', 'OXT', gemmi.BondType.Single, 1.32, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('OXT', 'HXT', gemmi.BondType.Single, 1.0, 0.02)
+        )
 
         self.prepare(cc)
         atoms = {a.id: a for a in cc.atoms}
@@ -315,8 +354,12 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.atoms.append(self.make_atom('C1', 'C', 'C'))
         cc.atoms.append(self.make_atom('ZN1', 'Zn', 'ZN'))
 
-        cc.rt.bonds.append(self.make_bond('O1', 'C1', gemmi.BondType.Single, 1.34, 0.02))
-        cc.rt.bonds.append(self.make_bond('O1', 'ZN1', gemmi.BondType.Single, 2.0, 0.04))
+        cc.rt.bonds.append(
+            self.make_bond('O1', 'C1', gemmi.BondType.Single, 1.34, 0.02)
+        )
+        cc.rt.bonds.append(
+            self.make_bond('O1', 'ZN1', gemmi.BondType.Single, 2.0, 0.04)
+        )
 
         self.prepare(cc)
         atoms = {a.id: a for a in cc.atoms}
@@ -328,7 +371,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.group = gemmi.ChemComp.Group.NonPolymer
         cc.atoms.append(self.make_atom('C1', 'C', 'C'))
         cc.atoms.append(self.make_atom('C2', 'C', 'C'))
-        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02)
+        )
 
         p = gemmi.Restraints.Plane()
         p.label = 'p'
@@ -341,7 +386,10 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.rt.planes.append(p)
 
         with temp_env('GEMMI_ACE_STRICT', '1'):
-            with self.assertRaisesRegex(RuntimeError, 'ACE strict validation failed at post-angle-seed'):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                'ACE strict validation failed at post-angle-seed',
+            ):
                 self.prepare(cc)
 
     def test_prepare_chemcomp_strict_fails_on_final_nan_bond_value(self):
@@ -350,10 +398,16 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.group = gemmi.ChemComp.Group.NonPolymer
         cc.atoms.append(self.make_atom('X1', 'X', ''))
         cc.atoms.append(self.make_atom('X2', 'X', ''))
-        cc.rt.bonds.append(self.make_bond('X1', 'X2', gemmi.BondType.Single, float('nan'), 0.02))
+        cc.rt.bonds.append(
+            self.make_bond(
+                'X1', 'X2', gemmi.BondType.Single, float('nan'), 0.02
+            )
+        )
 
         with temp_env('GEMMI_ACE_STRICT', '1'):
-            with self.assertRaisesRegex(RuntimeError, 'ACE strict validation failed at final'):
+            with self.assertRaisesRegex(
+                RuntimeError, 'ACE strict validation failed at final'
+            ):
                 self.prepare(cc)
 
     def test_prepare_chemcomp_options_override_env_modes(self):
@@ -362,7 +416,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.group = gemmi.ChemComp.Group.NonPolymer
         cc.atoms.append(self.make_atom('C1', 'C', 'C'))
         cc.atoms.append(self.make_atom('C2', 'C', 'C'))
-        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02)
+        )
 
         p = gemmi.Restraints.Plane()
         p.label = 'p'
@@ -388,7 +444,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
         cc.group = gemmi.ChemComp.Group.NonPolymer
         cc.atoms.append(self.make_atom('C1', 'C', 'C'))
         cc.atoms.append(self.make_atom('C2', 'C', 'C'))
-        cc.rt.bonds.append(self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02))
+        cc.rt.bonds.append(
+            self.make_bond('C1', 'C2', gemmi.BondType.Single, 1.50, 0.02)
+        )
 
         with temp_env('GEMMI_ACE_TRACE', '1'):
             with silence_c_stderr():
@@ -442,13 +500,16 @@ class TestAcePrepareChemComp(unittest.TestCase):
         self.assertNotIn('H4', atom_ids)
 
         n_h3_bond = any(
-            (b.id1.atom == 'N' and b.id2.atom == 'H3') or
-            (b.id2.atom == 'N' and b.id1.atom == 'H3')
+            (b.id1.atom == 'N' and b.id2.atom == 'H3')
+
+            or (b.id2.atom == 'N' and b.id1.atom == 'H3')
             for b in cc.rt.bonds
         )
         self.assertTrue(n_h3_bond)
 
-    def test_prepare_chemcomp_compat_disables_peptide_mode_without_canonical_backbone(self):
+    def test_prepare_chemcomp_compat_disables_peptide_mode_without_backbone(
+        self,
+    ):
         def build(group):
             cc = gemmi.ChemComp()
             cc.name = 'TPEP'
@@ -484,7 +545,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
                 ('C', 'OXT', gemmi.BondType.Single, 1.31),
                 ('OXT', 'HXT', gemmi.BondType.Single, 1.00),
             ]:
-                cc.rt.bonds.append(self.make_bond(a1, a2, bond_type, value, 0.02))
+                cc.rt.bonds.append(
+                    self.make_bond(a1, a2, bond_type, value, 0.02)
+                )
             return cc
 
         default_peptide = build(gemmi.ChemComp.Group.Peptide)
@@ -493,12 +556,18 @@ class TestAcePrepareChemComp(unittest.TestCase):
 
         default_options = gemmi.PrepareChemcompOptions()
         default_options.compat_mode = gemmi.PrepareOverride.Disable
-        gemmi.prepare_chemcomp(default_peptide, gemmi.AcedrgTables(), default_options)
+        gemmi.prepare_chemcomp(
+            default_peptide, gemmi.AcedrgTables(), default_options
+        )
 
         compat_options = gemmi.PrepareChemcompOptions()
         compat_options.compat_mode = gemmi.PrepareOverride.Enable
-        gemmi.prepare_chemcomp(compat_peptide, gemmi.AcedrgTables(), compat_options)
-        gemmi.prepare_chemcomp(compat_nonpoly, gemmi.AcedrgTables(), compat_options)
+        gemmi.prepare_chemcomp(
+            compat_peptide, gemmi.AcedrgTables(), compat_options
+        )
+        gemmi.prepare_chemcomp(
+            compat_nonpoly, gemmi.AcedrgTables(), compat_options
+        )
 
         default_keys = self.torsion_keys(default_peptide)
         compat_keys = self.torsion_keys(compat_peptide)
@@ -509,7 +578,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
         self.assertNotEqual(default_keys, compat_keys)
         self.assertEqual(compat_keys, nonpoly_keys)
 
-    def test_prepare_chemcomp_sugar_ring_torsions_require_ring_coordinates(self):
+    def test_prepare_chemcomp_sugar_ring_torsions_need_ring_coordinates(
+        self,
+    ):
         path = os.path.join(CCD_TEST_DIR, '0SG.cif')
         if not os.path.isfile(path):
             raise unittest.SkipTest(f'missing test input: {path}')
@@ -520,7 +591,9 @@ class TestAcePrepareChemComp(unittest.TestCase):
             if atom_id is not None:
                 for atom in cc.atoms:
                     if atom.id == atom_id:
-                        atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
+                        atom.xyz = gemmi.Position(
+                            float('nan'), float('nan'), float('nan')
+                        )
                         break
             options = gemmi.PrepareChemcompOptions()
             options.compat_mode = gemmi.PrepareOverride.Disable
@@ -543,9 +616,15 @@ class TestAcePrepareChemComp(unittest.TestCase):
         self.assertIn(('C47', 'O6', 'C43', 'C44', -55.293, 3), missing_keys)
         self.assertIn(('C46', 'C47', 'O6', 'C43', 56.320, 3), missing_keys)
         self.assertNotIn(('O6', 'C43', 'C44', 'C45', 57.508, 3), missing_keys)
-        self.assertNotIn(('C43', 'C44', 'C45', 'C46', -62.221, 3), missing_keys)
-        self.assertNotIn(('C44', 'C45', 'C46', 'C47', 63.637, 3), missing_keys)
-        self.assertNotIn(('C45', 'C46', 'C47', 'O6', -59.666, 3), missing_keys)
+        self.assertNotIn(
+            ('C43', 'C44', 'C45', 'C46', -62.221, 3), missing_keys
+        )
+        self.assertNotIn(
+            ('C44', 'C45', 'C46', 'C47', 63.637, 3), missing_keys
+        )
+        self.assertNotIn(
+            ('C45', 'C46', 'C47', 'O6', -59.666, 3), missing_keys
+        )
 
 
 class TestAceDrgBatch(unittest.TestCase):
@@ -629,7 +708,9 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
     def _assert_restraint_integrity(cc, source):
         atom_ids = [a.id for a in cc.atoms]
         atom_set = set(atom_ids)
-        assert len(atom_ids) == len(atom_set), f'duplicate atom ids in {source}'
+        assert len(atom_ids) == len(atom_set), (
+            f'duplicate atom ids in {source}'
+        )
 
         for b in cc.rt.bonds:
             assert b.id1.atom in atom_set and b.id2.atom in atom_set, source
@@ -638,16 +719,28 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
             assert math.isfinite(b.value_nucleus), source
             assert math.isfinite(b.esd_nucleus), source
         for ang in cc.rt.angles:
-            assert ang.id1.atom in atom_set and ang.id2.atom in atom_set and ang.id3.atom in atom_set, source
+            assert (
+                ang.id1.atom in atom_set
+                and ang.id2.atom in atom_set
+                and ang.id3.atom in atom_set
+            ), source
             assert math.isfinite(ang.value), source
             assert math.isfinite(ang.esd), source
         for tor in cc.rt.torsions:
-            assert tor.id1.atom in atom_set and tor.id2.atom in atom_set, source
-            assert tor.id3.atom in atom_set and tor.id4.atom in atom_set, source
+            assert (
+                tor.id1.atom in atom_set and tor.id2.atom in atom_set
+            ), source
+            assert (
+                tor.id3.atom in atom_set and tor.id4.atom in atom_set
+            ), source
             assert math.isfinite(tor.esd), source
         for chir in cc.rt.chirs:
-            assert chir.id_ctr.atom in atom_set and chir.id1.atom in atom_set, source
-            assert chir.id2.atom in atom_set and chir.id3.atom in atom_set, source
+            assert (
+                chir.id_ctr.atom in atom_set and chir.id1.atom in atom_set
+            ), source
+            assert (
+                chir.id2.atom in atom_set and chir.id3.atom in atom_set
+            ), source
         for plane in cc.rt.planes:
             plane_atoms = [aid.atom for aid in plane.ids]
             assert len(plane_atoms) == len(set(plane_atoms)), source
@@ -657,7 +750,9 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
                 assert atom in atom_set, source
 
     def test_prepare_chemcomp_invariants_on_representative_pack(self):
-        for comp_id in ['ALA', 'ATP', 'CYS', 'HEM', 'HIS', 'SEC', 'TRP', 'TYR']:
+        for comp_id in [
+            'ALA', 'ATP', 'CYS', 'HEM', 'HIS', 'SEC', 'TRP', 'TYR'
+        ]:
             path, cc = self._prepare_from_ccd(comp_id)
             gemmi.prepare_chemcomp(cc, self.tables)
             self._assert_restraint_integrity(cc, path)
@@ -685,7 +780,7 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
         asp_atoms = {a.id: a for a in asp.atoms}
         self.assertLessEqual(asp_atoms['OD2'].charge, -0.5)
 
-    def test_prepare_chemcomp_proton_hydrogen_element_fallback_sets_nucleus(self):
+    def test_prepare_chemcomp_proton_h_fallback_sets_nucleus(self):
         cc = gemmi.ChemComp()
         cc.name = 'TPF6H'
         cc.group = gemmi.ChemComp.Group.NonPolymer
@@ -731,7 +826,10 @@ class TestAcePreparedChemCompInvariants(unittest.TestCase):
 
 
 class TestChemicalAdjustmentRules(unittest.TestCase):
-    """Tests for apply_chemical_adjustments() using CCD examples from chemistry.rst."""
+    """Tests for apply_chemical_adjustments().
+
+    Uses CCD examples from chemistry.rst.
+    """
 
     @staticmethod
     def _load_ccd(comp_id):
@@ -786,8 +884,12 @@ class TestChemicalAdjustmentRules(unittest.TestCase):
         cc.apply_chemical_adjustments()
         self.assertAlmostEqual(self._charge_of(cc, 'N26'), 1.0, places=1)
         self.assertAlmostEqual(self._charge_of(cc, 'O27'), -1.0, places=1)
-        self.assertEqual(self._bond_type(cc, 'O27', 'N26'), gemmi.BondType.Single)
-        self.assertEqual(self._bond_type(cc, 'N26', 'O28'), gemmi.BondType.Double)
+        self.assertEqual(
+            self._bond_type(cc, 'O27', 'N26'), gemmi.BondType.Single
+        )
+        self.assertEqual(
+            self._bond_type(cc, 'N26', 'O28'), gemmi.BondType.Double
+        )
 
     def test_adj_hexafluorophosphate_a9j(self):
         """A9J: PF6 gets an H added (P1-H bond)."""

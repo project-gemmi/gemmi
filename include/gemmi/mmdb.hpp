@@ -217,24 +217,34 @@ inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
     manager->AddModel(model2);
 
     for (const Chain& chain : model.chains) {
-      mmdb::Chain* chain2 = model2->CreateChain(chain.name.c_str());
+      mmdb::ChainID chain_id = {};
+      strcpy_to_mmdb(chain_id, chain.name);
+      mmdb::Chain* chain2 = model2->CreateChain(chain_id);
       for (const Residue& res : chain.residues) {
-        char icode[2] = {};
-        if (res.seqid.has_icode())
-          icode[0] = res.seqid.icode;
-        mmdb::Residue* res2 = chain2->GetResidueCreate(res.name.c_str(),
-                                                       *res.seqid.num,
-                                                       icode,
-                                                       true);
+        mmdb::ResName res_name = {};
+        strcpy_to_mmdb(res_name, res.name);
+        int seqnum = 0;
+        mmdb::InsCode icode = {};
+        set_seqid_in_mmdb(&seqnum, icode, res.seqid);
+        mmdb::Residue* res2 = chain2->GetResidueCreate(res_name, seqnum,
+                                                       icode, true);
         for (const Atom& atom : res.atoms) {
           mmdb::Atom* atom2 = mmdb::newAtom();
-          const char altloc[2] = {atom.altloc, '\0'};
+          mmdb::AltLoc altloc = {};
+          if (atom.altloc != '\0')
+            altloc[0] = atom.altloc;
           std::string padded_name = atom.padded_name();
           // padded_name() is padding from the left; MMDB from both sides
           if (padded_name.size() < 4)
             padded_name.resize(4, ' ');
-          atom2->SetAtomName(0, atom.serial, padded_name.c_str(),
-                             altloc, res.segment.c_str(), atom.element.uname());
+          mmdb::AtomName atom_name = {};
+          strcpy_to_mmdb(atom_name, padded_name);
+          mmdb::SegID seg_id = {};
+          strcpy_to_mmdb(seg_id, res.segment);
+          mmdb::Element element = {};
+          strcpy_to_mmdb(element, atom.element.uname());
+          atom2->SetAtomName(0, atom.serial, atom_name,
+                             altloc, seg_id, element);
           atom2->Het = res.het_flag == 'H';
           atom2->SetCharge(atom.charge);
           atom2->SetCoordinates(atom.pos.x, atom.pos.y, atom.pos.z,
@@ -263,7 +273,9 @@ inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
     }
     manager->PutCell(st.cell.a, st.cell.b, st.cell.c,
                      st.cell.alpha, st.cell.beta, st.cell.gamma, 1);
-    manager->SetSpaceGroup(st.spacegroup_hm.c_str());
+    char spacegroup[64] = {};
+    strcpy_to_mmdb(spacegroup, st.spacegroup_hm);
+    manager->SetSpaceGroup(spacegroup);
     mmdb::Cryst* cryst = manager->GetCrystData();
     auto z = st.info.find("_cell.Z_PDB");
     if (z != st.info.end() && !z->second.empty()) {

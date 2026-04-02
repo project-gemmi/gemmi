@@ -115,6 +115,62 @@ void residue_add_atom(gemmi::Residue& residue, const gemmi::Atom& atom) {
   residue.atoms.push_back(atom);
 }
 
+void structure_add_connection(gemmi::Structure& st, const gemmi::Connection& connection) {
+  st.connections.push_back(connection);
+}
+
+void structure_add_site(gemmi::Structure& st, const gemmi::StructSite& site) {
+  st.sites.push_back(site);
+}
+
+void structsite_add_member(gemmi::StructSite& site, const gemmi::StructSite::Member& member) {
+  site.members.push_back(member);
+}
+
+std::string get_char_string(char c) {
+  return c == '\0' || c == ' ' ? std::string() : std::string(1, c);
+}
+
+char char_from_string(const std::string& text, const char* what, char empty = '\0') {
+  if (text.size() > 1)
+    gemmi::fail(std::string(what) + " must be empty or one character");
+  return text.empty() ? empty : text[0];
+}
+
+std::string get_atom_address_altloc(const gemmi::AtomAddress& addr) {
+  return get_char_string(addr.altloc);
+}
+
+void set_atom_address_altloc(gemmi::AtomAddress& addr, const std::string& altloc) {
+  addr.altloc = char_from_string(altloc, "altloc");
+}
+
+std::string get_structsite_member_label_seq_string(const gemmi::StructSite::Member& member) {
+  return member.label_seq ? std::to_string(*member.label_seq) : std::string();
+}
+
+void set_structsite_member_label_seq_string(gemmi::StructSite::Member& member,
+                                            const std::string& seq) {
+  if (seq.empty()) {
+    member.label_seq.reset();
+    return;
+  }
+  char* endptr;
+  long num = std::strtol(seq.c_str(), &endptr, 10);
+  if (endptr == seq.c_str() || *endptr != '\0')
+    throw std::invalid_argument("Not a label_seq: " + seq);
+  member.label_seq = static_cast<int>(num);
+}
+
+std::string get_structsite_member_label_alt_id(const gemmi::StructSite::Member& member) {
+  return get_char_string(member.label_alt_id);
+}
+
+void set_structsite_member_label_alt_id(gemmi::StructSite::Member& member,
+                                        const std::string& label_alt_id) {
+  member.label_alt_id = char_from_string(label_alt_id, "label_alt_id");
+}
+
 std::string get_entity_type_string(const gemmi::Residue& res) {
   return entity_type_to_string(res.entity_type);
 }
@@ -470,10 +526,78 @@ void add_mol() {
     .value("Antiparallel", gemmi::ResidueStrandSense::Antiparallel)
     ;
 
+  em::enum_<gemmi::Asu>("Asu")
+    .value("Same", gemmi::Asu::Same)
+    .value("Different", gemmi::Asu::Different)
+    .value("Any", gemmi::Asu::Any)
+    ;
+
+  em::enum_<gemmi::Connection::Type>("ConnectionType")
+    .value("Covale", gemmi::Connection::Covale)
+    .value("Disulf", gemmi::Connection::Disulf)
+    .value("Hydrog", gemmi::Connection::Hydrog)
+    .value("MetalC", gemmi::Connection::MetalC)
+    .value("Unknown", gemmi::Connection::Unknown)
+    ;
+
+  em::class_<gemmi::AtomAddress>("AtomAddress")
+    .constructor<>()
+    .property("chain_name", &gemmi::AtomAddress::chain_name)
+    .property("res_id", &gemmi::AtomAddress::res_id)
+    .property("atom_name", &gemmi::AtomAddress::atom_name)
+    .property("altloc", &get_atom_address_altloc, &set_atom_address_altloc)
+    .function("str", &gemmi::AtomAddress::str)
+    ;
+
+  em::class_<gemmi::Connection>("Connection")
+    .constructor<>()
+    .property("name", &gemmi::Connection::name)
+    .property("link_id", &gemmi::Connection::link_id)
+    .property("type", &gemmi::Connection::type)
+    .property("asu", &gemmi::Connection::asu)
+    .property("partner1", &gemmi::Connection::partner1)
+    .property("partner2", &gemmi::Connection::partner2)
+    .property("reported_distance", &gemmi::Connection::reported_distance)
+    ;
+  em::register_vector<gemmi::Connection>("ConnectionVector");
+
+  em::class_<gemmi::StructSite::Member>("StructSiteMember")
+    .constructor<>()
+    .property("residue_num", &gemmi::StructSite::Member::residue_num)
+    .property("label_comp_id", &gemmi::StructSite::Member::label_comp_id)
+    .property("label_asym_id", &gemmi::StructSite::Member::label_asym_id)
+    .property("label_seq_string", &get_structsite_member_label_seq_string,
+              &set_structsite_member_label_seq_string)
+    .property("label_atom_id", &gemmi::StructSite::Member::label_atom_id)
+    .property("label_alt_id", &get_structsite_member_label_alt_id,
+              &set_structsite_member_label_alt_id)
+    .property("auth", &gemmi::StructSite::Member::auth)
+    .property("symmetry", &gemmi::StructSite::Member::symmetry)
+    .property("details", &gemmi::StructSite::Member::details)
+    ;
+  em::register_vector<gemmi::StructSite::Member>("StructSiteMemberVector");
+
+  em::class_<gemmi::StructSite>("StructSite")
+    .constructor<>()
+    .constructor<const std::string&>()
+    .property("name", &gemmi::StructSite::name)
+    .property("evidence_code", &gemmi::StructSite::evidence_code)
+    .property("residue", &gemmi::StructSite::residue)
+    .property("residue_count", &gemmi::StructSite::residue_count)
+    .property("details", &gemmi::StructSite::details)
+    .property("members", &gemmi::StructSite::members)
+    .function("add_member", &structsite_add_member)
+    ;
+  em::register_vector<gemmi::StructSite>("StructSiteVector");
+
   wrap_children<gemmi::Structure>()
     .property("name", &gemmi::Structure::name)
     .property("cell", &gemmi::Structure::cell)
+    .property("connections", &gemmi::Structure::connections)
+    .property("sites", &gemmi::Structure::sites)
     .function("add_model", &structure_add_model)
+    .function("add_connection", &structure_add_connection)
+    .function("add_site", &structure_add_site)
     ;
 
   wrap_children<gemmi::Model>()
@@ -489,6 +613,7 @@ void add_mol() {
     ;
 
   em::class_<gemmi::ResidueId>("ResidueId")
+    .constructor<>()
     .property("seqid_string", &get_seqid_string, &set_seqid_string)
     .property("segment", &gemmi::ResidueId::segment)
     .property("name", &gemmi::ResidueId::name)

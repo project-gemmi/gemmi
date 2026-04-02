@@ -18,14 +18,28 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Prototype torsion optimizer for ChemComp XYZ generation.')
     parser.add_argument('inputs', nargs='+', help='Prepared monomer CIF files.')
-    parser.add_argument('--passes', type=int, default=4, help='Greedy passes over rotatable bonds.')
-    parser.add_argument('--max-subtree', type=int, default=24, help='Skip moved subtrees larger than this.')
-    parser.add_argument('--verbose', action='store_true', help='Print accepted bond rotations.')
+    parser.add_argument(
+        '--passes',
+        type=int,
+        default=4,
+        help='Greedy passes over rotatable bonds.')
+    parser.add_argument(
+        '--max-subtree',
+        type=int,
+        default=24,
+        help='Skip moved subtrees larger than this.')
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Print accepted bond rotations.')
     return parser.parse_args(), repo_root
 
 
 def finite(atom):
-    return math.isfinite(atom.xyz.x) and math.isfinite(atom.xyz.y) and math.isfinite(atom.xyz.z)
+    return math.isfinite(
+        atom.xyz.x) and math.isfinite(
+        atom.xyz.y) and math.isfinite(
+            atom.xyz.z)
 
 
 def is_heavy(atom):
@@ -129,14 +143,26 @@ def objective(gemmi, cc, atom_index, adjacency, bond_map):
         if z > worst_bond[0]:
             worst_bond = (z, f'{cc.atoms[i].id}-{cc.atoms[j].id}')
     for angle in cc.rt.angles:
-        ids = [atom_index.get(angle.id1.atom), atom_index.get(angle.id2.atom), atom_index.get(angle.id3.atom)]
+        ids = [
+            atom_index.get(
+                angle.id1.atom), atom_index.get(
+                angle.id2.atom), atom_index.get(
+                angle.id3.atom)]
         if None in ids or not math.isfinite(angle.value):
             continue
         i, j, k = ids
-        if not (finite(cc.atoms[i]) and finite(cc.atoms[j]) and finite(cc.atoms[k])):
+        if not (
+            finite(
+                cc.atoms[i]) and finite(
+                cc.atoms[j]) and finite(
+                cc.atoms[k])):
             continue
         esd = angle.esd if math.isfinite(angle.esd) and angle.esd > 0 else 2.0
-        actual = math.degrees(gemmi.calculate_angle(cc.atoms[i].xyz, cc.atoms[j].xyz, cc.atoms[k].xyz))
+        actual = math.degrees(
+            gemmi.calculate_angle(
+                cc.atoms[i].xyz,
+                cc.atoms[j].xyz,
+                cc.atoms[k].xyz))
         score += (angle_diff_deg(actual, angle.value) / esd) ** 2
     for plane in cc.rt.planes:
         pts = []
@@ -152,7 +178,11 @@ def objective(gemmi, cc, atom_index, adjacency, bond_map):
         centroid, normal = fit
         esd = plane.esd if math.isfinite(plane.esd) and plane.esd > 0 else 0.02
         for p in pts:
-            dist = abs((p.x - centroid[0]) * normal[0] + (p.y - centroid[1]) * normal[1] + (p.z - centroid[2]) * normal[2])
+            dist = abs(
+                (p.x - centroid[0]) * normal[0]
+                + (p.y - centroid[1]) * normal[1]
+                + (p.z - centroid[2]) * normal[2]
+            )
             score += (dist / esd) ** 2
     score += chiral_penalty(gemmi, cc, atom_index)
     return score, worst_bond
@@ -253,14 +283,20 @@ def rotate_subtree(gemmi, cc, component, pivot, anchor, angle):
         if idx == pivot:
             continue
         rel = cc.atoms[idx].xyz - origin
-        cc.atoms[idx].xyz = origin + gemmi.Position(rotate_vec(gemmi, rel, axis, angle))
+        cc.atoms[idx].xyz = origin + \
+            gemmi.Position(rotate_vec(gemmi, rel, axis, angle))
     return True
 
 
 def torsion_targets(gemmi, cc, atom_index, i, j):
     vals = [0, math.pi/3, -math.pi/3, 2*math.pi/3, -2*math.pi/3, math.pi]
     for tor in cc.rt.torsions:
-        ids = [atom_index.get(tor.id1.atom), atom_index.get(tor.id2.atom), atom_index.get(tor.id3.atom), atom_index.get(tor.id4.atom)]
+        ids = [
+            atom_index.get(
+                tor.id1.atom), atom_index.get(
+                tor.id2.atom), atom_index.get(
+                tor.id3.atom), atom_index.get(
+                    tor.id4.atom)]
         if None in ids or not math.isfinite(tor.value):
             continue
         if (ids[1], ids[2]) == (i, j) or (ids[2], ids[1]) == (i, j):
@@ -279,7 +315,8 @@ def optimize_file(gemmi, path, passes, max_subtree, verbose):
     gemmi.generate_chemcomp_xyz_from_restraints(cc)
     atom_index, adjacency, bond_map = build_graphs(cc)
     cycles = detect_small_cycles(adjacency)
-    start_score, start_worst = objective(gemmi, cc, atom_index, adjacency, bond_map)
+    start_score, start_worst = objective(
+        gemmi, cc, atom_index, adjacency, bond_map)
     start_positions = snapshot_positions(gemmi, cc, range(len(cc.atoms)))
     accepted = 0
 
@@ -299,16 +336,20 @@ def optimize_file(gemmi, path, passes, max_subtree, verbose):
             for target in torsion_targets(gemmi, cc, atom_index, anchor, pivot):
                 for angle in [target, target + math.pi, target - math.pi]:
                     restore_positions(cc, saved)
-                    if not rotate_subtree(gemmi, cc, component, pivot, anchor, angle):
+                    if not rotate_subtree(
+                            gemmi, cc, component, pivot, anchor, angle):
                         continue
-                    score, _ = objective(gemmi, cc, atom_index, adjacency, bond_map)
+                    score, _ = objective(
+                        gemmi, cc, atom_index, adjacency, bond_map)
                     if score + 1e-6 < best_local:
                         best_local = score
-                        best_positions = snapshot_positions(gemmi, cc, component)
+                        best_positions = snapshot_positions(
+                            gemmi, cc, component)
             restore_positions(cc, saved)
             if best_positions is not None:
                 restore_positions(cc, best_positions)
-                actual_score, _ = objective(gemmi, cc, atom_index, adjacency, bond_map)
+                actual_score, _ = objective(
+                    gemmi, cc, atom_index, adjacency, bond_map)
                 if actual_score > current_score - 1e-6:
                     restore_positions(cc, saved)
                     continue
@@ -316,14 +357,21 @@ def optimize_file(gemmi, path, passes, max_subtree, verbose):
                 accepted += 1
                 improved = True
                 if verbose:
-                    print(f'  accepted {cc.atoms[anchor].id}-{cc.atoms[pivot].id} size={len(component)} score={current_score:.1f}')
+                    print(
+                        f'  accepted {
+                            cc.atoms[anchor].id}-{
+                            cc.atoms[pivot].id} size={
+                            len(component)} score={
+                            current_score:.1f}')
         if not improved:
             break
 
-    final_score, final_worst = objective(gemmi, cc, atom_index, adjacency, bond_map)
+    final_score, final_worst = objective(
+        gemmi, cc, atom_index, adjacency, bond_map)
     if final_score > start_score + 1e-6:
         restore_positions(cc, start_positions)
-        final_score, final_worst = objective(gemmi, cc, atom_index, adjacency, bond_map)
+        final_score, final_worst = objective(
+            gemmi, cc, atom_index, adjacency, bond_map)
     return {
         'code': cc.name,
         'path': str(path),
@@ -339,10 +387,23 @@ def main():
     args, repo_root = parse_args()
     gemmi = load_gemmi(repo_root)
     for item in args.inputs:
-        result = optimize_file(gemmi, Path(item), args.passes, args.max_subtree, args.verbose)
-        print(f"{result['code']}  score {result['start_score']:.1f} -> {result['final_score']:.1f}  "
-              f"worst_bond {result['start_worst'][0]:.1f}:{result['start_worst'][1]} -> "
-              f"{result['final_worst'][0]:.1f}:{result['final_worst'][1]}  accepted={result['accepted']}  {result['path']}")
+        result = optimize_file(
+            gemmi,
+            Path(item),
+            args.passes,
+            args.max_subtree,
+            args.verbose)
+        print(
+            f"{
+                result['code']}  score {
+                result['start_score']:.1f} -> {
+                result['final_score']:.1f}  " f"worst_bond {
+                    result['start_worst'][0]:.1f}:{
+                        result['start_worst'][1]} -> " f"{
+                            result['final_worst'][0]:.1f}:{
+                                result['final_worst'][1]}  accepted={
+                                    result['accepted']}  {
+                                        result['path']}")
     return 0
 
 

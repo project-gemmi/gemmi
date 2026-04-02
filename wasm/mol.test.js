@@ -210,6 +210,76 @@ test('exposes atom metal classification', async () => {
   st.delete();
 });
 
+test('exposes struct_conn metadata and append helpers', async () => {
+  const gemmi = await Gemmi();
+  const path = '../tests/4oz7.pdb';
+  const buffer = fs.readFileSync(path);
+  const st = gemmi.read_structure(buffer, path);
+
+  const connections = st.connections;
+  expect(connections.size()).toBeGreaterThan(0);
+  const connection = connections.get(0);
+  expect(connection.name).toBe('disulf1');
+  expect(connection.type).toBe(gemmi.ConnectionType.Disulf);
+  expect(connection.asu).toBe(gemmi.Asu.Same);
+  expect(connection.partner1.chain_name).toBe('A');
+  expect(connection.partner1.res_id.name).toBe('CYS');
+  expect(connection.partner1.res_id.seqid_string).toBe('4');
+  expect(connection.partner1.atom_name).toBe('SG');
+  expect(connection.partner2.chain_name).toBe('A');
+  expect(connection.partner2.res_id.seqid_string).toBe('10');
+  expect(connection.partner2.atom_name).toBe('SG');
+
+  const added = new gemmi.Connection();
+  const p1 = new gemmi.AtomAddress();
+  const p1res = new gemmi.ResidueId();
+  p1res.name = 'ALA';
+  p1res.seqid_string = '2';
+  p1.chain_name = 'A';
+  p1.res_id = p1res;
+  p1.atom_name = 'N';
+
+  const p2 = new gemmi.AtomAddress();
+  const p2res = new gemmi.ResidueId();
+  p2res.name = 'SER';
+  p2res.seqid_string = '3';
+  p2.chain_name = 'A';
+  p2.res_id = p2res;
+  p2.atom_name = 'OG';
+  p2.altloc = 'A';
+
+  added.name = 'custom1';
+  added.link_id = 'link-demo';
+  added.type = gemmi.ConnectionType.Hydrog;
+  added.asu = gemmi.Asu.Different;
+  added.partner1 = p1;
+  added.partner2 = p2;
+  added.reported_distance = 2.75;
+  st.add_connection(added);
+
+  const appended = st.connections.get(st.connections.size() - 1);
+  expect(appended.name).toBe('custom1');
+  expect(appended.link_id).toBe('link-demo');
+  expect(appended.type).toBe(gemmi.ConnectionType.Hydrog);
+  expect(appended.asu).toBe(gemmi.Asu.Different);
+  expect(appended.partner2.altloc).toBe('A');
+  expect(appended.reported_distance).toBeCloseTo(2.75);
+  const cifText = gemmi.make_mmcif_string(st);
+  expect(cifText).toMatch(/_struct_conn\.id/);
+  expect(cifText).toMatch(/custom1/);
+  expect(cifText).toMatch(/link-demo/);
+
+  appended.delete();
+  added.delete();
+  p1.delete();
+  p1res.delete();
+  p2.delete();
+  p2res.delete();
+  connection.delete();
+  connections.delete();
+  st.delete();
+});
+
 test('removes selected atoms, residues and chains by CID', async () => {
   const gemmi = await Gemmi();
 
@@ -312,6 +382,80 @@ test('builds structure hierarchy with append methods and writable setters', asyn
   expect(st.at(0).at(0).at(1).at(0).is_metal).toBe(true);
   expect(count_atoms_with_iterators(st)).toBe(2);
 
+  st.delete();
+});
+
+test('exposes structure sites metadata and append helpers', async () => {
+  const gemmi = await Gemmi();
+  const path = '../tests/5moo_header.pdb';
+  const buffer = fs.readFileSync(path);
+  const st = gemmi.read_structure(buffer, path);
+
+  const sites = st.sites;
+  expect(sites.size()).toBe(3);
+  const site = sites.get(0);
+  expect(site.name).toBe('AC1');
+  expect(site.evidence_code).toBe('SOFTWARE');
+  expect(site.residue.chain_name).toBe('A');
+  expect(site.residue.res_id.name).toBe('CA');
+  expect(site.residue.res_id.seqid_string).toBe('301');
+  expect(site.members.size()).toBe(6);
+  const member = site.members.get(0);
+  expect(member.residue_num).toBe(1);
+  expect(member.auth.chain_name).toBe('A');
+  expect(member.auth.res_id.name).toBe('GLU');
+  expect(member.auth.res_id.seqid_string).toBe('70');
+  expect(member.label_seq_string).toBe('');
+  expect(member.label_alt_id).toBe('');
+
+  const addedSite = new gemmi.StructSite('ZZ1');
+  const siteResidue = new gemmi.AtomAddress();
+  const siteResidueId = new gemmi.ResidueId();
+  siteResidueId.name = 'CA';
+  siteResidueId.seqid_string = '301';
+  siteResidue.chain_name = 'A';
+  siteResidue.res_id = siteResidueId;
+  addedSite.residue = siteResidue;
+  addedSite.evidence_code = 'Software';
+  addedSite.residue_count = 1;
+  addedSite.details = 'demo site';
+
+  const addedMember = new gemmi.StructSiteMember();
+  const memberAddr = new gemmi.AtomAddress();
+  const memberResidueId = new gemmi.ResidueId();
+  memberResidueId.name = 'GLU';
+  memberResidueId.seqid_string = '70';
+  memberAddr.chain_name = 'A';
+  memberAddr.res_id = memberResidueId;
+  addedMember.residue_num = 1;
+  addedMember.auth = memberAddr;
+  addedMember.label_comp_id = 'GLU';
+  addedMember.label_asym_id = 'A';
+  addedMember.label_seq_string = '70';
+  addedMember.label_atom_id = 'CA';
+  addedMember.label_alt_id = 'B';
+  addedMember.symmetry = '1_555';
+  addedSite.add_member(addedMember);
+  st.add_site(addedSite);
+
+  const added = st.sites.get(st.sites.size() - 1);
+  expect(added.name).toBe('ZZ1');
+  expect(added.members.size()).toBe(1);
+  expect(added.members.get(0).label_seq_string).toBe('70');
+  expect(added.members.get(0).label_alt_id).toBe('B');
+  expect(gemmi.make_mmcif_string(st)).toMatch(/_struct_site\.id/);
+  expect(gemmi.make_mmcif_string(st)).toMatch(/ZZ1/);
+
+  member.delete();
+  site.delete();
+  sites.delete();
+  added.delete();
+  addedMember.delete();
+  memberAddr.delete();
+  memberResidueId.delete();
+  siteResidue.delete();
+  siteResidueId.delete();
+  addedSite.delete();
   st.delete();
 });
 

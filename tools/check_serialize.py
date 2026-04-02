@@ -72,12 +72,14 @@ def main():
         if g1.kind == cindex.CursorKind.NAMESPACE and g1.spelling == 'gemmi':
             for g2 in g1.get_children():
                 name = g2.spelling
-                if g2.kind in checked_kinds and name in macros:
+                if (g2.kind in checked_kinds and name in macros
+                        and g2.is_definition()):
                     compare_struct(name, g2, macros[name])
                     del macros[name]
                     for g3 in g2.get_children():
                         nested = f'{name}::{g3.spelling}'
-                        if g3.kind in checked_kinds and nested in macros:
+                        if (g3.kind in checked_kinds and nested in macros
+                                and g3.is_definition()):
                             compare_struct(nested, g3, macros[nested])
                             del macros[nested]
     if macros:

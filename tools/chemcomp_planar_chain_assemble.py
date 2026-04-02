@@ -17,8 +17,14 @@ def load_module(path, name):
 def parse_args():
     repo_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
-        description='Prototype planar-chain assembly keeping broad plane fragments.')
-    parser.add_argument('inputs', nargs='+', help='Prepared chemcomp CIF files.')
+        description=(
+            'Prototype planar-chain assembly '
+            'keeping broad plane fragments.'
+        ))
+    parser.add_argument(
+        'inputs',
+        nargs='+',
+        help='Prepared chemcomp CIF files.')
     parser.add_argument('--min-size', type=int, default=4)
     parser.add_argument('--verbose', action='store_true')
     return parser.parse_args(), repo_root
@@ -32,9 +38,12 @@ def heavy_bond_stats(cc):
     for bond in cc.rt.bonds:
         i = idx.get(bond.id1.atom)
         j = idx.get(bond.id2.atom)
-        if i is None or j is None or cc.atoms[i].is_hydrogen() or cc.atoms[j].is_hydrogen():
+        if i is None or j is None or cc.atoms[i].is_hydrogen(
+        ) or cc.atoms[j].is_hydrogen():
             continue
-        if not math.isfinite(cc.atoms[i].xyz.x) or not math.isfinite(cc.atoms[j].xyz.x):
+        if not math.isfinite(
+                cc.atoms[i].xyz.x) or not math.isfinite(
+                cc.atoms[j].xyz.x):
             continue
         target = bond.value if math.isfinite(bond.value) else bond.value_nucleus
         if not math.isfinite(target):
@@ -51,7 +60,13 @@ def heavy_bond_stats(cc):
     return worst, count5, count10
 
 
-def assemble_with_seed(pa, cc, fragments, full_core_atoms, seed_label, bridge_planes):
+def assemble_with_seed(
+        pa,
+        cc,
+        fragments,
+        full_core_atoms,
+        seed_label,
+        bridge_planes):
     by_label = {f['label']: f for f in fragments}
     edges = pa.fragment_edges(fragments)
     core_atoms = sorted(full_core_atoms)
@@ -67,11 +82,19 @@ def assemble_with_seed(pa, cc, fragments, full_core_atoms, seed_label, bridge_pl
                 continue
             local_pos = local[nb_label]
             fn = None
-            if len(overlap) >= 2 and all(atom in global_pos and atom in local_pos for atom in overlap[:2]):
+            if len(overlap) >= 2 and all(
+                    atom in global_pos and atom in local_pos
+                    for atom in overlap[:2]):
                 fn = pa.best_transform(local_pos, global_pos, overlap)
             elif len(overlap) == 1:
-                fn = pa.one_overlap_transform(overlap[0], by_label[nb_label], local_pos,
-                                              global_pos, core_adj, core_angles, core_bonds)
+                fn = pa.one_overlap_transform(
+                    overlap[0],
+                    by_label[nb_label],
+                    local_pos,
+                    global_pos,
+                    core_adj,
+                    core_angles,
+                    core_bonds)
             if fn is None:
                 continue
             for atom, pos in local_pos.items():
@@ -80,10 +103,19 @@ def assemble_with_seed(pa, cc, fragments, full_core_atoms, seed_label, bridge_pl
             placed_frags.add(nb_label)
             q.append(nb_label)
     if bridge_planes:
-        global_pos = pa.place_bridge_planes(bridge_planes, global_pos, core_adj, core_angles, core_bonds)
-        global_pos, placed_frags = pa.attach_pending_fragments(fragments, placed_frags, local, global_pos,
-                                                               core_adj, core_angles, core_bonds)
-    global_pos = pa.place_terminal_leaves(core_atoms, global_pos, core_adj, core_angles, core_bonds)
+        global_pos = pa.place_bridge_planes(
+            bridge_planes, global_pos, core_adj, core_angles, core_bonds)
+        global_pos, placed_frags = pa.attach_pending_fragments(
+            fragments,
+            placed_frags,
+            local,
+            global_pos,
+            core_adj,
+            core_angles,
+            core_bonds,
+        )
+    global_pos = pa.place_terminal_leaves(
+        core_atoms, global_pos, core_adj, core_angles, core_bonds)
     return global_pos, placed_frags
 
 
@@ -98,27 +130,43 @@ def apply_positions(gemmi, cc, positions):
 def main():
     args, repo_root = parse_args()
     sys.path.insert(0, str(repo_root / 'tools'))
-    pa = load_module(repo_root / 'tools' / 'chemcomp_planar_assemble.py', 'pa_chain')
-    pf = load_module(repo_root / 'tools' / 'chemcomp_planar_fragments.py', 'pf_chain')
+    pa = load_module(
+        repo_root
+        / 'tools'
+        / 'chemcomp_planar_assemble.py',
+        'pa_chain')
+    pf = load_module(
+        repo_root
+        / 'tools'
+        / 'chemcomp_planar_fragments.py',
+        'pf_chain')
     gemmi = pa.load_gemmi(repo_root)
     for item in args.inputs:
         path = Path(item)
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         _, cores = pa.detect_planar_cores(cc, args.min_size)
         if not cores:
             print(f'{cc.name}  no planar core')
             continue
         core = cores[0]
         fragments = pf.dedup_fragments(
-            pf.plane_fragments(cc, core['atoms']) + pf.cycle_fragments(pf.bond_graph(cc, set(core['atoms']))))
+            pf.plane_fragments(cc, core['atoms'])
+            + pf.cycle_fragments(
+                pf.bond_graph(cc, set(core['atoms']))
+            )
+        )
         fragments = [f for f in fragments if 4 <= len(f['atoms']) <= 10]
-        fragments.sort(key=lambda f: (f['kind'] != 'cycle', -len(f['atoms']), f['label']))
+        fragments.sort(key=lambda f: (
+            f['kind'] != 'cycle', -len(f['atoms']), f['label']))
         bridge_planes = []
 
         best = None
         for frag in fragments:
-            positions, placed_frags = assemble_with_seed(pa, cc, fragments, core['atoms'], frag['label'], bridge_planes)
-            trial = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+            positions, placed_frags = assemble_with_seed(
+                pa, cc, fragments, core['atoms'], frag['label'], bridge_planes)
+            trial = gemmi.make_chemcomp_from_block(
+                gemmi.cif.read(str(path)).sole_block())
             apply_positions(gemmi, trial, positions)
             before, b5, b10 = heavy_bond_stats(trial)
             try:
@@ -128,14 +176,42 @@ def main():
             after, a5, a10 = heavy_bond_stats(trial)
             key = (after[0], a10, a5, -len(positions))
             if best is None or key < best[0]:
-                best = (key, frag['label'], len(positions), len(placed_frags), before, after, b5, b10, a5, a10)
-        _, seed, placed_atoms, placed_frags, before, after, b5, b10, a5, a10 = best
-        print(f'{cc.name}  seed={seed}  placed={placed_atoms}/{len(core["atoms"])} frags={placed_frags}/{len(fragments)}')
-        print(f'  before  worst_bond_z={before[0]:.2f}  bond>5={b5} bond>10={b10}')
+                best = (
+                    key,
+                    frag['label'],
+                    len(positions),
+                    len(placed_frags),
+                    before,
+                    after,
+                    b5,
+                    b10,
+                    a5,
+                    a10)
+        (
+            _,
+            seed,
+            placed_atoms,
+            placed_frags,
+            before,
+            after,
+            b5,
+            b10,
+            a5,
+            a10,
+        ) = best
+        print(
+            f'{cc.name}  seed={seed}  '
+            f'placed={placed_atoms}/{len(core["atoms"])} '
+            f'frags={placed_frags}/{len(fragments)}')
+        print(
+            f'  before  worst_bond_z={
+                before[0]:.2f}  bond>5={b5} bond>10={b10}')
         if before[1]:
             a, b, actual, target = before[1]
             print(f'    worst {a}-{b} {actual:.4f} vs {target:.4f}')
-        print(f'  after   worst_bond_z={after[0]:.2f}  bond>5={a5} bond>10={a10}')
+        print(
+            f'  after   worst_bond_z={
+                after[0]:.2f}  bond>5={a5} bond>10={a10}')
         if after[1]:
             a, b, actual, target = after[1]
             print(f'    worst {a}-{b} {actual:.4f} vs {target:.4f}')

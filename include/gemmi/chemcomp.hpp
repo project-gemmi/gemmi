@@ -70,7 +70,7 @@ struct Restraints {
     double esd;
     double value_nucleus;
     double esd_nucleus;
-    std::string stereo_config;
+    std::string stereo_config = "";
     int ordinal = 0;
     std::string str() const { return cat(id1.atom, '-', id2.atom); }
     std::string lexicographic_str() const {

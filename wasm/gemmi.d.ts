@@ -71,12 +71,105 @@ export interface ResidueStrandSenseValue<T extends number> {
 }
 export type ResidueStrandSense = ResidueStrandSenseValue<0>|ResidueStrandSenseValue<1>|ResidueStrandSenseValue<2>|ResidueStrandSenseValue<-1>;
 
+export interface AsuValue<T extends number> {
+  value: T;
+}
+export type Asu = AsuValue<0>|AsuValue<1>|AsuValue<2>;
+
+export interface ConnectionTypeValue<T extends number> {
+  value: T;
+}
+export type ConnectionType = ConnectionTypeValue<0>|ConnectionTypeValue<1>|ConnectionTypeValue<2>|ConnectionTypeValue<3>|ConnectionTypeValue<4>;
+
+export interface AtomAddress extends ClassHandle {
+  res_id: ResidueId;
+  get chain_name(): string;
+  set chain_name(value: EmbindString);
+  get atom_name(): string;
+  set atom_name(value: EmbindString);
+  get altloc(): string;
+  set altloc(value: EmbindString);
+  str(): string;
+}
+
+export interface Connection extends ClassHandle {
+  type: ConnectionType;
+  asu: Asu;
+  partner1: AtomAddress;
+  partner2: AtomAddress;
+  reported_distance: number;
+  get name(): string;
+  set name(value: EmbindString);
+  get link_id(): string;
+  set link_id(value: EmbindString);
+}
+
+export interface ConnectionVector extends ClassHandle, Iterable<Connection> {
+  push_back(_0: Connection): void;
+  resize(_0: number, _1: Connection): void;
+  size(): number;
+  get(_0: number): Connection | undefined;
+  set(_0: number, _1: Connection): boolean;
+}
+
+export interface StructSiteMember extends ClassHandle {
+  auth: AtomAddress;
+  residue_num: number;
+  get label_comp_id(): string;
+  set label_comp_id(value: EmbindString);
+  get label_asym_id(): string;
+  set label_asym_id(value: EmbindString);
+  get label_seq_string(): string;
+  set label_seq_string(value: EmbindString);
+  get label_atom_id(): string;
+  set label_atom_id(value: EmbindString);
+  get label_alt_id(): string;
+  set label_alt_id(value: EmbindString);
+  get symmetry(): string;
+  set symmetry(value: EmbindString);
+  get details(): string;
+  set details(value: EmbindString);
+}
+
+export interface StructSiteMemberVector extends ClassHandle, Iterable<StructSiteMember> {
+  push_back(_0: StructSiteMember): void;
+  resize(_0: number, _1: StructSiteMember): void;
+  size(): number;
+  get(_0: number): StructSiteMember | undefined;
+  set(_0: number, _1: StructSiteMember): boolean;
+}
+
+export interface StructSite extends ClassHandle {
+  residue: AtomAddress;
+  members: StructSiteMemberVector;
+  residue_count: number;
+  get name(): string;
+  set name(value: EmbindString);
+  get evidence_code(): string;
+  set evidence_code(value: EmbindString);
+  get details(): string;
+  set details(value: EmbindString);
+  add_member(_0: StructSiteMember): void;
+}
+
+export interface StructSiteVector extends ClassHandle, Iterable<StructSite> {
+  push_back(_0: StructSite): void;
+  resize(_0: number, _1: StructSite): void;
+  size(): number;
+  get(_0: number): StructSite | undefined;
+  set(_0: number, _1: StructSite): boolean;
+}
+
 export interface Structure extends ClassHandle {
   cell: UnitCell;
+  connections: ConnectionVector;
+  sites: StructSiteVector;
   readonly length: number;
   get name(): string;
   set name(value: EmbindString);
   add_model(_0: Model): void;
+  add_connection(_0: Connection): void;
+  add_site(_0: StructSite): void;
   at(_0: number): Model | null;
 }
 
@@ -240,6 +333,30 @@ interface EmbindModule {
   };
   ResidueSs: {Coil: ResidueSsValue<0>, Helix: ResidueSsValue<1>, Strand: ResidueSsValue<2>};
   ResidueStrandSense: {NotStrand: ResidueStrandSenseValue<0>, Parallel: ResidueStrandSenseValue<1>, First: ResidueStrandSenseValue<2>, Antiparallel: ResidueStrandSenseValue<-1>};
+  Asu: {Same: AsuValue<0>, Different: AsuValue<1>, Any: AsuValue<2>};
+  ConnectionType: {Covale: ConnectionTypeValue<0>, Disulf: ConnectionTypeValue<1>, Hydrog: ConnectionTypeValue<2>, MetalC: ConnectionTypeValue<3>, Unknown: ConnectionTypeValue<4>};
+  AtomAddress: {
+    new(): AtomAddress;
+  };
+  Connection: {
+    new(): Connection;
+  };
+  ConnectionVector: {
+    new(): ConnectionVector;
+  };
+  StructSiteMember: {
+    new(): StructSiteMember;
+  };
+  StructSiteMemberVector: {
+    new(): StructSiteMemberVector;
+  };
+  StructSite: {
+    new(): StructSite;
+    new(_0: EmbindString): StructSite;
+  };
+  StructSiteVector: {
+    new(): StructSiteVector;
+  };
   Structure: {
     new(): Structure;
   };
@@ -249,7 +366,9 @@ interface EmbindModule {
   Chain: {
     new(): Chain;
   };
-  ResidueId: {};
+  ResidueId: {
+    new(): ResidueId;
+  };
   Residue: {
     new(): Residue;
   };

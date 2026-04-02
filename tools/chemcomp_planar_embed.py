@@ -2,7 +2,6 @@
 
 import argparse
 import math
-import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -17,8 +16,10 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Prototype 2D embedding for merged planar chemcomp cores.')
     parser.add_argument('inputs', nargs='+', help='Chemcomp CIF files.')
-    parser.add_argument('--core-index', type=int, default=0, help='Which planar core to embed.')
-    parser.add_argument('--min-size', type=int, default=4, help='Minimum planar core size.')
+    parser.add_argument('--core-index', type=int, default=0,
+                        help='Which planar core to embed.')
+    parser.add_argument('--min-size', type=int, default=4,
+                        help='Minimum planar core size.')
     return parser.parse_args(), repo_root
 
 
@@ -79,7 +80,8 @@ def build_restraint_maps(cc, core_atoms):
         a = angle.id1.atom
         c = angle.id2.atom
         b = angle.id3.atom
-        if a in core_set and b in core_set and c in core_set and math.isfinite(angle.value):
+        if a in core_set and b in core_set and c in core_set and math.isfinite(
+                angle.value):
             angles[(a, c, b)] = math.radians(angle.value)
             angles[(b, c, a)] = math.radians(angle.value)
     return bonds, adjacency, angles
@@ -93,7 +95,8 @@ def choose_seed_bond(adjacency, bonds):
     best = None
     best_score = None
     for a, b in bonds:
-        score = (len(adjacency[a]) + len(adjacency[b]), -abs(len(adjacency[a]) - len(adjacency[b])), a, b)
+        score = (len(adjacency[a]) + len(adjacency[b]),
+                 - abs(len(adjacency[a]) - len(adjacency[b])), a, b)
         if best_score is None or score > best_score:
             best_score = score
             best = (a, b)
@@ -278,14 +281,25 @@ def embed_core(core_atoms, bonds, adjacency, angles):
                     for n2 in placed_nbs[i + 1:]:
                         d1 = bonds[tuple(sorted((atom, n1)))]
                         d2 = bonds[tuple(sorted((atom, n2)))]
-                        for cand in circle_intersections(placed[n1], d1, placed[n2], d2):
+                        for cand in circle_intersections(
+                                placed[n1], d1, placed[n2], d2):
                             candidates.append(cand)
             if not candidates:
                 for nb in placed_nbs:
-                    candidates.extend(place_from_one_neighbor(atom, nb, placed, adjacency, bonds, angles))
+                    candidates.extend(
+                        place_from_one_neighbor(
+                            atom, nb, placed, adjacency, bonds, angles))
             if not candidates:
                 continue
-            best = min(candidates, key=lambda cand: score_candidate(atom, cand, placed, adjacency, bonds, angles))
+            best = min(
+                candidates,
+                key=lambda cand: score_candidate(
+                    atom,
+                    cand,
+                    placed,
+                    adjacency,
+                    bonds,
+                    angles))
             placed[atom] = best
             improved = True
     return placed, cycles
@@ -322,7 +336,14 @@ def relax_bonds(core_atoms, placed, bonds, steps=200, step_size=0.25):
     return placed
 
 
-def refine_angles(core_atoms, placed, adjacency, bonds, angles, steps=80, blend=1.0):
+def refine_angles(
+        core_atoms,
+        placed,
+        adjacency,
+        bonds,
+        angles,
+        steps=80,
+        blend=1.0):
     names = [a for a in core_atoms if a in placed]
     if len(names) < 3:
         return placed
@@ -335,22 +356,34 @@ def refine_angles(core_atoms, placed, adjacency, bonds, angles, steps=80, blend=
             nbs = [nb for nb in adjacency[center] if nb in placed]
             if len(nbs) < 2:
                 continue
-            current_score = score_candidate(center, placed[center], placed, adjacency, bonds, angles)
+            current_score = score_candidate(
+                center, placed[center], placed, adjacency, bonds, angles)
             candidates = []
             for i, a in enumerate(nbs):
                 for b in nbs[i + 1:]:
                     da = bonds[tuple(sorted((center, a)))]
                     db = bonds[tuple(sorted((center, b)))]
-                    candidates.extend(circle_intersections(placed[a], da, placed[b], db))
+                    candidates.extend(
+                        circle_intersections(
+                            placed[a], da, placed[b], db))
             if not candidates:
                 continue
-            best = min(candidates,
-                       key=lambda cand: score_candidate(center, cand, placed, adjacency, bonds, angles))
-            best_score = score_candidate(center, best, placed, adjacency, bonds, angles)
+            best = min(
+                candidates,
+                key=lambda cand: score_candidate(
+                    center,
+                    cand,
+                    placed,
+                    adjacency,
+                    bonds,
+                    angles))
+            best_score = score_candidate(
+                center, best, placed, adjacency, bonds, angles)
             if best_score + 1e-6 >= current_score:
                 continue
             pos = placed[center] * (1.0 - blend) + best * blend
-            new_score = score_candidate(center, pos, placed, adjacency, bonds, angles)
+            new_score = score_candidate(
+                center, pos, placed, adjacency, bonds, angles)
             if new_score + 1e-6 >= current_score:
                 continue
             moved += (pos - placed[center]).length()
@@ -360,7 +393,13 @@ def refine_angles(core_atoms, placed, adjacency, bonds, angles, steps=80, blend=
     return placed
 
 
-def total_energy(core_atoms, placed, bonds, angles, bond_weight=80.0, angle_weight=1.0):
+def total_energy(
+        core_atoms,
+        placed,
+        bonds,
+        angles,
+        bond_weight=80.0,
+        angle_weight=1.0):
     names = [a for a in core_atoms if a in placed]
     placed_atoms = set(names)
     energy = 0.0
@@ -381,7 +420,14 @@ def total_energy(core_atoms, placed, bonds, angles, bond_weight=80.0, angle_weig
     return energy
 
 
-def optimize_layout(core_atoms, placed, bonds, angles, steps=120, delta=1e-3, step_size=0.02):
+def optimize_layout(
+        core_atoms,
+        placed,
+        bonds,
+        angles,
+        steps=120,
+        delta=1e-3,
+        step_size=0.02):
     names = [a for a in core_atoms if a in placed]
     if len(names) < 3:
         return placed
@@ -445,13 +491,23 @@ def summarize_embedding(core_atoms, placed, bonds, angles):
     angle_res = []
     seen = set()
     for (a, c, b), target in angles.items():
-        key = tuple(sorted((a, b)) + [c]) if False else (a, c, b)
         if (a, c, b) in seen or (b, c, a) in seen:
             continue
         seen.add((a, c, b))
         if a in placed_atoms and b in placed_atoms and c in placed_atoms:
-            actual = math.degrees(angle_between(placed[a] - placed[c], placed[b] - placed[c]))
-            angle_res.append((abs(actual - math.degrees(target)), a, c, b, actual, math.degrees(target)))
+            actual = math.degrees(
+                angle_between(
+                    placed[a] - placed[c],
+                    placed[b] - placed[c]))
+            angle_res.append(
+                (abs(
+                    actual
+                    - math.degrees(target)),
+                    a,
+                    c,
+                    b,
+                    actual,
+                    math.degrees(target)))
     bond_res.sort(reverse=True)
     angle_res.sort(reverse=True)
     return bond_res, angle_res
@@ -462,7 +518,8 @@ def main():
     gemmi = load_gemmi(repo_root)
     for item in args.inputs:
         path = Path(item)
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read(str(path)).sole_block())
         _, cores = detect_planar_cores(cc, args.min_size)
         print('{}  {}'.format(cc.name, path))
         if not cores:
@@ -477,14 +534,25 @@ def main():
         for key, value in cycle_angles.items():
             all_angles.setdefault(key, value)
         placed = relax_bonds(core['atoms'], placed, bonds)
-        placed = refine_angles(core['atoms'], placed, adjacency, bonds, all_angles)
+        placed = refine_angles(
+            core['atoms'],
+            placed,
+            adjacency,
+            bonds,
+            all_angles)
         placed = optimize_layout(core['atoms'], placed, bonds, all_angles)
-        print('  core atoms={} placed={} planes={}'.format(len(core['atoms']), len(placed), len(core['planes'])))
-        bond_res, angle_res = summarize_embedding(core['atoms'], placed, bonds, all_angles)
+        print('  core atoms={} placed={} planes={}'.format(
+            len(core['atoms']), len(placed), len(core['planes'])))
+        bond_res, angle_res = summarize_embedding(
+            core['atoms'], placed, bonds, all_angles)
         for diff, a, b, actual, target in bond_res[:5]:
-            print('    bond  {:>8} {:>8}  {:.4f} vs {:.4f}'.format(a, b, actual, target))
+            print(
+                '    bond  {:>8} {:>8}  {:.4f} vs {:.4f}'.format(
+                    a, b, actual, target))
         for diff, a, c, b, actual, target in angle_res[:5]:
-            print('    angle {:>8} {:>8} {:>8}  {:.2f} vs {:.2f}'.format(a, c, b, actual, target))
+            print(
+                '    angle {:>8} {:>8} {:>8}  {:.2f} vs {:.2f}'.format(
+                    a, c, b, actual, target))
         print()
 
 

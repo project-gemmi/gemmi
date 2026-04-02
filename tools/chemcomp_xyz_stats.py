@@ -16,18 +16,44 @@ def load_gemmi(repo_root: Path):
 def parse_args():
     repo_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
-        description='Regenerate chemcomp ideal coordinates and summarize restraint deviations.')
+        description=(
+            'Regenerate chemcomp ideal coordinates and '
+            'summarize restraint deviations.'
+        ))
     parser.add_argument('directory', help='Directory with monomer CIF files.')
-    parser.add_argument('--recursive', action='store_true', help='Recurse into subdirectories.')
-    parser.add_argument('--limit', type=int, default=0, help='Maximum number of files to process.')
-    parser.add_argument('--top', type=int, default=20, help='Number of worst files to print.')
-    parser.add_argument('--threshold', type=float, default=1.0,
-                        help='Per-file pass threshold in ESD units (default: 1.0).')
-    parser.add_argument('--bond-z-mid', type=float, default=5.0,
-                        help='Mid catastrophic bond threshold in ESD units (default: 5.0).')
-    parser.add_argument('--bond-z-high', type=float, default=10.0,
-                        help='High catastrophic bond threshold in ESD units (default: 10.0).')
-    parser.add_argument('--verbose', action='store_true', help='Print one line per file.')
+    parser.add_argument(
+        '--recursive',
+        action='store_true',
+        help='Recurse into subdirectories.')
+    parser.add_argument(
+        '--limit',
+        type=int,
+        default=0,
+        help='Maximum number of files to process.')
+    parser.add_argument(
+        '--top',
+        type=int,
+        default=20,
+        help='Number of worst files to print.')
+    parser.add_argument(
+        '--threshold',
+        type=float,
+        default=1.0,
+        help='Per-file pass threshold in ESD units (default: 1.0).')
+    parser.add_argument(
+        '--bond-z-mid',
+        type=float,
+        default=5.0,
+        help='Mid catastrophic bond threshold in ESD units (default: 5.0).')
+    parser.add_argument(
+        '--bond-z-high',
+        type=float,
+        default=10.0,
+        help='High catastrophic bond threshold in ESD units (default: 10.0).')
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Print one line per file.')
     return parser.parse_args(), repo_root
 
 
@@ -66,7 +92,10 @@ def atom_map(cc):
 
 
 def finite_xyz(atom) -> bool:
-    return math.isfinite(atom.xyz.x) and math.isfinite(atom.xyz.y) and math.isfinite(atom.xyz.z)
+    return math.isfinite(
+        atom.xyz.x) and math.isfinite(
+        atom.xyz.y) and math.isfinite(
+            atom.xyz.z)
 
 
 def bond_value(bond):
@@ -101,12 +130,19 @@ def calc_chiral_volume(a0, a1, a2, a3):
     return v1.dot(v2.cross(v3))
 
 
-def torsion_diff_deg(gemmi, value_deg: float, target_deg: float, period: int) -> float:
+def torsion_diff_deg(
+        gemmi,
+        value_deg: float,
+        target_deg: float,
+        period: int) -> float:
     full = 360.0 / max(1, period)
     return angle_abs_diff_deg(value_deg, target_deg, full)
 
 
-def angle_abs_diff_deg(value_deg: float, target_deg: float, full: float = 360.0) -> float:
+def angle_abs_diff_deg(
+        value_deg: float,
+        target_deg: float,
+        full: float = 360.0) -> float:
     diff = math.remainder(value_deg - target_deg, full)
     return abs(diff)
 
@@ -127,7 +163,11 @@ def chirality_label(chir) -> str:
     return f'{chir.id_ctr.atom},{chir.id1.atom},{chir.id2.atom},{chir.id3.atom}'
 
 
-def evaluate_component(gemmi, path: Path, bond_z_mid: float, bond_z_high: float):
+def evaluate_component(
+        gemmi,
+        path: Path,
+        bond_z_mid: float,
+        bond_z_high: float):
     cc = gemmi.make_chemcomp_from_block(gemmi.cif.read(str(path)).sole_block())
     for atom in cc.atoms:
         atom.xyz = gemmi.Position(float('nan'), float('nan'), float('nan'))
@@ -140,7 +180,8 @@ def evaluate_component(gemmi, path: Path, bond_z_mid: float, bond_z_high: float)
         a1 = atoms.get(bond.id1.atom)
         a2 = atoms.get(bond.id2.atom)
         target = bond_value(bond)
-        if a1 is None or a2 is None or not finite_xyz(a1) or not finite_xyz(a2) or not math.isfinite(target):
+        if a1 is None or a2 is None or not finite_xyz(
+                a1) or not finite_xyz(a2) or not math.isfinite(target):
             missing.append(('bond', bond_label(bond)))
             continue
         actual = a1.xyz.dist(a2.xyz)
@@ -156,25 +197,59 @@ def evaluate_component(gemmi, path: Path, bond_z_mid: float, bond_z_high: float)
         a1 = atoms.get(angle.id1.atom)
         a2 = atoms.get(angle.id2.atom)
         a3 = atoms.get(angle.id3.atom)
-        if a1 is None or a2 is None or a3 is None or not finite_xyz(a1) or not finite_xyz(a2) or not finite_xyz(a3) or not math.isfinite(angle.value):
+        if (
+            a1 is None
+            or a2 is None
+            or a3 is None
+            or not finite_xyz(a1)
+            or not finite_xyz(a2)
+            or not finite_xyz(a3)
+            or not math.isfinite(angle.value)
+        ):
             missing.append(('angle', angle_label(angle)))
             continue
         actual = math.degrees(gemmi.calculate_angle(a1.xyz, a2.xyz, a3.xyz))
-        z = angle_abs_diff_deg(actual, angle.value) / angle.esd if angle.esd > 0 else float('inf')
-        stats.add('angle', angle_label(angle), z, f'{actual:.4f} vs {angle.value:.4f}')
+        z = (
+            angle_abs_diff_deg(actual, angle.value) / angle.esd
+            if angle.esd > 0
+            else float('inf')
+        )
+        stats.add(
+            'angle',
+            angle_label(angle),
+            z,
+            f'{actual:.4f} vs {angle.value:.4f}',
+        )
 
     for tor in cc.rt.torsions:
         a1 = atoms.get(tor.id1.atom)
         a2 = atoms.get(tor.id2.atom)
         a3 = atoms.get(tor.id3.atom)
         a4 = atoms.get(tor.id4.atom)
-        if a1 is None or a2 is None or a3 is None or a4 is None or not finite_xyz(a1) or not finite_xyz(a2) or not finite_xyz(a3) or not finite_xyz(a4) or not math.isfinite(tor.value):
+        if (
+            a1 is None
+            or a2 is None
+            or a3 is None
+            or a4 is None
+            or not finite_xyz(a1)
+            or not finite_xyz(a2)
+            or not finite_xyz(a3)
+            or not finite_xyz(a4)
+            or not math.isfinite(tor.value)
+        ):
             missing.append(('torsion', torsion_label(tor)))
             continue
-        actual = math.degrees(gemmi.calculate_dihedral(a1.xyz, a2.xyz, a3.xyz, a4.xyz))
+        actual = math.degrees(
+            gemmi.calculate_dihedral(
+                a1.xyz, a2.xyz, a3.xyz, a4.xyz))
         diff = torsion_diff_deg(gemmi, actual, tor.value, tor.period)
         z = diff / tor.esd if tor.esd > 0 else 0.0
-        stats.add('torsion', torsion_label(tor), z, f'{actual:.4f} vs {tor.value:.4f} p{tor.period}')
+        stats.add(
+            'torsion',
+            torsion_label(tor),
+            z,
+            f'{actual:.4f} vs {tor.value:.4f} p{tor.period}',
+        )
 
     for chir in cc.rt.chirs:
         if chir.sign == gemmi.ChiralityType.Both:
@@ -183,7 +258,16 @@ def evaluate_component(gemmi, path: Path, bond_z_mid: float, bond_z_high: float)
         a1 = atoms.get(chir.id1.atom)
         a2 = atoms.get(chir.id2.atom)
         a3 = atoms.get(chir.id3.atom)
-        if a0 is None or a1 is None or a2 is None or a3 is None or not finite_xyz(a0) or not finite_xyz(a1) or not finite_xyz(a2) or not finite_xyz(a3):
+        if (
+            a0 is None
+            or a1 is None
+            or a2 is None
+            or a3 is None
+            or not finite_xyz(a0)
+            or not finite_xyz(a1)
+            or not finite_xyz(a2)
+            or not finite_xyz(a3)
+        ):
             missing.append(('chirality', chirality_label(chir)))
             continue
         vol = calc_chiral_volume(a0, a1, a2, a3)
@@ -220,10 +304,12 @@ def evaluate_component(gemmi, path: Path, bond_z_mid: float, bond_z_high: float)
         'path': path,
         'code': cc.name,
         'placed': placed,
-        'atoms': len(cc.atoms),
+        'atoms': len(
+            cc.atoms),
         'stats': stats,
         'missing': missing,
-        'all_within_threshold': placed == len(cc.atoms) and not missing and stats.max_z < 1.0,
+        'all_within_threshold': placed == len(
+            cc.atoms) and not missing and stats.max_z < 1.0,
     }
 
 
@@ -232,9 +318,14 @@ def summarize(results, threshold: float, top_n: int,
     processed = len(results)
     fully_placed = sum(1 for r in results if r['placed'] == r['atoms'])
     complete = sum(1 for r in results if not r['missing'])
-    within = sum(1 for r in results if r['placed'] == r['atoms'] and not r['missing'] and r['stats'].max_z < threshold)
-    max_zs = [r['stats'].max_z for r in results if math.isfinite(r['stats'].max_z)]
-    worst_bond_zs = [r['stats'].worst_bond_z for r in results if math.isfinite(r['stats'].worst_bond_z)]
+    within = sum(1 for r in results if r['placed'] == r['atoms']
+                 and not r['missing'] and r['stats'].max_z < threshold)
+    max_zs = [
+        r['stats'].max_z for r in results if math.isfinite(
+            r['stats'].max_z)]
+    worst_bond_zs = [
+        r['stats'].worst_bond_z for r in results if math.isfinite(
+            r['stats'].worst_bond_z)]
     bond_mid_ok = sum(1 for r in results if r['stats'].bonds_over_mid == 0)
     bond_high_ok = sum(1 for r in results if r['stats'].bonds_over_high == 0)
     total_bonds_over_mid = sum(r['stats'].bonds_over_mid for r in results)
@@ -261,7 +352,13 @@ def summarize(results, threshold: float, top_n: int,
     print(f'Bonds > {bond_z_mid:g} esd: {total_bonds_over_mid}')
     print(f'Bonds > {bond_z_high:g} esd: {total_bonds_over_high}')
     if kind_counts:
-        print('Restraints:      ' + ', '.join(f'{kind}={kind_counts[kind]}' for kind in sorted(kind_counts)))
+        print(
+            'Restraints:      '
+            + ', '.join(
+                f'{kind}={kind_counts[kind]}'
+                for kind in sorted(kind_counts)
+            )
+        )
 
     ranked = sorted(results,
                     key=lambda r: (r['stats'].bonds_over_high,
@@ -273,10 +370,15 @@ def summarize(results, threshold: float, top_n: int,
     print(f'\nWorst {min(top_n, len(ranked))} files:')
     for r in ranked[:top_n]:
         missing_note = f", missing={len(r['missing'])}" if r['missing'] else ''
-        print(f"{r['code']:>6}  max_z={r['stats'].max_z:8.3f}  worst_bond_z={r['stats'].worst_bond_z:8.3f}  "
-              f"bond>{bond_z_mid:g}={r['stats'].bonds_over_mid:>3}  "
-              f"bond>{bond_z_high:g}={r['stats'].bonds_over_high:>3}  "
-              f"placed={r['placed']:>3}/{r['atoms']:<3}{missing_note}  {r['path']}")
+        print(
+            f"{r['code']:>6}  "
+            f"max_z={r['stats'].max_z:8.3f}  "
+            f"worst_bond_z={r['stats'].worst_bond_z:8.3f}  "
+            f"bond>{bond_z_mid:g}={r['stats'].bonds_over_mid:>3}  "
+            f"bond>{bond_z_high:g}={r['stats'].bonds_over_high:>3}  "
+            f"placed={r['placed']:>3}/{r['atoms']:<3}"
+            f"{missing_note}  {r['path']}"
+        )
         for z, kind, label, detail in r['stats'].top(3):
             print(f'        {kind:<9} z={z:8.3f}  {label}  {detail}')
         if r['missing']:
@@ -298,17 +400,30 @@ def main():
 
     results = []
     for path in paths:
-        result = evaluate_component(gemmi, path, args.bond_z_mid, args.bond_z_high)
+        result = evaluate_component(
+            gemmi, path, args.bond_z_mid, args.bond_z_high)
         results.append(result)
         if args.verbose:
-            status = 'OK' if result['placed'] == result['atoms'] and not result['missing'] and result['stats'].max_z < args.threshold else 'WARN'
-            print(f"{status} {result['code']}: max_z={result['stats'].max_z:.3f} "
-                  f"worst_bond_z={result['stats'].worst_bond_z:.3f} "
-                  f"bond>{args.bond_z_mid:g}={result['stats'].bonds_over_mid} "
-                  f"bond>{args.bond_z_high:g}={result['stats'].bonds_over_high} "
-                  f"placed={result['placed']}/{result['atoms']} missing={len(result['missing'])}")
+            status = (
+                'OK'
+                if result['placed'] == result['atoms']
+                and not result['missing']
+                and result['stats'].max_z < args.threshold
+                else 'WARN'
+            )
+            print(
+                f"{status} {result['code']}: "
+                f"max_z={result['stats'].max_z:.3f} "
+                f"worst_bond_z={result['stats'].worst_bond_z:.3f} "
+                f"bond>{args.bond_z_mid:g}={result['stats'].bonds_over_mid} "
+                f"bond>{args.bond_z_high:g}={result['stats'].bonds_over_high} "
+                f"placed={result['placed']}/{result['atoms']} "
+                f"missing={len(result['missing'])}"
+            )
 
-    summarize(results, args.threshold, args.top, args.bond_z_mid, args.bond_z_high)
+    summarize(
+        results, args.threshold, args.top, args.bond_z_mid, args.bond_z_high
+    )
     return 0
 
 

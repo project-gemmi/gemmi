@@ -12,8 +12,10 @@ HETATM    3  O2  SO3     1      -7.003   1.053  16.315  1.00 20.00           O1-
 HETATM    4  O3  SO3     1      -5.199  -0.407  16.748  1.00 20.00           O1-
 """  # noqa: W291 - trailing whitespace
 
+
 def full_path(filename):
     return os.path.join(os.path.dirname(__file__), filename)
+
 
 # tests for make_structure_from_chemcomp_block()
 class TestChemCompXyz(unittest.TestCase):
@@ -59,6 +61,7 @@ class TestChemCompXyz(unittest.TestCase):
         block = gemmi.cif.read(path).sole_block()
         st = gemmi.make_structure_from_chemcomp_block(block)
         self.assertEqual(len(st), 1)
+
 
 # tests for gemmi/chemcomp.hpp
 class TestChemComp(unittest.TestCase):
@@ -138,6 +141,7 @@ class TestChemComp(unittest.TestCase):
         self.assertFalse(bond.aromatic)
         self.assertEqual(bond.stereo_config, 'N')
         self.assertEqual(bond.ordinal, 1)
+
 
 class TestSmarts(unittest.TestCase):
     def test_smarts_benzene(self):
@@ -254,7 +258,9 @@ C4 H4 sing
 C5 H5 sing
 C6 H6 sing
 """
-        cc = gemmi.make_chemcomp_from_block(gemmi.cif.read_string(cif_text).sole_block())
+        cc = gemmi.make_chemcomp_from_block(
+            gemmi.cif.read_string(cif_text).sole_block()
+        )
         rings = gemmi.find_ace_rings(cc)
 
         self.assertEqual(len(rings), 1)
