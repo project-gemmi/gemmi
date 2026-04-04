@@ -1,6 +1,20 @@
 const fs = require('node:fs');
 const Gemmi = require('./gemmi.js');
 
+function nearestAtomDistance(st, pos) {
+  let best = Infinity;
+  for (let model of st)
+    for (let chain of model)
+      for (let residue of chain)
+        for (let atom of residue) {
+          const dx = atom.pos[0] - pos[0];
+          const dy = atom.pos[1] - pos[1];
+          const dz = atom.pos[2] - pos[2];
+          best = Math.min(best, Math.hypot(dx, dy, dz));
+        }
+  return best;
+}
+
 test('finds blobs in CCP4 maps and supports model masking', async () => {
   const gemmi = await Gemmi();
   const mapBuf = fs.readFileSync('../tests/5i55_tiny.ccp4');
@@ -50,4 +64,38 @@ test('finds blobs in MTZ-derived maps', async () => {
   map.delete();
   st.delete();
   mtz.delete();
+});
+
+test('moves wasm blob positions to the symmetry image nearest the model', async () => {
+  const gemmi = await Gemmi();
+  const mapBuf = fs.readFileSync('../tests/5i55_tiny.ccp4');
+  const modelBuf = fs.readFileSync('../tests/5i55.cif');
+  const map = gemmi.readCcp4Map(mapBuf, true);
+  const st = gemmi.read_structure(modelBuf, '5i55.cif');
+
+  const raw = map.find_blobs(map.rms, 10.0, 15.0, 0.0, false, null, 0, 0.0, false);
+  expect(raw.size()).toBe(1);
+  const rawCentroid = Array.from(raw.centroids());
+
+  const shift = st.cell.orthogonalize([1, 0, 0]);
+  for (let model of st)
+    for (let chain of model)
+      for (let residue of chain)
+        for (let atom of residue)
+          atom.pos = [atom.pos[0] + shift[0],
+                      atom.pos[1] + shift[1],
+                      atom.pos[2] + shift[2]];
+
+  const moved = map.find_blobs(map.rms, 10.0, 15.0, 0.0, false, st, 0, 0.0, false);
+  expect(moved.size()).toBe(1);
+  const movedCentroid = Array.from(moved.centroids());
+
+  expect(nearestAtomDistance(st, rawCentroid)).toBeGreaterThan(20.0);
+  expect(nearestAtomDistance(st, movedCentroid)).toBeLessThan(10.0);
+  expect(Math.abs(movedCentroid[0] - rawCentroid[0])).toBeGreaterThan(20.0);
+
+  moved.delete();
+  raw.delete();
+  st.delete();
+  map.delete();
 });
