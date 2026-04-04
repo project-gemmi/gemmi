@@ -20,13 +20,11 @@ struct IsoSurface {
   std::vector<uint32_t> triangles;  // vertex-index triples
 };
 
-enum class IsoMethod { MarchingCubes, SnappedMC, Squarish };
+enum class IsoMethod { MarchingCubes, SnappedMC };
 
 inline IsoMethod iso_method_from_string(const std::string& s) {
   if (s == "snapped MC")
     return IsoMethod::SnappedMC;
-  if (s == "squarish")
-    return IsoMethod::Squarish;
   return IsoMethod::MarchingCubes;
 }
 
@@ -64,10 +62,8 @@ inline IsoSurface calculate_isosurface(const std::array<int, 3>& dims,
   }};
 
   const bool snap = (method == IsoMethod::SnappedMC);
-  const auto& seg_offsets = (method == IsoMethod::Squarish)
-      ? impl::kSegTable2Offsets : impl::kSegTableOffsets;
-  const int* seg_data = (method == IsoMethod::Squarish)
-      ? impl::kSegTable2Data.data() : impl::kSegTableData.data();
+  const auto& tri_offsets = impl::kTriTableOffsets;
+  const int* tri_data = impl::kTriTableData.data();
 
   std::array<int, 8> vert_offsets;
   for (int i = 0; i < 8; ++i) {
@@ -119,8 +115,8 @@ inline IsoSurface calculate_isosurface(const std::array<int, 3>& dims,
           vlist[i] = vertex_count++;
         }
 
-        for (int i = seg_offsets[cubeindex]; i < seg_offsets[cubeindex + 1]; ++i)
-          result.triangles.push_back(vlist[seg_data[i]]);
+        for (int i = tri_offsets[cubeindex]; i < tri_offsets[cubeindex + 1]; ++i)
+          result.triangles.push_back(vlist[tri_data[i]]);
       }
     }
   }

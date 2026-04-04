@@ -374,8 +374,7 @@ void add_grid(nb::module_& m) {
   // from isosurface.hpp
   nb::enum_<IsoMethod>(m, "IsoMethod")
     .value("MarchingCubes", IsoMethod::MarchingCubes)
-    .value("SnappedMC", IsoMethod::SnappedMC)
-    .value("Squarish", IsoMethod::Squarish);
+    .value("SnappedMC", IsoMethod::SnappedMC);
 
   nb::class_<IsoSurface>(m, "IsoSurface")
     .def_ro("vertices", &IsoSurface::vertices,

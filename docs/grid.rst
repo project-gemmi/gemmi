@@ -1071,11 +1071,10 @@ It returns an `IsoSurface` object containing two flat arrays:
 `vertices` with *x*, *y*, *z* triples and `triangles` with vertex-index triples.
 It works with any `Grid`, including data read from CCP4 or DSN6/BRIX maps.
 
-Three methods are available through the `IsoMethod` enum:
+Two methods are available through the `IsoMethod` enum:
 
 - `MarchingCubes` -- standard marching cubes (default),
-- `SnappedMC` -- vertices close to grid nodes are snapped to them,
-- `Squarish` -- an alternative lookup table that favors squarish faces.
+- `SnappedMC` -- vertices close to grid nodes are snapped to them.
 
 .. tab:: C++
 

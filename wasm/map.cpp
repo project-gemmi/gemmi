@@ -41,7 +41,7 @@ struct MapData {
   }
 
   em::val isosurface_vertices() const { return float_view(iso.vertices); }
-  em::val isosurface_segments() const { return uint32_view(iso.triangles); }
+  em::val isosurface_triangles() const { return uint32_view(iso.triangles); }
 
   int get_nx() const { return grid.nu; }
   int get_ny() const { return grid.nv; }
@@ -141,7 +141,7 @@ void add_map() {
     .function("data", &MapData::data)
     .function("extract_isosurface", &MapData::extract_isosurface)
     .function("isosurface_vertices", &MapData::isosurface_vertices)
-    .function("isosurface_segments", &MapData::isosurface_segments)
+    .function("isosurface_triangles", &MapData::isosurface_triangles)
     .function("find_blobs", &MapData::find_blobs, em::allow_raw_pointers())
     .property("nx", &MapData::get_nx)
     .property("ny", &MapData::get_ny)

@@ -38,7 +38,7 @@ public:
     return em::val(emscripten::typed_memory_view(iso_.vertices.size(), iso_.vertices.data()));
   }
 
-  em::val segments() const {
+  em::val triangles() const {
     return em::val(emscripten::typed_memory_view(iso_.triangles.size(), iso_.triangles.data()));
   }
 
@@ -61,7 +61,7 @@ void add_iso() {
     .function("input_values", &Isosurface::input_values)
     .function("calculate", &Isosurface::calculate)
     .function("vertices", &Isosurface::vertices)
-    .function("segments", &Isosurface::segments)
+    .function("triangles", &Isosurface::triangles)
     .property("last_error", &Isosurface::get_last_error)
     ;
 }

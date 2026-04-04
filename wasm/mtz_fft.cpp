@@ -81,7 +81,7 @@ public:
   }
 
   em::val isosurface_vertices() const { return float_view(iso_.vertices); }
-  em::val isosurface_segments() const { return uint32_view(iso_.triangles); }
+  em::val isosurface_triangles() const { return uint32_view(iso_.triangles); }
 
   int get_nx() const { return grid_.nu; }
   int get_ny() const { return grid_.nv; }
@@ -212,7 +212,7 @@ void add_mtz_fft() {
     .function("data", &MtzMap::data)
     .function("extract_isosurface", &MtzMap::extract_isosurface)
     .function("isosurface_vertices", &MtzMap::isosurface_vertices)
-    .function("isosurface_segments", &MtzMap::isosurface_segments)
+    .function("isosurface_triangles", &MtzMap::isosurface_triangles)
     .function("find_blobs", &MtzMap::find_blobs, em::allow_raw_pointers())
     .property("nx", &MtzMap::get_nx)
     .property("ny", &MtzMap::get_ny)
