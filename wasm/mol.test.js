@@ -659,6 +659,39 @@ test('lists monomer names missing chemcomp data', async () => {
   pdb_st.delete();
 });
 
+test('extracts embedded monomer cif blocks from mmcif text', async () => {
+  const gemmi = await Gemmi();
+  const cifText = [
+    'data_test',
+    'loop_',
+    '_chem_comp_atom.comp_id',
+    '_chem_comp_atom.atom_id',
+    '_chem_comp_atom.type_symbol',
+    'SER N N',
+    'SER CA C',
+    'GLY N N',
+    'GLY CA C',
+    '#',
+    'loop_',
+    '_chem_comp_bond.comp_id',
+    '_chem_comp_bond.atom_id_1',
+    '_chem_comp_bond.atom_id_2',
+    '_chem_comp_bond.type',
+    'SER N CA single',
+    'GLY N CA single',
+    '#',
+    '',
+  ].join('\n');
+
+  expect(gemmi.get_monomer_names_in_cif(cifText)).toBe('SER,GLY');
+
+  const extracted = gemmi.extract_monomer_cifs(cifText, 'GLY,SER,ZZZ');
+  expect(extracted).toContain('data_GLY');
+  expect(extracted).toContain('data_SER');
+  expect(extracted).not.toContain('data_ZZZ');
+  expect(gemmi.get_monomer_names_in_cif(extracted)).toBe('GLY,SER');
+});
+
 test('finds nearby symmetry images in a real structure', async () => {
   const gemmi = await Gemmi();
   const path = '../tests/4oz7.pdb';

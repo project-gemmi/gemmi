@@ -328,6 +328,156 @@ std::string get_missing_monomer_names(gemmi::Structure& st) {
   return result;
 }
 
+std::string join_csv(const std::vector<std::string>& values) {
+  std::string result;
+  for (size_t i = 0; i < values.size(); ++i) {
+    if (i != 0)
+      result += ',';
+    result += values[i];
+  }
+  return result;
+}
+
+std::vector<std::string> split_csv(const std::string& value) {
+  std::vector<std::string> result;
+  size_t start = 0;
+  while (start <= value.size()) {
+    size_t end = value.find(',', start);
+    std::string part = value.substr(start, end == std::string::npos
+                                           ? std::string::npos
+                                           : end - start);
+    if (!part.empty())
+      result.push_back(part);
+    if (end == std::string::npos)
+      break;
+    start = end + 1;
+  }
+  return result;
+}
+
+std::string get_monomer_names_in_cif(const std::string& cif_text) {
+  gemmi::cif::Document doc = gemmi::cif::read_string(cif_text);
+  std::vector<std::string> names;
+  std::unordered_set<std::string> seen;
+  for (gemmi::cif::Block& block : doc.blocks)
+    for (const gemmi::cif::Item& item : block.items) {
+      if (item.type != gemmi::cif::ItemType::Loop)
+        continue;
+      int comp_id_pos = item.loop.find_tag("_chem_comp_atom.comp_id");
+      if (comp_id_pos == -1)
+        continue;
+      for (size_t row = 0; row < item.loop.length(); ++row) {
+        std::string comp_id =
+            gemmi::to_upper(gemmi::cif::as_string(
+                item.loop.values[row * item.loop.width() + comp_id_pos]));
+        if (comp_id.empty())
+          continue;
+        if (seen.insert(comp_id).second)
+          names.push_back(comp_id);
+      }
+    }
+  return join_csv(names);
+}
+
+std::string extract_monomer_cifs(const std::string& cif_text,
+                                 const std::string& wanted_csv) {
+  std::vector<std::string> wanted_names;
+  std::unordered_set<std::string> wanted;
+  for (std::string name : split_csv(wanted_csv)) {
+    name = gemmi::to_upper(name);
+    if (name.empty())
+      continue;
+    if (wanted.insert(name).second)
+      wanted_names.push_back(name);
+  }
+  if (wanted_names.empty())
+    return "";
+
+  gemmi::cif::Document doc = gemmi::cif::read_string(cif_text);
+  std::unordered_map<std::string, std::vector<std::string>> atom_tags;
+  std::unordered_map<std::string, std::vector<std::vector<std::string>>> atom_rows;
+  std::unordered_map<std::string, std::vector<std::string>> bond_tags;
+  std::unordered_map<std::string, std::vector<std::vector<std::string>>> bond_rows;
+
+  for (gemmi::cif::Block& block : doc.blocks)
+    for (const gemmi::cif::Item& item : block.items) {
+      if (item.type != gemmi::cif::ItemType::Loop)
+        continue;
+      int atom_comp_id_pos = item.loop.find_tag("_chem_comp_atom.comp_id");
+      if (atom_comp_id_pos != -1) {
+        for (size_t row = 0; row < item.loop.length(); ++row) {
+          size_t row_offset = row * item.loop.width();
+          std::string comp_id =
+              gemmi::to_upper(gemmi::cif::as_string(
+                  item.loop.values[row_offset + atom_comp_id_pos]));
+          if (wanted.find(comp_id) == wanted.end())
+            continue;
+          if (atom_tags.find(comp_id) == atom_tags.end())
+            atom_tags.emplace(comp_id, item.loop.tags);
+          atom_rows[comp_id].emplace_back(item.loop.values.begin() + row_offset,
+                                          item.loop.values.begin() + row_offset + item.loop.width());
+        }
+      }
+
+      int bond_comp_id_pos = item.loop.find_tag("_chem_comp_bond.comp_id");
+      if (bond_comp_id_pos == -1)
+        continue;
+      for (size_t row = 0; row < item.loop.length(); ++row) {
+        size_t row_offset = row * item.loop.width();
+        std::string comp_id =
+            gemmi::to_upper(gemmi::cif::as_string(
+                item.loop.values[row_offset + bond_comp_id_pos]));
+        if (wanted.find(comp_id) == wanted.end())
+          continue;
+        if (bond_tags.find(comp_id) == bond_tags.end())
+          bond_tags.emplace(comp_id, item.loop.tags);
+        bond_rows[comp_id].emplace_back(item.loop.values.begin() + row_offset,
+                                        item.loop.values.begin() + row_offset + item.loop.width());
+      }
+    }
+
+  std::ostringstream os;
+  bool first = true;
+  for (const std::string& comp_id : wanted_names) {
+    auto atom_rows_it = atom_rows.find(comp_id);
+    if (atom_rows_it == atom_rows.end() || atom_rows_it->second.empty())
+      continue;
+    if (!first)
+      os << '\n';
+    first = false;
+    os << "data_" << comp_id << "\n#\n";
+    os << "_chem_comp.id " << comp_id << "\n#\n";
+    os << "loop_\n";
+    for (const std::string& tag : atom_tags[comp_id])
+      os << tag << '\n';
+    for (const std::vector<std::string>& row : atom_rows_it->second) {
+      for (size_t i = 0; i < row.size(); ++i) {
+        if (i != 0)
+          os << ' ';
+        os << row[i];
+      }
+      os << '\n';
+    }
+    os << "#\n";
+    auto bond_rows_it = bond_rows.find(comp_id);
+    if (bond_rows_it == bond_rows.end() || bond_rows_it->second.empty())
+      continue;
+    os << "loop_\n";
+    for (const std::string& tag : bond_tags[comp_id])
+      os << tag << '\n';
+    for (const std::vector<std::string>& row : bond_rows_it->second) {
+      for (size_t i = 0; i < row.size(); ++i) {
+        if (i != 0)
+          os << ' ';
+        os << row[i];
+      }
+      os << '\n';
+    }
+    os << "#\n";
+  }
+  return os.str();
+}
+
 std::string make_mmcif_string(const gemmi::Structure& st) {
   gemmi::cif::Document doc = gemmi::make_mmcif_document(st);
   std::ostringstream os;
@@ -686,6 +836,8 @@ void add_mol() {
   em::function("get_residue_names", &get_residue_names, em::allow_raw_pointers());
   em::function("get_missing_monomer_names", &get_missing_monomer_names,
                em::allow_raw_pointers());
+  em::function("get_monomer_names_in_cif", &get_monomer_names_in_cif);
+  em::function("extract_monomer_cifs", &extract_monomer_cifs);
   em::function("get_nearby_sym_ops", &gemmi::get_nearby_sym_ops);
   em::function("get_sym_image", &gemmi::get_sym_image);
   em::function("make_pdb_string", &make_pdb_string_default);
