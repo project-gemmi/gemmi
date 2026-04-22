@@ -120,7 +120,7 @@ struct GEMMI_DLL Mtz : public MtzMetadata {
   struct Column {
     /// Dataset ID this column belongs to.
     int dataset_id;
-    /// Column type code: 'H'=H index, 'K'=K index, 'L'=L index, 'F'=amplitude,
+    /// Column type code: 'H'=Miller index (H, K, or L), 'F'=amplitude,
     /// 'Q'=standard deviation, 'J'=intensity, 'M/ISYM'=symmetry flag (unmerged),
     /// 'D'=anomalous difference, 'P'=phase (degrees), 'W'=weight, 'A'=phase prob.,
     /// 'B'=batch number, 'Y'=M/ISYM, 'I'=integer, 'R'=R-factor, 'G'=F(+)/F(-),
