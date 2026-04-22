@@ -83,7 +83,7 @@ struct MmcifOutputGroups {
   bool tls:1;
   /// @brief Write software used in structure processing (_software category).
   bool software:1;
-  /// @brief @brief Write _atom_site.group_PDB field (ATOM/HETATM classification).
+  /// @brief Write _atom_site.group_PDB field (ATOM/HETATM classification).
   bool group_pdb:1;
   /// @brief Write authentic atom and component IDs (_atom_site.auth_atom_id and auth_comp_id).
   bool auth_all:1;
