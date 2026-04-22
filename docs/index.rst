@@ -93,7 +93,7 @@ Contents
 
    ChangeLog <https://github.com/project-gemmi/gemmi/releases>
    Python API reference <https://project-gemmi.github.io/python-api/>
-   C++ API reference <https://project-gemmi.github.io/cxx-api/>
+   api
 
 Credits
 =======

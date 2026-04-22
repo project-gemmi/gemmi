@@ -83,3 +83,6 @@ fortran/*.a
 # test programs
 fortran/fsym
 fortran/ftest
+
+# Doxygen-generated output (consumed by Breathe/Sphinx, not committed)
+docs/_doxygen/
