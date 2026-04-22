@@ -1,3 +1,10 @@
+/// @file
+/// @brief Convert structure factor data from mmCIF to MTZ format
+///
+/// Provides CifToMtz for converting reflection data from PDB/mmCIF format
+/// to CCP4 MTZ binary format. Handles both merged and unmerged data,
+/// including anomalous and old-style anomalous structures.
+
 // Copyright 2021 Global Phasing Ltd.
 //
 // A class for converting SF-mmCIF to MTZ (merged or unmerged).
@@ -20,7 +27,15 @@
 
 namespace gemmi {
 
-// "Old-style" anomalous or unmerged data is expected to have only these tags.
+/// @brief Check if reflection block uses old-style anomalous data format.
+///
+/// "Old-style" anomalous or unmerged data is expected to have only these tags:
+/// index_h/k/l, wavelength_id, crystal_id, scale_group_code, status,
+/// and either (intensity_meas/sigma) or (F_meas_au/sigma).
+///
+/// @param rb ReflnBlock to check
+/// @param data_type Expected data type (Unmerged or Anomalous)
+/// @return true if all tags in the reflection loop match the old-style subset
 inline bool possible_old_style(const ReflnBlock& rb, DataType data_type) {
   if (rb.refln_loop == nullptr)
     return false;
@@ -43,13 +58,21 @@ inline bool possible_old_style(const ReflnBlock& rb, DataType data_type) {
 }
 
 
+/// @brief Convert old-style anomalous data to modern PDBx format.
+///
 /// Before _refln.pdbx_F_plus/minus was introduced, anomalous data was
-/// stored as two F_meas_au reflections, say (1,1,3) and (-1,-1,-3).
-/// This function transcribes it to how the anomalous data is stored
-/// in PDBx/mmCIF nowadays:
-///  _refln.F_meas_au -> pdbx_F_plus / pdbx_F_minus,
-///  _refln.F_meas_sigma_au -> pdbx_F_plus_sigma / pdbx_F_minus_sigma.
-///  _refln.intensity_{meas,sigma} -> _refln.pdbx_F_plus{,_sigma} / ...
+/// stored as two F_meas_au reflections, e.g. (1,1,3) and (-1,-1,-3).
+/// This function transcribes it to the modern PDBx/mmCIF storage:
+/// - _refln.F_meas_au → pdbx_F_plus / pdbx_F_minus
+/// - _refln.F_meas_sigma_au → pdbx_F_plus_sigma / pdbx_F_minus_sigma
+/// - _refln.intensity_meas/sigma → pdbx_I_plus/I_minus and sigmas
+///
+/// Reflections are moved to the ASU, and when both +/- forms exist for
+/// the same HKL, they are merged (missing values set to '.').
+///
+/// @param loop CIF loop containing old-style anomalous data
+/// @param sg Space group for ASU determination (null → P1)
+/// @return New loop with reflections in standard pdbx format
 inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
                                                       const SpaceGroup* sg) {
   std::vector<int> positions;
@@ -139,7 +162,29 @@ inline cif::Loop transcript_old_anomalous_to_standard(const cif::Loop& loop,
 }
 
 
+/// @brief Converter from CIF reflection data to MTZ format.
+///
+/// Handles conversion of structure factor data from mmCIF format
+/// (PDB/wwPDB standard) to MTZ format (CCP4 binary format).
+/// Supports both merged and unmerged reflection data, with configurable
+/// column mappings from CIF _refln tags to MTZ column labels and types.
+///
+/// Uses a specification (default or custom) to map CIF tags to MTZ columns,
+/// handling code-to-number translation for categorical data (e.g., FreeR flags).
 struct CifToMtz {
+  /// @brief Get the default column mapping specification.
+  ///
+  /// Returns static arrays of mapping lines. Each line has format:
+  /// `cif_tag mtz_label col_type dataset_id [code_mapping]`
+  /// where code_mapping (optional) is a comma-separated list of `code=value` pairs.
+  ///
+  /// For merged data: includes FreeR_flag, intensities, structure factors,
+  /// anomalous pairs, calculated phases, and weight/FOM columns.
+  ///
+  /// For unmerged data: includes intensity_meas, detector coordinates, and rotation angle.
+  ///
+  /// @param for_merged true for merged data, false for unmerged
+  /// @return Pointer to null-terminated array of specification strings
   // Alternative mmCIF tags for the same MTZ label should be consecutive
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
@@ -192,13 +237,23 @@ struct CifToMtz {
     return for_merged ? merged : unmerged;
   }
 
+  /// @brief Specification entry mapping a CIF tag to an MTZ column.
   struct Entry {
-    std::string refln_tag;
-    std::string col_label;
-    char col_type;
-    int dataset_id;
+    std::string refln_tag;           ///< CIF _refln.* tag name (without prefix)
+    std::string col_label;           ///< MTZ column label
+    char col_type;                   ///< MTZ column type code (H,K,L,F,Q,J,P,etc.)
+    int dataset_id;                  ///< Dataset id for merged data (0 or 1)
+    /// Code-to-number mappings for categorical data (e.g., FreeR code → number)
     std::vector<std::pair<std::string, float>> code_to_number;
 
+    /// @brief Parse a specification line into an Entry.
+    ///
+    /// Expected format:
+    /// - `cif_tag mtz_label col_type dataset_id`
+    /// - `cif_tag mtz_label col_type dataset_id code1=val1,code2=val2`
+    ///
+    /// @param line Specification line to parse
+    /// @throws gemmi::fail if format is invalid
     Entry(const std::string& line) {
       std::vector<std::string> tokens;
       tokens.reserve(4);
@@ -234,6 +289,13 @@ struct CifToMtz {
       }
     }
 
+    /// @brief Translate a categorical value to its numeric equivalent.
+    ///
+    /// Uses code_to_number mappings to convert coded values (e.g., 'o', 'f')
+    /// to numeric equivalents (e.g., 1.0, 0.0 for FreeR flags).
+    ///
+    /// @param v The coded value to translate
+    /// @return Translated number, or NAN if no mapping found
     float translate_code_to_number(const std::string& v) const {
       if (v.size() == 1) {
         for (const auto& c2n : code_to_number)
@@ -249,12 +311,31 @@ struct CifToMtz {
     }
   };
 
-  bool force_unmerged = false;
-  std::string title;
+  bool force_unmerged = false;         ///< If true, treat all data as unmerged
+  std::string title;                   ///< Title to set in output MTZ file
+  /// Historical entries to include in MTZ history; defaults to version line
   std::vector<std::string> history = { "From gemmi-cif2mtz " GEMMI_VERSION };
-  double wavelength = NAN;
+  double wavelength = NAN;             ///< Override wavelength (NAN = auto-detect)
+  /// Custom column specification lines; if empty, uses default_spec()
   std::vector<std::string> spec_lines;
 
+  /// @brief Convert a single mmCIF reflection block to MTZ format.
+  ///
+  /// Maps CIF _refln columns to MTZ columns using the specification (custom or default).
+  /// Handles merged and unmerged data differently:
+  ///
+  /// **Merged data:** Creates a single dataset with wavelength from ReflnBlock.
+  ///
+  /// **Unmerged data:** Extracts diffrn_id and pdbx_image_id to create BATCH column,
+  /// creates a dataset per crystal, and uses UnmergedHklMover to put HKLs into ASU.
+  ///
+  /// Missing values ('.' in CIF) become NAN in MTZ. The M/ISYM and BATCH columns
+  /// are automatically added for unmerged data.
+  ///
+  /// @param rb Reflection block with parsed _refln loop
+  /// @param logger Logger for informational and error messages
+  /// @return MTZ structure with data, columns, and metadata
+  /// @throws gemmi::fail if required tags (index_h/k/l, data columns) are missing
   Mtz convert_block_to_mtz(const ReflnBlock& rb, Logger& logger) const {
     Mtz mtz;
     mtz.title = title.empty() ? "Converted from mmCIF block " + rb.block.name : title;
@@ -505,6 +586,23 @@ struct CifToMtz {
     return mtz;
   }
 
+  /// @brief Auto-detect data type and convert with optional transformation.
+  ///
+  /// Performs intelligent detection and conversion:
+  ///
+  /// **Mode 'f' (fix old-style anomalous):** If the block contains old-style
+  /// anomalous data, transforms it to modern pdbx_F_plus/minus format before conversion.
+  ///
+  /// **Mode 'a' (auto-detect anomalous):** After conversion, analyzes the unique
+  /// HKLs under symmetry to detect if data is actually anomalous or unmerged despite
+  /// initial classification. Logs warnings and attempts recovery for old-style data.
+  ///
+  /// **Other modes:** Performs conversion as-is without transformation.
+  ///
+  /// @param rb Reflection block (modified in-place if transformation occurs)
+  /// @param logger Logger for notes and errors
+  /// @param mode Conversion mode: 'f'=fix old anomalous, 'a'=auto-detect, other=no transform
+  /// @return Converted MTZ structure
   Mtz auto_convert_block_to_mtz(ReflnBlock& rb, Logger& logger, char mode) const {
     if (mode == 'f' && possible_old_style(rb, DataType::Anomalous))
       *rb.refln_loop = transcript_old_anomalous_to_standard(*rb.refln_loop, rb.spacegroup);
@@ -537,6 +635,15 @@ struct CifToMtz {
   }
 
 private:
+  /// @brief Convert _refln.status code to FreeR_flag value.
+  ///
+  /// Maps status codes to numeric equivalents:
+  /// - 'o' or quoted 'o' → 1.0 (observed/working set)
+  /// - 'f' or quoted 'f' → 0.0 (free set)
+  /// - other → NAN
+  ///
+  /// @param str Status code string from CIF
+  /// @return Numeric flag value (1.0, 0.0, or NAN)
   static float status_to_freeflag(const std::string& str) {
     char c = str[0];
     if (c == '\'' || c == '"')
