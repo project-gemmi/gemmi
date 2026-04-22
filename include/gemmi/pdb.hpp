@@ -53,7 +53,7 @@ inline bool is_record_type3(const char* s, const char* record) {
 
 /// Parse REMARK 290 records to extract crystallographic symmetry operations.
 /// REMARK 290 contains the rotation and translation operators (NCS or crystal symmetry).
-/// Returns operations for the Nth instance numbered as 1555, 2555, 3555, etc.
+/// Parses operations in triplet notation (e.g., "X,Y,Z" or "-X,-Y,-Z+1/2").
 /// @param raw_remarks Vector of PDB REMARK record lines
 /// @return Vector of crystallographic operations (Op structures with rotation
 ///         matrix and translation vector)

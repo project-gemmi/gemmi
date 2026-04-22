@@ -62,7 +62,8 @@ inline CoorFormat coor_format_from_content(const char* buf, const char* end) {
 /// component file and parses it accordingly; otherwise treats as normal mmCIF.
 /// @param doc                A CIF document; moved into this function
 /// @param possible_chemcomp  If true, check for and handle CCD/monomer library files
-/// @param save_doc           Optional pointer to receive a copy of the document
+/// @param save_doc           Optional pointer to receive the document; only populated if
+///                           the input is mmCIF (not a chemical component)
 /// @return A Structure parsed from the document
 inline Structure make_structure_from_doc(cif::Document&& doc, bool possible_chemcomp,
                                          cif::Document* save_doc=nullptr) {

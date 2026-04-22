@@ -37,7 +37,7 @@ inline Structure make_structure_from_block(const cif::Block& block_) {
 /// Parses the first block (coordinate block) and validates that only
 /// the first block contains atomic coordinates.
 /// @param doc      A CIF document (typically mmCIF); moved into this function
-/// @param save_doc Optional pointer to receive a copy of the parsed document
+/// @param save_doc Optional pointer to receive the parsed document (moved into *save_doc)
 /// @return A Structure populated from the first block of the document
 /// @throws Throws if multiple blocks contain atomic coordinates (_atom_site)
 inline Structure make_structure(cif::Document&& doc, cif::Document* save_doc=nullptr) {
@@ -62,7 +62,6 @@ enum class ChemCompModel {
   First    = 8  ///< Whichever coordinate set appears first in the input file
 };
 
-/// Bitwise OR operator for ChemCompModel flags.
 constexpr int operator|(ChemCompModel a, ChemCompModel b) { return (int)a | (int)b; }
 
 /// Extract a Residue from a chemical component block.
@@ -142,7 +141,7 @@ inline int check_chemcomp_block_number(const cif::Document& doc) {
 /// Automatically detects and parses the appropriate block in a chemical
 /// component file (CCD, monomer library with/without global block).
 /// @param doc      A parsed chemical component CIF document
-/// @param save_doc Optional pointer to receive a copy of the parsed document
+/// @param save_doc Optional pointer to receive the parsed document (moved into *save_doc)
 /// @param which    Bitmask of ChemCompModel values to include; default 7 = all
 /// @return A Structure with the requested coordinate models
 /// @throws Throws if the document is not a recognized chemical component format
