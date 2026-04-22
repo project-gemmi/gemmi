@@ -79,7 +79,7 @@ struct Restraints {
     Atom* get_from(Residue& res1, Residue* res2, char alt, char altloc2) const;
     /// @brief Const version of get_from().
     const Atom* get_from(const Residue& res1, const Residue* res2,
-                         char alt, char alt2) const;
+                         char alt, char altloc2) const;
   };
 
   /// @brief Get canonical lexicographic string representation of two atom names.
@@ -275,7 +275,7 @@ struct Restraints {
   /// @param b End atom.
   /// @param visited List of initially visited atoms (to exclude from search).
   /// @param min_length Minimum path length required (default 1).
-  /// @return Vector of AtomIds forming the shortest path from b to a, or empty if not found.
+  /// @return Vector of AtomIds forming the shortest path from a to b, or empty if not found.
   std::vector<AtomId> find_shortest_path(const AtomId& a, const AtomId& b,
                                          std::vector<AtomId> visited,
                                          int min_length=1) const {
