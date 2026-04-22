@@ -241,9 +241,11 @@ struct Atom {
   Atom empty_copy() const { return Atom(*this); }
 };
 
-/// @brief Group of atoms with the same name but different alternate locations.
-/// Typically represents different conformations of a single atom.
-/// @tparam AtomType Atom or const Atom
+/// @brief A group of atoms sharing the same name but occupying different alternate locations.
+///
+/// Used to iterate over or access atoms at a single crystallographic site
+/// that have been modelled in multiple conformations (alt locs).
+/// @tparam AtomType Either `Atom` (mutable) or `const Atom` (immutable).
 template<typename AtomType>
 struct AtomGroup_ : ItemGroup<AtomType> {
   using ItemGroup<AtomType>::ItemGroup;
@@ -446,7 +448,8 @@ inline void add_distinct_altlocs(const Residue& res, std::string& altlocs) {
 struct ResidueGroup;
 struct ConstResidueGroup;
 
-/// @brief Immutable span of residues within a chain or subchain.
+/// @brief Immutable span of residues within a Chain.
+///
 /// Represents a contiguous sequence of residues with utility methods
 /// for manipulation, grouping, and sequence numbering conversions.
 struct ConstResidueSpan : Span<const Residue> {
@@ -655,7 +658,10 @@ inline ConstResidueGroup ConstResidueSpan::find_residue_group(SeqId id) const {
   return ConstResidueSpan(subspan([&](const Residue& r) { return r.seqid == id; }));
 }
 
-/// @brief Proxy for iterating over residue groups within a span.
+/// @brief Proxy providing iteration over ResidueGroups within a ResidueSpan.
+///
+/// Each ResidueGroup contains residues with the same sequence number
+/// (microheterogeneities — point mutations stored as alternative residues).
 struct ResidueSpan::GroupingProxy {
   ResidueSpan& span;
   using iterator = GroupingIter<ResidueSpan, ResidueGroup>;
@@ -946,9 +952,11 @@ inline AtomAddress make_address(const Chain& ch, const Residue& res, const Atom&
 }
 
 
-/// @brief Iterator policy for bidirectional iteration over all atoms in a structure.
-/// Provides increment/decrement operations for CraProxy iterators.
-/// @tparam CraT CRA or const_CRA
+/// @brief Iterator policy for traversing Chain/Residue/Atom (CRA) triples.
+///
+/// Used with Gemmi's generic iterator framework to provide bidirectional
+/// iteration over all atoms in a Model, yielding CRA structs.
+/// @tparam CraT Either `CRA` (mutable) or `const_CRA` (immutable).
 template<typename CraT>
 class CraIterPolicy {
 public:
@@ -1010,8 +1018,10 @@ private:
   CraT cra;
 };
 
-/// @brief Proxy providing begin/end iterators over all atoms (Chain-Residue-Atom triples).
-/// @tparam CraT CRA or const_CRA
+/// @brief Proxy object for iterating over Chain/Residue/Atom triples in a Model.
+///
+/// Provides begin()/end() to enable range-for iteration over all CRA entries.
+/// @tparam CraT Either `CRA` (mutable) or `const_CRA` (immutable).
 /// @tparam ChainsRefT Reference to chains vector (mutable or const)
 template<typename CraT, typename ChainsRefT>
 struct CraProxy_ {
