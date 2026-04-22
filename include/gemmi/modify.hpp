@@ -14,6 +14,10 @@
 namespace gemmi {
 
 /// Remove alternative conformations.
+/// Recursively removes all alternative conformations, keeping only the first
+/// (altloc='A' or blank). For Chain level, keeps one representative per residue seqid.
+/// For Residue level, removes duplicate atoms by name.
+/// @tparam T Model, Chain, or Residue
 template<class T> void remove_alternative_conformations(T& obj) {
   for (auto& child : obj.children())
     remove_alternative_conformations(child);
@@ -39,7 +43,9 @@ template<> inline void remove_alternative_conformations(Chain& chain) {
   }
 }
 
-/// Remove hydrogens.
+/// Remove hydrogens and deuterium atoms.
+/// Recursively removes all H and D atoms from the structure.
+/// @tparam T Model, Chain, or Residue
 template<class T> void remove_hydrogens(T& obj) {
   for (auto& child : obj.children())
     remove_hydrogens(child);
@@ -53,6 +59,10 @@ template<> inline void remove_hydrogens(Residue& res) {
 /// Set isotropic ADP to the range (b_min, b_max). Values smaller than
 /// b_min are changed to b_min, values larger than b_max to b_max.
 /// Anisotropic ADP is left unchanged.
+/// @tparam T Model, Chain, Residue, or Atom
+/// @param obj object to modify
+/// @param b_min minimum B-factor value
+/// @param b_max maximum B-factor value
 template<class T> void assign_b_iso(T& obj, float b_min, float b_max) {
   for (auto& child : obj.children())
     assign_b_iso(child, b_min, b_max);
@@ -61,7 +71,9 @@ template<> inline void assign_b_iso(Atom& atom, float b_min, float b_max) {
   atom.b_iso = clamp(atom.b_iso, b_min, b_max);
 }
 
-/// Remove anisotropic ADP
+/// Remove anisotropic displacement parameters.
+/// Recursively zeroes all anisotropic ADP tensors (u11, u22, u33, u12, u13, u23).
+/// @tparam T Model, Chain, Residue, or Atom
 template<class T> void remove_anisou(T& obj) {
   for (auto& child : obj.children())
     remove_anisou(child);
@@ -70,7 +82,9 @@ template<> inline void remove_anisou(Atom& atom) {
   atom.aniso = {0, 0, 0, 0, 0, 0};
 }
 
-/// Set absent ANISOU to value from B_iso
+/// Set absent ANISOU records to isotropic values derived from B_iso.
+/// For atoms without anisotropic ADP, creates isotropic tensor U = B_iso/(8π²).
+/// @tparam T Model, Chain, Residue, or Atom
 template<class T> void ensure_anisou(T& obj) {
   for (auto& child : obj.children())
     ensure_anisou(child);
@@ -82,7 +96,12 @@ template<> inline void ensure_anisou(Atom& atom) {
   }
 }
 
-/// apply Transform to both atom's position and ADP
+/// Apply a Transform to atomic positions and anisotropic displacement parameters.
+/// Recursively applies the given transformation to all atom coordinates and
+/// congruence-transforms anisotropic ADPs.
+/// @tparam T Model, Chain, Residue, or Atom
+/// @param obj object to transform
+/// @param tr transformation to apply
 template<class T> void transform_pos_and_adp(T& obj, const Transform& tr) {
   for (auto& child : obj.children())
     transform_pos_and_adp(child, tr);
@@ -93,7 +112,10 @@ template<> inline void transform_pos_and_adp(Atom& atom, const Transform& tr) {
     atom.aniso = atom.aniso.transformed_by<float>(tr.mat);
 }
 
-/// set atom site serial numbers to 1, 2, ..., optionally leaving gaps for TERs
+/// Assign atom site serial numbers (1, 2, 3, ...) sequentially.
+/// Optionally leaves gaps at chain ends for TER records if numbering polymer chains.
+/// @param model model containing chains
+/// @param numbered_ter if true, increment serial after last polymer residue in each chain
 inline void assign_serial_numbers(Model& model, bool numbered_ter=false) {
   int serial = 0;
   for (Chain& chain : model.chains)
@@ -105,17 +127,22 @@ inline void assign_serial_numbers(Model& model, bool numbered_ter=false) {
         ++serial;
     }
 }
+
+/// Assign atom site serial numbers to all models in a structure.
+/// @param st structure containing models
+/// @param numbered_ter if true, increment serial after last polymer residue in each chain
 inline void assign_serial_numbers(Structure& st, bool numbered_ter=false) {
   for (Model& model : st.models)
     assign_serial_numbers(model, numbered_ter);
 }
 
 
-/// Helper function for processing (usually: changing) names and numbers
-/// in AtomAddress instances in metadata:
-/// Connection, CisPep, StructSite, Helix, Sheet::Strand.
-/// Other fields are not updated here, in particular: ModRes, Entity::DbRef,
-/// Entity::full_sequence, TlsGroup::Selection.
+/// Apply a function to all AtomAddress references in structure metadata.
+/// Processes atom addresses in Connection, CisPep, StructSite, Helix, and Sheet records.
+/// Does not update ModRes, Entity::DbRef, Entity::full_sequence, or TlsGroup::Selection.
+/// @tparam Func callable taking an AtomAddress& parameter
+/// @param st structure whose metadata will be processed
+/// @param func function to apply to each AtomAddress
 template<typename Func>
 void process_addresses(Structure& st, Func func) {
   for (Connection& con : st.connections) {
@@ -144,9 +171,13 @@ void process_addresses(Structure& st, Func func) {
     }
 }
 
-/// Takes func(const std::string& chain_name, gemmi::SeqId& seqid).
-/// It doesn't process Entity::DbRef::seq_begin/seq_end (b/c there is no
-/// single corresponding chain name).
+/// Apply a function to all SeqId references in structure metadata.
+/// Processes sequence IDs in Connection/CisPep/StructSite/Helix/Sheet records,
+/// ModRes entries, and TlsGroup selections.
+/// Does not process Entity::DbRef::seq_begin/seq_end (no single chain name).
+/// @tparam Func callable taking (const std::string& chain_name, SeqId& seqid)
+/// @param st structure whose metadata will be processed
+/// @param func function to apply to each (chain_name, seqid) pair
 template<typename Func>
 void process_sequence_ids(Structure& st, Func func) {
   process_addresses(st, [&](AtomAddress& aa) { func(aa.chain_name, aa.res_id.seqid); });
@@ -160,6 +191,11 @@ void process_sequence_ids(Structure& st, Func func) {
       }
 }
 
+/// Rename a chain throughout the structure.
+/// Updates all occurrences of old_name to new_name in models and metadata.
+/// @param st structure to modify
+/// @param old_name current chain name
+/// @param new_name new chain name
 inline void rename_chain(Structure& st, const std::string& old_name,
                                         const std::string& new_name) {
   auto update = [&](std::string& name) {
@@ -178,6 +214,12 @@ inline void rename_chain(Structure& st, const std::string& old_name,
       update(chain.name);
 }
 
+/// Rename residues throughout the structure.
+/// Updates all residues named old_name to new_name in models and metadata.
+/// Also updates Entity sequences and StructSite member records.
+/// @param st structure to modify
+/// @param old_name current residue name
+/// @param new_name new residue name
 inline void rename_residues(Structure& st, const std::string& old_name,
                                            const std::string& new_name) {
   auto update = [&](ResidueId& rid) {
@@ -211,6 +253,12 @@ inline void rename_residues(Structure& st, const std::string& old_name,
 }
 
 
+/// Rename atoms in residues of a specific type.
+/// For residues named res_name, renames atoms according to the old→new map.
+/// Updates both atomic coordinates and metadata references.
+/// @param st structure to modify
+/// @param res_name residue type to target
+/// @param old_new map from old atom names to new atom names
 inline void rename_atom_names(Structure& st, const std::string& res_name,
                               const std::map<std::string, std::string>& old_new) {
   auto update = [&old_new](std::string& name) {
@@ -232,6 +280,10 @@ inline void rename_atom_names(Structure& st, const std::string& res_name,
 }
 
 
+/// Expand deuterium-fraction representation into explicit H/D alternate conformations.
+/// Converts H atoms with non-zero d_fraction into H/D altloc pairs.
+/// If d_fraction >= 1, converts to pure D; otherwise creates H altloc 'A' and D altloc 'D'.
+/// @param res residue containing hydrogens to expand
 inline void replace_d_fraction_with_altlocs(Residue& res) {
   for (size_t i = res.atoms.size(); i-- != 0; ) {
     Atom& atom = res.atoms[i];
@@ -263,6 +315,11 @@ inline void replace_d_fraction_with_altlocs(Residue& res) {
   }
 }
 
+/// Contract explicit D atoms into H atoms with fractional occupancy.
+/// Merges H and D atoms at the same position into a single H atom,
+/// storing the D occupancy as the fraction field.
+/// @param res residue containing deuterium atoms to contract
+/// @return true if any D atoms were found and processed, false otherwise
 inline bool replace_deuterium_with_fraction(Residue& res) {
   bool found = false;
   for (auto d = res.atoms.end(); d-- != res.atoms.begin(); )
@@ -294,11 +351,13 @@ inline bool replace_deuterium_with_fraction(Residue& res) {
   return found;
 }
 
-/// Hydrogens modelled as H/D mixture (altlocs H and D with the same position
-/// and ADP, but with refined fraction of D), it can be stored in mmCIF either
-/// as two atoms (H and D) or, using CCP4/Refmac extension, as H atoms with
-/// the ccp4_deuterium_fraction parameter.
-/// This function switches fraction <-> altlocs
+/// Toggle deuterium representation between fraction and explicit altlocs.
+/// Hydrogens modelled as H/D mixtures can be stored either as:
+/// - Two atoms with altlocs H and D (same position/ADP, different occupancies)
+/// - Single H atom with ccp4_deuterium_fraction parameter (CCP4/Refmac extension)
+/// This function converts between the two representations.
+/// @param st structure to modify
+/// @param store_fraction if true, use fraction representation; otherwise use altlocs
 inline void store_deuterium_as_fraction(Structure& st, bool store_fraction) {
   if (st.has_d_fraction == store_fraction)
     return;
@@ -314,6 +373,10 @@ inline void store_deuterium_as_fraction(Structure& st, bool store_fraction) {
         }
 }
 
+/// Set the deuterium fraction of all hydrogen atoms.
+/// Assigns the fraction field of all H atoms in the structure to d_fract.
+/// @param st structure to modify
+/// @param d_fract deuterium fraction to assign (0.0 to 1.0)
 inline void set_deuterium_fraction_of_hydrogens(Structure& st, float d_fract) {
   st.has_d_fraction = true;
   for (Model& model : st.models)
@@ -324,7 +387,12 @@ inline void set_deuterium_fraction_of_hydrogens(Structure& st, float d_fract) {
             atom.fraction = d_fract;
 }
 
-/// Convert coordinates to the standard coordinate system for the unit cell.
+/// Transform structure to the standard crystallographic frame.
+/// Converts to standard coordinates where the a-axis is along x,
+/// the b-axis is in the xy-plane, and c-axis points along +z.
+/// Updates ORIGX matrices and NCS operators accordingly.
+/// Only operates on crystal structures with explicit transformation matrices.
+/// @param st structure to transform
 inline void standardize_crystal_frame(Structure& st) {
   if (!st.cell.explicit_matrices || !st.cell.is_crystal())
     return;
