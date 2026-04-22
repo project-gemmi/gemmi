@@ -249,7 +249,7 @@ template<typename T, typename V=std::int8_t> struct MaskedGrid {
   std::vector<V> mask;  ///< Mask vector; 0 means point is outside ASU, non-zero is inside
   Grid<T>* grid;        ///< Pointer to the wrapped grid
 
-  /// Iterator over grid points within the ASU (where mask != 0).
+  /// Iterator over grid points within the ASU (where mask == 0).
   struct iterator {
     typename GridBase<T>::iterator grid_iterator;  ///< Underlying grid iterator
     const std::vector<V>& mask_ref;                ///< Reference to mask vector
