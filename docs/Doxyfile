@@ -1,0 +1,48 @@
+PROJECT_NAME           = "Gemmi"
+PROJECT_BRIEF          = "A library for macromolecular crystallography"
+PROJECT_NUMBER         =
+
+# Input
+INPUT                  = ../include/gemmi
+FILE_PATTERNS          = *.hpp
+STRIP_FROM_PATH        = ../include
+STRIP_FROM_INC_PATH    = ../include
+RECURSIVE              = NO
+# All public headers are flat in include/gemmi/; the only subdirectory is
+# third_party/ which must not be documented.
+
+# Exclude internal/data-only headers
+EXCLUDE_PATTERNS       = ace_*.hpp \
+                         acedrg_tables.hpp \
+                         mc_tables.hpp \
+                         eig3.hpp \
+                         cc_adj.hpp \
+                         ccp4ener.hpp \
+                         mmcif_impl.hpp
+
+# Output: XML only (Breathe consumes this; Sphinx produces HTML)
+GENERATE_XML           = YES
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+XML_OUTPUT             = _doxygen/xml
+
+# Extraction
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_ANON_NSPACES   = NO
+
+# Preprocessing (needed for GEMMI_DLL export macro and similar)
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = GEMMI_DLL=
+
+# Quiet build, warnings to file
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_LOGFILE           = _doxygen/doxygen-warnings.log
+
+# Source browsing off (Breathe handles cross-references)
+SOURCE_BROWSER         = NO
+INLINE_SOURCES         = NO
