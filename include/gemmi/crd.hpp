@@ -22,7 +22,7 @@ namespace gemmi {
 /// - Deduplicates and validates entity definitions.
 ///
 /// @param st The Structure to prepare (modified in-place).
-void setup_for_crd(Structure& st);
+GEMMI_DLL void setup_for_crd(Structure& st);
 
 /// @brief Identify and add missing chemical bonds using a monomer library.
 ///
@@ -33,7 +33,7 @@ void setup_for_crd(Structure& st);
 /// @param model The Model containing atoms to search.
 /// @param st The Structure whose connections will be updated.
 /// @param monlib The MonLib (monomer library) for matching link definitions.
-void add_automatic_links(Model& model, Structure& st, const MonLib& monlib);
+GEMMI_DLL void add_automatic_links(Model& model, Structure& st, const MonLib& monlib);
 
 /// @brief Add chemical component dictionary blocks to a CIF document.
 ///
@@ -45,7 +45,7 @@ void add_automatic_links(Model& model, Structure& st, const MonLib& monlib);
 /// @param resnames List of residue names (component IDs) to include.
 /// @param topo The Topo containing topology information.
 /// @param monlib The MonLib containing chemical component definitions.
-void add_dictionary_blocks(cif::Document& doc, const std::vector<std::string>& resnames,
+GEMMI_DLL void add_dictionary_blocks(cif::Document& doc, const std::vector<std::string>& resnames,
                                      const Topo& topo, const MonLib& monlib);
 
 /// @brief Generate a complete Refmac CRD (coordinate) file as a CIF document.
