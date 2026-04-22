@@ -1,3 +1,14 @@
+/// @file
+/// @brief PEGTL-based CIF parser with pluggable action handlers and Document construction.
+///
+/// This header provides the complete CIF parsing infrastructure:
+/// - PEG grammar rules for CIF 1.1 syntax (namespace `rules`)
+/// - Customizable action handlers (templates specializing `Action<Rule>`)
+/// - Built-in actions that construct an in-memory Document
+/// - Entry points: read_file(), read_memory(), read_cstream(), read_istream(), read()
+///
+/// For high-level parsing of standard formats (mmCIF, plain CIF), prefer read_cif.hpp.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // CIF parser (based on PEGTL) with pluggable actions,
@@ -264,10 +275,22 @@ template<> struct Action<rules::loop> {
 };
 
 
+/// @brief Parse CIF content from an input, populating a Document.
+/// @tparam Input PEGTL input type (e.g., pegtl::file_input, pegtl::memory_input).
+/// @param d Document to populate with parsed blocks and items.
+/// @param in PEGTL input object.
+/// @throws pegtl::parse_error on syntax errors.
 template<typename Input> void parse_input(Document& d, Input&& in) {
   pegtl::parse<rules::file, Action, Errors>(in, d);
 }
 
+/// @brief Read a complete CIF file and return a Document.
+/// @tparam Input PEGTL input type.
+/// @param in PEGTL input object with a source() method.
+/// @param check_level Validation strictness: 0=no checks, 1=missing values & duplicates, 2=also empty loops.
+/// @return Fully parsed Document.
+/// @throws pegtl::parse_error on syntax errors.
+/// @throws std::runtime_error on validation failures (check_level > 0).
 template<typename Input> Document read_input(Input&& in, int check_level=1) {
   Document doc;
   doc.source = in.source();
@@ -286,6 +309,12 @@ template<typename Input> Document read_input(Input&& in, int check_level=1) {
   return doc;
 }
 
+/// @brief Parse a single CIF data block and add it to a Document.
+/// @tparam Input PEGTL input type.
+/// @param d Document to append to.
+/// @param in PEGTL input.
+/// @return Byte offset after parsing the block.
+/// @throws pegtl::parse_error on syntax errors.
 template<typename Input>
 size_t parse_one_block(Document& d, Input&& in) {
   pegtl::parse<rules::one_block, Action, Errors>(in, d);
@@ -302,21 +331,48 @@ size_t parse_one_block(Document& d, Input&& in) {
   tao::pegtl::file_input<> in(path)
 #endif
 
+/// @brief Read a CIF file from disk.
+/// @param filename Path to the CIF file.
+/// @param check_level Validation level (0-2).
+/// @return Parsed Document.
+/// @throws std::runtime_error if file cannot be opened.
+/// @throws pegtl::parse_error on syntax errors.
 inline Document read_file(const std::string& filename, int check_level=1) {
   GEMMI_CIF_FILE_INPUT(in, filename);
   return read_input(in, check_level);
 }
 
+/// @brief Read CIF from memory.
+/// @param data Pointer to CIF content (need not be null-terminated).
+/// @param size Number of bytes to parse.
+/// @param name Label for error messages (e.g., "buffer").
+/// @param check_level Validation level (0-2).
+/// @return Parsed Document.
+/// @throws pegtl::parse_error on syntax errors.
 inline Document read_memory(const char* data, size_t size, const char* name, int check_level=1) {
   pegtl::memory_input<> in(data, size, name);
   return read_input(in, check_level);
 }
 
+/// @brief Read CIF from a C FILE stream.
+/// @param f Open FILE pointer (e.g., stdin, or result of fopen()).
+/// @param bufsize Buffering size for reading (e.g., 16*1024).
+/// @param name Label for error messages.
+/// @param check_level Validation level (0-2).
+/// @return Parsed Document.
+/// @throws pegtl::parse_error on syntax errors.
 inline Document read_cstream(std::FILE *f, size_t bufsize, const char* name, int check_level=1) {
   pegtl::cstream_input<> in(f, bufsize, name);
   return read_input(in, check_level);
 }
 
+/// @brief Read CIF from a C++ std::istream.
+/// @param is Input stream (e.g., std::ifstream, std::cin).
+/// @param bufsize Buffering size (e.g., 16*1024).
+/// @param name Label for error messages.
+/// @param check_level Validation level (0-2).
+/// @return Parsed Document.
+/// @throws pegtl::parse_error on syntax errors.
 inline Document read_istream(std::istream &is, size_t bufsize, const char* name,
                              int check_level=1) {
   pegtl::istream_input<> in(is, bufsize, name);
@@ -332,6 +388,11 @@ template<> struct CheckAction<rules::missing_value> {
   }
 };
 
+/// @brief Try parsing CIF without validation or error throwing.
+/// @tparam Input PEGTL input type.
+/// @param in PEGTL input.
+/// @param msg Optional pointer to store error message (if parsing fails).
+/// @return true if parse succeeded, false otherwise.
 template<typename Input> bool try_parse(Input&& in, std::string* msg) {
   try {
     return pegtl::parse<rules::file, CheckAction, Errors>(in);
@@ -342,8 +403,13 @@ template<typename Input> bool try_parse(Input&& in, std::string* msg) {
   }
 }
 
-// A function for transparent reading of normal and compressed files.
-// T should have the same traits as BasicInput and MaybeGzipped.
+/// @brief Read CIF from a file or stream, handling compression transparently.
+/// @tparam T Type with methods: uncompress_into_buffer(), is_stdin(), is_compressed(), path().
+/// (Traits matching BasicInput and MaybeGzipped wrappers in Gemmi.)
+/// @param input Input wrapper (handles gzip, bzip2, and plain files).
+/// @param check_level Validation level (0-2).
+/// @return Parsed Document.
+/// @throws pegtl::parse_error on syntax errors.
 template<typename T>
 Document read(T&& input, int check_level=1) {
   if (CharArray mem = input.uncompress_into_buffer())
@@ -353,6 +419,11 @@ Document read(T&& input, int check_level=1) {
   return read_file(input.path(), check_level);
 }
 
+/// @brief Check CIF syntax without building a Document.
+/// @tparam T Type with uncompress_into_buffer() and path() methods.
+/// @param input Input wrapper.
+/// @param msg Optional pointer to store error message.
+/// @return true if syntax is valid, false otherwise.
 template<typename T>
 bool check_syntax(T&& input, std::string* msg) {
   if (CharArray mem = input.uncompress_into_buffer()) {
@@ -363,6 +434,13 @@ bool check_syntax(T&& input, std::string* msg) {
   return try_parse(in, msg);
 }
 
+/// @brief Read one CIF block from a file or stream into an existing Document.
+/// @tparam T Type with is_compressed(), is_stdin(), uncompress_into_buffer(size_t), path() methods.
+/// @param d Document to append block to.
+/// @param input Input wrapper.
+/// @param limit Max bytes to read from compressed file (0 = no limit).
+/// @return Byte offset after parsing the block.
+/// @throws pegtl::parse_error on syntax errors.
 template<typename T>
 size_t read_one_block(Document& d, T&& input, size_t limit) {
   if (input.is_compressed()) {
