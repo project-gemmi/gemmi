@@ -250,9 +250,8 @@ struct Metadata {
 };
 
 
-/// @brief Classification of macromolecular entities in the structure.
-/// @details Corresponds to mmCIF _entity.type. Classifies biological units
-/// by macromolecular type.
+/// @brief Classification of macromolecular entities, corresponding to mmCIF _entity.type.
+/// @details Classifies biological units by macromolecular type.
 enum class EntityType : unsigned char {
   Unknown,    ///< Type not specified or cannot be determined
   Polymer,    ///< Protein, nucleic acid, or polysaccharide
@@ -333,9 +332,10 @@ struct SiftsUnpResidue {
   std::uint16_t num = 0;       ///< UniProt sequence position (0 = unset)
 };
 
-/// @brief Non-bonded contact or link between atoms.
-/// @details Corresponds to mmCIF _struct_conn category. Represents chemical
-/// interactions (bonds, disulfide bridges, hydrogen bonds, etc.).
+/// @brief A chemical connection (bond) between two atoms in the structure.
+///
+/// Corresponds to mmCIF _struct_conn records. The type field indicates the
+/// nature of the bond (covalent, hydrogen, metal coordination, etc.).
 struct Connection {
   /// Type of chemical interaction.
   enum Type : unsigned char {

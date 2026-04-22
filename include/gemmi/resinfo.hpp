@@ -106,7 +106,7 @@ constexpr size_t unknown_tabulated_residue_idx() { return 367; };
 
 /// @brief Look up tabulated residue by name.
 /// @param name Residue name (3-letter code: ALA, HOH, ATP, etc.).
-/// @return ResidueInfo with kind=UNKNOWN if name not in table.
+/// @return ResidueInfo for the named residue, or ResidueInfo with kind UNKNOWN if the name is not in the table.
 GEMMI_DLL ResidueInfo& find_tabulated_residue(const std::string& name);
 
 /// @brief Expand one-letter code to 3-letter residue name.

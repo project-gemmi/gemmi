@@ -77,11 +77,10 @@ template<int N> struct OptionalInt {
   void reset() noexcept { value = None; } ///< Set to not-set state
 };
 
-/// @brief Protein residue identifier: sequence number + insertion code.
-/// @details PDB/mmCIF residue numbering with optional insertion code (A, B, C, etc.)
-/// for residues inserted between standard sequence positions. Example: "12A" means
-/// sequence number 12 with insertion code A. Represents positions like 12.1 in old-style
-/// numbering.
+/// @brief Residue sequence identifier: sequence number plus insertion code.
+///
+/// Corresponds to the combination of _atom_site.auth_seq_id (num) and
+/// _atom_site.pdbx_PDB_ins_code (icode) in mmCIF, or RESSEQ + ICODE in PDB format.
 struct SeqId {
   using OptionalNum = OptionalInt<INT_MIN>; ///< Optional sequence number (INT_MIN = not set)
 
