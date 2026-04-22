@@ -17,15 +17,31 @@ For the Python API, see the `Python API reference <https://project-gemmi.github.
 Core Data Structures
 --------------------
 
-*(Full documentation added in PR 2.)*
-
 .. doxygenfile:: model.hpp
    :project: gemmi
 
-Map and Grid Data
------------------
-
-*(Stub — full documentation added in PR 6.)*
-
-.. doxygenfile:: grid.hpp
+.. doxygenfile:: unitcell.hpp
    :project: gemmi
+
+.. doxygenfile:: symmetry.hpp
+   :project: gemmi
+
+.. doxygenfile:: metadata.hpp
+   :project: gemmi
+
+.. doxygenfile:: elem.hpp
+   :project: gemmi
+
+.. doxygenfile:: seqid.hpp
+   :project: gemmi
+
+.. doxygenfile:: resinfo.hpp
+   :project: gemmi
+
+.. doxygenfile:: small.hpp
+   :project: gemmi
+
+.. note::
+
+   The following sections will be populated by subsequent PRs (3–10) in this series.
+   See `PR #413 <https://github.com/project-gemmi/gemmi/pull/413>`_ for the full roadmap.
