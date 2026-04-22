@@ -61,6 +61,7 @@ public:
   /// Starraniso version string for metadata.
   std::string staraniso_version;
   /// Description string appended to gemmi software entry.
+  std::string gemmi_run_from;
 
   /// @brief Get default column specification for merged or unmerged data.
   ///
