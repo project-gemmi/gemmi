@@ -25,7 +25,7 @@ enum class HowToNameCopiedChain {
   Dup
 };
 
-/// Utility to generate unique chain names for assembly and NCS expansion.
+/// @brief Utility to generate unique chain names for assembly and NCS expansion.
 ///
 /// Manages a set of used chain names and provides methods to generate new,
 /// unique names according to the specified naming strategy.
