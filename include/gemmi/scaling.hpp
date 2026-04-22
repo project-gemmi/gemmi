@@ -13,17 +13,26 @@
 
 namespace gemmi {
 
+/// @brief Type alias for a symmetric 3×3 tensor represented as 6 coefficients.
+/// Stores (u11, u22, u33, u12, u13, u23).
 using Vec6 = std::array<double, 6>;
 
+/// @brief Dot product of Vec6 with a symmetric 3×3 matrix.
+/// Used for tensor contractions in ADP refinement.
+/// @param a Vec6 vector (6-element array).
+/// @param s Symmetric 3×3 matrix.
+/// @return Dot product result.
 inline double vec6_dot(const Vec6& a, const SMat33<double>& s) {
   return a[0] * s.u11 + a[1] * s.u22 + a[2] * s.u33
        + a[3] * s.u12 + a[4] * s.u13 + a[5] * s.u23;
 }
 
-/// Symmetry constraints of ADP.
-/// The number of rows is the number of independent coefficients in U.
-/// For example, for tetragonal crystal returns two normalized Vec6 vectors
-/// in directions [1 1 0 0 0 0] and [0 0 1 0 0 0].
+/// @brief Return the symmetry-adapted constraint vectors for the ADP tensor in a space group.
+/// The number and content of returned constraint vectors depend on the crystal system.
+/// For example, cubic returns one vector [1 1 1 0 0 0] (isotropic); tetragonal returns
+/// two vectors in directions [1 1 0 0 0 0] and [0 0 1 0 0 0] (diagonal u11=u22, u33 free).
+/// @param sg Pointer to the space group; if null, triclinic symmetry is assumed (6 free components).
+/// @return Vector of normalized Vec6 constraint vectors for independent ADP components.
 inline std::vector<Vec6> adp_symmetry_constraints(const SpaceGroup* sg) {
   auto constraints = [](const std::initializer_list<int>& l) {
     constexpr double K2 = 0.70710678118654752440;  // sqrt(1/2)
@@ -68,46 +77,58 @@ inline std::vector<Vec6> adp_symmetry_constraints(const SpaceGroup* sg) {
   unreachable();
 }
 
+/// @brief Anisotropic scaling of calculated structure factors to observed data.
+/// Optionally includes bulk solvent correction: Fc + k_sol·exp(-b_sol·stol²)·Fmask.
+/// Parameter refinement uses Levenberg-Marquardt (or NLopt if WITH_NLOPT is defined).
+/// @tparam Real Floating-point type (float or double).
 template<typename Real>
 struct Scaling {
+  /// @brief One reflection used in the least-squares fit.
   struct Point {
-    Miller hkl;
-    double stol2;
-    std::complex<Real> fcmol, fmask;
-    Real fobs, sigma;
+    Miller hkl;                            ///< Miller indices.
+    double stol2;                          ///< (sin θ/λ)² for this reflection.
+    std::complex<Real> fcmol, fmask;       ///< Calculated molecular and mask structure factors.
+    Real fobs, sigma;                      ///< Observed amplitude and its standard uncertainty.
 
     Miller get_x() const { return hkl; }
     double get_y() const { return fobs; }
     double get_weight() const { return 1.0 /* / sigma*/; }
   };
 
-  UnitCell cell;
-  // model parameters
-  double k_overall = 1.;
-  // b_star = F B_cart F^T, where F - fractionalization matrix
-  SMat33<double> b_star{0, 0, 0, 0, 0, 0};
-  std::vector<Vec6> constraint_matrix;
-  bool use_solvent = false;
-  bool fix_k_sol = false;
-  bool fix_b_sol = false;
-  // initialize with average values (Fokine & Urzhumtsev, 2002)
-  double k_sol = 0.35;
-  double b_sol = 46.0;
-  std::vector<Point> points;
+  UnitCell cell;                           ///< Unit cell parameters.
+  double k_overall = 1.;                   ///< Overall scale factor.
+  SMat33<double> b_star{0, 0, 0, 0, 0, 0}; ///< Anisotropic B* tensor in reciprocal space.
+  std::vector<Vec6> constraint_matrix;     ///< Symmetry constraints on b_star.
+  bool use_solvent = false;                ///< If true, include bulk solvent correction.
+  bool fix_k_sol = false;                  ///< If true, do not refine k_sol.
+  bool fix_b_sol = false;                  ///< If true, do not refine b_sol.
+  double k_sol = 0.35;                     ///< Bulk solvent scale factor.
+  double b_sol = 46.0;                     ///< Bulk solvent B-factor.
+  std::vector<Point> points;               ///< Reflection data for fitting.
 
+  /// @brief Initialize with unit cell and space group.
+  /// Sets up constraint_matrix from crystal system symmetry.
+  /// @param cell_ Unit cell parameters.
+  /// @param sg Pointer to space group (for symmetry constraints).
   Scaling(const UnitCell& cell_, const SpaceGroup* sg)
       : cell(cell_), constraint_matrix(adp_symmetry_constraints(sg)) {}
 
-  // B_{overall} is stored as B* not B_{cartesian}.
-  // Use getter and setter to convert from/to B_{cartesian}.
+  /// @brief Set b_star from a real-space B matrix.
+  /// Converts from Cartesian coordinates to reciprocal-space B*.
+  /// @param b_overall B matrix in real (Cartesian) space.
   void set_b_overall(const SMat33<double>& b_overall) {
     b_star = b_overall.transformed_by(cell.frac.mat);
   }
+
+  /// @brief Get b_star converted back to real (Cartesian) space.
+  /// @return B matrix in Cartesian coordinates.
   SMat33<double> get_b_overall() const {
     return b_star.transformed_by(cell.orth.mat);
   }
 
-  // Scale data, optionally adding bulk solvent correction.
+  /// @brief Apply scaling to all reflections in-place, optionally adding bulk solvent correction.
+  /// @param asu_data ASU data to scale (modified in-place).
+  /// @param mask_data Mask (solvent) data; required if use_solvent is true, otherwise may be null.
   void scale_data(AsuData<std::complex<Real>>& asu_data,
                   const AsuData<std::complex<Real>>* mask_data) const {
     if (use_solvent && !(mask_data && mask_data->size() == asu_data.size()))
@@ -126,6 +147,12 @@ struct Scaling {
     }
   }
 
+  /// @brief Compute scaled value for one reflection.
+  /// Applies overall scale factor and optionally bulk solvent correction.
+  /// @param hkl Miller indices.
+  /// @param f_value Calculated molecular structure factor.
+  /// @param mask_value Mask (solvent) structure factor.
+  /// @return Scaled complex structure factor.
   std::complex<Real> scale_value(const Miller& hkl, std::complex<Real> f_value,
                                  std::complex<Real> mask_value) {
     if (use_solvent) {
@@ -135,6 +162,9 @@ struct Scaling {
     return f_value * (Real) get_overall_scale_factor(hkl);
   }
 
+  /// @brief Return current parameters as a flat vector.
+  /// Includes k_overall, b_star components (via constraint_matrix), and optionally k_sol and b_sol.
+  /// @return Vector of parameters in order: k_overall, [k_sol], [b_sol], b_star_components.
   std::vector<double> get_parameters() const {
     std::vector<double> ret;
     ret.push_back(k_overall);
@@ -149,7 +179,9 @@ struct Scaling {
     return ret;
   }
 
-  /// set k_overall, k_sol, b_sol, b_star
+  /// @brief Set parameters from pointer or vector.
+  /// Updates k_overall, b_star components (via constraint_matrix), and optionally k_sol and b_sol.
+  /// @param p Pointer to parameter array (order: k_overall, [k_sol], [b_sol], b_star_components).
   void set_parameters(const double* p) {
     k_overall = p[0];
     int n = 0;
@@ -171,11 +203,17 @@ struct Scaling {
     }
   }
 
+  /// @brief Set parameters from vector.
+  /// @param p Vector of parameters.
   void set_parameters(const std::vector<double>& p) {
     set_parameters(p.data());
   }
 
-  // pre: all AsuData args are sorted
+  /// @brief Populate points from matching reflections in calc and obs datasets.
+  /// Precondition: all AsuData arguments must be sorted by Miller indices.
+  /// @param calc Calculated structure factors.
+  /// @param obs Observed amplitudes and sigmas.
+  /// @param mask_data Mask structure factors; required if use_solvent is true.
   void prepare_points(const AsuData<std::complex<Real>>& calc,
                       const AsuData<ValueSigma<Real>>& obs,
                       const AsuData<std::complex<Real>>* mask_data) {
@@ -210,21 +248,32 @@ struct Scaling {
   }
 
 
+  /// @brief Compute k_sol * exp(-b_sol * stol²) for bulk solvent correction.
+  /// @param stol2 (sin θ/λ)² value.
+  /// @return Solvent scale factor.
   double get_solvent_scale(double stol2) const {
     return k_sol * std::exp(-b_sol * stol2);
   }
 
+  /// @brief Compute k_overall * exp(-b_star:hkl) for overall scale factor.
+  /// @param hkl Miller indices.
+  /// @return Overall scale factor including anisotropic B*.
   double get_overall_scale_factor(const Miller& hkl) const {
     return k_overall * std::exp(-0.25 * b_star.r_u_r(hkl));
   }
 
+  /// @brief Compute total calculated structure factor for point p.
+  /// Includes molecular part and optionally bulk solvent correction.
+  /// @param p Reflection point.
+  /// @return Total Fcalc = Fcmol + k_sol·exp(-b_sol·stol²)·Fmask (or just Fcmol if no solvent).
   std::complex<Real> get_fcalc(const Point& p) const {
     if (!use_solvent)
       return p.fcmol;
     return p.fcmol + (Real)get_solvent_scale(p.stol2) * p.fmask;
   }
 
-  // quick linear fit (ignoring sigma) to get initial k_overall and isotropic B
+  /// @brief Quick linear least-squares fit of isotropic B only (ignoring sigma).
+  /// Used for initialization before full refinement.
   void fit_isotropic_b_approximately() {
     double sx = 0, sy = 0, sxx = 0, sxy = 0;
     int n = 0;
@@ -249,7 +298,8 @@ struct Scaling {
     set_b_overall({b_iso, b_iso, b_iso, 0, 0, 0});
   }
 
-  // least-squares fitting of k_overall only
+  /// @brief Compute optimal k_overall by linear least squares.
+  /// @return Optimal scale factor.
   double lsq_k_overall() const {
     double sxx = 0, sxy = 0;
     for (const Point& p : points) {
@@ -263,10 +313,9 @@ struct Scaling {
     return sxx != 0. ? sxy / sxx : 1.;
   }
 
-  // For testing only, don't use it.
-  // Estimates anisotropic b_star using other parameters (incl. isotropic B),
-  // following P. Afonine et al, doi:10.1107/S0907444913000462 sec. 2.1.
-  // The symmetry constraints are not implemented - don't use it!
+  /// @brief Fit anisotropic B* by linear approximation (for testing/initialization only).
+  /// DO NOT USE for production: symmetry constraints are not implemented.
+  /// Based on P. Afonine et al., doi:10.1107/S0907444913000462, section 2.1.
   void fit_b_star_approximately() {
     double b_iso = 1/3. * get_b_overall().trace();
     //size_t nc = constraint_matrix.size();
@@ -297,11 +346,15 @@ struct Scaling {
     //printf("fitted B = {%g %g %g  %g %g %g}\n", e[0], e[1], e[2], e[3], e[4], e[5]);
   }
 
+  /// @brief Full Levenberg-Marquardt optimization of all parameters.
+  /// @return Final R factor.
   double fit_parameters() {
     LevMar levmar;
     return levmar.fit(*this);
   }
 
+  /// @brief Compute R-factor: Σ|Fobs - Fcalc| / Σ|Fobs|.
+  /// @return R-factor value.
   double calculate_r_factor() const {
     double abs_diff_sum = 0;
     double denom = 0;
@@ -312,11 +365,17 @@ struct Scaling {
     return abs_diff_sum / denom;
   }
 
-  // interface for fitting
+  /// @brief Compute Fcalc for point p (interface for fitting).
+  /// @param p Reflection point.
+  /// @return Scaled calculated structure factor amplitude.
   double compute_value(const Point& p) const {
     return std::abs(get_fcalc(p)) * (Real) get_overall_scale_factor(p.hkl);
   }
 
+  /// @brief Compute Fcalc and its derivatives with respect to all parameters.
+  /// @param p Reflection point.
+  /// @param dy_da Output vector to fill with derivatives [dy/dk_overall, dy/dk_sol, dy/db_sol, dy/db_star_components].
+  /// @return Calculated structure factor amplitude.
   double compute_value_and_derivatives(const Point& p, std::vector<double>& dy_da) const {
     Vec3 h(p.hkl);
     double kaniso = std::exp(-0.25 * b_star.r_u_r(h));
@@ -353,6 +412,13 @@ struct Scaling {
   }
 };
 
+/// @brief Fit scaling parameters using NLopt with the named optimizer.
+/// Only available when compiled with WITH_NLOPT.
+/// @tparam Real Floating-point type (float or double).
+/// @param scaling The Scaling object to optimize.
+/// @param optimizer Name of the optimizer algorithm (NLopt algorithm string).
+/// @return Final residual value (WSSR).
+/// @note This function is for testing and evaluation purposes.
 // only for testing and evaluation - scaling with NLOpt
 #if WITH_NLOPT
 namespace impl {
