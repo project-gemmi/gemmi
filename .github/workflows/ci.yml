@@ -217,6 +217,22 @@ jobs:
     - name: run tests under valgrind
       run: PYTHONMALLOC=malloc valgrind python3 -m unittest discover -v -s tests/
 
+  docs:
+    name: "Docs build (Doxygen + Sphinx/Breathe)"
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen
+        python3 -m pip install sphinx sphinx-inline-tabs breathe furo
+    - name: Build HTML docs
+      run: |
+        cd docs
+        sphinx-build -M html . _build -n -E
+
   almalinux:
     runs-on: ubuntu-latest
     name: "AlmaLinux 8"
