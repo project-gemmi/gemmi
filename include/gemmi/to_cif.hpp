@@ -1,6 +1,7 @@
 // Copyright 2017 Global Phasing Ltd.
 
-// Writing cif::Document or its parts to std::ostream.
+/// @file
+/// @brief Writing CIF documents to output streams with configurable formatting.
 
 #ifndef GEMMI_TO_CIF_HPP_
 #define GEMMI_TO_CIF_HPP_
@@ -11,31 +12,44 @@
 namespace gemmi {
 namespace cif {
 
-/// deprecated, use cif::WriteOptions instead
+/// Deprecated output formatting style. Use cif::WriteOptions instead.
+///
+/// This enum is provided for backward compatibility. Each style
+/// corresponds to a particular WriteOptions configuration.
 enum class Style {
-  Simple,
-  NoBlankLines,
-  PreferPairs,  // write single-row loops as pairs
-  Pdbx,         // PreferPairs + put '#' (empty comments) between categories
-  Indent35,     // start values in pairs from 35th column
-  Aligned,      // columns in tables are left-aligned
+  Simple,       ///< Standard CIF format (default)
+  NoBlankLines, ///< Compact: no blank lines between categories
+  PreferPairs,  ///< Write single-row loops as pairs
+  Pdbx,         ///< PreferPairs + put '#' (empty comments) between categories
+  Indent35,     ///< Start values in pairs from 35th column
+  Aligned,      ///< Align columns in loops to fixed width
 };
 
+/// Options for writing CIF output.
+///
+/// Controls formatting, alignment, and output style of CIF documents.
 struct WriteOptions {
-  /// write single-row loops as pairs
+  /// Write single-row loops as tag-value pairs instead of loop constructs.
   bool prefer_pairs = false;
-  /// no blank lines between categories, only between blocks
+  /// Omit blank lines between categories (keep only between blocks).
   bool compact = false;
-  /// put '#' (empty comments) before/after categories
+  /// Insert '#' (empty comment lines) before and after categories.
+  /// This is a non-standard CIF extension.
   bool misuse_hash = false;
-  /// width reserved for tags in pairs (e.g. 34 = value starts at 35th column)
+  /// Width reserved for tags in pairs (0=no alignment, typical value 33-34).
+  /// If set, values start at column (align_pairs + 1).
+  /// Example: align_pairs=33 starts values at column 35.
   std::uint16_t align_pairs = 0;
-  /// if non-zero, determines max width of each column in a loop and aligns
-  /// all values to this width; the width is capped with the given value
+  /// Maximum column width in loops when aligning (0=no alignment).
+  /// If non-zero, all columns are padded to at most this width.
+  /// This produces more compact, readable loop output.
   std::uint16_t align_loops = 0;
 
   WriteOptions() {}
-  // implicit conversion from deprecated Style (for backward compatibility)
+
+  /// Implicit conversion from deprecated Style enum (for backward compatibility).
+  ///
+  /// @param style Legacy Style enum value to convert
   WriteOptions(Style style) {
     switch (style) {
       case Style::Simple:
@@ -59,6 +73,10 @@ struct WriteOptions {
         break;
     }
   }
+
+  /// Return a human-readable string representation of active options.
+  ///
+  /// @return Comma-separated list of enabled options (e.g., "prefer_pairs,compact")
   std::string str() const {
     std::string s;
     if (prefer_pairs)
@@ -77,16 +95,29 @@ struct WriteOptions {
   }
 };
 
-/// std::ostream with buffering. C++ streams are so slow that even primitive
-/// buffering makes it significantly more efficient.
+/// Buffered output stream wrapper for efficient CIF writing.
+///
+/// Wraps std::ostream with a 4KB buffer to significantly improve I/O performance
+/// when writing CIF documents. The buffer is automatically flushed on destruction
+/// and when it fills.
 class BufOstream {
 public:
+  /// Construct a buffered output stream.
+  /// @param os_ The underlying std::ostream to write to
   explicit BufOstream(std::ostream& os_) : os(os_), ptr(buf) {}
+
+  /// Destructor flushes remaining buffered data.
   ~BufOstream() { flush(); }
+
+  /// Flush all buffered data to the underlying stream.
   void flush() {
     os.write(buf, ptr - buf);
     ptr = buf;
   }
+
+  /// Write data to the buffer, flushing if necessary.
+  /// @param s    Pointer to data to write
+  /// @param len  Number of bytes to write
   void write(const char* s, size_t len) {
     constexpr int margin = sizeof(buf) - 512;
     if (ptr - buf + len > margin) {
@@ -99,13 +130,24 @@ public:
     std::memcpy(ptr, s, len);
     ptr += len;
   }
+
+  /// Write a string to the buffer.
+  /// @param s The string to write
   void operator<<(const std::string& s) {
     write(s.c_str(), s.size());
   }
-  // below we don't check the buffer boundary, these functions add <512 bytes
+
+  // Note: The following functions assume writes are small (<512 bytes).
+  // No buffer boundary check is performed for performance.
+
+  /// Write a single character to the buffer.
+  /// @param c The character to write
   void put(char c) {
     *ptr++ = c;
   }
+
+  /// Write n space characters to the buffer (for padding/alignment).
+  /// @param n Number of spaces to write
   void pad(size_t n) {
     std::memset(ptr, ' ', n);
     ptr += n;
@@ -117,10 +159,11 @@ private:
   char* ptr;
 };
 
-// CIF files are read in binary mode. It makes difference only for text fields.
-// If the text field with \r\n would be written as is in text mode on Windows
-// \r would get duplicated. As a workaround, here we convert \r\n to \n.
-// Hopefully \r that gets removed here is never meaningful.
+// Note: CIF files are read in binary mode. Text fields with \r\n line endings
+// are normalized to \n when writing to avoid duplication in Windows text mode.
+/// Write a text field, normalizing \\r\\n to \\n.
+/// @param os    Buffered output stream
+/// @param value The text field value to write
 inline void write_text_field(BufOstream& os, const std::string& value) {
   for (size_t pos = 0, end = 0; end != std::string::npos; pos = end + 1) {
     end = value.find("\r\n", pos);
@@ -238,6 +281,13 @@ inline bool should_be_separated_(const Item& a, const Item& b) {
   return adot != bdot || a.pair[0].compare(0, adot, b.pair[0], 0, adot) != 0;
 }
 
+/// Write a single CIF block to an output stream.
+///
+/// Writes a CIF data block with the specified formatting options.
+///
+/// @param os_     Output stream to write to
+/// @param block   The CIF block to write
+/// @param options Formatting options (see WriteOptions documentation)
 inline void write_cif_block_to_stream(std::ostream& os_, const Block& block,
                                       WriteOptions options=WriteOptions()) {
   BufOstream os(os_);
@@ -262,6 +312,14 @@ inline void write_cif_block_to_stream(std::ostream& os_, const Block& block,
     os.write("#\n", 2);
 }
 
+/// Write a CIF document to an output stream.
+///
+/// Writes a complete CIF document with all its blocks, using the specified
+/// formatting options. Blocks are separated by blank lines for readability.
+///
+/// @param os      Output stream to write to
+/// @param doc     The CIF document to write
+/// @param options Formatting options (see WriteOptions documentation)
 inline void write_cif_to_stream(std::ostream& os, const Document& doc,
                                 WriteOptions options=WriteOptions()) {
   bool first = true;
