@@ -12,9 +12,15 @@
 
 namespace gemmi {
 
-// Sequence alignment and label_seq_id assignment
+/// @name Sequence Alignment and label_seq_id Assignment
+/// @{
 
-// helper function for sequence alignment
+/// @brief Compute per-position gap-open penalties for sequence alignment.
+/// Accounts for gaps and discontinuities in the observed polymer sequence.
+/// @param polymer Polymer span to analyze
+/// @param polymer_type Type of polymer (peptide or nucleic acid)
+/// @param scoring Optional AlignmentScoring parameters; uses default partial_model() if nullptr
+/// @return Vector of gap-opening penalties for each position
 inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
                                             PolymerType polymer_type,
                                             const AlignmentScoring* scoring=nullptr) {
@@ -35,6 +41,12 @@ inline std::vector<int> prepare_target_gapo(const ConstResidueSpan& polymer,
   return gaps;
 }
 
+/// @brief Align a full sequence (SEQRES/Entity) to observed residues in a polymer.
+/// @param full_seq Full sequence from SEQRES or Entity
+/// @param polymer Polymer chain span (observed residues)
+/// @param polymer_type Type of polymer (peptide or nucleic acid)
+/// @param scoring Optional AlignmentScoring parameters; uses default partial_model() if nullptr
+/// @return AlignmentResult with CIGAR string describing the alignment
 inline AlignmentResult align_sequence_to_polymer(
                                      const std::vector<std::string>& full_seq,
                                      const ConstResidueSpan& polymer,
@@ -68,7 +80,10 @@ inline AlignmentResult align_sequence_to_polymer(
                          (std::uint8_t)encoding.size(), *scoring);
 }
 
-// check for exact match between model sequence and full sequence (SEQRES)
+/// @brief Check if model sequence exactly matches SEQRES numbering (fast path).
+/// @param polymer Polymer chain span
+/// @param ent Entity with full_sequence from SEQRES
+/// @return True if label_seq values already match Entity::full_sequence exactly
 inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
                                  const Entity& ent) {
   if (ent.full_sequence.size() != polymer.size())
@@ -82,6 +97,8 @@ inline bool seqid_matches_seqres(const ConstResidueSpan& polymer,
   return true;
 }
 
+/// @brief Clear full_sequence and database references from all entities.
+/// @param st Structure to clear
 inline void clear_sequences(Structure& st) {
   for (Entity& ent : st.entities) {
     ent.full_sequence.clear();
@@ -90,11 +107,16 @@ inline void clear_sequences(Structure& st) {
   }
 }
 
+/// @brief Match FASTA sequences to entities and set Entity::full_sequence.
+/// @param st Structure to update
+/// @param fasta_sequences Vector of FASTA sequence strings
 GEMMI_DLL
 void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_sequences);
 
-// Uses sequence alignment (model to SEQRES) to assign label_seq.
-// force: assign label_seq even if full sequence is not known (assumes no gaps)
+/// @brief Assign label_seq_id to residues using alignment to Entity full_sequence.
+/// @param polymer Polymer chain span to assign label_seq to
+/// @param ent Entity with full_sequence from SEQRES (nullptr allowed if force=true)
+/// @param force If true, assign label_seq sequentially even without Entity information
 inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
                                         const Entity* ent, bool force) {
   AlignmentResult result;
@@ -142,6 +164,8 @@ inline void assign_label_seq_to_polymer(ResidueSpan& polymer,
   }
 }
 
+/// @brief Reset all Residue::label_seq to unset state.
+/// @param st Structure to clear
 inline void clear_label_seq_id(Structure& st) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
@@ -149,6 +173,9 @@ inline void clear_label_seq_id(Structure& st) {
         res.label_seq = Residue::OptionalNum();
 }
 
+/// @brief Assign label_seq_id to all polymer chains in a structure.
+/// @param st Structure to process
+/// @param force If true, assign label_seq sequentially even without Entity information
 inline void assign_label_seq_id(Structure& st, bool force) {
   for (Model& model : st.models)
     for (Chain& chain : model.chains)
@@ -160,14 +187,29 @@ inline void assign_label_seq_id(Structure& st, bool force) {
 }
 
 
-// superposition
+/// @}
+/// @name Structure Superposition
+/// @{
 
+/// @brief Atom selection mode for superposition calculations.
 enum class SupSelect {
-  CaP,  // only Ca (aminoacids) or P (nucleotides) atoms
-  MainChain,  // only main chain atoms
+  /// Use only Cα atoms (for peptides) or P atoms (for nucleic acids)
+  CaP,
+  /// Use backbone atoms (N, CA, C, O for peptides; P, O5', C5', C4', C3', O3' for nucleic acids)
+  MainChain,
+  /// Use all atoms
   All
 };
 
+/// @brief Extract matching atom positions from two polymer spans for superposition.
+/// @param pos1 Output vector of positions from fixed chain
+/// @param pos2 Output vector of positions from movable chain
+/// @param fixed Fixed polymer chain (reference structure)
+/// @param movable Movable polymer chain (structure to be superposed)
+/// @param ptype Polymer type (peptide or nucleic acid)
+/// @param sel Atom selection mode (CaP, MainChain, or All)
+/// @param altloc Alternate location code to select; '\0' means all conformers
+/// @param ca_offsets Optional output vector storing indices of Cα/P atoms in pos1/pos2
 inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
                                                 std::vector<Position>& pos2,
                                                 ConstResidueSpan fixed,
@@ -226,6 +268,13 @@ inline void prepare_positions_for_superposition(std::vector<Position>& pos1,
   }
 }
 
+/// @brief Calculate RMSD between two polymer spans without transformation.
+/// @param fixed Fixed polymer chain (reference structure)
+/// @param movable Movable polymer chain (structure to compare)
+/// @param ptype Polymer type (peptide or nucleic acid)
+/// @param sel Atom selection mode (CaP, MainChain, or All)
+/// @param altloc Alternate location code to select; '\0' means all conformers
+/// @return SupResult with RMSD and atom count (rotation/translation matrices are empty)
 inline SupResult calculate_current_rmsd(ConstResidueSpan fixed,
                                         ConstResidueSpan movable,
                                         PolymerType ptype,
@@ -242,6 +291,15 @@ inline SupResult calculate_current_rmsd(ConstResidueSpan fixed,
   return r;
 }
 
+/// @brief Calculate optimal superposition using QCP (quaternion characteristic polynomial).
+/// @param fixed Fixed polymer chain (reference structure)
+/// @param movable Movable polymer chain (structure to be superposed)
+/// @param ptype Polymer type (peptide or nucleic acid)
+/// @param sel Atom selection mode (CaP, MainChain, or All)
+/// @param trim_cycles Number of iterative trimming cycles (0 = no trimming)
+/// @param trim_cutoff Outlier distance threshold in Å for trimming (default 2.0)
+/// @param altloc Alternate location code to select; '\0' means all conformers
+/// @return SupResult with rotation matrix, translation vector, and RMSD
 inline SupResult calculate_superposition(ConstResidueSpan fixed,
                                          ConstResidueSpan movable,
                                          PolymerType ptype,
@@ -280,8 +338,13 @@ inline SupResult calculate_superposition(ConstResidueSpan fixed,
   return sr;
 }
 
-// Returns superpositions for all residues in fixed.first_conformer(),
-// performed by superposing backbone in radius=10.0 from residue's Ca.
+/// @brief Compute local superpositions using a sliding window around each Cα/P.
+/// Calculates superpositions by sliding a sphere of given radius around each Cα/P position.
+/// @param fixed Fixed polymer chain (reference structure)
+/// @param movable Movable polymer chain (structure to be superposed)
+/// @param ptype Polymer type (peptide or nucleic acid)
+/// @param radius Window radius in Ångströms around each Cα/P (default 10.0)
+/// @return Vector of SupResult, one per residue in fixed.first_conformer()
 inline std::vector<SupResult> calculate_superpositions_in_moving_window(
                                       ConstResidueSpan fixed,
                                       ConstResidueSpan movable,
@@ -312,6 +375,8 @@ inline std::vector<SupResult> calculate_superpositions_in_moving_window(
   }
   return result;
 }
+
+/// @}
 
 } // namespace gemmi
 #endif
