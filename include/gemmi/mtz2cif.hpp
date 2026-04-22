@@ -19,27 +19,59 @@
 
 namespace gemmi {
 
+/// @file
+/// @brief Converter for MTZ reflection data to SF-mmCIF format.
+
+/// @brief Converts MTZ files (merged or unmerged) to SF-mmCIF reflection tables.
+///
+/// This class provides configuration options for column selection, naming,
+/// filtering, and metadata handling when converting MTZ format to mmCIF.
 class GEMMI_DLL MtzToCif {
 public:
-  // options that can be set directly
-  std::vector<std::string> spec_lines; // conversion specification (cf. default_spec)
-  const char* block_name = nullptr;  // NAME in data_NAME
-  std::string entry_id = "xxxx";     // _entry.id
-  bool with_comments = true;         // write comments
-  bool with_history = true;          // write MTZ history in comments
-  bool skip_empty = false;           // skip reflections with no values
-  bool skip_negative_sigi = false;   // skip refl. with sigma(I) < 0 in unmerged
-  bool enable_UB = false;            // write _diffrn_orient_matrix.UB
-  bool write_staraniso_tensor = true; // write _reflns.pdbx_aniso_B_tensor_*
+  /// Column conversion specification lines (see default_spec for format).
+  std::vector<std::string> spec_lines;
+  /// CIF data block name (NAME in data_NAME).
+  const char* block_name = nullptr;
+  /// Entry identifier (_entry.id tag).
+  std::string entry_id = "xxxx";
+  /// Whether to write comments describing the conversion.
+  bool with_comments = true;
+  /// Whether to write MTZ history records in comments.
+  bool with_history = true;
+  /// Skip reflections where all selected numeric columns are missing.
+  bool skip_empty = false;
+  /// Skip unmerged reflections with sigma(I) < 0.
+  bool skip_negative_sigi = false;
+  /// Write _diffrn_orient_matrix.UB orientation matrix.
+  bool enable_UB = false;
+  /// Write _reflns.pdbx_aniso_B_tensor_* Starraniso B-tensor (if available).
+  bool write_staraniso_tensor = true;
+  /// Write PDB-specific special marker for validation.
   bool write_special_marker_for_pdb = false;
-  int less_anomalous = 0;            // skip (+)/(-) columns even if in spec
-  std::string skip_empty_cols;       // columns used to determine "emptiness"
-  double wavelength = NAN;           // user-specified wavelength
-  int trim = 0;                      // output only reflections -N<=h,k,l<=N
-  int free_flag_value = -1;          // -1 = auto: 0 or (if we have >50% of 0's) 1
-  std::string staraniso_version;     // for _software.version in "special_marker"
-  std::string gemmi_run_from;        // added to gemmi as _software.description
+  /// If non-zero, skip anomalous (+/-) column pairs.
+  int less_anomalous = 0;
+  /// Columns used to determine if reflection is "empty" (when skip_empty=true).
+  std::string skip_empty_cols;
+  /// User-specified wavelength (NAN means use MTZ value).
+  double wavelength = NAN;
+  /// Trim reflections: output only those with -N<=h,k,l<=N (0 = no trim).
+  int trim = 0;
+  /// Free flag value: -1=auto, 0 or 1=explicit.
+  int free_flag_value = -1;
+  /// Starraniso version string for metadata.
+  std::string staraniso_version;
+  /// Description string appended to gemmi software entry.
 
+  /// @brief Get default column specification for merged or unmerged data.
+  ///
+  /// The returned spec_lines describe MTZ-to-mmCIF column mapping.
+  /// Format: [?|&|$|H][COLUMN_NAME] [TYPE] [mmCIF_TAG] [FORMAT]
+  /// - ? = optional column (try alternatives separated by |)
+  /// - & = required, uses previous column's result
+  /// - $ = internal (dataset_id, counter)
+  /// - H = required by IUCR standard
+  /// @param for_merged If true, return spec for merged data; else unmerged.
+  /// @return Null-terminated array of spec strings.
   static const char** default_spec(bool for_merged) {
     static const char* merged[] = {
       "H                              H index_h",
@@ -90,24 +122,56 @@ public:
     return for_merged ? merged : unmerged;
   }
 
+  /// @brief Write MTZ reflection data to CIF format.
+  /// @param mtz First MTZ dataset (required).
+  /// @param mtz2 Optional second MTZ dataset for anomalous comparison.
+  /// @param staraniso_b Optional Starraniso B-tensor to include.
+  /// @param os Output stream for CIF file.
   void write_cif(const Mtz& mtz, const Mtz* mtz2,
                  SMat33<double>* staraniso_b, std::ostream& os);
+  /// @brief Write XDS reflection data to CIF format.
+  /// @param xds XDS_ASCII data to convert.
+  /// @param os Output stream for CIF file.
   void write_cif_from_xds(const XdsAscii& xds, std::ostream& os) const;
 };
 
+/// @brief Write Starraniso B-tensor to mmCIF format.
+/// @param b 3x3 symmetric B-tensor matrix.
+/// @param entry_id Entry identifier for tags.
+/// @param buf Temporary buffer for formatting.
+/// @param os Output stream.
 GEMMI_DLL void write_staraniso_b_in_mmcif(const SMat33<double>& b,
                                           const std::string& entry_id,
                                           char* buf, std::ostream& os);
 
-/// remove '_dataset_name' that can be appended to column names in ccp4i
+/// @brief Remove '_dataset_name' appendix from MTZ column labels.
+///
+/// This suffix is sometimes added by CCP4i and needs removal for proper conversion.
+/// @param mtz MTZ file to modify.
+/// @param logger For reporting changes.
 GEMMI_DLL void remove_appendix_from_column_names(Mtz& mtz, const Logger& logger);
 
+/// @brief Validate merged MTZ has required columns for PDB deposition.
+/// @param mtz MTZ to check.
+/// @param logger For reporting results.
+/// @return True if all required columns present.
 GEMMI_DLL bool validate_merged_mtz_deposition_columns(const Mtz& mtz, const Logger& logger);
 
-// note: both mi and ui get modified
+/// @brief Validate merged intensity data for consistency and quality.
+///
+/// Compares merged and unmerged intensity columns for anomalous differences and completeness.
+/// Modifies both Intensities objects.
+/// @param mi Merged intensities (modified).
+/// @param ui Unmerged intensities (modified).
+/// @param relaxed_check If true, apply looser validation criteria.
+/// @param logger For reporting issues.
+/// @return True if validation passes.
 GEMMI_DLL bool validate_merged_intensities(Intensities& mi, Intensities& ui,
                                            bool relaxed_check, const Logger& logger);
 
+/// @brief Extract software information from MTZ history records.
+/// @param history Vector of history strings from MTZ file.
+/// @return Vector of SoftwareItem objects describing processing steps.
 GEMMI_DLL std::vector<SoftwareItem>
 get_software_from_mtz_history(const std::vector<std::string>& history);
 
