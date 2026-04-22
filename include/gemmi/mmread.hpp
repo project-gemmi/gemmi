@@ -116,10 +116,10 @@ inline Structure read_structure_from_char_array(char* data, size_t size,
   return read_structure_from_memory(data, size, path, CoorFormat::Unknown, save_doc);
 }
 
-/// Read a Structure from an input source.
+/// @brief Read a Structure from an input source.
+/// @tparam T       Input type (e.g., BasicInput, FileStream) with path() and create_stream()
 /// Generic template that works with file paths, streams, and memory sources.
 /// Optionally detects format from filename extension or content.
-/// @tparam T       Input type (e.g., BasicInput, FileStream) with path() and create_stream()
 /// @param input    Input source; format is inferred from extension or content
 /// @param format   File format to use: Unknown (detect by extension),
 ///                 Detect (load entire file and detect by content),

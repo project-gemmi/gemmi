@@ -154,9 +154,9 @@ inline Structure read_pdb_string(const std::string& str,
   return read_pdb_from_memory(str.c_str(), str.length(), name, options);
 }
 
-/// Read a Structure from a PDB input source.
-/// Generic template for file paths, streams, and other input types.
+/// @brief Read a Structure from a PDB input source.
 /// @tparam T      Input type (e.g., BasicInput, FileStream) with path() and create_stream()
+/// Generic template for file paths, streams, and other input types.
 /// @param input   Input source
 /// @param options Parsing options; defaults to standard PDB settings
 /// @return A new Structure parsed from the input
