@@ -142,6 +142,10 @@ inline std::pair<double, double> calculate_b_aniso_range(const Model& model) {
 }
 
 
+/// @brief Expand an axis-aligned bounding box to include all atoms in obj.
+/// @tparam T Type supporting children() iteration (Model, Chain, Residue, or Atom).
+/// @param obj Object whose atom positions are added to the box.
+/// @param box Bounding box to expand in-place.
 template<class T> void expand_box(const T& obj, Box<Position>& box) {
   for (const auto& child : obj.children())
     expand_box(child, box);

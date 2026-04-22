@@ -107,9 +107,9 @@ inline void clear_sequences(Structure& st) {
   }
 }
 
-/// @brief Match FASTA sequences to entities and set Entity::full_sequence.
-/// @param st Structure to update
-/// @param fasta_sequences Vector of FASTA sequence strings
+/// @brief Match FASTA sequences to entities and set Entity::full_sequence in-place.
+/// @param st Structure whose entities are updated with matched sequences.
+/// @param fasta_sequences Vector of FASTA-format sequence strings to match against entities.
 GEMMI_DLL
 void assign_best_sequences(Structure& st, const std::vector<std::string>& fasta_sequences);
 
