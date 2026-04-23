@@ -125,7 +125,7 @@ using TwoFold = TwoFold_<void>;
 
 } // namespace impl
 
-/// Pair of symmetry operation and its obliquity angle (in degrees).
+/// @brief Pair of symmetry operation and its obliquity angle (in degrees).
 using OpObliquity = std::pair<Op, double>;
 
 /// @brief Calculate cosine of obliquity angle for a twinning operator.
