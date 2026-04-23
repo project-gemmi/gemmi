@@ -2,6 +2,9 @@
 //
 // AsuBrick and MaskedGrid that is used primarily as direct-space asu mask.
 
+/// @file
+/// @brief Asymmetric unit (ASU) masking for crystallographic grids.
+
 #ifndef GEMMI_ASUMASK_HPP_
 #define GEMMI_ASUMASK_HPP_
 
@@ -12,16 +15,27 @@
 
 namespace gemmi {
 
+/// Representation of an asymmetric unit (ASU) brick region.
+/// The ASU is the minimal region of the unit cell under crystallographic space group symmetry.
+/// This struct represents a brick-shaped ASU as 0 <= x <= size[i]/denom for each axis.
+/// Lower bounds are always at the origin; upper bounds may be inclusive (<=) or exclusive (<).
 struct AsuBrick {
-  // The brick is 0<=x<=size[0]/24, 0<=y<=size[1]/24, 0<=z<=size[2]/24
+  /// Denominator for normalizing brick coordinates to [0,1); always 24.
   static constexpr int denom = 24;
-  std::array<int, 3> size;
-  std::array<bool, 3> incl;
-  int volume;
+  std::array<int, 3> size;      ///< Numerator for each axis (denominator is always denom=24)
+  std::array<bool, 3> incl;      ///< Inclusivity flags; true if boundary is <= (closed), false if <
+  int volume;                    ///< Product of size elements: size[0]*size[1]*size[2]
 
+  /// Construct an ASU brick with given numerators.
+  /// Automatically determines inclusivity based on whether each size is less than denom.
+  /// @param a Numerator for x-axis
+  /// @param b Numerator for y-axis
+  /// @param c Numerator for z-axis
   AsuBrick(int a, int b, int c)
     : size({a,b,c}), incl({a < denom, b < denom, c < denom}), volume(a*b*c) {}
 
+  /// Returns a human-readable string representation of the brick.
+  /// Example: "0<=x<=1/8; 0<=y<1/6; 0<=z<=1/4"
   std::string str() const {
     std::string s;
     for (int i = 0; i < 3; ++i) {
@@ -35,6 +49,9 @@ struct AsuBrick {
     return s;
   }
 
+  /// Returns the upper limit of the ASU as fractional coordinates.
+  /// Adds a small epsilon to inclusive boundaries and subtracts from exclusive boundaries
+  /// to handle floating-point comparisons correctly.
   Fractional get_upper_limit() const {
     double inv_denom = 1.0 / denom;
     return Fractional(inv_denom * size[0] + (incl[0] ? 1e-9 : -1e-9),
@@ -42,7 +59,8 @@ struct AsuBrick {
                       inv_denom * size[2] + (incl[2] ? 1e-9 : -1e-9));
   }
 
-  // cf. Ccp4Base::get_extent()
+  /// Returns a bounding box for the ASU in fractional coordinates.
+  /// The lower bound is always at (-epsilon, -epsilon, -epsilon) and upper bound is from get_upper_limit().
   Box<Fractional> get_extent() const {
     Box<Fractional> box;
     box.minimum = Fractional(-1e-9, -1e-9, -1e-9);
@@ -50,6 +68,11 @@ struct AsuBrick {
     return box;
   }
 
+  /// Converts the ASU brick upper bound to grid point indices.
+  /// Computes ceiling values for each axis, accounting for the grid's axis order.
+  /// @param meta Grid metadata (including axis order and dimensions)
+  /// @return Array of [u_end, v_end, w_end] grid indices
+  /// @throws gemmi::Failure if grid axis order is not XYZ
   std::array<int,3> uvw_end(const GridMeta& meta) const {
     if (meta.axis_order != AxisOrder::XYZ)
       fail("grid is not fully setup");
@@ -60,8 +83,13 @@ struct AsuBrick {
   }
 };
 
-// Returns asu brick upper bound. Lower bound is always (0,0,0).
-// Brute force method that considers 8^3 sizes.
+/// Determines the optimal ASU brick for a crystallographic space group.
+/// Uses a brute-force search over 8^3 possible brick sizes to find the smallest ASU
+/// that covers the full unit cell when replicated by all space group operations.
+/// Both the size and inclusivity (boundary direction) of the brick are optimized.
+/// @param sg Pointer to SpaceGroup; must not be nullptr
+/// @return AsuBrick representing the optimal ASU for the given space group
+/// @throws gemmi::Failure if sg is nullptr
 inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
   if (sg == nullptr)
     fail("Missing space group");
@@ -213,29 +241,55 @@ inline AsuBrick find_asu_brick(const SpaceGroup* sg) {
 }
 
 
+/// Grid wrapper that iterates only over points within the asymmetric unit.
+/// Wraps a grid and a mask vector, providing an iterator that skips masked-out points.
+/// @tparam T Grid value type
+/// @tparam V Mask value type (default std::int8_t)
 template<typename T, typename V=std::int8_t> struct MaskedGrid {
-  std::vector<V> mask;
-  Grid<T>* grid;
+  std::vector<V> mask;  ///< Mask vector; 0 means point is outside ASU, non-zero is inside
+  Grid<T>* grid;        ///< Pointer to the wrapped grid
 
+  /// Iterator over grid points within the ASU (where mask == 0).
   struct iterator {
-    typename GridBase<T>::iterator grid_iterator;
-    const std::vector<V>& mask_ref;
+    typename GridBase<T>::iterator grid_iterator;  ///< Underlying grid iterator
+    const std::vector<V>& mask_ref;                ///< Reference to mask vector
+
+    /// Construct an iterator from a grid iterator and mask reference.
     iterator(typename GridBase<T>::iterator it, const std::vector<V>& mask)
       : grid_iterator(it), mask_ref(mask) {}
+
+    /// Pre-increment operator; skips to next non-masked grid point.
     iterator& operator++() {
       do {
         ++grid_iterator;
       } while (grid_iterator.index != mask_ref.size() && mask_ref[grid_iterator.index] != 0);
       return *this;
     }
+
+    /// Dereferences the iterator to return the current grid point.
     typename GridBase<T>::Point operator*() { return *grid_iterator; }
+
+    /// Equality comparison.
     bool operator==(const iterator &o) const { return grid_iterator == o.grid_iterator; }
+
+    /// Inequality comparison.
     bool operator!=(const iterator &o) const { return grid_iterator != o.grid_iterator; }
   };
+
+  /// Returns iterator to the first point in the ASU.
   iterator begin() { return {grid->begin(), mask}; }
+
+  /// Returns iterator past the last point.
   iterator end() { return {grid->end(), mask}; }
 };
 
+/// Generates an ASU mask for a crystallographic grid.
+/// Creates a vector with one entry per grid point: 0 for ASU points, 1 for symmetry mates.
+/// Grid points on special positions map to themselves and are marked as 0 (ASU).
+/// @tparam V Mask value type (default std::int8_t)
+/// @param grid Grid metadata including space group and dimensions
+/// @return Mask vector of size grid.point_count() with values 0 (ASU) or 1 (mate)
+/// @throws gemmi::Failure if the ASU is not successfully determined
 template<typename V=std::int8_t>
 std::vector<V> get_asu_mask(const GridMeta& grid) {
   std::vector<V> mask(grid.point_count(), 2);
@@ -261,16 +315,23 @@ std::vector<V> get_asu_mask(const GridMeta& grid) {
   return mask;
 }
 
+/// Creates a MaskedGrid for convenient iteration over ASU points only.
+/// @tparam T Grid value type
+/// @param grid Grid to wrap
+/// @return MaskedGrid wrapper with ASU mask pre-computed
 template<typename T>
 MaskedGrid<T> masked_asu(Grid<T>& grid) {
   return {get_asu_mask(grid), &grid};
 }
 
-
+/// Functions for calculating bounding boxes and extents of grid data.
 // Calculating bounding box (brick) with the data (non-zero and non-NaN).
 
 namespace impl {
-// find the shortest span (possibly wrapped) that contains all true values
+/// Finds the shortest span (possibly wrapping around) containing all true values in a vector.
+/// Handles periodic (wrapped) boundaries by considering the span of leading and trailing false values.
+/// @param vec Vector of boolean values
+/// @return Pair (start, end) of shortest span containing all true values; {0, n} if all false
 inline std::pair<int, int> trim_false_values(const std::vector<bool>& vec) {
   const int n = (int) vec.size();
   assert(n != 0);
@@ -311,7 +372,12 @@ inline std::pair<int, int> trim_false_values(const std::vector<bool>& vec) {
 }
 }  // namespace impl
 
-// Get the smallest box with non-zero (and non-NaN) values.
+/// Calculates the smallest bounding box containing all non-zero and non-NaN grid values.
+/// Scans the grid for non-zero points along each axis, finds the tightest bounding box
+/// in fractional coordinate space.
+/// @tparam T Grid value type
+/// @param grid Grid to analyze
+/// @return Box in fractional coordinates that bounds all non-zero data
 template<typename T>
 Box<Fractional> get_nonzero_extent(const GridBase<T>& grid) {
   grid.check_not_empty();
