@@ -25,6 +25,11 @@
 
 namespace gemmi {
 
+/// Open a file stream with UTF-8 filename support.
+/// @brief Helper to open streams with UTF-8 paths on Windows.
+/// @tparam T stream type (std::ofstream or std::ifstream)
+/// @param ptr pointer to stream object to open
+/// @param filename UTF-8 encoded filename
 template<typename T>
 inline void open_stream_from_utf8_path(T& ptr, const std::string& filename) {
 #if defined(_MSC_VER)
@@ -40,7 +45,13 @@ inline void open_stream_from_utf8_path(T& ptr, const std::string& filename) {
 
 // note: move of std::ofstream doesn't work in GCC 4.8.
 
+/// @brief Output file stream wrapper with UTF-8 filename support.
+/// @details Handles filename "-" as stdout and UTF-8 paths on Windows.
 struct Ofstream {
+  /// Open output file with optional dash handling.
+  /// @brief Construct output stream.
+  /// @param filename UTF-8 file path (or "-" to use dash_stream)
+  /// @param dash pointer to stream to use if filename is "-" (typically std::cout)
   Ofstream(const std::string& filename, std::ostream* dash=nullptr) {
     if (filename.size() == 1 && filename[0] == '-' && dash) {
       ptr_ = dash;
@@ -53,7 +64,13 @@ struct Ofstream {
     ptr_ = keeper_.get();
   }
 
+  /// Get pointer to stream.
+  /// @brief Access stream object via pointer.
+  /// @return pointer to std::ostream
   std::ostream* operator->() { return ptr_; }
+  /// Get reference to stream.
+  /// @brief Access stream object by reference.
+  /// @return reference to std::ostream
   std::ostream& ref() { return *ptr_; }
 
 private:
@@ -61,7 +78,13 @@ private:
   std::ostream* ptr_;
 };
 
+/// @brief Input file stream wrapper with UTF-8 filename support.
+/// @details Handles filename "-" as stdin and UTF-8 paths on Windows.
 struct Ifstream {
+  /// Open input file with optional dash handling.
+  /// @brief Construct input stream.
+  /// @param filename UTF-8 file path (or "-" to use dash_stream)
+  /// @param dash pointer to stream to use if filename is "-" (typically std::cin)
   Ifstream(const std::string& filename, std::istream* dash=nullptr) {
     if (filename.size() == 1 && filename[0] == '-' && dash) {
       ptr_ = dash;
@@ -74,7 +97,13 @@ struct Ifstream {
     ptr_ = keeper_.get();
   }
 
+  /// Get pointer to stream.
+  /// @brief Access stream object via pointer.
+  /// @return pointer to std::istream
   std::istream* operator->() { return ptr_; }
+  /// Get reference to stream.
+  /// @brief Access stream object by reference.
+  /// @return reference to std::istream
   std::istream& ref() { return *ptr_; }
 
 private:

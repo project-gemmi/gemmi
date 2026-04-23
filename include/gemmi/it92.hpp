@@ -23,17 +23,28 @@ namespace gemmi {
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
+/// @brief X-ray scattering factor coefficients from International Tables
+///   for Crystallography Volume C (1992).
+/// Cromer-Mann Gaussian approximation valid for sinθ/λ < 2 Å⁻¹.
+/// @tparam Real floating-point type
 template<class Real>
 struct IT92 {
-  using Coef = GaussianCoef<4, 1, Real>;
-  static Coef data[99+112];
-  static std::pair<El, signed char> ion_list[112];
-  static bool ignore_charge;
+  using Coef = GaussianCoef<4, 1, Real>;  ///< Type alias for coefficient set
+  static Coef data[99+112];               ///< Cromer-Mann coefficients indexed by element ordinal
+  static std::pair<El, signed char> ion_list[112];  ///< List of (element, charge) pairs for ions
+  static bool ignore_charge;              ///< If true, return neutral-atom coefficients regardless of charge
 
+  /// @brief Check if coefficients are available for element.
+  /// @param el element
+  /// @return true if element has tabulated coefficients
   static bool has(El el) {
     return el <= El::Cf || el == El::D;
   }
 
+  /// @brief Get coefficient set for element and charge, with fallback to neutral.
+  /// @param el element
+  /// @param charge ionic charge
+  /// @return coefficient reference
   static Coef& get(El el, signed char charge, int /*serial*/=0) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);
@@ -52,6 +63,10 @@ struct IT92 {
     return data[pos];
   }
 
+  /// @brief Get pointer to exact match for element and charge, or nullptr if not found.
+  /// @param el element
+  /// @param charge ionic charge
+  /// @return pointer to coefficient, or nullptr
   static Coef* get_exact(El el, signed char charge) {
     if (has(el)) {
       Coef* coef = &get(el, charge);
@@ -61,14 +76,16 @@ struct IT92 {
     return nullptr;
   }
 
-  // Make a1+a2+a3+a4+c equal exactly to the number of electrons.
-  // It changes the values from ITC only slightly (by not more than 0.12%).
+  /// @brief Normalise one coefficient set so it integrates to n electrons.
+  /// @param f coefficient to normalise
+  /// @param n electron count
   static void normalize_one(Coef& f, int n) {
     double factor = n / (f.a(0) + f.a(1) + f.a(2) + f.a(3) + f.c());
     for (int j = 0; j < 4; ++j)
       f.coefs[j] *= factor;
     f.coefs[8] *= factor;
   }
+  /// @brief Normalise all entries to integrate to correct electron count.
   static void normalize() {
     for (int i = 1; i < 99; ++i)
       normalize_one(data[i], i);

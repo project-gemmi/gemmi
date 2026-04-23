@@ -15,19 +15,32 @@
 
 namespace gemmi {
 
+/// @brief A local maximum or connected region ("blob") in a 3D density map.
+/// Represents a contiguous region above a density threshold, computed by flood fill.
 struct Blob {
+  /// @brief Volume of the blob in cubic Angstroms.
   double volume = 0.0;
+  /// @brief Score (integrated density above the cutoff).
   double score = 0.0;
+  /// @brief Peak electron density value within the blob.
   double peak_value = 0.0;
+  /// @brief Centroid position (weighted average of coordinates).
   gemmi::Position centroid;
+  /// @brief Position of the peak density point.
   gemmi::Position peak_pos;
+  /// @brief Check if blob is non-empty (volume > 0).
   explicit operator bool() const { return volume != 0. ; }
 };
 
+/// @brief Criteria for blob detection in density maps.
 struct BlobCriteria {
+  /// @brief Minimum electron density threshold to include points in a blob.
   double cutoff;
+  /// @brief Minimum volume (cubic Angstroms) for blob to be reported.
   double min_volume = 10.0;
+  /// @brief Minimum integrated score for blob to be reported.
   double min_score = 15.0;
+  /// @brief Minimum peak density value for blob to be reported.
   double min_peak = 0.0;
 };
 
@@ -78,7 +91,17 @@ inline Blob make_blob_of_points(const std::vector<GridConstPoint>& points,
 
 } // namespace impl
 
-// with negate=true grid negatives of grid values are used
+/// @brief Find all blobs (density peaks) in a 3D grid using flood fill.
+/// @details
+/// Uses a flood fill algorithm to identify connected regions above a density threshold,
+/// respecting crystallographic symmetry through the asymmetric unit mask.
+/// Results are sorted by score (integrated density) in descending order.
+/// The algorithm differs from FloodFill in floodfill.hpp by using symmetry operators
+/// to exclude symmetric mates from separate blob detection.
+/// @param grid The electron density grid to search.
+/// @param criteria Thresholds for minimum volume, score, peak density.
+/// @param negate If true, search for negative density (use -grid.data).
+/// @return Vector of Blob objects, sorted by score (highest first).
 inline std::vector<Blob> find_blobs_by_flood_fill(const gemmi::Grid<float>& grid,
                                                   const BlobCriteria& criteria,
                                                   bool negate=false) {

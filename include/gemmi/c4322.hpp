@@ -22,15 +22,24 @@ namespace gemmi {
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
+/// @brief Electron scattering factor coefficients from ITC Volume C (2011) table 4.3.2.2.
+/// Five-Gaussian approximation for neutral atoms, valid for sinθ/λ ≤ 2 Å⁻¹.
+/// @tparam Real floating-point type
 template<class Real>
 struct C4322 {
-  using Coef = GaussianCoef<5, 0, Real>;
-  static Coef data[99];
+  using Coef = GaussianCoef<5, 0, Real>;  ///< Type alias for coefficient set
+  static Coef data[99];                   ///< Electron scattering factor coefficients
 
+  /// @brief Check if coefficients are available for element.
+  /// @param el element
+  /// @return true if element has tabulated coefficients
   static bool has(El el) {
     return el <= El::Cf || el == El::D;
   }
 
+  /// @brief Get coefficient set for element (charge is ignored — only neutral atoms tabulated).
+  /// @param el element
+  /// @return coefficient reference
   static Coef& get(El el, signed char /*charge*/=0, int /*serial*/=0) {
     // ordinal for X, H, ... Cf; H=1 for D; X=0 for Es, ... Og
     int pos = el <= El::Cf ? (int)el : (int)(el == El::D);

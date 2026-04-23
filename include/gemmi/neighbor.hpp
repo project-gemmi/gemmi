@@ -16,56 +16,98 @@
 
 namespace gemmi {
 
+/// @brief Cell-linked-list spatial index for fast atom neighbor searching.
+/// Supports both macromolecular structures (Model) and small-molecule structures
+/// (SmallStructure), with periodic boundary conditions and crystallographic symmetry.
 struct NeighborSearch {
 
+  /// @brief Atom reference stored in a grid cell.
+  /// Encodes the position and indices needed to resolve back to the original atom or site.
   struct Mark {
+    /// Cartesian position of the atom (may be a symmetry image).
     Position pos;
+    /// Alternate conformer identifier ('\\0' = no alternate).
     char altloc;
+    /// Chemical element of the atom.
     Element element;
+    /// Index into the list of crystallographic images (0 = identity).
     short image_idx;
+    /// Index of the chain in the model's chain vector.
     int chain_idx;
+    /// Index of the residue within the chain.
     int residue_idx;
+    /// Index of the atom within the residue.
     int atom_idx;
 
     Mark(const Position& p, char alt, El el, short im, int ch, int res, int atom)
     : pos(p), altloc(alt), element(el),
       image_idx(im), chain_idx(ch), residue_idx(res), atom_idx(atom) {}
 
+    /// @brief Resolve the indices into a CRA (chain/residue/atom) triple.
+    /// @param mdl Model to resolve indices into (non-const version).
+    /// @return CRA triple pointing to the resolved atom.
     CRA to_cra(Model& mdl) const {
       Chain& c = mdl.chains.at(chain_idx);
       Residue& r = c.residues.at(residue_idx);
       Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
+
+    /// @brief Resolve the indices into a const CRA triple.
+    /// @param mdl Model to resolve indices into (const version).
+    /// @return const CRA triple pointing to the resolved atom.
     const_CRA to_cra(const Model& mdl) const {
       const Chain& c = mdl.chains.at(chain_idx);
       const Residue& r = c.residues.at(residue_idx);
       const Atom& a = r.atoms.at(atom_idx);
       return {&c, &r, &a};
     }
+
+    /// @brief Resolve the atom_idx to a SmallStructure::Site.
+    /// @param small_st SmallStructure to resolve into (non-const version).
+    /// @return Reference to the resolved site.
     SmallStructure::Site& to_site(SmallStructure& small_st) const {
       return small_st.sites.at(atom_idx);
     }
+
+    /// @brief Resolve the atom_idx to a const SmallStructure::Site.
+    /// @param small_st SmallStructure to resolve into (const version).
+    /// @return Const reference to the resolved site.
     const SmallStructure::Site& to_site(const SmallStructure& small_st) const {
       return small_st.sites.at(atom_idx);
     }
   };
 
+  /// Spatial Grid of Mark vectors (one cell per grid voxel).
   Grid<std::vector<Mark>> grid;
+  /// The search radius passed to the constructor.
   double radius_specified = 0.;
+  /// Pointer to the indexed macromolecular model (nullptr if SmallStructure).
   Model* model = nullptr;
+  /// Pointer to the indexed small-molecule structure (nullptr if Model).
   SmallStructure* small_structure = nullptr;
+  /// If true, apply periodic boundary conditions when searching.
   bool use_pbc = true;
+  /// If true, include hydrogen atoms in the index.
   bool include_h = true;
 
+  /// @brief Default constructor creating an empty NeighborSearch.
   NeighborSearch() = default;
-  // Model is not const so it can be modified in for_each_contact()
+
+  /// @brief Initialize grid for a macromolecular model.
+  /// @param model_ Reference to the Model to index (non-const, can be modified in for_each_contact()).
+  /// @param cell Unit cell defining the crystallographic symmetry and periodicity.
+  /// @param radius Search radius used to dimension the grid.
   NeighborSearch(Model& model_, const UnitCell& cell, double radius) {
     model = &model_;
     radius_specified = radius;
     set_bounding_cell(cell);
     set_grid_size();
   }
+
+  /// @brief Initialize for a small-molecule structure.
+  /// @param small_st Reference to the SmallStructure to index.
+  /// @param radius Search radius used to dimension the grid.
   NeighborSearch(SmallStructure& small_st, double radius) {
     small_structure = &small_st;
     radius_specified = radius;
@@ -73,13 +115,38 @@ struct NeighborSearch {
     set_grid_size();
   }
 
+  /// @brief Fill the grid with all atoms in the model or small structure.
+  /// @param include_h_ If true, include hydrogen atoms (default: true).
+  /// @return Reference to *this for method chaining.
   NeighborSearch& populate(bool include_h_=true);
+
+  /// @brief Add all atoms from one chain to the grid.
+  /// @param chain The chain to add.
+  /// @param include_h_ If true, include hydrogen atoms (default: true).
   void add_chain(const Chain& chain, bool include_h_=true);
+
+  /// @brief Add atoms from a chain with explicit chain index.
+  /// Used when chain_idx matters; internally called by populate().
+  /// @param chain The chain to add.
+  /// @param n_ch Index of the chain in the model's chain vector.
   void add_chain_n(const Chain& chain, int n_ch);
+
+  /// @brief Add a single atom to the grid.
+  /// @param atom The atom to add.
+  /// @param n_ch Index of the chain.
+  /// @param n_res Index of the residue within the chain.
+  /// @param n_atom Index of the atom within the residue.
   void add_atom(const Atom& atom, int n_ch, int n_res, int n_atom);
+
+  /// @brief Add a SmallStructure site to the grid.
+  /// @param site The site to add.
+  /// @param n Index of the site in the sites vector.
   void add_site(const SmallStructure::Site& site, int n);
 
-  // assumes data in [0, 1), but uses index_n to account for numerical errors
+  /// @brief Return the reference to the grid cell containing a fractional coordinate.
+  /// Assumes data in [0, 1) but uses index_n to account for numerical errors.
+  /// @param fr Fractional coordinate in the unit cell.
+  /// @return Reference to the vector of Marks in the grid cell.
   std::vector<Mark>& get_subcell(const Fractional& fr) {
     size_t idx = grid.index_n(int(fr.x * grid.nu),
                               int(fr.y * grid.nv),
@@ -89,9 +156,21 @@ struct NeighborSearch {
     return grid.data[idx];
   }
 
+  /// @brief Iterate over all grid cells within k cells of a position.
+  /// @tparam Func Callable type with signature void(std::vector<Mark>&, const Fractional&).
+  /// @param pos Cartesian position.
+  /// @param func Function to call for each cell, receiving the Marks and fractional coordinates.
+  /// @param k Grid multiplier (default: 1); larger k searches more cells.
   template<typename Func>
   void for_each_cell(const Position& pos, const Func& func, int k=1);
 
+  /// @brief Iterate over all Marks within radius of a position, respecting alternate conformers.
+  /// @tparam Func Callable type with signature void(Mark&, double) for (mark, dist_sq).
+  /// @param pos Cartesian position.
+  /// @param alt Alternate conformer identifier to match ('\\0' matches all).
+  /// @param radius Search radius in Angstroms.
+  /// @param func Function to call for each nearby mark.
+  /// @param k Grid multiplier (default: 1); larger k searches more cells.
   template<typename Func>
   void for_each(const Position& pos, char alt, double radius, const Func& func, int k=1) {
     if (radius <= 0)
@@ -106,12 +185,21 @@ struct NeighborSearch {
     }, k);
   }
 
+  /// @brief Return the minimum grid multiplier k covering the given radius.
+  /// @param r Search radius in Angstroms.
+  /// @return Minimum k value such that k*radius_specified >= r.
   int sufficient_k(double r) const {
     // .00001 is added to account for possible numeric error in r
     return r <= radius_specified ? 1 : int(r / radius_specified + 1.00001);
   }
 
-  // with radius==0 it uses radius_specified
+  /// @brief Find all Marks within a distance range of a position.
+  /// If radius==0, uses radius_specified.
+  /// @param pos Cartesian position.
+  /// @param alt Alternate conformer identifier.
+  /// @param min_dist Minimum distance in Angstroms.
+  /// @param radius Maximum distance in Angstroms (0 = use radius_specified).
+  /// @return Vector of pointers to Marks in the distance range [min_dist, radius].
   std::vector<Mark*> find_atoms(const Position& pos, char alt,
                                 double min_dist, double radius) {
     int k = sufficient_k(radius);
@@ -125,15 +213,31 @@ struct NeighborSearch {
     return out;
   }
 
+  /// @brief Find neighbor Marks of a Model atom.
+  /// @param atom The atom to find neighbors for.
+  /// @param min_dist Minimum distance in Angstroms.
+  /// @param max_dist Maximum distance in Angstroms.
+  /// @return Vector of pointers to nearby Marks.
   std::vector<Mark*> find_neighbors(const Atom& atom, double min_dist, double max_dist) {
     return find_atoms(atom.pos, atom.altloc, min_dist, max_dist);
   }
+
+  /// @brief Find neighbor Marks of a SmallStructure site.
+  /// @param site The site to find neighbors for.
+  /// @param min_dist Minimum distance in Angstroms.
+  /// @param max_dist Maximum distance in Angstroms.
+  /// @return Vector of pointers to nearby Marks.
   std::vector<Mark*> find_site_neighbors(const SmallStructure::Site& site,
                                          double min_dist, double max_dist) {
     Position pos = grid.unit_cell.orthogonalize(site.fract);
     return find_atoms(pos, '\0', min_dist, max_dist);
   }
 
+  /// @brief Find the nearest atom within k grid layers and a radius limit.
+  /// @param pos Cartesian position.
+  /// @param k Grid multiplier (number of layers to search).
+  /// @param radius Maximum search radius in Angstroms.
+  /// @return Pair of (nearest Mark pointer, distance squared). Pointer is nullptr if no atom found.
   std::pair<Mark*, double>
   find_nearest_atom_within_k(const Position& pos, int k, double radius) {
     Mark* mark = nullptr;
@@ -151,7 +255,11 @@ struct NeighborSearch {
     return {mark, nearest_dist_sq};
   }
 
-  // it would be good to return also NearestImage
+  /// @brief Find the single nearest atom within an optional radius limit.
+  /// Automatically adapts the grid search multiplier k to find the nearest atom.
+  /// @param pos Cartesian position.
+  /// @param radius Maximum search radius in Angstroms (default: INFINITY).
+  /// @return Pointer to the nearest Mark, or nullptr if no atom found.
   Mark* find_nearest_atom(const Position& pos, double radius=INFINITY) {
     double r_spec = radius_specified;
     if (radius == 0.f)
@@ -176,13 +284,25 @@ struct NeighborSearch {
     return nullptr;
   }
 
+  /// @brief Distance squared between two positions, accounting for unit cell periodicity.
+  /// @param pos1 First Cartesian position.
+  /// @param pos2 Second Cartesian position.
+  /// @return Squared distance, accounting for periodic boundary conditions.
   double dist_sq(const Position& pos1, const Position& pos2) const {
     return grid.unit_cell.distance_sq(pos1, pos2);
   }
+
+  /// @brief Euclidean distance between two positions with periodic boundary conditions.
+  /// @param pos1 First Cartesian position.
+  /// @param pos2 Second Cartesian position.
+  /// @return Euclidean distance in Angstroms.
   double dist(const Position& pos1, const Position& pos2) const {
     return std::sqrt(dist_sq(pos1, pos2));
   }
 
+  /// @brief Retrieve the crystallographic image transformation for the given image index.
+  /// @param image_idx Crystallographic image index (0 = identity, 1+ = symmetry images).
+  /// @return The fractional transform for the image.
   FTransform get_image_transformation(int image_idx) const {
     // 0 is for identity, other indices are shifted by one.
     if (image_idx == 0)
