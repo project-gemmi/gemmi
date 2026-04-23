@@ -2,6 +2,9 @@
 //
 // Flat bulk solvent mask. With helper tools that modify data on grid.
 
+/// @file
+/// @brief Solvent masking utilities for crystallographic refinement.
+
 #ifndef GEMMI_SOLMASK_HPP_
 #define GEMMI_SOLMASK_HPP_
 
@@ -11,9 +14,19 @@
 
 namespace gemmi {
 
-enum class AtomicRadiiSet { VanDerWaals, Cctbx, Refmac, Constant };
+/// Enumeration of atomic radii sets for solvent masking.
+/// Determines which radii library is used when computing the protein region.
+enum class AtomicRadiiSet {
+  VanDerWaals,  ///< Standard van der Waals radii from crystallographic tables
+  Cctbx,        ///< CCTBX/CCP4 van der Waals radii
+  Refmac,       ///< Refmac radii for bulk solvent correction
+  Constant      ///< Constant radius applied to all atoms
+};
 
-// data from cctbx/eltbx/van_der_waals_radii.py used to generate identical mask
+/// Returns the van der Waals radius from CCTBX/CCP4 library for a given element.
+/// Data derived from cctbx/eltbx/van_der_waals_radii.py for compatibility.
+/// @param el Chemical element
+/// @return Radius in Angstroms
 inline float cctbx_vdw_radius(El el) {
   static constexpr float radii[] = {
     /*X*/  1.00f,
@@ -52,8 +65,11 @@ inline float cctbx_vdw_radius(El el) {
   return radii[static_cast<int>(el)];
 }
 
-// Data from Refmac's ener_lib.cif: ionic radius - 0.2A or vdW radius + 0.2A.
-// For full compatibility use r_probe=1.0A and r_shrink=0.8A.
+/// Returns the effective radius for bulk solvent correction from Refmac's ener_lib.cif.
+/// Represents ionic radius minus 0.2 Angstroms or vdW radius plus 0.2 Angstroms.
+/// For full Refmac compatibility, use @c r_probe=1.0 and @c r_shrink=0.8.
+/// @param el Chemical element
+/// @return Radius in Angstroms
 inline float refmac_radius_for_bulk_solvent(El el) {
 #if 0
   static constexpr float radii[] = {
@@ -102,8 +118,16 @@ inline float refmac_radius_for_bulk_solvent(El el) {
 #endif
 }
 
-// mask utilities
-
+/// Marks grid points within a radius around atoms as masked.
+/// Sets all grid points within (atomic radius + probe radius) of each atom to the given value.
+/// @tparam T Grid value type (typically int8_t for binary masks or float for weighted masks)
+/// @param mask Grid to modify in-place
+/// @param model Molecular model containing atoms to mask around
+/// @param atomic_radii_set Which atomic radii library to use
+/// @param r_probe Probe radius (in Angstroms) added to each atomic radius
+/// @param value Value to set for masked grid points
+/// @param ignore_hydrogen If true, skip hydrogen atoms
+/// @param ignore_zero_occupancy_atoms If true, skip atoms with zero occupancy
 template<typename T>
 void mask_points_in_radius(Grid<T>& mask, const Model& model,
                            AtomicRadiiSet atomic_radii_set,
@@ -128,7 +152,15 @@ void mask_points_in_radius(Grid<T>& mask, const Model& model,
       }
 }
 
-// deprecated
+/// @deprecated Use mask_points_in_radius with AtomicRadiiSet::Constant instead.
+/// Marks grid points within a constant radius around atoms.
+/// @tparam T Grid value type
+/// @param mask Grid to modify
+/// @param model Molecular model with atoms to mask around
+/// @param radius Constant radius in Angstroms
+/// @param value Value to set for masked grid points
+/// @param ignore_hydrogen If true, skip hydrogen atoms
+/// @param ignore_zero_occupancy_atoms If true, skip atoms with zero occupancy
 template<typename T>
 void mask_points_in_constant_radius(Grid<T>& mask, const Model& model,
                                     double radius, T value,
@@ -139,6 +171,9 @@ void mask_points_in_constant_radius(Grid<T>& mask, const Model& model,
 }
 
 
+/// Collects all distinct alternate location indicators from a model.
+/// @param model Molecular model to scan
+/// @return String containing unique altloc characters found in the model
 inline std::string distinct_altlocs(const Model& model) {
   std::string altlocs;
   for (const Chain& chain : model.chains)
@@ -147,15 +182,15 @@ inline std::string distinct_altlocs(const Model& model) {
   return altlocs;
 }
 
-/// mask all grid points within a varying radius around model atoms
-/// @param mask existing mask object
-/// @param model model to consider
-/// @param atomic_radii_set set of atomic radii
-/// @param r_probe probe radius to add to atomic radius (in A)
-/// @param value value to use (unless use_atom_occupancy is set to true)
-/// @param ignore_hydrogen should we skip hydrogen atoms
-/// @param ignore_zero_occupancy_atoms should we skip atoms with occupancy of zero
-/// @param use_atom_occupancy should we use the occupancy of each atom (to build up a non-binary mask)
+/// Masks grid points using atom occupancy values to create a weighted mask.
+/// Creates a non-binary mask by considering occupancy factors for atoms with alternate locations.
+/// Each altloc is processed separately and contributions are accumulated.
+/// @param mask Existing float mask to modify in-place (contributions are subtracted)
+/// @param model Model to mask; atoms are categorized by alternate location code
+/// @param atomic_radii_set Which atomic radii library to use
+/// @param r_probe Probe radius (in Angstroms) added to each atomic radius
+/// @param ignore_hydrogen If true, skip hydrogen atoms
+/// @param ignore_zero_occupancy_atoms If true, skip atoms with zero occupancy
 inline
 void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
                                   AtomicRadiiSet atomic_radii_set, double r_probe,
@@ -207,11 +242,15 @@ void mask_points_using_occupancy(Grid<float>& mask, const Model& model,
     d = std::max(d, 0.f);
 }
 
-/// All points close to a grid point which is currently set below a value are changed
-/// @param mask given mask
-/// @param r distance value (in A)
-/// @param value consider only grid points that are currently set to this value
-/// @param margin_value new value for grid points satsifying criteria
+/// Creates a margin of points around the boundary of a masked region.
+/// Finds grid points at distance <= @p r from points with value equal to @p value,
+/// and sets them to @p margin_value. Uses efficient stencil-based neighbor search.
+/// @tparam T Grid value type
+/// @param mask Grid to modify in-place
+/// @param r Distance threshold in Angstroms
+/// @param value Boundary value to search for (typically solvent/protein boundary)
+/// @param margin_value Value to set for margin points
+/// @throws gemmi::Failure if radius exceeds half the unit cell dimensions
 template<typename T>
 void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
   int du = (int) std::floor(r / mask.spacing[0]);
@@ -281,22 +320,32 @@ void set_margin_around(Grid<T>& mask, double r, T value, T margin_value) {
   //printf("margin: %zu\n", std::count(mask.data.begin(), mask.data.end(), margin_value));
 }
 
+/// Helper class for computing and applying solvent masks to crystallographic grids.
+/// Encapsulates parameters and operations for bulk solvent masking, including
+/// mask generation, shrinking, inversion, and symmetry handling.
 struct SolventMasker {
-  AtomicRadiiSet atomic_radii_set;
-  bool ignore_hydrogen;
-  bool ignore_zero_occupancy_atoms;
-  bool use_atom_occupancy = false;
-  double rprobe;
-  double rshrink;
-  double island_min_volume;
-  double constant_r;
-  double requested_spacing = 0.;
+  AtomicRadiiSet atomic_radii_set;  ///< Which atomic radii library is used
+  bool ignore_hydrogen;              ///< If true, hydrogen atoms are skipped
+  bool ignore_zero_occupancy_atoms;  ///< If true, atoms with zero occupancy are skipped
+  bool use_atom_occupancy = false;   ///< If true, use atom occupancy for weighted masking
+  double rprobe;                     ///< Probe radius added to atomic radii (in A)
+  double rshrink;                    ///< Shrinking radius applied after masking (in A)
+  double island_min_volume;          ///< Minimum volume (as fraction) of protein islands to retain
+  double constant_r;                 ///< Constant radius (for AtomicRadiiSet::Constant)
+  double requested_spacing = 0.;     ///< Requested grid spacing (0 = auto)
 
+  /// Initialize SolventMasker with a radii set and optional constant radius.
+  /// Automatically sets default parameters (rprobe, rshrink) for the chosen set.
+  /// @param choice Atomic radii set to use
+  /// @param constant_r_ Constant radius (only used if choice is AtomicRadiiSet::Constant)
   SolventMasker(AtomicRadiiSet choice, double constant_r_=0.) {
     set_radii(choice, constant_r_);
   }
 
-  // currently this function sets also parameters other than radii
+  /// Sets the atomic radii set and related parameters.
+  /// Updates rprobe, rshrink, and island_min_volume based on the chosen library.
+  /// @param choice Atomic radii set to use
+  /// @param constant_r_ Constant radius override
   void set_radii(AtomicRadiiSet choice, double constant_r_=0.) {
     atomic_radii_set = choice;
     constant_r = constant_r_;
@@ -326,15 +375,24 @@ struct SolventMasker {
     }
   }
 
-  /// fill whole grid with 1
+  /// Fills the entire grid with 1 (solvent region).
+  /// @tparam T Grid value type
+  /// @param grid Grid to fill
   template<typename T> void clear(Grid<T>& grid) const { grid.fill((T)1); }
 
-  /// set grid points around atoms to 0
+  /// Sets grid points around atoms to 0 (protein region).
+  /// @tparam T Grid value type
+  /// @param grid Grid to modify in-place
+  /// @param model Molecular model
   template<typename T> void mask_points(Grid<T>& grid, const Model& model) const {
     mask_points_in_radius(grid, model, atomic_radii_set, constant_r + rprobe, (T)0,
                           ignore_hydrogen, ignore_zero_occupancy_atoms);
   }
 
+  /// Sets grid points around atoms to 0, with optional occupancy weighting.
+  /// Uses atom occupancy if @c use_atom_occupancy is true; otherwise calls mask_points<float>.
+  /// @param grid Grid to modify in-place
+  /// @param model Molecular model
   void mask_points(Grid<float>& grid, const Model& model) const {
     if (use_atom_occupancy)
       mask_points_using_occupancy(grid, model, atomic_radii_set, constant_r + rprobe,
@@ -343,10 +401,11 @@ struct SolventMasker {
       mask_points<float>(grid, model);
   }
 
-  /// Apply symmetry to grid (to fill whole grid). If we are using an
-  /// integer/binary mask this is done by distributing all 0-value
-  /// grid points - while for a float map/mask we are setting each
-  /// grid point to the minimum value.
+  /// Applies space group symmetry to fill the entire grid.
+  /// For integer/binary masks, distributes 0-value points via symmetry operators.
+  /// For float masks, sets each point to the minimum value across symmetry mates.
+  /// @tparam T Grid value type
+  /// @param grid Grid to symmetrize in-place
   template<typename T> void symmetrize(Grid<T>& grid) const {
     if (std::is_same<T, std::int8_t>::value) {
       grid.symmetrize([&](T a, T b) { return a == (T)0 || b == (T)0 ? (T)0 : (T)1; });
@@ -356,6 +415,10 @@ struct SolventMasker {
     }
   }
 
+  /// Shrinks the masked (protein) region by marking a margin as solvent.
+  /// Marks all points within @c rshrink of the protein-solvent boundary.
+  /// @tparam T Grid value type
+  /// @param grid Grid to shrink in-place
   template<typename T> void shrink(Grid<T>& grid) const {
     if (rshrink > 0) {
       set_margin_around(grid, rshrink, (T)1, (T)-1);
@@ -363,15 +426,20 @@ struct SolventMasker {
     }
   }
 
+  /// Inverts the mask (1 becomes 0, 0 becomes 1).
+  /// @tparam T Grid value type
+  /// @param grid Grid to invert in-place
   template<typename T> void invert(Grid<T>& grid) const {
     for (auto& v : grid.data)
       v = (T)1 - v;
   }
 
-
-  // Removes small islands of Land=1 in the sea of 0. Uses flood fill.
-  // cf. find_blobs_by_flood_fill()
-  // Currently doesn't work mask from mask_points_using_occupancy().
+  /// Removes small disconnected regions (islands) of value 1 using flood fill.
+  /// Islands smaller than @c island_min_volume (as a fraction of unit cell volume) are removed.
+  /// @tparam T Grid value type (typically int8_t)
+  /// @param grid Grid to modify in-place
+  /// @return Number of islands removed
+  /// @note Does not work with masks generated by mask_points_using_occupancy()
   template<typename T> int remove_islands(Grid<T>& grid) const {
     if (island_min_volume <= 0)
       return 0;
@@ -390,6 +458,11 @@ struct SolventMasker {
     return counter;
   }
 
+  /// Generates a complete solvent mask on a grid using the standard pipeline.
+  /// Steps: clear grid (1) -> mask atoms (0) -> apply symmetry -> remove islands -> shrink.
+  /// @tparam T Grid value type
+  /// @param grid Grid to populate with mask
+  /// @param model Molecular model to mask
   template<typename T> void put_mask_on_grid(Grid<T>& grid, const Model& model) const {
     clear(grid);
     assert(!grid.data.empty());
@@ -399,6 +472,10 @@ struct SolventMasker {
     shrink(grid);
   }
 
+  /// Sets grid points around atoms to 0, applying symmetry without shrinking.
+  /// Used to zero out a float density map in the protein region.
+  /// @param grid Float grid to modify in-place
+  /// @param model Molecular model
   void set_to_zero(Grid<float>& grid, const Model& model) const {
     mask_points(grid, model);
     grid.symmetrize([&](float a, float b) { return b == 0.f ? 0.f : a; });
@@ -425,14 +502,19 @@ struct SolventMasker {
 #endif
 };
 
+/// Information about a grid point's relationship to nearby model atoms.
+/// Used internally for interpolation of density maps around model atoms.
 struct NodeInfo {
-  double dist_sq;  // distance from the nearest atom
-  bool found = false;  // the mask flag
-  //Element elem = El::X;
-  int u = 0, v = 0, w = 0;  // not normalized near-model grid coordinates
+  double dist_sq;  ///< Square of distance from the nearest atom
+  bool found = false;  ///< True if a nearby atom was found within radius
+  int u = 0, v = 0, w = 0;  ///< Non-normalized near-model grid coordinates of nearest atom
 };
 
-/// Populate NodeInfo grid for nodes near the model.
+/// Populates a grid with NodeInfo for all grid points near model atoms.
+/// Finds the nearest atom and its distance for each grid point within @p radius.
+/// @param mask NodeInfo grid to populate
+/// @param model Molecular model to search
+/// @param radius Search radius in Angstroms
 inline void mask_with_node_info(Grid<NodeInfo>& mask, const Model& model, double radius) {
   NodeInfo default_ni;
   default_ni.dist_sq = radius * radius;
@@ -462,10 +544,11 @@ inline void mask_with_node_info(Grid<NodeInfo>& mask, const Model& model, double
       }
 }
 
-/// Skip nodes that are closer to a symmetry mate of the model than
-/// to the original model. A node is closer to a symmetry mate when it has
-/// a symmetry image that is closer to the original model than the node.
-/// We ignore NCS here.
+/// Removes grid points that are closer to a symmetry mate than to the original model.
+/// A grid point is unmasked (marked as @c found=false) if any symmetry image of the
+/// nearest atom is closer than that atom. This avoids double-counting in density calculations.
+/// Non-crystallographic symmetry (NCS) is ignored.
+/// @param mask NodeInfo grid to update in-place
 inline void unmask_symmetry_mates(Grid<NodeInfo>& mask) {
   std::vector<GridOp> symmetry_ops = mask.get_scaled_ops_except_id();
   size_t idx = 0;
@@ -483,7 +566,17 @@ inline void unmask_symmetry_mates(Grid<NodeInfo>& mask) {
       }
 }
 
-// TODO: would it be better to use src_model rather than dest_model?
+/// Interpolates grid values from a source grid around atoms in a destination model.
+/// Identifies grid points in the destination grid that are near atoms in the destination model,
+/// transforms them to source grid coordinates, and interpolates values from the source.
+/// Grid points closer to symmetry mates are skipped to avoid double-counting.
+/// @tparam T Grid value type
+/// @param dest Destination grid to interpolate into (modified in-place)
+/// @param src Source grid to interpolate from
+/// @param tr Transformation from destination to source
+/// @param dest_model Model in destination grid frame (determines which points to interpolate)
+/// @param radius Search radius in Angstroms for atoms
+/// @param order Interpolation order (1=linear, 3=cubic, default 1)
 template<typename T>
 void interpolate_grid_around_model(Grid<T>& dest, const Grid<T>& src,
                                    const Transform& tr,
@@ -506,7 +599,12 @@ void interpolate_grid_around_model(Grid<T>& dest, const Grid<T>& src,
 }
 
 
-// add soft edge to 1/0 mask using raised cosine function
+/// Adds a smooth transition zone to the boundary of a binary mask.
+/// Converts sharp 0/1 boundaries to smooth transitions using a raised cosine function.
+/// Grid points at distance < @p width from the boundary are set to cosine-interpolated values.
+/// @tparam T Grid value type
+/// @param grid Binary mask to smooth in-place (0s become 1s beyond boundary)
+/// @param width Width of transition zone in Angstroms
 template<typename T>
 void add_soft_edge_to_mask(Grid<T>& grid, double width) {
   const double width2 = width * width;

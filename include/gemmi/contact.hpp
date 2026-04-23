@@ -11,40 +11,81 @@
 
 namespace gemmi {
 
+/// @brief Configures and performs distance-based contact search between atoms.
+/// Built on top of NeighborSearch with support for configurable filtering,
+/// per-element radii, and flexible results collection.
 struct ContactSearch {
+  /// @brief Filter options for atom pair inclusion in contact search results.
   enum class Ignore {
-    Nothing=0, SameResidue, AdjacentResidues, SameChain, SameAsu
+    Nothing=0,        ///< Report all contacts.
+    SameResidue,      ///< Skip contacts between atoms in the same residue.
+    AdjacentResidues, ///< Skip contacts between atoms in adjacent residues (i±1).
+    SameChain,        ///< Skip contacts between atoms in the same chain.
+    SameAsu           ///< Skip contacts between atoms in the same asymmetric unit (report only symmetry-related contacts).
   };
-  // parameters used to configure the search
+
+  /// Maximum contact distance in Angstroms.
   double search_radius;
+  /// Which atom pairs to skip (default: SameResidue).
   Ignore ignore = Ignore::SameResidue;
-  bool twice = false;  // report both A-B and B-A
+  /// If true, report each contact pair twice (A→B and B→A); default false.
+  bool twice = false;
+  /// Skip atoms with occupancy below this threshold (0 = no filtering).
   float min_occupancy = 0.f;
+  /// Squared distance threshold for identifying atoms on special positions.
   double special_pos_cutoff_sq = 0.8 * 0.8;
+  /// Per-element contact radii (used when checking atom-type-based distance criteria).
   std::vector<float> radii;
 
+  /// @brief Create a contact search with the given search radius.
+  /// @param radius Maximum contact distance in Angstroms.
   ContactSearch(double radius) noexcept : search_radius(radius) {}
 
-  // a helper function that sets per-atom radii basing on covalent_radius()
+  /// @brief Populate per-element radii based on covalent radii with scaling.
+  /// @param multiplier Scaling factor applied to covalent radius.
+  /// @param tolerance Constant tolerance added to the scaled radius.
   void setup_atomic_radii(double multiplier, double tolerance) {
     radii.resize((size_t)El::END);
     for (int i = 0; i != (int) El::END; ++i)
       radii[i] = float(multiplier * Element(i).covalent_r() + tolerance / 2);
   }
+
+  /// @brief Get the contact radius for a given element.
+  /// @param el Chemical element.
+  /// @return Contact radius for the element (0.f if radii not set up).
   float get_radius(El el) const { return radii.empty() ? 0.f : radii[(int)el]; }
+
+  /// @brief Override the contact radius for a specific element.
+  /// @param el Chemical element.
+  /// @param r New contact radius in Angstroms.
   void set_radius(El el, float r) {
     if (!radii.empty())
       radii[(int)el] = r;
   }
 
+  /// @brief Iterate over all contacts, applying ignore logic and calling a function for each.
+  /// @tparam Func Callable type with signature void(const CRA&, const CRA&, int, double)
+  ///         for (partner1, partner2, image_idx, dist_sq).
+  /// @param ns NeighborSearch object containing the indexed atoms.
+  /// @param func Function to call for each contact found.
   template<typename Func>
   void for_each_contact(NeighborSearch& ns, const Func& func);
 
+  /// @brief Result of a contact search between two atoms.
   struct Result {
-    CRA partner1, partner2;
+    /// CRA (chain/residue/atom) reference of the first partner.
+    CRA partner1;
+    /// CRA (chain/residue/atom) reference of the second partner.
+    CRA partner2;
+    /// Crystallographic image index for partner2 (0 = same ASU).
     int image_idx;
+    /// Squared distance between the partners in Angstroms squared.
     double dist_sq;
   };
+
+  /// @brief Collect and return all contacts as a vector of Result.
+  /// @param ns NeighborSearch object containing the indexed atoms.
+  /// @return Vector of Result structs representing all found contacts.
   std::vector<Result> find_contacts(NeighborSearch& ns) {
     std::vector<Result> out;
     for_each_contact(ns, [&out](const CRA& cra1, const CRA& cra2,

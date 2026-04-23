@@ -1,6 +1,12 @@
-// Copyright 2018 Global Phasing Ltd.
-//
-// Read small molecule CIF file into SmallStructure (from small.hpp).
+/// @file
+/// @brief Reading and writing small-molecule CIF files into SmallStructure format.
+///
+/// Copyright 2018 Global Phasing Ltd.
+///
+/// Provides functions to parse CIF (Crystallographic Information File) blocks
+/// into Gemmi's SmallStructure representation for small molecules, ligands,
+/// and inorganic crystals. Handles fractional coordinates, anisotropic
+/// displacement parameters, and symmetry operations.
 
 #ifndef GEMMI_SMCIF_HPP_
 #define GEMMI_SMCIF_HPP_
@@ -12,6 +18,14 @@
 
 namespace gemmi {
 
+/// @brief Parses a CIF block into a SmallStructure object.
+/// @param block_ CIF block to parse.
+/// @return SmallStructure containing atomic positions, symmetry, and cell parameters.
+/// Extracts unit cell parameters, space group information (H-M and Hall symbols,
+/// international tables number), symmetry operations, atom sites with fractional
+/// coordinates (occupancy, anisotropic displacement), anisotropic temperature
+/// factors (_atom_site_aniso_*), atom types with dispersion corrections, and
+/// radiation wavelength. Coordinates are assumed to be fractional (CIF convention).
 inline
 SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   using cif::as_number;
@@ -127,6 +141,13 @@ SmallStructure make_small_structure_from_block(const cif::Block& block_) {
   return st;
 }
 
+/// @brief Converts a SmallStructure into a CIF block.
+/// @param st SmallStructure to convert.
+/// @return CIF block with cell parameters, symmetry, and atom sites.
+/// Generates CIF representation with crystallographic cell, space group name,
+/// atom site loop (_atom_site_*), anisotropic displacement loop
+/// (_atom_site_aniso_*), and radiation wavelength if non-zero.
+/// Uses fractional coordinates (CIF convention).
 inline cif::Block make_cif_block_from_small_structure(const SmallStructure& st) {
   cif::Block block;
   block.name = st.name;

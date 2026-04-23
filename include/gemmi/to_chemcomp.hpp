@@ -11,6 +11,11 @@
 
 namespace gemmi {
 
+/// @brief Write ChemComp restraint data into a CIF block as _chem_comp_* categories.
+/// @param cc The chemical component to serialise.
+/// @param block The CIF block to write into; rows are appended.
+/// @param acedrg_types Optional per-atom ACEDRG type strings; if empty, stored types in cc.atoms are used.
+/// @param no_angles If true, skip writing the _chem_comp_angle table.
 inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block,
                                   const std::vector<std::string>& acedrg_types = {},
                                   bool no_angles = false) {

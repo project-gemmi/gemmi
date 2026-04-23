@@ -1,3 +1,11 @@
+/// @file dencalc.hpp
+/// @brief Electron density calculation from atomic coordinates using Gaussian density distributions.
+///
+/// Provides DensityCalculator struct for placing atomic Gaussian electron density onto a 3D grid,
+/// with support for isotropic and anisotropic B-factors, occupancy, X-ray scattering factors,
+/// and electron scattering (Coulomb potential). Used to generate synthetic electron density maps
+/// from an atomic model for comparison with experimental maps or map correlation calculations.
+
 // Copyright 2019 Global Phasing Ltd.
 //
 // Tools to prepare a grid with values of electron density of a model.
@@ -13,6 +21,16 @@
 
 namespace gemmi {
 
+/// @brief Find the radius at which a radial density function falls below a cutoff level.
+/// @tparam N Number of Gaussian components in the exponential sum
+/// @tparam Real Floating-point type (float or double)
+/// @param x1 Initial search radius (in Angstroms or grid units)
+/// @param precal Precalculated exponential sum object providing calculate() and derivative
+/// @param cutoff_level Density threshold; radius is where |density| equals this value
+/// @return Radius (distance) at which the density function equals the cutoff level
+///
+/// Uses binary search with special handling for addends (like Mott-Bethe factor) that
+/// may cause the function to rise then fall, rather than monotonically decreasing.
 template<int N, typename Real>
 Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff_level) {
   Real y1, dy;
@@ -60,37 +78,70 @@ Real determine_cutoff_radius(Real x1, const ExpSum<N, Real>& precal, Real cutoff
   return x1 + (x1 - x2) / (y1 - y2) * (cutoff_level - y1);
 }
 
-// approximated radius of electron density (IT92) above cutoff=1e-5 for C
+/// @brief Approximate radial extent of electron density for a given B-factor.
+/// @tparam Real Floating-point type
+/// @param b Isotropic B-factor (in Angstrom^2)
+/// @return Approximate radius (in Angstroms) at which density falls to ~1e-5 (International Tables Vol. C formula)
+///
+/// Used as initial guess for cutoff radius search; applicable to X-ray scattering factors (IT92).
 template <typename Real>
 Real it92_radius_approx(Real b) {
   return (8.5f + 0.075f * b) / (2.4f + 0.0045f * b);
 }
 
-// Usual usage:
-// - set d_min and optionally also other parameters,
-// - set addends to f' values for your wavelength (see fprime.hpp)
-// - use grid.setup_from() to set grid's unit cell and space group
-// - check that Table has SF coefficients for all elements that are to be used
-// - call put_model_density_on_grid()
-// - do FFT using transform_map_to_f_phi()
-// - if blur is used, multiply the SF by reciprocal_space_multiplier()
+/// @brief Calculate electron density from an atomic model on a regular grid.
+/// @tparam Table Scattering factor coefficients table (e.g., IT92, Cromer-Mann, electron scattering)
+/// @tparam GReal Type for grid values (float or double)
+///
+/// Places Gaussian electron density contributions from atoms onto a 3D grid.
+/// Supports isotropic and anisotropic B-factors, occupancy, X-ray and electron scattering.
+///
+/// Typical workflow:
+/// - Construct DensityCalculator; set grid via grid.setup_from(structure)
+/// - Set d_min (resolution) and other parameters (blur, cutoff)
+/// - Optionally set addends (wavelength-dependent f' anomalous corrections)
+/// - Call put_model_density_on_grid(model) to populate the grid
+/// - Use transform_map_to_f_phi() for FFT to reciprocal space
+/// - If blur > 0, multiply reciprocal-space data by reciprocal_space_multiplier()
 template <typename Table, typename GReal>
 struct DensityCalculator {
-  // GReal = type of grid; CReal = type of coefficients in Table
+  /// @brief Type of grid (provided as template parameter)
   using CReal = typename Table::Coef::coef_type;
+
+  /// @brief Output electron density grid (unit cell and space group set via setup_from())
   Grid<GReal> grid;
+
+  /// @brief Target d_min resolution (Angstroms); grid sampling = d_min / (2 * rate)
   double d_min = 0.;
+
+  /// @brief Oversampling rate relative to d_min (default 1.5 = 50% oversampling)
   double rate = 1.5;
+
+  /// @brief Additional blur (B-factor) to apply to all atoms (Angstrom^2); default 0
   double blur = 0.;
+
+  /// @brief Density cutoff for determining atom-to-grid interaction radius (default 1e-5)
   float cutoff = 1e-5f;
+
 #if GEMMI_COUNT_DC
+  /// @brief Count of atoms added (debugging; only if GEMMI_COUNT_DC defined)
   size_t atoms_added = 0;
+  /// @brief Count of density calculations (debugging; only if GEMMI_COUNT_DC defined)
   size_t density_computations = 0;
 #endif
+
+  /// @brief Wavelength-dependent f' corrections (additive anomalous factors)
   Addends addends;
 
+  /// @brief Compute grid spacing (Angstroms per voxel) based on d_min and rate.
+  /// @return Grid spacing; 0 if d_min not set
   double requested_grid_spacing() const { return d_min / (2 * rate); }
 
+  /// @brief Set blur to match Refmac5 conventions: depends on existing grid and model B-factors.
+  /// @param model Atomic model providing B-factor statistics
+  /// @param allow_negative If true, blur can be negative (default false = clamp to 0)
+  ///
+  /// Calculates blur such that the effective B-factor on the model matches Refmac defaults.
   void set_refmac_compatible_blur(const Model& model, bool allow_negative=false) {
     double spacing = requested_grid_spacing();
     if (spacing <= 0)
@@ -101,19 +152,35 @@ struct DensityCalculator {
       blur = 0.;
   }
 
-  // pre: check if Table::has(atom.element)
+  /// @brief Add electron density contribution of a single atom to the grid.
+  /// @param atom Atom with element, position, B-factor, occupancy, and anisotropic info
+  /// @pre Table must have scattering factor coefficients for atom.element
+  ///
+  /// Places Gaussian density with appropriate radius based on B-factor and scattering factors.
+  /// Handles both isotropic and anisotropic B-factors. Occupancy and anomalous addends applied.
   void add_atom_density_to_grid(const Atom& atom) {
     Element el = atom.element;
     const auto& coef = Table::get(el, atom.charge, atom.serial);
     do_add_atom_density_to_grid(atom, coef, addends.get(el));
   }
 
-  // Parameter c is a constant factor and has the same meaning as either addend
-  // or c in scattering factor coefficients (a1, b1, ..., c).
+  /// @brief Add a constant radial density contribution for an atom (for special cases).
+  /// @param atom Atom providing position, occupancy
+  /// @param c Constant density factor (as in scattering factor coefficients or addends)
+  ///
+  /// Useful for adding constant density contributions (e.g., Mott-Bethe factor for electron scattering).
   void add_c_contribution_to_grid(const Atom& atom, float c) {
     do_add_atom_density_to_grid(atom, GaussianCoef<0, 1, CReal>{0}, c);
   }
 
+  /// @brief Estimate the interaction radius for density based on precalculated B-factor.
+  /// @tparam N Number of exponential components
+  /// @param precal Precalculated exponential sum object
+  /// @param b Isotropic B-factor (Angstrom^2)
+  /// @return Interaction radius (Angstroms) where density falls below cutoff
+  ///
+  /// For single-Gaussian scattering factors (N=1), computes analytically.
+  /// For multi-Gaussian (N>1), uses determine_cutoff_radius() binary search.
   template<int N>
   CReal estimate_radius(const ExpSum<N, CReal>& precal, CReal b) const {
     if (N == 1)
@@ -122,6 +189,14 @@ struct DensityCalculator {
     return determine_cutoff_radius(x1, precal, (CReal)cutoff);
   }
 
+  /// @brief Internal: place electron density on grid for an atom with given scattering factors.
+  /// @tparam Coef Scattering factor coefficients type
+  /// @param atom Atom with position, occupancy, B-factor, anisotropic U-tensor
+  /// @param coef Precalculated scattering factor coefficients (from Table::get())
+  /// @param addend Wavelength-dependent anomalous correction (f') added to constant term
+  ///
+  /// Handles isotropic B-factor case with radial density sampling and anisotropic case
+  /// with box-based sampling respecting the anisotropic U-tensor.
   template<typename Coef>
   void do_add_atom_density_to_grid(const Atom& atom, const Coef& coef, float addend) {
 #if GEMMI_COUNT_DC
@@ -162,6 +237,11 @@ struct DensityCalculator {
     }
   }
 
+  /// @brief Clear grid data and allocate size based on d_min and rate, or use existing grid.
+  /// @throws Fails if d_min not set and grid has no existing dimensions
+  ///
+  /// Sets grid size for FFT-friendly dimensions if d_min > 0.
+  /// Otherwise assumes grid already configured by user (via setup_from).
   void initialize_grid() {
     grid.data.clear();
     double spacing = requested_grid_spacing();
@@ -174,6 +254,11 @@ struct DensityCalculator {
       fail("initialize_grid(): d_min is not set");
   }
 
+  /// @brief Add electron density contributions from all atoms in a model.
+  /// @param model Atomic model with chains, residues, atoms
+  ///
+  /// Iterates through all atoms and calls add_atom_density_to_grid() for each.
+  /// Grid must already be initialized.
   void add_model_density_to_grid(const Model& model) {
     grid.check_not_empty();
     for (const Chain& chain : model.chains)
@@ -182,22 +267,37 @@ struct DensityCalculator {
           add_atom_density_to_grid(atom);
   }
 
+  /// @brief Initialize grid and add all atom densities from a model.
+  /// @param model Atomic model
+  ///
+  /// Calls initialize_grid(), add_model_density_to_grid(), and symmetrize_sum().
   void put_model_density_on_grid(const Model& model) {
     initialize_grid();
     add_model_density_to_grid(model);
     grid.symmetrize_sum();
   }
 
-  // deprecated, use directly grid.setup_from(st)
+  /// @brief Set grid unit cell and space group from a structure.
+  /// @param st Structure providing unit cell and space group
+  /// @deprecated Use grid.setup_from(st) directly
   void set_grid_cell_and_spacegroup(const Structure& st) {
     grid.setup_from(st);
   }
 
-  // The argument is 1/d^2 - as outputted by unit_cell.calculate_1_d2(hkl).
+  /// @brief Compute reciprocal-space multiplier for blur correction factor.
+  /// @param inv_d2 Inverse d-spacing squared (1/d^2) from unit_cell.calculate_1_d2(hkl)
+  /// @return Exponential factor: exp(blur * 0.25 * inv_d2)
+  ///
+  /// If blur was applied, multiply structure factors by this to correct for the applied blur.
   double reciprocal_space_multiplier(double inv_d2) const {
     return std::exp(blur * 0.25 * inv_d2);
   }
 
+  /// @brief Compute the Mott-Bethe factor for electron scattering.
+  /// @param hkl Miller indices
+  /// @return Mott-Bethe correction factor (optionally scaled by reciprocal_space_multiplier if blur > 0)
+  ///
+  /// For electron scattering, the Mott-Bethe factor approximates the Coulomb potential contribution.
   double mott_bethe_factor(const Miller& hkl) const {
     double inv_d2 = grid.unit_cell.calculate_1_d2(hkl);
     double factor = -mott_bethe_const() / inv_d2;

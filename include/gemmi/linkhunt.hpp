@@ -14,22 +14,27 @@
 
 namespace gemmi {
 
+/// @brief Searches for inter-residue chemical links using monomer library bond definitions.
 struct LinkHunt {
+  /// @brief Result of a link search; describes a candidate inter-residue link.
   struct Match {
-    const ChemLink* chem_link = nullptr;
-    int chem_link_count = 0;
-    int score = -1000;
-    CRA cra1;
-    CRA cra2;
-    bool same_image;
-    double bond_length = 0;
-    Connection* conn = nullptr;
+    const ChemLink* chem_link = nullptr;  ///< Best matching ChemLink or nullptr if none found.
+    int chem_link_count = 0;              ///< Number of matching ChemLink definitions found.
+    int score = -1000;                    ///< Best link score.
+    CRA cra1;                             ///< First bonded atom in order matching the link definition.
+    CRA cra2;                             ///< Second bonded atom in order matching the link definition.
+    bool same_image;                      ///< True if atoms are in the same crystal image.
+    double bond_length = 0;               ///< Bond distance in Angstroms.
+    Connection* conn = nullptr;           ///< Pointer to existing Connection in Structure if present, else nullptr.
   };
 
-  double global_max_dist = 2.34; // ZN-CYS
-  const MonLib* monlib_ptr = nullptr;
-  std::multimap<std::string, const ChemLink*> links;
+  double global_max_dist = 2.34;                              ///< Maximum bond distance across all indexed links; updated by index_chem_links().
+  const MonLib* monlib_ptr = nullptr;                         ///< Pointer to the monomer library used for link matching.
+  std::multimap<std::string, const ChemLink*> links;          ///< Multimap from lexicographic atom-name pair to ChemLink pointers.
 
+  /// @brief Index all links from monlib into the links multimap for fast lookup.
+  /// @param monlib The monomer library to index.
+  /// @param use_alias Whether to expand atom name aliases when indexing.
   void index_chem_links(const MonLib& monlib, bool use_alias=true) {
     std::map<ChemComp::Group, std::map<std::string, std::vector<std::string>>> aliases;
     if (use_alias)
@@ -89,6 +94,12 @@ struct LinkHunt {
     monlib_ptr = &monlib;
   }
 
+  /// @brief Find all candidate inter-residue links within the structure using neighbor search.
+  /// @param st The structure to search for possible links.
+  /// @param bond_margin Fraction of ideal bond length used as distance cutoff for dictionary links.
+  /// @param radius_margin Fraction of sum of covalent radii for non-dictionary links.
+  /// @param ignore Which contacts to skip.
+  /// @return Vector of Match results describing candidate links.
   std::vector<Match> find_possible_links(Structure& st,
                                          double bond_margin,
                                          double radius_margin,
