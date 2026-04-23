@@ -10,6 +10,12 @@
 
 namespace gemmi {
 
+/// @brief Convert a macromolecular atom to a small-structure site.
+/// Performs coordinate transformation to fractional space, occupancy adjustment
+/// for special positions, and anisotropic thermal parameter conversion.
+/// @param atom The macromolecular atom to convert.
+/// @param cell The unit cell for coordinate transformation.
+/// @return A SmallStructure::Site representation of the atom.
 inline SmallStructure::Site atom_to_site(const Atom& atom, const UnitCell& cell) {
   SmallStructure::Site site;
   site.label = atom.name;
@@ -42,6 +48,11 @@ inline SmallStructure::Site atom_to_site(const Atom& atom, const UnitCell& cell)
   return site;
 }
 
+/// @brief Convert a macromolecular structure (MX) to a small-structure (SX) representation.
+/// Extracts atoms from a specific model and converts them to sites using atom_to_site().
+/// @param st The macromolecular structure to convert.
+/// @param n The model index to extract (default 0).
+/// @return A SmallStructure representation of the model.
 inline SmallStructure mx_to_sx_structure(const Structure& st, int n=0) {
   const Model& model = st.models.at(n);
   SmallStructure small_st;

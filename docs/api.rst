@@ -22,6 +22,94 @@ Core Data Structures
 .. doxygenfile:: model.hpp
    :project: gemmi
 
+Map and Grid Data
+-----------------
+
+*(Stub — full documentation added in PR 6.)*
+
+.. doxygenfile:: grid.hpp
+   :project: gemmi
+
+Scattering, Math, and Geometry
+-------------------------------
+
+Form factor tables, anomalous scattering, Bessel function helpers, core
+linear-algebra primitives, unit-cell reduction, and numerical tools used
+throughout structure-factor and density calculations.
+
+*(Full documentation added in PR 9.)*
+
+.. doxygenfile:: fprime.hpp
+   :project: gemmi
+
+.. doxygenfile:: formfact.hpp
+   :project: gemmi
+
+.. doxygenfile:: it92.hpp
+   :project: gemmi
+
+.. doxygenfile:: c4322.hpp
+   :project: gemmi
+
+.. doxygenfile:: neutron92.hpp
+   :project: gemmi
+
+.. doxygenfile:: bessel.hpp
+   :project: gemmi
+
+.. doxygenfile:: math.hpp
+   :project: gemmi
+
+.. doxygenfile:: cellred.hpp
+   :project: gemmi
+
+Sequence Alignment and Twinning
+--------------------------------
+
+Sequence utilities, pairwise alignment, twinning-law discovery, and
+interoperability helpers.
+
+*(Full documentation added in PR 9.)*
+
+.. doxygenfile:: seqtools.hpp
+   :project: gemmi
+
+.. doxygenfile:: seqalign.hpp
+   :project: gemmi
+
+.. doxygenfile:: twin.hpp
+   :project: gemmi
+
+.. doxygenfile:: serialize.hpp
+   :project: gemmi
+
+.. doxygenfile:: interop.hpp
+   :project: gemmi
+
+.. doxygenfile:: flat.hpp
+   :project: gemmi
+
+.. doxygenfile:: smarts.hpp
+   :project: gemmi
+
+Density Analysis and Numerical Methods
+---------------------------------------
+
+Electron density blob finding, isosurface extraction, Levenberg-Marquardt
+least-squares minimization, and quaternion-based superposition (QCP).
+
+*(Full documentation added in PR 9.)*
+
+.. doxygenfile:: blob.hpp
+   :project: gemmi
+
+.. doxygenfile:: isosurface.hpp
+   :project: gemmi
+
+.. doxygenfile:: levmar.hpp
+   :project: gemmi
+
+.. doxygenfile:: qcp.hpp
 Reflection Data
 ---------------
 
