@@ -124,7 +124,7 @@ struct Vec3_ {
   }
   /// @brief Access component by index (const)
   /// @param i index (0, 1, or 2)
-  /// @return component x, y, or z
+  /// @return value of component x, y, or z
   /// @throws std::out_of_range if i not in 0..2
   Real at(int i) const { return const_cast<Vec3_*>(this)->at(i); }
 
