@@ -203,16 +203,19 @@ std::complex<T> lerp_(std::complex<T> a, std::complex<T> b, double t) {
 }
 
 /// @brief Catmull–Rom cubic spline interpolation.
-///
-/// Interpolates a cubic between points b and c given neighboring points a and d.
-/// Reference: https://en.wikipedia.org/wiki/Cubic_Hermite_spline,
-/// and equation (24) in https://journals.iucr.org/d/issues/2018/06/00/ic5103/
+/// @details Interpolates a cubic between points b and c given neighboring points a and d.
+/// Uses the Catmull–Rom formula (equation 24 in the reference below).
 /// @param u Parameter in [0, 1], where 0 → b, 1 → c
 /// @param a Value at u = -1
 /// @param b Value at u = 0
 /// @param c Value at u = 1
 /// @param d Value at u = 2
 /// @return Interpolated value
+/// @par References
+/// Afonine, P.V., Poon, B.K., Read, R.J., Sobolev, O.V., Terwilliger, T.C.,
+/// Urzhumtsev, A. & Adams, P.D. (2018). Real-space refinement in PHENIX for
+/// cryo-EM and crystallography. Acta Cryst. D74, 531–544.
+/// https://doi.org/10.1107/S2059798318006551
 inline double cubic_interpolation(double u, double a, double b, double c, double d) {
   //return 0.5 * u * (u * (u * (3*b - 3*c + d - a) + (2*a - 5*b + 4*c - d)) + (c - a)) + b;
   // equivalent form that is faster on my computer:
@@ -735,10 +738,14 @@ struct Grid : GridBase<T> {
   }
 
   /// @brief Tricubic interpolation at a grid coordinate.
-  ///
-  /// Uses Catmull–Rom cubic splines. Smoother than trilinear but more expensive.
-  /// Reference: https://en.wikipedia.org/wiki/Tricubic_interpolation
+  /// @details Uses Catmull–Rom cubic splines applied as a tensor product in three dimensions.
+  /// Smoother than trilinear but more expensive. See cubic_interpolation() for the 1D formula.
   /// @param x Grid coordinate (x=1.5 is between 2nd and 3rd grid point). Wraps periodically.
+  /// @par References
+  /// Afonine, P.V., Poon, B.K., Read, R.J., Sobolev, O.V., Terwilliger, T.C.,
+  /// Urzhumtsev, A. & Adams, P.D. (2018). Real-space refinement in PHENIX for
+  /// cryo-EM and crystallography. Acta Cryst. D74, 531–544.
+  /// https://doi.org/10.1107/S2059798318006551
   /// @param y Grid coordinate
   /// @param z Grid coordinate
   /// @return Interpolated value (double precision)
