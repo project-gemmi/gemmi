@@ -9,7 +9,12 @@
 
 namespace gemmi {
 
-// linear-time glob matching: https://research.swtch.com/glob
+/// Match string against glob pattern with `*` and `?` wildcards.
+/// @brief Test if string matches a glob pattern.
+/// @details Linear-time algorithm from https://research.swtch.com/glob
+/// @param pattern glob pattern (`*` matches any sequence, `?` matches single char)
+/// @param str string to match against pattern
+/// @return true if str matches the pattern
 inline bool glob_match(const std::string& pattern, const std::string& str) {
   size_t pat_next = 0;
   size_t str_next = std::string::npos;
