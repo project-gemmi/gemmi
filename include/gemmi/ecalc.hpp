@@ -10,6 +10,16 @@
 
 namespace gemmi {
 
+/// @brief Compute per-reflection amplitude normalization factors for E-scale conversion.
+/// Uses the Karle approach: E = F / sqrt(Σ f²), with resolution-bin-based averaging and smoothing.
+/// @tparam DataProxy Type satisfying the data proxy interface: must provide size(), stride(),
+///         spacegroup(), unit_cell(), get_hkl(n), and get_num(n) methods.
+/// @param data Data proxy (e.g., MtzDataProxy or ReflDataProxy).
+/// @param fcol_idx Column index of F amplitudes in the proxy.
+/// @param binner Binner object defining resolution shells.
+/// @return Vector of multipliers (one per reflection); NaN for missing values.
+///         Algorithm: collects F² in bins, applies [0.75, 1, 0.75] smoothing kernel,
+///         returns 1/sqrt(<F²>) per reflection for normalization.
 template<typename DataProxy>
 std::vector<double> calculate_amplitude_normalizers(const DataProxy& data, int fcol_idx,
                                                     const Binner& binner) {

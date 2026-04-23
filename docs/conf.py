@@ -147,3 +147,4 @@ if os.path.isdir(_doxygen_xml_dir):
     breathe_projects = {"gemmi": _doxygen_xml_dir}
     breathe_default_project = "gemmi"
     breathe_default_members = ('members',)
+    breathe_default_members = ('members',)  # show all public members in every doxygenfile:: directive

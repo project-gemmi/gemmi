@@ -1,6 +1,11 @@
-// Copyright 2020-2022 Global Phasing Ltd.
-//
-// Converts between gemmi::Structure and mmdb::Manager.
+/// @file
+/// @brief Conversion between gemmi::Structure and MMDB (CCP4 Macromolecular Data Bank).
+///
+/// Copyright 2020-2022 Global Phasing Ltd.
+///
+/// Provides bidirectional conversion functions between Gemmi's Structure
+/// representation and MMDB's Manager data structures. This enables
+/// interoperability with CCP4's legacy molecular biology library.
 
 #ifndef GEMMI_MMDB_HPP_
 #define GEMMI_MMDB_HPP_
@@ -14,6 +19,10 @@
 
 namespace gemmi {
 
+/// @brief Copies a Gemmi transformation matrix and vector to MMDB format.
+/// @param tr Gemmi transformation object (3x3 rotation + 3D translation).
+/// @param mat Output MMDB 3x3 matrix (rotation component).
+/// @param vec Output MMDB 3D vector (translation component).
 inline void copy_transform_to_mmdb(const Transform& tr,
                                    mmdb::mat33& mat, mmdb::vect3& vec) {
   for (int i = 0; i < 3; ++i) {
@@ -23,6 +32,11 @@ inline void copy_transform_to_mmdb(const Transform& tr,
   }
 }
 
+/// @brief Safely copies a string into a fixed-size MMDB character array.
+/// @tparam N Size of the destination character array.
+/// @param dest Fixed-size MMDB character array (typically a typedef like mmdb::ChainID).
+/// @param src String to copy.
+/// @throws Throws if src is too long for the destination array.
 template<int N>
 void strcpy_to_mmdb(char (&dest)[N], const std::string& src) {
   if (src.size() + 1 >= N)
@@ -30,6 +44,10 @@ void strcpy_to_mmdb(char (&dest)[N], const std::string& src) {
   std::memcpy(dest, src.c_str(), src.size() + 1);
 }
 
+/// @brief Sets MMDB sequence number and insertion code from Gemmi SeqId.
+/// @param seqnum Pointer to MMDB sequence number (output).
+/// @param icode MMDB insertion code array (output).
+/// @param seqid Gemmi sequence ID containing number and optional insertion code.
 inline void set_seqid_in_mmdb(int* seqnum, mmdb::InsCode& icode, SeqId seqid) {
   *seqnum = *seqid.num;
   icode[0] = icode[1] = '\0';
@@ -37,10 +55,19 @@ inline void set_seqid_in_mmdb(int* seqnum, mmdb::InsCode& icode, SeqId seqid) {
     icode[0] = seqid.icode;
 }
 
+/// @brief Converts MMDB sequence number and insertion code to Gemmi SeqId.
+/// @param seqnum MMDB sequence number.
+/// @param inscode MMDB insertion code array.
+/// @return Gemmi SeqId with number and optional insertion code.
 inline SeqId seqid_from_mmdb(int seqnum, const mmdb::InsCode& inscode) {
   return SeqId(seqnum, inscode[0] ? inscode[0] : ' ');
 }
 
+/// @brief Converts Gemmi CisPep to MMDB CisPep structure.
+/// @param g Gemmi CisPep record to convert.
+/// @param ser_num Serial number for the MMDB record.
+/// @param model_num Model number for the MMDB record.
+/// @return Newly allocated MMDB CisPep (caller owns memory).
 inline mmdb::CisPep* cispep_to_mmdb(const CisPep& g, int ser_num, int model_num) {
   mmdb::CisPep* m = new mmdb::CisPep();
   m->serNum = ser_num;
@@ -55,6 +82,10 @@ inline mmdb::CisPep* cispep_to_mmdb(const CisPep& g, int ser_num, int model_num)
   return m;
 }
 
+/// @brief Converts MMDB CisPep structure to Gemmi CisPep.
+/// @param m MMDB CisPep record to convert.
+/// @param model_num Model number for the result.
+/// @return Gemmi CisPep with data from MMDB record.
 inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, int model_num) {
   CisPep g;
   g.partner_c.res_id.name = m.pep1;
@@ -68,6 +99,12 @@ inline CisPep cispep_from_mmdb(const mmdb::CisPep& m, int model_num) {
   return g;
 }
 
+/// @brief Transfers Connection records from Gemmi Structure to MMDB Manager.
+/// @param st Gemmi Structure containing Connection records.
+/// @param mol MMDB Manager to populate with Link records.
+/// Converts Gemmi Connection objects to MMDB Link format and adds them
+/// to all models in the MMDB Manager. Links with undefined sequence IDs
+/// are skipped.
 inline void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
   // based on code provided by Paul Emsley
   for (const Connection& con : st.connections) {
@@ -101,7 +138,11 @@ inline void transfer_links_to_mmdb(const Structure& st,  mmdb::Manager* mol) {
   }
 }
 
-// ignoring LinkR's here
+/// @brief Transfers Link records from MMDB to Gemmi Structure.
+/// @param mmdb_links MMDB LinkContainer to read from.
+/// @param st Gemmi Structure to populate with Connection records (output).
+/// Converts MMDB Link objects to Gemmi Connection format.
+/// Note: LinkR (restraint) entries are not transferred.
 inline void transfer_links_from_mmdb(mmdb::LinkContainer& mmdb_links, Structure& st) {
   for (int i = 0; i < mmdb_links.Length(); ++i) {
     mmdb::Link& link = *static_cast<mmdb::Link*>(mmdb_links.GetContainerClass(i));
@@ -135,7 +176,11 @@ inline void transfer_links_from_mmdb(mmdb::LinkContainer& mmdb_links, Structure&
   }
 }
 
-// Helper function to convert gemmi sequence to mmdb ResName array
+/// @brief Converts Gemmi sequence vector to MMDB SeqRes format.
+/// @param sequence Gemmi polymer sequence (residue names).
+/// @param seqres MMDB SeqRes structure to populate (output).
+/// Handles microheterogeneity by extracting the first monomer from each
+/// sequence entry. Allocates and manages MMDB internal memory.
 inline void set_mmdb_seqres(const std::vector<std::string>& sequence,
                             mmdb::SeqRes& seqres) {
   // Free existing sequence data
@@ -162,6 +207,9 @@ inline void set_mmdb_seqres(const std::vector<std::string>& sequence,
   }
 }
 
+/// @brief Checks if Structure has polymer entities with defined sequences.
+/// @param st Structure to check.
+/// @return True if at least one polymer entity with sequence data exists.
 inline bool has_sequences(const Structure& st) {
   // If there are no entities with sequences, try to infer sequences from chains
   for (const Entity& entity : st.entities) {
@@ -171,7 +219,11 @@ inline bool has_sequences(const Structure& st) {
   return false;
 }
 
-// Transfer SEQRES from gemmi entities to mmdb chains
+/// @brief Transfers polymer sequence information from Gemmi to MMDB Manager.
+/// @param st Gemmi Structure containing entity sequence data.
+/// @param manager MMDB Manager to populate (output).
+/// Copies full_sequence data from Gemmi entities to corresponding MMDB
+/// chain SEQRES records. Does nothing if Structure has no sequences.
 inline void transfer_seqres_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   if (!has_sequences(st))
     return;
@@ -205,6 +257,12 @@ inline void transfer_seqres_to_mmdb(const Structure& st, mmdb::Manager* manager)
   }
 }
 
+/// @brief Copies Gemmi Structure data into MMDB Manager.
+/// @param st Gemmi Structure to convert.
+/// @param manager MMDB Manager to populate (output).
+/// Transfers all structural information including atoms, residues, chains,
+/// crystallographic metadata (cell, spacegroup, NCS operators), SEQRES records,
+/// and Connection information. Handles TER records to mark polymer termination.
 inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
   for (const std::string& s : st.raw_remarks) {
     std::string line = rtrim_str(s);
@@ -318,7 +376,11 @@ inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
 }
 
 
-// don't use const for mmdb objects - MMDB doesn't have const method
+/// @brief Converts MMDB Atom to Gemmi Atom.
+/// @param m_atom MMDB Atom to convert (non-const; MMDB API limitation).
+/// @return Gemmi Atom with data from MMDB record.
+/// Extracts coordinates, occupancy, B-factors, anisotropic temperature factors
+/// (if present), element, charge, and atom name/serial information.
 inline Atom copy_atom_from_mmdb(mmdb::Atom& m_atom) {
   Atom atom;
   atom.name = m_atom.label_atom_id;
@@ -340,6 +402,11 @@ inline Atom copy_atom_from_mmdb(mmdb::Atom& m_atom) {
   return atom;
 }
 
+/// @brief Converts MMDB Residue to Gemmi Residue.
+/// @param m_res MMDB Residue to convert.
+/// @return Gemmi Residue with atoms and metadata.
+/// Extracts all atoms, identifies polymer termination via TER pseudo-atoms,
+/// and sets het_flag and segment information from first atom.
 inline Residue copy_residue_from_mmdb(mmdb::Residue& m_res) {
   Residue res;
   res.name = m_res.name;
@@ -363,7 +430,11 @@ inline Residue copy_residue_from_mmdb(mmdb::Residue& m_res) {
   return res;
 }
 
-// Helper function to convert mmdb ResName array to gemmi sequence
+/// @brief Converts MMDB SeqRes to Gemmi sequence vector.
+/// @param seqres MMDB SeqRes structure to read.
+/// @return Vector of residue names (sequence).
+/// Extracts sequence data from MMDB SeqRes, handling empty entries and
+/// trimming whitespace from each residue name.
 inline std::vector<std::string> get_gemmi_sequence(const mmdb::SeqRes& seqres) {
   std::vector<std::string> sequence;
   if (seqres.numRes > 0 && seqres.resName) {
@@ -378,6 +449,12 @@ inline std::vector<std::string> get_gemmi_sequence(const mmdb::SeqRes& seqres) {
   return sequence;
 }
 
+/// @brief Converts MMDB Chain to Gemmi Chain and updates Structure entities.
+/// @param st Gemmi Structure to update with entity information (output).
+/// @param m_chain MMDB Chain to convert.
+/// @return Gemmi Chain with residues and sequence data.
+/// Extracts chain residues and SEQRES information, creating or updating
+/// corresponding polymer entities in the Structure.
 inline Chain copy_chain_from_mmdb(Structure& st, mmdb::Chain& m_chain) {
   Chain chain(m_chain.GetChainID());
   int n = m_chain.GetNumberOfResidues();
@@ -405,6 +482,12 @@ inline Chain copy_chain_from_mmdb(Structure& st, mmdb::Chain& m_chain) {
   return chain;
 }
 
+/// @brief Converts MMDB Model to Gemmi Model and updates Structure entities.
+/// @param st Gemmi Structure to update with entity information (output).
+/// @param m_model MMDB Model to convert.
+/// @return Gemmi Model with chains.
+/// Extracts all chains and their sequence information, updating entity
+/// records and deduplicating entity data.
 inline Model copy_model_from_mmdb(Structure& st, mmdb::Model& m_model) {
   Model model(m_model.GetSerNum());
   int n = m_model.GetNumberOfChains();
@@ -424,6 +507,11 @@ inline Model copy_model_from_mmdb(Structure& st, mmdb::Model& m_model) {
   return model;
 }
 
+/// @brief Converts MMDB Manager into Gemmi Structure.
+/// @param manager MMDB Manager to convert.
+/// @return Gemmi Structure with all models, atoms, and metadata.
+/// Transfers crystallographic cell parameters, spacegroup information,
+/// all models and chains, CISPEP records, and inter-chain connections.
 inline Structure copy_from_mmdb(mmdb::Manager* manager) {
   Structure st;
   const mmdb::Cryst& cryst = *manager->GetCrystData();
