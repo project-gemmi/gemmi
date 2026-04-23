@@ -117,7 +117,7 @@ public:
   /// Construct a DirWalk starting from a given path.
   /// @brief Initialize directory walker.
   /// @param path root directory or file path to start traversal
-  /// @param try_pdbid if non-null and path is a PDB code, try expanding it to a full path
+  /// @param try_pdbid expansion type char (e.g. 'M'), or '\0' to skip PDB code expansion
   explicit DirWalk(const char* path, char try_pdbid='\0') {
     if (impl::utf8_tinydir_file_open(&top_, path) != -1)
       return;
@@ -132,7 +132,7 @@ public:
   /// Construct a DirWalk from a std::string path.
   /// @brief Initialize directory walker from string path.
   /// @param path root directory or file path to start traversal
-  /// @param try_pdbid if non-null and path is a PDB code, try expanding it to a full path
+  /// @param try_pdbid expansion type char (e.g. 'M'), or '\0' to skip PDB code expansion
   explicit DirWalk(const std::string& path, char try_pdbid='\0')
     : DirWalk(path.c_str(), try_pdbid) {}
   /// Destructor.
