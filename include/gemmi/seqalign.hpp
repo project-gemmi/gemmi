@@ -88,7 +88,7 @@ struct AlignmentResult {
   struct Item {
     /// @brief Packed value: bits 0-3 = operation, bits 4+ = length
     std::uint32_t value;
-    /// @brief Get CIGAR operation: 'M'=match, 'I'=insertion, 'D'=deletion
+    /// @brief Get CIGAR operation: 'M'=match/mismatch, 'I'=insertion, 'D'=deletion
     char op() const { return "MID"[value & 0xf]; }
     /// @brief Get length of this CIGAR operation
     std::uint32_t len() const { return value >> 4; }
@@ -227,7 +227,7 @@ struct AlignmentResult {
     return r;
   }
 
-  /// @brief Add or extend a CIGAR operation.
+  /// @brief Add or extend a CIGAR operation; consecutive ops of the same type are merged.
   /// @param op Operation: 0=match/mismatch, 1=insertion, 2=deletion
   /// @param len Length of operation
   void push_cigar(std::uint32_t op, int len) {
