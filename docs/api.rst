@@ -29,3 +29,38 @@ Map and Grid Data
 
 .. doxygenfile:: grid.hpp
    :project: gemmi
+
+Chemistry and Restraints
+------------------------
+
+Chemical component definitions, monomer library, topology of restraints
+applied to a model, hydrogen placement, link hunting, and related I/O helpers.
+
+*(Full documentation added in PR 8.)*
+
+.. doxygenfile:: chemcomp.hpp
+   :project: gemmi
+
+.. doxygenfile:: chemcomp_xyz.hpp
+   :project: gemmi
+
+.. doxygenfile:: ener_lib.hpp
+   :project: gemmi
+
+.. doxygenfile:: monlib.hpp
+   :project: gemmi
+
+.. doxygenfile:: topo.hpp
+   :project: gemmi
+
+.. doxygenfile:: riding_h.hpp
+   :project: gemmi
+
+.. doxygenfile:: linkhunt.hpp
+   :project: gemmi
+
+.. doxygenfile:: to_chemcomp.hpp
+   :project: gemmi
+
+.. doxygenfile:: mmcif_impl.hpp
+   :project: gemmi
