@@ -358,10 +358,14 @@ struct UnitCell : UnitCellParameters {
   double cos_alpha() const { return alpha == 90. ? 0. : std::cos(rad(alpha)); }
 
   /// @brief Calculate B matrix for X-ray crystallography.
-  /// Returns the B matrix in Busing & Levy (1967) convention (PDB convention),
+  /// @details Returns the B matrix in the Busing & Levy (1967) convention (PDB convention),
   /// not the cctbx convention. Used in computing structure factors and Debye-Waller factors.
   /// @return 3×3 matrix B.
   /// @see https://dials.github.io/documentation/conventions.html
+  /// @par References
+  /// Busing, W.R. & Levy, H.A. (1967). Angle calculations for 3- and 4-circle
+  /// X-ray and neutron diffractometers. Acta Cryst. 22, 457–464.
+  /// https://doi.org/10.1107/S0365110X67000970
   Mat33 calculate_matrix_B() const {
     double sin_gammar = std::sqrt(1 - cos_gammar * cos_gammar);
     double sin_betar = std::sqrt(1 - cos_betar * cos_betar);
@@ -371,8 +375,10 @@ struct UnitCell : UnitCellParameters {
   }
 
   /// @brief Calculate equivalent isotropic displacement factor (B_eq).
-  /// Based on Fischer & Tillmanns (1988). Acta Cryst. C44, 775-776.
-  /// Converts a non-orthogonal anisotropic displacement tensor to an isotropic value.
+  /// @details Converts a non-orthogonal anisotropic displacement tensor to an isotropic value.
+  /// @par References
+  /// Fischer, R.X. & Tillmanns, E. (1988). The equivalent isotropic displacement factor.
+  /// Acta Cryst. C44, 775–776. https://doi.org/10.1107/S0108270188007712
   /// @param ani Anisotropic displacement tensor (non-orthogonalized, e.g., from SmallStructure::Site).
   ///            Should NOT be the orthogonal tensor from Atom.
   /// @return Equivalent isotropic displacement factor.

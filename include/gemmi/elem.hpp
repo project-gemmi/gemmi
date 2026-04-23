@@ -254,8 +254,14 @@ inline float covalent_radius(El el) {
 /// @brief Get van der Waals radius of element.
 /// @param el Element enumeration value.
 /// @return Van der Waals radius in Ångströms.
-/// @details Data from Wikipedia and supplemented with cctbx values.
-/// Primary sources: Phys. Chem. A 2009, 113, 5806 and Phys. Chem. 1964, 68, 441.
+/// @details Data supplemented with cctbx values.
+/// @par References
+/// Mantina, M., Chamberlin, A.C., Valero, R., Cramer, C.J. & Truhlar, D.G. (2009).
+/// Consistent van der Waals radii for the whole main group.
+/// J. Phys. Chem. A 113, 5806–5812. https://doi.org/10.1021/jp8111556
+///
+/// Bondi, A. (1964). van der Waals Volumes and Radii.
+/// J. Phys. Chem. 68, 441–451. https://doi.org/10.1021/j100785a001
 inline float vdw_radius(El el) {
   static constexpr float radii[] = {
     /*X*/  1.00f,

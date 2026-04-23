@@ -152,7 +152,11 @@ struct GEMMI_DLL Op {
 
   /// @brief Determine the rotation type (identity, 2-fold, 3-fold, etc.).
   /// @return Rotation type code (0 = none, 1 = 1-fold identity, 2 = 2-fold, 3 = 3-fold,
-  ///         4 = 4-fold, 6 = 6-fold, -N for rotoinversion). Based on RWGK, Acta Cryst. A55, 383 (1999).
+  ///         4 = 4-fold, 6 = 6-fold, -N for rotoinversion).
+  /// @par References
+  /// Grosse-Kunstleve, R.W. (1999). Algorithms for deriving crystallographic
+  /// space-group information. Acta Cryst. A55, 383–395.
+  /// https://doi.org/10.1107/S0108767398010186
   int rot_type() const {
     int det = det_rot();
     int tr_den = rot[0][0] + rot[1][1] + rot[2][2];
@@ -972,10 +976,14 @@ inline bool is_symmorphic(int space_group_number) {
   return (point_group_index_and_category(space_group_number) & 0x80) != 0;
 }
 
-/// Inversion center of the Euclidean normalizer that is not at the origin of
-/// reference settings. Returns (0,0,0) if absent. Based on tables in ch. 3.5
-/// of ITA (2016) doi:10.1107/97809553602060000933 (column "Inversion through
-/// a centre at").
+/// @brief Inversion center of the Euclidean normalizer that is not at the origin.
+/// @details Returns (0,0,0) if absent. See ch. 3.5 of ITA (2016),
+/// column "Inversion through a centre at".
+/// @param space_group_number Space group number (1–230).
+/// @return Inversion centre translation, or (0,0,0) if none.
+/// @par References
+/// International Tables for Crystallography, Vol. A (2016), ch. 3.5.
+/// https://doi.org/10.1107/97809553602060000933
 inline Op::Tran nonzero_inversion_center(int space_group_number) {
   constexpr int D = Op::DEN;
   switch (space_group_number) {
