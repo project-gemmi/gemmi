@@ -12,6 +12,17 @@
 
 namespace gemmi {
 
+/// @file
+/// @brief Converter for XDS reflection data to MTZ format.
+
+/// @brief Convert XDS reflection data to MTZ format.
+///
+/// For unmerged data, creates unmerged MTZ with batch headers matching Pointless output.
+/// For merged data, uses Intensities class to prepare merged MTZ.
+/// Sets up all standard MTZ columns: H, K, L, M/ISYM, BATCH, I, SIGI, XDET, YDET, ROT,
+/// plus optional FRACTIONCALC, LP, CORR, and MAXC columns depending on XDS read_columns.
+/// @param xds XDS data to convert (modified).
+/// @return Populated MTZ object sorted by reflection index.
 inline Mtz xds_to_mtz(XdsAscii& xds) {
   if (xds.is_merged()) {
     Intensities intensities;

@@ -1,3 +1,9 @@
+/// @file
+/// @brief Periodic table elements and chemical properties.
+///
+/// Provides element enumeration (El), atomic properties (weight, radii),
+/// and the Element class for convenient element access and lookup.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // Elements from the periodic table.
@@ -10,22 +16,29 @@
 
 namespace gemmi {
 
-// elements
+/// @brief Element enumeration by atomic number.
+/// @details Values correspond to atomic numbers (H=1, He=2, ..., Og=118)
+/// with sentinel values X (unknown, 0) and D (deuterium, 119) and
+/// END (sentinel for array bounds, 120).
 enum class El : unsigned char {
-  X=0,  // unknown element is marked as X in PDB entries
-  H, He, Li, Be, B, C, N, O, F, Ne, Na, Mg, Al, Si, P, S, Cl, Ar,  // 1-3
-  K, Ca, Sc, Ti, V, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ga, Ge, As, Se, Br, Kr,  // 4
-  Rb, Sr, Y, Zr, Nb, Mo, Tc, Ru, Rh, Pd, Ag, Cd, In, Sn, Sb, Te, I, Xe,  // 5
-  Cs, Ba, La, Ce, Pr, Nd, Pm, Sm, Eu, Gd, Tb, Dy, Ho, Er, Tm, Yb, Lu,  // 6..
-  Hf, Ta, W, Re, Os, Ir, Pt, Au, Hg, Tl, Pb, Bi, Po, At, Rn,  // ..6
-  Fr, Ra, Ac, Th, Pa, U, Np, Pu, Am, Cm, Bk, Cf, Es, Fm, Md, No, Lr,  // 7..
-  Rf, Db, Sg, Bh, Hs, Mt,  Ds, Rg, Cn, Nh, Fl, Mc, Lv, Ts, Og, // ..7
-  D, // heh, what should we do with Deuterium?
-  END
+  X=0,  ///< Unknown element (used for unrecognized atoms in PDB)
+  H, He, Li, Be, B, C, N, O, F, Ne, Na, Mg, Al, Si, P, S, Cl, Ar,  ///< Periods 1-3
+  K, Ca, Sc, Ti, V, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ga, Ge, As, Se, Br, Kr,  ///< Period 4
+  Rb, Sr, Y, Zr, Nb, Mo, Tc, Ru, Rh, Pd, Ag, Cd, In, Sn, Sb, Te, I, Xe,   ///< Period 5
+  Cs, Ba, La, Ce, Pr, Nd, Pm, Sm, Eu, Gd, Tb, Dy, Ho, Er, Tm, Yb, Lu,     ///< Period 6..
+  Hf, Ta, W, Re, Os, Ir, Pt, Au, Hg, Tl, Pb, Bi, Po, At, Rn,              ///< ..Period 6
+  Fr, Ra, Ac, Th, Pa, U, Np, Pu, Am, Cm, Bk, Cf, Es, Fm, Md, No, Lr,      ///< Period 7..
+  Rf, Db, Sg, Bh, Hs, Mt, Ds, Rg, Cn, Nh, Fl, Mc, Lv, Ts, Og,            ///< ..Period 7
+  D,    ///< Deuterium (isotope of hydrogen, treated separately)
+  END   ///< Sentinel: one past last element
 };
 
+/// @brief Check if element is hydrogen or deuterium.
 inline bool is_hydrogen(El el) { return el == El::H || el == El::D; }
 
+/// @brief Get periodic table period (row) of element.
+/// @param el Element enumeration value.
+/// @return Period number (1-7) or 0 for unknown/sentinel elements.
 inline std::int8_t element_row(El el) {
   // Lookup table for periodic table periods (rows) by element ordinal (0-118)
   static constexpr std::int8_t rows[119] = {
@@ -58,7 +71,10 @@ inline std::int8_t element_row(El el) {
   return (n >= 0 && n <= 118) ? rows[n] : (int8_t) 0;
 }
 
-// Periodic table row and group information
+/// @brief Get periodic table group (column) of element.
+/// @param el Element enumeration value.
+/// @return Group number (1-18) or 0 for unknown/sentinel elements.
+/// @details Lanthanides (57-71) and actinides (89-103) are assigned to group 3.
 inline std::int8_t element_group(El el) {
   // Lookup table for periodic table groups (1-18) by element ordinal (0-118)
   // Lanthanides (57-71) and actinides (89-103) are assigned to group 3
@@ -94,7 +110,12 @@ inline std::int8_t element_group(El el) {
 
 
 
-// arbitrary division into metals and non-metals (Ge and Sb are metals here)
+/// @brief Check if element is classified as a metal.
+/// @param el Element enumeration value.
+/// @return True if element is a metal; false otherwise.
+/// @details Uses a classification where Ge and Sb are considered metals;
+/// some transition metals have unusual definitions for consistency.
+/// This is a mutable reference to allow runtime customization.
 inline bool& is_metal_value(El el) {
   static bool table[] = {
     // X     H     He
@@ -130,16 +151,24 @@ inline bool& is_metal_value(El el) {
   return table[static_cast<int>(el)];
 }
 
+/// @brief Check if element is a metal (const version).
 inline bool is_metal(El el) { return is_metal_value(el); }
+
+/// @brief Modify metal classification at runtime.
+/// @param el Element to reclassify.
+/// @param v True to mark as metal; false to mark as non-metal.
 inline void set_is_metal(El el, bool v) { is_metal_value(el) = v; }
 
-// Helper function, not public. Replaces =='s in static_assert comparisons
-// that were reported to fail on i386 / GCC 13: the numbers were compared
-// as 80-bit, the tabulated value was double-rounded, the literal was not.
+/// @brief Helper function for near-equal double comparisons.
+/// @internal Used in static_assert checks with floating-point tabulated values.
 constexpr bool ce_almost_eq(double x, double y) {
   return -1e-6 < x-y && x-y < 1e-6;
 }
 
+/// @brief Get standard atomic weight (mass number) of element.
+/// @param el Element enumeration value.
+/// @return Atomic weight in unified atomic mass units (u).
+/// @details Returns 1.0 for unknown element X. Deuterium (D) returns 2.0141.
 inline double molecular_weight(El el) {
   static constexpr double weights[] = {
     /*X*/ 1.0,
@@ -179,9 +208,11 @@ inline double molecular_weight(El el) {
   return weights[static_cast<int>(el)];
 }
 
-// Covalent radius data from https://en.wikipedia.org/wiki/Covalent_radius
-// which in turn comes from
-// Cordero et al (2008). "Covalent radii revisited". Dalton Trans. 21, 2832
+/// @brief Get covalent radius of element.
+/// @param el Element enumeration value.
+/// @return Covalent radius in Ångströms.
+/// @details Data from Cordero et al (2008). "Covalent radii revisited".
+/// Dalton Trans. 21, 2832. https://en.wikipedia.org/wiki/Covalent_radius
 inline float covalent_radius(El el) {
   static constexpr float radii[] = {
     /*X*/ 0.50f,
@@ -220,13 +251,17 @@ inline float covalent_radius(El el) {
   return radii[static_cast<int>(el)];
 }
 
-// Van der Waals radii. Taken from:
-// https://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)
-// which cites two sources:
-// J. Phys. Chem. A 2009, 113, 19, 5806 https://doi.org/10.1021/jp8111556
-// J. Phys. Chem. 1964, 68, 3, 441 https://doi.org/10.1021/j100785a001
-// Missing values (and values for a lot of elements were missing)
-// were substituted with values from cctbx van_der_waals_radii.py.
+/// @brief Get van der Waals radius of element.
+/// @param el Element enumeration value.
+/// @return Van der Waals radius in Ångströms.
+/// @details Data supplemented with cctbx values.
+/// @par References
+/// Mantina, M., Chamberlin, A.C., Valero, R., Cramer, C.J. & Truhlar, D.G. (2009).
+/// Consistent van der Waals radii for the whole main group.
+/// J. Phys. Chem. A 113, 5806–5812. https://doi.org/10.1021/jp8111556
+///
+/// Bondi, A. (1964). van der Waals Volumes and Radii.
+/// J. Phys. Chem. 68, 441–451. https://doi.org/10.1021/j100785a001
 inline float vdw_radius(El el) {
   static constexpr float radii[] = {
     /*X*/  1.00f,
@@ -266,8 +301,12 @@ inline float vdw_radius(El el) {
 }
 
 
-typedef const char elname_t[3];
+typedef const char elname_t[3]; ///< Element symbol buffer (2 chars + terminator).
 
+/// @brief Get element symbol in standard case (e.g., "Mg").
+/// @param el Element enumeration value.
+/// @return Pointer to 2-character (plus NUL) element symbol.
+/// @details Returns "X" for unknown element, "" for END sentinel.
 inline const char* element_name(El el) {
   static constexpr elname_t names[] = {
     "X",  "H",  "He", "Li", "Be", "B",  "C",  "N",  "O", "F", "Ne",
@@ -293,6 +332,9 @@ inline const char* element_name(El el) {
   return names[static_cast<int>(el)];
 }
 
+/// @brief Get element symbol in uppercase (e.g., "MG").
+/// @param el Element enumeration value.
+/// @return Reference to 2-character uppercase element symbol.
 inline elname_t& element_uppercase_name(El el) {
   static constexpr elname_t names[] = {
     "X",  "H",  "HE", "LI", "BE", "B",  "C",  "N",  "O", "F", "NE",
@@ -340,6 +382,12 @@ inline El find_single_letter_element(char c) {
 }
 } // namespace impl
 
+/// @brief Look up element by symbol string.
+/// @param symbol Element symbol (1-2 characters, case-insensitive).
+///        Examples: "H", "C", "N", "Mg", "Zn".
+/// @return Element enumeration value, or El::X if not found.
+/// @details Handles single-letter elements quickly; returns El::X for nullptr
+///          or empty string. Single-letter matching is case-insensitive.
 inline El find_element(const char* symbol) {
   if (symbol == nullptr || symbol[0] == '\0')
     return El::X;
@@ -360,32 +408,77 @@ inline El find_element(const char* symbol) {
   return El::X;
 }
 
+/// @brief Convenient wrapper for element properties and operations.
+/// @details Provides multiple constructors for flexibility and aggregates
+/// element queries (weight, radii, metal classification, etc.).
 struct Element {
-  El elem;
+  El elem; ///< Element enumeration value
 
+  /// @brief Implicit conversion from El enumeration.
   /*implicit*/ Element(El e) noexcept : elem(e) {}
+
+  /// @brief Construct from element symbol string.
+  /// @param str Element symbol (e.g., "N", "Zn"). Returns El::X if not found.
   explicit Element(const char* str) noexcept : elem(find_element(str)) {}
+
+  /// @brief Construct from std::string element symbol.
   explicit Element(const std::string& s) noexcept : Element(s.c_str()) {}
+
+  /// @brief Construct from atomic number (1-118).
+  /// @param number Atomic number; 0 or out-of-range returns El::X.
   explicit Element(int number) noexcept
     : elem(static_cast<El>(number > 0 && number <= 118 ? number : 0)) {}
+
+  /// @brief Implicit conversion to El enumeration.
   /*implicit*/ operator El() const { return elem; }
+
+  /// @brief Equality comparison with El enumeration.
   bool operator==(El e) const { return elem == e; }
+
+  /// @brief Inequality comparison with El enumeration.
   bool operator!=(El e) const { return elem != e; }
-  // avoid Clang -Wambiguous-reversed-operator in C++20
+
+  /// @brief Inequality comparison with another Element.
   bool operator!=(Element o) const { return elem != o.elem; }
 
+  /// @brief Get enumeration ordinal (0-120).
+  /// @return Integer value of elem (includes X=0, D=119, END=120).
   int ordinal() const { return static_cast<int>(elem); }
+
+  /// @brief Get atomic number (1-118).
+  /// @return Atomic number; deuterium (D) returns 1 (H's atomic number).
   int atomic_number() const { return elem == El::D ? 1 : ordinal(); }
+
+  /// @brief Check if element is hydrogen or deuterium.
   bool is_hydrogen() const { return gemmi::is_hydrogen(elem); }
+
+  /// @brief Get standard atomic weight.
+  /// @return Weight in atomic mass units (u).
   double weight() const { return molecular_weight(elem); }
+
+  /// @brief Get covalent radius.
+  /// @return Radius in Ångströms.
   float covalent_r() const { return covalent_radius(elem); }
+
+  /// @brief Get van der Waals radius.
+  /// @return Radius in Ångströms.
   float vdw_r() const { return vdw_radius(elem); }
+
+  /// @brief Check if element is classified as a metal.
   bool is_metal() const { return gemmi::is_metal(elem); }
+
+  /// @brief Check if element is in Group 17 (halogens).
   bool is_halogen() const { return element_group(elem) == 17; }
+
+  /// @brief Check if element is in Group 16 (chalcogens: O, S, Se, Te, Po).
   bool is_chalcogen() const { return element_group(elem) == 16; }
-  // return name such as Mg (not MG)
+
+  /// @brief Get element symbol with standard case (e.g., "Mg").
+  /// @return Pointer to 2-character NUL-terminated string.
   const char* name() const { return element_name(elem); }
-  // return uppercase name such as MG
+
+  /// @brief Get element symbol in uppercase (e.g., "MG").
+  /// @return Reference to 2-character uppercase symbol.
   const char* uname() const { return element_uppercase_name(elem); }
 };
 

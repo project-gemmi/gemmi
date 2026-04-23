@@ -5,6 +5,14 @@
 // If this is all that you need from Gemmi you can just copy this file,
 // src/symmetry.cpp fail.hpp and LICENSE.txt to your project.
 
+/// @file
+/// @brief Crystallographic symmetry operations, space groups, and reciprocal-space ASU.
+///
+/// This header provides core crystallographic symmetry data structures for macromolecular
+/// crystallography: symmetry operations (Op), groups of operations (GroupOps), space groups
+/// (SpaceGroup), and reciprocal-space asymmetric units (ReciprocalAsu). It also provides
+/// functions for parsing, converting, and querying these structures.
+
 #ifndef GEMMI_SYMMETRY_HPP_
 #define GEMMI_SYMMETRY_HPP_
 
@@ -23,32 +31,60 @@ namespace gemmi {
 
 // OP
 
-// Op is a symmetry operation, or a change-of-basic transformation,
-// or a different operation of similar kind.
-// Both "rotation" matrix and translation vector are fractional, with DEN
-// used as the denominator.
+/// @brief A crystallographic symmetry operation or change-of-basis transformation.
+///
+/// Encodes both a fractional rotation matrix and a fractional translation vector.
+/// Both are stored with a common denominator DEN=24 to handle fractions like 1/8
+/// that appear in change-of-basis operations and advanced symmetry settings.
+///
+/// The encoding is: each matrix element m[i][j] and translation t[i] represents
+/// the rational number (element / DEN). For example, an element value of 24 represents
+/// 1.0, a value of 12 represents 0.5, and so on.
+///
+/// Real-space operations apply as: x' = (rot * x + tran) / DEN.
+/// Reciprocal-space (Miller index) operations apply as: h' = rot^T * h / DEN
+/// (note the transpose of the rotation matrix).
+///
+/// The notation field ('x' for real space, 'h' for reciprocal space, or ' ' for generic)
+/// distinguishes between coordinate transformations and Miller index transformations.
 struct GEMMI_DLL Op {
-  static constexpr int DEN = 24;  // 24 to handle 1/8 in change-of-basis
+  /// @brief Denominator for rational fraction encoding. Set to 24 to handle 1/8.
+  static constexpr int DEN = 24;
   typedef std::array<std::array<int, 3>, 3> Rot;
   typedef std::array<int, 3> Tran;
 
+  /// @brief 3x3 rotation matrix with elements encoded as integers (divide by DEN for the actual value).
   Rot rot;
+  /// @brief 3D translation vector with elements encoded as integers (divide by DEN for the actual value).
   Tran tran;
+  /// @brief Space notation: 'x' for real-space (xyz), 'h' for reciprocal-space (hkl), ' ' for generic.
   char notation = ' ';
 
+  /// @brief Check if this operation is in reciprocal space (hkl).
+  /// @return true if notation == 'h', false otherwise
   bool is_hkl() const { return notation == 'h'; }
 
+  /// @brief Return a copy of this operation with reciprocal-space (hkl) notation, clearing the translation.
   Op as_hkl() const {
     return is_hkl() ? *this : Op{rot, {0,0,0}, 'h'};
   }
+  /// @brief Return a copy of this operation with real-space (xyz) notation, clearing the translation.
   Op as_xyz() const {
     return is_hkl() ? Op{rot, {0,0,0}, 'x'} : *this;
   }
 
+  /// @brief Generate a string representation of this operation in crystallographic triplet notation (e.g., "x,y,z").
+  /// @param style Style character (optional) for output formatting
+  /// @return A string such as "x+1/2,y,z" or "-h,-k,l"
   std::string triplet(char style=' ') const;
 
+  /// @brief Compute the inverse of this symmetry operation.
+  /// @return A new Op representing the inverse transformation
+  /// @throw std::runtime_error if the rotation matrix is singular
   Op inverse() const;
 
+  /// @brief Wrap translation components into the range [0, DEN).
+  /// @return A translation vector with elements in [0, DEN), representing coordinates in [0, 1).
   Op::Tran wrapped_tran() const {
     Op::Tran t = tran;
     for (int i = 0; i != 3; ++i) {
@@ -60,43 +96,67 @@ struct GEMMI_DLL Op {
     return t;
   }
 
-  // If the translation points outside of the unit cell, wrap it.
+  /// @brief Normalize the translation to the range [0, DEN) (unit cell).
+  /// @return Reference to this operation for chaining
   Op& wrap() {
     tran = wrapped_tran();
     return *this;
   }
 
+  /// @brief Add a translation vector to this operation's translation component.
+  /// @param a Translation vector to add
+  /// @return Reference to this operation for chaining
   Op& translate(const Tran& a) {
     for (int i = 0; i != 3; ++i)
       tran[i] += a[i];
     return *this;
   }
 
+  /// @brief Return a new operation with the given translation added.
+  /// @param a Translation vector to add
+  /// @return A new Op with modified translation
   Op translated(const Tran& a) const { return Op(*this).translate(a); }
 
+  /// @brief Add a centering vector and normalize to unit cell.
+  /// @param a Centering vector to add
+  /// @return A new Op with translation added and wrapped to [0, DEN)
   Op add_centering(const Tran& a) const { return translated(a).wrap(); }
 
+  /// @brief Return the negation of the rotation matrix (inversion).
+  /// @return A 3x3 matrix with all elements negated
   Rot negated_rot() const {
     return {{{-rot[0][0], -rot[0][1], -rot[0][2]},
              {-rot[1][0], -rot[1][1], -rot[1][2]},
              {-rot[2][0], -rot[2][1], -rot[2][2]}}};
   }
 
+  /// @brief Compute the transpose of a rotation matrix.
+  /// @param rot Input rotation matrix
+  /// @return Transposed matrix
   static Rot transpose(const Rot& rot) {
     return {{{rot[0][0], rot[1][0], rot[2][0]},
              {rot[0][1], rot[1][1], rot[2][1]},
              {rot[0][2], rot[1][2], rot[2][2]}}};
   }
+  /// @brief Return the transpose of this operation's rotation matrix.
+  /// @return Transposed rotation matrix
   Rot transposed_rot() const { return transpose(rot); }
 
-  // DEN^3 for rotation, -DEN^3 for rotoinversion
+  /// @brief Compute the determinant of the rotation matrix.
+  /// @return DEN^3 (=13824) for proper rotations, -DEN^3 for rotoinversions, or 0 if singular
   int det_rot() const {
     return rot[0][0] * (rot[1][1] * rot[2][2] - rot[1][2] * rot[2][1])
          - rot[0][1] * (rot[1][0] * rot[2][2] - rot[1][2] * rot[2][0])
          + rot[0][2] * (rot[1][0] * rot[2][1] - rot[1][1] * rot[2][0]);
   }
 
-  // Rotation-part type based on Table 1 in RWGK, Acta Cryst. A55, 383 (1999)
+  /// @brief Determine the rotation type (identity, 2-fold, 3-fold, etc.).
+  /// @return Rotation type code (0 = none, 1 = 1-fold identity, 2 = 2-fold, 3 = 3-fold,
+  ///         4 = 4-fold, 6 = 6-fold, -N for rotoinversion).
+  /// @par References
+  /// Grosse-Kunstleve, R.W. (1999). Algorithms for deriving crystallographic
+  /// space-group information. Acta Cryst. A55, 383–395.
+  /// https://doi.org/10.1107/S0108767398010186
   int rot_type() const {
     int det = det_rot();
     int tr_den = rot[0][0] + rot[1][1] + rot[2][2];
@@ -107,6 +167,10 @@ struct GEMMI_DLL Op {
     return 0;
   }
 
+  /// @brief Combine two symmetry operations: result = this * b (first apply b, then apply this).
+  /// @param b The second operation to apply
+  /// @return New operation representing the combined transformation
+  /// @note Does NOT wrap the translation to [0, DEN). Call wrap() on result if needed.
   Op combine(const Op& b) const {
     if (is_hkl() != b.is_hkl())
       fail("can't combine real- and reciprocal-space Op");
@@ -125,6 +189,10 @@ struct GEMMI_DLL Op {
     return r;
   }
 
+  /// @brief Apply this real-space operation to a Cartesian coordinate.
+  /// @param xyz Coordinate vector [x, y, z]
+  /// @return Transformed coordinate (rot * xyz + tran) / DEN
+  /// @throw std::runtime_error if this operation is in reciprocal space (is_hkl() == true)
   std::array<double, 3> apply_to_xyz(const std::array<double, 3>& xyz) const {
     if (is_hkl())
       fail("can't apply reciprocal-space Op to xyz");
@@ -135,27 +203,43 @@ struct GEMMI_DLL Op {
     return out;
   }
 
+  /// @brief Type alias for Miller indices (hkl).
   // Miller is defined in the same way in namespace gemmi in unitcell.hpp
   using Miller = std::array<int, 3>;
 
+  /// @brief Apply rotation to Miller indices without dividing by DEN.
+  /// @param hkl Miller indices
+  /// @return rot^T * hkl (in units of DEN; divide by DEN for actual result)
+  /// @note Applies the transpose of the rotation matrix (reciprocal-space convention)
   Miller apply_to_hkl_without_division(const Miller& hkl) const {
     Miller r;
     for (int i = 0; i != 3; ++i)
       r[i] = (rot[0][i] * hkl[0] + rot[1][i] * hkl[1] + rot[2][i] * hkl[2]);
     return r;
   }
+  /// @brief Divide Miller indices by DEN (convert from encoded to actual values).
+  /// @param hkl Miller indices encoded with denominator DEN
+  /// @return hkl / DEN (integer division)
   static Miller divide_hkl_by_DEN(const Miller& hkl) {
     return {{ hkl[0] / DEN, hkl[1] / DEN, hkl[2] / DEN }};
   }
+  /// @brief Apply this operation to Miller indices.
+  /// @param hkl Miller indices [h, k, l]
+  /// @return Transformed Miller indices rot^T * hkl / DEN
   Miller apply_to_hkl(const Miller& hkl) const {
     return divide_hkl_by_DEN(apply_to_hkl_without_division(hkl));
   }
 
+  /// @brief Compute the phase shift caused by this operation's translation component.
+  /// @param hkl Miller indices
+  /// @return Phase shift in radians: -2π * (h*t_x + k*t_y + l*t_z) / DEN
   double phase_shift(const Miller& hkl) const {
     constexpr double mult = -2 * 3.1415926535897932384626433832795 / Op::DEN;
     return mult * (hkl[0] * tran[0] + hkl[1] * tran[1] + hkl[2] * tran[2]);
   }
 
+  /// @brief Convert to a 4x4 integer Seitz matrix representation.
+  /// @return 4x4 homogeneous transformation matrix (rotation|translation) / (0 0 0 | 1)
   std::array<std::array<int, 4>, 4> int_seitz() const {
     std::array<std::array<int, 4>, 4> t;
     for (int i = 0; i < 3; ++i)
@@ -164,6 +248,8 @@ struct GEMMI_DLL Op {
     return t;
   }
 
+  /// @brief Convert to a 4x4 double-precision Seitz matrix representation.
+  /// @return 4x4 homogeneous transformation matrix with normalized (divided by DEN) elements
   std::array<std::array<double, 4>, 4> float_seitz() const {
     std::array<std::array<double, 4>, 4> t;
     double m = 1.0 / Op::DEN;
@@ -173,23 +259,40 @@ struct GEMMI_DLL Op {
     return t;
   }
 
+  /// @brief Create an identity operation.
+  /// @return Identity operation: rot=I, tran=0, notation=' '
   static constexpr Op identity() {
     return {{{{DEN,0,0}, {0,DEN,0}, {0,0,DEN}}}, {0,0,0}, ' '};
   }
+  /// @brief Create an inversion (point reflection) rotation matrix.
+  /// @return 3x3 matrix representing -I (negative identity)
   static constexpr Op::Rot inversion_rot() {
     return {{{-DEN,0,0}, {0,-DEN,0}, {0,0,-DEN}}};
   }
+  /// @brief Less-than comparison operator for sorting.
+  /// @param rhs Operation to compare to
+  /// @return true if (rot, tran) lexicographically < (rhs.rot, rhs.tran)
   bool operator<(const Op& rhs) const {
     return std::tie(rot, tran) < std::tie(rhs.rot, rhs.tran);
   }
 };
 
+/// @brief Equality comparison for operations (notation is ignored).
 inline bool operator==(const Op& a, const Op& b) {
   return a.rot == b.rot && a.tran == b.tran;
 }
+/// @brief Inequality comparison for operations.
 inline bool operator!=(const Op& a, const Op& b) { return !(a == b); }
 
+/// @brief Compose two symmetry operations: a * b applies b first, then a.
+/// @param a First operation
+/// @param b Second operation
+/// @return New operation representing composition, with wrapped translation
 inline Op operator*(const Op& a, const Op& b) { return a.combine(b).wrap(); }
+/// @brief In-place composition operator.
+/// @param a Operation to modify
+/// @param b Operation to apply
+/// @return Reference to modified a
 inline Op& operator*=(Op& a, const Op& b) { a = a * b; return a; }
 
 inline Op Op::inverse() const {
@@ -215,20 +318,34 @@ inline Op Op::inverse() const {
   return inv;
 }
 
-// inverse of Op::float_seitz()
+/// @brief Convert a 4x4 Seitz matrix to an Op structure (inverse of Op::float_seitz()).
+/// @param t 4x4 homogeneous transformation matrix
+/// @return Equivalent Op with encoded rotation and translation (multiplied by DEN)
 GEMMI_DLL Op seitz_to_op(const std::array<std::array<double,4>, 4>& t);
 
-// helper function for use in AsuBrick::str()
+/// @brief Helper function to append a fractional value as a string.
+/// @param s String to append to
+/// @param w Encoded value (numerator * DEN / denominator)
 GEMMI_DLL void append_op_fraction(std::string& s, int w);
 
-// TRIPLET -> OP
+/// @brief Parse one component of a crystallographic triplet (e.g., "x+1/2" from "x+1/2,y,z").
+/// @param s String to parse
+/// @param notation Output parameter: 'x' for real-space, 'h' for reciprocal-space
+/// @param decimal_fract Optional output: decoded decimal fractional part
+/// @return Array of 4 integers encoding [coeff_x, coeff_y, coeff_z, constant*DEN]
 GEMMI_DLL std::array<int, 4> parse_triplet_part(const std::string& s, char& notation,
                                                 double* decimal_fract=nullptr);
+/// @brief Parse a crystallographic triplet string into an Op.
+/// @param s Triplet string (e.g., "x+1/2,y,z" or "-h,-k,l")
+/// @param notation Notation character: 'x' for real-space, 'h' for reciprocal-space, ' ' to auto-detect
+/// @return Op representing the parsed transformation
 GEMMI_DLL Op parse_triplet(const std::string& s, char notation=' ');
 
 // GROUPS OF OPERATIONS
 
-// corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
+/// @brief Get centring (lattice) vectors for a given centring type.
+/// @param centring_type Centring character: P, A, B, C, I, F, R, H, S, T
+/// @return Vector of translation vectors (centering vectors). Corresponds to Table A1.4.2.2 in ITfC vol.B (edition 2010)
 inline std::vector<Op::Tran> centring_vectors(char centring_type) {
   constexpr int h = Op::DEN / 2;
   constexpr int t = Op::DEN / 3;
@@ -250,17 +367,31 @@ inline std::vector<Op::Tran> centring_vectors(char centring_type) {
   }
 }
 
-
+/// @brief A crystallographic space group represented as generators and centring vectors.
+///
+/// GroupOps separates symmetry operations into two parts:
+/// - sym_ops: primitive symmetry operations (generators or full group) in the conventional cell
+/// - cen_ops: centring vectors (including the origin {0,0,0})
+///
+/// The complete set of symmetry operations is obtained by combining each sym_op with each cen_op.
+/// The first sym_op is always the identity; the first cen_op is always {0,0,0}.
 struct GroupOps {
+  /// @brief Primitive symmetry operations (generators). sym_ops[0] is always identity.
   std::vector<Op> sym_ops;
+  /// @brief Centring translation vectors. cen_ops[0] is always {0,0,0}.
   std::vector<Op::Tran> cen_ops;
 
+  /// @brief Return the total number of symmetry operations (|sym_ops| * |cen_ops|).
   int order() const { return static_cast<int>(sym_ops.size()*cen_ops.size()); }
 
+  /// @brief Generate all missing symmetry operations from the current generators using Dimino's algorithm.
   void add_missing_elements();
+  /// @brief Second part of group generation algorithm (used internally and by twin.hpp).
   void add_missing_elements_part2(const std::vector<Op>& gen,
                                   size_t max_size, bool ignore_bad_gen);
 
+  /// @brief Add inversion (point reflection) symmetry if not already present.
+  /// @return true if inversion was added, false if it was already present
   bool add_inversion() {
     size_t init_size = sym_ops.size();
     sym_ops.reserve(2 * init_size);
@@ -275,6 +406,9 @@ struct GroupOps {
     return true;
   }
 
+  /// @brief Determine the Bravais lattice centring type from cen_ops.
+  /// @return Character: 'P' (primitive), 'A'/'B'/'C' (base-centered), 'I' (body-centered),
+  ///         'F' (face-centered), 'R'/'H'/'S'/'T' (rhombohedral variants), or 0 if unknown
   char find_centering() const {
     if (cen_ops.size() == 1 && cen_ops[0] == Op::Tran{0, 0, 0})
       return 'P';
@@ -290,6 +424,9 @@ struct GroupOps {
     return 0;
   }
 
+  /// @brief Find a symmetry operation by its rotation matrix.
+  /// @param r Rotation matrix to find
+  /// @return Pointer to the operation if found, nullptr otherwise
   Op* find_by_rotation(const Op::Rot& r) {
     for (Op& op : sym_ops)
       if (op.rot == r)
@@ -297,14 +434,22 @@ struct GroupOps {
     return nullptr;
   }
 
+  /// @brief Find a symmetry operation by its rotation matrix (const version).
+  /// @param r Rotation matrix to find
+  /// @return Pointer to the operation if found, nullptr otherwise
   const Op* find_by_rotation(const Op::Rot& r) const {
     return const_cast<GroupOps*>(this)->find_by_rotation(r);
   }
 
+  /// @brief Check if the space group is centrosymmetric (has an inversion center).
+  /// @return true if inversion (-I rotation) is present in sym_ops
   bool is_centrosymmetric() const {
     return find_by_rotation(Op::inversion_rot()) != nullptr;
   }
 
+  /// @brief Check if a reflection plane maps hkl to -hkl (Miller index centric condition).
+  /// @param hkl Miller indices to check
+  /// @return true if some operation maps hkl to -hkl
   bool is_reflection_centric(const Op::Miller& hkl) const {
     Op::Miller mhkl = {{-Op::DEN * hkl[0], -Op::DEN * hkl[1], -Op::DEN * hkl[2]}};
     for (const Op& op : sym_ops)
@@ -313,6 +458,9 @@ struct GroupOps {
     return false;
   }
 
+  /// @brief Count operations that map hkl to itself (without considering centring).
+  /// @param hkl Miller indices
+  /// @return Number of sym_ops that fix hkl (multiplicity factor)
   int epsilon_factor_without_centering(const Op::Miller& hkl) const {
     Op::Miller denh = {{Op::DEN * hkl[0], Op::DEN * hkl[1], Op::DEN * hkl[2]}};
     int epsilon = 0;
@@ -321,14 +469,24 @@ struct GroupOps {
         ++epsilon;
     return epsilon;
   }
+  /// @brief Count all operations (including centring) that map hkl to itself.
+  /// @param hkl Miller indices
+  /// @return epsilon_factor_without_centering * |cen_ops|
   int epsilon_factor(const Op::Miller& hkl) const {
     return epsilon_factor_without_centering(hkl) * (int) cen_ops.size();
   }
 
+  /// @brief Check if a centering translation causes a phase shift for the given hkl.
+  /// @param c Centering translation vector
+  /// @param hkl Miller indices
+  /// @return true if (h*c_x + k*c_y + l*c_z) % DEN != 0
   static bool has_phase_shift(const Op::Tran& c, const Op::Miller& hkl) {
     return (hkl[0] * c[0] + hkl[1] * c[1] + hkl[2] * c[2]) % Op::DEN != 0;
   }
 
+  /// @brief Check if a reflection is systematically absent due to centring or screw/glide.
+  /// @param hkl Miller indices
+  /// @return true if the reflection has a phase shift of π (destructive interference)
   bool is_systematically_absent(const Op::Miller& hkl) const {
     for (auto i = cen_ops.begin() + 1; i != cen_ops.end(); ++i)
       if (has_phase_shift(*i, hkl))
@@ -387,9 +545,15 @@ struct GroupOps {
         }
   }
 
+  /// @brief Apply a forward change-of-basis transformation (P_new = cob * P_old * cob^-1).
+  /// @param cob Change-of-basis operation
   void change_basis_forward(const Op& cob) { change_basis_impl(cob, cob.inverse()); }
+  /// @brief Apply a backward change-of-basis transformation.
+  /// @param inv Inverse change-of-basis operation
   void change_basis_backward(const Op& inv) { change_basis_impl(inv.inverse(), inv); }
 
+  /// @brief Get all symmetry operations sorted.
+  /// @return Sorted vector combining all sym_ops with all cen_ops
   std::vector<Op> all_ops_sorted() const {
     std::vector<Op> ops;
     ops.reserve(sym_ops.size() * cen_ops.size());
@@ -400,12 +564,18 @@ struct GroupOps {
     return ops;
   }
 
+  /// @brief Get the n-th symmetry operation (combining sym_ops and cen_ops).
+  /// @param n Index (0-based)
+  /// @return sym_ops[n % |sym_ops|] combined with cen_ops[n / |sym_ops|]
   Op get_op(int n) const {
     int n_cen = n / (int) sym_ops.size();
     int n_sym = n % (int) sym_ops.size();
     return sym_ops.at(n_sym).add_centering(cen_ops.at(n_cen));
   }
 
+  /// @brief Check if two GroupOps represent the same group of operations.
+  /// @param other Other GroupOps to compare
+  /// @return true if all_ops_sorted() are identical
   bool is_same_as(const GroupOps& other) const {
     if (cen_ops.size() != other.cen_ops.size() ||
         sym_ops.size() != other.sym_ops.size())
@@ -413,6 +583,9 @@ struct GroupOps {
     return all_ops_sorted() == other.all_ops_sorted();
   }
 
+  /// @brief Check if two GroupOps have the same centring vectors.
+  /// @param other Other GroupOps to compare
+  /// @return true if cen_ops are the same (ignoring order)
   bool has_same_centring(const GroupOps& other) const {
     if (cen_ops.size() != other.cen_ops.size())
       return false;
@@ -426,6 +599,9 @@ struct GroupOps {
     return v1 == v2;
   }
 
+  /// @brief Check if two GroupOps have the same rotation parts (ignoring translations).
+  /// @param other Other GroupOps to compare
+  /// @return true if rotation matrices in sym_ops are the same (ignoring order)
   bool has_same_rotations(const GroupOps& other) const {
     if (sym_ops.size() != other.sym_ops.size())
       return false;
@@ -439,8 +615,9 @@ struct GroupOps {
     return sorted_rotations(*this) == sorted_rotations(other);
   }
 
-  // minimal multiplicity for real-space grid in each direction
-  // examples: 1,2,1 for P21, 1,1,6 for P61
+  /// @brief Compute minimal grid multiplicity in each direction for real-space sampling.
+  /// @return Array [n_x, n_y, n_z] such that grid spacing <= 1/n in each direction
+  /// @note Examples: {1,2,1} for P2_1, {1,1,6} for P6_1
   std::array<int, 3> find_grid_factors() const {
     const int T = Op::DEN;
     int r[3] = {T, T, T};
@@ -451,6 +628,10 @@ struct GroupOps {
     return {T / r[0], T / r[1], T / r[2]};
   }
 
+  /// @brief Check if two coordinate directions are related by some symmetry operation.
+  /// @param u First direction (0=x, 1=y, 2=z)
+  /// @param v Second direction (0=x, 1=y, 2=z)
+  /// @return true if some operation maps direction u to direction v
   bool are_directions_symmetry_related(int u, int v) const {
     for (const Op& op : sym_ops)
       if (op.rot[u][v] != 0)
@@ -458,7 +639,8 @@ struct GroupOps {
     return false;
   }
 
-  // remove translation part of sym_ops
+  /// @brief Create a symmorphic space group by removing translations.
+  /// @return New GroupOps with all translations set to zero
   GroupOps derive_symmorphic() const {
     GroupOps r(*this);
     for (Op& op : r.sym_ops)
@@ -466,25 +648,32 @@ struct GroupOps {
     return r;
   }
 
+  /// @brief Forward iterator over all symmetry operations in this group.
   struct Iter {
     const GroupOps& gops;
     int n_sym, n_cen;
+    /// @brief Increment iterator to next operation.
     void operator++() {
       if (++n_sym == (int) gops.sym_ops.size()) {
         ++n_cen;
         n_sym = 0;
       }
     }
+    /// @brief Dereference iterator to get current operation.
     Op operator*() const {
       return gops.sym_ops.at(n_sym).translated(gops.cen_ops.at(n_cen)).wrap();
     }
+    /// @brief Equality comparison for iterators.
     bool operator==(const Iter& other) const {
       return n_sym == other.n_sym && n_cen == other.n_cen;
     }
+    /// @brief Inequality comparison for iterators.
     bool operator!=(const Iter& other) const { return !(*this == other); }
   };
 
+  /// @brief Get iterator to the first symmetry operation.
   Iter begin() const { return {*this, 0, 0}; }
+  /// @brief Get iterator to past-the-end position.
   Iter end() const { return {*this, 0, (int) cen_ops.size()}; }
 };
 
@@ -559,8 +748,14 @@ inline GroupOps split_centering_vectors(const std::vector<Op>& ops) {
   return go;
 }
 
+/// @brief Generate symmetry operations from a Hall symbol string.
+/// @param hall Hall symbol string (e.g., "P 1" or "P 2 2 21")
+/// @return GroupOps with generators only (not the complete group)
 GEMMI_DLL GroupOps generators_from_hall(const char* hall);
 
+/// @brief Get the complete group of symmetry operations from a Hall symbol.
+/// @param hall Hall symbol string
+/// @return GroupOps with all elements generated from the Hall symbol
 inline GroupOps symops_from_hall(const char* hall) {
   GroupOps ops = generators_from_hall(hall);
   ops.add_missing_elements();
@@ -569,10 +764,20 @@ inline GroupOps symops_from_hall(const char* hall) {
 
 // CRYSTAL SYSTEMS, POINT GROUPS AND LAUE CLASSES
 
+/// @brief Crystal system classification (one of the seven Bravais lattice families).
 enum class CrystalSystem : unsigned char {
-  Triclinic=0, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, Cubic
+  Triclinic=0, ///< Triclinic (lowest symmetry)
+  Monoclinic,  ///< Monoclinic
+  Orthorhombic, ///< Orthorhombic
+  Tetragonal,  ///< Tetragonal
+  Trigonal,    ///< Trigonal (rhombohedral in rhombohedral axes)
+  Hexagonal,   ///< Hexagonal
+  Cubic        ///< Cubic (highest symmetry)
 };
 
+/// @brief Convert crystal system enum to a string name.
+/// @param system Crystal system to name
+/// @return String: "triclinic", "monoclinic", "orthorhombic", etc.
 inline const char* crystal_system_str(CrystalSystem system) {
   static const char* names[7] = {
     "triclinic", "monoclinic", "orthorhombic", "tetragonal",
@@ -581,11 +786,45 @@ inline const char* crystal_system_str(CrystalSystem system) {
   return names[static_cast<int>(system)];
 }
 
+/// @brief Point group classification (32 crystallographic point groups).
 enum class PointGroup : unsigned char {
-  C1=0, Ci, C2, Cs, C2h, D2, C2v, D2h, C4, S4, C4h, D4, C4v, D2d, D4h, C3,
-  C3i, D3, C3v, D3d, C6, C3h, C6h, D6, C6v, D3h, D6h, T, Th, O, Td, Oh
+  C1=0,   ///< 1 (identity only)
+  Ci,     ///< -1 (inversion)
+  C2,     ///< 2
+  Cs,     ///< m
+  C2h,    ///< 2/m
+  D2,     ///< 222
+  C2v,    ///< mm2
+  D2h,    ///< mmm
+  C4,     ///< 4
+  S4,     ///< -4
+  C4h,    ///< 4/m
+  D4,     ///< 422
+  C4v,    ///< 4mm
+  D2d,    ///< -42m
+  D4h,    ///< 4/mmm
+  C3,     ///< 3
+  C3i,    ///< -3
+  D3,     ///< 32
+  C3v,    ///< 3m
+  D3d,    ///< -3m
+  C6,     ///< 6
+  C3h,    ///< -6
+  C6h,    ///< 6/m
+  D6,     ///< 622
+  C6v,    ///< 6mm
+  D3h,    ///< -62m
+  D6h,    ///< 6/mmm
+  T,      ///< 23
+  Th,     ///< m-3
+  O,      ///< 432
+  Td,     ///< -43m
+  Oh      ///< m-3m
 };
 
+/// @brief Convert point group enum to Hermann-Mauguin notation string.
+/// @param pg Point group to name
+/// @return String in Hermann-Mauguin notation (e.g., "mmm", "4/m")
 inline const char* point_group_hm(PointGroup pg) {
   static const char hm_pointgroup_names[32][6] = {
     "1", "-1", "2", "m", "2/m", "222", "mm2", "mmm",
@@ -596,11 +835,25 @@ inline const char* point_group_hm(PointGroup pg) {
   return hm_pointgroup_names[static_cast<int>(pg)];
 }
 
-// http://reference.iucr.org/dictionary/Laue_class
+/// @brief Laue class (11 centrosymmetric point groups for diffraction).
+/// @see http://reference.iucr.org/dictionary/Laue_class
 enum class Laue : unsigned char {
-  L1=0, L2m, Lmmm, L4m, L4mmm, L3, L3m, L6m, L6mmm, Lm3, Lm3m
+  L1=0,   ///< 1 (triclinic)
+  L2m,    ///< 2/m (monoclinic)
+  Lmmm,   ///< mmm (orthorhombic)
+  L4m,    ///< 4/m (tetragonal)
+  L4mmm,  ///< 4/mmm (tetragonal)
+  L3,     ///< -3 (trigonal)
+  L3m,    ///< -3m (trigonal)
+  L6m,    ///< 6/m (hexagonal)
+  L6mmm,  ///< 6/mmm (hexagonal)
+  Lm3,    ///< m-3 (cubic)
+  Lm3m    ///< m-3m (cubic)
 };
 
+/// @brief Convert point group to its corresponding Laue class.
+/// @param pg Point group
+/// @return Associated Laue class
 inline Laue pointgroup_to_laue(PointGroup pg) {
   static const Laue laue[32] = {
     Laue::L1, Laue::L1,
@@ -618,7 +871,9 @@ inline Laue pointgroup_to_laue(PointGroup pg) {
   return laue[static_cast<int>(pg)];
 }
 
-// return centrosymmetric pointgroup from the Laue class
+/// @brief Get the centrosymmetric point group corresponding to a Laue class.
+/// @param laue Laue class
+/// @return Point group with inversion center
 inline PointGroup laue_to_pointgroup(Laue laue) {
   static const PointGroup pg[11] = {
     PointGroup::Ci, PointGroup::C2h, PointGroup::D2h, PointGroup::C4h,
@@ -628,10 +883,16 @@ inline PointGroup laue_to_pointgroup(Laue laue) {
   return pg[static_cast<int>(laue)];
 }
 
+/// @brief Get string representation of Laue class in Hermann-Mauguin notation.
+/// @param laue Laue class
+/// @return String representation
 inline const char* laue_class_str(Laue laue) {
   return point_group_hm(laue_to_pointgroup(laue));
 }
 
+/// @brief Get the crystal system for a given Laue class.
+/// @param laue Laue class
+/// @return Crystal system classification
 inline CrystalSystem crystal_system(Laue laue) {
   static const CrystalSystem crystal_systems[11] = {
     CrystalSystem::Triclinic,
@@ -645,10 +906,16 @@ inline CrystalSystem crystal_system(Laue laue) {
   return crystal_systems[static_cast<int>(laue)];
 }
 
+/// @brief Get the crystal system for a given point group.
+/// @param pg Point group
+/// @return Crystal system classification
 inline CrystalSystem crystal_system(PointGroup pg) {
   return crystal_system(pointgroup_to_laue(pg));
 }
 
+/// @brief Get point group and symmetry category flags for a space group number.
+/// @param space_group_number Space group number (1-230)
+/// @return Low 5 bits: point group index; bits 5-7: flags (Sohncke, enantiomorphic, symmorphic)
 inline unsigned char point_group_index_and_category(int space_group_number) {
   // 0x20=Sohncke, 0x40=enantiomorphic, 0x80=symmorphic
   enum : unsigned char { S=0x20, E=(0x20|0x40), Y=0x80, Z=(0x20|0x80) };
@@ -680,30 +947,43 @@ inline unsigned char point_group_index_and_category(int space_group_number) {
   return indices[space_group_number-1];
 }
 
+/// @brief Get the point group for a space group.
+/// @param space_group_number Space group number (1-230)
+/// @return Point group of the space group
 inline PointGroup point_group(int space_group_number) {
   auto n = point_group_index_and_category(space_group_number);
   return static_cast<PointGroup>(n & 0x1f);
 }
 
-// true for 65 Sohncke (non-enantiogenic) space groups
+/// @brief Check if a space group is Sohncke (no enantiomorphic pairs).
+/// @param space_group_number Space group number (1-230)
+/// @return true for 65 Sohncke space groups
 inline bool is_sohncke(int space_group_number) {
   return (point_group_index_and_category(space_group_number) & 0x20) != 0;
 }
 
-// true for 22 space groups (11 enantiomorphic pairs)
+/// @brief Check if a space group is enantiomorphic.
+/// @param space_group_number Space group number (1-230)
+/// @return true for 22 space groups (11 enantiomorphic pairs)
 inline bool is_enantiomorphic(int space_group_number) {
   return (point_group_index_and_category(space_group_number) & 0x40) != 0;
 }
 
-// true for 73 space groups
+/// @brief Check if a space group is symmorphic (no screw axes or glide planes).
+/// @param space_group_number Space group number (1-230)
+/// @return true for 73 symmorphic space groups
 inline bool is_symmorphic(int space_group_number) {
   return (point_group_index_and_category(space_group_number) & 0x80) != 0;
 }
 
-/// Inversion center of the Euclidean normalizer that is not at the origin of
-/// reference settings. Returns (0,0,0) if absent. Based on tables in ch. 3.5
-/// of ITA (2016) doi:10.1107/97809553602060000933 (column "Inversion through
-/// a centre at").
+/// @brief Inversion center of the Euclidean normalizer that is not at the origin.
+/// @details Returns (0,0,0) if absent. See ch. 3.5 of ITA (2016),
+/// column "Inversion through a centre at".
+/// @param space_group_number Space group number (1–230).
+/// @return Inversion centre translation, or (0,0,0) if none.
+/// @par References
+/// International Tables for Crystallography, Vol. A (2016), ch. 3.5.
+/// https://doi.org/10.1107/97809553602060000933
 inline Op::Tran nonzero_inversion_center(int space_group_number) {
   constexpr int D = Op::DEN;
   switch (space_group_number) {
@@ -718,11 +998,14 @@ inline Op::Tran nonzero_inversion_center(int space_group_number) {
   }
 }
 
+/// @brief Get a basis operation (change-of-basis) string by index.
+/// @param basisop_idx Index into basis operation table
+/// @return Basis operation string in triplet notation, or nullptr if index is invalid
 GEMMI_DLL const char* get_basisop(int basisop_idx);
 
-
-// Returns a change-of-basis operator for centred -> primitive transformation.
-// The same operator as inverse of z2p_op in sgtbx.
+/// @brief Compute a change-of-basis operator for centred-to-primitive transformation.
+/// @param centring_type Bravais lattice type: 'P', 'A', 'B', 'C', 'I', 'F', 'R', 'H'
+/// @return 3x3 matrix for centred-to-primitive basis change (same as inverse of z2p_op in sgtbx)
 inline Op::Rot centred_to_primitive(char centring_type) {
   constexpr int D = Op::DEN;
   constexpr int H = Op::DEN / 2;
@@ -743,15 +1026,29 @@ inline Op::Rot centred_to_primitive(char centring_type) {
 
 // LIST OF CRYSTALLOGRAPHIC SPACE GROUPS
 
+/// @brief A crystallographic space group definition.
+///
+/// Stores the essential properties of a space group including its ITA number,
+/// Hermann-Mauguin symbol, Hall symbol, and basis operation (change-of-basis from
+/// reference setting). This structure is typically embedded in a static table.
 struct SpaceGroup { // typically 44 bytes
+  /// @brief ITA (International Tables for Crystallography) space group number (1-230).
   int number;
+  /// @brief CCP4 space group number (may differ from ITA for some non-standard settings).
   int ccp4;
-  char hm[11];  // Hermann-Mauguin (international) notation
+  /// @brief Hermann-Mauguin (international) notation, e.g., "P 1 2 1" or "P 21 21 21".
+  char hm[11];
+  /// @brief Extension character: ' ' (default), 'R' (rhombohedral), 'H' (hexagonal), etc.
   char ext;
+  /// @brief Qualifier string for distinguishing settings, e.g., "b" for monoclinic unique axis.
   char qualifier[5];
+  /// @brief Hall symbol string for generating symmetry operations.
   char hall[15];
+  /// @brief Index into basis operation table for non-reference settings; 0 for reference setting.
   int basisop_idx;
 
+  /// @brief Get extended Hermann-Mauguin notation including extension.
+  /// @return String like "P 1 2 1" or "R 3:H"
   std::string xhm() const {
     std::string ret = hm;
     if (ext) {
@@ -761,12 +1058,16 @@ struct SpaceGroup { // typically 44 bytes
     return ret;
   }
 
+  /// @brief Get the Bravais lattice type.
+  /// @return Character: 'P', 'A', 'B', 'C', 'I', 'F' for conventional, or 'P' for primitive rhombohedral
   char centring_type() const { return ext == 'R' ? 'P' : hm[0]; }
 
-  // (old) CCP4 spacegroup names start with H for hexagonal setting
+  /// @brief Get the lattice type used in CCP4 conventions.
+  /// @return Character: 'H' for hexagonal setting, otherwise first character of hm
   char ccp4_lattice_type() const { return ext == 'H' ? 'H' : hm[0]; }
 
-  // P 1 2 1 -> P2, but P 1 1 2 -> P112. R 3:H -> H3.
+  /// @brief Get a short space group symbol without redundant axis labels.
+  /// @return String like "P2" (from "P 1 2 1"), "P112" (from "P 1 1 2"), or "H3" (from "R 3:H")
   std::string short_name() const {
     std::string s(hm);
     size_t len = s.size();
@@ -778,8 +1079,9 @@ struct SpaceGroup { // typically 44 bytes
     return s;
   }
 
-  // As explained in Phenix newsletter CCN_2011_01.pdf#page=12
-  // the PDB uses own, non-standard symbols for rhombohedral space groups.
+  /// @brief Get the PDB convention name for rhombohedral space groups.
+  /// @return String like "R3" or "R32" (non-standard PDB notation)
+  /// @note As explained in Phenix newsletter CCN_2011_01.pdf#page=12, PDB uses own symbols
   std::string pdb_name() const {
     std::string s;
     s += ccp4_lattice_type();
@@ -787,41 +1089,62 @@ struct SpaceGroup { // typically 44 bytes
     return s;
   }
 
+  /// @brief Check if this space group is Sohncke (non-enantiomorphic).
   bool is_sohncke() const { return gemmi::is_sohncke(number); }
+  /// @brief Check if this space group is enantiomorphic.
   bool is_enantiomorphic() const { return gemmi::is_enantiomorphic(number); }
+  /// @brief Check if this space group is symmorphic.
   bool is_symmorphic() const { return gemmi::is_symmorphic(number); }
+  /// @brief Get the point group of this space group.
   PointGroup point_group() const { return gemmi::point_group(number); }
+  /// @brief Get the Hermann-Mauguin notation of the point group.
   const char* point_group_hm() const {
     return gemmi::point_group_hm(point_group());
   }
+  /// @brief Get the Laue class (centrosymmetric point group).
   Laue laue_class() const { return pointgroup_to_laue(point_group()); }
+  /// @brief Get the Laue class as a string in Hermann-Mauguin notation.
   const char* laue_str() const { return laue_class_str(laue_class()); }
+  /// @brief Get the crystal system.
   CrystalSystem crystal_system() const {
     return gemmi::crystal_system(point_group());
   }
+  /// @brief Get the crystal system as a string name.
   const char* crystal_system_str() const {
     return gemmi::crystal_system_str(crystal_system());
   }
+  /// @brief Check if this space group is centrosymmetric (has an inversion center).
   bool is_centrosymmetric() const {
     return laue_to_pointgroup(laue_class()) == point_group();
   }
 
-  /// returns 'a', 'b' or 'c' for monoclinic SG, '\0' otherwise
+  /// @brief Get the unique axis for monoclinic space groups.
+  /// @return 'a', 'b', or 'c' for monoclinic; '\0' for all other crystal systems
   char monoclinic_unique_axis() const {
     if (crystal_system() == CrystalSystem::Monoclinic)
       return qualifier[qualifier[0] == '-' ? 1 : 0];
     return '\0';
   }
 
+  /// @brief Get the basis operation (change-of-basis) string.
+  /// @return Triplet notation string for the basis operation, or empty for reference setting
   const char* basisop_str() const { return get_basisop(basisop_idx); }
+  /// @brief Parse the basis operation into an Op.
+  /// @return Op representing the change-of-basis from reference setting
   Op basisop() const { return parse_triplet(basisop_str()); }
+  /// @brief Check if this is the reference setting.
+  /// @return true if basisop_idx == 0 (no basis operation needed)
   bool is_reference_setting() const { return basisop_idx == 0; }
 
+  /// @brief Get the change-of-basis operator from conventional to primitive cell.
+  /// @return Op for centred-to-primitive transformation
   Op centred_to_primitive() const {
     return {gemmi::centred_to_primitive(centring_type()), {0,0,0}, 'x'};
   }
 
-  /// Returns change-of-hand operator. Compatible with similar sgtbx function.
+  /// @brief Get the change-of-hand operator for enantiomorphic space groups.
+  /// @return Op representing point reflection through an inversion center not at the origin
+  /// @note Returns identity for centrosymmetric space groups (no change of hand possible)
   Op change_of_hand_op() const {
     if (is_centrosymmetric())
       return Op::identity();
@@ -834,21 +1157,34 @@ struct SpaceGroup { // typically 44 bytes
     return op;
   }
 
+  /// @brief Generate the full group of symmetry operations from the Hall symbol.
+  /// @return GroupOps with all symmetry elements (applying Dimino's algorithm)
   GroupOps operations() const { return symops_from_hall(hall); }
 };
 
+/// @brief Alternative name for a space group (for lookups).
 struct SpaceGroupAltName {
+  /// @brief Hermann-Mauguin symbol for this alternative name
   char hm[11];
+  /// @brief Extension character (if any)
   char ext;
+  /// @brief Index into main space group table
   int pos;
 };
 
+/// @brief Static lookup tables for space groups and reciprocal-space ASU definitions.
 struct GEMMI_DLL spacegroup_tables {
+  /// @brief Array of 564 space group entries (multiple settings per ITA number)
   static const SpaceGroup main[564];
+  /// @brief Array of 28 alternative names for space group lookups
   static const SpaceGroupAltName alt_names[28];
+  /// @brief CCP4 reciprocal-space ASU index for each of the 230 space groups
   static const unsigned char ccp4_hkl_asu[230];
 };
 
+/// @brief Find a space group by its CCP4 number.
+/// @param ccp4 CCP4 space group number
+/// @return Pointer to SpaceGroup if found, nullptr otherwise
 inline const SpaceGroup* find_spacegroup_by_number(int ccp4) noexcept {
   if (ccp4 == 0)
     return &spacegroup_tables::main[0];
@@ -858,6 +1194,10 @@ inline const SpaceGroup* find_spacegroup_by_number(int ccp4) noexcept {
   return nullptr;
 }
 
+/// @brief Get a space group by CCP4 number (throws if not found).
+/// @param ccp4 CCP4 space group number
+/// @return Reference to SpaceGroup
+/// @throw std::invalid_argument if space group not found
 inline const SpaceGroup& get_spacegroup_by_number(int ccp4) {
   const SpaceGroup* sg = find_spacegroup_by_number(ccp4);
   if (sg == nullptr)
@@ -866,6 +1206,10 @@ inline const SpaceGroup& get_spacegroup_by_number(int ccp4) {
   return *sg;
 }
 
+/// @brief Get the reference setting (basis operation 0) for an ITA space group number.
+/// @param number ITA space group number (1-230)
+/// @return Reference to SpaceGroup in reference setting
+/// @throw std::invalid_argument if space group number not found
 inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
   for (const SpaceGroup& sg : spacegroup_tables::main)
     if (sg.number == number && sg.is_reference_setting())
@@ -874,15 +1218,22 @@ inline const SpaceGroup& get_spacegroup_reference_setting(int number) {
                               + std::to_string(number));
 }
 
-/// If angles alpha and gamma are provided, they are used to
-/// distinguish hexagonal and rhombohedral settings (e.g. for "R 3").
-/// \param prefer can specify preferred H/R settings and 1/2 origin choice.
-/// For example, prefer="2H" means the origin choice 2 and hexagonal
-/// settings. The default is "1H".
+/// @brief Find a space group by its name (Hermann-Mauguin, Hall, or alternative).
+/// @param name Space group name to search for (case-insensitive variations accepted)
+/// @param alpha Optional: triclinic angle to distinguish H and R settings
+/// @param gamma Optional: triclinic angle to distinguish H and R settings
+/// @param prefer Optional: preference string like "1H" (1st setting, hexagonal) or "2R" (2nd setting, rhombohedral)
+/// @return Pointer to SpaceGroup if found, nullptr otherwise
+/// @note If angles alpha and gamma are provided, they help distinguish hexagonal/rhombohedral
+///       settings for trigonal space groups (e.g., "R 3" with different axis choices)
 GEMMI_DLL const SpaceGroup* find_spacegroup_by_name(std::string name,
                                   double alpha=0., double gamma=0.,
                                   const char* prefer=nullptr);
 
+/// @brief Get a space group by name (throws if not found).
+/// @param name Space group name
+/// @return Reference to SpaceGroup
+/// @throw std::invalid_argument if space group not found
 inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
   const SpaceGroup* sg = find_spacegroup_by_name(name);
   if (sg == nullptr)
@@ -890,10 +1241,15 @@ inline const SpaceGroup& get_spacegroup_by_name(const std::string& name) {
   return *sg;
 }
 
+/// @brief Get the P1 space group (trivial space group with identity only).
+/// @return Reference to P1 space group (number 1)
 inline const SpaceGroup& get_spacegroup_p1() {
   return spacegroup_tables::main[0];
 }
 
+/// @brief Find a space group matching a given set of symmetry operations.
+/// @param gops Group of symmetry operations (rotation matrices and centring)
+/// @return Pointer to matching SpaceGroup, or nullptr if no exact match found
 inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
   char c = gops.find_centering();
   for (const SpaceGroup& sg : spacegroup_tables::main)
@@ -903,13 +1259,25 @@ inline const SpaceGroup* find_spacegroup_by_ops(const GroupOps& gops) {
   return nullptr;
 }
 
-// Reciprocal space asu (asymmetric unit).
-// The same 12 choices of ASU as in CCP4 symlib and cctbx.
+/// @brief Reciprocal-space asymmetric unit (ASU) for a space group.
+///
+/// Defines a unique region in reciprocal space (h,k,l indices) such that
+/// all equivalent reflections related by symmetry are mapped to this region.
+/// This enables efficient data storage and comparison of diffraction data.
+///
+/// Supports 12 CCP4-standard ASU choices and TNT-specific variants (20 total).
 struct ReciprocalAsu {
+  /// @brief Index into CCP4 ASU definition table (0-19)
   int idx;
+  /// @brief Change-of-basis rotation matrix (used if space group is not in reference setting)
   Op::Rot rot{};  // value-initialized only to avoid -Wmaybe-uninitialized
+  /// @brief true if space group is in reference setting, false otherwise
   bool is_ref;
 
+  /// @brief Construct a ReciprocalAsu from a space group.
+  /// @param sg Pointer to SpaceGroup (must not be nullptr)
+  /// @param tnt If true, use TNT-specific ASU definitions instead of CCP4 standard
+  /// @throw std::runtime_error if sg is nullptr
   ReciprocalAsu(const SpaceGroup* sg, bool tnt=false) {
     if (sg == nullptr)
       fail("Missing space group");
@@ -924,6 +1292,9 @@ struct ReciprocalAsu {
     }
   }
 
+  /// @brief Check if Miller indices are within the ASU.
+  /// @param hkl Miller indices (h, k, l)
+  /// @return true if hkl is in the asymmetric unit
   bool is_in(const Op::Miller& hkl) const {
     if (is_ref)
       return is_in_reference_setting(hkl[0], hkl[1], hkl[2]);
@@ -933,6 +1304,11 @@ struct ReciprocalAsu {
     return is_in_reference_setting(r[0], r[1], r[2]);
   }
 
+  /// @brief Check if Miller indices are in the ASU (assuming reference setting).
+  /// @param h h index
+  /// @param k k index
+  /// @param l l index
+  /// @return true if (h,k,l) is in the ASU definition for this idx
   bool is_in_reference_setting(int h, int k, int l) const {
     switch (idx) {
       // 0-9: CCP4 hkl asu,  10-19: TNT hkl asu
@@ -960,6 +1336,8 @@ struct ReciprocalAsu {
     unreachable();
   }
 
+  /// @brief Get a human-readable string describing the ASU boundary condition.
+  /// @return Condition string like "h>=0 and k>=0 and l>=0"
   const char* condition_str() const {
     switch (idx) {
       case 0: return "l>0 or (l=0 and (h>0 or (h=0 and k>=0)))";
@@ -986,8 +1364,12 @@ struct ReciprocalAsu {
     unreachable();
   }
 
-  /// Returns hkl in asu and MTZ ISYM - 2*n-1 for reflections in the positive
-  /// asu (I+ of a Friedel pair), 2*n for reflections in the negative asu (I-).
+  /// @brief Map Miller indices to the ASU and return an MTZ ISYM identifier.
+  /// @param hkl Miller indices
+  /// @param sym_ops Array of symmetry operations to search
+  /// @return Pair: (equivalent hkl in ASU, MTZ ISYM code)
+  /// @note ISYM = 2*n-1 for reflections in positive ASU (Friedel +), 2*n for negative ASU (Friedel -)
+  /// @note ISYM ranges from 1 to 2*|sym_ops| depending on which symmetry operation maps hkl to ASU
   std::pair<Op::Miller,int> to_asu(const Op::Miller& hkl, const std::vector<Op>& sym_ops) const {
     int isym = 0;
     for (const Op& op : sym_ops) {
@@ -1003,11 +1385,19 @@ struct ReciprocalAsu {
     fail("Oops, maybe inconsistent GroupOps?");
   }
 
+  /// @brief Map Miller indices to the ASU using a GroupOps structure.
+  /// @param hkl Miller indices
+  /// @param gops Group of symmetry operations
+  /// @return Pair: (equivalent hkl in ASU, MTZ ISYM code)
   std::pair<Op::Miller,int> to_asu(const Op::Miller& hkl, const GroupOps& gops) const {
     return to_asu(hkl, gops.sym_ops);
   }
 
-  /// Similar to to_asu(), but the second returned value is sign: true for + or centric
+  /// @brief Map Miller indices to the ASU and return a sign flag instead of ISYM.
+  /// @param hkl Miller indices
+  /// @param gops Group of symmetry operations
+  /// @return Pair: (equivalent hkl in ASU, sign) where sign=true for positive/centric, false for negative Friedel pair
+  /// @note For centric reflections, always returns sign=true
   std::pair<Op::Miller,bool> to_asu_sign(const Op::Miller& hkl, const GroupOps& gops) const {
     std::pair<Op::Miller,bool> neg = {{0,0,0}, true};
     for (const Op& op : gops.sym_ops) {
@@ -1028,7 +1418,11 @@ struct ReciprocalAsu {
 } // namespace gemmi
 
 namespace std {
+/// @brief Hash function specialization for symmetry operations.
 template<> struct hash<gemmi::Op> {
+  /// @brief Compute hash of a symmetry operation.
+  /// @param op Operation to hash
+  /// @return Hash value combining rot and tran
   size_t operator()(const gemmi::Op& op) const {
     size_t h = 0;
     for (int i = 0; i != 3; ++i)

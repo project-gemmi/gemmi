@@ -1,3 +1,11 @@
+/// @file floodfill.hpp
+/// @brief Flood fill algorithm for identifying connected regions in 3D grids.
+///
+/// Implements a scanline-based flood fill for marking connected regions in a grid
+/// with periodic boundary conditions and 6-way (face) connectivity.
+/// Useful for identifying solvent envelopes, protein/ligand masks, or other
+/// binary segmentation tasks on crystallographic maps.
+
 // Copyright 2020 Global Phasing Ltd.
 //
 // The flood fill (scanline fill) algorithm for Grid.
@@ -11,19 +19,32 @@
 
 namespace gemmi {
 
-// Land is either 0 (when 1=sea, 0=land) or 1 (when 0=sea, 1=land)
+/// @brief Flood fill algorithm for finding connected regions in a 3D grid.
+/// @tparam T Grid data type (typically int8_t for binary masks)
+/// @tparam Land Value marking the region to fill (0 or 1); fills connected regions with this value
+///
+/// Implements a scanline-based flood fill that respects periodic boundary conditions
+/// and uses 6-way (face) connectivity. The algorithm identifies all grid points
+/// with value @p Land that are connected to a seed point.
 template<typename T, int Land>
 struct FloodFill {
+  /// @brief Reference to the grid being processed
   Grid<T>& mask;
 
+  /// @brief Horizontal line segment within a flood fill region
   struct Line {
-    int u, v, w, ulen;
-    T* ptr;
+    int u;           ///< Starting u (x) coordinate
+    int v;           ///< v (y) coordinate
+    int w;           ///< w (z) coordinate
+    int ulen;        ///< Length of the line in u direction
+    T* ptr;          ///< Pointer to first data element of the line
   };
 
+  /// @brief Result of a flood fill operation: all connected line segments
   struct Result {
-    std::vector<Line> lines;
+    std::vector<Line> lines; ///< All horizontal lines composing the filled region
 
+    /// @brief Total number of points in the filled region
     size_t point_count() const {
       size_t n = 0;
       for (const Line& line : lines)
@@ -32,8 +53,14 @@ struct FloodFill {
     }
   };
 
+  /// @brief Internal marker value (combines Land with a flag bit)
   static constexpr T this_island() { return T(Land|2); }
 
+  /// @brief Mark all points in a line with a given value, handling periodic wraparound.
+  /// @param line Line segment to mark
+  /// @param value Value to write
+  ///
+  /// Handles periodic boundary conditions in the u-direction for lines that wrap around.
   void set_line_values(Line& line, T value) const {
     for (int i = 0; i < std::min(line.ulen, mask.nu - line.u); ++i) {
       assert(line.ptr[i] != value);
@@ -45,12 +72,22 @@ struct FloodFill {
     }
   }
 
+  /// @brief Mark all lines in a filled region with a given value.
+  /// @param r Result containing all lines of the region
+  /// @param value Value to write to each line
   void set_volume_values(Result& r, T value) const {
     for (Line& line : r.lines)
       set_line_values(line, value);
   }
 
-  // Find all connected points with value Land. Change them to this_island().
+  /// @brief Find all grid points with value Land connected to a seed point via face neighbors.
+  /// @param u Starting u (x) coordinate
+  /// @param v Starting v (y) coordinate
+  /// @param w Starting w (z) coordinate
+  /// @return Result containing all connected line segments; points are temporarily marked with this_island()
+  ///
+  /// Uses a scanline algorithm that expands from the seed point to find all connected regions.
+  /// Respects periodic boundary conditions and 6-way (face) connectivity.
   Result find_all_connected_points(int u, int v, int w) {
     Result r;
     T* ptr = &mask.data[mask.index_q(u, v, w)];
@@ -79,6 +116,12 @@ struct FloodFill {
     return r;
   }
 
+  /// @brief Iterate over all connected regions (islands) in the grid, calling a function on each.
+  /// @tparam Func Callable taking a Result (one island)
+  /// @param func Function invoked once per connected region
+  ///
+  /// Scans the entire grid, identifying connected regions with value Land.
+  /// After processing all regions, resets marked points back to Land.
   template<typename Func>
   void for_each_islands(Func func) {
     size_t idx = 0;
@@ -98,6 +141,12 @@ struct FloodFill {
   }
 
 private:
+  /// @brief Internal: expand from a line to find connected lines in neighboring v and w planes.
+  /// @param u Starting u coordinate
+  /// @param v Starting v coordinate
+  /// @param w Starting w coordinate
+  /// @param ulen Length to check
+  /// @param r Result accumulating all connected lines
   void add_lines(int u, int v, int w, int ulen, Result& r) {
     T* ptr = &mask.data[mask.index_q(u, v, w)];
     for (int i = 0; i < std::min(ulen, mask.nu - u); ++i)
@@ -112,6 +161,15 @@ private:
       }
   }
 
+  /// @brief Internal: extract the full horizontal line containing a point.
+  /// @param u Starting u coordinate
+  /// @param v Starting v coordinate
+  /// @param w Starting w coordinate
+  /// @param ptr Pointer to grid data at (u, v, w)
+  /// @return Line segment with full extent in u direction, handling periodic wraparound
+  ///
+  /// Finds the maximal horizontal line of Land values containing the point,
+  /// handling wraparound in the periodic u-direction.
   Line line_from_point(int u, int v, int w, T* ptr) const {
     int len = 1;
     while (u + len < mask.nu && ptr[len] == Land)
@@ -131,6 +189,13 @@ private:
   }
 };
 
+/// @brief Create a binary mask of grid points above (or below) a density threshold.
+/// @param mask Output binary mask grid (1 = above threshold, 0 = below)
+/// @param grid Input electron density or other continuous-valued grid
+/// @param threshold Density threshold value
+/// @param negate If true, invert the comparison (below threshold -> 1)
+///
+/// Copies grid metadata to mask and sets mask data to 1 where grid > threshold (or < threshold if negate).
 inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float>& grid,
                                        double threshold, bool negate=false) {
   mask.copy_metadata_from(grid);
@@ -140,6 +205,17 @@ inline void mask_nodes_above_threshold(Grid<std::int8_t>& mask, const Grid<float
     mask.data[n++] = std::int8_t((negate ? -d : d) > threshold);
 }
 
+/// @brief Identify connected regions above (or below) a threshold using flood fill starting from seeds.
+/// @param grid Input electron density or other continuous-valued grid
+/// @param seeds Vector of seed positions (Angstrom coordinates) to start the flood fill
+/// @param threshold Density threshold; regions above this value are filled
+/// @param negate If true, find regions below threshold instead
+/// @return Binary mask grid (1 = in connected region from seeds, 0 = background)
+///
+/// Creates a mask where 1 indicates points in regions connected to the seed points
+/// and satisfying the threshold criterion. Useful for identifying solvent envelopes
+/// (seed from solvent, find connected regions above threshold) or protein masks
+/// (seed from protein region, find connected regions).
 inline Grid<std::int8_t> flood_fill_above(const Grid<float>& grid,
                                           const std::vector<Position>& seeds,
                                           double threshold,
