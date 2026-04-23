@@ -20,13 +20,25 @@ namespace gemmi {
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #endif
 
+/// @brief Placeholder scattering type where scattering is a single real constant
+///   (zero Gaussians plus one constant term).
+/// Used for neutron coherent scattering.
 template<class Real>
 struct ZeroCoef {
   using Coef = GaussianCoef<0, 1, Real>;
   static Real data[121];
 
+  /// @brief Get scattering length for element.
+  /// @param el element
+  /// @return scattering length
   static Real& get_(El el) { return data[static_cast<int>(el)]; }
+  /// @brief Check if scattering length is available.
+  /// @param el element
+  /// @return true if available
   static bool has(El el) { return static_cast<size_t>(el) < sizeof(data) / sizeof(Real); }
+  /// @brief Get coefficient for element as constant Gaussian.
+  /// @param el element
+  /// @return coefficient
   static Coef get(El el, signed char /*charge*/=0, int /*serial*/=0) { return Coef{{get_(el)}}; }
 };
 
@@ -34,13 +46,25 @@ struct ZeroCoef {
 template<class Real>
 Real ZeroCoef<Real>::data[121] = { /*X*/ 0.0 };
 
+/// @brief Neutron coherent scattering lengths from Neutron News 3(3) 1992.
+/// Real part of the bound coherent scattering length in femtometers (fm).
+/// @tparam Real floating-point type
 template<class Real>
 struct Neutron92 {
   using Coef = GaussianCoef<0, 1, Real>;
   static Real data[121];
 
+  /// @brief Get scattering length for element.
+  /// @param el element
+  /// @return scattering length
   static Real& get_(El el) { return data[static_cast<int>(el)]; }
+  /// @brief Check if non-zero scattering length is available.
+  /// @param el element
+  /// @return true if non-zero
   static bool has(El el) { return get_(el) != 0; }
+  /// @brief Get coefficient for element as constant Gaussian.
+  /// @param el element
+  /// @return coefficient
   static Coef get(El el, signed char /*charge*/=0, int /*serial*/=0) { return Coef{{get_(el)}}; }
 };
 
