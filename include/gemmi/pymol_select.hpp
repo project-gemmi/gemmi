@@ -34,22 +34,29 @@ namespace gemmi {
 
 namespace psimpl {
 
+/// @brief Base class for abstract syntax tree nodes in PyMOL selection expressions.
+/// All selector nodes inherit from this base and implement atom matching logic.
 struct Node {
     virtual ~Node() = default;
+    /// @brief Test whether an atom matches this selection criterion.
+    /// @param a The atom to test
+    /// @return True if the atom matches the selection criterion, false otherwise
     virtual bool match(const gemmi::FlatAtom& a) const = 0;
 };
 
 // --- Logic Nodes ---
 
 struct AndNode : Node {
-    std::unique_ptr<Node> left, right;
+    std::unique_ptr<Node> left;
+    std::unique_ptr<Node> right;
     bool match(const gemmi::FlatAtom& a) const override {
         return left->match(a) && right->match(a);
     }
 };
 
 struct OrNode : Node {
-    std::unique_ptr<Node> left, right;
+    std::unique_ptr<Node> left;
+    std::unique_ptr<Node> right;
     bool match(const gemmi::FlatAtom& a) const override {
         return left->match(a) || right->match(a);
     }
@@ -89,7 +96,8 @@ struct AltLocNode : Node {
 };
 
 struct ResiRangeNode : Node {
-    int min, max;
+    int min;
+    int max;
     ResiRangeNode(int a, int b) : min(a), max(b) {}
     bool match(const gemmi::FlatAtom& a) const override {
         return *a.seq_id.num >= min && *a.seq_id.num <= max;
@@ -97,7 +105,8 @@ struct ResiRangeNode : Node {
 };
 
 struct IndexRangeNode : Node {
-    int min, max;
+    int min;
+    int max;
     IndexRangeNode(int a, int b) : min(a), max(b) {}
     bool match(const gemmi::FlatAtom& a) const override {
         return a.serial >= min && a.serial <= max;
@@ -115,7 +124,7 @@ struct ElementNode : Node {
 };
 
 struct HetatmNode : Node {
-    bool hetatm;  // true = hetatm, false = not hetatm (i.e., ATOM)
+    bool hetatm;
     explicit HetatmNode(bool h) : hetatm(h) {}
     bool match(const gemmi::FlatAtom& a) const override {
         return hetatm ? (a.het_flag == 'H') : (a.het_flag == 'A');
@@ -136,7 +145,14 @@ struct HydrogenNode : Node {
     }
 };
 
-enum class CompareOp { LT, LE, GT, GE, EQ, NE };
+enum class CompareOp {
+    LT,
+    LE,
+    GT,
+    GE,
+    EQ,
+    NE
+};
 
 struct BfactorNode : Node {
     CompareOp op;
@@ -202,7 +218,7 @@ namespace p = tao::pegtl;
 // --- State ---
 struct State {
     std::vector<std::unique_ptr<psimpl::Node>> stack;
-    std::vector<std::string> string_list;  // temp storage for building value lists
+    std::vector<std::string> string_list;
     CompareOp current_op = CompareOp::EQ;
 };
 
@@ -596,7 +612,12 @@ template<> struct action<or_rest> {
 // Public API
 // ============================================================================
 
-// Returns a compiled selection tree
+/// @brief Compile a PyMOL selection string into an abstract syntax tree.
+/// @param selector PyMOL selection syntax string (e.g., "name CA and chain A")
+/// @return A unique pointer to the root Node of the compiled selection tree,
+///         or nullptr if parsing fails
+/// @details The returned tree can be used to test atoms with the match() method.
+///          If parsing fails, an error message is printed to stderr.
 inline std::unique_ptr<psimpl::Node> compile_pymol_selection(const std::string& selector) {
     psimpl::State state;
     tao::pegtl::memory_input<> in(selector, "");
@@ -611,6 +632,12 @@ inline std::unique_ptr<psimpl::Node> compile_pymol_selection(const std::string& 
     }
 }
 
+/// @brief Select atoms from a FlatStructure matching a PyMOL selection query.
+/// @param fs The structure containing atoms to select from
+/// @param query PyMOL selection syntax string
+/// @return Vector of const pointers to atoms matching the selection
+/// @details Compiles the query string into an AST and tests each atom in the structure.
+///          Returns empty vector if the query is invalid or matches no atoms.
 inline std::vector<const gemmi::FlatAtom*>
 select_atoms(const gemmi::FlatStructure& fs, const std::string& query) {
     auto root = compile_pymol_selection(query);
@@ -624,6 +651,12 @@ select_atoms(const gemmi::FlatStructure& fs, const std::string& query) {
     }
     return result;
 }
+
+/// @brief Remove atoms from a FlatStructure that do not match a PyMOL selection.
+/// @param fs The structure to filter (modified in-place)
+/// @param query PyMOL selection syntax string
+/// @details Keeps only atoms matching the query; removes all others.
+///          If the query is invalid, no atoms are removed.
 inline void remove_not_selected(gemmi::FlatStructure& fs, const std::string& query) {
     if (auto root = compile_pymol_selection(query))
       vector_remove_if(fs.table, [&](FlatAtom& atom) { return !root->match(atom); });

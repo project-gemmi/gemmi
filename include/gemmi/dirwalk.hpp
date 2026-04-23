@@ -107,9 +107,17 @@ inline int utf8_tinydir_file_open(tinydir_file* file, const char* path) {
 } // namespace impl
 
 
+/// Template class for iterating over files and directories in a directory tree.
+/// @brief Directory tree walker (depth-first, alphabetical order).
+/// @tparam FileOnly if true, iterate over files only; if false, include directories
+/// @tparam Filter predicate type to filter which files/directories to visit
 template<bool FileOnly=true, typename Filter=impl::IsAnyFile>
 class DirWalk {
 public:
+  /// Construct a DirWalk starting from a given path.
+  /// @brief Initialize directory walker.
+  /// @param path root directory or file path to start traversal
+  /// @param try_pdbid expansion type char (e.g. 'M'), or '\0' to skip PDB code expansion
   explicit DirWalk(const char* path, char try_pdbid='\0') {
     if (impl::utf8_tinydir_file_open(&top_, path) != -1)
       return;
@@ -121,18 +129,31 @@ public:
     }
     sys_fail("Cannot open " + std::string(path));
   }
+  /// Construct a DirWalk from a std::string path.
+  /// @brief Initialize directory walker from string path.
+  /// @param path root directory or file path to start traversal
+  /// @param try_pdbid expansion type char (e.g. 'M'), or '\0' to skip PDB code expansion
   explicit DirWalk(const std::string& path, char try_pdbid='\0')
     : DirWalk(path.c_str(), try_pdbid) {}
+  /// Destructor.
+  /// @brief Clean up resources.
   ~DirWalk() {
     for (auto& d : dirs_)
       tinydir_close(&d.second);
   }
+  /// Push a subdirectory onto the traversal stack.
+  /// @brief Record current position and open a new subdirectory.
+  /// @param cur_pos index of current file in parent directory
+  /// @param path subdirectory path to open
   void push_dir(size_t cur_pos, const _tinydir_char_t* path) {
     dirs_.emplace_back();
     dirs_.back().first = cur_pos;
     if (tinydir_open_sorted(&dirs_.back().second, path) == -1)
       sys_fail("Cannot open directory " + as_utf8(path));
   }
+  /// Pop a subdirectory from the traversal stack.
+  /// @brief Close current directory and return to parent.
+  /// @return position (index) to resume in parent directory
   size_t pop_dir() {
     assert(!dirs_.empty());
     size_t old_pos = dirs_.back().first;
@@ -141,12 +162,20 @@ public:
     return old_pos;
   }
 
+  /// Iterator for directory tree traversal.
+  /// @brief Depth-first iterator over files and directories.
   struct Iter {
     DirWalk& walk;
     size_t cur;
 
+    /// Get reference to current directory.
+    /// @brief Access current tinydir_dir structure.
+    /// @return reference to the current directory being traversed
     const tinydir_dir& get_dir() const { return walk.dirs_.back().second; }
 
+    /// Get current file/directory entry.
+    /// @brief Access the current tinydir_file structure.
+    /// @return reference to current file or directory being traversed
     const tinydir_file& get() const {
       if (walk.dirs_.empty())
         return walk.top_;
@@ -154,16 +183,27 @@ public:
       return get_dir()._files[cur];
     }
 
+    /// Dereference iterator to get file path.
+    /// @brief Get the full path of current file/directory.
+    /// @return current file/directory path as UTF-8 string
     std::string operator*() const { return as_utf8(get().path); }
 
-    // checks for "." and ".."
+    /// Check if name is "." or "..".
+    /// @brief Test if name is a special directory reference.
+    /// @param name filename to check
+    /// @return true if name is "." or ".."
     bool is_special(const _tinydir_char_t* name) const {
       return name[0] == '.' && (name[1] == '\0' ||
                                 (name[1] == '.' && name[2] == '\0'));
     }
 
+    /// Get current traversal depth.
+    /// @brief Return the nesting level in the directory tree.
+    /// @return depth (0 for root level)
     size_t depth() const { return walk.dirs_.size(); }
 
+    /// Advance to next file/directory (internal use).
+    /// @brief Perform one step of depth-first traversal.
     void next() { // depth first
       const tinydir_file& tf = get();
       if (tf.is_dir) {
@@ -182,6 +222,8 @@ public:
       }
     }
 
+    /// Pre-increment operator.
+    /// @brief Advance to next matching file/directory in traversal.
     void operator++() {
       for (;;) {
         next();
@@ -194,11 +236,21 @@ public:
       }
     }
 
-    // == and != is used only to compare with end()
+    /// Equality comparison (for range-based for loops).
+    /// @brief Check if iterator equals another (compared with end()).
+    /// @param o other iterator to compare with
+    /// @return true if both reach end of traversal
     bool operator==(const Iter& o) const { return depth()==0 && cur == o.cur; }
+    /// Inequality comparison (for range-based for loops).
+    /// @brief Check if iterator differs from another (compared with end()).
+    /// @param o other iterator to compare with
+    /// @return true if iterators are at different positions
     bool operator!=(const Iter& o) const { return !operator==(o); }
   };
 
+  /// Get iterator to beginning of traversal.
+  /// @brief Create iterator for range-based for loop.
+  /// @return iterator pointing to first file/directory
   Iter begin() {
     Iter it{*this, 0};
     if (FileOnly && !is_single_file()) // i.e. the top item is a directory
@@ -206,7 +258,13 @@ public:
     return it;
   }
 
+  /// Get iterator to end of traversal.
+  /// @brief Sentinel iterator for range-based for loop.
+  /// @return iterator marking end of traversal
   Iter end() { return Iter{*this, 1}; }
+  /// Check if root path is a single file.
+  /// @brief Test whether the root is a file rather than directory.
+  /// @return true if root path is a file (not a directory)
   bool is_single_file() { return !top_.is_dir; }
 
 private:
@@ -217,12 +275,22 @@ protected:
   Filter filter;
 };
 
+/// @brief Type alias for walking CIF (mmCIF and SF) files.
 using CifWalk = DirWalk<true, impl::IsCifFile>;
+/// @brief Type alias for walking mmCIF files only.
 using MmCifWalk = DirWalk<true, impl::IsMmCifFile>;
+/// @brief Type alias for walking PDB files.
 using PdbWalk = DirWalk<true, impl::IsPdbFile>;
+/// @brief Type alias for walking coordinate files (mmCIF, PDB, ENT).
 using CoorFileWalk = DirWalk<true, impl::IsCoordinateFile>;
 
+/// @brief Directory walker with glob pattern matching.
+/// @details Iterates over files matching a wildcard pattern.
 struct GlobWalk : public DirWalk<true, impl::IsMatchingFile> {
+  /// Construct a GlobWalk with path and glob pattern.
+  /// @brief Initialize glob-filtered directory walker.
+  /// @param path root directory to start traversal
+  /// @param glob glob pattern for filtering files
   GlobWalk(const std::string& path, const std::string& glob) : DirWalk(path) {
     filter.pattern = glob;
   }

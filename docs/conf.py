@@ -1,11 +1,25 @@
 # -*- coding: utf-8 -*-
 
+import os
+import shutil
+import subprocess
+
+_docs_dir = os.path.dirname(os.path.abspath(__file__))
+_doxygen_xml_dir = os.path.join(_docs_dir, "_doxygen", "xml")
+
+# Run Doxygen before Sphinx processes doxygenfile:: directives.
+# Skipped gracefully when doxygen is not installed (e.g. CI doctest runner).
+if shutil.which('doxygen'):
+    subprocess.check_call(['doxygen', 'Doxyfile'], cwd=_docs_dir)
+
 # -- General configuration ------------------------------------------------
 
 # while we use Sphinx 8+, old version suffices to run doctests
 needs_sphinx = '5.3.0'
 
 extensions = ['sphinx.ext.doctest', 'sphinx_inline_tabs']
+if os.path.isdir(_doxygen_xml_dir):
+    extensions.append('breathe')
 
 templates_path = ['_templates']
 
@@ -125,3 +139,11 @@ if ccp4_path is None:
 import gemmi
 gemmi.set_leak_warnings(False)
 '''
+
+# -- Breathe configuration (Doxygen XML → Sphinx) -------------------------
+# Only active when _doxygen/xml/ exists (i.e. doxygen was run).
+
+if os.path.isdir(_doxygen_xml_dir):
+    breathe_projects = {"gemmi": _doxygen_xml_dir}
+    breathe_default_project = "gemmi"
+    breathe_default_members = ('members',)  # show all public members in every doxygenfile:: directive
