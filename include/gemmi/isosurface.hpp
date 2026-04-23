@@ -14,7 +14,7 @@
 
 namespace gemmi {
 
-/// Result of an isosurface extraction.
+/// @brief Result of an isosurface extraction (vertices and triangle indices).
 struct IsoSurface {
   std::vector<float> vertices;      // x, y, z triples
   std::vector<uint32_t> triangles;  // vertex-index triples
