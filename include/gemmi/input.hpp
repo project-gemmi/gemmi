@@ -236,7 +236,7 @@ public:
   bool is_compressed() const { return false; }
 
   /// @brief Read whole file into memory (for compatibility with MaybeGzipped interface).
-  /// @param Ignored size parameter
+  /// @details The size parameter is unused; present for interface compatibility.
   /// @return Empty CharArray (no decompression for BasicInput)
   CharArray uncompress_into_buffer(size_t=0) { return {}; }
 

@@ -12,14 +12,6 @@
 
 namespace gemmi {
 
-/// Passes messages (including warnings/errors) to a callback function.
-/// Messages are passed as strings without a trailing newline.
-/// They have syslog-like severity levels: 8=debug, 6=info, 5=notice, 3=error,
-/// allowing the use of a threshold to filter them.
-/// Quirk: Errors double as both errors and warnings. Unrecoverable errors
-///        don't go through this class; Logger only handles errors that can
-///        be downgraded to warnings. If a callback is set, the error is passed
-///        as a warning message. Otherwise, it's thrown as std::runtime_error.
 /// @brief Logger for passing messages through callbacks with severity levels.
 /// @details Messages are passed as strings without a trailing newline.
 /// They have syslog-like severity levels: 8=debug, 6=info, 5=notice, 3=error,
