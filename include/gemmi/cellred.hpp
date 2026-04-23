@@ -16,12 +16,20 @@ namespace gemmi {
 
 struct SellingVector;
 
-/// @brief G6 Gruber vector representing a lattice cell
-/// @details Contains Buerger/Niggli reduction algorithms
-/// Originally, in B. Gruber, Acta Cryst. A29, 433 (1973), the vector was called
-/// "characteristic" of a lattice/cell.
-/// Functions that take epsilon as a parameter use it for comparisons,
-/// as proposed in Grosse-Kunstleve et al, Acta Cryst. (2004) A60, 1.
+/// @brief G6 Gruber vector representing a lattice and its cell reduction algorithms.
+/// @details The six-component G6 vector was called "characteristic" of a lattice/cell
+/// by Gruber (1973). Functions that take epsilon use it for numerical comparisons,
+/// following Grosse-Kunstleve et al. (2004).
+/// @par References
+/// Gruber, B. (1973). The relationship between reduced cells in a general Bravais lattice.
+/// Acta Cryst. A29, 433–440. https://doi.org/10.1107/S0567739473001063
+///
+/// Krivy, I. & Gruber, B. (1976). A unified algorithm for determining the reduced
+/// (Niggli) cell. Acta Cryst. A32, 297–298. https://doi.org/10.1107/S0567739476000636
+///
+/// Grosse-Kunstleve, R.W., Sauter, N.K. & Adams, P.D. (2004). Numerically stable
+/// algorithms for the computation of reduced unit cells.
+/// Acta Cryst. A60, 1–6. https://doi.org/10.1107/S010876730302186X
 struct GruberVector {
   //    a.a  b.b c.c 2b.c 2a.c 2a.b
   /// @brief G6 vector elements (A, B, C, ξ, η, ζ) from Gruber 1973
@@ -297,13 +305,18 @@ private:
 };
 
 
-/// @brief Selling-Delaunay vector for lattice reduction
-/// @details Represents a lattice in terms of 6 dot products among four basis vectors
-/// Used for Selling reduction. Based on:
-/// - Chapter "Delaunay reduction and standardization" in
-///   International Tables for Crystallography vol. A (2016), sec. 3.1.2.3
-/// - Patterson & Love (1957), Acta Cryst. 10, 111
-/// - Andrews et al (2019), Acta Cryst. A75, 115
+/// @brief Selling-Delaunay vector for lattice reduction.
+/// @details Represents a lattice in terms of 6 scalar products among four basis vectors.
+/// @par References
+/// Patterson, A.L. & Love, W.E. (1957). Remarks on the Delaunay reduction.
+/// Acta Cryst. 10, 111–116. https://doi.org/10.1107/S0365110X57000328
+///
+/// Andrews, L.C., Bernstein, H.J. & Sauter, N.K. (2019). Selling reduction versus
+/// Niggli reduction for crystallographic lattices.
+/// Acta Cryst. A75, 115–120. https://doi.org/10.1107/S2053273318015413
+///
+/// International Tables for Crystallography, Vol. A (2016), sec. 3.1.2.3.
+/// https://doi.org/10.1107/97809553602060000933
 struct SellingVector {
   /// @brief Selling vector elements s (6 scalar products)
   /// Order: b.c, a.c, a.b, a.d, b.d, c.d

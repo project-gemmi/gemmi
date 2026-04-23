@@ -129,12 +129,15 @@ using TwoFold = TwoFold_<void>;
 using OpObliquity = std::pair<Op, double>;
 
 /// @brief Calculate cosine of obliquity angle for a twinning operator.
-/// @details Obliquity calculated here is the same as Le Page delta in cctbx.
-/// (tested against output of lebedev_2005_perturbation.py from cctbx)
+/// @details Obliquity is the same as Le Page's delta (tested against
+/// lebedev_2005_perturbation.py from cctbx).
 /// @param reduced_cell Unit cell (typically from Niggli reduction)
 /// @param d_axis 2-fold axis direction in direct space
 /// @param r_axis 2-fold axis direction in reciprocal space
 /// @return Cosine of the obliquity angle
+/// @par References
+/// Le Page, Y. (1982). Direct derivation of twin laws from the metric tensor.
+/// J. Appl. Cryst. 15, 255–259. https://doi.org/10.1107/S0021889882011959
 inline double calculate_cos_obliquity(const UnitCell& reduced_cell,
                                       const Vec3& d_axis, const Vec3& r_axis) {
   // From the Le Page paper:
@@ -218,6 +221,13 @@ inline GroupOps find_lattice_symmetry(const UnitCell& cell, char centring,
 /// @param max_obliq Maximum obliquity (delta) in degrees as defined in Le Page (1982)
 /// @param all_ops If true, return all operators; if false, return only coset representatives
 /// @return Vector of potential twinning operators
+/// @par References
+/// Lebedev, A.A., Vagin, A.A. & Murshudov, G.N. (2006). Intensity statistics in
+/// twinned crystals with examples from the PDB.
+/// Acta Cryst. D62, 83–95. https://doi.org/10.1107/S0907444905036759
+///
+/// Zwart, P.H., Grosse-Kunstleve, R.W. & Adams, P.D. (2006). Exploring metric symmetry.
+/// CCP4 Newsletter 42. http://legacy.ccp4.ac.uk/newsletters/newsletter44/articles/explore_metric_symmetry.html
 inline std::vector<Op> find_twin_laws(const UnitCell& cell,
                                       const SpaceGroup* sg,
                                       double max_obliq,

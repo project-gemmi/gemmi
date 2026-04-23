@@ -239,14 +239,18 @@ struct AlignmentResult {
 };
 
 /// @brief Perform pairwise sequence alignment using dynamic programming.
-/// @details Implements Needleman-Wunsch (global) alignment algorithm with
-/// position-specific gap opening penalties. Based on ksw2 (Heng Li).
+/// @details Implements the Needleman-Wunsch global alignment algorithm with
+/// position-specific gap opening penalties. Code derived from ksw2 (Heng Li).
 /// @param query Encoded query sequence (values < m)
 /// @param target Encoded target sequence (values < m)
 /// @param target_gapo Position-specific gap opening penalties for target (empty if uniform)
 /// @param m Number of distinct values in encoding (vocabulary size)
 /// @param scoring Scoring parameters (match, mismatch, gap costs, score matrix)
 /// @return Alignment result with score, CIGAR string, and match count
+/// @par References
+/// Needleman, S.B. & Wunsch, C.D. (1970). A general method applicable to the
+/// search for similarities in the amino acid sequence of two proteins.
+/// J. Mol. Biol. 48, 443–453. https://doi.org/10.1016/0022-2836(70)90057-4
 inline
 AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
                                 const std::vector<std::uint8_t>& target,

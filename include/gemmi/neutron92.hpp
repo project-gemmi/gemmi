@@ -47,8 +47,12 @@ template<class Real>
 Real ZeroCoef<Real>::data[121] = { /*X*/ 0.0 };
 
 /// @brief Neutron coherent scattering lengths from Neutron News 3(3) 1992.
-/// Real part of the bound coherent scattering length in femtometers (fm).
+/// @details Real part of the bound coherent scattering length in femtometers (fm).
+/// Data matches cctbx/eltbx/neutron.h and the NIST neutron scattering lengths table.
 /// @tparam Real floating-point type
+/// @par References
+/// Sears, V.F. (1992). Neutron scattering lengths and cross sections.
+/// Neutron News 3(3), 26–37. https://doi.org/10.1080/10448639208218770
 template<class Real>
 struct Neutron92 {
   using Coef = GaussianCoef<0, 1, Real>;

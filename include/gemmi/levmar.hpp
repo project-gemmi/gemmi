@@ -210,6 +210,14 @@ double compute_lm_matrices(const Target& target,
 /// The algorithm adjusts a damping factor (lambda) to interpolate between
 /// gradient descent (large lambda) and Newton's method (small lambda),
 /// automatically selecting the step size that gives best improvement.
+/// @par References
+/// Levenberg, K. (1944). A method for the solution of certain non-linear problems
+/// in least squares. Q. Appl. Math. 2, 164–168.
+/// https://doi.org/10.1090/qam/10666
+///
+/// Marquardt, D.W. (1963). An algorithm for least-squares estimation of nonlinear
+/// parameters. J. Soc. Ind. Appl. Math. 11, 431–441.
+/// https://doi.org/10.1137/0111030
 struct LevMar {
   /// @brief Maximum number of function evaluations before terminating.
   int eval_limit = 100;

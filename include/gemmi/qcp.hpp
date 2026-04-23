@@ -334,13 +334,19 @@ inline Position qcp_calculate_center(const Position* pos, size_t len, const doub
 /// Finds the rotation and translation that best align pos2 onto pos1,
 /// minimizing the weighted root-mean-square deviation. Does not modify positions;
 /// to apply the transformation, use transform.apply() on pos2.
-/// Based on Theobald (2005) and Liu et al. (2009): rapid calculation of RMSD
-/// using a quaternion-based characteristic polynomial.
 /// @param pos1 Array of reference positions (fixed).
 /// @param pos2 Array of positions to be superposed (movable).
 /// @param len Number of position pairs.
 /// @param weight Optional array of weights; if null, all weights are 1.0.
 /// @return SupResult containing RMSD, rotation matrix, translation, and centroids.
+/// @par References
+/// Theobald, D.L. (2005). Rapid calculation of RMSD using a quaternion-based
+/// characteristic polynomial. Acta Cryst. A61, 478–480.
+/// https://doi.org/10.1107/S0108767305015266
+///
+/// Liu, P., Agrafiotis, D.K. & Theobald, D.L. (2010). Fast determination of the
+/// optimal rotational matrix for macromolecular superpositions.
+/// J. Comput. Chem. 31, 1561–1563. https://doi.org/10.1002/jcc.21439
 inline SupResult superpose_positions(const Position* pos1, const Position* pos2,
                                      size_t len, const double* weight) {
   SupResult result;
