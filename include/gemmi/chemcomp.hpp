@@ -22,63 +22,111 @@ namespace gemmi {
 struct Atom;
 struct Residue;
 
+/// Bond type enum for restraints.
 enum class BondType {
-  Unspec, Single, Double, Triple, Aromatic, Deloc, Metal
+  Unspec,   ///< Unspecified bond type
+  Single,   ///< Single bond
+  Double,   ///< Double bond
+  Triple,   ///< Triple bond
+  Aromatic, ///< Aromatic bond
+  Deloc,    ///< Delocalized bond
+  Metal     ///< Metal coordination bond
 };
+/// @brief Check if bond type is aromatic or delocalized.
+/// @param type Bond type to check.
+/// @return True if type is Aromatic or Deloc.
 inline bool is_aromatic_or_deloc(BondType type) {
   return type == BondType::Aromatic || type == BondType::Deloc;
 }
-enum class ChiralityType { Positive, Negative, Both };
+/// Chirality type enum for stereocenters.
+enum class ChiralityType {
+  Positive, ///< Positive (S/R) chirality
+  Negative, ///< Negative chirality
+  Both      ///< Either chirality accepted
+};
 
+/// Geometric restraints for a chemical component.
+/// Stores bond, angle, torsion, chirality, and planarity restraints.
 struct Restraints {
+  /// Atom identifier used in restraints.
   struct AtomId {
-    int comp;
-    std::string atom;
+    int comp;           ///< Component index (1 or 2 for link restraints)
+    std::string atom;   ///< Atom name
 
+    /// @brief Equality comparison.
     bool operator==(const AtomId& o) const {
       return comp == o.comp && atom == o.atom;
     }
+    /// @brief Inequality comparison.
     bool operator!=(const AtomId& o) const { return !operator==(o); }
 
+    /// @brief Equality comparison with atom name string.
     bool operator==(const std::string& name) const { return atom == name; }
+    /// @brief Inequality comparison with atom name string.
     bool operator!=(const std::string& name) const { return atom != name; }
 
+    /// @brief Lexicographic comparison.
     bool operator<(const AtomId& o) const {
       return comp == o.comp ? atom < o.atom : comp < o.comp;
     }
 
-    // altloc2 is needed only in rare case when we have a link between
-    // atoms with different altloc (example: 2e7z).
+    /// @brief Get the Atom from residues.
+    /// @param res1 First residue to search.
+    /// @param res2 Optional second residue for link restraints.
+    /// @param alt Alternate location character.
+    /// @param altloc2 Alternate location for second residue (rare case for links with different altloc).
+    /// @return Pointer to the Atom, or nullptr if not found.
     Atom* get_from(Residue& res1, Residue* res2, char alt, char altloc2) const;
+    /// @brief Const version of get_from().
     const Atom* get_from(const Residue& res1, const Residue* res2,
-                         char alt, char alt2) const;
+                         char alt, char altloc2) const;
   };
 
+  /// @brief Get canonical lexicographic string representation of two atom names.
+  /// @param name1 First atom name.
+  /// @param name2 Second atom name.
+  /// @return Hyphen-separated pair in lexicographic order.
   static std::string lexicographic_str(const std::string& name1,
                                        const std::string& name2) {
     return name1 < name2 ? cat(name1, '-', name2) : cat(name2, '-', name1);
   }
 
-  enum class DistanceOf { ElectronCloud, Nucleus };
+  /// Reference frame for bond distance measurement.
+  enum class DistanceOf {
+    ElectronCloud, ///< Distance to electron cloud centre
+    Nucleus        ///< Distance to nucleus
+  };
 
+  /// Bond restraint between two atoms.
   struct Bond {
+    /// @brief Get restraint type name.
     static const char* what() { return "bond"; }
-    AtomId id1, id2;
-    BondType type;
-    bool aromatic;
-    double value;
-    double esd;
-    double value_nucleus;
-    double esd_nucleus;
-    std::string stereo_config = "";
-    int ordinal = 0;
+    AtomId id1;              ///< First atom
+    AtomId id2;              ///< Second atom
+    BondType type;           ///< Bond type
+    bool aromatic;           ///< True if part of aromatic system
+    double value;            ///< Ideal bond length (Å, electron cloud)
+    double esd;              ///< Estimated standard deviation of value
+    double value_nucleus;    ///< Ideal length to nucleus
+    double esd_nucleus;      ///< ESD of nucleus length
+    std::string stereo_config = "";  ///< Stereo configuration character
+    int ordinal = 0;         ///< Ordering index
+    /// @brief Get string representation (non-canonical).
     std::string str() const { return cat(id1.atom, '-', id2.atom); }
+    /// @brief Get canonical (lexicographic) string representation.
     std::string lexicographic_str() const {
       return Restraints::lexicographic_str(id1.atom, id2.atom);
     }
+    /// @brief Get ideal bond distance.
+    /// @param of Reference frame (electron cloud or nucleus).
+    /// @return Ideal distance in Å.
     double distance(DistanceOf of) const {
       return of == DistanceOf::ElectronCloud ? value : value_nucleus;
     }
+    /// @brief Find the other atom in the bond.
+    /// @tparam T Atom identifier type (AtomId or string).
+    /// @param a First atom identifier.
+    /// @return Pointer to the other AtomId, or nullptr if a is not in this bond.
     template<typename T> const AtomId* other(const T& a) const {
       if (id1 == a) return &id2;
       if (id2 == a) return &id1;
@@ -86,74 +134,113 @@ struct Restraints {
     }
   };
 
+  /// Angle restraint between three atoms.
   struct Angle {
+    /// @brief Get restraint type name.
     static const char* what() { return "angle"; }
-    AtomId id1, id2, id3;
-    double value;  // degrees
-    double esd;
+    AtomId id1;     ///< First atom
+    AtomId id2;     ///< Central atom
+    AtomId id3;     ///< Third atom
+    double value;   ///< Ideal angle in degrees
+    double esd;     ///< Estimated standard deviation in degrees
+    /// @brief Convert ideal angle to radians.
+    /// @return Ideal angle in radians.
     double radians() const { return rad(value); }
+    /// @brief Get string representation.
     std::string str() const {
       return cat(id1.atom, '-', id2.atom, '-', id3.atom);
     }
   };
 
+  /// Torsion (dihedral) restraint between four atoms.
   struct Torsion {
+    /// @brief Get restraint type name.
     static const char* what() { return "torsion"; }
-    std::string label;
-    AtomId id1, id2, id3, id4;
-    double value = NAN;
-    double esd = 0.0;
-    int period = 0;
+    std::string label; ///< Torsion identifier string
+    AtomId id1;        ///< First atom
+    AtomId id2;        ///< Second atom (first bond partner)
+    AtomId id3;        ///< Third atom (second bond partner)
+    AtomId id4;        ///< Fourth atom
+    double value = NAN;  ///< Ideal torsion angle in degrees
+    double esd = 0.0;    ///< Estimated standard deviation in degrees
+    int period = 0;      ///< Periodicity of the torsion
+    /// @brief Get string representation.
     std::string str() const {
       return cat(id1.atom, '-', id2.atom, '-', id3.atom, '-', id4.atom);
     }
   };
 
+  /// Chirality (stereochemistry) restraint for a stereocenter.
   struct Chirality {
+    /// @brief Get restraint type name.
     static const char* what() { return "chirality"; }
-    AtomId id_ctr, id1, id2, id3;
-    ChiralityType sign;
+    AtomId id_ctr;  ///< Chiral centre atom
+    AtomId id1;     ///< First substituent
+    AtomId id2;     ///< Second substituent
+    AtomId id3;     ///< Third substituent
+    ChiralityType sign;  ///< Expected chirality type
 
+    /// @brief Check if observed chiral volume contradicts expected chirality.
+    /// @param volume Computed chiral volume.
+    /// @return True if the sign of volume disagrees with expected chirality.
     bool is_wrong(double volume) const {
       return (sign == ChiralityType::Positive && volume < 0) ||
              (sign == ChiralityType::Negative && volume > 0);
     }
+    /// @brief Get string representation.
     std::string str() const {
       return cat(id_ctr.atom, ',', id1.atom, ',', id2.atom, ',', id3.atom);
     }
   };
 
+  /// Planarity restraint for a group of atoms.
   struct Plane {
+    /// @brief Get restraint type name.
     static const char* what() { return "plane"; }
-    std::string label;
-    std::vector<AtomId> ids;
-    double esd;
+    std::string label;        ///< Plane identifier string
+    std::vector<AtomId> ids;  ///< Atoms defining the plane
+    double esd;               ///< Estimated standard deviation of planarity restraint
+    /// @brief Get string representation.
     std::string str() const {
       return join_str(ids, ',', [](const AtomId& a) { return a.atom; });
     }
   };
 
-  std::vector<Bond> bonds;
-  std::vector<Angle> angles;
-  std::vector<Torsion> torsions;
-  std::vector<Chirality> chirs;
-  std::vector<Plane> planes;
+  std::vector<Bond> bonds;         ///< Bond restraints
+  std::vector<Angle> angles;       ///< Angle restraints
+  std::vector<Torsion> torsions;   ///< Torsion restraints
+  std::vector<Chirality> chirs;    ///< Chirality restraints
+  std::vector<Plane> planes;       ///< Planarity restraints
 
+  /// @brief Check if all restraint lists are empty.
+  /// @return True if there are no restraints of any type.
   bool empty() const {
     return bonds.empty() && angles.empty() && torsions.empty() &&
            chirs.empty() && planes.empty();
   }
 
+  /// @brief Find a Bond between two atoms.
+  /// @tparam T Atom identifier type (AtomId or string).
+  /// @param a1 First atom.
+  /// @param a2 Second atom.
+  /// @return Iterator to the Bond, or bonds.end() if not found.
+  /// @note Bond order (a1, a2 vs a2, a1) is not significant.
   template<typename T>
   std::vector<Bond>::iterator find_bond(const T& a1, const T& a2) {
     return std::find_if(bonds.begin(), bonds.end(), [&](const Bond& b) {
         return (b.id1 == a1 && b.id2 == a2) || (b.id1 == a2 && b.id2 == a1);
     });
   }
+  /// @brief Const version of find_bond().
   template<typename T>
   std::vector<Bond>::const_iterator find_bond(const T& a1, const T& a2) const {
     return const_cast<Restraints*>(this)->find_bond(a1, a2);
   }
+  /// @brief Get a Bond between two atoms (throw if not found).
+  /// @param a1 First atom.
+  /// @param a2 Second atom.
+  /// @return Reference to the Bond.
+  /// @throws Calls fail() if bond is not found.
   const Bond& get_bond(const AtomId& a1, const AtomId& a2) const {
     auto it = find_bond(a1, a2);
     if (it == bonds.end())
@@ -161,11 +248,20 @@ struct Restraints {
     return *it;
   }
 
+  /// @brief Check if two atoms are directly bonded.
+  /// @tparam T Atom identifier type (AtomId or string).
+  /// @param a1 First atom.
+  /// @param a2 Second atom.
+  /// @return True if a bond exists between a1 and a2.
   template<typename T>
   bool are_bonded(const T& a1, const T& a2) const {
     return find_bond(a1, a2) != bonds.end();
   }
 
+  /// @brief Find the first atom bonded to the given atom.
+  /// @tparam T Atom identifier type (AtomId or string).
+  /// @param a Atom to search for bonds from.
+  /// @return Pointer to the first bonded AtomId, or nullptr if none found.
   template<typename T>
   const AtomId* first_bonded_atom(const T& a) const {
     for (const Bond& bond : bonds)
@@ -174,7 +270,12 @@ struct Restraints {
     return nullptr;
   }
 
-  // BFS
+  /// @brief Find shortest bond path between two atoms (BFS algorithm).
+  /// @param a Start atom.
+  /// @param b End atom.
+  /// @param visited List of initially visited atoms (to exclude from search).
+  /// @param min_length Minimum path length required (default 1).
+  /// @return Vector of AtomIds forming the shortest path from a to b, or empty if not found.
   std::vector<AtomId> find_shortest_path(const AtomId& a, const AtomId& b,
                                          std::vector<AtomId> visited,
                                          int min_length=1) const {
@@ -210,6 +311,13 @@ struct Restraints {
     return path;
   }
 
+  /// @brief Find an Angle restraint with given atoms.
+  /// @tparam T Atom identifier type (AtomId or string).
+  /// @param a First atom (peripheral).
+  /// @param b Central atom.
+  /// @param c Third atom (peripheral).
+  /// @return Iterator to the Angle, or angles.end() if not found.
+  /// @note The order of peripheral atoms (a, c) is not significant.
   template<typename T>
   std::vector<Angle>::iterator find_angle(const T& a, const T& b, const T& c) {
     return std::find_if(angles.begin(), angles.end(), [&](const Angle& ang) {
@@ -217,10 +325,17 @@ struct Restraints {
                                 (ang.id1 == c && ang.id3 == a));
     });
   }
+  /// @brief Const version of find_angle().
   template<typename T> std::vector<Angle>::const_iterator
   find_angle(const T& a, const T& b, const T& c) const {
     return const_cast<Restraints*>(this)->find_angle(a, b, c);
   }
+  /// @brief Get an Angle restraint with given atoms (throw if not found).
+  /// @param a First atom (peripheral).
+  /// @param b Central atom.
+  /// @param c Third atom (peripheral).
+  /// @return Reference to the Angle.
+  /// @throws Calls fail() if angle restraint is not found.
   const Angle& get_angle(const AtomId& a, const AtomId& b, const AtomId& c) const {
     auto it = const_cast<Restraints*>(this)->find_angle(a, b, c);
     if (it == angles.end())
@@ -228,6 +343,14 @@ struct Restraints {
     return *it;
   }
 
+  /// @brief Find a Torsion restraint with given atoms.
+  /// @tparam T Atom identifier type (AtomId or string).
+  /// @param a First atom.
+  /// @param b Second atom (first bond partner).
+  /// @param c Third atom (second bond partner).
+  /// @param d Fourth atom.
+  /// @return Iterator to the Torsion, or torsions.end() if not found.
+  /// @note Forward and reverse orderings (a-b-c-d vs d-c-b-a) are considered equivalent.
   template<typename T>
   std::vector<Torsion>::iterator find_torsion(const T& a, const T& b,
                                               const T& c, const T& d) {
@@ -237,11 +360,20 @@ struct Restraints {
                (t.id1 == d && t.id2 == c && t.id3 == b && t.id4 == a);
     });
   }
+  /// @brief Const version of find_torsion().
   template<typename T> std::vector<Torsion>::const_iterator
   find_torsion(const T& a, const T& b, const T& c, const T& d) const {
     return const_cast<Restraints*>(this)->find_torsion(a, b, c, d);
   }
 
+  /// @brief Find a Chirality restraint for a given stereocenter.
+  /// @tparam T Atom identifier type (AtomId or string).
+  /// @param ctr Chiral centre atom.
+  /// @param a First substituent.
+  /// @param b Second substituent.
+  /// @param c Third substituent.
+  /// @return Iterator to the Chirality, or chirs.end() if not found.
+  /// @note The order of substituents (a, b, c) is not significant.
   template<typename T>
   std::vector<Chirality>::iterator find_chir(const T& ctr, const T& a,
                                              const T& b, const T& c) {
@@ -251,18 +383,29 @@ struct Restraints {
                                    (t.id1 == c && t.id2 == a && t.id3 == b));
     });
   }
+  /// @brief Const version of find_chir().
   template<typename T> std::vector<Chirality>::const_iterator
   find_chir(const T& ctr, const T& a, const T& b, const T& c) const {
     return const_cast<Restraints*>(this)->find_chir(ctr, a, b, c);
   }
 
+  /// @brief Compute chiral volume from restraints.
+  /// @param ch Chirality restraint.
+  /// @return Absolute chiral volume computed from bond and angle restraints.
+  /// @throws May call fail() if required bond or angle restraints are missing.
   double chiral_abs_volume(const Restraints::Chirality& ch) const;
 
+  /// @brief Find a Plane by label.
+  /// @param label Plane identifier string.
+  /// @return Iterator to the Plane, or planes.end() if not found.
   std::vector<Plane>::iterator get_plane(const std::string& label) {
     return std::find_if(planes.begin(), planes.end(),
                         [&label](const Plane& p) { return p.label == label; });
   }
 
+  /// @brief Get a Plane by label, creating it if absent.
+  /// @param label Plane identifier string.
+  /// @return Reference to the Plane (newly created with esd=0.0 if it didn't exist).
   Plane& get_or_add_plane(const std::string& label) {
     std::vector<Plane>::iterator it = get_plane(label);
     if (it != planes.end())
@@ -271,6 +414,10 @@ struct Restraints {
     return planes.back();
   }
 
+  /// @brief Rename an atom throughout all restraints.
+  /// @param atom_id The atom to rename (identified by comp and atom name).
+  /// @param new_name New atom name.
+  /// @note Updates all occurrences in bonds, angles, torsions, chiralities, and planes.
   void rename_atom(const AtomId& atom_id, const std::string& new_name) {
     auto rename_atom = [&](AtomId& id) {
       if (id == atom_id)
@@ -303,11 +450,26 @@ struct Restraints {
   }
 };
 
+/// @brief Compute z-score (deviation in standard deviations) for angle restraints.
+/// @tparam Restr Restraint type with value (degrees) and esd (degrees) members.
+/// @param value_rad Observed angle in radians.
+/// @param restr Restraint with ideal value and standard deviation.
+/// @param full Full circle in degrees (default 360, use 180 for some torsions).
+/// @return Z-score = |observed - ideal| / esd.
 template<typename Restr>
 double angle_z(double value_rad, const Restr& restr, double full=360.) {
   return angle_abs_diff(deg(value_rad), restr.value, full) / restr.esd;
 }
 
+/// @brief Compute absolute chiral volume from bond lengths and angles.
+/// @param bond1 First bond length (Å).
+/// @param bond2 Second bond length (Å).
+/// @param bond3 Third bond length (Å).
+/// @param angle1 First angle (degrees).
+/// @param angle2 Second angle (degrees).
+/// @param angle3 Third angle (degrees).
+/// @return Absolute chiral volume.
+/// @note Uses the formula: mult * sqrt(max(0, x + y)) where mult = bond1*bond2*bond3.
 inline double chiral_abs_volume(double bond1, double bond2, double bond3,
                                 double angle1, double angle2, double angle3) {
   double mult = bond1 * bond2 * bond3;
@@ -330,42 +492,48 @@ inline double Restraints::chiral_abs_volume(const Restraints::Chirality& ch) con
                                   get_angle(ch.id3, ch.id_ctr, ch.id1).value);
 }
 
+/// Chemical component (monomer) from a restraint library.
+/// Represents a residue type from the Refmac monomer library or PDB CCD.
 struct ChemComp {
-  // Items used in _chem_comp.group and _chem_link.group_comp_N in CCP4.
+  /// Chemical component group classification (used in _chem_comp.group and _chem_link.group_comp_N).
   enum class Group {
-    Peptide,      // "peptide"
-    PPeptide,     // "P-peptide"
-    MPeptide,     // "M-peptide"
-    Dna,          // "DNA" - used in _chem_comp.group
-    Rna,          // "RNA" - used in _chem_comp.group
-    DnaRna,       // "DNA/RNA" - used in _chem_link.group_comp_N
-    Pyranose,     // "pyranose"
-    Ketopyranose, // "ketopyranose"
-    Furanose,     // "furanose"
-    NonPolymer,   // "non-polymer"
-    Null
+    Peptide,      ///< Peptide (L-amino acid)
+    PPeptide,     ///< P-peptide (peptide with P configuration)
+    MPeptide,     ///< M-peptide (cyclic peptide)
+    Dna,          ///< DNA nucleotide
+    Rna,          ///< RNA nucleotide
+    DnaRna,       ///< DNA/RNA mixed nucleotide
+    Pyranose,     ///< Pyranose sugar ring
+    Ketopyranose, ///< Ketopyranose sugar ring
+    Furanose,     ///< Furanose sugar ring
+    NonPolymer,   ///< Non-polymer ligand
+    Null          ///< Unset or unknown group
   };
 
+  /// Atom in a chemical component.
   struct Atom {
-    std::string id;
-    std::string old_id;  // read from _chem_comp_atom.alt_atom_id
-    Element el = El::X;
-    // _chem_comp_atom.partial_charge can be non-integer,
-    // _chem_comp_atom.charge is always integer (but sometimes has format
-    //  '0.000' which is not correct but we ignore it).
-    float charge = 0;
-    std::string chem_type;
-    std::string acedrg_type;  // read from _chem_comp_atom.atom_type
-    Position xyz{NAN, NAN, NAN};
+    std::string id;           ///< Atom name
+    std::string old_id;       ///< Legacy atom name (read from _chem_comp_atom.alt_atom_id)
+    Element el = El::X;       ///< Chemical element
+    float charge = 0;         ///< Formal charge (can be non-integer for partial_charge)
+    std::string chem_type;    ///< CCP4 chemical type string
+    std::string acedrg_type;  ///< ACEdrg atom type (read from _chem_comp_atom.atom_type)
+    Position xyz{NAN, NAN, NAN};  ///< Idealized Cartesian coordinates (Å)
 
+    /// @brief Check if this is a hydrogen atom.
+    /// @return True if element is hydrogen.
     bool is_hydrogen() const { return gemmi::is_hydrogen(el); }
   };
 
+  /// Atom naming aliasing for a specific polymer group.
   struct Aliasing {
-    Group group;
-    // pairs of (name in chem_comp, usual name in this group)
+    Group group;  ///< Polymer group this aliasing applies to
+    /// Pairs of (chem_comp name, standard name in this group)
     std::vector<std::pair<std::string, std::string>> related;
 
+    /// @brief Find chem_comp name from standard atom name.
+    /// @param atom_id Standard atom name (e.g., "CA" for peptide).
+    /// @return Pointer to the chem_comp atom name, or nullptr if not in aliasing.
     const std::string* name_from_alias(const std::string& atom_id) const {
       for (const auto& item : related)
         if (item.second == atom_id)
@@ -374,14 +542,18 @@ struct ChemComp {
     }
   };
 
-  std::string name;
-  std::string type_or_group;  // _chem_comp.type or _chem_comp.group
-  Group group = Group::Null;
-  bool has_coordinates = false;
-  std::vector<Atom> atoms;
-  std::vector<Aliasing> aliases;
-  Restraints rt;
+  std::string name;               ///< Three-letter component code
+  std::string type_or_group;      ///< Raw type/group string from CIF (_chem_comp.type or _chem_comp.group)
+  Group group = Group::Null;      ///< Parsed Group enum
+  bool has_coordinates = false;   ///< True if xyz coordinates are available
+  std::vector<Atom> atoms;        ///< Atoms in this component
+  std::vector<Aliasing> aliases;  ///< Atom name aliases for different polymer groups
+  Restraints rt;                  ///< Geometric restraints
 
+  /// @brief Get atom name aliasing for a specific polymer group.
+  /// @param g Group to find aliasing for.
+  /// @return Reference to the Aliasing.
+  /// @throws Calls fail() if aliasing is not found for this group.
   const Aliasing& get_aliasing(Group g) const {
     for (const Aliasing& aliasing : aliases)
       if (aliasing.group == g)
@@ -389,6 +561,9 @@ struct ChemComp {
     fail("aliasing not found");
   }
 
+  /// @brief Parse group string to Group enum.
+  /// @param str Group identifier string (e.g., "peptide", "P-peptide", "DNA").
+  /// @return Parsed Group enum value, or Group::Null if unrecognized.
   static Group read_group(const std::string& str) {
     if (str.size() >= 3) {
       const char* cstr = str.c_str();
@@ -411,6 +586,9 @@ struct ChemComp {
     return Group::Null;
   }
 
+  /// @brief Get string representation of a Group enum value.
+  /// @param g Group enum value.
+  /// @return String representation (e.g., "peptide", "P-peptide", "DNA", ".").
   static const char* group_str(Group g) {
     switch (g) {
       case Group::Peptide: return "peptide";
@@ -428,34 +606,53 @@ struct ChemComp {
     unreachable();
   }
 
+  /// @brief Set group from string and update parsed Group enum.
+  /// @param s Group identifier string.
   void set_group(const std::string& s) {
     type_or_group = s;
     group = read_group(s);
   }
 
+  /// @brief Find an atom by name.
+  /// @param atom_id Atom name to search for.
+  /// @return Iterator to the Atom, or atoms.end() if not found.
   std::vector<Atom>::iterator find_atom(const std::string& atom_id) {
     return std::find_if(atoms.begin(), atoms.end(),
                         [&](const Atom& a) { return a.id == atom_id; });
   }
+  /// @brief Const version of find_atom().
   std::vector<Atom>::const_iterator find_atom(const std::string& atom_id) const {
     return const_cast<ChemComp*>(this)->find_atom(atom_id);
   }
+  /// @brief Check if an atom with given name exists.
+  /// @param atom_id Atom name to search for.
+  /// @return True if atom exists.
   bool has_atom(const std::string& atom_id) const {
     return find_atom(atom_id) != atoms.end();
   }
 
+  /// @brief Find an atom by legacy name.
+  /// @param old_id Legacy atom name (old_id field).
+  /// @return Iterator to the Atom, or atoms.end() if not found.
   std::vector<Atom>::iterator find_atom_by_old_name(const std::string& old_id) {
     return std::find_if(atoms.begin(), atoms.end(),
                         [&](const Atom& a) { return a.old_id == old_id; });
   }
+  /// @brief Const version of find_atom_by_old_name().
   std::vector<Atom>::const_iterator find_atom_by_old_name(const std::string& old_id) const {
     return const_cast<ChemComp*>(this)->find_atom_by_old_name(old_id);
   }
+  /// @brief Check if any atom has non-trivial legacy names.
+  /// @return True if at least one atom has old_id set and different from id.
   bool has_old_names() const {
     return std::any_of(atoms.begin(), atoms.end(),
                        [&](const Atom& a) { return !a.old_id.empty() && a.old_id != a.id; });
   }
 
+  /// @brief Get index of an atom by name (throw if not found).
+  /// @param atom_id Atom name to search for.
+  /// @return Zero-based index in atoms vector.
+  /// @throws Calls fail() if atom is not found.
   int get_atom_index(const std::string& atom_id) const {
     auto it = find_atom(atom_id);
     if (it == atoms.end())
@@ -463,11 +660,16 @@ struct ChemComp {
     return int(it - atoms.begin());
   }
 
+  /// @brief Find index of an atom by name.
+  /// @param atom_id Atom name to search for.
+  /// @return Zero-based index in atoms vector, or -1 if not found.
   int find_atom_index(const std::string& atom_id) const {
     auto it = find_atom(atom_id);
     return it != atoms.end() ? int(it - atoms.begin()) : -1;
   }
 
+  /// @brief Build a map of atom names to indices.
+  /// @return Map from atom id to vector index.
   std::map<std::string, size_t> make_atom_index() const {
     std::map<std::string, size_t> atom_index;
     for (size_t i = 0; i < atoms.size(); ++i)
@@ -475,20 +677,30 @@ struct ChemComp {
     return atom_index;
   }
 
+  /// @brief Get an atom by name (throw if not found).
+  /// @param atom_id Atom name to search for.
+  /// @return Reference to the Atom.
+  /// @throws Calls get_atom_index() which may call fail().
   const Atom& get_atom(const std::string& atom_id) const {
     return atoms[get_atom_index(atom_id)];
   }
 
-  /// Check if the group (M-|P-)peptide
+  /// @brief Check if group is a peptide variant.
+  /// @param g Group enum value.
+  /// @return True if group is Peptide, PPeptide, or MPeptide.
   static bool is_peptide_group(Group g) {
     return g == Group::Peptide || g == Group::PPeptide || g == Group::MPeptide;
   }
 
-  /// Check if the group is DNA/RNA
+  /// @brief Check if group is a nucleic acid variant.
+  /// @param g Group enum value.
+  /// @return True if group is Dna, Rna, or DnaRna.
   static bool is_nucleotide_group(Group g) {
     return g == Group::Dna || g == Group::Rna || g == Group::DnaRna;
   }
 
+  /// @brief Remove restraints referring to absent atoms.
+  /// Called after atoms have been removed to keep restraints consistent.
   void remove_nonmatching_restraints() {
     vector_remove_if(rt.bonds, [&](const Restraints::Bond& x) {
       return !has_atom(x.id1.atom) ||
@@ -517,6 +729,8 @@ struct ChemComp {
       });
   }
 
+  /// @brief Remove all hydrogen atoms and update restraints.
+  /// @return Reference to this ChemComp (for method chaining).
   ChemComp& remove_hydrogens() {
     vector_remove_if(atoms, [](const ChemComp::Atom& a) {
       return a.is_hydrogen();
@@ -526,6 +740,10 @@ struct ChemComp {
   }
 };
 
+/// @brief Parse string to BondType enum.
+/// @param s String representation (e.g., "single", "double", "aromatic", "deloc", "metal").
+/// @return Parsed BondType, or Unspec for null or "coval".
+/// @throws std::out_of_range for unexpected bond type strings.
 inline BondType bond_type_from_string(const std::string& s) {
   if (s.size() >= 3)
     switch (ialpha4_id(s.c_str())) {
@@ -544,6 +762,9 @@ inline BondType bond_type_from_string(const std::string& s) {
   throw std::out_of_range("Unexpected bond type: " + s);
 }
 
+/// @brief Convert BondType enum to string.
+/// @param btype Bond type to convert.
+/// @return String representation (".", "single", "double", "triple", "aromatic", "deloc", "metal").
 inline const char* bond_type_to_string(BondType btype) {
   switch (btype) {
     case BondType::Unspec: return ".";
@@ -557,6 +778,9 @@ inline const char* bond_type_to_string(BondType btype) {
   unreachable();
 }
 
+/// @brief Get bond order (multiplicity) for a BondType.
+/// @param btype Bond type.
+/// @return Bond order: 1.0 (single/metal), 1.5 (aromatic/deloc), 2.0 (double), 3.0 (triple), 0.0 (unspec).
 inline float order_of_bond_type(BondType btype) {
   switch (btype) {
     case BondType::Single: return 1.0f;
@@ -570,7 +794,11 @@ inline float order_of_bond_type(BondType btype) {
   unreachable();
 }
 
-// it doesn't handle crossN types from the monomer library
+/// @brief Parse string to ChiralityType enum.
+/// @param s String representation: "p" or "P" for Positive, "n" or "N" for Negative,
+///   "b" or "B" or "." for Both.
+/// @return Parsed ChiralityType.
+/// @throws std::out_of_range for unexpected chirality strings (e.g., crossN types).
 inline ChiralityType chirality_from_string(const std::string& s) {
   switch (s[0] | 0x20) {
     case 'p': return ChiralityType::Positive;
@@ -581,6 +809,12 @@ inline ChiralityType chirality_from_string(const std::string& s) {
   }
 }
 
+/// @brief Determine ChiralityType from stereo flag and computed chiral volume.
+/// @param s Volume flag string: "s" or "S" (signed volume), "n" or "N" (no stereochemistry).
+/// @param volume Computed chiral volume.
+/// @return ChiralityType: Positive or Negative based on volume sign (if "s" flag),
+///   or Both (if "n" flag).
+/// @throws std::out_of_range for unexpected flag strings.
 inline ChiralityType chirality_from_flag_and_volume(const std::string& s,
                                                     double volume) {
   switch (s[0] | 0x20) {
@@ -591,6 +825,9 @@ inline ChiralityType chirality_from_flag_and_volume(const std::string& s,
   }
 }
 
+/// @brief Convert ChiralityType enum to string.
+/// @param chir_type Chirality type.
+/// @return String representation ("positive", "negative", "both").
 inline const char* chirality_to_string(ChiralityType chir_type) {
   switch (chir_type) {
     case ChiralityType::Positive: return "positive";
@@ -600,6 +837,10 @@ inline const char* chirality_to_string(ChiralityType chir_type) {
   unreachable();
 }
 
+/// @brief Parse a ChemComp from a CIF block.
+/// Reads all _chem_comp* tables from the block (atoms, bonds, angles, torsions, chiralities, planes, aliases).
+/// @param block_ CIF block containing chemical component definition.
+/// @return Constructed ChemComp with all restraints and atom data.
 inline ChemComp make_chemcomp_from_block(const cif::Block& block_) {
   ChemComp cc;
   cc.name = block_.name.substr(starts_with(block_.name, "comp_") ? 5 : 0);

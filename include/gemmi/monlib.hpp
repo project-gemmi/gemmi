@@ -19,6 +19,11 @@
 
 namespace gemmi {
 
+/// @brief Check if an atom ID matches a canonical atom name, resolving aliases.
+/// @param atom_id Atom identifier to check (may be aliased)
+/// @param atom Canonical atom name
+/// @param aliasing Optional aliasing rules to resolve atom_id
+/// @return true if atom_id matches atom (directly or via aliasing)
 inline bool atom_match_with_alias(const std::string& atom_id, const std::string& atom,
                                   const ChemComp::Aliasing* aliasing) {
   if (aliasing)
@@ -27,78 +32,121 @@ inline bool atom_match_with_alias(const std::string& atom_id, const std::string&
   return atom_id == atom;
 }
 
+/// @brief Chemical link definition (bond, angle, dihedral between residues).
 struct GEMMI_DLL ChemLink {
+  /// @brief Specification of one side of a chemical link.
   struct Side {
     using Group = ChemComp::Group;
-    std::string comp;
-    std::string mod;
-    Group group = Group::Null;
+    std::string comp;          ///< Specific chemical component name, or empty for group-based matching
+    std::string mod;           ///< Chemical modification identifier
+    Group group = Group::Null; ///< Group type for general matching (peptide, nucleotide, etc.)
+
+    /// @brief Check if this side matches a given chemical group.
+    /// @param res Group to test against
+    /// @return true if the side specification matches the group
     bool matches_group(Group res) const {
       if (group == Group::Null)
         return false;
       return res == group || (group == Group::Peptide && ChemComp::is_peptide_group(res))
                           || (group == Group::DnaRna && ChemComp::is_nucleotide_group(res));
     }
+
+    /// @brief Calculate specificity score for matching priority.
+    /// @return Higher scores indicate more specific matches (specific component > group-based)
     int specificity() const {
       if (!comp.empty())
         return 3;
       return group == Group::PPeptide || group == Group::MPeptide ? 1 : 0;
     }
   };
-  std::string id;
-  std::string name;
-  Side side1;
-  Side side2;
-  Restraints rt;
-  cif::Block block;  // temporary, until we have ChemLink->Block function
 
-  /// If multiple ChemLinks match a bond, the one with highest scores should be used.
+  std::string id;    ///< Link identifier
+  std::string name;  ///< Link name
+  Side side1;        ///< First residue specification
+  Side side2;        ///< Second residue specification
+  Restraints rt;     ///< Restraints (bonds, angles, dihedrals, etc.)
+  cif::Block block;  ///< Temporary CIF block storage
+
+  /// @brief Calculate matching score for this link between two residues.
+  /// If multiple ChemLinks match a bond, the one with highest score should be used.
+  /// @param res1 First residue
+  /// @param res2 Second residue (nullptr if not available)
+  /// @param alt First residue alternate location indicator
+  /// @param alt2 Second residue alternate location indicator
+  /// @param aliasing1 Aliasing rules for first residue
+  /// @param aliasing2 Aliasing rules for second residue
+  /// @return Numeric score indicating match quality (higher is better)
   int calculate_score(const Residue& res1, const Residue* res2,
                       char alt, char alt2,
                       const ChemComp::Aliasing* aliasing1,
                       const ChemComp::Aliasing* aliasing2) const;
 };
 
+/// @brief Chemical modification (alteration to a chemical component).
 struct GEMMI_DLL ChemMod {
+  /// @brief Modification to a single atom.
   struct AtomMod {
-    int func;
-    std::string old_id;
-    std::string new_id;
-    Element el;
-    float charge;
-    std::string chem_type;
+    int func;                ///< Modification function code
+    std::string old_id;      ///< Original atom identifier
+    std::string new_id;      ///< New atom identifier
+    Element el;              ///< New element
+    float charge;            ///< New formal charge
+    std::string chem_type;   ///< New chemical type
   };
 
-  std::string id;
-  std::string name;
-  std::string comp_id;
-  std::string group_id;
-  std::vector<AtomMod> atom_mods;
-  Restraints rt;
-  cif::Block block;  // temporary, until we have ChemMod->Block function
+  std::string id;                   ///< Modification identifier
+  std::string name;                 ///< Modification name
+  std::string comp_id;              ///< Target chemical component
+  std::string group_id;             ///< Group identifier
+  std::vector<AtomMod> atom_mods;   ///< Atom modifications to apply
+  Restraints rt;                    ///< Modified restraints
+  cif::Block block;                 ///< Temporary CIF block storage
 
+  /// @brief Apply this modification to a chemical component.
+  /// @param chemcomp Chemical component to modify (in-place)
+  /// @param alias_group Optional group alias to apply
   void apply_to(ChemComp& chemcomp, ChemComp::Group alias_group) const;
 };
 
+/// @brief Monomer library with chemical components, links, and modifications.
+/// Stores the (Refmac) restraints dictionary including monomers, chemical links,
+/// and modifications, along with atomic energy parameters.
 struct GEMMI_DLL MonLib {
-  std::string monomer_dir;
-  std::map<std::string, ChemComp> monomers;
-  std::map<std::string, ChemLink> links;
-  std::map<std::string, ChemMod> modifications;
-  std::map<std::string, ChemComp::Group> cc_groups;
-  EnerLib ener_lib;
+  std::string monomer_dir;                          ///< Directory containing monomer CIF files
+  std::map<std::string, ChemComp> monomers;         ///< Chemical components indexed by name
+  std::map<std::string, ChemLink> links;            ///< Chemical links indexed by ID
+  std::map<std::string, ChemMod> modifications;     ///< Chemical modifications indexed by name
+  std::map<std::string, ChemComp::Group> cc_groups; ///< Component group assignments
+  EnerLib ener_lib;                                 ///< Energy library with atomic properties
 
+  /// @brief Find a chemical link by identifier.
+  /// @param link_id Link identifier
+  /// @return Pointer to ChemLink, or nullptr if not found
   const ChemLink* get_link(const std::string& link_id) const {
     auto link = links.find(link_id);
     return link != links.end() ? &link->second : nullptr;
   }
+
+  /// @brief Find a chemical modification by name.
+  /// @param name Modification name
+  /// @return Pointer to ChemMod, or nullptr if not found
   const ChemMod* get_mod(const std::string& name) const {
     auto modif = modifications.find(name);
     return modif != modifications.end() ? &modif->second : nullptr;
   }
 
-  // Returns the most specific link and a flag that is true
-  // if the order is comp2-comp1 in the link definition.
+  /// @brief Find the most specific chemical link between two residues and atoms.
+  /// Returns the most specific link and a flag indicating if the residue order
+  /// is inverted (comp2-comp1) in the link definition.
+  /// @param res1 First residue
+  /// @param atom1 Atom name in first residue
+  /// @param alt1 Alternate location indicator for first atom
+  /// @param res2 Second residue
+  /// @param atom2 Atom name in second residue
+  /// @param alt2 Alternate location indicator for second atom
+  /// @param min_bond_sq Minimum squared bond length to accept
+  /// @return Tuple of (link, inverted_flag, aliasing1, aliasing2);
+  ///         link is nullptr if no match found
   std::tuple<const ChemLink*, bool, const ChemComp::Aliasing*, const ChemComp::Aliasing*>
   match_link(const Residue& res1, const std::string& atom1, char alt1,
              const Residue& res2, const std::string& atom2, char alt2,
@@ -149,6 +197,8 @@ struct GEMMI_DLL MonLib {
     return std::make_tuple(best_link, inverted, aliasing1_final, aliasing2_final);
   }
 
+  /// @brief Add a chemical component from a CIF block if it contains atom definitions.
+  /// @param block CIF block containing chemical component data
   void add_monomer_if_present(const cif::Block& block) {
     if (block.has_tag("_chem_comp_atom.atom_id")) {
       ChemComp cc = make_chemcomp_from_block(block);
@@ -162,6 +212,11 @@ struct GEMMI_DLL MonLib {
     }
   }
 
+  /// @brief Check if a link side specification matches a residue.
+  /// @param side Link side specification to test
+  /// @param res_name Residue name
+  /// @param aliasing Output parameter: aliasing rules if matched via alias, nullptr otherwise
+  /// @return true if side matches res_name (exactly or via group/alias)
   bool link_side_matches_residue(const ChemLink::Side& side,
                                  const std::string& res_name,
                                  ChemComp::Aliasing const** aliasing) const {
@@ -182,34 +237,62 @@ struct GEMMI_DLL MonLib {
     return false;
   }
 
-  /// Returns path to the monomer cif file (the file may not exist).
+  /// @brief Returns path to the monomer CIF file (the file may not exist).
+  /// @param code Chemical component code
+  /// @return Full file path constructed from monomer_dir and code
   std::string path(const std::string& code) const {
     return monomer_dir + relative_monomer_path(code);
   }
 
+  /// @brief Get relative file path for a monomer within a standard directory structure.
+  /// @param code Chemical component code
+  /// @return Relative file path (e.g., "m/monomers/m_code.cif")
   static std::string relative_monomer_path(const std::string& code);
 
+  /// @brief Read monomer library data from a CIF document.
+  /// @param doc CIF document containing chemical components, links, and/or modifications
   void read_monomer_doc(const cif::Document& doc);
 
+  /// @brief Read monomer library data from a CIF file.
+  /// @param path_ File path to read
   void read_monomer_cif(const std::string& path_);
 
+  /// @brief Set the directory for monomer CIF files.
+  /// @param monomer_dir_ Directory path (trailing slash is optional and auto-added)
   void set_monomer_dir(const std::string& monomer_dir_) {
     monomer_dir = monomer_dir_;
     if (!monomer_dir.empty() && monomer_dir.back() != '/' && monomer_dir.back() != '\\')
       monomer_dir += '/';
   }
 
-  /// Read mon_lib_list.cif, ener_lib.cif and required monomers.
-  /// Returns true if all requested monomers were added.
+  /// @brief Read mon_lib_list.cif, ener_lib.cif and required monomers.
+  /// @param monomer_dir_ Directory containing monomer library files
+  /// @param resnames List of chemical component names to load
+  /// @param logger Logger for diagnostic messages
+  /// @return true if all requested monomers were added
   bool read_monomer_lib(const std::string& monomer_dir_,
                         const std::vector<std::string>& resnames,
                         const Logger& logger);
 
+  /// @brief Find ideal bond distance from library for two atoms.
+  /// @param cra1 First atom (chain, residue, atom reference)
+  /// @param cra2 Second atom (chain, residue, atom reference)
+  /// @return Ideal bond distance, or 0 if not found
   double find_ideal_distance(const const_CRA& cra1, const const_CRA& cra2) const;
+
+  /// @brief Update old atom names in structure using alias information.
+  /// @param st Structure to update (modified in-place)
+  /// @param logger Logger for diagnostic messages
   void update_old_atom_names(Structure& st, const Logger& logger) const;
 };
 
-// to be deprecated
+/// @brief Free function wrapper to read monomer library.
+/// @deprecated Use MonLib::read_monomer_lib() method instead.
+/// @param monomer_dir Directory containing monomer library files
+/// @param resnames List of chemical component names to load
+/// @param libin Optional path to additional library CIF file
+/// @param ignore_missing If true, silently ignore missing components; if false, throw exception
+/// @return Populated MonLib instance
 inline MonLib read_monomer_lib(const std::string& monomer_dir,
                                const std::vector<std::string>& resnames,
                                const std::string& libin="",
