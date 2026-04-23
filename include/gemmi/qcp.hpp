@@ -83,14 +83,33 @@
 
 namespace gemmi {
 
+/// @brief Result of quaternion-based structural superposition.
+/// Stores the optimal rotation, translation, and RMSD between two point sets.
 struct SupResult {
+  /// @brief Root-mean-square deviation between the superposed structures.
   double rmsd;
+  /// @brief Number of atom pairs used in the calculation.
   size_t count;
-  Position center1, center2;
+  /// @brief Centroid of the first structure.
+  Position center1;
+  /// @brief Centroid of the second structure.
+  Position center2;
+  /// @brief Rotation and translation to map second structure onto first.
   Transform transform;
 };
 
-// helper function
+/// @brief Compute covariance matrix H and sum G for QCP algorithm.
+/// @details Helper function for quaternion-based superposition.
+/// Computes the weighted covariance (or "scatter") matrix H = sum_i w_i * (p1_i - ctr1) * (p2_i - ctr2)^T,
+/// and the sum G1 + G2 = sum_i w_i * |p1_i - ctr1|^2 + |p2_i - ctr2|^2.
+/// @param mat Output 3x3 covariance matrix (accumulated into).
+/// @param pos1 Array of positions in first structure.
+/// @param ctr1 Centroid of first structure.
+/// @param pos2 Array of positions in second structure.
+/// @param ctr2 Centroid of second structure.
+/// @param len Number of position pairs.
+/// @param weight Optional array of weights; if null, all weights are 1.0.
+/// @return Sum of weighted squared distances from centroids (G1 + G2).
 inline double qcp_inner_product(Mat33& mat,
                                 const Position* pos1, const Position& ctr1,
                                 const Position* pos2, const Position& ctr2,
@@ -116,7 +135,21 @@ inline double qcp_inner_product(Mat33& mat,
   return (G1 + G2) * 0.5;
 }
 
-// helper function
+/// @brief Compute optimal rotation and RMSD using quaternion characteristic polynomial.
+/// @details
+/// Fast algorithm (Theobald 2005, Liu et al. 2009) for computing the optimal
+/// rotation that minimizes RMSD between two point clouds. Uses eigenvalue
+/// computation via Newton-Raphson on a characteristic polynomial and
+/// quaternion-to-rotation-matrix conversion.
+/// @param rot Output 3x3 rotation matrix; set to identity if computation fails.
+///            May be null if only RMSD is needed (set min_score > 0).
+/// @param A Covariance matrix from qcp_inner_product().
+/// @param rmsd Output: root-mean-square deviation after optimal rotation.
+/// @param E0 Sum of weighted squared distances from centroids.
+/// @param len Sum of weights (or number of atoms).
+/// @param min_score If >= 0 and RMSD < min_score, skip rotation computation and return -1.
+/// @return Status: 1 if rotation computed successfully, 0 if singular (identity returned),
+///         -1 if min_score criterion not met or rot is null.
 inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
                                        double E0, double len, double min_score) {
   const double evecprec = 1e-6;
@@ -280,7 +313,11 @@ inline int fast_calc_rmsd_and_rotation(Mat33* rot, const Mat33& A, double *rmsd,
   return 1;
 }
 
-// helper function
+/// @brief Calculate the weighted centroid of a point set.
+/// @param pos Array of positions.
+/// @param len Number of positions.
+/// @param weight Optional array of weights; if null, all weights are 1.0.
+/// @return Weighted centroid position.
 inline Position qcp_calculate_center(const Position* pos, size_t len, const double *weight) {
   double wsum = 0.0;
   Position ctr;
@@ -292,8 +329,18 @@ inline Position qcp_calculate_center(const Position* pos, size_t len, const doub
   return ctr / wsum;
 }
 
-// Calculate superposition of pos2 onto pos1 -- pos2 is movable.
-// Does not perform the superposition, only returns the operation to be used.
+/// @brief Calculate the optimal superposition of one point set onto another using QCP.
+/// @details
+/// Finds the rotation and translation that best align pos2 onto pos1,
+/// minimizing the weighted root-mean-square deviation. Does not modify positions;
+/// to apply the transformation, use transform.apply() on pos2.
+/// Based on Theobald (2005) and Liu et al. (2009): rapid calculation of RMSD
+/// using a quaternion-based characteristic polynomial.
+/// @param pos1 Array of reference positions (fixed).
+/// @param pos2 Array of positions to be superposed (movable).
+/// @param len Number of position pairs.
+/// @param weight Optional array of weights; if null, all weights are 1.0.
+/// @return SupResult containing RMSD, rotation matrix, translation, and centroids.
 inline SupResult superpose_positions(const Position* pos1, const Position* pos2,
                                      size_t len, const double* weight) {
   SupResult result;
@@ -326,7 +373,16 @@ inline SupResult superpose_positions(const Position* pos1, const Position* pos2,
   return result;
 }
 
-// Similar to superpose_positions(), but calculates RMSD only.
+/// @brief Calculate the RMSD between two point sets after optimal superposition (fast).
+/// @details
+/// Similar to superpose_positions() but computes only the RMSD without
+/// the rotation matrix or translation vector, making it faster for cases
+/// where only the quality of fit is needed.
+/// @param pos1 Array of reference positions.
+/// @param pos2 Array of positions to be superposed.
+/// @param len Number of position pairs.
+/// @param weight Optional array of weights; if null, all weights are 1.0.
+/// @return Root-mean-square deviation after optimal superposition.
 inline double calculate_rmsd_of_superposed_positions(const Position* pos1,
                                                      const Position* pos2,
                                                      size_t len, const double* weight) {
