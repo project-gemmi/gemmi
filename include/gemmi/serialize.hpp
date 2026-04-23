@@ -10,12 +10,18 @@
 #include "model.hpp"
 #include "cifdoc.hpp"
 
+/// @brief Macro to generate serialize functions for a struct.
+/// @details Expands to both mutable and const serialize template specializations.
+/// Usage: SERIALIZE(MyStruct, member1, member2, ...)
 #define SERIALIZE(Struct, ...) \
 template <typename Archive> \
 void serialize(Archive& archive, Struct& o) { archive(__VA_ARGS__); } \
 template <typename Archive> \
 void serialize(Archive& archive, const Struct& o) { archive(__VA_ARGS__); }
 
+/// @brief Macro to generate serialize functions for a struct with a parent class.
+/// @details Serializes the parent class first, then child members.
+/// Usage: SERIALIZE_P(MyStruct, ParentClass, member1, member2, ...)
 #define SERIALIZE_P(Struct, Parent, ...) \
 template <typename Archive> \
 void serialize(Archive& archive, Struct& o) \
@@ -24,6 +30,9 @@ template <typename Archive> \
 void serialize(Archive& archive, const Struct& o) \
  { archive(static_cast<const Parent&>(o), __VA_ARGS__); }
 
+/// @brief Macro to generate serialize functions for a template struct with one parameter.
+/// @details Generates both mutable and const serialize specializations for a template class.
+/// Usage: SERIALIZE_T1(MyTemplate, typename, member1, member2, ...)
 #define SERIALIZE_T1(Struct, Typename, ...) \
 template <typename Archive, Typename T> \
 void serialize(Archive& archive, Struct<T>& o) { archive(__VA_ARGS__); } \
@@ -179,6 +188,9 @@ SERIALIZE(Loop, o.tags, o.values)
 SERIALIZE(Block, o.name, o.items)
 SERIALIZE(Document, o.source, o.blocks)
 
+/// @brief Serialize CIF Item, handling union member construction.
+/// @param archive Archive to read from or write to
+/// @param o Item to serialize
 template <typename Archive>
 void serialize(Archive& archive, Item& o) {
   archive(o.type, o.line_number);
@@ -190,6 +202,9 @@ void serialize(Archive& archive, Item& o) {
     case ItemType::Erased: break;
   }
 }
+/// @brief Serialize const CIF Item.
+/// @param archive Archive to read from or write to
+/// @param o Item to serialize
 template <typename Archive>
 void serialize(Archive& archive, const Item& o) {
   archive(o.type, o.line_number);
