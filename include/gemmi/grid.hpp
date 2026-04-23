@@ -741,14 +741,14 @@ struct Grid : GridBase<T> {
   /// @details Uses Catmull–Rom cubic splines applied as a tensor product in three dimensions.
   /// Smoother than trilinear but more expensive. See cubic_interpolation() for the 1D formula.
   /// @param x Grid coordinate (x=1.5 is between 2nd and 3rd grid point). Wraps periodically.
+  /// @param y Grid coordinate
+  /// @param z Grid coordinate
+  /// @return Interpolated value (double precision)
   /// @par References
   /// Afonine, P.V., Poon, B.K., Read, R.J., Sobolev, O.V., Terwilliger, T.C.,
   /// Urzhumtsev, A. & Adams, P.D. (2018). Real-space refinement in PHENIX for
   /// cryo-EM and crystallography. Acta Cryst. D74, 531–544.
   /// https://doi.org/10.1107/S2059798318006551
-  /// @param y Grid coordinate
-  /// @param z Grid coordinate
-  /// @return Interpolated value (double precision)
   double tricubic_interpolation(double x, double y, double z) const {
     std::array<std::array<std::array<T,4>,4>,4> copy;
     copy_4x4x4(x, y, z, copy);
