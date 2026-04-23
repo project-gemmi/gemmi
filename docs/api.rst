@@ -54,6 +54,33 @@ Map and Grid Data
 .. doxygenfile:: model.hpp
    :project: gemmi
 
+CIF Data Reading and Writing
+-----------------------------
+
+*(Full documentation added in PR 3.)*
+
+.. doxygenfile:: cifdoc.hpp
+   :project: gemmi
+
+.. doxygenfile:: cif.hpp
+   :project: gemmi
+
+.. doxygenfile:: read_cif.hpp
+   :project: gemmi
+
+.. doxygenfile:: to_cif.hpp
+   :project: gemmi
+
+.. doxygenfile:: to_json.hpp
+   :project: gemmi
+
+.. doxygenfile:: json.hpp
+   :project: gemmi
+
+.. doxygenfile:: numb.hpp
+   :project: gemmi
+
+.. doxygenfile:: ddl.hpp
 Structure I/O
 -------------
 

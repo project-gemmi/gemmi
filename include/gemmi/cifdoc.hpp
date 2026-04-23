@@ -1,3 +1,11 @@
+/// @file
+/// @brief In-memory representation of a CIF (Crystallographic Information File) document.
+///
+/// This header defines the core data structures for parsing and manipulating CIF files.
+/// It provides a document model that can represent both traditional CIF and mmCIF (macromolecular CIF)
+/// formats, as well as alternative serializations like CIF-JSON or mmJSON.
+/// The model consists of blocks, items (tag-value pairs or loops), and supports frame nesting.
+
 // Copyright 2017 Global Phasing Ltd.
 //
 // struct Document that represents the CIF file (but can also be
@@ -33,11 +41,17 @@ namespace cif {
 using std::size_t;
 using gemmi::fail;
 
+/// @brief Discriminator for CIF items: single tag-value pairs, loops, or frames.
 enum class ItemType : unsigned char {
+  /// A single tag-value pair (e.g., `_cell.length_a  10.5`)
   Pair,
+  /// A loop with tags (column headers) and values in row-major storage
   Loop,
+  /// A save frame (nested block); used in CIF to define templates or additional metadata
   Frame,
+  /// A comment item (prefix-preserved in output, not validated for syntax)
   Comment,
+  /// Placeholder for a logically removed item; storage not reclaimed
   Erased,
 };
 
@@ -124,48 +138,90 @@ struct LoopArg {};
 struct FrameArg { std::string str; };
 struct CommentArg { std::string str; };
 
+/// @brief A tabular loop structure: tags (column names) and flat row-major values.
+///
+/// In CIF syntax, a loop is a compact representation of a table with named columns:
+/// ```
+/// loop_
+///   _category.tag1  _category.tag2  _category.tag3
+///   value1a        value2a         value3a
+///   value1b        value2b         value3b
+/// ```
+/// Internally, the tag names are stored in `tags` and all values are stored sequentially
+/// in `values` using row-major layout: for N columns and M rows, `values.size() == N*M`,
+/// and element at (row r, column c) is at index `r * N + c`.
 struct Loop {
+  /// Column header names (tags), typically with a common prefix (e.g., `_atom_site.`)
   std::vector<std::string> tags;
+  /// All values in row-major order: consecutive `tags.size()` elements form one row.
+  /// Invariant: `values.size() % tags.size() == 0`.
   std::vector<std::string> values;
 
-  // search and access
+  /// @brief Find a tag by case-insensitive match.
+  /// @param lctag Tag name converted to lowercase.
+  /// @return Column index (0-based) if found; -1 if not found.
   int find_tag_lc(const std::string& lctag) const {
     auto f = std::find_if(tags.begin(), tags.end(),
         [&lctag](const std::string& t) { return gemmi::iequal(t, lctag); });
     return f == tags.end() ? -1 : f - tags.begin();
   }
+  /// @brief Find a tag by case-insensitive match.
+  /// @param tag Tag name (converted to lowercase internally).
+  /// @return Column index (0-based) if found; -1 if not found.
   int find_tag(const std::string& tag) const {
     return find_tag_lc(gemmi::to_lower(tag));
   }
+  /// @brief Check if a tag exists (case-insensitive).
   bool has_tag(const std::string& tag) const { return find_tag(tag) != -1; }
+  /// @brief Number of columns in this loop.
   size_t width() const { return tags.size(); }
+  /// @brief Number of rows in this loop.
   size_t length() const { return values.size() / tags.size(); }
 
+  /// @brief Direct access to a value by row and column index (row-major layout).
+  /// @param row Row index (0-based).
+  /// @param col Column index (0-based).
+  /// @return Reference to the value at (row, col).
   std::string& val(size_t row, size_t col) { return values[row * tags.size() + col]; }
+  /// @brief Const overload of val().
   const std::string& val(size_t row, size_t col) const {
     return const_cast<Loop*>(this)->val(row, col);
   }
 
+  /// @brief Clear all tags and values from this loop.
   void clear() { tags.clear(); values.clear(); }
 
+  /// @brief Insert values into the loop, optionally at a specific row position.
+  /// @tparam T Container type with begin()/end() iterators (e.g., std::vector, std::initializer_list).
+  /// @param new_values Container of strings to insert.
+  /// @param pos Row position to insert at (-1 appends at end).
   template <typename T> void add_values(T new_values, int pos=-1) {
     auto it = values.end();
     if (pos >= 0 && pos * width() < values.size())
       it = values.begin() + pos * tags.size();
     values.insert(it, new_values.begin(), new_values.end());
   }
+  /// @brief Overload for initializer_list.
   void add_values(std::initializer_list<std::string> new_values, int pos=-1) {
     add_values<std::initializer_list<std::string>>(new_values, pos);
   }
+  /// @brief Add a complete row to the loop (must match column count).
+  /// @tparam T Container with begin()/end() iterators.
+  /// @param new_values Container of strings; size must equal `width()`.
+  /// @param pos Row position to insert at (-1 appends at end).
+  /// @throws std::runtime_error if new_values.size() != tags.size().
   template <typename T> void add_row(T new_values, int pos=-1) {
     if (new_values.size() != tags.size())
       fail("add_row(): wrong row length.");
     add_values<T>(new_values, pos);
   }
+  /// @brief Overload for initializer_list.
   void add_row(std::initializer_list<std::string> new_values, int pos=-1) {
     add_row<std::initializer_list<std::string>>(new_values, pos);
   }
-  // comments are added relying on how cif writing works
+  /// @brief Add a comment prefix to the first value of a row, then add the row.
+  /// @param ss Initializer list with comment string at index 0, then `width()` value strings.
+  /// @throws std::runtime_error if ss.size() != tags.size() + 1.
   void add_comment_and_row(std::initializer_list<std::string> ss) {
     if (ss.size() != tags.size() + 1)
       fail("add_comment_and_row(): wrong row length.");
@@ -173,13 +229,17 @@ struct Loop {
     vec[0] = cat('#', *ss.begin(), '\n', vec[0]);
     add_row(vec);
   }
+  /// @brief Remove the last row from the loop.
+  /// @throws std::runtime_error if the loop is already empty.
   void pop_row() {
     if (values.size() < tags.size())
       fail("pop_row() called on empty Loop");
     values.resize(values.size() - tags.size());
   }
 
-  // the arguments must be valid row indices
+  /// @brief Move a row to a different position within the loop.
+  /// @param old_pos Current row index (0-based); must be < length().
+  /// @param new_pos Target row index (0-based); must be < length().
   void move_row(int old_pos, int new_pos) {
     size_t w = width();
     auto src = values.begin() + old_pos * w;
@@ -190,7 +250,10 @@ struct Loop {
       std::rotate(dst, src, src+w);
   }
 
-  // column_names are not checked for duplicates nor for category name
+  /// @brief Add new columns with an initial fill value.
+  /// @param column_names Vector of new tag names (must start with '_').
+  /// @param value String value to fill for all existing rows.
+  /// @param pos Column position to insert at (-1 appends at end).
   void add_columns(const std::vector<std::string>& column_names,
                    const std::string& value, int pos=-1) {
     for (const std::string& name : column_names)
@@ -202,6 +265,9 @@ struct Loop {
     vector_insert_columns(values, old_width, len, column_names.size(), upos, value);
   }
 
+  /// @brief Remove a column by tag name.
+  /// @param column_name Tag to remove (case-insensitive search).
+  /// @throws std::runtime_error if tag not found.
   void remove_column(const std::string& column_name) {
     int n = find_tag(column_name);
     if (n == -1)
@@ -209,14 +275,19 @@ struct Loop {
     remove_column_at(n);
   }
 
-  /// \pre: n < tags.size()
+  /// @brief Remove a column by index.
+  /// @param n Column index; must be < tags.size().
   void remove_column_at(size_t n) {
     tags.erase(tags.begin() + n);
     vector_remove_column(values, tags.size(), n);
   }
 
+  /// @brief Replace all values with columns from a vector of column vectors.
+  /// @param columns Vector of columns; size must equal width(), each column must equal length().
   void set_all_values(std::vector<std::vector<std::string>> columns);
 
+  /// @brief Extract the common prefix from all tags in this loop.
+  /// @return Longest prefix that all tags share (case-insensitive).
   std::string common_prefix() const {
     if (tags.empty())
       return {};
@@ -235,30 +306,55 @@ struct Loop {
 struct Item;
 struct Block;
 
-// Accessor to a specific loop column, or to a single value from a Pair.
+/// @brief A view into a single column of a Loop, or a single Pair value.
+///
+/// Provides array-like access to a sequence of values from either a loop column or a pair value.
+/// Acts as both a reference (can be modified through operator[]) and an iterable container.
 class Column {
 public:
+  /// @brief Construct an empty/null column.
   Column() : item_(nullptr) {}
+  /// @brief Construct a column view for a specific item and column index.
+  /// @param item Pointer to an Item (must be Loop or Pair type).
+  /// @param col Column index; for Loop, this is the column position; for Pair, should be 0.
   Column(Item* item, size_t col) : item_(item), col_(col) {}
+  /// @brief Iterator type for strided traversal of column values.
   using iterator = StrideIter<std::string>;
+  /// @brief Begin iterator; provides access to the first value in the column.
   iterator begin();
+  /// @brief End iterator; one-past-the-last value.
   iterator end();
+  /// @brief Const iterator type.
   using const_iterator = StrideIter<const std::string>;
+  /// @brief Const begin iterator.
   const_iterator begin() const { return const_cast<Column*>(this)->begin(); }
+  /// @brief Const end iterator.
   const_iterator end() const { return const_cast<Column*>(this)->end(); }
 
+  /// @brief Get the underlying Loop, if this column comes from a Loop item; nullptr otherwise.
   Loop* get_loop() const;
+  /// @brief Get the tag (column header) string for this column.
+  /// @return Pointer to the tag string (valid as long as the Item is alive).
   std::string* get_tag();
+  /// @brief Const overload of get_tag().
   const std::string* get_tag() const {
     return const_cast<Column*>(this)->get_tag();
   }
+  /// @brief Number of values in this column.
+  /// @return Loop length if from a Loop; 1 if from a Pair; 0 if null.
   int length() const {
     if (const Loop* loop = get_loop())
       return loop->length();
     return item_ ? 1 : 0;
   }
+  /// @brief Check if this column is valid (not null).
   explicit operator bool() const { return item_ != nullptr ; }
+  /// @brief Access a value by index (0-based; for Pair, only index 0 is valid).
   std::string& operator[](int n);
+  /// @brief Safe access with bounds checking and negative indexing support.
+  /// @param n Index (negative indices count from end).
+  /// @return Reference to the value.
+  /// @throws std::out_of_range if index is out of bounds.
   std::string& at(int n) {
     if (n < 0)
       n += length();
@@ -267,67 +363,97 @@ public:
           " in Column with length " + std::to_string(length()));
     return operator[](n);
   }
+  /// @brief Const overload of at().
   const std::string& at(int n) const {
     return const_cast<Column*>(this)->at(n);
   }
 
+  /// @brief Get a CIF-unquoted string value (removes quotes/semicolons).
   std::string str(int n) const { return as_string(at(n)); }
+  /// @brief Get const pointer to the underlying Item.
   const Item* item() const { return item_; }
+  /// @brief Get mutable pointer to the underlying Item.
   Item* item() { return item_; }
+  /// @brief Get the column index within the Loop (or 0 for Pair).
   size_t col() const { return col_; }
 
+  /// @brief Erase this column from its item (removes from Loop or erases Pair).
   void erase();
 
 private:
-  Item* item_;
-  size_t col_;  // for loop this is a column index in item_->loop
+  Item* item_;           ///< Pointer to the Item (Loop or Pair).
+  size_t col_;           ///< Column index in the Loop, or 0 for Pair.
 };
 
-// Some values can be given either in loop or as tag-value pairs.
-// The latter case is equivalent to a loop with a single row.
-// We optimized for loops, and in case of tag-values we copy the values
-// into the `values` vector.
+/// @brief A unified view of data as either a loop (multiple rows) or pairs (single row).
+///
+/// Some CIF data can be represented either way:
+/// - As a loop with multiple rows (efficient for large tables)
+/// - As separate tag-value pairs (equivalent to a loop with one row)
+///
+/// This struct abstracts both representations to provide uniform access through Row objects.
+/// It internally tracks column mappings and optimizes for the loop case.
 struct Table {
+  /// @brief Pointer to the Loop Item, or nullptr if data is in pairs.
   Item* loop_item;
+  /// @brief Reference to the Block containing the items.
   Block& bloc;
+  /// @brief Column position mappings: for each query column, the position in loop/pairs.
+  /// Negative position (-1) means the column is optional and absent.
   std::vector<int> positions;
+  /// @brief Length of the common tag prefix (e.g., `_atom_site.` length).
   size_t prefix_length;
 
+  /// @brief A single row of the table, providing key-value access to columns.
   struct Row {
+    /// @brief Reference to the parent Table.
     Table& tab;
+    /// @brief Row index (-1 represents the tag row itself).
     int row_index;
 
+    /// @brief Unsafe access: position must be valid (>=0).
     std::string& value_at_unsafe(int pos);
+    /// @brief Safe access by position; throws if position is -1 (optional column absent).
     std::string& value_at(int pos) {
       if (pos == -1)
         throw std::out_of_range("Cannot access missing optional tag.");
       return value_at_unsafe(pos);
     }
+    /// @brief Const overload of value_at().
     const std::string& value_at(int pos) const {
       return const_cast<Row*>(this)->value_at(pos);
     }
 
+    /// @brief Access by column index in the table query (with bounds checking).
     std::string& at(int n) {
       return value_at(tab.positions.at(n < 0 ? n + size() : n));
     }
+    /// @brief Const overload of at().
     const std::string& at(int n) const { return const_cast<Row*>(this)->at(n); }
 
+    /// @brief Unchecked access by column index.
     std::string& operator[](size_t n);
+    /// @brief Const overload.
     const std::string& operator[](size_t n) const {
       return const_cast<Row*>(this)->operator[](n);
     }
 
+    /// @brief Pointer-based access to optional columns (nullptr if absent).
     std::string* ptr_at(int n) {
       int pos = tab.positions.at(n < 0 ? n + size() : n);
       return pos >= 0 ? &value_at(pos) : nullptr;
     }
+    /// @brief Const overload of ptr_at().
     const std::string* ptr_at(int n) const {
       return const_cast<Row*>(this)->ptr_at(n);
     }
 
+    /// @brief Check if a column is present.
     bool has(size_t n) const { return tab.positions.at(n) >= 0; }
+    /// @brief Check if a column is present and has a non-null value.
     bool has2(size_t n) const { return has(n) && !cif::is_null(operator[](n)); }
 
+    /// @brief Return the first non-null value among two columns, or a null placeholder.
     const std::string& one_of(size_t n1, size_t n2) const {
       static const std::string nul(1, '.');
       if (has2(n1))
@@ -337,48 +463,72 @@ struct Table {
       return nul;
     }
 
+    /// @brief Number of columns in the table query.
     size_t size() const { return tab.width(); }
 
+    /// @brief Get a CIF-unquoted string value.
     std::string str(int n) const { return as_string(at(n)); }
 
+    /// @brief Iterator type for traversing columns in this row.
     using iterator = IndirectIter<Row, std::string>;
+    /// @brief Const iterator type.
     using const_iterator = IndirectIter<const Row, const std::string>;
+    /// @brief Begin iterator.
     iterator begin() { return iterator({this, tab.positions.begin()}); }
+    /// @brief End iterator.
     iterator end() { return iterator({this, tab.positions.end()}); }
+    /// @brief Const begin iterator.
     const_iterator begin() const {
       return const_iterator({this, tab.positions.begin()});
     }
+    /// @brief Const end iterator.
     const_iterator end() const {
       return const_iterator({this, tab.positions.end()});
     }
   };
 
+  /// @brief Get the underlying Loop, if this table is loop-based.
   Loop* get_loop();
+  /// @brief Check if this table is valid (has at least one column).
   bool ok() const { return !positions.empty(); }
+  /// @brief Number of columns in the table query.
   size_t width() const { return positions.size(); }
+  /// @brief Number of rows in this table.
   size_t length() const;
+  /// @brief Alias for length().
   size_t size() const { return length(); }
+  /// @brief Check if column n is present (not -1).
   bool has_column(int n) const { return ok() && positions.at(n) >= 0; }
+  /// @brief Access the tag row (row_index == -1).
   Row tags() { return Row{*this, -1}; }
+  /// @brief Access a data row by index.
   Row operator[](int n) { return Row{*this, n}; }
 
+  /// @brief Validate and normalize a row index (supports negative indexing).
+  /// @param n Index to check (modified in-place).
+  /// @throws std::out_of_range if index is invalid.
   void at_check(int& n) const {
     if (n < 0)
       n += length();
     if (n < 0 || static_cast<size_t>(n) >= length())
       throw std::out_of_range("No row with index " + std::to_string(n));
   }
+  /// @brief Safe row access with bounds checking.
   Row at(int n) {
     at_check(n);
     return (*this)[n];
   }
 
+  /// @brief Get the single row of a one-row table.
+  /// @return The first (and only) row.
+  /// @throws std::runtime_error if table has != 1 row.
   Row one() {
     if (length() != 1)
       fail("Expected one value, found " + std::to_string(length()));
     return (*this)[0];
   }
 
+  /// @brief Get the common category prefix for this table (e.g., `_atom_site`).
   std::string get_prefix() const {
     for (int pos : positions)
       if (pos >= 0)
@@ -387,15 +537,29 @@ struct Table {
     fail("The table has no columns.");
   }
 
+  /// @brief Find the first row where the first column matches a value.
+  /// @param s String value to search for (compared with as_string unquoting).
+  /// @return The matching row.
+  /// @throws std::runtime_error if no row matches.
   Row find_row(const std::string& s);
 
+  /// @brief Append a row with values matching the table columns.
+  /// @tparam T Container type with begin()/end().
+  /// @param new_values Container of strings; size must equal width().
   template <typename T> void append_row(const T& new_values);
+  /// @brief Overload for initializer_list.
   void append_row(std::initializer_list<std::string> new_values) {
     append_row<std::initializer_list<std::string>>(new_values);
   }
+  /// @brief Remove a single row.
   void remove_row(int row_index) { remove_rows(row_index, row_index+1); }
+  /// @brief Remove rows [start, end).
   void remove_rows(int start, int end);
+  /// @brief Create a Column view for a position.
   Column column_at_pos(int pos);
+  /// @brief Get a Column view by table column index.
+  /// @param n Column index in the query.
+  /// @throws std::runtime_error if the column is absent (position -1).
   Column column(int n) {
     int pos = positions.at(n);
     if (pos == -1)
@@ -403,6 +567,7 @@ struct Table {
     return column_at_pos(pos);
   }
 
+  /// @brief Move a row to a different position.
   void move_row(int old_pos, int new_pos) {
     at_check(old_pos);
     at_check(new_pos);
@@ -410,7 +575,10 @@ struct Table {
       loop->move_row(old_pos, new_pos);
   }
 
-  // prefix is optional
+  /// @brief Find a column by tag name (supports prefix matching).
+  /// @param tag Column name to search for (case-insensitive).
+  /// @return Position of the matching column.
+  /// @throws std::runtime_error if tag not found.
   int find_column_position(const std::string& tag) const {
     std::string lctag = gemmi::to_lower(tag);
     Row tag_row = const_cast<Table*>(this)->tags();
@@ -423,16 +591,18 @@ struct Table {
     fail("Column name not found: " + tag);
   }
 
+  /// @brief Get a Column view by tag name.
   Column find_column(const std::string& tag) {
     return column_at_pos(find_column_position(tag));
   }
 
+  /// @brief Erase this table (remove all its items from the block).
   void erase();
 
-  /// if it's pairs, convert it to loop
+  /// @brief Ensure data is in loop form (convert from pairs if needed).
   void ensure_loop();
 
-  // It is not a proper input iterator, but just enough for using range-for.
+  /// @brief Iterator for range-based for loops over rows.
   struct iterator {
     Table& parent;
     int index;
@@ -442,37 +612,85 @@ struct Table {
     Row operator*() { return parent[index]; }
     const std::string& get(int n) const { return parent[index].at(n); }
   };
+  /// @brief Begin iterator for rows.
   iterator begin() { return iterator{*this, 0}; }
+  /// @brief End iterator for rows.
   iterator end() { return iterator{*this, (int)length()}; }
 };
 
+/// @brief A CIF data block, containing tags (pairs), loops, and nested frames.
+///
+/// In CIF syntax, a block starts with `data_blockname` and contains items:
+/// - Tag-value pairs: `_tag value`
+/// - Loops: `loop_ _tag1 _tag2 ... value1a value2a value1b value2b ...`
+/// - Frames: `save_framename ... save_`
+///
+/// Blocks are case-insensitive for tag lookup (but case is preserved in output).
 struct Block {
+  /// @brief Block name (e.g., "structure" in `data_structure`).
   std::string name;
+  /// @brief Items in this block (pairs, loops, frames, comments).
   std::vector<Item> items;
 
+  /// @brief Construct a named block.
   explicit Block(const std::string& name_);
+  /// @brief Construct an unnamed block.
   Block();
 
+  /// @brief Swap contents with another block.
   void swap(Block& o) noexcept { name.swap(o.name); items.swap(o.items); }
   // access functions
+  /// @brief Find an Item that is a tag-value pair by tag name.
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Pointer to the Item, or nullptr if not found or not a Pair.
   const Item* find_pair_item(const std::string& tag) const;
+  /// @brief Find a tag-value pair (Pair).
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Pointer to the Pair, or nullptr if not found.
   const Pair* find_pair(const std::string& tag) const;
+  /// @brief Find a loop containing a tag and get a Column view.
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Column view if found and item is a Loop; empty Column otherwise.
   Column find_loop(const std::string& tag);
+  /// @brief Find an Item that is a loop containing a tag.
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Pointer to the Item, or nullptr if not found.
   const Item* find_loop_item(const std::string& tag) const;
+  /// @brief Find a single value (from Pair or first row of Loop with single column).
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Pointer to the value string, or nullptr if not found.
   const std::string* find_value(const std::string& tag) const;
+  /// @brief Find all values with a tag (Column from Loop or Pair).
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Column view (empty if not found).
   Column find_values(const std::string& tag);
+  /// @brief Check if a tag exists in this block.
   bool has_tag(const std::string& tag) const {
     return const_cast<Block*>(this)->find_values(tag).item() != nullptr;
   }
+  /// @brief Check if a tag exists and has at least one non-null value.
   bool has_any_value(const std::string& tag) const {
     Column c = const_cast<Block*>(this)->find_values(tag);
     return c.item() != nullptr && !std::all_of(c.begin(), c.end(), is_null);
   }
+  /// @brief Find a table of values with specified tags (required tags).
+  /// @param prefix Common tag prefix (e.g., `_atom_site`).
+  /// @param tags Tags to search for (no '?' prefix; all required).
+  /// @return Table view (ok() == false if not all tags found).
   Table find(const std::string& prefix,
              const std::vector<std::string>& tags);
+  /// @brief Overload without prefix.
   Table find(const std::vector<std::string>& tags) { return find({}, tags); }
+  /// @brief Find a table with optional tags (all columns attempted).
+  /// @param prefix Common tag prefix.
+  /// @param tags Tags to search for; position -1 if not found.
+  /// @return Table view.
   Table find_any(const std::string& prefix,
                  const std::vector<std::string>& tags);
+  /// @brief Find a table, creating it if not found.
+  /// @param prefix Common tag prefix.
+  /// @param tags Tags; all are created as a new loop if not found.
+  /// @return Table view (ok() == true).
   Table find_or_add(const std::string& prefix, std::vector<std::string> tags) {
     Table t = find(prefix, tags);
     if (!t.ok()) {
@@ -483,26 +701,54 @@ struct Block {
     }
     return t;
   }
+  /// @brief Find a nested frame (save block) by name.
+  /// @param name Frame name (case-insensitive).
+  /// @return Pointer to the frame Block, or nullptr if not found.
   Block* find_frame(std::string name);
+  /// @brief Convert a Loop Item to a Table view.
   Table item_as_table(Item& item);
 
+  /// @brief Get the index of an item containing a tag.
+  /// @param tag Tag to search for (case-insensitive).
+  /// @return Index in the items vector.
+  /// @throws std::runtime_error if tag not found.
   size_t get_index(const std::string& tag) const;
 
   // modifying functions
+  /// @brief Set or update a tag-value pair.
+  /// @param tag Tag name (case-insensitive for lookup, but case is updated if tag is added).
+  /// @param value Value to set.
   void set_pair(const std::string& tag, const std::string& value);
 
+  /// @brief Initialize or get a loop for specified tags.
+  /// @param prefix Common tag prefix.
+  /// @param tags Column names (prefix added automatically).
+  /// @return Reference to the Loop (newly created if needed).
   Loop& init_loop(const std::string& prefix, std::vector<std::string> tags) {
     Table tab = find_any(prefix, tags);
     return setup_loop(std::move(tab), prefix, std::move(tags));
   }
 
+  /// @brief Move an item to a different position.
+  /// @param old_pos Current position (supports negative indexing).
+  /// @param new_pos Target position (supports negative indexing).
   void move_item(int old_pos, int new_pos);
 
   // mmCIF specific functions
+  /// @brief Get all category prefixes in mmCIF format (ending with '.').
   std::vector<std::string> get_mmcif_category_names() const;
+  /// @brief Find a category (all tags starting with prefix).
+  /// @param cat Category prefix (e.g., `_atom_site`; '.' is added if missing).
+  /// @return Table view with all matching tags.
   Table find_mmcif_category(std::string cat);
+  /// @brief Check if an mmCIF category exists.
+  /// @param cat Category prefix.
   bool has_mmcif_category(std::string cat) const;
 
+  /// @brief Initialize an mmCIF category loop.
+  /// @param cat Category prefix.
+  /// @param tags Column names (category prefix added automatically).
+  /// @return Reference to the Loop.
   Loop& init_mmcif_loop(std::string cat, std::vector<std::string> tags) {
     ensure_mmcif_category(cat);  // modifies cat
     return setup_loop(find_mmcif_category(cat), cat, std::move(tags));
@@ -516,52 +762,78 @@ private:
 };
 
 
+/// @brief A single item in a CIF block: a pair, loop, frame, comment, or erased marker.
+///
+/// Uses a discriminated union (tagged with ItemType) to store different data types.
+/// For a Pair, stores tag and value. For a Loop, stores tags and values vectors.
+/// For a Frame, stores a nested Block.
 struct Item {
+  /// @brief The type of item (discriminator for the union).
   ItemType type;
+  /// @brief Source line number where this item was parsed (or -1 if not from parsing).
   int line_number = -1;
+  /// @brief Union storing the actual data (only one is valid based on type).
   union {
+    /// @brief For Pair items: [tag, value].
     Pair pair;
+    /// @brief For Loop items: tags and values.
     Loop loop;
+    /// @brief For Frame items: nested save frame Block.
     Block frame;
   };
 
+  /// @brief Construct an erased (empty) item.
   Item() : type(ItemType::Erased) {}
+  /// @brief Construct a Loop item.
   explicit Item(LoopArg)
     : type{ItemType::Loop}, loop{} {}
+  /// @brief Construct a Pair with a tag (value empty).
   explicit Item(std::string&& t)
     : type{ItemType::Pair}, pair{{std::move(t), std::string()}} {}
+  /// @brief Construct a Pair with tag and value.
   Item(const std::string& t, const std::string& v)
     : type{ItemType::Pair}, pair{{t, v}} {}
+  /// @brief Construct a Frame from a FrameArg.
   explicit Item(FrameArg&& frame_arg)
     : type{ItemType::Frame}, frame(frame_arg.str) {}
+  /// @brief Construct a Comment from a CommentArg.
   explicit Item(CommentArg&& comment)
     : type{ItemType::Comment}, pair{{std::string(), std::move(comment.str)}} {}
 
+  /// @brief Move constructor.
   Item(Item&& o) noexcept
       : type(o.type), line_number(o.line_number) {
     move_value(std::move(o));
   }
+  /// @brief Copy constructor.
   Item(const Item& o)
       : type(o.type), line_number(o.line_number) {
     copy_value(o);
   }
 
+  /// @brief Assignment operator (move-based).
   Item& operator=(Item o) { set_value(std::move(o)); return *this; }
 
+  /// @brief Destructor (calls destruct on the active union member).
   ~Item() { destruct(); }
 
+  /// @brief Mark this item as erased without freeing underlying storage.
+  /// Changes type to Erased; the union memory is left as-is.
   void erase() {
     destruct();
     type = ItemType::Erased;
   }
 
-  // case-insensitive, the prefix should be lower-case
+  /// @brief Check if this item's tag(s) start with a prefix (case-insensitive).
+  /// @param prefix Prefix to match (should be lowercase).
+  /// @return True if the first tag starts with prefix.
   bool has_prefix(const std::string& prefix) const {
     return (type == ItemType::Pair && gemmi::istarts_with(pair[0], prefix)) ||
            (type == ItemType::Loop && !loop.tags.empty() &&
             gemmi::istarts_with(loop.tags[0], prefix));
   }
 
+  /// @brief Replace this item's value with another item (may change type).
   void set_value(Item&& o) {
     if (type == o.type) {
       switch (type) {
@@ -1058,13 +1330,26 @@ inline bool Block::has_mmcif_category(std::string cat) const {
   return false;
 }
 
+/// @brief A parsed CIF file: a collection of blocks with optional metadata.
+///
+/// Represents the complete document structure after parsing a CIF file.
+/// Contains one or more data blocks, each with tag-value pairs, loops, and frames.
 struct Document {
+  /// @brief Source filename or identifier (for error messages).
   std::string source;
+  /// @brief All blocks in the document (data blocks).
   std::vector<Block> blocks;
 
-  // implementation detail: items of the currently parsed block or frame
+  /// @brief Implementation detail: pointer to items of current block during parsing.
+  /// (Used internally by the parser; not for public use.)
   std::vector<Item>* items_ = nullptr;
 
+  /// @brief Add a new block to the document.
+  /// @param name Block name (must be unique).
+  /// @param pos Position to insert (-1 appends at end).
+  /// @return Reference to the new Block.
+  /// @throws std::runtime_error if name already exists.
+  /// @throws std::out_of_range if pos is invalid.
   Block& add_new_block(const std::string& name, int pos=-1) {
     if (find_block(name))
       fail("Block with such name already exists: " + name);
@@ -1073,28 +1358,36 @@ struct Document {
     return *blocks.emplace(pos < 0 ? blocks.end() : blocks.begin() + pos, name);
   }
 
+  /// @brief Clear all blocks and source info.
   void clear() noexcept {
     source.clear();
     blocks.clear();
     items_ = nullptr;
   }
 
-  // returns blocks[0] if the document has exactly one block (like mmCIF)
+  /// @brief Get the single block from a one-block document (typical for mmCIF).
+  /// @return Reference to blocks[0].
+  /// @throws std::runtime_error if document has != 1 block.
   Block& sole_block() {
     if (blocks.size() > 1)
       fail("single data block expected, got " + std::to_string(blocks.size()));
     return blocks.at(0);
   }
+  /// @brief Const overload of sole_block().
   const Block& sole_block() const {
     return const_cast<Document*>(this)->sole_block();
   }
 
+  /// @brief Find a block by name (case-sensitive).
+  /// @param name Block name.
+  /// @return Pointer to the Block, or nullptr if not found.
   Block* find_block(const std::string& name) {
     for (Block& b : blocks)
       if (b.name == name)
         return &b;
     return nullptr;
   }
+  /// @brief Const overload of find_block().
   const Block* find_block(const std::string& name) const {
     return const_cast<Document*>(this)->find_block(name);
   }
