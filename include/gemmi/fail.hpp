@@ -55,28 +55,46 @@
 
 namespace gemmi {
 
+/// @brief Throw a std::runtime_error with the given message.
+/// @param msg error message
 [[noreturn]]
 inline void fail(const std::string& msg) { throw std::runtime_error(msg); }
 
+/// @brief Variadic fail that concatenates arguments and throws std::runtime_error.
+/// @tparam T type of first argument
+/// @tparam Args types of remaining arguments
+/// @param str accumulating error message
+/// @param arg1 first argument to append
+/// @param args remaining arguments to append
 template<typename T, typename... Args> [[noreturn]]
 void fail(std::string&& str, T&& arg1, Args&&... args) {
   str += arg1;
   fail(std::move(str), std::forward<Args>(args)...);
 }
 
+/// @brief Throw a std::runtime_error with the given message (c-string overload).
+/// @param msg error message (null-terminated C-string)
 [[noreturn]]
 inline GEMMI_COLD void fail(const char* msg) { throw std::runtime_error(msg); }
 
+/// @brief Throw a std::system_error with current errno.
+/// @param msg error message
+/// @details The system error code is read from errno at the time of the call.
 [[noreturn]]
 inline GEMMI_COLD void sys_fail(const std::string& msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
+/// @brief Throw a std::system_error with current errno (c-string overload).
+/// @param msg error message (null-terminated C-string)
+/// @details The system error code is read from errno at the time of the call.
 [[noreturn]]
 inline GEMMI_COLD void sys_fail(const char* msg) {
   throw std::system_error(errno, std::system_category(), msg);
 }
 
-// unreachable() is used to silence GCC -Wreturn-type and hint the compiler
+/// @brief Mark a code path as unreachable.
+/// @details Calls compiler-specific unreachable builtins (e.g., __builtin_unreachable for GCC/Clang, __assume(0) for MSVC).
+/// Used to silence warnings and provide optimization hints.
 [[noreturn]] inline void unreachable() {
 #if defined(__GNUC__) || defined(__clang__)
   __builtin_unreachable();

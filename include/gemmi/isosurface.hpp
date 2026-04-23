@@ -14,14 +14,23 @@
 
 namespace gemmi {
 
-/// Result of an isosurface extraction.
+/// @brief Result of an isosurface extraction (vertices and triangle indices).
 struct IsoSurface {
   std::vector<float> vertices;      // x, y, z triples
   std::vector<uint32_t> triangles;  // vertex-index triples
 };
 
-enum class IsoMethod { MarchingCubes, SnappedMC };
+/// @brief Isosurface extraction algorithm selection.
+enum class IsoMethod {
+  /// @brief Standard marching cubes algorithm.
+  MarchingCubes,
+  /// @brief Marching cubes with snapped edge midpoints (0, 0.5, 1.0 only).
+  SnappedMC
+};
 
+/// @brief Parse isosurface method name from string.
+/// @param s String name: "snapped MC" returns SnappedMC, otherwise MarchingCubes.
+/// @return The selected isosurface method.
 inline IsoMethod iso_method_from_string(const std::string& s) {
   if (s == "snapped MC")
     return IsoMethod::SnappedMC;
@@ -40,10 +49,17 @@ namespace impl {
 
 namespace gemmi {
 
-/// Low-level marching cubes on a flat 3D array of values and positions.
-/// dims: number of grid points in each dimension.
-/// values: scalar field values (dims[0]*dims[1]*dims[2] elements).
-/// points: Cartesian coordinates (3 * dims[0]*dims[1]*dims[2] floats).
+/// @brief Extract an isosurface from flat 3D arrays using marching cubes.
+/// @details
+/// Low-level function that operates directly on flat arrays of values and positions.
+/// For convenience, use extract_isosurface() with a Grid object instead.
+/// @param dims Number of grid points in each dimension [x, y, z].
+/// @param values Scalar field values, length dims[0]*dims[1]*dims[2].
+/// @param points Cartesian coordinates as flattened triples: x0,y0,z0,x1,y1,z1,...
+///               Total length: 3 * dims[0]*dims[1]*dims[2].
+/// @param isolevel The isovalue threshold for surface extraction.
+/// @param method Marching cubes variant (standard or snapped).
+/// @return IsoSurface containing vertices (x,y,z triples) and triangles (vertex-index triples).
 inline IsoSurface calculate_isosurface(const std::array<int, 3>& dims,
                                        const std::vector<float>& values,
                                        const std::vector<float>& points,
@@ -123,8 +139,18 @@ inline IsoSurface calculate_isosurface(const std::array<int, 3>& dims,
   return result;
 }
 
-/// Extract an isosurface from a Grid within a sphere of given radius
-/// centered at (x, y, z) in Cartesian coordinates.
+/// @brief Extract an isosurface from a Grid within a spherical region.
+/// @details
+/// Automatically extracts a region of the grid around a center point,
+/// converts to fractional/grid coordinates, and runs marching cubes
+/// on the subregion. This is the recommended high-level interface.
+/// @tparam T The grid value type (float, double, etc.).
+/// @param grid The 3D density map to process.
+/// @param center Center point in Cartesian coordinates.
+/// @param radius Radius of the sphere in Angstroms.
+/// @param isolevel The isovalue threshold for surface extraction.
+/// @param method Marching cubes variant (standard or snapped).
+/// @return IsoSurface containing extracted vertices and triangle indices.
 template<typename T>
 IsoSurface extract_isosurface(const Grid<T>& grid,
                               const Position& center,

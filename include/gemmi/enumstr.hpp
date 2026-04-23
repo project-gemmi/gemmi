@@ -11,6 +11,9 @@
 
 namespace gemmi {
 
+/// @brief Convert EntityType enum to mmCIF string representation
+/// @param entity_type the entity type to convert
+/// @return mmCIF string: "polymer", "branched", "non-polymer", "water", or "?"
 inline const char* entity_type_to_string(EntityType entity_type) {
   switch (entity_type) {
     case EntityType::Polymer: return "polymer";
@@ -21,6 +24,9 @@ inline const char* entity_type_to_string(EntityType entity_type) {
   }
 }
 
+/// @brief Convert mmCIF string to EntityType enum
+/// @param t the mmCIF entity type string
+/// @return EntityType enum value; EntityType::Unknown if string is not recognized
 inline EntityType entity_type_from_string(const std::string& t) {
   if (t == "polymer")     return EntityType::Polymer;
   if (t == "branched")    return EntityType::Branched;
@@ -30,6 +36,9 @@ inline EntityType entity_type_from_string(const std::string& t) {
 }
 
 
+/// @brief Convert PolymerType enum to mmCIF string representation
+/// @param polymer_type the polymer type to convert
+/// @return mmCIF string representation of the polymer type
 inline const char* polymer_type_to_string(PolymerType polymer_type) {
   switch (polymer_type) {
     case PolymerType::PeptideL: return "polypeptide(L)";
@@ -47,6 +56,9 @@ inline const char* polymer_type_to_string(PolymerType polymer_type) {
   }
 }
 
+/// @brief Convert mmCIF string to PolymerType enum
+/// @param t the mmCIF polymer type string
+/// @return PolymerType enum value; PolymerType::Unknown if string is not recognized
 inline PolymerType polymer_type_from_string(const std::string& t) {
   if (t == "polypeptide(L)")          return PolymerType::PeptideL;
   if (t == "polydeoxyribonucleotide") return PolymerType::Dna;
@@ -63,6 +75,9 @@ inline PolymerType polymer_type_from_string(const std::string& t) {
 }
 
 
+/// @brief Convert Connection::Type enum to mmCIF string representation
+/// @param t the connection type to convert
+/// @return mmCIF string: "covale", "disulf", "hydrog", "metalc", or "."
 inline const char* connection_type_to_string(Connection::Type t) {
   static constexpr const char* type_ids[] = {
     "covale", "disulf", "hydrog", "metalc", "."
@@ -70,6 +85,9 @@ inline const char* connection_type_to_string(Connection::Type t) {
   return type_ids[t];
 }
 
+/// @brief Convert mmCIF string to Connection::Type enum
+/// @param t the mmCIF connection type string
+/// @return Connection::Type enum value; Connection::Unknown if string is not recognized
 inline Connection::Type connection_type_from_string(const std::string& t) {
   for (int i = 0; i != Connection::Unknown; ++i)
     if (connection_type_to_string(Connection::Type(i)) == t)
@@ -77,6 +95,9 @@ inline Connection::Type connection_type_from_string(const std::string& t) {
   return Connection::Unknown;
 }
 
+/// @brief Convert SoftwareItem::Classification enum to string representation
+/// @param c the software classification to convert
+/// @return classification string such as "data collection", "refinement", etc.
 inline
 std::string software_classification_to_string(SoftwareItem::Classification c) {
   switch (c) {
@@ -93,6 +114,9 @@ std::string software_classification_to_string(SoftwareItem::Classification c) {
   unreachable();
 }
 
+/// @brief Convert string to SoftwareItem::Classification enum (case-insensitive)
+/// @param str the classification string to parse
+/// @return SoftwareItem::Classification enum value; SoftwareItem::Unspecified if not recognized
 inline SoftwareItem::Classification
 software_classification_from_string(const std::string& str) {
   if (iequal(str, "data collection")) return SoftwareItem::DataCollection;

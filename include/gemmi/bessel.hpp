@@ -18,6 +18,11 @@
 
 namespace gemmi {
 
+/// @brief Evaluate degree-(N-1) polynomial by Horner's method
+/// @tparam N number of coefficients
+/// @param poly coefficient array; poly[0] is the constant term
+/// @param x evaluation point
+/// @return polynomial value at x
 template<int N>
 inline double evaluate_polynomial(const double(&poly)[N], double x) {
   static_assert(N > 1, "");
@@ -27,13 +32,20 @@ inline double evaluate_polynomial(const double(&poly)[N], double x) {
   return result;
 }
 
+/// @brief Polynomial coefficient tables for Bessel function approximations
+/// @details Wrapped in a template to enable header-only inline variables
 template<class Dummy>
 struct BesselTables_
 {
+  /// @brief Polynomial coefficients for I0 approximation, small x
   static const double P1[8];
+  /// @brief Polynomial coefficients for I0 approximation, small x
   static const double Q1[9];
+  /// @brief Polynomial coefficients for I0 approximation, large x
   static const double P2[5];
+  /// @brief Polynomial coefficients for I0 approximation, large x (x < 50)
   static const double Q2[5];
+  /// @brief Polynomial coefficients for I0 approximation, very large x (x >= 50)
   static const double Q3[3];
 };
 template<class Dummy> const double BesselTables_<Dummy>::P1[8] = {
@@ -78,6 +90,10 @@ template<class Dummy> const double BesselTables_<Dummy>::Q3[3] = {
 };
 
 
+/// @brief Compute I₁(x)/I₀(x) using polynomial approximations
+/// @details Used in maximum-likelihood refinement of diffraction data
+/// @param x argument
+/// @return I₁(x)/I₀(x)
 inline double bessel_i1_over_i0(double x) {
   using B = BesselTables_<void>;
   if (x < 0)
@@ -95,9 +111,11 @@ inline double bessel_i1_over_i0(double x) {
   return p / q;
 }
 
-// Simplified function from Boost.Math.
-// Similar to std::cyl_bessel_i(0, x), but much faster, less exact and doesn't
-// throw out_of_range on negative argument. Relative error < 5.02e-08.
+/// @brief Compute modified Bessel function I₀(x)
+/// @details Simplified from Boost.Math; relative error < 5.02e-08.
+/// Similar to std::cyl_bessel_i(0, x) but faster. Does not throw on negative argument.
+/// @param x argument
+/// @return I₀(x)
 inline double bessel_i0(double x) {
   using B = BesselTables_<void>;
   x = std::fabs(x);
@@ -111,7 +129,11 @@ inline double bessel_i0(double x) {
   return ex * evaluate_polynomial(B::Q3, 1 / x) / std::sqrt(x) * ex;
 }
 
-// Relative error < 4e-08.
+/// @brief Compute ln(I₀(x))
+/// @details Numerically stable computation via log1p for small x; relative error < 4e-08.
+/// Avoids overflow for large x.
+/// @param x argument
+/// @return ln(I₀(x))
 inline double log_bessel_i0(double x) {
   using B = BesselTables_<void>;
   x = std::fabs(x);
