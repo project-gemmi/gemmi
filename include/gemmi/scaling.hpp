@@ -78,9 +78,17 @@ inline std::vector<Vec6> adp_symmetry_constraints(const SpaceGroup* sg) {
 }
 
 /// @brief Anisotropic scaling of calculated structure factors to observed data.
-/// Optionally includes bulk solvent correction: Fc + k_sol·exp(-b_sol·stol²)·Fmask.
+/// @details Optionally includes bulk solvent correction: Fc + k_sol·exp(-b_sol·stol²)·Fmask.
 /// Parameter refinement uses Levenberg-Marquardt (or NLopt if WITH_NLOPT is defined).
 /// @tparam Real Floating-point type (float or double).
+/// @par References
+/// Afonine, P.V. et al. (2012). Towards automated crystallographic structure
+/// refinement with phenix.refine. Acta Cryst. D68, 352–367.
+/// https://doi.org/10.1107/S0907444913000462
+///
+/// Fokine, A. & Urzhumtsev, A. (2002). Flat bulk-solvent model: obtaining
+/// optimal parameters. Acta Cryst. A58, 384–392.
+/// https://doi.org/10.1107/S0108767302005669
 template<typename Real>
 struct Scaling {
   /// @brief One reflection used in the least-squares fit.

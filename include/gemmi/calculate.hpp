@@ -188,10 +188,11 @@ inline Box<Fractional> calculate_fractional_box(const Structure& st, double marg
 
 
 /// @brief Calculate B_equiv from anisotropic B-tensor (or B_iso if isotropic).
-/// Based on E. Merritt, "Some B_eq are more equivalent than others",
-/// Acta Cryst. A67, 512 (2011).
 /// @param atom Atom with (possibly anisotropic) B-factor
 /// @return B_equiv = sqrt((sum_eigenvalues) / (sum_inverse_eigenvalues)) * u_to_b()
+/// @par References
+/// Merritt, E.A. (2011). Some B_eq are more equivalent than others.
+/// Acta Cryst. A67, 512–516. https://doi.org/10.1107/S0108767311034350
 inline double calculate_b_est(const Atom& atom) {
   auto eig = atom.aniso.calculate_eigenvalues();
   return u_to_b() * std::sqrt((eig[0] + eig[1] + eig[2]) /

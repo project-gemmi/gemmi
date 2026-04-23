@@ -139,8 +139,12 @@ struct GEMMI_DLL DsspOptions {
 };
 
 /// @brief Main DSSP engine that performs secondary structure assignment for a protein chain.
-/// Detects and annotates secondary structure elements (helices, strands, turns, etc.)
-/// based on hydrogen bond patterns and geometry.
+/// @details Detects and annotates secondary structure elements (helices, strands, turns, etc.)
+/// based on hydrogen bond patterns and geometry, following the original DSSP algorithm.
+/// @par References
+/// Kabsch, W. & Sander, C. (1983). Dictionary of protein secondary structure:
+/// pattern recognition of hydrogen-bonded and geometrical features.
+/// Biopolymers 22, 2577–2637. https://doi.org/10.1002/bip.360221211
 struct GEMMI_DLL DsspCalculator {
   /// @brief Initialize the calculator with options.
   /// @param opts DsspOptions configuration (default: standard DSSP parameters)

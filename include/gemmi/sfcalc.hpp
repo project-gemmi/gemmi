@@ -28,8 +28,16 @@ inline std::complex<double> calculate_sf_part(const Fractional& fpos,
 }
 
 /// @brief Calculates structure factors by direct summation over all atoms.
+/// @details Simple direct summation; for optimised FFT-based calculations see
+/// dencalc.hpp + fourier.hpp.
 /// @tparam Table Scattering factor table type (e.g., IT92, WK95, ElectronTable).
 ///         Must have a nested Coef type with coef_type member.
+/// @par References
+/// Bourhis, L.J., Dolomanov, O.V., Gildea, R.J., Howard, J.A.K. &
+/// Puschmann, H. (2015). The anatomy of a comprehensive constrained,
+/// restrained refinement program for the modern computing environment —
+/// Olex2 dissected. Acta Cryst. A70, 300–311.
+/// https://doi.org/10.1107/S2053273314022207
 template <typename Table>
 class StructureFactorCalculator {
 public:
