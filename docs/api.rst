@@ -41,6 +41,10 @@ Core Data Structures
 .. doxygenfile:: small.hpp
    :project: gemmi
 
+.. note::
+
+   The following sections will be populated by subsequent PRs (3–10) in this series.
+   See `PR #413 <https://github.com/project-gemmi/gemmi/pull/413>`_ for the full roadmap.
 Map and Grid Data
 -----------------
 
