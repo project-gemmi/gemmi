@@ -26,6 +26,13 @@ namespace gemmi {
 /// a is n x n matrix (in vector)
 /// b is vector of length n,
 /// This function returns vector x[] in b[], and 1-matrix in a[].
+/// @brief Solve a linear system using Gauss-Jordan elimination with partial pivoting.
+/// @details
+/// Solves A * x = b by reducing A to the identity matrix via row operations.
+/// Handles singular matrices by skipping zero rows/columns.
+/// @param a n x n matrix stored in row-major order (modified to identity matrix).
+/// @param b Right-hand side vector of length n (modified to solution x).
+/// @param n System size.
 inline void jordan_solve(double* a, double* b, int n) {
   for (int i = 0; i < n; i++) {
     // looking for a pivot element
@@ -69,11 +76,17 @@ inline void jordan_solve(double* a, double* b, int n) {
   }
 }
 
+/// @brief Solve a linear system stored in vector containers.
+/// @param a n x n matrix as flat vector (n^2 elements).
+/// @param b Right-hand side vector of length n.
 inline void jordan_solve(std::vector<double>& a, std::vector<double>& b) {
   assert(a.size() == b.size() * b.size());
   jordan_solve(a.data(), b.data(), (int)b.size());
 }
 
+/// @brief Print parameters to stderr (debug only).
+/// @param name Label for the parameter set.
+/// @param a Vector of parameters to print.
 inline void print_parameters(const std::string& name, std::vector<double> &a) {
   fprintf(stderr, " %s:", name.c_str());
   for (double& x : a)
@@ -81,6 +94,13 @@ inline void print_parameters(const std::string& name, std::vector<double> &a) {
   fprintf(stderr, "\n");
 }
 
+/// @brief Compute weighted sum of squared residuals for a target.
+/// @details
+/// Uses long double for accumulation to improve numerical accuracy.
+/// Assumes Target provides: points container, get_weight(), get_y(), compute_value().
+/// @tparam Target Fitting target type.
+/// @param target The fitting target.
+/// @return Sum of weighted squared residuals.
 template<typename Target>
 double compute_wssr(const Target& target) {
   long double wssr = 0; // long double here notably increases the accuracy
@@ -89,6 +109,15 @@ double compute_wssr(const Target& target) {
   return (double) wssr;
 }
 
+/// @brief Compute function value, residuals, and gradients with respect to parameters.
+/// @details
+/// Assumes Target provides: points container, get_weight(), get_y(),
+/// compute_value_and_derivatives(point, dy_da_vector).
+/// @tparam Target Fitting target type.
+/// @param target The fitting target.
+/// @param n Number of parameters.
+/// @param grad Output array of size n for partial derivatives d(wssr)/da.
+/// @return Weighted sum of squared residuals.
 template<typename Target>
 double compute_gradients(const Target& target, unsigned n, double* grad) {
   double wssr = 0;
@@ -127,10 +156,20 @@ double compute_gradients(const Target& target, unsigned n, double* grad) {
   return wssr;
 }
 
-// alpha and beta are matrices outputted for the Levenberg-Marquardt algorithm.
-// Ignoring weights, alpha is a squared Jacobian J^T J (which approximates the
-// Hessian, as discussed in Numerical Recipes, chapter 15.5), not "damped" yet.
-// The return value is the same as from compute_wssr().
+/// @brief Compute Jacobian-based matrices for Levenberg-Marquardt algorithm.
+/// @details
+/// Computes the normal equations: alpha = J^T*J (approximates Hessian),
+/// beta = J^T*residual. These are the building blocks for iterative refinement.
+/// Alpha is initially undamped; the LM algorithm applies the damping factor
+/// (1 + lambda) to diagonal elements. Both matrices use only the lower triangle
+/// and are symmetrized after computation.
+/// Assumes Target provides: points container, get_weight(), get_y(),
+/// compute_value_and_derivatives(point, dy_da_vector).
+/// @tparam Target Fitting target type.
+/// @param target The fitting target.
+/// @param alpha Output: n x n matrix (stored as flat vector) = J^T*J.
+/// @param beta Output: n-element vector = J^T*residual.
+/// @return Weighted sum of squared residuals.
 template<typename Target>
 double compute_lm_matrices(const Target& target,
                            std::vector<double>& alpha,
@@ -164,27 +203,61 @@ double compute_lm_matrices(const Target& target,
   return (double) wssr;
 }
 
+/// @brief Levenberg-Marquardt non-linear least-squares optimization.
+/// @details
+/// Implements the Levenberg-Marquardt algorithm for fitting model parameters
+/// to minimize the sum of weighted squared residuals.
+/// The algorithm adjusts a damping factor (lambda) to interpolate between
+/// gradient descent (large lambda) and Newton's method (small lambda),
+/// automatically selecting the step size that gives best improvement.
+/// @par References
+/// Levenberg, K. (1944). A method for the solution of certain non-linear problems
+/// in least squares. Q. Appl. Math. 2, 164–168.
+/// https://doi.org/10.1090/qam/10666
+///
+/// Marquardt, D.W. (1963). An algorithm for least-squares estimation of nonlinear
+/// parameters. J. Soc. Ind. Appl. Math. 11, 431–441.
+/// https://doi.org/10.1137/0111030
 struct LevMar {
-  // termination criteria
+  /// @brief Maximum number of function evaluations before terminating.
   int eval_limit = 100;
+  /// @brief Stop optimization if damping factor lambda exceeds this value.
   double lambda_limit = 1e+15;
+  /// @brief Stop if relative change in WSSR falls below this for two consecutive iterations.
   double stop_rel_change = 1e-5;
 
-  // adjustable parameters (normally the default values work fine)
+  /// @brief Factor by which lambda is multiplied if fit worsens.
   double lambda_up_factor = 10;
+  /// @brief Factor by which lambda is multiplied if fit improves.
   double lambda_down_factor = 0.1;
+  /// @brief Initial damping factor (typically 0.001).
   double lambda_start = 0.001;
 
-  // values set in fit() that can be inspected later
+  /// @brief Initial weighted sum of squared residuals (set by fit()).
   double initial_wssr = NAN;
-  int eval_count = 0;  // number of function evaluations
+  /// @brief Number of function evaluations performed (set by fit()).
+  int eval_count = 0;
 
-  // arrays used during refinement
-  std::vector<double> alpha; // matrix
-  std::vector<double> beta;  // vector
-  std::vector<double> temp_alpha, temp_beta; // working arrays
+  /// @brief Jacobian-based normal equations matrix (J^T*J), size n*n.
+  std::vector<double> alpha;
+  /// @brief Jacobian-based normal equations vector (J^T*residual), size n.
+  std::vector<double> beta;
+  /// @brief Working copies of alpha and beta during refinement.
+  std::vector<double> temp_alpha, temp_beta;
 
-
+  /// @brief Run Levenberg-Marquardt optimization.
+  /// @details
+  /// Iteratively refines parameters to minimize WSSR. At each iteration,
+  /// solves (J^T*J + lambda*diag(J^T*J)) * da = J^T*residual for step da,
+  /// then updates parameters and checks for improvement.
+  /// Terminates when eval_limit is reached, lambda exceeds lambda_limit,
+  /// or relative improvement drops below stop_rel_change for two iterations.
+  /// @tparam Target Fitting target type (must implement: get_parameters(),
+  ///         set_parameters(), points container, and
+  ///         compute_value_and_derivatives()).
+  /// @param target The fitting target (modified in place).
+  /// @return Final weighted sum of squared residuals. initial_wssr and eval_count
+  ///         are also set and can be inspected after fit() returns.
   template<typename Target>
   double fit(Target& target) {
     std::vector<double> initial_a = target.get_parameters();

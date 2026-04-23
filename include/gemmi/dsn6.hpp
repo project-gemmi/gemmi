@@ -30,7 +30,16 @@ inline int16_t read_dsn6_i16(const char* buf, size_t buf_size,
 
 }  // namespace impl
 
-/// Reads a DSN6/BRIX map from memory into a Grid<float> and returns statistics.
+/// @brief Read a DSN6/BRIX electron density map from memory
+/// @details Parses the DSN6/BRIX format (used for density maps) from a binary buffer
+///          and populates a grid with the density values. Automatically detects
+///          endianness from the header. Reads unit cell parameters and scales data
+///          appropriately.
+/// @param buf pointer to the buffer containing DSN6 data
+/// @param size size of the buffer in bytes (must be at least 512 for header)
+/// @param grid output grid to be populated with density values
+/// @return statistics of the loaded density data (min, max, mean, rms, NaN count)
+/// @throws std::runtime_error if format is invalid or data is truncated
 inline DataStats read_dsn6_from_memory(const char* buf, size_t size,
                                        Grid<float>& grid) {
   if (size < 512)
@@ -113,7 +122,10 @@ inline DataStats read_dsn6_from_memory(const char* buf, size_t size,
   return calculate_data_statistics(grid.data);
 }
 
-/// Reads a DSN6/BRIX map from a file. Returns the grid.
+/// @brief Read a DSN6/BRIX electron density map from a file
+/// @param path file path to the DSN6/BRIX format density map
+/// @return a Grid<float> containing the loaded density data
+/// @throws std::runtime_error if file cannot be read or format is invalid
 inline Grid<float> read_dsn6_map(const std::string& path) {
   CharArray buf = read_file_into_buffer(path);
   Grid<float> grid;
