@@ -17,26 +17,40 @@
 
 namespace gemmi {
 
+/// @brief Scoring parameters for sequence alignment.
 struct AlignmentScoring {
+  /// @brief Score for a match
   int match = 1;
+  /// @brief Penalty for a mismatch
   int mismatch = -1;
-  int gapo = -1;  // gap opening penalty
-  int gape = -1;  // gap extension penalty
-  // In a polymer in model, coordinates are used to determine expected gaps.
-  int good_gapo = 0;  // gap opening in expected place in a polymer
-  int bad_gapo = -2;  // gap opening that was not predicted
+  /// @brief Gap opening penalty
+  int gapo = -1;
+  /// @brief Gap extension penalty
+  int gape = -1;
+  /// @brief Gap opening penalty in expected place in a polymer
+  int good_gapo = 0;
+  /// @brief Gap opening penalty for unexpected gaps in a polymer
+  int bad_gapo = -2;
+  /// @brief Substitution score matrix (square matrix, row-major order)
   std::vector<std::int8_t> score_matrix;
+  /// @brief Labels for score matrix rows/columns (e.g. amino acid codes)
   std::vector<std::string> matrix_encoding;
 
+  /// @brief Get simple default scoring (match=1, mismatch=-1, gaps=-1).
+  /// @return Pointer to static simple scoring instance
   static const AlignmentScoring* simple() {
     static const AlignmentScoring s{};
     return &s;
   }
-  // Scoring for alignment of partially-modelled polymer to its full sequence
+  /// @brief Get scoring for alignment of partially-modelled polymer to full sequence.
+  /// @details Uses high penalties to penalize mismatches but allow expected gaps.
+  /// @return Pointer to static partial model scoring instance
   static const AlignmentScoring* partial_model() {
     static const AlignmentScoring s = { 100, -10000, -10000, -1, 0, -200, {}, {} };
     return &s;
   }
+  /// @brief Get BLOSUM-62 scoring matrix (standard for protein alignment).
+  /// @return Pointer to static BLOSUM-62 scoring instance
   static const AlignmentScoring* blosum62() {
     // BLAST uses BLOSUM-62 with gap cost (10,1)
     static const AlignmentScoring s = {
@@ -68,17 +82,28 @@ struct AlignmentScoring {
   }
 };
 
+/// @brief Result of a pairwise sequence alignment.
 struct AlignmentResult {
+  /// @brief Single element in CIGAR string.
   struct Item {
+    /// @brief Packed value: bits 0-3 = operation, bits 4+ = length
     std::uint32_t value;
+    /// @brief Get CIGAR operation: 'M'=match, 'I'=insertion, 'D'=deletion
     char op() const { return "MID"[value & 0xf]; }
+    /// @brief Get length of this CIGAR operation
     std::uint32_t len() const { return value >> 4; }
   };
+  /// @brief Alignment score
   int score = 0;
+  /// @brief Number of matching positions
   int match_count = 0;
+  /// @brief Visual representation of matches ('|' for match, '.' for mismatch, ' ' for gap)
   std::string match_string;
+  /// @brief CIGAR string representation as vector of operations
   std::vector<Item> cigar;
 
+  /// @brief Get CIGAR string representation.
+  /// @return CIGAR string (e.g., "5M1D3M")
   std::string cigar_str() const {
     std::string s;
     for (Item item : cigar) {
@@ -88,7 +113,9 @@ struct AlignmentResult {
     return s;
   }
 
-  // 1=query, 2=target, other=shorter
+  /// @brief Get input sequence length for alignment.
+  /// @param which 1=query, 2=target, other=shorter of the two
+  /// @return Length of specified input sequence
   std::size_t input_length(int which) const {
     std::size_t counters[3] = {0, 0, 0};
     for (Item item : cigar)
@@ -97,14 +124,22 @@ struct AlignmentResult {
       return counters[0] + counters[which];
     return counters[0] + std::min(counters[1], counters[2]);
   }
+  /// @brief Calculate sequence identity percentage.
+  /// @param which 1=query, 2=target, 0=shorter (default)
+  /// @return Percent identity (0-100)
   double calculate_identity(int which=0) const {
     return 100. * match_count / input_length(which);
   }
 
-  // In the backtrack matrix, value p[] has the following structure:
-  //   bit 0-2: which type gets the max - 0 for H, 1 for E, 2 for F
-  //   bit 3/0x08: 1 if a continuation on the E state
-  //   bit 4/0x10: 1 if a continuation on the F state
+  /// @brief Convert backtrack matrix to CIGAR string.
+  /// @details Reconstructs the alignment path from the dynamic programming matrix.
+  /// In the backtrack matrix, value p[] has the structure:
+  /// - bits 0-2: which type gets the max (0 for H, 1 for E, 2 for F)
+  /// - bit 3/0x08: 1 if a continuation on the E state
+  /// - bit 4/0x10: 1 if a continuation on the F state
+  /// @param p Backtrack matrix (row-major)
+  /// @param i Number of target positions
+  /// @param j Number of query positions
   void backtrack_to_cigar(const std::uint8_t *p, int i, int j) {
     i--;
     int j0 = j--;
@@ -135,6 +170,10 @@ struct AlignmentResult {
   }
 
 
+  /// @brief Count matching positions and generate match string.
+  /// @details Compares aligned sequences and updates match_count and match_string.
+  /// @param query Encoded query sequence
+  /// @param target Encoded target sequence
   void count_matches(const std::vector<std::uint8_t>& query,
                      const std::vector<std::uint8_t>& target) {
     match_count = 0;
@@ -157,6 +196,10 @@ struct AlignmentResult {
       }
   }
 
+  /// @brief Insert gap characters into a sequence based on CIGAR string.
+  /// @param s Original sequence string
+  /// @param which 1=show query gaps, 2=show target gaps, other=show both
+  /// @return Sequence with gaps inserted as '-' characters
   std::string add_gaps(const std::string& s, unsigned which) const {
     std::string out;
     size_t pos = 0;
@@ -168,6 +211,10 @@ struct AlignmentResult {
     return out;
   }
 
+  /// @brief Get formatted alignment string with query, matches, and target.
+  /// @param a Query sequence
+  /// @param b Target sequence
+  /// @return Multi-line formatted alignment
   std::string formatted(const std::string& a, const std::string& b) const {
     std::string r;
     r.reserve((match_string.size() + 1) * 3);
@@ -180,7 +227,9 @@ struct AlignmentResult {
     return r;
   }
 
-  // op: 0=match/mismatch, 1=insertion, 2=deletion
+  /// @brief Add or extend a CIGAR operation.
+  /// @param op Operation: 0=match/mismatch, 1=insertion, 2=deletion
+  /// @param len Length of operation
   void push_cigar(std::uint32_t op, int len) {
     if (cigar.empty() || op != (cigar.back().value & 0xf))
       cigar.push_back({len<<4 | op});
@@ -189,8 +238,15 @@ struct AlignmentResult {
   }
 };
 
-/// All values in query and target must be less then m.
-/// target_gapo, if set, has gap opening penalties at specific positions in target.
+/// @brief Perform pairwise sequence alignment using dynamic programming.
+/// @details Implements Needleman-Wunsch (global) alignment algorithm with
+/// position-specific gap opening penalties. Based on ksw2 (Heng Li).
+/// @param query Encoded query sequence (values < m)
+/// @param target Encoded target sequence (values < m)
+/// @param target_gapo Position-specific gap opening penalties for target (empty if uniform)
+/// @param m Number of distinct values in encoding (vocabulary size)
+/// @param scoring Scoring parameters (match, mismatch, gap costs, score matrix)
+/// @return Alignment result with score, CIGAR string, and match count
 inline
 AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
                                 const std::vector<std::uint8_t>& target,
@@ -294,6 +350,15 @@ AlignmentResult align_sequences(const std::vector<std::uint8_t>& query,
   return result;
 }
 
+/// @brief Perform pairwise alignment of string-based sequences.
+/// @details Encodes sequences as integers and calls align_sequences().
+/// Useful for aligning residue names or custom codes.
+/// @param query Query sequence (vector of strings, e.g. 3-letter residue codes)
+/// @param target Target sequence (vector of strings)
+/// @param target_gapo Position-specific gap opening penalties for target
+/// @param scoring Scoring parameters (nullptr uses simple default)
+/// @return Alignment result with score, CIGAR string, and match count
+/// @note Returns empty result if encoding requires >255 distinct values
 inline
 AlignmentResult align_string_sequences(const std::vector<std::string>& query,
                                        const std::vector<std::string>& target,
