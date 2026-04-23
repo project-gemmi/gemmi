@@ -63,6 +63,53 @@ Map and Grid Data
 .. doxygenfile:: grid.hpp
    :project: gemmi
 
+Calculations and Analysis
+-------------------------
+
+Geometric calculations, sequence alignment, structure superposition,
+neighbour search, contact detection, biological assembly, atom selection,
+structure modification, polymer heuristics, and secondary structure assignment.
+
+.. doxygenfile:: calculate.hpp
+   :project: gemmi
+
+.. doxygenfile:: align.hpp
+   :project: gemmi
+
+.. doxygenfile:: neighbor.hpp
+   :project: gemmi
+
+.. doxygenfile:: contact.hpp
+   :project: gemmi
+
+.. doxygenfile:: assembly.hpp
+   :project: gemmi
+
+.. doxygenfile:: select.hpp
+   :project: gemmi
+
+.. doxygenfile:: modify.hpp
+   :project: gemmi
+
+.. doxygenfile:: polyheur.hpp
+   :project: gemmi
+
+.. doxygenfile:: dssp.hpp
+   :project: gemmi
+
+Structure Factor Calculations
+-----------------------------
+
+Direct structure factor summation, amplitude normalisation (F→E),
+and anisotropic scaling with optional bulk-solvent correction.
+
+.. doxygenfile:: sfcalc.hpp
+   :project: gemmi
+
+.. doxygenfile:: ecalc.hpp
+   :project: gemmi
+
+.. doxygenfile:: scaling.hpp
 I/O and Filesystem Utilities
 ------------------------------
 
