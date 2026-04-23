@@ -34,30 +34,51 @@ namespace gemmi {
 
 namespace psimpl {
 
+/// @brief Base class for abstract syntax tree nodes in PyMOL selection expressions.
+/// All selector nodes inherit from this base and implement atom matching logic.
 struct Node {
     virtual ~Node() = default;
+    /// @brief Test whether an atom matches this selection criterion.
+    /// @param a The atom to test
+    /// @return True if the atom matches the selection criterion, false otherwise
     virtual bool match(const gemmi::FlatAtom& a) const = 0;
 };
 
 // --- Logic Nodes ---
 
+/// @brief Logical AND node: matches atoms that satisfy both left and right conditions.
 struct AndNode : Node {
-    std::unique_ptr<Node> left, right;
+    std::unique_ptr<Node> left;  ///< Left condition
+    std::unique_ptr<Node> right; ///< Right condition
+    /// @brief Test if atom satisfies both left and right conditions.
+    /// @param a The atom to test
+    /// @return True if both left->match(a) and right->match(a) are true
     bool match(const gemmi::FlatAtom& a) const override {
         return left->match(a) && right->match(a);
     }
 };
 
+/// @brief Logical OR node: matches atoms that satisfy either left or right condition.
 struct OrNode : Node {
-    std::unique_ptr<Node> left, right;
+    std::unique_ptr<Node> left;  ///< Left condition
+    std::unique_ptr<Node> right; ///< Right condition
+    /// @brief Test if atom satisfies either left or right condition.
+    /// @param a The atom to test
+    /// @return True if left->match(a) or right->match(a) is true
     bool match(const gemmi::FlatAtom& a) const override {
         return left->match(a) || right->match(a);
     }
 };
 
+/// @brief Logical NOT node: matches atoms that do not satisfy the child condition.
 struct NotNode : Node {
-    std::unique_ptr<Node> child;
+    std::unique_ptr<Node> child; ///< Condition to negate
+    /// @brief Initialize a NOT node with a child condition.
+    /// @param c The child node to negate
     explicit NotNode(std::unique_ptr<Node> c) : child(std::move(c)) {}
+    /// @brief Test if atom does not satisfy the child condition.
+    /// @param a The atom to test
+    /// @return True if child->match(a) is false
     bool match(const gemmi::FlatAtom& a) const override {
         return !child->match(a);
     }
@@ -65,10 +86,17 @@ struct NotNode : Node {
 
 // --- Property Nodes ---
 
+/// @brief Generic glob-pattern matching node for FlatAtom string fields.
+/// @tparam Field Pointer to member for a fixed-size char array field in FlatAtom
 template<char (gemmi::FlatAtom::*Field)[8]>
 struct GlobMatchNode : Node {
-    std::vector<std::string> names;
+    std::vector<std::string> names; ///< List of glob patterns to match
+    /// @brief Initialize a glob match node with a list of patterns.
+    /// @param v Vector of glob pattern strings
     explicit GlobMatchNode(std::vector<std::string> v) : names(std::move(v)) {}
+    /// @brief Test if the atom's field matches any of the glob patterns.
+    /// @param a The atom to test
+    /// @return True if any pattern in names matches the atom's field value
     bool match(const gemmi::FlatAtom& a) const override {
         for (const auto& n : names)
             if (glob_match(n, a.*Field)) return true;
@@ -76,37 +104,68 @@ struct GlobMatchNode : Node {
     }
 };
 
+/// @brief Type alias for glob-pattern matching on chain IDs.
 using ChainNode = GlobMatchNode<&gemmi::FlatAtom::chain_id>;
+/// @brief Type alias for glob-pattern matching on residue names.
 using ResnNode = GlobMatchNode<&gemmi::FlatAtom::residue_name>;
+/// @brief Type alias for glob-pattern matching on atom names.
 using AtomNameNode = GlobMatchNode<&gemmi::FlatAtom::atom_name>;
 
+/// @brief Alternate location code matching node.
 struct AltLocNode : Node {
-    char alt;
+    char alt; ///< The alternate location character to match
+    /// @brief Initialize an alternate location node.
+    /// @param c The alternate location character
     explicit AltLocNode(char c) : alt(c) {}
+    /// @brief Test if the atom has the specified alternate location code.
+    /// @param a The atom to test
+    /// @return True if a.altloc equals the stored alternate location code
     bool match(const gemmi::FlatAtom& a) const override {
         return a.altloc == alt;
     }
 };
 
+/// @brief Residue sequence number range matching node.
 struct ResiRangeNode : Node {
-    int min, max;
+    int min; ///< Minimum sequence number (inclusive)
+    int max; ///< Maximum sequence number (inclusive)
+    /// @brief Initialize a residue range node.
+    /// @param a Minimum sequence number
+    /// @param b Maximum sequence number
     ResiRangeNode(int a, int b) : min(a), max(b) {}
+    /// @brief Test if the atom's residue is in the specified range.
+    /// @param a The atom to test
+    /// @return True if atom's sequence number is between min and max
     bool match(const gemmi::FlatAtom& a) const override {
         return *a.seq_id.num >= min && *a.seq_id.num <= max;
     }
 };
 
+/// @brief Atom serial number range matching node.
 struct IndexRangeNode : Node {
-    int min, max;
+    int min; ///< Minimum serial number (inclusive)
+    int max; ///< Maximum serial number (inclusive)
+    /// @brief Initialize an atom index range node.
+    /// @param a Minimum serial number
+    /// @param b Maximum serial number
     IndexRangeNode(int a, int b) : min(a), max(b) {}
+    /// @brief Test if the atom's serial number is in the specified range.
+    /// @param a The atom to test
+    /// @return True if atom's serial number is between min and max
     bool match(const gemmi::FlatAtom& a) const override {
         return a.serial >= min && a.serial <= max;
     }
 };
 
+/// @brief Element type matching node.
 struct ElementNode : Node {
-    std::vector<Element> elems;
+    std::vector<Element> elems; ///< List of allowed chemical elements
+    /// @brief Initialize an element matching node.
+    /// @param v Vector of Element values to match
     explicit ElementNode(std::vector<Element> v) : elems(std::move(v)) {}
+    /// @brief Test if the atom's element is in the allowed list.
+    /// @param a The atom to test
+    /// @return True if atom's element matches any element in the list
     bool match(const gemmi::FlatAtom& a) const override {
         for (const auto& e : elems)
             if (a.element == e) return true;
@@ -114,34 +173,65 @@ struct ElementNode : Node {
     }
 };
 
+/// @brief Hetatm/ATOM record type matching node.
 struct HetatmNode : Node {
-    bool hetatm;  // true = hetatm, false = not hetatm (i.e., ATOM)
+    bool hetatm; ///< If true, matches HETATM records; if false, matches ATOM records
+    /// @brief Initialize a hetatm type node.
+    /// @param h If true, matches HETATM; if false, matches ATOM records
     explicit HetatmNode(bool h) : hetatm(h) {}
+    /// @brief Test if the atom record type matches the criterion.
+    /// @param a The atom to test
+    /// @return True if hetatm flag matches the record type flag
     bool match(const gemmi::FlatAtom& a) const override {
         return hetatm ? (a.het_flag == 'H') : (a.het_flag == 'A');
     }
 };
 
+/// @brief Entity type matching node (polymer, solvent, etc.).
 struct EntityTypeNode : Node {
-    EntityType etype;
+    EntityType etype; ///< Entity type to match (Polymer, Water, etc.)
+    /// @brief Initialize an entity type node.
+    /// @param e EntityType value to match
     explicit EntityTypeNode(EntityType e) : etype(e) {}
+    /// @brief Test if the atom's entity type matches the criterion.
+    /// @param a The atom to test
+    /// @return True if atom's entity type matches the stored type
     bool match(const gemmi::FlatAtom& a) const override {
         return a.entity_type == etype;
     }
 };
 
+/// @brief Hydrogen/deuterium atom matching node.
 struct HydrogenNode : Node {
+    /// @brief Test if the atom is hydrogen or deuterium.
+    /// @param a The atom to test
+    /// @return True if element is H (hydrogen) or D (deuterium)
     bool match(const gemmi::FlatAtom& a) const override {
         return a.element == El::H || a.element == El::D;
     }
 };
 
-enum class CompareOp { LT, LE, GT, GE, EQ, NE };
+/// @brief Comparison operators for numeric property selection.
+enum class CompareOp {
+    LT,  ///< Less than (<)
+    LE,  ///< Less than or equal (<=)
+    GT,  ///< Greater than (>)
+    GE,  ///< Greater than or equal (>=)
+    EQ,  ///< Equal (=)
+    NE   ///< Not equal (!=)
+};
 
+/// @brief B-factor (temperature factor) range matching node.
 struct BfactorNode : Node {
-    CompareOp op;
-    float value;
+    CompareOp op;   ///< Comparison operator
+    float value;    ///< Threshold value
+    /// @brief Initialize a B-factor comparison node.
+    /// @param o Comparison operator
+    /// @param v Threshold B-factor value
     BfactorNode(CompareOp o, float v) : op(o), value(v) {}
+    /// @brief Test if the atom's B-factor satisfies the comparison.
+    /// @param a The atom to test
+    /// @return True if b_iso satisfies the comparison with the threshold
     bool match(const gemmi::FlatAtom& a) const override {
         switch (op) {
             case CompareOp::LT: return a.b_iso < value;
@@ -155,10 +245,17 @@ struct BfactorNode : Node {
     }
 };
 
+/// @brief Occupancy range matching node.
 struct OccupancyNode : Node {
-    CompareOp op;
-    float value;
+    CompareOp op;   ///< Comparison operator
+    float value;    ///< Threshold value
+    /// @brief Initialize an occupancy comparison node.
+    /// @param o Comparison operator
+    /// @param v Threshold occupancy value
     OccupancyNode(CompareOp o, float v) : op(o), value(v) {}
+    /// @brief Test if the atom's occupancy satisfies the comparison.
+    /// @param a The atom to test
+    /// @return True if occupancy satisfies the comparison with the threshold
     bool match(const gemmi::FlatAtom& a) const override {
         switch (op) {
             case CompareOp::LT: return a.occ < value;
@@ -172,7 +269,12 @@ struct OccupancyNode : Node {
     }
 };
 
+/// @brief Protein backbone atom matching node.
+/// Matches standard backbone atoms: CA, C, N, O.
 struct BackboneNode : Node {
+    /// @brief Test if the atom is a protein backbone atom.
+    /// @param a The atom to test
+    /// @return True if atom name is CA, C, N, or O
     bool match(const gemmi::FlatAtom& a) const override {
         // Standard protein backbone atoms
         return std::strcmp(a.atom_name, "CA") == 0 ||
@@ -182,7 +284,12 @@ struct BackboneNode : Node {
     }
 };
 
+/// @brief Protein sidechain atom matching node.
+/// Matches non-backbone, non-hydrogen atoms.
 struct SidechainNode : Node {
+    /// @brief Test if the atom is a protein sidechain atom.
+    /// @param a The atom to test
+    /// @return True if atom is not backbone and not hydrogen/deuterium
     bool match(const gemmi::FlatAtom& a) const override {
         // Sidechain = not backbone and not hydrogen
         return std::strcmp(a.atom_name, "CA") != 0 &&
@@ -193,17 +300,23 @@ struct SidechainNode : Node {
     }
 };
 
+/// @brief Universal match node that matches all atoms.
 struct AllNode : Node {
+    /// @brief Test if the atom matches (always returns true).
+    /// @param a The atom to test (unused)
+    /// @return Always returns true
     bool match(const gemmi::FlatAtom&) const override { return true; }
 };
 
 namespace p = tao::pegtl;
 
 // --- State ---
+/// @brief Parser state for PyMOL selection expression parsing.
+/// Maintains the parse stack and temporary storage during grammar actions.
 struct State {
-    std::vector<std::unique_ptr<psimpl::Node>> stack;
-    std::vector<std::string> string_list;  // temp storage for building value lists
-    CompareOp current_op = CompareOp::EQ;
+    std::vector<std::unique_ptr<psimpl::Node>> stack; ///< AST node stack during parsing
+    std::vector<std::string> string_list;  ///< Temporary storage for building value lists
+    CompareOp current_op = CompareOp::EQ; ///< Current comparison operator during parsing
 };
 
 // --- Helpers ---
@@ -596,7 +709,12 @@ template<> struct action<or_rest> {
 // Public API
 // ============================================================================
 
-// Returns a compiled selection tree
+/// @brief Compile a PyMOL selection string into an abstract syntax tree.
+/// @param selector PyMOL selection syntax string (e.g., "name CA and chain A")
+/// @return A unique pointer to the root Node of the compiled selection tree,
+///         or nullptr if parsing fails
+/// @details The returned tree can be used to test atoms with the match() method.
+///          If parsing fails, an error message is printed to stderr.
 inline std::unique_ptr<psimpl::Node> compile_pymol_selection(const std::string& selector) {
     psimpl::State state;
     tao::pegtl::memory_input<> in(selector, "");
@@ -611,6 +729,12 @@ inline std::unique_ptr<psimpl::Node> compile_pymol_selection(const std::string& 
     }
 }
 
+/// @brief Select atoms from a FlatStructure matching a PyMOL selection query.
+/// @param fs The structure containing atoms to select from
+/// @param query PyMOL selection syntax string
+/// @return Vector of const pointers to atoms matching the selection
+/// @details Compiles the query string into an AST and tests each atom in the structure.
+///          Returns empty vector if the query is invalid or matches no atoms.
 inline std::vector<const gemmi::FlatAtom*>
 select_atoms(const gemmi::FlatStructure& fs, const std::string& query) {
     auto root = compile_pymol_selection(query);
@@ -624,6 +748,12 @@ select_atoms(const gemmi::FlatStructure& fs, const std::string& query) {
     }
     return result;
 }
+
+/// @brief Remove atoms from a FlatStructure that do not match a PyMOL selection.
+/// @param fs The structure to filter (modified in-place)
+/// @param query PyMOL selection syntax string
+/// @details Keeps only atoms matching the query; removes all others.
+///          If the query is invalid, no atoms are removed.
 inline void remove_not_selected(gemmi::FlatStructure& fs, const std::string& query) {
     if (auto root = compile_pymol_selection(query))
       vector_remove_if(fs.table, [&](FlatAtom& atom) { return !root->match(atom); });
