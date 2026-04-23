@@ -16,17 +16,21 @@ namespace gemmi {
 
 struct SellingVector;
 
-// GruberVector contains G6 vector (G for Gruber) and cell reduction algorithms.
-// Originally, in B. Gruber, Acta Cryst. A29, 433 (1973), the vector was called
-// "characteristic" of a lattice/cell.
-// Functions that take epsilon as a parameter use it for comparisons,
-// as proposed in Grosse-Kunstleve et al, Acta Cryst. (2004) A60, 1.
+/// @brief G6 Gruber vector representing a lattice cell
+/// @details Contains Buerger/Niggli reduction algorithms
+/// Originally, in B. Gruber, Acta Cryst. A29, 433 (1973), the vector was called
+/// "characteristic" of a lattice/cell.
+/// Functions that take epsilon as a parameter use it for comparisons,
+/// as proposed in Grosse-Kunstleve et al, Acta Cryst. (2004) A60, 1.
 struct GruberVector {
   //    a.a  b.b c.c 2b.c 2a.c 2a.b
-  double A, B, C, xi, eta, zeta;  // the 1973 paper uses names A B C ξ η ζ
-  std::unique_ptr<Op> change_of_basis;  // we use only Op::Rot
+  /// @brief G6 vector elements (A, B, C, ξ, η, ζ) from Gruber 1973
+  double A, B, C, xi, eta, zeta;
+  /// @brief Change of basis transformation (Op::Rot only)
+  std::unique_ptr<Op> change_of_basis;
 
-  // m - orthogonalization matrix of a primitive cell
+  /// @brief Construct from orthogonalization matrix of primitive cell
+  /// @param m orthogonalization matrix
   explicit GruberVector(const Mat33& m)
     : A(m.column_dot(0,0)),
       B(m.column_dot(1,1)),
@@ -35,21 +39,38 @@ struct GruberVector {
       eta(2 * m.column_dot(0,2)),
       zeta(2 * m.column_dot(0,1)) {}
 
+  /// @brief Construct from G6 vector array
+  /// @param g6 array {A, B, C, ξ, η, ζ}
   explicit GruberVector(const std::array<double,6>& g6)
     : A(g6[0]), B(g6[1]), C(g6[2]), xi(g6[3]), eta(g6[4]), zeta(g6[5]) {}
 
+  /// @brief Construct from UnitCell with centring
+  /// @param u unit cell
+  /// @param centring centring type character
+  /// @param track_change_of_basis if true, track change of basis
   GruberVector(const UnitCell& u, char centring, bool track_change_of_basis=false)
     : GruberVector(u.primitive_orth_matrix(centring)) {
     if (track_change_of_basis)
       set_change_of_basis(Op{centred_to_primitive(centring), {0,0,0}, 'x'});
   }
 
+  /// @brief Construct from UnitCell with SpaceGroup
+  /// @param u unit cell
+  /// @param sg space group (may be null for P)
+  /// @param track_change_of_basis if true, track change of basis
   GruberVector(const UnitCell& u, const SpaceGroup* sg, bool track_change_of_basis=false)
   : GruberVector(u, sg ? sg->centring_type() : 'P', track_change_of_basis) {}
 
+  /// @brief Set change of basis transformation
+  /// @param op transformation operation
   void set_change_of_basis(const Op& op) { change_of_basis.reset(new Op(op)); }
 
+  /// @brief Get G6 vector as array
+  /// @return array {A, B, C, ξ, η, ζ}
   std::array<double,6> parameters() const { return {A, B, C, xi, eta, zeta}; }
+  /// @brief Get unit cell parameters
+  /// @details Convert from G6 vector to cell parameters
+  /// @return array {a, b, c, α, β, γ} with lengths in Å and angles in degrees
   std::array<double,6> cell_parameters() const {
     // inverse of UnitCell::g6()
     double a = std::sqrt(A);
@@ -60,10 +81,16 @@ struct GruberVector {
             deg(std::acos(eta/(2*a*c))),
             deg(std::acos(zeta/(2*a*b)))};
   }
+  /// @brief Construct UnitCell from G6 vector
+  /// @return unit cell
   UnitCell get_cell() const { return UnitCell(cell_parameters()); }
 
+  /// @brief Convert to Selling-Delaunay vector
+  /// @return Selling vector
   SellingVector selling() const;
 
+  /// @brief Check if G6 satisfies Gruber 1973 normalization conditions
+  /// @return true if normalized (eq(3) from Gruber 1973)
   bool is_normalized() const {
     // eq(3) from Gruber 1973
     return A <= B && B <= C &&
@@ -72,6 +99,9 @@ struct GruberVector {
            (xi > 0) == (eta > 0) && (xi > 0) == (zeta > 0);
   }
 
+  /// @brief Check if this is a Buerger-reduced cell
+  /// @param epsilon tolerance for comparisons
+  /// @return true if Buerger-reduced
   bool is_buerger(double epsilon=1e-9) const {
     return is_normalized() &&
            // eq (4) from Gruber 1973
@@ -80,8 +110,9 @@ struct GruberVector {
            std::abs(zeta) <= A + epsilon;
   }
 
-  // Algorithm N from Gruber (1973).
-  // Returns branch taken in N3.
+  /// @brief Normalize using Gruber Algorithm N
+  /// @details Apply Gruber normalization to the G6 vector (Algorithm N from Gruber 1973)
+  /// @param eps tolerance for comparisons
   void normalize(double eps=1e-9) {
     auto step_N1 = [&]() {
       if (A - B > eps || (A - B >= -eps && std::abs(xi) > std::abs(eta) + eps)) { // N1
@@ -119,8 +150,9 @@ struct GruberVector {
     zeta = std::copysign(zeta, sgn);
   }
 
-  // Algorithm B from Gruber (1973).
-  // Returns true if no change was needed.
+  /// @brief Perform one step of Gruber Algorithm B
+  /// @details Execute one iteration of the Buerger reduction algorithm
+  /// @return true if already Buerger-reduced (no change made)
   bool buerger_step() {
     if (std::abs(xi) > B) { // B2
       double j = std::floor(0.5*xi/B + 0.5);
@@ -148,7 +180,9 @@ struct GruberVector {
     return false;
   }
 
-  // Returns number of iterations.
+  /// @brief Reduce to Buerger cell
+  /// @details Apply normalize() and buerger_step() repeatedly until convergence
+  /// @return iteration count
   int buerger_reduce() {
     int n = 0;
     double prev_sum = -1;
@@ -174,9 +208,11 @@ struct GruberVector {
     return n;
   }
 
-  // To be called after normalize() or is_normalized().
-  // Returns true if it already was Niggli cell.
-  // Algorithm from Krivy & Gruber, Acta Cryst. (1976) A32, 297.
+  /// @brief Perform one step of Krivy-Gruber Niggli reduction
+  /// @details To be called after normalize() or is_normalized()
+  /// Algorithm from Krivy & Gruber, Acta Cryst. (1976) A32, 297
+  /// @param epsilon tolerance for comparisons
+  /// @return true if already Niggli cell (no change made)
   bool niggli_step(double epsilon=1e-9) {
     if (std::abs(xi) > B + epsilon ||  // step 5. from Krivy-Gruber (1976)
         (xi >= B - epsilon && 2 * eta < zeta - epsilon) ||
@@ -220,7 +256,11 @@ struct GruberVector {
     return false;
   }
 
-  // Returns number of iterations.
+  /// @brief Reduce to Niggli cell
+  /// @details Apply normalize() and niggli_step() repeatedly until convergence
+  /// @param epsilon tolerance for comparisons
+  /// @param iteration_limit maximum iterations
+  /// @return iteration count
   int niggli_reduce(double epsilon=1e-9, int iteration_limit=100) {
     int n = 0;
     for (;;) {
@@ -231,6 +271,9 @@ struct GruberVector {
     return n;
   }
 
+  /// @brief Check if this is a Niggli-reduced cell
+  /// @param epsilon tolerance for comparisons
+  /// @return true if Niggli-reduced
   bool is_niggli(double epsilon=1e-9) const {
     return is_normalized() && GruberVector(parameters()).niggli_step(epsilon);
   }
@@ -254,20 +297,24 @@ private:
 };
 
 
-// Selling-Delaunay reduction. Based on:
-// - chapter "Delaunay reduction and standardization" in
-//   International Tables for Crystallography vol. A (2016), sec. 3.1.2.3.
-//   https://onlinelibrary.wiley.com/iucr/itc/Ac/ch3o1v0001/
-// - Patterson & Love (1957), Acta Cryst. 10, 111,
-//   "Remarks on the Delaunay reduction", doi:10.1107/s0365110x57000328
-// - Andrews et al (2019), Acta Cryst. A75, 115,
-//   "Selling reduction versus Niggli reduction for crystallographic lattices".
+/// @brief Selling-Delaunay vector for lattice reduction
+/// @details Represents a lattice in terms of 6 dot products among four basis vectors
+/// Used for Selling reduction. Based on:
+/// - Chapter "Delaunay reduction and standardization" in
+///   International Tables for Crystallography vol. A (2016), sec. 3.1.2.3
+/// - Patterson & Love (1957), Acta Cryst. 10, 111
+/// - Andrews et al (2019), Acta Cryst. A75, 115
 struct SellingVector {
-  // b.c a.c a.b a.d b.d c.d
+  /// @brief Selling vector elements s (6 scalar products)
+  /// Order: b.c, a.c, a.b, a.d, b.d, c.d
   std::array<double,6> s;
 
+  /// @brief Construct from Selling vector array
+  /// @param s_ array of 6 dot products
   explicit SellingVector(const std::array<double,6>& s_) : s(s_) {}
 
+  /// @brief Construct from orthogonalization matrix
+  /// @param orth orthogonalization matrix
   explicit SellingVector(const Mat33& orth) {
     Vec3 b[4];
     for (int i = 0; i < 3; ++i)
@@ -281,20 +328,36 @@ struct SellingVector {
     s[5] = b[2].dot(b[3]);
   }
 
+  /// @brief Construct from UnitCell with centring
+  /// @param u unit cell
+  /// @param centring centring type
   SellingVector(const UnitCell& u, char centring)
     : SellingVector(u.primitive_orth_matrix(centring)) {}
+  /// @brief Construct from UnitCell with SpaceGroup
+  /// @param u unit cell
+  /// @param sg space group (may be null for P)
   SellingVector(const UnitCell& u, const SpaceGroup* sg)
     : SellingVector(u, sg ? sg->centring_type() : 'P') {}
 
-  // The reduction minimizes the sum b_i^2 which is equal to -2 sum s_i.
+  /// @brief Sum of squared basis vector lengths
+  /// @details The reduction minimizes sum(b_i²) which equals -2·sum(s_i)
+  /// @return sum of squared lengths
   double sum_b_squared() const {
     return -2 * (s[0] + s[1] + s[2] + s[3] + s[4] + s[5]);
   }
 
+  /// @brief Check if reduced
+  /// @details A Selling vector is reduced if all s[i] ≤ 0 within tolerance
+  /// @param eps tolerance
+  /// @return true if reduced
   bool is_reduced(double eps=1e-9) const {
     return std::all_of(s.begin(), s.end(), [eps](double x) { return x <= eps; });
   }
 
+  /// @brief Perform one reduction step
+  /// @details Apply one iteration of Selling reduction
+  /// @param eps tolerance
+  /// @return true if a step was applied
   bool reduce_step(double eps=1e-9) {
     //printf(" s = %g %g %g %g %g %g  sum=%g\n",
     //       s[0], s[1], s[2], s[3], s[4], s[5], sum_b_squared());
@@ -330,7 +393,11 @@ struct SellingVector {
     return true;
   }
 
-  // Returns number of iterations.
+  /// @brief Reduce to Selling form
+  /// @details Apply reduce_step() repeatedly until convergence
+  /// @param eps tolerance
+  /// @param iteration_limit maximum iterations
+  /// @return iteration count
   int reduce(double eps=1e-9, int iteration_limit=100) {
     int n = 0;
     while (++n != iteration_limit)
@@ -339,13 +406,19 @@ struct SellingVector {
     return n;
   }
 
+  /// @brief Convert to G6 parameters
+  /// @return GruberVector parameters
   std::array<double,6> g6_parameters() const {
     return {-s[1]-s[2]-s[3], -s[0]-s[2]-s[4], -s[0]-s[1]-s[5], 2*s[0], 2*s[1], 2*s[2]};
   }
 
+  /// @brief Convert to GruberVector
+  /// @return Gruber vector equivalent
   GruberVector gruber() const { return GruberVector(g6_parameters()); }
 
-  // Swap values to make a <= b <= c <= d
+  /// @brief Sort basis vectors by squared length
+  /// @details Swap values to make a² ≤ b² ≤ c² ≤ d²
+  /// @param eps tolerance for comparisons
   void sort(double eps=1e-9) {
     double abcd_sq_neg[4] = {
       // -a^2, -b^2, -c^2, -d^2 (negated - to be sorted in descending order)
@@ -389,12 +462,19 @@ struct SellingVector {
     }
   }
 
+  /// @brief Get unit cell parameters
+  /// @return array {a, b, c, α, β, γ} via Gruber conversion
   std::array<double,6> cell_parameters() const {
     return gruber().cell_parameters();
   }
+  /// @brief Construct UnitCell from Selling vector
+  /// @return unit cell
   UnitCell get_cell() const { return UnitCell(cell_parameters()); }
 };
 
+/// @brief Convert GruberVector to Selling-Delaunay vector
+/// @details Compute Selling vector from G6 Gruber parameters
+/// @return Selling vector
 inline SellingVector GruberVector::selling() const {
   double s0 = 0.5 * xi;
   double s1 = 0.5 * eta;
