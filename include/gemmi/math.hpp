@@ -272,9 +272,15 @@ struct Mat33 {
   /// @param d value to fill the matrix
   explicit Mat33(double d) : a{{d, d, d}, {d, d, d}, {d, d, d}} {}
   /// @brief Element constructor (row-major)
-  /// @param a1 @param a2 @param a3 first row
-  /// @param b1 @param b2 @param b3 second row
-  /// @param c1 @param c2 @param c3 third row
+  /// @param a1 first row, column 0
+  /// @param a2 first row, column 1
+  /// @param a3 first row, column 2
+  /// @param b1 second row, column 0
+  /// @param b2 second row, column 1
+  /// @param b3 second row, column 2
+  /// @param c1 third row, column 0
+  /// @param c2 third row, column 1
+  /// @param c3 third row, column 2
   Mat33(double a1, double a2, double a3, double b1, double b2, double b3,
         double c1, double c2, double c3)
   : a{{a1, a2, a3}, {b1, b2, b3}, {c1, c2, c3}} {}
