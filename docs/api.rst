@@ -22,6 +22,39 @@ Core Data Structures
 .. doxygenfile:: model.hpp
    :project: gemmi
 
+Structure I/O
+-------------
+
+*(Full documentation added in PR 4.)*
+
+.. doxygenfile:: mmcif.hpp
+   :project: gemmi
+
+.. doxygenfile:: mmread.hpp
+   :project: gemmi
+
+.. doxygenfile:: mmread_gz.hpp
+   :project: gemmi
+
+.. doxygenfile:: pdb.hpp
+   :project: gemmi
+
+.. doxygenfile:: to_mmcif.hpp
+   :project: gemmi
+
+.. doxygenfile:: to_pdb.hpp
+   :project: gemmi
+
+.. doxygenfile:: crd.hpp
+   :project: gemmi
+
+.. doxygenfile:: smcif.hpp
+   :project: gemmi
+
+.. doxygenfile:: mmdb.hpp
+   :project: gemmi
+
+.. doxygenfile:: pirfasta.hpp
 Map and Grid Data
 -----------------
 
