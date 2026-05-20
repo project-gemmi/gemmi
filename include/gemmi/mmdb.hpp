@@ -13,7 +13,7 @@
 #include <cstdlib>           // for atoi
 #include <cstring>           // for memcpy
 #include "model.hpp"
-#include "util.hpp"          // for rtrim_str
+#include "util.hpp"          // for trim_str and rtrim_str
 #include "polyheur.hpp"      // for assign_subchains
 #include <mmdb2/mmdb_manager.h>
 
@@ -383,7 +383,7 @@ inline void copy_to_mmdb(const Structure& st, mmdb::Manager* manager) {
 /// (if present), element, charge, and atom name/serial information.
 inline Atom copy_atom_from_mmdb(mmdb::Atom& m_atom) {
   Atom atom;
-  atom.name = m_atom.label_atom_id;
+  atom.name = trim_str(m_atom.label_atom_id);
   atom.altloc = m_atom.altLoc[0];
   atom.charge = (signed char) m_atom.charge;
   atom.element = Element(m_atom.element);
