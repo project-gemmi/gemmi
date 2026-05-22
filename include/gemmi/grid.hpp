@@ -244,7 +244,7 @@ inline double cubic_interpolation_der(double u, double a, double b, double c, do
 /// Grid indices u, v, w are in the range [0, nu), [0, nv), [0, nw) for valid grids.
 struct GridMeta {
   UnitCell unit_cell;           ///< Unit cell of the crystal
-  const SpaceGroup* spacegroup; ///< Space group (may be nullptr for P1)
+  const SpaceGroup* spacegroup = nullptr;  ///< Space group (may be nullptr for P1)
   int nu = 0, nv = 0, nw = 0;  ///< Grid dimensions
   AxisOrder axis_order = AxisOrder::Unknown;  ///< Grid axis correspondence to a, b, c
 
