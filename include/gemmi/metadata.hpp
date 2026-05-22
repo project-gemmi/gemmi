@@ -117,9 +117,9 @@ struct TlsGroup {
   std::string id;               ///< TLS group identifier string
   std::vector<Selection> selections; ///< Chain/residue ranges in this group
   Position origin;              ///< Origin of libration and screw axes (x, y, z)
-  SMat33<double> T;             ///< Translation tensor (Ų)
-  SMat33<double> L;             ///< Libration tensor (rotational, radians²)
-  Mat33 S;                       ///< Screw rotation tensor (radians/Ångström)
+  SMat33<double> T = {NAN, NAN, NAN, NAN, NAN, NAN}; ///< Translation tensor (Ų)
+  SMat33<double> L = {NAN, NAN, NAN, NAN, NAN, NAN}; ///< Libration tensor (rotational, radians²)
+  Mat33 S = Mat33{NAN};         ///< Screw rotation tensor (radians/Ångström)
 };
 
 /// @brief Refinement statistics for a resolution shell or overall data.
