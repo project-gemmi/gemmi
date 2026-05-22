@@ -160,21 +160,21 @@ struct RefinementInfo : BasicRefinementInfo {
     /// @brief Construct with restraint name.
     explicit Restr(const std::string& name_) : name(name_) {}
   };
-  std::string id;                            ///< Refinement identifier
-  std::string cross_validation_method;       ///< Method for R-free set selection
-  std::string rfree_selection_method;        ///< Details of R-free selection strategy
-  int bin_count = -1;                        ///< Total number of resolution shells
-  std::vector<BasicRefinementInfo> bins;     ///< Per-resolution-shell statistics
-  double mean_b = NAN;                       ///< Mean B-factor of all atoms (Ų)
-  SMat33<double> aniso_b;                    ///< Anisotropic B-factor tensor
-  double luzzati_error = NAN;                ///< Luzzati coordinate error estimate (Å)
-  double dpi_blow_r = NAN;                   ///< DPI (Blow) uncertainty for R-factor
-  double dpi_blow_rfree = NAN;               ///< DPI (Blow) uncertainty for R-free
-  double dpi_cruickshank_r = NAN;            ///< DPI (Cruickshank) uncertainty for R
-  double dpi_cruickshank_rfree = NAN;        ///< DPI (Cruickshank) uncertainty for R-free
-  std::vector<Restr> restr_stats;            ///< Restraint statistics by type
-  std::vector<TlsGroup> tls_groups;          ///< TLS (rigid-body) groups
-  std::string remarks;                       ///< Additional refinement notes
+  std::string id;                                  ///< Refinement identifier
+  std::string cross_validation_method;             ///< Method for R-free set selection
+  std::string rfree_selection_method;              ///< Details of R-free selection strategy
+  int bin_count = -1;                              ///< Total number of resolution shells
+  std::vector<BasicRefinementInfo> bins;           ///< Per-resolution-shell statistics
+  double mean_b = NAN;                             ///< Mean B-factor of all atoms (Ų)
+  SMat33<double> aniso_b{NAN,NAN,NAN,NAN,NAN,NAN}; ///< Anisotropic B-factor tensor
+  double luzzati_error = NAN;                      ///< Luzzati coordinate error estimate (Å)
+  double dpi_blow_r = NAN;                         ///< DPI (Blow) uncertainty for R-factor
+  double dpi_blow_rfree = NAN;                     ///< DPI (Blow) uncertainty for R-free
+  double dpi_cruickshank_r = NAN;                  ///< DPI (Cruickshank) uncertainty for R
+  double dpi_cruickshank_rfree = NAN;              ///< DPI (Cruickshank) uncertainty for R-free
+  std::vector<Restr> restr_stats;                  ///< Restraint statistics by type
+  std::vector<TlsGroup> tls_groups;                ///< TLS (rigid-body) groups
+  std::string remarks;                             ///< Additional refinement notes
 };
 
 

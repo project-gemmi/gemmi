@@ -57,7 +57,7 @@ struct SmallStructure {
     Fractional fract;               ///< Fractional coordinates (0-1)
     double occ = 1.0;               ///< Occupancy (0-1, partial/disordered)
     double u_iso = 0.;              ///< Isotropic B-factor / Uiso
-    SMat33<double> aniso;           ///< Anisotropic displacement parameters (Uij)
+    SMat33<double> aniso = {};      ///< Anisotropic displacement parameters (Uij)
     int disorder_group = 0;         ///< Disorder group ID (0 = ordered site)
     Element element = El::X;        ///< Chemical element
     signed char charge = 0;         ///< Formal charge ([-8, +8])
