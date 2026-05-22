@@ -47,7 +47,7 @@ enum class ChiralityType {
 
 /// Geometric restraints for a chemical component.
 /// Stores bond, angle, torsion, chirality, and planarity restraints.
-struct Restraints {
+struct GEMMI_DLL Restraints {
   /// Atom identifier used in restraints.
   struct AtomId {
     int comp;           ///< Component index (1 or 2 for link restraints)
