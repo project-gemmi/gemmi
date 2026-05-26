@@ -185,6 +185,37 @@ class TestUnitCell(unittest.TestCase):
         assert_almost_equal_seq(self, site.aniso.elements_pdb(), ucif,
                                 delta=1e-6)
 
+    def test_atom_to_site_hexagonal(self):
+        # Regression test: previously the U_cart -> U_cif conversion was
+        # skipped whenever any cell angle was 90 degrees, including
+        # hexagonal / trigonal / monoclinic cells where the fractionalization
+        # matrix has off-diagonal entries and the conversion is non-trivial.
+        cell = gemmi.UnitCell(7.0, 7.0, 6.0, 90.0, 90.0, 120.0)
+        atom = gemmi.Atom()
+        atom.aniso = gemmi.SMat33f(0.012, 0.013, 0.020, 0.0021, 0.0007, 0.0003)
+        site = gemmi.SmallStructure.Site(atom, cell)
+        # Canonical formula (and cctbx):
+        # from cctbx import uctbx, adptbx
+        # uc = uctbx.unit_cell((7.0, 7.0, 6.0, 90.0, 90.0, 120.0))
+        # aniso = (0.012, 0.013, 0.020, 0.0021, 0.0007, 0.0003)
+        # ucif = adptbx.u_cart_as_u_cif(uc, aniso)
+        ucif = [0.014068653347947, 0.013, 0.020,
+                0.008318653347947, 0.000756217782649, 0.0003]
+        assert_almost_equal_seq(self, site.aniso.elements_pdb(), ucif,
+                                delta=1e-6)
+
+    def test_atom_to_site_monoclinic(self):
+        # Same issue as above but for a monoclinic cell (alpha=gamma=90,
+        # beta != 90). U_13 and U_11 are affected by the beta rotation.
+        cell = gemmi.UnitCell(8.0, 9.5, 10.5, 90.0, 105.0, 90.0)
+        atom = gemmi.Atom()
+        atom.aniso = gemmi.SMat33f(0.012, 0.013, 0.020, 0.0021, 0.0007, 0.0003)
+        site = gemmi.SmallStructure.Site(atom, cell)
+        ucif = [0.012885898384862, 0.013, 0.020,
+                0.002106089948738, 0.005852528980453, 0.0003]
+        assert_almost_equal_seq(self, site.aniso.elements_pdb(), ucif,
+                                delta=1e-6)
+
     def test_pickling(self):
         cell = gemmi.UnitCell(35.996, 41.601, 45.756, 67.40, 66.90, 74.85)
         pkl_string = pickle.dumps(cell, protocol=pickle.HIGHEST_PROTOCOL)
