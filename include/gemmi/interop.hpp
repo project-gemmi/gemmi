@@ -30,7 +30,11 @@ inline SmallStructure::Site atom_to_site(const Atom& atom, const UnitCell& cell)
   }
   site.u_iso = atom.b_iso / u_to_b();
   if (atom.aniso.nonzero()) {
-    if (cell.alpha == 90. || cell.beta == 90. || cell.gamma == 90.) {
+    // U_cif == U_cart only when the cell is fully orthogonal (all three
+    // angles equal 90°). For monoclinic / hexagonal / trigonal cells the
+    // fractionalization matrix has off-diagonal entries and the full
+    // U_cart -> U_cif transformation is required.
+    if (cell.alpha == 90. && cell.beta == 90. && cell.gamma == 90.) {
       site.aniso = atom.aniso.scaled(1.0);
     } else {
       SMat33<double> t = atom.aniso.transformed_by<>(cell.frac.mat);
