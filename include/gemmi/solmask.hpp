@@ -446,15 +446,44 @@ struct SolventMasker {
     size_t limit = static_cast<size_t>(island_min_volume * grid.point_count()
                                        / grid.unit_cell.volume);
     int counter = 0;
-    FloodFill<T,1> flood_fill{grid};
-    flood_fill.for_each_islands([&](typename FloodFill<T,1>::Result& r) {
+    if constexpr (std::is_floating_point_v<T>) {
+      // Create a temporary binary mask for the flood fill
+      Grid<std::int8_t> binary_grid;
+      binary_grid.copy_metadata_from(grid);
+      binary_grid.data.resize(grid.data.size());
+      for (size_t i = 0; i < grid.data.size(); ++i)
+        binary_grid.data[i] = (grid.data[i] > (T)0.) ? 1 : 0;
+
+      // Run the native integer FloodFill on our temporary binary grid
+      FloodFill<std::int8_t, 1> flood_fill{binary_grid};
+      flood_fill.for_each_islands([&](typename FloodFill<std::int8_t, 1>::Result& r) {
+        if (r.point_count() <= limit) {
+          ++counter;
+          for (const auto& line : r.lines) {
+            // FloodFill::set_line_values
+            size_t start_idx = line.ptr - binary_grid.data.data();
+            for (int i = 0; i < std::min(line.ulen, grid.nu - line.u); ++i) {
+              assert(grid.data[start_idx + i] != (T)0);
+              grid.data[start_idx + i] = (T)0;
+            }
+            for (int i = -line.u; i < line.ulen - grid.nu; ++i) {
+              assert(grid.data[start_idx + i] != (T)0);
+              grid.data[start_idx + i] = (T)0;
+            }
+          }
+        }
+      });
+    } else {
+      FloodFill<T,1> flood_fill{grid};
+      flood_fill.for_each_islands([&](typename FloodFill<T,1>::Result& r) {
         //printf("island %d: %zu in %zu (limit: %zu)\n",
         //       counter, r.point_count(), lines.size(), limit);
         if (r.point_count() <= limit) {
           ++counter;
           flood_fill.set_volume_values(r, (T)0);
         }
-    });
+      });
+    }
     return counter;
   }
 
