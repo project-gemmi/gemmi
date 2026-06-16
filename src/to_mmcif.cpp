@@ -721,7 +721,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
           }
           seq_loop.add_row({std::to_string(++counter2),
                             std::to_string(counter),
-                            strand_id->second,  // pdbx_strand_id
+                            qchain(strand_id->second),  // pdbx_strand_id
                             id,
                             label_begin.str(),
                             label_end.str(),
