@@ -853,6 +853,23 @@ class TestMol(unittest.TestCase):
         ref_seq = doc[0].get_mmcif_category('_struct_ref_seq')
         self.assertEqual(ref_seq['pdbx_strand_id'], ['B'])
 
+    def test_empty_strand_id_struct_ref_seq(self):
+        # A blank chain name (e.g. a PDB file with no chain ID) gives an empty
+        # _struct_ref_seq.pdbx_strand_id. It must be written as a quoted empty
+        # string (''), not dropped: dropping it leaves the loop row one value
+        # short, which makes the whole file unreadable.
+        st = gemmi.read_structure(full_path('1pfe.cif.gz'))
+        for chain in st[0]:
+            if chain.name == 'B':
+                chain.name = ''
+        doc = st.make_mmcif_document()
+        strand_ids = doc[0].find_values('_struct_ref_seq.pdbx_strand_id')
+        self.assertEqual([gemmi.cif.as_string(v) for v in strand_ids], ['A', ''])
+        # Round-trip: writing then re-reading must not raise on a ragged loop.
+        reparsed = gemmi.cif.read_string(doc.as_string())
+        self.assertEqual(reparsed[0].find_values('_struct_ref_seq.pdbx_strand_id')
+                         .str(1), '')
+
     def test_first_conformer(self):
         model = gemmi.read_structure(full_path('1pfe.cif.gz'))[0]
         b = model['B']
