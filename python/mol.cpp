@@ -420,6 +420,11 @@ void add_mol(nb::module_& m) {
         return make_one_letter_sequence(span);
     })
     .def("transform_pos_and_adp", transform_pos_and_adp<ResidueSpan>)
+    .def("sub", [](ResidueSpan &g, size_t pos, size_t size) -> ResidueSpan {
+        if (pos + size > g.size())
+          throw std::out_of_range("sub(): out of bounds");
+        return g.sub(g.begin() + pos, g.begin() + pos + size);
+    }, nb::arg("pos"), nb::arg("size"))
     .def("__repr__", [](const ResidueSpan& self) {
         int N = (int) self.size();
         std::string r = "<gemmi.ResidueSpan of " + std::to_string(N) + ": ";
