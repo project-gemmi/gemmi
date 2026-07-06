@@ -23,6 +23,7 @@ option(BUILD_GEMMI_PROGRAM "Build gemmi command-line program" ON)
 option(INSTALL_DEV_FILES "Install C++ headers, cmake configs, static lib" ON)
 option(USE_FORTRAN "Build Fortran bindings" OFF)
 option(USE_PYTHON "Build Python bindings" OFF)
+option(INSTALL_PYTHON "Install the gemmi Python package during 'cmake --install'. Set OFF when embedding gemmi as a subproject to avoid installing to site-packages." ON)
 option(USE_ZLIB_NG "Use zlib-ng instead of zlib" OFF)
 option(FETCH_ZLIB_NG "Download, build (statically) and use zlib-ng" OFF)
 option(INTERNAL_ZLIB "Use subset of zlib distributed with gemmi" OFF)
@@ -612,18 +613,22 @@ if (USE_PYTHON)
     endif()
     set_target_properties(gemmi_py PROPERTIES INSTALL_RPATH "${origin}/${rpath_rel}")
   endif()
-  install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
-  install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
-          FILES_MATCHING PATTERN "*.py"
-          PATTERN "[._]*" EXCLUDE)
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.py"
-                "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/fetch.py"
-          DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
-  if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
-    install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/py.typed"
-            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.pyi"
-            "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/cif.pyi"
+  if (INSTALL_PYTHON)
+    install(TARGETS gemmi_py DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
+    install(DIRECTORY examples DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py
+            FILES_MATCHING PATTERN "*.py"
+            PATTERN "[._]*" EXCLUDE)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.py"
+                  "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/fetch.py"
             DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
+    if (GENERATE_STUBS AND NOT CMAKE_CROSSCOMPILING)
+      install(FILES
+              "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/py.typed"
+              "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/__init__.pyi"
+              "${CMAKE_CURRENT_BINARY_DIR}/${py_dir}/gemmi/cif.pyi"
+              DESTINATION "${Python_SITEARCH}/gemmi" COMPONENT py)
+    endif()
+  else()
+    message(STATUS "INSTALL_PYTHON=OFF: skipping install() of gemmi python package (build only)")
   endif()
 endif()
