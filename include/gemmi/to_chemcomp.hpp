@@ -53,7 +53,7 @@ inline void add_chemcomp_to_block(const ChemComp& cc, cif::Block& block,
       row[col++] = cif::quote(a.chem_type);
       row[col++] = std::to_string(iround(a.charge));
       if (has_acedrg_type)
-        row[col++] = use_external_types ? acedrg_types[idx] : a.acedrg_type;
+        row[col++] = cif::quote(use_external_types ? acedrg_types[idx] : a.acedrg_type);
       if (cc.has_coordinates) {
         row[col++] = to_str(a.xyz.x);
         row[col++] = to_str(a.xyz.y);
