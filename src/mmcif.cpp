@@ -570,12 +570,11 @@ void read_sifts_unp(cif::Block& block, Structure& st) {
       int label_seq = cif::as_int(row[kSeqId]);
       if (res->label_seq != label_seq) {
         res = polymer.begin();
-        while (res->label_seq != label_seq) {
+        while (res != polymer.end() && res->label_seq != label_seq)
           ++res;
-          if (res == polymer.end())
-            fail("_pdbx_sifts_xref_db: seq_id not found: " + row[kSeqId]);
-        }
       }
+      if (res == polymer.end())
+        continue;
       unp.res = cif::as_char(row[kUnpRes], '\0');
       int num = cif::as_int(row[kUnpNum]);
       unp.num = (std::uint16_t) num;
