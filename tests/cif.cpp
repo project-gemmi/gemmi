@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <gemmi/read_cif.hpp>
+#include <gemmi/refln.hpp>     // for ReflnBlock
+#include <gemmi/intensit.hpp>  // for Intensities
 
 namespace cif = gemmi::cif;
 
@@ -86,4 +88,25 @@ TEST_CASE("cif::Block::init_loop") {
   block.set_pair("_p.v", "30");
   CHECK_EQ(block.find_values("_p.u").item(), nullptr);
   CHECK_EQ(block.find_values("_p.v").at(0), "30");
+}
+
+TEST_CASE("Intensities::import_f_squared_from_mmcif") {
+  cif::Document doc = cif::read_string(
+      "data_r\n"
+      "_cell.length_a 10 _cell.length_b 10 _cell.length_c 10\n"
+      "_cell.angle_alpha 90 _cell.angle_beta 90 _cell.angle_gamma 90\n"
+      "_symmetry.space_group_name_H-M 'P 1'\n"
+      "loop_ _refln.index_h _refln.index_k _refln.index_l\n"
+      "_refln.F_meas_au _refln.F_meas_sigma_au\n"
+      "1 0 0 10 0.5\n"
+      "0 1 0 4 0.25\n");
+  gemmi::ReflnBlock rblock(std::move(doc.blocks.at(0)));
+  gemmi::Intensities intensities;
+  intensities.import_f_squared_from_mmcif(rblock);
+  REQUIRE(intensities.data.size() == 2);
+  // I = F^2 and sigma(I) = 2 F sigma(F)
+  CHECK(intensities.data[0].value == doctest::Approx(100.));
+  CHECK(intensities.data[0].sigma == doctest::Approx(10.));
+  CHECK(intensities.data[1].value == doctest::Approx(16.));
+  CHECK(intensities.data[1].sigma == doctest::Approx(2.));
 }

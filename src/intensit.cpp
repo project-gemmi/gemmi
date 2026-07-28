@@ -494,8 +494,9 @@ void Intensities::import_f_squared_from_mmcif(const ReflnBlock& rb) {
   wavelength = rb.wavelength;
   read_data(*this, ReflnDataProxy(rb), value_idx, sigma_idx);
   for (Refl& r : data) {
-    r.value *= r.value;
+    // sigma(F^2) = 2 * F * sigma(F), so scale sigma before squaring the value
     r.sigma *= 2 * r.value;
+    r.value *= r.value;
   }
   type = DataType::Mean;
 }
