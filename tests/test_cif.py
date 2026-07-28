@@ -312,6 +312,22 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(doc.as_string(options).splitlines(),
                          ['data_one', '_x                                y'])
 
+    def test_write_wide_alignment(self):
+        # padding wider than the 4 KiB write buffer used to overflow it
+        long_value = 'v' * 5000
+        doc = cif.read_string('data_a _x 1 loop_ _y.a _y.b %s 2 3 4' % long_value)
+        options = cif.WriteOptions()
+        options.align_pairs = 5000
+        options.align_loops = 5000
+        output = doc.as_string(options)
+        lines = output.splitlines()
+        self.assertEqual(lines[1], '_x' + ' ' * 4999 + '1')
+        self.assertEqual(lines[-2], long_value + ' 2')
+        self.assertEqual(lines[-1], '3' + ' ' * 5000 + '4')
+        block = cif.read_string(output)[0]
+        self.assertEqual(block.find_value('_x'), '1')
+        self.assertEqual(list(block.find_loop('_y.a')), [long_value, '3'])
+
     def test_relion_syntax_exception(self):
         block = cif.read_string("""\
             data_
