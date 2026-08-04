@@ -184,7 +184,7 @@ struct DensityCalculator {
   template<int N>
   CReal estimate_radius(const ExpSum<N, CReal>& precal, CReal b) const {
     if (N == 1)
-      return std::sqrt(std::log(cutoff / std::abs(precal.a[0])) / precal.b[0]);
+      return precal.a[0] == 0 ? 0 : std::sqrt(std::log(cutoff / std::abs(precal.a[0])) / precal.b[0]);
     CReal x1 = it92_radius_approx(b);
     return determine_cutoff_radius(x1, precal, (CReal)cutoff);
   }
