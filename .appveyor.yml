@@ -37,7 +37,7 @@ for:
   build_script:
   - path
   - cmake --version
-  - git clone --depth=1 --recursive https://github.com/wjakob/nanobind.git
+  - git clone --depth=1 --recursive -b v2.15.0 https://github.com/wjakob/nanobind.git
   - cmake -G "%CMAKE_GENERATOR%" -DUSE_PYTHON=1 %CMAKE_ARGS% .
   - cmake --build . --config %CMAKE_CONFIG%
   - cmake --build . --config %CMAKE_CONFIG% --target check
