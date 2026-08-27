@@ -131,7 +131,7 @@ jobs:
         sudo python3 -m pip install -U typing_extensions sphinx sphinx-inline-tabs
     - name: install nanobind
       run: |
-        git clone --recursive --depth=1 https://github.com/wjakob/nanobind.git
+        git clone --recursive -b v2.15.0 --depth=1 https://github.com/wjakob/nanobind.git
     - name: build and test
       run: |
         g++ --version
@@ -167,7 +167,7 @@ jobs:
         sudo apt-get install python3-pip python3-numpy
     - name: install nanobind
       run: |
-        git clone --recursive --depth=1 https://github.com/wjakob/nanobind.git
+        git clone --recursive -b v2.15.0 --depth=1 https://github.com/wjakob/nanobind.git
     - uses: actions/checkout@v4
     - name: build from sdist
       run: |
@@ -175,7 +175,7 @@ jobs:
         echo >constraints.txt <<EOF
         scikit-build-core==0.10.7
         EOF
-        python3 -m pip install build scikit-build-core==0.10.7 nanobind
+        python3 -m pip install build scikit-build-core==0.10.7 "nanobind<3"
         python3 -m build --sdist
         python3 -m pip install -v dist/gemmi-*.tar.gz -c constraints.txt --no-build-isolation
         python3 -m unittest discover -v -s tests/
@@ -197,7 +197,7 @@ jobs:
         sudo apt-get install -y libz-dev python3-pip g++ gfortran python3-numpy valgrind cmake
     - name: install nanobind
       run: |
-        python3 -m pip install nanobind typing_extensions sphinx sphinx-inline-tabs
+        python3 -m pip install "nanobind<3" typing_extensions sphinx sphinx-inline-tabs
     - name: build and test
       run: |
         g++ --version
@@ -251,7 +251,7 @@ jobs:
         type python3.9
     - name: install nanobind
       run: |
-        git clone --recursive --depth=1 https://github.com/wjakob/nanobind.git
+        git clone --recursive -b v2.15.0 --depth=1 https://github.com/wjakob/nanobind.git
         cd nanobind
         cmake . -Wno-dev -DPYTHON_EXECUTABLE=/usr/bin/python3.9 -DNB_TEST=OFF
         make
