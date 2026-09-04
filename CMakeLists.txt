@@ -574,6 +574,16 @@ write_basic_package_version_file(gemmi-config-version.cmake
                                  VERSION ${PROJECT_VERSION}
                                  COMPATIBILITY AnyNewerVersion)
 
+# pkg-config — for autotools, meson, bazel, and plain-Makefile consumers.
+# Strip a "-dev" / "+build" tail off the version because pkg-config rejects
+# non-numeric characters per its spec.
+string(REGEX REPLACE "[-+].*$" "" GEMMI_VERSION_PC "${PROJECT_VERSION}")
+# Optional private deps go in Requires.private so static linking works
+# without leaking them onto the consumer's compile line for the dynamic case.
+set(GEMMI_PC_REQUIRES_PRIVATE "")
+configure_file(tools/gemmi.pc.in
+               "${CMAKE_CURRENT_BINARY_DIR}/gemmi.pc" @ONLY)
+
 if (BUILD_GEMMI_PROGRAM)
   # Is it useful to have the program location in gemmi-targets.cmake?
   install(TARGETS gemmi_prog EXPORT GemmiTargets)
@@ -589,6 +599,8 @@ if (INSTALL_DEV_FILES)
           "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config.cmake"
           "${CMAKE_CURRENT_BINARY_DIR}/gemmi-config-version.cmake"
           DESTINATION "${GEMMI_INSTALL_CMAKEDIR}")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/gemmi.pc"
+          DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 elseif (BUILD_SHARED_LIBS AND BUILD_GEMMI_PROGRAM)
   install(TARGETS gemmi_cpp)
 endif()
