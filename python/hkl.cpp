@@ -318,7 +318,7 @@ void add_hkl(nb::module_& m) {
         self.add_if_valid({h(i, 0), h(i, 1), h(i, 2)}, 0, 0, v(i), s(i));
       self.type = DataType::Unmerged;
       self.switch_to_asu_indices();
-    }, nb::arg("cell"), nb::arg("sg").none(false),
+    }, nb::arg("cell"), nb::arg("sg"),
        nb::arg("miller_array"), nb::arg("value_array"), nb::arg("sigma_array"))
     ;
 

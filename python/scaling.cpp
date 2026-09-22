@@ -22,7 +22,7 @@ void add_scaling(nb::module_& m) {
     .def_prop_rw("parameters", &Scaling::get_parameters,
                   (void (Scaling::*)(const std::vector<double>&)) &Scaling::set_parameters)
     .def("prepare_points", &Scaling::prepare_points,
-         nb::arg("calc"), nb::arg("obs"), nb::arg("mask")=static_cast<FPhiData*>(nullptr))
+         nb::arg("calc"), nb::arg("obs"), nb::arg("mask")=nb::none())
     .def("fit_isotropic_b_approximately", &Scaling::fit_isotropic_b_approximately)
     .def("fit_b_star_approximately", &Scaling::fit_b_star_approximately)
     .def("fit_parameters", &Scaling::fit_parameters)
@@ -36,7 +36,7 @@ void add_scaling(nb::module_& m) {
     })
     .def("get_solvent_scale", &Scaling::get_solvent_scale, nb::arg("stol2"))
     .def("scale_data", &Scaling::scale_data,
-         nb::arg("asu_data"), nb::arg("mask_data")=static_cast<FPhiData*>(nullptr))
+         nb::arg("asu_data"), nb::arg("mask_data")=nb::none())
     .def("scale_value", &Scaling::scale_value,
          nb::arg("hkl"), nb::arg("f_value"), nb::arg("mask_value"))
     ;

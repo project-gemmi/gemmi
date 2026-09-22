@@ -36,7 +36,11 @@ struct returns_references {
     if (!nb::isinstance<nb::sequence>(ret))
       throw std::runtime_error("return value should be a sequence");
     for (nb::handle nurse : ret)
+#if defined(NB_VERSION_MAJOR) && NB_VERSION_MAJOR >= 3
+      nb::keep_alive_obj(nurse, args[0]);
+#else
       nb::detail::keep_alive(nurse.ptr(), args[0]);
+#endif
   }
 };
 

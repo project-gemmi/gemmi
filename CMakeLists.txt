@@ -31,6 +31,8 @@ option(GENERATE_STUBS "Generate Python type stubs" ON)
 option(EXTRA_WARNINGS "Set extra warning flags" OFF)
 option(USE_WMAIN "(Windows only) take Unicode arguments in gemmi program" ON)
 option(STANDALONE_PYTHON_MODULE "Avoid linking Python module to libgemmi_cpp DLL" ON)
+option(ENABLE_SPLIT_MODE "Use nanobind split mode (BACKEND_MODULE)" OFF)
+option(ENABLE_FREE_THREADED "Enable free-threaded Python support" OFF)
 if (WIN32)
   set(GEMMI_INSTALL_CMAKEDIR "cmake" CACHE STRING
       "Install path for gemmi CMake files")
@@ -472,10 +474,20 @@ if (USE_PYTHON)
       COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
       OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nb_cmake_dir)
     list(APPEND CMAKE_PREFIX_PATH "${nb_cmake_dir}")
-    find_package(nanobind 2.4.0 CONFIG REQUIRED)
+    find_package(nanobind CONFIG REQUIRED)
+    if (nanobind_VERSION VERSION_LESS "2.4.0" OR nanobind_VERSION VERSION_GREATER_EQUAL "4.0.0")
+      message(FATAL_ERROR "nanobind version must be >= 2.4.0 and < 4.0.0 (found ${nanobind_VERSION})")
+    endif()
     message(STATUS "Found nanobind ${nanobind_VERSION}: ${NB_DIR}")
   endif()
-  nanobind_add_module(gemmi_py NOMINSIZE
+  set(gemmi_py_flags NOMINSIZE)
+  if (ENABLE_SPLIT_MODE)
+    list(APPEND gemmi_py_flags BACKEND_MODULE nanobind_backend)
+  endif()
+  if (ENABLE_FREE_THREADED)
+    list(APPEND gemmi_py_flags FREE_THREADED)
+  endif()
+  nanobind_add_module(gemmi_py ${gemmi_py_flags}
           python/gemmi.cpp python/align.cpp
           python/ccp4.cpp python/chemcomp.cpp python/cif.cpp
           python/elem.cpp python/grid.cpp python/hkl.cpp
