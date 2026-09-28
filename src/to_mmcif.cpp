@@ -410,8 +410,8 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
   if (use_ccp4_link_id)
     conn_loop.tags.push_back("_struct_conn.ccp4_link_id");
   for (const Connection& con : st.connections) {
-    const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
-    const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
+    const auto cras = find_connection_atoms(st, con);
+    const const_CRA& cra1 = cras.first, &cra2 = cras.second;
     if (!cra1.residue || !cra2.residue)
       continue;
     const Atom* at1 = cra1.atom;
@@ -422,6 +422,10 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
       im_pdb_symbol = im.symmetry_code(true);
       im_dist_str = to_str_prec<4>(im.dist());
     }
+    // altloc as given in the Connection; an atom found for a partner
+    // without altloc (see find_connection_atoms) does not add one
+    char alt1 = at1 && con.partner1.altloc ? at1->altloc_or('?') : '?';
+    char alt2 = at2 && con.partner2.altloc ? at2->altloc_or('?') : '?';
     auto& v = conn_loop.values;
     v.emplace_back(string_or_qmark(con.name));            // id
     v.emplace_back(connection_type_to_string(con.type));  // conn_type_id
@@ -429,7 +433,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     v.emplace_back(cra1.residue->name);                   // ptnr1_label_comp_id
     v.emplace_back(cra1.residue->label_seq.str('.'));     // ptnr1_label_seq_id
     v.emplace_back(at1 ? cif::quote(at1->name) : "?");    // ptnr1_label_atom_id
-    v.emplace_back(1, at1 ? at1->altloc_or('?') : '?');   // pdbx_ptnr1_label_alt_id
+    v.emplace_back(1, alt1);                              // pdbx_ptnr1_label_alt_id
     v.emplace_back(qchain(con.partner1.chain_name));      // ptnr1_auth_asym_id
     v.emplace_back(cra1.residue->seqid.num.str());        // ptnr1_auth_seq_id
     v.emplace_back(pdbx_icode(con.partner1.res_id));      // ptnr1_PDB_ins_code
@@ -438,7 +442,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     v.emplace_back(cra2.residue->name);                   // ptnr2_label_comp_id
     v.emplace_back(cra2.residue->label_seq.str('.'));     // ptnr2_label_seq_id
     v.emplace_back(at2 ? cif::quote(at2->name) : "?");    // ptnr2_label_atom_id
-    v.emplace_back(1, at2 ? at2->altloc_or('?') : '?');   // pdbx_ptnr2_label_alt_id
+    v.emplace_back(1, alt2);                              // pdbx_ptnr2_label_alt_id
     v.emplace_back(qchain(con.partner2.chain_name));      // ptnr2_auth_asym_id
     v.emplace_back(cra2.residue->seqid.num.str());        // ptnr2_auth_seq_id
     v.emplace_back(pdbx_icode(con.partner2.res_id));      // ptnr2_PDB_ins_code
