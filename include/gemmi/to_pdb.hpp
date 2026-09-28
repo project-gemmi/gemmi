@@ -10,6 +10,7 @@
 
 #include "model.hpp"
 #include <ostream>
+#include <utility>  // for pair
 
 namespace gemmi {
 
@@ -85,6 +86,21 @@ struct PdbWriteOptions {
 /// @param res The residue to classify.
 /// @return true if HETATM should be used, false for ATOM.
 GEMMI_DLL bool use_hetatm(const Residue& res);
+
+/// @brief Find the atoms of a Connection in the first model, for writing.
+///
+/// Like Model::find_cra() for both partners, except for a partner without
+/// altloc whose atom exists only in alternative conformations (not found by
+/// the strict altloc matching): then the closest pair of atoms of the same
+/// conformer is returned, so that the atom names, symmetry and distance can
+/// still be written. The altloc of such an atom is not part of the Connection.
+/// Atoms that are genuinely absent stay null.
+///
+/// @param st The Structure (must have at least one model).
+/// @param con The Connection.
+/// @return The CRAs of partner1 and partner2.
+GEMMI_DLL std::pair<const_CRA, const_CRA> find_connection_atoms(const Structure& st,
+                                                               const Connection& con);
 
 /// @brief Write a Structure to PDB format on an output stream.
 /// @param st The Structure to serialize.

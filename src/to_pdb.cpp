@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cctype>         // for isdigit
+#include <cmath>          // for INFINITY
 #include <cstring>        // for memset, memcpy
 #include <algorithm>
 #include <array>
@@ -48,6 +49,43 @@ bool use_hetatm(const Residue& res) {
       res.entity_type == EntityType::Water)
     return true;
   return !find_tabulated_residue(res.name).is_standard();
+}
+
+std::pair<const_CRA, const_CRA> find_connection_atoms(const Structure& st,
+                                                      const Connection& con) {
+  const Model& model = st.models.at(0);
+  std::pair<const_CRA, const_CRA> cras{model.find_cra(con.partner1, true),
+                                       model.find_cra(con.partner2, true)};
+  const_CRA& cra1 = cras.first;
+  const_CRA& cra2 = cras.second;
+  if (!cra1.residue || !cra2.residue || (cra1.atom && cra2.atom))
+    return cras;
+  // A partner without altloc can name an atom that is present only as A, B...
+  // Pick the closest pair of the same conformer, as complete_ssbond() does.
+  auto candidates = [](const const_CRA& cra, const AtomAddress& ad) {
+    std::vector<const Atom*> atoms;
+    if (cra.atom)
+      atoms.push_back(cra.atom);
+    else if (ad.altloc == '\0' && !ad.atom_name.empty())
+      for (const Atom& a : cra.residue->atoms)
+        if (a.name == ad.atom_name)
+          atoms.push_back(&a);
+    return atoms;
+  };
+  const std::vector<const Atom*> atoms1 = candidates(cra1, con.partner1);
+  const std::vector<const Atom*> atoms2 = candidates(cra2, con.partner2);
+  double min_dist_sq = INFINITY;
+  for (const Atom* a1 : atoms1)
+    for (const Atom* a2 : atoms2)
+      if (a1->same_conformer(*a2)) {
+        double dist_sq = st.cell.find_nearest_image(a1->pos, a2->pos, con.asu).dist_sq;
+        if (dist_sq < min_dist_sq) {
+          min_dist_sq = dist_sq;
+          cra1.atom = a1;
+          cra2.atom = a2;
+        }
+      }
+  return cras;
 }
 
 namespace {
@@ -622,8 +660,8 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
       int counter = 0;
       for (const Connection& con : st.connections)
         if (con.type == Connection::Disulf) {
-          const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
-          const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
+          const auto cras = find_connection_atoms(st, con);
+          const const_CRA& cra1 = cras.first, &cra2 = cras.second;
           if (!cra1.atom || !cra2.atom)
             continue;
           NearestImage im = st.cell.find_nearest_image(cra1.atom->pos,
@@ -645,8 +683,8 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
       for (const Connection& con : st.connections)
         if (con.type == Connection::Covale || con.type == Connection::MetalC ||
             con.type == Connection::Unknown) {
-          const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
-          const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
+          const auto cras = find_connection_atoms(st, con);
+          const const_CRA& cra1 = cras.first, &cra2 = cras.second;
           // In special cases (LINKR gap) atoms are not there.
           if (!cra1.residue || !cra2.residue)
             continue;
@@ -667,12 +705,14 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
           snprintf_z(buf, 82, "LINK        %-4s%c%3.3s%2s%5s   "
                 "            %-4s%c%3.3s%2s%5s  %6s %6s %5s  \n",
                 cra1.atom ? cra1.atom->padded_name().c_str() : "",
-                cra1.atom && cra1.atom->altloc ? std::toupper(cra1.atom->altloc) : ' ',
+                cra1.atom && cra1.atom->altloc && con.partner1.altloc
+                    ? std::toupper(cra1.atom->altloc) : ' ',
                 cra1.residue->name.c_str(),
                 con.partner1.chain_name.c_str(),
                 write_seq_id(cra1.residue->seqid).data(),
                 cra2.atom ? cra2.atom->padded_name().c_str() : "",
-                cra2.atom && cra2.atom->altloc ? std::toupper(cra2.atom->altloc) : ' ',
+                cra2.atom && cra2.atom->altloc && con.partner2.altloc
+                    ? std::toupper(cra2.atom->altloc) : ' ',
                 cra2.residue->name.c_str(),
                 con.partner2.chain_name.c_str(),
                 write_seq_id(cra2.residue->seqid).data(),

@@ -46,6 +46,23 @@ ATOM     37  SG  CYS A   6      38.416  25.985  18.085  1.00 14.07  16       S
 ATOM     69  SG  CYS A  11      36.989  25.994  19.570  1.00 14.23  16       S
 """
 
+# links without altloc to atoms that are present only in conformers A and B
+LINK_TO_ALTLOCS = """\
+LINK        ZN    ZN A 301                 NE2 HIS A  64     1555   1555  2.10
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  NE2AHIS A  64      12.100  10.000  10.000  0.60 20.00           N
+ATOM      2  NE2BHIS A  64      12.600  10.000  10.000  0.40 20.00           N
+HETATM    3 ZN    ZN A 301      10.000  10.000  10.000  1.00 20.00          ZN
+"""
+
+SSBOND_TO_ALTLOCS = """\
+SSBOND   1 CYS A    5    CYS A   20                          1555   1555  2.04
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1
+ATOM      1  SG ACYS A   5      10.000  10.000  10.000  0.70 20.00           S
+ATOM      2  SG BCYS A   5      10.000  11.600  11.600  0.30 20.00           S
+ATOM      3  SG  CYS A  20      12.040  10.000  10.000  1.00 20.00           S
+"""
+
 # fragment of $CCP4/examples/toxd/toxd_mod_p1.pdb without chain names
 BLANK_CHAIN_FRAGMENT = """\
 CRYST1   50.000   50.00    50.00   90.00  90.00   90.00
@@ -779,6 +796,32 @@ class TestMol(unittest.TestCase):
         self.assertEqual(out.splitlines()[0],
                          SHORT_SSBOND.splitlines()[0]
                          + "                          1555   1555  2.06  ")
+
+    def test_link_to_altloc_atoms(self):
+        # LINK has no altlocs, NE2 is present only as A and B
+        st = gemmi.read_pdb_string(LINK_TO_ALTLOCS)
+        self.assertEqual(st.connections[0].partner2.altloc, '\0')
+        out = [line.rstrip() for line in st.make_pdb_headers().splitlines()]
+        self.assertIn(LINK_TO_ALTLOCS.splitlines()[0], out)
+        doc = st.make_mmcif_document()
+        tags = ['ptnr1_label_atom_id', 'pdbx_ptnr1_label_alt_id',
+                'ptnr2_label_atom_id', 'pdbx_ptnr2_label_alt_id',
+                'ptnr2_symmetry', 'pdbx_dist_value']
+        row = doc[0].find('_struct_conn.', tags)[0]
+        # names written, no altloc added, distance from the closest conformer
+        self.assertEqual(list(row), ['ZN', '?', 'NE2', '?', '1_555', '2.1000'])
+
+    def test_ssbond_to_altloc_atoms(self):
+        st = gemmi.read_pdb_string(SSBOND_TO_ALTLOCS)
+        # as read from mmCIF with pdbx_ptnr1_label_alt_id '?'
+        st.connections[0].partner1.altloc = '\0'
+        out = st.make_pdb_headers().splitlines()
+        self.assertEqual(out[0].rstrip(), SSBOND_TO_ALTLOCS.splitlines()[0])
+        doc = st.make_mmcif_document()
+        row = doc[0].find('_struct_conn.', ['ptnr1_label_atom_id',
+                                            'pdbx_ptnr1_label_alt_id',
+                                            'pdbx_dist_value'])[0]
+        self.assertEqual(list(row), ['SG', '?', '2.0400'])
 
     def test_add_remove(self):
         st = gemmi.read_pdb_string(SSBOND_FRAGMENT)
