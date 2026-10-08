@@ -128,10 +128,23 @@ private:
     else if (opt.quote_numbers < 2 && is_numb(value) &&
              // exception: 012 (but not 0.12) is assumed to be a string
              (value[0] != '0' || value[1] == '.' || value[1] == '\0') &&
+             // exception: digit-string + E + digit-string (e.g. 6E72) is
+             // assumed to be an identifier such as a PDB code, not a number
+             !looks_like_numberlike_id(value) &&
              (opt.quote_numbers == 0 || value.back() != ')'))
       write_as_number(value);
     else
       write_string(as_string(value));
+  }
+
+  // returns true for tokens of the form digits + E + digits (e.g. 6E72):
+  // valid CIF numbers but indistinguishable from alphanumeric identifiers
+  // such as PDB codes, which a JSON reader would parse as huge floats
+  static bool looks_like_numberlike_id(const std::string& v) {
+    size_t epos = v.find('E');
+    return epos != std::string::npos &&
+           v.find_first_not_of("0123456789") == epos &&
+           v.find_first_not_of("0123456789", epos + 1) == std::string::npos;
   }
 
   void open_cat(const std::string& cat, size_t* tag_pos) {
