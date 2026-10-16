@@ -673,7 +673,26 @@ void read_refinement_info(cif::Block& block, Structure& st) {
                                             "?ls_number_reflns_R_free", // 6
                                             "?ls_R_factor_obs",         // 7
                                             "?ls_R_factor_R_work",      // 8
-                                            "?ls_R_factor_R_free"})) {
+                                            "?ls_R_factor_R_free",     // 9
+                                            "?pdbx_ls_cross_valid_method", // 10
+                                            "?pdbx_R_Free_selection_details", // 11
+                                            "?B_iso_mean",             // 12
+                                            "?aniso_B[1][1]",          // 13
+                                            "?aniso_B[2][2]",          // 14
+                                            "?aniso_B[3][3]",          // 15
+                                            "?aniso_B[1][2]",          // 16
+                                            "?aniso_B[1][3]",          // 17
+                                            "?aniso_B[2][3]",          // 18
+                                            "?pdbx_overall_SU_R_Blow_DPI", // 19
+                                            "?pdbx_overall_SU_R_free_Blow_DPI", // 20
+                                            "?overall_SU_R_Cruickshank_DPI", // 21
+                                            "?pdbx_overall_SU_R_free_Cruickshank_DPI", // 22
+                                            "?correlation_coeff_Fo_to_Fc", // 23
+                                            "?correlation_coeff_Fo_to_Fc_free", // 24
+                                            "?pdbx_average_fsc_work",   // 25
+                                            "?pdbx_average_fsc_free",   // 26
+                                            "?correlation_coeff_I_to_Fcsqd_work", // 27
+                                            "?correlation_coeff_I_to_Fcsqd_free"})) { // 28
         st.meta.refinement.emplace_back();
         RefinementInfo& ref = st.meta.refinement.back();
         ref.id = row.str(0);
@@ -691,6 +710,25 @@ void read_refinement_info(cif::Block& block, Structure& st) {
         copy_double(row, 7, ref.r_all);
         copy_double(row, 8, ref.r_work);
         copy_double(row, 9, ref.r_free);
+        copy_string(row, 10, ref.cross_validation_method);
+        copy_string(row, 11, ref.rfree_selection_method);
+        copy_double(row, 12, ref.mean_b);
+        copy_double(row, 13, ref.aniso_b.u11);
+        copy_double(row, 14, ref.aniso_b.u22);
+        copy_double(row, 15, ref.aniso_b.u33);
+        copy_double(row, 16, ref.aniso_b.u12);
+        copy_double(row, 17, ref.aniso_b.u13);
+        copy_double(row, 18, ref.aniso_b.u23);
+        copy_double(row, 19, ref.dpi_blow_r);
+        copy_double(row, 20, ref.dpi_blow_rfree);
+        copy_double(row, 21, ref.dpi_cruickshank_r);
+        copy_double(row, 22, ref.dpi_cruickshank_rfree);
+        copy_double(row, 23, ref.cc_fo_fc_work);
+        copy_double(row, 24, ref.cc_fo_fc_free);
+        copy_double(row, 25, ref.fsc_work);
+        copy_double(row, 26, ref.fsc_free);
+        copy_double(row, 27, ref.cc_intensity_work);
+        copy_double(row, 28, ref.cc_intensity_free);
     }
     if (st.resolution == 0.) {
       const std::string* em_res = block.find_value("_em_3d_reconstruction.resolution");
