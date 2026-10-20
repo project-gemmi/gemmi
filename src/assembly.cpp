@@ -105,12 +105,14 @@ Model make_assembly_(const Assembly& assembly, const Model& model,
         logger.note(note);
       }
       if (!all_chains) {
+        // The assembly can refer to chains or subchains that are no longer
+        // in the model (e.g. waters removed), so it's only a warning.
         for (const std::string& chain_name : gen.chains)
           if (!model.find_chain(chain_name))
-            logger.err("no chain ", chain_name);
+            logger.warn("no chain ", chain_name);
         for (const std::string& subchain_name : gen.subchains)
           if (subs.find(subchain_name) == subs.end())
-            logger.err("no subchain ", subchain_name);
+            logger.warn("no subchain ", subchain_name);
       }
       // chains are not merged here, multiple chains may have the same name
       ChainMap chain_map;
