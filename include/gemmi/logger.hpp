@@ -20,6 +20,8 @@ namespace gemmi {
 /// don't go through this class; Logger only handles errors that can
 /// be downgraded to warnings. If a callback is set, the error is passed
 /// as a warning message. Otherwise, it's thrown as std::runtime_error.
+/// warn() is for warnings that never throw: they are passed to the callback
+/// if one is set and dropped otherwise.
 struct Logger {
   /// @brief Callback function that handles each logged message.
   std::function<void(const std::string&)> callback;
@@ -56,6 +58,12 @@ struct Logger {
   /// @brief Send a note (notice-level significant message).
   /// @param args Message content
   template<class... Args> void note(Args const&... args) const { level<5>("Note: ", args...); }
+
+  /// @brief Send a warning that never throws.
+  /// @details For problems that can be safely ignored. Unlike err(), nothing
+  /// happens if no callback is set.
+  /// @param args Message content
+  template<class... Args> void warn(Args const&... args) const { level<3>("Warning: ", args...); }
 
   /// @brief Send a warning or error message.
   /// @details If callback is set, sends as warning; otherwise throws exception.
