@@ -750,7 +750,12 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       chem_comp_loop.tags.push_back("_chem_comp.three_letter_code");
     for (const std::string& name : resnames) {
       chem_comp_loop.values.push_back(cif::quote(name));
-      chem_comp_loop.values.push_back(".");
+      // _chem_comp.type is kept only if it was read from an mmCIF file
+      auto cc = st.chemcomps.find(name);
+      if (cc != st.chemcomps.end() && !cc->second.type_or_group.empty())
+        chem_comp_loop.values.push_back(cif::quote(cc->second.type_or_group));
+      else
+        chem_comp_loop.values.push_back(".");
       if (!st.shortened_ccd_codes.empty()) {
         chem_comp_loop.values.push_back(cif::quote(name));
         for (const auto& old_new : st.shortened_ccd_codes)

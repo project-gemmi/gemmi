@@ -989,6 +989,24 @@ class TestMol(unittest.TestCase):
         self.assertEqual(out[1][17:30], 'MET L9999    ')
         self.assertEqual(out[4][17:30], 'VAL LA000    ')
 
+    def test_chem_comp_type_roundtrip(self):
+        block = gemmi.cif.read(full_path('5i55.cif'))[0]
+        cc_in = block.get_mmcif_category('_chem_comp.')
+        expected = dict(zip(cc_in['id'], cc_in['type']))
+        self.assertEqual(expected['ALA'], 'L-peptide linking')
+        self.assertEqual(expected['HOH'], 'non-polymer')
+        st = gemmi.make_structure_from_block(block)
+        out = st.make_mmcif_document()[0].get_mmcif_category('_chem_comp.')
+        self.assertEqual(dict(zip(out['id'], out['type'])), expected)
+        # also when a block is updated (#362)
+        st.update_mmcif_block(block)
+        cc_out = block.get_mmcif_category('_chem_comp.')
+        self.assertEqual(dict(zip(cc_out['id'], cc_out['type'])), expected)
+        # the type is not known when the structure was not read from mmCIF
+        st_pdb = gemmi.read_structure(full_path('1orc.pdb'))
+        cc_pdb = st_pdb.make_mmcif_document()[0].get_mmcif_category('_chem_comp.')
+        self.assertEqual(set(cc_pdb['type']), {False})  # '.'
+
     def test_ter_writing(self):
         st = gemmi.read_pdb_string(TER_EXAMPLE)
         def write_and_read(**kwargs):
