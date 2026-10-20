@@ -635,10 +635,28 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   if (groups.entity) {
-    cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
-    for (const Entity& ent : st.entities)
-      entity_loop.add_row({qchain(ent.name),
-                           entity_type_to_string(ent.entity_type)});
+    // optional columns are written only if there is something to write
+    bool has_src_method = false;
+    bool has_description = false;
+    for (const Entity& ent : st.entities) {
+      has_src_method |= !ent.src_method.empty();
+      has_description |= !ent.description.empty();
+    }
+    std::vector<std::string> entity_tags = {"id", "type"};
+    if (has_src_method)
+      entity_tags.push_back("src_method");
+    if (has_description)
+      entity_tags.push_back("pdbx_description");
+    cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", entity_tags);
+    for (const Entity& ent : st.entities) {
+      std::vector<std::string> row = {qchain(ent.name),
+                                      entity_type_to_string(ent.entity_type)};
+      if (has_src_method)
+        row.push_back(string_or_qmark(ent.src_method));
+      if (has_description)
+        row.push_back(string_or_qmark(ent.description));
+      entity_loop.add_row(row);
+    }
   }
 
   std::map<std::string, std::string> subs_to_strands;
@@ -750,7 +768,12 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
       chem_comp_loop.tags.push_back("_chem_comp.three_letter_code");
     for (const std::string& name : resnames) {
       chem_comp_loop.values.push_back(cif::quote(name));
-      chem_comp_loop.values.push_back(".");
+      // _chem_comp.type is kept only if it was read from an mmCIF file
+      auto cc = st.chemcomps.find(name);
+      if (cc != st.chemcomps.end() && !cc->second.type_or_group.empty())
+        chem_comp_loop.values.push_back(cif::quote(cc->second.type_or_group));
+      else
+        chem_comp_loop.values.push_back(".");
       if (!st.shortened_ccd_codes.empty()) {
         chem_comp_loop.values.push_back(cif::quote(name));
         for (const auto& old_new : st.shortened_ccd_codes)

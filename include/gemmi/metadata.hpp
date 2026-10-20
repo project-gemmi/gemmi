@@ -303,6 +303,8 @@ struct Entity {
     SeqId::OptionalNum label_seq_begin, label_seq_end; ///< mmCIF label_seq_id range
   };
   std::string name;                        ///< Entity name/description
+  std::string description;                 ///< _entity.pdbx_description (empty if not known)
+  std::string src_method;                  ///< _entity.src_method: nat, man, syn (empty if not known)
   std::vector<std::string> subchains;      ///< Chains in this entity
   EntityType entity_type = EntityType::Unknown;     ///< Macromolecular type
   PolymerType polymer_type = PolymerType::Unknown;  ///< Polymer classification
