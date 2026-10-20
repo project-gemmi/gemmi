@@ -108,8 +108,9 @@ SERIALIZE_P(RefinementInfo, BasicRefinementInfo, o.id,
 
 SERIALIZE(RefinementInfo::Restr, o.name, o.count, o.weight, o.function, o.dev_ideal)
 
-SERIALIZE(Entity, o.name, o.subchains, o.entity_type, o.polymer_type,
-          o.reflects_microhetero, o.dbrefs, o.sifts_unp_acc, o.full_sequence)
+SERIALIZE(Entity, o.name, o.description, o.src_method, o.subchains,
+          o.entity_type, o.polymer_type, o.reflects_microhetero, o.dbrefs,
+          o.sifts_unp_acc, o.full_sequence)
 
 SERIALIZE(Entity::DbRef, o.db_name, o.accession_code, o.id_code,
           o.isoform, o.seq_begin, o.seq_end, o.db_begin, o.db_end,
