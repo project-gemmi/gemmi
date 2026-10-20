@@ -700,6 +700,70 @@ void read_refinement_info(cif::Block& block, Structure& st) {
     }
 }
 
+// Returns the refinement that the row refers to through pdbx_refine_id
+// (column n); the first refinement if the id is absent or not found.
+RefinementInfo* get_refinement(Structure& st, const cif::Table::Row& row, int n) {
+    if (st.meta.refinement.empty())
+        return nullptr;
+    if (row.has2(n))
+        if (RefinementInfo* ref = get_by_id(st.meta.refinement, row.str(n)))
+            return ref;
+    return &st.meta.refinement[0];
+}
+
+// _refine_ls_shell, _refine_ls_restr and _refine_analyze extend what is
+// read by read_refinement_info().
+void read_refinement_details(cif::Block& block, Structure& st) {
+    for (auto row : block.find("_refine_ls_shell.", {
+        "d_res_high", "?pdbx_refine_id", "?d_res_low",            // 0-2
+        "?percent_reflns_obs", "?number_reflns_obs",              // 3-4
+        "?number_reflns_R_work", "?number_reflns_R_free",         // 5-6
+        "?R_factor_obs", "?R_factor_R_work", "?R_factor_R_free",  // 7-9
+        "?pdbx_fsc_work", "?pdbx_fsc_free",                       // 10-11
+        "?correlation_coeff_Fo_to_Fc",                            // 12
+        "?correlation_coeff_Fo_to_Fc_free",                       // 13
+        "?correlation_coeff_I_to_Fcsqd_work",                     // 14
+        "?correlation_coeff_I_to_Fcsqd_free"})) {                 // 15
+        RefinementInfo* ref = get_refinement(st, row, 1);
+        if (!ref)
+            break;
+        ref->bins.emplace_back();
+        BasicRefinementInfo& bin = ref->bins.back();
+        copy_double(row, 0, bin.resolution_high);
+        copy_double(row, 2, bin.resolution_low);
+        copy_double(row, 3, bin.completeness);
+        copy_int(row, 4, bin.reflection_count);
+        copy_int(row, 5, bin.work_set_count);
+        copy_int(row, 6, bin.rfree_set_count);
+        copy_double(row, 7, bin.r_all);
+        copy_double(row, 8, bin.r_work);
+        copy_double(row, 9, bin.r_free);
+        copy_double(row, 10, bin.fsc_work);
+        copy_double(row, 11, bin.fsc_free);
+        copy_double(row, 12, bin.cc_fo_fc_work);
+        copy_double(row, 13, bin.cc_fo_fc_free);
+        copy_double(row, 14, bin.cc_intensity_work);
+        copy_double(row, 15, bin.cc_intensity_free);
+    }
+    for (auto row : block.find("_refine_ls_restr.", {
+        "type", "?pdbx_refine_id", "?number", "?weight",
+        "?pdbx_restraint_function", "?dev_ideal"})) {
+        RefinementInfo* ref = get_refinement(st, row, 1);
+        if (!ref)
+            break;
+        ref->restr_stats.emplace_back(row.str(0));
+        RefinementInfo::Restr& restr = ref->restr_stats.back();
+        copy_int(row, 2, restr.count);
+        copy_double(row, 3, restr.weight);
+        copy_string(row, 4, restr.function);
+        copy_double(row, 5, restr.dev_ideal);
+    }
+    for (auto row : block.find("_refine_analyze.", {
+        "Luzzati_coordinate_error_obs", "?pdbx_refine_id"}))
+        if (RefinementInfo* ref = get_refinement(st, row, 1))
+            copy_double(row, 0, ref->luzzati_error);
+}
+
 void read_tls_info(cif::Block& block, Structure& st) {
     for (auto row : block.find("_pdbx_refine_tls.", {
         "id", "?pdbx_refine_id",
@@ -1125,6 +1189,7 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
   read_entry_info(block, st);
   read_audit_author(block, st);
   read_refinement_info(block, st);
+  read_refinement_details(block, st);
   read_tls_info(block, st);
   read_experimental_info(block, st);
   read_reflns_info(block, st);

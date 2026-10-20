@@ -2,6 +2,7 @@
 
 import gzip
 from io import StringIO
+import math
 import os
 import pickle
 import unittest
@@ -144,6 +145,78 @@ def read_lines_and_remove(path):
     return out_lines
 
 
+# refinement shells and restraints, which are not part of the PDB-style
+# metadata read from _refine
+REFINE_DETAILS = """\
+data_refine_details
+_entry.id DETAILS
+_cell.length_a 10.0
+_cell.length_b 10.0
+_cell.length_c 10.0
+_cell.angle_alpha 90
+_cell.angle_beta 90
+_cell.angle_gamma 90
+_symmetry.space_group_name_H-M 'P 1'
+loop_
+_entity.id
+_entity.type
+1 polymer
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_asym_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 N N . GLY A 1 1 0.0 0.0 0.0 1.0 10.0 1 A 1
+ATOM 2 C CA . GLY A 1 1 1.0 0.0 0.0 1.0 10.0 1 A 1
+#
+_refine.entry_id DETAILS
+_refine.pdbx_refine_id 'X-RAY DIFFRACTION'
+_refine.ls_d_res_high 2.0
+_refine.ls_d_res_low 3.0
+#
+_refine_analyze.entry_id DETAILS
+_refine_analyze.pdbx_refine_id 'X-RAY DIFFRACTION'
+_refine_analyze.Luzzati_coordinate_error_obs 0.25
+#
+loop_
+_refine_ls_restr.pdbx_refine_id
+_refine_ls_restr.type
+_refine_ls_restr.number
+_refine_ls_restr.weight
+_refine_ls_restr.pdbx_restraint_function
+_refine_ls_restr.dev_ideal
+'X-RAY DIFFRACTION' r_bond_refined_d 1200 0.02 ? 0.015
+'X-RAY DIFFRACTION' r_angle_refined_deg 1800 2.0 SINUSOIDAL 1.5
+#
+loop_
+_refine_ls_shell.pdbx_refine_id
+_refine_ls_shell.d_res_high
+_refine_ls_shell.d_res_low
+_refine_ls_shell.number_reflns_obs
+_refine_ls_shell.number_reflns_R_work
+_refine_ls_shell.number_reflns_R_free
+_refine_ls_shell.R_factor_R_work
+_refine_ls_shell.R_factor_R_free
+'X-RAY DIFFRACTION' 2.0 2.5 550 500 50 0.21 0.25
+'X-RAY DIFFRACTION' 2.5 3.0 660 600 60 0.19 0.22
+#
+"""
+
+
 class TestMol(unittest.TestCase):
     def test_atom(self):
         atom = gemmi.Atom()
@@ -224,7 +297,8 @@ class TestMol(unittest.TestCase):
               '_exptl.', '_exptl_crystal.', '_pdbx_database_status.',
               '_pdbx_struct_assembly.', '_pdbx_struct_assembly_gen.',
               '_pdbx_struct_mod_residue.',
-              '_pdbx_struct_oper_list.', '_refine.', '_reflns.', '_software.',
+              '_pdbx_struct_oper_list.', '_refine.', '_refine_ls_restr.',
+              '_refine_ls_shell.', '_reflns.', '_software.',
               '_struct.', '_struct_asym.', '_struct_conf.',
               '_struct_conf_type.', '_struct_conn.', '_struct_conn_type.',
               '_struct_keywords.', '_struct_ref.', '_struct_ref_seq.',
@@ -232,7 +306,8 @@ class TestMol(unittest.TestCase):
               '_symmetry.']
         self.assertEqual(common_categories, cc)
         mismatching = {'_struct_conf.id', '_chem_comp.type',
-                       '_refine.ls_number_reflns_R_work'}
+                       '_refine.ls_number_reflns_R_work',
+                       '_refine_ls_shell.number_reflns_obs'}
         for name in common_categories:
             cat_in = block.get_mmcif_category(name)
             cat_out = output_block.get_mmcif_category(name)
@@ -250,6 +325,40 @@ class TestMol(unittest.TestCase):
                     self.assertTrue(name+tag in mismatching, name+tag)
         for name_out in cnames_out:
             self.assertTrue(name_out in cnames)
+
+    def test_refinement_shells_and_restraints(self):
+        block = gemmi.cif.read_string(REFINE_DETAILS)[0]
+        st = gemmi.make_structure_from_block(block)
+        self.assertEqual(len(st), 1)  # update_mmcif_block() needs a model
+        ref = st.meta.refinement[0]
+        self.assertEqual(ref.luzzati_error, 0.25)
+        self.assertEqual([r.name for r in ref.restr_stats],
+                         ['r_bond_refined_d', 'r_angle_refined_deg'])
+        self.assertEqual([r.count for r in ref.restr_stats], [1200, 1800])
+        self.assertEqual([r.weight for r in ref.restr_stats], [0.02, 2.0])
+        self.assertEqual([r.function for r in ref.restr_stats], ['', 'SINUSOIDAL'])
+        self.assertEqual([r.dev_ideal for r in ref.restr_stats], [0.015, 1.5])
+        self.assertEqual(len(ref.bins), 2)
+        self.assertEqual([(b.resolution_high, b.resolution_low) for b in ref.bins],
+                         [(2.0, 2.5), (2.5, 3.0)])
+        self.assertEqual([b.reflection_count for b in ref.bins], [550, 660])
+        self.assertEqual([b.work_set_count for b in ref.bins], [500, 600])
+        self.assertEqual([b.rfree_set_count for b in ref.bins], [50, 60])
+        self.assertEqual([b.r_work for b in ref.bins], [0.21, 0.19])
+        self.assertEqual([b.r_free for b in ref.bins], [0.25, 0.22])
+        self.assertTrue(math.isnan(ref.bins[0].r_all))
+        # update_mmcif_block() rewrites these categories from the Structure,
+        # so they must not be lost (#411)
+        st.update_mmcif_block(block)
+        shells = block.get_mmcif_category('_refine_ls_shell.')
+        self.assertEqual([float(x) for x in shells['d_res_high']], [2.0, 2.5])
+        self.assertEqual(shells['number_reflns_R_work'], ['500', '600'])
+        self.assertEqual(shells['R_factor_R_free'], ['0.25', '0.22'])
+        restr = block.get_mmcif_category('_refine_ls_restr.')
+        self.assertEqual(restr['type'], ['r_bond_refined_d', 'r_angle_refined_deg'])
+        self.assertEqual(restr['number'], ['1200', '1800'])
+        analyze = block.get_mmcif_category('_refine_analyze.')
+        self.assertEqual(analyze['Luzzati_coordinate_error_obs'], ['0.25'])
 
     def test_5i55_predefined_removals(self, clear_entities=False):
         st = gemmi.read_structure(full_path('5i55.cif'))
