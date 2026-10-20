@@ -22,7 +22,9 @@ auto add_ccp4_common(nb::module_& m, const char* name) {
     .def("update_ccp4_header", &Map::update_ccp4_header,
          nb::arg("mode")=-1, nb::arg("update_stats")=true)
     .def("full_cell", &Map::full_cell)
-    .def("write_ccp4_map", &Map::write_ccp4_map, nb::arg("filename"))
+    .def("write_ccp4_map", [](const Map& self, const FilePath& filename) {
+        self.write_ccp4_map(filename);
+    }, nb::arg("filename"))
     .def("set_extent", &Map::set_extent)
     .def("__repr__", [=](const Map& self) {
         const SpaceGroup* sg = self.grid.spacegroup;
@@ -58,15 +60,19 @@ void add_ccp4(nb::module_& m) {
 
   add_ccp4_common<float>(m, "Ccp4Map");
   add_ccp4_common<int8_t>(m, "Ccp4Mask");
-  m.def("read_ccp4_map", &read_ccp4_map,
-        nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
+  m.def("read_ccp4_map", [](const FilePath& path, bool setup) {
+          return read_ccp4_map(path, setup);
+        }, nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
         "Reads a CCP4 file, mode 2 (floating-point data).");
-  m.def("read_ccp4_mask", &read_ccp4_mask,
-        nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
+  m.def("read_ccp4_mask", [](const FilePath& path, bool setup) {
+          return read_ccp4_mask(path, setup);
+        }, nb::arg("path"), nb::arg("setup")=false, nb::rv_policy::move,
         "Reads a CCP4 file, mode 0 (int8_t data, usually 0/1 masks).");
-  m.def("read_ccp4_header", &read_ccp4_header,
-        nb::arg("path"), nb::rv_policy::move);
-  m.def("read_dsn6_map", &read_dsn6_map,
-        nb::arg("path"), nb::rv_policy::move,
+  m.def("read_ccp4_header", [](const FilePath& path) {
+          return read_ccp4_header(path);
+        }, nb::arg("path"), nb::rv_policy::move);
+  m.def("read_dsn6_map", [](const FilePath& path) {
+          return read_dsn6_map(path);
+        }, nb::arg("path"), nb::rv_policy::move,
         "Reads a DSN6/BRIX density map file, returning FloatGrid.");
 }

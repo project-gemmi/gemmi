@@ -98,12 +98,12 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
   structure
     .def("make_pdb_string", &make_pdb_string,
          nb::arg("options").sig("PdbWriteOptions()")=PdbWriteOptions())
-    .def("write_pdb", [](const Structure& st, const std::string& path, PdbWriteOptions options) {
+    .def("write_pdb", [](const Structure& st, const FilePath& path, PdbWriteOptions options) {
         Ofstream f(path);
         write_pdb(st, f.ref(), options);
     })
     // deprecated - kept for compatibility
-    .def("write_pdb", [](const Structure& st, const std::string& path, const nb::kwargs& kwargs) {
+    .def("write_pdb", [](const Structure& st, const FilePath& path, const nb::kwargs& kwargs) {
         Ofstream f(path);
         nb::object options = nb::type<PdbWriteOptions>()(**kwargs);
         write_pdb(st, f.ref(), nb::cast<const PdbWriteOptions&>(options));
@@ -111,7 +111,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     // deprecated
     .def("make_pdb_headers", &make_pdb_headers)
     // deprecated
-    .def("write_minimal_pdb", [](const Structure& st, const std::string& path) {
+    .def("write_minimal_pdb", [](const Structure& st, const FilePath& path) {
        Ofstream f(path);
        write_minimal_pdb(st, f.ref());
     }, nb::arg("path"))
