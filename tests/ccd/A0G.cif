@@ -1,0 +1,129 @@
+data_A0G
+# 
+_chem_comp.id                                    A0G 
+_chem_comp.name                                  "(2Z)-2-amino-3-hydroxyprop-2-enoic acid" 
+_chem_comp.type                                  "L-peptide linking" 
+_chem_comp.pdbx_type                             ATOMP 
+_chem_comp.formula                               "C3 H5 N O3" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2017-06-30 
+_chem_comp.pdbx_modified_date                    2024-09-27 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        103.077 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     A0G 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        ? 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+_chem_comp.pdbx_pcm                              Y 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.pdbx_backbone_atom_flag 
+_chem_comp_atom.pdbx_n_terminal_atom_flag 
+_chem_comp_atom.pdbx_c_terminal_atom_flag 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+A0G C   CCC C 0 1 N N N Y N Y 70.988 -57.032 -3.687 -1.126 -0.225 0.002  CCC SC6 1  
+A0G O   O   O 0 1 N N N Y N Y 70.556 -56.348 -2.768 -1.382 -1.415 0.001  OCI SC6 2  
+A0G CA  CCB C 0 1 N N N Y N N 72.182 -57.623 -3.594 0.266  0.224  0.001  CCB SC6 3  
+A0G N   NCA N 0 1 N N N Y Y N 72.639 -58.552 -4.428 0.562  1.602  0.002  NCA SC6 4  
+A0G CEU CEU C 0 1 N N N N N N 73.060 -57.369 -2.619 1.265  -0.680 -0.001 CEU SC6 5  
+A0G OEV OEV O 0 1 N N N N N N 74.130 -58.140 -2.842 2.551  -0.265 -0.001 OEV SC6 6  
+A0G H31 H31 H 0 1 N N N N N N 72.930 -56.672 -1.804 1.038  -1.736 -0.001 H31 SC6 7  
+A0G OXT OXT O 0 1 N Y N Y N Y 70.296 -57.264 -4.801 -2.127 0.680  -0.002 OXT SC6 8  
+A0G HXT HXT H 0 1 N Y N Y N Y 69.455 -56.825 -4.749 -3.011 0.288  -0.006 HXT SC6 9  
+A0G H2  H2  H 0 1 N Y N Y Y N 73.555 -58.834 -4.144 -0.157 2.252  0.003  H2  SC6 10 
+A0G H1  H1  H 0 1 N Y N N N N 74.779 -57.986 -2.165 3.197  -0.985 -0.002 H1  SC6 11 
+A0G H   H3  H 0 1 N N N Y Y N 72.028 -59.343 -4.413 1.485  1.900  0.001  H3  SC6 12 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+A0G C   O   DOUB N N 1  
+A0G C   CA  SING N N 2  
+A0G CA  N   SING N N 3  
+A0G CA  CEU DOUB N Z 4  
+A0G CEU OEV SING N N 5  
+A0G CEU H31 SING N N 6  
+A0G C   OXT SING N N 7  
+A0G OXT HXT SING N N 8  
+A0G N   H2  SING N N 9  
+A0G OEV H1  SING N N 10 
+A0G N   H   SING N N 11 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+A0G SMILES           ACDLabs              12.01 "C(=O)(/C(N)=C/O)O"                                       
+A0G InChI            InChI                1.03  "InChI=1S/C3H5NO3/c4-2(1-5)3(6)7/h1,5H,4H2,(H,6,7)/b2-1-" 
+A0G InChIKey         InChI                1.03  WHJXQGXBUYGBMM-UPHRSURJSA-N                               
+A0G SMILES_CANONICAL CACTVS               3.385 "NC(=C\O)/C(O)=O"                                         
+A0G SMILES           CACTVS               3.385 "NC(=CO)C(O)=O"                                           
+A0G SMILES_CANONICAL "OpenEye OEToolkits" 2.0.6 "C(=C(/C(=O)O)\N)\O"                                      
+A0G SMILES           "OpenEye OEToolkits" 2.0.6 "C(=C(C(=O)O)N)O"                                         
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+A0G "SYSTEMATIC NAME" ACDLabs              12.01 "(2Z)-2-amino-3-hydroxyprop-2-enoic acid"      
+A0G "SYSTEMATIC NAME" "OpenEye OEToolkits" 2.0.6 "(~{Z})-2-azanyl-3-oxidanyl-prop-2-enoic acid" 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+A0G "Create component"   2017-06-30 RCSB 
+A0G "Initial release"    2019-09-18 RCSB 
+A0G "Other modification" 2021-02-23 RCSB 
+A0G "Modify backbone"    2023-11-03 PDBE 
+A0G "Modify PCM"         2024-09-27 PDBE 
+# 
+_pdbx_chem_comp_pcm.pcm_id                             1 
+_pdbx_chem_comp_pcm.comp_id                            A0G 
+_pdbx_chem_comp_pcm.modified_residue_id                ? 
+_pdbx_chem_comp_pcm.type                               None 
+_pdbx_chem_comp_pcm.category                           "Non-standard residue" 
+_pdbx_chem_comp_pcm.position                           "Amino-acid side chain and backbone" 
+_pdbx_chem_comp_pcm.polypeptide_position               "Any position" 
+_pdbx_chem_comp_pcm.comp_id_linking_atom               ? 
+_pdbx_chem_comp_pcm.modified_residue_id_linking_atom   ? 
+_pdbx_chem_comp_pcm.uniprot_specific_ptm_accession     ? 
+_pdbx_chem_comp_pcm.uniprot_generic_ptm_accession      ? 
+# 
