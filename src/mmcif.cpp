@@ -1024,10 +1024,13 @@ void read_atom_sites(cif::Block& block, Structure& st) {
 
 void read_entity_and_sequence_info(cif::Block& block, Structure& st) {
     cif::Table polymer_types = block.find("_entity_poly.", {"entity_id", "type"});
-    for (auto row : block.find("_entity.", {"id", "?type"})) {
+    for (auto row : block.find("_entity.", {"id", "?type", "?src_method",
+                                            "?pdbx_description"})) {
         Entity ent(row.str(0));
         if (row.has(1))
             ent.entity_type = entity_type_from_string(row.str(1));
+        copy_string(row, 2, ent.src_method);
+        copy_string(row, 3, ent.description);
         ent.polymer_type = PolymerType::Unknown;
         if (polymer_types.ok()) {
             try {

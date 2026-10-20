@@ -127,6 +127,8 @@ void add_meta(nb::module_& m) {
   nb::class_<Entity>(m, "Entity")
     .def(nb::init<std::string>())
     .def_rw("name", &Entity::name)
+    .def_rw("description", &Entity::description)
+    .def_rw("src_method", &Entity::src_method)
     .def_rw("subchains", &Entity::subchains)
     .def_rw("entity_type", &Entity::entity_type)
     .def_rw("polymer_type", &Entity::polymer_type)

@@ -1007,6 +1007,31 @@ class TestMol(unittest.TestCase):
         cc_pdb = st_pdb.make_mmcif_document()[0].get_mmcif_category('_chem_comp.')
         self.assertEqual(set(cc_pdb['type']), {False})  # '.'
 
+    def test_entity_description_roundtrip(self):
+        block = gemmi.cif.read(full_path('5i55.cif'))[0]
+        ent_in = block.get_mmcif_category('_entity.')
+        self.assertIn('nat', ent_in['src_method'])
+        st = gemmi.make_structure_from_block(block)
+        self.assertEqual([e.name for e in st.entities], ent_in['id'])
+        self.assertEqual([e.src_method for e in st.entities],
+                         [x or '' for x in ent_in['src_method']])
+        self.assertEqual([e.description for e in st.entities],
+                         [x or '' for x in ent_in['pdbx_description']])
+        self.assertNotEqual(st.entities[0].description, '')
+        ent_out = st.make_mmcif_document()[0].get_mmcif_category('_entity.')
+        self.assertEqual(ent_out['id'], ent_in['id'])
+        self.assertEqual(ent_out['src_method'], ent_in['src_method'])
+        self.assertEqual(ent_out['pdbx_description'], ent_in['pdbx_description'])
+        st2 = pickle.loads(pickle.dumps(st))
+        self.assertEqual([e.description for e in st2.entities],
+                         [e.description for e in st.entities])
+        self.assertEqual([e.src_method for e in st2.entities],
+                         [e.src_method for e in st.entities])
+        # nothing is written if the values are not known
+        st_pdb = gemmi.read_structure(full_path('1orc.pdb'))
+        ent_pdb = st_pdb.make_mmcif_document()[0].get_mmcif_category('_entity.')
+        self.assertEqual(list(ent_pdb), ['id', 'type'])
+
     def test_ter_writing(self):
         st = gemmi.read_pdb_string(TER_EXAMPLE)
         def write_and_read(**kwargs):
