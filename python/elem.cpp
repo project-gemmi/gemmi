@@ -231,5 +231,7 @@ void add_xds(nb::module_& m) {
          nb::arg("p"), nb::arg("normal"))
     .def("to_mtz", &gemmi::xds_to_mtz)
     ;
-  m.def("read_xds_ascii", &read_xds_ascii);
+  m.def("read_xds_ascii", [](const FilePath& path) {
+          return read_xds_ascii(path);
+        }, nb::arg("path"));
 }

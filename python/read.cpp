@@ -18,10 +18,13 @@
 using namespace gemmi;
 
 void add_cif_read(nb::module_& cif) {
-  cif.def("read_file", &read_cif_gz, nb::arg("filename"), nb::arg("check_level")=1,
+  cif.def("read_file", [](const FilePath& filename, int check_level) {
+            return read_cif_gz(filename, check_level);
+          }, nb::arg("filename"), nb::arg("check_level")=1,
           "Reads a CIF file copying data into Document.");
-  cif.def("read", &read_cif_or_mmjson_gz,
-          nb::arg("filename"), "Reads normal or gzipped CIF file.");
+  cif.def("read", [](const FilePath& filename) {
+            return read_cif_or_mmjson_gz(filename);
+          }, nb::arg("filename"), "Reads normal or gzipped CIF file.");
   cif.def("read_string", [](const std::string& str, int check_level) {
             return read_cif_from_memory(str.c_str(), str.size(), "string", check_level);
           }, nb::arg("string"), nb::arg("check_level")=1,
@@ -30,8 +33,9 @@ void add_cif_read(nb::module_& cif) {
             return read_cif_from_memory(data.c_str(), data.size(), "data", check_level);
           }, nb::arg("data"), nb::arg("check_level")=1,
           "Reads bytes as a CIF file.");
-  cif.def("read_mmjson", &read_mmjson_gz,
-          nb::arg("filename"), "Reads normal or gzipped mmJSON file.");
+  cif.def("read_mmjson", [](const FilePath& filename) {
+            return read_mmjson_gz(filename);
+          }, nb::arg("filename"), "Reads normal or gzipped mmJSON file.");
   cif.def("read_mmjson_string", [](std::string data) {
       return cif::read_mmjson_insitu(data.data(), data.size());
   });
@@ -81,7 +85,7 @@ void add_read_structure(nb::module_& m) {
            nb::arg("format")=CoorFormat::Unknown,
            nb::arg("save_doc")=nb::none(),
         "Reads a coordinate file into Structure.");
-  m.def("read_structure", [](const std::string& path, bool merge,
+  m.def("read_structure", [](const FilePath& path, bool merge,
                              CoorFormat format, cif::Document* save_doc) {
           Structure* st = new Structure(read_structure_gz(path, format, save_doc));
           if (merge)
@@ -111,7 +115,7 @@ void add_read_structure(nb::module_& m) {
           return new Structure(read_pdb_from_memory(s.c_str(), s.size(), "string", options));
         }, nb::arg("s"), nb::arg("max_line_length")=0, nb::arg("check_non_ascii")=false,
            nb::arg("ignore_ter")=false, nb::arg("split_chain_on_ter")=false, "Reads a string as PDB file.");
-  m.def("read_pdb", [](const std::string& path, int max_line_length,
+  m.def("read_pdb", [](const FilePath& path, int max_line_length,
                        bool check_non_ascii, bool ignore_ter, bool split_chain_on_ter) {
           PdbReadOptions options{max_line_length, check_non_ascii, ignore_ter, split_chain_on_ter, false};
           return new Structure(read_pdb_gz(path, options));

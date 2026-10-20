@@ -65,7 +65,7 @@ void cif_parse_string(Document& doc, const std::string& data) {
   tao::pegtl::memory_input<> in(data, "string");
   parse_input(doc, in);
 }
-void cif_parse_file(Document& doc, const std::string& filename) {
+void cif_parse_file(Document& doc, const FilePath& filename) {
   GEMMI_CIF_FILE_INPUT(in, filename);
   parse_input(doc, in);
 }
@@ -157,7 +157,7 @@ void add_cif(nb::module_& cif) {
          nb::arg("name"),
          nb::rv_policy::reference_internal)
     .def("write_file",
-         [](const Document& doc, const std::string& filename, WriteOptions opt) {
+         [](const Document& doc, const FilePath& filename, WriteOptions opt) {
         gemmi::Ofstream os(filename);
         write_cif_to_stream(os.ref(), doc, opt);
     }, nb::arg("filename"), nb::arg("options")=WriteOptions(),
@@ -301,7 +301,7 @@ void add_cif(nb::module_& cif) {
            return data;
          }, nb::arg("name"), nb::arg("raw")=false)
     .def("write_file",
-         [](const Block& self, const std::string& filename, WriteOptions opt) {
+         [](const Block& self, const FilePath& filename, WriteOptions opt) {
         gemmi::Ofstream os(filename);
         write_cif_block_to_stream(os.ref(), self, opt);
     }, nb::arg("filename"), nb::arg("options")=WriteOptions(),

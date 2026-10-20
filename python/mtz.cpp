@@ -292,7 +292,9 @@ void add_mtz(nb::module_& m) {
     .def("ensure_asu", &Mtz::ensure_asu, nb::arg("tnt_asu")=false)
     .def("switch_to_original_hkl", &Mtz::switch_to_original_hkl)
     .def("switch_to_asu_hkl", &Mtz::switch_to_asu_hkl)
-    .def("write_to_file", &Mtz::write_to_file, nb::arg("path"))
+    .def("write_to_file", [](const Mtz& self, const FilePath& path) {
+        self.write_to_file(path);
+    }, nb::arg("path"))
     .def("write_to_bytes", [](const Mtz& self) {
         size_t nbytes = self.size_to_write();
         nb::bytes obj(nullptr, nbytes);
@@ -373,7 +375,7 @@ void add_mtz(nb::module_& m) {
     .def("clone", [](const Mtz::Batch& self) { return new Mtz::Batch(self); })
     ;
 
-  m.def("read_mtz_file", [](const std::string& path, Logger&& logging, bool with_data) {
+  m.def("read_mtz_file", [](const FilePath& path, Logger&& logging, bool with_data) {
     std::unique_ptr<Mtz> mtz(new Mtz);
     mtz->logger = std::move(logging);
     mtz->read_file_gz(path, with_data);

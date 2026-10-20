@@ -9,6 +9,7 @@
 #endif
 
 #include <nanobind/nanobind.h>  // IWYU pragma: export
+#include <nanobind/stl/string.h>
 #include <gemmi/logger.hpp>     // for Logger
 
 #if defined(__clang__)
@@ -114,7 +115,35 @@ inline nb::object handle_numpy_array_args(const nb::object& o, nb::handle dtype,
   return o.attr("astype")(dtype);
 }
 
+// A file path argument: str or any os.PathLike object (e.g. pathlib.Path),
+// passed to C++ as a UTF-8 std::string. nanobind's type caster for
+// std::filesystem::path is not used here: libc++ has no std::filesystem
+// before macOS 10.15, but the macOS wheels target 10.14.
+struct FilePath : std::string {};
+
 namespace nanobind { namespace detail {
+template <> struct type_caster<FilePath> {
+#if PY_VERSION_HEX < 0x03090000
+  NB_TYPE_CASTER(FilePath, io_name("typing.Union[str, os.PathLike]", "str"))
+#else
+  NB_TYPE_CASTER(FilePath, io_name("str | os.PathLike", "str"))
+#endif
+  bool from_python(handle src, uint8_t, cleanup_list *) noexcept {
+    PyObject* fspath = PyOS_FSPath(src.ptr());  // str and bytes paths pass through
+    if (!fspath) {
+      PyErr_Clear();
+      return false;
+    }
+    nb::object path = nb::steal(fspath);
+    // only str is accepted (as before), not bytes
+    return nb::try_cast<std::string>(path, static_cast<std::string&>(value));
+  }
+  // used for default values of arguments
+  static handle from_cpp(const FilePath& path, rv_policy, cleanup_list *) noexcept {
+    return PyUnicode_FromStringAndSize(path.data(), (Py_ssize_t) path.size());
+  }
+};
+
 template <> struct type_caster<gemmi::Logger> {
   NB_TYPE_CASTER(gemmi::Logger, const_name("object"))
   bool from_python(handle src, uint8_t, cleanup_list *) noexcept {
