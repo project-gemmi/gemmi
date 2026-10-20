@@ -1,0 +1,272 @@
+data_BJS
+# 
+_chem_comp.id                                    BJS 
+_chem_comp.name                                  "2-(3-[3-({3-[(benzylamino)methyl]-4-chlorophenyl}ethynyl)-4-chlorophenyl]-1-{3-[(3S)-3-methylmorpholin-4-yl]propyl}-1,4,6,7-tetrahydro-5H-pyrazolo[4,3-c]pyridin-5-yl)-2-oxoacetamide" 
+_chem_comp.type                                  NON-POLYMER 
+_chem_comp.pdbx_type                             HETAIN 
+_chem_comp.formula                               "C38 H40 Cl2 N6 O3" 
+_chem_comp.mon_nstd_parent_comp_id               ? 
+_chem_comp.pdbx_synonyms                         ? 
+_chem_comp.pdbx_formal_charge                    0 
+_chem_comp.pdbx_initial_date                     2017-08-08 
+_chem_comp.pdbx_modified_date                    2017-12-15 
+_chem_comp.pdbx_ambiguous_flag                   N 
+_chem_comp.pdbx_release_status                   REL 
+_chem_comp.pdbx_replaced_by                      ? 
+_chem_comp.pdbx_replaces                         ? 
+_chem_comp.formula_weight                        699.669 
+_chem_comp.one_letter_code                       ? 
+_chem_comp.three_letter_code                     BJS 
+_chem_comp.pdbx_model_coordinates_details        ? 
+_chem_comp.pdbx_model_coordinates_missing_flag   N 
+_chem_comp.pdbx_ideal_coordinates_details        Corina 
+_chem_comp.pdbx_ideal_coordinates_missing_flag   N 
+_chem_comp.pdbx_model_coordinates_db_code        5QCH 
+_chem_comp.pdbx_subcomponent_list                ? 
+_chem_comp.pdbx_processing_site                  RCSB 
+# 
+loop_
+_chem_comp_atom.comp_id 
+_chem_comp_atom.atom_id 
+_chem_comp_atom.alt_atom_id 
+_chem_comp_atom.type_symbol 
+_chem_comp_atom.charge 
+_chem_comp_atom.pdbx_align 
+_chem_comp_atom.pdbx_aromatic_flag 
+_chem_comp_atom.pdbx_leaving_atom_flag 
+_chem_comp_atom.pdbx_stereo_config 
+_chem_comp_atom.model_Cartn_x 
+_chem_comp_atom.model_Cartn_y 
+_chem_comp_atom.model_Cartn_z 
+_chem_comp_atom.pdbx_model_Cartn_x_ideal 
+_chem_comp_atom.pdbx_model_Cartn_y_ideal 
+_chem_comp_atom.pdbx_model_Cartn_z_ideal 
+_chem_comp_atom.pdbx_component_atom_id 
+_chem_comp_atom.pdbx_component_comp_id 
+_chem_comp_atom.pdbx_ordinal 
+BJS C34 C1  C  0 1 N N N -9.318  0.660  12.404 -4.683 4.344  -0.760 C34 BJS 1  
+BJS C30 C2  C  0 1 N N N -7.044  0.931  13.570 -3.845 2.124  -1.542 C30 BJS 2  
+BJS C32 C3  C  0 1 N N N -8.243  0.008  13.263 -4.485 2.877  -0.373 C32 BJS 3  
+BJS N5  N1  N  0 1 N N N -7.329  6.169  13.348 -6.084 -2.525 -1.296 N5  BJS 4  
+BJS C24 C4  C  0 1 N N N -5.627  8.067  13.029 -6.775 -4.216 0.355  C24 BJS 5  
+BJS C20 C5  C  0 1 N N N -6.615  7.200  13.869 -7.086 -3.152 -0.646 C20 BJS 6  
+BJS C1  C6  C  0 1 Y N N -7.108  4.186  11.952 -3.988 -1.425 -0.889 C1  BJS 7  
+BJS C2  C7  C  0 1 Y N N -7.269  3.431  13.063 -4.542 -0.275 -1.362 C2  BJS 8  
+BJS C6  C8  C  0 1 N N N -7.318  5.673  11.952 -4.677 -2.768 -0.929 C6  BJS 9  
+BJS C4  C9  C  0 1 N N N -8.243  5.377  14.200 -6.368 -1.587 -2.392 C4  BJS 10 
+BJS C3  C10 C  0 1 N N N -7.675  3.965  14.409 -5.913 -0.181 -1.982 C3  BJS 11 
+BJS C15 C11 C  0 1 Y N N -6.730  3.271  10.930 -2.716 -1.120 -0.383 C15 BJS 12 
+BJS C38 C12 C  0 1 N N N -10.229 -1.367 11.388 -4.383 5.129  1.512  C38 BJS 13 
+BJS C39 C13 C  0 1 N N N -11.503 -1.959 10.848 -5.083 5.836  2.676  C39 BJS 14 
+BJS C41 C14 C  0 1 N N N -12.348 -1.662 13.047 -6.400 7.111  1.134  C41 BJS 15 
+BJS C42 C15 C  0 1 N N S -11.537 -0.366 13.186 -5.714 6.416  -0.045 C42 BJS 16 
+BJS C49 C16 C  0 1 N N N -12.479 0.861  13.399 -6.691 6.317  -1.219 C49 BJS 17 
+BJS C51 C17 C  0 1 Y N N -6.431  3.531  9.509  -1.767 -2.080 0.234  C51 BJS 18 
+BJS C53 C18 C  0 1 Y N N -7.169  4.517  8.840  -0.398 -1.922 0.047  C53 BJS 19 
+BJS C54 C19 C  0 1 Y N N -6.932  4.807  7.500  0.488  -2.828 0.631  C54 BJS 20 
+BJS C55 C20 C  0 1 Y N N -5.939  4.088  6.828  -0.006 -3.887 1.400  C55 BJS 21 
+BJS C56 C21 C  0 1 Y N N -5.202  3.107  7.477  -1.367 -4.035 1.580  C56 BJS 22 
+BJS C57 C22 C  0 1 Y N N -5.449  2.829  8.815  -2.247 -3.136 1.008  C57 BJS 23 
+BJS C66 C23 C  0 1 N N N -7.713  5.826  6.861  1.900  -2.674 0.443  C66 BJS 24 
+BJS C68 C24 C  0 1 N N N -8.430  6.701  6.471  3.057  -2.548 0.289  C68 BJS 25 
+BJS C70 C25 C  0 1 Y N N -9.298  7.794  6.130  4.468  -2.394 0.101  C70 BJS 26 
+BJS C72 C26 C  0 1 Y N N -9.818  8.619  7.126  5.357  -3.301 0.685  C72 BJS 27 
+BJS C73 C27 C  0 1 Y N N -10.649 9.663  6.788  6.714  -3.147 0.499  C73 BJS 28 
+BJS C74 C28 C  0 1 Y N N -10.964 9.885  5.454  7.198  -2.097 -0.263 C74 BJS 29 
+BJS C75 C29 C  0 1 Y N N -10.465 9.082  4.433  6.323  -1.195 -0.845 C75 BJS 30 
+BJS C76 C30 C  0 1 Y N N -9.623  8.028  4.795  4.962  -1.340 -0.673 C76 BJS 31 
+BJS C85 C31 C  0 1 N N N -10.822 9.343  2.989  6.858  -0.058 -1.678 C85 BJS 32 
+BJS C89 C32 C  0 1 N N N -9.615  11.355 2.327  7.954  2.098  -1.575 C89 BJS 33 
+BJS C91 C33 C  0 1 Y N N -8.373  11.910 1.661  8.523  3.132  -0.638 C91 BJS 34 
+BJS C93 C34 C  0 1 Y N N -8.135  11.693 0.308  7.716  4.143  -0.153 C93 BJS 35 
+BJS C94 C35 C  0 1 Y N N -6.995  12.198 -0.301 8.238  5.093  0.706  C94 BJS 36 
+BJS C95 C36 C  0 1 Y N N -6.081  12.932 0.437  9.567  5.030  1.079  C95 BJS 37 
+BJS C96 C37 C  0 1 Y N N -6.309  13.156 1.783  10.375 4.018  0.595  C96 BJS 38 
+BJS C97 C38 C  0 1 Y N N -7.448  12.648 2.390  9.851  3.066  -0.261 C97 BJS 39 
+BJS N13 N2  N  0 1 Y N N -7.010  2.145  12.723 -3.655 0.719  -1.172 N13 BJS 40 
+BJS N14 N3  N  0 1 Y N N -6.670  2.025  11.396 -2.516 0.172  -0.553 N14 BJS 41 
+BJS N28 N4  N  0 1 N N N -5.470  7.808  11.784 -7.765 -4.751 1.099  N28 BJS 42 
+BJS N36 N5  N  0 1 N N N -10.539 -0.131 12.111 -5.297 5.067  0.362  N36 BJS 43 
+BJS N87 N6  N  0 1 N N N -9.694  9.893  2.225  7.422  0.972  -0.796 N87 BJS 44 
+BJS O22 O1  O  0 1 N N N -6.709  7.512  15.057 -8.239 -2.851 -0.876 O22 BJS 45 
+BJS O26 O2  O  0 1 N N N -5.002  8.999  13.553 -5.633 -4.600 0.500  O26 BJS 46 
+BJS O40 O3  O  0 1 N N N -12.293 -2.541 11.895 -5.508 7.134  2.252  O40 BJS 47 
+BJS CL3 CL1 CL 0 0 N N N -12.024 11.221 5.056  8.909  -1.910 -0.491 CL3 BJS 48 
+BJS CL4 CL2 CL 0 0 N N N -5.614  4.422  5.146  1.092  -5.021 2.122  CL4 BJS 49 
+BJS H1  H1  H  0 1 N N N -8.856  0.920  11.440 -3.718 4.791  -0.996 H1  BJS 50 
+BJS H2  H2  H  0 1 N N N -9.637  1.579  12.918 -5.335 4.405  -1.631 H2  BJS 51 
+BJS H3  H3  H  0 1 N N N -6.116  0.364  13.406 -4.497 2.185  -2.414 H3  BJS 52 
+BJS H4  H4  H  0 1 N N N -7.103  1.241  14.624 -2.880 2.572  -1.778 H4  BJS 53 
+BJS H5  H5  H  0 1 N N N -8.699  -0.297 14.217 -3.833 2.816  0.498  H5  BJS 54 
+BJS H6  H6  H  0 1 N N N -7.869  -0.881 12.735 -5.450 2.429  -0.137 H6  BJS 55 
+BJS H7  H7  H  0 1 N N N -6.502  6.159  11.396 -4.626 -3.241 0.051  H7  BJS 56 
+BJS H8  H8  H  0 1 N N N -8.279  5.908  11.472 -4.204 -3.405 -1.676 H8  BJS 57 
+BJS H9  H9  H  0 1 N N N -8.353  5.873  15.175 -5.828 -1.898 -3.287 H9  BJS 58 
+BJS H10 H10 H  0 1 N N N -9.226  5.306  13.712 -7.439 -1.578 -2.597 H10 BJS 59 
+BJS H11 H11 H  0 1 N N N -8.442  3.315  14.854 -6.615 0.230  -1.257 H11 BJS 60 
+BJS H12 H12 H  0 1 N N N -6.800  4.008  15.074 -5.873 0.463  -2.861 H12 BJS 61 
+BJS H13 H13 H  0 1 N N N -9.752  -2.084 12.073 -3.487 5.683  1.235  H13 BJS 62 
+BJS H14 H14 H  0 1 N N N -9.545  -1.144 10.556 -4.107 4.118  1.813  H14 BJS 63 
+BJS H15 H15 H  0 1 N N N -12.087 -1.166 10.357 -5.949 5.253  2.988  H15 BJS 64 
+BJS H16 H16 H  0 1 N N N -11.253 -2.738 10.113 -4.390 5.935  3.511  H16 BJS 65 
+BJS H17 H17 H  0 1 N N N -13.402 -1.364 13.143 -6.660 8.132  0.854  H17 BJS 66 
+BJS H18 H18 H  0 1 N N N -12.063 -2.284 13.909 -7.305 6.565  1.401  H18 BJS 67 
+BJS H19 H19 H  0 1 N N N -10.967 -0.467 14.122 -4.839 6.992  -0.348 H19 BJS 68 
+BJS H20 H20 H  0 1 N N N -13.197 0.638  14.202 -7.002 7.318  -1.518 H20 BJS 69 
+BJS H21 H21 H  0 1 N N N -11.879 1.740  13.678 -6.201 5.822  -2.058 H21 BJS 70 
+BJS H22 H22 H  0 1 N N N -13.025 1.070  12.467 -7.564 5.740  -0.916 H22 BJS 71 
+BJS H23 H23 H  0 1 N N N -7.934  5.061  9.374  -0.023 -1.103 -0.548 H23 BJS 72 
+BJS H24 H24 H  0 1 N N N -4.438  2.561  6.943  -1.746 -4.853 2.174  H24 BJS 73 
+BJS H25 H25 H  0 1 N N N -4.877  2.065  9.320  -3.310 -3.257 1.153  H25 BJS 74 
+BJS H26 H26 H  0 1 N N N -9.569  8.439  8.161  4.981  -4.120 1.280  H26 BJS 75 
+BJS H27 H27 H  0 1 N N N -11.054 10.306 7.556  7.403  -3.847 0.950  H27 BJS 76 
+BJS H28 H28 H  0 1 N N N -9.217  7.384  4.028  4.281  -0.636 -1.127 H28 BJS 77 
+BJS H29 H29 H  0 1 N N N -11.655 10.060 2.955  7.635  -0.431 -2.345 H29 BJS 78 
+BJS H30 H30 H  0 1 N N N -11.135 8.396  2.525  6.048  0.372  -2.268 H30 BJS 79 
+BJS H31 H31 H  0 1 N N N -9.602  11.635 3.391  7.153  2.543  -2.164 H31 BJS 80 
+BJS H32 H32 H  0 1 N N N -10.501 11.792 1.844  8.739  1.740  -2.241 H32 BJS 81 
+BJS H33 H33 H  0 1 N N N -8.845  11.125 -0.275 6.677  4.192  -0.445 H33 BJS 82 
+BJS H34 H34 H  0 1 N N N -6.820  12.019 -1.352 7.607  5.883  1.085  H34 BJS 83 
+BJS H35 H35 H  0 1 N N N -5.194  13.328 -0.036 9.975  5.772  1.750  H35 BJS 84 
+BJS H36 H36 H  0 1 N N N -5.599  13.727 2.362  11.413 3.969  0.886  H36 BJS 85 
+BJS H37 H37 H  0 1 N N N -7.618  12.828 3.441  10.481 2.273  -0.636 H37 BJS 86 
+BJS H38 H38 H  0 1 N N N -4.842  8.359  11.234 -7.563 -5.442 1.749  H38 BJS 87 
+BJS H39 H39 H  0 1 N N N -5.975  7.055  11.362 -8.678 -4.444 0.984  H39 BJS 88 
+BJS H41 H41 H  0 1 N N N -9.804  9.643  1.263  8.130  0.582  -0.192 H41 BJS 89 
+# 
+loop_
+_chem_comp_bond.comp_id 
+_chem_comp_bond.atom_id_1 
+_chem_comp_bond.atom_id_2 
+_chem_comp_bond.value_order 
+_chem_comp_bond.pdbx_aromatic_flag 
+_chem_comp_bond.pdbx_stereo_config 
+_chem_comp_bond.pdbx_ordinal 
+BJS C94 C93 DOUB Y N 1  
+BJS C94 C95 SING Y N 2  
+BJS C93 C91 SING Y N 3  
+BJS C95 C96 DOUB Y N 4  
+BJS C91 C89 SING N N 5  
+BJS C91 C97 DOUB Y N 6  
+BJS C96 C97 SING Y N 7  
+BJS N87 C89 SING N N 8  
+BJS N87 C85 SING N N 9  
+BJS C85 C75 SING N N 10 
+BJS C75 C76 DOUB Y N 11 
+BJS C75 C74 SING Y N 12 
+BJS C76 C70 SING Y N 13 
+BJS CL3 C74 SING N N 14 
+BJS CL4 C55 SING N N 15 
+BJS C74 C73 DOUB Y N 16 
+BJS C70 C68 SING N N 17 
+BJS C70 C72 DOUB Y N 18 
+BJS C68 C66 TRIP N N 19 
+BJS C73 C72 SING Y N 20 
+BJS C55 C56 DOUB Y N 21 
+BJS C55 C54 SING Y N 22 
+BJS C66 C54 SING N N 23 
+BJS C56 C57 SING Y N 24 
+BJS C54 C53 DOUB Y N 25 
+BJS C57 C51 DOUB Y N 26 
+BJS C53 C51 SING Y N 27 
+BJS C51 C15 SING N N 28 
+BJS C39 C38 SING N N 29 
+BJS C39 O40 SING N N 30 
+BJS C15 N14 DOUB Y N 31 
+BJS C15 C1  SING Y N 32 
+BJS C38 N36 SING N N 33 
+BJS N14 N13 SING Y N 34 
+BJS N28 C24 SING N N 35 
+BJS O40 C41 SING N N 36 
+BJS C6  C1  SING N N 37 
+BJS C6  N5  SING N N 38 
+BJS C1  C2  DOUB Y N 39 
+BJS N36 C34 SING N N 40 
+BJS N36 C42 SING N N 41 
+BJS C34 C32 SING N N 42 
+BJS N13 C2  SING Y N 43 
+BJS N13 C30 SING N N 44 
+BJS C24 O26 DOUB N N 45 
+BJS C24 C20 SING N N 46 
+BJS C41 C42 SING N N 47 
+BJS C2  C3  SING N N 48 
+BJS C42 C49 SING N N 49 
+BJS C32 C30 SING N N 50 
+BJS N5  C20 SING N N 51 
+BJS N5  C4  SING N N 52 
+BJS C20 O22 DOUB N N 53 
+BJS C4  C3  SING N N 54 
+BJS C34 H1  SING N N 55 
+BJS C34 H2  SING N N 56 
+BJS C30 H3  SING N N 57 
+BJS C30 H4  SING N N 58 
+BJS C32 H5  SING N N 59 
+BJS C32 H6  SING N N 60 
+BJS C6  H7  SING N N 61 
+BJS C6  H8  SING N N 62 
+BJS C4  H9  SING N N 63 
+BJS C4  H10 SING N N 64 
+BJS C3  H11 SING N N 65 
+BJS C3  H12 SING N N 66 
+BJS C38 H13 SING N N 67 
+BJS C38 H14 SING N N 68 
+BJS C39 H15 SING N N 69 
+BJS C39 H16 SING N N 70 
+BJS C41 H17 SING N N 71 
+BJS C41 H18 SING N N 72 
+BJS C42 H19 SING N N 73 
+BJS C49 H20 SING N N 74 
+BJS C49 H21 SING N N 75 
+BJS C49 H22 SING N N 76 
+BJS C53 H23 SING N N 77 
+BJS C56 H24 SING N N 78 
+BJS C57 H25 SING N N 79 
+BJS C72 H26 SING N N 80 
+BJS C73 H27 SING N N 81 
+BJS C76 H28 SING N N 82 
+BJS C85 H29 SING N N 83 
+BJS C85 H30 SING N N 84 
+BJS C89 H31 SING N N 85 
+BJS C89 H32 SING N N 86 
+BJS C93 H33 SING N N 87 
+BJS C94 H34 SING N N 88 
+BJS C95 H35 SING N N 89 
+BJS C96 H36 SING N N 90 
+BJS C97 H37 SING N N 91 
+BJS N28 H38 SING N N 92 
+BJS N28 H39 SING N N 93 
+BJS N87 H41 SING N N 94 
+# 
+loop_
+_pdbx_chem_comp_descriptor.comp_id 
+_pdbx_chem_comp_descriptor.type 
+_pdbx_chem_comp_descriptor.program 
+_pdbx_chem_comp_descriptor.program_version 
+_pdbx_chem_comp_descriptor.descriptor 
+BJS SMILES           ACDLabs              12.01 "C(CCn2c1c(CN(C(C(=O)N)=O)CC1)c(n2)c3cc(c(cc3)Cl)C#Cc4ccc(c(c4)CNCc5ccccc5)Cl)N6CCOCC6C" 
+BJS InChI            InChI                1.03  
+"InChI=1S/C38H40Cl2N6O3/c1-26-25-49-19-18-44(26)15-5-16-46-35-14-17-45(38(48)37(41)47)24-32(35)36(43-46)30-11-13-33(39)29(21-30)10-8-27-9-12-34(40)31(20-27)23-42-22-28-6-3-2-4-7-28/h2-4,6-7,9,11-13,20-21,26,42H,5,14-19,22-25H2,1H3,(H2,41,47)/t26-/m0/s1" 
+BJS InChIKey         InChI                1.03  CIONECARUUEYBQ-SANMLTNESA-N 
+BJS SMILES_CANONICAL CACTVS               3.385 "C[C@H]1COCCN1CCCn2nc(c3ccc(Cl)c(c3)C#Cc4ccc(Cl)c(CNCc5ccccc5)c4)c6CN(CCc26)C(=O)C(N)=O" 
+BJS SMILES           CACTVS               3.385 "C[CH]1COCCN1CCCn2nc(c3ccc(Cl)c(c3)C#Cc4ccc(Cl)c(CNCc5ccccc5)c4)c6CN(CCc26)C(=O)C(N)=O" 
+BJS SMILES_CANONICAL "OpenEye OEToolkits" 2.0.6 "C[C@H]1COCCN1CCCn2c3c(c(n2)c4ccc(c(c4)C#Cc5ccc(c(c5)CNCc6ccccc6)Cl)Cl)CN(CC3)C(=O)C(=O)N" 
+BJS SMILES           "OpenEye OEToolkits" 2.0.6 "CC1COCCN1CCCn2c3c(c(n2)c4ccc(c(c4)C#Cc5ccc(c(c5)CNCc6ccccc6)Cl)Cl)CN(CC3)C(=O)C(=O)N" 
+# 
+loop_
+_pdbx_chem_comp_identifier.comp_id 
+_pdbx_chem_comp_identifier.type 
+_pdbx_chem_comp_identifier.program 
+_pdbx_chem_comp_identifier.program_version 
+_pdbx_chem_comp_identifier.identifier 
+BJS "SYSTEMATIC NAME" ACDLabs              12.01 "2-(3-[3-({3-[(benzylamino)methyl]-4-chlorophenyl}ethynyl)-4-chlorophenyl]-1-{3-[(3S)-3-methylmorpholin-4-yl]propyl}-1,4,6,7-tetrahydro-5H-pyrazolo[4,3-c]pyridin-5-yl)-2-oxoacetamide" 
+BJS "SYSTEMATIC NAME" "OpenEye OEToolkits" 2.0.6 
+"2-[3-[4-chloranyl-3-[2-[4-chloranyl-3-[[(phenylmethyl)amino]methyl]phenyl]ethynyl]phenyl]-1-[3-[(3~{S})-3-methylmorpholin-4-yl]propyl]-6,7-dihydro-4~{H}-pyrazolo[4,3-c]pyridin-5-yl]-2-oxidanylidene-ethanamide" 
+# 
+loop_
+_pdbx_chem_comp_audit.comp_id 
+_pdbx_chem_comp_audit.action_type 
+_pdbx_chem_comp_audit.date 
+_pdbx_chem_comp_audit.processing_site 
+BJS "Create component" 2017-08-08 RCSB 
+BJS "Initial release"  2017-12-20 RCSB 
+# 
