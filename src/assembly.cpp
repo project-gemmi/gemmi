@@ -249,10 +249,11 @@ void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
             new_conn.partner2.res_id.segment = chain_map.id;
           if (st.models[0].find_atom(new_conn.partner1) &&
               st.models[0].find_atom(new_conn.partner2)) {
-            if (!first) {
+            // An empty id is the original copy. Later copies need a suffix:
+            // _struct_conn.id is the category key.
+            if (!first && !chain_map.id.empty())
               cat_to(new_conn.name, '.', chain_map.id);
-              first = false;
-            }
+            first = false;
             new_connections.push_back(new_conn);
           }
         }
