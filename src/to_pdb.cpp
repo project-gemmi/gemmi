@@ -188,12 +188,35 @@ void write_site_records(const Structure& st, std::ostream& os) {
   }
 }
 
+// printf prints "-0" when a negative value rounds to zero.
+double avoid_printed_neg_zero(double x, double half_ulp) {
+  return x >= -half_ulp && x < 0 ? 0 : x;
+}
+
+// PDB ANISOU U columns are Integer(7), stored as 1e4 * Uij.
+void write_aniso_field(char* dest, double u) {
+  double scaled = u * 1e4 + 1e-6;
+  if (scaled >= -0.5 && scaled < 0)
+    scaled = 0;
+  // A wider number would overwrite the next column. The coordinate path
+  // trims instead; clamp to the same 7-column range.
+  if (scaled > 9999999)
+    scaled = 9999999;
+  else if (scaled < -999999)
+    scaled = -999999;
+  snprintf_z(dest, 8, "%7.0f", scaled);
+}
+
 void write_ncs_op(const NcsOp& op, std::ostream& os) {
   char buf[88];
   for (int i = 0; i < 3; ++i) {
     WRITE("MTRIX%d %3.3s%10.6f%10.6f%10.6f %14.5f    %-21c", i+1,
-          op.id.c_str(), op.tr.mat[i][0], op.tr.mat[i][1], op.tr.mat[i][2],
-          op.tr.vec.at(i), op.given ? '1' : ' ');
+          op.id.c_str(),
+          avoid_printed_neg_zero(op.tr.mat[i][0], 5e-7),
+          avoid_printed_neg_zero(op.tr.mat[i][1], 5e-7),
+          avoid_printed_neg_zero(op.tr.mat[i][2], 5e-7),
+          avoid_printed_neg_zero(op.tr.vec.at(i), 5e-6),
+          op.given ? '1' : ' ');
   }
 }
 
@@ -321,9 +344,10 @@ void write_chain_atoms(const Chain& chain, std::ostream& os,
             write_seq_id(res.seqid).data(),
             // We want to avoid negative zero and round the numbers up
             // if they originally had one digit more and that digit was 5.
-            a.pos.x > -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
-            a.pos.y > -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
-            a.pos.z > -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10);
+            // %8.3f also prints "-0.000" for a value of exactly -5e-4.
+            a.pos.x >= -5e-4 && a.pos.x < 0 ? 0 : a.pos.x + 1e-10,
+            a.pos.y >= -5e-4 && a.pos.y < 0 ? 0 : a.pos.y + 1e-10,
+            a.pos.z >= -5e-4 && a.pos.z < 0 ? 0 : a.pos.z + 1e-10);
       if GEMMI_UNLIKELY(written_bytes > 54) {
         // The only items expected to overflow above are the coordinates,
         // if the integer part of the number exceeds 5 characters.
@@ -352,13 +376,12 @@ void write_chain_atoms(const Chain& chain, std::ostream& os,
       buf[80] = '\n';
       os.write(buf, 81);
       if (a.aniso.nonzero()) {
-        // re-using part of the buffer
+        // re-using part of the buffer. nonzero() is the trace, so a
+        // zero-trace tensor is still omitted.
         std::memcpy(buf, "ANISOU", 6);
-        const double eps = 1e-6;
-        snprintf_z(buf+28, 43, "%7.0f%7.0f%7.0f%7.0f%7.0f%7.0f",
-                   a.aniso.u11*1e4 + eps, a.aniso.u22*1e4 + eps,
-                   a.aniso.u33*1e4 + eps, a.aniso.u12*1e4 + eps,
-                   a.aniso.u13*1e4 + eps, a.aniso.u23*1e4 + eps);
+        auto u = a.aniso.elements_pdb();
+        for (int k = 0; k < 6; ++k)
+          write_aniso_field(buf + 28 + 7 * k, u[k]);
         buf[28+42] = ' ';
         buf[80] = '\n';
         os.write(buf, 81);
