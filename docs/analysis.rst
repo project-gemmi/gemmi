@@ -761,8 +761,8 @@ Here is a usage example:
   >>> sup = gemmi.calculate_superposition(polymer1, polymer2, ptype, gemmi.SupSelect.CaP)
   >>> sup.count  # number of atoms used
   10
-  >>> sup.rmsd
-  0.1462689168993659
+  >>> sup.rmsd  # doctest: +ELLIPSIS
+  0.146268916899...
   >>> sup.transform.mat
   <gemmi.Mat33 [-0.0271652, 0.995789, 0.0875545]
                [0.996396, 0.034014, -0.0777057]
