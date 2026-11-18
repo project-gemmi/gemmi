@@ -55,6 +55,11 @@ struct GEMMI_DLL MergingStats {
   double sum_ibar = 0;     ///< Sum of mean intensities for CC1/2
   double sum_ibar2 = 0;    ///< Sum of squared mean intensities for CC1/2
   double sum_sig2_eps = 0; ///< Sum of variance terms for CC1/2
+  // Merged intensities, always inverse-variance weighted as in
+  // Intensities::merge_in_place(), independent of use_weights.
+  double sum_merged_i = 0;           ///< Sum of merged <I> over unique reflections
+  double sum_merged_sigma = 0;       ///< Sum of sigma(<I>) over unique reflections
+  double sum_merged_i_over_sigma = 0; ///< Sum of <I>/sigma(<I>) over unique reflections
 
   /// Accumulate statistics from another shell.
   /// @param o Statistics from another resolution shell.
@@ -71,6 +76,9 @@ struct GEMMI_DLL MergingStats {
     sum_ibar += o.sum_ibar;
     sum_ibar2 += o.sum_ibar2;
     sum_sig2_eps += o.sum_sig2_eps;
+    sum_merged_i += o.sum_merged_i;
+    sum_merged_sigma += o.sum_merged_sigma;
+    sum_merged_i_over_sigma += o.sum_merged_i_over_sigma;
   }
 
   /// Compute R-merge for this shell.
@@ -88,6 +96,14 @@ struct GEMMI_DLL MergingStats {
   }
   /// Estimate of overall correlation coefficient from CC1/2.
   double cc_star() const { return std::sqrt(cc_full()); }
+
+  /// Mean merged intensity <I> over unique reflections (including those
+  /// measured once). <I> = sum(w I)/sum(w) with w = 1/sigma^2.
+  double mean_i() const { return sum_merged_i / unique_refl; }
+  /// Mean sigma(<I>) = 1/sqrt(sum(w)) over unique reflections.
+  double mean_sigma() const { return sum_merged_sigma / unique_refl; }
+  /// Mean <I>/sigma(<I>) over unique reflections.
+  double mean_i_over_sigma() const { return sum_merged_i_over_sigma / unique_refl; }
 };
 
 /// @brief Extract STARANISO anisotropy B-tensor from MTZ file.

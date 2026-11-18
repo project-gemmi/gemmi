@@ -252,6 +252,9 @@ void add_hkl(nb::module_& m) {
     .def("r_pim", &MergingStats::r_pim)
     .def("cc_half", &MergingStats::cc_half)
     .def("cc_star", &MergingStats::cc_star)
+    .def("mean_i", &MergingStats::mean_i)
+    .def("mean_sigma", &MergingStats::mean_sigma)
+    .def("mean_i_over_sigma", &MergingStats::mean_i_over_sigma)
     ;
 
   nb::class_<Intensities>(m, "Intensities")
