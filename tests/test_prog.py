@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import os
+import shlex
+import shutil
 import sys
 import subprocess
 import unittest
@@ -11,11 +13,31 @@ except ImportError:
 
 TOP_DIR = os.path.join(os.path.dirname(__file__), "..")
 
-# Skip tests if the program is not installed,
-# or the installed version doesn't match the library.
+# The program to test: $GEMMI_PROGRAM if set, otherwise the program built
+# together with the imported module (<build>/gemmi next to <build>/py/gemmi/),
+# and only then the gemmi found in $PATH.
+def find_gemmi():
+    path = os.environ.get('GEMMI_PROGRAM')
+    if path:
+        return os.path.abspath(path)
+    if gemmi:
+        module_dir = os.path.dirname(os.path.realpath(gemmi.__file__))
+        build_dir = os.path.dirname(os.path.dirname(module_dir))
+        for name in ('gemmi', 'gemmi.exe'):
+            path = os.path.join(build_dir, name)
+            if os.path.isfile(path):
+                return path
+    return shutil.which('gemmi')
+
+GEMMI_PROGRAM = find_gemmi()
+
+# Skip tests if the program is not found,
+# or its version doesn't match the library.
 def has_gemmi():
+    if GEMMI_PROGRAM is None:
+        return False
     try:
-        v = subprocess.check_output(['gemmi', '--version'], cwd=TOP_DIR)
+        v = subprocess.check_output([GEMMI_PROGRAM, '--version'], cwd=TOP_DIR)
     except OSError:  # usually FileNotFoundError
         return False
     except subprocess.CalledProcessError as e:
@@ -26,7 +48,7 @@ def has_gemmi():
     assert v.startswith(b'gemmi 0.')
     prog_ver = v.split()[1].decode()
     if gemmi and gemmi.__version__ != prog_ver:
-        print(f'NOTE: gemmi {prog_ver} in $PATH mismatches',
+        print(f'NOTE: gemmi {prog_ver} ({GEMMI_PROGRAM}) mismatches',
               f'gemmi module {gemmi.__version__}. Skipping.')
         return False
     return True
@@ -36,7 +58,8 @@ class TestProg(unittest.TestCase):
     def do(self, example):
         cmd, _, rest = example.partition('\n')
         assert cmd.startswith('$ gemmi ')
-        output = subprocess.check_output(cmd[2:], shell=True, cwd=TOP_DIR,
+        args = [GEMMI_PROGRAM] + shlex.split(cmd[len('$ gemmi '):])
+        output = subprocess.check_output(args, cwd=TOP_DIR,
                                          stderr=subprocess.STDOUT)
         expected_lines = rest.splitlines()
         output_lines = output.decode().splitlines()
