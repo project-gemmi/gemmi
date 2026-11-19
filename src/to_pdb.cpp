@@ -190,7 +190,7 @@ void write_site_records(const Structure& st, std::ostream& os) {
 
 // printf prints "-0" when a negative value rounds to zero.
 double avoid_printed_neg_zero(double x, double half_ulp) {
-  return x >= -half_ulp && x < 0 ? 0 : x;
+  return x >= -half_ulp && x <= 0 ? 0 : x;
 }
 
 // PDB ANISOU U columns are Integer(7), stored as 1e4 * Uij.

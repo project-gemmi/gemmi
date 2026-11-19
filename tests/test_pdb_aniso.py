@@ -54,19 +54,22 @@ class TestPdbFixedColumns(unittest.TestCase):
         self.assertEqual(atom[46:54], "   0.000")
 
     def test_mtrix_negative_zero(self):
-        st = gemmi.Structure()
-        mat = gemmi.Mat33([[-1e-8, 0, 0], [0, 1, 0], [0, 0, 1]])
-        st.ncs.append(gemmi.NcsOp(gemmi.Transform(mat, gemmi.Vec3(0, 0, -1e-7)),
-                                  "1", True))
-        kept = gemmi.Mat33([[-1e-6, 0, 0], [0, 1, 0], [0, 0, 1]])
-        st.ncs.append(gemmi.NcsOp(gemmi.Transform(kept, gemmi.Vec3(0, 0, 0)),
-                                  "2", True))
-        lines = [line for line in st.make_pdb_string().splitlines()
-                 if line.startswith("MTRIX")]
-        self.assertIn("  0.000000", lines[0])
-        self.assertNotIn("-0.000000", lines[0])
-        self.assertNotIn("-0.00000", lines[0])
-        self.assertIn("-0.000001", lines[3])
+        for matrix_value, vector_value in [(-1e-8, -1e-7), (-0.0, -0.0)]:
+            with self.subTest(matrix_value=matrix_value, vector_value=vector_value):
+                st = gemmi.Structure()
+                mat = gemmi.Mat33([[matrix_value, 0, 0], [0, 1, 0], [0, 0, 1]])
+                st.ncs.append(gemmi.NcsOp(gemmi.Transform(mat, gemmi.Vec3(0, 0, vector_value)),
+                                          "1", True))
+                kept = gemmi.Mat33([[-1e-6, 0, 0], [0, 1, 0], [0, 0, 1]])
+                st.ncs.append(gemmi.NcsOp(gemmi.Transform(kept, gemmi.Vec3(0, 0, 0)),
+                                          "2", True))
+                lines = [line for line in st.make_pdb_string().splitlines()
+                         if line.startswith("MTRIX")]
+                self.assertIn("  0.000000", lines[0])
+                self.assertNotIn("-0.000000", lines[0])
+                self.assertNotIn("-0.00000", lines[0])
+                self.assertNotIn("-0.00000", lines[2])
+                self.assertIn("-0.000001", lines[3])
 
 
 if __name__ == "__main__":
