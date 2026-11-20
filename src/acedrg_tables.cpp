@@ -783,10 +783,53 @@ void AcedrgTables::load_bond_index(const std::string& path) {
   }
 }
 
+void AcedrgTables::insert_bond_row(int ha1, int ha2,
+                                   const std::string& hybr_comb,
+                                   const std::string& in_ring,
+                                   const std::string& a1_nb2,
+                                   const std::string& a2_nb2,
+                                   const std::string& a1_nb,
+                                   const std::string& a2_nb,
+                                   const std::string& a1_type_m,
+                                   const std::string& a2_type_m,
+                                   const std::string& a1_type_f,
+                                   const std::string& a2_type_f,
+                                   const CodStats& vs,
+                                   const CodStats& vs1d,
+                                   std::string& key_buf,
+                                   std::string& hybr_buf) {
+  // Construct compound keys for flat lookup structures
+  key_buf.clear();
+  cat_to(key_buf, ha1, '|', ha2, '|', hybr_comb, '|', in_ring);
+  const size_t key_4_len = key_buf.size();
+  cat_to(key_buf, '|', a1_nb2, '|', a2_nb2, '|', a1_nb, '|', a2_nb);
+
+  // Populate 1D structure (8-component key + 2 inner type levels)
+  bond_idx_1d_[key_buf][a1_type_m][a2_type_m].push_back(vs1d);
+
+  // Store full COD-class stats for exact matches
+  if (!a1_type_f.empty() && !a2_type_f.empty()) {
+    cat_to(key_buf, '|', a1_type_m, '|', a2_type_m);
+    bond_idx_full_[key_buf][a1_type_f][a2_type_f] = vs;
+    key_buf.resize(key_4_len);
+    bond_full_4prefix_keys_.insert(key_buf);
+  } else {
+    key_buf.resize(key_4_len);
+  }
+
+  // Populate 2D structure (4-component key + 4 inner levels)
+  bond_idx_2d_[key_buf][a1_nb2][a2_nb2][a1_nb][a2_nb].push_back(vs);
+
+  hybr_buf.clear();
+  cat_to(hybr_buf, ha1, '|', ha2, '|', hybr_comb);
+  bond_2d_hybr_keys_.insert(hybr_buf);
+}
+
 void AcedrgTables::load_bond_tables(const std::string& dir) {
   // Load each bond table file referenced in the index
   std::set<int> loaded_files;
   int n_files = 0, n_lines = 0;
+  std::string key_buf, hybr_buf;
 
   for (const auto& fi_kv : bond_file_index_) {
     {
@@ -841,23 +884,10 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
         CodStats vs(value, sigma, count);
         CodStats vs1d(value2, sigma2, count2);
 
-        // Construct compound keys for flat lookup structures
-        auto key_4 = cat(ha1, '|', ha2, '|', hybr_comb, '|', in_ring);
-        auto key_8 = cat(key_4, '|', a1_nb2, '|', a2_nb2, '|', a1_nb, '|', a2_nb);
-
-        // Populate 1D structure (8-component key + 2 inner type levels)
-        bond_idx_1d_[key_8][a1_type_m][a2_type_m].push_back(vs1d);
-
-        // Store full COD-class stats for exact matches
-        if (!a1_type_f.empty() && !a2_type_f.empty()) {
-          auto key_10 = cat(key_8, '|', a1_type_m, '|', a2_type_m);
-          bond_idx_full_[key_10][a1_type_f][a2_type_f] = vs;
-          bond_full_4prefix_keys_.insert(key_4);
-        }
-
-        // Populate 2D structure (4-component key + 4 inner levels)
-        bond_idx_2d_[key_4][a1_nb2][a2_nb2][a1_nb][a2_nb].push_back(vs);
-        bond_2d_hybr_keys_.insert(cat(ha1, '|', ha2, '|', hybr_comb));
+        insert_bond_row(ha1, ha2, hybr_comb, in_ring,
+                        a1_nb2, a2_nb2, a1_nb, a2_nb,
+                        a1_type_m, a2_type_m, a1_type_f, a2_type_f,
+                        vs, vs1d, key_buf, hybr_buf);
 
         // Levels 9-11 are populated from allOrgBondsHRS.table in load_bond_hrs().
       }
@@ -867,10 +897,59 @@ void AcedrgTables::load_bond_tables(const std::string& dir) {
     std::fprintf(stderr, "    bond tables: %d files, %d lines\n", n_files, n_lines);
 }
 
+void AcedrgTables::insert_angle_row(int ha1, int ha2, int ha3,
+                                    const std::string& value_key,
+                                    const std::string& a1_root,
+                                    const std::string& a2_root,
+                                    const std::string& a3_root,
+                                    const std::string& a1_nb2,
+                                    const std::string& a2_nb2,
+                                    const std::string& a3_nb2,
+                                    const std::string& a1_nb,
+                                    const std::string& a2_nb,
+                                    const std::string& a3_nb,
+                                    const std::string& a1_type,
+                                    const std::string& a2_type,
+                                    const std::string& a3_type,
+                                    const double v[6],
+                                    const double s[6],
+                                    const int    c[6],
+                                    std::string& key_buf) {
+  // Populate structures at each level with corresponding pre-computed values.
+  // AceDRG keeps only the first entry for each key (no aggregation).
+  auto insert_first = [](AngleIdx1D& m, const std::string& k,
+                         double vv, double ss, int cc) {
+    auto& vec = m[k];
+    if (vec.empty())
+      vec.push_back(CodStats(vv, ss, cc));
+  };
+
+  // Levels 1D-4D: flat string keys with decreasing specificity.
+  key_buf.clear();
+  cat_to(key_buf, ha1, '|', ha2, '|', ha3, '|', value_key, '|',
+         a1_root, '|', a2_root, '|', a3_root);
+  insert_first(angle_idx_4d_, key_buf, v[4], s[4], c[4]);
+
+  cat_to(key_buf, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2);
+  insert_first(angle_idx_3d_, key_buf, v[3], s[3], c[3]);
+
+  cat_to(key_buf, '|', a1_nb, '|', a2_nb, '|', a3_nb);
+  insert_first(angle_idx_2d_, key_buf, v[2], s[2], c[2]);
+
+  cat_to(key_buf, '|', a1_type, '|', a2_type, '|', a3_type);
+  insert_first(angle_idx_1d_, key_buf, v[1], s[1], c[1]);
+
+  // Level 5D: nested int-keyed map (different structure)
+  auto& vec5 = angle_idx_5d_[ha1][ha2][ha3][value_key];
+  if (vec5.empty())
+    vec5.push_back(CodStats(v[5], s[5], c[5]));
+}
+
 void AcedrgTables::load_angle_tables(const std::string& dir) {
   // Load all numbered angle table files from allOrgAngleTables.
   // We intentionally ignore angle_idx.table and read full angle statistics.
   int n_files = 0, n_lines = 0;
+  std::string key_buf;
 
   for (int file_num : list_numeric_table_ids(dir)) {
     std::string path = cat(dir, '/', file_num, ".table");
@@ -934,31 +1013,10 @@ void AcedrgTables::load_angle_tables(const std::string& dir) {
       std::string a2_type = q2 ? prefix_before(*q2, '{') : std::string();
       std::string a3_type = q3 ? prefix_before(*q3, '{') : std::string();
 
-      // Populate structures at each level with corresponding pre-computed values.
-      // AceDRG keeps only the first entry for each key (no aggregation).
-      // Levels 1D-4D: flat string keys with decreasing specificity.
-      std::string base_key = cat(ha1, '|', ha2, '|', ha3, '|', value_key, '|',
-                                 a1_root, '|', a2_root, '|', a3_root);
-      std::string keys[4] = {
-        cat(base_key, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
-            a1_nb, '|', a2_nb, '|', a3_nb, '|',
-            a1_type, '|', a2_type, '|', a3_type),
-        cat(base_key, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2, '|',
-            a1_nb, '|', a2_nb, '|', a3_nb),
-        cat(base_key, '|', a1_nb2, '|', a2_nb2, '|', a3_nb2),
-        base_key,
-      };
-      AngleIdx1D* maps[4] = {&angle_idx_1d_, &angle_idx_2d_,
-                              &angle_idx_3d_, &angle_idx_4d_};
-      for (int lvl = 0; lvl < 4; ++lvl) {
-        auto& vec = (*maps[lvl])[keys[lvl]];
-        if (vec.empty())
-          vec.push_back(CodStats(values[lvl + 1], sigmas[lvl + 1], counts[lvl + 1]));
-      }
-      // Level 5D: nested int-keyed map (different structure)
-      auto& angle_5d_vec = angle_idx_5d_[ha1][ha2][ha3][value_key];
-      if (angle_5d_vec.empty())
-        angle_5d_vec.push_back(CodStats(values[5], sigmas[5], counts[5]));
+      insert_angle_row(ha1, ha2, ha3, value_key, a1_root, a2_root, a3_root,
+                       a1_nb2, a2_nb2, a3_nb2, a1_nb, a2_nb, a3_nb,
+                       a1_type, a2_type, a3_type,
+                       values, sigmas, counts, key_buf);
 
       // Level 6D: hash only (leave empty for 34-column data)
     }
