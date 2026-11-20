@@ -57,6 +57,12 @@ struct Logger {
   /// @param args Message content
   template<class... Args> void note(Args const&... args) const { level<5>("Note: ", args...); }
 
+  /// @brief Send a warning that never throws.
+  /// @details For problems that can be safely ignored. Unlike err(), nothing
+  /// happens if no callback is set.
+  /// @param args Message content
+  template<class... Args> void warn(Args const&... args) const { level<3>("Warning: ", args...); }
+
   /// @brief Send a warning or error message.
   /// @details If callback is set, sends as warning; otherwise throws exception.
   /// @param args Message content

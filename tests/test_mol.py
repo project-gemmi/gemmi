@@ -46,6 +46,68 @@ ATOM     37  SG  CYS A   6      38.416  25.985  18.085  1.00 14.07  16       S
 ATOM     69  SG  CYS A  11      36.989  25.994  19.570  1.00 14.23  16       S
 """
 
+# asym C holds only a water; the assembly lists asym A,B,C (as in 1AK5)
+ASSEMBLY_WITH_WATER_ASYM = """\
+data_test
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_asym_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 C CA . GLY A 1 1 ? 0.0 0.0 0.0 1.0 10.0 1 A 1
+ATOM 2 C CA . GLY A 1 2 ? 3.8 0.0 0.0 1.0 10.0 2 A 1
+ATOM 3 C CA . GLY B 2 1 ? 0.0 3.8 0.0 1.0 10.0 1 B 1
+ATOM 4 C CA . GLY B 2 2 ? 3.8 3.8 0.0 1.0 10.0 2 B 1
+HETATM 5 O O . HOH C 3 3 ? 9.0 9.0 9.0 1.0 20.0 101 A 1
+#
+loop_
+_pdbx_struct_assembly.id
+_pdbx_struct_assembly.details
+_pdbx_struct_assembly.method_details
+_pdbx_struct_assembly.oligomeric_details
+_pdbx_struct_assembly.oligomeric_count
+1 'author_and_software_defined_assembly' PISA dimeric 2
+#
+loop_
+_pdbx_struct_assembly_gen.assembly_id
+_pdbx_struct_assembly_gen.oper_expression
+_pdbx_struct_assembly_gen.asym_id_list
+1 1,2 A,B,C
+#
+loop_
+_pdbx_struct_oper_list.id
+_pdbx_struct_oper_list.type
+_pdbx_struct_oper_list.matrix[1][1]
+_pdbx_struct_oper_list.matrix[1][2]
+_pdbx_struct_oper_list.matrix[1][3]
+_pdbx_struct_oper_list.vector[1]
+_pdbx_struct_oper_list.matrix[2][1]
+_pdbx_struct_oper_list.matrix[2][2]
+_pdbx_struct_oper_list.matrix[2][3]
+_pdbx_struct_oper_list.vector[2]
+_pdbx_struct_oper_list.matrix[3][1]
+_pdbx_struct_oper_list.matrix[3][2]
+_pdbx_struct_oper_list.matrix[3][3]
+_pdbx_struct_oper_list.vector[3]
+1 'identity operation' 1 0 0 0 0 1 0 0 0 0 1 0
+2 'crystallographic symmetry operation' -1 0 0 10 0 1 0 0 0 0 -1 0
+#
+"""
+
 # fragment of $CCP4/examples/toxd/toxd_mod_p1.pdb without chain names
 BLANK_CHAIN_FRAGMENT = """\
 CRYST1   50.000   50.00    50.00   90.00  90.00   90.00
@@ -977,6 +1039,27 @@ class TestMol(unittest.TestCase):
         self.assertEqual([ch.name for ch in bio], ['B'])
         bio = gemmi.make_assembly(a1, model, gemmi.HowToNameCopiedChain.Short)
         self.assertEqual([ch.name for ch in bio], ['B'])
+
+    def test_assembly_with_removed_subchain(self):
+        # the assembly refers to subchain C (a water) that is not in the model
+        block = gemmi.cif.read_string(ASSEMBLY_WITH_WATER_ASYM)[0]
+        how = gemmi.HowToNameCopiedChain.Dup
+        st = gemmi.make_structure_from_block(block)
+        st.transform_to_assembly('1', how)
+        self.assertEqual([ch.name for ch in st[0]],
+                         ['A', 'B', 'A', 'A', 'B', 'A'])  # the water is chain A
+        st = gemmi.make_structure_from_block(block)
+        st.remove_waters()
+        messages = []
+        st.transform_to_assembly('1', how, logging=messages.append)
+        self.assertEqual([ch.name for ch in st[0]], ['A', 'B', 'A', 'B'])
+        self.assertEqual(sum(len(ch) for ch in st[0]), 2 * (2 + 2))
+        self.assertIn('Warning: no subchain C', messages)
+        # the same without a logging callback
+        st = gemmi.make_structure_from_block(block)
+        st.remove_waters()
+        st.transform_to_assembly('1', how)
+        self.assertEqual([ch.name for ch in st[0]], ['A', 'B', 'A', 'B'])
 
     def test_hybrid36(self):
         st = gemmi.read_pdb_string(HY36_EXAMPLE)
