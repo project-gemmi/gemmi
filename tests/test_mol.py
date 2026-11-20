@@ -978,6 +978,88 @@ class TestMol(unittest.TestCase):
         bio = gemmi.make_assembly(a1, model, gemmi.HowToNameCopiedChain.Short)
         self.assertEqual([ch.name for ch in bio], ['B'])
 
+    def _ligand_with_same_asu_link(self):
+        st = gemmi.Structure()
+        st.cell = gemmi.UnitCell(30, 30, 30, 90, 90, 90)
+        model = gemmi.Model(1)
+        chain = gemmi.Chain('A')
+        res = gemmi.Residue()
+        res.name = 'LIG'
+        res.seqid = gemmi.SeqId('1')
+        for name, x in (('C1', 0.0), ('C2', 1.5)):
+            atom = gemmi.Atom()
+            atom.name = name
+            atom.element = gemmi.Element('C')
+            atom.pos = gemmi.Position(x, 0, 0)
+            res.add_atom(atom)
+        chain.add_residue(res)
+        model.add_chain(chain)
+        st.add_model(model)
+        conn = gemmi.Connection()
+        conn.name = 'covale1'
+        conn.type = gemmi.ConnectionType.Covale
+        conn.asu = gemmi.Asu.Same
+        conn.partner1 = gemmi.AtomAddress('A', gemmi.SeqId('1'), 'LIG', 'C1')
+        conn.partner2 = gemmi.AtomAddress('A', gemmi.SeqId('1'), 'LIG', 'C2')
+        st.connections.append(conn)
+        return st
+
+    def _connection_rows(self, st):
+        return [(conn.name,
+                 conn.partner1.chain_name,
+                 conn.partner1.res_id.segment,
+                 conn.partner2.chain_name)
+                for conn in st.connections]
+
+    def test_copied_same_asu_connections_get_distinct_names(self):
+        mat = gemmi.Mat33([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        shift = gemmi.Transform(mat, gemmi.Vec3(8, 0, 0))
+        how = gemmi.HowToNameCopiedChain.AddNumber
+
+        st = self._ligand_with_same_asu_link()
+        assembly = gemmi.Assembly('1')
+        gen = gemmi.Assembly.Gen()
+        gen.chains = ['A']
+        for op_name, vec in (('1', gemmi.Vec3(0, 0, 0)), ('2', gemmi.Vec3(8, 0, 0))):
+            op = gemmi.Assembly.Operator()
+            op.name = op_name
+            op.transform = gemmi.Transform(mat, vec)
+            gen.operators.append(op)
+        assembly.generators.append(gen)
+        st.assemblies.append(assembly)
+        st.transform_to_assembly('1', how, merge_dist=0)
+        self.assertEqual([ch.name for ch in st[0]], ['A1', 'A2'])
+        self.assertEqual(self._connection_rows(st),
+                         [('covale1', 'A1', '', 'A1'),
+                          ('covale1.1', 'A2', '', 'A2')])
+        written = list(st.make_mmcif_document().sole_block()
+                       .find_loop('_struct_conn.id'))
+        self.assertEqual(written, ['covale1', 'covale1.1'])
+
+        st = self._ligand_with_same_asu_link()
+        st.ncs.append(gemmi.NcsOp(shift, '2', False))
+        st.expand_ncs(how, 0)
+        self.assertEqual([ch.name for ch in st[0]], ['A', 'A1'])
+        self.assertEqual(self._connection_rows(st),
+                         [('covale1', 'A', '', 'A'),
+                          ('covale1.2', 'A1', '', 'A1')])
+
+        st = self._ligand_with_same_asu_link()
+        assembly = gemmi.Assembly('1')
+        gen = gemmi.Assembly.Gen()
+        gen.chains = ['A']
+        for op_name in ('1', '2'):
+            op = gemmi.Assembly.Operator()
+            op.name = op_name
+            op.transform = gemmi.Transform(mat, gemmi.Vec3(0, 0, 0))
+            gen.operators.append(op)
+        assembly.generators.append(gen)
+        st.assemblies.append(assembly)
+        st.transform_to_assembly('1', gemmi.HowToNameCopiedChain.Dup, merge_dist=0)
+        self.assertEqual(self._connection_rows(st),
+                         [('covale1', 'A', '', 'A'),
+                          ('covale1.1', 'A', '1', 'A')])
+
     def test_hybrid36(self):
         st = gemmi.read_pdb_string(HY36_EXAMPLE)
         nums = [(cra.atom.serial, cra.residue.seqid.num) for cra in st[0].all()]
