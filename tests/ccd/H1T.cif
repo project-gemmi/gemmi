@@ -1,0 +1,138 @@
+data_H1T
+#
+
+_chem_comp.id                                   H1T
+_chem_comp.name                                 "[[[[bis($l^{1}-oxidanyl)-[$l^{1}-oxidanyl-[tris($l^{1}-oxidanyl)vanadiooxy]vanadio]oxy-vanadio]oxy-bis($l^{1}-oxidanyl)vanadio]oxy-oxidanylidene-vanadio]-[bis($l^{1}-oxidanyl)vanadio]-$l^{3}-oxidanyl]-tetrakis($l^{1}-oxidanyl)vanadium"
+_chem_comp.type                                 NON-POLYMER
+_chem_comp.pdbx_type                            HETAIN
+_chem_comp.formula                              "O20 V7"
+_chem_comp.mon_nstd_parent_comp_id              ?
+_chem_comp.pdbx_synonyms                        ?
+_chem_comp.pdbx_formal_charge                   0
+_chem_comp.pdbx_initial_date                    2018-11-05
+_chem_comp.pdbx_modified_date                   2019-03-29
+_chem_comp.pdbx_ambiguous_flag                  N
+_chem_comp.pdbx_release_status                  REL
+_chem_comp.pdbx_replaced_by                     ?
+_chem_comp.pdbx_replaces                        ?
+_chem_comp.formula_weight                       676.579
+_chem_comp.one_letter_code                      ?
+_chem_comp.three_letter_code                    H1T
+_chem_comp.pdbx_model_coordinates_details       ?
+_chem_comp.pdbx_model_coordinates_missing_flag  N
+_chem_comp.pdbx_ideal_coordinates_details       Corina
+_chem_comp.pdbx_ideal_coordinates_missing_flag  Y
+_chem_comp.pdbx_model_coordinates_db_code       6HWR
+_chem_comp.pdbx_subcomponent_list               ?
+_chem_comp.pdbx_processing_site                 EBI
+#   #
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.alt_atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.charge
+_chem_comp_atom.pdbx_align
+_chem_comp_atom.pdbx_aromatic_flag
+_chem_comp_atom.pdbx_leaving_atom_flag
+_chem_comp_atom.pdbx_stereo_config
+_chem_comp_atom.model_Cartn_x
+_chem_comp_atom.model_Cartn_y
+_chem_comp_atom.model_Cartn_z
+_chem_comp_atom.pdbx_model_Cartn_x_ideal
+_chem_comp_atom.pdbx_model_Cartn_y_ideal
+_chem_comp_atom.pdbx_model_Cartn_z_ideal
+_chem_comp_atom.pdbx_component_atom_id
+_chem_comp_atom.pdbx_component_comp_id
+_chem_comp_atom.pdbx_ordinal
+H1T  O10  O1   O  0  1  N  N  N  -62.031  -42.753   3.043  ?  ?  ?  O10  H1T   1  
+H1T  O11  O2   O  0  1  N  N  N  -65.382  -45.212   4.196  ?  ?  ?  O11  H1T   2  
+H1T  O12  O3   O  0  1  N  N  N  -60.959  -47.031  -0.172  ?  ?  ?  O12  H1T   3  
+H1T  O13  O4   O  0  1  N  N  N  -63.962  -41.003   3.531  ?  ?  ?  O13  H1T   4  
+H1T  O15  O5   O  0  1  N  N  N  -63.358  -47.749   0.128  ?  ?  ?  O15  H1T   5  
+H1T  O14  O6   O  0  1  N  N  N  -66.246  -44.874   1.553  ?  ?  ?  O14  H1T   6  
+H1T  O01  O7   O  0  1  N  N  N  -61.806  -42.998   8.963  ?  ?  ?  O01  H1T   7  
+H1T  O02  O8   O  0  1  N  N  N  -61.085  -45.157  10.247  ?  ?  ?  O02  H1T   8  
+H1T  O03  O9   O  0  1  N  N  N  -63.704  -44.656  10.870  ?  ?  ?  O03  H1T   9  
+H1T  O04  O10  O  0  1  N  N  N  -62.600  -45.928   8.207  ?  ?  ?  O04  H1T  10  
+H1T  O05  O11  O  0  1  N  N  N  -65.514  -46.214   9.138  ?  ?  ?  O05  H1T  11  
+H1T  O06  O12  O  0  1  N  N  N  -64.634  -45.488   6.571  ?  ?  ?  O06  H1T  12  
+H1T  O07  O13  O  0  1  N  N  N  -64.231  -43.967   8.592  ?  ?  ?  O07  H1T  13  
+H1T  O08  O14  O  0  1  N  N  N  -61.584  -49.683   0.349  ?  ?  ?  O08  H1T  14  
+H1T  O09  O15  O  0  1  N  N  N  -65.680  -47.622   1.252  ?  ?  ?  O09  H1T  15  
+H1T  O16  O16  O  0  1  N  N  N  -63.896  -45.869   2.057  ?  ?  ?  O16  H1T  16  
+H1T  O17  O17  O  0  1  N  N  N  -63.717  -43.072   5.244  ?  ?  ?  O17  H1T  17  
+H1T  O18  O18  O  0  1  N  N  N  -64.572  -43.381   2.658  ?  ?  ?  O18  H1T  18  
+H1T  O19  O19  O  0  1  N  N  N  -61.764  -47.992   2.188  ?  ?  ?  O19  H1T  19  
+H1T  O20  O20  O  0  1  N  N  N  -65.291  -41.273   6.777  ?  ?  ?  O20  H1T  20  
+H1T  V07  V1   V  0  1  N  N  N  -65.544  -45.030   8.113  ?  ?  ?  P01  H1T  21  
+H1T  V02  V2   V  0  1  N  N  N  -61.852  -48.126   0.653  ?  ?  ?  P02  H1T  22  
+H1T  V03  V3   V  0  1  N  N  N  -64.436  -46.743   0.787  ?  ?  ?  P03  H1T  23  
+H1T  V04  V4   V  0  1  N  N  N  -63.549  -42.571   3.623  ?  ?  ?  P04  H1T  24  
+H1T  V05  V5   V  0  1  N  N  N  -65.091  -44.921   2.670  ?  ?  ?  P05  H1T  25  
+H1T  V06  V6   V  0  1  N  N  N  -64.453  -42.660   6.685  ?  ?  ?  P06  H1T  26  
+H1T  V01  V7   V  0  1  N  N  N  -62.578  -44.611   9.394  ?  ?  ?  V01  H1T  27  
+#   #
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+_chem_comp_bond.pdbx_aromatic_flag
+_chem_comp_bond.pdbx_stereo_config
+_chem_comp_bond.pdbx_ordinal
+H1T  O10  V04  SING  N  N   1  
+H1T  O11  V05  SING  N  N   2  
+H1T  O12  V02  SING  N  N   3  
+H1T  O13  V04  SING  N  N   4  
+H1T  O15  V02  SING  N  N   5  
+H1T  O15  V03  SING  N  N   6  
+H1T  O14  V05  SING  N  N   7  
+H1T  O01  V01  SING  N  N   8  
+H1T  O02  V01  SING  N  N   9  
+H1T  O03  V01  SING  N  N  10  
+H1T  O04  V01  SING  N  N  11  
+H1T  O05  V07  SING  N  N  12  
+H1T  O06  V07  SING  N  N  13  
+H1T  O07  V07  SING  N  N  14  
+H1T  O07  V06  SING  N  N  15  
+H1T  O07  V01  SING  N  N  16  
+H1T  O08  V02  SING  N  N  17  
+H1T  O09  V03  SING  N  N  18  
+H1T  O16  V03  SING  N  N  19  
+H1T  O16  V05  SING  N  N  20  
+H1T  O17  V04  SING  N  N  21  
+H1T  O17  V06  SING  N  N  22  
+H1T  O18  V04  SING  N  N  23  
+H1T  O18  V05  SING  N  N  24  
+H1T  O19  V02  SING  N  N  25  
+H1T  O20  V06  DOUB  N  N  26  
+#   #
+loop_
+_pdbx_chem_comp_descriptor.comp_id
+_pdbx_chem_comp_descriptor.type
+_pdbx_chem_comp_descriptor.program
+_pdbx_chem_comp_descriptor.program_version
+_pdbx_chem_comp_descriptor.descriptor
+H1T  InChI             InChI                 1.03   "InChI=1S/14H2O.6O.7V/h14*1H2;;;;;;;;;;;;;/q;;;;;;;;;;;;;;;;;;;;;+1;3*+2;+3;+4/p-14"  
+H1T  InChIKey          InChI                 1.03   MFPKOXVPJRIEPC-UHFFFAOYSA-A  
+H1T  SMILES_CANONICAL  CACTVS                3.385  O.O.O.O.O.O.O.O.O.O.O.O.O.O.[V]O[V].[V]O[V]O[V]O[V]O[V]=O  
+H1T  SMILES            CACTVS                3.385  O.O.O.O.O.O.O.O.O.O.O.O.O.O.[V]O[V].[V]O[V]O[V]O[V]O[V]=O  
+H1T  SMILES_CANONICAL  "OpenEye OEToolkits"  2.0.6  "O=[V](O[V]([O])([O])O[V]([O])([O])O[V]([O])O[V]([O])([O])[O])O([V]([O])[O])[V]([O])([O])([O])[O]"  
+H1T  SMILES            "OpenEye OEToolkits"  2.0.6  "O=[V](O[V]([O])([O])O[V]([O])([O])O[V]([O])O[V]([O])([O])[O])O([V]([O])[O])[V]([O])([O])([O])[O]"  
+#
+_pdbx_chem_comp_identifier.comp_id          H1T
+_pdbx_chem_comp_identifier.type             "SYSTEMATIC NAME"
+_pdbx_chem_comp_identifier.program          "OpenEye OEToolkits"
+_pdbx_chem_comp_identifier.program_version  2.0.6
+_pdbx_chem_comp_identifier.identifier       "[[[[bis($l^{1}-oxidanyl)-[$l^{1}-oxidanyl-[tris($l^{1}-oxidanyl)vanadiooxy]vanadio]oxy-vanadio]oxy-bis($l^{1}-oxidanyl)vanadio]oxy-oxidanylidene-vanadio]-[bis($l^{1}-oxidanyl)vanadio]-$l^{3}-oxidanyl]-tetrakis($l^{1}-oxidanyl)vanadium"
+#   #
+loop_
+_pdbx_chem_comp_audit.comp_id
+_pdbx_chem_comp_audit.action_type
+_pdbx_chem_comp_audit.date
+_pdbx_chem_comp_audit.processing_site
+H1T  "Create component"    2018-11-05  EBI   
+H1T  "Other modification"  2018-11-05  EBI   
+H1T  "Initial release"     2019-04-03  RCSB  
+##
