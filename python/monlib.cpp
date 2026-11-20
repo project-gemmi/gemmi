@@ -92,7 +92,7 @@ void add_monlib(nb::module_& m) {
   ;
   enerlib
     .def(nb::init<>())
-    .def("read", [](EnerLib& self, const std::string& path) {
+    .def("read", [](EnerLib& self, const FilePath& path) {
       self.read(read_cif_gz(path));
     }, nb::arg("path"))
     .def_ro("atoms", &EnerLib::atoms)
@@ -139,8 +139,11 @@ void add_monlib(nb::module_& m) {
     .def("add_monomer_if_present", &MonLib::add_monomer_if_present)
     .def("read_monomer_doc", &MonLib::read_monomer_doc)
     .def("read_monomer_cif", &MonLib::read_monomer_cif)
-    .def("read_monomer_lib", &MonLib::read_monomer_lib,
-         nb::arg("monomer_dir"), nb::arg("resnames"), nb::arg("logging")=nb::none())
+    .def("read_monomer_lib", [](MonLib& self, const FilePath& monomer_dir,
+                                const std::vector<std::string>& resnames,
+                                const Logger& logging) {
+      return self.read_monomer_lib(monomer_dir, resnames, logging);
+    }, nb::arg("monomer_dir"), nb::arg("resnames"), nb::arg("logging")=nb::none())
     .def("find_ideal_distance", [](const MonLib& self, CRA &cra1, CRA cra2) {
       return self.find_ideal_distance(cra1, cra2);
     })
@@ -155,7 +158,10 @@ void add_monlib(nb::module_& m) {
     })
     .def("clone", [](const MonLib& self) { return new MonLib(self); });
 
-  m.def("read_monomer_lib", &read_monomer_lib,
-        nb::arg("monomer_dir"), nb::arg("resnames"),
-        nb::arg("libin")=std::string(), nb::arg("ignore_missing")=false);
+  m.def("read_monomer_lib", [](const FilePath& monomer_dir,
+                               const std::vector<std::string>& resnames,
+                               const FilePath& libin, bool ignore_missing) {
+          return read_monomer_lib(monomer_dir, resnames, libin, ignore_missing);
+        }, nb::arg("monomer_dir"), nb::arg("resnames"),
+        nb::arg("libin")=FilePath(), nb::arg("ignore_missing")=false);
 }
