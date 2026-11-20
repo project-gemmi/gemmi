@@ -1597,7 +1597,7 @@ that decides if and how sigmas are used for weighting. It can be one of:
 
   .. image:: img/rmerge-2006.png
 
-* `'N'` -- no weighting, as in the original formulas:
+* `'U'` or `'N'` -- no weighting (unweighted), as in the original formulas:
 
   .. image:: img/rmerge-1997.png
 
@@ -1627,16 +1627,16 @@ Now we can print, for instance, CC\ :sub:`1/2` and CC* in shells:
   ...   dmax, dmin = binner.dmax_of_bin(n), binner.dmin_of_bin(n)
   ...   print(f'{dmax:5.2f} - {dmin:4.2f} {stats.cc_half():6.3f} {stats.cc_star():6.3f}')
   ...
-  61.93 - 2.68  0.945  0.986
+  61.93 - 2.68  0.947  0.986
    2.68 - 2.13  0.925  0.980
-   2.13 - 1.86  0.873  0.966
-   1.86 - 1.69  0.816  0.948
-   1.69 - 1.57  0.552  0.843
-   1.57 - 1.48  0.229  0.611
-   1.48 - 1.40  0.056  0.326
-   1.40 - 1.34  0.041  0.280
-   1.34 - 1.29  0.112  0.449
-   1.29 - 1.25 -0.098    nan
+   2.13 - 1.86  0.805  0.945
+   1.86 - 1.69  0.813  0.947
+   1.69 - 1.57  0.542  0.839
+   1.57 - 1.48  0.234  0.616
+   1.48 - 1.40  0.092  0.410
+   1.40 - 1.34  0.053  0.318
+   1.34 - 1.29  0.123  0.468
+   1.29 - 1.25 -0.085    nan
 
 .. note::
 
