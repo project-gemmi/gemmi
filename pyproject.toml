@@ -65,6 +65,7 @@ sdist.include = [
   "third_party/zlib/*",
   "tests/*",
   "tools/gemmi-config.cmake.in",
+  "tools/gemmi.pc.in",
   "constraints.txt",  # This won't fail if the file doesn't exist
   "!__pycache__",
   "!*.pyc"
