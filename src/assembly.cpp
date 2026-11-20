@@ -258,8 +258,32 @@ void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
         }
       }
     } else {
-      // connections other than 1_555 are lost when making assembly
-      // if it's needed - get in touch
+      bool first = true;
+      for (const ChainMap& map1 : mapping.chain_maps) {
+        auto ch1 = map1.names.find(conn.partner1.chain_name);
+        if (ch1 == map1.names.end())
+          continue;
+        for (const ChainMap& map2 : mapping.chain_maps) {
+          auto ch2 = map2.names.find(conn.partner2.chain_name);
+          if (ch2 == map2.names.end())
+            continue;
+          Connection new_conn = conn;
+          new_conn.partner1.chain_name = ch1->second;
+          new_conn.partner2.chain_name = ch2->second;
+          new_conn.asu = Asu::Same;
+          if (map1.uses_segments)
+            new_conn.partner1.res_id.segment = map1.id;
+          if (map2.uses_segments)
+            new_conn.partner2.res_id.segment = map2.id;
+          if (st.models[0].find_atom(new_conn.partner1) &&
+              st.models[0].find_atom(new_conn.partner2)) {
+            if (!first)
+              cat_to(new_conn.name, '.', map1.id, '.', map2.id);
+            first = false;
+            new_connections.push_back(new_conn);
+          }
+        }
+      }
     }
   st.connections = std::move(new_connections);
 
