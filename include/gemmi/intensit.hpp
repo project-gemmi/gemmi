@@ -266,6 +266,26 @@ struct GEMMI_DLL Intensities {
   void import_anomalous_intensities_from_mmcif(const ReflnBlock& rb, bool check_complete=false);
 
   /// @brief Load structure factor squared (F^2) from mmCIF reflection block.
+  /// @details Reads F_meas[_au] and F_meas_sigma[_au] and sets, for each
+  /// reflection, I = F^2 and sigma(I) = 2 F sigma(F). Nothing else goes into
+  /// the conversion: not the centric flag, not the epsilon factor, no prior.
+  ///
+  /// Deposited amplitudes are usually derived from the measured intensities
+  /// by a French & Wilson (truncate) procedure, which replaces each intensity
+  /// with a posterior estimate. Squaring F does not undo that:
+  /// - For strong reflections, F^2 = k I and 2 F sigma(F) = k sigma(I), where
+  ///   I and sigma(I) are the measured values and k is a constant scale
+  ///   (often 1, but not necessarily).
+  /// - For weak reflections, F^2 and 2 F sigma(F) come from the posterior,
+  ///   not from the measurement. F^2 is never negative, even where the measured
+  ///   I was, and 2 F sigma(F) is usually smaller than k sigma(I). For a
+  ///   measured I near 0, F^2 / (2 F sigma(F)) is about 1 to 1.2 for acentric
+  ///   and 0.7 to 0.8 for centric reflections, depending on the prior.
+  /// - In weak resolution shells, the mean F^2 is lower than k times the mean I.
+  ///
+  /// Recovering the measured I and sigma(I) of weak reflections would need the
+  /// prior that the conversion used (such as the mean intensity in resolution
+  /// shells), which is not stored with the data.
   /// @param rb Reflection block to read from.
   void import_f_squared_from_mmcif(const ReflnBlock& rb);
 
