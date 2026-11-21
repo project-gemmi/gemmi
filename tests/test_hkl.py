@@ -281,6 +281,20 @@ class TestMerging(unittest.TestCase):
         intens.merge_in_place(gemmi.DataType.Mean)
         self.assertEqual(len(intens), 2)
 
+    @unittest.skipIf(numpy is None, 'requires NumPy')
+    def test_set_data_skips_invalid(self):
+        cell = gemmi.UnitCell(50, 60, 70, 90, 90, 90)
+        sg = gemmi.SpaceGroup('P 1')
+        inf = float('inf')
+        nan = float('nan')
+        values = [10., 11., nan, inf, -inf, 12., 13., 14., 15.]
+        sigmas = [1., 1., 1., 1., 1., 0., -1., nan, inf]
+        hkl = numpy.array([[1, 0, 0]] * len(values), dtype=numpy.int32)
+        intens = gemmi.Intensities()
+        intens.set_data(cell, sg, hkl, numpy.array(values),
+                        numpy.array(sigmas))
+        self.assertEqual(list(intens.value_array), [10., 11.])
+
 class TestConversion(unittest.TestCase):
     def test_4aap(self):
         def check_metadata(o, d):

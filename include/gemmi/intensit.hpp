@@ -185,7 +185,8 @@ struct GEMMI_DLL Intensities {
   Correlation calculate_correlation(const Intensities& other) const;
 
   /// @brief Add a single reflection if its data is valid.
-  /// Skips reflections with NaN or non-positive sigma (rejected by XDS, etc.).
+  /// Skips reflections with a NaN or infinite value, and with a sigma that
+  /// is not finite or not positive (rejected by XDS, etc.).
   /// @param hkl Miller indices
   /// @param isign Intensity sign (1 for I+, -1 for I-, 0 for mean)
   /// @param isym Symmetry operator encoding
@@ -194,7 +195,9 @@ struct GEMMI_DLL Intensities {
   void add_if_valid(const Miller& hkl, int8_t isign, int8_t isym, double value, double sigma) {
     // XDS marks rejected reflections with negative sigma.
     // Sigma 0.0 rarely happens (e.g. 5tkn), but is also problematic.
-    if (!std::isnan(value) && sigma > 0)
+    // Infinite sigma gives zero weight; if all observations of a reflection
+    // had it, the weighted mean would be 0/0.
+    if (std::isfinite(value) && std::isfinite(sigma) && sigma > 0)
       data.push_back({hkl, isign, isym, /*nobs=*/0, value, sigma});
   }
 
