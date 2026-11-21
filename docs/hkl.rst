@@ -1589,6 +1589,23 @@ Returned `MergingStats` contain the following metrics:
   >>> stats.cc_star()
   0.989520302...
 
+`MergingStats` also gives the mean intensity, the mean sigma and the mean
+I/sigma of the merged data. The merged intensities are inverse-variance
+weighted, as in `merge_in_place()`: <I> = sum(w I)/sum(w) with w = 1/sigma^2,
+and sigma(<I>) = 1/sqrt(sum(w)). The means are taken over all unique
+reflections, including those measured only once, and do not depend
+on the `use_weights` argument described below:
+
+.. doctest::
+  :skipif: ccp4_path is None
+
+  >>> stats.mean_i()
+  356.042347...
+  >>> stats.mean_sigma()
+  17.2643744...
+  >>> stats.mean_i_over_sigma()
+  22.6003884...
+
 `calculate_merging_stats()` also has an optional argument `use_weights`
 that decides if and how sigmas are used for weighting. It can be one of:
 

@@ -254,6 +254,24 @@ class TestBinner(unittest.TestCase):
         self.assertEqual(list(binner.get_bins_from_1_d2(inv_d2)), bins)
 
 class TestMerging(unittest.TestCase):
+    @unittest.skipIf(numpy is None, 'requires NumPy')
+    def test_merged_i_over_sigma(self):
+        doc = gemmi.cif.read(full_path('cc12-hkl.cif'))
+        intens = gemmi.Intensities()
+        intens.import_refln_block(gemmi.as_refln_blocks(doc)[0])
+        intens.prepare_for_merging(gemmi.DataType.Anomalous)
+        merged = intens.merged(gemmi.DataType.Anomalous)
+        values = merged.value_array
+        sigmas = merged.sigma_array
+        # the means of the merged data, whatever use_weights is
+        for letter in 'YUX':
+            stats = intens.calculate_merging_stats(None, use_weights=letter)[0]
+            self.assertEqual(stats.unique_refl, len(merged))
+            self.assertAlmostEqual(stats.mean_i(), values.mean(), delta=1e-9)
+            self.assertAlmostEqual(stats.mean_sigma(), sigmas.mean(), delta=1e-9)
+            self.assertAlmostEqual(stats.mean_i_over_sigma(),
+                                   (values / sigmas).mean(), delta=1e-9)
+
     def test_reading(self):
         doc = gemmi.cif.read(full_path('cc12-hkl.cif'))
         rblock = gemmi.as_refln_blocks(doc)[0]
