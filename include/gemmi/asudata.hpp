@@ -168,10 +168,11 @@ void move_to_asu(const GroupOps&, const Miller& hkl, int, HklValue<T>& hkl_value
 template<typename R>
 void move_to_asu(const GroupOps& gops, const Miller& hkl, int isym,
                  HklValue<std::complex<R>>& v) {
-  v.hkl = hkl;
-  // cf. Mtz::ensure_asu()
+  // cf. Mtz::ensure_asu(): the phase shift is that of the original index
+  // (v.hkl), not of the new index in the ASU (hkl).
   const Op& op = gops.sym_ops[(isym - 1) / 2];
-  double shift = op.phase_shift(hkl);
+  double shift = op.phase_shift(v.hkl);
+  v.hkl = hkl;
   if (shift != 0) {
     double phase = std::arg(v.value) + shift;
     v.value = std::polar(std::abs(v.value), (R)phase);

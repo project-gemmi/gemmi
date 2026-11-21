@@ -86,5 +86,55 @@ class TestExpandingToP1(unittest.TestCase):
             usf = sfcalc.calculate_sf_from_model(st[0], v.hkl)
             self.assertAlmostEqual(v.value, usf / order, delta=1e-4)
 
+class TestEnsureAsuPhaseShift(unittest.TestCase):
+    # Reflections outside the ASU, related to ASU reflections by symmetry
+    # operations with translations other than 0 and 1/2 (3_1, 4_1, 6_1 screws,
+    # d-glides); test_1gdr does not cover it, because after expand_to_p1()
+    # the space group is P1.
+    def check(self, hm, cell):
+        if not numpy:
+            return
+        lines = ['CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11s' % (cell + (hm,))]
+        for i, frac in enumerate([(0.11, 0.23, 0.07), (0.52, 0.31, 0.44),
+                                  (0.27, 0.68, 0.81)]):
+            pos = gemmi.UnitCell(*cell).orthogonalize(gemmi.Fractional(*frac))
+            lines.append('HETATM%5d  C   UNL A%4d    %8.3f%8.3f%8.3f'
+                         '  1.00 20.00           C' % (i + 1, i + 1,
+                                                       pos.x, pos.y, pos.z))
+        st = gemmi.read_pdb_string('\n'.join(lines) + '\n')
+        sfcalc = gemmi.StructureFactorCalculatorX(st.cell)
+        sg = gemmi.SpaceGroup(hm)
+        gops = sg.operations()
+        asu = gemmi.ReciprocalAsu(sg)
+        hkls = set()
+        for hkl in [(1, 2, 1), (2, 1, 2), (3, 1, 5), (1, 3, 4), (2, 2, 3)]:
+            for op in gops.sym_ops:
+                for sign in (1, -1):
+                    h = tuple(sign * x for x in op.apply_to_hkl(hkl))
+                    if (not asu.is_in(h) and
+                            not gops.is_systematically_absent(h)):
+                        hkls.add(h)
+        hkls = sorted(hkls)
+        sfs = [sfcalc.calculate_sf_from_model(st[0], h) for h in hkls]
+        asudata = gemmi.ComplexAsuData(st.cell, sg,
+                                       numpy.array(hkls, dtype=numpy.int32),
+                                       numpy.array(sfs, dtype=numpy.complex64))
+        asudata.ensure_asu()
+        for v in asudata:
+            self.assertTrue(asu.is_in(v.hkl))
+            usf = sfcalc.calculate_sf_from_model(st[0], v.hkl)
+            self.assertAlmostEqual(v.value, usf, delta=1e-3 * max(1, abs(usf)))
+
+    def test_p31(self):
+        self.check('P 31', (50, 50, 30, 90, 90, 120))
+    def test_p41212(self):
+        self.check('P 41 21 2', (50, 50, 60, 90, 90, 90))
+    def test_p6122(self):
+        self.check('P 61 2 2', (50, 50, 60, 90, 90, 120))
+    def test_i41(self):
+        self.check('I 41', (50, 50, 60, 90, 90, 90))
+    def test_fdd2(self):
+        self.check('F d d 2', (40, 50, 60, 90, 90, 90))
+
 if __name__ == '__main__':
     unittest.main()
