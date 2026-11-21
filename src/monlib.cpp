@@ -49,6 +49,17 @@ int ChemLink::calculate_score(const Residue& res1, const Residue* res2,
       if (a1 && a2 && a3 && a4)
         z = angle_z(calculate_dihedral(a1->pos, a2->pos, a3->pos, a4->pos),
                     tor);
+      // angle_z() divides by tor.esd, so z is unbounded: esd = 0 (the
+      // Restraints::Torsion default, and allowed for torsions) gives infinity,
+      // a missing esd in the CIF gives NaN, and a small esd merely gives a huge
+      // number. Narrowing any of those to int is undefined, and in practice
+      // yields INT_MIN, which then overflows the subtraction and leaves
+      // link_score at about -2e9 - so the link loses every comparison in
+      // find_best_link() and LinkHunt. Cap instead: the score only ranks
+      // candidate links, and every other penalty here is 10, so anything past a
+      // gross mismatch ranks the same. Written negated to catch NaN too.
+      if (!(z < 100.))
+        z = 100.;
       link_score -= (int) z;
     }
   return link_score;
