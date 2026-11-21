@@ -52,6 +52,19 @@ class TestCifAsJson(unittest.TestCase):
         self.assertEqual(parsed, {'test': {'_a': -0.99, '_b': 0.04,
                                            '_c': -0.04, '_d': 0.5}})
 
+    def test_json_numberlike_id(self):
+        # PDB-code-shaped tokens quote as strings; other exponents stay
+        # numeric (#444, review on #445)
+        doc = cif.read_string(
+            'data_6E72 _entry.id 6E72 _a 1.2E3 _b 2e4 _c 1E5 _d -3E5 '
+            '_e 2E+6 _f 12E3 _g 6e72')
+        parsed = json.loads(doc.as_json())
+        self.assertEqual(parsed, {'6e72': {'_entry.id': '6E72',
+                                           '_a': 1200.0, '_b': 20000.0,
+                                           '_c': 100000.0, '_d': -300000.0,
+                                           '_e': 2000000.0, '_f': '12E3',
+                                           '_g': '6e72'}})
+
 class TestMmjson(unittest.TestCase):
     def test_read_1pfe(self):
         path = full_path('1pfe.json')
