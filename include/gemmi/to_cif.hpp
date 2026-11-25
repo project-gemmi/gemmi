@@ -137,8 +137,8 @@ public:
     write(s.c_str(), s.size());
   }
 
-  // Note: The following functions assume writes are small (<512 bytes).
-  // No buffer boundary check is performed for performance.
+  // Note: write() always leaves at least 512 bytes free, so put() needs no
+  // boundary check as long as callers do not chain hundreds of them.
 
   /// Write a single character to the buffer.
   /// @param c The character to write
@@ -147,8 +147,21 @@ public:
   }
 
   /// Write n space characters to the buffer (for padding/alignment).
+  /// n is not bounded by the caller - it comes from WriteOptions::align_pairs
+  /// and align_loops, which are uint16_t and settable from Python - so unlike
+  /// put() this cannot assume it fits in the free space.
   /// @param n Number of spaces to write
   void pad(size_t n) {
+    constexpr size_t margin = sizeof(buf) - 512;
+    if ((size_t)(ptr - buf) >= margin)  // a preceding put() may have crossed it
+      flush();
+    while (n > margin - (size_t)(ptr - buf)) {
+      size_t chunk = margin - (size_t)(ptr - buf);
+      std::memset(ptr, ' ', chunk);
+      ptr += chunk;
+      n -= chunk;
+      flush();
+    }
     std::memset(ptr, ' ', n);
     ptr += n;
   }
