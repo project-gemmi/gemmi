@@ -22,6 +22,10 @@ GEMMI is a C++ library (currently, C++14) accompanied by:
 
 Documentation: http://gemmi.readthedocs.io/en/latest/
 
+Installation: if `pip install gemmi` finds no wheel for your Python version
+(e.g. a newly released Python), see [INSTALL.md](INSTALL.md) for how to build
+and install the module from a release tag or from master.
+
 GEMMI is an open-source project of [CCP4](https://www.ccp4.ac.uk/)
 and [Global Phasing Ltd](https://www.globalphasing.com/),
 two major providers of software for macromolecular crystallography.

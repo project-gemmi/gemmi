@@ -92,6 +92,10 @@ versions and one PyPy version), so the command usually downloads binaries.
 If a matching wheel is not available,
 the module is compiled from source -- it takes a few minutes
 and requires a C++ compiler that supports C++17.
+If PyPI has no gemmi wheel for your Python version yet
+(e.g. a newly released Python), see
+`INSTALL.md <https://github.com/project-gemmi/gemmi/blob/master/INSTALL.md>`_
+for how to build and install the module from a release tag or from master.
 
 Gemmi 0.7+ supports only Python 3.8+.
 
