@@ -216,6 +216,11 @@ Intensities::calculate_merging_stats(const Binner* binner, char use_weights) con
     fail("merging statistics can be calculated only from unmerged data");
   if (!std::is_sorted(data.begin(), data.end()))
     fail("call Intensities.sort() before calculating merging statistics");
+  if (use_weights == 'N')  // 'N' (no weighting) is an alias of 'U'
+    use_weights = 'U';
+  if (use_weights != 'Y' && use_weights != 'U' && use_weights != 'X')
+    fail("use_weights must be 'Y', 'U' or 'N' (unweighted), or 'X', not '",
+         use_weights, "'");
 
   if (binner)
     binner->ensure_limits_are_set();  // asserts size() > 0

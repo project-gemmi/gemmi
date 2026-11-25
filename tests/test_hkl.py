@@ -278,6 +278,15 @@ class TestMerging(unittest.TestCase):
         self.assertAlmostEqual(x_stats.r_merge(), 0.312, delta=5e-4)
         self.assertAlmostEqual(x_stats.r_meas(), 0.342, delta=5e-4)
         self.assertAlmostEqual(x_stats.r_pim(), 0.139, delta=5e-4)
+        # 'N' is an alias of 'U'
+        n_stats = intens.calculate_merging_stats(None, use_weights='N')[0]
+        for name in ['r_merge', 'r_meas', 'r_pim', 'cc_half']:
+            self.assertEqual(getattr(n_stats, name)(),
+                             getattr(u_stats, name)())
+        # other letters are rejected
+        for letter in 'Qy':
+            with self.assertRaises(RuntimeError):
+                intens.calculate_merging_stats(None, use_weights=letter)
         intens.merge_in_place(gemmi.DataType.Mean)
         self.assertEqual(len(intens), 2)
 

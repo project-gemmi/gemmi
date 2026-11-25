@@ -227,7 +227,8 @@ struct GEMMI_DLL Intensities {
 
   /// @brief Calculate R-merge and related statistics for each resolution shell.
   /// @param binner Resolution shell binning (or nullptr for all data in one shell).
-  /// @param use_weights Weighting scheme: 'Y'=Aimless style, 'U'=unweighted, 'X'=XDS style.
+  /// @param use_weights Weighting scheme: 'Y'=Aimless style, 'U' or 'N'=unweighted,
+  ///        'X'=XDS style. Other values throw std::runtime_error.
   /// @return Vector of MergingStats, one per shell.
   std::vector<MergingStats> calculate_merging_stats(const Binner* binner,
                                                     char use_weights='Y') const;
