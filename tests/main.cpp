@@ -2,6 +2,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
+#include <cmath>    // for NAN
 #include <cstdlib>  // for rand
 #include <climits>  // for INT_MIN, INT_MAX
 #include <vector>
@@ -10,6 +11,7 @@
 #include <gemmi/it92.hpp>
 #include <gemmi/util.hpp>  // for is_in_list
 #include <gemmi/asudata.hpp>  // for ComplexCorrelation
+#include <gemmi/monlib.hpp>  // for ChemLink
 #include <linalg.h>
 
 static double draw() { return 10.0 * std::rand() / RAND_MAX - 5; }
@@ -182,4 +184,43 @@ TEST_CASE("vector_Vec3") {
   const double* x1 = &vec[1].x;
   auto offset = x1 - x0;
   CHECK_EQ(offset, 3);
+}
+
+TEST_CASE("ChemLink::calculate_score") {
+  // one fixed torsion (period 0) with target 180 deg; the atoms give 0 deg
+  gemmi::Residue res1, res2;
+  res1.name = "AAA";
+  res2.name = "BBB";
+  auto add_atom = [](gemmi::Residue& res, const char* name, double x, double z) {
+    gemmi::Atom atom;
+    atom.name = name;
+    atom.pos = gemmi::Position(x, 0, z);
+    res.atoms.push_back(atom);
+  };
+  add_atom(res1, "C1", 1, 0);
+  add_atom(res1, "C2", 0, 0);
+  add_atom(res2, "C3", 0, 1);
+  add_atom(res2, "C4", 1, 1);
+  gemmi::ChemLink link;
+  link.side1.comp = "AAA";  // specificity of both sides together: 6
+  link.side2.comp = "BBB";
+  gemmi::Restraints::Torsion tor;
+  tor.id1 = {1, "C1"};
+  tor.id2 = {1, "C2"};
+  tor.id3 = {2, "C3"};
+  tor.id4 = {2, "C4"};
+  tor.value = 180;
+  tor.period = 0;
+  auto score = [&](double esd) {
+    tor.esd = esd;
+    link.rt.torsions.assign(1, tor);
+    return link.calculate_score(res1, &res2, '\0', '\0', nullptr, nullptr);
+  };
+  CHECK(score(60.) == 3);    // z = 3
+  CHECK(score(3.) == -54);   // z = 60
+  // esd = 0 (the default), a tiny esd and a missing esd (NaN) make z huge or
+  // NaN; the penalty must stay bounded instead of ending up near INT_MIN
+  CHECK(score(0.) == -94);
+  CHECK(score(1e-9) == -94);
+  CHECK(score(NAN) == -94);
 }
