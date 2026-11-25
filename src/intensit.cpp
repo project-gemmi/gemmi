@@ -234,12 +234,19 @@ Intensities::calculate_merging_stats(const Binner* binner, char use_weights) con
   double sum_wI = 0;
   double sum_wIsq = 0;
   double sum_w = 0;
+  double sum_ivw = 0;   // inverse-variance weights, as in merge_in_place()
+  double sum_ivwI = 0;
   int nobs = 0;
 
   auto process_equivalent_refl = [&](const Refl* end) {
     MergingStats& ms = stats[binner ? binner->get_bin_hinted(hkl, bin_hint) : 0];
     ms.all_refl += nobs;
     ms.unique_refl++;
+    double merged_i = sum_ivwI / sum_ivw;
+    double merged_sigma = 1.0 / std::sqrt(sum_ivw);
+    ms.sum_merged_i += merged_i;
+    ms.sum_merged_sigma += merged_sigma;
+    ms.sum_merged_i_over_sigma += merged_i / merged_sigma;
     if (nobs <= 1)
       return;
     ms.stats_refl++;
@@ -268,10 +275,15 @@ Intensities::calculate_merging_stats(const Binner* binner, char use_weights) con
       sum_wI = 0;
       sum_wIsq = 0;
       sum_w = 0;
+      sum_ivw = 0;
+      sum_ivwI = 0;
       nobs = 0;
     }
     sum_I += refl.value;
-    double w = use_weights == 'U' ? 1. : 1 / sq(refl.sigma);
+    double ivw = 1 / sq(refl.sigma);
+    sum_ivw += ivw;
+    sum_ivwI += ivw * refl.value;
+    double w = use_weights == 'U' ? 1. : ivw;
     sum_wI += w * refl.value;
     sum_wIsq += w * sq(refl.value);
     sum_w += w;
