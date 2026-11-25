@@ -384,7 +384,11 @@ Grid<T> transform_f_phi_to_map(const FPhi& fphi,
   } else {
     size = get_size_for_hkl(fphi, size, sample_rate);
   }
-  return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(fphi, size, true, order));
+  // A half-l grid stores l = 0..n/2 only, and transform_f_phi_grid_to_map()
+  // takes its full size along l as 2*(nw-1), which is right only for even n.
+  // get_size_for_hkl() always gives even sizes, but exact_size may be odd.
+  bool half_l = size[2] % 2 == 0;
+  return transform_f_phi_grid_to_map(get_f_phi_on_grid<T>(fphi, size, half_l, order));
 }
 
 /// @brief Convert F,phi to map, supporting both minimum and exact size specifications.
