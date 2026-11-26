@@ -1370,6 +1370,10 @@ The last property is the sequence from the PDB SEQRES record
 (or its mmCIF equivalent).
 More details in the :ref:`next section <sequence>`.
 
+`Entity.description` and `Entity.src_method` correspond to `_entity.pdbx_description`
+and `_entity.src_method` in mmCIF. They are read from mmCIF files (and written back
+if set); otherwise they are empty strings.
+
 `Residue.entity_type` can be used to determine what should `Residue.het_flag`
 be, based on the rules from the official PDB spec
 (i.e. non-standard residues are marked as HETATM even in a polymer).
