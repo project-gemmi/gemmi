@@ -114,21 +114,22 @@ void DsspCalculator::calculate_hydrogen_bonds(NeighborSearch& ns, Topo::ChainInf
 
 static Position calculate_h_pos(Topo::ResInfo* donor, const Atom* donor_n, HydrogenMode h_mode) {
 
+  // A residue can lack an atom named H even when hydrogens are present,
+  // e.g. an N-terminus with H1, H2 and H3. Then H is calculated.
+  if (h_mode == HydrogenMode::Existing)
+    if (const Atom* h = donor->res->find_atom("H", '*', El::H))
+      return h->pos;
   Position h_pos = donor_n->pos;
-  if (h_mode == HydrogenMode::Existing) {
-    h_pos = donor->res->find_atom("H", '*', El::H)->pos;
-  } else { // HydrogenMode::Calculate
-    if (!donor->prev.empty()) {
-      if (Residue* prev  = donor->prev[0].res1) {
-        // Calculate hydrogen position from previous residue C-O vector
-        const Atom* prev_o = prev->find_atom("O", '*', El::O);
-        const Atom* prev_c = prev->get_c();
-        if (prev_o && prev_c) {
-          // official DSSP implementation assumes that N-H vector is a normalized
-          // O-C of the previous residue
-          Vec3 prev_co = (prev_o->pos - prev_c->pos).normalized();
-          h_pos -= Position(prev_co);
-        }
+  if (!donor->prev.empty()) {
+    if (Residue* prev  = donor->prev[0].res1) {
+      // Calculate hydrogen position from previous residue C-O vector
+      const Atom* prev_o = prev->find_atom("O", '*', El::O);
+      const Atom* prev_c = prev->get_c();
+      if (prev_o && prev_c) {
+        // official DSSP implementation assumes that N-H vector is a normalized
+        // O-C of the previous residue
+        Vec3 prev_co = (prev_o->pos - prev_c->pos).normalized();
+        h_pos -= Position(prev_co);
       }
     }
   }
