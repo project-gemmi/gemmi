@@ -22,6 +22,7 @@
 #include <gemmi/smcif.hpp>     // for make_small_structure_from_block
 #include <gemmi/solmask.hpp>   // for SolventMasker
 #include <gemmi/read_cif.hpp>  // for read_cif_gz
+#include <gemmi/mmcif.hpp>     // for make_structure
 #include <gemmi/mmread_gz.hpp> // for read_structure_gz
 #include "timer.h"             // for Timer
 
@@ -853,13 +854,23 @@ void process_with_table(bool use_st, gemmi::Structure& st, const gemmi::SmallStr
 
 void process(const std::string& input, const OptParser& p) {
   // read (Small)Structure
-  gemmi::Structure st = gemmi::read_structure_gz(input);
+  gemmi::Structure st;
   gemmi::SmallStructure small;
-  bool use_st = !st.models.empty();
+  bool small_cif = false;
+  if (gemmi::giends_with(input, ".cif")) {
+    gemmi::cif::Document doc = gemmi::read_cif_gz(input);
+    // a small-molecule CIF has atom sites without _atom_site.Cartn_x
+    if (!doc.blocks.empty() && !doc.blocks[0].has_tag("_atom_site.Cartn_x")) {
+      small = gemmi::make_small_structure_from_block(doc.sole_block());
+      small_cif = true;
+    } else {
+      st = gemmi::make_structure(std::move(doc));
+    }
+  } else {
+    st = gemmi::read_structure_gz(input);
+  }
+  bool use_st = !small_cif && !st.models.empty();
   if (!use_st) {
-    if (gemmi::giends_with(input, ".cif"))
-      small = gemmi::make_small_structure_from_block(
-                                gemmi::read_cif_gz(input).sole_block());
     if (small.sites.empty() ||
         // COD can have a row of nulls as a placeholder (e.g. 2211708)
         (small.sites.size() == 1 && small.sites[0].element == gemmi::El::X))
