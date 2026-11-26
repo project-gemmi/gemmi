@@ -1253,6 +1253,13 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
   }
 
   read_atom_sites(block, st);
+  // A small-molecule CIF has atom sites with fractional coordinates and no
+  // _atom_site.Cartn_x. Reading it here would give an empty Structure.
+  if (st.models.empty() &&
+      (block.has_tag("_atom_site_fract_x") || block.has_tag("_atom_site.fract_x")))
+    fail("block ", block.name, " has no _atom_site.Cartn_x, but has fractional"
+         " coordinates (_atom_site_fract_x). If it is a small-molecule CIF,"
+         " read it with read_small_structure() or make_small_structure_from_block().");
   read_entity_and_sequence_info(block, st);
   fill_residue_entity_type(st);
   st.setup_cell_images();

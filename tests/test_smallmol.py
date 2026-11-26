@@ -19,6 +19,15 @@ class TestRealCif(unittest.TestCase):
         self.assertEqual(len(sic.get_all_unit_cell_sites()), 8)
         self.assertEqual(4 * sic.sites[1].orth(sic.cell).x, sic.cell.a)
 
+    def test_read_structure_on_small_molecule_cif(self):
+        # used to return an empty Structure without any message (#452)
+        path = full_path('1011031.cif')
+        with self.assertRaisesRegex(RuntimeError, 'read_small_structure'):
+            gemmi.read_structure(path)
+        block = gemmi.cif.read(path).sole_block()
+        with self.assertRaisesRegex(RuntimeError, 'read_small_structure'):
+            gemmi.make_structure_from_block(block)
+
     def test_fen4(self):
         path = full_path('2242624.cif')
         small = gemmi.read_small_structure(path)
