@@ -20,7 +20,7 @@ NB_MAKE_OPAQUE(std::vector<FlatAtom>)
 
 void add_small(nb::module_& m) {
   // from smcif.hpp
-  m.def("read_small_structure", [](const std::string& path) {
+  m.def("read_small_structure", [](const FilePath& path) {
           cif::Block block = read_cif_gz(path).sole_block();
           return new SmallStructure(make_small_structure_from_block(block));
         }, nb::arg("path"), "Reads a small molecule CIF file.");
@@ -28,8 +28,9 @@ void add_small(nb::module_& m) {
         nb::arg("block"), "Takes CIF block and returns SmallStructure.");
 
   // and an unrelated function from gz.hpp
-  m.def("estimate_uncompressed_size", &estimate_uncompressed_size,
-        nb::arg("path"),
+  m.def("estimate_uncompressed_size", [](const FilePath& path) {
+          return estimate_uncompressed_size(path);
+        }, nb::arg("path"),
         "Returns uncompressed size of a .gz file (not always reliable)");
 
   using gemmi::SmallStructure;
