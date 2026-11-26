@@ -59,7 +59,7 @@ struct Bridge {
 
 /// @brief Source of hydrogen atoms for hydrogen bond detection.
 enum class HydrogenMode {
-  Existing = 0,  /// Use hydrogen atoms already present in the structure
+  Existing = 0,  /// Use hydrogen atoms already present in the structure (H is calculated for residues without an atom named H)
   Calculate      /// Compute idealized hydrogen positions (original DSSP method, for structures lacking explicit H)
 };
 
