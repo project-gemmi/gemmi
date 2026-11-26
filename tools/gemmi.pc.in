@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+
+Name: gemmi
+Description: Macromolecular crystallography library
+URL: https://gemmi.readthedocs.io/
+Version: @GEMMI_VERSION_PC@
+Requires: zlib
+@GEMMI_PC_REQUIRES_PRIVATE@
+Libs: -L${libdir} -lgemmi_cpp
+Cflags: -I${includedir}
