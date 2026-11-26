@@ -458,5 +458,21 @@ class TestReciprocalGrid(unittest.TestCase):
                 self.assertEqual(grid_changed, not copy,
                                  msg=f'for {dtype=} {copy=} {new_val=}, {grid.array[0,0,0]=}')
 
+    @unittest.skipIf(numpy is None, 'requires NumPy')
+    def test_transform_f_phi_to_map_with_odd_exact_size(self):
+        # map -> (F, phi) -> map at the same exact size, odd sizes included
+        cell = gemmi.UnitCell(23, 27, 31, 90, 90, 90)
+        waves = [(1, 0, 0, 0.3), (0, 2, 1, 1.1), (3, -1, 2, 2.0), (-2, 3, -3, 0.7)]
+        for size in ([10, 12, 14], [10, 12, 13], [9, 11, 13], [9, 11, 14]):
+            u, v, w = numpy.meshgrid(*[numpy.arange(n) / n for n in size],
+                                     indexing='ij')
+            arr = sum(numpy.cos(2 * numpy.pi * (h * u + k * v + l * w) + p)
+                      for h, k, l, p in waves).astype(numpy.float32)
+            m = gemmi.FloatGrid(arr, cell, gemmi.SpaceGroup('P 1'))
+            asu_data = gemmi.transform_map_to_f_phi(m).prepare_asu_data()
+            m2 = asu_data.transform_f_phi_to_map(exact_size=size)
+            self.assertEqual(m2.array.shape, tuple(size))
+            compare_maps(self, m2, arr, atol=1e-5)
+
 if __name__ == '__main__':
     unittest.main()
