@@ -2,6 +2,7 @@
 
 #include "gemmi/assembly.hpp"
 
+#include <cmath>              // INFINITY
 #include <memory>             // unique_ptr
 #include "gemmi/modify.hpp"   // transform_pos_and_adp
 #include "gemmi/neighbor.hpp" // NeighborSearch
@@ -214,13 +215,60 @@ void expand_ncs_model_(Model& model, const std::vector<NcsOp>& ncs,
 }
 
 
+// After expansion, the copies of an atom have the same serial number.
+// Each CONECT bond is added to every copy of its first atom, with the nearest
+// atom that has the serial number of the second atom (the bonded atom in
+// the same copy, or the merged atom on a special position).
+// Then serial numbers are made unique and the CONECT map is updated.
+// Serial numbers include numbered TER records, as written by default
+// by the PDB writer, so that CONECT records refer to the written atoms.
+void copy_conect_to_expanded_model(Structure& st) {
+  Model& model = st.models.at(0);
+  std::map<int, std::vector<Atom*>> by_serial;
+  for (Chain& chain : model.chains)
+    for (Residue& res : chain.residues)
+      for (Atom& atom : res.atoms)
+        by_serial[atom.serial].push_back(&atom);
+  std::vector<std::pair<Atom*, Atom*>> bonds;
+  for (const auto& item : st.conect_map) {
+    auto atoms1 = by_serial.find(item.first);
+    if (atoms1 == by_serial.end())
+      continue;
+    for (int serial2 : item.second) {
+      auto atoms2 = by_serial.find(serial2);
+      if (atoms2 == by_serial.end())
+        continue;
+      for (Atom* a1 : atoms1->second) {
+        Atom* nearest = nullptr;
+        double min_dist_sq = INFINITY;
+        for (Atom* a2 : atoms2->second) {
+          double dist_sq = a1->pos.dist_sq(a2->pos);
+          if (a2 != a1 && dist_sq < min_dist_sq) {
+            min_dist_sq = dist_sq;
+            nearest = a2;
+          }
+        }
+        if (nearest)
+          bonds.emplace_back(a1, nearest);
+      }
+    }
+  }
+  assign_serial_numbers(st, /*numbered_ter=*/true);
+  st.conect_map.clear();
+  for (const auto& bond : bonds)
+    st.add_conect_one_way(bond.first->serial, bond.second->serial, 1);
+}
+
 void finalize_expansion(Structure& st, const AssemblyMapping& mapping,
                         double merge_dist, bool expanding_ncs) {
   if (merge_dist > 0)
-    for (Model& model : st.models) {
+    for (Model& model : st.models)
       merge_atoms_in_expanded_model(model, gemmi::UnitCell(), merge_dist);
+  if (!st.conect_map.empty() && !st.models.empty())
+    copy_conect_to_expanded_model(st);
+  else if (merge_dist > 0)
+    for (Model& model : st.models)
       assign_serial_numbers(model);
-    }
 
   // update Entity::subchains
   if (!mapping.sub.empty())
