@@ -667,6 +667,14 @@ class TestMol(unittest.TestCase):
         self.check_1pfe(st)
         mmcif_doc = st.make_mmcif_document()
 
+        # the one-letter sequences are written as in the PDB entry:
+        # '(DG)(DC)(DG)(DT)(DA)(DC)(DG)(DC)' and '(DSN)A(N2C)(MVA)(DSN)A(NCY)(MVA)'
+        tag = '_entity_poly.pdbx_seq_one_letter_code'
+        in_block = gemmi.cif.read(full_path('1pfe.cif.gz')).sole_block()
+        def seqs(block):
+            return [gemmi.cif.as_string(v) for v in block.find_values(tag)]
+        self.assertEqual(seqs(mmcif_doc.sole_block()), seqs(in_block))
+
         # write structure to cif file and read it back
         out_name = get_path_for_tempfile(suffix='.cif')
         mmcif_doc.write_file(out_name)

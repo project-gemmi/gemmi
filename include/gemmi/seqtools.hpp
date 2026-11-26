@@ -48,17 +48,19 @@ inline std::string one_letter_code(const std::vector<std::string>& seq) {
 /// @brief Convert sequence to PDBx format with non-standard residues in parentheses.
 /// @details Returns the format used in _entity_poly.pdbx_seq_one_letter_code,
 /// in which non-standard amino acids/nucleotides are represented by CCD codes
-/// in parentheses, e.g. AA(MSE)H.
+/// in parentheses, e.g. AA(MSE)H. As in PDB entries, deoxynucleotides are
+/// always in parentheses, e.g. (DG)(DC)(DA).
 /// @param seq Vector of residue names (3-letter codes)
 /// @param kind Type of residue (AA, DNA, RNA) to filter
-/// @return String with single-letter codes for standard residues and (CCD) for non-standard
+/// @return String with single-letter codes for standard amino acids and
+///         ribonucleotides of the given kind and (CCD) for other residues
 inline std::string pdbx_one_letter_code(const std::vector<std::string>& seq,
                                         ResidueKind kind) {
   std::string r;
   for (const std::string& item : seq) {
     std::string code = Entity::first_mon(item);
     const ResidueInfo ri = find_tabulated_residue(code);
-    if (ri.is_standard() && ri.kind == kind)
+    if (ri.is_standard() && ri.kind == kind && kind != ResidueKind::DNA)
       r += ri.one_letter_code;
     else
       cat_to(r, '(', code, ')');
