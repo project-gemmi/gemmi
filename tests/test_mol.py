@@ -1252,6 +1252,46 @@ class TestMol(unittest.TestCase):
         st.transform_to_assembly('1', how)
         self.assertEqual([ch.name for ch in st[0]], ['A', 'B', 'A', 'B'])
 
+    def test_assembly_conect(self):
+        # CONECT records are copied to each copy in the assembly (#388)
+        pdb = """\
+REMARK 350 BIOMOLECULE: 1
+REMARK 350 APPLY THE FOLLOWING TO CHAINS: A, B
+REMARK 350   BIOMT1   1  1.000000  0.000000  0.000000        0.00000
+REMARK 350   BIOMT2   1  0.000000  1.000000  0.000000        0.00000
+REMARK 350   BIOMT3   1  0.000000  0.000000  1.000000        0.00000
+REMARK 350   BIOMT1   2 -1.000000  0.000000  0.000000       20.00000
+REMARK 350   BIOMT2   2  0.000000 -1.000000  0.000000       20.00000
+REMARK 350   BIOMT3   2  0.000000  0.000000  1.000000        0.00000
+CRYST1   40.000   40.000   40.000  90.00  90.00  90.00 P 1
+ATOM      1  N   GLY A   1       5.000   8.000   2.000  1.00 20.00           N
+ATOM      2  CA  GLY A   1       6.400   8.000   2.000  1.00 20.00           C
+ATOM      3  C   GLY A   1       7.000   9.300   2.000  1.00 20.00           C
+ATOM      4  O   GLY A   1       6.300  10.300   2.000  1.00 20.00           O
+TER       5      GLY A   1
+HETATM    6  C1  LIG B   1       2.000   2.000   2.000  1.00 20.00           C
+HETATM    7  C2  LIG B   1       3.500   2.000   2.000  1.00 20.00           C
+HETATM    8  O3  LIG B   1       4.200   3.200   2.000  1.00 20.00           O
+CONECT    6    7
+CONECT    7    6    8
+CONECT    8    7
+"""
+        st = gemmi.read_pdb_string(pdb)
+        st.setup_entities()
+        st.transform_to_assembly('1', gemmi.HowToNameCopiedChain.AddNumber)
+        self.assertEqual(st[0].count_atom_sites(), 14)
+        out = st.make_pdb_string(gemmi.PdbWriteOptions(conect_records=True))
+        self.assertEqual(sum(line.startswith('CONECT') for line in out.splitlines()), 6)
+        # read it back: each CONECT record must connect the ligand atoms
+        st2 = gemmi.read_pdb_string(out)
+        cras = {cra.atom.serial: cra for cra in st2[0].all()}
+        self.assertEqual(len(cras), 14)  # serial numbers are unique
+        pairs = [(a, b) for a, partners in st2.conect_map.items() for b in partners]
+        self.assertEqual(len(pairs), 8)
+        for a, b in pairs:
+            self.assertEqual((cras[a].residue.name, cras[b].residue.name), ('LIG', 'LIG'))
+            self.assertLess(cras[a].atom.pos.dist(cras[b].atom.pos), 1.6)
+
     def test_hybrid36(self):
         st = gemmi.read_pdb_string(HY36_EXAMPLE)
         nums = [(cra.atom.serial, cra.residue.seqid.num) for cra in st[0].all()]
