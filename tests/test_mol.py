@@ -280,6 +280,69 @@ _refine_ls_shell.R_factor_R_free
 
 
 class TestMol(unittest.TestCase):
+    def test_mmcif_dbref_without_alignment(self):
+        source = '''
+data_example
+_entry.id EXMP
+_entity.id 1
+_entity.type polymer
+_struct_asym.id A
+_struct_asym.entity_id 1
+
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_asym_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 C CA . GLY A 1 1 1.0 2.0 3.0 1.0 20.0 1 A 1
+
+loop_
+_struct_ref.id
+_struct_ref.entity_id
+_struct_ref.db_name
+_struct_ref.db_code
+_struct_ref.pdbx_db_accession
+_struct_ref.pdbx_db_isoform
+ref_a 1 PDB ALIGNED ACC_A .
+ref_b 1 TEST 'LEGACY REF' 'ACC B' 2
+
+loop_
+_struct_ref_seq.align_id
+_struct_ref_seq.ref_id
+_struct_ref_seq.seq_align_beg
+_struct_ref_seq.seq_align_end
+_struct_ref_seq.db_align_beg
+_struct_ref_seq.db_align_end
+_struct_ref_seq.pdbx_auth_seq_align_beg
+_struct_ref_seq.pdbx_auth_seq_align_end
+aln1 ref_a 1 1 3 3 1 1
+'''
+        block = gemmi.cif.read_string(source).sole_block()
+        st = gemmi.make_structure_from_block(block)
+        st.update_mmcif_block(block)
+        for output in [block, st.make_mmcif_block(),
+                       pickle.loads(pickle.dumps(st)).make_mmcif_block()]:
+            lookup = {row.str(0): row.str(1)
+                      for row in output.find('_struct_ref.', ['id', 'db_code'])}
+            self.assertEqual(set(lookup.values()), {'ALIGNED', 'LEGACY REF'})
+            self.assertEqual([lookup[id_] for id_ in output.find_values('_struct_ref_seq.ref_id')],
+                             ['ALIGNED'])
+        self.assertIn('ALIGNED', st.make_pdb_string())
+        self.assertNotIn('LEGACY REF', st.make_pdb_string())
+
     def test_atom(self):
         atom = gemmi.Atom()
         atom.occ = 0.5

@@ -113,7 +113,7 @@ SERIALIZE(Entity, o.name, o.subchains, o.entity_type, o.polymer_type,
 
 SERIALIZE(Entity::DbRef, o.db_name, o.accession_code, o.id_code,
           o.isoform, o.seq_begin, o.seq_end, o.db_begin, o.db_end,
-          o.label_seq_begin, o.label_seq_end)
+          o.label_seq_begin, o.label_seq_end, o.has_alignment)
 
 SERIALIZE(SiftsUnpResidue, o.res, o.acc_index, o.num)
 

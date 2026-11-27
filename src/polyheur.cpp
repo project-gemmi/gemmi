@@ -283,7 +283,8 @@ void ensure_entities(Structure& st) {
 }
 
 static bool operator==(const Entity::DbRef& a, const Entity::DbRef& b) {
-  return a.db_name == b.db_name &&
+  return a.has_alignment == b.has_alignment &&
+         a.db_name == b.db_name &&
          a.id_code == b.id_code &&
          a.isoform == b.isoform &&
          a.seq_begin == b.seq_begin && a.seq_end == b.seq_end &&
