@@ -50,6 +50,8 @@ struct PdbWriteOptions {
   bool use_link_id = false;
   /// @brief Use atom serial numbers from Atom::serial. If false, generate new serial numbers.
   bool preserve_serial = false;
+  /// @brief Numbering of symmetry operations in symmetry codes (SSBOND, LINK).
+  SymopNumbering symop_numbering = SymopNumbering::PDB;
   // end of snippet for mol.rst
 
   /// @brief Factory method: create options for minimal output.

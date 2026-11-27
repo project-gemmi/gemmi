@@ -239,7 +239,13 @@ void add_unitcell(nb::module_& m) {
   nb::class_<NearestImage>(m, "NearestImage")
     .def("dist", &NearestImage::dist)
     .def("same_asu", &NearestImage::same_asu)
-    .def("symmetry_code", &NearestImage::symmetry_code, nb::arg("underscore")=true)
+    .def("symmetry_code", [](const NearestImage& self, bool underscore) {
+        return self.symmetry_code(underscore);
+    }, nb::arg("underscore")=true)
+    .def("symmetry_code", [](const NearestImage& self, bool underscore,
+                             const std::vector<int>& op_numbers) {
+        return self.symmetry_code(underscore, op_numbers);
+    }, nb::arg("underscore"), nb::arg("op_numbers"))
     .def_ro("sym_idx", &NearestImage::sym_idx)
     .def_prop_ro("pbc_shift", [](const NearestImage& self) {
         return nb::make_tuple(self.pbc_shift[0], self.pbc_shift[1], self.pbc_shift[2]);

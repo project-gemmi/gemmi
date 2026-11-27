@@ -390,7 +390,23 @@ void write_ncs_oper(const Structure& st, cif::Block& block) {
     add_op(op);
 }
 
-void write_struct_conn(const Structure& st, cif::Block& block) {
+// The list of symmetry operations that symmetry codes (n_klm) refer to.
+// A list from the input (_symmetry_equiv or _space_group_symop) is removed,
+// because it may use another numbering.
+void write_symop_list(const Structure& st, cif::Block& block, SymopNumbering numbering) {
+  block.find_mmcif_category("_space_group_symop.").erase();
+  const SpaceGroup* sg = st.find_spacegroup();
+  if (!sg || !st.cell.is_crystal()) {
+    block.find_mmcif_category("_symmetry_equiv.").erase();
+    return;
+  }
+  cif::Loop& loop = block.init_mmcif_loop("_symmetry_equiv.", {"id", "pos_as_xyz"});
+  int n = 0;
+  for (const Op& op : symops_in_order(*sg, numbering))
+    loop.add_row({std::to_string(++n), op.triplet()});
+}
+
+void write_struct_conn(const Structure& st, cif::Block& block, SymopNumbering numbering) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
   std::array<bool,(int)Connection::Type::Unknown+1> type_ids{};
@@ -409,6 +425,9 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
        "details", "pdbx_dist_value"});
   if (use_ccp4_link_id)
     conn_loop.tags.push_back("_struct_conn.ccp4_link_id");
+  std::vector<int> op_numbers;
+  if (const SpaceGroup* sg = st.find_spacegroup())
+    op_numbers = symop_numbers(*sg, numbering);
   for (const Connection& con : st.connections) {
     const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
     const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
@@ -419,7 +438,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     std::string im_pdb_symbol = "?", im_dist_str = "?";
     if (at1 && at2) {
       NearestImage im = st.cell.find_nearest_image(at1->pos, at2->pos, con.asu);
-      im_pdb_symbol = im.symmetry_code(true);
+      im_pdb_symbol = im.symmetry_code(true, op_numbers);
       im_dist_str = to_str_prec<4>(im.dist());
     }
     auto& v = conn_loop.values;
@@ -633,6 +652,13 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     if (const SpaceGroup* sg = st.find_spacegroup())
       span.set_pair("_symmetry.Int_Tables_number", std::to_string(sg->number));
   }
+  // The list of operations is replaced only together with _struct_conn,
+  // which refers to it; a list or _struct_conn from the input is kept.
+  if (groups.conn ||
+      (groups.symmetry && !block.find_mmcif_category("_symmetry_equiv.").ok() &&
+       !block.find_mmcif_category("_space_group_symop.").ok() &&
+       !block.find_mmcif_category("_struct_conn.").ok()))
+    write_symop_list(st, block, groups.symop_numbering);
 
   if (groups.entity) {
     cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
@@ -1257,7 +1283,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     write_assemblies(st, block);
 
   if (groups.conn)
-    write_struct_conn(st, block);
+    write_struct_conn(st, block, groups.symop_numbering);
 
   if (groups.cis)  // _struct_mon_prot_cis
     write_cispeps(st, block);

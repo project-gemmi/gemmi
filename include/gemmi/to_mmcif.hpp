@@ -87,6 +87,11 @@ struct MmcifOutputGroups {
   bool group_pdb:1;
   /// @brief Write authentic atom and component IDs (_atom_site.auth_atom_id and auth_comp_id).
   bool auth_all:1;
+  /// @brief Numbering of symmetry operations in symmetry codes (_struct_conn)
+  /// and in the list of operations (_symmetry_equiv). The list is written for
+  /// crystal structures with _struct_conn (conn), or with symmetry if the block
+  /// has no list and no _struct_conn.
+  SymopNumbering symop_numbering = SymopNumbering::PDB;
 
   /// @brief Constructor initializing all groups to the same value.
   /// @param all Set all groups to true (write everything) or false (write nothing).
@@ -141,7 +146,9 @@ GEMMI_DLL void write_ncs_oper(const Structure& st, cif::Block& block);
 /// @brief Write chemical connectivity information to an mmCIF block.
 /// @param st The Structure containing connection definitions.
 /// @param block The mmCIF block to populate with _struct_conn items.
-GEMMI_DLL void write_struct_conn(const Structure& st, cif::Block& block);
+/// @param numbering Numbering of symmetry operations in symmetry codes.
+GEMMI_DLL void write_struct_conn(const Structure& st, cif::Block& block,
+                                 SymopNumbering numbering=SymopNumbering::PDB);
 
 /// @brief Write cis-peptide information to an mmCIF block.
 /// @param st The Structure containing cis-peptide annotations.

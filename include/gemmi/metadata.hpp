@@ -351,7 +351,10 @@ struct Connection {
   Asu asu = Asu::Any;          ///< Asymmetric unit relationship
   AtomAddress partner1, partner2; ///< Two atoms in the connection
   double reported_distance = 0.0; ///< Distance from coordinate file (Ångströms)
-  short reported_sym[4] = {};  ///< Symmetry operator (for internal use, unreliable)
+  /// Symmetry operator from the file (for internal use, unreliable): operator
+  /// number as numbered in the file (normally the PDB numbering, see
+  /// symop_numbers(), not the index of UnitCell::images) and the shifts.
+  short reported_sym[4] = {};
 };
 
 /// @brief Cis peptide bond annotation.

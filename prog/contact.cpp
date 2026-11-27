@@ -120,6 +120,10 @@ void print_contacts(Structure& st, const ContactParameters& params) {
   std::multimap<double, std::string> lines;
   char buf[256];
   std::vector<std::string> image_triplets;
+  // symmetry operations are numbered as in the PDB
+  std::vector<int> op_numbers;
+  if (const SpaceGroup* sg = st.find_spacegroup())
+    op_numbers = gemmi::symop_numbers(*sg, gemmi::SymopNumbering::PDB);
   if (params.print_only_images)
     if (const SpaceGroup* sg = st.find_spacegroup()) {
       GroupOps gops = sg->operations();
@@ -136,7 +140,7 @@ void print_contacts(Structure& st, const ContactParameters& params) {
       if (!params.no_symmetry) {
         im = st.cell.find_nearest_pbc_image(cra1.atom->pos, cra2.atom->pos, image_idx);
         sym1 = "1555";
-        sym2 = im.symmetry_code(false);
+        sym2 = im.symmetry_code(false, op_numbers);
       }
       std::string conn_info;
       if (params.print_only_images) {

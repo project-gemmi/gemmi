@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import math
+import os
 import pickle
 import random
 import unittest
@@ -459,6 +460,57 @@ class TestSymmetry(unittest.TestCase):
             sgtbx_ops = gemmi.symops_from_hall(sgtbx_group.hall_symbol())
             gemmi_ops = gemmi.SpaceGroup(s).operations()
             self.assertEqual(sgtbx_ops, gemmi_ops)
+
+    def test_symop_numbering(self):
+        def ops(triplets):
+            return [gemmi.Op(t.lower()).wrap() for t in triplets.split()]
+        # PDB order (REMARK 290) of the space-group settings used in the PDB
+        path = os.path.join(os.path.dirname(__file__), 'pdb_symops.txt')
+        n_settings = 0
+        with open(path) as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                name, alpha, gamma, triplets = line.rstrip('\n').split('|')
+                sg = gemmi.find_spacegroup_by_name(name, float(alpha), float(gamma))
+                pdb_ops = ops(triplets)
+                msg = name
+                self.assertEqual(sg.symops_in_order(gemmi.SymopNumbering.PDB),
+                                 pdb_ops, msg=msg)
+                numbers = sg.symop_numbers(gemmi.SymopNumbering.PDB)
+                for op, k in zip(sg.operations(), numbers):
+                    self.assertEqual(op, pdb_ops[k-1], msg=msg)
+                n_settings += 1
+        self.assertEqual(n_settings, 91)
+        # general positions in ITA (2016)
+        ita = {
+            'P 1 21/c 1': 'x,y,z -x,y+1/2,-z+1/2 -x,-y,-z x,-y+1/2,z+1/2',
+            'P -4 21 m': 'x,y,z -x,-y,z y,-x,-z -y,x,-z -x+1/2,y+1/2,-z '
+                         'x+1/2,-y+1/2,-z -y+1/2,-x+1/2,z y+1/2,x+1/2,z',
+            'P n n n:1': 'x,y,z -x,-y,z -x,y,-z x,-y,-z -x+1/2,-y+1/2,-z+1/2 '
+                         'x+1/2,y+1/2,-z+1/2 x+1/2,-y+1/2,z+1/2 -x+1/2,y+1/2,z+1/2',
+            'R -3 m:R': 'x,y,z z,x,y y,z,x -z,-y,-x -y,-x,-z -x,-z,-y '
+                        '-x,-y,-z -z,-x,-y -y,-z,-x z,y,x y,x,z x,z,y',
+            'I -4 2 d': 'x,y,z -x,-y,z y,-x,-z -y,x,-z -x+1/2,y,-z+3/4 '
+                        'x+1/2,-y,-z+3/4 -y+1/2,-x,z+3/4 y+1/2,x,z+3/4 '
+                        'x+1/2,y+1/2,z+1/2 -x+1/2,-y+1/2,z+1/2 y+1/2,-x+1/2,-z+1/2 '
+                        '-y+1/2,x+1/2,-z+1/2 -x,y+1/2,-z+1/4 x,-y+1/2,-z+1/4 '
+                        '-y,-x+1/2,z+1/4 y,x+1/2,z+1/4',
+        }
+        for name, triplets in ita.items():
+            sg = gemmi.find_spacegroup_by_name(name)
+            self.assertEqual(sg.symops_in_order(gemmi.SymopNumbering.ITA),
+                             ops(triplets), msg=name)
+        # each convention numbers all operations of every setting
+        for sg in gemmi.spacegroup_table():
+            expected = sorted(op.triplet() for op in sg.operations())
+            for numbering in (gemmi.SymopNumbering.Gemmi, gemmi.SymopNumbering.ITA,
+                              gemmi.SymopNumbering.PDB):
+                in_order = sg.symops_in_order(numbering)
+                self.assertEqual(sorted(op.triplet() for op in in_order), expected)
+                numbers = sg.symop_numbers(numbering)
+                self.assertEqual([in_order[k-1] for k in numbers],
+                                 list(sg.operations()))
 
 if __name__ == '__main__':
     unittest.main()
