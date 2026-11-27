@@ -501,11 +501,25 @@ class TestSymmetry(unittest.TestCase):
             sg = gemmi.find_spacegroup_by_name(name)
             self.assertEqual(sg.symops_in_order(gemmi.SymopNumbering.ITA),
                              ops(triplets), msg=name)
+        # CCP4 order (syminfo.lib of CCP4 9.0)
+        ccp4 = {
+            'P 4 3 2': 'x,y,z -y,x,z -x,-y,z y,-x,z x,-y,-z y,x,-z -x,y,-z -y,-x,-z '
+                       'z,x,y -x,z,y -z,-x,y x,-z,y z,-x,-y x,z,-y -z,x,-y -x,-z,-y '
+                       'y,z,x y,-z,-x z,y,-x -y,z,-x -z,-y,-x -y,-z,x z,-y,x -z,y,x',
+            'F 2 m m': 'x,y,z x,-y,-z x,-y,z x,y,-z '
+                       'x+1/2,y,z+1/2 x+1/2,-y,-z+1/2 x+1/2,-y,z+1/2 x+1/2,y,-z+1/2 '
+                       'x+1/2,y+1/2,z x+1/2,-y+1/2,-z x+1/2,-y+1/2,z x+1/2,y+1/2,-z '
+                       'x,y+1/2,z+1/2 x,-y+1/2,-z+1/2 x,-y+1/2,z+1/2 x,y+1/2,-z+1/2',
+        }
+        for name, triplets in ccp4.items():
+            sg = gemmi.find_spacegroup_by_name(name)
+            self.assertEqual(sg.symops_in_order(gemmi.SymopNumbering.CCP4),
+                             ops(triplets), msg=name)
         # each convention numbers all operations of every setting
         for sg in gemmi.spacegroup_table():
             expected = sorted(op.triplet() for op in sg.operations())
             for numbering in (gemmi.SymopNumbering.Gemmi, gemmi.SymopNumbering.ITA,
-                              gemmi.SymopNumbering.PDB):
+                              gemmi.SymopNumbering.PDB, gemmi.SymopNumbering.CCP4):
                 in_order = sg.symops_in_order(numbering)
                 self.assertEqual(sorted(op.triplet() for op in in_order), expected)
                 numbers = sg.symop_numbers(numbering)

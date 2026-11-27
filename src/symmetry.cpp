@@ -1424,6 +1424,57 @@ std::vector<Op> transformed_ita_ops(const SpaceGroup& sg, const GroupOps& gops) 
   return with_centring(first, gops.cen_ops);
 }
 
+// Order compatible with syminfo.lib of CCP4 9.0: the group is expanded from
+// the generators of the Hall symbol (that of the reference setting with the
+// change of basis), adding products of the operations found so far; the
+// inversion, if present, is applied at the end.
+std::vector<Op> ccp4_ops(const SpaceGroup& sg) {
+  std::string hall = sg.hall;
+  if (!sg.is_reference_setting())
+    if (const SpaceGroup* ref = reference_setting(sg))
+      hall = std::string(ref->hall) + " (" + sg.basisop().triplet() + ")";
+  GroupOps gen;
+  try {
+    gen = generators_from_hall(hall.c_str());
+  } catch (std::exception&) {
+    return {};
+  }
+  const Op::Rot inversion = Op::inversion_rot();
+  std::vector<Op> ops(1, Op::identity());
+  const Op* inv = nullptr;
+  for (const Op& g : gen.sym_ops) {
+    if (g.rot == inversion) {
+      inv = &g;
+      continue;
+    }
+    if (g == Op::identity())
+      continue;
+    Op trial = g;
+    trial.wrap();
+    size_t i = ops.size();
+    size_t j = 1;
+    for (;;) {
+      if (std::none_of(ops.begin(), ops.end(),
+                       [&](const Op& op) { return op.rot == trial.rot; }))
+        ops.push_back(trial);
+      if (j > i) {
+        ++i;
+        j = 1;
+      }
+      if (i == ops.size())
+        break;
+      trial = ops[j].combine(ops[i]).wrap();
+      ++j;
+    }
+  }
+  if (inv) {
+    size_t n = ops.size();
+    for (size_t k = 0; k != n; ++k)
+      ops.push_back(inv->combine(ops[k]).wrap());
+  }
+  return with_centring(ops, gen.cen_ops);
+}
+
 } // anonymous namespace
 
 std::vector<Op> symops_in_order(const SpaceGroup& sg, SymopNumbering numbering) {
@@ -1457,6 +1508,9 @@ std::vector<Op> symops_in_order(const SpaceGroup& sg, SymopNumbering numbering) 
       }
       break;
     }
+    case SymopNumbering::CCP4:
+      ops = ccp4_ops(sg);
+      break;
   }
   // fall back to gemmi's order if the result is not a permutation of operations()
   std::vector<Op> all = gops.all_ops_sorted();

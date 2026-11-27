@@ -1247,7 +1247,9 @@ enum class SymopNumbering : unsigned char {
   /// tabulated in ITA, except R 3 2 on rhombohedral axes; the PDB order for
   /// some other non-standard settings (e.g. P 2 21 21); otherwise the ITA
   /// order of rotations, with gemmi's translations.
-  PDB
+  PDB,
+  /// Compatible with syminfo.lib of CCP4 9.0 and programs that use it.
+  CCP4
 };
 
 /// @brief All operations of a space group (including centring) in the order

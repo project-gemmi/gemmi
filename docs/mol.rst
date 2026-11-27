@@ -1683,7 +1683,8 @@ conventions of ``SymopNumbering``:
   transformed list of the reference setting),
 * ``PDB`` -- the order used in the PDB (REMARK 290): as in ITA for the
   settings tabulated there, the PDB order for some non-standard settings,
-  otherwise the ITA order of rotations.
+  otherwise the ITA order of rotations,
+* ``CCP4`` -- compatible with :file:`syminfo.lib` of CCP4 9.0.
 
 .. doctest::
 

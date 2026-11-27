@@ -17,6 +17,7 @@ void add_symmetry(nb::module_& m) {
     .value("Gemmi", SymopNumbering::Gemmi)
     .value("ITA", SymopNumbering::ITA)
     .value("PDB", SymopNumbering::PDB)
+    .value("CCP4", SymopNumbering::CCP4)
     ;
   nb::enum_<CrystalSystem>(m, "CrystalSystem")
     .value("Triclinic", CrystalSystem::Triclinic)
