@@ -87,7 +87,10 @@ struct MmcifOutputGroups {
   bool group_pdb:1;
   /// @brief Write authentic atom and component IDs (_atom_site.auth_atom_id and auth_comp_id).
   bool auth_all:1;
-  /// @brief Numbering of symmetry operations in symmetry codes (_struct_conn).
+  /// @brief Numbering of symmetry operations in symmetry codes (_struct_conn)
+  /// and in the list of operations (_symmetry_equiv). The list is written for
+  /// crystal structures with _struct_conn (conn), or with symmetry if the block
+  /// has no list and no _struct_conn.
   SymopNumbering symop_numbering = SymopNumbering::PDB;
 
   /// @brief Constructor initializing all groups to the same value.

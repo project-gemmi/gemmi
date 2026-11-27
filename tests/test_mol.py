@@ -404,8 +404,10 @@ class TestMol(unittest.TestCase):
                     except (ValueError, TypeError):
                         pass
                     self.assertTrue(name+tag in mismatching, name+tag)
+        # added: the list of symmetry operations that symmetry codes refer to
         for name_out in cnames_out:
-            self.assertTrue(name_out in cnames)
+            if name_out != '_symmetry_equiv.':
+                self.assertTrue(name_out in cnames)
 
     def test_refinement_shells_and_restraints(self):
         block = gemmi.cif.read_string(REFINE_DETAILS)[0]
@@ -731,6 +733,40 @@ class TestMol(unittest.TestCase):
         link, = [line for line in st.make_pdb_string(opt).splitlines()
                  if line.startswith('LINK')]
         self.assertEqual(link[59:72], '  1555   3555')
+
+    def test_written_symop_list(self):
+        # The mmCIF writer lists the operations that symmetry codes refer to.
+        block = gemmi.cif.read(full_path('1pfe.cif.gz'))[0]
+        st = gemmi.make_structure_from_block(block)
+        out = st.make_mmcif_document()[0]
+        # 1pfe (P 63 2 2) uses 9_555 for -x,-x+y,-z
+        self.assertIn('9_555', out.find_values('_struct_conn.ptnr2_symmetry'))
+        symops = out.get_mmcif_category('_symmetry_equiv.')
+        self.assertEqual(len(symops['id']), 12)
+        self.assertEqual(symops['pos_as_xyz'][8], '-x,-x+y,-z')
+        # the same numbering as in the symmetry codes
+        groups = gemmi.MmcifOutputGroups(True,
+                                         symop_numbering=gemmi.SymopNumbering.Gemmi)
+        out = st.make_mmcif_document(groups)[0]
+        self.assertEqual(out.find_values('_symmetry_equiv.pos_as_xyz')[7],
+                         '-x,-x+y,-z')
+        # without _struct_conn, a list is not added to the input block...
+        no_conn = gemmi.MmcifOutputGroups(True, conn=False)
+        st.update_mmcif_block(block, no_conn)
+        self.assertFalse(block.find_mmcif_category('_symmetry_equiv.'))
+        # ... and a list from the input (that the input codes refer to) is kept
+        block.init_mmcif_loop('_space_group_symop.', ['id', 'operation_xyz'])
+        block.find_mmcif_category('_space_group_symop.').append_row(['1', 'x,y,z'])
+        st.update_mmcif_block(block, no_conn)
+        self.assertEqual(block.find_values('_space_group_symop.id').str(0), '1')
+        # with _struct_conn, the list is replaced
+        st.update_mmcif_block(block)
+        self.assertFalse(block.find_mmcif_category('_space_group_symop.'))
+        self.assertEqual(len(block.find_values('_symmetry_equiv.id')), 12)
+        # not written for a structure without a unit cell
+        st.cell = gemmi.UnitCell()
+        self.assertFalse(st.make_mmcif_document()[0]
+                         .find_mmcif_category('_symmetry_equiv.'))
 
     def test_read_1orc(self):
         st = gemmi.read_structure(full_path('1orc.pdb'))

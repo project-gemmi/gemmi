@@ -390,6 +390,22 @@ void write_ncs_oper(const Structure& st, cif::Block& block) {
     add_op(op);
 }
 
+// The list of symmetry operations that symmetry codes (n_klm) refer to.
+// A list from the input (_symmetry_equiv or _space_group_symop) is removed,
+// because it may use another numbering.
+void write_symop_list(const Structure& st, cif::Block& block, SymopNumbering numbering) {
+  block.find_mmcif_category("_space_group_symop.").erase();
+  const SpaceGroup* sg = st.find_spacegroup();
+  if (!sg || !st.cell.is_crystal()) {
+    block.find_mmcif_category("_symmetry_equiv.").erase();
+    return;
+  }
+  cif::Loop& loop = block.init_mmcif_loop("_symmetry_equiv.", {"id", "pos_as_xyz"});
+  int n = 0;
+  for (const Op& op : symops_in_order(*sg, numbering))
+    loop.add_row({std::to_string(++n), op.triplet()});
+}
+
 void write_struct_conn(const Structure& st, cif::Block& block, SymopNumbering numbering) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
@@ -636,6 +652,13 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     if (const SpaceGroup* sg = st.find_spacegroup())
       span.set_pair("_symmetry.Int_Tables_number", std::to_string(sg->number));
   }
+  // The list of operations is replaced only together with _struct_conn,
+  // which refers to it; a list or _struct_conn from the input is kept.
+  if (groups.conn ||
+      (groups.symmetry && !block.find_mmcif_category("_symmetry_equiv.").ok() &&
+       !block.find_mmcif_category("_space_group_symop.").ok() &&
+       !block.find_mmcif_category("_struct_conn.").ok()))
+    write_symop_list(st, block, groups.symop_numbering);
 
   if (groups.entity) {
     cif::Loop& entity_loop = block.init_mmcif_loop("_entity.", {"id", "type"});
