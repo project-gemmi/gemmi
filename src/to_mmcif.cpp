@@ -6,6 +6,7 @@
 #include <cmath>  // for isnan
 #include <set>
 #include <string>
+#include <tuple>
 #include <utility>  // std::pair
 
 #include <gemmi/atox.hpp>       // no_sign_atoi
@@ -586,9 +587,52 @@ void write_struct_sites(const Structure& st, cif::Block& block) {
   }
 }
 
-void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups) {
-  if (st.models.empty())
+// PDB SEQADV has no alignment key. Link only to an unambiguous DBREF
+// actually emitted for this strand, database and accession.
+using SeqAdvRefs = std::map<std::tuple<std::string, std::string, std::string>, std::string>;
+
+static void write_seqadv(const Structure& st, cif::Block& block, const SeqAdvRefs& refs) {
+  if (st.seqadv.empty()) {
+    block.find_mmcif_category("_struct_ref_seq_dif.").erase();
     return;
+  }
+  cif::Loop& loop = block.init_mmcif_loop("_struct_ref_seq_dif.", {
+      "align_id", "pdbx_pdb_id_code", "mon_id", "pdbx_pdb_strand_id",
+      "pdbx_auth_seq_num", "pdbx_pdb_ins_code", "pdbx_seq_db_name",
+      "pdbx_seq_db_accession_code", "db_mon_id", "pdbx_seq_db_seq_num",
+      "details", "seq_num", "pdbx_ordinal"});
+  std::set<int> ordinals;
+  for (const SeqAdv& adv : st.seqadv)
+    if (adv.ordinal)
+      ordinals.insert(*adv.ordinal);
+  int next = 0;
+  for (const SeqAdv& adv : st.seqadv) {
+    SeqId::OptionalNum ordinal = adv.ordinal;
+    if (!ordinal) {
+      while (ordinals.count(++next)) {}
+      ordinal = next;
+    }
+    std::string align_id = adv.align_id;
+    if (align_id.empty()) {
+      auto it = refs.find({adv.chain_name, adv.db_name, adv.db_accession});
+      if (it != refs.end())
+        align_id = it->second;
+    }
+    loop.add_row({string_or_qmark(align_id), string_or_qmark(adv.entry_id),
+                  string_or_dot(adv.mon_id), qchain(adv.chain_name),
+                  string_or_qmark(adv.auth_seq_num), string_or_qmark(adv.ins_code),
+                  string_or_qmark(adv.db_name), string_or_qmark(adv.db_accession),
+                  string_or_dot(adv.db_mon_id), string_or_dot(adv.db_seq_num),
+                  string_or_qmark(adv.details), adv.label_seq.str(), ordinal.str()});
+  }
+}
+
+void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroups groups) {
+  if (st.models.empty() && (st.seqadv.empty() || !groups.struct_ref)) {
+    if (groups.struct_ref)
+      block.find_mmcif_category("_struct_ref_seq_dif.").erase();
+    return;
+  }
 
   if (groups.block_name)
     block.name = is_valid_block_name(st.name) ? st.name : "model";
@@ -642,7 +686,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
   }
 
   std::map<std::string, std::string> subs_to_strands;
-  if (groups.entity_poly || groups.struct_ref)
+  if ((groups.entity_poly || groups.struct_ref) && !st.models.empty())
     subs_to_strands = st.models[0].subchain_to_chain();
 
   if (groups.entity_poly) {
@@ -685,6 +729,10 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
         "db_align_beg", "db_align_end",
         "pdbx_auth_seq_align_beg", "pdbx_seq_align_beg_ins_code",
         "pdbx_auth_seq_align_end", "pdbx_seq_align_end_ins_code"});
+    SeqAdvRefs adv_refs;
+    std::set<std::string> reserved_ids, reused_ids;
+    for (const SeqAdv& adv : st.seqadv)
+      reserved_ids.insert(adv.align_id);
     int counter = 0;
     int counter2 = 0;
     for (const Entity& ent : st.entities)
@@ -695,16 +743,14 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                           string_or_dot(dbref.id_code),
                           string_or_qmark(dbref.accession_code),
                           string_or_qmark(dbref.isoform)});
-        for (const std::string& subchain : ent.subchains) {
-          auto strand_id = subs_to_strands.find(subchain);
-          if (strand_id == subs_to_strands.end())
-            continue;
+        auto add_alignment = [&](const std::string& strand, const std::string* subchain,
+                                 std::string align_id) {
           // DbRef::label_seq_begin/end (_struct_ref_seq.seq_align_beg/end) is
           // not filled in when reading PDB file, so we check it here.
           Residue::OptionalNum label_begin = dbref.label_seq_begin;
           Residue::OptionalNum label_end = dbref.label_seq_end;
-          if (!label_begin || !label_end) {
-            ConstResidueSpan span = st.models[0].get_subchain(subchain);
+          if (subchain && (!label_begin || !label_end)) {
+            ConstResidueSpan span = st.models[0].get_subchain(*subchain);
             try {
               label_begin = span.auth_seq_id_to_label(dbref.seq_begin);
               label_end = span.auth_seq_id_to_label(dbref.seq_end);
@@ -712,16 +758,27 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
           }
           SeqId begin = dbref.seq_begin;
           SeqId end = dbref.seq_end;
-          if (!begin.num || !end.num) {
-            if (const Chain* chain = st.models[0].find_chain(strand_id->second))
+          if (subchain && (!begin.num || !end.num)) {
+            if (const Chain* chain = st.models[0].find_chain(strand))
               if (ConstResidueGroup polymer = chain->get_polymer()) {
                 begin = polymer.label_seq_id_to_auth(dbref.label_seq_begin);
                 end = polymer.label_seq_id_to_auth(dbref.label_seq_end);
               }
           }
-          seq_loop.add_row({std::to_string(++counter2),
+          if (align_id.empty()) {
+            do {
+              align_id = std::to_string(++counter2);
+            } while (reserved_ids.count(align_id));
+          }
+          if (!st.seqadv.empty()) {
+            auto key = std::make_tuple(strand, dbref.db_name, dbref.accession_code);
+            auto pos = adv_refs.emplace(key, align_id);
+            if (!pos.second)
+              pos.first->second.clear();  // ambiguous
+          }
+          seq_loop.add_row({cif::quote(align_id),
                             std::to_string(counter),
-                            qchain(strand_id->second),  // pdbx_strand_id
+                            qchain(strand),  // pdbx_strand_id
                             id,
                             label_begin.str(),
                             label_end.str(),
@@ -732,9 +789,32 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                             pdbx_icode(begin),
                             end.num.str(),
                             pdbx_icode(end)});
+        };
+        for (const std::string& subchain : ent.subchains) {
+          auto strand = subs_to_strands.find(subchain);
+          if (strand == subs_to_strands.end())
+            continue;
+          bool has_id = false;
+          for (const auto& orig : dbref.align_ids)
+            if (orig.second == strand->second && reserved_ids.count(orig.first)) {
+              has_id = true;
+              if (reused_ids.insert(orig.first).second)
+                add_alignment(strand->second, &subchain, orig.first);
+            }
+          if (!has_id)
+            add_alignment(strand->second, &subchain, {});
         }
+        // Only use archived strands in lieu of a model. With coordinates,
+        // respect the current strand names (a chain may have been renamed).
+        if (st.models.empty())
+          for (const auto& orig : dbref.align_ids)
+            if (reserved_ids.count(orig.first) && reused_ids.insert(orig.first).second)
+              add_alignment(orig.second, nullptr, orig.first);
       }
+    write_seqadv(st, block, adv_refs);
   }
+  if (st.models.empty())
+    return;
 
   if (groups.chem_comp) {
     std::set<std::string> resnames;

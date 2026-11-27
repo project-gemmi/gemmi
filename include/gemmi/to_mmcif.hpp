@@ -37,7 +37,7 @@ struct MmcifOutputGroups {
   bool entity:1;
   /// @brief Write polymer entity descriptions (_entity_poly category).
   bool entity_poly:1;
-  /// @brief Write structural reference information (_struct_ref category).
+  /// @brief Write structural references, alignments and sequence discrepancies.
   bool struct_ref:1;
   /// @brief Write chemical component information (_chem_comp category).
   bool chem_comp:1;

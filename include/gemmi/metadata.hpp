@@ -13,6 +13,7 @@
 
 #include <cstdint>       // for uint8_t, uint16_t
 #include <algorithm>     // for any_of
+#include <map>
 #include <string>
 #include <vector>
 #include "math.hpp"      // for Mat33
@@ -300,6 +301,7 @@ struct Entity {
     std::string isoform;              ///< Isoform identifier if applicable
     SeqId seq_begin, seq_end;         ///< PDB sequence number range
     SeqId db_begin, db_end;           ///< Database sequence number range
+    std::map<std::string, std::string> align_ids;  ///< Referenced mmCIF alignment ID to strand
     SeqId::OptionalNum label_seq_begin, label_seq_end; ///< mmCIF label_seq_id range
   };
   std::string name;                        ///< Entity name/description
@@ -362,6 +364,15 @@ struct CisPep {
   int model_num = 0;           ///< Model number (if per-model specificity)
   char only_altloc = '\0';     ///< Alternate location (if specific conformation)
   double reported_angle = NAN; ///< Omega dihedral angle (degrees)
+};
+
+/// An archived sequence discrepancy (PDB SEQADV / mmCIF _struct_ref_seq_dif).
+struct SeqAdv {
+  std::string entry_id, mon_id, chain_name;
+  std::string auth_seq_num, ins_code;  ///< mmCIF author numbers are codes, not integers.
+  std::string db_name, db_accession, db_mon_id, db_seq_num, details;
+  std::string align_id;                ///< Foreign key to _struct_ref_seq.
+  SeqId::OptionalNum label_seq, ordinal;  ///< mmCIF only.
 };
 
 /// @brief Modified residue annotation.

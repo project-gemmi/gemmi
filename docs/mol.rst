@@ -301,6 +301,7 @@ and mmCIF, unless noted otherwise:
 - REMARK 350
 - REMARK 800 / SITE
 - DBREF/DBREF1/DBREF2
+- SEQADV
 - SEQRES
 - MODRES
 - HET        (write-only)
@@ -1542,6 +1543,14 @@ PDB sequences (what appears in SEQRES record) and a corresponding database
 sequence". The database is usually UniProt or GenBank.
 In the mmCIF format the same information is provided in categories
 _struct_ref and _struct_ref_seq.
+
+Gemmi stores SEQADV records (mmCIF ``_struct_ref_seq_dif``) in
+``Structure.seqadv``. PDB has no field for the mmCIF label sequence number,
+row ordinal or alignment ID. When writing mmCIF from PDB, the alignment ID
+is set only if the strand, database and accession identify one output DBREF
+alignment. When writing PDB, a field that does not fit its fixed columns
+(for example a comment longer than 21 characters) raises an error rather
+than silently truncating the annotation.
 
 Alternative cross-referencing is available from the SIFTS project,
 which has been run in the EBI (PDBe) since 2000. According to the

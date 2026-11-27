@@ -113,7 +113,7 @@ SERIALIZE(Entity, o.name, o.subchains, o.entity_type, o.polymer_type,
 
 SERIALIZE(Entity::DbRef, o.db_name, o.accession_code, o.id_code,
           o.isoform, o.seq_begin, o.seq_end, o.db_begin, o.db_end,
-          o.label_seq_begin, o.label_seq_end)
+          o.label_seq_begin, o.label_seq_end, o.align_ids)
 
 SERIALIZE(SiftsUnpResidue, o.res, o.acc_index, o.num)
 
@@ -121,6 +121,10 @@ SERIALIZE(Connection, o.name, o.link_id, o.type, o.asu,
           o.partner1, o.partner2, o.reported_distance, o.reported_sym)
 
 SERIALIZE(CisPep, o.partner_c, o.partner_n, o.model_num, o.only_altloc, o.reported_angle)
+
+SERIALIZE(SeqAdv, o.entry_id, o.mon_id, o.chain_name, o.auth_seq_num, o.ins_code,
+          o.db_name, o.db_accession, o.db_mon_id, o.db_seq_num, o.details,
+          o.align_id, o.label_seq, o.ordinal)
 
 SERIALIZE(ModRes, o.chain_name, o.res_id, o.parent_comp_id, o.mod_id, o.details)
 
@@ -179,7 +183,7 @@ SERIALIZE(Structure, o.name, o.cell, o.spacegroup_hm, o.models,
           o.sites, o.helices, o.sheets, o.assemblies, o.conect_map, o.meta,
           o.input_format, o.has_d_fraction, o.non_ascii_line, o.ter_status,
           o.has_origx, o.origx, o.info, o.chemcomps, o.shortened_ccd_codes,
-          o.raw_remarks, o.resolution)
+          o.raw_remarks, o.resolution, o.seqadv)
 
 
 namespace cif {

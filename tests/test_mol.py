@@ -16,7 +16,7 @@ except ImportError:
 
 def is_written_to_pdb(line, via_cif):
     if line[:6] in ['COMPND', 'SOURCE', 'MDLTYP', 'AUTHOR', 'REVDAT', 'JRNL  ',
-                    'SEQADV', 'HETNAM', 'FORMUL',
+                    'HETNAM', 'FORMUL',
                     'SITE  ', 'MASTER', 'CONECT']:
         return False
     # ORIGX is written only if it is a non-identity matrix
@@ -1023,6 +1023,101 @@ class TestMol(unittest.TestCase):
         doc = st.make_mmcif_document()
         ref_seq = doc[0].get_mmcif_category('_struct_ref_seq')
         self.assertEqual(ref_seq['pdbx_strand_id'], ['B'])
+
+    def test_seqadv_to_mmcif(self):
+        # Header only. The second row ends before the optional database fields.
+        rows = ('SEQADV Z9ZZ X01 Q   -3K TEST TEST00001 X02     0 Archive note',
+                'SEQADV Z9ZZ X03 Q    0  TEST TEST00001')
+        st = gemmi.read_pdb_string('\n'.join(rows) + '\n')
+        block = gemmi.cif.read_string(st.make_mmcif_document().as_string())[0]
+        cat = block.get_mmcif_category('_struct_ref_seq_dif.')
+        self.assertEqual(cat, {
+            'align_id': [None, None], 'pdbx_pdb_id_code': ['Z9ZZ'] * 2,
+            'mon_id': ['X01', 'X03'], 'pdbx_pdb_strand_id': ['Q'] * 2,
+            'pdbx_auth_seq_num': ['-3', '0'], 'pdbx_pdb_ins_code': ['K', None],
+            'pdbx_seq_db_name': ['TEST'] * 2,
+            'pdbx_seq_db_accession_code': ['TEST00001'] * 2,
+            'db_mon_id': ['X02', False], 'pdbx_seq_db_seq_num': ['0', False],
+            'details': ['Archive note', None], 'seq_num': [None, None],
+            'pdbx_ordinal': ['1', '2']})
+        again = gemmi.make_structure_from_block(block)
+        self.assertEqual([s for s in again.make_pdb_string().splitlines()
+                          if s.startswith('SEQADV')], [r.ljust(80) for r in rows])
+
+    def test_struct_ref_seq_dif_to_pdb(self):
+        # Deliberately distinct author, label and database positions.
+        text = '''data_Z9ZZ
+_struct_ref_seq_dif.align_id link7
+_struct_ref_seq_dif.pdbx_pdb_id_code Z9ZZ
+_struct_ref_seq_dif.mon_id X04
+_struct_ref_seq_dif.pdbx_pdb_strand_id R
+_struct_ref_seq_dif.seq_num 11
+_struct_ref_seq_dif.pdbx_auth_seq_num 42
+_struct_ref_seq_dif.pdbx_pdb_ins_code J
+_struct_ref_seq_dif.pdbx_seq_db_name TEST
+_struct_ref_seq_dif.pdbx_seq_db_accession_code T00000002
+_struct_ref_seq_dif.db_mon_id X05
+_struct_ref_seq_dif.pdbx_seq_db_seq_num -10
+_struct_ref_seq_dif.details 'Second note'
+_struct_ref_seq_dif.pdbx_ordinal 8
+'''
+        block = gemmi.cif.read_string(text)[0]
+        st = pickle.loads(pickle.dumps(gemmi.make_structure_from_block(block)))
+        rows = [s for s in st.make_pdb_string().splitlines() if s.startswith('SEQADV')]
+        expected = 'SEQADV Z9ZZ X04 R   42J TEST T00000002 X05   -10 Second note'
+        self.assertEqual(rows, [expected.ljust(80)])
+        cat = '_struct_ref_seq_dif.'
+        self.assertEqual(st.make_mmcif_block().get_mmcif_category(cat),
+                         block.get_mmcif_category(cat))
+
+    def test_seqadv_alignment_key(self):
+        # One placeholder atom locates the strand for the DBREF writer.
+        pdb = '''\
+DBREF  Z9ZZ Q   -3K   -3K TEST   T0000002 ENTRY            0      0
+SEQADV Z9ZZ X01 Q   -3K TEST T0000002  X02     0 Archive note
+SEQRES   1 Q    1  X01
+ATOM      1  C   X01 Q  -3K      0.000   0.000   0.000  1.00 10.00           C
+TER
+'''
+        st = gemmi.read_pdb_string(pdb)
+        block = st.make_mmcif_block()
+        parent = '_struct_ref_seq.align_id'
+        child = '_struct_ref_seq_dif.align_id'
+        self.assertEqual(list(block.find_values(parent)), ['1'])
+        self.assertEqual(list(block.find_values(child)), ['1'])
+        # mmCIF alignment IDs are codes, not necessarily consecutive integers.
+        for tag in (parent, child):
+            block.find_values(tag)[0] = 'link7'
+        for header_only in (False, True):
+            if header_only:
+                block.find_mmcif_category('_atom_site.').erase()
+            out = gemmi.make_structure_from_block(block).make_mmcif_block()
+            self.assertEqual(list(out.find_values(parent)), ['link7'])
+            self.assertEqual(list(out.find_values(child)), ['link7'])
+
+    def test_seqadv_field_limits(self):
+        block = gemmi.cif.read_string('''data_test
+_struct_ref_seq_dif.align_id ?
+_struct_ref_seq_dif.details 'Too long for a PDB comment'
+''')[0]
+        st = gemmi.make_structure_from_block(block)
+        with self.assertRaisesRegex(RuntimeError, 'SEQADV comment'):
+            st.make_pdb_string()
+        opt = gemmi.PdbWriteOptions()
+        opt.seqres_records = False
+        self.assertNotIn('SEQADV', st.make_pdb_string(opt))
+        groups = gemmi.MmcifOutputGroups(True)
+        groups.struct_ref = False
+        self.assertNotIn('_struct_ref_seq_dif.', st.make_mmcif_document(groups).as_string())
+        st.seqadv = []
+        st.update_mmcif_block(block)
+        self.assertFalse(block.find_mmcif_category('_struct_ref_seq_dif.'))
+
+    def test_no_seqadv(self):
+        st = gemmi.read_pdb_string('END\n')
+        self.assertNotIn('_struct_ref_seq_dif.', st.make_mmcif_document().as_string())
+        block = gemmi.cif.read_string('data_empty\n_entry.id empty')[0]
+        self.assertNotIn('SEQADV', gemmi.make_structure_from_block(block).make_pdb_string())
 
     def test_empty_strand_id_struct_ref_seq(self):
         # A blank chain name (e.g. a PDB file with no chain ID) gives an empty

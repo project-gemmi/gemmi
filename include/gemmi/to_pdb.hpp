@@ -22,7 +22,7 @@ struct PdbWriteOptions {
   bool minimal_file = false;
   /// @brief Write ATOM/HETATM records with coordinates. If false, omit atomic models.
   bool atom_records = true;
-  /// @brief Write SEQRES records with polymer sequences.
+  /// @brief Write DBREF, SEQADV and SEQRES sequence records.
   bool seqres_records = true;
   /// @brief Write SSBOND records (disulfide bonds between cysteines).
   bool ssbond_records = true;

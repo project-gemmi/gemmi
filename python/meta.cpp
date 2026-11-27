@@ -173,6 +173,22 @@ void add_meta(nb::module_& m) {
     .def_rw("reported_angle", &CisPep::reported_angle)
     ;
 
+  nb::class_<SeqAdv>(m, "SeqAdv")
+    .def(nb::init<>())
+    .def_rw("entry_id", &SeqAdv::entry_id)
+    .def_rw("mon_id", &SeqAdv::mon_id)
+    .def_rw("chain_name", &SeqAdv::chain_name)
+    .def_rw("auth_seq_num", &SeqAdv::auth_seq_num)
+    .def_rw("ins_code", &SeqAdv::ins_code)
+    .def_rw("db_name", &SeqAdv::db_name)
+    .def_rw("db_accession", &SeqAdv::db_accession)
+    .def_rw("db_mon_id", &SeqAdv::db_mon_id)
+    .def_rw("db_seq_num", &SeqAdv::db_seq_num)
+    .def_rw("details", &SeqAdv::details)
+    .def_rw("align_id", &SeqAdv::align_id)
+    .def_rw("label_seq", &SeqAdv::label_seq, nb::arg().none())
+    .def_rw("ordinal", &SeqAdv::ordinal, nb::arg().none());
+
   nb::class_<ModRes>(m, "ModRes")
     .def(nb::init<>())
     .def_rw("chain_name", &ModRes::chain_name)
