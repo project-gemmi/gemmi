@@ -640,6 +640,10 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
   }
 
   if (!st.models.empty()) {
+    std::vector<int> op_numbers;
+    if (const SpaceGroup* sg = st.find_spacegroup())
+      op_numbers = symop_numbers(*sg, opt.symop_numbering);
+
     // SSBOND  (note: uses only the first model and primary conformation)
     if (opt.ssbond_records) {
       int counter = 0;
@@ -659,7 +663,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
              write_seq_id(cra1.residue->seqid).data(),
              cra2.residue->name.c_str(), cra2.chain->name.c_str(),
              write_seq_id(cra2.residue->seqid).data(),
-             "1555", im.symmetry_code(false).c_str(), im.dist());
+             "1555", im.symmetry_code(false, op_numbers).c_str(), im.dist());
         }
     }
 
@@ -678,7 +682,7 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
           if (cra1.atom && cra2.atom) {
             NearestImage im = st.cell.find_nearest_image(cra1.atom->pos,
                                                          cra2.atom->pos, con.asu);
-            im_pdb_symbol = im.symmetry_code(false);
+            im_pdb_symbol = im.symmetry_code(false, op_numbers);
             im_dist_str = to_str_prec<2>(im.dist());
             im_same_asu = im.same_asu();
           }

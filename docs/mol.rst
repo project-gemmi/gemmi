@@ -1695,6 +1695,8 @@ conventions of ``SymopNumbering``:
 
 ``SpaceGroup.symops_in_order()`` returns the operations in the order
 of a convention.
+The mmCIF and PDB writers use the ``PDB`` numbering by default
+(see ``symop_numbering`` in ``MmcifOutputGroups`` and ``PdbWriteOptions``).
 
 The vast majority of connections is intramolecular, so usually you get 1_555:
 

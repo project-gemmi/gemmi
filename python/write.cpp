@@ -17,7 +17,10 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     .def("__init__", [](MmcifOutputGroups* p, bool all, const nb::kwargs& kwargs) {
       nb::object obj = nb::type<MmcifOutputGroups>()(all);
       for (auto [key, value] : kwargs)
-        obj.attr(key) = nb::cast<bool>(value);
+        if (nb::isinstance<SymopNumbering>(value))
+          obj.attr(key) = value;
+        else
+          obj.attr(key) = nb::cast<bool>(value);
       new(p) MmcifOutputGroups(nb::cast<const MmcifOutputGroups&>(obj));
     }, nb::arg("all"), nb::arg("kwargs"))
 #define DEF_BIT_PROPERTY(name) \
@@ -56,6 +59,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     DEF_BIT_PROPERTY(software)
     DEF_BIT_PROPERTY(group_pdb)
     DEF_BIT_PROPERTY(auth_all)
+    .def_rw("symop_numbering", &MmcifOutputGroups::symop_numbering)
     ;
 #undef DEF_BIT_PROPERTY
 
@@ -71,7 +75,10 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
                         const nb::kwargs& kwargs) {
       nb::object obj = nb::type<PdbWriteOptions>()(minimal, headers_only);
       for (auto [key, value] : kwargs)
-        obj.attr(key) = nb::cast<bool>(value);
+        if (nb::isinstance<SymopNumbering>(value))
+          obj.attr(key) = value;
+        else
+          obj.attr(key) = nb::cast<bool>(value);
       new(p) PdbWriteOptions(nb::cast<const PdbWriteOptions&>(obj));
     }, nb::arg("minimal")=false, nb::arg("headers_only")=false, nb::arg("kwargs"))
 #define DEF_PROPERTY(name) \
@@ -92,6 +99,7 @@ void add_write(nb::module_& m, nb::class_<Structure>& structure) {
     DEF_PROPERTY(use_linkr)
     DEF_PROPERTY(use_link_id)
     DEF_PROPERTY(preserve_serial)
+    .def_rw("symop_numbering", &PdbWriteOptions::symop_numbering)
     ;
 #undef DEF_PROPERTY
 
