@@ -134,7 +134,10 @@ class TestReadingSeq(unittest.TestCase):
         kind = gemmi.ResidueKind.DNA
         seq3 = gemmi.expand_one_letter_sequence(seq1, kind)
         self.assertEqual(seq1, gemmi.one_letter_code(seq3))
-        self.assertEqual(seq1, gemmi.pdbx_one_letter_code(seq3, kind))
+        # as in PDB entries, deoxynucleotides are in parentheses
+        pdbx_seq = gemmi.pdbx_one_letter_code(seq3, kind)
+        self.assertEqual(pdbx_seq, ''.join('(D%s)' % c for c in seq1))
+        self.assertEqual(gemmi.expand_one_letter_sequence(pdbx_seq, kind), seq3)
 
     def test_code_conversion_rna(self):
         seq1 = 'GGCGAUACCAGCCGAAAGGCCCUUGGCAGCGCC'  # from 8d2b
