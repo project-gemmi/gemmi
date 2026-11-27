@@ -220,12 +220,83 @@ void write_ncs_op(const NcsOp& op, std::ostream& os) {
   }
 }
 
-void write_remarks(const Structure& st, std::ostream& os) {
+// REMARK 290 lists the symmetry operations that the symmetry codes in
+// SSBOND and LINK records refer to. Returns false if it can't be written.
+bool write_remark_290(const Structure& st, SymopNumbering numbering,
+                      std::ostream& os) {
+  const SpaceGroup* sg = st.find_spacegroup();
+  if (!sg || !st.cell.is_crystal())
+    return false;
+  std::vector<Op> ops = symops_in_order(*sg, numbering);
+  char buf[88];
+  const char* head[] = {
+    "REMARK 290",
+    "REMARK 290 CRYSTALLOGRAPHIC SYMMETRY",
+  };
+  for (const char* line : head)
+    WRITE("%-80s", line);
+  WRITELN("REMARK 290 SYMMETRY OPERATORS FOR SPACE GROUP: %s",
+          st.spacegroup_hm.c_str());
+  const char* symop_head[] = {
+    "REMARK 290",
+    "REMARK 290      SYMOP   SYMMETRY",
+    "REMARK 290     NNNMMM   OPERATOR",
+  };
+  for (const char* line : symop_head)
+    WRITE("%-80s", line);
+  for (size_t i = 0; i != ops.size(); ++i)
+    WRITELN("REMARK 290     %3zu555   %s", i + 1, ops[i].triplet('X').c_str());
+  const char* middle[] = {
+    "REMARK 290",
+    "REMARK 290     WHERE NNN -> OPERATOR NUMBER",
+    "REMARK 290           MMM -> TRANSLATION VECTOR",
+    "REMARK 290",
+    "REMARK 290 CRYSTALLOGRAPHIC SYMMETRY TRANSFORMATIONS",
+    "REMARK 290 THE FOLLOWING TRANSFORMATIONS OPERATE ON THE ATOM/HETATM",
+    "REMARK 290 RECORDS IN THIS ENTRY TO PRODUCE CRYSTALLOGRAPHICALLY",
+    "REMARK 290 RELATED MOLECULES.",
+  };
+  for (const char* line : middle)
+    WRITE("%-80s", line);
+  for (size_t i = 0; i != ops.size(); ++i) {
+    Transform tr = st.cell.op_as_transform(ops[i]);
+    for (int j = 0; j < 3; ++j)
+      WRITE("REMARK 290   SMTRY%d%4zu%10.6f%10.6f%10.6f%15.5f            ",
+            j+1, i+1,
+            avoid_printed_neg_zero(tr.mat[j][0], 5e-7),
+            avoid_printed_neg_zero(tr.mat[j][1], 5e-7),
+            avoid_printed_neg_zero(tr.mat[j][2], 5e-7),
+            avoid_printed_neg_zero(tr.vec.at(j), 5e-6));
+  }
+  WRITE("%-80s", "REMARK 290");
+  WRITE("%-80s", "REMARK 290 REMARK: NULL");
+  return true;
+}
+
+// REMARK number of a line from Structure::raw_remarks, or -1.
+int remark_number(const std::string& line) {
+  if (line.size() < 10 || line.compare(0, 7, "REMARK ") != 0)
+    return -1;
+  int n = 0;
+  bool digits = false;
+  for (int i = 7; i < 10; ++i)
+    if (std::isdigit(line[i])) {
+      n = 10 * n + (line[i] - '0');
+      digits = true;
+    } else if (line[i] != ' ') {
+      return -1;
+    }
+  return digits ? n : -1;
+}
+
+void write_remarks(const Structure& st, SymopNumbering numbering,
+                   std::ostream& os) {
   char buf[88];
   if (st.resolution > 0) {
     WRITE("%-80s", "REMARK   2");
     WRITE("REMARK   2 RESOLUTION. %7.2f %-49s", st.resolution, "ANGSTROMS.");
   }
+  write_remark_290(st, numbering, os);
   if (!st.assemblies.empty()) {
     const char* preface[] = {
       "REMARK 350",
@@ -452,13 +523,29 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
       WRITE("NUMMDL    %-6zu %63s", st.models.size(), "");
 
     if (!st.raw_remarks.empty()) {
+      // REMARK 290 from the input is replaced, because the symmetry codes
+      // written here may follow another numbering.
+      std::ostringstream remark_290;
+      bool replace = write_remark_290(st, opt.symop_numbering, remark_290);
+      bool pending = replace;
       for (const std::string& line : st.raw_remarks) {
+        if (replace) {
+          int num = remark_number(line);
+          if (num == 290)
+            continue;
+          if (pending && num > 290) {
+            os << remark_290.str();
+            pending = false;
+          }
+        }
         os << line;
         if (line.empty() || line.back() != '\n')
           os << '\n';
       }
+      if (pending)
+        os << remark_290.str();
     } else {
-      write_remarks(st, os);
+      write_remarks(st, opt.symop_numbering, os);
     }
   }
 

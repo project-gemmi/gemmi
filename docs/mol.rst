@@ -1697,6 +1697,9 @@ conventions of ``SymopNumbering``:
 of a convention.
 The mmCIF and PDB writers use the ``PDB`` numbering by default
 (see ``symop_numbering`` in ``MmcifOutputGroups`` and ``PdbWriteOptions``).
+For crystal structures, the PDB writer also writes REMARK 290 with the
+operations that the symmetry codes refer to; it replaces REMARK 290
+from the input.
 
 The vast majority of connections is intramolecular, so usually you get 1_555:
 
