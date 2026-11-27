@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>             // for NAN
 #include <unordered_map>
+#include <unordered_set>
 #include <gemmi/mmcif_impl.hpp> // for set_cell_from_mmcif
 #include <gemmi/atox.hpp>    // for string_to_int
 #include <gemmi/enumstr.hpp> // for entity_type_from_string, polymer_type_from_string
@@ -1163,9 +1164,24 @@ void read_entity_and_sequence_info(cif::Block& block, Structure& st) {
          "db_align_beg", "db_align_end",                               // 3-4
          "?pdbx_auth_seq_align_beg", "?pdbx_seq_align_beg_ins_code",   // 5-6
          "?pdbx_auth_seq_align_end", "?pdbx_seq_align_end_ins_code"}); // 7-8
+    auto add_dbref = [&](cif::Table::Row row) -> Entity::DbRef* {
+        Entity* ent = st.get_entity(row.str(1));
+        if (!ent)
+            return nullptr;
+        ent->dbrefs.emplace_back();
+        Entity::DbRef& dbref = ent->dbrefs.back();
+        dbref.db_name = row.str(2);
+        dbref.id_code = row.str(3);
+        if (row.has(4))
+            dbref.accession_code = row.str(4);
+        if (row.has(5))
+            dbref.isoform = row.str(5);
+        return &dbref;
+    };
     // DbRef doesn't correspond 1:1 to the mmCIF tables; we need to remove
     // duplicates from _struct_ref_seq to make it work.
     std::vector<std::string> seen;
+    std::unordered_set<std::string> aligned_refs;
     for (cif::Table::Row seq : struct_ref_seq) {
         std::string str = seq[0];
         for (int i = 1; i < 5; ++i) {
@@ -1175,27 +1191,24 @@ void read_entity_and_sequence_info(cif::Block& block, Structure& st) {
         if (in_vector(str, seen))
             continue;
         seen.push_back(str);
-        cif::Table::Row row = struct_ref.find_row(seq.str(0));
-        if (Entity* ent = st.get_entity(row.str(1))) {
-            ent->dbrefs.emplace_back();
-            Entity::DbRef& dbref = ent->dbrefs.back();
-            dbref.db_name = row.str(2);
-            dbref.id_code = row.str(3);
-            if (row.has(4))
-                dbref.accession_code = row.str(4);
-            if (row.has(5))
-                dbref.isoform = row.str(5);
+        std::string ref_id = seq.str(0);
+        aligned_refs.insert(ref_id);
+        if (Entity::DbRef* dbref = add_dbref(struct_ref.find_row(ref_id))) {
             constexpr int None = SeqId::OptionalNum::None;
-            dbref.label_seq_begin = cif::as_int(seq[1], None);
-            dbref.label_seq_end = cif::as_int(seq[2], None);
-            dbref.db_begin.num = cif::as_int(seq[3], None);
-            dbref.db_end.num = cif::as_int(seq[4], None);
+            dbref->label_seq_begin = cif::as_int(seq[1], None);
+            dbref->label_seq_end = cif::as_int(seq[2], None);
+            dbref->db_begin.num = cif::as_int(seq[3], None);
+            dbref->db_end.num = cif::as_int(seq[4], None);
             if (seq.has(5))
-                dbref.seq_begin = make_seqid(seq.str(5), seq.ptr_at(6));
+                dbref->seq_begin = make_seqid(seq.str(5), seq.ptr_at(6));
             if (seq.has(7))
-                dbref.seq_end = make_seqid(seq.str(7), seq.ptr_at(8));
+                dbref->seq_end = make_seqid(seq.str(7), seq.ptr_at(8));
         }
     }
+    for (cif::Table::Row row : struct_ref)
+        if (aligned_refs.count(row.str(0)) == 0)
+            if (Entity::DbRef* dbref = add_dbref(row))
+                dbref->has_alignment = false;
 
     cif::Table s_asym_table = block.find("_struct_asym.", {"id", "entity_id"});
     if (s_asym_table.ok()) {

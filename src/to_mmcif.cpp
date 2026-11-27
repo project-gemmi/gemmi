@@ -695,6 +695,8 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
                           string_or_dot(dbref.id_code),
                           string_or_qmark(dbref.accession_code),
                           string_or_qmark(dbref.isoform)});
+        if (!dbref.has_alignment)
+          continue;
         for (const std::string& subchain : ent.subchains) {
           auto strand_id = subs_to_strands.find(subchain);
           if (strand_id == subs_to_strands.end())

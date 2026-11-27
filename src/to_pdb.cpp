@@ -486,6 +486,8 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
       if (const Entity* entity = entity_list[i]) {
         const Chain& ch = st.models[0].chains[i];
         for (const Entity::DbRef& dbref : entity->dbrefs) {
+          if (!dbref.has_alignment)
+            continue;
           bool short_record = *dbref.db_end.num < 100000 &&
                               dbref.accession_code.size() < 9 &&
                               dbref.id_code.size() < 13;

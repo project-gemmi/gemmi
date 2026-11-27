@@ -301,6 +301,7 @@ struct Entity {
     SeqId seq_begin, seq_end;         ///< PDB sequence number range
     SeqId db_begin, db_end;           ///< Database sequence number range
     SeqId::OptionalNum label_seq_begin, label_seq_end; ///< mmCIF label_seq_id range
+    bool has_alignment = true;       ///< Whether this reference has a sequence alignment
   };
   std::string name;                        ///< Entity name/description
   std::vector<std::string> subchains;      ///< Chains in this entity
