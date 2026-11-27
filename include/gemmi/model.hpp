@@ -1296,6 +1296,7 @@ struct Structure {
   std::vector<Entity> entities;      ///< Polymer and ligand entity definitions
   std::vector<Connection> connections; ///< Chemical bonds and other connections
   std::vector<CisPep> cispeps;       ///< Cis-peptide bonds (non-standard geometry)
+  std::vector<SeqAdv> seqadv;          ///< Archived sequence discrepancies
   std::vector<ModRes> mod_residues;  ///< Modified residue descriptions
   std::vector<StructSite> sites;     ///< Special sites (binding sites, etc.)
   std::vector<Helix> helices;        ///< Secondary structure: helices
@@ -1511,6 +1512,7 @@ struct Structure {
     st.entities = entities;
     st.connections = connections;
     st.cispeps = cispeps;
+    st.seqadv = seqadv;
     st.mod_residues = mod_residues;
     st.sites = sites;
     st.helices = helices;

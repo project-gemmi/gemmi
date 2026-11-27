@@ -462,11 +462,13 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
     }
   }
 
-  // DBREF[12], SEQRES
-  if (opt.seqres_records && !st.models.empty()) {
+  // DBREF[12], SEQADV, SEQRES
+  if (opt.seqres_records) {
     std::vector<const Entity*> entity_list;
-    entity_list.reserve(st.models[0].chains.size());
-    for (const Chain& ch : st.models[0].chains) {
+    size_t n_chains = st.models.empty() ? 0 : st.models[0].chains.size();
+    entity_list.reserve(n_chains);
+    for (size_t i = 0; i != n_chains; ++i) {
+      const Chain& ch = st.models[0].chains[i];
       const Entity* entity = st.get_entity_of(ch.get_polymer());
       // If the input pdb file has no TER records the subchains and entities
       // are not setup automatically. In such case it is possible to call
@@ -525,6 +527,22 @@ void write_pdb(const Structure& st, std::ostream& os, PdbWriteOptions opt) {
                   dbref.accession_code.c_str(), *begin.num, *end.num);
         }
       }
+    // SEQADV is a header record; it need not refer to a modelled residue.
+    for (const SeqAdv& adv : st.seqadv) {
+      // Never silently turn an overlong accession or number into another
+      // identifier. A longer or multiline note also cannot fit losslessly.
+      auto field = [](const std::string& s, size_t width, const char* name) {
+        if (s.size() > width || s.find_first_of("\r\n") != std::string::npos)
+          fail("Cannot represent SEQADV ", name, " in the PDB format");
+        return s.c_str();
+      };
+      WRITELN("SEQADV %4s %3s%2s %4s%-1s %-4s %-9s %3s %5s %s",
+              field(adv.entry_id, 4, "entry ID"), field(adv.mon_id, 3, "residue"),
+              field(adv.chain_name, 2, "chain"), field(adv.auth_seq_num, 4, "number"),
+              field(adv.ins_code, 1, "insertion code"), field(adv.db_name, 4, "database"),
+              field(adv.db_accession, 9, "accession"), field(adv.db_mon_id, 3, "db residue"),
+              field(adv.db_seq_num, 5, "db number"), field(adv.details, 21, "comment"));
+    }
     // SEQRES
     for (size_t i = 0; i != entity_list.size(); ++i)
       if (const Entity* entity = entity_list[i]) {

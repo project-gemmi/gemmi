@@ -1161,6 +1161,26 @@ void populate_structure_from_pdb_stream(AnyStream& line_reader, const std::strin
       }
       after_ter = true;
 
+    } else if (is_record_type4(line, "SEQADV")) {
+      // A short line may omit trailing fields. Don't read beyond its end
+      // into bytes left in the buffer by the previous record.
+      auto field = [&](size_t offset, size_t width) {
+        return offset < len ? read_string(line + offset, (int) std::min(width, len - offset))
+                            : std::string();
+      };
+      st.seqadv.emplace_back();
+      SeqAdv& adv = st.seqadv.back();
+      adv.entry_id = field(7, 4);
+      adv.mon_id = field(12, 3);
+      adv.chain_name = field(15, 2);
+      adv.auth_seq_num = field(18, 4);
+      adv.ins_code = field(22, 1);
+      adv.db_name = field(24, 4);
+      adv.db_accession = field(29, 9);
+      adv.db_mon_id = field(39, 3);
+      adv.db_seq_num = field(43, 5);
+      adv.details = field(49, 21);
+
     } else if (is_record_type4(line, "MODRES")) {
       ModRes modres;
       modres.chain_name = read_string(line + 15, 2);

@@ -3,6 +3,7 @@
 #include <gemmi/mmcif.hpp>   // for string_to_int
 #include <array>
 #include <cmath>             // for NAN
+#include <set>
 #include <unordered_map>
 #include <gemmi/mmcif_impl.hpp> // for set_cell_from_mmcif
 #include <gemmi/atox.hpp>    // for string_to_int
@@ -320,6 +321,31 @@ void read_prot_cis(cif::Block& block, Structure& st) {
     if (row.has(kOmegaAngle))
       cispep.reported_angle = cif::as_number(row[kOmegaAngle]);
     st.cispeps.push_back(cispep);
+  }
+}
+
+// SEQADV equivalent. Keep label and author numbering independent.
+void read_seqadv(cif::Block& block, Structure& st) {
+  for (auto row : block.find("_struct_ref_seq_dif.", {
+      "align_id", "?pdbx_pdb_id_code", "?mon_id", "?pdbx_pdb_strand_id",
+      "?pdbx_auth_seq_num", "?pdbx_pdb_ins_code", "?pdbx_seq_db_name",
+      "?pdbx_seq_db_accession_code", "?db_mon_id", "?pdbx_seq_db_seq_num",
+      "?details", "?seq_num", "?pdbx_ordinal"})) {
+    st.seqadv.emplace_back();
+    SeqAdv& adv = st.seqadv.back();
+    adv.align_id = row.str(0);
+    copy_string(row, 1, adv.entry_id);
+    copy_string(row, 2, adv.mon_id);
+    copy_string(row, 3, adv.chain_name);
+    copy_string(row, 4, adv.auth_seq_num);
+    copy_string(row, 5, adv.ins_code);
+    copy_string(row, 6, adv.db_name);
+    copy_string(row, 7, adv.db_accession);
+    copy_string(row, 8, adv.db_mon_id);
+    copy_string(row, 9, adv.db_seq_num);
+    copy_string(row, 10, adv.details);
+    copy_int(row, 11, adv.label_seq.value);
+    copy_int(row, 12, adv.ordinal.value);
   }
 }
 
@@ -1162,23 +1188,30 @@ void read_entity_and_sequence_info(cif::Block& block, Structure& st) {
         {"ref_id", "seq_align_beg", "seq_align_end",                   // 0-2
          "db_align_beg", "db_align_end",                               // 3-4
          "?pdbx_auth_seq_align_beg", "?pdbx_seq_align_beg_ins_code",   // 5-6
-         "?pdbx_auth_seq_align_end", "?pdbx_seq_align_end_ins_code"}); // 7-8
+         "?pdbx_auth_seq_align_end", "?pdbx_seq_align_end_ins_code",  // 7-8
+         "?align_id", "?pdbx_strand_id"});                            // 9-10
     // DbRef doesn't correspond 1:1 to the mmCIF tables; we need to remove
     // duplicates from _struct_ref_seq to make it work.
-    std::vector<std::string> seen;
+    std::set<std::string> referenced;
+    for (const SeqAdv& adv : st.seqadv)
+        referenced.insert(adv.align_id);
+    std::map<std::string, size_t> seen;
     for (cif::Table::Row seq : struct_ref_seq) {
         std::string str = seq[0];
         for (int i = 1; i < 5; ++i) {
             str += '\t';
             str += seq[i];
         }
-        if (in_vector(str, seen))
-            continue;
-        seen.push_back(str);
         cif::Table::Row row = struct_ref.find_row(seq.str(0));
         if (Entity* ent = st.get_entity(row.str(1))) {
-            ent->dbrefs.emplace_back();
-            Entity::DbRef& dbref = ent->dbrefs.back();
+            auto pos = seen.emplace(str, ent->dbrefs.size());
+            if (pos.second)
+                ent->dbrefs.emplace_back();
+            Entity::DbRef& dbref = ent->dbrefs[pos.first->second];
+            if (seq.has2(9) && seq.has(10) && referenced.count(seq.str(9)))
+                dbref.align_ids.emplace(seq.str(9), seq.str(10));
+            if (!pos.second)
+                continue;
             dbref.db_name = row.str(2);
             dbref.id_code = row.str(3);
             if (row.has(4))
@@ -1253,6 +1286,7 @@ void populate_structure_from_block(const cif::Block& block_, Structure& st) {
   }
 
   read_atom_sites(block, st);
+  read_seqadv(block, st);
   read_entity_and_sequence_info(block, st);
   fill_residue_entity_type(st);
   st.setup_cell_images();

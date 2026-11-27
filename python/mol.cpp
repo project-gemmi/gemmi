@@ -148,6 +148,7 @@ void add_mol(nb::module_& m) {
     .def_rw("entities", &Structure::entities)
     .def_rw("connections", &Structure::connections)
     .def_rw("cispeps", &Structure::cispeps)
+    .def_rw("seqadv", &Structure::seqadv)
     .def_rw("mod_residues", &Structure::mod_residues)
     .def_rw("sites", &Structure::sites)
     .def_rw("helices", &Structure::helices)
