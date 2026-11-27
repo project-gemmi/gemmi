@@ -1671,6 +1671,36 @@ The resulting NearestImage object has the following properties:
   >>> im.pbc_shift
   (-2, -1, -1)
 
+The number in the symmetry code is the index of the operation in gemmi's
+order (that of ``SpaceGroup.operations()`` and ``UnitCell.images``).
+In many space groups this order differs from the order used in other
+places. ``SpaceGroup.symop_numbers()`` gives the numbers in one of the
+conventions of ``SymopNumbering``:
+
+* ``Gemmi`` -- gemmi's own order,
+* ``ITA`` -- the general positions in International Tables for
+  Crystallography, Vol. A (2016) (settings not tabulated there use the
+  transformed list of the reference setting),
+* ``PDB`` -- the order used in the PDB (REMARK 290): as in ITA for the
+  settings tabulated there, the PDB order for some non-standard settings,
+  otherwise the ITA order of rotations.
+
+.. doctest::
+
+  >>> numbers = st.find_spacegroup().symop_numbers(gemmi.SymopNumbering.PDB)
+  >>> numbers
+  [1, 2, 4, 3, 5, 6, 8, 7]
+  >>> im.symmetry_code(True, numbers)
+  '6_344'
+
+``SpaceGroup.symops_in_order()`` returns the operations in the order
+of a convention.
+The mmCIF and PDB writers use the ``PDB`` numbering by default
+(see ``symop_numbering`` in ``MmcifOutputGroups`` and ``PdbWriteOptions``).
+For crystal structures, the PDB writer also writes REMARK 290 with the
+operations that the symmetry codes refer to; it replaces REMARK 290
+from the input.
+
 The vast majority of connections is intramolecular, so usually you get 1_555:
 
 .. testcode::

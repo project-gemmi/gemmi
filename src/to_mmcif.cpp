@@ -390,7 +390,7 @@ void write_ncs_oper(const Structure& st, cif::Block& block) {
     add_op(op);
 }
 
-void write_struct_conn(const Structure& st, cif::Block& block) {
+void write_struct_conn(const Structure& st, cif::Block& block, SymopNumbering numbering) {
   // example:
   // disulf1 disulf A CYS 3  SG ? 3 ? 1_555 A CYS 18 SG ? 18 ?  1_555 ? 2.045
   std::array<bool,(int)Connection::Type::Unknown+1> type_ids{};
@@ -409,6 +409,9 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
        "details", "pdbx_dist_value"});
   if (use_ccp4_link_id)
     conn_loop.tags.push_back("_struct_conn.ccp4_link_id");
+  std::vector<int> op_numbers;
+  if (const SpaceGroup* sg = st.find_spacegroup())
+    op_numbers = symop_numbers(*sg, numbering);
   for (const Connection& con : st.connections) {
     const_CRA cra1 = st.models[0].find_cra(con.partner1, true);
     const_CRA cra2 = st.models[0].find_cra(con.partner2, true);
@@ -419,7 +422,7 @@ void write_struct_conn(const Structure& st, cif::Block& block) {
     std::string im_pdb_symbol = "?", im_dist_str = "?";
     if (at1 && at2) {
       NearestImage im = st.cell.find_nearest_image(at1->pos, at2->pos, con.asu);
-      im_pdb_symbol = im.symmetry_code(true);
+      im_pdb_symbol = im.symmetry_code(true, op_numbers);
       im_dist_str = to_str_prec<4>(im.dist());
     }
     auto& v = conn_loop.values;
@@ -1257,7 +1260,7 @@ void update_mmcif_block(const Structure& st, cif::Block& block, MmcifOutputGroup
     write_assemblies(st, block);
 
   if (groups.conn)
-    write_struct_conn(st, block);
+    write_struct_conn(st, block, groups.symop_numbering);
 
   if (groups.cis)  // _struct_mon_prot_cis
     write_cispeps(st, block);
