@@ -1230,6 +1230,39 @@ GEMMI_DLL const SpaceGroup* find_spacegroup_by_name(std::string name,
                                   double alpha=0., double gamma=0.,
                                   const char* prefer=nullptr);
 
+/// @brief Conventions for numbering the symmetry operations of a space group,
+/// as used in symmetry codes (n_klm) and in lists of symmetry operations.
+///
+/// gemmi generates the operations from the Hall symbol; for many space groups
+/// their order differs from the order in ITA and other programs
+/// (e.g. operations 3 and 4 of P 21 21 21 are swapped).
+enum class SymopNumbering : unsigned char {
+  /// The order of SpaceGroup::operations() (and of UnitCell::images).
+  Gemmi,
+  /// The order of the general positions in International Tables for
+  /// Crystallography, Vol. A (2016). Settings not tabulated there use
+  /// the list of the reference setting, transformed.
+  ITA,
+  /// The order used in the PDB (REMARK 290): as ITA for the settings
+  /// tabulated in ITA, except R 3 2 on rhombohedral axes; the PDB order for
+  /// some other non-standard settings (e.g. P 2 21 21); otherwise the ITA
+  /// order of rotations, with gemmi's translations.
+  PDB,
+  /// Compatible with syminfo.lib of CCP4 9.0 and programs that use it.
+  CCP4
+};
+
+/// @brief All operations of a space group (including centring) in the order
+/// of the given numbering convention.
+/// @return Operation n-1 is the operation with number n.
+GEMMI_DLL std::vector<Op> symops_in_order(const SpaceGroup& sg, SymopNumbering numbering);
+
+/// @brief Numbers of the symmetry operations in the given convention, for
+/// writing symmetry codes (n_klm).
+/// @return For each operation k (0-based, in the order of sg.operations()
+///         and of UnitCell::images after identity), its 1-based number.
+GEMMI_DLL std::vector<int> symop_numbers(const SpaceGroup& sg, SymopNumbering numbering);
+
 /// @brief Get a space group by name (throws if not found).
 /// @param name Space group name
 /// @return Reference to SpaceGroup

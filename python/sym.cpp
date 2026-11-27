@@ -13,6 +13,12 @@
 using namespace gemmi;
 
 void add_symmetry(nb::module_& m) {
+  nb::enum_<SymopNumbering>(m, "SymopNumbering")
+    .value("Gemmi", SymopNumbering::Gemmi)
+    .value("ITA", SymopNumbering::ITA)
+    .value("PDB", SymopNumbering::PDB)
+    .value("CCP4", SymopNumbering::CCP4)
+    ;
   nb::enum_<CrystalSystem>(m, "CrystalSystem")
     .value("Triclinic", CrystalSystem::Triclinic)
     .value("Monoclinic", CrystalSystem::Monoclinic)
@@ -185,6 +191,12 @@ void add_symmetry(nb::module_& m) {
     .def("centred_to_primitive", &SpaceGroup::centred_to_primitive)
     .def("change_of_hand_op", &SpaceGroup::change_of_hand_op)
     .def("operations", &SpaceGroup::operations, "Group of operations")
+    .def("symops_in_order", [](const SpaceGroup& self, SymopNumbering numbering) {
+        return symops_in_order(self, numbering);
+    }, nb::arg("numbering"), "All operations, in the order of the numbering convention")
+    .def("symop_numbers", [](const SpaceGroup& self, SymopNumbering numbering) {
+        return symop_numbers(self, numbering);
+    }, nb::arg("numbering"), "Numbers of operations() in the numbering convention")
     .def("switch_to_asu", [](const SpaceGroup& sg,
                              const nb::ndarray<int, nb::shape<-1,-1>, nb::device::cpu>& hkl) {
         auto h = hkl.view();

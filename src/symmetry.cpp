@@ -2,7 +2,8 @@
 
 #include <gemmi/symmetry.hpp>
 #include <cmath>      // for fabs
-#include <cstring>    // for memchr, strchr
+#include <algorithm>  // for find, find_if, none_of, sort, stable_sort
+#include <cstring>    // for memchr, strchr, strcmp
 
 static const char* skip_space(const char* p) {
   if (p)
@@ -1209,6 +1210,330 @@ const SpaceGroup* find_spacegroup_by_name(std::string name, double alpha, double
         return &spacegroup_tables::main[sg.pos];
     }
   return nullptr;
+}
+
+namespace {
+
+// Data for SymopNumbering::ITA and ::Pdb (see symops_in_order()).
+
+// proper rotations in the order of ITA, m-3m (No. 221)
+const char cubic_rotations[] =
+   "x,y,z -x,-y,z -x,y,-z x,-y,-z z,x,y z,-x,-y -z,-x,y -z,x,-y y,z,x -y,z,-x y,-z,-x "
+   "-y,-z,x y,x,-z -y,-x,-z y,-x,z -y,x,z x,z,-y -x,z,y -x,-z,-y x,-z,y z,y,-x z,-y,x "
+   "-z,y,x -z,-y,-x";
+// proper rotations in the order of ITA, -43m (No. 215)
+const char cubic_m43m_rotations[] =
+   "x,y,z -x,-y,z -x,y,-z x,-y,-z z,x,y z,-x,-y -z,-x,y -z,x,-y y,z,x -y,z,-x y,-z,-x "
+   "-y,-z,x -y,-x,-z y,x,-z -y,x,z y,-x,z -x,-z,-y x,-z,y x,z,-y -x,z,y -z,-y,-x -z,y,x "
+   "z,-y,x z,y,-x";
+// proper rotations in the order of ITA, 6/mmm (No. 191)
+const char hexagonal_rotations[] =
+   "x,y,z -y,x-y,z -x+y,-x,z -x,-y,z y,-x+y,z x-y,x,z y,x,-z x-y,-y,-z -x,-x+y,-z "
+   "-y,-x,-z -x+y,y,-z x,x-y,-z";
+// proper rotations in the order of ITA, 4/mmm (No. 123)
+const char tetragonal_rotations[] =
+   "x,y,z -x,-y,z -y,x,z y,-x,z -x,y,-z x,-y,-z y,x,-z -y,-x,-z";
+// proper rotations in the order of ITA, -3m, rhombohedral axes (No. 166)
+const char rhombohedral_rotations[] =
+   "x,y,z z,x,y y,z,x -z,-y,-x -y,-x,-z -x,-z,-y";
+// ITA coset representatives that differ from gemmi's: for each operation of the
+// first block in ITA order, the index of the centring vector to add (GroupOps::cen_ops)
+const char* const ita_cosets[][2] = {
+  {"A 1 n 1", "01"},
+  {"A 1 2/n 1", "0101"},
+  {"I 21 21 21", "0101"},
+  {"I b a 2", "0011"},
+  {"C m c a", "01100110"},
+  {"C m m a", "01100110"},
+  {"C c c a:1", "01011010"},
+  {"C c c b:1", "01011010"},
+  {"F d d d:2", "03210321"},
+  {"I b a m", "00110011"},
+  {"I b c a", "01010101"},
+  {"I 41 m d", "00001111"},
+  {"I 41 c d", "00001111"},
+  {"I -4 2 d", "00001111"},
+  {"I 41/a c d:1", "0000111100001111"},
+  {"I 21 3", "010101010101"},
+  {"F d -3:2", "032101320213032101320213"},
+  {"I a -3", "010101010101010101010101"},
+  {"F 41 3 2", "002200331122113333001122"},
+  {"I 41 3 2", "001100110011110000110011"},
+  {"F -4 3 c", "033001100202121213312323"},
+  {"I -4 3 d", "010101011001011001010110"},
+  {"F m -3 c", "033001100202212131133232033001100202212131133232"},
+  {"F d -3 m:1", "002200331122113333001122002200331122113333001122"},
+  {"F d -3 m:2", "003300111133003333111100003300111133003333111100"},
+  {"F d -3 c:1", "002200331122113333001122113311220033002222110033"},
+  {"F d -3 c:2", "002200331122113333001122002200331122113333001122"},
+  {"I a -3 d", "001100110011110000110011001100110011110000110011"},
+};
+// PDB order for non-standard settings not tabulated in ITA
+const char* const pdb_order_ops[][2] = {
+  {"C 1 21 1",
+   "x,y,z -x,y+1/2,-z x+1/2,y+1/2,z -x+1/2,y,-z"},
+  {"I 1 21 1",
+   "x,y,z -x,y+1/2,-z x+1/2,y+1/2,z+1/2 -x+1/2,y,-z+1/2"},
+  {"B 1 1 b",
+   "x,y,z x,y+1/2,-z x+1/2,y,z+1/2 x+1/2,y+1/2,-z+1/2"},
+  {"B 1 1 2/b",
+   "x,y,z -x,-y+1/2,z -x,-y,-z x,y+1/2,-z x+1/2,y,z+1/2 -x+1/2,-y+1/2,z+1/2 -x+1/2,-y,-z+1/2 x+1/2,y+1/2,-z+1/2"},
+  {"P 2 21 2",
+   "x,y,z x,-y+1/2,-z -x,y+1/2,-z -x,-y,z"},
+  {"P 21 2 2",
+   "x,y,z -x,y,-z x+1/2,-y,-z -x+1/2,-y,z"},
+  {"P 2 21 21",
+   "x,y,z x,-y,-z -x,y+1/2,-z+1/2 -x,-y+1/2,z+1/2"},
+  {"P 21 2 21",
+   "x,y,z -x,y,-z x+1/2,-y,-z+1/2 -x+1/2,-y,z+1/2"},
+  {"C 2 2 21a)",
+   "x,y,z -x+1/2,-y,z+1/2 x+1/2,-y+1/2,-z -x,y+1/2,-z+1/2 x+1/2,y+1/2,z -x,-y+1/2,z+1/2 x,-y,-z -x+1/2,y,-z+1/2"},
+  {"C 2 2 2a",
+   "x,y,z -x+1/2,-y+1/2,z x+1/2,-y,-z -x,y+1/2,-z x+1/2,y+1/2,z -x,-y,z x,-y+1/2,-z -x+1/2,y,-z"},
+  {"F 2 2 2a",
+   "x,y,z -x+1/2,-y+1/2,z x+1/2,-y,-z -x,y+1/2,-z x,y+1/2,z+1/2 -x+1/2,-y,z+1/2 x+1/2,-y+1/2,-z+1/2 -x,y,-z+1/2 x+1/2,y,z+1/2 -x,-y+1/2,z+1/2 x,-y,-z+1/2 -x+1/2,y+1/2,-z+1/2 x+1/2,y+1/2,z -x,-y,z x,-y+1/2,-z -x+1/2,y,-z"},
+  {"I 2 2 2a",
+   "x,y,z -x+1/2,-y+1/2,z x+1/2,-y,-z -x,y+1/2,-z x+1/2,y+1/2,z+1/2 -x,-y,z+1/2 -x+1/2,y,-z+1/2 x,-y+1/2,-z+1/2"},
+  {"P 42 21 2a",
+   "x,y,z -x+1/2,-y+1/2,z -y,x+1/2,z+1/2 y+1/2,-x,z+1/2 -x,y+1/2,-z x+1/2,-y,-z y,x,-z+1/2 -y+1/2,-x+1/2,-z+1/2"},
+  {"I 2 3a",
+   "x,y,z -x+1/2,-y+1/2,z x+1/2,-y,-z -x,y+1/2,-z y,z,x -y+1/2,-z+1/2,x y+1/2,-z,-x -y,z+1/2,-x z,x,y -z+1/2,-x+1/2,y z+1/2,-x,-y -z,x+1/2,-y x+1/2,y+1/2,z+1/2 -x,-y,z+1/2 x,-y+1/2,-z+1/2 -x+1/2,y,-z+1/2 y+1/2,z+1/2,x+1/2 -y,-z,x+1/2 y,-z+1/2,-x+1/2 -y+1/2,z,-x+1/2 z+1/2,x+1/2,y+1/2 -z,-x,y+1/2 z,-x+1/2,-y+1/2 -z+1/2,x,-y+1/2"},
+};
+
+std::vector<Op> parse_triplets(const char* s) {
+  std::vector<Op> ops;
+  for (;;) {
+    const char* end = std::strchr(s, ' ');
+    ops.push_back(parse_triplet(end ? std::string(s, end) : std::string(s)));
+    if (!end)
+      return ops;
+    s = end + 1;
+  }
+}
+
+const SpaceGroup* reference_setting(const SpaceGroup& sg) {
+  for (const SpaceGroup& s : spacegroup_tables::main)
+    if (s.number == sg.number && s.is_reference_setting())
+      return &s;
+  return nullptr;
+}
+
+// Settings for which ITA lists the general positions: reference
+// settings, monoclinic unique axis b/c (and cell choices), origin choices,
+// rhombohedral axes.
+bool is_ita_setting(const SpaceGroup& sg) {
+  if (sg.is_reference_setting() || sg.ext == 'R')
+    return true;
+  if (sg.ext == '1')
+    return sg.basisop().rot == Op::identity().rot;
+  auto q = [&](const char* name) { return std::strcmp(sg.qualifier, name) == 0; };
+  switch (sg.number) {
+    case 3: case 4: case 6: case 10: case 11:
+      return q("b") || q("c");
+  }
+  if (sg.number >= 3 && sg.number <= 15)
+    return q("b1") || q("b2") || q("b3") || q("c1") || q("c2") || q("c3");
+  return false;
+}
+
+// Operations without centring (GroupOps::sym_ops) sorted as in ITA: by the
+// position of the proper rotation (R or -R) in the reference list; in
+// centrosymmetric groups the proper rotations come first.
+// Returns an empty vector if a rotation is not in the reference list.
+std::vector<Op> ita_sorted_sym_ops(const SpaceGroup& sg, const GroupOps& gops) {
+  static const std::vector<Op> ref_lists[5] = {
+    parse_triplets(cubic_rotations), parse_triplets(cubic_m43m_rotations),
+    parse_triplets(hexagonal_rotations), parse_triplets(tetragonal_rotations),
+    parse_triplets(rhombohedral_rotations)
+  };
+  int family = 0;
+  if (sg.ext == 'R')
+    family = 4;
+  else if (sg.number >= 215 && sg.number <= 220)
+    family = 1;
+  else if (sg.number >= 143 && sg.number <= 194)
+    family = 2;
+  else if (sg.number >= 75 && sg.number <= 142)
+    family = 3;
+  const std::vector<Op>& ref = ref_lists[family];
+  bool centro = gops.is_centrosymmetric();
+  std::vector<std::pair<int, Op>> keyed;
+  for (const Op& op : gops.sym_ops) {
+    bool improper = op.det_rot() < 0;
+    Op::Rot proper = improper ? op.negated_rot() : op.rot;
+    auto it = std::find_if(ref.begin(), ref.end(),
+                           [&](const Op& r) { return r.rot == proper; });
+    if (it == ref.end())
+      return {};
+    int key = int(it - ref.begin());
+    if (centro && improper)
+      key += 100;
+    keyed.emplace_back(key, op);
+  }
+  std::stable_sort(keyed.begin(), keyed.end(),
+                   [](const std::pair<int, Op>& a, const std::pair<int, Op>& b) {
+                     return a.first < b.first;
+                   });
+  std::vector<Op> result;
+  for (const auto& k : keyed)
+    result.push_back(k.second);
+  return result;
+}
+
+// centring vectors in the outer loop, as in GroupOps
+std::vector<Op> with_centring(const std::vector<Op>& first,
+                              const std::vector<Op::Tran>& cen_ops) {
+  std::vector<Op> ops;
+  ops.reserve(first.size() * cen_ops.size());
+  for (const Op::Tran& cen : cen_ops)
+    for (const Op& op : first)
+      ops.push_back(op.add_centering(cen));
+  return ops;
+}
+
+// for settings tabulated in ITA
+std::vector<Op> ita_ops(const SpaceGroup& sg, const GroupOps& gops) {
+  std::vector<Op> first = ita_sorted_sym_ops(sg, gops);
+  if (first.size() != gops.sym_ops.size())
+    return {};
+  std::string xhm = sg.xhm();
+  for (const auto& row : ita_cosets)
+    if (xhm == row[0]) {
+      for (size_t i = 0; i < first.size() && row[1][i] != '\0'; ++i)
+        first[i] = first[i].add_centering(gops.cen_ops.at(row[1][i] - '0'));
+      break;
+    }
+  return with_centring(first, gops.cen_ops);
+}
+
+// ITA list of the reference setting, transformed to this setting
+std::vector<Op> transformed_ita_ops(const SpaceGroup& sg, const GroupOps& gops) {
+  const SpaceGroup* ref = reference_setting(sg);
+  if (!ref || !is_ita_setting(*ref))
+    return {};
+  std::vector<Op> ref_ops = ita_ops(*ref, ref->operations());
+  Op cob = sg.basisop();
+  Op inv = cob.inverse();
+  std::vector<Op> first;
+  for (const Op& op : ref_ops) {
+    Op t = cob.combine(op).combine(inv).wrap();
+    if (std::none_of(first.begin(), first.end(),
+                     [&](const Op& f) { return f.rot == t.rot; }))
+      first.push_back(t);
+  }
+  return with_centring(first, gops.cen_ops);
+}
+
+// Order compatible with syminfo.lib of CCP4 9.0: the group is expanded from
+// the generators of the Hall symbol (that of the reference setting with the
+// change of basis), adding products of the operations found so far; the
+// inversion, if present, is applied at the end.
+std::vector<Op> ccp4_ops(const SpaceGroup& sg) {
+  std::string hall = sg.hall;
+  if (!sg.is_reference_setting())
+    if (const SpaceGroup* ref = reference_setting(sg))
+      hall = std::string(ref->hall) + " (" + sg.basisop().triplet() + ")";
+  GroupOps gen;
+  try {
+    gen = generators_from_hall(hall.c_str());
+  } catch (std::exception&) {
+    return {};
+  }
+  const Op::Rot inversion = Op::inversion_rot();
+  std::vector<Op> ops(1, Op::identity());
+  const Op* inv = nullptr;
+  for (const Op& g : gen.sym_ops) {
+    if (g.rot == inversion) {
+      inv = &g;
+      continue;
+    }
+    if (g == Op::identity())
+      continue;
+    Op trial = g;
+    trial.wrap();
+    size_t i = ops.size();
+    size_t j = 1;
+    for (;;) {
+      if (std::none_of(ops.begin(), ops.end(),
+                       [&](const Op& op) { return op.rot == trial.rot; }))
+        ops.push_back(trial);
+      if (j > i) {
+        ++i;
+        j = 1;
+      }
+      if (i == ops.size())
+        break;
+      trial = ops[j].combine(ops[i]).wrap();
+      ++j;
+    }
+  }
+  if (inv) {
+    size_t n = ops.size();
+    for (size_t k = 0; k != n; ++k)
+      ops.push_back(inv->combine(ops[k]).wrap());
+  }
+  return with_centring(ops, gen.cen_ops);
+}
+
+} // anonymous namespace
+
+std::vector<Op> symops_in_order(const SpaceGroup& sg, SymopNumbering numbering) {
+  GroupOps gops = sg.operations();
+  std::vector<Op> ops;
+  switch (numbering) {
+    case SymopNumbering::Gemmi:
+      break;
+    case SymopNumbering::ITA:
+      ops = is_ita_setting(sg) ? ita_ops(sg, gops) : transformed_ita_ops(sg, gops);
+      break;
+    case SymopNumbering::PDB: {
+      std::string xhm = sg.xhm();
+      if (xhm == "R 3 2:R")
+        break;  // as in the PDB (and gemmi), not as in ITA
+      if (is_ita_setting(sg)) {
+        ops = ita_ops(sg, gops);
+        break;
+      }
+      for (const auto& row : pdb_order_ops)
+        if (xhm == row[0]) {
+          ops = parse_triplets(row[1]);
+          for (Op& op : ops)
+            op.wrap();
+          break;
+        }
+      if (ops.empty()) {
+        std::vector<Op> first = ita_sorted_sym_ops(sg, gops);
+        if (first.size() == gops.sym_ops.size())
+          ops = with_centring(first, gops.cen_ops);
+      }
+      break;
+    }
+    case SymopNumbering::CCP4:
+      ops = ccp4_ops(sg);
+      break;
+  }
+  // fall back to gemmi's order if the result is not a permutation of operations()
+  std::vector<Op> all = gops.all_ops_sorted();
+  if (ops.size() == all.size()) {
+    std::vector<Op> sorted = ops;
+    std::sort(sorted.begin(), sorted.end());
+    if (sorted == all)
+      return ops;
+  }
+  ops.clear();
+  for (Op op : gops)
+    ops.push_back(op);
+  return ops;
+}
+
+std::vector<int> symop_numbers(const SpaceGroup& sg, SymopNumbering numbering) {
+  std::vector<Op> ordered = symops_in_order(sg, numbering);
+  std::vector<int> result;
+  for (const Op& op : sg.operations()) {
+    auto it = std::find(ordered.begin(), ordered.end(), op);
+    result.push_back(int(it - ordered.begin()) + 1);
+  }
+  return result;
 }
 
 } // namespace gemmi

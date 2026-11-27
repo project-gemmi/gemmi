@@ -138,7 +138,22 @@ struct NearestImage {
   /// @param underscore If true, use format "1_555"; if false, use "1555".
   /// @return Symmetry code string.
   std::string symmetry_code(bool underscore) const {
-    std::string s = std::to_string(sym_idx + 1);
+    return symmetry_code(underscore, sym_idx + 1);
+  }
+
+  /// @brief Generate a symmetry code with operations numbered as in the PDB.
+  /// @param underscore If true, use format "1_555"; if false, use "1555".
+  /// @param op_numbers Numbers of symmetry operations, from symop_numbers().
+  ///        Indices outside of it (e.g. NCS images) are numbered as in symmetry_code().
+  /// @return Symmetry code string.
+  std::string symmetry_code(bool underscore, const std::vector<int>& op_numbers) const {
+    size_t idx = (size_t) sym_idx;
+    return symmetry_code(underscore, idx < op_numbers.size() ? op_numbers[idx] : sym_idx + 1);
+  }
+
+  /// @brief Generate a symmetry code with the given number of the operation.
+  std::string symmetry_code(bool underscore, int op_number) const {
+    std::string s = std::to_string(op_number);
     if (underscore)
       s += '_';
     if (unsigned(5 + pbc_shift[0]) <= 9 &&
